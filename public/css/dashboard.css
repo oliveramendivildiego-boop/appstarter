@@ -1,0 +1,145 @@
+/* Bootstrap 5.3 Dashboard - ejemplo sidebar */
+
+.bi {
+  display: inline-block;
+  width: 1rem;
+  height: 1rem;
+}
+
+/* Sidebar visible en desktop (offcanvas-lg) */
+@media (min-width: 992px) {
+  #sidebarMenu.offcanvas-lg {
+    visibility: visible !important;
+    transform: none !important;
+    position: static !important;
+  }
+  .sidebar .offcanvas-lg {
+    position: sticky;
+    top: 48px;
+    height: calc(100vh - 48px);
+    overflow-y: auto;
+  }
+}
+
+/* Sidebar móvil: el contenedor no ocupa espacio; el offcanvas se abre como overlay */
+@media (max-width: 991.98px) {
+  .sidebar {
+    width: 0 !important;
+    min-width: 0 !important;
+    max-width: 0 !important;
+    padding: 0 !important;
+    overflow: visible;
+    border: none !important;
+    flex: 0 0 0 !important;
+  }
+  #sidebarMenu.offcanvas-start {
+    width: 280px;
+    max-width: 85vw;
+  }
+}
+
+.sidebar .nav-link {
+  font-size: 16px;
+  font-weight: 500;
+  color: var(--primary-color, #0d6efd);
+}
+
+.sidebar .nav-link:hover {
+  background-color: rgba(0, 0, 0, .08);
+  color: var(--primary-hover, #0a58ca);
+}
+
+.sidebar .nav-link i {
+  width: 1.25rem;
+  text-align: center;
+}
+
+.sidebar-heading {
+  font-size: .75rem;
+  color: var(--primary-color, #6c757d);
+}
+
+.sidebar .nav-link.active {
+  color: var(--primary-active, #0a58ca);
+  font-weight: 600;
+  background-color: rgba(0, 0, 0, .08);
+}
+
+.navbar-theme {
+  background-color: var(--primary-color, #212529) !important;
+}
+
+/* Breadcrumb nav usa el color del tema */
+.breadcrumb-nav-theme {
+  background-color: var(--primary-color, #212529) !important;
+}
+
+/* Botones y toggler visibles sobre el fondo del tema */
+.breadcrumb-nav-theme .navbar-toggler {
+  border: 2px solid #fff !important;
+  background-color: rgba(255, 255, 255, 0.2) !important;
+}
+.breadcrumb-nav-theme .navbar-toggler:hover {
+  background-color: rgba(255, 255, 255, 0.35) !important;
+}
+.breadcrumb-nav-theme .navbar-toggler-icon {
+  background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 30 30'%3e%3cpath stroke='%23fff' stroke-linecap='round' stroke-miterlimit='10' stroke-width='2' d='M4 7h22M4 15h22M4 23h22'/%3e%3c/svg%3e") !important;
+}
+.breadcrumb-nav-theme .btn,
+.breadcrumb-nav-theme .btn-primary,
+.breadcrumb-nav-theme .btn-danger,
+.breadcrumb-nav-theme .btn-secondary,
+.breadcrumb-nav-theme .btn-success,
+.breadcrumb-nav-theme .btn-warning {
+  background-color: #fff !important;
+  border: 2px solid #fff !important;
+  color: #212529 !important;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+}
+.breadcrumb-nav-theme .btn:hover,
+.breadcrumb-nav-theme .btn-primary:hover,
+.breadcrumb-nav-theme .btn-danger:hover,
+.breadcrumb-nav-theme .btn-secondary:hover,
+.breadcrumb-nav-theme .btn-success:hover,
+.breadcrumb-nav-theme .btn-warning:hover {
+  background-color: #f8f9fa !important;
+  border-color: #fff !important;
+  color: #212529 !important;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.25);
+}
+.breadcrumb-nav-theme .btn-danger {
+  color: #dc3545 !important;
+}
+.breadcrumb-nav-theme .btn-danger:hover {
+  background-color: #dc3545 !important;
+  color: #fff !important;
+}
+
+.navbar-theme .navbar-brand {
+  background-color: rgba(0, 0, 0, .2);
+  box-shadow: inset -1px 0 0 rgba(0, 0, 0, .2);
+}
+
+.navbar-brand-logo {
+  max-height: 32px;
+  max-width: 150px;
+  width: auto;
+  height: auto;
+  object-fit: contain;
+  display: block;
+}
+
+.navbar .form-control {
+  padding: .75rem 1rem;
+}
+
+main {
+  min-height: calc(100vh - 56px);
+  min-width: 0;
+}
+
+@media (max-width: 991.98px) {
+  .container-fluid .row {
+    overflow-x: hidden;
+  }
+}

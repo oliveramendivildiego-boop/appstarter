@@ -1,0 +1,4 @@
+#table_action_header{background-image: url("../images/checkbox_arrow.gif");background-position: 9px 20px;background-repeat: no-repeat;clear: both;display: block;float: left;padding-bottom: 5px;padding-left: 32px;padding-top: 5px;}
+#table_action_header ul{display: block;margin: 0;padding: 0;position: relative;float: left;}
+#table_action_header ul li{list-style: none;margin-right: 10px;}
+#table_holder{clear: both;}

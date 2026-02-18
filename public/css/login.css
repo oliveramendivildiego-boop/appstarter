@@ -1,0 +1,78 @@
+body{   
+    background: url(../images/khali.jpg) no-repeat fixed 100% 100%;
+    background-size:cover;
+    font-family: 'Rokkitt', serif;    
+    }
+form{
+    font-family: 'Rokkitt', serif;
+    position:absolute; top:0; bottom: 0; left:0; right:0; margin: auto; width: 249px; height: 284px;
+text-align: center;
+background:url(../images/fondo-sing.png);}
+#login_form{
+    padding: 28px 0px 40px 45px;    
+}
+input{
+    font-family: 'Rokkitt', serif;
+    
+}
+input[type='text'] {
+    background: url(../images/pass.png) no-repeat left ;
+    padding-left: 32px !important;
+     border: none;
+}
+input[type='password'] {
+    background: url(../images/text.png) no-repeat left ;
+     padding-left: 32px !important;
+      border: none;
+}
+.form_field{
+    padding-bottom: 23px;
+    width: 164px;
+}
+*:focus {
+    outline: 0;
+}
+.btn-block{
+  background: url(../images/button.png) center;
+  border: none;
+  width: 164px;
+  height: 36px;
+  color: #fff;
+  text-transform: uppercase;
+}
+.btn-block:hover{
+    opacity: 0.75;
+}
+#error_container{
+    height: 25px;
+}
+.error{
+    color:#fff;
+    font-size: 13px;
+      text-align: left;
+}
+
+input {
+  display: block;
+  width: 119px;
+  height: 23px;
+  padding: 6px 12px;
+  font-size: 14px;
+  line-height: 1.42857143;
+  color: #fff;
+  border-radius: 4px;
+  -webkit-box-shadow: inset 0 1px 1px rgba(0, 0, 0, .075);
+  box-shadow: inset 0 1px 1px rgba(0, 0, 0, .075);
+  -webkit-transition: border-color ease-in-out .15s, -webkit-box-shadow ease-in-out .15s;
+  -o-transition: border-color ease-in-out .15s, box-shadow ease-in-out .15s;
+  transition: border-color ease-in-out .15s, box-shadow ease-in-out .15s;
+  outline: none;
+}
+
+h1{text-align: center;}
+#top{font-weight: bold;font-size: 16px;  padding-top: 25px; color:#fff; text-transform: uppercase;}
+
+.form_field_label{text-align: left;font-size: 14px;font-weight: bold;}
+#welcome_message{color: gray;font-family: 'Rokkitt', serif;font-size: 11px;line-height: 14px;padding: 10px;text-align: justify;}
+.logo{margin: 0 auto;position: relative;text-align: center;width: 200px;margin-top: 50px;}
+.logo img{width: 100%;height: auto;}

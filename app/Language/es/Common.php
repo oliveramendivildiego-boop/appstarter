@@ -1,0 +1,24 @@
+<?php
+
+return [
+    'common_submit'              => 'Enviar',
+    'common_first_name'          => 'Nombre (s)',
+    'common_last_name_fa'        => 'Apellido Paterno',
+    'common_last_name_mom'       => 'Apellido Materno',
+    'common_email'               => 'E-Mail',
+    'common_phone_number'        => 'Teléfono',
+    'common_person_id'           => 'CI',
+    'common_comments'            => 'Comentarios',
+    'common_edit'                => 'editar',
+    'common_delete'              => 'Borrar',
+    'common_welcome'             => 'Bienvenido(a)',
+    'common_logout'              => 'Salir',
+    'common_powered_by'          => 'Potenciado por',
+    'common_fields_required_message' => 'Los campos * son requeridos',
+    'common_no_persons_to_display'   => 'No hay gente que mostrar',
+    'common_operations'         => 'Módulos',
+    'common_administration'    => 'Administración',
+    'common_confirm_search'      => '¿Seguro que quieres hacer esta búsqueda?',
+    'common_welcome_message'     => 'Bienvenido(a) a su sistema de Laboratorio John.',
+    'common_session_expired'     => 'Sesión expirada. Inicie sesión nuevamente.',
+];

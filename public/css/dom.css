@@ -1,0 +1,276 @@
+:root {
+    --primary-color: #FF7218;
+    --primary-hover: #e56314;
+    --bg-main: #f4f4f4;
+    --bg-card: #ffffff;
+    --text-main: #222;
+    /* Tipografía Inter - UI moderna y legible */
+    --font-base: 16px;
+    --font-ui: 16px;
+    --font-ui-lg: 18px;
+    --font-h6: 22px;
+    --font-h5: 22px;
+    --font-h4: 24px;
+    --font-h3: 26px;
+    --font-h2: 28px;
+    --font-h1: 32px;
+}
+
+/* Colores configurables desde admin - se sobreescriben en header */
+.btn-primary,
+.bg-primary {
+    background-color: var(--primary-color) !important;
+    border-color: var(--primary-color) !important;
+    color: #fff !important;
+}
+
+.btn-primary:hover,
+.bg-primary:hover {
+    background-color: var(--primary-hover) !important;
+    border-color: var(--primary-hover) !important;
+}
+
+.text-primary {
+    color: var(--primary-color) !important;
+}
+
+.btn-outline-primary {
+    color: var(--primary-color) !important;
+    border-color: var(--primary-color) !important;
+}
+
+.btn-outline-primary:hover {
+    background-color: var(--primary-color) !important;
+    border-color: var(--primary-color) !important;
+    color: #fff !important;
+}
+
+/* Iconos de editar en tablas - usan el color de configuración del tema */
+a.update,
+a.update i {
+    color: var(--primary-color) !important;
+}
+/* Celdas de acción (editar) siempre centradas - evita que scripts las desalineen */
+#sortable_table td.text-center,
+#sortable_table td:last-child,
+.table td.text-center {
+    text-align: center !important;
+}
+a.update:hover,
+a.update:hover i {
+    color: var(--primary-hover) !important;
+}
+/* Botones de editar con icono - color del tema */
+.btn-edit-icon,
+.btn-edit-icon i {
+    color: var(--primary-color) !important;
+    border-color: var(--primary-color) !important;
+}
+.btn-edit-icon:hover,
+.btn-edit-icon:hover i {
+    color: #fff !important;
+    background-color: var(--primary-color) !important;
+    border-color: var(--primary-color) !important;
+}
+
+/* Paginación - color del tema configurado */
+.pagination .page-link {
+    color: var(--primary-color) !important;
+    border-color: var(--primary-color) !important;
+}
+.pagination .page-link:hover {
+    background-color: var(--primary-color) !important;
+    border-color: var(--primary-color) !important;
+    color: #fff !important;
+}
+.pagination .page-item.active .page-link {
+    background-color: var(--primary-color) !important;
+    border-color: var(--primary-color) !important;
+    color: #fff !important;
+}
+.pagination .page-item.disabled .page-link {
+    color: var(--primary-color) !important;
+    border-color: #dee2e6 !important;
+    opacity: 0.6;
+}
+
+/* Dark mode - usa el color del tema configurado */
+body.dark-mode {
+    --bg-main: #1d1d1d;
+    --bg-card: #2a2a2a;
+    --text-main: #eaeaea;
+	--card:  #2a2a2a;
+}
+
+/* Estilos generales + tipografía Inter */
+html {
+    font-size: var(--font-base);
+    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+}
+body {
+    background-color: var(--bg-main) !important;
+    color: var(--text-main) !important;
+    font-size: 1rem;
+    line-height: 1.5;
+    transition: background-color .3s ease, color .3s ease;
+}
+
+/* Encabezados: 22px–32px */
+h1 { font-size: var(--font-h1); font-weight: 600; }
+h2 { font-size: var(--font-h2); font-weight: 600; }
+h3 { font-size: var(--font-h3); font-weight: 600; }
+h4, h5, h6 { font-size: var(--font-h6); font-weight: 600; }
+
+/* Botones y UI: 16px–18px */
+.btn, .form-control, .form-select, .nav-link {
+    font-size: var(--font-ui);
+}
+.btn-lg, .form-control-lg, .card-title {
+    font-size: var(--font-ui-lg);
+}
+
+/* Tarjetas */
+.module-card-inner {
+    border-radius: 14px;
+    background: var(--bg-card) !important;
+    color: var(--text-main);
+    transition: all .25s ease, background .3s ease;
+}
+
+.module-card-inner:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 10px 25px rgba(0,0,0,.15);
+}
+
+/* Iconos */
+.module-icon {
+    color: var(--primary-color) !important;
+    animation: fade-in .5s ease;
+}
+
+@keyframes fade-in {
+    from { opacity: 0; transform: scale(.9); }
+    to { opacity: 1; transform: scale(1); }
+}
+
+/* Layout para footer */
+body {
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh;
+}
+
+#page-content {
+    flex: 1 0 auto;
+}
+
+#footer {
+    flex-shrink: 0;
+    color: var(--primary-color) !important;
+    font-weight: 700;
+}
+#footer a {
+    color: var(--primary-color) !important;
+    font-weight: 700;
+}
+#footer a:hover {
+    color: var(--primary-hover) !important;
+}
+
+#spinner {
+    float:right;
+    display:none;
+}
+
+/* Dark mode para todo */
+body.dark-mode {
+    background-color: #181818 !important;
+    color: #e0e0e0 !important;
+}
+
+/* Card completa */
+body.dark-mode .card {
+    background-color: #232323 !important;
+    color: #ffffff !important;
+    border: 1px solid #444 !important;
+    transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+/* Card header */
+body.dark-mode .card .card-header {
+    background-color: #1f1f1f !important;
+    color: #ffffff !important;
+    border-bottom: 1px solid #444 !important;
+}
+
+/* Cuerpo de la card (list-group) */
+body.dark-mode .card .list-group-item {
+    background-color: #232323 !important;
+    color: #e0e0e0 !important;
+    border-color: #333 !important;
+}
+
+/* Hover de items dentro de la lista */
+body.dark-mode .card .list-group-item:hover {
+    background-color: #2a2a2a !important;
+    color: #fff !important;
+}
+
+/* Iconos Material Icons */
+body.dark-mode i,
+body.dark-mode .material-icons {
+    color: #ffffff !important;
+}
+
+/* Hover de iconos */
+body.dark-mode a:hover i,
+body.dark-mode a:hover .material-icons {
+    color: var(--primary-color) !important;
+}
+
+/* Botones dentro de la card */
+body.dark-mode .card .btn-primary {
+    background-color: var(--primary-color) !important;
+    border-color: var(--primary-color) !important;
+    color: #fff !important;
+}
+
+body.dark-mode .card .btn-primary:hover {
+    background-color: var(--primary-hover) !important;
+    border-color: var(--primary-hover) !important;
+}
+
+/* Toast de notificaciones */
+#toast-container .toast-notif {
+    margin-bottom: 0.5rem;
+    border: none;
+}
+@keyframes toastIn {
+    from { opacity: 0; transform: translateX(100%); }
+    to { opacity: 1; transform: translateX(0); }
+}
+@keyframes toastOut {
+    from { opacity: 1; transform: translateX(0); }
+    to { opacity: 0; transform: translateX(100%); }
+}
+
+/* Tablas responsivas - scroll horizontal en móvil */
+#table_holder {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+@media (max-width: 767.98px) {
+  main .table,
+  main table.table {
+    font-size: 0.875rem;
+  }
+}
+
+/* Breadcrumb navbar - separador entre items */
+#breadcrumbNav .navbar-nav .nav-item:not(:last-child)::after {
+    content: '/';
+    margin-left: 0.5rem;
+    margin-right: 0.5rem;
+    color: var(--bs-secondary-color);
+    pointer-events: none;
+}

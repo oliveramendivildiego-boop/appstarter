@@ -1,0 +1,10 @@
+-- Esquema dom_people: el código soporta ambos automáticamente según .env
+--
+-- Si tu tabla tiene solo last_name (OSPOS estándar):
+--   En .env NO añadas nada (o: people.useSplitNames = false)
+--
+-- Si tu tabla tiene last_name_fa y last_name_mom (laboratorio.sql):
+--   En .env añade: people.useSplitNames = true
+--
+-- Para verificar qué columnas tiene tu tabla:
+--   DESCRIBE dom_people;

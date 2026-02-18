@@ -1,0 +1,133 @@
+<?php
+
+/**
+ * Helper de tablas - Migrado de CI2 para CI4
+ * Usa lang(), base_url(), site_url(), anchor() de CI4
+ */
+helper(['url', 'text', 'form']);
+
+if (!function_exists('build_select')) {
+    /**
+     * Genera un select/dropdown desde un array de opciones [value=>label]
+     */
+    function build_select(string $name, array $options, $selected = '', string $extra = ''): string
+    {
+        $opts = ['' => '-- Seleccione --'];
+        foreach ($options as $k => $v) {
+            $opts[$k] = $v;
+        }
+        return form_dropdown($name, $opts, $selected, $extra ?: 'class="form-control"');
+    }
+}
+
+if (!function_exists('get_people_manage_table')) {
+    function get_people_manage_table(array $people, object $controller): string
+    {
+        $table = '<div class="table-responsive"><table class="table table-bordered" id="sortable_table">';
+        $headers = [
+            '<input type="checkbox" id="select_all" name="select_all" />',
+            lang('Common.common_last_name_fa'),
+            lang('Common.common_first_name'),
+            lang('Common.common_email'),
+            lang('Common.common_phone_number'),
+            '&nbsp',
+        ];
+        $table .= '<thead><tr class="well">';
+        foreach ($headers as $header) {
+            $table .= "<th>$header</th>";
+        }
+        $table .= '</tr></thead><tbody>';
+        $table .= get_people_manage_table_data_rows($people, $controller);
+        $table .= '</tbody></table></div>';
+        return $table;
+    }
+}
+
+if (!function_exists('get_people_manage_table_data_rows')) {
+    function get_people_manage_table_data_rows(array $people, object $controller): string
+    {
+        $table_data_rows = '';
+        $controller_name = strtolower($controller->getControllerName());
+
+        foreach ($people as $person) {
+            $table_data_rows .= get_person_data_row($person, $controller);
+        }
+
+        if (empty($people)) {
+            $table_data_rows .= "<tr><td colspan='6'><div class='warning_message' style='padding:7px;'>" . lang('Common.common_no_persons_to_display') . "</div></td></tr>";
+        }
+        return $table_data_rows;
+    }
+}
+
+if (!function_exists('get_doctors_manage_table')) {
+    function get_doctors_manage_table(array $doctors, object $controller): string
+    {
+        $table = '<div class="table-responsive"><table class="table table-bordered" id="sortable_table">';
+        $headers = [
+            '<input type="checkbox" id="select_all" name="select_all" />',
+            lang('Doctors.doctors_name'),
+            lang('Doctors.doctors_phone'),
+            lang('Doctors.doctors_speciality'),
+            lang('Doctors.doctors_address'),
+            '&nbsp',
+        ];
+        $table .= '<thead><tr class="well">';
+        foreach ($headers as $header) {
+            $table .= "<th>$header</th>";
+        }
+        $table .= '</tr></thead><tbody>';
+        $table .= get_doctors_manage_table_data_rows($doctors, $controller);
+        $table .= '</tbody></table></div>';
+        return $table;
+    }
+}
+
+if (!function_exists('get_doctors_manage_table_data_rows')) {
+    function get_doctors_manage_table_data_rows(array $doctors, object $controller): string
+    {
+        $table_data_rows = '';
+        $controller_name = 'doctors';
+        foreach ($doctors as $doc) {
+            $table_data_rows .= get_doctor_data_row($doc, $controller);
+        }
+        if (empty($doctors)) {
+            $table_data_rows .= "<tr><td colspan='6'><div class='warning_message' style='padding:7px;'>" . lang('Doctors.doctors_no_doctors_to_display') . "</div></td></tr>";
+        }
+        return $table_data_rows;
+    }
+}
+
+if (!function_exists('get_doctor_data_row')) {
+    function get_doctor_data_row(object $doctor, object $controller): string
+    {
+        $table_data_row = '<tr>';
+        $table_data_row .= "<td width='5%'><input type='checkbox' id='doctor_{$doctor->doctor_id}' name='doctor_{$doctor->doctor_id}' value='{$doctor->doctor_id}'/></td>";
+        $table_data_row .= '<td width="25%">' . (function_exists('character_limiter') ? character_limiter($doctor->name ?? '', 20) : substr($doctor->name ?? '', 0, 20)) . '</td>';
+        $table_data_row .= '<td width="15%">' . ($doctor->phone_number ?? '') . '</td>';
+        $table_data_row .= '<td width="25%">' . (function_exists('character_limiter') ? character_limiter($doctor->speciality ?? '', 20) : substr($doctor->speciality ?? '', 0, 20)) . '</td>';
+        $table_data_row .= '<td width="25%">' . (function_exists('character_limiter') ? character_limiter($doctor->address ?? '', 20) : substr($doctor->address ?? '', 0, 20)) . '</td>';
+        $editIcon = '<i class="fa-solid fa-pen" aria-hidden="true"></i>';
+        $table_data_row .= '<td width="5%" class="text-center">' . anchor('doctors/view/' . $doctor->doctor_id . '/', $editIcon, ['class' => 'update', 'title' => lang('Doctors.doctors_update')]) . '</td>';
+        $table_data_row .= '</tr>';
+        return $table_data_row;
+    }
+}
+
+if (!function_exists('get_person_data_row')) {
+    function get_person_data_row(object $person, object $controller): string
+    {
+        $controller_name = strtolower($controller->getControllerName());
+        $table_data_row = '<tr>';
+        $table_data_row .= "<td width='5%'><input type='checkbox' id='person_{$person->person_id}' name='person_{$person->person_id}' value='{$person->person_id}'/></td>";
+        $table_data_row .= '<td width="20%">' . (function_exists('character_limiter') ? character_limiter($person->last_name ?? '', 13) : substr($person->last_name ?? '', 0, 13)) . '</td>';
+        $table_data_row .= '<td width="20%">' . (function_exists('character_limiter') ? character_limiter($person->first_name ?? '', 13) : substr($person->first_name ?? '', 0, 13)) . '</td>';
+        $table_data_row .= '<td width="30%">' . ($person->email ?? '') . '</td>';
+        $table_data_row .= '<td width="20%">' . (function_exists('character_limiter') ? character_limiter($person->phone_number ?? '', 13) : substr($person->phone_number ?? '', 0, 13)) . '</td>';
+        $title = lang(\ucfirst($controller_name) . '.' . $controller_name . '_update');
+        $editIcon = '<i class="fa-solid fa-pen" aria-hidden="true"></i>';
+        $table_data_row .= '<td width="5%" class="text-center">' . anchor($controller_name . '/view/' . $person->person_id . '/', $editIcon, ['class' => 'update', 'title' => $title]) . '</td>';
+        $table_data_row .= '</tr>';
+        return $table_data_row;
+    }
+}

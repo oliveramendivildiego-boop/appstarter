@@ -1,0 +1,82 @@
+<?php
+$icons = [
+    'home'           => 'fa-house',
+    'customers'      => 'fa-hospital-user',
+    'doctors'        => 'fa-user-doctor',
+    'labotests'      => 'fa-flask-vial',
+    'toquotes'       => 'fa-file-invoice-dollar',
+    'registers'      => 'fa-book-medical',
+    'expediente'     => 'fa-folder-open',
+    'reports'        => 'fa-chart-line',
+    'controlcalidad' => 'fa-vial-circle-check',
+    'reactivos'      => 'fa-bottle-droplet',
+    'equipos'        => 'fa-microscope',
+    'auditoria'      => 'fa-clipboard-list',
+    'employees'      => 'fa-user-tie',
+    'config'         => 'fa-gear',
+];
+$current = $current_module ?? 'home';
+$has_registers = false;
+foreach ($allowed_modules ?? [] as $m) {
+    if (($m->module_id ?? '') === 'registers') { $has_registers = true; break; }
+}
+$has_config = false;
+foreach ($allowed_modules ?? [] as $m) {
+    if (($m->module_id ?? '') === 'config') { $has_config = true; break; }
+}
+?>
+<div class="sidebar border border-right col-md-3 col-lg-2 p-0 bg-body-tertiary">
+  <div class="offcanvas-lg offcanvas-start bg-body-tertiary" tabindex="-1" id="sidebarMenu" aria-labelledby="sidebarMenuLabel">
+    <div class="offcanvas-header">
+      <h5 class="offcanvas-title" id="sidebarMenuLabel"><?= esc($companyName ?? 'Menu') ?></h5>
+      <button type="button" class="btn-close" data-bs-dismiss="offcanvas" data-bs-target="#sidebarMenu" aria-label="Cerrar"></button>
+    </div>
+    <div class="offcanvas-body d-md-flex flex-column p-0 pt-lg-3 overflow-y-auto">
+      <ul class="nav flex-column">
+        <li class="nav-item">
+          <a class="nav-link d-flex align-items-center gap-2 <?= $current === 'home' ? 'active' : '' ?>" href="<?= site_url('home') ?>"<?= $current === 'home' ? ' aria-current="page"' : '' ?>>
+            <i class="fa-solid fa-house"></i>
+            <?= lang('Module.module_home') ?>
+          </a>
+        </li>
+        <?php foreach ($allowed_modules ?? [] as $module): ?>
+        <?php if (($module->module_id ?? '') === 'config') continue; ?>
+        <?php $icon = $icons[$module->module_id] ?? 'fa-circle'; ?>
+        <li class="nav-item">
+          <a class="nav-link d-flex align-items-center gap-2 <?= $current === $module->module_id ? 'active' : '' ?>" href="<?= site_url($module->module_id) ?>">
+            <i class="fa-solid <?= $icon ?>"></i>
+            <?= lang('Module.module_' . $module->module_id) ?>
+          </a>
+        </li>
+        <?php endforeach; ?>
+        <?php if ($has_registers): ?>
+        <li class="nav-item">
+          <a class="nav-link d-flex align-items-center gap-2 <?= $current === 'expediente' ? 'active' : '' ?>" href="<?= site_url('expediente') ?>">
+            <i class="fa-solid fa-folder-open"></i>
+            Historial paciente
+          </a>
+        </li>
+        <?php endif; ?>
+      </ul>
+      <h6 class="sidebar-heading d-flex justify-content-between align-items-center px-3 mt-4 mb-1 text-body-secondary text-uppercase">
+        <span><?= lang('Common.common_administration') ?: 'Administración' ?></span>
+      </h6>
+      <ul class="nav flex-column mb-auto">
+        <?php if ($has_config): ?>
+        <li class="nav-item">
+          <a class="nav-link d-flex align-items-center gap-2 <?= $current === 'config' ? 'active' : '' ?>" href="<?= site_url('config') ?>">
+            <i class="fa-solid fa-gear"></i>
+            <?= lang('Module.module_config') ?>
+          </a>
+        </li>
+        <?php endif; ?>
+        <li class="nav-item">
+          <a class="nav-link d-flex align-items-center gap-2" href="<?= site_url('home/logout') ?>">
+            <i class="fa-solid fa-right-from-bracket"></i>
+            Salir
+          </a>
+        </li>
+      </ul>
+    </div>
+  </div>
+</div>

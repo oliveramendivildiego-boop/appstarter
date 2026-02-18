@@ -13,13 +13,6 @@ class Session extends BaseConfig
      * Session Driver
      * --------------------------------------------------------------------------
      *
-     * The session storage driver to use:
-     * - `CodeIgniter\Session\Handlers\ArrayHandler` (for testing)
-     * - `CodeIgniter\Session\Handlers\FileHandler`
-     * - `CodeIgniter\Session\Handlers\DatabaseHandler`
-     * - `CodeIgniter\Session\Handlers\MemcachedHandler`
-     * - `CodeIgniter\Session\Handlers\RedisHandler`
-     *
      * @var class-string<BaseHandler>
      */
     public string $driver = FileHandler::class;
@@ -28,8 +21,6 @@ class Session extends BaseConfig
      * --------------------------------------------------------------------------
      * Session Cookie Name
      * --------------------------------------------------------------------------
-     *
-     * The session cookie name, must contain only [0-9a-z_-] characters
      */
     public string $cookieName = 'ci_session';
 
@@ -37,9 +28,6 @@ class Session extends BaseConfig
      * --------------------------------------------------------------------------
      * Session Expiration
      * --------------------------------------------------------------------------
-     *
-     * The number of SECONDS you want the session to last.
-     * Setting to 0 (zero) means expire when the browser is closed.
      */
     public int $expiration = 7200;
 
@@ -47,16 +35,6 @@ class Session extends BaseConfig
      * --------------------------------------------------------------------------
      * Session Save Path
      * --------------------------------------------------------------------------
-     *
-     * The location to save sessions to and is driver dependent.
-     *
-     * For the 'files' driver, it's a path to a writable directory.
-     * WARNING: Only absolute paths are supported!
-     *
-     * For the 'database' driver, it's a table name.
-     * Please read up the manual for the format with other session drivers.
-     *
-     * IMPORTANT: You are REQUIRED to set a valid save path!
      */
     public string $savePath = WRITEPATH . 'session';
 

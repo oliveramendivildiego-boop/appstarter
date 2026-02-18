@@ -1,0 +1,25 @@
+<?php
+
+return [
+    'config_info'          => 'Configuración del sistema',
+    'config_company'        => 'Empresa',
+    'config_logo'             => 'Logo de la empresa',
+    'config_header_brand'     => 'Mostrar en el header',
+    'config_header_brand_logo'=> 'Logo',
+    'config_header_brand_name'=> 'Nombre de la empresa',
+    'config_header_brand_help'=> 'Elige si mostrar el logo o el nombre en la barra superior.',
+    'config_theme_color'    => 'Color del tema (botones, navegación)',
+    'config_address'        => 'Dirección',
+    'config_phone'          => 'Teléfono',
+    'config_email'          => 'Email',
+    'config_website'        => 'Sitio web',
+    'config_fax'            => 'Fax',
+    'config_language'       => 'Idioma',
+    'config_timezone'       => 'Zona horaria',
+    'config_currency_symbol'=> 'Símbolo de moneda',
+    'config_return_policy'  => 'Política de devolución',
+    'config_print_after_sale'=> 'Imprimir después de venta',
+    'config_saved'          => 'Configuración guardada correctamente',
+    'config_error'          => 'Error al guardar',
+    'config_save_btn'       => 'Guardar',
+];
