@@ -3,6 +3,7 @@
 namespace Config;
 
 use CodeIgniter\Config\BaseService;
+use Config\Toolbar as ToolbarConfig;
 
 /**
  * Services Configuration file.
@@ -19,14 +20,17 @@ use CodeIgniter\Config\BaseService;
  */
 class Services extends BaseService
 {
-    /*
-     * public static function example($getShared = true)
-     * {
-     *     if ($getShared) {
-     *         return static::getSharedInstance('example');
-     *     }
-     *
-     *     return new \CodeIgniter\Example();
-     * }
+    /**
+     * Toolbar con corrección de inputs kint-search (id/name para accesibilidad).
      */
+    public static function toolbar(?ToolbarConfig $config = null, bool $getShared = true)
+    {
+        if ($getShared) {
+            return static::getSharedInstance('toolbar', $config);
+        }
+
+        $config ??= config(ToolbarConfig::class);
+
+        return new \App\Debug\Toolbar($config);
+    }
 }

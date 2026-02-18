@@ -7,6 +7,12 @@ use DateTimeInterface;
 
 class Cookie extends BaseConfig
 {
+    public function __construct()
+    {
+        parent::__construct();
+        // Usar path '/' para que la cookie de sesión se envíe en subdirectorios
+        $this->path = '/';
+    }
     /**
      * --------------------------------------------------------------------------
      * Cookie Prefix
@@ -34,7 +40,7 @@ class Cookie extends BaseConfig
      * Cookie Path
      * --------------------------------------------------------------------------
      *
-     * Typically will be a forward slash.
+     * En subdirectorio se obtiene de baseURL. Usar '/' solo si la app está en raíz.
      */
     public string $path = '/';
 
@@ -54,7 +60,7 @@ class Cookie extends BaseConfig
      *
      * Cookie will only be set if a secure HTTPS connection exists.
      */
-    public bool $secure = false;
+    public bool $secure = false; // Configurar true en producción con HTTPS
 
     /**
      * --------------------------------------------------------------------------

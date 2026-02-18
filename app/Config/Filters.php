@@ -25,6 +25,9 @@ class Filters extends BaseFilters
      * or [filter_name => [classname1, classname2, ...]]
      */
     public array $aliases = [
+        'kintformfix'   => \App\Filters\KintFormFixFilter::class,
+        'auth'          => \App\Filters\AuthFilter::class,
+        'permission'    => \App\Filters\PermissionFilter::class,
         'csrf'          => CSRF::class,
         'toolbar'       => DebugToolbar::class,
         'honeypot'      => Honeypot::class,
@@ -57,7 +60,8 @@ class Filters extends BaseFilters
         'after' => [
             'pagecache',   // Web Page Caching
             'performance', // Performance Metrics
-            'toolbar',     // Debug Toolbar
+            // 'toolbar',  // Debug Toolbar — deshabilitado: evita 500 (intl/fórmulas)
+            'kintformfix', // Corrige inputs kint-search sin id/name (accesibilidad)
         ],
     ];
 
@@ -72,9 +76,7 @@ class Filters extends BaseFilters
      */
     public array $globals = [
         'before' => [
-            // 'honeypot',
-            // 'csrf',
-            // 'invalidchars',
+            'csrf' => ['except' => ['login', 'login/*', 'login/google_login', 'qr/*', 'customers/search', 'customers/suggest', 'employees/search', 'employees/suggest', 'doctors/search', 'doctors/suggest', 'registers/search_paciente', 'registers/search_doctor', 'registers/search_prueba']],
         ],
         'after' => [
             // 'honeypot',
@@ -106,5 +108,7 @@ class Filters extends BaseFilters
      *
      * @var array<string, array<string, list<string>>>
      */
-    public array $filters = [];
+    public array $filters = [
+        'auth' => ['before' => ['home*', 'no_access*', 'config*', 'customers*', 'doctors*', 'employees*', 'registers*', 'labotests*', 'toquotes*', 'expediente*', 'reports*', 'controlcalidad*', 'reactivos*', 'equipos*', 'auditoria*', 'item_kits', 'items*', 'sales*', 'suppliers*', 'receivings*', 'giftcards*', 'seguridad*']],
+    ];
 }

@@ -56,25 +56,28 @@ class ContentSecurityPolicy extends BaseConfig
 
     /**
      * Lists allowed scripts' URLs.
+     * 'unsafe-eval' necesario para jQuery Validate y otras librerías que usan eval/new Function.
+     * @see https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Content-Security-Policy/script-src
      *
      * @var list<string>|string
      */
-    public $scriptSrc = 'self';
+    public $scriptSrc = ['self', 'unsafe-eval'];
 
     /**
      * Specifies valid sources for JavaScript <script> elements.
      *
      * @var list<string>|string
      */
-    public array|string $scriptSrcElem = 'self';
+    public array|string $scriptSrcElem = ['self', 'unsafe-eval'];
 
     /**
      * Specifies valid sources for JavaScript inline event
      * handlers and JavaScript URLs.
+     * 'unsafe-eval' necesario para librerías que usan eval en handlers.
      *
      * @var list<string>|string
      */
-    public array|string $scriptSrcAttr = 'self';
+    public array|string $scriptSrcAttr = ['self', 'unsafe-eval'];
 
     /**
      * Lists allowed stylesheets' URLs.
