@@ -249,6 +249,8 @@ class Labotests extends SecureArea
         if ($prianacategoriaId < 1) {
             return redirect()->back()->with('error', 'Datos incompletos');
         }
+        $formulasId        = (int) ($this->request->getPost('formulas_id') ?? 1);
+        $formulaExpresion  = trim($this->request->getPost('formula_expresion') ?? '');
         $data = [
             'prianacategoria_id' => $prianacategoriaId,
             'nombre'             => $this->request->getPost('nombre') ?? '',
@@ -259,12 +261,40 @@ class Labotests extends SecureArea
             'critico_min'        => $this->request->getPost('critico_min') ?? '',
             'critico_max'        => $this->request->getPost('critico_max') ?? '',
             'umedida'            => $this->request->getPost('umedida') ?? '',
-            'formulas_id'        => (int) ($this->request->getPost('formulas_id') ?? 1),
-            'formula_expresion'  => $this->request->getPost('formula_expresion') ?? '',
+            'formulas_id'        => $formulasId,
+            'formula_expresion'  => $formulaExpresion,
             'opcion_id'          => (int) ($this->request->getPost('opcion_id') ?? 3),
         ];
         $this->labotestModel->saveSecItem($data, $id > 0 ? $id : null);
+        // Si es fórmula calculada (formulas_id > 1), actualizar la expresión en la tabla formulas
+        // para que todas las sub-clases que usan esta fórmula (VCM, Formula Eritrocitos, etc.) vean el mismo cambio
+        if ($formulasId > 1 && $formulaExpresion !== '') {
+            $this->labotestModel->updateFormulaExpresion($formulasId, $formulaExpresion);
+        }
         return redirect()->to("labotests/detail/{$prianacategoriaId}")->with('success', 'Sub-clase guardada correctamente');
+    }
+
+    /**
+     * Actualizar orden de sub-clases (tabla de valores). Recibe prianacategoria_id y order/order[] (secanacategoria_id en orden).
+     */
+    public function orderSecItems(): ResponseInterface
+    {
+        $prianacategoriaId = (int) ($this->request->getPost('prianacategoria_id') ?? 0);
+        $order = $this->request->getPost('order') ?? $this->request->getPost('order[]');
+        if ($prianacategoriaId < 1) {
+            return $this->response->setJSON(['success' => false, 'message' => 'ID de prueba inválido'])->setStatusCode(400);
+        }
+        if (! is_array($order)) {
+            $order = is_string($order) ? json_decode($order, true) : [];
+        }
+        $order = array_values(array_filter(array_map('intval', (array) $order)));
+        $this->labotestModel->updateSecItemsOrder($prianacategoriaId, $order);
+        $json = ['success' => true, 'message' => 'Orden guardado'];
+        if (function_exists('csrf_hash')) {
+            $json['csrf_token'] = csrf_hash();
+            $json['csrf_name'] = csrf_token();
+        }
+        return $this->response->setJSON($json);
     }
 
     /**

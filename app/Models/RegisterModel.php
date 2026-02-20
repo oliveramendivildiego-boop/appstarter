@@ -216,19 +216,33 @@ class RegisterModel extends Model
     /**
      * Obtiene sub-clases para una prueba compuesta, agrupadas por nombre.
      * Solo una fila por sub-clase (ej. un solo CHCM), eligiendo la referencia
-     * según la población del paciente (paciente_id exacto, o 3=Todos como fallback).
+     * según la población del paciente (paciente_id = edad/sexo) y opcionalmente sexo.
+     *
+     * @param int $prianacategoriaId
+     * @param int $paciente Tipo de paciente (0=Niños, 1=Masculino, 2=Femenino, 3=Todos, 4=RN, 5=Lactante)
+     * @param int|null $gender Género del paciente (1=masculino, 2=femenino) para filtrar por sexo si existe columna
      */
-    public function getValoresCompleja(int $prianacategoriaId, int $paciente): array
+    public function getValoresCompleja(int $prianacategoriaId, int $paciente, ?int $gender = null): array
     {
         $paciente = (int) $paciente;
-        $rows = $this->db->table('secanacategoria')
+        $builder = $this->db->table('secanacategoria')
             ->where('prianacategoria_id', $prianacategoriaId)
             ->groupStart()
             ->where('paciente_id', $paciente)
             ->orWhere('paciente_id', 3)
             ->groupEnd()
-            ->where('deleted', 0)
-            ->orderBy("CASE WHEN paciente_id = {$paciente} THEN 0 ELSE 1 END", 'ASC')
+            ->where('deleted', 0);
+
+        if ($gender !== null && ($gender === 1 || $gender === 2) && $this->hasColumn('secanacategoria', 'sexo')) {
+            $sexoVal = $gender === 1 ? 'masculino' : 'femenino';
+            $builder->groupStart()
+                ->where('sexo', 'ambos')
+                ->orWhere('sexo', $sexoVal)
+                ->groupEnd();
+        }
+
+        $rows = $builder
+            ->orderBy("CASE WHEN paciente_id = {$paciente} THEN 0 ELSE 1 END", 'ASC', false)
             ->get()
             ->getResultArray();
 
@@ -246,6 +260,102 @@ class RegisterModel extends Model
             }
         }
         return array_values($porNombre);
+    }
+
+    /**
+     * Siempre devuelve todas las sub-clases de una prueba compuesta.
+     * Identificación por nombre: una fila por nombre (ej. Eritrocitos = Eritrocitos).
+     * Se elige la fila que coincida con edad/sexo del paciente: paciente_id (Adulto Masculino=1,
+     * Femenino=2, Todos=3, etc.) y si existe columna sexo se filtra por masculino/femenino/ambos.
+     * Así para paciente adulto femenino se usa la fila con valor_min/max y fórmula de esa fila
+     * (ej. Eritrocitos Adulto Femenino 4500000-6000000, Formula Eritrocitos).
+     */
+    public function getValoresComplejaSiempre(int $prianacategoriaId, int $paciente, ?int $gender = null): array
+    {
+        $paciente = (int) $paciente;
+        $sec = $this->db->prefixTable('secanacategoria');
+        $f = $this->db->prefixTable('formulas');
+        $builder = $this->db->table('secanacategoria')
+            ->select("{$sec}.*, {$f}.formula_expresion AS formula_expresion_desde_formulas")
+            ->join('formulas', "{$f}.formulas_id = {$sec}.formulas_id", 'left')
+            ->where("{$sec}.prianacategoria_id", $prianacategoriaId)
+            ->where("{$sec}.deleted", 0);
+
+        if ($gender !== null && ($gender === 1 || $gender === 2) && $this->hasColumn('secanacategoria', 'sexo')) {
+            $sexoVal = $gender === 1 ? 'masculino' : 'femenino';
+            $builder->groupStart()
+                ->where("{$sec}.sexo", 'ambos')
+                ->orWhere("{$sec}.sexo", $sexoVal)
+                ->groupEnd();
+        }
+
+        if ($this->hasColumn('secanacategoria', 'orden')) {
+            $builder->orderBy("{$sec}.orden", 'ASC');
+        }
+        $rows = $builder
+            ->orderBy("CASE WHEN {$sec}.paciente_id = {$paciente} THEN 0 WHEN {$sec}.paciente_id = 3 THEN 1 ELSE 2 END", 'ASC', false)
+            ->orderBy("{$sec}.nombre", 'ASC')
+            ->get()
+            ->getResultArray();
+
+        $porNombre = [];
+        foreach ($rows as $r) {
+            $nombre = trim($r['nombre'] ?? '');
+            if ($nombre === '') {
+                continue;
+            }
+            if (!isset($porNombre[$nombre])) {
+                $exprFromFormulas = trim($r['formula_expresion_desde_formulas'] ?? '');
+                if ($exprFromFormulas !== '' && (int)($r['formulas_id'] ?? 0) > 1) {
+                    $r['formula_expresion'] = $exprFromFormulas;
+                }
+                unset($r['formula_expresion_desde_formulas']);
+                $porNombre[$nombre] = $r;
+            }
+        }
+        $result = array_values($porNombre);
+        if ($this->hasColumn('secanacategoria', 'orden')) {
+            usort($result, static function ($a, $b) {
+                return ((int) ($a['orden'] ?? 0)) <=> ((int) ($b['orden'] ?? 0));
+            });
+        }
+        return $result;
+    }
+
+    /**
+     * Obtiene una sub-clase (secanacategoria) por prianacategoria_id y nombre.
+     * Usado en reporte cuando regvalues.name viene como "prianacategoria_id|nombre".
+     */
+    public function getSecItemByPrianacategoriaYNombre(int $prianacategoriaId, string $nombre)
+    {
+        $nombre = trim($nombre);
+        if ($nombre === '') {
+            return null;
+        }
+        $s = $this->db->prefixTable('secanacategoria');
+        $p = $this->db->prefixTable('prianacategoria');
+        $a = $this->db->prefixTable('anacategoria');
+
+        return $this->db->table('secanacategoria')
+            ->select("{$s}.*, {$a}.name as padre, {$p}.name as hijo")
+            ->join('prianacategoria', "{$p}.prianacategoria_id = {$s}.prianacategoria_id")
+            ->join('anacategoria', "{$a}.anacategoria_id = {$p}.anacategoria_id")
+            ->where("{$s}.prianacategoria_id", $prianacategoriaId)
+            ->where("{$s}.nombre", $nombre)
+            ->where("{$s}.deleted", 0)
+            ->limit(1)
+            ->get()
+            ->getRow();
+    }
+
+    private function hasColumn(string $table, string $column): bool
+    {
+        try {
+            $full = $this->db->prefixTable($table);
+            return in_array($column, $this->db->getFieldNames($full), true);
+        } catch (\Throwable $e) {
+            return false;
+        }
     }
 
     /**
@@ -269,17 +379,25 @@ class RegisterModel extends Model
         $ac = $this->db->prefixTable('anacategoria');
         $pr = $this->db->prefixTable('priresultados');
 
-        $sql = "SELECT DISTINCT pt.name as hijo, pt.compleja, pt.prianacategoria_id, ac.name as padre,
-                pr.opcion_id, pr.priresultados_id, pr.id_poblacion
+        $sql = "SELECT pt.name as hijo, pt.compleja, pt.prianacategoria_id, ac.name as padre,
+                pr.opcion_id, pr.priresultados_id, pr.id_poblacion, pr.valor_min, pr.valor_max, pr.umedida
                 FROM {$pt} pt
                 LEFT JOIN {$ac} ac ON ac.anacategoria_id = pt.anacategoria_id
                 LEFT JOIN {$pr} pr ON pr.prianacategoria_id = pt.prianacategoria_id
-                    AND pt.compleja = 0 AND (pr.id_poblacion = 3 OR pr.id_poblacion = ?)
+                    AND pt.compleja = 0 AND (pr.deleted = 0 OR pr.deleted IS NULL) AND (pr.id_poblacion = 3 OR pr.id_poblacion = ?)
                 WHERE (pt.deleted = 0 OR pt.deleted IS NULL)
                 AND (ac.deleted = 0 OR ac.deleted IS NULL)
                 AND pt.prianacategoria_id IN (" . implode(',', array_map('intval', $ids)) . ")
-                ORDER BY ac.order, pt.order";
-        return $this->db->query($sql, [$paciente])->getResultArray();
+                ORDER BY ac.order, pt.order, CASE WHEN pr.id_poblacion = ? THEN 0 ELSE 1 END";
+        $rows = $this->db->query($sql, [$paciente, $paciente])->getResultArray();
+        $byPria = [];
+        foreach ($rows as $r) {
+            $pid = (int) ($r['prianacategoria_id'] ?? 0);
+            if (!isset($byPria[$pid]) || (int)($r['id_poblacion'] ?? 0) === $paciente) {
+                $byPria[$pid] = $r;
+            }
+        }
+        return array_values($byPria);
     }
 
     public function getOpciones(int $id): array
@@ -420,6 +538,7 @@ class RegisterModel extends Model
         $esc = $this->db->escapeLikeString($search);
 
         $rows = $this->db->table('prianacategoria')
+            ->select('prianacategoria_id, name, cost, cost_deriv')
             ->where("name != '' AND name != '0'")
             ->where('deleted', 0)
             ->like('name', $esc, 'both')
@@ -432,7 +551,12 @@ class RegisterModel extends Model
         foreach ($rows as $r) {
             $name = trim($r->name ?? '');
             if ($name !== '') {
-                $suggestions[] = ['value' => $name, 'data' => $r->prianacategoria_id];
+                $suggestions[] = [
+                    'value' => $name,
+                    'data'  => $r->prianacategoria_id,
+                    'cost'  => (float) ($r->cost ?? 0),
+                    'refe'  => (float) ($r->cost_deriv ?? 0),
+                ];
             }
         }
         return $suggestions;

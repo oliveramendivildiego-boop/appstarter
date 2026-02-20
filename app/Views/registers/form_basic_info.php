@@ -131,13 +131,20 @@ document.addEventListener('DOMContentLoaded', function() {
             <div class="invalid-feedback" id="doctor_error"></div>
         </div>
     </div>
-    <div class="col-12 col-md-6">
+    <div class="col-12 col-md-6" id="prioridad_container">
         <div class="mb-3">
             <label class="form-label">Prioridad:</label>
             <select id="prioridad" name="prioridad" class="form-select">
                 <option value="0" selected>Rutina</option>
                 <option value="1">Urgente</option>
             </select>
+        </div>
+    </div>
+    <div class="col-12 col-md-6" id="prueba_search_container">
+        <div class="mb-3 position-relative">
+            <label for="search_prueba_input" class="form-label">Buscar prueba:</label>
+            <input type="text" name="search_prueba" id="search_prueba_input" class="form-control" placeholder="Escriba para buscar..." autocomplete="off">
+            <div id="prueba_list" class="list-group position-absolute top-100 start-0 w-100 mt-1 shadow" style="display:none; max-height:200px; overflow-y:auto; z-index:1050;"></div>
         </div>
     </div>
     <?php if (!empty($perfiles)): ?>

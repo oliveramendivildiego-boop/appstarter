@@ -5,6 +5,8 @@ use CodeIgniter\Router\RouteCollection;
 /**
  * @var RouteCollection $routes
  */
+ 
+ 
 $routes->get('/', 'Home::index');
 $routes->get('home', 'Home::index');
 $routes->get('no_access/(:any)', 'NoAccess::index/$1');
@@ -75,6 +77,7 @@ $routes->post('labotests/save', 'Labotests::save');
 $routes->post('labotests/savesubmain/(:num)', 'Labotests::savesubmain/$1');
 $routes->post('labotests/savesub', 'Labotests::savesub');
 $routes->post('labotests/savesecitem', 'Labotests::savesecitem');
+$routes->post('labotests/orderSecItems', 'Labotests::orderSecItems');
 $routes->post('labotests/saveformula', 'Labotests::saveFormula');
 $routes->post('labotests/deleteformula/(:num)', 'Labotests::deleteFormula/$1');
 $routes->get('labotests/duplicatesecitem/(:num)', 'Labotests::duplicatesecitem/$1');
@@ -122,7 +125,7 @@ $routes->get('doctors/view/(:num)', 'Doctors::view/$1');
 $routes->get('doctors/view', 'Doctors::view/-1');
 $routes->post('doctors/search', 'Doctors::search');
 $routes->post('doctors/suggest', 'Doctors::suggest');
-$routes->post('doctors/save/(:num)', 'Doctors::save/$1');
+$routes->post('doctors/saves/(:num)', 'Doctors::save/$1');
 $routes->post('doctors/save/(:any)', 'Doctors::save/-1');
 $routes->post('doctors/save', 'Doctors::save');
 $routes->post('doctors/delete', 'Doctors::delete');

@@ -59,13 +59,26 @@ foreach ($sub_items ?? [] as $s) {
     }
 }
 $refsPorNombre['valor'] = '1';
-$formulaParaTextarea = $editar_sec_data['formula_expresion'] ?? '';
-foreach ($refsCidToNombre as $cid => $nombre) {
-    $formulaParaTextarea = str_replace($cid, '[' . $nombre . ']', $formulaParaTextarea);
+$formulaExpresionDesdeFormulas = '';
+if (($editar_sec ?? 0) && ((int)($editar_sec_data['formulas_id'] ?? 0)) > 1) {
+    $fidEditar = (int) $editar_sec_data['formulas_id'];
+    foreach ($formulas_con_expresion ?? [] as $f) {
+        if ((int)($f['formulas_id'] ?? 0) === $fidEditar) {
+            $formulaExpresionDesdeFormulas = trim($f['formula_expresion'] ?? '');
+            break;
+        }
+    }
 }
-$formulaParaTextarea = preg_replace('/\b1\b/', '[valor]', $formulaParaTextarea);
+$formulaParaTextarea = $formulaExpresionDesdeFormulas !== '' ? $formulaExpresionDesdeFormulas : ($editar_sec_data['formula_expresion'] ?? '');
+if ($formulaExpresionDesdeFormulas === '') {
+    foreach ($refsCidToNombre as $cid => $nombre) {
+        $formulaParaTextarea = str_replace($cid, '[' . $nombre . ']', $formulaParaTextarea);
+    }
+    $formulaParaTextarea = preg_replace('/\b1\b/', '[valor]', $formulaParaTextarea);
+}
 $formulaNombreInicial = '';
 $feRaw = trim($editar_sec_data['formula_expresion'] ?? '');
+if ($feRaw === '' && $formulaExpresionDesdeFormulas !== '') $feRaw = $formulaExpresionDesdeFormulas;
 if ($feRaw !== '' && !empty($formulas_con_expresion ?? [])) {
     foreach ($formulas_con_expresion as $f) {
         if (trim($f['formula_expresion'] ?? '') === $feRaw) {
@@ -78,9 +91,15 @@ if ($feRaw !== '' && !empty($formulas_con_expresion ?? [])) {
 <div class="card mt-3">
     <div class="card-header"><strong>Valores de sub-clases (prueba compuesta)</strong></div>
     <div class="card-body">
-        <table class="table table-sm table-bordered">
+        <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.2/Sortable.min.js"></script>
+        <style>
+            #tabla_sub_items .sec-drag-handle { cursor: grab; padding: 0.25rem; user-select: none; color: #6c757d; }
+            #tabla_sub_items .sec-drag-handle:active { cursor: grabbing; }
+        </style>
+        <table class="table table-sm table-bordered" id="tabla_sub_items">
             <thead>
                 <tr>
+                    <th class="text-center" style="width: 6rem;">Orden</th>
                     <th>Sub-clase</th>
                     <th>Población</th>
                     <th>Sexo</th>
@@ -98,8 +117,52 @@ if ($feRaw !== '' && !empty($formulas_con_expresion ?? [])) {
                 foreach ($poblaciones ?? [] as $p) {
                     $pobMap[(int)$p['id_poblacion']] = $p['name'] ?? '';
                 }
-                foreach ($sub_items ?? [] as $s): ?>
-                <tr>
+                foreach ($sub_items ?? [] as $s):
+                    $rowFormulaExpr = '';
+                    if ((int)($s['formulas_id'] ?? 0) > 1) {
+                        foreach ($formulas_con_expresion ?? [] as $f) {
+                            if ((int)($f['formulas_id'] ?? 0) === (int)($s['formulas_id'])) {
+                                $rowFormulaExpr = trim($f['formula_expresion'] ?? '');
+                                break;
+                            }
+                        }
+                    }
+                    $rowFormulaTextarea = $rowFormulaExpr;
+                    if ($rowFormulaTextarea !== '') {
+                        foreach ($refsCidToNombre as $cid => $nombre) {
+                            $rowFormulaTextarea = str_replace($cid, '[' . $nombre . ']', $rowFormulaTextarea);
+                        }
+                        $rowFormulaTextarea = preg_replace('/\b1\b/', '[valor]', $rowFormulaTextarea);
+                    }
+                    $rowFormulaNombre = '';
+                    if ($rowFormulaExpr !== '' && !empty($formulas_con_expresion ?? [])) {
+                        foreach ($formulas_con_expresion as $f) {
+                            if (trim($f['formula_expresion'] ?? '') === $rowFormulaExpr) {
+                                $rowFormulaNombre = $f['nombre'] ?? '';
+                                break;
+                            }
+                        }
+                    }
+                    $rowDataSec = [
+                        'secanacategoria_id' => (int)($s['secanacategoria_id'] ?? 0),
+                        'nombre' => $s['nombre'] ?? '',
+                        'paciente_id' => (int)($s['paciente_id'] ?? 3),
+                        'sexo' => $s['sexo'] ?? 'ambos',
+                        'valor_min' => $s['valor_min'] ?? '',
+                        'valor_max' => $s['valor_max'] ?? '',
+                        'umedida' => $s['umedida'] ?? '',
+                        'formulas_id' => (int)($s['formulas_id'] ?? 1),
+                        'opcion_id' => (int)($s['opcion_id'] ?? 3),
+                        'formula_para_textarea' => $rowFormulaTextarea,
+                        'formula_nombre' => $rowFormulaNombre,
+                    ];
+                ?>
+                <tr data-sec="<?= htmlspecialchars(json_encode($rowDataSec), ENT_QUOTES, 'UTF-8') ?>" data-secanacategoria-id="<?= (int)($s['secanacategoria_id'] ?? 0) ?>">
+                    <td class="text-center">
+                        <span class="sec-drag-handle" title="Arrastrar para reordenar"><i class="fa-solid fa-grip-vertical"></i></span>
+                        <button type="button" class="btn btn-sm btn-outline-secondary btn-sec-subir" title="Subir"><i class="fa-solid fa-arrow-up"></i></button>
+                        <button type="button" class="btn btn-sm btn-outline-secondary btn-sec-bajar" title="Bajar"><i class="fa-solid fa-arrow-down"></i></button>
+                    </td>
                     <td><?= esc($s['nombre'] ?? '') ?></td>
                     <td><?= esc($pobMap[(int)($s['paciente_id'] ?? 0)] ?? $s['paciente_id'] ?? '') ?></td>
                     <td><?= esc(match($s['sexo'] ?? '') { 'masculino' => 'Masculino', 'femenino' => 'Femenino', default => 'Ambos' }) ?></td>
@@ -117,7 +180,7 @@ if ($fe !== '') {
 } ?></td>
                     <td><?= esc($opciones[(int)($s['opcion_id'] ?? 0)] ?? '') ?></td>
                     <td class="text-center">
-                        <a href="<?= site_url("labotests/detail/{$labotests_info->prianacategoria_id}") ?>?editar=<?= (int)($s['secanacategoria_id'] ?? 0) ?>" class="btn btn-sm btn-outline-primary" title="Editar"><i class="fa-solid fa-pen"></i></a>
+                        <button type="button" class="btn btn-sm btn-outline-primary btn-editar-sec" title="Editar"><i class="fa-solid fa-pen"></i></button>
                         <a href="<?= site_url("labotests/duplicatesecitem/" . (int)($s['secanacategoria_id'] ?? 0)) ?>" class="btn btn-sm btn-outline-secondary" title="Duplicar"><i class="fa-solid fa-copy"></i></a>
                         <a href="<?= site_url("labotests/deletesecitem/" . (int)($s['secanacategoria_id'] ?? 0)) ?>" class="btn btn-sm btn-outline-danger" title="Eliminar" onclick="return confirm('¿Eliminar esta sub-clase?');"><i class="fa-solid fa-trash"></i></a>
                     </td>
@@ -126,10 +189,19 @@ if ($fe !== '') {
             </tbody>
         </table>
         <hr>
-        <h6 class="mb-3"><?= empty($sub_items) ? 'Agregar primera sub-clase' : 'Agregar sub-clase' ?></h6>
+        <button type="button" class="btn btn-primary btn-sm mb-3" id="btn_agregar_sec"><?= empty($sub_items) ? 'Agregar primera sub-clase' : 'Agregar sub-clase' ?></button>
+
+        <div class="modal fade" id="modalEditarSec" tabindex="-1" aria-labelledby="modalEditarSecTitle" aria-hidden="true">
+            <div class="modal-dialog modal-xl modal-dialog-scrollable">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title" id="modalEditarSecTitle">Editar sub-clase</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+                    </div>
+                    <div class="modal-body">
         <?= form_open('labotests/savesecitem', ['class' => 'border p-3 rounded', 'id' => 'form_secitem']) ?>
         <input type="hidden" name="prianacategoria_id" value="<?= (int)($labotests_info->prianacategoria_id ?? 0) ?>">
-        <input type="hidden" name="secanacategoria_id" value="<?= (int)($editar_sec ?? 0) ?>">
+        <input type="hidden" name="secanacategoria_id" id="secanacategoria_id_input" value="<?= (int)($editar_sec ?? 0) ?>">
         <div class="row">
             <div class="col-md-3 mb-2">
                 <label class="form-label">Nombre sub-clase <span class="text-danger">*</span></label>
@@ -165,7 +237,7 @@ if ($fe !== '') {
             </div>
         </div>
         <div class="row">
-            <?php $esCalculada = !empty($editar_sec_data['formula_expresion'] ?? ''); ?>
+            <?php $esCalculada = ((int)($editar_sec_data['formulas_id'] ?? 1) > 1); ?>
             <div class="col-md-2 mb-2">
                 <label class="form-label">¿Calculada?</label>
                 <div class="form-check mt-1">
@@ -252,10 +324,8 @@ if ($fe !== '') {
                 </select>
             </div>
             <div class="col-md-3 mb-2">
-                <button type="submit" class="btn btn-primary btn-sm mt-4"><?= ($editar_sec ?? 0) ? 'Actualizar' : 'Agregar' ?></button>
-                <?php if ($editar_sec ?? 0): ?>
-                <a href="<?= site_url("labotests/detail/{$labotests_info->prianacategoria_id}") ?>" class="btn btn-secondary btn-sm mt-4">Cancelar</a>
-                <?php endif; ?>
+                <button type="submit" class="btn btn-primary btn-sm mt-4" id="btn_submit_sec">Actualizar</button>
+                <button type="button" class="btn btn-secondary btn-sm mt-4" data-bs-dismiss="modal">Cancelar</button>
             </div>
         </div>
         <script>
@@ -296,7 +366,8 @@ if ($fe !== '') {
                     if (wForm) wForm.style.display = 'block';
                     if (wrapPredefCreadas) wrapPredefCreadas.style.display = 'none';
                     if (wExp) wExp.style.display = 'none';
-                    if (formulasIdSelect && formulasIdHidden) formulasIdHidden.value = formulasIdSelect.value;
+                    if (formulasIdHidden) formulasIdHidden.value = '1';
+                    if (formulasIdSelect) formulasIdSelect.value = '1';
                     if (formulaPredefSelect) formulaPredefSelect.selectedIndex = 0;
                 }
             });
@@ -452,31 +523,40 @@ if ($fe !== '') {
             function normalizarExpr(s) {
                 return (s || '').trim().replace(/\s+/g, ' ');
             }
-            setTimeout(function() {
-                var calc = document.getElementById('es_calculada');
-                if (calc && calc.checked && formulaPredefSelect && formulaArea) {
-                    var expr = normalizarExpr(textoConNombresAInterno(formulaArea.value));
-                    var nomInp = document.getElementById('formula_nombre_input');
-                    var found = false;
-                    for (var i = 2; i < formulaPredefSelect.options.length; i++) {
-                        var opt = formulaPredefSelect.options[i];
-                        if (opt.value && opt.value !== '__NUEVA__' && normalizarExpr(opt.value) === expr) {
-                            formulaPredefSelect.selectedIndex = i;
-                            if (nomInp) nomInp.value = opt.dataset.nombre || '';
-                            found = true;
-                            break;
+            function aplicarFormulaInicial() {
+                setTimeout(function() {
+                    var calc = document.getElementById('es_calculada');
+                    if (calc && calc.checked && formulaPredefSelect && formulaArea) {
+                        var expr = normalizarExpr(textoConNombresAInterno(formulaArea.value));
+                        var nomInp = document.getElementById('formula_nombre_input');
+                        var found = false;
+                        for (var i = 2; i < formulaPredefSelect.options.length; i++) {
+                            var opt = formulaPredefSelect.options[i];
+                            if (opt.value && opt.value !== '__NUEVA__' && normalizarExpr(opt.value) === expr) {
+                                formulaPredefSelect.selectedIndex = i;
+                                if (nomInp) nomInp.value = opt.dataset.nombre || '';
+                                found = true;
+                                break;
+                            }
+                        }
+                        if (!found && formulaArea.value && expr) {
+                            formulaPredefSelect.selectedIndex = 1;
                         }
                     }
-                    if (!found && formulaArea.value && expr) {
-                        formulaPredefSelect.selectedIndex = 1;
+                    if (formulasIdHidden && formulasIdSelect && document.getElementById('es_calculada')) {
+                        if (!document.getElementById('es_calculada').checked) {
+                            formulasIdHidden.value = formulasIdSelect.value;
+                        }
                     }
-                }
-                if (formulasIdHidden && formulasIdSelect && !document.getElementById('es_calculada').checked) {
-                    formulasIdHidden.value = formulasIdSelect.value;
-                }
-                actualizarNombreFormula();
-                actualizarMathPreview();
-            }, 100);
+                    actualizarNombreFormula();
+                    actualizarMathPreview();
+                }, 100);
+            }
+            aplicarFormulaInicial();
+            document.addEventListener('secModalFormFilled', function() {
+                syncFormula();
+                aplicarFormulaInicial();
+            });
             document.querySelectorAll('.formula-ref').forEach(function(el) {
                 var insertar = '[' + (el.dataset.nombre || '') + ']';
                 el.addEventListener('dragstart', function(e) {
@@ -508,6 +588,9 @@ if ($fe !== '') {
                 if (calc && calc.checked && predefVal === '') {
                     if (formulaInput) formulaInput.value = '';
                     if (formulaArea) formulaArea.value = '';
+                } else if (calc && calc.checked && formulaInput && formulaArea) {
+                    // Enviar expresión con nombres [Hematocrito], [Eritrocitos] para guardar en BD, no c_8, c_2
+                    formulaInput.value = (formulaArea.value || '').trim();
                 } else {
                     syncFormula();
                 }
@@ -530,14 +613,14 @@ if ($fe !== '') {
             var btnGuardarFormula = document.getElementById('btn_guardar_formula');
             if (btnGuardarFormula && formulaArea && formulaInput) {
                 btnGuardarFormula.addEventListener('click', function() {
-                    var expr = textoConNombresAInterno(formulaArea.value);
-                    if (!expr || !expr.trim()) { if (typeof showToast === 'function') showToast('Escriba una fórmula primero', 'error'); return; }
+                    var exprConNombres = (formulaArea.value || '').trim();
+                    if (!exprConNombres) { if (typeof showToast === 'function') showToast('Escriba una fórmula primero', 'error'); return; }
                     var nomInput = document.getElementById('formula_nombre_input');
                     var nombre = nomInput ? (nomInput.value || '').trim() : '';
                     if (!nombre) { if (typeof showToast === 'function') showToast('Ingrese el nombre de la fórmula en el campo indicado', 'error'); if (nomInput) nomInput.focus(); return; }
                     var formData = new FormData();
                     formData.append('nombre_formula', nombre);
-                    formData.append('formula_expresion', expr.trim());
+                    formData.append('formula_expresion', exprConNombres);
                     var predefOpt = formulaPredefSelect && formulaPredefSelect.selectedIndex > 0 ? formulaPredefSelect.options[formulaPredefSelect.selectedIndex] : null;
                     var fid = (predefOpt && predefOpt.dataset.formulasId) ? predefOpt.dataset.formulasId : '0';
                     formData.append('formulas_id', fid);
@@ -570,15 +653,16 @@ if ($fe !== '') {
                             }
                             var predefSel = document.getElementById('formula_predefinida_select');
                             if (predefSel) {
+                                var exprVal = (formulaArea && formulaArea.value) ? formulaArea.value.trim() : '';
                                 var opt = predefSel.selectedIndex > 0 ? predefSel.options[predefSel.selectedIndex] : null;
                                 if (opt && fid !== '0') {
-                                    opt.value = expr.trim();
+                                    opt.value = exprVal;
                                     opt.textContent = nombre;
                                     opt.dataset.nombre = nombre;
                                     opt.dataset.formulasId = (d.formulas_id || fid);
                                 } else {
                                     opt = document.createElement('option');
-                                    opt.value = expr.trim();
+                                    opt.value = exprVal;
                                     opt.textContent = nombre;
                                     opt.dataset.nombre = nombre;
                                     opt.dataset.formulasId = (d.formulas_id || 1);
@@ -658,6 +742,189 @@ if ($fe !== '') {
         })();
         </script>
         <?= form_close() ?>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <script>
+        (function() {
+            var prianacategoriaId = <?= (int)($labotests_info->prianacategoria_id ?? 0) ?>;
+            var modalEl = document.getElementById('modalEditarSec');
+            var modalTitle = document.getElementById('modalEditarSecTitle');
+            var btnSubmit = document.getElementById('btn_submit_sec');
+            if (!modalEl) return;
+            var modal = typeof bootstrap !== 'undefined' ? new bootstrap.Modal(modalEl) : null;
+            function openModal() {
+                if (modal) modal.show();
+            }
+            function fillFormSec(data) {
+                data = data || {};
+                var id = (data.secanacategoria_id || 0) | 0;
+                document.getElementById('secanacategoria_id_input').value = id;
+                var byName = function(n) { return document.querySelector('#form_secitem [name="' + n + '"]'); };
+                var set = function(n, v) { var el = byName(n); if (el) el.value = (v !== undefined && v !== null) ? String(v) : ''; };
+                set('nombre', data.nombre);
+                set('paciente_id', data.paciente_id);
+                set('sexo', data.sexo);
+                set('valor_min', data.valor_min);
+                set('valor_max', data.valor_max);
+                set('umedida', data.umedida);
+                set('opcion_id', data.opcion_id);
+                var calc = document.getElementById('es_calculada');
+                var fid = (data.formulas_id || 1) | 0;
+                if (calc) calc.checked = fid > 1;
+                document.getElementById('formulas_id_hidden').value = fid;
+                var formulasIdSelect = document.getElementById('formulas_id');
+                if (formulasIdSelect && fid <= 1) formulasIdSelect.value = '1';
+                var wrapForm = document.getElementById('wrap_formulas_id');
+                var wrapExp = document.getElementById('wrap_formula_expresion');
+                var wrapPredef = document.getElementById('wrap_formula_predefinida_creadas');
+                if (wrapForm) wrapForm.style.display = fid > 1 ? 'none' : 'block';
+                if (wrapExp) wrapExp.style.display = fid > 1 ? 'block' : 'none';
+                if (wrapPredef) wrapPredef.style.display = fid > 1 ? 'block' : 'none';
+                var formulaArea = document.getElementById('formula_area');
+                var formulaInput = document.getElementById('formula_expresion');
+                var formulaPredefSelect = document.getElementById('formula_predefinida_select');
+                if (formulaArea) formulaArea.value = data.formula_para_textarea || '';
+                if (formulaInput) formulaInput.value = '';
+                var nomInp = document.getElementById('formula_nombre_input');
+                if (nomInp) nomInp.value = data.formula_nombre || '';
+                if (formulaPredefSelect) formulaPredefSelect.selectedIndex = 0;
+                document.dispatchEvent(new CustomEvent('secModalFormFilled'));
+            }
+            function clearFormSec() {
+                fillFormSec({
+                    secanacategoria_id: 0,
+                    nombre: '',
+                    paciente_id: 3,
+                    sexo: 'ambos',
+                    valor_min: '',
+                    valor_max: '',
+                    umedida: '',
+                    formulas_id: 1,
+                    opcion_id: 3,
+                    formula_para_textarea: '',
+                    formula_nombre: ''
+                });
+            }
+            document.getElementById('btn_agregar_sec').addEventListener('click', function() {
+                if (modalTitle) modalTitle.textContent = 'Agregar sub-clase';
+                if (btnSubmit) btnSubmit.textContent = 'Agregar';
+                clearFormSec();
+                openModal();
+            });
+            document.querySelectorAll('.btn-editar-sec').forEach(function(btn) {
+                btn.addEventListener('click', function() {
+                    var tr = btn.closest('tr');
+                    var dataStr = tr && tr.getAttribute('data-sec');
+                    if (!dataStr) return;
+                    var data = {};
+                    try { data = JSON.parse(dataStr); } catch (e) { return; }
+                    if (modalTitle) modalTitle.textContent = 'Editar sub-clase';
+                    if (btnSubmit) btnSubmit.textContent = 'Actualizar';
+                    fillFormSec(data);
+                    openModal();
+                });
+            });
+            var tablaSub = document.getElementById('tabla_sub_items');
+            if (tablaSub) {
+                function getOrderIds() {
+                    var tbody = tablaSub.querySelector('tbody');
+                    if (!tbody) return [];
+                    var ids = [];
+                    tbody.querySelectorAll('tr[data-secanacategoria-id]').forEach(function(tr) {
+                        var id = parseInt(tr.getAttribute('data-secanacategoria-id'), 10);
+                        if (id > 0) ids.push(id);
+                    });
+                    return ids;
+                }
+                function guardarOrden() {
+                    var order = getOrderIds();
+                    if (order.length === 0) return;
+                    var fd = new FormData();
+                    fd.append('prianacategoria_id', prianacategoriaId);
+                    for (var i = 0; i < order.length; i++) fd.append('order[]', order[i]);
+                    var csrf = document.querySelector('input[name="csrf_test_name"]') || document.querySelector('input[name*="csrf"]');
+                    var csrfName = (csrf && csrf.name) ? csrf.name : (typeof window.CI_CSRF_TOKEN_NAME !== 'undefined' ? window.CI_CSRF_TOKEN_NAME : 'csrf_test_name');
+                    var csrfVal = (csrf && csrf.value) ? csrf.value : (typeof window.CI_CSRF_TOKEN !== 'undefined' ? window.CI_CSRF_TOKEN : '');
+                    if (csrfVal) fd.append(csrfName, csrfVal);
+                    var headers = { 'X-Requested-With': 'XMLHttpRequest' };
+                    if (csrfVal) headers['X-CSRF-TOKEN'] = csrfVal;
+                    fetch('<?= site_url('labotests/orderSecItems') ?>', {
+                        method: 'POST',
+                        body: fd,
+                        headers: headers
+                    }).then(function(r) { return r.json(); }).then(function(d) {
+                        if (d.success) {
+                            if (typeof showToast === 'function') showToast('Orden guardado', 'success');
+                            if (d.csrf_token && d.csrf_name) {
+                                window.CI_CSRF_TOKEN = d.csrf_token;
+                                window.CI_CSRF_TOKEN_NAME = d.csrf_name;
+                                document.querySelectorAll('input[name="csrf_test_name"], input[name*="csrf"]').forEach(function(inp) {
+                                    inp.name = d.csrf_name;
+                                    inp.value = d.csrf_token;
+                                });
+                            }
+                        } else if (typeof showToast === 'function') showToast(d.message || 'Error al guardar orden', 'error');
+                    }).catch(function() {
+                        if (typeof showToast === 'function') showToast('Error al guardar orden', 'error');
+                    });
+                }
+                function moverFila(tr, direccion) {
+                    var tbody = tablaSub.querySelector('tbody');
+                    if (!tbody) return;
+                    var rows = [].slice.call(tbody.querySelectorAll('tr[data-secanacategoria-id]'));
+                    var idx = rows.indexOf(tr);
+                    if (idx < 0) return;
+                    var otroIdx = direccion === -1 ? idx - 1 : idx + 1;
+                    if (otroIdx < 0 || otroIdx >= rows.length) return;
+                    if (direccion === -1) {
+                        tbody.insertBefore(tr, rows[otroIdx]);
+                    } else {
+                        tbody.insertBefore(tr, rows[otroIdx].nextSibling);
+                    }
+                    guardarOrden();
+                }
+                tablaSub.addEventListener('click', function(e) {
+                    var subir = e.target.closest('.btn-sec-subir');
+                    var bajar = e.target.closest('.btn-sec-bajar');
+                    var tr = (subir || bajar) && (subir || bajar).closest('tr');
+                    if (!tr) return;
+                    if (subir) { e.preventDefault(); moverFila(tr, -1); }
+                    if (bajar) { e.preventDefault(); moverFila(tr, 1); }
+                });
+                var tbody = tablaSub.querySelector('tbody');
+                if (tbody && typeof Sortable !== 'undefined') {
+                    new Sortable(tbody, {
+                        handle: '.sec-drag-handle',
+                        animation: 150,
+                        ghostClass: 'table-secondary',
+                        onEnd: function() { guardarOrden(); }
+                    });
+                }
+            }
+            <?php if ($editar_sec ?? 0): ?>
+            var editarSecDataInicial = <?= json_encode([
+                'secanacategoria_id' => (int)($editar_sec ?? 0),
+                'nombre' => $editar_sec_data['nombre'] ?? '',
+                'paciente_id' => (int)($editar_sec_data['paciente_id'] ?? 3),
+                'sexo' => $editar_sec_data['sexo'] ?? 'ambos',
+                'valor_min' => $editar_sec_data['valor_min'] ?? '',
+                'valor_max' => $editar_sec_data['valor_max'] ?? '',
+                'umedida' => $editar_sec_data['umedida'] ?? '',
+                'formulas_id' => (int)($editar_sec_data['formulas_id'] ?? 1),
+                'opcion_id' => (int)($editar_sec_data['opcion_id'] ?? 3),
+                'formula_para_textarea' => $formulaParaTextarea ?? '',
+                'formula_nombre' => $formulaNombreInicial ?? '',
+            ]) ?>;
+            if (modalTitle) modalTitle.textContent = 'Editar sub-clase';
+            if (btnSubmit) btnSubmit.textContent = 'Actualizar';
+            fillFormSec(editarSecDataInicial);
+            openModal();
+            <?php endif; ?>
+        })();
+        </script>
     </div>
 </div>
 <?php else: ?>

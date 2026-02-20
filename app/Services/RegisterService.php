@@ -62,7 +62,39 @@ class RegisterService
         $grupos = [];
         foreach ($analisis as $prueba) {
             $name = $prueba['name'] ?? '';
-            if (!is_string($name) || strpos($name, '_') === false) {
+            if (!is_string($name)) {
+                continue;
+            }
+            $regvalue = $prueba['regvalues'] ?? '-';
+
+            // Formato por nombre: "prianacategoria_id|nombre" (ej. 12|Eritrocitos)
+            if (strpos($name, '|') !== false) {
+                [$prianacategoriaIdStr, $nombre] = explode('|', $name, 2);
+                $prianacategoriaId = (int) trim($prianacategoriaIdStr);
+                $nombre = trim($nombre);
+                if ($prianacategoriaId <= 0 || $nombre === '') {
+                    continue;
+                }
+                $item = $this->registerModel->getSecItemByPrianacategoriaYNombre($prianacategoriaId, $nombre);
+                if (!$item) {
+                    continue;
+                }
+                $item = is_array($item) ? (object) $item : $item;
+                $padre = $item->padre ?? '';
+                if ($padre === '') {
+                    continue;
+                }
+                if (!isset($grupos[$padre])) {
+                    $grupos[$padre] = [];
+                }
+                $formId = (int) ($item->formulas_id ?? 0);
+                $item->regvalues = $this->resolveRegvalue($formId, $regvalue, $registroId);
+                $grupos[$padre][] = $item;
+                continue;
+            }
+
+            // Formato legacy: c_XXX o noc_XXX
+            if (strpos($name, '_') === false) {
                 continue;
             }
             [$tipoAnalisis, $analisisIdStr] = explode('_', $name, 2);
@@ -87,7 +119,7 @@ class RegisterService
                     $grupos[$padre] = [];
                 }
                 $formId = (int) ($item->formulas_id ?? 0);
-                $item->regvalues = $this->resolveRegvalue($formId, $prueba['regvalues'] ?? '-', $registroId);
+                $item->regvalues = $this->resolveRegvalue($formId, $regvalue, $registroId);
                 $grupos[$padre][] = $item;
             }
         }

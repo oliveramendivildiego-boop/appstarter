@@ -297,17 +297,19 @@ class LabotestModel extends Model
     }
 
     /**
-     * Obtiene sub-clases (secanacategoria) de una prueba compuesta
+     * Obtiene sub-clases (secanacategoria) de una prueba compuesta.
+     * Orden: por columna orden si existe, luego nombre, paciente_id.
      */
     public function getSubItems(int $prianacategoriaId): array
     {
-        return $this->db->table('secanacategoria')
+        $builder = $this->db->table('secanacategoria')
             ->where('prianacategoria_id', $prianacategoriaId)
-            ->where('(deleted = 0 OR deleted IS NULL)')
-            ->orderBy('nombre')
-            ->orderBy('paciente_id')
-            ->get()
-            ->getResultArray();
+            ->where('(deleted = 0 OR deleted IS NULL)');
+        if ($this->hasColumn('secanacategoria', 'orden')) {
+            $builder->orderBy('orden', 'ASC');
+        }
+        $builder->orderBy('nombre')->orderBy('paciente_id');
+        return $builder->get()->getResultArray();
     }
 
     /**
@@ -435,8 +437,10 @@ class LabotestModel extends Model
     }
 
     /**
-     * Guarda o actualiza una fórmula personalizada (nombre + expresión)
-     * Si formulas_id > 0, actualiza; si no, inserta nueva.
+     * Guarda o actualiza una fórmula personalizada (nombre + expresión).
+     * Si formulas_id > 0, actualiza esa fila. Si no, busca por nombre: si ya existe
+     * una fórmula con el mismo nombre, la actualiza; si no, inserta nueva.
+     * No se permiten dos fórmulas con el mismo nombre.
      */
     public function saveFormula(array $data): int
     {
@@ -457,8 +461,35 @@ class LabotestModel extends Model
             $this->db->table('formulas')->where('formulas_id', $id)->update($save);
             return $id;
         }
+        $existente = $this->db->table('formulas')
+            ->where('nombre', $nombre)
+            ->limit(1)
+            ->get()
+            ->getRowArray();
+        if ($existente && ! empty($existente['formulas_id'])) {
+            $idExistente = (int) $existente['formulas_id'];
+            $this->db->table('formulas')->where('formulas_id', $idExistente)->update($save);
+            return $idExistente;
+        }
         $this->db->table('formulas')->insert($save);
         return (int) $this->db->insertID();
+    }
+
+    /**
+     * Actualiza solo la expresión de una fórmula por formulas_id.
+     * Aplica a todas las fórmulas (nuevas y antiguas); no depende del nombre.
+     */
+    public function updateFormulaExpresion(int $formulasId, string $expresion): bool
+    {
+        if ($formulasId < 1) {
+            return false;
+        }
+        if (! $this->hasFormulaExpresionColumn('formulas')) {
+            return false;
+        }
+        return $this->db->table('formulas')
+            ->where('formulas_id', $formulasId)
+            ->update(['formula_expresion' => trim($expresion)]) !== false;
     }
 
     /**
@@ -531,17 +562,49 @@ class LabotestModel extends Model
             'deleted'            => 0,
         ];
         if ($this->hasFormulaExpresionColumn('secanacategoria')) {
-            $formulaExpresion = trim($data['formula_expresion'] ?? '');
-            $save['formula_expresion'] = $formulaExpresion !== '' ? $formulaExpresion : null;
+            $save['formula_expresion'] = null;
         }
         if ($this->hasColumn('secanacategoria', 'sexo')) {
             $sexo = $data['sexo'] ?? 'ambos';
             $save['sexo'] = in_array($sexo, ['masculino', 'femenino'], true) ? $sexo : 'ambos';
         }
+        if ($this->hasColumn('secanacategoria', 'orden')) {
+            if ($id && $id > 0) {
+                // mantener orden al editar
+            } else {
+                $max = $this->db->table('secanacategoria')
+                    ->where('prianacategoria_id', (int)($save['prianacategoria_id']))
+                    ->selectMax('orden')
+                    ->get()->getRow();
+                $save['orden'] = 1 + (int) ($max->orden ?? 0);
+            }
+        }
         if ($id && $id > 0) {
             return $this->db->table('secanacategoria')->where('secanacategoria_id', $id)->update($save);
         }
         return $this->db->table('secanacategoria')->insert($save) !== false;
+    }
+
+    /**
+     * Actualiza el orden de las sub-clases. Recibe el prianacategoria_id y un array
+     * de secanacategoria_id en el orden deseado (índice = orden).
+     */
+    public function updateSecItemsOrder(int $prianacategoriaId, array $secanacategoriaIds): bool
+    {
+        if (!$this->hasColumn('secanacategoria', 'orden')) {
+            return true;
+        }
+        foreach ($secanacategoriaIds as $orden => $secId) {
+            $secId = (int) $secId;
+            if ($secId < 1) {
+                continue;
+            }
+            $this->db->table('secanacategoria')
+                ->where('secanacategoria_id', $secId)
+                ->where('prianacategoria_id', $prianacategoriaId)
+                ->update(['orden' => (int) $orden]);
+        }
+        return true;
     }
 
     /**
