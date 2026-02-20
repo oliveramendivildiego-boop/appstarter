@@ -83,4 +83,47 @@ class Reports extends SecureArea
             'user_info'       => $this->user_info,
         ]);
     }
+
+    public function pagos()
+    {
+        $startDate = $this->request->getGet('start') ?? date('Y-m-d');
+        $endDate   = $this->request->getGet('end') ?? date('Y-m-d');
+
+        $todos     = $this->reportModel->getReportePagos($startDate, $endDate);
+        $pendientes = $this->reportModel->getPendientesPago($startDate, $endDate);
+        $totales   = $this->reportModel->getTotalesPagos($startDate, $endDate);
+
+        $tipoPagoMap = ['1' => 'Efectivo', '2' => 'QR', '3' => 'Transferencia', '4' => 'Pendiente'];
+
+        return view('reports/pagos', [
+            'title'           => 'Reporte de pagos',
+            'subtitle'        => date('d/m/Y', strtotime($startDate)) . ' - ' . date('d/m/Y', strtotime($endDate)),
+            'todos'           => $todos,
+            'pendientes'      => $pendientes,
+            'totales'         => $totales,
+            'tipoPagoMap'     => $tipoPagoMap,
+            'startDate'       => $startDate,
+            'endDate'         => $endDate,
+            'allowed_modules' => $this->allowed_modules,
+            'user_info'       => $this->user_info,
+        ]);
+    }
+
+    public function pruebasFecha()
+    {
+        $startDate = $this->request->getGet('start') ?? date('Y-m-d');
+        $endDate   = $this->request->getGet('end') ?? date('Y-m-d');
+
+        $data = $this->reportModel->getPruebasPorFecha($startDate, $endDate);
+
+        return view('reports/pruebas_fecha', [
+            'title'           => 'Reporte de pruebas realizadas por fecha',
+            'subtitle'        => date('d/m/Y', strtotime($startDate)) . ' - ' . date('d/m/Y', strtotime($endDate)),
+            'data'            => $data,
+            'startDate'       => $startDate,
+            'endDate'         => $endDate,
+            'allowed_modules' => $this->allowed_modules,
+            'user_info'       => $this->user_info,
+        ]);
+    }
 }
