@@ -29,6 +29,8 @@ $routes->get('reports', 'Reports::index');
 $routes->get('reports/registrosFecha', 'Reports::registrosFecha');
 $routes->get('reports/ingresosFecha', 'Reports::ingresosFecha');
 $routes->get('reports/porDoctor', 'Reports::porDoctor');
+$routes->get('reports/pagos', 'Reports::pagos');
+$routes->get('reports/pruebasFecha', 'Reports::pruebasFecha');
 $routes->get('giftcards', 'ModulePlaceholder::index');
 $routes->get('employees', 'Employees::index');
 $routes->get('employees/view/(:num)', 'Employees::view/$1');
