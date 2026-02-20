@@ -48,17 +48,19 @@ class Registers extends SecureArea
 
     public function lista()
     {
-        $perPage    = 20;
+        $perPage    = 15;
         $page       = max(1, (int) ($this->request->getGet('page') ?? 1));
         $offset     = ($page - 1) * $perPage;
         $search     = trim((string) ($this->request->getGet('q') ?? ''));
+        $estado     = trim((string) ($this->request->getGet('estado') ?? ''));
+        $estado     = in_array($estado, ['completo', 'incompleto'], true) ? $estado : '';
 
         if ($search !== '') {
-            $registros  = $this->registerModel->getAllAnalisisWithSearch($search, $perPage, $offset);
-            $total      = $this->registerModel->countWithSearch($search);
+            $registros  = $this->registerModel->getAllAnalisisWithSearch($search, $perPage, $offset, $estado);
+            $total      = $this->registerModel->countWithSearch($search, $estado);
         } else {
-            $registros  = $this->registerModel->getAllAnalisis($perPage, $offset);
-            $total      = $this->registerModel->countAll();
+            $registros  = $this->registerModel->getAllAnalisis($perPage, $offset, $estado);
+            $total      = $this->registerModel->countAll($estado);
         }
 
         $manageTable = $this->buildRegistrosTable($registros);
@@ -74,36 +76,77 @@ class Registers extends SecureArea
             'total'           => $total,
             'perPage'         => $perPage,
             'search'          => $search,
+            'estado'          => $estado,
         ]);
+    }
+
+    private static function getTipoPagoLabel(string $tipopago): string
+    {
+        $map = ['1' => 'Efectivo', '2' => 'QR', '3' => 'Transferencia', '4' => 'Pendiente'];
+        return $map[trim($tipopago)] ?? trim($tipopago) ?: '-';
     }
 
     private function buildRegistrosTable(array $registros): string
     {
         $html = '<div class="table-responsive"><table class="table table-bordered table-striped"><thead><tr>';
-        $html .= '<th>Código</th><th>Paciente</th><th>Doctor</th><th>Total</th><th>A cuenta</th><th>Saldo</th><th class="text-center">Acciones</th>';
+        $html .= '<th>Código</th><th>Paciente</th><th>Doctor</th><th>Total</th><th>Tipo pago</th><th>Monto pagado</th><th>A cuenta</th><th>Saldo</th><th class="text-center">Acciones</th>';
         $html .= '</tr></thead><tbody>';
+
+        $sumTotal = 0;
+        $sumMontoPagado = 0;
+        $sumAcuenta = 0;
+        $sumSaldo = 0;
+
         foreach ($registros as $r) {
             $rid = (int) ($r->registro_id ?? 0);
+            $totalNum = (float) ($r->total ?? 0);
+            $saldoNum = (float) ($r->saldo ?? 0);
+            $montoPagadoNum = (float) ($r->monto_pagar ?? 0);
+            $acuenta = $totalNum - $saldoNum;
+            $acuentaStr = $totalNum > 0 || $saldoNum !== 0.0 ? number_format($acuenta, 2) : '';
+            $montoPagadoStr = $acuentaStr ?: number_format($montoPagadoNum, 2);
+
+            $sumTotal += $totalNum;
+            $sumMontoPagado += $acuenta;
+            $sumAcuenta += $acuenta;
+            $sumSaldo += $saldoNum;
+
             $html .= '<tr>';
             $html .= '<td>' . esc($r->registro_id ?? '') . '</td>';
             $html .= '<td>' . esc($r->paciente ?? '') . '</td>';
             $html .= '<td>' . esc($r->doctor ?? '') . '</td>';
             $html .= '<td>' . esc($r->total ?? '') . '</td>';
-            $html .= '<td>' . esc($r->acuenta ?? '') . '</td>';
+            $html .= '<td>' . esc(self::getTipoPagoLabel($r->tipopago ?? '')) . '</td>';
+            $html .= '<td>' . esc($montoPagadoStr) . '</td>';
+            $html .= '<td>' . esc($acuentaStr) . '</td>';
             $html .= '<td>' . esc($r->saldo ?? '') . '</td>';
             $html .= '<td class="text-center">';
             $hasRegvalues = isset($r->regvalues_count) && (int) $r->regvalues_count > 0;
             $btnTitle = $hasRegvalues ? 'Editar' : 'Agregar';
             $btnIcon = $hasRegvalues ? 'fa-pen' : 'fa-plus';
             $html .= '<a href="' . site_url('registers/view/' . $rid) . '" class="btn btn-sm btn-outline-primary" title="' . esc($btnTitle) . '"><i class="fa-solid ' . esc($btnIcon) . '"></i></a> ';
-            $html .= '<a href="' . site_url('registers/viewreport/' . $rid) . '" class="btn btn-sm btn-secondary" title="Reporte">Reporte</a> ';
-            $html .= '<a href="' . site_url('registers/pdf/' . $rid) . '" class="btn btn-sm btn-success" target="_blank" title="PDF">PDF</a> ';
+            if ($hasRegvalues) {
+                $html .= '<a href="' . site_url('registers/viewreport/' . $rid) . '" class="btn btn-sm btn-secondary" title="Reporte">Reporte</a> ';
+                $html .= '<a href="' . site_url('registers/pdf/' . $rid) . '" class="btn btn-sm btn-success" target="_blank" title="PDF">PDF</a> ';
+            }
+            if ($saldoNum > 0) {
+                $html .= '<button type="button" class="btn btn-sm btn-outline-warning btn-agregar-pago" data-id="' . $rid . '" data-total="' . esc($r->total ?? '') . '" data-saldo="' . esc($r->saldo ?? '') . '" data-monto="' . esc($r->monto_pagar ?? '') . '" title="Agregar pago"><i class="fa-solid fa-money-bill-wave"></i> Pago</button> ';
+            }
+            $html .= '<button type="button" class="btn btn-sm btn-outline-info btn-historial" data-id="' . $rid . '" title="Historial de pagos y pruebas"><i class="fa-solid fa-clock-rotate-left"></i></button> ';
             $html .= '<button type="button" class="btn btn-sm btn-outline-danger btn-eliminar-registro" data-id="' . $rid . '" title="Eliminar"><i class="fa-solid fa-trash"></i></button>';
             $html .= '</td>';
             $html .= '</tr>';
         }
         if (empty($registros)) {
-            $html .= '<tr><td colspan="7">No hay registros.</td></tr>';
+            $html .= '<tr><td colspan="9">No hay registros.</td></tr>';
+        } else {
+            $html .= '<tr class="table-secondary fw-bold"><td colspan="3">Total</td>';
+            $html .= '<td>' . number_format($sumTotal, 2) . '</td>';
+            $html .= '<td>—</td>';
+            $html .= '<td>' . number_format($sumMontoPagado, 2) . '</td>';
+            $html .= '<td>' . number_format($sumAcuenta, 2) . '</td>';
+            $html .= '<td>' . number_format($sumSaldo, 2) . '</td>';
+            $html .= '<td></td></tr>';
         }
         $html .= '</tbody></table></div>';
         return $html;
@@ -263,6 +306,10 @@ class Registers extends SecureArea
                 'comentarios'  => $pagos['comentarios'] ?? null,
             ];
             $this->registerModel->savePago($pagosData);
+            $montoInicial = (float) ($pagos['monto_pagar'] ?? 0);
+            if ($montoInicial > 0) {
+                $this->registerModel->insertAbonoInicial($registroId, $montoInicial, trim($pagos['tipopago'] ?? '1'));
+            }
 
             return $this->response->setJSON([
                 'success' => true,
@@ -295,6 +342,51 @@ class Registers extends SecureArea
             log_message('error', 'Registers::delete ' . $e->getMessage());
             return $this->response->setJSON(['success' => false, 'message' => 'Error al eliminar'])->setStatusCode(500);
         }
+    }
+
+    public function historial($id): ResponseInterface
+    {
+        $id = (int) $id;
+        if ($id < 1) {
+            return $this->response->setJSON(['success' => false, 'message' => 'ID inválido'])->setStatusCode(400);
+        }
+        $data = $this->registerModel->getHistorialRegistro($id);
+        if (!$data) {
+            return $this->response->setJSON(['success' => false, 'message' => 'Registro no encontrado'])->setStatusCode(404);
+        }
+        $out = [
+            'registro' => $data['registro'] ? (array) $data['registro'] : (object) [],
+            'pago' => $data['pago'] ? (array) $data['pago'] : (object) [],
+            'tipo_pago_nombre' => $data['tipo_pago_nombre'] ?? '',
+            'abonos' => $data['abonos'] ?? [],
+            'pruebas' => $data['pruebas'] ?? [],
+            'tiene_resultados' => $data['tiene_resultados'] ?? false,
+            'regvalues_count' => $data['regvalues_count'] ?? 0,
+        ];
+        return $this->response->setJSON(['success' => true, 'data' => $out]);
+    }
+
+    public function addpago($id): ResponseInterface
+    {
+        $id = (int) $id;
+        if ($id < 1) {
+            return $this->response->setJSON(['success' => false, 'message' => 'ID inválido'])->setStatusCode(400);
+        }
+        $pago = $this->registerModel->getPagoByRegistroId($id);
+        if (!$pago) {
+            return $this->response->setJSON(['success' => false, 'message' => 'Registro de pago no encontrado'])->setStatusCode(404);
+        }
+        $montoAgregar = (float) ($this->request->getPost('monto_pagar') ?? 0);
+        $tipopago     = trim((string) ($this->request->getPost('tipopago') ?? '1'));
+        if ($montoAgregar <= 0) {
+            return $this->response->setJSON(['success' => false, 'message' => 'El monto a agregar debe ser mayor a 0'])->setStatusCode(400);
+        }
+
+        $ok = $this->registerModel->insertAbono($id, $montoAgregar, $tipopago);
+        if ($ok) {
+            return $this->response->setJSON(['success' => true, 'message' => 'Pago agregado correctamente']);
+        }
+        return $this->response->setJSON(['success' => false, 'message' => 'Error al agregar pago'])->setStatusCode(500);
     }
 
     public function crearmuestra()
