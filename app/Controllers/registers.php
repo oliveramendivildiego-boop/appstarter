@@ -8,6 +8,7 @@ use App\Models\LabotestModel;
 use App\Models\RegisterModel;
 use App\Models\PerfilExamenModel;
 use App\Models\MuestraModel;
+use App\Models\AppConfigModel;
 use CodeIgniter\HTTP\ResponseInterface;
 
 /**
@@ -47,12 +48,19 @@ class Registers extends SecureArea
 
     public function lista()
     {
-        $perPage  = 20;
-        $page     = max(1, (int) ($this->request->getGet('page') ?? 1));
-        $offset   = ($page - 1) * $perPage;
+        $perPage    = 20;
+        $page       = max(1, (int) ($this->request->getGet('page') ?? 1));
+        $offset     = ($page - 1) * $perPage;
+        $search     = trim((string) ($this->request->getGet('q') ?? ''));
 
-        $registros   = $this->registerModel->getAllAnalisis($perPage, $offset);
-        $total       = $this->registerModel->countAll();
+        if ($search !== '') {
+            $registros  = $this->registerModel->getAllAnalisisWithSearch($search, $perPage, $offset);
+            $total      = $this->registerModel->countWithSearch($search);
+        } else {
+            $registros  = $this->registerModel->getAllAnalisis($perPage, $offset);
+            $total      = $this->registerModel->countAll();
+        }
+
         $manageTable = $this->buildRegistrosTable($registros);
         $totalPages  = $total > 0 ? (int) ceil($total / $perPage) : 1;
 
@@ -64,15 +72,18 @@ class Registers extends SecureArea
             'page'            => $page,
             'totalPages'      => $totalPages,
             'total'           => $total,
+            'perPage'         => $perPage,
+            'search'          => $search,
         ]);
     }
 
     private function buildRegistrosTable(array $registros): string
     {
         $html = '<div class="table-responsive"><table class="table table-bordered table-striped"><thead><tr>';
-        $html .= '<th>Código</th><th>Paciente</th><th>Doctor</th><th>Total</th><th>A cuenta</th><th>Saldo</th><th></th>';
+        $html .= '<th>Código</th><th>Paciente</th><th>Doctor</th><th>Total</th><th>A cuenta</th><th>Saldo</th><th class="text-center">Acciones</th>';
         $html .= '</tr></thead><tbody>';
         foreach ($registros as $r) {
+            $rid = (int) ($r->registro_id ?? 0);
             $html .= '<tr>';
             $html .= '<td>' . esc($r->registro_id ?? '') . '</td>';
             $html .= '<td>' . esc($r->paciente ?? '') . '</td>';
@@ -81,9 +92,14 @@ class Registers extends SecureArea
             $html .= '<td>' . esc($r->acuenta ?? '') . '</td>';
             $html .= '<td>' . esc($r->saldo ?? '') . '</td>';
             $html .= '<td class="text-center">';
-            $html .= '<a href="' . site_url('registers/view/' . ($r->registro_id ?? '')) . '" class="btn btn-sm btn-outline-primary" title="Editar"><i class="fa-solid fa-pen" aria-hidden="true"></i></a> ';
-            $html .= '<a href="' . site_url('registers/viewreport/' . ($r->registro_id ?? '')) . '" class="btn btn-sm btn-secondary">Reporte</a> ';
-            $html .= '<a href="' . site_url('registers/pdf/' . ($r->registro_id ?? '')) . '" class="btn btn-sm btn-success" target="_blank">PDF</a></td>';
+            $hasRegvalues = isset($r->regvalues_count) && (int) $r->regvalues_count > 0;
+            $btnTitle = $hasRegvalues ? 'Editar' : 'Agregar';
+            $btnIcon = $hasRegvalues ? 'fa-pen' : 'fa-plus';
+            $html .= '<a href="' . site_url('registers/view/' . $rid) . '" class="btn btn-sm btn-outline-primary" title="' . esc($btnTitle) . '"><i class="fa-solid ' . esc($btnIcon) . '"></i></a> ';
+            $html .= '<a href="' . site_url('registers/viewreport/' . $rid) . '" class="btn btn-sm btn-secondary" title="Reporte">Reporte</a> ';
+            $html .= '<a href="' . site_url('registers/pdf/' . $rid) . '" class="btn btn-sm btn-success" target="_blank" title="PDF">PDF</a> ';
+            $html .= '<button type="button" class="btn btn-sm btn-outline-danger btn-eliminar-registro" data-id="' . $rid . '" title="Eliminar"><i class="fa-solid fa-trash"></i></button>';
+            $html .= '</td>';
             $html .= '</tr>';
         }
         if (empty($registros)) {
@@ -128,11 +144,18 @@ class Registers extends SecureArea
 
         $pacienteType = $this->registerService->computePacienteType($registerInfo);
         $registerInfo->paciente = $pacienteType;
-        $pruebasInfo = $this->registerModel->getPruebasInput($registerInfo->pruebas ?? '', $pacienteType);
+        $patientGender = isset($registerInfo->gender) ? (int) $registerInfo->gender : null;
+        $matchingPoblacionIds = $this->registerService->getMatchingPoblacionIds($registerInfo->birthday ?? null, $patientGender);
+        $pruebasInfo = $this->registerModel->getPruebasInput($registerInfo->pruebas ?? '', $matchingPoblacionIds, $patientGender);
 
         $muestraModel = model(MuestraModel::class);
         $muestra = $muestraModel->getByRegistro($id);
         $tiposMuestra = $muestraModel->getTiposMuestra();
+
+        $decimalesSugerencia = (int) (model(AppConfigModel::class)->getValue('decimales_sugerencia') ?: 2);
+        $decimalesSugerencia = max(0, min(10, $decimalesSugerencia));
+
+        $analisis = $this->registerModel->getInfoAnalisis($id);
 
         return view('registers/formfill', [
             'muestra' => $muestra,
@@ -140,8 +163,10 @@ class Registers extends SecureArea
             'controller_name'   => 'registers',
             'register_info'     => $registerInfo,
             'pruebas_info'      => $pruebasInfo,
+            'analisis'          => $analisis,
             'labotests_namecate' => $id,
             'registerModel'     => $this->registerModel,
+            'decimales_sugerencia' => $decimalesSugerencia,
             'allowed_modules'   => $this->allowed_modules,
             'user_info'         => $this->user_info,
         ]);
@@ -253,6 +278,25 @@ class Registers extends SecureArea
         }
     }
 
+    public function delete($id): ResponseInterface
+    {
+        $id = (int) $id;
+        if ($id < 1) {
+            return $this->response->setJSON(['success' => false, 'message' => 'ID inválido'])->setStatusCode(400);
+        }
+        if (!$this->registerModel->existsRegistro($id)) {
+            return $this->response->setJSON(['success' => false, 'message' => 'Registro no encontrado'])->setStatusCode(404);
+        }
+        try {
+            $this->registerModel->deleteRegistro($id);
+            \App\Models\AuditoriaModel::log('registers', 'eliminar', (string) $id);
+            return $this->response->setJSON(['success' => true, 'message' => 'Registro eliminado']);
+        } catch (\Throwable $e) {
+            log_message('error', 'Registers::delete ' . $e->getMessage());
+            return $this->response->setJSON(['success' => false, 'message' => 'Error al eliminar'])->setStatusCode(500);
+        }
+    }
+
     public function crearmuestra()
     {
         $registroId = (int) ($this->request->getPost('registro_id') ?? 0);
@@ -289,6 +333,18 @@ class Registers extends SecureArea
 
         if (!is_array($data)) {
             return $this->response->setJSON(['success' => false, 'message' => 'Datos inválidos'])->setStatusCode(400);
+        }
+
+        $registroId = null;
+        foreach ($data as $item) {
+            $rid = isset($item['registro_id']) ? (int) $item['registro_id'] : 0;
+            if ($rid > 0) {
+                $registroId = $rid;
+                break;
+            }
+        }
+        if ($registroId !== null) {
+            $this->registerModel->deleteRegvaluesByRegistroId($registroId);
         }
 
         foreach ($data as $item) {
