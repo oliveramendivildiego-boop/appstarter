@@ -40,14 +40,18 @@ class ConfigService
             'default_tax_rate', 'default_tax_1_name', 'default_tax_1_rate',
             'default_tax_2_name', 'default_tax_2_rate', 'return_policy',
             'print_after_sale', 'logo', 'theme_color', 'header_brand',
+            'decimales_sugerencia',
             'custom1_name', 'custom2_name', 'custom3_name', 'custom4_name', 'custom5_name',
             'custom6_name', 'custom7_name', 'custom8_name', 'custom9_name', 'custom10_name',
         ];
 
         $batch = array_filter(
             array_intersect_key($postData, array_flip($keys)),
-            fn (mixed $v): bool => $v !== null && $v !== ''
+            fn (mixed $v, mixed $k): bool => $k === 'decimales_sugerencia' || ($v !== null && $v !== '')
         );
+        if (isset($batch['decimales_sugerencia'])) {
+            $batch['decimales_sugerencia'] = (string) max(0, min(10, (int) $batch['decimales_sugerencia']));
+        }
 
         if ($logoFile && $logoFile->isValid() && !$logoFile->hasMoved()) {
             $logoPath = $this->processLogoUpload($logoFile);

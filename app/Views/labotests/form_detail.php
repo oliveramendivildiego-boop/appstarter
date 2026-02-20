@@ -935,6 +935,7 @@ if ($fe !== '') {
             <thead>
                 <tr>
                     <th>Población</th>
+                    <th>Sexo</th>
                     <th>Valor mín</th>
                     <th>Valor máx</th>
                     <th>U. medida</th>
@@ -949,9 +950,11 @@ if ($fe !== '') {
                 foreach ($poblaciones ?? [] as $p) {
                     $pobMap[(int)$p['id_poblacion']] = $p['name'] ?? '';
                 }
+                $sexoMap = ['ambos' => 'Ambos', 'masculino' => 'Masculino', 'femenino' => 'Femenino'];
                 foreach ($priresultados ?? [] as $pr): ?>
                 <tr>
                     <td><?= esc($pobMap[(int)($pr['id_poblacion'] ?? 0)] ?? $pr['id_poblacion'] ?? '') ?></td>
+                    <td><?= esc($sexoMap[$pr['sexo'] ?? 'ambos'] ?? 'Ambos') ?></td>
                     <td><?= esc($pr['valor_min'] ?? '') ?></td>
                     <td><?= esc($pr['valor_max'] ?? '') ?></td>
                     <td><?= esc($pr['umedida'] ?? '') ?></td>
@@ -977,6 +980,14 @@ if ($fe !== '') {
                     <?php foreach ($poblaciones ?? [] as $p): ?>
                     <option value="<?= (int)$p['id_poblacion'] ?>" <?= ((int)($editar_pri_data['id_poblacion'] ?? 3) === (int)$p['id_poblacion']) ? 'selected' : '' ?>><?= esc($p['name'] ?? '') ?></option>
                     <?php endforeach; ?>
+                </select>
+            </div>
+            <div class="col-md-2 mb-2">
+                <label class="form-label">Sexo</label>
+                <select name="sexo" class="form-control form-control-sm">
+                    <option value="ambos" <?= (($editar_pri_data['sexo'] ?? 'ambos') === 'ambos') ? 'selected' : '' ?>>Ambos</option>
+                    <option value="masculino" <?= (($editar_pri_data['sexo'] ?? '') === 'masculino') ? 'selected' : '' ?>>Masculino</option>
+                    <option value="femenino" <?= (($editar_pri_data['sexo'] ?? '') === 'femenino') ? 'selected' : '' ?>>Femenino</option>
                 </select>
             </div>
             <div class="col-md-2 mb-2">

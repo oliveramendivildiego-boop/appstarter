@@ -65,7 +65,7 @@ class RegisterService
             if (!is_string($name)) {
                 continue;
             }
-            $regvalue = $prueba['regvalues'] ?? '-';
+            $regvalue = $prueba['regvalues'] ?? $prueba['value'] ?? '-';
 
             // Formato por nombre: "prianacategoria_id|nombre" (ej. 12|Eritrocitos)
             if (strpos($name, '|') !== false) {

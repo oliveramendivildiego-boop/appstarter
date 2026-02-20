@@ -69,9 +69,12 @@ class Doctors extends SecureArea
         $doctorInfo = $this->doctorModel->getInfo($doctor_id === -1 ? -1 : (int) $doctor_id);
 
         $data = [
-            'doctor_info'     => $doctorInfo,
-            'allowed_modules' => $this->allowed_modules,
-            'user_info'       => $this->user_info,
+            'doctor_info'      => $doctorInfo,
+            'allowed_modules'  => $this->allowed_modules,
+            'user_info'        => $this->user_info,
+            'extra_head_links' => [
+                '<script src="' . base_url('js/vendor/jquery.validate.min.js') . '"></script>',
+            ],
         ];
 
         return view('doctors/form', $data);

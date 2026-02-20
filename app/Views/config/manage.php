@@ -100,6 +100,13 @@
             <?= form_label(lang('Config.config_return_policy'), 'return_policy', ['class' => 'form-label']) ?>
             <?= form_textarea(['name' => 'return_policy', 'id' => 'return_policy', 'class' => 'form-control', 'rows' => 4, 'autocomplete' => 'off', 'value' => $config['return_policy'] ?? '']) ?>
         </div>
+        <div class="row">
+            <div class="col-md-6 mb-3">
+                <?= form_label(lang('Config.config_decimales_sugerencia'), 'decimales_sugerencia', ['class' => 'form-label']) ?>
+                <?= form_input(['name' => 'decimales_sugerencia', 'id' => 'decimales_sugerencia', 'type' => 'number', 'min' => 0, 'max' => 10, 'class' => 'form-control', 'value' => $config['decimales_sugerencia'] ?? '2', 'autocomplete' => 'off']) ?>
+                <small class="text-muted"><?= lang('Config.config_decimales_sugerencia_help') ?></small>
+            </div>
+        </div>
         <div class="mb-3">
             <div class="form-check">
                 <?= form_checkbox('print_after_sale', '1', ($config['print_after_sale'] ?? '') ? true : false, 'id="print_after_sale" class="form-check-input" autocomplete="off"') ?>

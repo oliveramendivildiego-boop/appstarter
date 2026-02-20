@@ -676,6 +676,10 @@ class LabotestModel extends Model
             'opcion_id'         => (int) ($data['opcion_id'] ?? 3),
             'deleted'           => 0,
         ];
+        if ($this->hasColumn('priresultados', 'sexo')) {
+            $sexo = $data['sexo'] ?? 'ambos';
+            $save['sexo'] = in_array($sexo, ['masculino', 'femenino'], true) ? $sexo : 'ambos';
+        }
         if ($id && $id > 0) {
             return $this->db->table('priresultados')->where('priresultados_id', $id)->update($save);
         }

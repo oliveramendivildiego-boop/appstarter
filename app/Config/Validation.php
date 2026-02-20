@@ -77,7 +77,7 @@ class Validation extends BaseConfig
     ];
 
     /**
-     * Reglas para formulario de doctores
+     * Reglas para formulario de doctores (todos los campos menos comentarios)
      */
     public array $doctors = [
         'name' => [
@@ -87,9 +87,30 @@ class Validation extends BaseConfig
                 'min_length' => 'El nombre debe tener al menos 2 caracteres.',
             ],
         ],
+        'phone_number' => [
+            'rules'  => 'required|max_length[50]',
+            'errors' => [
+                'required'   => 'El teléfono es obligatorio.',
+                'max_length' => 'El teléfono no puede superar 50 caracteres.',
+            ],
+        ],
         'gender' => [
             'rules'  => 'required|in_list[1,2]',
             'errors' => ['required' => 'Seleccione el género.'],
+        ],
+        'speciality' => [
+            'rules'  => 'required|max_length[255]',
+            'errors' => [
+                'required'   => 'La especialidad es obligatoria.',
+                'max_length' => 'La especialidad no puede superar 255 caracteres.',
+            ],
+        ],
+        'address' => [
+            'rules'  => 'required|max_length[255]',
+            'errors' => [
+                'required'   => 'La dirección es obligatoria.',
+                'max_length' => 'La dirección no puede superar 255 caracteres.',
+            ],
         ],
     ];
 

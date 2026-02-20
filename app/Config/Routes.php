@@ -123,9 +123,11 @@ $routes->post('customers/delete', 'Customers::delete');
 // Doctors
 $routes->get('doctors/view/(:num)', 'Doctors::view/$1');
 $routes->get('doctors/view', 'Doctors::view/-1');
+$routes->get('doctors/save/(:any)', 'Doctors::view/$1');
+$routes->get('doctors/save', 'Doctors::view/-1');
 $routes->post('doctors/search', 'Doctors::search');
 $routes->post('doctors/suggest', 'Doctors::suggest');
-$routes->post('doctors/saves/(:num)', 'Doctors::save/$1');
-$routes->post('doctors/save/(:any)', 'Doctors::save/-1');
-$routes->post('doctors/save', 'Doctors::save');
+$routes->post('doctors/saves/(:num)', 'Doctors::saves/$1');
+$routes->post('doctors/save/(:any)', 'Doctors::saves/$1');
+$routes->post('doctors/save', 'Doctors::saves');
 $routes->post('doctors/delete', 'Doctors::delete');

@@ -125,7 +125,7 @@
                                 <td><?= esc($reg->doctor ?? '-') ?></td>
                                 <td><?= !empty($reg->ingreso) ? date('d/m/Y H:i', strtotime($reg->ingreso)) : '-' ?></td>
                                 <td>
-                                    <a href="<?= site_url('registers/view/' . ($reg->registro_id ?? 0)) ?>" class="btn btn-sm btn-outline-primary">Ver</a>
+                                    <a href="<?= site_url('registers/viewreport/' . ($reg->registro_id ?? 0)) ?>" class="btn btn-sm btn-outline-primary">Ver</a>
                                 </td>
                             </tr>
                             <?php endforeach; ?>

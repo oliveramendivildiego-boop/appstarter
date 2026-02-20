@@ -62,11 +62,8 @@ document.addEventListener('DOMContentLoaded', function() {
         <span class="fw-bold">Teléfono:</span> <?= esc($paciente->phone_number ?? '') ?>
     </div>
     <div class="col-md-6">
-        <?php if (($doctor->gender ?? 0) == 1): ?>
-        <span class="fw-bold">Médico:</span> Dr. <?= esc($doctor->name ?? '') ?>
-        <?php else: ?>
-        <span class="fw-bold">Médico:</span> Dra. <?= esc($doctor->name ?? '') ?>
-        <?php endif; ?><br/>
+        <?php $tituloMedico = ((int)($doctor->gender ?? 0) === 1) ? 'Dr.' : 'Dra.'; ?>
+        <span class="fw-bold">Médico:</span> <?= $tituloMedico ?> <?= esc($doctor->name ?? '') ?><br/>
         <span class="fw-bold">Fecha:</span> <?= esc($register_info->ingreso ?? '') ?><br/>
         <span class="fw-bold">No. Orden:</span> <?= esc($register_info->registro_id ?? '') ?>
     </div>
@@ -84,26 +81,6 @@ foreach ($grupos as $padre => $items):
     echo view($viewName, ['grupos' => [$padre => $items]]);
 endforeach;
 ?>
-
-<div class="card mt-4 border-info">
-    <div class="card-header bg-info text-white py-2"><i class="fa-solid fa-stethoscope me-2"></i> Validación de resultados</div>
-    <div class="card-body py-3">
-        <?= form_open('registers/validar', ['class' => 'd-inline']) ?>
-        <input type="hidden" name="registro_id" value="<?= (int)($labotests_namecate ?? 0) ?>">
-        <div class="row align-items-end g-2">
-            <div class="col-auto">
-                <button type="submit" name="tipo" value="tecnico" class="btn btn-outline-primary btn-sm">Validar técnico</button>
-            </div>
-            <div class="col-auto">
-                <button type="submit" name="tipo" value="medico" class="btn btn-outline-success btn-sm">Validar médico</button>
-            </div>
-            <div class="col-md-4">
-                <input type="text" name="observaciones" class="form-control form-control-sm" placeholder="Observaciones clínicas">
-            </div>
-        </div>
-        <?= form_close() ?>
-    </div>
-</div>
 
 <div class="text-center mt-3">
     <button id="guardaranalisis" name="guardaranalisis" class="btn btn-primary">Guardar</button>

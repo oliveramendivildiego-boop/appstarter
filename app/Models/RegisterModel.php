@@ -37,6 +37,16 @@ class RegisterModel extends Model
             ->countAllResults() === 1;
     }
 
+    /**
+     * Elimina todos los regvalues de un registro (antes de guardar los nuevos desde formfill).
+     */
+    public function deleteRegvaluesByRegistroId(int $registroId): bool
+    {
+        return $this->db->table('regvalues')
+            ->where('registro_id', $registroId)
+            ->delete() !== false;
+    }
+
     public function existsAnalisis(int $id): bool
     {
         return $this->db->table('resulanalisis')
@@ -170,11 +180,14 @@ class RegisterModel extends Model
             ->getRow();
     }
 
+    /**
+     * Obtiene la fila del registro (para reporte: person_id, doctor_id, ingreso).
+     * No hace JOIN con regvalues para que el reporte muestre paciente/doctor aunque aún no haya valores guardados.
+     */
     public function getInforeport(int $id)
     {
         return $this->db->table('registro')
-            ->join('regvalues', 'regvalues.registro_id = registro.registro_id')
-            ->where('registro.registro_id', $id)
+            ->where('registro_id', $id)
             ->get()
             ->getRow();
     }
@@ -360,8 +373,9 @@ class RegisterModel extends Model
 
     /**
      * Obtiene pruebas con sus inputs para el formfill
+     * @param int|null $gender Género del paciente (1=masculino, 2=femenino) para filtrar por sexo en priresultados
      */
-    public function getPruebasInput(string $valores, int $paciente): array
+    public function getPruebasInput(string $valores, int $paciente, ?int $gender = null): array
     {
         $parts = explode(',', $valores);
         $ids = [];
@@ -379,12 +393,18 @@ class RegisterModel extends Model
         $ac = $this->db->prefixTable('anacategoria');
         $pr = $this->db->prefixTable('priresultados');
 
+        $sexoCond = '';
+        if ($gender !== null && ($gender === 1 || $gender === 2) && $this->hasColumn('priresultados', 'sexo')) {
+            $sexoVal = $gender === 1 ? 'masculino' : 'femenino';
+            $sexoCond = " AND (pr.sexo = 'ambos' OR pr.sexo = '" . $this->db->escape($sexoVal) . "')";
+        }
+
         $sql = "SELECT pt.name as hijo, pt.compleja, pt.prianacategoria_id, ac.name as padre,
                 pr.opcion_id, pr.priresultados_id, pr.id_poblacion, pr.valor_min, pr.valor_max, pr.umedida
                 FROM {$pt} pt
                 LEFT JOIN {$ac} ac ON ac.anacategoria_id = pt.anacategoria_id
                 LEFT JOIN {$pr} pr ON pr.prianacategoria_id = pt.prianacategoria_id
-                    AND pt.compleja = 0 AND (pr.deleted = 0 OR pr.deleted IS NULL) AND (pr.id_poblacion = 3 OR pr.id_poblacion = ?)
+                    AND pt.compleja = 0 AND (pr.deleted = 0 OR pr.deleted IS NULL) AND (pr.id_poblacion = 3 OR pr.id_poblacion = ?){$sexoCond}
                 WHERE (pt.deleted = 0 OR pt.deleted IS NULL)
                 AND (ac.deleted = 0 OR ac.deleted IS NULL)
                 AND pt.prianacategoria_id IN (" . implode(',', array_map('intval', $ids)) . ")
@@ -403,25 +423,47 @@ class RegisterModel extends Model
     public function getOpciones(int $id): array
     {
         $row = $this->db->table('opciones')
-            ->select('tabla')
+            ->select('tabla, opciones')
             ->where('opciones_id', $id)
             ->get()
             ->getRow();
         if (!$row) {
             return [];
         }
-        return $this->getOpcionesValores($row->tabla);
+        $opcionesName = trim($row->opciones ?? '');
+        $tabla = trim($row->tabla ?? '');
+        $options = [];
+        if ($tabla !== '') {
+            $options = $this->getOpcionesValores($tabla);
+        }
+        if (empty($options)) {
+            if (stripos($opcionesName, 'positivo') !== false) {
+                return ['Positivo' => 'Positivo', 'Negativo' => 'Negativo'];
+            }
+            if (stripos($opcionesName, 'reactivo') !== false) {
+                $fromTable = $this->getOpcionesValores('opcion_reactivo');
+                return !empty($fromTable) ? $fromTable : ['Reactivo' => 'Reactivo', 'No reactivo' => 'No reactivo'];
+            }
+        }
+        return $options;
     }
 
     private function getOpcionesValores(string $nombreTabla): array
     {
-        $rows = $this->db->table($nombreTabla)->get()->getResult();
-        $options = [];
-        foreach ($rows as $r) {
-            $v = $r->{$nombreTabla} ?? '';
-            $options[$v] = $v;
+        try {
+            $rows = $this->db->table($nombreTabla)->get()->getResult();
+            $options = [];
+            $colName = $nombreTabla;
+            foreach ($rows as $r) {
+                $v = $r->{$colName} ?? '';
+                if ($v !== '') {
+                    $options[$v] = $v;
+                }
+            }
+            return $options;
+        } catch (\Throwable $e) {
+            return [];
         }
-        return $options;
     }
 
     public function searchPaciente(string $search, int $limit = 25): array

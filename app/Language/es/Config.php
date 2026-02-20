@@ -19,6 +19,8 @@ return [
     'config_currency_symbol'=> 'Símbolo de moneda',
     'config_return_policy'  => 'Política de devolución',
     'config_print_after_sale'=> 'Imprimir después de venta',
+    'config_decimales_sugerencia' => 'Decimales en sugerencias (registros)',
+    'config_decimales_sugerencia_help' => 'Cantidad de decimales al mostrar el valor calculado en las sugerencias del formulario de registro (0-10).',
     'config_saved'          => 'Configuración guardada correctamente',
     'config_error'          => 'Error al guardar',
     'config_save_btn'       => 'Guardar',

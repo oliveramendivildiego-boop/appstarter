@@ -1,43 +1,30 @@
-<?= view('partial/header', ['allowed_modules' => $allowed_modules ?? [], 'user_info' => $user_info ?? null, 'current_module' => 'doctors']) ?>
-<script type='text/javascript'>
-
-//validation and submit handling
-$(document).ready(function()
-{
-  ///////////////////////////validar formulario
-  
-$("#customer_form").validate({
-    rules: {
-      name: { required: true, minlength: 2 },
-	  gender: { required: true }
-    },
-    messages: {
-      name: {
-        required: "Por favor ingrese su nombre(s) y apellido(s)",
-        minlength: "El nombre debe tener al menos 2 caracteres"
-      },
-	  gender: {
-      required: "Seleccione su género"
-      },
-    },
-    errorClass: "is-invalid text-danger small",
-    validClass: "is-valid",
-    errorElement: "div",
-    highlight: function(element) {
-      $(element).addClass("is-invalid").removeClass("is-valid");
-    },
-    unhighlight: function(element) {
-      $(element).removeClass("is-invalid").addClass("is-valid");
-    },
-    errorPlacement: function(error, element) {
-      if (element.parent(".input-group").length) {
-        error.insertAfter(element.parent());
-      } else {
-        error.insertAfter(element);
-      }
-    }
-  });
-  
+<?= view('partial/header', ['allowed_modules' => $allowed_modules ?? [], 'user_info' => $user_info ?? null, 'current_module' => 'doctors', 'extra_head_links' => $extra_head_links ?? []]) ?>
+<script type="text/javascript">
+$(document).ready(function() {
+    $("#customer_form").validate({
+        rules: {
+            name: { required: true, minlength: 2 },
+            phone_number: { required: true, maxlength: 50 },
+            gender: { required: true },
+            speciality: { required: true, maxlength: 255 },
+            address: { required: true, maxlength: 255 }
+        },
+        messages: {
+            name: { required: "Por favor ingrese nombre(s) y apellido(s)", minlength: "El nombre debe tener al menos 2 caracteres" },
+            phone_number: { required: "El teléfono es obligatorio" },
+            gender: { required: "Seleccione su género" },
+            speciality: { required: "La especialidad es obligatoria" },
+            address: { required: "La dirección es obligatoria" }
+        },
+        errorClass: "invalid-feedback",
+        errorElement: "div",
+        highlight: function(el) { $(el).addClass("is-invalid"); },
+        unhighlight: function(el) { $(el).removeClass("is-invalid"); },
+        errorPlacement: function(error, element) {
+            error.addClass("invalid-feedback d-block");
+            element.after(error);
+        }
+    });
 });
 </script>
 <?php
@@ -49,8 +36,17 @@ $dmRight = ($doctor_info->doctor_id ?? 0)
     : '';
 ?>
 <?= view('partial/breadcrumb_nav', ['items' => $dmItems, 'right' => $dmRight]) ?>
+<div id="title_bar">
+    <div id="title" class="float-start"><?= lang('Doctors.doctors_basic_information') ?></div>
+</div>
+<div id="required_fields_message"><?= lang('Common.common_fields_required_message') ?></div>
+<?php if (session()->getFlashdata('error')): ?>
+<div class="alert alert-danger"><?= esc(session()->getFlashdata('error')) ?></div>
+<?php endif; ?>
 <?php
-echo form_open('doctors/save/'.$doctor_info->doctor_id,array('id'=>'customer_form','data-async'=>'1'));
+$saveId = isset($doctor_info->doctor_id) && $doctor_info->doctor_id !== '' && $doctor_info->doctor_id !== null ? $doctor_info->doctor_id : -1;
+echo form_open(site_url('doctors/save/' . $saveId), ['id' => 'customer_form', 'data-async' => '1', 'method' => 'post']);
+echo csrf_field();
 ?>
 <fieldset id="customer_basic_info">
 
@@ -59,12 +55,7 @@ echo form_open('doctors/save/'.$doctor_info->doctor_id,array('id'=>'customer_for
 </fieldset>
 <div class="submit_content">
 <?php
-echo form_submit(array(
-	'name'=>'submit',
-	'id'=>'submit',
-	'value'=>lang('Common.common_submit'),
-	'class'=>'btn btn-primary')
-);
+echo form_submit(['name' => 'submit', 'id' => 'submit', 'value' => lang('Common.common_submit'), 'class' => 'btn btn-primary submit_button']);
 ?>
 </div>
 <?php 

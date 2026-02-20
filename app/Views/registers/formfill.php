@@ -4,9 +4,18 @@
 .badge-calculada { background-color: var(--badge-calculada-bg, #6c757d); color: var(--badge-calculada-color, #fff); }
 .sugerencia-calculada { cursor: pointer; }
 .sugerencia-calculada:hover { text-decoration: underline; }
+.input-sugerencia-aplicada { border-color: var(--bs-success, #198754) !important; box-shadow: 0 0 0 0.2rem rgba(25, 135, 84, 0.25); }
 </style>
 <script>
 document.addEventListener('DOMContentLoaded', function() {
+    var decimalesSugerencia = <?= json_encode(max(0, min(10, (int)($decimales_sugerencia ?? 2)))) ?>;
+    function formatearSugerencia(val) {
+        if (val === '' || val == null) return '';
+        var n = parseFloat(String(val).replace(',', '.'));
+        if (isNaN(n)) return val;
+        if (n === Math.round(n)) return String(Math.round(n));
+        return decimalesSugerencia === 0 ? String(Math.round(n)) : n.toFixed(decimalesSugerencia);
+    }
     function buscarInputPorPrueba(nombre, formOrDoc) {
         var root = formOrDoc && formOrDoc.nodeType === 9 ? formOrDoc : (formOrDoc || document);
         var key = (nombre || '').trim().toLowerCase();
@@ -80,10 +89,11 @@ document.addEventListener('DOMContentLoaded', function() {
             var valorSugerido = '';
             if (f) valorSugerido = evaluarFormulaPorNombres(f, el);
             if (valorSugerido === '' && f) valorSugerido = evaluarFormula(f);
+            var valorMostrar = valorSugerido !== '' ? formatearSugerencia(valorSugerido) : '';
             var spanSug = document.querySelector('[data-sugerencia-for="' + el.id + '"]');
             if (spanSug) {
-                spanSug.textContent = valorSugerido !== '' ? 'Sugerencia: ' + valorSugerido : 'Sugerencia: —';
-                spanSug.setAttribute('data-valor', valorSugerido);
+                spanSug.textContent = valorMostrar !== '' ? 'Sugerencia: ' + valorMostrar : 'Sugerencia: —';
+                spanSug.setAttribute('data-valor', valorMostrar);
             }
             validarInputAlEscribir(el);
         });
@@ -135,6 +145,9 @@ document.addEventListener('DOMContentLoaded', function() {
                 if (msgEl) { msgEl.textContent = ''; msgEl.innerHTML = ''; }
                 actualizarCalculadas();
                 validarInputAlEscribir(inp);
+                sug.textContent = 'Sugerencia: —';
+                sug.removeAttribute('data-valor');
+                inp.classList.add('input-sugerencia-aplicada');
             }
         }
     });
@@ -200,15 +213,25 @@ document.addEventListener('DOMContentLoaded', function() {
             var id = (priId && nombrePrueba) ? (priId + '|' + nombrePrueba) : el.id;
             datos.push({ id: id, valor: valor, registro_id: registroId });
         });
+        var csrfName = (typeof window.CI_CSRF_TOKEN_NAME !== 'undefined' ? window.CI_CSRF_TOKEN_NAME : null) || (document.querySelector('meta[name="csrf-token-name"]') && document.querySelector('meta[name="csrf-token-name"]').getAttribute('content'));
+        var csrfVal = (typeof window.CI_CSRF_TOKEN !== 'undefined' ? window.CI_CSRF_TOKEN : null) || (document.querySelector('meta[name="csrf-token"]') && document.querySelector('meta[name="csrf-token"]').getAttribute('content'));
+        var body = 'data=' + encodeURIComponent(JSON.stringify(datos));
+        if (csrfName && csrfVal) body += '&' + encodeURIComponent(csrfName) + '=' + encodeURIComponent(csrfVal);
+        var headers = { 'Content-Type': 'application/x-www-form-urlencoded', 'X-Requested-With': 'XMLHttpRequest' };
+        if (csrfVal) headers['X-CSRF-TOKEN'] = csrfVal;
         fetch('<?= site_url('registers/saveregvalues') ?>', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'X-Requested-With': 'XMLHttpRequest' },
-            body: 'data=' + encodeURIComponent(JSON.stringify(datos))
+            headers: headers,
+            body: body
         })
         .then(function(r) { return r.json(); })
         .then(function(res) {
-            var rid = document.getElementById('registro_id').value;
-            window.location.href = '<?= site_url('registers/viewreport') ?>/' + rid;
+            if (res && res.success) {
+                var rid = document.getElementById('registro_id').value;
+                window.location.href = '<?= site_url('registers/viewreport') ?>/' + rid;
+            } else {
+                alert(res && res.message ? res.message : 'Error al guardar');
+            }
         })
         .catch(function() { alert('Error al guardar'); });
     });
