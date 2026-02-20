@@ -77,7 +77,7 @@ class Doctors extends SecureArea
         return view('doctors/form', $data);
     }
 
-    public function save($doctor_id = -1)
+    public function saves($doctor_id = -1)
     {
         $validation = \Config\Services::validation();
         $validation->setRules(config('Validation')->doctors ?? []);
