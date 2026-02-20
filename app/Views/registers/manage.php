@@ -5,7 +5,7 @@ document.addEventListener('DOMContentLoaded', function() {
     var pruebaListDropdown = document.getElementById('prueba_list');
     var pruebaListaContainer = document.getElementById('pruebas_lista');
     var guardarBtn = document.getElementById('guardar');
-    var pruebasSeleccionadas = []; // {id, name, cost}
+    var pruebasSeleccionadas = []; // {id, name, padre, cost}
 
     function recalcular() {
         var totalCost = 0;
@@ -24,7 +24,9 @@ document.addEventListener('DOMContentLoaded', function() {
                 var row = document.createElement('div');
                 row.className = 'd-flex align-items-center justify-content-between py-2 border-bottom pruebaitem';
                 row.dataset.id = p.id;
-                row.innerHTML = '<span class="flex-grow-1">' + (p.name || '') + '</span>' +
+                var displayName = (p.name || '');
+                if (p.padre) displayName += ' <span class="text-muted small">(' + p.padre + ')</span>';
+                row.innerHTML = '<span class="flex-grow-1">' + displayName + '</span>' +
                     '<span class="badge bg-secondary me-2">' + (p.cost || 0) + ' Bs</span>' +
                     '<button type="button" class="btn btn-outline-danger btn-sm quitar-prueba" data-idx="' + idx + '" title="Eliminar"><i class="fa-solid fa-times"></i></button>';
                 pruebaListaContainer.appendChild(row);
@@ -39,6 +41,7 @@ document.addEventListener('DOMContentLoaded', function() {
         pruebasSeleccionadas.push({
             id: item.data,
             name: item.value || '',
+            padre: item.padre || '',
             cost: parseFloat(item.cost || 0)
         });
         renderPruebasLista();
@@ -84,11 +87,19 @@ document.addEventListener('DOMContentLoaded', function() {
                 pruebas: pruebasStr,
                 prioridad: prioridad
             };
+            var tipopagoVal = (document.getElementById('tipopago') || {}).value || '';
+            var esPendiente = tipopagoVal === '4';
+            var montoPagarRaw = ((document.getElementById('monto_pagar') || {}).value || '').trim();
+            var totalNum = parseFloat((document.getElementById('total') || {}).value || 0);
+            var saldoEl = document.getElementById('saldo');
+            if (esPendiente && montoPagarRaw === '') {
+                if (saldoEl) saldoEl.value = (!isNaN(totalNum) ? (totalNum - 0).toFixed(2) : '');
+            }
             var pagosData = {
                 total_reco: (document.getElementById('total_reco') || {}).value || '',
                 total: (document.getElementById('total') || {}).value || '',
-                monto_pagar: (document.getElementById('monto_pagar') || {}).value || '',
-                tipopago: (document.getElementById('tipopago') || {}).value || '',
+                monto_pagar: esPendiente && montoPagarRaw === '' ? '0' : (document.getElementById('monto_pagar') || {}).value || '',
+                tipopago: tipopagoVal,
                 saldo: (document.getElementById('saldo') || {}).value || '',
                 comentarios: (document.getElementById('comentarios') || {}).value || ''
             };
@@ -113,9 +124,11 @@ document.addEventListener('DOMContentLoaded', function() {
                 var tot = document.getElementById('total');
                 mostrarError(tot, 'Total es obligatorio.'); primero = primero || tot;
             }
-            if (!pagosData.monto_pagar || isNaN(parseFloat(pagosData.monto_pagar))) {
-                var mp = document.getElementById('monto_pagar');
-                mostrarError(mp, 'Monto a pagar es obligatorio.'); primero = primero || mp;
+            if (!esPendiente) {
+                if (!pagosData.monto_pagar || isNaN(parseFloat(pagosData.monto_pagar))) {
+                    var mp = document.getElementById('monto_pagar');
+                    mostrarError(mp, 'Monto a pagar es obligatorio.'); primero = primero || mp;
+                }
             }
             if (!pagosData.tipopago) {
                 var tp = document.getElementById('tipopago');
@@ -170,7 +183,7 @@ document.addEventListener('DOMContentLoaded', function() {
             var ids = pruebasStr.split(',').map(function(x) { return String(parseInt(x, 10)); }).filter(function(x) { return x !== 'NaN'; });
             ids.forEach(function(id) {
                 var info = window.PRUEBAS_LOOKUP[id];
-                if (info) agregarPrueba({ value: info.name, data: id, cost: info.cost });
+                if (info) agregarPrueba({ value: info.name, padre: info.padre, data: id, cost: info.cost });
             });
         });
     }
@@ -215,7 +228,9 @@ document.addEventListener('DOMContentLoaded', function() {
                         var li = document.createElement('div');
                         li.className = 'list-group-item list-group-item-action';
                         li.style.cursor = 'pointer';
-                        li.innerHTML = item.value + ' <span class="badge bg-secondary float-end">' + (item.cost || 0) + ' Bs</span>';
+                        var label = item.value;
+                        if (item.padre) label += ' <span class="text-muted small">(' + item.padre + ')</span>';
+                        li.innerHTML = label + ' <span class="badge bg-secondary float-end">' + (item.cost || 0) + ' Bs</span>';
                         li.addEventListener('click', function() {
                             agregarPrueba(item);
                             searchInput.value = '';
@@ -239,8 +254,13 @@ document.addEventListener('DOMContentLoaded', function() {
 <?php
 $pruebasLookup = [];
 foreach ($categories ?? [] as $cat) {
+    $padreName = $cat['name'] ?? '';
     foreach ($cat['items'] ?? [] as $item) {
-        $pruebasLookup[(string)($item['id'] ?? '')] = ['name' => $item['name'] ?? '', 'cost' => (float)($item['cost'] ?? 0)];
+        $pruebasLookup[(string)($item['id'] ?? '')] = [
+            'name' => $item['name'] ?? '',
+            'padre' => $padreName,
+            'cost' => (float)($item['cost'] ?? 0)
+        ];
     }
 }
 ?>

@@ -60,7 +60,7 @@
                                 <td><?= esc($r->doctor ?? '-') ?></td>
                                 <td><?= esc($r->total ?? '-') ?></td>
                                 <td class="text-center">
-                                    <a href="<?= site_url('registers/viewreport/' . ($r->registro_id ?? '')) ?>" class="btn btn-sm btn-primary" title="Ver reporte">
+                                    <a href="<?= site_url('registers/viewreport/' . ($r->registro_id ?? '')) ?>" class="btn btn-sm btn-primary" target="_blank" title="Ver reporte">
                                         <i class="fa-solid fa-file-lines"></i>
                                     </a>
                                     <a href="<?= site_url('registers/pdf/' . ($r->registro_id ?? '')) ?>" class="btn btn-sm btn-success" target="_blank" title="Descargar PDF">
@@ -93,7 +93,7 @@
                         Orden #<?= esc($ant->registro_id) ?> - <?= esc(date('d/m/Y', strtotime($ant->ingreso ?? 'now'))) ?>
                     </span>
                     <span>
-                        <a href="<?= site_url('registers/viewreport/' . ($ant->registro_id ?? '')) ?>" class="btn btn-sm btn-outline-primary">Ver</a>
+                        <a href="<?= site_url('registers/viewreport/' . ($ant->registro_id ?? '')) ?>" class="btn btn-sm btn-outline-primary" target="_blank">Ver</a>
                         <a href="<?= site_url('registers/pdf/' . ($ant->registro_id ?? '')) ?>" class="btn btn-sm btn-outline-success" target="_blank">PDF</a>
                     </span>
                 </li>

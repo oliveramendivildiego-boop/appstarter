@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\AppConfigModel;
+use App\Models\PoblacionModel;
 use App\Models\RegisterModel;
 
 /**
@@ -18,6 +19,105 @@ class RegisterService
     {
         $this->registerModel  = $registerModel ?? model(RegisterModel::class);
         $this->appConfigModel = $appConfigModel ?? model(AppConfigModel::class);
+    }
+
+    /**
+     * Obtiene los id_poblacion que coinciden con el paciente según configuración (edad) y sexo.
+     * Usa edad_min, edad_max, unidad de la tabla poblacion; si no hay rango, usa lógica legacy.
+     * @param string|null $birthday Fecha nacimiento (Y-m-d)
+     * @param int|null $gender 1=masculino, 2=femenino
+     * @return int[] ids de poblacion que aplican al paciente
+     */
+    public function getMatchingPoblacionIds(?string $birthday, ?int $gender): array
+    {
+        try {
+            $poblacionModel = model(PoblacionModel::class);
+            $poblaciones    = $poblacionModel->getAll();
+        } catch (\Throwable $e) {
+            return [3];
+        }
+        $matching        = [];
+
+        $edadEnDias = null;
+        $edadEnMeses = null;
+        $edadEnAnios = null;
+        if ($birthday) {
+            try {
+                $fechaNac = new \DateTime($birthday);
+                $hoy      = new \DateTime();
+                $diff     = $hoy->diff($fechaNac);
+                $edadEnDias  = $diff->days;
+                $edadEnMeses = $diff->y * 12 + $diff->m + $diff->d / 30.0;
+                $edadEnAnios = $diff->y + $diff->m / 12.0 + $diff->d / 365.0;
+            } catch (\Throwable $e) {
+                $birthday = null;
+            }
+        }
+
+        foreach ($poblaciones as $p) {
+            $id   = (int) ($p['id_poblacion'] ?? 0);
+            $min  = (isset($p['edad_min']) && $p['edad_min'] !== '' && $p['edad_min'] !== null) ? (float) $p['edad_min'] : null;
+            $max  = (isset($p['edad_max']) && $p['edad_max'] !== '' && $p['edad_max'] !== null) ? (float) $p['edad_max'] : null;
+            $unidad = $p['unidad'] ?? null;
+            if ($unidad !== null && $unidad !== '') {
+                $unidad = strtolower($unidad);
+            } else {
+                $unidad = null;
+            }
+
+            $tieneRangoEdad = ($min !== null || $max !== null) && $unidad !== null;
+
+            if (!$tieneRangoEdad) {
+                if ($id === 3) {
+                    $matching[] = $id;
+                } elseif ($id === 1 && $gender === 1) {
+                    $matching[] = $id;
+                } elseif ($id === 2 && $gender === 2) {
+                    $matching[] = $id;
+                } elseif (in_array($id, [0, 4, 5], true)) {
+                    $legacyType = $this->computePacienteType((object)['birthday' => $birthday, 'gender' => $gender ?? 0]);
+                    if ($legacyType === $id) {
+                        $matching[] = $id;
+                    }
+                } else {
+                    $matching[] = $id;
+                }
+                continue;
+            }
+
+            if (!$birthday) {
+                continue;
+            }
+
+            $edadPaciente = null;
+            if ($unidad === 'dias') {
+                $edadPaciente = $edadEnDias;
+            } elseif ($unidad === 'meses') {
+                $edadPaciente = $edadEnMeses;
+            } else {
+                $edadPaciente = $edadEnAnios;
+            }
+
+            if ($edadPaciente === null) {
+                continue;
+            }
+
+            $cumpleMin = ($min === null) || ($edadPaciente >= $min);
+            $cumpleMax = ($max === null) || ($edadPaciente <= $max);
+            if ($cumpleMin && $cumpleMax) {
+                $matching[] = $id;
+            }
+        }
+
+        $matching = array_unique($matching);
+        if (empty($matching)) {
+            return [3];
+        }
+        $result = array_values($matching);
+        if (!in_array(3, $result, true)) {
+            $result[] = 3;
+        }
+        return $result;
     }
 
     /**

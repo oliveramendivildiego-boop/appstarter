@@ -80,14 +80,22 @@
     </div>
 
 <?php foreach ($grupos ?? [] as $padre => $items): ?>
+    <?php
+    $hasUnidad = false;
+    $hasRango = false;
+    foreach ($items as $it) {
+        if (trim($it->umedida ?? '') !== '') $hasUnidad = true;
+        if (trim($it->valor_min ?? '') !== '' || trim($it->valor_max ?? '') !== '') $hasRango = true;
+    }
+    ?>
     <div class="group-title"><?= esc($padre) ?> - <?= esc($items[0]->hijo ?? '') ?></div>
     <table class="results">
         <thead>
             <tr>
                 <th>ANÁLISIS</th>
                 <th style="text-align:center">RESULTADO</th>
-                <th style="text-align:center">UNID</th>
-                <th style="text-align:center">RANGO REFERENCIAL</th>
+                <?php if ($hasUnidad): ?><th style="text-align:center">UNID</th><?php endif; ?>
+                <?php if ($hasRango): ?><th style="text-align:center">RANGO REFERENCIAL</th><?php endif; ?>
             </tr>
         </thead>
         <tbody>
@@ -97,7 +105,10 @@
                 $min = $item->valor_min ?? '';
                 $max = $item->valor_max ?? '';
                 $isOut = false;
-                if ($valor !== '-' && $valor !== '' && is_numeric($valor) && $min !== '' && $max !== '') {
+                $valNorm = is_string($valor) ? trim(strtolower($valor)) : '';
+                if (in_array($valNorm, ['positivo', 'reactivo'], true)) {
+                    $isOut = true;
+                } elseif ($valor !== '-' && $valor !== '' && is_numeric($valor) && $min !== '' && $max !== '') {
                     $v = (float) $valor;
                     $mn = (float) $min;
                     $mx = (float) $max;
@@ -109,8 +120,8 @@
                 <tr>
                     <td><?= esc($item->nombre ?? '') ?></td>
                     <td style="text-align:center" class="<?= $isOut ? 'out-range' : '' ?>"><?= esc($valor) ?></td>
-                    <td style="text-align:center"><?= esc($item->umedida ?? '') ?></td>
-                    <td style="text-align:center" class="ref-range"><?= esc($refRange) ?></td>
+                    <?php if ($hasUnidad): ?><td style="text-align:center"><?= esc($item->umedida ?? '') ?></td><?php endif; ?>
+                    <?php if ($hasRango): ?><td style="text-align:center" class="ref-range"><?= esc($refRange) ?></td><?php endif; ?>
                 </tr>
             <?php endforeach; ?>
         </tbody>

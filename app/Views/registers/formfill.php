@@ -276,12 +276,29 @@ if (!empty($muestra)): ?>
 <?php
 $registerModel = $registerModel ?? null;
 $last_padre = '';
+$existentes = [];
+foreach ($analisis ?? [] as $row) {
+    $n = $row['name'] ?? null;
+    if ($n !== null && $n !== '') {
+        $existentes[$n] = $row['regvalues'] ?? '';
+    }
+}
 if (empty($pruebas_info)):
 ?>
 <div class="alert alert-warning">No hay pruebas para completar en este registro. Verifique que se hayan seleccionado pruebas al crear la orden. <a href="<?= site_url('registers') ?>">Volver a registros</a></div>
 <?php
 else:
 foreach ($pruebas_info ?? [] as $prueba):
+    $mostrarPrueba = true;
+    if (($prueba['compleja'] ?? 0) == 1) {
+        $prianacategoriaIdTmp = (int)($prueba['prianacategoria_id'] ?? 0);
+        $valoresTmp = $registerModel && isset($register_info->paciente)
+            ? $registerModel->getValoresComplejaSiempre($prianacategoriaIdTmp, (int)$register_info->paciente, isset($register_info->gender) ? (int)$register_info->gender : null)
+            : [];
+        if (empty($valoresTmp)) $mostrarPrueba = false;
+    }
+    if (!$mostrarPrueba) continue;
+
     if (($prueba['padre'] ?? '') != $last_padre):
         if ($last_padre !== '') echo '</div>';
         echo '<div class="row mb-3"><div class="col-12"><strong class="text-uppercase">' . esc($prueba['padre'] ?? '') . '</strong></div>';
@@ -289,7 +306,7 @@ foreach ($pruebas_info ?? [] as $prueba):
     endif;
 
     if (($prueba['compleja'] ?? 0) == 0):
-        if (($prueba['opcion_id'] ?? '') != 3 && ($prueba['opcion_id'] ?? '') != ''):
+        if (($prueba['opcion_id'] ?? '') != 3 && ($prueba['opcion_id'] ?? '') != '' && (int)($prueba['opcion_id'] ?? 0) > 0):
             $pMin = trim($prueba['valor_min'] ?? ''); $pMax = trim($prueba['valor_max'] ?? ''); $pUmed = trim($prueba['umedida'] ?? '');
             $pRef = ($pMin !== '' || $pMax !== '') ? ' <small class="text-muted">(Ref: ' . ($pMin ?: '…') . ' - ' . ($pMax ?: '…') . ($pUmed ? ' ' . $pUmed : '') . ')</small>' : '';
             $valores = $registerModel ? $registerModel->getOpciones((int)$prueba['opcion_id']) : [];
@@ -298,15 +315,17 @@ foreach ($pruebas_info ?? [] as $prueba):
             echo '<label for="' . esc($nocId) . '" class="form-label">' . esc($prueba['hijo'] ?? '') . $pRef . ':</label>';
             $extra = 'id="' . esc($nocId) . '" class="form-control input-con-ref"';
             if ($pMin !== '') $extra .= ' data-min="' . esc($pMin) . '"'; if ($pMax !== '') $extra .= ' data-max="' . esc($pMax) . '"';
-            echo build_select($nocId, $valores, '', $extra);
+            echo build_select($nocId, $valores, $existentes[$nocId] ?? '', $extra);
             echo '<span class="invalid-feedback d-block" data-msg-for="' . esc($nocId) . '"></span></div></div>';
         elseif (($prueba['opcion_id'] ?? '') == 3):
             $rid = $prueba['priresultados_id'] ?? $prueba['prianacategoria_id'] ?? '';
             $pMin = trim($prueba['valor_min'] ?? ''); $pMax = trim($prueba['valor_max'] ?? ''); $pUmed = trim($prueba['umedida'] ?? '');
             $pRef = ($pMin !== '' || $pMax !== '') ? ' <small class="text-muted">(Ref: ' . ($pMin ?: '…') . ' - ' . ($pMax ?: '…') . ($pUmed ? ' ' . $pUmed : '') . ')</small>' : '';
             echo '<div class="col-md-6 mb-3"><div class="mb-3">';
-            echo '<label for="noc_' . esc($rid) . '" class="form-label">' . esc($prueba['hijo'] ?? '') . $pRef . ':</label>';
-            $attrs = 'name="noc_' . esc($rid) . '" id="noc_' . esc($rid) . '" class="form-control input-con-ref" value=""';
+            $nocRid = 'noc_' . esc($rid);
+            echo '<label for="' . $nocRid . '" class="form-label">' . esc($prueba['hijo'] ?? '') . $pRef . ':</label>';
+            $valRid = $existentes['noc_' . $rid] ?? '';
+            $attrs = 'name="noc_' . esc($rid) . '" id="noc_' . esc($rid) . '" class="form-control input-con-ref" value="' . esc($valRid) . '"';
             if ($pMin !== '') $attrs .= ' data-min="' . esc($pMin) . '"'; if ($pMax !== '') $attrs .= ' data-max="' . esc($pMax) . '"';
             echo '<input type="text" ' . $attrs . '><span class="invalid-feedback d-block" data-msg-for="noc_' . esc($rid) . '"></span>';
             echo '</div></div>';
@@ -323,9 +342,7 @@ foreach ($pruebas_info ?? [] as $prueba):
         endif;
     else:
         $prianacategoriaId = (int)($prueba['prianacategoria_id'] ?? 0);
-        $valores = $registerModel && isset($register_info->paciente)
-            ? $registerModel->getValoresComplejaSiempre($prianacategoriaId, (int)$register_info->paciente, isset($register_info->gender) ? (int)$register_info->gender : null)
-            : [];
+        $valores = $valoresTmp;
         $nombreToCid = [];
         foreach ($valores as $vv) {
             $nom = trim($vv['nombre'] ?? '');

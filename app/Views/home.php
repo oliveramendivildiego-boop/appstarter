@@ -102,7 +102,7 @@
         <div class="card border-0 shadow-sm">
             <div class="card-header bg-transparent border-0 py-3 d-flex justify-content-between align-items-center">
                 <h5 class="card-title mb-0"><i class="fa-solid fa-clock-rotate-left me-2"></i>Registros recientes</h5>
-                <a href="<?= site_url('registers') ?>" class="btn btn-sm btn-outline-primary">Ver todos</a>
+                <a href="<?= site_url('registers/lista') ?>" class="btn btn-sm btn-outline-primary">Ver todos</a>
             </div>
             <div class="card-body p-0">
                 <?php if (!empty($recent_registers)): ?>

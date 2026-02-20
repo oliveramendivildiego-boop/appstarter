@@ -42,12 +42,24 @@ foreach ($allowed_modules ?? [] as $m) {
         <?php foreach ($allowed_modules ?? [] as $module): ?>
         <?php if (($module->module_id ?? '') === 'config') continue; ?>
         <?php $icon = $icons[$module->module_id] ?? 'fa-circle'; ?>
+        <?php if (($module->module_id ?? '') === 'registers'): ?>
+        <li class="nav-item">
+          <a class="nav-link d-flex align-items-center gap-2 <?= in_array($current, ['registers', 'recepcion']) ? 'active' : '' ?>" href="<?= site_url('registers/lista') ?>">
+            <i class="fa-solid <?= $icon ?>"></i>
+            <?= lang('Module.module_' . $module->module_id) ?>
+          </a>
+          <ul class="nav flex-column ps-3 pb-1">
+            <li class="nav-item"><a class="nav-link py-1 small d-flex align-items-center gap-2" href="<?= site_url('registers') ?>"><i class="fa-solid fa-plus"></i> Nuevo registro</a></li>
+          </ul>
+        </li>
+        <?php else: ?>
         <li class="nav-item">
           <a class="nav-link d-flex align-items-center gap-2 <?= $current === $module->module_id ? 'active' : '' ?>" href="<?= site_url($module->module_id) ?>">
             <i class="fa-solid <?= $icon ?>"></i>
             <?= lang('Module.module_' . $module->module_id) ?>
           </a>
         </li>
+        <?php endif; ?>
         <?php endforeach; ?>
         <?php if ($has_registers): ?>
         <li class="nav-item">

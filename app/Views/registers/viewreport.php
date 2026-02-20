@@ -72,6 +72,11 @@ document.addEventListener('DOMContentLoaded', function() {
 
 <?php
 $grupos = $grupos ?? [];
+if (empty($grupos)): ?>
+<div class="alert alert-info mt-3">
+    <i class="fa-solid fa-info-circle me-2"></i>No hay resultados cargados para esta orden. Complete los resultados en <a href="<?= site_url('registers/view/' . (int)($labotests_namecate ?? 0)) ?>">Editar registro</a>.
+</div>
+<?php else:
 foreach ($grupos as $padre => $items):
     $nombreVista = strtolower($padre);
     $viewName = 'registers/analisis/default';
@@ -80,6 +85,7 @@ foreach ($grupos as $padre => $items):
     elseif ($nombreVista === 'heces') $viewName = 'registers/analisis/heces';
     echo view($viewName, ['grupos' => [$padre => $items]]);
 endforeach;
+endif;
 ?>
 
 <div class="text-center mt-3">

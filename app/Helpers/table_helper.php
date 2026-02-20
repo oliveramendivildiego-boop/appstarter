@@ -118,15 +118,30 @@ if (!function_exists('get_person_data_row')) {
     function get_person_data_row(object $person, object $controller): string
     {
         $controller_name = strtolower($controller->getControllerName());
+        $isCustomers = ($controller_name === 'customers');
+        $actionsWidth = $isCustomers ? '12%' : '5%';
         $table_data_row = '<tr>';
         $table_data_row .= "<td width='5%'><input type='checkbox' id='person_{$person->person_id}' name='person_{$person->person_id}' value='{$person->person_id}'/></td>";
-        $table_data_row .= '<td width="20%">' . (function_exists('character_limiter') ? character_limiter($person->last_name ?? '', 13) : substr($person->last_name ?? '', 0, 13)) . '</td>';
-        $table_data_row .= '<td width="20%">' . (function_exists('character_limiter') ? character_limiter($person->first_name ?? '', 13) : substr($person->first_name ?? '', 0, 13)) . '</td>';
-        $table_data_row .= '<td width="30%">' . ($person->email ?? '') . '</td>';
-        $table_data_row .= '<td width="20%">' . (function_exists('character_limiter') ? character_limiter($person->phone_number ?? '', 13) : substr($person->phone_number ?? '', 0, 13)) . '</td>';
+        $table_data_row .= '<td width="' . ($isCustomers ? '18%' : '20%') . '">' . (function_exists('character_limiter') ? character_limiter($person->last_name ?? '', 13) : substr($person->last_name ?? '', 0, 13)) . '</td>';
+        $table_data_row .= '<td width="' . ($isCustomers ? '18%' : '20%') . '">' . (function_exists('character_limiter') ? character_limiter($person->first_name ?? '', 13) : substr($person->first_name ?? '', 0, 13)) . '</td>';
+        $table_data_row .= '<td width="' . ($isCustomers ? '27%' : '30%') . '">' . ($person->email ?? '') . '</td>';
+        $table_data_row .= '<td width="' . ($isCustomers ? '20%' : '20%') . '">' . (function_exists('character_limiter') ? character_limiter($person->phone_number ?? '', 13) : substr($person->phone_number ?? '', 0, 13)) . '</td>';
         $title = lang(\ucfirst($controller_name) . '.' . $controller_name . '_update');
         $editIcon = '<i class="fa-solid fa-pen" aria-hidden="true"></i>';
-        $table_data_row .= '<td width="5%" class="text-center">' . anchor($controller_name . '/view/' . $person->person_id . '/', $editIcon, ['class' => 'update', 'title' => $title]) . '</td>';
+        $actions = anchor($controller_name . '/view/' . $person->person_id . '/', $editIcon, ['class' => 'update', 'title' => $title]);
+        if ($isCustomers) {
+            $phone = trim($person->phone_number ?? '');
+            $phoneClean = preg_replace('/\D/', '', $phone);
+            if ($phoneClean !== '') {
+                $waNum = (strlen($phoneClean) <= 9) ? '591' . ltrim($phoneClean, '0') : $phoneClean;
+                $waUrl = 'https://wa.me/' . $waNum;
+                $actions .= ' <a href="' . esc($waUrl) . '" target="_blank" rel="noopener" class="text-success" title="WhatsApp"><i class="fa-brands fa-whatsapp"></i></a>';
+            } else {
+                $actions .= ' <span class="text-secondary" title="Sin teléfono"><i class="fa-brands fa-whatsapp" style="opacity:0.4"></i></span>';
+            }
+            $actions .= ' <a href="' . site_url('expediente/view/' . $person->person_id) . '" class="text-info" title="Ver historial de resultados"><i class="fa-solid fa-clock-rotate-left"></i></a>';
+        }
+        $table_data_row .= '<td width="' . $actionsWidth . '" class="text-center text-nowrap">' . $actions . '</td>';
         $table_data_row .= '</tr>';
         return $table_data_row;
     }

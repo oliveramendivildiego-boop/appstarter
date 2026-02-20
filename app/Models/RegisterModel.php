@@ -47,6 +47,18 @@ class RegisterModel extends Model
             ->delete() !== false;
     }
 
+    /**
+     * Elimina un registro y sus datos relacionados (pago, regvalues, resulanalisis, muestra)
+     */
+    public function deleteRegistro(int $registroId): bool
+    {
+        $this->db->table('regvalues')->where('registro_id', $registroId)->delete();
+        $this->db->table('resulanalisis')->where('registro_id', $registroId)->delete();
+        $this->db->table('muestra')->where('registro_id', $registroId)->delete();
+        $this->db->table('pago')->where('registro_id', $registroId)->delete();
+        return $this->db->table('registro')->where('registro_id', $registroId)->delete() !== false;
+    }
+
     public function existsAnalisis(int $id): bool
     {
         return $this->db->table('resulanalisis')
@@ -64,9 +76,11 @@ class RegisterModel extends Model
         $d  = $this->db->prefixTable('doctors');
         $pa = $this->db->prefixTable('pago');
 
+        $rv = $this->db->prefixTable('regvalues');
         return $this->db->table('registro')
             ->select("{$r}.*, CONCAT({$p}.first_name, ' ', {$p}.last_name_fa, ' ', {$p}.last_name_mom) AS paciente,
-                {$d}.name as doctor, {$d}.phone_number as doctor_phone, {$pa}.total as total, {$pa}.total as acuenta, {$pa}.total as saldo")
+                {$d}.name as doctor, {$d}.phone_number as doctor_phone, {$pa}.total as total, {$pa}.total as acuenta, {$pa}.total as saldo,
+                (SELECT COUNT(*) FROM {$rv} WHERE {$rv}.registro_id = {$r}.registro_id) AS regvalues_count")
             ->join('people', "{$p}.person_id = {$r}.person_id")
             ->join('doctors', "{$d}.doctor_id = {$r}.doctor_id")
             ->join('pago', "{$r}.registro_id = {$pa}.registro_id")
@@ -98,6 +112,78 @@ class RegisterModel extends Model
     public function countAll(): int
     {
         return $this->db->table('registro')->countAllResults();
+    }
+
+    /**
+     * Cuenta registros con filtro de búsqueda (prueba, nombre, apellidos, CI)
+     */
+    public function countWithSearch(string $q): int
+    {
+        $q = trim($q);
+        if ($q === '') {
+            return $this->countAll();
+        }
+        $r  = $this->getRegistroTable();
+        $p  = $this->db->prefixTable('people');
+        $d  = $this->db->prefixTable('doctors');
+        $pa = $this->db->prefixTable('pago');
+        $builder = $this->db->table('registro')
+            ->join('people', "{$p}.person_id = {$r}.person_id")
+            ->join('doctors', "{$d}.doctor_id = {$r}.doctor_id")
+            ->join('pago', "{$r}.registro_id = {$pa}.registro_id");
+        return $this->applySearchBuilder($builder, $q)->countAllResults();
+    }
+
+    /**
+     * Obtiene registros con búsqueda (prueba, nombre, apellidos, CI del paciente) y paginación
+     */
+    public function getAllAnalisisWithSearch(string $q, int $limit = 50, int $offset = 0): array
+    {
+        $r  = $this->getRegistroTable();
+        $p  = $this->db->prefixTable('people');
+        $d  = $this->db->prefixTable('doctors');
+        $pa = $this->db->prefixTable('pago');
+
+        $rv = $this->db->prefixTable('regvalues');
+        $builder = $this->db->table('registro')
+            ->select("{$r}.*, CONCAT({$p}.first_name, ' ', {$p}.last_name_fa, ' ', {$p}.last_name_mom) AS paciente,
+                {$p}.first_name, {$p}.last_name_fa, {$p}.last_name_mom, {$p}.ci,
+                {$d}.name as doctor, {$d}.phone_number as doctor_phone, {$pa}.total as total, {$pa}.total as acuenta, {$pa}.total as saldo,
+                (SELECT COUNT(*) FROM {$rv} WHERE {$rv}.registro_id = {$r}.registro_id) AS regvalues_count")
+            ->join('people', "{$p}.person_id = {$r}.person_id")
+            ->join('doctors', "{$d}.doctor_id = {$r}.doctor_id")
+            ->join('pago', "{$r}.registro_id = {$pa}.registro_id")
+            ->orderBy("{$r}.registro_id", 'DESC');
+
+        $builder = $this->applySearchBuilder($builder, $q);
+        return $builder->limit($limit, $offset)->get()->getResult();
+    }
+
+    private function applySearchBuilder($builder, string $q)
+    {
+        $q = trim($q);
+        if ($q === '') return $builder;
+
+        $r  = $this->getRegistroTable();
+        $p  = $this->db->prefixTable('people');
+        $pt = $this->db->prefixTable('prianacategoria');
+        $esc = $this->db->escapeLikeString($q);
+        $pat = "%{$esc}%";
+
+        $builder->groupStart()
+            ->like("{$p}.first_name", $esc, 'both')
+            ->orLike("{$p}.last_name_fa", $esc, 'both')
+            ->orLike("{$p}.last_name_mom", $esc, 'both')
+            ->orLike("{$p}.ci", $esc, 'both');
+        $builder->orWhere(
+            "EXISTS (SELECT 1 FROM {$pt} WHERE {$pt}.name LIKE " . $this->db->escape($pat) .
+            " AND ({$pt}.deleted = 0 OR {$pt}.deleted IS NULL) AND FIND_IN_SET({$pt}.prianacategoria_id, {$r}.pruebas) > 0)",
+            null,
+            false
+        );
+        $builder->groupEnd();
+
+        return $builder;
     }
 
     /**
@@ -292,13 +378,22 @@ class RegisterModel extends Model
             ->select("{$sec}.*, {$f}.formula_expresion AS formula_expresion_desde_formulas")
             ->join('formulas', "{$f}.formulas_id = {$sec}.formulas_id", 'left')
             ->where("{$sec}.prianacategoria_id", $prianacategoriaId)
-            ->where("{$sec}.deleted", 0);
+            ->where("{$sec}.deleted", 0)
+            ->groupStart()
+            ->where("{$sec}.paciente_id", $paciente)
+            ->orWhere("{$sec}.paciente_id", 3);
+        if ($paciente === 3) {
+            $builder->orWhere("{$sec}.paciente_id", 1)->orWhere("{$sec}.paciente_id", 2);
+        }
+        $builder->groupEnd();
 
         if ($gender !== null && ($gender === 1 || $gender === 2) && $this->hasColumn('secanacategoria', 'sexo')) {
             $sexoVal = $gender === 1 ? 'masculino' : 'femenino';
             $builder->groupStart()
                 ->where("{$sec}.sexo", 'ambos')
                 ->orWhere("{$sec}.sexo", $sexoVal)
+                ->orWhere("{$sec}.sexo IS NULL", null, false)
+                ->orWhere("{$sec}.sexo = ''", null, false)
                 ->groupEnd();
         }
 
@@ -310,6 +405,18 @@ class RegisterModel extends Model
             ->orderBy("{$sec}.nombre", 'ASC')
             ->get()
             ->getResultArray();
+
+        if (empty($rows)) {
+            $builder2 = $this->db->table('secanacategoria')
+                ->select("{$sec}.*, {$f}.formula_expresion AS formula_expresion_desde_formulas")
+                ->join('formulas', "{$f}.formulas_id = {$sec}.formulas_id", 'left')
+                ->where("{$sec}.prianacategoria_id", $prianacategoriaId)
+                ->where("{$sec}.deleted", 0);
+            if ($this->hasColumn('secanacategoria', 'orden')) {
+                $builder2->orderBy("{$sec}.orden", 'ASC');
+            }
+            $rows = $builder2->orderBy("{$sec}.nombre", 'ASC')->get()->getResultArray();
+        }
 
         $porNombre = [];
         foreach ($rows as $r) {
@@ -372,10 +479,12 @@ class RegisterModel extends Model
     }
 
     /**
-     * Obtiene pruebas con sus inputs para el formfill
+     * Obtiene pruebas con sus inputs para el formfill.
+     * Filtra por valores de referencia: poblacion (edad config) y sexo.
+     * @param int[] $matchingPoblacionIds ids de poblacion que aplican al paciente (edad según config)
      * @param int|null $gender Género del paciente (1=masculino, 2=femenino) para filtrar por sexo en priresultados
      */
-    public function getPruebasInput(string $valores, int $paciente, ?int $gender = null): array
+    public function getPruebasInput(string $valores, array $matchingPoblacionIds, ?int $gender = null): array
     {
         $parts = explode(',', $valores);
         $ids = [];
@@ -393,30 +502,97 @@ class RegisterModel extends Model
         $ac = $this->db->prefixTable('anacategoria');
         $pr = $this->db->prefixTable('priresultados');
 
+        $poblacionIn = empty($matchingPoblacionIds) ? "(-1)" : "(" . implode(",", array_map('intval', $matchingPoblacionIds)) . ")";
+
         $sexoCond = '';
+        $sexoCondFallback = '';
+        $bindParams = [];
         if ($gender !== null && ($gender === 1 || $gender === 2) && $this->hasColumn('priresultados', 'sexo')) {
             $sexoVal = $gender === 1 ? 'masculino' : 'femenino';
-            $sexoCond = " AND (pr.sexo = 'ambos' OR pr.sexo = '" . $this->db->escape($sexoVal) . "')";
+            $sexoCond = " AND (pr.sexo = 'ambos' OR pr.sexo = ? OR pr.sexo IS NULL OR pr.sexo = '')";
+            $sexoCondFallback = " AND (prff.sexo = 'ambos' OR prff.sexo = ? OR prff.sexo IS NULL OR prff.sexo = '')";
+            $bindParams = [$sexoVal, $sexoVal];
         }
 
         $sql = "SELECT pt.name as hijo, pt.compleja, pt.prianacategoria_id, ac.name as padre,
-                pr.opcion_id, pr.priresultados_id, pr.id_poblacion, pr.valor_min, pr.valor_max, pr.umedida
+                pr.opcion_id, pr.priresultados_id, pr.id_poblacion, pr.valor_min, pr.valor_max, pr.umedida,
+                (SELECT prfb.opcion_id FROM {$pr} prfb
+                 WHERE prfb.prianacategoria_id = pt.prianacategoria_id
+                   AND pt.compleja = 0 AND (prfb.deleted = 0 OR prfb.deleted IS NULL)
+                 LIMIT 1) AS opcion_id_fallback,
+                (SELECT prfb2.priresultados_id FROM {$pr} prfb2
+                 WHERE prfb2.prianacategoria_id = pt.prianacategoria_id
+                   AND pt.compleja = 0 AND (prfb2.deleted = 0 OR prfb2.deleted IS NULL)
+                 LIMIT 1) AS priresultados_id_fallback,
+                (SELECT prff.priresultados_id FROM {$pr} prff
+                 WHERE prff.prianacategoria_id = pt.prianacategoria_id
+                   AND pt.compleja = 0 AND (prff.deleted = 0 OR prff.deleted IS NULL)
+                   AND prff.id_poblacion IN {$poblacionIn}{$sexoCondFallback}
+                 ORDER BY CASE WHEN prff.id_poblacion = 3 THEN 1 ELSE 0 END
+                 LIMIT 1) AS priresultados_id_filtered
                 FROM {$pt} pt
                 LEFT JOIN {$ac} ac ON ac.anacategoria_id = pt.anacategoria_id
                 LEFT JOIN {$pr} pr ON pr.prianacategoria_id = pt.prianacategoria_id
-                    AND pt.compleja = 0 AND (pr.deleted = 0 OR pr.deleted IS NULL) AND (pr.id_poblacion = 3 OR pr.id_poblacion = ?){$sexoCond}
+                    AND pt.compleja = 0 AND (pr.deleted = 0 OR pr.deleted IS NULL) AND pr.id_poblacion IN {$poblacionIn}{$sexoCond}
                 WHERE (pt.deleted = 0 OR pt.deleted IS NULL)
                 AND (ac.deleted = 0 OR ac.deleted IS NULL)
                 AND pt.prianacategoria_id IN (" . implode(',', array_map('intval', $ids)) . ")
-                ORDER BY ac.order, pt.order, CASE WHEN pr.id_poblacion = ? THEN 0 ELSE 1 END";
-        $rows = $this->db->query($sql, [$paciente, $paciente])->getResultArray();
+                ORDER BY ac.order, pt.order, CASE WHEN pr.id_poblacion = 3 THEN 1 ELSE 0 END";
+        $rows = empty($bindParams) ? $this->db->query($sql)->getResultArray() : $this->db->query($sql, $bindParams)->getResultArray();
+
+        $needFallbackData = [];
         $byPria = [];
+        $especificos = array_values(array_filter($matchingPoblacionIds, fn($x) => $x !== 3));
+        $preferPoblacion = $especificos[0] ?? 3;
         foreach ($rows as $r) {
+            $compleja = (int) ($r['compleja'] ?? 0);
             $pid = (int) ($r['prianacategoria_id'] ?? 0);
-            if (!isset($byPria[$pid]) || (int)($r['id_poblacion'] ?? 0) === $paciente) {
+            if ($compleja === 0 && empty($r['priresultados_id'])) {
+                $filteredId = (int) ($r['priresultados_id_filtered'] ?? 0);
+                if ($filteredId > 0) {
+                    $needFallbackData[$pid] = ['row' => $r, 'priresultados_id' => $filteredId];
+                }
+                continue;
+            }
+            if ($compleja === 1 || !isset($byPria[$pid]) || (int)($r['id_poblacion'] ?? 0) === ($preferPoblacion ?? -1)) {
+                if (((int) ($r['opcion_id'] ?? 0)) <= 0 && ((int) ($r['opcion_id_fallback'] ?? 0)) > 0) {
+                    $r['opcion_id'] = $r['opcion_id_fallback'];
+                }
+                if (((int) ($r['priresultados_id'] ?? 0)) <= 0 && ((int) ($r['priresultados_id_fallback'] ?? 0)) > 0) {
+                    $r['priresultados_id'] = $r['priresultados_id_fallback'];
+                }
+                unset($r['opcion_id_fallback'], $r['priresultados_id_fallback'], $r['priresultados_id_filtered']);
                 $byPria[$pid] = $r;
             }
         }
+
+        if (!empty($needFallbackData)) {
+            $prIds = array_unique(array_column($needFallbackData, 'priresultados_id'));
+            $fallbackRows = $this->db->table('priresultados')
+                ->select('priresultados_id, prianacategoria_id, opcion_id, valor_min, valor_max, umedida, id_poblacion')
+                ->whereIn('priresultados_id', $prIds)
+                ->get()
+                ->getResultArray();
+            $fallbackById = [];
+            foreach ($fallbackRows as $fr) {
+                $fallbackById[(int) $fr['priresultados_id']] = $fr;
+            }
+            foreach ($needFallbackData as $pid => $data) {
+                $prId = $data['priresultados_id'];
+                $fr = $fallbackById[$prId] ?? null;
+                if (!$fr) continue;
+                $r = $data['row'];
+                $r['priresultados_id'] = $fr['priresultados_id'];
+                $r['opcion_id'] = $fr['opcion_id'] ?? $r['opcion_id_fallback'] ?? 0;
+                $r['valor_min'] = $fr['valor_min'] ?? '';
+                $r['valor_max'] = $fr['valor_max'] ?? '';
+                $r['umedida'] = $fr['umedida'] ?? '';
+                $r['id_poblacion'] = $fr['id_poblacion'] ?? 3;
+                unset($r['opcion_id_fallback'], $r['priresultados_id_fallback'], $r['priresultados_id_filtered']);
+                $byPria[$pid] = $r;
+            }
+        }
+
         return array_values($byPria);
     }
 
@@ -579,12 +755,15 @@ class RegisterModel extends Model
         if ($search === '') return [];
         $esc = $this->db->escapeLikeString($search);
 
+        $pri = $this->db->prefixTable('prianacategoria');
+        $ana = $this->db->prefixTable('anacategoria');
         $rows = $this->db->table('prianacategoria')
-            ->select('prianacategoria_id, name, cost, cost_deriv')
-            ->where("name != '' AND name != '0'")
-            ->where('deleted', 0)
-            ->like('name', $esc, 'both')
-            ->orderBy('name', 'ASC')
+            ->select("{$pri}.prianacategoria_id, {$pri}.name, {$pri}.cost, {$pri}.cost_deriv, {$ana}.name as padre")
+            ->join('anacategoria', "{$ana}.anacategoria_id = {$pri}.anacategoria_id", 'left')
+            ->where("{$pri}.name != '' AND {$pri}.name != '0'")
+            ->where("{$pri}.deleted", 0)
+            ->like("{$pri}.name", $esc, 'both')
+            ->orderBy("{$pri}.name", 'ASC')
             ->limit($limit)
             ->get()
             ->getResult();
@@ -593,8 +772,10 @@ class RegisterModel extends Model
         foreach ($rows as $r) {
             $name = trim($r->name ?? '');
             if ($name !== '') {
+                $padre = trim($r->padre ?? '');
                 $suggestions[] = [
                     'value' => $name,
+                    'padre' => $padre,
                     'data'  => $r->prianacategoria_id,
                     'cost'  => (float) ($r->cost ?? 0),
                     'refe'  => (float) ($r->cost_deriv ?? 0),

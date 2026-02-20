@@ -76,7 +76,7 @@ class Filters extends BaseFilters
      */
     public array $globals = [
         'before' => [
-            'csrf' => ['except' => ['login', 'login/*', 'login/google_login', 'qr/*', 'customers/search', 'customers/suggest', 'employees/search', 'employees/suggest', 'doctors/search', 'doctors/suggest', 'registers/search_paciente', 'registers/search_doctor', 'registers/search_prueba']],
+            'csrf' => ['except' => ['login', 'login/*', 'login/google_login', 'qr/*', 'customers/search', 'customers/suggest', 'employees/search', 'employees/suggest', 'doctors/search', 'doctors/suggest', 'registers/search_paciente', 'registers/search_doctor', 'registers/search_prueba', 'registers/delete']],
         ],
         'after' => [
             // 'honeypot',
