@@ -37,7 +37,7 @@
         <?php if (empty($registros)): ?>
             <div class="p-4 text-center text-muted">
                 <i class="fa-solid fa-clipboard-list fa-3x mb-3"></i>
-                <p>No hay registros de análisis para este paciente.</p>
+                <p>No hay estudios con resultados completados para este paciente.</p>
                 <a href="<?= site_url('registers') ?>" class="btn btn-primary">Crear nuevo registro</a>
             </div>
         <?php else: ?>

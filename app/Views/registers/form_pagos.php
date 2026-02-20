@@ -26,6 +26,10 @@ document.addEventListener('DOMContentLoaded', function() {
         var ast = document.querySelector('.monto-req-ast');
         if (ast) ast.style.display = esPendiente ? 'none' : '';
     }
+    if (total) {
+        total.addEventListener('focus', function() { this.select(); });
+        total.addEventListener('click', function() { this.select(); });
+    }
     if (total && monto && saldo) {
         total.addEventListener('input', calcularSaldo);
         monto.addEventListener('input', calcularSaldo);
@@ -40,7 +44,7 @@ document.addEventListener('DOMContentLoaded', function() {
 <div class="row">
     <div class="col-12">
         <div class="mb-3">
-            <label for="total_reco" class="form-label">Total reco: <span class="text-danger">*</span></label>
+            <label for="total_reco" class="form-label">Total Recomendado: <span class="text-danger">*</span></label>
             <input type="text" name="total_reco" id="total_reco" class="form-control" readonly value="" required>
             <div class="invalid-feedback" id="total_reco_error"></div>
         </div>
@@ -54,13 +58,6 @@ document.addEventListener('DOMContentLoaded', function() {
     </div>
     <div class="col-12">
         <div class="mb-3">
-            <label for="monto_pagar" class="form-label">Monto a pagar: <span class="text-danger monto-req-ast">*</span></label>
-            <input type="text" name="monto_pagar" id="monto_pagar" class="form-control" value="" required placeholder="">
-            <div class="invalid-feedback" id="monto_pagar_error"></div>
-        </div>
-    </div>
-    <div class="col-12">
-        <div class="mb-3">
             <label for="tipopago" class="form-label">Tipo de pago: <span class="text-danger">*</span></label>
             <select name="tipopago" id="tipopago" class="form-select">
                 <option value="">-- Seleccione --</option>
@@ -70,6 +67,13 @@ document.addEventListener('DOMContentLoaded', function() {
                 <option value="4">Pendiente</option>
             </select>
             <div class="invalid-feedback" id="tipopago_error"></div>
+        </div>
+    </div>
+    <div class="col-12">
+        <div class="mb-3">
+            <label for="monto_pagar" class="form-label">Monto a pagar: <span class="text-danger monto-req-ast">*</span></label>
+            <input type="text" name="monto_pagar" id="monto_pagar" class="form-control" value="" required placeholder="">
+            <div class="invalid-feedback" id="monto_pagar_error"></div>
         </div>
     </div>
     <div class="col-12">

@@ -335,7 +335,8 @@ foreach ($pruebas_info ?? [] as $prueba):
             $pRef = ($pMin !== '' || $pMax !== '') ? ' <small class="text-muted">(Ref: ' . ($pMin ?: '…') . ' - ' . ($pMax ?: '…') . ($pUmed ? ' ' . $pUmed : '') . ')</small>' : ' <small class="text-muted">(Por favor revise los valores de referencia en Análisis clínico)</small>';
             echo '<div class="col-md-6 mb-3"><div class="mb-3">';
             echo '<label for="noc_' . esc($rid) . '" class="form-label">' . esc($prueba['hijo'] ?? '') . $pRef . ':</label>';
-            $attrs = 'name="noc_' . esc($rid) . '" id="noc_' . esc($rid) . '" class="form-control input-con-ref" value=""';
+            $valRid = $existentes['noc_' . $rid] ?? '';
+            $attrs = 'name="noc_' . esc($rid) . '" id="noc_' . esc($rid) . '" class="form-control input-con-ref" value="' . esc($valRid) . '"';
             if ($pMin !== '') $attrs .= ' data-min="' . esc($pMin) . '"'; if ($pMax !== '') $attrs .= ' data-max="' . esc($pMax) . '"';
             echo '<input type="text" ' . $attrs . '><span class="invalid-feedback d-block" data-msg-for="noc_' . esc($rid) . '"></span>';
             echo '</div></div>';
@@ -354,18 +355,19 @@ foreach ($pruebas_info ?? [] as $prueba):
             $vMax = trim($v['valor_max'] ?? '');
             $umedida = trim($v['umedida'] ?? '');
             $refText = ($vMin !== '' || $vMax !== '') ? ' <small class="text-muted">(Ref: ' . ($vMin !== '' ? $vMin : '…') . ' - ' . ($vMax !== '' ? $vMax : '…') . ($umedida !== '' ? ' ' . $umedida : '') . ')</small>' : '';
+            $cId = 'c_' . ($v['secanacategoria_id'] ?? '');
+            $nombrePrueba = trim($v['nombre'] ?? '');
+            $valorExiste = $existentes[$cId] ?? ($prianacategoriaId > 0 && $nombrePrueba !== '' ? ($existentes[$prianacategoriaId . '|' . $nombrePrueba] ?? '') : '');
             if (($v['opcion_id'] ?? 0) != 3):
                 $opts = $registerModel ? $registerModel->getOpciones((int)($v['opcion_id'] ?? 0)) : [];
-                $cId = 'c_' . ($v['secanacategoria_id'] ?? '');
                 echo '<div class="col-md-6 mb-3"><div class="mb-3">';
                 echo '<label for="' . esc($cId) . '" class="form-label">' . esc($v['nombre'] ?? '') . $refText . ':</label>';
-                $nombrePrueba = trim($v['nombre'] ?? '');
                 $extra = 'id="' . esc($cId) . '" class="form-control input-con-ref"';
                 if ($prianacategoriaId > 0) $extra .= ' data-prianacategoria-id="' . $prianacategoriaId . '"';
                 if ($nombrePrueba !== '') $extra .= ' data-prueba="' . esc($nombrePrueba) . '"';
                 if ($vMin !== '') $extra .= ' data-min="' . esc($vMin) . '"';
                 if ($vMax !== '') $extra .= ' data-max="' . esc($vMax) . '"';
-                echo build_select($cId, $opts, '', $extra);
+                echo build_select($cId, $opts, $valorExiste, $extra);
                 echo '<span class="invalid-feedback d-block" data-msg-for="' . esc($cId) . '"></span></div></div>';
             else:
                 $cId = 'c_' . ($v['secanacategoria_id'] ?? '');
@@ -391,12 +393,11 @@ foreach ($pruebas_info ?? [] as $prueba):
                 $esCalculada = $expresion !== '' && $formulasId !== 1;
                 $idsEnFormula = $esCalculada && preg_match_all('/c_\d+/', $expresion, $m) ? array_unique($m[0]) : [];
                 $esFormulaValor = $esCalculada && count($idsEnFormula) === 1 && in_array($cId, $idsEnFormula, true);
-                $nombrePrueba = trim($v['nombre'] ?? '');
                 echo '<div class="col-md-6 mb-3"><div class="mb-3">';
                 echo '<label for="' . esc($cId) . '" class="form-label">' . esc($v['nombre'] ?? '') . $refText . ($esCalculada ? ' <span class="badge badge-calculada">' . ($esFormulaValor ? 'Fórmula (valor × expresión)' : 'Calculada') . '</span>' : '') . ':</label>';
                 if ($esCalculada) {
                     if ($esFormulaValor) {
-                        $attrs = 'name="' . esc($cId) . '" id="' . esc($cId) . '" class="form-control formula-calculada input-con-ref" value="" data-formula="' . esc($formulaConNombres) . '" placeholder="Escriba el valor (ej. 50)"';
+                        $attrs = 'name="' . esc($cId) . '" id="' . esc($cId) . '" class="form-control formula-calculada input-con-ref" value="' . esc($valorExiste) . '" data-formula="' . esc($formulaConNombres) . '" placeholder="Escriba el valor (ej. 50)"';
                         if ($formulasId > 1) $attrs .= ' data-formula-id="' . (int)$formulasId . '"';
                         if ($prianacategoriaId > 0) $attrs .= ' data-prianacategoria-id="' . $prianacategoriaId . '"';
                         if ($nombrePrueba !== '') $attrs .= ' data-prueba="' . esc($nombrePrueba) . '"';
@@ -406,7 +407,7 @@ foreach ($pruebas_info ?? [] as $prueba):
                         echo '<span class="sugerencia-calculada small text-muted mt-1 d-block" data-sugerencia-for="' . esc($cId) . '" role="button" tabindex="0" title="Clic para usar este valor">Sugerencia: —</span>';
                         echo '<span class="invalid-feedback d-block" data-msg-for="' . esc($cId) . '"></span>';
                     } else {
-                        $attrs = 'id="' . esc($cId) . '" class="form-control formula-calculada input-con-ref" value="" data-formula="' . esc($formulaConNombres) . '" placeholder="Escriba o use la sugerencia"';
+                        $attrs = 'id="' . esc($cId) . '" class="form-control formula-calculada input-con-ref" value="' . esc($valorExiste) . '" data-formula="' . esc($formulaConNombres) . '" placeholder="Escriba o use la sugerencia"';
                         if ($formulasId > 1) $attrs .= ' data-formula-id="' . (int)$formulasId . '"';
                         if ($prianacategoriaId > 0) $attrs .= ' data-prianacategoria-id="' . $prianacategoriaId . '"';
                         if ($nombrePrueba !== '') $attrs .= ' data-prueba="' . esc($nombrePrueba) . '"';
@@ -417,7 +418,7 @@ foreach ($pruebas_info ?? [] as $prueba):
                         echo '<span class="invalid-feedback d-block" data-msg-for="' . esc($cId) . '"></span>';
                     }
                 } else {
-                    $attrs = 'name="' . esc($cId) . '" id="' . esc($cId) . '" class="form-control input-con-ref" value=""';
+                    $attrs = 'name="' . esc($cId) . '" id="' . esc($cId) . '" class="form-control input-con-ref" value="' . esc($valorExiste) . '"';
                     if ($prianacategoriaId > 0) $attrs .= ' data-prianacategoria-id="' . $prianacategoriaId . '"';
                     if ($nombrePrueba !== '') $attrs .= ' data-prueba="' . esc($nombrePrueba) . '"';
                     if ($vMin !== '') $attrs .= ' data-min="' . esc($vMin) . '"'; if ($vMax !== '') $attrs .= ' data-max="' . esc($vMax) . '"';
@@ -434,7 +435,7 @@ endif;
 ?>
 <?php if (!empty($pruebas_info)): ?>
 <div class="mt-3">
-    <button type="button" id="submit" name="btn_submit" class="btn btn-primary"><?= lang('Common.common_submit') ?></button>
+    <button type="button" id="submit" name="btn_submit" class="btn btn-primary"><?= !empty($existentes) ? ucfirst(lang('Common.common_edit')) : lang('Common.common_submit') ?></button>
 </div>
 <?php endif; ?>
 </fieldset>

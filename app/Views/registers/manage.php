@@ -10,8 +10,11 @@ document.addEventListener('DOMContentLoaded', function() {
     function recalcular() {
         var totalCost = 0;
         pruebasSeleccionadas.forEach(function(p) { totalCost += p.cost; });
-        var el = document.getElementById('total_reco');
-        if (el) el.value = totalCost.toFixed(2);
+        var val = totalCost.toFixed(2);
+        var reco = document.getElementById('total_reco');
+        var tot = document.getElementById('total');
+        if (reco) reco.value = val;
+        if (tot) tot.value = val;
     }
 
     function renderPruebasLista() {
@@ -52,11 +55,6 @@ document.addEventListener('DOMContentLoaded', function() {
         renderPruebasLista();
     }
 
-    var totalRecoEl = document.getElementById('total_reco');
-    if (totalRecoEl) totalRecoEl.addEventListener('click', function() {
-        var tot = document.getElementById('total');
-        if (tot) tot.value = this.value;
-    });
 
     function quitarInvalid() {
         document.querySelectorAll('.is-invalid').forEach(function(el) { el.classList.remove('is-invalid'); });
@@ -118,7 +116,7 @@ document.addEventListener('DOMContentLoaded', function() {
             }
             if (!pagosData.total_reco || parseFloat(pagosData.total_reco) <= 0) {
                 var tr = document.getElementById('total_reco');
-                mostrarError(tr, 'Total reco es obligatorio.'); primero = primero || tr;
+                mostrarError(tr, 'Total Recomendado es obligatorio.'); primero = primero || tr;
             }
             if (!pagosData.total || isNaN(parseFloat(pagosData.total))) {
                 var tot = document.getElementById('total');

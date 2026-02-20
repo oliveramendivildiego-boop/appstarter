@@ -55,6 +55,9 @@ class RegisterModel extends Model
         $this->db->table('regvalues')->where('registro_id', $registroId)->delete();
         $this->db->table('resulanalisis')->where('registro_id', $registroId)->delete();
         $this->db->table('muestra')->where('registro_id', $registroId)->delete();
+        if ($this->db->tableExists('pago_abono')) {
+            $this->db->table('pago_abono')->where('registro_id', $registroId)->delete();
+        }
         $this->db->table('pago')->where('registro_id', $registroId)->delete();
         return $this->db->table('registro')->where('registro_id', $registroId)->delete() !== false;
     }
@@ -69,25 +72,25 @@ class RegisterModel extends Model
     /**
      * Obtiene todos los registros de análisis con paciente, doctor y pago
      */
-    public function getAllAnalisis(int $limit = 10000, int $offset = 0): array
+    public function getAllAnalisis(int $limit = 10000, int $offset = 0, string $estado = ''): array
     {
         $r  = $this->getRegistroTable();
         $p  = $this->db->prefixTable('people');
         $d  = $this->db->prefixTable('doctors');
         $pa = $this->db->prefixTable('pago');
-
         $rv = $this->db->prefixTable('regvalues');
-        return $this->db->table('registro')
+
+        $builder = $this->db->table('registro')
             ->select("{$r}.*, CONCAT({$p}.first_name, ' ', {$p}.last_name_fa, ' ', {$p}.last_name_mom) AS paciente,
-                {$d}.name as doctor, {$d}.phone_number as doctor_phone, {$pa}.total as total, {$pa}.total as acuenta, {$pa}.total as saldo,
+                {$d}.name as doctor, {$d}.phone_number as doctor_phone,
+                {$pa}.total as total, {$pa}.monto_pagar as monto_pagar, {$pa}.tipopago as tipopago, {$pa}.saldo as saldo,
                 (SELECT COUNT(*) FROM {$rv} WHERE {$rv}.registro_id = {$r}.registro_id) AS regvalues_count")
             ->join('people', "{$p}.person_id = {$r}.person_id")
             ->join('doctors', "{$d}.doctor_id = {$r}.doctor_id")
             ->join('pago', "{$r}.registro_id = {$pa}.registro_id")
-            ->orderBy("{$r}.registro_id", 'DESC')
-            ->limit($limit, $offset)
-            ->get()
-            ->getResult();
+            ->orderBy("{$r}.registro_id", 'DESC');
+        $builder = $this->applyEstadoFilter($builder, $estado, $r, $rv);
+        return $builder->limit($limit, $offset)->get()->getResult();
     }
 
     /**
@@ -109,46 +112,51 @@ class RegisterModel extends Model
             ->getResult();
     }
 
-    public function countAll(): int
+    public function countAll(string $estado = ''): int
     {
-        return $this->db->table('registro')->countAllResults();
+        $r  = $this->getRegistroTable();
+        $rv = $this->db->prefixTable('regvalues');
+        $builder = $this->db->table('registro');
+        $builder = $this->applyEstadoFilter($builder, $estado, $r, $rv);
+        return $builder->countAllResults();
     }
 
     /**
-     * Cuenta registros con filtro de búsqueda (prueba, nombre, apellidos, CI)
+     * Cuenta registros con filtro de búsqueda (código prueba, nombre, apellidos, CI)
      */
-    public function countWithSearch(string $q): int
+    public function countWithSearch(string $q, string $estado = ''): int
     {
         $q = trim($q);
-        if ($q === '') {
-            return $this->countAll();
-        }
         $r  = $this->getRegistroTable();
         $p  = $this->db->prefixTable('people');
         $d  = $this->db->prefixTable('doctors');
         $pa = $this->db->prefixTable('pago');
+        $rv = $this->db->prefixTable('regvalues');
         $builder = $this->db->table('registro')
             ->join('people', "{$p}.person_id = {$r}.person_id")
             ->join('doctors', "{$d}.doctor_id = {$r}.doctor_id")
             ->join('pago', "{$r}.registro_id = {$pa}.registro_id");
-        return $this->applySearchBuilder($builder, $q)->countAllResults();
+        $builder = $this->applySearchBuilder($builder, $q);
+        $builder = $this->applyEstadoFilter($builder, $estado, $r, $rv);
+        return $builder->countAllResults();
     }
 
     /**
-     * Obtiene registros con búsqueda (prueba, nombre, apellidos, CI del paciente) y paginación
+     * Obtiene registros con búsqueda (código prueba, nombre, apellidos, CI) y paginación
      */
-    public function getAllAnalisisWithSearch(string $q, int $limit = 50, int $offset = 0): array
+    public function getAllAnalisisWithSearch(string $q, int $limit = 50, int $offset = 0, string $estado = ''): array
     {
         $r  = $this->getRegistroTable();
         $p  = $this->db->prefixTable('people');
         $d  = $this->db->prefixTable('doctors');
         $pa = $this->db->prefixTable('pago');
-
         $rv = $this->db->prefixTable('regvalues');
+
         $builder = $this->db->table('registro')
             ->select("{$r}.*, CONCAT({$p}.first_name, ' ', {$p}.last_name_fa, ' ', {$p}.last_name_mom) AS paciente,
                 {$p}.first_name, {$p}.last_name_fa, {$p}.last_name_mom, {$p}.ci,
-                {$d}.name as doctor, {$d}.phone_number as doctor_phone, {$pa}.total as total, {$pa}.total as acuenta, {$pa}.total as saldo,
+                {$d}.name as doctor, {$d}.phone_number as doctor_phone,
+                {$pa}.total as total, {$pa}.monto_pagar as monto_pagar, {$pa}.tipopago as tipopago, {$pa}.saldo as saldo,
                 (SELECT COUNT(*) FROM {$rv} WHERE {$rv}.registro_id = {$r}.registro_id) AS regvalues_count")
             ->join('people', "{$p}.person_id = {$r}.person_id")
             ->join('doctors', "{$d}.doctor_id = {$r}.doctor_id")
@@ -156,6 +164,7 @@ class RegisterModel extends Model
             ->orderBy("{$r}.registro_id", 'DESC');
 
         $builder = $this->applySearchBuilder($builder, $q);
+        $builder = $this->applyEstadoFilter($builder, $estado, $r, $rv);
         return $builder->limit($limit, $offset)->get()->getResult();
     }
 
@@ -166,23 +175,34 @@ class RegisterModel extends Model
 
         $r  = $this->getRegistroTable();
         $p  = $this->db->prefixTable('people');
-        $pt = $this->db->prefixTable('prianacategoria');
         $esc = $this->db->escapeLikeString($q);
-        $pat = "%{$esc}%";
 
         $builder->groupStart()
             ->like("{$p}.first_name", $esc, 'both')
             ->orLike("{$p}.last_name_fa", $esc, 'both')
             ->orLike("{$p}.last_name_mom", $esc, 'both')
             ->orLike("{$p}.ci", $esc, 'both');
-        $builder->orWhere(
-            "EXISTS (SELECT 1 FROM {$pt} WHERE {$pt}.name LIKE " . $this->db->escape($pat) .
-            " AND ({$pt}.deleted = 0 OR {$pt}.deleted IS NULL) AND FIND_IN_SET({$pt}.prianacategoria_id, {$r}.pruebas) > 0)",
-            null,
-            false
-        );
+        // Búsqueda por código de prueba (prianacategoria_id): si q es numérico, buscar por FIND_IN_SET
+        if (ctype_digit($q)) {
+            $idPrueba = (int) $q;
+            $builder->orWhere("FIND_IN_SET(" . $this->db->escape($idPrueba) . ", {$r}.pruebas) > 0", null, false);
+        }
         $builder->groupEnd();
 
+        return $builder;
+    }
+
+    /**
+     * Filtra por estado: completo (tiene regvalues) o incompleto (sin regvalues)
+     */
+    private function applyEstadoFilter($builder, string $estado, string $r, string $rv)
+    {
+        $estado = trim($estado);
+        if ($estado === 'completo') {
+            $builder->where("EXISTS (SELECT 1 FROM {$rv} WHERE {$rv}.registro_id = {$r}.registro_id)", null, false);
+        } elseif ($estado === 'incompleto') {
+            $builder->where("NOT EXISTS (SELECT 1 FROM {$rv} WHERE {$rv}.registro_id = {$r}.registro_id)", null, false);
+        }
         return $builder;
     }
 
@@ -708,6 +728,7 @@ class RegisterModel extends Model
         $p  = $this->db->prefixTable('people');
         $d  = $this->db->prefixTable('doctors');
         $pa = $this->db->prefixTable('pago');
+        $rv = $this->db->prefixTable('regvalues');
 
         return $this->db->table('registro')
             ->select("{$r}.registro_id, {$r}.ingreso, {$r}.pruebas, {$r}.person_id,
@@ -717,6 +738,7 @@ class RegisterModel extends Model
             ->join('doctors', "{$d}.doctor_id = {$r}.doctor_id")
             ->join('pago', "{$r}.registro_id = {$pa}.registro_id")
             ->where("{$r}.person_id", $personId)
+            ->where("EXISTS (SELECT 1 FROM {$rv} WHERE {$rv}.registro_id = {$r}.registro_id)", null, false)
             ->orderBy("{$r}.ingreso", 'DESC')
             ->limit($limit)
             ->get()
@@ -731,11 +753,14 @@ class RegisterModel extends Model
      */
     public function getAntecedentesPaciente(int $personId, int $currentRegistroId = 0, int $limit = 10): array
     {
+        $r  = $this->getRegistroTable();
+        $rv = $this->db->prefixTable('regvalues');
         return $this->db->table('registro')
-            ->select('registro_id, ingreso, pruebas, doctor_id')
-            ->where('person_id', $personId)
-            ->where('registro_id !=', $currentRegistroId)
-            ->orderBy('ingreso', 'DESC')
+            ->select("{$r}.registro_id, {$r}.ingreso, {$r}.pruebas, {$r}.doctor_id")
+            ->where("{$r}.person_id", $personId)
+            ->where("{$r}.registro_id !=", $currentRegistroId)
+            ->where("EXISTS (SELECT 1 FROM {$rv} WHERE {$rv}.registro_id = {$r}.registro_id)", null, false)
+            ->orderBy("{$r}.ingreso", 'DESC')
             ->limit($limit)
             ->get()
             ->getResult();
@@ -801,6 +826,146 @@ class RegisterModel extends Model
             return $this->db->table('pago')->insert($data) !== false;
         }
         return $this->db->table('pago')->where('pago_id', $id)->update($data);
+    }
+
+    /**
+     * Actualiza pago por registro_id (para agregar pago desde lista)
+     */
+    public function updatePagoByRegistroId(int $registroId, array $data): bool
+    {
+        $row = $this->db->table('pago')->where('registro_id', $registroId)->get()->getRow();
+        if (!$row) {
+            return false;
+        }
+        $upd = [];
+        if (array_key_exists('monto_pagar', $data)) $upd['monto_pagar'] = $data['monto_pagar'];
+        if (array_key_exists('tipopago', $data)) $upd['tipopago'] = $data['tipopago'];
+        if (array_key_exists('saldo', $data)) $upd['saldo'] = $data['saldo'];
+        if (array_key_exists('total', $data)) $upd['total'] = $data['total'];
+        if (empty($upd)) return true;
+        return $this->db->table('pago')->where('registro_id', $registroId)->update($upd);
+    }
+
+    /**
+     * Obtiene pago por registro_id
+     */
+    public function getPagoByRegistroId(int $registroId): ?object
+    {
+        return $this->db->table('pago')->where('registro_id', $registroId)->get()->getRow();
+    }
+
+    /**
+     * Inserta un abono (nuevo pago) y actualiza pago.monto_pagar y saldo
+     */
+    public function insertAbono(int $registroId, float $monto, string $tipopago): bool
+    {
+        $pago = $this->getPagoByRegistroId($registroId);
+        if (!$pago) return false;
+
+        $this->db->table('pago_abono')->insert([
+            'registro_id' => $registroId,
+            'monto'       => $monto,
+            'tipopago'    => $tipopago ?: '1',
+        ]);
+        $montoActual = (float) ($pago->monto_pagar ?? 0);
+        $nuevoMontoPagado = $montoActual + $monto;
+        $total = (float) ($pago->total ?? 0);
+        $nuevoSaldo = $total - $nuevoMontoPagado;
+
+        return $this->db->table('pago')->where('registro_id', $registroId)->update([
+            'monto_pagar' => number_format($nuevoMontoPagado, 2, '.', ''),
+            'saldo'       => number_format($nuevoSaldo, 2, '.', ''),
+            'tipopago'    => $tipopago ?: $pago->tipopago,
+        ]);
+    }
+
+    /**
+     * Registra el pago inicial en pago_abono (cuando se crea el registro con pago)
+     */
+    public function insertAbonoInicial(int $registroId, float $monto, string $tipopago): void
+    {
+        if ($monto <= 0 || !$this->db->tableExists('pago_abono')) {
+            return;
+        }
+        $this->db->table('pago_abono')->insert([
+            'registro_id' => $registroId,
+            'monto'       => $monto,
+            'tipopago'    => $tipopago ?: '1',
+        ]);
+    }
+
+    /**
+     * Obtiene todos los abonos de un registro ordenados por fecha
+     */
+    public function getAbonosByRegistroId(int $registroId): array
+    {
+        if (!$this->db->tableExists('pago_abono')) {
+            return [];
+        }
+        return $this->db->table('pago_abono')
+            ->where('registro_id', $registroId)
+            ->orderBy('fecha_abono', 'ASC')
+            ->get()
+            ->getResultArray();
+    }
+
+    /**
+     * Obtiene historial: pago + pruebas realizadas para un registro
+     */
+    public function getHistorialRegistro(int $registroId): ?array
+    {
+        $r = $this->getRegistroTable();
+        $p = $this->db->prefixTable('people');
+        $d = $this->db->prefixTable('doctors');
+        $pa = $this->db->prefixTable('pago');
+        $rv = $this->db->prefixTable('regvalues');
+        $pt = $this->db->prefixTable('prianacategoria');
+        $a = $this->db->prefixTable('anacategoria');
+
+        $reg = $this->db->table('registro')
+            ->select("{$r}.*, CONCAT({$p}.first_name, ' ', {$p}.last_name_fa, ' ', {$p}.last_name_mom) AS paciente, {$d}.name as doctor")
+            ->join('people', "{$p}.person_id = {$r}.person_id")
+            ->join('doctors', "{$d}.doctor_id = {$r}.doctor_id")
+            ->where("{$r}.registro_id", $registroId)
+            ->get()->getRow();
+        if (!$reg) return null;
+
+        $pago = $this->getPagoByRegistroId($registroId);
+        $regvaluesCount = (int) $this->db->table('regvalues')->where('registro_id', $registroId)->countAllResults();
+        $pruebasStr = trim($reg->pruebas ?? '');
+        $pruebaIds = $pruebasStr !== '' ? array_filter(array_map('intval', explode(',', $pruebasStr))) : [];
+        $pruebas = [];
+        if (!empty($pruebaIds)) {
+            $rows = $this->db->table('prianacategoria')
+                ->select("{$pt}.prianacategoria_id, {$pt}.name, {$a}.name as categoria")
+                ->join('anacategoria', "{$a}.anacategoria_id = {$pt}.anacategoria_id", 'left')
+                ->whereIn("{$pt}.prianacategoria_id", array_values($pruebaIds))
+                ->get()->getResult();
+            foreach ($rows as $row) {
+                $pruebas[] = ['id' => $row->prianacategoria_id, 'nombre' => $row->name, 'categoria' => $row->categoria ?? ''];
+            }
+        }
+        $tipoPagoMap = ['1' => 'Efectivo', '2' => 'QR', '3' => 'Transferencia', '4' => 'Pendiente'];
+        $abonos = $this->getAbonosByRegistroId($registroId);
+        if (empty($abonos) && $pago && (float) ($pago->monto_pagar ?? 0) > 0) {
+            $abonos = [[
+                'monto' => $pago->monto_pagar,
+                'tipopago' => $pago->tipopago ?? '1',
+                'fecha_abono' => $reg->ingreso ?? date('Y-m-d H:i:s'),
+            ]];
+        }
+        foreach ($abonos as $i => $a) {
+            $abonos[$i]['tipo_nombre'] = $tipoPagoMap[$a['tipopago'] ?? ''] ?? ($a['tipopago'] ?? '-');
+        }
+        return [
+            'registro' => $reg,
+            'pago' => $pago,
+            'tipo_pago_nombre' => $pago ? ($tipoPagoMap[$pago->tipopago ?? ''] ?? ($pago->tipopago ?? '-')) : '-',
+            'abonos' => $abonos,
+            'pruebas' => $pruebas,
+            'tiene_resultados' => $regvaluesCount > 0,
+            'regvalues_count' => $regvaluesCount,
+        ];
     }
 
     public function saveRegvalues(array $data, $id = null): bool

@@ -112,6 +112,8 @@ $routes->post('registers/search_prueba', 'Registers::searchPrueba');
 $routes->post('registers/saveregvalues', 'Registers::saveregvalues');
 $routes->post('registers/saveanalisiss', 'Registers::saveanalisiss');
 $routes->post('registers/delete/(:num)', 'Registers::delete/$1');
+$routes->post('registers/addpago/(:num)', 'Registers::addpago/$1');
+$routes->get('registers/historial/(:num)', 'Registers::historial/$1');
 $routes->get('customers/view/(:num)', 'Customers::view/$1');
 $routes->get('customers/view', 'Customers::view/0');
 $routes->post('customers/search', 'Customers::search');
