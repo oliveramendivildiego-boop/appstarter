@@ -153,6 +153,42 @@ class Validation extends BaseConfig
     ];
 
     /**
+     * Reglas para reactivos/insumos
+     */
+    public array $reactivo = [
+        'nombre' => [
+            'rules'  => 'required|min_length[1]|max_length[255]',
+            'errors' => [
+                'required'   => 'El nombre del insumo es obligatorio.',
+                'max_length' => 'El nombre no puede superar 255 caracteres.',
+            ],
+        ],
+        'tipo' => [
+            'rules'  => 'required|in_list[1,2,3]',
+            'errors' => ['in_list' => 'Tipo de insumo no válido.'],
+        ],
+        'stock_minimo' => [
+            'rules'  => 'permit_empty|integer|greater_than_equal_to[0]',
+            'errors' => ['integer' => 'Stock mínimo debe ser un número entero.'],
+        ],
+        'contenido_por_presentacion' => [
+            'rules'  => 'permit_empty|integer|greater_than[0]',
+            'errors' => ['integer' => 'Contenido debe ser un número entero positivo.'],
+        ],
+    ];
+
+    public array $lote = [
+        'reactivo_id'   => ['rules' => 'required|integer|greater_than[0]'],
+        'codigo_lote'   => ['rules' => 'required|max_length[100]'],
+        'cantidad'      => ['rules' => 'required|integer|greater_than[0]'],
+    ];
+
+    public array $salida = [
+        'reactivo_id' => ['rules' => 'required|integer|greater_than[0]'],
+        'cantidad'    => ['rules' => 'required|integer|greater_than[0]'],
+    ];
+
+    /**
      * Reglas para guardar registro de análisis
      */
     public array $registro = [

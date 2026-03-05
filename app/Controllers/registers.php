@@ -4,6 +4,7 @@ namespace App\Controllers;
 
 use App\Libraries\PdfService;
 use App\Services\RegisterService;
+use App\Services\WhatsAppService;
 use App\Models\LabotestModel;
 use App\Models\RegisterModel;
 use App\Models\PerfilExamenModel;
@@ -22,14 +23,16 @@ class Registers extends SecureArea
     protected RegisterModel $registerModel;
     protected LabotestModel $labotestModel;
     protected RegisterService $registerService;
+    protected AppConfigModel $configModel;
 
     public function __construct()
     {
         parent::__construct();
         helper('table');
-        $this->registerModel  = model(RegisterModel::class);
-        $this->labotestModel  = model(LabotestModel::class);
+        $this->registerModel   = model(RegisterModel::class);
+        $this->labotestModel   = model(LabotestModel::class);
         $this->registerService = new RegisterService();
+        $this->configModel     = model(AppConfigModel::class);
     }
 
     public function index()
@@ -38,6 +41,7 @@ class Registers extends SecureArea
         $perfiles = (model(PerfilExamenModel::class))->getAll();
 
         return view('registers/manage', [
+            'current_module'  => 'registers',
             'categories'      => $categories,
             'perfiles'        => $perfiles ?? [],
             'allowed_modules' => $this->allowed_modules,
@@ -67,10 +71,11 @@ class Registers extends SecureArea
         $totalPages  = $total > 0 ? (int) ceil($total / $perPage) : 1;
 
         return view('registers/lista', [
-            'manage_table'    => $manageTable,
-            'allowed_modules' => $this->allowed_modules,
-            'user_info'       => $this->user_info,
-            'controller_name' => 'registers',
+            'manage_table'     => $manageTable,
+            'allowed_modules'  => $this->allowed_modules,
+            'user_info'        => $this->user_info,
+            'current_module'   => 'registers',
+            'controller_name'  => 'registers',
             'page'            => $page,
             'totalPages'      => $totalPages,
             'total'           => $total,
@@ -128,6 +133,9 @@ class Registers extends SecureArea
             if ($hasRegvalues) {
                 $html .= '<a href="' . site_url('registers/viewreport/' . $rid) . '" class="btn btn-sm btn-secondary" title="Reporte">Reporte</a> ';
                 $html .= '<a href="' . site_url('registers/pdf/' . $rid) . '" class="btn btn-sm btn-success" target="_blank" title="PDF">PDF</a> ';
+                $pacientePhone = trim($r->paciente_phone ?? '');
+                $doctorPhone   = trim($r->doctor_phone ?? '');
+                $html .= '<button type="button" class="btn btn-sm btn-success btn-whatsapp-pdf" data-id="' . $rid . '" data-paciente="' . esc($r->paciente ?? '') . '" data-doctor="' . esc($r->doctor ?? '') . '" data-paciente-phone="' . esc($pacientePhone) . '" data-doctor-phone="' . esc($doctorPhone) . '" data-ingreso="' . esc($r->ingreso ?? '') . '" title="Enviar PDF por WhatsApp"><i class="fa-brands fa-whatsapp"></i></button> ';
             }
             if ($saldoNum > 0) {
                 $html .= '<button type="button" class="btn btn-sm btn-outline-warning btn-agregar-pago" data-id="' . $rid . '" data-total="' . esc($r->total ?? '') . '" data-saldo="' . esc($r->saldo ?? '') . '" data-monto="' . esc($r->monto_pagar ?? '') . '" title="Agregar pago"><i class="fa-solid fa-money-bill-wave"></i> Pago</button> ';
@@ -201,6 +209,7 @@ class Registers extends SecureArea
         $analisis = $this->registerModel->getInfoAnalisis($id);
 
         return view('registers/formfill', [
+            'current_module' => 'registers',
             'muestra' => $muestra,
             'tipos_muestra' => $tiposMuestra,
             'controller_name'   => 'registers',
@@ -228,7 +237,8 @@ class Registers extends SecureArea
         }
 
         return view('registers/viewreport', [
-            'controller_name'   => 'registers',
+            'current_module'    => 'registers',
+            'controller_name'  => 'registers',
             'register_info'     => $data['register_info'],
             'labotests_namecate' => $id,
             'paciente'          => $data['paciente'],
@@ -236,6 +246,40 @@ class Registers extends SecureArea
             'analisis'          => $data['analisis'],
             'grupos'            => $data['grupos'],
             'registerModel'     => $this->registerModel,
+            'allowed_modules'   => $this->allowed_modules,
+            'user_info'         => $this->user_info,
+        ]);
+    }
+
+    /**
+     * Muestra datos de la orden y todos los insumos consumidos.
+     * Usado desde reactivos/lotes cuando se hace clic en el enlace de orden.
+     */
+    public function insumos($id = -1)
+    {
+        $id = (int) $id;
+        if ($id < 1) {
+            return redirect()->to('registers')->with('error', 'Registro no válido');
+        }
+
+        $data = $this->registerService->prepareReportData($id);
+        if (!$data) {
+            return redirect()->to('registers')->with('error', 'Registro no encontrado');
+        }
+
+        $reactivoModel = model(\App\Models\ReactivoModel::class);
+        $insumos = $reactivoModel->getInsumosPorRegistro($id);
+
+        $pago = $this->registerModel->getPagoByRegistroId($id);
+
+        return view('registers/insumos_orden', [
+            'current_module'    => 'registers',
+            'controller_name'   => 'registers',
+            'register_info'     => $data['register_info'],
+            'paciente'          => $data['paciente'],
+            'doctor'            => $data['doctor'],
+            'insumos'           => $insumos,
+            'pago'              => $pago,
             'allowed_modules'   => $this->allowed_modules,
             'user_info'         => $this->user_info,
         ]);
@@ -253,13 +297,18 @@ class Registers extends SecureArea
             return redirect()->to('registers')->with('error', 'Registro no encontrado');
         }
 
-        $labConfig = $this->registerService->getLabConfig();
+        helper('qr');
+        $labConfig   = $this->registerService->getLabConfig();
+        $reportUrl   = site_url('doctor/viewreport/' . $id);
+        $qrDataUri   = qr_base64($reportUrl, 100);
         $html = view('registers/report_pdf', [
             'register_info' => $data['register_info'],
             'paciente'      => $data['paciente'],
             'doctor'        => $data['doctor'],
             'grupos'        => $data['grupos'],
             'lab_config'    => $labConfig,
+            'report_url'    => $reportUrl,
+            'qr_data_uri'   => $qrDataUri,
         ]);
 
         $pdfService    = new PdfService();
@@ -275,15 +324,17 @@ class Registers extends SecureArea
     public function save(): ResponseInterface
     {
         try {
-            $registro = $this->request->getPost('registro');
-            $pagos    = $this->request->getPost('pagos');
-
-            if (empty($registro['person_id']) || empty($registro['doctor_id'])) {
+            $validation = \Config\Services::validation();
+            $validation->setRules(config('Validation')->registro ?? []);
+            if (!$validation->withRequest($this->request)->run()) {
                 return $this->response->setJSON([
                     'success' => false,
-                    'message' => 'Debe seleccionar paciente y doctor.',
+                    'message' => implode(' ', $validation->getErrors()),
                 ])->setStatusCode(400);
             }
+
+            $registro = $this->request->getPost('registro');
+            $pagos    = $this->request->getPost('pagos');
 
             $registroData = [
                 'person_id'  => $registro['person_id'] ?? null,
@@ -487,5 +538,144 @@ class Registers extends SecureArea
         $this->registerModel->validarResultados($registroId, $tipo, $obs);
         $msg = $tipo === 'tecnico' ? 'Validación técnica registrada' : 'Validación médica registrada';
         return redirect()->to("registers/viewreport/{$registroId}")->with('success', $msg);
+    }
+
+    /**
+     * Envía el PDF por WhatsApp al paciente, doctor o ambos
+     */
+    public function sendWhatsapp(int $id = 0): ResponseInterface
+    {
+        $id = (int) $id;
+        if ($id < 1) {
+            return $this->response->setJSON(['success' => false, 'message' => 'Registro no válido'])->setStatusCode(400);
+        }
+
+        $destinatarios = $this->request->getPost('destinatarios'); // paciente, doctor, ambos
+        if (!in_array($destinatarios, ['paciente', 'doctor', 'ambos'], true)) {
+            return $this->response->setJSON(['success' => false, 'message' => 'Seleccione destinatario'])->setStatusCode(400);
+        }
+
+        $data = $this->registerService->prepareReportData($id);
+        if (!$data) {
+            return $this->response->setJSON(['success' => false, 'message' => 'Registro no encontrado'])->setStatusCode(404);
+        }
+
+        $paciente = $data['paciente'] ?? null;
+        $doctor   = $data['doctor'] ?? null;
+        $registerInfo = $data['register_info'] ?? null;
+        if (!$paciente || !$doctor || !$registerInfo) {
+            return $this->response->setJSON(['success' => false, 'message' => 'Datos incompletos'])->setStatusCode(400);
+        }
+
+        $whatsappService = new WhatsAppService();
+        if (!$whatsappService->isConfigured()) {
+            return $this->response->setJSON(['success' => false, 'message' => 'Configure WhatsApp en Configuración > WhatsApp'])->setStatusCode(400);
+        }
+
+        $labConfig = $this->configModel->getValue('company') ?? 'Laboratorio';
+        $pacienteNombre = trim(($paciente->first_name ?? '') . ' ' . ($paciente->last_name_fa ?? '') . ' ' . ($paciente->last_name_mom ?? ''));
+        $doctorNombre   = trim($doctor->name ?? '');
+        $ingreso        = $registerInfo->ingreso ?? date('Y-m-d');
+        $orden          = $registerInfo->registro_id ?? $id;
+
+        $msgPaciente = $this->configModel->getValue('whatsapp_message_paciente') ?: 'Estimado/a {paciente}, adjuntamos los resultados de su análisis (Orden #{orden}, {fecha}). {laboratorio}';
+        $msgDoctor   = $this->configModel->getValue('whatsapp_message_doctor') ?: 'Dr/a {doctor}, adjuntamos resultados del paciente {paciente} (Orden #{orden}, {fecha}). {laboratorio}';
+
+        $templateData = [
+            'paciente'   => $pacienteNombre,
+            'doctor'     => $doctorNombre,
+            'orden'      => $orden,
+            'fecha'      => date('d/m/Y', strtotime($ingreso)),
+            'laboratorio'=> $labConfig,
+        ];
+
+        helper('qr');
+        $labConfigArr = $this->registerService->getLabConfig();
+        $reportUrl    = site_url('doctor/viewreport/' . $id);
+        $qrDataUri    = qr_base64($reportUrl, 100);
+        $html = view('registers/report_pdf', [
+            'register_info' => $data['register_info'],
+            'paciente'      => $data['paciente'],
+            'doctor'        => $data['doctor'],
+            'grupos'        => $data['grupos'],
+            'lab_config'    => $labConfigArr,
+            'report_url'    => $reportUrl,
+            'qr_data_uri'   => $qrDataUri,
+        ]);
+        $pdfService = new PdfService();
+        $filename   = 'Resultados_' . preg_replace('/\s+/', '_', $pacienteNombre) . '_' . $id . '.pdf';
+        $pdfContent = $pdfService->generate($html, $filename);
+
+        $token = bin2hex(random_bytes(16));
+        $tempDir = WRITEPATH . 'temp' . DIRECTORY_SEPARATOR;
+        if (!is_dir($tempDir)) {
+            mkdir($tempDir, 0755, true);
+        }
+        $tempFile = $tempDir . 'wa_' . $token . '.pdf';
+        if (file_put_contents($tempFile, $pdfContent) === false) {
+            return $this->response->setJSON(['success' => false, 'message' => 'Error al generar PDF'])->setStatusCode(500);
+        }
+
+        $baseUrl = rtrim($this->configModel->getValue('whatsapp_base_url') ?: base_url(), '/');
+        $pdfUrl  = $baseUrl . '/registers/servePdfFile/' . $token;
+
+        $cache = \Config\Services::cache();
+        $cache->save('wa_pdf_' . $token, ['path' => $tempFile], 3600);
+
+        $results = [];
+        if (in_array($destinatarios, ['paciente', 'ambos'], true)) {
+            $pacientePhone = trim($paciente->phone_number ?? '');
+            if ($pacientePhone === '') {
+                $results[] = ['target' => 'paciente', 'success' => false, 'message' => 'Paciente sin número de teléfono'];
+            } else {
+                $msg = $whatsappService->applyTemplate($msgPaciente, $templateData);
+                $res = $whatsappService->sendWithPdf($pacientePhone, $msg, $pdfUrl, $filename);
+                $results[] = ['target' => 'paciente', 'success' => $res['success'], 'message' => $res['message']];
+            }
+        }
+        if (in_array($destinatarios, ['doctor', 'ambos'], true)) {
+            $doctorPhone = trim($doctor->phone_number ?? '');
+            if ($doctorPhone === '') {
+                $results[] = ['target' => 'doctor', 'success' => false, 'message' => 'Doctor sin número de teléfono'];
+            } else {
+                $msg = $whatsappService->applyTemplate($msgDoctor, $templateData);
+                $res = $whatsappService->sendWithPdf($doctorPhone, $msg, $pdfUrl, $filename);
+                $results[] = ['target' => 'doctor', 'success' => $res['success'], 'message' => $res['message']];
+            }
+        }
+
+        // El PDF y el token permanecen 1h en cache para que Meta (Cloud API) pueda descargarlo
+
+        $allOk = !empty($results) && array_reduce($results, fn($a, $r) => $a && ($r['success'] ?? false), true);
+        $anyOk = array_reduce($results, fn($a, $r) => $a || ($r['success'] ?? false), false);
+        $msg = $anyOk ? ($allOk ? 'Enviado correctamente.' : 'Algunos envíos fallaron.') : 'No se pudo enviar.';
+
+        return $this->response->setJSON([
+            'success' => $anyOk,
+            'message' => $msg,
+            'results' => $results,
+        ]);
+    }
+
+    /**
+     * Sirve el PDF temporal por token (URL pública para que WhatsApp Cloud API lo descargue)
+     */
+    public function servePdfFile(string $token = '')
+    {
+        $token = preg_replace('/[^a-f0-9]/', '', $token);
+        if (strlen($token) < 20) {
+            return $this->response->setStatusCode(404)->setBody('No encontrado');
+        }
+        $cache = \Config\Services::cache();
+        $cached = $cache->get('wa_pdf_' . $token);
+        if (!$cached || !is_array($cached) || empty($cached['path']) || !is_file($cached['path'])) {
+            return $this->response->setStatusCode(404)->setBody('Archivo no encontrado o expirado');
+        }
+        $path = $cached['path'];
+        $content = file_get_contents($path);
+        return $this->response
+            ->setHeader('Content-Type', 'application/pdf')
+            ->setHeader('Content-Disposition', 'inline; filename="resultados.pdf"')
+            ->setBody($content);
     }
 }

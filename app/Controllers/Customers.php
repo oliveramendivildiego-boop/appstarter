@@ -33,7 +33,8 @@ class Customers extends PersonController
         $people = $this->customerModel->getAll($perPage, $offset);
 
         return view('people/manage', [
-            'controller_name' => 'customers',
+            'controller_name'  => 'customers',
+            'current_module'   => 'customers',
             'form_width'      => $this->getFormWidth(),
             'manage_table'    => get_people_manage_table($people, $this),
             'allowed_modules' => $this->allowed_modules,
@@ -69,10 +70,12 @@ class Customers extends PersonController
         $personInfo = $this->customerModel->getInfo($customer_id === -1 ? -1 : (int) $customer_id);
 
         return view('customers/form', [
+            'current_module'   => 'customers',
             'person_info'      => $personInfo,
             'extra_head_links'  => [
                 '<script src="' . base_url('js/vendor/jquery.validate.min.js') . '"></script>',
                 '<link rel="stylesheet" href="' . base_url('css/vendor/flatpickr.min.css') . '">',
+                '<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/themes/material_green.css">',
                 '<script src="' . base_url('js/vendor/flatpickr.min.js') . '"></script>',
                 '<script src="https://cdn.jsdelivr.net/npm/flatpickr@4.6.13/dist/l10n/es.js"></script>',
             ],
@@ -135,6 +138,7 @@ class Customers extends PersonController
         $result = $this->customerModel->saveCustomer($person_data, $customer_data, $id);
         if ($result !== false) {
             $personId = (int) $result;
+            \App\Models\AuditoriaModel::log('customers', $id === null ? 'crear' : 'actualizar', (string) $personId);
             $apellidos = safe_mb_trim(($person_data['last_name_fa'] ?? '') . ' ' . ($person_data['last_name_mom'] ?? ''));
             $msg = $id === null
                 ? lang('Customers.customers_successful_adding') . ' ' . $person_data['first_name'] . ' ' . $apellidos
@@ -159,7 +163,9 @@ class Customers extends PersonController
         $ids = is_array($ids) ? $ids : [$ids];
 
         foreach ($ids as $id) {
-            $this->customerModel->deleteCustomer((int) $id);
+            $idInt = (int) $id;
+            $this->customerModel->deleteCustomer($idInt);
+            \App\Models\AuditoriaModel::log('customers', 'eliminar', (string) $idInt);
         }
 
         return $this->response->setJSON([

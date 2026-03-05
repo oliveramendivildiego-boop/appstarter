@@ -1,10 +1,74 @@
-<?= view('partial/header', ['allowed_modules' => $allowed_modules ?? [], 'user_info' => $user_info ?? null, 'current_module' => 'expediente']) ?>
+<?php
+$isDoctorPortal = !empty($doctor_portal ?? false);
+$reportUrlBase = $report_url_base ?? site_url('registers/viewreport/');
+$pdfUrlBase = $pdf_url_base ?? site_url('registers/pdf/');
+$editUrlBase = $edit_url_base ?? site_url('registers/view/');
+$backUrl = $back_url ?? site_url('expediente');
+$backLabel = $back_label ?? 'Buscar otro paciente';
+$chartDataUrl = $chart_data_url ?? '';
+$pruebasPaciente = $pruebas_paciente ?? [];
+?>
+<?php if ($isDoctorPortal): ?>
+<?= $this->extend('layouts/doctor') ?>
+<?= $this->section('head_extra') ?>
+<link rel="stylesheet" href="<?= base_url('assets/css/expediente.css') ?>">
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<?= $this->endSection() ?>
+<?php else: ?>
+<?= $this->extend('layouts/main') ?>
+<?php endif; ?>
 
+<?= $this->section('content') ?>
+<?php if ($isDoctorPortal): ?>
+<nav aria-label="breadcrumb" class="mb-3">
+    <ol class="breadcrumb">
+        <li class="breadcrumb-item"><a href="<?= site_url('doctor/home') ?>">Mi panel</a></li>
+        <li class="breadcrumb-item active"><?= esc($pacienteNombre ?? '') ?></li>
+    </ol>
+</nav>
+<?php else: ?>
 <?= view('partial/breadcrumb_nav', ['items' => [
     ['label' => lang('Module.module_home'), 'url' => site_url('home')],
     ['label' => 'Expediente', 'url' => site_url('expediente')],
     ['label' => $pacienteNombre ?? '', 'url' => null],
 ]]) ?>
+<?php endif; ?>
+
+<?php if ($isDoctorPortal): ?>
+<div class="card shadow-sm mb-4">
+    <div class="card-header bg-info text-white">
+        <h5 class="mb-0"><i class="fa-solid fa-chart-line me-2"></i>Evolución por prueba</h5>
+    </div>
+    <div class="card-body">
+        <div class="row g-3 align-items-end">
+            <div class="col-12 col-md-8">
+                <label for="prueba_select" class="form-label">Seleccione una prueba</label>
+                <select id="prueba_select" class="form-select">
+                    <option value="">-- Seleccione --</option>
+                    <?php foreach ($pruebasPaciente as $prueba): ?>
+                        <?php
+                        $pruebaKey = is_array($prueba) ? (string) ($prueba['key'] ?? '') : (string) $prueba;
+                        $pruebaLabel = is_array($prueba) ? (string) ($prueba['label'] ?? $pruebaKey) : (string) $prueba;
+                        ?>
+                        <option value="<?= esc($pruebaKey) ?>"><?= esc($pruebaLabel) ?></option>
+                    <?php endforeach; ?>
+                </select>
+            </div>
+            <div class="col-12 col-md-4">
+                <button type="button" id="btn_ver_grafico" class="btn btn-info text-white w-100">
+                    <i class="fa-solid fa-chart-column me-1"></i> Ver gráfico
+                </button>
+            </div>
+        </div>
+        <div class="mt-3">
+            <small id="chart_help" class="text-muted">Seleccione una prueba para visualizar su evolución en el tiempo.</small>
+        </div>
+        <div class="mt-3 chart-container-responsive">
+            <canvas id="pruebaChart"></canvas>
+        </div>
+    </div>
+</div>
+<?php endif; ?>
 
 <div class="card shadow-sm mb-4">
     <div class="card-header bg-primary text-white">
@@ -24,7 +88,7 @@
             </div>
         </div>
         <div class="mt-3">
-            <a href="<?= site_url('expediente') ?>" class="btn btn-secondary"><i class="fa-solid fa-search me-1"></i> Buscar otro paciente</a>
+            <a href="<?= $backUrl ?>" class="btn btn-secondary"><i class="fa-solid fa-search me-1"></i> <?= esc($backLabel) ?></a>
         </div>
     </div>
 </div>
@@ -60,15 +124,17 @@
                                 <td><?= esc($r->doctor ?? '-') ?></td>
                                 <td><?= esc($r->total ?? '-') ?></td>
                                 <td class="text-center">
-                                    <a href="<?= site_url('registers/viewreport/' . ($r->registro_id ?? '')) ?>" class="btn btn-sm btn-primary" target="_blank" title="Ver reporte">
+                                    <a href="<?= $reportUrlBase . ($r->registro_id ?? '') ?>" class="btn btn-sm btn-primary" target="_blank" title="Ver reporte">
                                         <i class="fa-solid fa-file-lines"></i>
                                     </a>
-                                    <a href="<?= site_url('registers/pdf/' . ($r->registro_id ?? '')) ?>" class="btn btn-sm btn-success" target="_blank" title="Descargar PDF">
+                                    <a href="<?= $pdfUrlBase . ($r->registro_id ?? '') ?>" class="btn btn-sm btn-success" target="_blank" title="Descargar PDF">
                                         <i class="fa-solid fa-file-pdf"></i>
                                     </a>
-                                    <a href="<?= site_url('registers/view/' . ($r->registro_id ?? '')) ?>" class="btn btn-sm btn-outline-primary" title="Editar">
-                                        <i class="fa-solid fa-pen"></i>
-                                    </a>
+                                    <?php if (!$isDoctorPortal): ?>
+                                        <a href="<?= $editUrlBase . ($r->registro_id ?? '') ?>" class="btn btn-sm btn-outline-primary" title="Editar">
+                                            <i class="fa-solid fa-pen"></i>
+                                        </a>
+                                    <?php endif; ?>
                                 </td>
                             </tr>
                         <?php endforeach; ?>
@@ -93,8 +159,8 @@
                         Orden #<?= esc($ant->registro_id) ?> - <?= esc(date('d/m/Y', strtotime($ant->ingreso ?? 'now'))) ?>
                     </span>
                     <span>
-                        <a href="<?= site_url('registers/viewreport/' . ($ant->registro_id ?? '')) ?>" class="btn btn-sm btn-outline-primary" target="_blank">Ver</a>
-                        <a href="<?= site_url('registers/pdf/' . ($ant->registro_id ?? '')) ?>" class="btn btn-sm btn-outline-success" target="_blank">PDF</a>
+                        <a href="<?= $reportUrlBase . ($ant->registro_id ?? '') ?>" class="btn btn-sm btn-outline-primary" target="_blank">Ver</a>
+                        <a href="<?= $pdfUrlBase . ($ant->registro_id ?? '') ?>" class="btn btn-sm btn-outline-success" target="_blank">PDF</a>
                     </span>
                 </li>
             <?php endforeach; ?>
@@ -102,5 +168,114 @@
     </div>
 </div>
 <?php endif; ?>
+<?= $this->endSection() ?>
 
-<?= view('partial/footer') ?>
+<?= $this->section('scripts') ?>
+<?php if ($isDoctorPortal): ?>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    var chartCanvas = document.getElementById('pruebaChart');
+    var chartHelp = document.getElementById('chart_help');
+    var btn = document.getElementById('btn_ver_grafico');
+    var pruebaSelect = document.getElementById('prueba_select');
+    var chart = null;
+
+    if (!chartCanvas || !btn || !pruebaSelect || typeof Chart === 'undefined') {
+        return;
+    }
+
+    function drawChart(payload, pruebaNombre) {
+        if (chart) {
+            chart.destroy();
+        }
+        chart = new Chart(chartCanvas, {
+            type: 'line',
+            data: {
+                labels: payload.labels || [],
+                datasets: [
+                    {
+                        label: 'Resultado',
+                        data: payload.valor || [],
+                        borderColor: 'rgb(54, 162, 235)',
+                        backgroundColor: 'rgba(54, 162, 235, 0.15)',
+                        tension: 0.2
+                    },
+                    {
+                        label: 'Referencia mínima',
+                        data: payload.minimo || [],
+                        borderColor: 'rgb(255, 159, 64)',
+                        borderDash: [6, 4],
+                        tension: 0.2
+                    },
+                    {
+                        label: 'Referencia máxima',
+                        data: payload.maximo || [],
+                        borderColor: 'rgb(255, 99, 132)',
+                        borderDash: [6, 4],
+                        tension: 0.2
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: true,
+                aspectRatio: 2,
+                interaction: { mode: 'index', intersect: false },
+                plugins: {
+                    title: {
+                        display: true,
+                        text: 'Evolución de ' + pruebaNombre,
+                        font: { size: 14 }
+                    },
+                    legend: {
+                        display: true,
+                        position: 'top'
+                    }
+                },
+                scales: {
+                    y: { beginAtZero: false },
+                    x: {
+                        ticks: {
+                            maxRotation: 45,
+                            minRotation: 0,
+                            maxTicksLimit: 8
+                        }
+                    }
+                }
+            }
+        });
+    }
+
+    btn.addEventListener('click', function() {
+        var pruebaKey = (pruebaSelect.value || '').trim();
+        var pruebaLabel = pruebaSelect.options[pruebaSelect.selectedIndex] ? (pruebaSelect.options[pruebaSelect.selectedIndex].text || '') : '';
+        if (!pruebaKey) {
+            alert('Seleccione una prueba');
+            return;
+        }
+
+        fetch('<?= esc($chartDataUrl) ?>?prueba=' + encodeURIComponent(pruebaKey), {
+            headers: { 'X-Requested-With': 'XMLHttpRequest' }
+        })
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
+            if (!data || data.success !== true) {
+                chartHelp.textContent = (data && data.message) ? data.message : 'No se pudo cargar la gráfica.';
+                return;
+            }
+            if (!Array.isArray(data.labels) || data.labels.length === 0) {
+                chartHelp.textContent = 'No hay datos históricos para esta prueba.';
+                if (chart) chart.destroy();
+                return;
+            }
+            chartHelp.textContent = 'Mostrando evolución histórica de la prueba seleccionada.';
+            drawChart(data, pruebaLabel || pruebaKey);
+        })
+        .catch(function() {
+            chartHelp.textContent = 'Error de conexión al cargar la gráfica.';
+        });
+    });
+});
+</script>
+<?php endif; ?>
+<?= $this->endSection() ?>

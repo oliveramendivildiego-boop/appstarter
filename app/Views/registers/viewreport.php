@@ -1,37 +1,6 @@
-<?= view('partial/header', ['allowed_modules' => $allowed_modules ?? [], 'user_info' => $user_info ?? null, 'current_module' => 'registers']) ?>
-<script>
-document.addEventListener('DOMContentLoaded', function() {
-    var btn = document.getElementById('guardaranalisis');
-    if (btn) {
-        btn.addEventListener('click', function() {
-            var datos = [];
-            document.querySelectorAll('.analisis').forEach(function(el) {
-                datos.push({
-                    padre: el.getAttribute('padre'),
-                    hijo: el.getAttribute('hijo'),
-                    analisis: el.getAttribute('analisis'),
-                    valor: el.getAttribute('value') || el.value,
-                    unidad: el.getAttribute('unidad'),
-                    minimo: el.getAttribute('min'),
-                    maximo: el.getAttribute('max'),
-                    registro_id: document.getElementById('registro_id').value
-                });
-            });
-            fetch('<?= site_url('registers/saveanalisiss') ?>', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'X-Requested-With': 'XMLHttpRequest' },
-                body: 'data=' + encodeURIComponent(JSON.stringify(datos))
-            })
-            .then(function(r) { return r.json(); })
-            .then(function(res) {
-                window.location.href = '<?= site_url('registers') ?>';
-            })
-            .catch(function() { alert('Error al guardar'); });
-        });
-    }
-});
-</script>
-
+<?= $this->extend('layouts/main') ?>
+<?= $this->section('title') ?>Reporte<?= $this->endSection() ?>
+<?= $this->section('content') ?>
 <?php if (session()->getFlashdata('success')): ?>
 <div class="alert alert-success"><?= esc(session()->getFlashdata('success')) ?></div>
 <?php endif; ?>
@@ -44,15 +13,15 @@ document.addEventListener('DOMContentLoaded', function() {
 <div class="row mb-3">
     <div class="col-md-6">
         <?php
-        $appConfig = model(\App\Models\AppConfigModel::class);
-        $logoRow = $appConfig->find('logo');
-        $logoUrl = $logoRow && $logoRow->value ? base_url($logoRow->value) : base_url('images/logo-john.png');
+        helper('layout');
+        $layoutCfg = layout_config();
+        $logoUrl = base_url($layoutCfg['logo'] ?? 'images/logo-john.png');
         ?>
-        <img src="<?= esc($logoUrl) ?>" alt="Logo" style="max-height:80px">
+        <img src="<?= esc($logoUrl) ?>" alt="Logo" class="report-logo-preview">
     </div>
     <div class="col-md-6 text-center">
         <img src="<?= site_url('qr/generate') ?>?data=<?= urlencode(current_url()) ?>&size=120" alt="QR" /><br/>
-        www.laboratoriojohn.com
+        <?= esc($layoutCfg['website'] ?? '') ?>
     </div>
 </div>
 <div class="row mb-3">
@@ -95,5 +64,39 @@ endif;
     </a>
 </div>
 </fieldset>
+<?= $this->endSection() ?>
 
-<?= view('partial/footer') ?>
+<?= $this->section('scripts') ?>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    var btn = document.getElementById('guardaranalisis');
+    if (btn) {
+        btn.addEventListener('click', function() {
+            var datos = [];
+            document.querySelectorAll('.analisis').forEach(function(el) {
+                datos.push({
+                    padre: el.getAttribute('padre'),
+                    hijo: el.getAttribute('hijo'),
+                    analisis: el.getAttribute('analisis'),
+                    valor: el.getAttribute('value') || el.value,
+                    unidad: el.getAttribute('unidad'),
+                    minimo: el.getAttribute('min'),
+                    maximo: el.getAttribute('max'),
+                    registro_id: document.getElementById('registro_id').value
+                });
+            });
+            fetch('<?= site_url('registers/saveanalisiss') ?>', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'X-Requested-With': 'XMLHttpRequest' },
+                body: 'data=' + encodeURIComponent(JSON.stringify(datos))
+            })
+            .then(function(r) { return r.json(); })
+            .then(function(res) {
+                window.location.href = '<?= site_url('registers') ?>';
+            })
+            .catch(function() { alert('Error al guardar'); });
+        });
+    }
+});
+</script>
+<?= $this->endSection() ?>

@@ -9,6 +9,16 @@ class ControlCalidadModel extends Model
     protected $table = 'control_calidad';
     protected $primaryKey = 'control_id';
 
+    public function getById(int $controlId): ?array
+    {
+        $row = $this->db->table('control_calidad')
+            ->where('control_id', $controlId)
+            ->where('(deleted = 0 OR deleted IS NULL)')
+            ->get()
+            ->getRowArray();
+        return $row ?: null;
+    }
+
     public function getAll(): array
     {
         return $this->db->table('control_calidad')

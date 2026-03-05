@@ -68,11 +68,16 @@ class EmployeeModel extends Model
             ->getResult();
     }
 
-    public function login(string $username, string $password): bool
+    /**
+     * Login por username o por email. Si el valor contiene @ se intenta por email.
+     */
+    public function login(string $usernameOrEmail, string $password): bool
     {
         $hash = md5($password);
-        $row  = $this->db->table($this->table)
-            ->where('username', $username)
+
+        // Intentar por username
+        $row = $this->db->table($this->table)
+            ->where('username', $usernameOrEmail)
             ->where('password', $hash)
             ->where('deleted', 0)
             ->get()
@@ -80,6 +85,37 @@ class EmployeeModel extends Model
 
         if ($row) {
             session()->set('person_id', $row->person_id);
+            session()->remove('doctor_id');
+            session()->remove('user_type');
+            return true;
+        }
+
+        // Si no funcionó y el input parece email, intentar por email (people)
+        if (str_contains($usernameOrEmail, '@')) {
+            return $this->loginByEmailWithPassword($usernameOrEmail, $hash);
+        }
+
+        return false;
+    }
+
+    /**
+     * Login por email verificando además la contraseña.
+     */
+    private function loginByEmailWithPassword(string $email, string $passwordHash): bool
+    {
+        $row = $this->db->table('employees')
+            ->select('employees.person_id')
+            ->join('people', 'people.person_id = employees.person_id')
+            ->where('people.email', $email)
+            ->where('employees.password', $passwordHash)
+            ->where('employees.deleted', 0)
+            ->get()
+            ->getRow();
+
+        if ($row) {
+            session()->set('person_id', $row->person_id);
+            session()->remove('doctor_id');
+            session()->remove('user_type');
             return true;
         }
         return false;
@@ -137,12 +173,15 @@ class EmployeeModel extends Model
             session()->remove('user_info_' . $personId);
             session()->remove('allowed_modules_' . $personId);
         }
+        session()->remove('doctor_id');
+        session()->remove('user_type');
         session()->destroy();
     }
 
     public function isLoggedIn(): bool
     {
-        return session()->has('person_id') && session()->get('person_id') !== null;
+        return (session()->has('person_id') && session()->get('person_id') !== null)
+            || (session()->has('doctor_id') && session()->get('doctor_id') !== null);
     }
 
     public function getLoggedInEmployeeInfo()

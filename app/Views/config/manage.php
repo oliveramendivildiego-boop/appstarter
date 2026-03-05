@@ -1,18 +1,47 @@
-<?= view('partial/header', ['allowed_modules' => $allowed_modules ?? [], 'user_info' => $user_info ?? null, 'current_module' => 'config']) ?>
-<?= view('partial/breadcrumb_nav', ['items' => [
-    ['label' => lang('Module.module_config'), 'url' => site_url('config')],
-]]) ?>
+<?= $this->extend('layouts/main') ?>
+<?= $this->section('head_extra') ?>
+<script src="<?= base_url('js/vendor/jquery.validate.min.js') ?>"></script>
+<?= $this->endSection() ?>
+<?= $this->section('content') ?>
+<?= view('partial/breadcrumb_nav', ['items' => [['label' => lang('Module.module_config'), 'url' => site_url('config')]]]) ?>
 
-<div class="card shadow-sm">
-    <div class="card-header bg-primary text-white">
-        <h5 class="mb-0"><i class="fa-solid fa-gear me-2"></i><?= lang('Config.config_info') ?></h5>
-    </div>
-    <div class="card-body">
-        <p class="mb-3">
-    <a href="<?= site_url('config/backup') ?>" class="btn btn-outline-secondary btn-sm" target="_blank">
-        <i class="fa-solid fa-database me-1"></i> Exportar respaldo SQL
-    </a>
-</p>
+<?php if (session()->getFlashdata('success')): ?>
+<div class="alert alert-success alert-dismissible fade show">
+    <?= esc(session()->getFlashdata('success')) ?>
+    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+</div>
+<?php endif; ?>
+<?php if (session()->getFlashdata('error')): ?>
+<div class="alert alert-danger alert-dismissible fade show">
+    <?= esc(session()->getFlashdata('error')) ?>
+    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+</div>
+<?php endif; ?>
+
+<?php $activeTab = isset($active_tab) ? $active_tab : 'sistema'; ?>
+<ul class="nav nav-tabs mb-3" id="configTabs" role="tablist">
+    <li class="nav-item" role="presentation">
+        <button class="nav-link <?= $activeTab === 'sistema' ? 'active' : '' ?>" id="tab-sistema-btn" data-bs-toggle="tab" data-bs-target="#tab-sistema" type="button" role="tab">Configuración del sistema</button>
+    </li>
+    <li class="nav-item" role="presentation">
+        <button class="nav-link <?= $activeTab === 'poblacion' ? 'active' : '' ?>" id="tab-poblacion-btn" data-bs-toggle="tab" data-bs-target="#tab-poblacion" type="button" role="tab">Grupos de población (por edad)</button>
+    </li>
+    <li class="nav-item" role="presentation">
+        <button class="nav-link <?= $activeTab === 'opciones' ? 'active' : '' ?>" id="tab-opciones-btn" data-bs-toggle="tab" data-bs-target="#tab-opciones" type="button" role="tab">Tipos de resultado</button>
+    </li>
+    <li class="nav-item" role="presentation">
+        <button class="nav-link <?= $activeTab === 'whatsapp' ? 'active' : '' ?>" id="tab-whatsapp-btn" data-bs-toggle="tab" data-bs-target="#tab-whatsapp" type="button" role="tab">WhatsApp</button>
+    </li>
+</ul>
+
+<div class="tab-content" id="configTabsContent">
+    <!-- Pestaña: Configuración del sistema -->
+    <div class="tab-pane fade <?= $activeTab === 'sistema' ? 'show active' : '' ?>" id="tab-sistema" role="tabpanel">
+        <div class="card shadow-sm">
+            <div class="card-header bg-primary text-white">
+                <h5 class="mb-0"><i class="fa-solid fa-gear me-2"></i><?= lang('Config.config_info') ?></h5>
+            </div>
+            <div class="card-body">
 <?= form_open_multipart(site_url('config/save'), ['id' => 'config_form', 'data-async' => '1']) ?>
         <div class="row">
             <div class="col-md-6 mb-3">
@@ -38,7 +67,7 @@
                 <?php $logoPath = $config['logo'] ?? 'images/logo-john.png'; ?>
                 <?php if (!empty($logoPath) && file_exists(FCPATH . $logoPath)): ?>
                     <div class="mb-2">
-                        <img src="<?= base_url($logoPath) ?>?v=<?= time() ?>" alt="Logo actual" style="max-height:60px" class="border rounded p-1">
+                        <img src="<?= base_url($logoPath) ?>?v=<?= time() ?>" alt="Logo actual" class="border rounded p-1 config-logo-preview">
                     </div>
                 <?php endif; ?>
                 <?= form_upload(['name' => 'logo_upload', 'id' => 'logo_upload', 'class' => 'form-control', 'accept' => 'image/*', 'autocomplete' => 'off']) ?>
@@ -90,8 +119,8 @@
                 ?>
                 <?= form_dropdown('theme_palette_select', $selectOptions, $selectedHex, 'id="theme_palette_select" class="form-select mb-2" autocomplete="off"') ?>
                 <div class="d-flex align-items-center gap-2 flex-wrap">
-                    <input type="color" name="theme_color" id="theme_color" value="<?= esc($config['theme_color'] ?? '#FF7218') ?>" class="form-control form-control-color" style="width:60px;height:40px;cursor:pointer" autocomplete="off">
-                    <input type="text" id="theme_color_hex" name="theme_color_hex" value="<?= esc($config['theme_color'] ?? '#FF7218') ?>" class="form-control" style="max-width:100px" readonly autocomplete="off">
+                    <input type="color" name="theme_color" id="theme_color" value="<?= esc($config['theme_color'] ?? '#FF7218') ?>" class="form-control form-control-color config-color-picker" autocomplete="off">
+                    <input type="text" id="theme_color_hex" name="theme_color_hex" value="<?= esc($config['theme_color'] ?? '#FF7218') ?>" class="form-control config-color-hex" readonly autocomplete="off">
                 </div>
                 <small class="text-muted">O elige un color personalizado con el selector.</small>
             </div>
@@ -106,6 +135,11 @@
                 <?= form_input(['name' => 'decimales_sugerencia', 'id' => 'decimales_sugerencia', 'type' => 'number', 'min' => 0, 'max' => 10, 'class' => 'form-control', 'value' => $config['decimales_sugerencia'] ?? '2', 'autocomplete' => 'off']) ?>
                 <small class="text-muted"><?= lang('Config.config_decimales_sugerencia_help') ?></small>
             </div>
+            <div class="col-md-6 mb-3">
+                <label for="dias_alerta_vencimiento" class="form-label">Días de alerta para vencimiento de insumos</label>
+                <?= form_input(['name' => 'dias_alerta_vencimiento', 'id' => 'dias_alerta_vencimiento', 'type' => 'number', 'min' => 1, 'max' => 365, 'class' => 'form-control', 'value' => $config['dias_alerta_vencimiento'] ?? '40', 'autocomplete' => 'off']) ?>
+                <small class="text-muted">Los lotes que venzan en los próximos X días se marcarán en amarillo en el reporte de insumos por vencimiento.</small>
+            </div>
         </div>
         <div class="mb-3">
             <div class="form-check">
@@ -115,22 +149,19 @@
         </div>
         <button type="submit" id="config_save_btn" name="config_save_btn" class="btn btn-primary"><?= lang('Config.config_save_btn') ?></button>
         <?= form_close() ?>
+            </div>
+        </div>
     </div>
-</div>
 
-<div class="card shadow-sm mt-4">
-    <div class="card-header bg-secondary text-white">
-        <h5 class="mb-0"><i class="fa-solid fa-people-group me-2"></i>Grupos de población (por edad)</h5>
-    </div>
-    <div class="card-body">
-        <?php if (session()->getFlashdata('success')): ?>
-        <div class="alert alert-success"><?= esc(session()->getFlashdata('success')) ?></div>
-        <?php endif; ?>
-        <?php if (session()->getFlashdata('error')): ?>
-        <div class="alert alert-danger"><?= esc(session()->getFlashdata('error')) ?></div>
-        <?php endif; ?>
-
-        <table class="table table-sm table-bordered mb-4">
+    <!-- Pestaña: Grupos de población (por edad) -->
+    <div class="tab-pane fade <?= $activeTab === 'poblacion' ? 'show active' : '' ?>" id="tab-poblacion" role="tabpanel">
+        <div class="card shadow-sm">
+            <div class="card-header bg-secondary text-white">
+                <h5 class="mb-0"><i class="fa-solid fa-people-group me-2"></i>Grupos de población (por edad)</h5>
+            </div>
+            <div class="card-body">
+        <div class="table-responsive mb-4">
+        <table class="table table-sm table-bordered">
             <thead>
                 <tr>
                     <th>Grupo</th>
@@ -146,8 +177,9 @@
                     <td><?= \App\Models\PoblacionModel::formatRangoEdad($p) ?></td>
                     <td><?= (int)($p['orden'] ?? 0) ?></td>
                     <td class="text-center">
-                        <form method="get" action="<?= esc(site_url('config')) ?>#form_poblacion" style="display:inline">
+                        <form method="get" action="<?= esc(site_url('config')) ?>" class="d-inline">
                         <input type="hidden" name="editar" value="<?= (int)($p['id_poblacion'] ?? 0) ?>">
+                        <input type="hidden" name="tab" value="poblacion">
                         <button type="submit" class="btn btn-sm btn-outline-primary" title="Editar"><i class="fa-solid fa-pen"></i></button>
                         </form>
                         <a href="<?= site_url('config/deletepoblacion/' . (int)($p['id_poblacion'] ?? 0)) ?>" class="btn btn-sm btn-outline-danger" title="Eliminar" onclick="return confirm('¿Eliminar este grupo de población?');"><i class="fa-solid fa-trash"></i></a>
@@ -159,9 +191,10 @@
                 <?php endif; ?>
             </tbody>
         </table>
+        </div>
 
         <h6 class="mb-3" id="form_poblacion"><?= ($editar_poblacion ?? -1) >= 0 ? 'Editar grupo' : 'Agregar grupo' ?></h6>
-        <?= form_open('config/savepoblacion', ['class' => 'border p-3 rounded']) ?>
+        <?= form_open('config/savepoblacion', ['class' => 'border p-3 rounded', 'id' => 'form_poblacion']) ?>
         <input type="hidden" name="id_poblacion" value="<?= ($editar_poblacion ?? -1) >= 0 ? (int)$editar_poblacion : '' ?>">
         <div class="row">
             <div class="col-md-4 mb-2">
@@ -193,14 +226,166 @@
             <div class="col-md-2 mb-2 d-flex align-items-end">
                 <button type="submit" class="btn btn-primary btn-sm me-2"><?= ($editar_poblacion ?? -1) >= 0 ? 'Actualizar' : 'Agregar' ?></button>
                 <?php if (($editar_poblacion ?? -1) >= 0): ?>
-                <a href="<?= site_url('config') ?>" class="btn btn-secondary btn-sm">Cancelar</a>
+                <a href="<?= site_url('config?tab=poblacion') ?>" class="btn btn-secondary btn-sm">Cancelar</a>
                 <?php endif; ?>
             </div>
         </div>
         <small class="text-muted">Ejemplos: Recién nacido (0-28 días), Lactante (29-330 días ≈ 11 meses), Niño pequeño (1-5 años), Adulto mayor (mín 60, máx vacío, años)</small>
         <?= form_close() ?>
+            </div>
+        </div>
+    </div>
+
+    <!-- Pestaña: WhatsApp -->
+    <div class="tab-pane fade <?= $activeTab === 'whatsapp' ? 'show active' : '' ?>" id="tab-whatsapp" role="tabpanel">
+        <div class="card shadow-sm">
+            <div class="card-header bg-success text-white">
+                <h5 class="mb-0"><i class="fa-brands fa-whatsapp me-2"></i>Configuración de WhatsApp Business API</h5>
+            </div>
+            <div class="card-body">
+                <?= form_open(site_url('config/saveWhatsapp'), ['id' => 'whatsapp_form']) ?>
+                <div class="mb-4">
+                    <label for="whatsapp_provider" class="form-label fw-bold">Proveedor</label>
+                    <select name="whatsapp_provider" id="whatsapp_provider" class="form-select">
+                        <option value="meta" <?= ($config['whatsapp_provider'] ?? 'meta') === 'meta' ? 'selected' : '' ?>>Meta Cloud API (recomendado)</option>
+                        <option value="twilio" <?= ($config['whatsapp_provider'] ?? '') === 'twilio' ? 'selected' : '' ?>>Twilio</option>
+                    </select>
+                    <small class="text-muted">Meta Cloud API es la API oficial de WhatsApp Business.</small>
+                </div>
+
+                <!-- Bloque Meta Cloud API -->
+                <div id="wa-meta-block" class="mb-4" style="display:<?= ($config['whatsapp_provider'] ?? 'meta') === 'meta' ? 'block' : 'none' ?>;">
+                    <p class="text-muted small mb-3"><a href="https://developers.facebook.com/docs/whatsapp/cloud-api" target="_blank" rel="noopener">Documentación Meta Cloud API</a></p>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="whatsapp_meta_phone_id" class="form-label">Phone Number ID</label>
+                            <input type="text" name="whatsapp_meta_phone_id" id="whatsapp_meta_phone_id" class="form-control" value="<?= esc($config['whatsapp_meta_phone_id'] ?? '') ?>" placeholder="123456789012345" autocomplete="off">
+                            <small class="text-muted">En Meta for Developers → WhatsApp → API Setup</small>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="whatsapp_meta_token" class="form-label">Access Token (permanente)</label>
+                            <input type="password" name="whatsapp_meta_token" id="whatsapp_meta_token" class="form-control" value="<?= esc($config['whatsapp_meta_token'] ?? '') ?>" placeholder="EAAxxxx..." autocomplete="off">
+                            <small class="text-muted">Token del System User o de la App</small>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="whatsapp_meta_template" class="form-label">Plantilla (primer contacto)</label>
+                            <input type="text" name="whatsapp_meta_template" id="whatsapp_meta_template" class="form-control" value="<?= esc($config['whatsapp_meta_template'] ?? '') ?>" placeholder="resultados_laboratorio" autocomplete="off">
+                            <small class="text-muted">Plantilla aprobada con header=document y body={{1}}. Opcional si hay ventana 24h.</small>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="whatsapp_meta_lang" class="form-label">Idioma plantilla</label>
+                            <input type="text" name="whatsapp_meta_lang" id="whatsapp_meta_lang" class="form-control" value="<?= esc($config['whatsapp_meta_lang'] ?? 'es') ?>" placeholder="es" autocomplete="off">
+                        </div>
+                    </div>
+                    <div class="alert alert-info py-2 small">
+                        <strong>Ventana 24h:</strong> Si el destinatario escribió recientemente, se envía directo. Si no, use una plantilla aprobada en Meta Business Manager (header=documento dinámico, body con {{1}}).
+                    </div>
+                </div>
+
+                <!-- Bloque Twilio -->
+                <div id="wa-twilio-block" class="mb-4" style="display:<?= ($config['whatsapp_provider'] ?? '') === 'twilio' ? 'block' : 'none' ?>;">
+                    <p class="text-muted small mb-3"><a href="https://www.twilio.com/docs/whatsapp" target="_blank" rel="noopener">Documentación Twilio</a></p>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="whatsapp_twilio_account_sid" class="form-label">Account SID</label>
+                            <input type="text" name="whatsapp_twilio_account_sid" id="whatsapp_twilio_account_sid" class="form-control" value="<?= esc($config['whatsapp_twilio_account_sid'] ?? '') ?>" placeholder="ACxxx..." autocomplete="off">
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="whatsapp_twilio_auth_token" class="form-label">Auth Token</label>
+                            <input type="password" name="whatsapp_twilio_auth_token" id="whatsapp_twilio_auth_token" class="form-control" value="<?= esc($config['whatsapp_twilio_auth_token'] ?? '') ?>" placeholder="••••••••" autocomplete="off">
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label for="whatsapp_twilio_from" class="form-label">Número WhatsApp (From)</label>
+                        <input type="text" name="whatsapp_twilio_from" id="whatsapp_twilio_from" class="form-control" value="<?= esc($config['whatsapp_twilio_from'] ?? '') ?>" placeholder="+14155238886" autocomplete="off">
+                        <small class="text-muted">Sandbox: cada destinatario debe enviar el código de unión primero.</small>
+                    </div>
+                </div>
+
+                <!-- URL base (común) -->
+                <div class="mb-3">
+                    <label for="whatsapp_base_url" class="form-label">URL base (para descargar PDF)</label>
+                    <input type="url" name="whatsapp_base_url" id="whatsapp_base_url" class="form-control" value="<?= esc($config['whatsapp_base_url'] ?? '') ?>" placeholder="https://laboratorio.tudominio.com" autocomplete="off">
+                    <small class="text-muted">URL pública del laboratorio. Debe ser accesible desde internet.</small>
+                </div>
+
+                <hr class="my-4">
+                <div class="mb-3">
+                    <label for="whatsapp_message_paciente" class="form-label">Mensaje para el paciente</label>
+                    <textarea name="whatsapp_message_paciente" id="whatsapp_message_paciente" class="form-control" rows="3" placeholder="Estimado/a {paciente}..."><?= esc($config['whatsapp_message_paciente'] ?? '') ?></textarea>
+                    <small class="text-muted">Placeholders: {paciente}, {orden}, {fecha}, {laboratorio}</small>
+                </div>
+                <div class="mb-3">
+                    <label for="whatsapp_message_doctor" class="form-label">Mensaje para el doctor</label>
+                    <textarea name="whatsapp_message_doctor" id="whatsapp_message_doctor" class="form-control" rows="3" placeholder="Dr/a {doctor}..."><?= esc($config['whatsapp_message_doctor'] ?? '') ?></textarea>
+                    <small class="text-muted">Placeholders: {doctor}, {paciente}, {orden}, {fecha}, {laboratorio}</small>
+                </div>
+                <button type="submit" class="btn btn-success">Guardar configuración WhatsApp</button>
+                <?= form_close() ?>
+            </div>
+        </div>
+    </div>
+
+    <!-- Pestaña: Tipos de resultado -->
+    <div class="tab-pane fade <?= $activeTab === 'opciones' ? 'show active' : '' ?>" id="tab-opciones" role="tabpanel">
+        <div class="card shadow-sm">
+            <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+                <h5 class="mb-0"><i class="fa-solid fa-list-check me-2"></i>Tipos de resultado</h5>
+                <a href="<?= site_url('labotests') ?>" class="btn btn-light btn-sm"><i class="fa-solid fa-flask-vial me-1"></i> Ir a Análisis clínicos</a>
+            </div>
+            <div class="card-body">
+                <?= view('config/partial_opciones', ['opciones' => $opciones ?? []]) ?>
+            </div>
+        </div>
     </div>
 </div>
 
+<?= $this->endSection() ?>
+
+<?= $this->section('scripts') ?>
 <script src="<?= base_url('js/config.js') ?>" defer></script>
-<?= view('partial/footer') ?>
+<script>
+$(document).ready(function() {
+    document.querySelectorAll('#configTabs button[data-bs-toggle="tab"]').forEach(function(btn) {
+        btn.addEventListener('shown.bs.tab', function(e) {
+            var target = e.target.getAttribute('data-bs-target');
+            if (target) {
+                var tab = target.replace('#tab-', '');
+                var url = new URL(window.location.href);
+                url.searchParams.set('tab', tab);
+                history.replaceState(null, '', url);
+            }
+        });
+    });
+    function toggleWaProvider() {
+        var p = document.getElementById('whatsapp_provider');
+        var prov = p ? p.value : 'meta';
+        var meta = document.getElementById('wa-meta-block');
+        var twilio = document.getElementById('wa-twilio-block');
+        if (meta) meta.style.display = prov === 'meta' ? 'block' : 'none';
+        if (twilio) twilio.style.display = prov === 'twilio' ? 'block' : 'none';
+    }
+    (function() {
+        var prov = document.getElementById('whatsapp_provider');
+        if (prov) prov.addEventListener('change', toggleWaProvider);
+        toggleWaProvider();
+    })();
+    if ($.fn.validate && $('#config_form').length) {
+        $('#config_form').validate($.extend(true, {}, window.VALIDATE_COMMON_OPTIONS, {
+            rules: { company: { required: true, minlength: 2, maxlength: 255 } },
+            messages: { company: { required: "El nombre de la empresa es obligatorio", minlength: "La empresa debe tener al menos 2 caracteres" } }
+        }));
+        $('#form_poblacion').validate($.extend(true, {}, window.VALIDATE_COMMON_OPTIONS, {
+            rules: { name: { required: true } },
+            messages: { name: { required: "El nombre del grupo es obligatorio" } }
+        }));
+        $('#form_nueva_opcion').validate($.extend(true, {}, window.VALIDATE_COMMON_OPTIONS, {
+            rules: { opciones: { required: true } },
+            messages: { opciones: { required: "El nombre es obligatorio" } }
+        }));
+    }
+});
+</script>
+<?= $this->endSection() ?>

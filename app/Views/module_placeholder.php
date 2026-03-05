@@ -1,4 +1,6 @@
-<?= view('partial/header', ['allowed_modules' => $allowed_modules ?? [], 'user_info' => $user_info ?? null]) ?>
+<?= $this->extend('layouts/main') ?>
+
+<?= $this->section('content') ?>
 <div class="container py-4">
     <div class="alert alert-info">
         <h4><i class="fa-solid fa-wrench"></i> Módulo en desarrollo</h4>
@@ -6,4 +8,4 @@
     </div>
     <a href="<?= site_url('home') ?>" class="btn btn-primary">Volver al inicio</a>
 </div>
-<?= view('partial/footer') ?>
+<?= $this->endSection() ?>

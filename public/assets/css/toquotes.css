@@ -1,0 +1,15 @@
+/**
+ * Módulo Toquotes - cotizaciones
+ */
+.highlight-red {
+    background-color: #dc3545 !important;
+    color: #fff !important;
+}
+
+#autocompleteDropdown {
+    border-radius: 0 0 0.375rem 0.375rem;
+    border: 1px solid rgba(0,0,0,.125);
+}
+#autocompleteDropdown .list-group-item:hover {
+    background-color: #e9ecef;
+}

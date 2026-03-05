@@ -1,5 +1,6 @@
-<?= view('partial/header', ['allowed_modules' => $allowed_modules ?? [], 'user_info' => $user_info ?? null, 'current_module' => 'labotests']) ?>
+<?= $this->extend('layouts/main') ?>
 
+<?= $this->section('content') ?>
 <?= view('partial/breadcrumb_nav', ['items' => [
     ['label' => lang('Module.module_labotests'), 'url' => site_url('labotests')],
     ['label' => ($labotests_info->anacategoria_id ?? null) ? lang('Labotests.labotests_edit_group') : lang('Labotests.labotests_new_group'), 'url' => null],
@@ -25,5 +26,4 @@
 </div>
 
 <?= form_close() ?>
-
-<?= view('partial/footer') ?>
+<?= $this->endSection() ?>

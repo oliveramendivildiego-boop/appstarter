@@ -1,0 +1,121 @@
+/**
+ * Estilos para reporte PDF (dompdf)
+ */
+* { box-sizing: border-box; }
+body {
+    font-family: DejaVu Sans, sans-serif;
+    font-size: 10pt;
+    margin: 15px;
+    color: #333;
+}
+.header {
+    display: table;
+    width: 100%;
+    margin-bottom: 15px;
+    border-bottom: 2px solid #0066cc;
+    padding-bottom: 10px;
+}
+.logo-cell {
+    display: table-cell;
+    width: 100px;
+    vertical-align: middle;
+}
+.logo-cell img {
+    max-height: 70px;
+}
+.lab-info {
+    display: table-cell;
+    vertical-align: middle;
+    padding: 0 15px;
+    text-align: center;
+}
+.lab-info h1 {
+    margin: 0;
+    font-size: 14pt;
+    color: #0066cc;
+}
+.lab-info p {
+    margin: 3px 0;
+    font-size: 9pt;
+}
+.qr-cell {
+    display: table-cell;
+    width: 90px;
+    vertical-align: middle;
+    text-align: right;
+}
+.qr-cell .qr-img {
+    max-width: 75px;
+    max-height: 75px;
+    height: auto;
+    display: block;
+    margin-left: auto;
+}
+.qr-cell .qr-label {
+    margin: 4px 0 0 0;
+    font-size: 7pt;
+    color: #555;
+}
+.patient-section {
+    margin: 15px 0;
+    padding: 10px;
+    background: #f8f9fa;
+    border-radius: 4px;
+}
+.patient-section .row {
+    display: table;
+    width: 100%;
+}
+.patient-section .col {
+    display: table-cell;
+    width: 50%;
+    padding: 5px 10px 5px 0;
+    vertical-align: top;
+}
+.patient-section .label {
+    font-weight: bold;
+}
+table.results {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 15px 0;
+}
+table.results th,
+table.results td {
+    border: 1px solid #ddd;
+    padding: 6px 8px;
+    text-align: left;
+}
+table.results th {
+    background: #0066cc;
+    color: white;
+    font-size: 9pt;
+}
+table.results td {
+    font-size: 9pt;
+}
+.group-title {
+    font-weight: bold;
+    font-size: 11pt;
+    margin: 15px 0 8px 0;
+    color: #333;
+}
+.out-range {
+    color: #c00;
+    font-weight: bold;
+}
+.ref-range {
+    font-size: 8pt;
+    color: #666;
+}
+.footer {
+    margin-top: 20px;
+    padding-top: 10px;
+    border-top: 1px solid #ddd;
+    font-size: 8pt;
+    color: #666;
+    text-align: center;
+}
+.text-center {
+    text-align: center;
+}

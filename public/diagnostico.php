@@ -1,9 +1,26 @@
 <?php
 /**
  * Diagnóstico mínimo - NO depende de CodeIgniter.
- * Acceder a: http://localhost/john_ci4/public/diagnostico.php
- * ELIMINAR en producción.
+ * Acceder a: http://localhost/laboratorio/public/diagnostico.php
+ * Solo funciona en entorno development.
  */
+$envFile = dirname(__DIR__) . '/.env';
+$isDev = true;
+if (file_exists($envFile)) {
+    $lines = file($envFile, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
+    foreach ($lines as $line) {
+        $line = trim($line);
+        if (strpos($line, '#') === 0) continue;
+        if (preg_match('/^CI_ENVIRONMENT\s*=\s*[\'"]?(\w+)[\'"]?/', $line, $m)) {
+            $isDev = (strtolower($m[1]) === 'development');
+            break;
+        }
+    }
+}
+if (!$isDev) {
+    header('HTTP/1.1 403 Forbidden');
+    exit('Acceso no permitido en producción.');
+}
 error_reporting(E_ALL);
 ini_set('display_errors', '1');
 header('Content-Type: text/html; charset=utf-8');

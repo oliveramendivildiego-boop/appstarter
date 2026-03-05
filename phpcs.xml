@@ -1,0 +1,11 @@
+<?xml version="1.0"?>
+<ruleset name="Laboratorio">
+    <description>PSR-12 para proyecto Laboratorio</description>
+    <rule ref="PSR12"/>
+    <file>app/</file>
+    <exclude-pattern>*/Views/*</exclude-pattern>
+    <exclude-pattern>*/Language/*</exclude-pattern>
+    <exclude-pattern>*/ThirdParty/*</exclude-pattern>
+    <exclude-pattern>*/Database/Migrations/*</exclude-pattern>
+    <arg name="ignore-annotations" value="true"/>
+</ruleset>

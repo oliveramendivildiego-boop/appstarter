@@ -218,4 +218,59 @@ class ReportModel extends Model
         unset($row);
         return $rows;
     }
+
+    /**
+     * Todos los registros guardados (con paginación)
+     */
+    public function getAllRegistros(int $perPage, int $offset): array
+    {
+        $r  = $this->db->prefixTable('registro');
+        $p  = $this->db->prefixTable('people');
+        $d  = $this->db->prefixTable('doctors');
+        $pa = $this->db->prefixTable('pago');
+
+        return $this->db->table('registro')
+            ->select("{$r}.registro_id, {$r}.ingreso,
+                CONCAT({$p}.first_name, ' ', {$p}.last_name_fa, ' ', {$p}.last_name_mom) AS paciente,
+                {$d}.name as doctor, {$pa}.total as total, {$pa}.monto_pagar")
+            ->join('people', "{$p}.person_id = {$r}.person_id")
+            ->join('doctors', "{$d}.doctor_id = {$r}.doctor_id")
+            ->join('pago', "{$r}.registro_id = {$pa}.registro_id")
+            ->orderBy("{$r}.ingreso", 'DESC')
+            ->limit($perPage, $offset)
+            ->get()
+            ->getResultArray();
+    }
+
+    /**
+     * Total de registros para el reporte "Todos los registros"
+     */
+    public function countAllRegistros(): int
+    {
+        $r  = $this->db->prefixTable('registro');
+        $pa = $this->db->prefixTable('pago');
+
+        $row = $this->db->table('registro')
+            ->select('COUNT(*) as total')
+            ->join('pago', "{$r}.registro_id = {$pa}.registro_id")
+            ->get()
+            ->getRow();
+
+        return (int) ($row->total ?? 0);
+    }
+
+    /**
+     * Totales generales (todos los registros)
+     */
+    public function getTotalesGenerales(): object
+    {
+        $r  = $this->db->prefixTable('registro');
+        $pa = $this->db->prefixTable('pago');
+
+        return $this->db->table('registro')
+            ->select("COUNT(*) as total_registros, SUM(CAST({$pa}.total AS DECIMAL(12,2))) as total_facturado, SUM(CAST({$pa}.monto_pagar AS DECIMAL(12,2))) as total_cobrado")
+            ->join('pago', "{$r}.registro_id = {$pa}.registro_id")
+            ->get()
+            ->getRow();
+    }
 }

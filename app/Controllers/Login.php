@@ -3,6 +3,7 @@
 namespace App\Controllers;
 
 use App\Models\EmployeeModel;
+use App\Models\DoctorModel;
 use CodeIgniter\HTTP\ResponseInterface;
 
 class Login extends BaseController
@@ -27,6 +28,17 @@ class Login extends BaseController
                     ]);
                 }
                 return redirect()->to(site_url('home'));
+            }
+
+            $doctorModel = model(\App\Models\DoctorModel::class);
+            if ($doctorModel->login($username ?? '', $password ?? '')) {
+                if ($this->request->isAJAX()) {
+                    return $this->response->setJSON([
+                        'success'  => true,
+                        'redirect' => site_url('doctor/home'),
+                    ]);
+                }
+                return redirect()->to(site_url('doctor/home'));
             }
 
             $error = lang('Login.login_invalid_username_and_password');
@@ -57,19 +69,56 @@ class Login extends BaseController
             if (empty($idToken)) {
                 return $this->response->setJSON(['success' => false, 'message' => lang('Login.login_google_no_account')]);
             }
-            if (!class_exists('\Google_Client')) {
+
+            $clientId = trim((string) (config('Google')->clientId ?? ''));
+            if ($clientId === '') {
                 return $this->response->setJSON(['success' => false, 'message' => lang('Login.login_google_not_configured')]);
             }
-            $client = new \Google_Client(['client_id' => config('Google')->clientId]);
-            $payload = $client->verifyIdToken($idToken);
-            if (!$payload) {
+
+            $verifySsl = filter_var((string) env('googleVerifySsl', 'true'), FILTER_VALIDATE_BOOLEAN);
+            $http = service('curlrequest');
+            $resp = $http->get('https://oauth2.googleapis.com/tokeninfo', [
+                'query'  => ['id_token' => $idToken],
+                'verify' => $verifySsl,
+                'http_errors' => false,
+            ]);
+
+            if ($resp->getStatusCode() !== 200) {
                 return $this->response->setJSON(['success' => false, 'message' => 'Token inválido']);
             }
+
+            $payload = json_decode((string) $resp->getBody(), true);
+            if (!is_array($payload)) {
+                return $this->response->setJSON(['success' => false, 'message' => 'Token inválido']);
+            }
+
+            $aud = (string) ($payload['aud'] ?? '');
+            if ($aud !== $clientId) {
+                return $this->response->setJSON(['success' => false, 'message' => 'Token inválido para esta aplicación']);
+            }
+
             $email = $payload['email'] ?? '';
+            $emailVerified = (string) ($payload['email_verified'] ?? 'false');
+            if (empty($email) || $emailVerified !== 'true') {
+                return $this->response->setJSON(['success' => false, 'message' => 'No se pudo verificar el correo de Google']);
+            }
+
             $employeeModel = model(EmployeeModel::class);
             if ($employeeModel->loginByEmail($email)) {
-                return $this->response->setJSON(['success' => true]);
+                return $this->response->setJSON([
+                    'success'  => true,
+                    'redirect' => site_url('home'),
+                ]);
             }
+
+            $doctorModel = model(DoctorModel::class);
+            if ($doctorModel->loginByEmail($email)) {
+                return $this->response->setJSON([
+                    'success'  => true,
+                    'redirect' => site_url('doctor/home'),
+                ]);
+            }
+
             return $this->response->setJSON(['success' => false, 'message' => lang('Login.login_google_no_account')]);
         } catch (\Throwable $e) {
             return $this->response->setJSON(['success' => false, 'message' => $e->getMessage()]);

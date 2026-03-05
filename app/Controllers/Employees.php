@@ -35,7 +35,8 @@ class Employees extends PersonController
         $people = $this->employeeModel->getAll($perPage, $offset);
 
         return view('people/manage', [
-            'controller_name' => 'employees',
+            'controller_name'  => 'employees',
+            'current_module'   => 'employees',
             'form_width'      => 350,
             'manage_table'    => get_people_manage_table($people, $this),
             'allowed_modules' => $this->allowed_modules,
@@ -97,6 +98,7 @@ class Employees extends PersonController
         }
 
         return view('employees/form', [
+            'current_module'   => 'employees',
             'employee_info'    => $employeeInfo,
             'all_modules'      => array_values($allModules),
             'module_labels'    => self::MODULOS_DISPONIBLES,
@@ -105,6 +107,7 @@ class Employees extends PersonController
             'extra_head_links' => [
                 '<script src="' . base_url('js/vendor/jquery.validate.min.js') . '"></script>',
                 '<link rel="stylesheet" href="' . base_url('css/vendor/flatpickr.min.css') . '">',
+                '<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/themes/material_green.css">',
                 '<script src="' . base_url('js/vendor/flatpickr.min.js') . '"></script>',
                 '<script src="https://cdn.jsdelivr.net/npm/flatpickr@4.6.13/dist/l10n/es.js"></script>',
             ],

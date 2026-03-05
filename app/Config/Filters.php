@@ -76,7 +76,7 @@ class Filters extends BaseFilters
      */
     public array $globals = [
         'before' => [
-            'csrf' => ['except' => ['login', 'login/*', 'login/google_login', 'qr/*', 'customers/search', 'customers/suggest', 'employees/search', 'employees/suggest', 'doctors/search', 'doctors/suggest', 'registers/search_paciente', 'registers/search_doctor', 'registers/search_prueba', 'registers/delete']],
+            'csrf' => ['except' => ['login', 'login/*', 'login/google_login', 'qr/*', 'customers/search', 'customers/suggest', 'employees/search', 'employees/suggest', 'doctors/search', 'doctors/suggest', 'doctor/search', 'registers/search_paciente', 'registers/search_doctor', 'registers/search_prueba', 'toquotes/exportPdf', 'toquotes/exportPdfById/*']],
         ],
         'after' => [
             // 'honeypot',
@@ -109,6 +109,9 @@ class Filters extends BaseFilters
      * @var array<string, array<string, list<string>>>
      */
     public array $filters = [
-        'auth' => ['before' => ['home*', 'no_access*', 'config*', 'customers*', 'doctors*', 'employees*', 'registers*', 'labotests*', 'toquotes*', 'expediente*', 'reports*', 'controlcalidad*', 'reactivos*', 'equipos*', 'auditoria*', 'item_kits', 'items*', 'sales*', 'suppliers*', 'receivings*', 'giftcards*', 'seguridad*']],
+        'auth' => [
+            'before' => ['home*', 'no_access*', 'config*', 'customers*', 'doctors*', 'employees*', 'registers*', 'labotests*', 'toquotes*', 'expediente*', 'reports*', 'controlcalidad*', 'reactivos*', 'equipos*', 'auditoria*', 'item_kits', 'items*', 'sales*', 'suppliers*', 'receivings*', 'giftcards*', 'seguridad*', 'doctor*'],
+            'except' => ['registers/servePdfFile/*'],
+        ],
     ];
 }

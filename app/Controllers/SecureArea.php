@@ -25,6 +25,9 @@ abstract class SecureArea extends BaseController
         if (!$employeeModel->isLoggedIn()) {
             throw new RedirectException(redirect()->to(site_url('login')));
         }
+        if (session()->has('doctor_id')) {
+            throw new RedirectException(redirect()->to(site_url('doctor/home')));
+        }
 
         $personId = (int) session()->get('person_id');
         $this->user_info = $this->getCachedUserInfo($employeeModel, $personId);

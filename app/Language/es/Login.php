@@ -2,7 +2,7 @@
 
 return [
     'login_login'                  => 'Iniciar sesión',
-    'login_username'               => 'Usuario',
+    'login_username'               => 'Usuario o correo',
     'login_password'               => 'Contraseña',
     'login_invalid_username_and_password' => 'Usuario o contraseña incorrectos',
     'login_welcome_message'         => 'Ingresa con tu cuenta para continuar',

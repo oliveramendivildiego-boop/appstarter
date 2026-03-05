@@ -1,47 +1,22 @@
-<?= view('partial/header', ['allowed_modules' => $allowed_modules ?? [], 'user_info' => $user_info ?? null, 'current_module' => 'labotests']) ?>
-
-<?= view('partial/breadcrumb_nav', ['items' => [
-    ['label' => lang('Module.module_labotests'), 'url' => site_url('labotests')],
-    ['label' => $labotests_master->name ?? '', 'url' => site_url('labotests/view/' . $labotests_namecate)],
-    ['label' => ($labotests_info->name ?? '') . ' - ' . lang('Labotests.labotests_config'), 'url' => null],
-]]) ?>
+<?= $this->extend('layouts/main') ?>
+<?= $this->section('head_extra') ?>
+<script src="<?= base_url('js/vendor/jquery.validate.min.js') ?>"></script>
+<?= $this->endSection() ?>
+<?= $this->section('content') ?>
+<?= view('partial/breadcrumb_nav', [
+    'items' => [
+        ['label' => lang('Module.module_labotests'), 'url' => site_url('labotests')],
+        ['label' => $labotests_master->name ?? '', 'url' => site_url('labotests/view/' . $labotests_namecate)],
+        ['label' => ($labotests_info->name ?? '') . ' - ' . lang('Labotests.labotests_config'), 'url' => null],
+    ],
+    'right' => '<a href="' . site_url('labotests/opciones') . '" class="btn btn-outline-primary btn-sm" title="Administrar tipos de resultado"><i class="fa-solid fa-list-check me-1"></i>Tipos resultado</a>'
+]) ?>
 
 <?= form_open('labotests/savesub', ['id' => 'detail_form']) ?>
 <input type="hidden" id="prianacategoria_id" name="prianacategoria_id" value="<?= (int)($labotests_info->prianacategoria_id ?? 0) ?>">
 <input type="hidden" id="anacategoria_id" name="anacategoria_id" value="<?= (int)($labotests_info->anacategoria_id ?? 0) ?>">
 
-<div class="card">
-    <div class="card-header"><strong><?= lang('Labotests.labotests_config') ?></strong></div>
-    <div class="card-body">
-        <div class="row">
-            <div class="col-md-6 mb-3">
-                <label for="name" class="form-label"><?= lang('Labotests.labotests_name_sub') ?> <span class="text-danger">*</span></label>
-                <input type="text" name="name" id="name" class="form-control" value="<?= esc($labotests_info->name ?? '') ?>" required>
-            </div>
-            <div class="col-md-6 mb-3">
-                <label for="order" class="form-label"><?= lang('Labotests.labotests_order') ?></label>
-                <input type="number" name="order" id="order" class="form-control" value="<?= esc($labotests_info->order ?? 0) ?>" min="0">
-            </div>
-            <div class="col-md-6 mb-3">
-                <label for="cost" class="form-label"><?= lang('Labotests.labotests_cost_sub') ?> (Bs)</label>
-                <input type="number" name="cost" id="cost" class="form-control" value="<?= esc($labotests_info->cost ?? 0) ?>" min="0">
-            </div>
-            <div class="col-md-6 mb-3">
-                <label for="cost_deriv" class="form-label"><?= lang('Labotests.labotests_costderiv_sub') ?> (Bs)</label>
-                <input type="number" name="cost_deriv" id="cost_deriv" class="form-control" value="<?= esc($labotests_info->cost_deriv ?? 0) ?>" min="0">
-            </div>
-            <div class="col-md-6 mb-3">
-                <label for="compleja" class="form-label"><?= lang('Labotests.labotests_compuesta') ?></label>
-                <select name="compleja" id="compleja" class="form-control">
-                    <option value="0" <?= (($labotests_info->compleja ?? 0) == 0 ? 'selected' : '') ?>><?= lang('Labotests.labotests_no') ?></option>
-                    <option value="1" <?= (($labotests_info->compleja ?? 0) == 1 ? 'selected' : '') ?>><?= lang('Labotests.labotests_yes') ?></option>
-                </select>
-            </div>
-        </div>
-        <button type="submit" class="btn btn-primary"><?= lang('Common.common_submit') ?></button>
-        <a href="<?= site_url('labotests') ?>" class="btn btn-secondary">Cancelar</a>
-    </div>
-</div>
+<?= view('labotests/partial_detail_config', ['labotests_info' => $labotests_info]) ?>
 
 <?= form_close() ?>
 
@@ -88,18 +63,15 @@ if ($feRaw !== '' && !empty($formulas_con_expresion ?? [])) {
     }
 }
 ?>
-<div class="card mt-3">
+<div class="card card-tabla-sub-items mt-3">
     <div class="card-header"><strong>Valores de sub-clases (prueba compuesta)</strong></div>
     <div class="card-body">
         <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.2/Sortable.min.js"></script>
-        <style>
-            #tabla_sub_items .sec-drag-handle { cursor: grab; padding: 0.25rem; user-select: none; color: #6c757d; }
-            #tabla_sub_items .sec-drag-handle:active { cursor: grabbing; }
-        </style>
-        <table class="table table-sm table-bordered" id="tabla_sub_items">
+        <div class="wrapper-tabla-sub-items">
+        <table class="table table-bordered" id="tabla_sub_items">
             <thead>
                 <tr>
-                    <th class="text-center" style="width: 6rem;">Orden</th>
+                    <th class="text-center col-orden">Orden</th>
                     <th>Sub-clase</th>
                     <th>Población</th>
                     <th>Sexo</th>
@@ -188,6 +160,7 @@ if ($fe !== '') {
                 <?php endforeach; ?>
             </tbody>
         </table>
+        </div>
         <hr>
         <button type="button" class="btn btn-primary btn-sm mb-3" id="btn_agregar_sec"><?= empty($sub_items) ? 'Agregar primera sub-clase' : 'Agregar sub-clase' ?></button>
 
@@ -208,16 +181,16 @@ if ($fe !== '') {
                 <input type="text" name="nombre" class="form-control form-control-sm" value="<?= esc($editar_sec_data['nombre'] ?? '') ?>" required>
             </div>
             <div class="col-md-2 mb-2">
-                <label class="form-label">Población</label>
-                <select name="paciente_id" class="form-control form-control-sm">
+                <label class="form-label">Población <span class="text-danger">*</span></label>
+                <select name="paciente_id" class="form-control form-control-sm" required>
                     <?php foreach ($poblaciones ?? [] as $p): ?>
                     <option value="<?= (int)$p['id_poblacion'] ?>" <?= ((int)($editar_sec_data['paciente_id'] ?? 3) === (int)$p['id_poblacion']) ? 'selected' : '' ?>><?= esc($p['name'] ?? '') ?></option>
                     <?php endforeach; ?>
                 </select>
             </div>
             <div class="col-md-2 mb-2">
-                <label class="form-label">Sexo</label>
-                <select name="sexo" class="form-control form-control-sm">
+                <label class="form-label">Sexo <span class="text-danger">*</span></label>
+                <select name="sexo" class="form-control form-control-sm" required>
                     <option value="ambos" <?= (($editar_sec_data['sexo'] ?? 'ambos') === 'ambos') ? 'selected' : '' ?>>Ambos</option>
                     <option value="masculino" <?= (($editar_sec_data['sexo'] ?? '') === 'masculino') ? 'selected' : '' ?>>Masculino</option>
                     <option value="femenino" <?= (($editar_sec_data['sexo'] ?? '') === 'femenino') ? 'selected' : '' ?>>Femenino</option>
@@ -246,7 +219,7 @@ if ($fe !== '') {
                 </div>
             </div>
             <input type="hidden" name="formulas_id" id="formulas_id_hidden" value="<?= (int)($editar_sec_data['formulas_id'] ?? 1) ?>">
-            <div class="col-md-3 mb-2" id="wrap_formulas_id" style="<?= $esCalculada ? 'display:none;' : '' ?>">
+            <div class="col-md-3 mb-2" id="wrap_formulas_id" <?= $esCalculada ? 'class="d-none"' : '' ?>>
                 <label class="form-label">Fórmula predefinida</label>
                 <select id="formulas_id" class="form-control form-control-sm">
                     <?php
@@ -259,7 +232,7 @@ if ($fe !== '') {
                 </select>
                 <small class="text-muted">Fórmulas creadas (sin duplicados)</small>
             </div>
-            <div class="col-md-4 mb-2" id="wrap_formula_predefinida_creadas" style="<?= !$esCalculada ? 'display:none;' : '' ?>">
+            <div class="col-md-4 mb-2" id="wrap_formula_predefinida_creadas" <?= !$esCalculada ? 'class="d-none"' : '' ?>>
                 <label class="form-label">Fórmula predefinida (todas las calculadas creadas)</label>
                 <select id="formula_predefinida_select" class="form-control form-control-sm">
                     <option value="">— Ninguno —</option>
@@ -270,14 +243,14 @@ if ($fe !== '') {
                 </select>
                 <small class="text-muted">Ninguno=sin fórmula calculada; Nueva=crear; o seleccione para editar</small>
             </div>
-            <div class="col-12 mb-2" id="wrap_formula_expresion" style="<?= !$esCalculada ? 'display:none;' : '' ?>">
+            <div class="col-12 mb-2" id="wrap_formula_expresion" <?= !$esCalculada ? 'class="d-none"' : '' ?>>
                 <label class="form-label">Constructor de fórmula</label>
                 <input type="hidden" name="formula_expresion" id="formula_expresion" value="<?= esc($editar_sec_data['formula_expresion'] ?? '') ?>">
-                <div class="border rounded p-2 mb-2 bg-light" style="min-height:50px">
+                <div class="border rounded p-2 mb-2 bg-light formula-constructor-box">
                     <small class="text-muted d-block mb-1">Referencias (arrastre o clic para insertar en la fórmula):</small>
                     <div id="formula_refs" class="d-flex flex-wrap gap-1 mb-2">
                         <?php foreach ($refsPorNombre ?? [] as $nombre => $cid): ?>
-                        <span class="badge <?= $nombre === 'valor' ? 'bg-secondary' : 'bg-primary' ?> formula-ref" draggable="true" data-nombre="<?= esc($nombre) ?>" data-cid="<?= esc($cid) ?>" style="cursor:grab;font-size:0.85rem"><?= esc($nombre) ?></span>
+                        <span class="badge <?= $nombre === 'valor' ? 'bg-secondary' : 'bg-primary' ?> formula-ref" draggable="true" data-nombre="<?= esc($nombre) ?>" data-cid="<?= esc($cid) ?>"><?= esc($nombre) ?></span>
                         <?php endforeach; ?>
                         <?php if (empty($refsPorNombre) || count($refsPorNombre) <= 1): ?>
                         <small class="text-muted align-self-center">Agregue sub-clases en la tabla superior para que aparezcan aquí.</small>
@@ -285,8 +258,8 @@ if ($fe !== '') {
                     </div>
                     <small class="text-muted d-block mb-1">Fórmula actual (nombre de la fórmula o con qué nombre guardará):</small>
                     <div class="d-flex gap-2 align-items-center mb-2">
-                        <input type="text" id="formula_nombre_input" class="form-control form-control-sm" placeholder="Ej: Formula Eritrocitos" style="max-width:220px" value="<?= esc($formulaNombreInicial ?? '') ?>">
-                        <span id="formula_valor_refs" class="border rounded px-2 py-1 bg-white flex-grow-1" style="min-height:2em;font-size:0.95rem;font-weight:500">—</span>
+                        <input type="text" id="formula_nombre_input" class="form-control form-control-sm formula-nombre-input" placeholder="Ej: Formula Eritrocitos" value="<?= esc($formulaNombreInicial ?? '') ?>">
+                        <span id="formula_valor_refs" class="border rounded px-2 py-1 bg-white flex-grow-1 formula-valor-refs">—</span>
                     </div>
                 </div>
                 <div class="d-flex flex-wrap gap-2 mb-2 align-items-center">
@@ -294,24 +267,23 @@ if ($fe !== '') {
                     <button type="button" id="btn_eliminar_formula" class="btn btn-outline-danger btn-sm" title="Eliminar la fórmula seleccionada (solo si no está en uso)">Eliminar fórmula</button>
                 </div>
                 <div class="d-flex flex-wrap gap-1 mb-2 align-items-center">
-                    <span class="text-muted" style="font-size:0.9rem">Operadores:</span>
+                    <span class="text-muted formula-op-label">Operadores:</span>
                     <button type="button" class="btn btn-outline-secondary btn-sm formula-op" data-op="+">+</button>
                     <button type="button" class="btn btn-outline-secondary btn-sm formula-op" data-op="-">−</button>
                     <button type="button" class="btn btn-outline-secondary btn-sm formula-op" data-op="*">×</button>
                     <button type="button" class="btn btn-outline-secondary btn-sm formula-op" data-op="/">/</button>
                     <button type="button" class="btn btn-outline-secondary btn-sm formula-op" data-op="(">(</button>
                     <button type="button" class="btn btn-outline-secondary btn-sm formula-op" data-op=")">)</button>
-                    <span class="text-muted ms-2" style="font-size:0.85rem">(Puede escribir números directamente)</span>
+                    <span class="text-muted ms-2 formula-op-hint">(Puede escribir números directamente)</span>
                 </div>
-                <div class="border rounded p-2 bg-white mb-2" style="min-height:70px">
+                <div class="border rounded p-2 bg-white mb-2 formula-area-box">
                     <small class="text-muted d-block mb-1">Fórmula (use referencias por nombre y operadores):</small>
-                    <textarea id="formula_area" class="form-control" rows="2" style="font-family:monospace" placeholder="Ej: [Glucosa] + [Colesterol] * 100 / [Glucosa]"><?= esc($formulaParaTextarea ?? '') ?></textarea>
+                    <textarea id="formula_area" class="form-control formula-area" rows="2" placeholder="Ej: [Glucosa] + [Colesterol] * 100 / [Glucosa]"><?= esc($formulaParaTextarea ?? '') ?></textarea>
                 </div>
-                <div class="border rounded p-3 bg-light" id="formula_math_preview" style="min-height:60px">
+                <div class="border rounded p-3 bg-light formula-math-preview" id="formula_math_preview">
                     <small class="text-muted d-block mb-2">Vista previa matemática:</small>
-                    <div id="formula_math_display" class="fs-4 text-center py-2" style="font-family:serif;color:#333">—</div>
+                    <div id="formula_math_display" class="fs-4 text-center py-2 formula-math-display">—</div>
                 </div>
-                <style>.formula-math-error{color:#999;font-size:0.9em;}</style>
                 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css"/>
                 <script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
             </div>
@@ -344,9 +316,9 @@ if ($fe !== '') {
             var formulasIdSelect = document.getElementById('formulas_id');
             document.getElementById('es_calculada')?.addEventListener('change', function() {
                 if (this.checked) {
-                    if (wForm) wForm.style.display = 'none';
-                    if (wrapPredefCreadas) wrapPredefCreadas.style.display = 'block';
-                    if (wExp) wExp.style.display = 'block';
+                    if (wForm) { wForm.classList.add('d-none'); }
+                    if (wrapPredefCreadas) { wrapPredefCreadas.classList.remove('d-none'); }
+                    if (wExp) { wExp.classList.remove('d-none'); }
                     if (formulaPredefSelect) {
                         var opt = formulaPredefSelect.options[formulaPredefSelect.selectedIndex];
                         var nomInp = document.getElementById('formula_nombre_input');
@@ -363,9 +335,9 @@ if ($fe !== '') {
                         if (formulasIdHidden) formulasIdHidden.value = fid;
                     }
                 } else {
-                    if (wForm) wForm.style.display = 'block';
-                    if (wrapPredefCreadas) wrapPredefCreadas.style.display = 'none';
-                    if (wExp) wExp.style.display = 'none';
+                    if (wForm) { wForm.classList.remove('d-none'); }
+                    if (wrapPredefCreadas) { wrapPredefCreadas.classList.add('d-none'); }
+                    if (wExp) { wExp.classList.add('d-none'); }
                     if (formulasIdHidden) formulasIdHidden.value = '1';
                     if (formulasIdSelect) formulasIdSelect.value = '1';
                     if (formulaPredefSelect) formulaPredefSelect.selectedIndex = 0;
@@ -580,9 +552,17 @@ if ($fe !== '') {
                     insertAtCursor(btn.dataset.op || '');
                 });
             });
-            (document.getElementById('form_secitem') || formulaInput?.closest('form'))?.addEventListener('submit', function(e) {
+            var formSecItem = document.getElementById('form_secitem');
+            if (formSecItem && typeof $ !== 'undefined' && $.fn.validate) {
+                $(formSecItem).validate($.extend(true, {}, window.VALIDATE_COMMON_OPTIONS, {
+                    rules: { nombre: { required: true }, paciente_id: { required: true }, sexo: { required: true } },
+                    messages: { nombre: { required: "El nombre de la sub-clase es obligatorio" }, paciente_id: { required: "La población es obligatoria" }, sexo: { required: "El sexo es obligatorio" } }
+                }));
+            }
+            (formSecItem || formulaInput?.closest('form'))?.addEventListener('submit', function(e) {
                 e.preventDefault();
                 var f = this;
+                if (typeof $ !== 'undefined' && $(f).data('validator') && !$(f).validate().form()) return;
                 var calc = document.getElementById('es_calculada');
                 var predefVal = formulaPredefSelect ? (formulaPredefSelect.options[formulaPredefSelect.selectedIndex]?.value || '') : '';
                 if (calc && calc.checked && predefVal === '') {
@@ -928,110 +908,6 @@ if ($fe !== '') {
     </div>
 </div>
 <?php else: ?>
-<div class="card mt-3">
-    <div class="card-header"><strong>Valores de referencia (prueba no compuesta)</strong></div>
-    <div class="card-body">
-        <table class="table table-sm table-bordered">
-            <thead>
-                <tr>
-                    <th>Población</th>
-                    <th>Sexo</th>
-                    <th>Valor mín</th>
-                    <th>Valor máx</th>
-                    <th>U. medida</th>
-                    <th>Fórmula</th>
-                    <th>Tipo</th>
-                    <th class="text-center">Acciones</th>
-                </tr>
-            </thead>
-            <tbody>
-                <?php
-                $pobMap = [];
-                foreach ($poblaciones ?? [] as $p) {
-                    $pobMap[(int)$p['id_poblacion']] = $p['name'] ?? '';
-                }
-                $sexoMap = ['ambos' => 'Ambos', 'masculino' => 'Masculino', 'femenino' => 'Femenino'];
-                foreach ($priresultados ?? [] as $pr): ?>
-                <tr>
-                    <td><?= esc($pobMap[(int)($pr['id_poblacion'] ?? 0)] ?? $pr['id_poblacion'] ?? '') ?></td>
-                    <td><?= esc($sexoMap[$pr['sexo'] ?? 'ambos'] ?? 'Ambos') ?></td>
-                    <td><?= esc($pr['valor_min'] ?? '') ?></td>
-                    <td><?= esc($pr['valor_max'] ?? '') ?></td>
-                    <td><?= esc($pr['umedida'] ?? '') ?></td>
-                    <td><?= esc($formulas[(int)($pr['formulas_id'] ?? 0)] ?? '') ?></td>
-                    <td><?= esc($opciones[(int)($pr['opcion_id'] ?? 0)] ?? '') ?></td>
-                    <td class="text-center">
-                        <a href="<?= site_url("labotests/detail/{$labotests_info->prianacategoria_id}") ?>?editarpri=<?= (int)($pr['priresultados_id'] ?? 0) ?>" class="btn btn-sm btn-outline-primary" title="Editar"><i class="fa-solid fa-pen"></i></a>
-                        <a href="<?= site_url("labotests/deletepriresultado/" . (int)($pr['priresultados_id'] ?? 0)) ?>" class="btn btn-sm btn-outline-danger" title="Eliminar" onclick="return confirm('¿Eliminar estos valores?');"><i class="fa-solid fa-trash"></i></a>
-                    </td>
-                </tr>
-                <?php endforeach; ?>
-            </tbody>
-        </table>
-        <hr>
-        <h6 class="mb-3"><?= empty($priresultados) ? 'Agregar valores de referencia' : 'Agregar por población' ?></h6>
-        <?= form_open('labotests/savepriresultado', ['class' => 'border p-3 rounded']) ?>
-        <input type="hidden" name="prianacategoria_id" value="<?= (int)($labotests_info->prianacategoria_id ?? 0) ?>">
-        <input type="hidden" name="priresultados_id" value="<?= (int)($editar_pri ?? 0) ?>">
-        <div class="row">
-            <div class="col-md-2 mb-2">
-                <label class="form-label">Población</label>
-                <select name="id_poblacion" class="form-control form-control-sm">
-                    <?php foreach ($poblaciones ?? [] as $p): ?>
-                    <option value="<?= (int)$p['id_poblacion'] ?>" <?= ((int)($editar_pri_data['id_poblacion'] ?? 3) === (int)$p['id_poblacion']) ? 'selected' : '' ?>><?= esc($p['name'] ?? '') ?></option>
-                    <?php endforeach; ?>
-                </select>
-            </div>
-            <div class="col-md-2 mb-2">
-                <label class="form-label">Sexo</label>
-                <select name="sexo" class="form-control form-control-sm">
-                    <option value="ambos" <?= (($editar_pri_data['sexo'] ?? 'ambos') === 'ambos') ? 'selected' : '' ?>>Ambos</option>
-                    <option value="masculino" <?= (($editar_pri_data['sexo'] ?? '') === 'masculino') ? 'selected' : '' ?>>Masculino</option>
-                    <option value="femenino" <?= (($editar_pri_data['sexo'] ?? '') === 'femenino') ? 'selected' : '' ?>>Femenino</option>
-                </select>
-            </div>
-            <div class="col-md-2 mb-2">
-                <label class="form-label">Valor mín</label>
-                <input type="text" name="valor_min" class="form-control form-control-sm" value="<?= esc($editar_pri_data['valor_min'] ?? '') ?>">
-            </div>
-            <div class="col-md-2 mb-2">
-                <label class="form-label">Valor máx</label>
-                <input type="text" name="valor_max" class="form-control form-control-sm" value="<?= esc($editar_pri_data['valor_max'] ?? '') ?>">
-            </div>
-            <div class="col-md-2 mb-2">
-                <label class="form-label">U. medida</label>
-                <input type="text" name="umedida" class="form-control form-control-sm" value="<?= esc($editar_pri_data['umedida'] ?? '') ?>">
-            </div>
-            <div class="col-md-2 mb-2">
-                <label class="form-label">Fórmula</label>
-                <select name="formulas_id" class="form-control form-control-sm">
-                    <?php
-                    $priFormulasId = (int)($editar_pri_data['formulas_id'] ?? 1);
-                    $priFormulasIdSel = ($formulas_id_canonical ?? [])[$priFormulasId] ?? $priFormulasId;
-                    foreach ($formulas_creadas ?? $formulas ?? [] as $fid => $fname):
-                    ?>
-                    <option value="<?= $fid ?>" <?= $priFormulasIdSel === $fid ? 'selected' : '' ?>><?= esc($fname) ?></option>
-                    <?php endforeach; ?>
-                </select>
-            </div>
-            <div class="col-md-2 mb-2">
-                <label class="form-label">Tipo resultado</label>
-                <select name="opcion_id" class="form-control form-control-sm">
-                    <?php foreach ($opciones ?? [] as $oid => $oname): ?>
-                    <option value="<?= $oid ?>" <?= ((int)($editar_pri_data['opcion_id'] ?? 3) === $oid) ? 'selected' : '' ?>><?= esc($oname) ?></option>
-                    <?php endforeach; ?>
-                </select>
-            </div>
-        </div>
-        <div class="mt-2">
-            <button type="submit" class="btn btn-primary btn-sm"><?= ($editar_pri ?? 0) ? 'Actualizar' : 'Agregar' ?></button>
-            <?php if ($editar_pri ?? 0): ?>
-            <a href="<?= site_url("labotests/detail/{$labotests_info->prianacategoria_id}") ?>" class="btn btn-secondary btn-sm">Cancelar</a>
-            <?php endif; ?>
-        </div>
-        <?= form_close() ?>
-    </div>
-</div>
+<?= view('labotests/partial_detail_pri_resultados', get_defined_vars()) ?>
 <?php endif; ?>
-
-<?= view('partial/footer') ?>
+<?= $this->endSection() ?>

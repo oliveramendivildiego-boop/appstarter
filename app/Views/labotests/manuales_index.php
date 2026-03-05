@@ -1,9 +1,10 @@
-<?= view('partial/header', ['allowed_modules' => $allowed_modules ?? [], 'user_info' => $user_info ?? null, 'current_module' => 'labotests']) ?>
+<?= $this->extend('layouts/main') ?>
 
+<?= $this->section('content') ?>
 <?php
 $searchVal = esc($search ?? '');
 $rightNav = '<form action="' . site_url('labotests/manuales') . '" method="get" class="d-flex" role="search">' .
-    '<input type="search" name="q" class="form-control form-control-sm" placeholder="Buscar examen o grupo..." value="' . $searchVal . '" style="min-width: 180px;">' .
+    '<input type="search" name="q" class="form-control form-control-sm search-min-width" placeholder="Buscar examen o grupo..." value="' . $searchVal . '">' .
     '<button type="submit" class="btn btn-outline-primary btn-sm ms-1"><i class="fa-solid fa-search"></i> Buscar</button>' .
     (!empty($search) ? '<a href="' . site_url('labotests/manuales') . '" class="btn btn-outline-secondary btn-sm ms-1">Limpiar</a>' : '') .
     '</form>' .
@@ -60,4 +61,4 @@ $rightNav = '<form action="' . site_url('labotests/manuales') . '" method="get" 
     </div>
     <?php endif; ?>
 </div>
-<?= view('partial/footer') ?>
+<?= $this->endSection() ?>

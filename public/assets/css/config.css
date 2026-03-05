@@ -1,0 +1,17 @@
+/**
+ * Módulo Configuración
+ */
+.config-logo-preview {
+    max-height: 60px;
+}
+.config-color-picker {
+    width: 60px;
+    height: 40px;
+    cursor: pointer;
+}
+.config-color-hex {
+    max-width: 100px;
+}
+.config-actions-col {
+    width: 120px;
+}

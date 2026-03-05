@@ -61,14 +61,14 @@ class ContentSecurityPolicy extends BaseConfig
      *
      * @var list<string>|string
      */
-    public $scriptSrc = ['self', 'unsafe-eval'];
+    public $scriptSrc = ['self', 'unsafe-eval', 'https://accounts.google.com'];
 
     /**
      * Specifies valid sources for JavaScript <script> elements.
      *
      * @var list<string>|string
      */
-    public array|string $scriptSrcElem = ['self', 'unsafe-eval'];
+    public array|string $scriptSrcElem = ['self', 'unsafe-eval', 'https://accounts.google.com'];
 
     /**
      * Specifies valid sources for JavaScript inline event
@@ -130,7 +130,7 @@ class ContentSecurityPolicy extends BaseConfig
      *
      * @var list<string>|string
      */
-    public $connectSrc = 'self';
+    public $connectSrc = ['self', 'https://accounts.google.com'];
 
     /**
      * Specifies the origins that can serve web fonts.
@@ -162,7 +162,7 @@ class ContentSecurityPolicy extends BaseConfig
      *
      * @var list<string>|string|null
      */
-    public $frameSrc;
+    public $frameSrc = ['self', 'https://accounts.google.com'];
 
     /**
      * Restricts the origins allowed to deliver video and audio.

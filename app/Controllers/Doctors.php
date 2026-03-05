@@ -28,10 +28,11 @@ class Doctors extends SecureArea
         $doctors = $this->doctorModel->getAll($perPage, $offset);
 
         $data = [
-            'controller_name' => 'doctors',
-            'manage_table'    => get_doctors_manage_table($doctors, $this),
-            'allowed_modules' => $this->allowed_modules,
-            'user_info'       => $this->user_info,
+            'controller_name'  => 'doctors',
+            'current_module'   => 'doctors',
+            'manage_table'     => get_doctors_manage_table($doctors, $this),
+            'allowed_modules'  => $this->allowed_modules,
+            'user_info'        => $this->user_info,
         ];
 
         return view('doctors/manage', $data);
@@ -69,6 +70,8 @@ class Doctors extends SecureArea
         $doctorInfo = $this->doctorModel->getInfo($doctor_id === -1 ? -1 : (int) $doctor_id);
 
         $data = [
+            'current_module'   => 'doctors',
+            'controller_name'  => 'doctors',
             'doctor_info'      => $doctorInfo,
             'allowed_modules'  => $this->allowed_modules,
             'user_info'        => $this->user_info,
@@ -102,12 +105,31 @@ class Doctors extends SecureArea
             'speciality'   => $this->request->getPost('speciality'),
             'address'      => $this->request->getPost('address'),
             'comments'     => $this->request->getPost('comments'),
+            'username'     => $this->request->getPost('username'),
+            'password'     => $this->request->getPost('password'),
+            'email'        => $this->request->getPost('email'),
         ];
+
+        if (
+            !$this->doctorModel->supportsLoginColumns()
+            && (
+                trim((string) ($doctor_data['username'] ?? '')) !== ''
+                || trim((string) ($doctor_data['password'] ?? '')) !== ''
+                || trim((string) ($doctor_data['email'] ?? '')) !== ''
+            )
+        ) {
+            $msg = 'Debe ejecutar la migración de base de datos para acceso de doctores: database/migration_doctors_login.sql';
+            if ($this->request->isAJAX()) {
+                return $this->response->setJSON(['success' => false, 'message' => $msg, 'doctor_id' => -1])->setStatusCode(400);
+            }
+            return redirect()->back()->withInput()->with('error', $msg);
+        }
 
         $id = ($doctor_id === -1 || $doctor_id === '-1') ? null : (int) $doctor_id;
 
         $result = $this->doctorModel->saveDoctor($doctor_data, $id);
         if ($result !== false) {
+            \App\Models\AuditoriaModel::log('doctors', $id === null ? 'crear' : 'actualizar', (string) (int) $result);
             $msg = $id === null
                 ? lang('Doctors.doctors_successful_adding') . ' ' . $doctor_data['name']
                 : lang('Doctors.doctors_successful_updating') . ' ' . $doctor_data['name'];
@@ -130,7 +152,9 @@ class Doctors extends SecureArea
         $ids = is_array($ids) ? $ids : [$ids];
 
         foreach ($ids as $id) {
-            $this->doctorModel->deleteDoctor((int) $id);
+            $idInt = (int) $id;
+            $this->doctorModel->deleteDoctor($idInt);
+            \App\Models\AuditoriaModel::log('doctors', 'eliminar', (string) $idInt);
         }
 
         return $this->response->setJSON([

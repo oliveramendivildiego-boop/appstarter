@@ -1,0 +1,39 @@
+/**
+ * Estilos principales de la aplicación
+ * Se carga desde el layout principal
+ */
+
+/* Variables de tema - se sobreescriben por script desde data-* en layout */
+:root {
+    --primary-color: #FF7218;
+    --primary-hover: #e56314;
+    --primary-active: #cc4f10;
+    --badge-calculada-bg: #6c757d;
+    --badge-calculada-color: #fff;
+}
+
+/* Toast container - antes estaba inline */
+#toast-container {
+    z-index: 9999;
+}
+
+/* Doctor portal navbar - tema dinámico */
+.navbar-theme {
+    background: var(--primary-color, #FF7218) !important;
+}
+.navbar-brand-logo,
+.navbar-theme .navbar-brand img {
+    max-height: 32px;
+}
+
+/* Doctor portal - contenedor principal */
+.report-logo-preview {
+    max-height: 80px;
+}
+.search-min-width { min-width: 180px; }
+.search-input-inline {
+    width: auto;
+}
+.doctor-portal-main {
+    max-width: none;
+}

@@ -35,4 +35,26 @@ class AuditoriaModel extends Model
             ->get()
             ->getResultArray();
     }
+
+    /**
+     * Obtiene registros paginados de auditoría.
+     */
+    public function getPaginados(int $perPage, int $offset): array
+    {
+        return $this->db->table('auditoria')
+            ->select('auditoria.*, people.first_name, people.last_name_fa')
+            ->join('people', 'people.person_id = auditoria.person_id', 'left')
+            ->orderBy('auditoria.fecha', 'DESC')
+            ->limit($perPage, $offset)
+            ->get()
+            ->getResultArray();
+    }
+
+    /**
+     * Cuenta el total de registros de auditoría.
+     */
+    public function countAll(): int
+    {
+        return (int) $this->db->table('auditoria')->countAllResults();
+    }
 }

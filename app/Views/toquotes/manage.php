@@ -1,106 +1,290 @@
-<?= view('partial/header', ['allowed_modules' => $allowed_modules ?? [], 'user_info' => $user_info ?? null, 'current_module' => 'toquotes']) ?>
-<script>
-document.addEventListener('DOMContentLoaded', function() {
-    var cotizarBtn = document.getElementById('cotizarBtn');
-    var searchBtn = document.getElementById('searchBtn');
-    var searchInput = document.getElementById('searchInput');
+<?= $this->extend('layouts/main') ?>
 
-    function actualizarResumen() {
-        var totalCost = 0, totalRefe = 0, totalSeleccionados = 0, items = [];
-        document.querySelectorAll('.contador:checked').forEach(function(cb) {
-            totalSeleccionados++;
-            totalCost += parseFloat(cb.getAttribute('cost') || 0);
-            totalRefe += parseFloat(cb.getAttribute('refe') || 0);
-            items.push(cb.closest('li').textContent.trim());
-        });
-        var el = document.getElementById('valorcotizado');
-        el.innerHTML = totalSeleccionados > 0
-            ? '✅ <strong>Seleccionados:</strong> ' + totalSeleccionados + ' | 💰 <strong>Costo Total:</strong> ' + totalCost + ' Bs | 📦 <strong>Ref:</strong> ' + totalRefe + ' Bs'
-            : '';
+<?= $this->section('content') ?>
+<?= view('partial/breadcrumb_nav', [
+    'items' => [['label' => lang('Module.module_toquotes'), 'url' => site_url('toquotes')]],
+]) ?>
+<div id="toquotesFeedback" class="alert alert-dismissible fade" role="alert" style="display:none;">
+    <span id="toquotesFeedbackMsg"></span>
+    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+</div>
+<?php if (session()->getFlashdata('error')): ?>
+<div class="alert alert-danger alert-dismissible fade show"><?= esc(session()->getFlashdata('error')) ?>
+    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+</div>
+<?php endif; ?>
+
+<div class="card shadow-sm mb-4">
+    <div class="card-header bg-primary text-white py-2">
+        <h5 class="mb-0"><i class="fa-solid fa-magnifying-glass me-2"></i>Buscar análisis</h5>
+    </div>
+    <div class="card-body">
+        <div class="position-relative">
+            <label for="analisisInput" class="form-label">Escriba para buscar y seleccionar</label>
+            <input type="text" id="analisisInput" class="form-control" placeholder="Escriba para buscar análisis (ej: hemo, glicemia)..." autocomplete="off">
+            <div id="autocompleteDropdown" class="list-group position-absolute w-100 shadow-sm" style="top:100%; left:0; z-index:1000; max-height:280px; overflow-y:auto; display:none;"></div>
+        </div>
+    </div>
+</div>
+
+<div class="card shadow-sm" id="cotizacionCard">
+    <div class="card-header bg-success text-white py-2 d-flex justify-content-between align-items-center">
+        <h5 class="mb-0"><i class="fa-solid fa-file-invoice-dollar me-2"></i>Análisis seleccionados</h5>
+        <div>
+            <button id="guardarBtn" class="btn btn-light btn-sm me-1" disabled title="Guardar cotización">
+                <i class="fa-solid fa-floppy-disk me-1"></i>Guardar
+            </button>
+            <button id="exportarPdfBtn" class="btn btn-warning btn-sm" disabled title="Exportar a PDF">
+                <i class="fa-solid fa-file-pdf me-1"></i>Exportar PDF
+            </button>
+        </div>
+    </div>
+    <div class="card-body">
+        <div id="selectedEmpty" class="text-muted text-center py-4">
+            <i class="fa-solid fa-cart-plus fa-2x mb-2"></i>
+            <p>Seleccione análisis arriba y agréguelos a la cotización.</p>
+        </div>
+        <div id="selectedList" style="display:none;">
+            <table class="table table-sm table-hover">
+                <thead>
+                    <tr>
+                        <th style="width:5%">#</th>
+                        <th>Análisis</th>
+                        <th class="text-end" style="width:15%">Costo (Bs)</th>
+                        <th class="text-end" style="width:15%">Ref. (Bs)</th>
+                        <th style="width:8%"></th>
+                    </tr>
+                </thead>
+                <tbody id="selectedTableBody"></tbody>
+            </table>
+            <div class="row mt-3 border-top pt-3">
+                <div class="col-md-6">
+                    <strong>Costo total:</strong> <span id="totalCost" class="fs-5 text-primary">0</span> Bs
+                </div>
+                <div class="col-md-6">
+                    <strong>Costo referencia:</strong> <span id="totalRefe" class="fs-5 text-secondary">0</span> Bs
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<?= $this->endSection() ?>
+
+<?= $this->section('scripts') ?>
+<script>
+(function() {
+    var selectedItems = [];
+    var analisisInput = document.getElementById('analisisInput');
+    var autocompleteDropdown = document.getElementById('autocompleteDropdown');
+    var selectedEmpty = document.getElementById('selectedEmpty');
+    var selectedList = document.getElementById('selectedList');
+    var selectedTableBody = document.getElementById('selectedTableBody');
+    var guardarBtn = document.getElementById('guardarBtn');
+    var exportarPdfBtn = document.getElementById('exportarPdfBtn');
+    var feedbackEl = document.getElementById('toquotesFeedback');
+    var feedbackMsg = document.getElementById('toquotesFeedbackMsg');
+
+    function showFeedback(msg, isError) {
+        feedbackMsg.textContent = msg;
+        feedbackEl.className = 'alert alert-dismissible fade show ' + (isError ? 'alert-danger' : 'alert-success');
+        feedbackEl.style.display = 'block';
+        feedbackEl.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
     }
 
-    document.querySelectorAll('.contador').forEach(function(cb) {
-        cb.addEventListener('change', actualizarResumen);
-    });
+    function addItem(item) {
+        if (selectedItems.some(function(x) { return x.id === item.id; })) return;
+        selectedItems.push({ id: item.id, name: item.name, cost: item.cost, refe: item.refe });
+        renderSelected();
+    }
 
-    cotizarBtn.addEventListener('click', function() {
-        var totalCost = 0, totalRefe = 0, items = [];
-        document.querySelectorAll('.contador:checked').forEach(function(cb) {
-            totalCost += parseFloat(cb.getAttribute('cost') || 0);
-            totalRefe += parseFloat(cb.getAttribute('refe') || 0);
-            items.push(cb.closest('li').textContent.trim());
+    function removeItem(id) {
+        selectedItems = selectedItems.filter(function(x) { return x.id !== id; });
+        renderSelected();
+    }
+
+    function renderSelected() {
+        var tbody = selectedTableBody;
+        tbody.innerHTML = '';
+        var totalCost = 0, totalRefe = 0;
+        selectedItems.forEach(function(it, i) {
+            totalCost += it.cost;
+            totalRefe += it.refe;
+            var tr = document.createElement('tr');
+            tr.innerHTML = '<td>' + (i + 1) + '</td><td>' + escapeHtml(it.name) + '</td><td class="text-end">' + it.cost + '</td><td class="text-end">' + it.refe + '</td><td><button type="button" class="btn btn-outline-danger btn-sm py-0 px-1 remove-item" data-id="' + it.id + '" title="Quitar"><i class="fa-solid fa-times"></i></button></td>';
+            tbody.appendChild(tr);
         });
-        if (items.length === 0) {
-            alert('<?= lang('Toquotes.toquotes_select_items') ?>');
+        document.getElementById('totalCost').textContent = totalCost;
+        document.getElementById('totalRefe').textContent = totalRefe;
+
+        if (selectedItems.length > 0) {
+            selectedEmpty.style.display = 'none';
+            selectedList.style.display = 'block';
+            guardarBtn.disabled = false;
+            exportarPdfBtn.disabled = false;
+        } else {
+            selectedEmpty.style.display = 'block';
+            selectedList.style.display = 'none';
+            guardarBtn.disabled = true;
+            exportarPdfBtn.disabled = true;
+        }
+
+        tbody.querySelectorAll('.remove-item').forEach(function(btn) {
+            btn.addEventListener('click', function() { removeItem(parseInt(btn.dataset.id, 10)); });
+        });
+    }
+
+    function escapeHtml(s) {
+        var d = document.createElement('div');
+        d.textContent = s;
+        return d.innerHTML;
+    }
+
+    var searchTimeout;
+    function doSearch() {
+        var q = analisisInput.value.trim();
+        if (q.length < 1) {
+            autocompleteDropdown.style.display = 'none';
+            autocompleteDropdown.innerHTML = '';
             return;
         }
+        clearTimeout(searchTimeout);
+        searchTimeout = setTimeout(function() {
+            fetch('<?= site_url('toquotes/search') ?>?q=' + encodeURIComponent(q))
+                .then(function(r) { return r.json(); })
+                .then(function(d) {
+                    autocompleteDropdown.innerHTML = '';
+                    if (!d.items || d.items.length === 0) {
+                        autocompleteDropdown.innerHTML = '<div class="list-group-item text-muted"><?= lang('Toquotes.toquotes_not_found') ?></div>';
+                    } else {
+                        d.items.forEach(function(it) {
+                            var li = document.createElement('div');
+                            li.className = 'list-group-item list-group-item-action';
+                            li.style.cursor = 'pointer';
+                            li.innerHTML = '<strong>' + escapeHtml(it.name) + '</strong><br><small class="text-muted">' + escapeHtml(it.cat_name) + ' &middot; ' + it.cost + ' Bs / Ref: ' + it.refe + ' Bs</small>';
+                            li.dataset.id = it.id;
+                            li.dataset.name = it.name;
+                            li.dataset.cost = it.cost;
+                            li.dataset.refe = it.refe;
+                            li.addEventListener('click', function() {
+                                addItem({ id: parseInt(li.dataset.id,10), name: li.dataset.name, cost: parseInt(li.dataset.cost,10), refe: parseInt(li.dataset.refe,10) });
+                                analisisInput.value = '';
+                                autocompleteDropdown.style.display = 'none';
+                                autocompleteDropdown.innerHTML = '';
+                            });
+                            autocompleteDropdown.appendChild(li);
+                        });
+                    }
+                    autocompleteDropdown.style.display = 'block';
+                })
+                .catch(function() {
+                    autocompleteDropdown.innerHTML = '<div class="list-group-item text-danger">Error al buscar</div>';
+                    autocompleteDropdown.style.display = 'block';
+                });
+        }, 200);
+    }
+
+    analisisInput.addEventListener('input', doSearch);
+    analisisInput.addEventListener('focus', function() { if (autocompleteDropdown.children.length) autocompleteDropdown.style.display = 'block'; });
+    analisisInput.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape') {
+            autocompleteDropdown.style.display = 'none';
+        } else if (e.key === 'Enter') {
+            var first = autocompleteDropdown.querySelector('.list-group-item-action');
+            if (first && !first.classList.contains('text-muted')) first.click();
+        }
+    });
+    document.addEventListener('click', function(e) {
+        if (!analisisInput.contains(e.target) && !autocompleteDropdown.contains(e.target)) {
+            autocompleteDropdown.style.display = 'none';
+        }
+    });
+
+    guardarBtn.addEventListener('click', function() {
+        if (selectedItems.length === 0) {
+            showFeedback('<?= lang('Toquotes.toquotes_select_items') ?>', true);
+            return;
+        }
+        var cotizo = selectedItems.map(function(x) { return x.name; }).join(',');
+        var costo = selectedItems.reduce(function(a, x) { return a + x.cost; }, 0);
+        var refe = selectedItems.reduce(function(a, x) { return a + x.refe; }, 0);
+        var itemsJson = JSON.stringify(selectedItems);
+
         var data = new URLSearchParams();
-        data.append('cotizo', items.join(','));
-        data.append('costo', totalCost);
+        data.append('cotizo', cotizo);
+        data.append('costo', costo);
+        data.append('refe', refe);
+        data.append('items_json', itemsJson);
+        if (typeof window.CI_CSRF_TOKEN_NAME !== 'undefined' && window.CI_CSRF_TOKEN) {
+            data.append(window.CI_CSRF_TOKEN_NAME, window.CI_CSRF_TOKEN);
+        }
+
+        var headers = { 'X-Requested-With': 'XMLHttpRequest', 'Content-Type': 'application/x-www-form-urlencoded' };
+        if (typeof window.CI_CSRF_TOKEN !== 'undefined') {
+            headers['X-CSRF-TOKEN'] = window.CI_CSRF_TOKEN;
+        }
+
         fetch('<?= site_url('toquotes/savetoquotelog') ?>', {
             method: 'POST',
-            headers: { 'X-Requested-With': 'XMLHttpRequest', 'Content-Type': 'application/x-www-form-urlencoded' },
+            headers: headers,
             body: data.toString()
         })
         .then(function(r) { return r.json(); })
         .then(function(d) {
-            if (d.success) alert('<?= lang('Toquotes.toquotes_saved') ?>');
-            actualizarResumen();
+            if (d.success) showFeedback(d.message || '<?= lang('Toquotes.toquotes_saved') ?>', false);
+            else showFeedback(d.message || '<?= lang('Toquotes.toquotes_error') ?>', true);
         })
-        .catch(function() { alert('<?= lang('Toquotes.toquotes_error') ?>'); });
+        .catch(function() { showFeedback('<?= lang('Toquotes.toquotes_error') ?>', true); });
     });
 
-    searchBtn.addEventListener('click', function() {
-        var q = searchInput.value.trim().toLowerCase();
-        if (!q) { alert('<?= lang('Toquotes.toquotes_search_hint') ?>'); return; }
-        var items = document.querySelectorAll('.list-group-item');
-        var found = null;
-        items.forEach(function(item) {
-            if (item.textContent.toLowerCase().includes(q)) {
-                if (!found) found = item;
-                item.classList.add('highlight-red');
-            } else {
-                item.classList.remove('highlight-red');
+    exportarPdfBtn.addEventListener('click', function() {
+        if (selectedItems.length === 0) {
+            showFeedback('<?= lang('Toquotes.toquotes_select_items') ?>', true);
+            return;
+        }
+        var data = new URLSearchParams();
+        data.append('items_json', JSON.stringify(selectedItems));
+        if (typeof window.CI_CSRF_TOKEN_NAME !== 'undefined' && window.CI_CSRF_TOKEN) {
+            data.append(window.CI_CSRF_TOKEN_NAME, window.CI_CSRF_TOKEN);
+        }
+        var headers = { 'X-Requested-With': 'XMLHttpRequest', 'Content-Type': 'application/x-www-form-urlencoded' };
+        if (typeof window.CI_CSRF_TOKEN !== 'undefined') headers['X-CSRF-TOKEN'] = window.CI_CSRF_TOKEN;
+
+        fetch('<?= site_url('toquotes/exportPdf') ?>', {
+            method: 'POST',
+            headers: headers,
+            body: data.toString(),
+            credentials: 'same-origin'
+        })
+        .then(function(r) {
+            var ct = (r.headers.get('Content-Type') || '').toLowerCase();
+            if (!r.ok) {
+                return r.text().then(function(t) { throw new Error('HTTP ' + r.status); });
             }
+            if (ct.indexOf('application/pdf') === -1) {
+                return r.text().then(function() { throw new Error('Respuesta no es PDF'); });
+            }
+            return r.blob();
+        })
+        .then(function(blob) {
+            var url = URL.createObjectURL(blob);
+            var a = document.createElement('a');
+            a.href = url;
+            a.download = 'cotizacion_' + new Date().toISOString().slice(0,10) + '.pdf';
+            a.click();
+            URL.revokeObjectURL(url);
+            showFeedback('PDF descargado correctamente.', false);
+        })
+        .catch(function(err) {
+            var msg = 'Error al exportar el PDF.';
+            if (err && err.message) {
+                if (err.message.indexOf('HTTP 403') !== -1) msg = 'Acceso denegado. Recargue la página e intente de nuevo.';
+                else if (err.message.indexOf('HTTP 500') !== -1) msg = 'Error en el servidor. Revise los logs.';
+                else if (err.message.indexOf('Respuesta no es PDF') !== -1) msg = 'La respuesta no es un PDF válido.';
+            }
+            showFeedback(msg, true);
         });
-        if (found) found.scrollIntoView({ behavior: 'smooth', block: 'center' });
-        else alert('<?= lang('Toquotes.toquotes_not_found') ?>');
     });
-});
+})();
 </script>
-<style>.highlight-red{background-color:#dc3545!important;color:#fff!important;}</style>
-
-<?= view('partial/breadcrumb_nav', [
-    'items' => [['label' => lang('Module.module_toquotes'), 'url' => site_url('toquotes')]],
-    'right' => '<input type="text" id="searchInput" name="search" class="form-control form-control-sm" placeholder="' . lang('Toquotes.toquotes_search') . '" style="width:180px">' .
-        '<button id="searchBtn" class="btn btn-primary btn-sm">' . lang('Toquotes.toquotes_search_btn') . '</button>' .
-        '<button id="cotizarBtn" class="btn btn-success btn-sm">' . lang('Toquotes.toquotes_quote_btn') . '</button>',
-]) ?>
-<div class="mb-3" id="valorcotizado"></div>
-
-<div class="row">
-    <?php foreach ($categories ?? [] as $cat): ?>
-    <div class="col-12 col-md-6 col-lg-4 mb-4">
-        <div class="card shadow-sm">
-            <div class="card-header bg-primary text-white py-2">
-                <strong><?= esc($cat['name']) ?></strong>
-            </div>
-            <ul class="list-group list-group-flush">
-                <?php foreach ($cat['items'] ?? [] as $item): ?>
-                <li class="list-group-item d-flex align-items-center">
-                    <input type="checkbox" id="cotizo_<?= (int)($item['id'] ?? 0) ?>" name="cotizo_<?= (int)($item['id'] ?? 0) ?>" class="form-check-input contador me-2" cost="<?= (int)$item['cost'] ?>" refe="<?= (int)$item['refe'] ?>">
-                    <span class="flex-grow-1"><?= esc($item['name']) ?></span>
-                    <span class="badge bg-secondary"><?= (int)$item['cost'] ?> Bs</span>
-                </li>
-                <?php endforeach; ?>
-            </ul>
-        </div>
-    </div>
-    <?php endforeach; ?>
-</div>
-
-<?php if (empty($categories)): ?>
-<div class="alert alert-info"><?= lang('Toquotes.toquotes_no_data') ?></div>
-<?php endif; ?>
-
-<?= view('partial/footer') ?>
+<?= $this->endSection() ?>

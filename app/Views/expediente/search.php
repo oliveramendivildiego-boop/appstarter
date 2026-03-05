@@ -1,5 +1,6 @@
-<?= view('partial/header', ['allowed_modules' => $allowed_modules ?? [], 'user_info' => $user_info ?? null, 'current_module' => 'expediente']) ?>
+<?= $this->extend('layouts/main') ?>
 
+<?= $this->section('content') ?>
 <?= view('partial/breadcrumb_nav', ['items' => [
     ['label' => lang('Module.module_home'), 'url' => site_url('home')],
     ['label' => 'Historial por paciente', 'url' => null],
@@ -17,8 +18,9 @@
                     <label for="paciente_search" class="form-label">Buscar paciente</label>
                     <div class="position-relative">
                         <input type="text" id="paciente_search" name="q" class="form-control" placeholder="Escriba nombre o apellido (mín. 2 caracteres)..." autocomplete="off">
+                        <div class="invalid-feedback d-block" id="paciente_error"></div>
                         <input type="hidden" id="person_id" name="person_id" value="">
-                        <div id="suggestions_box" class="list-group position-absolute w-100 mt-1 shadow" style="z-index:1050;display:none;max-height:250px;overflow-y:auto"></div>
+                        <div id="suggestions_box" class="list-group position-absolute w-100 mt-1 shadow suggestions-box-expediente"></div>
                     </div>
                 </div>
                 <div class="col-md-4 d-flex align-items-end">
@@ -30,7 +32,9 @@
         </form>
     </div>
 </div>
+<?= $this->endSection() ?>
 
+<?= $this->section('scripts') ?>
 <script>
 document.addEventListener('DOMContentLoaded', function() {
     var form = document.getElementById('expediente_search_form');
@@ -40,12 +44,16 @@ document.addEventListener('DOMContentLoaded', function() {
     var debounceTimer;
 
     form.addEventListener('submit', function(e) {
-        if (!personInput.value) {
+        var errEl = document.getElementById('paciente_error');
+        if (!personInput.value || personInput.value === '0') {
             e.preventDefault();
-            alert('Seleccione un paciente de la lista de sugerencias.');
+            input.classList.add('is-invalid');
+            if (errEl) errEl.textContent = 'Seleccione un paciente de la lista de sugerencias.';
             input.focus();
             return;
         }
+        input.classList.remove('is-invalid');
+        if (errEl) errEl.textContent = '';
         form.action = '<?= site_url('expediente/view/') ?>' + personInput.value;
     });
 
@@ -85,6 +93,9 @@ document.addEventListener('DOMContentLoaded', function() {
                             input.value = item.value;
                             personInput.value = item.data;
                             suggestionsBox.style.display = 'none';
+                            input.classList.remove('is-invalid');
+                            var errEl = document.getElementById('paciente_error');
+                            if (errEl) errEl.textContent = '';
                         });
                         suggestionsBox.appendChild(a);
                     });
@@ -103,5 +114,4 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 });
 </script>
-
-<?= view('partial/footer') ?>
+<?= $this->endSection() ?>

@@ -18,4 +18,5 @@ return [
     'doctors_speciality'            => 'Especialidad',
     'doctors_address'               => 'Dirección',
     'doctors_gender'                => 'Género',
+    'doctors_login_access'         => 'Acceso al portal',
 ];

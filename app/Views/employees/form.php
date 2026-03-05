@@ -1,30 +1,9 @@
-<?= view('partial/header', ['allowed_modules' => $allowed_modules ?? [], 'user_info' => $user_info ?? null, 'current_module' => 'employees']) ?>
-<?php if (!empty($extra_head_links)): foreach ($extra_head_links as $link): ?>
-    <?= $link ?>
-<?php endforeach; endif; ?>
-<script type="text/javascript">
-$(document).ready(function() {
-    flatpickr("#birthday", { dateFormat: "Y-m-d", maxDate: "today", locale: "es" });
-    var isEdit = <?= !empty($employee_info->person_id) && (int)$employee_info->person_id > 0 ? 'true' : 'false' ?>;
-    $("#employee_form").validate({
-        rules: {
-            first_name: { required: true, minlength: 2 },
-            last_name_fa: { required: true, minlength: 2 },
-            username: { required: true, minlength: 3 },
-            password: isEdit ? {} : { required: true, minlength: 4 }
-        },
-        messages: {
-            first_name: { required: "Ingrese el nombre", minlength: "Mínimo 2 caracteres" },
-            last_name_fa: { required: "Ingrese el apellido", minlength: "Mínimo 2 caracteres" },
-            username: { required: "Ingrese el usuario", minlength: "Mínimo 3 caracteres" },
-            password: { required: "La contraseña es obligatoria", minlength: "Mínimo 4 caracteres" }
-        },
-        errorClass: "is-invalid text-danger small",
-        validClass: "is-valid",
-        errorElement: "div"
-    });
-});
-</script>
+<?= $this->extend('layouts/main') ?>
+<?= $this->section('head_extra') ?>
+<?php if (!empty($extra_head_links) && is_array($extra_head_links)): foreach ($extra_head_links as $link): ?><?= $link ?><?php endforeach; endif; ?>
+<?= $this->endSection() ?>
+<?= $this->section('content') ?>
+<?php $validationErrors = session()->getFlashdata('errors'); ?>
 <?= view('partial/breadcrumb_nav', ['items' => [
     ['label' => lang('Module.module_employees'), 'url' => site_url('employees')],
     ['label' => (!empty($employee_info->person_id) && (int)$employee_info->person_id > 0 ? lang('Employees.employees_update') : lang('Employees.employees_new')), 'url' => null],
@@ -37,7 +16,6 @@ $(document).ready(function() {
     <div class="card-body">
         <?php $pid = $employee_info->person_id ?? ''; $saveId = ($pid === '' || $pid === null) ? '-1' : (int) $pid; ?>
         <?= form_open(site_url('employees/save/' . $saveId), ['id' => 'employee_form', 'data-async' => '1']) ?>
-        <ul id="error_message_box"></ul>
 
         <?= view('people/form_basic_info', ['person_info' => $employee_info]) ?>
 
@@ -114,5 +92,31 @@ $(document).ready(function() {
         <?= form_close() ?>
     </div>
 </div>
+<?= $this->endSection() ?>
 
-<?= view('partial/footer') ?>
+<?= $this->section('scripts') ?>
+<script>
+$(document).ready(function() {
+    flatpickr("#birthday", { dateFormat: "Y-m-d", maxDate: "today", locale: "es", onOpen: function(s,d,i){ if (typeof flatpickrPositionArrowTopLeft === 'function') flatpickrPositionArrowTopLeft(i); } });
+    var isEdit = <?= !empty($employee_info->person_id) && (int)$employee_info->person_id > 0 ? 'true' : 'false' ?>;
+    $("#employee_form").validate($.extend(true, {}, window.VALIDATE_COMMON_OPTIONS, {
+        rules: {
+            first_name: { required: true, minlength: 2 },
+            last_name_fa: { required: true, minlength: 2 },
+            username: { required: true, minlength: 3 },
+            password: isEdit ? {} : { required: true, minlength: 4 }
+        },
+        messages: {
+            first_name: { required: "Ingrese el nombre", minlength: "Mínimo 2 caracteres" },
+            last_name_fa: { required: "Ingrese el apellido", minlength: "Mínimo 2 caracteres" },
+            username: { required: "Ingrese el usuario", minlength: "Mínimo 3 caracteres" },
+            password: { required: "La contraseña es obligatoria", minlength: "Mínimo 4 caracteres" }
+        }
+    }));
+    <?php if (!empty($validationErrors) && is_array($validationErrors)): ?>
+    window.CI_VALIDATION_ERRORS = <?= json_encode($validationErrors) ?>;
+    if (typeof showServerValidationErrors === 'function') showServerValidationErrors('#employee_form');
+    <?php endif; ?>
+});
+</script>
+<?= $this->endSection() ?>

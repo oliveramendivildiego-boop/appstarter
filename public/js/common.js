@@ -1,4 +1,14 @@
 /**
+ * Posiciona el calendario flatpickr con arrowTop arrowLeft (clases consistentes en toda la web)
+ */
+function flatpickrPositionArrowTopLeft(instance) {
+    if (!instance || !instance.calendarContainer) return;
+    var el = instance.calendarContainer;
+    el.classList.remove('arrowBottom', 'arrowRight');
+    el.classList.add('arrowTop', 'arrowLeft');
+}
+
+/**
  * Toast de notificaciones en la web (sin alert)
  */
 function showToast(message, type) {
@@ -53,6 +63,12 @@ function initAsyncForms() {
                 })
                 .then(function (d) {
                     if (btn) { btn.disabled = false; if (btn.tagName === 'INPUT') btn.value = btn.dataset.origText || ''; else btn.innerHTML = btn.dataset.origText || ''; }
+                    if (d && d.csrf_token && d.csrf_name) {
+                        window.CI_CSRF_TOKEN = d.csrf_token;
+                        window.CI_CSRF_TOKEN_NAME = d.csrf_name;
+                        var csrfInp = f.querySelector('input[name="' + d.csrf_name + '"]') || f.querySelector('input[name="csrf_test_name"]') || f.querySelector('input[name*="csrf"]');
+                        if (csrfInp) { csrfInp.name = d.csrf_name; csrfInp.value = d.csrf_token; }
+                    }
                     var msg = (d && d.message) ? d.message : (d && d.success ? 'Guardado correctamente' : 'Error al guardar');
                     showToast(msg, d && d.success ? 'success' : 'error');
                     if (d && d.redirect_url) {
@@ -67,8 +83,39 @@ function initAsyncForms() {
     });
 }
 
+/**
+ * Envuelve tablas en contenedor responsivo Bootstrap.
+ * Se aplica una sola vez por tabla y permite exclusión con data-no-responsive.
+ */
+function makeTablesResponsive(root) {
+    var scope = root || document;
+    var tables = scope.querySelectorAll('table');
+    tables.forEach(function (table) {
+        if (!table || table.dataset.noResponsive === '1') return;
+        if (table.closest('.table-responsive')) return;
+        if (table.closest('table')) return; // evita tablas anidadas dentro de otra tabla
+
+        var wrapper = document.createElement('div');
+        wrapper.className = 'table-responsive';
+        table.parentNode.insertBefore(wrapper, table);
+        wrapper.appendChild(table);
+    });
+}
+
 document.addEventListener('DOMContentLoaded', function () {
     initAsyncForms();
+    makeTablesResponsive(document);
+
+    // Cubre tablas que aparecen dinámicamente (AJAX/render tardío)
+    var observerTimer = null;
+    if (typeof MutationObserver !== 'undefined') {
+        var observer = new MutationObserver(function () {
+            if (observerTimer) clearTimeout(observerTimer);
+            observerTimer = setTimeout(function () { makeTablesResponsive(document); }, 80);
+        });
+        observer.observe(document.body, { childList: true, subtree: true });
+    }
+
     if (typeof $ !== 'undefined' && window.CI_CSRF_TOKEN_NAME && window.CI_CSRF_TOKEN) {
         $.ajaxSetup({
             beforeSend: function (xhr, opts) {

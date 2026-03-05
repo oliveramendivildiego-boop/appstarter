@@ -1,23 +1,27 @@
-<?= view('partial/header', ['allowed_modules' => $allowed_modules ?? [], 'user_info' => $user_info ?? null, 'current_module' => 'labotests']) ?>
+<?= $this->extend('layouts/main') ?>
 
+<?= $this->section('content') ?>
 <?php
-$labRight = '<form action="' . site_url('labotests') . '" method="get" class="d-flex" role="search">' .
-    '<input type="hidden" id="labotests_page" name="page" value="1">' .
-    '<input type="search" id="labotests_search" name="q" class="form-control form-control-sm" placeholder="Buscar examen o grupo..." value="' . esc($search ?? '') . '" style="min-width: 180px;">' .
-    '<button type="submit" class="btn btn-outline-primary btn-sm ms-1"><i class="fa-solid fa-search"></i> Buscar</button>' .
-    (!empty($search) ? '<a href="' . site_url('labotests') . '" class="btn btn-outline-secondary btn-sm ms-1">Limpiar</a>' : '') .
-    '</form>' .
-    '<a href="' . site_url('labotests/perfiles') . '" class="btn btn-outline-info btn-sm me-1">Perfiles</a>' .
+$labRight = '<a href="' . site_url('labotests/perfiles') . '" class="btn btn-outline-info btn-sm me-1">Perfiles</a>' .
+    '<a href="' . site_url('labotests/opciones') . '" class="btn btn-outline-secondary btn-sm me-1"><i class="fa-solid fa-list-check me-1"></i> Tipos resultado</a>' .
     '<a href="' . site_url('labotests/manuales') . '" class="btn btn-outline-success btn-sm me-1"><i class="fa-solid fa-book me-1"></i> Manuales</a>' .
     '<a href="' . site_url('labotests/view') . '" class="btn btn-success btn-sm"><i class="fa-solid fa-plus me-1"></i> ' . lang('Labotests.labotests_new_group') . '</a>';
 ?>
 <?= view('partial/breadcrumb_nav', [
-    'items' => [
-        ['label' => lang('Module.module_labotests'), 'url' => site_url('labotests')],
-        ['label' => lang('Module.module_labotests_desc'), 'url' => null],
-    ],
+    'items' => [['label' => lang('Module.module_labotests'), 'url' => null]],
     'right' => $labRight,
 ]) ?>
+
+<div class="mb-3">
+    <?= form_open(site_url('labotests'), ['method' => 'get', 'class' => 'd-flex gap-2 flex-wrap align-items-center', 'role' => 'search']) ?>
+    <input type="hidden" name="page" value="1">
+    <input type="search" name="q" class="form-control form-control-sm" style="max-width:280px" placeholder="Buscar examen o grupo..." value="<?= esc($search ?? '') ?>">
+    <button type="submit" class="btn btn-outline-primary btn-sm"><i class="fa-solid fa-search"></i> Buscar</button>
+    <?php if (!empty($search)): ?>
+    <a href="<?= site_url('labotests') ?>" class="btn btn-outline-secondary btn-sm">Limpiar</a>
+    <?php endif; ?>
+    <?= form_close() ?>
+</div>
 
 <?php if (session()->getFlashdata('success')): ?>
 <div class="alert alert-success alert-dismissible fade show">
@@ -123,4 +127,4 @@ $labRight = '<form action="' . site_url('labotests') . '" method="get" class="d-
     </nav>
     <?php endif; ?>
 </div>
-<?= view('partial/footer') ?>
+<?= $this->endSection() ?>

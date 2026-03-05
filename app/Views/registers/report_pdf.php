@@ -3,28 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <title>Resultados - <?= esc($paciente->first_name ?? '') ?> <?= esc($paciente->last_name_fa ?? '') ?></title>
-    <style>
-        * { box-sizing: border-box; }
-        body { font-family: DejaVu Sans, sans-serif; font-size: 10pt; margin: 15px; color: #333; }
-        .header { display: table; width: 100%; margin-bottom: 15px; border-bottom: 2px solid #0066cc; padding-bottom: 10px; }
-        .logo-cell { display: table-cell; width: 120px; vertical-align: middle; }
-        .logo-cell img { max-height: 70px; }
-        .lab-info { display: table-cell; vertical-align: middle; padding-left: 15px; }
-        .lab-info h1 { margin: 0; font-size: 14pt; color: #0066cc; }
-        .lab-info p { margin: 3px 0; font-size: 9pt; }
-        .patient-section { margin: 15px 0; padding: 10px; background: #f8f9fa; border-radius: 4px; }
-        .patient-section .row { display: table; width: 100%; }
-        .patient-section .col { display: table-cell; width: 50%; padding: 5px 10px 5px 0; vertical-align: top; }
-        .patient-section .label { font-weight: bold; }
-        table.results { width: 100%; border-collapse: collapse; margin: 15px 0; }
-        table.results th, table.results td { border: 1px solid #ddd; padding: 6px 8px; text-align: left; }
-        table.results th { background: #0066cc; color: white; font-size: 9pt; }
-        table.results td { font-size: 9pt; }
-        .group-title { font-weight: bold; font-size: 11pt; margin: 15px 0 8px 0; color: #333; }
-        .out-range { color: #c00; font-weight: bold; }
-        .ref-range { font-size: 8pt; color: #666; }
-        .footer { margin-top: 20px; padding-top: 10px; border-top: 1px solid #ddd; font-size: 8pt; color: #666; text-align: center; }
-    </style>
+    <base href="<?= base_url() ?>" />
+    <link rel="stylesheet" href="<?= base_url('assets/css/report_pdf.css') ?>" />
 </head>
 <body>
     <div class="header">
@@ -42,7 +22,7 @@
             }
             ?>
             <?php if ($logoDataUri): ?>
-                <img src="<?= $logoDataUri ?>" alt="Logo" style="max-height:70px">
+                <img src="<?= $logoDataUri ?>" alt="Logo">
             <?php else: ?>
                 <strong><?= esc($lab_config['company'] ?? 'Laboratorio') ?></strong>
             <?php endif; ?>
@@ -62,6 +42,12 @@
                 <p><?= esc($lab_config['website']) ?></p>
             <?php endif; ?>
         </div>
+        <?php if (!empty($report_url) && !empty($qr_data_uri)): ?>
+        <div class="qr-cell">
+            <img src="<?= $qr_data_uri ?>" alt="Ver resultados online" class="qr-img">
+            <p class="qr-label">Escanee para ver sus resultados online</p>
+        </div>
+        <?php endif; ?>
     </div>
 
     <div class="patient-section">
@@ -93,9 +79,9 @@
         <thead>
             <tr>
                 <th>ANÁLISIS</th>
-                <th style="text-align:center">RESULTADO</th>
-                <?php if ($hasUnidad): ?><th style="text-align:center">UNID</th><?php endif; ?>
-                <?php if ($hasRango): ?><th style="text-align:center">RANGO REFERENCIAL</th><?php endif; ?>
+                <th class="text-center">RESULTADO</th>
+                <?php if ($hasUnidad): ?><th class="text-center">UNID</th><?php endif; ?>
+                <?php if ($hasRango): ?><th class="text-center">RANGO REFERENCIAL</th><?php endif; ?>
             </tr>
         </thead>
         <tbody>
@@ -119,9 +105,9 @@
                 ?>
                 <tr>
                     <td><?= esc($item->nombre ?? '') ?></td>
-                    <td style="text-align:center" class="<?= $isOut ? 'out-range' : '' ?>"><?= esc($valor) ?></td>
-                    <?php if ($hasUnidad): ?><td style="text-align:center"><?= esc($item->umedida ?? '') ?></td><?php endif; ?>
-                    <?php if ($hasRango): ?><td style="text-align:center" class="ref-range"><?= esc($refRange) ?></td><?php endif; ?>
+                    <td class="text-center <?= $isOut ? 'out-range' : '' ?>"><?= esc($valor) ?></td>
+                    <?php if ($hasUnidad): ?><td class="text-center"><?= esc($item->umedida ?? '') ?></td><?php endif; ?>
+                    <?php if ($hasRango): ?><td class="text-center ref-range"><?= esc($refRange) ?></td><?php endif; ?>
                 </tr>
             <?php endforeach; ?>
         </tbody>

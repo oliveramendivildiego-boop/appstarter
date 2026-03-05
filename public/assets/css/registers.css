@@ -1,0 +1,17 @@
+/**
+ * Módulo Registros - formfill, badges calculada
+ */
+.badge-calculada {
+    background-color: var(--badge-calculada-bg, #6c757d);
+    color: var(--badge-calculada-color, #fff);
+}
+.sugerencia-calculada {
+    cursor: pointer;
+}
+.sugerencia-calculada:hover {
+    text-decoration: underline;
+}
+.input-sugerencia-aplicada {
+    border-color: var(--bs-success, #198754) !important;
+    box-shadow: 0 0 0 0.2rem rgba(25, 135, 84, 0.25);
+}

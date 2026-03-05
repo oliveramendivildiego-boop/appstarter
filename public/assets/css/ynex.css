@@ -1,0 +1,364 @@
+/**
+ * Tema YNEX - Estilo inspirado en dashboards modernos
+ * Colores, tipografía, sombras y bordes redondeados
+ * Aplicado al dashboard principal y portal doctor
+ */
+
+:root {
+    /* Tipografía YNEX - tamaños como template original */
+    --ynex-font: 'Poppins', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    --ynex-font-size-base: 14px;
+    --ynex-font-size-sm: 13px;
+    --ynex-font-size-xs: 12px;
+    --ynex-font-size-lg: 15px;
+    --ynex-font-size-xl: 1.25rem;
+    --ynex-line-height: 1.5;
+    /* Paleta YNEX */
+    --ynex-primary: #6366f1;
+    --ynex-primary-hover: #4f46e5;
+    --ynex-primary-light: #818cf8;
+    --ynex-primary-50: #eef2ff;
+    --ynex-primary-100: #e0e7ff;
+    --ynex-slate-50: #f8fafc;
+    --ynex-slate-100: #f1f5f9;
+    --ynex-slate-200: #e2e8f0;
+    --ynex-slate-300: #cbd5e1;
+    --ynex-slate-400: #94a3b8;
+    --ynex-slate-500: #64748b;
+    --ynex-slate-600: #475569;
+    --ynex-slate-700: #334155;
+    --ynex-slate-800: #1e293b;
+    --ynex-slate-900: #0f172a;
+    --ynex-success: #10b981;
+    --ynex-info: #06b6d4;
+    --ynex-warning: #f59e0b;
+    --ynex-danger: #ef4444;
+    --ynex-radius: 12px;
+    --ynex-radius-lg: 16px;
+    --ynex-shadow: 0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1);
+    --ynex-shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+    --ynex-shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+}
+
+/* Tipografía global YNEX - font y tamaño como template */
+body.ynex-theme,
+.ynex-theme {
+    font-family: var(--ynex-font);
+    font-size: var(--ynex-font-size-base);
+    line-height: var(--ynex-line-height);
+    background-color: var(--ynex-slate-50);
+    color: var(--ynex-slate-800);
+}
+
+body.ynex-theme small,
+.ynex-theme .small { font-size: var(--ynex-font-size-xs); }
+body.ynex-theme .text-muted { color: var(--ynex-slate-500) !important; }
+
+/* Títulos con jerarquía YNEX */
+body.ynex-theme h1, body.ynex-theme .h1 { font-size: 1.75rem; font-weight: 600; }
+body.ynex-theme h2, body.ynex-theme .h2 { font-size: 1.5rem; font-weight: 600; }
+body.ynex-theme h3, body.ynex-theme .h3 { font-size: 1.25rem; font-weight: 600; }
+body.ynex-theme h4, body.ynex-theme .h4 { font-size: 1.125rem; font-weight: 600; }
+body.ynex-theme h5, body.ynex-theme .h5 { font-size: 1rem; font-weight: 600; }
+body.ynex-theme h6, body.ynex-theme .h6 { font-size: 0.875rem; font-weight: 600; }
+
+/* Colores primarios YNEX por defecto - se sobreescriben por data-theme-* del layout */
+
+/* ========== Navbar YNEX ========== */
+.ynex-navbar {
+    background: linear-gradient(135deg, var(--primary-color, var(--ynex-primary)) 0%, var(--ynex-primary-hover) 100%) !important;
+    box-shadow: var(--ynex-shadow-md);
+    padding: 0.75rem 1rem;
+}
+
+.ynex-navbar .navbar-brand {
+    font-weight: 600;
+    font-size: 1.125rem;
+}
+
+.ynex-navbar .navbar-brand-logo {
+    max-height: 36px;
+}
+
+.ynex-navbar .nav-link {
+    font-weight: 500;
+    border-radius: 8px;
+    padding: 0.5rem 1rem !important;
+    color: #fff !important;
+    text-decoration: none !important;
+}
+
+.ynex-navbar .nav-link:hover,
+.ynex-navbar .nav-link:focus,
+.ynex-navbar .nav-link:visited {
+    color: #fff !important;
+    text-decoration: none !important;
+}
+
+.ynex-navbar .nav-link:hover {
+    background-color: rgba(255, 255, 255, 0.15);
+}
+
+/* ========== Main content ========== */
+.ynex-main {
+    min-height: calc(100vh - 180px);
+}
+
+/* ========== Cards YNEX ========== */
+.ynex-theme .card,
+.ynex-theme .ynex-card {
+    border: none;
+    border-radius: var(--ynex-radius-lg);
+    box-shadow: var(--ynex-shadow);
+    background: #fff;
+    transition: box-shadow 0.2s ease;
+}
+
+.ynex-theme .card:hover,
+.ynex-theme .ynex-card:hover {
+    box-shadow: var(--ynex-shadow-md);
+}
+
+.ynex-theme .card-header {
+    border-radius: var(--ynex-radius-lg) var(--ynex-radius-lg) 0 0;
+    font-weight: 600;
+    border-bottom: 1px solid var(--ynex-slate-200);
+}
+
+.ynex-theme .card-header.bg-primary {
+    background: linear-gradient(135deg, var(--primary-color, var(--ynex-primary)), var(--ynex-primary-hover)) !important;
+    border: none;
+}
+
+/* Stats cards - estilo widget */
+.ynex-stat-card {
+    border: none;
+    border-radius: var(--ynex-radius-lg);
+    box-shadow: var(--ynex-shadow);
+    background: #fff;
+    overflow: hidden;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.ynex-stat-card:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--ynex-shadow-md);
+}
+
+.ynex-stat-icon {
+    width: 48px;
+    height: 48px;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.25rem;
+}
+
+.ynex-stat-icon.primary { background: var(--ynex-primary-100); color: var(--primary-color, var(--ynex-primary)); }
+.ynex-stat-icon.success { background: #d1fae5; color: var(--ynex-success); }
+.ynex-stat-icon.info { background: #cffafe; color: var(--ynex-info); }
+.ynex-stat-icon.warning { background: #fef3c7; color: var(--ynex-warning); }
+
+.ynex-stat-label {
+    font-size: 0.6875rem;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--ynex-slate-500);
+}
+
+.ynex-stat-value {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: var(--ynex-slate-800);
+    letter-spacing: -0.02em;
+}
+
+/* ========== Sidebar YNEX (dashboard principal) ========== */
+body.ynex-theme .sidebar {
+    background: var(--ynex-slate-900) !important;
+    border: none !important;
+}
+
+body.ynex-theme .sidebar .offcanvas-lg {
+    background: var(--ynex-slate-900) !important;
+}
+
+body.ynex-theme .sidebar .nav-link {
+    color: var(--ynex-slate-300) !important;
+    border-radius: 8px;
+    margin: 0 0.5rem;
+    padding: 0.625rem 1rem !important;
+}
+
+body.ynex-theme .sidebar .nav-link:hover {
+    background: rgba(255, 255, 255, 0.08) !important;
+    color: #fff !important;
+}
+
+body.ynex-theme .sidebar .nav-link.active {
+    background: var(--primary-color, var(--ynex-primary)) !important;
+    color: #fff !important;
+}
+
+body.ynex-theme .sidebar .offcanvas-title {
+    color: #fff;
+    font-weight: 600;
+}
+
+body.ynex-theme .sidebar-heading {
+    color: var(--ynex-slate-400) !important;
+    font-size: 0.7rem;
+}
+
+/* Navbar principal (dashboard) con estilo YNEX */
+body.ynex-theme .navbar-theme {
+    background: linear-gradient(135deg, var(--primary-color, var(--ynex-primary)), var(--ynex-primary-hover)) !important;
+    box-shadow: var(--ynex-shadow-md);
+}
+
+body.ynex-theme .navbar-theme .navbar-brand {
+    background: transparent !important;
+    box-shadow: none !important;
+}
+
+/* ========== Tablas ========== */
+.ynex-theme .table {
+    font-size: 0.9rem;
+}
+
+.ynex-theme .table thead th {
+    font-weight: 600;
+    color: var(--ynex-slate-600);
+    border-bottom: 2px solid var(--ynex-slate-200);
+    padding: 0.875rem 1rem;
+}
+
+.ynex-theme .table tbody td {
+    padding: 0.75rem 1rem;
+    vertical-align: middle;
+}
+
+.ynex-theme .table tbody tr:hover {
+    background-color: var(--ynex-slate-50);
+}
+
+/* ========== Botones ========== */
+.ynex-theme .btn {
+    font-weight: 500;
+    border-radius: 8px;
+    padding: 0.5rem 1rem;
+}
+
+.ynex-theme .btn-primary {
+    background: var(--primary-color, var(--ynex-primary)) !important;
+    border-color: var(--primary-color, var(--ynex-primary)) !important;
+}
+
+.ynex-theme .btn-primary:hover {
+    background: var(--primary-hover, var(--ynex-primary-hover)) !important;
+    border-color: var(--primary-hover, var(--ynex-primary-hover)) !important;
+}
+
+.ynex-theme .btn-outline-primary {
+    color: var(--primary-color, var(--ynex-primary)) !important;
+    border-color: var(--primary-color, var(--ynex-primary)) !important;
+}
+
+.ynex-theme .btn-outline-primary:hover {
+    background: var(--primary-color, var(--ynex-primary)) !important;
+    color: #fff !important;
+}
+
+/* ========== Títulos ========== */
+.ynex-theme h1, .ynex-theme .h1,
+.ynex-theme h2, .ynex-theme .h2,
+.ynex-theme h3, .ynex-theme .h3,
+.ynex-theme h4, .ynex-theme .h4,
+.ynex-theme h5, .ynex-theme .h5 {
+    font-weight: 600;
+    color: var(--ynex-slate-800);
+}
+
+/* ========== Footer YNEX ========== */
+.ynex-footer {
+    background: var(--ynex-slate-800);
+    color: var(--ynex-slate-300);
+    padding: 1rem 1.5rem;
+    font-size: 0.875rem;
+}
+
+.ynex-footer .container-fluid {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+}
+
+.ynex-footer a {
+    color: var(--ynex-primary-light);
+    text-decoration: none;
+}
+
+.ynex-footer a:hover {
+    color: #fff;
+}
+
+/* ========== Formularios ========== */
+.ynex-theme .form-control,
+.ynex-theme .form-select {
+    border-radius: 8px;
+    border-color: var(--ynex-slate-300);
+}
+
+.ynex-theme .form-control:focus {
+    border-color: var(--primary-color, var(--ynex-primary));
+    box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.15);
+}
+
+/* ========== Breadcrumb ========== */
+.ynex-theme .breadcrumb {
+    font-size: 0.875rem;
+}
+
+.ynex-theme .breadcrumb-item a,
+.doctor-portal .breadcrumb-item a {
+    color: var(--primary-color, var(--ynex-primary));
+    text-decoration: none;
+}
+
+.ynex-theme .breadcrumb-item a:hover,
+.doctor-portal .breadcrumb-item a:hover {
+    color: var(--primary-hover, var(--ynex-primary-hover));
+    text-decoration: none;
+}
+
+.ynex-theme .breadcrumb-nav-theme {
+    background: linear-gradient(135deg, var(--primary-color, var(--ynex-primary)), var(--ynex-primary-hover)) !important;
+}
+
+/* ========== Dashboard - tabla alertas insumos (scroll horizontal) ========== */
+.alert-insumos-dashboard .flex-grow-1 {
+    min-width: 0;
+}
+.dashboard-alert-table {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    -ms-overflow-style: -ms-autohiding-scrollbar;
+    max-width: 100%;
+}
+.dashboard-alert-table .table {
+    min-width: 420px;
+}
+
+/* ========== Doctor portal específico - ancho completo como el sistema principal ========== */
+.doctor-portal .ynex-main,
+.doctor-portal .ynex-main .container-fluid {
+    max-width: none;
+    width: 100%;
+}
+
+.doctor-portal .doctor-portal-main {
+    max-width: none;
+    width: 100%;
+}

@@ -82,6 +82,7 @@ class RegisterModel extends Model
 
         $builder = $this->db->table('registro')
             ->select("{$r}.*, CONCAT({$p}.first_name, ' ', {$p}.last_name_fa, ' ', {$p}.last_name_mom) AS paciente,
+                {$p}.phone_number as paciente_phone,
                 {$d}.name as doctor, {$d}.phone_number as doctor_phone,
                 {$pa}.total as total, {$pa}.monto_pagar as monto_pagar, {$pa}.tipopago as tipopago, {$pa}.saldo as saldo,
                 (SELECT COUNT(*) FROM {$rv} WHERE {$rv}.registro_id = {$r}.registro_id) AS regvalues_count")
@@ -154,7 +155,7 @@ class RegisterModel extends Model
 
         $builder = $this->db->table('registro')
             ->select("{$r}.*, CONCAT({$p}.first_name, ' ', {$p}.last_name_fa, ' ', {$p}.last_name_mom) AS paciente,
-                {$p}.first_name, {$p}.last_name_fa, {$p}.last_name_mom, {$p}.ci,
+                {$p}.first_name, {$p}.last_name_fa, {$p}.last_name_mom, {$p}.ci, {$p}.phone_number as paciente_phone,
                 {$d}.name as doctor, {$d}.phone_number as doctor_phone,
                 {$pa}.total as total, {$pa}.monto_pagar as monto_pagar, {$pa}.tipopago as tipopago, {$pa}.saldo as saldo,
                 (SELECT COUNT(*) FROM {$rv} WHERE {$rv}.registro_id = {$r}.registro_id) AS regvalues_count")
@@ -629,19 +630,48 @@ class RegisterModel extends Model
         $opcionesName = trim($row->opciones ?? '');
         $tabla = trim($row->tabla ?? '');
         $options = [];
-        if ($tabla !== '') {
+
+        if ($tabla === 'opcion_valores') {
+            $options = $this->getOpcionesValoresGenericos($id);
+        } elseif ($tabla !== '') {
             $options = $this->getOpcionesValores($tabla);
         }
+
         if (empty($options)) {
             if (stripos($opcionesName, 'positivo') !== false) {
                 return ['Positivo' => 'Positivo', 'Negativo' => 'Negativo'];
             }
             if (stripos($opcionesName, 'reactivo') !== false) {
-                $fromTable = $this->getOpcionesValores('opcion_reactivo');
+                $fromTable = $this->getOpcionesValores('opcreactivo');
                 return !empty($fromTable) ? $fromTable : ['Reactivo' => 'Reactivo', 'No reactivo' => 'No reactivo'];
             }
         }
         return $options;
+    }
+
+    /**
+     * Obtiene valores desde la tabla genérica opcion_valores
+     */
+    private function getOpcionesValoresGenericos(int $opcionesId): array
+    {
+        try {
+            $rows = $this->db->table('opcion_valores')
+                ->where('opciones_id', $opcionesId)
+                ->orderBy('orden', 'ASC')
+                ->orderBy('valor', 'ASC')
+                ->get()
+                ->getResult();
+            $options = [];
+            foreach ($rows as $r) {
+                $v = trim($r->valor ?? '');
+                if ($v !== '') {
+                    $options[$v] = $v;
+                }
+            }
+            return $options;
+        } catch (\Throwable $e) {
+            return [];
+        }
     }
 
     private function getOpcionesValores(string $nombreTabla): array
@@ -746,24 +776,27 @@ class RegisterModel extends Model
     }
 
     /**
-     * Obtiene antecedentes: resultados previos del mismo paciente para comparar
+     * Obtiene antecedentes: resultados previos del mismo paciente para comparar (solo completos/con regvalues)
      * @param int $personId ID del paciente
      * @param int $currentRegistroId Excluir este registro
      * @param int $limit Máximo de registros anteriores a incluir
+     * @param int|null $doctorId Si se provee, solo registros de ese doctor (para portal doctor)
      */
-    public function getAntecedentesPaciente(int $personId, int $currentRegistroId = 0, int $limit = 10): array
+    public function getAntecedentesPaciente(int $personId, int $currentRegistroId = 0, int $limit = 10, ?int $doctorId = null): array
     {
         $r  = $this->getRegistroTable();
         $rv = $this->db->prefixTable('regvalues');
-        return $this->db->table('registro')
+        $builder = $this->db->table('registro')
             ->select("{$r}.registro_id, {$r}.ingreso, {$r}.pruebas, {$r}.doctor_id")
             ->where("{$r}.person_id", $personId)
             ->where("{$r}.registro_id !=", $currentRegistroId)
             ->where("EXISTS (SELECT 1 FROM {$rv} WHERE {$rv}.registro_id = {$r}.registro_id)", null, false)
             ->orderBy("{$r}.ingreso", 'DESC')
-            ->limit($limit)
-            ->get()
-            ->getResult();
+            ->limit($limit);
+        if ($doctorId !== null && $doctorId > 0) {
+            $builder->where("{$r}.doctor_id", $doctorId);
+        }
+        return $builder->get()->getResult();
     }
 
     /**
@@ -772,6 +805,284 @@ class RegisterModel extends Model
     public function searchPacienteForExpediente(string $search, int $limit = 20): array
     {
         return $this->searchPaciente($search, $limit);
+    }
+
+    /**
+     * Busca pacientes para doctor (solo los que tienen registros con resultados de ese doctor)
+     */
+    public function searchPacienteForDoctor(string $search, int $doctorId, int $limit = 20): array
+    {
+        $search = trim($search);
+        if ($search === '') return [];
+        $esc = $this->db->escapeLikeString($search);
+        $pat = '%' . $esc . '%';
+        $r  = $this->getRegistroTable();
+        $p  = $this->db->prefixTable('people');
+        $rv = $this->db->prefixTable('regvalues');
+
+        $rows = $this->db->table('people')
+            ->select("{$p}.person_id, {$p}.first_name, {$p}.last_name_fa, {$p}.last_name_mom, {$p}.ci")
+            ->join($r, "{$r}.person_id = {$p}.person_id")
+            ->where("{$r}.doctor_id", $doctorId)
+            ->where("EXISTS (SELECT 1 FROM {$rv} WHERE {$rv}.registro_id = {$r}.registro_id)", null, false)
+            ->where("{$p}.first_name != '' AND {$p}.first_name != '0'")
+            ->where("{$p}.last_name_fa != '' AND {$p}.last_name_fa != '0'")
+            ->groupStart()
+            ->like("{$p}.first_name", $esc, 'both')
+            ->orLike("{$p}.last_name_fa", $esc, 'both')
+            ->orLike("{$p}.ci", $esc, 'both')
+            ->orWhere("CONCAT({$p}.first_name, ' ', {$p}.last_name_fa) LIKE", $pat)
+            ->groupEnd()
+            ->groupBy("{$p}.person_id")
+            ->orderBy("{$p}.last_name_fa", 'ASC')
+            ->limit($limit)
+            ->get()
+            ->getResult();
+
+        $suggestions = [];
+        foreach ($rows as $row) {
+            $full = trim(($row->first_name ?? '') . ' ' . ($row->last_name_fa ?? '') . ' ' . ($row->last_name_mom ?? ''));
+            if ($full !== '') {
+                $ci = trim($row->ci ?? '');
+                $display = $ci !== '' ? $full . ' (CI: ' . $ci . ')' : $full;
+                $suggestions[] = ['value' => $display, 'data' => $row->person_id];
+            }
+        }
+        return $suggestions;
+    }
+
+    /**
+     * Lista de pacientes únicos que tienen registros con resultados (regvalues) de un doctor
+     */
+    public function getPacientesByDoctorId(int $doctorId, int $limit = 500): array
+    {
+        $r  = $this->getRegistroTable();
+        $p  = $this->db->prefixTable('people');
+        $rv = $this->db->prefixTable('regvalues');
+        return $this->db->table('registro')
+            ->select("{$p}.person_id, CONCAT({$p}.first_name, ' ', {$p}.last_name_fa, ' ', {$p}.last_name_mom) as nombre, COUNT(*) as total_registros")
+            ->join('people', "{$p}.person_id = {$r}.person_id")
+            ->where("{$r}.doctor_id", $doctorId)
+            ->where("{$r}.person_id >", 0)
+            ->where("EXISTS (SELECT 1 FROM {$rv} WHERE {$rv}.registro_id = {$r}.registro_id)", null, false)
+            ->groupBy("{$r}.person_id")
+            ->orderBy('nombre', 'ASC')
+            ->limit($limit)
+            ->get()
+            ->getResult();
+    }
+
+    /**
+     * Registros recientes de un doctor (solo con resultados llenados/regvalues)
+     */
+    public function getRegistrosByDoctorId(int $doctorId, int $limit = 20, int $offset = 0): array
+    {
+        $r  = $this->getRegistroTable();
+        $p  = $this->db->prefixTable('people');
+        $d  = $this->db->prefixTable('doctors');
+        $pa = $this->db->prefixTable('pago');
+        $rv = $this->db->prefixTable('regvalues');
+        return $this->db->table('registro')
+            ->select("{$r}.registro_id, {$r}.ingreso, {$r}.person_id, CONCAT({$p}.first_name, ' ', {$p}.last_name_fa, ' ', {$p}.last_name_mom) AS paciente, {$d}.name as doctor, {$pa}.total as total")
+            ->join('people', "{$p}.person_id = {$r}.person_id")
+            ->join('doctors', "{$d}.doctor_id = {$r}.doctor_id")
+            ->join('pago', "{$r}.registro_id = {$pa}.registro_id")
+            ->where("{$r}.doctor_id", $doctorId)
+            ->where("EXISTS (SELECT 1 FROM {$rv} WHERE {$rv}.registro_id = {$r}.registro_id)", null, false)
+            ->orderBy("{$r}.ingreso", 'DESC')
+            ->limit($limit, $offset)
+            ->get()
+            ->getResult();
+    }
+
+    /**
+     * Cuenta registros de un doctor (solo con resultados llenados/regvalues).
+     */
+    public function countRegistrosByDoctorId(int $doctorId): int
+    {
+        $r  = $this->getRegistroTable();
+        $rv = $this->db->prefixTable('regvalues');
+        return $this->db->table('registro')
+            ->where("{$r}.doctor_id", $doctorId)
+            ->where("EXISTS (SELECT 1 FROM {$rv} WHERE {$rv}.registro_id = {$r}.registro_id)", null, false)
+            ->countAllResults();
+    }
+
+    /**
+     * Registros de un paciente vistos por un doctor específico
+     */
+    public function getRegistrosByPersonAndDoctor(int $personId, int $doctorId, int $limit = 200): array
+    {
+        $r  = $this->getRegistroTable();
+        $p  = $this->db->prefixTable('people');
+        $d  = $this->db->prefixTable('doctors');
+        $pa = $this->db->prefixTable('pago');
+        $rv = $this->db->prefixTable('regvalues');
+        return $this->db->table('registro')
+            ->select("{$r}.registro_id, {$r}.ingreso, {$r}.pruebas, {$r}.person_id, CONCAT({$p}.first_name, ' ', {$p}.last_name_fa, ' ', {$p}.last_name_mom) AS paciente, {$d}.name as doctor, {$pa}.total as total")
+            ->join('people', "{$p}.person_id = {$r}.person_id")
+            ->join('doctors', "{$d}.doctor_id = {$r}.doctor_id")
+            ->join('pago', "{$r}.registro_id = {$pa}.registro_id")
+            ->where("{$r}.person_id", $personId)
+            ->where("{$r}.doctor_id", $doctorId)
+            ->where("EXISTS (SELECT 1 FROM {$rv} WHERE {$rv}.registro_id = {$r}.registro_id)", null, false)
+            ->orderBy("{$r}.ingreso", 'DESC')
+            ->limit($limit)
+            ->get()
+            ->getResult();
+    }
+
+    /**
+     * Lista de pruebas del historial (desde regvalues) para graficar.
+     * Devuelve: [['key' => raw_name, 'label' => nombre legible], ...]
+     */
+    public function getPruebasByPersonAndDoctor(int $personId, int $doctorId): array
+    {
+        $r = $this->getRegistroTable();
+        $rv = $this->db->prefixTable('regvalues');
+
+        $rows = $this->db->table('regvalues')
+            ->select("TRIM({$rv}.name) AS prueba_key")
+            ->join('registro', "{$r}.registro_id = {$rv}.registro_id")
+            ->where("{$r}.person_id", $personId)
+            ->where("{$r}.doctor_id", $doctorId)
+            ->where("{$rv}.name !=", '')
+            ->groupBy("TRIM({$rv}.name)")
+            ->get()
+            ->getResultArray();
+
+        $pruebas = [];
+        foreach ($rows as $row) {
+            $key = trim((string) ($row['prueba_key'] ?? ''));
+            if ($key === '') {
+                continue;
+            }
+            $label = $this->getPruebaLabelFromRawKey($key);
+            $pruebas[] = ['key' => $key, 'label' => $label];
+        }
+
+        usort($pruebas, static function (array $a, array $b): int {
+            return strcasecmp((string) ($a['label'] ?? ''), (string) ($b['label'] ?? ''));
+        });
+
+        return $pruebas;
+    }
+
+    /**
+     * Serie histórica por prueba (clave raw de regvalues.name) para paciente+doctor.
+     */
+    public function getSeriePruebaByPersonAndDoctor(int $personId, int $doctorId, string $pruebaKey): array
+    {
+        $pruebaKey = trim($pruebaKey);
+        if ($pruebaKey === '') {
+            return [];
+        }
+
+        $r = $this->getRegistroTable();
+        $rv = $this->db->prefixTable('regvalues');
+
+        $rows = $this->db->table('regvalues')
+            ->select("{$r}.registro_id, {$r}.ingreso, {$rv}.name AS prueba_key, {$rv}.regvalues AS valor")
+            ->join('registro', "{$r}.registro_id = {$rv}.registro_id")
+            ->where("{$r}.person_id", $personId)
+            ->where("{$r}.doctor_id", $doctorId)
+            ->where("{$rv}.name", $pruebaKey)
+            ->orderBy("{$r}.ingreso", 'ASC')
+            ->get()
+            ->getResultArray();
+
+        if (empty($rows)) {
+            return [];
+        }
+
+        $refs = $this->getReferenceRangeFromRawKey($pruebaKey);
+        foreach ($rows as &$row) {
+            $row['minimo'] = $refs['minimo'];
+            $row['maximo'] = $refs['maximo'];
+            $row['label'] = $this->getPruebaLabelFromRawKey($pruebaKey);
+        }
+        unset($row);
+
+        return $rows;
+    }
+
+    private function getPruebaLabelFromRawKey(string $rawKey): string
+    {
+        if (strpos($rawKey, '|') !== false) {
+            [, $nombre] = explode('|', $rawKey, 2);
+            $nombre = trim($nombre);
+            return $nombre !== '' ? $nombre : $rawKey;
+        }
+
+        if (str_starts_with($rawKey, 'c_')) {
+            $id = (int) substr($rawKey, 2);
+            if ($id > 0) {
+                $item = $this->getAnalisisCompleja($id);
+                $nombre = trim((string) ($item->nombre ?? ''));
+                if ($nombre !== '') {
+                    return $nombre;
+                }
+            }
+        }
+
+        if (str_starts_with($rawKey, 'noc_')) {
+            $id = (int) substr($rawKey, 4);
+            if ($id > 0) {
+                $item = $this->getAnalisisNocompleja($id);
+                $nombre = trim((string) ($item->hijo ?? $item->nombre ?? ''));
+                if ($nombre !== '') {
+                    return $nombre;
+                }
+            }
+        }
+
+        return $rawKey;
+    }
+
+    /**
+     * Obtiene referencia mínima/máxima según clave raw de regvalues.
+     * @return array{minimo: string|null, maximo: string|null}
+     */
+    private function getReferenceRangeFromRawKey(string $rawKey): array
+    {
+        $min = null;
+        $max = null;
+
+        if (strpos($rawKey, '|') !== false) {
+            [$priaStr, $nombre] = explode('|', $rawKey, 2);
+            $priaId = (int) trim($priaStr);
+            $nombre = trim($nombre);
+            if ($priaId > 0 && $nombre !== '') {
+                $item = $this->getSecItemByPrianacategoriaYNombre($priaId, $nombre);
+                if ($item) {
+                    $min = (string) ($item->valor_min ?? '');
+                    $max = (string) ($item->valor_max ?? '');
+                }
+            }
+        } elseif (str_starts_with($rawKey, 'c_')) {
+            $id = (int) substr($rawKey, 2);
+            if ($id > 0) {
+                $item = $this->getAnalisisCompleja($id);
+                if ($item) {
+                    $min = (string) ($item->valor_min ?? '');
+                    $max = (string) ($item->valor_max ?? '');
+                }
+            }
+        } elseif (str_starts_with($rawKey, 'noc_')) {
+            $id = (int) substr($rawKey, 4);
+            if ($id > 0) {
+                $item = $this->getAnalisisNocompleja($id);
+                if ($item) {
+                    $min = (string) ($item->valor_min ?? '');
+                    $max = (string) ($item->valor_max ?? '');
+                }
+            }
+        }
+
+        return [
+            'minimo' => ($min !== null && trim($min) !== '') ? $min : null,
+            'maximo' => ($max !== null && trim($max) !== '') ? $max : null,
+        ];
     }
 
     public function searchPrueba(string $search, int $limit = 25): array

@@ -255,22 +255,59 @@ body.dark-mode .card .btn-primary:hover {
 }
 
 /* Tablas responsivas - scroll horizontal en móvil */
-#table_holder {
+#table_holder,
+.table-responsive {
   overflow-x: auto;
   -webkit-overflow-scrolling: touch;
+  margin-bottom: 1rem;
+  min-width: 0; /* Permite que encaje en contenedores flex y active el scroll */
 }
+
+/* Tabla sub-items: asegurar scroll horizontal y contención dentro del card */
+.card-tabla-sub-items {
+  max-width: 100%;
+}
+/* En móvil: tablas más compactas y scroll suave */
 @media (max-width: 767.98px) {
   main .table,
-  main table.table {
-    font-size: 0.875rem;
+  main table.table,
+  .table-responsive .table,
+  .wrapper-tabla-sub-items .table {
+    font-size: 0.8125rem;
+  }
+  .card:has(.table-responsive),
+  .card:has(.wrapper-tabla-sub-items) {
+    min-width: 0;
+  }
+  .card-body:has(.table-responsive),
+  .card-body:has(.wrapper-tabla-sub-items) {
+    min-width: 0;
+    overflow-x: hidden;
+  }
+  .table thead th,
+  .table thead td {
+    white-space: nowrap;
+  }
+  .table th,
+  .table td {
+    padding: 0.4rem 0.5rem;
   }
 }
 
-/* Breadcrumb navbar - separador entre items */
+/* Breadcrumb navbar - separador entre items (inline para evitar salto de línea) */
+#breadcrumbNav .navbar-nav .nav-item {
+    display: inline-flex;
+    align-items: center;
+    flex-wrap: nowrap;
+}
+#breadcrumbNav .navbar-nav .nav-item .nav-link {
+    display: inline-flex;
+}
 #breadcrumbNav .navbar-nav .nav-item:not(:last-child)::after {
-    content: '/';
+    content: '\203a';
     margin-left: 0.5rem;
     margin-right: 0.5rem;
-    color: var(--bs-secondary-color);
+    color: rgba(255,255,255,0.7);
     pointer-events: none;
+    font-weight: 600;
 }

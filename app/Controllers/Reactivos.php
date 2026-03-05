@@ -18,7 +18,7 @@ class Reactivos extends SecureArea
     public function editar($reactivoId)
     {
         $reactivoId = (int) $reactivoId;
-        $reactivo = $this->model->db->table('reactivo')->where('reactivo_id', $reactivoId)->get()->getRowArray();
+        $reactivo = $this->model->getReactivo($reactivoId);
         if (!$reactivo) {
             return redirect()->to('reactivos')->with('error', 'Insumo no encontrado');
         }
@@ -26,18 +26,14 @@ class Reactivos extends SecureArea
             'reactivo'        => $reactivo,
             'allowed_modules' => $this->allowed_modules,
             'user_info'       => $this->user_info,
+            'current_module'  => 'reactivos',
         ]);
     }
 
     public function index()
     {
         $grupo = $this->request->getGet('grupo') ?: null;
-        $reactivos = $this->model->getAll($grupo);
-        foreach ($reactivos as &$r) {
-            $r['stock_actual'] = $this->model->getStockTotal($r['reactivo_id']);
-            $r['tipo_nombre'] = $this->model->getNombreTipo((int) ($r['tipo'] ?? 1));
-        }
-        unset($r);
+        $reactivos = $this->model->getAllWithStockAndTipo($grupo);
         $alertas = $this->model->getAlertas();
         $grupos = $this->model->getGrupos();
         return view('reactivos/index', [
@@ -47,13 +43,14 @@ class Reactivos extends SecureArea
             'grupo_filtro'    => $grupo,
             'allowed_modules' => $this->allowed_modules,
             'user_info'       => $this->user_info,
+            'current_module'  => 'reactivos',
         ]);
     }
 
     public function lotes($reactivoId)
     {
         $reactivoId = (int) $reactivoId;
-        $reactivo = $this->model->db->table('reactivo')->where('reactivo_id', $reactivoId)->get()->getRowArray();
+        $reactivo = $this->model->getReactivo($reactivoId);
         if (!$reactivo) {
             return redirect()->to('reactivos')->with('error', 'Insumo no encontrado');
         }
@@ -70,11 +67,17 @@ class Reactivos extends SecureArea
             'movimientos'     => $movimientos,
             'allowed_modules' => $this->allowed_modules,
             'user_info'       => $this->user_info,
+            'current_module'  => 'reactivos',
         ]);
     }
 
     public function savereactivo()
     {
+        $validation = \Config\Services::validation();
+        $validation->setRules(config('Validation')->reactivo);
+        if (!$validation->withRequest($this->request)->run()) {
+            return redirect()->back()->withInput()->with('errors', $validation->getErrors())->with('error', implode(' ', $validation->getErrors()));
+        }
         $id = (int) ($this->request->getPost('reactivo_id') ?? 0);
         $this->model->saveReactivo([
             'nombre'                    => $this->request->getPost('nombre') ?? '',
@@ -86,19 +89,27 @@ class Reactivos extends SecureArea
             'contenido_por_presentacion'=> (int) ($this->request->getPost('contenido_por_presentacion') ?? 1) ?: 1,
             'tipo'                      => (int) ($this->request->getPost('tipo') ?? ReactivoModel::TIPO_REACTIVO),
         ], $id > 0 ? $id : null);
+        \App\Models\AuditoriaModel::log('reactivos', $id > 0 ? 'actualizar' : 'crear', $id > 0 ? (string) $id : null);
         return redirect()->to('reactivos')->with('success', 'Insumo guardado');
     }
 
     public function savelote()
     {
+        $validation = \Config\Services::validation();
+        $validation->setRules(config('Validation')->lote);
+        if (!$validation->withRequest($this->request)->run()) {
+            return redirect()->back()->withInput()->with('error', implode(' ', $validation->getErrors()));
+        }
         $reactivoId = (int) ($this->request->getPost('reactivo_id') ?? 0);
         $codigo = trim($this->request->getPost('codigo_lote') ?? '');
         $cantidad = (int) ($this->request->getPost('cantidad') ?? 0);
-        $vencimiento = $this->request->getPost('fecha_vencimiento') ?: null;
+        $vencimiento = \App\Models\ReactivoModel::normalizarFecha($this->request->getPost('fecha_vencimiento'));
+        $fechaIngreso = \App\Models\ReactivoModel::normalizarFecha($this->request->getPost('fecha_ingreso')) ?: date('Y-m-d');
         $personId = session()->get('person_id') ? (int) session()->get('person_id') : null;
         if ($codigo && $cantidad > 0) {
             try {
-                if ($this->model->registrarEntrada($reactivoId, $codigo, $cantidad, $vencimiento, $personId)) {
+                if ($this->model->registrarEntrada($reactivoId, $codigo, $cantidad, $vencimiento, $personId, $fechaIngreso)) {
+                    \App\Models\AuditoriaModel::log('reactivos', 'lote_entrada', (string) $reactivoId, $codigo);
                     return redirect()->to("reactivos/lotes/{$reactivoId}")->with('success', 'Lote agregado y movimiento registrado');
                 }
             } catch (\Throwable $e) {
@@ -110,13 +121,19 @@ class Reactivos extends SecureArea
             'codigo_lote'       => $codigo,
             'cantidad'          => $cantidad,
             'fecha_vencimiento' => $vencimiento,
-            'fecha_ingreso'     => $this->request->getPost('fecha_ingreso') ?: date('Y-m-d'),
+            'fecha_ingreso'     => $fechaIngreso,
         ]);
+        \App\Models\AuditoriaModel::log('reactivos', 'lote_crear', (string) $reactivoId, $codigo);
         return redirect()->to("reactivos/lotes/{$reactivoId}")->with('success', 'Lote guardado');
     }
 
     public function registrarsalida()
     {
+        $validation = \Config\Services::validation();
+        $validation->setRules(config('Validation')->salida);
+        if (!$validation->withRequest($this->request)->run()) {
+            return redirect()->back()->withInput()->with('error', implode(' ', $validation->getErrors()));
+        }
         $reactivoId = (int) ($this->request->getPost('reactivo_id') ?? 0);
         $cantidad = (int) ($this->request->getPost('cantidad') ?? 0);
         $obs = $this->request->getPost('observaciones') ?: null;
@@ -126,6 +143,7 @@ class Reactivos extends SecureArea
             return redirect()->back()->with('error', 'Cantidad debe ser mayor a 0');
         }
         if ($this->model->registrarSalida($reactivoId, $cantidad, $personId, $obs, $registroId)) {
+            \App\Models\AuditoriaModel::log('reactivos', 'salida', (string) $reactivoId, "cant:{$cantidad}");
             return redirect()->back()->with('success', 'Consumo registrado');
         }
         return redirect()->back()->with('error', 'Stock insuficiente o error al registrar');
@@ -135,6 +153,7 @@ class Reactivos extends SecureArea
     {
         $reactivoId = (int) $reactivoId;
         if ($reactivoId > 0 && $this->model->deleteReactivo($reactivoId)) {
+            \App\Models\AuditoriaModel::log('reactivos', 'eliminar', (string) $reactivoId);
             return redirect()->to('reactivos')->with('success', 'Insumo eliminado');
         }
         return redirect()->to('reactivos')->with('error', 'No se pudo eliminar');

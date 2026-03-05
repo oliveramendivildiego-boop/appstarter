@@ -1,11 +1,19 @@
-<?= view('partial/header', ['allowed_modules' => $allowed_modules ?? [], 'user_info' => $user_info ?? null, 'current_module' => 'reactivos']) ?>
+<?= $this->extend('layouts/main') ?>
+<?= $this->section('head_extra') ?>
+<script src="<?= base_url('js/vendor/jquery.validate.min.js') ?>"></script>
+<?= $this->endSection() ?>
+<?= $this->section('content') ?>
 
+<?php $validationErrors = session()->getFlashdata('errors'); ?>
+<?php if (session()->getFlashdata('error')): ?>
+<div class="alert alert-danger"><?= esc(session()->getFlashdata('error')) ?></div>
+<?php endif; ?>
 <?= view('partial/breadcrumb_nav', ['items' => [
     ['label' => 'Insumos', 'url' => site_url('reactivos')],
     ['label' => 'Editar: ' . esc($reactivo['nombre'] ?? ''), 'url' => null],
 ]]) ?>
 
-<?= form_open('reactivos/savereactivo') ?>
+<?= form_open('reactivos/savereactivo', ['id' => 'form_reactivo_editar']) ?>
 <input type="hidden" name="reactivo_id" value="<?= (int)($reactivo['reactivo_id'] ?? 0) ?>">
 <div class="card">
     <div class="card-header"><strong>Editar insumo</strong></div>
@@ -33,4 +41,21 @@
 </div>
 <?= form_close() ?>
 
-<?= view('partial/footer') ?>
+<?= $this->endSection() ?>
+
+<?= $this->section('scripts') ?>
+<script>
+$(document).ready(function() {
+    if ($.fn.validate && $('#form_reactivo_editar').length) {
+        $('#form_reactivo_editar').validate($.extend(true, {}, window.VALIDATE_COMMON_OPTIONS, {
+            rules: { nombre: { required: true }, tipo: { required: true } },
+            messages: { nombre: { required: "El nombre del insumo es obligatorio" }, tipo: { required: "Seleccione el tipo" } }
+        }));
+    }
+    <?php if (!empty($validationErrors) && is_array($validationErrors)): ?>
+    window.CI_VALIDATION_ERRORS = <?= json_encode($validationErrors) ?>;
+    if (typeof showServerValidationErrors === 'function') showServerValidationErrors('#form_reactivo_editar');
+    <?php endif; ?>
+});
+</script>
+<?= $this->endSection() ?>

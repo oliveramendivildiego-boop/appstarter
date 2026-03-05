@@ -1,0 +1,25 @@
+/**
+ * Módulo Expediente - Gráficos y historial
+ */
+.chart-container-responsive {
+    position: relative;
+    width: 100%;
+    max-width: 100%;
+    min-height: 250px;
+    height: 280px;
+}
+.suggestions-box-expediente {
+    z-index: 1050;
+    display: none;
+    max-height: 250px;
+    overflow-y: auto;
+}
+.chart-container-responsive canvas {
+    max-width: 100% !important;
+}
+@media (max-width: 576px) {
+    .chart-container-responsive {
+        min-height: 220px;
+        height: 240px;
+    }
+}

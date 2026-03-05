@@ -9,6 +9,16 @@ class EquipoModel extends Model
     protected $table = 'equipo';
     protected $primaryKey = 'equipo_id';
 
+    public function getEquipo(int $equipoId): ?array
+    {
+        $row = $this->db->table('equipo')
+            ->where('equipo_id', $equipoId)
+            ->where('(deleted = 0 OR deleted IS NULL)')
+            ->get()
+            ->getRowArray();
+        return $row ?: null;
+    }
+
     public function getAll(): array
     {
         return $this->db->table('equipo')

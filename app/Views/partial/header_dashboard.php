@@ -1,20 +1,25 @@
 <?php
-$appConfig = model(\App\Models\AppConfigModel::class);
-$configKeys = $appConfig->getMultiple(['company', 'logo', 'header_brand', 'theme_color']);
-$companyName = $company_name ?? ($configKeys['company'] ?? 'Laboratorio');
-$logoPath = !empty(trim((string)($configKeys['logo'] ?? ''))) ? trim($configKeys['logo']) : 'images/logo-john.png';
-$headerBrand = $configKeys['header_brand'] ?? 'logo';
-$showLogoInHeader = ($headerBrand === 'logo') && !empty($logoPath) && file_exists(FCPATH . $logoPath);
-$themeColor = '#FF7218';
-if (!empty($configKeys['theme_color']) && preg_match('/^#[a-fA-F0-9]{3,6}$/', $configKeys['theme_color'])) {
-    $themeColor = $configKeys['theme_color'];
-}
-helper('config');
-$themeHover = function_exists('darken_hex_color') ? darken_hex_color($themeColor, 12) : $themeColor;
-$themeActive = function_exists('darken_hex_color') ? darken_hex_color($themeColor, 25) : $themeColor;
+helper('layout');
+$layoutConfig = layout_config();
+$companyName = $company_name ?? ($layoutConfig['company'] ?? 'Laboratorio');
+$logoPath = $layoutConfig['logo'] ?? 'images/logo-john.png';
+$showLogoInHeader = $layoutConfig['show_logo'] ?? false;
+$themeColor = $layoutConfig['theme_color'] ?? '#FF7218';
+$themeHover = $layoutConfig['theme_hover'] ?? $themeColor;
+$themeActive = $layoutConfig['theme_active'] ?? $themeColor;
+
+$moduleCss = [
+    'config'      => 'assets/css/config.css',
+    'expediente'  => 'assets/css/expediente.css',
+    'labotests'   => 'assets/css/labotests.css',
+    'registers'   => 'assets/css/registers.css',
+    'toquotes'    => 'assets/css/toquotes.css',
+];
+$currentMod = $current_module ?? $controller_name ?? 'home';
+$extraCss = isset($moduleCss[$currentMod]) ? $moduleCss[$currentMod] : null;
 ?>
 <!DOCTYPE html>
-<html lang="es">
+<html lang="es" data-theme-primary="<?= esc($themeColor) ?>" data-theme-hover="<?= esc($themeHover) ?>" data-theme-active="<?= esc($themeActive) ?>">
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
@@ -28,7 +33,10 @@ $themeActive = function_exists('darken_hex_color') ? darken_hex_color($themeColo
     <link rel="stylesheet" href="<?= base_url('css/dom.css') ?>" />
     <link rel="stylesheet" href="<?= base_url('css/dashboard.css') ?>" />
     <link rel="stylesheet" href="<?= base_url('css/autocomplete.css') ?>" />
-    <style>:root{--primary-color:<?= $themeColor ?>;--primary-hover:<?= $themeHover ?>;--primary-active:<?= $themeActive ?>;}</style>
+    <link rel="stylesheet" href="<?= base_url('assets/css/app.css') ?>" />
+    <?php if ($extraCss): ?>
+    <link rel="stylesheet" href="<?= base_url($extraCss) ?>" />
+    <?php endif; ?>
     <script>
       BASE_URL = '<?= site_url() ?>';
       window.CI_CSRF_TOKEN = '<?= csrf_hash() ?>';
@@ -50,6 +58,9 @@ $themeActive = function_exists('darken_hex_color') ? darken_hex_color($themeColo
         if (window.innerWidth >= 992) sb.classList.add('show'); else sb.classList.remove('show');
       });
     </script>
+    <script>
+      (function(){var d=document.documentElement;var p=d.getAttribute('data-theme-primary');var h=d.getAttribute('data-theme-hover');var a=d.getAttribute('data-theme-active');if(p)d.style.setProperty('--primary-color',p);if(h)d.style.setProperty('--primary-hover',h);if(a)d.style.setProperty('--primary-active',a);})();
+    </script>
     <?php if (!empty($extra_head_links) && is_array($extra_head_links)): ?>
         <?php foreach ($extra_head_links as $link): ?>
             <?= $link . "\n" ?>
@@ -57,9 +68,12 @@ $themeActive = function_exists('darken_hex_color') ? darken_hex_color($themeColo
     <?php endif; ?>
 </head>
 <body>
-<div id="toast-container" class="position-fixed top-0 end-0 p-3" style="z-index: 9999;"></div>
+<div id="toast-container" class="position-fixed top-0 end-0 p-3"></div>
 
 <header class="navbar navbar-dark navbar-theme sticky-top flex-md-nowrap p-0 shadow">
+    <button class="navbar-toggler d-md-none ms-2 me-2 collapsed" type="button" data-bs-toggle="offcanvas" data-bs-target="#sidebarMenu" aria-controls="sidebarMenu" aria-expanded="false" aria-label="Toggle navigation">
+        <span class="navbar-toggler-icon"></span>
+    </button>
     <a class="navbar-brand col-md-3 col-lg-2 me-0 px-3 fs-6 d-flex align-items-center" href="<?= site_url('home') ?>">
         <?php if ($showLogoInHeader): ?>
             <img src="<?= base_url($logoPath) ?>" alt="<?= esc($companyName) ?>" class="me-2 navbar-brand-logo">
@@ -67,9 +81,6 @@ $themeActive = function_exists('darken_hex_color') ? darken_hex_color($themeColo
             <?= esc($companyName) ?>
         <?php endif; ?>
     </a>
-    <button class="navbar-toggler position-absolute d-md-none collapsed" type="button" data-bs-toggle="offcanvas" data-bs-target="#sidebarMenu" aria-controls="sidebarMenu" aria-expanded="false" aria-label="Toggle navigation">
-        <span class="navbar-toggler-icon"></span>
-    </button>
     <div class="navbar-nav d-md-none">
         <div class="nav-item text-nowrap px-3 py-2">
             <span class="text-white-50 small"><?= date('d/m/Y H:i') ?></span>

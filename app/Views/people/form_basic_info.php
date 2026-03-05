@@ -1,7 +1,7 @@
 <?php
 $person_info = $person_info ?? new stdClass();
 ?>
-<input type="hidden" name="person_id" value="<?= $person_info->person_id ?? '' ?>" id="person_id">
+<input type="hidden" name="person_id" value="<?= esc($person_info->person_id ?? '') ?>" id="person_id">
 <div class="row">
     <div class="col-md-6 mb-3">
         <?= form_label(lang('Common.common_first_name') . ':', 'first_name', ['class' => 'form-label required']) ?>

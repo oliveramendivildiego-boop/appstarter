@@ -10,6 +10,7 @@
             }
             ?>
             <h4 class="mt-4"><?= esc($padre) ?> - <?= esc($items[0]->hijo ?? '') ?></h4>
+            <div class="table-responsive">
             <table class="table">
                 <thead class="thead-dark">
                     <tr>
@@ -46,6 +47,7 @@
                     <?php endforeach; ?>
                 </tbody>
             </table>
+            </div>
         <?php endforeach; ?>
     </div>
 <?php else: ?>

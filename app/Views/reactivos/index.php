@@ -1,9 +1,16 @@
-<?= view('partial/header', ['allowed_modules' => $allowed_modules ?? [], 'user_info' => $user_info ?? null, 'current_module' => 'reactivos']) ?>
-
+<?= $this->extend('layouts/main') ?>
+<?= $this->section('head_extra') ?>
+<script src="<?= base_url('js/vendor/jquery.validate.min.js') ?>"></script>
+<?= $this->endSection() ?>
+<?= $this->section('content') ?>
 <?= view('partial/breadcrumb_nav', ['items' => [['label' => 'Inventario de insumos', 'url' => site_url('reactivos')]]]) ?>
 
+<?php $validationErrors = session()->getFlashdata('errors'); ?>
 <?php if (session()->getFlashdata('success')): ?>
 <div class="alert alert-success"><?= esc(session()->getFlashdata('success')) ?></div>
+<?php endif; ?>
+<?php if (session()->getFlashdata('error')): ?>
+<div class="alert alert-danger"><?= esc(session()->getFlashdata('error')) ?></div>
 <?php endif; ?>
 
 <?php if (!empty($alertas)): ?>
@@ -36,6 +43,7 @@
                 <?php endif; ?>
             </div>
             <div class="card-body">
+                <div class="table-responsive">
                 <table class="table table-sm table-hover">
                     <thead>
                         <tr>
@@ -70,9 +78,10 @@
                         <?php endforeach; ?>
                     </tbody>
                 </table>
+                </div>
                 <hr>
                 <h6 class="mb-2">Nuevo insumo</h6>
-                <?= form_open('reactivos/savereactivo') ?>
+                <?= form_open('reactivos/savereactivo', ['id' => 'form_reactivo_nuevo']) ?>
                 <input type="hidden" name="reactivo_id" value="0">
                 <div class="row g-2 mb-2">
                     <div class="col-md-3"><input type="text" name="nombre" class="form-control form-control-sm" placeholder="Nombre" required></div>
@@ -95,4 +104,21 @@
     </div>
 </div>
 
-<?= view('partial/footer') ?>
+<?= $this->endSection() ?>
+
+<?= $this->section('scripts') ?>
+<script>
+$(document).ready(function() {
+    if ($.fn.validate && $('#form_reactivo_nuevo').length) {
+        $('#form_reactivo_nuevo').validate($.extend(true, {}, window.VALIDATE_COMMON_OPTIONS, {
+            rules: { nombre: { required: true }, tipo: { required: true } },
+            messages: { nombre: { required: "El nombre del insumo es obligatorio" }, tipo: { required: "Seleccione el tipo" } }
+        }));
+    }
+    <?php if (!empty($validationErrors) && is_array($validationErrors)): ?>
+    window.CI_VALIDATION_ERRORS = <?= json_encode($validationErrors) ?>;
+    if (typeof showServerValidationErrors === 'function') showServerValidationErrors('#form_reactivo_nuevo');
+    <?php endif; ?>
+});
+</script>
+<?= $this->endSection() ?>

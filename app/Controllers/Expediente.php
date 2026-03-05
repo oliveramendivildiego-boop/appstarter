@@ -23,8 +23,9 @@ class Expediente extends SecureArea
     public function index()
     {
         return view('expediente/search', [
-            'allowed_modules' => $this->allowed_modules,
-            'user_info'       => $this->user_info,
+            'allowed_modules'  => $this->allowed_modules,
+            'user_info'        => $this->user_info,
+            'current_module'   => 'expediente',
         ]);
     }
 
@@ -57,12 +58,13 @@ class Expediente extends SecureArea
         }
 
         return view('expediente/historial', [
-            'paciente'       => $paciente,
-            'pacienteNombre' => $pacienteNombre,
-            'registros'      => $registros,
-            'antecedentes'   => $antecedentes,
-            'allowed_modules'=> $this->allowed_modules,
-            'user_info'      => $this->user_info,
+            'paciente'        => $paciente,
+            'pacienteNombre'  => $pacienteNombre,
+            'registros'       => $registros,
+            'antecedentes'    => $antecedentes,
+            'allowed_modules' => $this->allowed_modules,
+            'user_info'       => $this->user_info,
+            'current_module'  => 'expediente',
         ]);
     }
 

@@ -19,16 +19,17 @@ class Controlcalidad extends SecureArea
     {
         $controles = $this->model->getAll();
         return view('controlcalidad/index', [
-            'controles'       => $controles,
-            'allowed_modules' => $this->allowed_modules,
-            'user_info'       => $this->user_info,
+            'controles'        => $controles,
+            'allowed_modules'  => $this->allowed_modules,
+            'user_info'        => $this->user_info,
+            'current_module'   => 'controlcalidad',
         ]);
     }
 
     public function grafica($controlId)
     {
         $controlId = (int) $controlId;
-        $control = \Config\Database::connect()->table('control_calidad')->where('control_id', $controlId)->get()->getRowArray();
+        $control = $this->model->getById($controlId);
         if (!$control) return redirect()->to('controlcalidad')->with('error', 'Control no encontrado');
 
         $fechaIni = $this->request->getGet('fecha_ini') ?? date('Y-m-d', strtotime('-30 days'));
@@ -36,11 +37,12 @@ class Controlcalidad extends SecureArea
         $valores = $this->model->getValores($controlId, $fechaIni, $fechaFin);
 
         return view('controlcalidad/grafica', [
-            'control'         => $control,
-            'valores'         => $valores,
-            'fecha_ini'       => $fechaIni,
-            'fecha_fin'       => $fechaFin,
-            'allowed_modules' => $this->allowed_modules,
+            'control'          => $control,
+            'valores'          => $valores,
+            'fecha_ini'        => $fechaIni,
+            'fecha_fin'        => $fechaFin,
+            'allowed_modules'  => $this->allowed_modules,
+            'current_module'   => 'controlcalidad',
             'user_info'       => $this->user_info,
         ]);
     }
@@ -52,6 +54,7 @@ class Controlcalidad extends SecureArea
             'nombre' => $this->request->getPost('nombre') ?? '',
             'tipo'   => (int) ($this->request->getPost('tipo') ?? 1),
         ], $id > 0 ? $id : null);
+        \App\Models\AuditoriaModel::log('controlcalidad', $id > 0 ? 'actualizar' : 'crear', $id > 0 ? (string) $id : null);
         return redirect()->to('controlcalidad')->with('success', 'Control guardado');
     }
 
@@ -65,6 +68,7 @@ class Controlcalidad extends SecureArea
             'esperado'       => $this->request->getPost('esperado') ?: null,
             'observaciones'  => $this->request->getPost('observaciones') ?? '',
         ]);
+        \App\Models\AuditoriaModel::log('controlcalidad', 'valor_registrar', (string) $controlId);
         return redirect()->to("controlcalidad/grafica/{$controlId}")->with('success', 'Valor registrado');
     }
 }

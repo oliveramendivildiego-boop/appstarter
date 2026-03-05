@@ -1,5 +1,6 @@
-<?= view('partial/header', ['allowed_modules' => $allowed_modules ?? [], 'user_info' => $user_info ?? null, 'current_module' => 'labotests']) ?>
+<?= $this->extend('layouts/main') ?>
 
+<?= $this->section('content') ?>
 <?= view('partial/breadcrumb_nav', ['items' => [
     ['label' => lang('Module.module_labotests'), 'url' => site_url('labotests')],
     ['label' => $labotests_master->name ?? '', 'url' => site_url('labotests/view/' . $labotests_namecate)],
@@ -35,4 +36,4 @@
 
 <?= form_close() ?>
 
-<?= view('partial/footer') ?>
+<?= $this->endSection() ?>

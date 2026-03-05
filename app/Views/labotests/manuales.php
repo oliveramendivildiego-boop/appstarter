@@ -1,5 +1,10 @@
-<?= view('partial/header', ['allowed_modules' => $allowed_modules ?? [], 'user_info' => $user_info ?? null, 'current_module' => 'labotests']) ?>
+<?= $this->extend('layouts/main') ?>
 
+<?= $this->section('head_extra') ?>
+<script src="<?= base_url('js/vendor/jquery.validate.min.js') ?>"></script>
+<?= $this->endSection() ?>
+
+<?= $this->section('content') ?>
 <?= view('partial/breadcrumb_nav', ['items' => [
     ['label' => lang('Module.module_labotests'), 'url' => site_url('labotests')],
     ['label' => 'Manuales', 'url' => site_url('labotests/manuales')],
@@ -117,7 +122,7 @@
                 <input type="hidden" name="manuals_id" id="manual_manuals_id" value="0">
                 <div class="mb-3">
                     <label for="manual_tittle" class="form-label">Título <span class="text-danger">*</span></label>
-                    <input type="text" name="tittle" id="manual_tittle" class="form-control" required placeholder="Ej: Toma de muestra">
+                    <input type="text" name="tittle" id="manual_tittle" class="form-control" placeholder="Ej: Toma de muestra">
                 </div>
                 <div class="mb-3">
                     <label for="manual_content" class="form-label">Contenido</label>
@@ -137,6 +142,13 @@
 <script src="https://cdn.jsdelivr.net/npm/summernote@0.8.18/dist/summernote-lite.min.js"></script>
 <script>
 document.addEventListener('DOMContentLoaded', function() {
+    if (typeof $ !== 'undefined' && $.fn.validate && window.VALIDATE_COMMON_OPTIONS) {
+        $('#form_manual').validate($.extend(true, {}, window.VALIDATE_COMMON_OPTIONS, {
+            rules: { tittle: { required: true, minlength: 2 } },
+            messages: { tittle: { required: "El título es obligatorio", minlength: "El título debe tener al menos 2 caracteres" } }
+        }));
+    }
+
     var modalEl = document.getElementById('modalManual');
     var modal = modalEl ? new bootstrap.Modal(modalEl) : null;
     var modalTitle = document.getElementById('modalManualTitle');
@@ -231,4 +243,4 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 });
 </script>
-<?= view('partial/footer') ?>
+<?= $this->endSection() ?>

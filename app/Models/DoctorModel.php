@@ -10,7 +10,25 @@ class DoctorModel extends Model
     protected $primaryKey       = 'doctor_id';
     protected $useAutoIncrement = true;
     protected $returnType       = 'object';
-    protected $allowedFields    = ['name', 'phone_number', 'gender', 'speciality', 'address', 'deleted', 'comments'];
+    protected $allowedFields    = ['name', 'phone_number', 'gender', 'speciality', 'address', 'deleted', 'comments', 'username', 'password', 'email'];
+    /** @var array<string,bool>|null */
+    private ?array $columnCache = null;
+
+    private function hasColumn(string $column): bool
+    {
+        if ($this->columnCache === null) {
+            $this->columnCache = [];
+            foreach ($this->db->getFieldNames($this->table) as $field) {
+                $this->columnCache[$field] = true;
+            }
+        }
+        return isset($this->columnCache[$column]);
+    }
+
+    public function supportsLoginColumns(): bool
+    {
+        return $this->hasColumn('username') && $this->hasColumn('password') && $this->hasColumn('email');
+    }
 
     /**
      * Obtiene todos los doctores (no eliminados)
@@ -47,6 +65,9 @@ class DoctorModel extends Model
             'speciality'   => '',
             'address'      => '',
             'comments'     => '',
+            'username'     => '',
+            'password'     => '',
+            'email'        => '',
         ];
     }
 
@@ -67,12 +88,113 @@ class DoctorModel extends Model
             'comments'     => $data['comments'] ?? '',
         ];
 
+        if ($this->supportsLoginColumns()) {
+            $payload['username'] = trim($data['username'] ?? '') ?: null;
+            $payload['email']    = trim($data['email'] ?? '') ?: null;
+        }
+
+        $password = $data['password'] ?? '';
+        if ($password !== '' && $this->hasColumn('password')) {
+            $payload['password'] = md5($password);
+        }
+
         if ($doctor_id && $this->find($doctor_id)) {
+            if (!isset($payload['password']) || $payload['password'] === '') {
+                unset($payload['password']);
+            }
+            if (!empty($payload['username'] ?? '') && $this->usernameExists((string) $payload['username'], (int) $doctor_id)) {
+                return false;
+            }
             $this->update($doctor_id, $payload);
             return $doctor_id;
         }
         $payload['deleted'] = 0;
+        if (!empty($payload['username'] ?? '') && $this->usernameExists((string) $payload['username'])) {
+            return false;
+        }
+        if (empty($payload['password'] ?? '') && !empty($payload['username'] ?? '')) {
+            $payload['password'] = md5('doctor123');
+        }
         return $this->insert($payload) ? $this->getInsertID() : false;
+    }
+
+    /**
+     * Login de doctor por username o email.
+     */
+    public function login(string $usernameOrEmail, string $password): bool
+    {
+        if (!$this->supportsLoginColumns()) {
+            return false;
+        }
+
+        $hash = md5($password);
+        $builder = $this->db->table('doctors')
+            ->where('deleted', 0)
+            ->where('password', $hash);
+
+        if (str_contains($usernameOrEmail, '@')) {
+            $builder->where('email', $usernameOrEmail);
+        } else {
+            $builder->where('username', $usernameOrEmail);
+        }
+
+        $row = $builder->get()->getRow();
+        if ($row && !empty($row->username)) {
+            session()->set('doctor_id', $row->doctor_id);
+            session()->set('user_type', 'doctor');
+            session()->remove('person_id');
+            return true;
+        }
+        return false;
+    }
+
+    /**
+     * Login de doctor por email (OAuth Google).
+     */
+    public function loginByEmail(string $email): bool
+    {
+        if (!$this->supportsLoginColumns()) {
+            return false;
+        }
+
+        $row = $this->db->table('doctors')
+            ->select('doctor_id, username')
+            ->where('deleted', 0)
+            ->where('email', $email)
+            ->get()
+            ->getRow();
+
+        if ($row) {
+            session()->set('doctor_id', $row->doctor_id);
+            session()->set('user_type', 'doctor');
+            session()->remove('person_id');
+            return true;
+        }
+        return false;
+    }
+
+    /**
+     * Verifica si el doctor está logueado.
+     */
+    public function isDoctorLoggedIn(): bool
+    {
+        return session()->has('doctor_id') && session()->get('doctor_id') !== null;
+    }
+
+    /**
+     * Verifica si el username ya existe (para otro doctor).
+     */
+    public function usernameExists(string $username, ?int $excludeDoctorId = null): bool
+    {
+        if (!$this->hasColumn('username')) return false;
+        if (trim($username) === '') return false;
+        $builder = $this->db->table('doctors')
+            ->where('username', $username)
+            ->where('deleted', 0);
+        if ($excludeDoctorId) {
+            $builder->where('doctor_id !=', $excludeDoctorId);
+        }
+        return $builder->countAllResults() > 0;
     }
 
     /**

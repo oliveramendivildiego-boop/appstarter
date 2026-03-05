@@ -1,5 +1,10 @@
-<?= view('partial/header', ['allowed_modules' => $allowed_modules ?? [], 'user_info' => $user_info ?? null, 'current_module' => 'controlcalidad']) ?>
+<?= $this->extend('layouts/main') ?>
 
+<?= $this->section('head_extra') ?>
+<script src="<?= base_url('js/vendor/jquery.validate.min.js') ?>"></script>
+<?= $this->endSection() ?>
+
+<?= $this->section('content') ?>
 <?= view('partial/breadcrumb_nav', ['items' => [
     ['label' => 'Control de calidad', 'url' => site_url('controlcalidad')],
 ]]) ?>
@@ -16,6 +21,7 @@
         <div class="card">
             <div class="card-header"><strong>Controles de calidad</strong></div>
             <div class="card-body">
+                <div class="table-responsive">
                 <table class="table table-sm">
                     <thead><tr><th>Nombre</th><th>Tipo</th><th></th></tr></thead>
                     <tbody>
@@ -28,11 +34,12 @@
                         <?php endforeach; ?>
                     </tbody>
                 </table>
+                </div>
                 <hr>
-                <?= form_open('controlcalidad/savecontrol') ?>
+                <?= form_open('controlcalidad/savecontrol', ['id' => 'form_control']) ?>
                 <input type="hidden" name="control_id" value="0">
                 <div class="mb-2">
-                    <input type="text" name="nombre" class="form-control form-control-sm" placeholder="Nombre del control" required>
+                    <input type="text" name="nombre" id="control_nombre" class="form-control form-control-sm" placeholder="Nombre del control">
                 </div>
                 <div class="mb-2">
                     <select name="tipo" class="form-select form-select-sm">
@@ -47,4 +54,15 @@
     </div>
 </div>
 
-<?= view('partial/footer') ?>
+<?= $this->endSection() ?>
+
+<?= $this->section('scripts') ?>
+<script>
+$(document).ready(function() {
+    $("#form_control").validate($.extend(true, {}, window.VALIDATE_COMMON_OPTIONS, {
+        rules: { nombre: { required: true, minlength: 2 } },
+        messages: { nombre: { required: "El nombre es obligatorio", minlength: "El nombre debe tener al menos 2 caracteres" } }
+    }));
+});
+</script>
+<?= $this->endSection() ?>

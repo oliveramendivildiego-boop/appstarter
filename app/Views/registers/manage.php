@@ -1,4 +1,45 @@
-<?= view('partial/header', ['allowed_modules' => $allowed_modules ?? [], 'user_info' => $user_info ?? null, 'current_module' => 'registers']) ?>
+<?= $this->extend('layouts/main') ?>
+<?= $this->section('title') ?>Nuevo registro<?= $this->endSection() ?>
+<?= $this->section('content') ?>
+<?php
+$pruebasLookup = [];
+foreach ($categories ?? [] as $cat) {
+    $padreName = $cat['name'] ?? '';
+    foreach ($cat['items'] ?? [] as $item) {
+        $pruebasLookup[(string)($item['id'] ?? '')] = [
+            'name' => $item['name'] ?? '',
+            'padre' => $padreName,
+            'cost' => (float)($item['cost'] ?? 0)
+        ];
+    }
+}
+?>
+<script>window.PRUEBAS_LOOKUP = <?= json_encode($pruebasLookup) ?>;</script>
+<?= view('partial/breadcrumb_nav', [
+    'items' => [['label' => lang('Module.module_registers'), 'url' => site_url('registers')]],
+    'right' => '<a href="' . site_url('registers/lista') . '" class="btn btn-outline-primary">Ver lista</a>' .
+        '<a href="' . site_url('expediente') . '" class="btn btn-outline-info">Historial paciente</a>',
+]) ?>
+
+<div id="registers_form_error" class="alert alert-danger" style="display:none;"></div>
+<div class="row">
+    <div class="col-md-8 mb-3">
+        <?= view('registers/form_basic_info') ?>
+        <div id="pruebas_error" class="text-danger small mb-2" style="display:none;"></div>
+        <div class="mb-3">
+            <label class="form-label">Pruebas seleccionadas:</label>
+            <div id="pruebas_lista" class="border rounded p-2 bg-light" style="min-height:60px;">
+                <p class="text-muted small mb-0">Use el buscador para agregar pruebas. La lista aparecerá aquí.</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4 mb-3">
+        <?= view('registers/form_pagos') ?>
+    </div>
+</div>
+<?= $this->endSection() ?>
+
+<?= $this->section('scripts') ?>
 <script>
 document.addEventListener('DOMContentLoaded', function() {
     var searchInput = document.getElementById('search_prueba_input');
@@ -248,42 +289,4 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 });
 </script>
-
-<?php
-$pruebasLookup = [];
-foreach ($categories ?? [] as $cat) {
-    $padreName = $cat['name'] ?? '';
-    foreach ($cat['items'] ?? [] as $item) {
-        $pruebasLookup[(string)($item['id'] ?? '')] = [
-            'name' => $item['name'] ?? '',
-            'padre' => $padreName,
-            'cost' => (float)($item['cost'] ?? 0)
-        ];
-    }
-}
-?>
-<script>window.PRUEBAS_LOOKUP = <?= json_encode($pruebasLookup) ?>;</script>
-<?= view('partial/breadcrumb_nav', [
-    'items' => [['label' => lang('Module.module_registers'), 'url' => site_url('registers')]],
-    'right' => '<a href="' . site_url('registers/lista') . '" class="btn btn-outline-primary">Ver lista</a>' .
-        '<a href="' . site_url('expediente') . '" class="btn btn-outline-info">Historial paciente</a>',
-]) ?>
-
-<div id="registers_form_error" class="alert alert-danger" style="display:none;"></div>
-<div class="row">
-    <div class="col-md-8 mb-3">
-        <?= view('registers/form_basic_info') ?>
-        <div id="pruebas_error" class="text-danger small mb-2" style="display:none;"></div>
-        <div class="mb-3">
-            <label class="form-label">Pruebas seleccionadas:</label>
-            <div id="pruebas_lista" class="border rounded p-2 bg-light" style="min-height:60px;">
-                <p class="text-muted small mb-0">Use el buscador para agregar pruebas. La lista aparecerá aquí.</p>
-            </div>
-        </div>
-    </div>
-    <div class="col-md-4 mb-3">
-        <?= view('registers/form_pagos') ?>
-    </div>
-</div>
-
-<?= view('partial/footer') ?>
+<?= $this->endSection() ?>

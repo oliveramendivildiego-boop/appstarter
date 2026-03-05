@@ -23,6 +23,22 @@ class AuthFilter implements FilterInterface
         return null;
     }
 
+    /**
+     * Verifica si hay un empleado logueado (no doctor).
+     */
+    public static function isEmployeeLoggedIn(): bool
+    {
+        return session()->has('person_id') && session()->get('person_id') !== null;
+    }
+
+    /**
+     * Verifica si hay un doctor logueado.
+     */
+    public static function isDoctorLoggedIn(): bool
+    {
+        return session()->has('doctor_id') && session()->get('doctor_id') !== null;
+    }
+
     public function after(RequestInterface $request, ResponseInterface $response, $arguments = null): ?ResponseInterface
     {
         return $response;

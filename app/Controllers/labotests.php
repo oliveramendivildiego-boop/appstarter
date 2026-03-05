@@ -3,6 +3,7 @@
 namespace App\Controllers;
 
 use App\Models\LabotestModel;
+use App\Models\OpcionModel;
 use App\Models\PerfilExamenModel;
 use CodeIgniter\HTTP\ResponseInterface;
 
@@ -11,12 +12,14 @@ class Labotests extends SecureArea
     protected ?string $moduleId = 'labotests';
 
     protected LabotestModel $labotestModel;
+    protected OpcionModel $opcionModel;
 
     public function __construct()
     {
         parent::__construct();
         helper('form');
         $this->labotestModel = model(LabotestModel::class);
+        $this->opcionModel   = model(OpcionModel::class);
     }
 
     public function index()
@@ -31,13 +34,14 @@ class Labotests extends SecureArea
         $result = $this->labotestModel->getGroupedByCategoryPaginated(6, $page, $search);
 
         return view('labotests/manage', [
-            'categories'   => $result['categories'],
-            'total'       => $result['total'],
-            'page'        => $result['page'],
-            'total_pages' => $result['total_pages'],
-            'search'      => $search,
-            'allowed_modules' => $this->allowed_modules,
-            'user_info'       => $this->user_info,
+            'categories'       => $result['categories'],
+            'total'            => $result['total'],
+            'page'             => $result['page'],
+            'total_pages'      => $result['total_pages'],
+            'search'           => $search,
+            'allowed_modules'  => $this->allowed_modules,
+            'user_info'        => $this->user_info,
+            'current_module'   => 'labotests',
         ]);
     }
 
@@ -50,10 +54,11 @@ class Labotests extends SecureArea
         $info = $this->labotestModel->getCategoryInfo($id);
 
         return view('labotests/form_group', [
-            'labotests_info'  => $info,
-            'controller_name' => 'labotests',
-            'allowed_modules' => $this->allowed_modules,
-            'user_info'       => $this->user_info,
+            'labotests_info'   => $info,
+            'controller_name'  => 'labotests',
+            'allowed_modules'  => $this->allowed_modules,
+            'user_info'        => $this->user_info,
+            'current_module'   => 'labotests',
         ]);
     }
 
@@ -76,6 +81,7 @@ class Labotests extends SecureArea
             'controller_name'   => 'labotests',
             'allowed_modules'   => $this->allowed_modules,
             'user_info'         => $this->user_info,
+            'current_module'    => 'labotests',
         ]);
     }
 
@@ -158,6 +164,7 @@ class Labotests extends SecureArea
             'labotests_master'  => $catInfo,
             'labotests_namecate'=> $subInfo->anacategoria_id,
             'controller_name'   => 'labotests',
+            'current_module'    => 'labotests',
             'allowed_modules'   => $this->allowed_modules,
             'user_info'         => $this->user_info,
             'compleja'          => $compleja,
@@ -246,16 +253,28 @@ class Labotests extends SecureArea
     {
         $prianacategoriaId = (int) ($this->request->getPost('prianacategoria_id') ?? 0);
         $id = (int) ($this->request->getPost('secanacategoria_id') ?? 0);
+        $nombre = trim((string) ($this->request->getPost('nombre') ?? ''));
+        $pacienteId = (int) ($this->request->getPost('paciente_id') ?? 0);
+        $sexo = trim((string) ($this->request->getPost('sexo') ?? ''));
         if ($prianacategoriaId < 1) {
             return redirect()->back()->with('error', 'Datos incompletos');
+        }
+        if ($nombre === '') {
+            return redirect()->back()->with('error', 'El nombre de la sub-clase es obligatorio');
+        }
+        if ($pacienteId < 1) {
+            return redirect()->back()->with('error', 'La población es obligatoria');
+        }
+        if ($sexo === '' || ! in_array($sexo, ['ambos', 'masculino', 'femenino'], true)) {
+            return redirect()->back()->with('error', 'El sexo es obligatorio');
         }
         $formulasId        = (int) ($this->request->getPost('formulas_id') ?? 1);
         $formulaExpresion  = trim($this->request->getPost('formula_expresion') ?? '');
         $data = [
             'prianacategoria_id' => $prianacategoriaId,
-            'nombre'             => $this->request->getPost('nombre') ?? '',
-            'paciente_id'        => (int) ($this->request->getPost('paciente_id') ?? 3),
-            'sexo'               => $this->request->getPost('sexo') ?? 'ambos',
+            'nombre'             => $nombre,
+            'paciente_id'        => $pacienteId,
+            'sexo'               => $sexo,
             'valor_min'          => $this->request->getPost('valor_min') ?? '',
             'valor_max'          => $this->request->getPost('valor_max') ?? '',
             'critico_min'        => $this->request->getPost('critico_min') ?? '',
@@ -394,6 +413,7 @@ class Labotests extends SecureArea
             'search'           => $search,
             'allowed_modules'  => $this->allowed_modules,
             'user_info'        => $this->user_info,
+            'current_module'   => 'labotests',
         ]);
     }
 
@@ -409,11 +429,12 @@ class Labotests extends SecureArea
         }
         $manuals = $this->labotestModel->getManualsByPrianacategoria($id);
         return view('labotests/manuales', [
-            'labotests_info'   => $sub,
+            'labotests_info'     => $sub,
             'prianacategoria_id' => $id,
-            'manuals'          => $manuals,
-            'allowed_modules'  => $this->allowed_modules,
-            'user_info'        => $this->user_info,
+            'manuals'            => $manuals,
+            'allowed_modules'    => $this->allowed_modules,
+            'user_info'          => $this->user_info,
+            'current_module'     => 'labotests',
         ]);
     }
 
@@ -535,10 +556,11 @@ class Labotests extends SecureArea
         $categories = $this->labotestModel->getGroupedByCategory();
 
         return view('labotests/perfiles', [
-            'perfiles'        => $perfiles,
-            'categories'      => $categories,
-            'allowed_modules' => $this->allowed_modules,
-            'user_info'       => $this->user_info,
+            'perfiles'         => $perfiles,
+            'categories'       => $categories,
+            'allowed_modules'  => $this->allowed_modules,
+            'user_info'        => $this->user_info,
+            'current_module'   => 'labotests',
         ]);
     }
 
@@ -564,5 +586,108 @@ class Labotests extends SecureArea
         $id = (int) $id;
         model(PerfilExamenModel::class)->deletePerfil($id);
         return redirect()->to('labotests/perfiles')->with('success', 'Perfil eliminado');
+    }
+
+    /**
+     * Administrar tipos de resultado (opciones para Tipo resultado en sub-clases)
+     */
+    public function opciones()
+    {
+        $opciones = $this->opcionModel->findAll();
+        foreach ($opciones as &$o) {
+            $tabla = trim($o['tabla'] ?? '');
+            $o['valores'] = ($tabla === 'opcion_valores')
+                ? $this->opcionModel->getValores((int) $o['opciones_id'])
+                : ($this->opcionModel->getOpcionConValores((int) $o['opciones_id'])['valores'] ?? []);
+            $o['usa_valores_genericos'] = ($tabla === 'opcion_valores');
+            $o['usa_tabla_sistema']     = in_array($tabla, ['opcpositivo', 'opcreactivo'], true);
+            $o['tabla_sistema']         = $o['usa_tabla_sistema'] ? $tabla : '';
+            $o['editable'] = $this->opcionModel->isEditable((int) $o['opciones_id']);
+        }
+
+        return view('labotests/opciones', [
+            'opciones'        => $opciones,
+            'allowed_modules'  => $this->allowed_modules,
+            'user_info'       => $this->user_info,
+            'current_module'  => 'labotests',
+            'base_url'        => 'labotests',
+        ]);
+    }
+
+    public function saveOpcion(): ResponseInterface
+    {
+        $nombre = trim($this->request->getPost('opciones') ?? '');
+        if ($nombre === '') {
+            return redirect()->to('labotests/opciones')->with('error', 'El nombre es obligatorio.');
+        }
+        $id = (int) ($this->request->getPost('opciones_id') ?? 0);
+        $tabla = 'opcion_valores';
+        if ($id > 0) {
+            $row = $this->opcionModel->find($id);
+            $tabla = $row ? trim($row['tabla'] ?? 'opcion_valores') : 'opcion_valores';
+        }
+        $this->opcionModel->saveOpcion([
+            'opciones_id' => $id,
+            'opciones'    => $nombre,
+            'tabla'       => $tabla,
+        ]);
+        return redirect()->to('labotests/opciones')->with('success', 'Tipo de resultado guardado.');
+    }
+
+    public function deleteOpcion($id): ResponseInterface
+    {
+        $id = (int) $id;
+        $result = $this->opcionModel->deleteOpcionIfUnused($id);
+        return redirect()->to('labotests/opciones')->with($result['success'] ? 'success' : 'error', $result['message']);
+    }
+
+    public function saveOpcionValor(): ResponseInterface
+    {
+        $opcionesId = (int) ($this->request->getPost('opciones_id') ?? 0);
+        $valor = trim($this->request->getPost('valor') ?? '');
+        if ($opcionesId < 1 || $valor === '') {
+            return redirect()->to('labotests/opciones')->with('error', 'Datos incompletos.');
+        }
+        $row = $this->opcionModel->find($opcionesId);
+        if (!$row || trim($row['tabla'] ?? '') !== 'opcion_valores') {
+            return redirect()->to('labotests/opciones')->with('error', 'Solo se pueden editar valores en opciones personalizadas.');
+        }
+        $this->opcionModel->saveValor([
+            'opcion_valor_id' => (int) ($this->request->getPost('opcion_valor_id') ?? 0),
+            'opciones_id'     => $opcionesId,
+            'valor'           => $valor,
+            'orden'           => (int) ($this->request->getPost('orden') ?? 0),
+        ]);
+        return redirect()->to('labotests/opciones#' . $opcionesId)->with('success', 'Valor guardado.');
+    }
+
+    public function deleteOpcionValor($id): ResponseInterface
+    {
+        $id = (int) $id;
+        $this->opcionModel->deleteValor($id);
+        return redirect()->back()->with('success', 'Valor eliminado.');
+    }
+
+    public function saveValorTabla(): ResponseInterface
+    {
+        $tabla   = trim($this->request->getPost('tabla') ?? '');
+        $valorId = (int) ($this->request->getPost('valor_id') ?? 0);
+        $valor   = trim($this->request->getPost('valor') ?? '');
+        if (!in_array($tabla, ['opcpositivo', 'opcreactivo'], true) || $valor === '') {
+            return redirect()->to('labotests/opciones')->with('error', 'Datos incompletos.');
+        }
+        $this->opcionModel->saveValorTabla($tabla, $valorId, $valor);
+        return redirect()->to('labotests/opciones')->with('success', 'Valor guardado.');
+    }
+
+    public function deleteValorTabla($tabla, $id): ResponseInterface
+    {
+        $tabla = in_array($tabla, ['opcpositivo', 'opcreactivo'], true) ? $tabla : '';
+        $id    = (int) $id;
+        if ($tabla === '') {
+            return redirect()->to('labotests/opciones')->with('error', 'Parámetros inválidos.');
+        }
+        $this->opcionModel->deleteValorTabla($tabla, $id);
+        return redirect()->back()->with('success', 'Valor eliminado.');
     }
 }
