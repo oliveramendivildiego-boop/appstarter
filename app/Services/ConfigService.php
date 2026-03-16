@@ -119,6 +119,108 @@ class ConfigService
         ];
     }
 
+    /**
+     * Guarda la configuración de SIN (Servicio de Impuestos Nacionales)
+     */
+    public function saveSinConfig(array $postData): bool
+    {
+        $keys = [
+            'sin_billing_enabled',
+            'sin_api_endpoint',
+            'sin_certificate_path',
+            'sin_certificate_password',
+            'sin_nit',
+            'sin_business_name',
+            'sin_branch_code',
+            'sin_system_type',
+            'sin_emission_mode',
+            'sin_activity_code',
+        ];
+        $batch = [];
+        foreach ($keys as $k) {
+            if ($k === 'sin_billing_enabled') {
+                $batch[$k] = (isset($postData[$k]) && $postData[$k] == '1') ? '1' : '0';
+            } else {
+                $batch[$k] = trim($postData[$k] ?? '');
+            }
+        }
+        $ok = $this->appConfigModel->batchSave($batch);
+        if ($ok) {
+            $this->invalidateCache();
+        }
+        return $ok;
+    }
+
+    /**
+     * Prueba la conexión con SIN
+     */
+    public function testSinConnection(): array
+    {
+        $config = $this->getAllAsArray();
+        
+        // Validar que la configuración esté completa
+        if (empty($config['sin_api_endpoint'] ?? '')) {
+            return [
+                'success' => false,
+                'message' => 'Endpoint de API no configurado'
+            ];
+        }
+        
+        if (empty($config['sin_certificate_path'] ?? '')) {
+            return [
+                'success' => false,
+                'message' => 'Ruta del certificado no configurada'
+            ];
+        }
+        
+        if (empty($config['sin_nit'] ?? '')) {
+            return [
+                'success' => false,
+                'message' => 'NIT de empresa no configurado'
+            ];
+        }
+
+        // Verificar que el certificado exista
+        $certificatePath = $config['sin_certificate_path'];
+        if (!file_exists($certificatePath)) {
+            return [
+                'success' => false,
+                'message' => 'Archivo de certificado no encontrado: ' . $certificatePath
+            ];
+        }
+
+        try {
+            // Intentar hacer una llamada de prueba a SIN
+            $client = new \GuzzleHttp\Client([
+                'verify' => false, // En producción, cambiar a true
+                'timeout' => 10,
+            ]);
+
+            $response = $client->get($config['sin_api_endpoint'] . '/health', [
+                'headers' => [
+                    'Accept' => 'application/json',
+                ]
+            ]);
+
+            if ($response->getStatusCode() === 200) {
+                return [
+                    'success' => true,
+                    'message' => 'Conexión establecida correctamente'
+                ];
+            }
+
+            return [
+                'success' => false,
+                'message' => 'Respuesta inesperada del servidor: ' . $response->getStatusCode()
+            ];
+        } catch (\Exception $e) {
+            return [
+                'success' => false,
+                'message' => 'Error de conexión: ' . $e->getMessage()
+            ];
+        }
+    }
+
     protected function processLogoUpload(UploadedFile $file): ?string
     {
         $allowedMimes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];

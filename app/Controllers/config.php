@@ -288,4 +288,17 @@ class Config extends SecureArea
         \App\Models\AuditoriaModel::log('config', 'whatsapp_actualizar', null);
         return redirect()->to('config?tab=whatsapp')->with('success', 'Configuración de WhatsApp guardada.');
     }
+
+    public function saveSin(): ResponseInterface
+    {
+        $this->configService->saveSinConfig($this->request->getPost());
+        \App\Models\AuditoriaModel::log('config', 'sin_billing_actualizar', null);
+        return redirect()->to('config?tab=sin')->with('success', 'Configuración de SIN guardada.');
+    }
+
+    public function testSin(): ResponseInterface
+    {
+        $result = $this->configService->testSinConnection();
+        return $this->response->setJSON($result);
+    }
 }

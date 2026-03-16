@@ -75,6 +75,12 @@ class Expediente extends SecureArea
     {
         $q = $this->request->getPost('q') ?? $this->request->getPost('paciente') ?? $this->request->getGet('q') ?? '';
         $suggestions = $this->registerModel->searchPacienteForExpediente($q);
-        return $this->response->setJSON($suggestions);
+        
+        // Devolver las sugerencias junto con el nuevo token CSRF regenerado
+        return $this->response->setJSON([
+            'suggestions' => $suggestions,
+            'csrf_token' => csrf_hash(),
+            'csrf_token_name' => csrf_token(),
+        ]);
     }
 }

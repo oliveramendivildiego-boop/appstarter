@@ -32,6 +32,9 @@
     <li class="nav-item" role="presentation">
         <button class="nav-link <?= $activeTab === 'whatsapp' ? 'active' : '' ?>" id="tab-whatsapp-btn" data-bs-toggle="tab" data-bs-target="#tab-whatsapp" type="button" role="tab">WhatsApp</button>
     </li>
+    <li class="nav-item" role="presentation">
+        <button class="nav-link <?= $activeTab === 'sin' ? 'active' : '' ?>" id="tab-sin-btn" data-bs-toggle="tab" data-bs-target="#tab-sin" type="button" role="tab">Facturación SIN</button>
+    </li>
 </ul>
 
 <div class="tab-content" id="configTabsContent">
@@ -340,6 +343,150 @@
             </div>
         </div>
     </div>
+
+    <!-- Pestaña: Facturación SIN -->
+    <div class="tab-pane fade <?= $activeTab === 'sin' ? 'show active' : '' ?>" id="tab-sin" role="tabpanel">
+        <div class="card shadow-sm">
+            <div class="card-header bg-warning text-dark">
+                <h5 class="mb-0"><i class="fa-solid fa-receipt me-2"></i>Configuración de Facturación SIN</h5>
+            </div>
+            <div class="card-body">
+                <?= form_open(site_url('config/saveSin'), ['id' => 'sin_form']) ?>
+                
+                <!-- Enable/Disable Checkbox -->
+                <div class="mb-4">
+                    <div class="form-check form-switch">
+                        <input class="form-check-input" type="checkbox" name="sin_billing_enabled" id="sin_billing_enabled" value="1" 
+                            <?= ($config['sin_billing_enabled'] ?? '') ? 'checked' : '' ?> 
+                            autocomplete="off" style="width: 2.5em; height: 1.5em;">
+                        <label class="form-check-label fw-bold" for="sin_billing_enabled">
+                            Habilitar facturación con SIN
+                        </label>
+                        <small class="d-block text-muted mt-1">Activa la emisión de facturas electrónicas. Si está deshabilitado, se emitirán solo recibos.</small>
+                    </div>
+                </div>
+
+                <div id="sin-config-block" style="display: <?= ($config['sin_billing_enabled'] ?? '') ? 'block' : 'none' ?>;">
+                    <hr class="my-4">
+                    
+                    <!-- Documentación de SIN -->
+                    <div class="alert alert-info py-2 small">
+                        <strong>Información:</strong> Integración con Servicio de Impuestos Nacionales (SIN) de Bolivia. 
+                        <a href="https://www.impuestos.gob.bo/" target="_blank" rel="noopener">Documentación oficial SIN</a>
+                    </div>
+
+                    <!-- API Endpoint -->
+                    <div class="mb-4">
+                        <label for="sin_api_endpoint" class="form-label fw-bold">Endpoint de API</label>
+                        <input type="url" name="sin_api_endpoint" id="sin_api_endpoint" class="form-control" 
+                            value="<?= esc($config['sin_api_endpoint'] ?? '') ?>" 
+                            placeholder="https://api.impuestos.gob.bo/v1" autocomplete="off" required>
+                        <small class="text-muted">URL base para la integración con SIN</small>
+                    </div>
+
+                    <!-- Certificado Digital SIN -->
+                    <div class="mb-4">
+                        <label for="sin_certificate_path" class="form-label fw-bold">Ruta del Certificado Digital (PEM)</label>
+                        <input type="text" name="sin_certificate_path" id="sin_certificate_path" class="form-control" 
+                            value="<?= esc($config['sin_certificate_path'] ?? '') ?>" 
+                            placeholder="/path/to/certificado.pem" autocomplete="off" required>
+                        <small class="text-muted">Ruta del certificado digital requerido para firmar documentos. Debe ser accesible por el servidor.</small>
+                    </div>
+
+                    <!-- Certificado Password -->
+                    <div class="mb-4">
+                        <label for="sin_certificate_password" class="form-label fw-bold">Contraseña del Certificado</label>
+                        <input type="password" name="sin_certificate_password" id="sin_certificate_password" class="form-control" 
+                            value="<?= esc($config['sin_certificate_password'] ?? '') ?>" 
+                            placeholder="••••••••" autocomplete="off" required>
+                        <small class="text-muted">Contraseña del certificado digital PEM</small>
+                    </div>
+
+                    <!-- Business ID / NIT -->
+                    <div class="row">
+                        <div class="col-md-6 mb-4">
+                            <label for="sin_nit" class="form-label fw-bold">NIT de la Empresa</label>
+                            <input type="text" name="sin_nit" id="sin_nit" class="form-control" 
+                                value="<?= esc($config['sin_nit'] ?? '') ?>" 
+                                placeholder="Ej: 123456789" autocomplete="off" required>
+                            <small class="text-muted">Número de Identificación Tributario de la empresa</small>
+                        </div>
+
+                        <div class="col-md-6 mb-4">
+                            <label for="sin_business_name" class="form-label fw-bold">Razón Social</label>
+                            <input type="text" name="sin_business_name" id="sin_business_name" class="form-control" 
+                                value="<?= esc($config['sin_business_name'] ?? '') ?>" 
+                                placeholder="Nombre legal de la empresa" autocomplete="off" required>
+                            <small class="text-muted">Razón social como aparece en el SIN</small>
+                        </div>
+                    </div>
+
+                    <!-- Sucursal -->
+                    <div class="mb-4">
+                        <label for="sin_branch_code" class="form-label fw-bold">Código de Sucursal</label>
+                        <input type="text" name="sin_branch_code" id="sin_branch_code" class="form-control" 
+                            value="<?= esc($config['sin_branch_code'] ?? '') ?>" 
+                            placeholder="1" autocomplete="off">
+                        <small class="text-muted">Código de la sucursal emisora de facturas (por defecto: 1)</small>
+                    </div>
+
+                    <!-- System Type -->
+                    <div class="mb-4">
+                        <label for="sin_system_type" class="form-label fw-bold">Tipo de Sistema</label>
+                        <select name="sin_system_type" id="sin_system_type" class="form-select" required>
+                            <option value="">-- Seleccionar --</option>
+                            <option value="nativo" <?= ($config['sin_system_type'] ?? '') === 'nativo' ? 'selected' : '' ?>>Nativo (Conectado en línea)</option>
+                            <option value="descargable" <?= ($config['sin_system_type'] ?? '') === 'descargable' ? 'selected' : '' ?>>Sistema Descargable</option>
+                        </select>
+                        <small class="text-muted">Sistema de facturación a usar según SIN</small>
+                    </div>
+
+                    <!-- Emission Mode -->
+                    <div class="mb-4">
+                        <label for="sin_emission_mode" class="form-label fw-bold">Modalidad de Emisión</label>
+                        <select name="sin_emission_mode" id="sin_emission_mode" class="form-select" required>
+                            <option value="">-- Seleccionar --</option>
+                            <option value="online" <?= ($config['sin_emission_mode'] ?? '') === 'online' ? 'selected' : '' ?>>En Línea</option>
+                            <option value="offline" <?= ($config['sin_emission_mode'] ?? '') === 'offline' ? 'selected' : '' ?>>Fuera de Línea</option>
+                        </select>
+                        <small class="text-muted">Modalidad de emisión de facturas con SIN</small>
+                    </div>
+
+                    <!-- Activity Code -->
+                    <div class="mb-4">
+                        <label for="sin_activity_code" class="form-label fw-bold">Código de Actividad</label>
+                        <input type="text" name="sin_activity_code" id="sin_activity_code" class="form-control" 
+                            value="<?= esc($config['sin_activity_code'] ?? '') ?>" 
+                            placeholder="Ej: 6230" autocomplete="off" required>
+                        <small class="text-muted">Código CAEN de la actividad económica (para laboratorios normalmente 6230)</small>
+                    </div>
+
+                    <hr class="my-4">
+                    
+                    <!-- Test Button -->
+                    <div class="mb-4">
+                        <button type="button" id="sin_test_btn" class="btn btn-outline-primary me-2">
+                            <i class="fa-solid fa-flask-vial me-1"></i> Probar Conexión
+                        </button>
+                        <small class="text-muted ms-2">Verifica si la configuración es correcta</small>
+                        <div id="sin_test_result" class="mt-2" style="display: none;"></div>
+                    </div>
+
+                    <button type="submit" class="btn btn-warning" style="color: #000;">
+                        <i class="fa-solid fa-save me-1"></i> Guardar Configuración SIN
+                    </button>
+                </div>
+
+                <?php if (!($config['sin_billing_enabled'] ?? '')): ?>
+                <div class="alert alert-secondary py-2 small mt-3">
+                    <strong>Estado actual:</strong> Facturación SIN deshabilitada. Se emitirán solo recibos.
+                </div>
+                <?php endif; ?>
+
+                <?= form_close() ?>
+            </div>
+        </div>
+    </div>
 </div>
 
 <?= $this->endSection() ?>
@@ -359,6 +506,44 @@ $(document).ready(function() {
             }
         });
     });
+    
+    // SIN Billing Toggle
+    var sinToggle = document.getElementById('sin_billing_enabled');
+    if (sinToggle) {
+        sinToggle.addEventListener('change', function() {
+            var configBlock = document.getElementById('sin-config-block');
+            if (configBlock) {
+                configBlock.style.display = this.checked ? 'block' : 'none';
+            }
+        });
+    }
+
+    // SIN Test Connection Button
+    var testBtn = document.getElementById('sin_test_btn');
+    if (testBtn) {
+        testBtn.addEventListener('click', function() {
+            var testResult = document.getElementById('sin_test_result');
+            testResult.innerHTML = '<div class="spinner-border spinner-border-sm" role="status"><span class="visually-hidden">Probando...</span></div> Probando conexión...';
+            testResult.style.display = 'block';
+            
+            $.ajax({
+                url: '<?= site_url('config/testSin') ?>',
+                type: 'POST',
+                dataType: 'json',
+                success: function(response) {
+                    if (response.success) {
+                        testResult.innerHTML = '<div class="alert alert-success py-2 mb-0"><i class="fa-solid fa-circle-check me-2"></i> Conexión exitosa</div>';
+                    } else {
+                        testResult.innerHTML = '<div class="alert alert-warning py-2 mb-0"><i class="fa-solid fa-triangle-exclamation me-2"></i> ' + (response.message || 'Error en la prueba') + '</div>';
+                    }
+                },
+                error: function() {
+                    testResult.innerHTML = '<div class="alert alert-danger py-2 mb-0"><i class="fa-solid fa-circle-xmark me-2"></i> Error al conectar con el servidor</div>';
+                }
+            });
+        });
+    }
+
     function toggleWaProvider() {
         var p = document.getElementById('whatsapp_provider');
         var prov = p ? p.value : 'meta';

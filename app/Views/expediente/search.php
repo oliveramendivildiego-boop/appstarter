@@ -79,11 +79,21 @@ document.addEventListener('DOMContentLoaded', function() {
                 return r.json();
             })
             .then(function(data) {
+                // Actualizar el token CSRF con el nuevo valor regenerado
+                if (data.csrf_token) {
+                    window.CI_CSRF_TOKEN = data.csrf_token;
+                }
+                if (data.csrf_token_name) {
+                    window.CI_CSRF_TOKEN_NAME = data.csrf_token_name;
+                }
+                
+                // Procesar las sugerencias
+                var suggestions = data.suggestions || data;
                 suggestionsBox.innerHTML = '';
-                if (!Array.isArray(data) || data.length === 0) {
+                if (!Array.isArray(suggestions) || suggestions.length === 0) {
                     suggestionsBox.innerHTML = '<div class="list-group-item text-muted">No se encontraron pacientes</div>';
                 } else {
-                    data.forEach(function(item) {
+                    suggestions.forEach(function(item) {
                         var a = document.createElement('a');
                         a.href = '#';
                         a.className = 'list-group-item list-group-item-action';

@@ -45,18 +45,20 @@
             <p>Seleccione análisis arriba y agréguelos a la cotización.</p>
         </div>
         <div id="selectedList" style="display:none;">
-            <table class="table table-sm table-hover">
-                <thead>
-                    <tr>
-                        <th style="width:5%">#</th>
-                        <th>Análisis</th>
-                        <th class="text-end" style="width:15%">Costo (Bs)</th>
-                        <th class="text-end" style="width:15%">Ref. (Bs)</th>
-                        <th style="width:8%"></th>
-                    </tr>
-                </thead>
-                <tbody id="selectedTableBody"></tbody>
-            </table>
+            <div class="table-responsive">
+                <table class="table table-sm table-hover mb-0">
+                    <thead>
+                        <tr>
+                            <th style="width:5%">#</th>
+                            <th>Análisis</th>
+                            <th class="text-end" style="width:15%">Costo (Bs)</th>
+                            <th class="text-end" style="width:15%">Ref. (Bs)</th>
+                            <th style="width:8%"></th>
+                        </tr>
+                    </thead>
+                    <tbody id="selectedTableBody"></tbody>
+                </table>
+            </div>
             <div class="row mt-3 border-top pt-3">
                 <div class="col-md-6">
                     <strong>Costo total:</strong> <span id="totalCost" class="fs-5 text-primary">0</span> Bs
