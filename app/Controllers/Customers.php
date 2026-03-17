@@ -94,6 +94,8 @@ class Customers extends PersonController
                     'success' => false,
                     'message' => implode(' ', $validation->getErrors()),
                     'person_id' => -1,
+                    'csrf_token' => csrf_hash(),
+                    'csrf_name' => csrf_token(),
                 ])->setStatusCode(400);
             }
             return redirect()->back()->withInput()->with('errors', $validation->getErrors());
@@ -108,6 +110,8 @@ class Customers extends PersonController
                     'success' => false,
                     'message' => $msg,
                     'person_id' => -1,
+                    'csrf_token' => csrf_hash(),
+                    'csrf_name' => csrf_token(),
                 ])->setStatusCode(400);
             }
             return redirect()->back()->withInput()->with('error', $msg);
@@ -144,13 +148,26 @@ class Customers extends PersonController
                 ? lang('Customers.customers_successful_adding') . ' ' . $person_data['first_name'] . ' ' . $apellidos
                 : lang('Customers.customers_successful_updating') . ' ' . $person_data['first_name'] . ' ' . $apellidos;
             if ($this->request->isAJAX()) {
-                return $this->response->setJSON(['success' => true, 'message' => $msg, 'person_id' => $personId, 'redirect_url' => site_url('customers')]);
+                return $this->response->setJSON([
+                    'success' => true,
+                    'message' => $msg,
+                    'person_id' => $personId,
+                    'redirect_url' => site_url('customers'),
+                    'csrf_token' => csrf_hash(),
+                    'csrf_name' => csrf_token(),
+                ]);
             }
         } else {
             $apellidos = safe_mb_trim(($person_data['last_name_fa'] ?? '') . ' ' . ($person_data['last_name_mom'] ?? ''));
             $msg = lang('Customers.customers_error_adding_updating') . ' ' . $person_data['first_name'] . ' ' . $apellidos;
             if ($this->request->isAJAX()) {
-                return $this->response->setJSON(['success' => false, 'message' => $msg, 'person_id' => -1]);
+                return $this->response->setJSON([
+                    'success' => false,
+                    'message' => $msg,
+                    'person_id' => -1,
+                    'csrf_token' => csrf_hash(),
+                    'csrf_name' => csrf_token(),
+                ]);
             }
         }
 

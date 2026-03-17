@@ -221,6 +221,7 @@ class EmployeeModel extends Model
             ->orLike("{$p}.email", $escaped, 'both')
             ->orLike("{$p}.phone_number", $escaped, 'both')
             ->orLike("{$e}.username", $escaped, 'both')
+            ->orLike("CONCAT(COALESCE({$p}.first_name,''), ' ', COALESCE({$p}.last_name_fa,''), ' ', COALESCE({$p}.last_name_mom,''))", $escaped, 'both')
             ->groupEnd()
             ->where("{$e}.deleted", 0)
             ->orderBy("{$p}.last_name_fa", 'ASC')

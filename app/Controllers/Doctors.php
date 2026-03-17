@@ -93,6 +93,8 @@ class Doctors extends SecureArea
                     'success' => false,
                     'message' => implode(' ', $validation->getErrors()),
                     'doctor_id' => -1,
+                    'csrf_token' => csrf_hash(),
+                    'csrf_name' => csrf_token(),
                 ])->setStatusCode(400);
             }
             return redirect()->back()->withInput()->with('errors', $validation->getErrors());
@@ -120,7 +122,13 @@ class Doctors extends SecureArea
         ) {
             $msg = 'Debe ejecutar la migración de base de datos para acceso de doctores: database/migration_doctors_login.sql';
             if ($this->request->isAJAX()) {
-                return $this->response->setJSON(['success' => false, 'message' => $msg, 'doctor_id' => -1])->setStatusCode(400);
+                return $this->response->setJSON([
+                    'success' => false,
+                    'message' => $msg,
+                    'doctor_id' => -1,
+                    'csrf_token' => csrf_hash(),
+                    'csrf_name' => csrf_token(),
+                ])->setStatusCode(400);
             }
             return redirect()->back()->withInput()->with('error', $msg);
         }
@@ -134,12 +142,25 @@ class Doctors extends SecureArea
                 ? lang('Doctors.doctors_successful_adding') . ' ' . $doctor_data['name']
                 : lang('Doctors.doctors_successful_updating') . ' ' . $doctor_data['name'];
             if ($this->request->isAJAX()) {
-                return $this->response->setJSON(['success' => true, 'message' => $msg, 'doctor_id' => (int) $result, 'redirect_url' => site_url('doctors')]);
+                return $this->response->setJSON([
+                    'success' => true,
+                    'message' => $msg,
+                    'doctor_id' => (int) $result,
+                    'redirect_url' => site_url('doctors'),
+                    'csrf_token' => csrf_hash(),
+                    'csrf_name' => csrf_token(),
+                ]);
             }
         } else {
             $msg = lang('Doctors.doctors_error_adding_updating') . ' ' . $doctor_data['name'];
             if ($this->request->isAJAX()) {
-                return $this->response->setJSON(['success' => false, 'message' => $msg, 'doctor_id' => -1]);
+                return $this->response->setJSON([
+                    'success' => false,
+                    'message' => $msg,
+                    'doctor_id' => -1,
+                    'csrf_token' => csrf_hash(),
+                    'csrf_name' => csrf_token(),
+                ]);
             }
         }
 

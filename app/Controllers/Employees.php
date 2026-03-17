@@ -135,6 +135,8 @@ class Employees extends PersonController
                     'success' => false,
                     'message' => implode(' ', $validation->getErrors()),
                     'person_id' => -1,
+                    'csrf_token' => csrf_hash(),
+                    'csrf_name' => csrf_token(),
                 ])->setStatusCode(400);
             }
             return redirect()->back()->withInput()->with('errors', $validation->getErrors());
@@ -164,7 +166,12 @@ class Employees extends PersonController
                 if ($this->employeeModel->usernameExists($employee_data['username'])) {
                     $msg = 'El nombre de usuario ya está en uso.';
                     if ($this->request->isAJAX()) {
-                        return $this->response->setJSON(['success' => false, 'message' => $msg])->setStatusCode(400);
+                        return $this->response->setJSON([
+                            'success' => false,
+                            'message' => $msg,
+                            'csrf_token' => csrf_hash(),
+                            'csrf_name' => csrf_token(),
+                        ])->setStatusCode(400);
                     }
                     return redirect()->back()->withInput()->with('error', $msg);
                 }
@@ -192,14 +199,27 @@ class Employees extends PersonController
                 ? lang('Employees.employees_successful_adding') . ' ' . $person_data['first_name']
                 : lang('Employees.employees_successful_updating') . ' ' . $person_data['first_name'];
             if ($this->request->isAJAX()) {
-                return $this->response->setJSON(['success' => true, 'message' => $msg, 'person_id' => $personId, 'redirect_url' => site_url('employees')]);
+                return $this->response->setJSON([
+                    'success' => true,
+                    'message' => $msg,
+                    'person_id' => $personId,
+                    'redirect_url' => site_url('employees'),
+                    'csrf_token' => csrf_hash(),
+                    'csrf_name' => csrf_token(),
+                ]);
             }
         } else {
             $msg = $employee_id === null
                 ? 'Error al agregar empleado. Verifique que el usuario no exista.'
                 : 'Error al actualizar empleado.';
             if ($this->request->isAJAX()) {
-                return $this->response->setJSON(['success' => false, 'message' => $msg, 'person_id' => -1]);
+                return $this->response->setJSON([
+                    'success' => false,
+                    'message' => $msg,
+                    'person_id' => -1,
+                    'csrf_token' => csrf_hash(),
+                    'csrf_name' => csrf_token(),
+                ]);
             }
         }
 
