@@ -33,6 +33,97 @@ class ReportModel extends Model
     }
 
     /**
+     * Obtener costos de todas las pruebas con búsqueda
+     */
+    public function getCostosPruebas(string $busqueda = ''): array
+    {
+        $ana = $this->db->prefixTable('anacategoria');
+        $pri = $this->db->prefixTable('prianacategoria');
+
+        $builder = $this->db->table('anacategoria')
+            ->select("{$ana}.name as categoria, {$pri}.name as prueba, 
+                      {$pri}.cost as precio, {$pri}.cost_deriv as precio_derivado,
+                      {$pri}.order as orden_prueba, {$ana}.order as orden_categoria")
+            ->join('prianacategoria', "{$ana}.anacategoria_id = {$pri}.anacategoria_id AND ({$pri}.deleted = 0 OR {$pri}.deleted IS NULL)", 'left')
+            ->where("({$ana}.deleted = 0 OR {$ana}.deleted IS NULL)");
+
+        if (!empty($busqueda)) {
+            $builder->groupStart()
+                ->like("{$ana}.name", $busqueda)
+                ->orLike("{$pri}.name", $busqueda)
+                ->groupEnd();
+        }
+
+        return $builder
+            ->orderBy("{$ana}.order", 'ASC')
+            ->orderBy("{$pri}.order", 'ASC')
+            ->get()
+            ->getResultArray();
+    }
+
+    /**
+     * Obtener valores de referencia de todas las pruebas con búsqueda
+     */
+    public function getValoresReferencia(string $busqueda = ''): array
+    {
+        $ana = $this->db->prefixTable('anacategoria');
+        $pri = $this->db->prefixTable('prianacategoria');
+        $sec = $this->db->prefixTable('secanacategoria');
+        $prires = $this->db->prefixTable('priresultados');
+
+        // Obtener pruebas compuestas (secanacategoria)
+        $builder1 = $this->db->table('anacategoria')
+            ->select("{$ana}.name as categoria, {$pri}.name as prueba,
+                      {$sec}.nombre as analisis, {$sec}.valor_min, {$sec}.valor_max,
+                      {$sec}.umedida, {$sec}.paciente_id as poblacion, {$sec}.sexo,
+                      'compuesto' as tipo_prueba")
+            ->join('prianacategoria', "{$ana}.anacategoria_id = {$pri}.anacategoria_id AND ({$pri}.deleted = 0 OR {$pri}.deleted IS NULL)", 'left')
+            ->join('secanacategoria', "{$pri}.prianacategoria_id = {$sec}.prianacategoria_id AND ({$sec}.deleted = 0 OR {$sec}.deleted IS NULL)", 'left')
+            ->where("({$ana}.deleted = 0 OR {$ana}.deleted IS NULL)")
+            ->where("{$sec}.nombre IS NOT NULL"); // Solo requiere que tenga nombre
+
+        // Obtener pruebas no compuestas (priresultados)
+        $builder2 = $this->db->table('anacategoria')
+            ->select("{$ana}.name as categoria, {$pri}.name as prueba,
+                      {$pri}.name as analisis, {$prires}.valor_min, {$prires}.valor_max,
+                      {$prires}.umedida, {$prires}.id_poblacion as poblacion, {$prires}.sexo,
+                      'simple' as tipo_prueba")
+            ->join('prianacategoria', "{$ana}.anacategoria_id = {$pri}.anacategoria_id AND ({$pri}.deleted = 0 OR {$pri}.deleted IS NULL)", 'left')
+            ->join('priresultados', "{$pri}.prianacategoria_id = {$prires}.prianacategoria_id AND ({$prires}.deleted = 0 OR {$prires}.deleted IS NULL)", 'left')
+            ->where("({$ana}.deleted = 0 OR {$ana}.deleted IS NULL)")
+            ->where("{$pri}.name IS NOT NULL"); // Solo requiere que tenga nombre
+
+        // Aplicar búsqueda a ambas consultas
+        if (!empty($busqueda)) {
+            $builder1->groupStart()
+                ->like("{$ana}.name", $busqueda)
+                ->orLike("{$pri}.name", $busqueda)
+                ->orLike("{$sec}.nombre", $busqueda)
+                ->groupEnd();
+
+            $builder2->groupStart()
+                ->like("{$ana}.name", $busqueda)
+                ->orLike("{$pri}.name", $busqueda)
+                ->groupEnd();
+        }
+
+        // Ordenamiento para ambas consultas
+        $builder1->orderBy("{$ana}.order", 'ASC')
+                  ->orderBy("{$pri}.order", 'ASC')
+                  ->orderBy("{$sec}.nombre", 'ASC');
+
+        $builder2->orderBy("{$ana}.order", 'ASC')
+                  ->orderBy("{$pri}.order", 'ASC')
+                  ->orderBy("{$prires}.id_poblacion", 'ASC');
+
+        // Ejecutar ambas consultas y combinar resultados
+        $data1 = $builder1->get()->getResultArray();
+        $data2 = $builder2->get()->getResultArray();
+
+        return array_merge($data1, $data2);
+    }
+
+    /**
      * Resumen de ingresos por rango de fechas
      */
     public function getIngresosByDateRange(string $startDate, string $endDate): array

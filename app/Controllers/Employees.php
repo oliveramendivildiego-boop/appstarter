@@ -68,6 +68,7 @@ class Employees extends PersonController
     private const MODULOS_DISPONIBLES = [
         'customers'      => 'Pacientes',
         'doctors'        => 'Doctores',
+        'doctor_commissions' => 'Comisiones',
         'labotests'      => 'Análisis clínicos',
         'toquotes'       => 'Cotizar',
         'registers'      => 'Registros',

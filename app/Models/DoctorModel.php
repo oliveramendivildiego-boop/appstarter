@@ -10,11 +10,11 @@ class DoctorModel extends Model
     protected $primaryKey       = 'doctor_id';
     protected $useAutoIncrement = true;
     protected $returnType       = 'object';
-    protected $allowedFields    = ['name', 'phone_number', 'gender', 'speciality', 'address', 'deleted', 'comments', 'username', 'password', 'email'];
+    protected $allowedFields    = ['name', 'phone_number', 'gender', 'speciality', 'address', 'deleted', 'comments', 'username', 'password', 'email', 'commission_percent', 'has_commission'];
     /** @var array<string,bool>|null */
     private ?array $columnCache = null;
 
-    private function hasColumn(string $column): bool
+    public function hasColumn(string $column): bool
     {
         if ($this->columnCache === null) {
             $this->columnCache = [];
@@ -28,6 +28,11 @@ class DoctorModel extends Model
     public function supportsLoginColumns(): bool
     {
         return $this->hasColumn('username') && $this->hasColumn('password') && $this->hasColumn('email');
+    }
+
+    public function supportsCommissionColumn(): bool
+    {
+        return $this->hasColumn('commission_percent');
     }
 
     /**
@@ -68,6 +73,8 @@ class DoctorModel extends Model
             'username'     => '',
             'password'     => '',
             'email'        => '',
+            'commission_percent' => 0.00,
+            'has_commission' => 0,
         ];
     }
 
@@ -87,6 +94,14 @@ class DoctorModel extends Model
             'address'      => $data['address'] ?? '',
             'comments'     => $data['comments'] ?? '',
         ];
+
+        if ($this->supportsCommissionColumn()) {
+            $payload['commission_percent'] = is_numeric($data['commission_percent'] ?? 0) ? (float) ($data['commission_percent'] ?? 0) : 0.00;
+        }
+        
+        if ($this->hasColumn('has_commission')) {
+            $payload['has_commission'] = (int) ($data['has_commission'] ?? 0);
+        }
 
         if ($this->supportsLoginColumns()) {
             $payload['username'] = trim($data['username'] ?? '') ?: null;

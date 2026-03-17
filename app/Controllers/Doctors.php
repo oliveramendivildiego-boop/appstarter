@@ -110,6 +110,8 @@ class Doctors extends SecureArea
             'username'     => $this->request->getPost('username'),
             'password'     => $this->request->getPost('password'),
             'email'        => $this->request->getPost('email'),
+            'commission_percent' => $this->request->getPost('commission_percent') ?? 0.00,
+            'has_commission' => $this->request->getPost('has_commission') ?? 0,
         ];
 
         if (

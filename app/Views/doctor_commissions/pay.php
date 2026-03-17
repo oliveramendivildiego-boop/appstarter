@@ -1,0 +1,161 @@
+<?= $this->extend('layouts/main') ?>
+
+<?= $this->section('content') ?>
+<div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+    <h1 class="h2"><i class="fa-solid fa-money-check me-2"></i>Pagar Comisión</h1>
+    <div class="btn-toolbar mb-2 mb-md-0">
+        <a href="<?= site_url('doctor_commissions') ?>" class="btn btn-secondary">
+            <i class="fa-solid fa-arrow-left"></i> Volver a Comisiones
+        </a>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">Detalles de la Comisión</h5>
+            </div>
+            <div class="card-body">
+                <form method="post" action="<?= site_url('doctor_commissions/processPayment') ?>" id="paymentForm">
+                    <?= csrf_field() ?>
+                    <input type="hidden" name="commission_id" value="<?= $commission->commission_id ?>">
+                    
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label class="form-label">ID Comisión:</label>
+                            <p class="form-control-plaintext fw-bold">#<?= $commission->commission_id ?></p>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Fecha Creación:</label>
+                            <p class="form-control-plaintext"><?= date('d/m/Y H:i', strtotime($commission->created_date)) ?></p>
+                        </div>
+                    </div>
+                    
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label class="form-label">Doctor:</label>
+                            <p class="form-control-plaintext"><?= esc($doctor->name ?? 'N/A') ?></p>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label"># Registro:</label>
+                            <p class="form-control-plaintext">
+                                <a href="<?= site_url('registers/viewreport/' . $commission->registro_id) ?>" target="_blank">
+                                    #<?= $commission->registro_id ?>
+                                </a>
+                            </p>
+                        </div>
+                    </div>
+                    
+                    <div class="row mb-3">
+                        <div class="col-md-4">
+                            <label class="form-label">Monto Prueba:</label>
+                            <p class="form-control-plaintext">$<?= number_format($commission->total_amount, 2) ?></p>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">% Comisión:</label>
+                            <p class="form-control-plaintext"><?= number_format($commission->commission_percent, 2) ?>%</p>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">Monto Comisión:</label>
+                            <p class="form-control-plaintext fw-bold text-success">$<?= number_format($commission->commission_amount, 2) ?></p>
+                        </div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="notes" class="form-label">Notas del Pago (opcional):</label>
+                        <textarea name="notes" id="notes" class="form-control" rows="4" 
+                                  placeholder="Ingrese cualquier nota o referencia sobre este pago..."></textarea>
+                    </div>
+                    
+                    <div class="alert alert-warning">
+                        <i class="fa-solid fa-exclamation-triangle"></i> 
+                        <strong>Confirmación:</strong> Está a punto de marcar esta comisión como pagada. 
+                        Esta acción registrará la fecha de pago y no podrá deshacerse.
+                    </div>
+                    
+                    <div class="d-flex justify-content-between">
+                        <a href="<?= site_url('doctor_commissions') ?>" class="btn btn-secondary">
+                            <i class="fa-solid fa-times"></i> Cancelar
+                        </a>
+                        <button type="submit" class="btn btn-success">
+                            <i class="fa-solid fa-money-check"></i> Confirmar Pago
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-4">
+        <div class="card">
+            <div class="card-header">
+                <h6 class="mb-0">Resumen</h6>
+            </div>
+            <div class="card-body">
+                <div class="mb-3">
+                    <small class="text-muted">Doctor</small>
+                    <p class="mb-1 fw-bold"><?= esc($doctor->name ?? 'N/A') ?></p>
+                    <?php if (isset($doctor->speciality)): ?>
+                    <small class="text-muted"><?= esc($doctor->speciality) ?></small>
+                    <?php endif; ?>
+                </div>
+                
+                <div class="mb-3">
+                    <small class="text-muted">Monto a Pagar</small>
+                    <h3 class="text-success mb-0">$<?= number_format($commission->commission_amount, 2) ?></h3>
+                </div>
+                
+                <div class="d-grid gap-2">
+                    <div class="text-center">
+                        <i class="fa-solid fa-money-check-wave fa-3x text-success mb-2"></i>
+                        <p class="text-muted small">Comisión Pendiente de Pago</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <?php if ($commission->notes): ?>
+        <div class="card mt-3">
+            <div class="card-header">
+                <h6 class="mb-0">Notas Existentes</h6>
+            </div>
+            <div class="card-body">
+                <p class="mb-0"><?= esc($commission->notes) ?></p>
+            </div>
+        </div>
+        <?php endif; ?>
+    </div>
+</div>
+<?= $this->endSection() ?>
+
+<?= $this->section('scripts') ?>
+<script>
+$(document).ready(function() {
+    $('#paymentForm').submit(function(e) {
+        e.preventDefault();
+        
+        if (!confirm('¿Está seguro de confirmar el pago de esta comisión?')) {
+            return false;
+        }
+        
+        var form = $(this);
+        $.ajax({
+            url: form.attr('action'),
+            type: 'POST',
+            data: form.serialize(),
+            dataType: 'json'
+        }).done(function(response) {
+            if (response.success) {
+                alert('Comisión pagada correctamente');
+                window.location.href = response.redirect_url;
+            } else {
+                alert(response.message);
+            }
+        }).fail(function() {
+            alert('Error al procesar el pago');
+        });
+    });
+});
+</script>
+<?= $this->endSection() ?>

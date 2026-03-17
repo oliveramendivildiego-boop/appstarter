@@ -5,6 +5,7 @@ namespace App\Controllers;
 use App\Libraries\PdfService;
 use App\Models\DoctorModel;
 use App\Models\RegisterModel;
+use App\Models\DoctorCommissionModel;
 use App\Services\RegisterService;
 
 /**
@@ -15,6 +16,7 @@ class DoctorHome extends BaseController
     protected DoctorModel $doctorModel;
     protected RegisterModel $registerModel;
     protected RegisterService $registerService;
+    protected DoctorCommissionModel $commissionModel;
     protected ?object $doctorInfo = null;
 
     public function __construct()
@@ -34,6 +36,7 @@ class DoctorHome extends BaseController
         $this->doctorModel = model(DoctorModel::class);
         $this->registerModel = model(RegisterModel::class);
         $this->registerService = new RegisterService($this->registerModel);
+        $this->commissionModel = model(DoctorCommissionModel::class);
         $this->doctorInfo = $this->doctorModel->getInfo((int) session()->get('doctor_id'));
     }
 
@@ -48,6 +51,19 @@ class DoctorHome extends BaseController
         $registrosRecientes = $this->registerModel->getRegistrosByDoctorId($doctorId, $perPage, $offset);
         $totalRegistros = $this->registerModel->countRegistrosByDoctorId($doctorId);
         $totalPages = max(1, (int) ceil($totalRegistros / $perPage));
+        
+        // Obtener resumen de comisiones solo si el doctor tiene habilitadas las comisiones
+        $comisionSummary = null;
+        $comisionesRecientes = [];
+        
+        if ($this->doctorModel->hasColumn('has_commission') && isset($this->doctorInfo->has_commission)) {
+            $hasCommission = (int) $this->doctorInfo->has_commission;
+            if ($hasCommission == 1) {
+                $comisionSummary = $this->commissionModel->getCommissionSummaryByDoctor($doctorId);
+                // Obtener comisiones pagadas con detalles completos
+                $comisionesRecientes = $this->commissionModel->getPaidCommissionsWithDetails($doctorId, 5);
+            }
+        }
 
         return view('doctor/dashboard', [
             'doctor_info'       => $this->doctorInfo,
@@ -57,6 +73,8 @@ class DoctorHome extends BaseController
             'perPage'           => $perPage,
             'totalRegistros'    => $totalRegistros,
             'totalPages'        => $totalPages,
+            'comision_summary'  => $comisionSummary,
+            'comisiones_recientes' => $comisionesRecientes,
         ]);
     }
 

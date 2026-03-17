@@ -33,6 +33,23 @@
     </div>
     <div class="col-md-6 col-lg-4 mb-4">
         <div class="card shadow-sm">
+            <div class="card-header bg-info text-white">
+                <h5 class="mb-0">Reportes de pruebas</h5>
+            </div>
+            <div class="list-group list-group-flush">
+                <a href="<?= site_url('reports/costosPruebas') ?>" class="list-group-item list-group-item-action">
+                    <i class="fas fa-dollar-sign me-2"></i> Costos de todas las pruebas
+                </a>
+                <p class="list-group-item small text-muted mb-0">Precio y precio derivado de todas las pruebas del sistema.</p>
+                <a href="<?= site_url('reports/valoresReferencia') ?>" class="list-group-item list-group-item-action">
+                    <i class="fas fa-chart-line me-2"></i> Valores de referencia
+                </a>
+                <p class="list-group-item small text-muted mb-0">Valores de referencia de todas las pruebas con buscador.</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6 col-lg-4 mb-4">
+        <div class="card shadow-sm">
             <div class="card-header bg-warning text-dark">
                 <h5 class="mb-0">Reportes de insumos</h5>
             </div>

@@ -10,6 +10,8 @@ use App\Models\RegisterModel;
 use App\Models\PerfilExamenModel;
 use App\Models\MuestraModel;
 use App\Models\AppConfigModel;
+use App\Models\DoctorModel;
+use App\Models\DoctorCommissionModel;
 use CodeIgniter\HTTP\ResponseInterface;
 
 /**
@@ -24,6 +26,8 @@ class Registers extends SecureArea
     protected LabotestModel $labotestModel;
     protected RegisterService $registerService;
     protected AppConfigModel $configModel;
+    protected DoctorModel $doctorModel;
+    protected DoctorCommissionModel $commissionModel;
 
     public function __construct()
     {
@@ -33,6 +37,8 @@ class Registers extends SecureArea
         $this->labotestModel   = model(LabotestModel::class);
         $this->registerService = new RegisterService();
         $this->configModel     = model(AppConfigModel::class);
+        $this->doctorModel     = model(DoctorModel::class);
+        $this->commissionModel = model(DoctorCommissionModel::class);
     }
 
     public function index()
@@ -360,6 +366,25 @@ class Registers extends SecureArea
             $montoInicial = (float) ($pagos['monto_pagar'] ?? 0);
             if ($montoInicial > 0) {
                 $this->registerModel->insertAbonoInicial($registroId, $montoInicial, trim($pagos['tipopago'] ?? '1'));
+            }
+
+            // Crear comisión para el doctor si aplica
+            $doctorId = (int) ($registro['doctor_id'] ?? 0);
+            if ($doctorId > 0) {
+                $doctorInfo = $this->doctorModel->find($doctorId);
+                if ($doctorInfo && $this->doctorModel->supportsCommissionColumn() && isset($doctorInfo->commission_percent)) {
+                    // Verificar si el doctor tiene habilitado el uso de comisiones
+                    $hasCommission = isset($doctorInfo->has_commission) ? (int) $doctorInfo->has_commission : 1; // Por defecto 1 para compatibilidad
+                    if ($hasCommission == 1) {
+                        $commissionPercent = (float) $doctorInfo->commission_percent;
+                        if ($commissionPercent > 0) {
+                            $totalAmount = (float) ($pagos['total'] ?? 0);
+                            if ($totalAmount > 0) {
+                                $this->commissionModel->createCommission($doctorId, $registroId, $totalAmount, $commissionPercent);
+                            }
+                        }
+                    }
+                }
             }
 
             return $this->response->setJSON([

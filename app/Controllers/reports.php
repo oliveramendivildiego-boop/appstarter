@@ -213,4 +213,169 @@ class Reports extends SecureArea
             'user_info'       => $this->user_info,
         ]);
     }
+
+    /**
+     * Reporte de costos de todas las pruebas (precio y precio derivado)
+     */
+    public function costosPruebas()
+    {
+        $busqueda = $this->request->getGet('busqueda') ?? '';
+        $data = $this->reportModel->getCostosPruebas($busqueda);
+
+        return view('reports/costos_pruebas', [
+            'title'           => 'Reporte de costos de pruebas',
+            'current_module'  => 'reports',
+            'subtitle'        => 'Precio y precio derivado de todas las pruebas',
+            'data'            => $data,
+            'busqueda'        => $busqueda,
+            'allowed_modules' => $this->allowed_modules,
+            'user_info'       => $this->user_info,
+        ]);
+    }
+
+    /**
+     * Exportar reporte de costos de pruebas a Excel/CSV
+     */
+    public function exportCostosPruebas()
+    {
+        $busqueda = $this->request->getGet('busqueda') ?? '';
+        $data = $this->reportModel->getCostosPruebas($busqueda);
+
+        $filename = 'costos_pruebas_' . date('Y-m-d_H-i-s') . '.csv';
+        
+        header('Content-Type: text/csv');
+        header('Content-Disposition: attachment; filename="' . $filename . '"');
+        header('Cache-Control: no-cache, must-revalidate');
+        header('Expires: 0');
+
+        $output = fopen('php://output', 'w');
+        
+        // Cabeceras en español
+        fwrite($output, "\xEF\xBB\xBF"); // BOM para UTF-8
+        fputcsv($output, ['Categoría', 'Prueba', 'Precio', 'Precio Derivado', 'Diferencia']);
+
+        $totalPrecio = 0;
+        $totalDerivado = 0;
+        $categoriaActual = null;
+
+        foreach ($data as $item) {
+            $precio = (float) ($item['precio'] ?? 0);
+            $derivado = (float) ($item['precio_derivado'] ?? 0);
+            $diferencia = $derivado - $precio;
+            
+            $totalPrecio += $precio;
+            $totalDerivado += $derivado;
+            
+            fputcsv($output, [
+                $item['categoria'],
+                $item['prueba'],
+                number_format($precio, 2, '.', ''),
+                number_format($derivado, 2, '.', ''),
+                number_format($diferencia, 2, '.', '')
+            ]);
+        }
+
+        // Total general
+        fputcsv($output, []);
+        fputcsv($output, ['TOTAL GENERAL', '', number_format($totalPrecio, 2, '.', ''), number_format($totalDerivado, 2, '.', ''), number_format($totalDerivado - $totalPrecio, 2, '.', '')]);
+
+        fclose($output);
+        exit;
+    }
+
+    /**
+     * Reporte de valores de referencia de todas las pruebas con buscador
+     */
+    public function valoresReferencia()
+    {
+        $busqueda = $this->request->getGet('busqueda') ?? '';
+        $data = $this->reportModel->getValoresReferencia($busqueda);
+
+        return view('reports/valores_referencia', [
+            'title'           => 'Reporte de valores de referencia',
+            'current_module'  => 'reports',
+            'subtitle'        => 'Valores de referencia de todas las pruebas',
+            'data'            => $data,
+            'busqueda'        => $busqueda,
+            'allowed_modules' => $this->allowed_modules,
+            'user_info'       => $this->user_info,
+        ]);
+    }
+
+    /**
+     * Exportar reporte de valores de referencia a Excel/CSV
+     */
+    public function exportValoresReferencia()
+    {
+        $busqueda = $this->request->getGet('busqueda') ?? '';
+        $data = $this->reportModel->getValoresReferencia($busqueda);
+
+        $filename = 'valores_referencia_' . date('Y-m-d_H-i-s') . '.csv';
+        
+        header('Content-Type: text/csv');
+        header('Content-Disposition: attachment; filename="' . $filename . '"');
+        header('Cache-Control: no-cache, must-revalidate');
+        header('Expires: 0');
+
+        $output = fopen('php://output', 'w');
+        
+        // Cabeceras en español
+        fwrite($output, "\xEF\xBB\xBF"); // BOM para UTF-8
+        fputcsv($output, ['Categoría', 'Prueba', 'Análisis', 'Población', 'Sexo', 'Valor Mínimo', 'Valor Máximo', 'Unidad']);
+
+        foreach ($data as $index => $item) {
+            // Solo exportar pruebas que tienen valores
+            if (empty($item['valor_min']) && empty($item['valor_max'])) {
+                continue;
+            }
+            
+            // Funciones helper para exportación
+            $poblacion = $this->getPoblacionLabel($item['poblacion'] ?? 3);
+            $sexo = $this->getSexoLabel($item['sexo'] ?? 'ambos');
+            
+            fputcsv($output, [
+                $item['categoria'] ?? '',
+                $item['prueba'] ?? '',
+                $item['analisis'] ?? '',
+                $poblacion,
+                $sexo,
+                $item['valor_min'] ?? '',
+                $item['valor_max'] ?? '',
+                $item['umedida'] ?? ''
+            ]);
+        }
+
+        fclose($output);
+        exit;
+    }
+
+    /**
+     * Helper para obtener etiqueta de población
+     */
+    private function getPoblacionLabel($paciente_id)
+    {
+        // Manejar valores nulos o vacíos
+        if ($paciente_id === null || $paciente_id === '' || $paciente_id === 0) {
+            return 'Adulto'; // Valor por defecto
+        }
+        
+        $poblaciones = [
+            1 => 'Recién nacido',
+            2 => 'Niño', 
+            3 => 'Adulto',
+            4 => 'Adulto mayor',
+            5 => 'Embarazada'
+        ];
+        return $poblaciones[$paciente_id] ?? 'Adulto'; // Valor por defecto si no encuentra
+    }
+
+    /**
+     * Helper para obtener etiqueta de sexo
+     */
+    private function getSexoLabel($sexo)
+    {
+        if ($sexo === 'masculino') return 'Masculino';
+        if ($sexo === 'femenino') return 'Femenino';
+        return 'Ambos';
+    }
 }

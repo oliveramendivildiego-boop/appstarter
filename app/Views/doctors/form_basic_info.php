@@ -30,6 +30,23 @@ $doctor_info = $doctor_info ?? new stdClass();
         <?= form_label(lang('Doctors.doctors_gender') . ':', 'gender', ['class' => 'form-label required']) ?>
         <?= form_dropdown('gender', ['' => '-- Seleccione --', '1' => 'Masculino', '2' => 'Femenino'], $doctor_info->gender ?? '', 'id="gender" class="form-select"') ?>
     </div>
+    <div class="col-md-6 mb-3">
+        <div class="form-check mt-4">
+            <?= form_checkbox(['name' => 'has_commission', 'id' => 'has_commission', 'class' => 'form-check-input', 'value' => '1', 'checked' => ($doctor_info->has_commission ?? 0) == 1]) ?>
+            <?= form_label('¿Este doctor usa comisiones?', 'has_commission', ['class' => 'form-check-label']) ?>
+        </div>
+    </div>
+</div>
+
+<div class="row" id="commission_field" style="<?= ($doctor_info->has_commission ?? 0) == 1 ? '' : 'display:none;' ?>">
+    <div class="col-md-6 mb-3">
+        <?= form_label('Comisión (%)', 'commission_percent', ['class' => 'form-label']) ?>
+        <div class="input-group">
+            <?= form_input(['name' => 'commission_percent', 'id' => 'commission_percent', 'class' => 'form-control', 'value' => $doctor_info->commission_percent ?? 0.00, 'step' => '0.01', 'min' => '0', 'max' => '100', 'type' => 'number', 'placeholder' => '0.00']) ?>
+            <span class="input-group-text">%</span>
+        </div>
+        <small class="form-text text-muted">Porcentaje de comisión que recibirá el doctor por cada prueba realizada.</small>
+    </div>
 </div>
 
 <hr class="my-4">

@@ -6,6 +6,8 @@ return [
     'module_customers_desc'  => 'Agregar, Actualizar, Borrar y Buscar pacientes',
     'module_doctors'         => 'Doctores',
     'module_doctors_desc'   => 'Agregar, Actualizar, Borrar y Buscar Doctores',
+    'module_doctor_commissions' => 'Comisiones',
+    'module_doctor_commissions_desc' => 'Gestión de comisiones de doctores',
     'module_labotests'       => 'Análisis Clínicos',
     'module_labotests_desc'  => 'Agregar, Actualizar, Borrar y Buscar Análisis Clínicos',
     'module_toquotes'        => 'Cotizar',

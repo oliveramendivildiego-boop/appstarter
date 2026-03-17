@@ -63,8 +63,10 @@ $pruebasPaciente = $pruebas_paciente ?? [];
         <div class="mt-3">
             <small id="chart_help" class="text-muted">Seleccione una prueba para visualizar su evolución en el tiempo.</small>
         </div>
-        <div class="mt-3 chart-container-responsive">
-            <canvas id="pruebaChart"></canvas>
+        <div class="mt-3 d-flex justify-content-center">
+            <div style="width: 100%; max-width: 900px; height: 500px;">
+                <canvas id="pruebaChart"></canvas>
+            </div>
         </div>
     </div>
 </div>
@@ -218,27 +220,51 @@ document.addEventListener('DOMContentLoaded', function() {
             },
             options: {
                 responsive: true,
-                maintainAspectRatio: true,
-                aspectRatio: 2,
+                maintainAspectRatio: false,
                 interaction: { mode: 'index', intersect: false },
                 plugins: {
                     title: {
                         display: true,
                         text: 'Evolución de ' + pruebaNombre,
-                        font: { size: 14 }
+                        font: { size: 18, weight: 'bold' },
+                        padding: 20
                     },
                     legend: {
                         display: true,
-                        position: 'top'
+                        position: 'top',
+                        labels: {
+                            font: { size: 12 },
+                            padding: 15,
+                            usePointStyle: true
+                        }
+                    },
+                    tooltip: {
+                        backgroundColor: 'rgba(0,0,0,0.8)',
+                        titleFont: { size: 14 },
+                        bodyFont: { size: 12 },
+                        padding: 12,
+                        cornerRadius: 8
                     }
                 },
                 scales: {
-                    y: { beginAtZero: false },
-                    x: {
+                    y: { 
+                        beginAtZero: false,
+                        grid: {
+                            color: 'rgba(0,0,0,0.05)'
+                        },
                         ticks: {
+                            font: { size: 11 }
+                        }
+                    },
+                    x: {
+                        grid: {
+                            color: 'rgba(0,0,0,0.05)'
+                        },
+                        ticks: {
+                            font: { size: 11 },
                             maxRotation: 45,
                             minRotation: 0,
-                            maxTicksLimit: 8
+                            maxTicksLimit: 10
                         }
                     }
                 }

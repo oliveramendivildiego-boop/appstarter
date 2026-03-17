@@ -3,6 +3,7 @@ $icons = [
     'home'           => 'fa-house',
     'customers'      => 'fa-hospital-user',
     'doctors'        => 'fa-user-doctor',
+    'doctor_commissions' => 'fa-dollar-sign',
     'labotests'      => 'fa-flask-vial',
     'toquotes'       => 'fa-file-invoice-dollar',
     'registers'      => 'fa-book-medical',

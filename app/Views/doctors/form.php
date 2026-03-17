@@ -48,16 +48,29 @@ $(document).ready(function() {
             phone_number: { required: true, maxlength: 50 },
             gender: { required: true },
             speciality: { required: true, maxlength: 255 },
-            address: { required: true, maxlength: 255 }
+            address: { required: true, maxlength: 255 },
+            commission_percent: { number: true, min: 0, max: 100 }
         },
         messages: {
             name: { required: "Por favor ingrese nombre(s) y apellido(s)", minlength: "El nombre debe tener al menos 2 caracteres" },
             phone_number: { required: "El teléfono es obligatorio" },
             gender: { required: "Seleccione su género" },
             speciality: { required: "La especialidad es obligatoria" },
-            address: { required: "La dirección es obligatoria" }
+            address: { required: "La dirección es obligatoria" },
+            commission_percent: { number: "Ingrese un número válido", min: "La comisión no puede ser negativa", max: "La comisión no puede ser mayor a 100%" }
         }
     }));
+    
+    // Mostrar/ocultar campo de comisión según checkbox
+    $('#has_commission').change(function() {
+        if ($(this).is(':checked')) {
+            $('#commission_field').show();
+        } else {
+            $('#commission_field').hide();
+            $('#commission_percent').val('0.00');
+        }
+    });
+    
     <?php if (!empty($validationErrors) && is_array($validationErrors)): ?>
     window.CI_VALIDATION_ERRORS = <?= json_encode($validationErrors) ?>;
     if (typeof showServerValidationErrors === 'function') showServerValidationErrors('#doctor_form');
