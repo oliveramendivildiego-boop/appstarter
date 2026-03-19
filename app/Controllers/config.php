@@ -301,4 +301,29 @@ class Config extends SecureArea
         $result = $this->configService->testSinConnection();
         return $this->response->setJSON($result);
     }
+
+    /**
+     * Cierra todas las sesiones abiertas del usuario actual
+     */
+    public function closeAllSessions(): ResponseInterface
+    {
+        $personId = (int) session()->get('person_id');
+        if ($personId <= 0) {
+            return $this->response->setJSON([
+                'success' => false,
+                'message' => 'No hay sesión activa',
+            ])->setStatusCode(401);
+        }
+
+        $employeeModel = model(\App\Models\EmployeeModel::class);
+        $result = $employeeModel->logoutAllSessions($personId);
+
+        \App\Models\AuditoriaModel::log('config', 'cerrar_todas_sesiones', (string) $personId);
+
+        return $this->response->setJSON([
+            'success' => $result,
+            'message' => $result ? 'Todas las sesiones han sido cerradas' : 'No se encontraron sesiones para cerrar',
+        ]);
+    }
 }
+

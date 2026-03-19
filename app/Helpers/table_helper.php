@@ -119,17 +119,33 @@ if (!function_exists('get_person_data_row')) {
     {
         $controller_name = strtolower($controller->getControllerName());
         $isCustomers = ($controller_name === 'customers');
-        $actionsWidth = $isCustomers ? '12%' : '5%';
-        $table_data_row = '<tr>';
+        $isEmployees = ($controller_name === 'employees');
+        $actionsWidth = $isCustomers ? '12%' : ($isEmployees ? '10%' : '5%');
+        
+        // Para empleados, aplicar opacidad si está inactivo
+        $rowStyle = '';
+        if ($isEmployees && isset($person->active) && $person->active == 0) {
+            $rowStyle = ' style="opacity: 0.6;"';
+        }
+        
+        $table_data_row = '<tr' . $rowStyle . '>';
         $table_data_row .= "<td width='5%'><input type='checkbox' id='person_{$person->person_id}' name='person_{$person->person_id}' value='{$person->person_id}'/></td>";
-        $table_data_row .= '<td width="' . ($isCustomers ? '18%' : '20%') . '">' . (function_exists('character_limiter') ? character_limiter($person->last_name ?? '', 13) : substr($person->last_name ?? '', 0, 13)) . '</td>';
-        $table_data_row .= '<td width="' . ($isCustomers ? '18%' : '20%') . '">' . (function_exists('character_limiter') ? character_limiter($person->first_name ?? '', 13) : substr($person->first_name ?? '', 0, 13)) . '</td>';
-        $table_data_row .= '<td width="' . ($isCustomers ? '27%' : '30%') . '">' . ($person->email ?? '') . '</td>';
-        $table_data_row .= '<td width="' . ($isCustomers ? '20%' : '20%') . '">' . (function_exists('character_limiter') ? character_limiter($person->phone_number ?? '', 13) : substr($person->phone_number ?? '', 0, 13)) . '</td>';
+        $table_data_row .= '<td width="' . ($isCustomers ? '18%' : ($isEmployees ? '20%' : '20%')) . '">' . (function_exists('character_limiter') ? character_limiter($person->last_name ?? '', 13) : substr($person->last_name ?? '', 0, 13)) . '</td>';
+        $table_data_row .= '<td width="' . ($isCustomers ? '18%' : ($isEmployees ? '20%' : '20%')) . '">' . (function_exists('character_limiter') ? character_limiter($person->first_name ?? '', 13) : substr($person->first_name ?? '', 0, 13)) . '</td>';
+        $table_data_row .= '<td width="' . ($isCustomers ? '27%' : ($isEmployees ? '25%' : '30%')) . '">' . ($person->email ?? '') . '</td>';
+        $table_data_row .= '<td width="' . ($isCustomers ? '20%' : ($isEmployees ? '15%' : '20%')) . '">' . (function_exists('character_limiter') ? character_limiter($person->phone_number ?? '', 13) : substr($person->phone_number ?? '', 0, 13)) . '</td>';
+        
         $title = lang(\ucfirst($controller_name) . '.' . $controller_name . '_update');
         $editIcon = '<i class="fa-solid fa-pen" aria-hidden="true"></i>';
         $actions = anchor($controller_name . '/view/' . $person->person_id . '/', $editIcon, ['class' => 'update', 'title' => $title]);
-        if ($isCustomers) {
+        
+        if ($isEmployees) {
+            // Botón de toggle estado para empleados - más grande
+            $isActive = (($person->active ?? 1) == 1);
+            $statusIcon = $isActive ? 'fa-toggle-on text-success' : 'fa-toggle-off text-danger';
+            $statusTitle = $isActive ? 'Desactivar empleado' : 'Activar empleado';
+            $actions .= ' <button type="button" class="btn btn-lg btn-toggle-employee-status" data-person-id="' . $person->person_id . '" data-enabled="' . ($isActive ? '1' : '0') . '" title="' . $statusTitle . '" style="padding: 0.5rem 0.75rem;"><i class="fa-solid ' . $statusIcon . '" style="font-size: 1.5rem;"></i></button>';
+        } else if ($isCustomers) {
             $phone = trim($person->phone_number ?? '');
             $phoneClean = preg_replace('/\D/', '', $phone);
             if ($phoneClean !== '') {

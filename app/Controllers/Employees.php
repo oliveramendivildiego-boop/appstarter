@@ -239,4 +239,37 @@ class Employees extends PersonController
             'message' => lang('Employees.employees_confirm_delete'),
         ]);
     }
+
+    /**
+     * Toggle del estado (activo/inactivo) del empleado vía AJAX
+     */
+    public function toggleStatus(): ResponseInterface
+    {
+        $personId = (int) ($this->request->getPost('person_id') ?? 0);
+        if ($personId <= 0) {
+            return $this->response->setJSON([
+                'success' => false,
+                'message' => 'ID de empleado inválido',
+            ])->setStatusCode(400);
+        }
+
+        $enable = ($this->request->getPost('enable') ?? '0') === '1';
+        $success = $this->employeeModel->toggleEmployeeStatus($personId, $enable);
+
+        if ($success) {
+            $action = $enable ? 'habilitar' : 'deshabilitar';
+            \App\Models\AuditoriaModel::log('employees', $action === 'deshabilitar' ? 'desactivar' : 'activar', (string) $personId);
+            
+            return $this->response->setJSON([
+                'success' => true,
+                'message' => 'Empleado ' . ($enable ? 'habilitado' : 'deshabilitado') . ' correctamente',
+                'enabled' => $enable,
+            ]);
+        }
+
+        return $this->response->setJSON([
+            'success' => false,
+            'message' => 'Error al cambiar el estado del empleado',
+        ])->setStatusCode(500);
+    }
 }

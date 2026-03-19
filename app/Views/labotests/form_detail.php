@@ -760,9 +760,27 @@ if ($fe !== '') {
                 var wrapForm = document.getElementById('wrap_formulas_id');
                 var wrapExp = document.getElementById('wrap_formula_expresion');
                 var wrapPredef = document.getElementById('wrap_formula_predefinida_creadas');
-                if (wrapForm) wrapForm.style.display = fid > 1 ? 'none' : 'block';
-                if (wrapExp) wrapExp.style.display = fid > 1 ? 'block' : 'none';
-                if (wrapPredef) wrapPredef.style.display = fid > 1 ? 'block' : 'none';
+                if (wrapForm) {
+                    if (fid > 1) {
+                        wrapForm.classList.add('d-none');
+                    } else {
+                        wrapForm.classList.remove('d-none');
+                    }
+                }
+                if (wrapExp) {
+                    if (fid > 1) {
+                        wrapExp.classList.remove('d-none');
+                    } else {
+                        wrapExp.classList.add('d-none');
+                    }
+                }
+                if (wrapPredef) {
+                    if (fid > 1) {
+                        wrapPredef.classList.remove('d-none');
+                    } else {
+                        wrapPredef.classList.add('d-none');
+                    }
+                }
                 var formulaArea = document.getElementById('formula_area');
                 var formulaInput = document.getElementById('formula_expresion');
                 var formulaPredefSelect = document.getElementById('formula_predefinida_select');

@@ -150,6 +150,19 @@
                 <?= form_label(lang('Config.config_print_after_sale'), 'print_after_sale', ['class' => 'form-check-label']) ?>
             </div>
         </div>
+        
+        <hr class="my-4">
+        
+        <div class="mb-3">
+            <h6 class="mb-3"><i class="fa-solid fa-lock me-2"></i>Seguridad de sesión</h6>
+            <p class="text-muted small">Cierre todas las sesiones abiertas en otros dispositivos. Permanecerá conectado en este dispositivo.</p>
+            <button type="button" id="btn_close_all_sessions" class="btn btn-danger">
+                <i class="fa-solid fa-door-open me-1"></i> Cerrar todas las sesiones
+            </button>
+        </div>
+        
+        <hr class="my-4">
+        
         <button type="submit" id="config_save_btn" name="config_save_btn" class="btn btn-primary"><?= lang('Config.config_save_btn') ?></button>
         <?= form_close() ?>
             </div>
@@ -570,6 +583,50 @@ $(document).ready(function() {
             rules: { opciones: { required: true } },
             messages: { opciones: { required: "El nombre es obligatorio" } }
         }));
+    }
+
+    // Cerrar todas las sesiones
+    var btnCloseAllSessions = document.getElementById('btn_close_all_sessions');
+    if (btnCloseAllSessions) {
+        btnCloseAllSessions.addEventListener('click', function() {
+            btnCloseAllSessions.disabled = true;
+            var originalText = btnCloseAllSessions.innerHTML;
+            btnCloseAllSessions.innerHTML = '<span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span> Cerrando...';
+            
+            var csrfInput = document.querySelector('input[name="csrf_test_name"]') || document.querySelector('input[name*="csrf"]');
+            var csrfName = (csrfInput && csrfInput.name) ? csrfInput.name : (typeof window.CI_CSRF_TOKEN_NAME !== 'undefined' ? window.CI_CSRF_TOKEN_NAME : 'csrf_test_name');
+            var csrfVal = (csrfInput && csrfInput.value) ? csrfInput.value : (typeof window.CI_CSRF_TOKEN !== 'undefined' ? window.CI_CSRF_TOKEN : '');
+            
+            var fd = new FormData();
+            if (csrfVal) fd.append(csrfName, csrfVal);
+            
+            var fetchHeaders = { 'X-Requested-With': 'XMLHttpRequest' };
+            if (csrfVal) fetchHeaders['X-CSRF-TOKEN'] = csrfVal;
+            
+            fetch('<?= site_url('config/closeAllSessions') ?>', {
+                method: 'POST',
+                body: fd,
+                headers: fetchHeaders
+            }).then(function(r) { return r.json(); }).then(function(response) {
+                btnCloseAllSessions.disabled = false;
+                btnCloseAllSessions.innerHTML = originalText;
+                if (response.success) {
+                    if (typeof showToast === 'function') {
+                        showToast(response.message || 'Todas las sesiones han sido cerradas', 'success');
+                    }
+                } else {
+                    if (typeof showToast === 'function') {
+                        showToast(response.message || 'Error al cerrar las sesiones', 'error');
+                    }
+                }
+            }).catch(function() {
+                btnCloseAllSessions.disabled = false;
+                btnCloseAllSessions.innerHTML = originalText;
+                if (typeof showToast === 'function') {
+                    showToast('Error al conectar con el servidor', 'error');
+                }
+            });
+        });
     }
 });
 </script>

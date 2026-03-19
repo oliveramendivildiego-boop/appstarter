@@ -178,6 +178,54 @@ class EmployeeModel extends Model
         session()->destroy();
     }
 
+    /**
+     * Cierra todas las sesiones abiertas del usuario (eliminando archivos de sesión)
+     */
+    public function logoutAllSessions(int $personId): bool
+    {
+        $sessionPath = WRITEPATH . 'session';
+        if (!is_dir($sessionPath)) {
+            return false;
+        }
+
+        $sessionFiles = glob($sessionPath . '/ci_session_*');
+        if (!is_array($sessionFiles)) {
+            return false;
+        }
+
+        $deleted = 0;
+        $personIdStr = (string) $personId;
+        // Patrón para buscar person_id en datos serializados PHP
+        // Busca "person_id" seguido del valor serializador (ej: i:123; para enteros)
+        $pattern = 's:9:"person_id"[;:a-z]*[^0-9]i:' . $personId . '[;:]';
+        
+        foreach ($sessionFiles as $file) {
+            if (is_file($file)) {
+                $content = @file_get_contents($file);
+                if ($content === false) {
+                    continue;
+                }
+                
+                // Buscar de dos formas: patrón serializado directo o búsqueda general
+                $hasPersonId = false;
+                
+                // Intenta patrón más específico (person_id en array serializado)
+                if (preg_match('/"person_id";[a-z]+:' . $personId . '[;,}]|s:9:"person_id";i:' . $personId . ';/', $content)) {
+                    $hasPersonId = true;
+                } else if (strpos($content, 'person_id' . (string)$personId) !== false) {
+                    // Fallback: búsqueda simple
+                    $hasPersonId = true;
+                }
+                
+                if ($hasPersonId && @unlink($file)) {
+                    $deleted++;
+                }
+            }
+        }
+
+        return $deleted > 0;
+    }
+
     public function isLoggedIn(): bool
     {
         return (session()->has('person_id') && session()->get('person_id') !== null)
@@ -325,5 +373,42 @@ class EmployeeModel extends Model
 
         $db->transComplete();
         return $success ? $person_id : false;
+    }
+
+    /**
+     * Cambia el estado (activo/inactivo) del empleado
+     * Si se deshabilita (deleted=1), cierra todas sus sesiones
+     */
+    public function toggleEmployeeStatus(int $personId, bool $enable = true): bool
+    {
+        $newStatus = $enable ? 1 : 0;
+        $success = $this->db->table('employees')
+            ->where('person_id', $personId)
+            ->update(['active' => $newStatus]);
+
+        // Si se deshabilita, cerrar todas sus sesiones
+        if (!$enable) {
+            $this->logoutAllSessions($personId);
+        }
+
+        return $success !== false;
+    }
+
+    /**
+     * Obtiene el estado (activo/inactivo) del empleado
+     */
+    public function getEmployeeStatus(int $personId): ?bool
+    {
+        $row = $this->db->table('employees')
+            ->select('active')
+            ->where('person_id', $personId)
+            ->get()
+            ->getRow();
+
+        if (!$row) {
+            return null;
+        }
+
+        return $row->active == 1;
     }
 }
