@@ -11,6 +11,7 @@ $routes->get('/', 'Home::index');
 $routes->get('home', 'Home::index');
 $routes->get('no_access/(:any)', 'NoAccess::index/$1');
 $routes->get('home/logout', 'Home::logout');
+$routes->post('status/checkEmployeeActive', 'StatusCheck::checkEmployeeActive');
 $routes->get('login', 'Login::index');
 $routes->post('login', 'Login::index');
 
@@ -68,6 +69,9 @@ $routes->post('config/saveopcionvalor', 'Config::saveOpcionValor');
 $routes->post('config/savevalortabla', 'Config::saveValorTabla');
 $routes->post('config/closeAllSessions', 'Config::closeAllSessions');
 $routes->post('config/testSin', 'Config::testSin');
+$routes->post('config/getActiveSessions', 'Config::getActiveSessions');
+$routes->post('config/killSession', 'Config::killSession');
+$routes->get('config/debugSessions', 'Config::debugSessions');
 $routes->get('config/deletepoblacion/(:num)', 'Config::deletePoblacion/$1');
 $routes->get('config/deleteopcion/(:num)', 'Config::deleteOpcion/$1');
 $routes->get('config/deleteopcionvalor/(:num)', 'Config::deleteOpcionValor/$1');
