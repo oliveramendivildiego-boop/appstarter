@@ -291,6 +291,24 @@ class Reports extends SecureArea
         $busqueda = $this->request->getGet('busqueda') ?? '';
         $data = $this->reportModel->getValoresReferencia($busqueda);
 
+        // Depuración temporal - comparar con exportación
+        error_log('=== VISTA DEBUG ===');
+        error_log('Total registros en vista: ' . count($data));
+        error_log('Búsqueda en vista: "' . $busqueda . '"');
+        
+        $conValores = 0;
+        $sinValores = 0;
+        foreach ($data as $item) {
+            if (!empty($item['valor_min']) || !empty($item['valor_max'])) {
+                $conValores++;
+            } else {
+                $sinValores++;
+            }
+        }
+        error_log('Vista - Registros con valores: ' . $conValores);
+        error_log('Vista - Registros sin valores: ' . $sinValores);
+        error_log('=== FIN VISTA DEBUG ===');
+
         return view('reports/valores_referencia', [
             'title'           => 'Reporte de valores de referencia',
             'current_module'  => 'reports',
@@ -309,6 +327,29 @@ class Reports extends SecureArea
     {
         $busqueda = $this->request->getGet('busqueda') ?? '';
         $data = $this->reportModel->getValoresReferencia($busqueda);
+
+        // Depuración temporal
+        error_log('=== EXPORTACIÓN DEBUG ===');
+        error_log('Total registros obtenidos: ' . count($data));
+        error_log('Búsqueda: "' . $busqueda . '"');
+        
+        $conValores = 0;
+        $sinValores = 0;
+        foreach ($data as $item) {
+            if (!empty($item['valor_min']) || !empty($item['valor_max'])) {
+                $conValores++;
+            } else {
+                $sinValores++;
+            }
+        }
+        error_log('Registros con valores: ' . $conValores);
+        error_log('Registros sin valores: ' . $sinValores);
+        
+        // Mostrar primeras 5 filas para depuración
+        for ($i = 0; $i < min(5, count($data)); $i++) {
+            error_log('Registro ' . ($i + 1) . ': ' . json_encode($data[$i]));
+        }
+        error_log('=== FIN EXPORTACIÓN DEBUG ===');
 
         $filename = 'valores_referencia_' . date('Y-m-d_H-i-s') . '.csv';
         
