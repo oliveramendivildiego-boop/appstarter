@@ -80,6 +80,7 @@ class EmployeeModel extends Model
             ->where('username', $usernameOrEmail)
             ->where('password', $hash)
             ->where('deleted', 0)
+            ->where('active', 1)
             ->get()
             ->getRow();
 
@@ -109,6 +110,7 @@ class EmployeeModel extends Model
             ->where('people.email', $email)
             ->where('employees.password', $passwordHash)
             ->where('employees.deleted', 0)
+            ->where('employees.active', 1)
             ->get()
             ->getRow();
 
@@ -156,6 +158,7 @@ class EmployeeModel extends Model
             ->join('people', 'people.person_id = employees.person_id')
             ->where('people.email', $email)
             ->where('employees.deleted', 0)
+            ->where('employees.active', 1)
             ->get()
             ->getRow();
 
@@ -377,14 +380,15 @@ class EmployeeModel extends Model
 
     /**
      * Cambia el estado (activo/inactivo) del empleado
-     * Si se deshabilita (deleted=1), cierra todas sus sesiones
+     * active: 1=puede loguearse, 0=deshabilitado
+     * Si se deshabilita (active=0), cierra todas sus sesiones
      */
     public function toggleEmployeeStatus(int $personId, bool $enable = true): bool
     {
-        $newStatus = $enable ? 1 : 0;
+        $newActive = $enable ? 1 : 0;
         $success = $this->db->table('employees')
             ->where('person_id', $personId)
-            ->update(['active' => $newStatus]);
+            ->update(['active' => $newActive]);
 
         // Si se deshabilita, cerrar todas sus sesiones
         if (!$enable) {

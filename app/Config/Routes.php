@@ -58,6 +58,7 @@ $routes->post('employees/search', 'Employees::search');
 $routes->post('employees/suggest', 'Employees::suggest');
 $routes->post('employees/delete', 'Employees::delete');
 $routes->post('employees/toggleStatus', 'Employees::toggleStatus');
+$routes->get('employees/checkSession', 'Employees::checkSession');
 $routes->get('config', 'Config::index');
 $routes->get('config/backup', 'Config::backup');
 $routes->get('config/opciones', 'Config::opciones');

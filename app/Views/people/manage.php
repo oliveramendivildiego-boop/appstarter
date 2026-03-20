@@ -32,8 +32,10 @@ $(document).ready(function() {
             
             var btn = this;
             var originalHtml = btn.innerHTML;
-            btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i>';
+            // Spinner más visible con mensaje
+            btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin" style="animation: spin 1s linear infinite;"></i>';
             btn.disabled = true;
+            btn.style.opacity = '1';
             
             var csrfInput = document.querySelector('input[name="csrf_test_name"]') || document.querySelector('input[name*="csrf"]');
             var csrfName = (csrfInput && csrfInput.name) ? csrfInput.name : (typeof window.CI_CSRF_TOKEN_NAME !== 'undefined' ? window.CI_CSRF_TOKEN_NAME : 'csrf_test_name');
@@ -47,11 +49,32 @@ $(document).ready(function() {
             var fetchHeaders = { 'X-Requested-With': 'XMLHttpRequest' };
             if (csrfVal) fetchHeaders['X-CSRF-TOKEN'] = csrfVal;
             
+            console.log('Enviando toggle:', { personId: personId, newStatus: newStatus });
+            
             fetch('<?= site_url($controller_name . '/toggleStatus') ?>', {
                 method: 'POST',
                 body: fd,
                 headers: fetchHeaders
             }).then(function(r) { return r.json(); }).then(function(response) {
+                console.log('Toggle response completa:', response);
+                console.log('logoutCurrentUser:', response.logoutCurrentUser, 'tipo:', typeof response.logoutCurrentUser);
+                
+                // Si el usuario actual fue deshabilitado, redirigir INMEDIATAMENTE
+                if (response.logoutCurrentUser === true || response.logoutCurrentUser === 'true') {
+                    console.log('🔴 Usuario deshabilitado - CERRANDO SESIÓN AHORA');
+                    // No cambiar botón, mantener spinner visible
+                    if (typeof showToast === 'function') {
+                        showToast('Tu sesión ha sido cerrada. Redirigiendo...', 'success');
+                    }
+                    // Redirigir SIN delay
+                    setTimeout(function() {
+                        console.log('Redirigiendo a login');
+                        window.location.href = '<?= site_url('login') ?>';
+                    }, 300);
+                    return; // No hacer nada más
+                }
+                
+                // Si llegamos aquí, el cambio fue en otro usuario
                 btn.disabled = false;
                 if (response.success) {
                     var statusIcon = newStatus ? 'fa-toggle-on text-success' : 'fa-toggle-off text-danger';
@@ -59,6 +82,7 @@ $(document).ready(function() {
                     btn.innerHTML = '<i class="fa-solid ' + statusIcon + '"></i>';
                     btn.setAttribute('data-enabled', newStatus ? '1' : '0');
                     btn.setAttribute('title', statusTitle);
+                    btn.style.opacity = '1';
                     if (typeof showToast === 'function') {
                         showToast(response.message || 'Empleado actualizado', 'success');
                     }
@@ -68,9 +92,11 @@ $(document).ready(function() {
                         showToast(response.message || 'Error al cambiar el estado', 'error');
                     }
                 }
-            }).catch(function() {
+            }).catch(function(err) {
+                console.error('❌ Error en toggleStatus:', err);
                 btn.innerHTML = originalHtml;
                 btn.disabled = false;
+                btn.style.opacity = '1';
                 if (typeof showToast === 'function') {
                     showToast('Error al conectar con el servidor', 'error');
                 }

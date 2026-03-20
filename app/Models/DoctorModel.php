@@ -145,6 +145,7 @@ class DoctorModel extends Model
         $hash = md5($password);
         $builder = $this->db->table('doctors')
             ->where('deleted', 0)
+            ->where('active', 1)
             ->where('password', $hash);
 
         if (str_contains($usernameOrEmail, '@')) {
@@ -175,6 +176,7 @@ class DoctorModel extends Model
         $row = $this->db->table('doctors')
             ->select('doctor_id, username')
             ->where('deleted', 0)
+            ->where('active', 1)
             ->where('email', $email)
             ->get()
             ->getRow();

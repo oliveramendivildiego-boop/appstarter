@@ -260,10 +260,39 @@ class Employees extends PersonController
             $action = $enable ? 'habilitar' : 'deshabilitar';
             \App\Models\AuditoriaModel::log('employees', $action === 'deshabilitar' ? 'desactivar' : 'activar', (string) $personId);
             
+            // Si se deshabilita, cerrar todas sus sesiones activas y destruir su sesión si está logueado
+            $logoutCurrentUser = false;
+            
+            // Si se deshabilita (active = 0)
+            if (!$enable) {
+                // Cerrar todas las sesiones del archivo (en caso de que tenga múltiples)
+                $this->employeeModel->logoutAllSessions($personId);
+                
+                // Verificar si el usuario actual es el que se está deshabilitando
+                $currentPersonId = (int) (session()->get('person_id') ?? 0);
+                
+                log_message('info', "toggleStatus: personId=$personId, currentPersonId=$currentPersonId, enable=$enable");
+                
+                if ($currentPersonId > 0 && $currentPersonId === $personId) {
+                    log_message('info', "Destruyendo sesión del usuario actual: $personId");
+                    
+                    // Destruir todos los datos de sesión
+                    session()->remove('user_info_' . $personId);
+                    session()->remove('allowed_modules_' . $personId);
+                    session()->remove('doctor_id');
+                    session()->remove('user_type');
+                    session()->remove('person_id');
+                    session()->destroy();
+                    
+                    $logoutCurrentUser = true;
+                }
+            }
+            
             return $this->response->setJSON([
                 'success' => true,
                 'message' => 'Empleado ' . ($enable ? 'habilitado' : 'deshabilitado') . ' correctamente',
                 'enabled' => $enable,
+                'logoutCurrentUser' => $logoutCurrentUser,
             ]);
         }
 
@@ -271,5 +300,18 @@ class Employees extends PersonController
             'success' => false,
             'message' => 'Error al cambiar el estado del empleado',
         ])->setStatusCode(500);
+    }
+
+    /**
+     * Endpoint de debug para verificar si la sesión se está destruyendo
+     */
+    public function checkSession(): ResponseInterface
+    {
+        return $this->response->setJSON([
+            'has_person_id' => session()->has('person_id'),
+            'person_id' => session()->get('person_id'),
+            'is_logged_in' => model(EmployeeModel::class)->isLoggedIn(),
+            'session_data' => session()->all(),
+        ]);
     }
 }

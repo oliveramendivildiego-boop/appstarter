@@ -122,7 +122,7 @@ if (!function_exists('get_person_data_row')) {
         $isEmployees = ($controller_name === 'employees');
         $actionsWidth = $isCustomers ? '12%' : ($isEmployees ? '10%' : '5%');
         
-        // Para empleados, aplicar opacidad si está inactivo
+        // Para empleados, aplicar opacidad si está inactivo (active=0)
         $rowStyle = '';
         if ($isEmployees && isset($person->active) && $person->active == 0) {
             $rowStyle = ' style="opacity: 0.6;"';
@@ -141,6 +141,7 @@ if (!function_exists('get_person_data_row')) {
         
         if ($isEmployees) {
             // Botón de toggle estado para empleados - más grande
+            // active=1: puede loguearse, active=0: deshabilitado
             $isActive = (($person->active ?? 1) == 1);
             $statusIcon = $isActive ? 'fa-toggle-on text-success' : 'fa-toggle-off text-danger';
             $statusTitle = $isActive ? 'Desactivar empleado' : 'Activar empleado';

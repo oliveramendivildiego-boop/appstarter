@@ -53,6 +53,7 @@ $pageTitle = $this->renderSection('title');
     <script src="<?= base_url('js/common.js') ?>"></script>
     <script src="<?= base_url('js/validation-common.js') ?>"></script>
     <script src="<?= base_url('js/manage_tables.js') ?>"></script>
+    <script src="<?= base_url('js/session-monitor.js') ?>"></script>
     <script>
       document.addEventListener('DOMContentLoaded', function() {
         var sb = document.getElementById('sidebarMenu');
