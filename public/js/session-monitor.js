@@ -68,7 +68,6 @@
                 return;
             }
             
-            console.log('✓ Usuario activo');
         })
         .catch(function(err) {
             isChecking = false;
@@ -87,8 +86,6 @@
     }
     
     function startMonitoring() {
-        console.log('🟢 Session Activity Monitor iniciado');
-        
         // Hacer check inicial
         checkUserActive();
         
