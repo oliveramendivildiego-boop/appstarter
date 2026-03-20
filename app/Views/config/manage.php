@@ -167,7 +167,8 @@
                 <h5 class="mb-0"><i class="fa-solid fa-user-shield me-2"></i>Sesiones activas</h5>
             </div>
             <div class="card-body">
-                <p class="text-muted small">Administre sesiones abiertas en otros dispositivos. Su sesión actual no se puede cerrar desde aquí.</p>
+                <p class="text-muted small mb-1">Administre sesiones abiertas en otros dispositivos. Su sesión actual no se puede cerrar desde aquí.</p>
+                <p class="text-muted small"><strong>Nota:</strong> cada fila es un ID de sesión en el servidor; el texto bajo la fecha es <em>cuándo fue la última petición</em> para ese ID (no indica si el usuario está deshabilitado). Duplicados con horas distintas solían ser filas viejas al rotar el ID de sesión; ahora se elimina la fila anterior automáticamente. Puede borrar restos antiguos con «Cerrar» o «Cerrar todas».</p>
                 <div class="d-flex flex-wrap gap-2 mb-3">
                     <button type="button" id="btn_close_all_sessions" class="btn btn-danger">
                         <i class="fa-solid fa-door-open me-1"></i> Cerrar todas las sesiones
@@ -634,9 +635,9 @@ $(document).ready(function() {
 
     function formatInactive(seconds) {
         var s = Number(seconds || 0);
-        if (s < 60) return 'Activo ahora';
-        if (s < 3600) return 'Inactivo hace ' + Math.floor(s / 60) + ' min';
-        return 'Inactivo hace ' + Math.floor(s / 3600) + ' h';
+        if (s < 60) return 'Última petición: hace menos de 1 min';
+        if (s < 3600) return 'Última petición hace ' + Math.floor(s / 60) + ' min';
+        return 'Última petición hace ' + Math.floor(s / 3600) + ' h';
     }
 
     function loadActiveSessions() {
