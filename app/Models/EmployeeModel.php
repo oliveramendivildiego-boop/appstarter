@@ -86,8 +86,10 @@ class EmployeeModel extends Model
 
         if ($row) {
             session()->set('person_id', $row->person_id);
+            session()->set('user_type', 'employee');
+            $agent = \Config\Services::request()->getUserAgent();
+            session()->set('login_user_agent', $agent ? $agent->getAgentString() : '');
             session()->remove('doctor_id');
-            session()->remove('user_type');
             return true;
         }
 
@@ -116,8 +118,10 @@ class EmployeeModel extends Model
 
         if ($row) {
             session()->set('person_id', $row->person_id);
+            session()->set('user_type', 'employee');
+            $agent = \Config\Services::request()->getUserAgent();
+            session()->set('login_user_agent', $agent ? $agent->getAgentString() : '');
             session()->remove('doctor_id');
-            session()->remove('user_type');
             return true;
         }
         return false;
@@ -164,6 +168,9 @@ class EmployeeModel extends Model
 
         if ($row) {
             session()->set('person_id', $row->person_id);
+            session()->set('user_type', 'employee');
+            $agent = \Config\Services::request()->getUserAgent();
+            session()->set('login_user_agent', $agent ? $agent->getAgentString() : '');
             return true;
         }
         return false;
@@ -182,51 +189,14 @@ class EmployeeModel extends Model
     }
 
     /**
-     * Cierra todas las sesiones abiertas del usuario (eliminando archivos de sesión)
+     * Cierra todas las sesiones abiertas del usuario.
      */
     public function logoutAllSessions(int $personId): bool
     {
-        $sessionPath = WRITEPATH . 'session';
-        if (!is_dir($sessionPath)) {
-            return false;
-        }
-
-        $sessionFiles = glob($sessionPath . '/ci_session_*');
-        if (!is_array($sessionFiles)) {
-            return false;
-        }
-
-        $deleted = 0;
-        $personIdStr = (string) $personId;
-        // Patrón para buscar person_id en datos serializados PHP
-        // Busca "person_id" seguido del valor serializador (ej: i:123; para enteros)
-        $pattern = 's:9:"person_id"[;:a-z]*[^0-9]i:' . $personId . '[;:]';
-        
-        foreach ($sessionFiles as $file) {
-            if (is_file($file)) {
-                $content = @file_get_contents($file);
-                if ($content === false) {
-                    continue;
-                }
-                
-                // Buscar de dos formas: patrón serializado directo o búsqueda general
-                $hasPersonId = false;
-                
-                // Intenta patrón más específico (person_id en array serializado)
-                if (preg_match('/"person_id";[a-z]+:' . $personId . '[;,}]|s:9:"person_id";i:' . $personId . ';/', $content)) {
-                    $hasPersonId = true;
-                } else if (strpos($content, 'person_id' . (string)$personId) !== false) {
-                    // Fallback: búsqueda simple
-                    $hasPersonId = true;
-                }
-                
-                if ($hasPersonId && @unlink($file)) {
-                    $deleted++;
-                }
-            }
-        }
-
-        return $deleted > 0;
+        $sessionTable = $this->db->prefixTable('ci_sessions');
+        $sql = "DELETE FROM {$sessionTable} WHERE data LIKE ?";
+        $this->db->query($sql, ['%person_id|i:' . $personId . ';%']);
+        return true;
     }
 
     public function isLoggedIn(): bool

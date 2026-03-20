@@ -315,8 +315,12 @@ class Config extends SecureArea
             ])->setStatusCode(401);
         }
 
-        $employeeModel = model(\App\Models\EmployeeModel::class);
-        $result = $employeeModel->logoutAllSessions($personId);
+        $db = \Config\Database::connect();
+        $sessionTable = $db->prefixTable('ci_sessions');
+        $result = (bool) $db->query(
+            "DELETE FROM {$sessionTable} WHERE data LIKE ?",
+            ['%person_id|i:' . $personId . ';%']
+        );
 
         \App\Models\AuditoriaModel::log('config', 'cerrar_todas_sesiones', (string) $personId);
 
@@ -324,6 +328,256 @@ class Config extends SecureArea
             'success' => $result,
             'message' => $result ? 'Todas las sesiones han sido cerradas' : 'No se encontraron sesiones para cerrar',
         ]);
+    }
+
+    /**
+     * Lista sesiones activas desde dom_ci_sessions y las asocia al usuario.
+     */
+    public function getActiveSessions(): ResponseInterface
+    {
+        $db = \Config\Database::connect();
+        $sessionsVersion = $this->calculateSessionsVersion($db);
+        $rows = $db->table('ci_sessions')
+            ->select('id, ip_address, timestamp, data')
+            ->orderBy('timestamp', 'DESC')
+            ->get()
+            ->getResultArray();
+
+        $sessions = [];
+        $now = time();
+        $currentSessionId = session_id();
+
+        foreach ($rows as $row) {
+            $personId = $this->extractPersonIdFromSessionData($row['data'] ?? '');
+            $doctorId = $this->extractDoctorIdFromSessionData($row['data'] ?? '');
+            $userType = $this->extractUserTypeFromSessionData($row['data'] ?? '', $personId, $doctorId);
+            $userAgent = $this->extractUserAgentFromSessionData($row['data'] ?? '');
+
+            if ($personId <= 0 && $doctorId <= 0) {
+                continue;
+            }
+
+            $user = null;
+            if ($userType === 'doctor') {
+                $user = $db->table('doctors')
+                    ->select('doctor_id, username, name, email')
+                    ->where('doctor_id', $doctorId)
+                    ->get()
+                    ->getRowArray();
+            } else {
+                $user = $db->table('employees e')
+                    ->select('e.person_id, e.username, p.first_name, p.last_name_fa, p.last_name_mom, p.email')
+                    ->join('people p', 'p.person_id = e.person_id', 'left')
+                    ->where('e.person_id', $personId)
+                    ->get()
+                    ->getRowArray();
+            }
+
+            $lastActivityTs = $this->normalizeSessionTimestamp($row['timestamp'] ?? null);
+            if (!$user) {
+                continue;
+            }
+
+            $fullName = $userType === 'doctor'
+                ? (string) ($user['name'] ?? '')
+                : trim(($user['first_name'] ?? '') . ' ' . ($user['last_name_fa'] ?? '') . ' ' . ($user['last_name_mom'] ?? ''));
+
+            $sessions[] = [
+                'session_id'      => (string) ($row['id'] ?? ''),
+                'person_id'       => (int) ($user['person_id'] ?? 0),
+                'doctor_id'       => (int) ($user['doctor_id'] ?? 0),
+                'user_type'       => $userType,
+                'username'        => (string) ($user['username'] ?? ''),
+                'full_name'       => $fullName,
+                'email'           => (string) ($user['email'] ?? ''),
+                'ip_address'      => (string) ($row['ip_address'] ?? ''),
+                'user_agent'      => $userAgent,
+                'last_activity'   => $lastActivityTs > 0 ? date('Y-m-d H:i:s', $lastActivityTs) : null,
+                'seconds_inactive'=> max(0, $now - $lastActivityTs),
+                'is_current'      => hash_equals((string) $currentSessionId, (string) ($row['id'] ?? '')),
+            ];
+        }
+
+        return $this->response->setJSON([
+            'success'  => true,
+            'count'    => count($sessions),
+            'version'  => $sessionsVersion,
+            'sessions' => $sessions,
+            'csrf_token' => csrf_hash(),
+            'csrf_name'  => csrf_token(),
+        ]);
+    }
+
+    /**
+     * Devuelve una versión/hash de sesiones para detectar cambios.
+     */
+    public function getSessionsVersion(): ResponseInterface
+    {
+        $db = \Config\Database::connect();
+        $version = $this->calculateSessionsVersion($db);
+
+        return $this->response->setJSON([
+            'success'    => true,
+            'version'    => $version,
+            'csrf_token' => csrf_hash(),
+            'csrf_name'  => csrf_token(),
+        ]);
+    }
+
+    /**
+     * Cierra una sesión específica por ID.
+     */
+    public function killSession(): ResponseInterface
+    {
+        $sessionId = trim((string) ($this->request->getPost('session_id') ?? ''));
+        if ($sessionId === '') {
+            return $this->response->setJSON([
+                'success' => false,
+                'message' => 'session_id es requerido',
+            ])->setStatusCode(400);
+        }
+
+        $db = \Config\Database::connect();
+        $deleted = $db->table('ci_sessions')->where('id', $sessionId)->delete();
+
+        return $this->response->setJSON([
+            'success'    => (bool) $deleted,
+            'message'    => $deleted ? 'Sesión cerrada correctamente' : 'No se pudo cerrar la sesión',
+            'csrf_token' => csrf_hash(),
+            'csrf_name'  => csrf_token(),
+        ]);
+    }
+
+    /**
+     * Endpoint para depurar sesiones activas.
+     */
+    public function debugSessions(): ResponseInterface
+    {
+        return $this->getActiveSessions();
+    }
+
+    private function extractPersonIdFromSessionData(string $rawData): int
+    {
+        return $this->extractSessionIntValue($rawData, 'person_id');
+    }
+
+    private function extractDoctorIdFromSessionData(string $rawData): int
+    {
+        return $this->extractSessionIntValue($rawData, 'doctor_id');
+    }
+
+    private function extractUserTypeFromSessionData(string $rawData, int $personId, int $doctorId): string
+    {
+        $rawType = strtolower(trim((string) $this->extractSessionStringValue($rawData, 'user_type')));
+        if ($rawType !== '') {
+            if ($rawType === 'doctor') {
+                return 'doctor';
+            }
+            if ($rawType === 'employee') {
+                return 'employee';
+            }
+        }
+
+        if ($doctorId > 0) {
+            return 'doctor';
+        }
+        if ($personId > 0) {
+            return 'employee';
+        }
+
+        return 'unknown';
+    }
+
+    private function extractUserAgentFromSessionData(string $rawData): string
+    {
+        return $this->extractSessionStringValue($rawData, 'login_user_agent');
+    }
+
+    private function extractSessionIntValue(string $rawData, string $key): int
+    {
+        foreach ($this->sessionPayloadCandidates($rawData) as $payload) {
+            if (preg_match('/' . preg_quote($key, '/') . '\|i:(\d+);/', $payload, $matches) === 1) {
+                return (int) ($matches[1] ?? 0);
+            }
+            if (preg_match('/' . preg_quote($key, '/') . '\|s:\d+:"(\d+)";/', $payload, $matches) === 1) {
+                return (int) ($matches[1] ?? 0);
+            }
+        }
+
+        return 0;
+    }
+
+    private function extractSessionStringValue(string $rawData, string $key): string
+    {
+        foreach ($this->sessionPayloadCandidates($rawData) as $payload) {
+            if (preg_match('/' . preg_quote($key, '/') . '\|s:\d+:"([^"]*)";/', $payload, $matches) === 1) {
+                return (string) ($matches[1] ?? '');
+            }
+        }
+
+        return '';
+    }
+
+    private function sessionPayloadCandidates(string $rawData): array
+    {
+        if ($rawData === '') {
+            return [];
+        }
+
+        $candidates = [$rawData];
+        $trimmed = trim($rawData);
+
+        if ($trimmed !== '') {
+            $decoded = base64_decode($trimmed, true);
+            if ($decoded !== false && $decoded !== '') {
+                $candidates[] = $decoded;
+            }
+        }
+
+        return $candidates;
+    }
+
+    private function normalizeSessionTimestamp($rawTimestamp): int
+    {
+        if ($rawTimestamp === null || $rawTimestamp === '') {
+            return 0;
+        }
+
+        if (is_numeric($rawTimestamp)) {
+            $ts = (int) $rawTimestamp;
+            // Si viene en milisegundos (13 dígitos), convertir a segundos.
+            if ($ts > 2_000_000_000) {
+                $ts = (int) floor($ts / 1000);
+            }
+            return $ts > 0 ? $ts : 0;
+        }
+
+        $parsed = strtotime((string) $rawTimestamp);
+        return $parsed !== false ? (int) $parsed : 0;
+    }
+
+    private function calculateSessionsVersion($db): string
+    {
+        $rows = $db->table('ci_sessions')
+            ->select('id, data')
+            ->get()
+            ->getResultArray();
+
+        $tokens = [];
+        foreach ($rows as $row) {
+            $rawData = (string) ($row['data'] ?? '');
+            $personId = $this->extractPersonIdFromSessionData($rawData);
+            $doctorId = $this->extractDoctorIdFromSessionData($rawData);
+            if ($personId <= 0 && $doctorId <= 0) {
+                continue;
+            }
+            $userType = $this->extractUserTypeFromSessionData($rawData, $personId, $doctorId);
+            $userId = $userType === 'doctor' ? $doctorId : $personId;
+            $tokens[] = (string) ($row['id'] ?? '') . ':' . $userType . ':' . (string) $userId;
+        }
+
+        sort($tokens, SORT_STRING);
+        return sha1(implode('|', $tokens));
     }
 }
 

@@ -7,9 +7,6 @@
 (function() {
     'use strict';
     
-    // DESACTIVADO TEMPORALMENTE - COMENTAR PARA REACTIVAR
-    return;
-    
     // Solo ejecutar en páginas que requieren login (no en login.php)
     if (window.location.pathname.includes('/login') || 
         window.location.pathname.includes('/google_login') ||
@@ -52,8 +49,9 @@
     function checkUserActive() {
         if (isChecking) return; // Evitar múltiples requests simultáneos
         isChecking = true;
+        lastCheckTime = Date.now();
         
-        fetch(window.location.origin + '/status-check/checkEmployeeActive', {
+        fetch(window.location.origin + '/status/checkEmployeeActive', {
             method: 'GET',
             headers: {
                 'X-Requested-With': 'XMLHttpRequest'

@@ -158,6 +158,8 @@ class DoctorModel extends Model
         if ($row && !empty($row->username)) {
             session()->set('doctor_id', $row->doctor_id);
             session()->set('user_type', 'doctor');
+            $agent = \Config\Services::request()->getUserAgent();
+            session()->set('login_user_agent', $agent ? $agent->getAgentString() : '');
             session()->remove('person_id');
             return true;
         }
@@ -184,6 +186,8 @@ class DoctorModel extends Model
         if ($row) {
             session()->set('doctor_id', $row->doctor_id);
             session()->set('user_type', 'doctor');
+            $agent = \Config\Services::request()->getUserAgent();
+            session()->set('login_user_agent', $agent ? $agent->getAgentString() : '');
             session()->remove('person_id');
             return true;
         }

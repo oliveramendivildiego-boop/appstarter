@@ -35,6 +35,9 @@
     <li class="nav-item" role="presentation">
         <button class="nav-link <?= $activeTab === 'sin' ? 'active' : '' ?>" id="tab-sin-btn" data-bs-toggle="tab" data-bs-target="#tab-sin" type="button" role="tab">Facturación SIN</button>
     </li>
+    <li class="nav-item" role="presentation">
+        <button class="nav-link <?= $activeTab === 'sesiones' ? 'active' : '' ?>" id="tab-sesiones-btn" data-bs-toggle="tab" data-bs-target="#tab-sesiones" type="button" role="tab">Sesiones activas</button>
+    </li>
 </ul>
 
 <div class="tab-content" id="configTabsContent">
@@ -151,20 +154,49 @@
             </div>
         </div>
         
-        <hr class="my-4">
-        
-        <div class="mb-3">
-            <h6 class="mb-3"><i class="fa-solid fa-lock me-2"></i>Seguridad de sesión</h6>
-            <p class="text-muted small">Cierre todas las sesiones abiertas en otros dispositivos. Permanecerá conectado en este dispositivo.</p>
-            <button type="button" id="btn_close_all_sessions" class="btn btn-danger">
-                <i class="fa-solid fa-door-open me-1"></i> Cerrar todas las sesiones
-            </button>
-        </div>
-        
-        <hr class="my-4">
-        
         <button type="submit" id="config_save_btn" name="config_save_btn" class="btn btn-primary"><?= lang('Config.config_save_btn') ?></button>
         <?= form_close() ?>
+            </div>
+        </div>
+    </div>
+
+    <!-- Pestaña: Sesiones activas -->
+    <div class="tab-pane fade <?= $activeTab === 'sesiones' ? 'show active' : '' ?>" id="tab-sesiones" role="tabpanel">
+        <div class="card shadow-sm">
+            <div class="card-header bg-dark text-white">
+                <h5 class="mb-0"><i class="fa-solid fa-user-shield me-2"></i>Sesiones activas</h5>
+            </div>
+            <div class="card-body">
+                <p class="text-muted small">Administre sesiones abiertas en otros dispositivos. Su sesión actual no se puede cerrar desde aquí.</p>
+                <div class="d-flex flex-wrap gap-2 mb-3">
+                    <button type="button" id="btn_close_all_sessions" class="btn btn-danger">
+                        <i class="fa-solid fa-door-open me-1"></i> Cerrar todas las sesiones
+                    </button>
+                    <button type="button" id="btn_refresh_sessions" class="btn btn-outline-primary">
+                        <i class="fa-solid fa-rotate me-1"></i> Actualizar sesiones activas
+                    </button>
+                </div>
+                <div class="table-responsive">
+                    <table class="table table-sm table-bordered align-middle" id="active_sessions_table">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Tipo</th>
+                                <th>Usuario</th>
+                                <th>Nombre</th>
+                                <th>Dispositivo/Navegador</th>
+                                <th>IP</th>
+                                <th>Última actividad</th>
+                                <th>Estado</th>
+                                <th class="text-center" style="width: 150px;">Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td colspan="8" class="text-muted text-center">Cargando sesiones...</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
             </div>
         </div>
     </div>
@@ -587,6 +619,193 @@ $(document).ready(function() {
 
     // Cerrar todas las sesiones
     var btnCloseAllSessions = document.getElementById('btn_close_all_sessions');
+    var btnRefreshSessions = document.getElementById('btn_refresh_sessions');
+    var sessionsTableBody = document.querySelector('#active_sessions_table tbody');
+    var sessionsTabBtn = document.getElementById('tab-sesiones-btn');
+    var sessionsVersionCheckTimer = null;
+    var sessionsVersionCheckMs = 2000;
+    var lastSessionsVersion = null;
+
+    function escapeHtml(value) {
+        var div = document.createElement('div');
+        div.textContent = value == null ? '' : String(value);
+        return div.innerHTML;
+    }
+
+    function formatInactive(seconds) {
+        var s = Number(seconds || 0);
+        if (s < 60) return 'Activo ahora';
+        if (s < 3600) return 'Inactivo hace ' + Math.floor(s / 60) + ' min';
+        return 'Inactivo hace ' + Math.floor(s / 3600) + ' h';
+    }
+
+    function loadActiveSessions() {
+        if (!sessionsTableBody) return;
+        sessionsTableBody.innerHTML = '<tr><td colspan="8" class="text-muted text-center">Cargando sesiones...</td></tr>';
+
+        var fd = new FormData();
+        var csrfInput = document.querySelector('input[name="csrf_test_name"]') || document.querySelector('input[name*="csrf"]');
+        var csrfName = (csrfInput && csrfInput.name) ? csrfInput.name : (typeof window.CI_CSRF_TOKEN_NAME !== 'undefined' ? window.CI_CSRF_TOKEN_NAME : 'csrf_test_name');
+        var csrfVal = (csrfInput && csrfInput.value) ? csrfInput.value : (typeof window.CI_CSRF_TOKEN !== 'undefined' ? window.CI_CSRF_TOKEN : '');
+        if (csrfVal) fd.append(csrfName, csrfVal);
+        fetch('<?= site_url('config/getActiveSessions') ?>', {
+            method: 'POST',
+            body: fd,
+            headers: { 'X-Requested-With': 'XMLHttpRequest', 'X-CSRF-TOKEN': csrfVal }
+        }).then(function(r) { return r.json(); }).then(function(response) {
+            if (!response.success || !Array.isArray(response.sessions)) {
+                sessionsTableBody.innerHTML = '<tr><td colspan="8" class="text-danger text-center">No se pudo cargar sesiones activas</td></tr>';
+                return;
+            }
+            if (response.version) {
+                lastSessionsVersion = String(response.version);
+            }
+
+            if (response.sessions.length === 0) {
+                sessionsTableBody.innerHTML = '<tr><td colspan="8" class="text-muted text-center">No hay sesiones activas</td></tr>';
+                return;
+            }
+
+            var rowsHtml = response.sessions.map(function(s) {
+                var typeLabel = s.user_type === 'doctor' ? '<span class="badge bg-info text-dark">Doctor</span>' : '<span class="badge bg-primary">Empleado</span>';
+                var currentBadge = s.is_current ? '<span class="badge bg-success">Esta sesión</span>' : '<span class="badge bg-secondary">Activa</span>';
+                var btnKill = s.is_current
+                    ? '<button type="button" class="btn btn-sm btn-outline-secondary" disabled>Actual</button>'
+                    : '<button type="button" class="btn btn-sm btn-outline-danger btn-kill-session" data-session-id="' + escapeHtml(s.session_id) + '"><i class="fa-solid fa-power-off me-1"></i> Cerrar</button>';
+                return '<tr>'
+                    + '<td>' + typeLabel + '</td>'
+                    + '<td>' + escapeHtml(s.username || '') + '</td>'
+                    + '<td>' + escapeHtml(s.full_name || '') + '</td>'
+                    + '<td><small>' + escapeHtml(s.user_agent || 'No disponible') + '</small></td>'
+                    + '<td>' + escapeHtml(s.ip_address || '') + '</td>'
+                    + '<td>' + escapeHtml(s.last_activity || '-') + '<br><small class="text-muted">' + escapeHtml(formatInactive(s.seconds_inactive)) + '</small></td>'
+                    + '<td>' + currentBadge + '</td>'
+                    + '<td class="text-center">' + btnKill + '</td>'
+                    + '</tr>';
+            }).join('');
+
+            sessionsTableBody.innerHTML = rowsHtml;
+        }).catch(function() {
+            sessionsTableBody.innerHTML = '<tr><td colspan="8" class="text-danger text-center">Error al conectar con el servidor</td></tr>';
+        });
+    }
+
+    function isSessionsTabActive() {
+        return !!(sessionsTabBtn && sessionsTabBtn.classList.contains('active'));
+    }
+
+    function checkSessionsVersion() {
+        if (!isSessionsTabActive()) return;
+        if (document.visibilityState && document.visibilityState !== 'visible') return;
+
+        var fd = new FormData();
+        var csrfInput = document.querySelector('input[name="csrf_test_name"]') || document.querySelector('input[name*="csrf"]');
+        var csrfName = (csrfInput && csrfInput.name) ? csrfInput.name : (typeof window.CI_CSRF_TOKEN_NAME !== 'undefined' ? window.CI_CSRF_TOKEN_NAME : 'csrf_test_name');
+        var csrfVal = (csrfInput && csrfInput.value) ? csrfInput.value : (typeof window.CI_CSRF_TOKEN !== 'undefined' ? window.CI_CSRF_TOKEN : '');
+        if (csrfVal) fd.append(csrfName, csrfVal);
+
+        fetch('<?= site_url('config/getSessionsVersion') ?>', {
+            method: 'POST',
+            body: fd,
+            headers: { 'X-Requested-With': 'XMLHttpRequest', 'X-CSRF-TOKEN': csrfVal }
+        }).then(function(r) { return r.json(); }).then(function(response) {
+            if (!response || !response.success || !response.version) return;
+            var currentVersion = String(response.version);
+            if (lastSessionsVersion === null) {
+                lastSessionsVersion = currentVersion;
+                return;
+            }
+            if (currentVersion !== lastSessionsVersion) {
+                loadActiveSessions();
+            }
+        }).catch(function() {
+            // Silencioso: en el próximo ciclo vuelve a intentar.
+        });
+    }
+
+    function startSessionsVersionWatcher() {
+        if (sessionsVersionCheckTimer) return;
+        sessionsVersionCheckTimer = setInterval(function() {
+            if (!isSessionsTabActive()) return;
+            if (document.visibilityState && document.visibilityState !== 'visible') return;
+            checkSessionsVersion();
+        }, sessionsVersionCheckMs);
+    }
+
+    function stopSessionsVersionWatcher() {
+        if (!sessionsVersionCheckTimer) return;
+        clearInterval(sessionsVersionCheckTimer);
+        sessionsVersionCheckTimer = null;
+    }
+
+    function killSessionById(sessionId) {
+        var fd = new FormData();
+        fd.append('session_id', sessionId);
+        var csrfInput = document.querySelector('input[name="csrf_test_name"]') || document.querySelector('input[name*="csrf"]');
+        var csrfName = (csrfInput && csrfInput.name) ? csrfInput.name : (typeof window.CI_CSRF_TOKEN_NAME !== 'undefined' ? window.CI_CSRF_TOKEN_NAME : 'csrf_test_name');
+        var csrfVal = (csrfInput && csrfInput.value) ? csrfInput.value : (typeof window.CI_CSRF_TOKEN !== 'undefined' ? window.CI_CSRF_TOKEN : '');
+        if (csrfVal) fd.append(csrfName, csrfVal);
+        fetch('<?= site_url('config/killSession') ?>', {
+            method: 'POST',
+            body: fd,
+            headers: { 'X-Requested-With': 'XMLHttpRequest', 'X-CSRF-TOKEN': csrfVal }
+        }).then(function(r) { return r.json(); }).then(function(response) {
+            if (typeof showToast === 'function') {
+                showToast(response.message || (response.success ? 'Sesión cerrada' : 'No se pudo cerrar la sesión'), response.success ? 'success' : 'error');
+            }
+            loadActiveSessions();
+        }).catch(function() {
+            if (typeof showToast === 'function') {
+                showToast('Error al cerrar sesión', 'error');
+            }
+        });
+    }
+
+    if (btnRefreshSessions) {
+        btnRefreshSessions.addEventListener('click', loadActiveSessions);
+    }
+
+    if (sessionsTableBody) {
+        sessionsTableBody.addEventListener('click', function(ev) {
+            var target = ev.target.closest('.btn-kill-session');
+            if (!target) return;
+            var sid = target.getAttribute('data-session-id') || '';
+            if (!sid) return;
+            if (!confirm('¿Cerrar esta sesión?')) return;
+            killSessionById(sid);
+        });
+    }
+
+    if (sessionsTabBtn) {
+        sessionsTabBtn.addEventListener('shown.bs.tab', function() {
+            loadActiveSessions();
+            startSessionsVersionWatcher();
+        });
+    }
+
+    document.querySelectorAll('#configTabs button[data-bs-toggle="tab"]').forEach(function(btn) {
+        btn.addEventListener('shown.bs.tab', function(e) {
+            var target = e.target.getAttribute('data-bs-target') || '';
+            if (target === '#tab-sesiones') {
+                startSessionsVersionWatcher();
+            } else {
+                stopSessionsVersionWatcher();
+            }
+        });
+    });
+
+    document.addEventListener('visibilitychange', function() {
+        if (document.visibilityState === 'visible' && isSessionsTabActive()) {
+            loadActiveSessions();
+            startSessionsVersionWatcher();
+        }
+    });
+
+    if (isSessionsTabActive()) {
+        loadActiveSessions();
+        startSessionsVersionWatcher();
+    }
+
     if (btnCloseAllSessions) {
         btnCloseAllSessions.addEventListener('click', function() {
             btnCloseAllSessions.disabled = true;
@@ -614,6 +833,7 @@ $(document).ready(function() {
                     if (typeof showToast === 'function') {
                         showToast(response.message || 'Todas las sesiones han sido cerradas', 'success');
                     }
+                    loadActiveSessions();
                 } else {
                     if (typeof showToast === 'function') {
                         showToast(response.message || 'Error al cerrar las sesiones', 'error');
