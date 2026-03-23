@@ -1,12 +1,22 @@
 <?php
 helper('layout');
 $layoutConfig = layout_config();
-$companyName = $layoutConfig['company'] ?? 'Laboratorio';
-$logoPath = $layoutConfig['logo'] ?? 'images/logo-john.png';
-$showLogoInHeader = $layoutConfig['show_logo'] ?? false;
-$themeColor = $layoutConfig['theme_color'] ?? '#6366f1';
-$themeHover = $layoutConfig['theme_hover'] ?? '#4f46e5';
-$themeActive = $layoutConfig['theme_active'] ?? $themeHover;
+$companyName = (isset($layoutConfig['company']) && $layoutConfig['company'] !== null && $layoutConfig['company'] !== '')
+    ? $layoutConfig['company']
+    : 'Laboratorio';
+$logoPath = (isset($layoutConfig['logo']) && $layoutConfig['logo'] !== null && $layoutConfig['logo'] !== '')
+    ? $layoutConfig['logo']
+    : 'images/logo-john.png';
+$showLogoInHeader = !empty($layoutConfig['show_logo']);
+$themeColor = (isset($layoutConfig['theme_color']) && $layoutConfig['theme_color'] !== null && $layoutConfig['theme_color'] !== '')
+    ? $layoutConfig['theme_color']
+    : '#6366f1';
+$themeHover = (isset($layoutConfig['theme_hover']) && $layoutConfig['theme_hover'] !== null && $layoutConfig['theme_hover'] !== '')
+    ? $layoutConfig['theme_hover']
+    : '#4f46e5';
+$themeActive = (isset($layoutConfig['theme_active']) && $layoutConfig['theme_active'] !== null && $layoutConfig['theme_active'] !== '')
+    ? $layoutConfig['theme_active']
+    : $themeHover;
 
 $pageTitle = $this->renderSection('title');
 ?>
@@ -39,6 +49,12 @@ $pageTitle = $this->renderSection('title');
 </head>
 <body class="ynex-theme doctor-portal">
 <div id="toast-container" class="position-fixed top-0 end-0 p-3"></div>
+
+<?php if (!empty($showLogoInHeader) && $showLogoInHeader): ?>
+    <div class="site-watermark" aria-hidden="true">
+        <img src="<?= base_url($logoPath) ?>" alt="" />
+    </div>
+<?php endif; ?>
 
 <header class="ynex-navbar navbar navbar-expand-lg sticky-top">
     <div class="container-fluid">

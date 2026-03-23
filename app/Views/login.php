@@ -1,9 +1,13 @@
 <?php
 helper('layout');
 $layoutConfig = layout_config();
-$companyName = $layoutConfig['company'] ?? 'Laboratorio John';
-$logoPath = $layoutConfig['logo'] ?? 'images/logo-john.png';
-$showLogoInHeader = $layoutConfig['show_logo'] ?? false;
+$companyName = (isset($layoutConfig['company']) && $layoutConfig['company'] !== null && $layoutConfig['company'] !== '')
+    ? $layoutConfig['company']
+    : 'Laboratorio John';
+$logoPath = (isset($layoutConfig['logo']) && $layoutConfig['logo'] !== null && $layoutConfig['logo'] !== '')
+    ? $layoutConfig['logo']
+    : 'images/logo-john.png';
+$showLogoInHeader = !empty($layoutConfig['show_logo']);
 ?>
 <!DOCTYPE html>
 <html lang="es">
@@ -19,6 +23,34 @@ $showLogoInHeader = $layoutConfig['show_logo'] ?? false;
 <body class="login-modern">
     <div class="login-wrapper">
         <div class="login-card">
+            <?php if (!empty($showLogoInHeader)): ?>
+                <div class="site-watermark" aria-hidden="true">
+                    <img src="<?= base_url($logoPath) ?>" alt="" />
+                </div>
+                <style>
+                    .login-card { position: relative; overflow: hidden; }
+                    .login-card .site-watermark{
+                        position: absolute;
+                        top: 50%;
+                        left: 50%;
+                        transform: translate(-50%, -50%);
+                        z-index: 0;
+                        pointer-events: none;
+                        opacity: 0.06;
+                        width: 100%;
+                        text-align: center;
+                    }
+                    .login-card .site-watermark img{
+                        width: min(520px, 72%);
+                        height: auto;
+                        display: inline-block;
+                    }
+                    .login-card > *:not(.site-watermark){
+                        position: relative;
+                        z-index: 1;
+                    }
+                </style>
+            <?php endif; ?>
             <div class="login-logo">
                 <?php if ($showLogoInHeader): ?>
                 <img src="<?= base_url($logoPath) ?>" alt="<?= esc($companyName) ?>">
@@ -26,6 +58,10 @@ $showLogoInHeader = $layoutConfig['show_logo'] ?? false;
                 <h1><?= esc($companyName) ?></h1>
                 <?php endif; ?>
                 <p><?= lang('Login.login_welcome_message') ?></p>
+            </div>
+            <div id="login-loading-overlay" class="login-loading-overlay" aria-hidden="true">
+                <div class="login-spinner"></div>
+                <div class="login-loading-text">Procesando...</div>
             </div>
             <div class="login-error" role="alert" id="login-error" <?= empty($error) ? ' style="display:none"' : '' ?>>
                 <?php if (!empty($error)): ?><strong>⚠ <?= esc($error) ?></strong><?php endif; ?>
@@ -39,22 +75,27 @@ $showLogoInHeader = $layoutConfig['show_logo'] ?? false;
                     <label for="password" class="form-label"><?= lang('Login.login_password') ?></label>
                     <?= form_password(['name' => 'password', 'id' => 'password', 'class' => 'form-control', 'placeholder' => '••••••••', 'autocomplete' => 'current-password']) ?>
                 </div>
-                <button type="submit" name="loginButton" class="login-submit"><?= lang('Login.login_login') ?></button>
+                <button type="submit" name="loginButton" class="login-submit mb-3"><?= lang('Login.login_login') ?></button>
             <?= form_close() ?>
             <?php if (!empty($googleClientId ?? '')): ?>
-            <div class="text-center my-3">
-                <small class="text-muted"><?= lang('Login.login_or') ?></small>
-            </div>
             <div id="google_signin_button" class="d-flex justify-content-center mb-2"></div>
-            <p class="text-muted text-center small mb-3"><?= esc(lang('Login.login_google_hint')) ?></p>
+            <?php
+                $googleHint = trim((string) lang('Login.login_google_hint'));
+            ?>
+            <?php if ($googleHint !== ''): ?>
+                <p class="text-muted text-center small mb-3"><?= esc($googleHint) ?></p>
+            <?php endif; ?>
             <?php endif; ?>
             <script>
             document.getElementById('login_form').addEventListener('submit', function(e) {
                 e.preventDefault();
                 var form = this;
                 var btn = form.querySelector('button[type="submit"]');
+                var overlay = document.getElementById('login-loading-overlay');
+                var originalBtnText = btn.textContent;
                 btn.disabled = true;
                 btn.textContent = 'Conectando...';
+                if (overlay) overlay.classList.add('is-active');
                 fetch(form.action, {
                     method: 'POST',
                     body: new FormData(form),
@@ -62,18 +103,20 @@ $showLogoInHeader = $layoutConfig['show_logo'] ?? false;
                 })
                 .then(function(r) { return r.json(); })
                 .then(function(data) {
+                    if (overlay) overlay.classList.remove('is-active');
                     if (data.success) {
                         window.location.href = data.redirect || '<?= site_url('home') ?>';
                     } else {
                         document.getElementById('login-error').innerHTML = '<strong>⚠ ' + (data.message || '') + '</strong>';
                         document.getElementById('login-error').style.display = 'block';
                         btn.disabled = false;
-                        btn.textContent = '<?= lang('Login.login_login') ?>';
+                        btn.textContent = originalBtnText;
                     }
                 })
                 .catch(function() {
+                    if (overlay) overlay.classList.remove('is-active');
                     btn.disabled = false;
-                    btn.textContent = '<?= lang('Login.login_login') ?>';
+                    btn.textContent = originalBtnText;
                 });
             });
 
@@ -83,6 +126,8 @@ $showLogoInHeader = $layoutConfig['show_logo'] ?? false;
                 google.accounts.id.initialize({
                     client_id: '<?= esc($googleClientId ?? '') ?>',
                     callback: function(response) {
+                        var overlay = document.getElementById('login-loading-overlay');
+                        if (overlay) overlay.classList.add('is-active');
                         fetch('<?= site_url('login/google_login') ?>', {
                             method: 'POST',
                             headers: {
@@ -93,6 +138,7 @@ $showLogoInHeader = $layoutConfig['show_logo'] ?? false;
                         })
                         .then(function(r) { return r.json(); })
                         .then(function(data) {
+                            if (overlay) overlay.classList.remove('is-active');
                             if (data && data.success) {
                                 window.location.href = data.redirect || '<?= site_url('home') ?>';
                                 return;
@@ -101,6 +147,8 @@ $showLogoInHeader = $layoutConfig['show_logo'] ?? false;
                             document.getElementById('login-error').style.display = 'block';
                         })
                         .catch(function() {
+                            var overlay = document.getElementById('login-loading-overlay');
+                            if (overlay) overlay.classList.remove('is-active');
                             document.getElementById('login-error').innerHTML = '<strong>⚠ Error al iniciar con Google</strong>';
                             document.getElementById('login-error').style.display = 'block';
                         });

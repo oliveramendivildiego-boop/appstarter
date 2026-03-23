@@ -1,12 +1,27 @@
 <?php
 helper('layout');
 $layoutConfig = layout_config();
-$companyName = $company_name ?? ($layoutConfig['company'] ?? 'Laboratorio');
-$logoPath = $layoutConfig['logo'] ?? 'images/logo-john.png';
-$showLogoInHeader = $layoutConfig['show_logo'] ?? false;
-$themeColor = $layoutConfig['theme_color'] ?? '#FF7218';
-$themeHover = $layoutConfig['theme_hover'] ?? $themeColor;
-$themeActive = $layoutConfig['theme_active'] ?? $themeColor;
+$companyName = (isset($company_name) && $company_name !== null && $company_name !== '')
+    ? $company_name
+    : ((isset($layoutConfig['company']) && $layoutConfig['company'] !== null && $layoutConfig['company'] !== '')
+        ? $layoutConfig['company']
+        : 'Laboratorio');
+
+$logoPath = (isset($layoutConfig['logo']) && $layoutConfig['logo'] !== null && $layoutConfig['logo'] !== '')
+    ? $layoutConfig['logo']
+    : 'images/logo-john.png';
+
+$showLogoInHeader = !empty($layoutConfig['show_logo']);
+
+$themeColor = (isset($layoutConfig['theme_color']) && $layoutConfig['theme_color'] !== null && $layoutConfig['theme_color'] !== '')
+    ? $layoutConfig['theme_color']
+    : '#FF7218';
+$themeHover = (isset($layoutConfig['theme_hover']) && $layoutConfig['theme_hover'] !== null && $layoutConfig['theme_hover'] !== '')
+    ? $layoutConfig['theme_hover']
+    : $themeColor;
+$themeActive = (isset($layoutConfig['theme_active']) && $layoutConfig['theme_active'] !== null && $layoutConfig['theme_active'] !== '')
+    ? $layoutConfig['theme_active']
+    : $themeColor;
 
 $moduleCss = [
     'config'      => 'assets/css/config.css',
@@ -15,7 +30,13 @@ $moduleCss = [
     'registers'   => 'assets/css/registers.css',
     'toquotes'    => 'assets/css/toquotes.css',
 ];
-$currentMod = $current_module ?? $controller_name ?? $module_id ?? 'home';
+$currentMod = (isset($current_module) && $current_module)
+    ? $current_module
+    : ((isset($controller_name) && $controller_name)
+        ? $controller_name
+        : ((isset($module_id) && $module_id)
+            ? $module_id
+            : 'home'));
 $extraCss = isset($moduleCss[$currentMod]) ? $moduleCss[$currentMod] : null;
 $pageTitle = $this->renderSection('title');
 ?>
@@ -72,6 +93,14 @@ $pageTitle = $this->renderSection('title');
 </head>
 <body class="ynex-theme">
 <div id="toast-container" class="position-fixed top-0 end-0 p-3"></div>
+
+<?php if (!empty($showLogoInHeader)): ?>
+    <?php if ($showLogoInHeader): ?>
+        <div class="site-watermark" aria-hidden="true">
+            <img src="<?= base_url($logoPath) ?>" alt="" />
+        </div>
+    <?php endif; ?>
+<?php endif; ?>
 
 <header class="navbar navbar-dark navbar-theme sticky-top flex-md-nowrap p-0 shadow">
     <button class="navbar-toggler d-md-none ms-2 me-2 collapsed" type="button" data-bs-toggle="offcanvas" data-bs-target="#sidebarMenu" aria-controls="sidebarMenu" aria-expanded="false" aria-label="Toggle navigation">

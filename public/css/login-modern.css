@@ -42,6 +42,8 @@ body.login-modern {
     border-radius: 16px;
     box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.4);
     padding: 40px;
+    position: relative;
+    overflow: hidden;
 }
 
 .login-logo {
@@ -64,6 +66,42 @@ body.login-modern {
 .login-logo p {
     margin: 4px 0 0;
     font-size: 0.9rem;
+    color: var(--login-text-muted);
+}
+
+/* Overlay de carga durante el login */
+.login-loading-overlay {
+    position: absolute;
+    inset: 0;
+    background: rgba(255, 255, 255, 0.75);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    flex-direction: column;
+    z-index: 20;
+}
+
+.login-loading-overlay.is-active {
+    display: flex;
+}
+
+.login-spinner {
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    border: 4px solid rgba(37, 99, 235, 0.18);
+    border-top-color: var(--login-primary);
+    animation: loginSpin 0.8s linear infinite;
+}
+
+@keyframes loginSpin {
+    to { transform: rotate(360deg); }
+}
+
+.login-loading-text {
+    margin-top: 12px;
+    font-size: 0.9rem;
+    font-weight: 600;
     color: var(--login-text-muted);
 }
 
