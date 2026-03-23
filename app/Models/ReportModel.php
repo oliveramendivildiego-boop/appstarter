@@ -263,6 +263,107 @@ class ReportModel extends Model
     }
 
     /**
+     * Resumen de pagos por tipo (Efectivo/QR/Transferencia/Pendiente).
+     */
+    public function getResumenPagosPorTipo(string $startDate, string $endDate): array
+    {
+        $r  = $this->db->prefixTable('registro');
+        $pa = $this->db->prefixTable('pago');
+
+        return $this->db->table('registro')
+            ->select("{$pa}.tipopago,
+                COUNT(*) as cantidad,
+                SUM(CAST({$pa}.total AS DECIMAL(12,2))) as total_facturado,
+                SUM(CAST({$pa}.monto_pagar AS DECIMAL(12,2))) as total_cobrado,
+                SUM(CAST({$pa}.saldo AS DECIMAL(12,2))) as total_pendiente")
+            ->join('pago', "{$r}.registro_id = {$pa}.registro_id")
+            ->where("DATE({$r}.ingreso) >=", $startDate)
+            ->where("DATE({$r}.ingreso) <=", $endDate)
+            ->groupBy("{$pa}.tipopago")
+            ->orderBy("{$pa}.tipopago", 'ASC')
+            ->get()
+            ->getResultArray();
+    }
+
+    /**
+     * Detalle de pagos ya cobrados (saldo <= 0).
+     */
+    public function getPagosPagadosDetalle(string $startDate, string $endDate): array
+    {
+        $r  = $this->db->prefixTable('registro');
+        $p  = $this->db->prefixTable('people');
+        $d  = $this->db->prefixTable('doctors');
+        $pa = $this->db->prefixTable('pago');
+
+        return $this->db->table('registro')
+            ->select("{$r}.registro_id, {$r}.ingreso,
+                CONCAT({$p}.first_name, ' ', {$p}.last_name_fa, ' ', {$p}.last_name_mom) AS paciente,
+                {$d}.name as doctor,
+                CAST({$pa}.total AS DECIMAL(12,2)) as total,
+                CAST({$pa}.monto_pagar AS DECIMAL(12,2)) as monto_pagado,
+                CAST({$pa}.saldo AS DECIMAL(12,2)) as saldo,
+                {$pa}.tipopago")
+            ->join('people', "{$p}.person_id = {$r}.person_id")
+            ->join('doctors', "{$d}.doctor_id = {$r}.doctor_id")
+            ->join('pago', "{$r}.registro_id = {$pa}.registro_id")
+            ->where("DATE({$r}.ingreso) >=", $startDate)
+            ->where("DATE({$r}.ingreso) <=", $endDate)
+            ->where("CAST({$pa}.saldo AS DECIMAL(12,2)) <= 0")
+            ->orderBy("{$r}.ingreso", 'DESC')
+            ->get()
+            ->getResultArray();
+    }
+
+    /**
+     * Resumen diario de pagos.
+     */
+    public function getResumenPagosPorDia(string $startDate, string $endDate): array
+    {
+        $r  = $this->db->prefixTable('registro');
+        $pa = $this->db->prefixTable('pago');
+
+        return $this->db->table('registro')
+            ->select("DATE({$r}.ingreso) as fecha,
+                COUNT(*) as cantidad,
+                SUM(CAST({$pa}.total AS DECIMAL(12,2))) as total_facturado,
+                SUM(CAST({$pa}.monto_pagar AS DECIMAL(12,2))) as total_cobrado,
+                SUM(CAST({$pa}.saldo AS DECIMAL(12,2))) as total_pendiente")
+            ->join('pago', "{$r}.registro_id = {$pa}.registro_id")
+            ->where("DATE({$r}.ingreso) >=", $startDate)
+            ->where("DATE({$r}.ingreso) <=", $endDate)
+            ->groupBy("DATE({$r}.ingreso)")
+            ->orderBy('fecha', 'ASC')
+            ->get()
+            ->getResultArray();
+    }
+
+    /**
+     * Resumen por doctor (facturado/cobrado/pendiente) en rango de fechas.
+     */
+    public function getResumenPagosPorDoctor(string $startDate, string $endDate): array
+    {
+        $r  = $this->db->prefixTable('registro');
+        $d  = $this->db->prefixTable('doctors');
+        $pa = $this->db->prefixTable('pago');
+
+        return $this->db->table('registro')
+            ->select("{$d}.doctor_id,
+                {$d}.name as doctor,
+                COUNT(*) as cantidad,
+                SUM(CAST({$pa}.total AS DECIMAL(12,2))) as total_facturado,
+                SUM(CAST({$pa}.monto_pagar AS DECIMAL(12,2))) as total_cobrado,
+                SUM(CAST({$pa}.saldo AS DECIMAL(12,2))) as total_pendiente")
+            ->join('doctors', "{$d}.doctor_id = {$r}.doctor_id")
+            ->join('pago', "{$r}.registro_id = {$pa}.registro_id")
+            ->where("DATE({$r}.ingreso) >=", $startDate)
+            ->where("DATE({$r}.ingreso) <=", $endDate)
+            ->groupBy("{$d}.doctor_id, {$d}.name")
+            ->orderBy('total_facturado', 'DESC')
+            ->get()
+            ->getResultArray();
+    }
+
+    /**
      * Reporte de pruebas realizadas por fecha (registros con pruebas, agrupado por fecha)
      */
     public function getPruebasPorFecha(string $startDate, string $endDate): array

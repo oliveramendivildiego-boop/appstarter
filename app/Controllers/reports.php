@@ -127,7 +127,11 @@ class Reports extends SecureArea
 
         $todos     = $this->reportModel->getReportePagos($startDate, $endDate);
         $pendientes = $this->reportModel->getPendientesPago($startDate, $endDate);
+        $pagosPagados = $this->reportModel->getPagosPagadosDetalle($startDate, $endDate);
         $totales   = $this->reportModel->getTotalesPagos($startDate, $endDate);
+        $resumenPagosPorTipo = $this->reportModel->getResumenPagosPorTipo($startDate, $endDate);
+        $resumenPagosPorDia = $this->reportModel->getResumenPagosPorDia($startDate, $endDate);
+        $resumenPagosPorDoctor = $this->reportModel->getResumenPagosPorDoctor($startDate, $endDate);
 
         $tipoPagoMap = ['1' => 'Efectivo', '2' => 'QR', '3' => 'Transferencia', '4' => 'Pendiente'];
 
@@ -137,8 +141,12 @@ class Reports extends SecureArea
             'subtitle'        => date('d/m/Y', strtotime($startDate)) . ' - ' . date('d/m/Y', strtotime($endDate)),
             'todos'           => $todos,
             'pendientes'      => $pendientes,
+            'pagosPagados'   => $pagosPagados,
             'totales'         => $totales,
             'tipoPagoMap'     => $tipoPagoMap,
+            'resumenPagosPorTipo' => $resumenPagosPorTipo,
+            'resumenPagosPorDia' => $resumenPagosPorDia,
+            'resumenPagosPorDoctor' => $resumenPagosPorDoctor,
             'startDate'       => $startDate,
             'endDate'         => $endDate,
             'allowed_modules' => $this->allowed_modules,
