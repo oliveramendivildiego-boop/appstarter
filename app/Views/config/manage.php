@@ -153,6 +153,14 @@
                 <?= form_label(lang('Config.config_print_after_sale'), 'print_after_sale', ['class' => 'form-check-label']) ?>
             </div>
         </div>
+        <div class="mb-3">
+            <input type="hidden" name="show_order_barcode" value="0">
+            <div class="form-check">
+                <?= form_checkbox('show_order_barcode', '1', (($config['show_order_barcode'] ?? '1') === '1'), 'id="show_order_barcode" class="form-check-input" autocomplete="off"') ?>
+                <?= form_label('Mostrar código de barras en orden registrada', 'show_order_barcode', ['class' => 'form-check-label']) ?>
+            </div>
+            <small class="text-muted">Si se desactiva, la orden se imprimirá sin código de barras.</small>
+        </div>
         
         <button type="submit" id="config_save_btn" name="config_save_btn" class="btn btn-primary"><?= lang('Config.config_save_btn') ?></button>
         <?= form_close() ?>

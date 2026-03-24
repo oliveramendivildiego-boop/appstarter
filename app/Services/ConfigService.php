@@ -83,7 +83,7 @@ class ConfigService
             'default_tax_rate', 'default_tax_1_name', 'default_tax_1_rate',
             'default_tax_2_name', 'default_tax_2_rate', 'return_policy',
             'print_after_sale', 'logo', 'theme_color', 'header_brand',
-            'decimales_sugerencia', 'dias_alerta_vencimiento',
+            'decimales_sugerencia', 'dias_alerta_vencimiento', 'show_order_barcode',
             'custom1_name', 'custom2_name', 'custom3_name', 'custom4_name', 'custom5_name',
             'custom6_name', 'custom7_name', 'custom8_name', 'custom9_name', 'custom10_name',
         ];
@@ -99,6 +99,9 @@ class ConfigService
         if (isset($batch['dias_alerta_vencimiento'])) {
             $val = (int) $batch['dias_alerta_vencimiento'];
             $batch['dias_alerta_vencimiento'] = (string) ($val > 0 ? max(1, min(365, $val)) : 40);
+        }
+        if (array_key_exists('show_order_barcode', $postData)) {
+            $batch['show_order_barcode'] = ($postData['show_order_barcode'] === '1') ? '1' : '0';
         }
 
         if ($logoFile && $logoFile->isValid() && !$logoFile->hasMoved()) {

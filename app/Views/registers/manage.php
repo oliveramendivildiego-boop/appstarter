@@ -1,5 +1,6 @@
 <?= $this->extend('layouts/main') ?>
-<?= $this->section('title') ?>Nuevo registro<?= $this->endSection() ?>
+<?php $pageTitle = !empty($edit_registro) ? 'Editar orden' : 'Nuevo registro'; ?>
+<?= $this->section('title') ?><?= esc($pageTitle) ?><?= $this->endSection() ?>
 <?= $this->section('content') ?>
 <?php
 $pruebasLookup = [];
@@ -15,6 +16,29 @@ foreach ($categories ?? [] as $cat) {
 }
 ?>
 <script>window.PRUEBAS_LOOKUP = <?= json_encode($pruebasLookup) ?>;</script>
+<?php
+$editPayload = null;
+if (!empty($edit_registro)) {
+    $editPayload = [
+        'registro_id' => (int)($edit_registro->registro_id ?? 0),
+        'person_id'   => (int)($edit_registro->person_id ?? 0),
+        'doctor_id'   => (int)($edit_registro->doctor_id ?? 0),
+        'paciente'    => trim((string)(($edit_registro->first_name ?? '') . ' ' . ($edit_registro->last_name_fa ?? ''))),
+        'doctor'      => trim((string)($edit_registro->doctor_name ?? '')),
+        'prioridad'   => (int)($edit_registro->prioridad ?? 0),
+        'pruebas'     => (string)($edit_registro->pruebas ?? ''),
+        'pago'        => [
+            'total_reco'  => $edit_pago->total_reco ?? '',
+            'total'       => $edit_pago->total ?? '',
+            'monto_pagar' => $edit_pago->monto_pagar ?? '',
+            'tipopago'    => $edit_pago->tipopago ?? '',
+            'saldo'       => $edit_pago->saldo ?? '',
+            'comentarios' => $edit_pago->comentarios ?? '',
+        ],
+    ];
+}
+?>
+<script>window.EDIT_REGISTRO = <?= json_encode($editPayload) ?>;</script>
 <?= view('partial/breadcrumb_nav', [
     'items' => [['label' => lang('Module.module_registers'), 'url' => site_url('registers')]],
     'right' => '<a href="' . site_url('registers/lista') . '" class="btn btn-outline-primary">Ver lista</a>' .
@@ -47,6 +71,7 @@ document.addEventListener('DOMContentLoaded', function() {
     var pruebaListaContainer = document.getElementById('pruebas_lista');
     var guardarBtn = document.getElementById('guardar');
     var pruebasSeleccionadas = []; // {id, name, padre, cost}
+    var editInfo = (typeof window.EDIT_REGISTRO !== 'undefined') ? window.EDIT_REGISTRO : null;
 
     function recalcular() {
         var totalCost = 0;
@@ -183,7 +208,8 @@ document.addEventListener('DOMContentLoaded', function() {
             }
             var csrf = (typeof CI_CSRF_TOKEN !== 'undefined' && typeof CI_CSRF_TOKEN_NAME !== 'undefined')
                 ? '&' + CI_CSRF_TOKEN_NAME + '=' + encodeURIComponent(CI_CSRF_TOKEN) : '';
-            fetch('<?= site_url('registers/save') ?>', {
+            var urlGuardar = editInfo && editInfo.registro_id ? ('<?= site_url('registers/update') ?>/' + editInfo.registro_id) : '<?= site_url('registers/save') ?>';
+            fetch(urlGuardar, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'X-Requested-With': 'XMLHttpRequest' },
                 body: 'registro[person_id]=' + encodeURIComponent(registroData.person_id) +
@@ -211,6 +237,55 @@ document.addEventListener('DOMContentLoaded', function() {
                 if (errDiv) { errDiv.textContent = 'Error en la petición.'; errDiv.className = 'alert alert-danger'; errDiv.style.display = 'block'; }
             });
         });
+    }
+
+    // Prefill al editar orden
+    if (editInfo && editInfo.registro_id) {
+        try {
+            var personIdEl = document.getElementById('person_id');
+            var doctorIdEl = document.getElementById('doctor_id');
+            var pacienteEl = document.getElementById('paciente');
+            var doctorEl = document.getElementById('doctor');
+            var prioridadEl = document.getElementById('prioridad');
+            if (personIdEl) personIdEl.value = String(editInfo.person_id || '');
+            if (doctorIdEl) doctorIdEl.value = String(editInfo.doctor_id || '');
+            if (pacienteEl) pacienteEl.value = String(editInfo.paciente || '');
+            if (doctorEl) doctorEl.value = String(editInfo.doctor || '');
+            if (prioridadEl) prioridadEl.value = String(editInfo.prioridad || '0');
+
+            // Pago
+            var p = editInfo.pago || {};
+            var totalEl = document.getElementById('total');
+            var totalRecoEl = document.getElementById('total_reco');
+            var montoEl = document.getElementById('monto_pagar');
+            var tipopagoEl = document.getElementById('tipopago');
+            var saldoEl = document.getElementById('saldo');
+            var comentariosEl = document.getElementById('comentarios');
+            if (tipopagoEl) tipopagoEl.value = String(p.tipopago || '');
+            if (montoEl) montoEl.value = String(p.monto_pagar ?? '');
+            if (comentariosEl) comentariosEl.value = String(p.comentarios ?? '');
+            if (totalEl) totalEl.value = String(p.total ?? '');
+            if (saldoEl) saldoEl.value = String(p.saldo ?? '');
+
+            // Pruebas
+            var pruebasStr = String(editInfo.pruebas || '').trim();
+            if (pruebasStr) {
+                pruebasStr.split(',').map(function(x) { return String(parseInt(x, 10)); })
+                    .filter(function(x) { return x !== 'NaN'; })
+                    .forEach(function(id) {
+                        var info = (window.PRUEBAS_LOOKUP || {})[id];
+                        if (info) {
+                            agregarPrueba({ value: info.name, padre: info.padre, data: id, cost: info.cost });
+                        }
+                    });
+            }
+
+            // total_reco se recalcula por pruebas (readonly), pero si viene algo y no hay lookup completo, lo mostramos.
+            if (totalRecoEl && (totalRecoEl.value === '' || totalRecoEl.value === '0.00')) {
+                totalRecoEl.value = String(p.total_reco ?? totalRecoEl.value);
+            }
+            renderPruebasLista();
+        } catch (e) {}
     }
 
     // Perfil rápido: agregar pruebas del perfil a la lista

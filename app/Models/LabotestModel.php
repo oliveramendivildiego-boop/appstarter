@@ -119,6 +119,7 @@ class LabotestModel extends Model
                 'name'              => '',
                 'order'             => 0,
                 'compleja'          => 0,
+                'mostrar_valores'   => 0,
             ];
         }
         $row = $this->db->table('prianacategoria')
@@ -126,7 +127,7 @@ class LabotestModel extends Model
             ->where('(deleted = 0 OR deleted IS NULL)')
             ->get()
             ->getRow();
-        return $row ?? (object) ['prianacategoria_id' => null, 'anacategoria_id' => $anacategoriaId, 'name' => '', 'order' => 0, 'compleja' => 0];
+        return $row ?? (object) ['prianacategoria_id' => null, 'anacategoria_id' => $anacategoriaId, 'name' => '', 'order' => 0, 'compleja' => 0, 'mostrar_valores' => 0];
     }
 
     public function existsCategory(int $id): bool
@@ -712,6 +713,9 @@ class LabotestModel extends Model
             'compleja'       => (int) ($data['compleja'] ?? 0),
             'deleted'        => 0,
         ];
+        if ($this->hasColumn('prianacategoria', 'mostrar_valores')) {
+            $save['mostrar_valores'] = (int) ($data['mostrar_valores'] ?? 0);
+        }
         if ($id && $this->existsSub((int) $id)) {
             if (isset($data['cost'])) {
                 $save['cost']      = (int) ($data['cost'] ?? 0);

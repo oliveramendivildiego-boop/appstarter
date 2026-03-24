@@ -121,6 +121,23 @@ class RegisterService
     }
 
     /**
+     * Parsea "pruebas" del registro (ids separados por coma o contador_X).
+     * @return int[]
+     */
+    protected function extractPrianacategoriaIdsFromRegistroPruebas(string $pruebas): array
+    {
+        $parts = explode(',', $pruebas);
+        $ids = [];
+        foreach ($parts as $p) {
+            $p = trim($p);
+            if ($p === '') continue;
+            $id = preg_match('/contador_(\d+)/', $p, $m) ? (int) $m[1] : (int) $p;
+            if ($id > 0) $ids[] = $id;
+        }
+        return array_values(array_unique($ids));
+    }
+
+    /**
      * Determina el tipo de paciente según edad y género (para rangos de referencia).
      * 0=Niños, 1=Masculino, 2=Femenino, 3=Todos, 4=Recién nacido, 5=Lactante
      */
@@ -226,6 +243,156 @@ class RegisterService
         return $grupos;
     }
 
+    /**
+     * Cuenta cuántos resultados no vacíos se ingresaron por prianacategoria.
+     * @return array<int,int> [prianacategoria_id => cantidad]
+     */
+    protected function countEnteredValuesByPrianacategoria(array $analisis): array
+    {
+        $counts = [];
+        foreach ($analisis as $prueba) {
+            $name = (string)($prueba['name'] ?? '');
+            $val = trim((string)($prueba['regvalues'] ?? $prueba['value'] ?? ''));
+            if ($name === '' || $val === '') {
+                continue;
+            }
+
+            $priaId = 0;
+            if (strpos($name, '|') !== false) {
+                [$priaStr] = explode('|', $name, 2);
+                $priaId = (int)trim($priaStr);
+            } elseif (strpos($name, '_') !== false) {
+                [$tipo, $idStr] = explode('_', $name, 2);
+                $id = (int)$idStr;
+                if ($id > 0) {
+                    if ($tipo === 'noc') {
+                        $item = $this->registerModel->getAnalisisNocompleja($id);
+                        $priaId = (int)($item->prianacategoria_id ?? 0);
+                    } elseif ($tipo === 'c') {
+                        $item = $this->registerModel->getAnalisisCompleja($id);
+                        $priaId = (int)($item->prianacategoria_id ?? 0);
+                    }
+                }
+            }
+            if ($priaId > 0) {
+                $counts[$priaId] = ($counts[$priaId] ?? 0) + 1;
+            }
+        }
+        return $counts;
+    }
+
+    /**
+     * Completa filas faltantes de referencias cuando una prueba tiene mostrar_valores=1.
+     * Se agregan como filas sin resultado ("-") para que aparezcan en el reporte.
+     */
+    protected function appendMissingReferenceRows(array $grupos, object $registerInfo, array $eligiblePriaConfig = []): array
+    {
+        $patientGender = isset($registerInfo->gender) ? (int) $registerInfo->gender : null;
+        $pacienteType = isset($registerInfo->paciente) ? (int)$registerInfo->paciente : $this->computePacienteType($registerInfo);
+
+        foreach ($eligiblePriaConfig as $cfg) {
+            $priaId = (int)($cfg['prianacategoria_id'] ?? 0);
+            if ($priaId < 1) {
+                continue;
+            }
+            $isCompleja = (int)($cfg['compleja'] ?? 0) === 1;
+
+            if ($isCompleja) {
+                // Para mostrar referencias en reporte de compuestas, incluir todas las sub-pruebas
+                // aunque no tengan resultado cargado.
+                $refs = $this->registerModel->getAllSecItemsByPrianacategoriaForReport($priaId);
+            } else {
+                $refs = $this->registerModel->getAllPriResultadosByPrianacategoriaForReport($priaId);
+            }
+            if (empty($refs)) continue;
+
+            $padre = trim((string)($refs[0]['padre'] ?? ''));
+            $hijo = trim((string)($refs[0]['hijo'] ?? ''));
+            if ($padre === '' || $hijo === '') {
+                continue;
+            }
+
+            $grupoActual = $grupos[$padre] ?? [];
+            $otrosItems = [];
+            $resultadoPorPri = [];
+            foreach ($grupoActual as $it) {
+                $sameTest = ((int)($it->prianacategoria_id ?? 0) === $priaId) || (trim((string)($it->hijo ?? '')) === $hijo);
+                if ($sameTest) {
+                    $key = $isCompleja
+                        ? trim((string)($it->nombre ?? ''))
+                        : (string)((int)($it->priresultados_id ?? 0));
+                    if ($key !== '') {
+                        $resultadoPorPri[$key] = (string)($it->regvalues ?? '');
+                    }
+                    continue;
+                }
+                $otrosItems[] = $it;
+            }
+
+            $reconstruidos = [];
+            foreach ($refs as $ref) {
+                $item = (object) $ref;
+                if (!$isCompleja) {
+                    $item->nombre = $hijo;
+                }
+                $key = $isCompleja
+                    ? trim((string)($ref['nombre'] ?? ''))
+                    : (string)((int)($ref['priresultados_id'] ?? 0));
+                $val = trim((string)($resultadoPorPri[$key] ?? ''));
+                $item->regvalues = ($val === '') ? '-' : $val;
+                $item->show_reference = true;
+                $reconstruidos[] = $item;
+            }
+
+            // Primero resultados cargados, luego sin resultado.
+            usort($reconstruidos, static function ($a, $b) {
+                $aVal = trim((string)($a->regvalues ?? ''));
+                $bVal = trim((string)($b->regvalues ?? ''));
+                $aEmpty = ($aVal === '' || $aVal === '-');
+                $bEmpty = ($bVal === '' || $bVal === '-');
+                if ($aEmpty !== $bEmpty) {
+                    return $aEmpty ? 1 : -1;
+                }
+                return ((int)($a->id_poblacion ?? 0)) <=> ((int)($b->id_poblacion ?? 0));
+            });
+
+            $grupos[$padre] = array_merge($otrosItems, $reconstruidos);
+        }
+
+        foreach ($grupos as $padre => $items) {
+            usort($items, static function ($a, $b) {
+                $aVal = trim((string)($a->regvalues ?? ''));
+                $bVal = trim((string)($b->regvalues ?? ''));
+                $aEmpty = ($aVal === '' || $aVal === '-');
+                $bEmpty = ($bVal === '' || $bVal === '-');
+                if ($aEmpty !== $bEmpty) {
+                    return $aEmpty ? 1 : -1;
+                }
+                return strcmp((string)($a->nombre ?? ''), (string)($b->nombre ?? ''));
+            });
+            $grupos[$padre] = $items;
+        }
+
+        return $grupos;
+    }
+
+    /**
+     * Aplica visibilidad de referencia por regla:
+     * mostrar solo si prueba está en mostrar_valores=1 y tiene exactamente 1 valor ingresado.
+     */
+    protected function applyReferenceVisibility(array $grupos, array $eligiblePriaIds): array
+    {
+        $eligible = array_flip(array_map('intval', $eligiblePriaIds));
+        foreach ($grupos as $padre => $items) {
+            foreach ($items as $idx => $it) {
+                $priaId = (int)($it->prianacategoria_id ?? 0);
+                $items[$idx]->show_reference = isset($eligible[$priaId]);
+            }
+            $grupos[$padre] = $items;
+        }
+        return $grupos;
+    }
+
     protected function resolveRegvalue(int $formId, string $rawValue, int $registroId): string
     {
         if ($formId === 1 || $formId === 0) {
@@ -298,6 +465,21 @@ class RegisterService
         $registerInfo->paciente = $pacienteType;
 
         $grupos = $this->buildGruposParaReporte($registroId, $analisis);
+        $pruebasIds = $this->extractPrianacategoriaIdsFromRegistroPruebas((string)($registerInfo->pruebas ?? ''));
+        $priasCfg = $this->registerModel->getPrianacategoriaConfigByIds($pruebasIds);
+        $enteredCounts = $this->countEnteredValuesByPrianacategoria($analisis);
+        $eligiblePriaIds = [];
+        $eligiblePriaConfig = [];
+        foreach ($priasCfg as $cfg) {
+            $pid = (int)($cfg['prianacategoria_id'] ?? 0);
+            $mostrar = (int)($cfg['mostrar_valores'] ?? 0) === 1;
+            if ($mostrar && (int)($enteredCounts[$pid] ?? 0) === 1) {
+                $eligiblePriaIds[] = $pid;
+                $eligiblePriaConfig[] = $cfg;
+            }
+        }
+        $grupos = $this->appendMissingReferenceRows($grupos, $registerInfo, $eligiblePriaConfig);
+        $grupos = $this->applyReferenceVisibility($grupos, $eligiblePriaIds);
 
         return [
             'register_info' => $registerInfo,

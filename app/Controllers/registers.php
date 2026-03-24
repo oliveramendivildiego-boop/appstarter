@@ -53,6 +53,39 @@ class Registers extends SecureArea
             'allowed_modules' => $this->allowed_modules,
             'user_info'       => $this->user_info,
             'controller_name' => 'registers',
+            'edit_registro'   => null,
+            'edit_pago'       => null,
+        ]);
+    }
+
+    /**
+     * Edita un registro existente desde la pantalla de "crear orden" (agregar/quitar pruebas, ajustar costos).
+     */
+    public function edit($id = -1)
+    {
+        $id = (int) $id;
+        if ($id < 1) {
+            return redirect()->to('registers/lista')->with('error', 'Registro no válido');
+        }
+
+        if (!$this->registerModel->existsRegistro($id)) {
+            return redirect()->to('registers/lista')->with('error', 'Registro no encontrado');
+        }
+
+        $categories = $this->labotestModel->getGroupedByCategory();
+        $perfiles = (model(PerfilExamenModel::class))->getAll();
+        $info = $this->registerModel->getInfoRefill($id);
+        $pago = $this->registerModel->getPagoByRegistroId($id);
+
+        return view('registers/manage', [
+            'current_module'  => 'registers',
+            'categories'      => $categories,
+            'perfiles'        => $perfiles ?? [],
+            'allowed_modules' => $this->allowed_modules,
+            'user_info'       => $this->user_info,
+            'controller_name' => 'registers',
+            'edit_registro'   => $info,
+            'edit_pago'       => $pago,
         ]);
     }
 
@@ -136,6 +169,10 @@ class Registers extends SecureArea
             $btnTitle = $hasRegvalues ? 'Editar' : 'Agregar';
             $btnIcon = $hasRegvalues ? 'fa-pen' : 'fa-plus';
             $html .= '<a href="' . site_url('registers/view/' . $rid) . '" class="btn btn-sm btn-outline-primary" title="' . esc($btnTitle) . '"><i class="fa-solid ' . esc($btnIcon) . '"></i></a> ';
+            if (!$hasRegvalues) {
+                $html .= '<a href="' . site_url('registers/edit/' . $rid) . '" class="btn btn-sm btn-outline-success" title="Editar prueba (orden)"><i class="fa-solid fa-flask"></i></a> ';
+                $html .= '<a href="' . site_url('registers/orden/' . $rid) . '" class="btn btn-sm btn-outline-secondary" title="Imprimir orden"><i class="fa-solid fa-print"></i></a> ';
+            }
             if ($hasRegvalues) {
                 $html .= '<a href="' . site_url('registers/viewreport/' . $rid) . '" class="btn btn-sm btn-secondary" title="Reporte">Reporte</a> ';
                 $html .= '<a href="' . site_url('registers/pdf/' . $rid) . '" class="btn btn-sm btn-success" target="_blank" title="PDF">PDF</a> ';
@@ -238,6 +275,7 @@ class Registers extends SecureArea
         }
 
         $data = $this->registerService->prepareReportData($id);
+        
         if (!$data) {
             return redirect()->to('registers')->with('error', 'Registro no encontrado');
         }
@@ -255,6 +293,109 @@ class Registers extends SecureArea
             'allowed_modules'   => $this->allowed_modules,
             'user_info'         => $this->user_info,
         ]);
+    }
+
+    /**
+     * Orden de trabajo (sin logo/QR): lista de pruebas a realizar.
+     * Pensada para imprimir cuando la orden aún no tiene resultados cargados.
+     */
+    public function orden($id = -1)
+    {
+        $id = (int) $id;
+        if ($id < 1) {
+            return redirect()->to('registers/lista')->with('error', 'Registro no válido');
+        }
+
+        $registerInfo = $this->registerModel->getInfoRefill($id);
+        if (!$registerInfo) {
+            return redirect()->to('registers/lista')->with('error', 'Registro no encontrado');
+        }
+
+        $pacienteType = $this->registerService->computePacienteType($registerInfo);
+        $registerInfo->paciente = $pacienteType;
+        $patientGender = isset($registerInfo->gender) ? (int) $registerInfo->gender : null;
+        $matchingPoblacionIds = $this->registerService->getMatchingPoblacionIds($registerInfo->birthday ?? null, $patientGender);
+        $pruebasInfo = $this->registerModel->getPruebasInput($registerInfo->pruebas ?? '', $matchingPoblacionIds, $patientGender);
+
+        // Agrupar por "padre" para mostrar solo listado de pruebas
+        $gruposPruebas = [];
+        foreach ($pruebasInfo as $p) {
+            $padre = trim((string)($p['padre'] ?? ''));
+            if ($padre === '') $padre = 'Pruebas';
+            $gruposPruebas[$padre][] = $p;
+        }
+
+        // Formato fecha similar al reporte
+        try {
+            $dt = new \DateTime($registerInfo->ingreso ?? 'now');
+            $fecha = $dt->format('d/m/Y H:i');
+        } catch (\Throwable $e) {
+            $fecha = (string)($registerInfo->ingreso ?? '');
+        }
+
+        return view('registers/orden', [
+            'current_module'    => 'registers',
+            'controller_name'   => 'registers',
+            'register_info'     => $registerInfo,
+            'fecha'             => $fecha,
+            'labotests_namecate' => $id,
+            'grupos_pruebas'    => $gruposPruebas,
+            'show_order_barcode' => ($this->configModel->getValue('show_order_barcode') !== '0'),
+            'allowed_modules'   => $this->allowed_modules,
+            'user_info'         => $this->user_info,
+        ]);
+    }
+
+    /**
+     * PDF de la orden de trabajo (sin logo/QR).
+     */
+    public function ordenPdf($id = -1)
+    {
+        $id = (int) $id;
+        if ($id < 1) {
+            return redirect()->to('registers/lista')->with('error', 'Registro no válido');
+        }
+
+        $registerInfo = $this->registerModel->getInfoRefill($id);
+        if (!$registerInfo) {
+            return redirect()->to('registers/lista')->with('error', 'Registro no encontrado');
+        }
+
+        $pacienteType = $this->registerService->computePacienteType($registerInfo);
+        $registerInfo->paciente = $pacienteType;
+        $patientGender = isset($registerInfo->gender) ? (int) $registerInfo->gender : null;
+        $matchingPoblacionIds = $this->registerService->getMatchingPoblacionIds($registerInfo->birthday ?? null, $patientGender);
+        $pruebasInfo = $this->registerModel->getPruebasInput($registerInfo->pruebas ?? '', $matchingPoblacionIds, $patientGender);
+
+        $gruposPruebas = [];
+        foreach ($pruebasInfo as $p) {
+            $padre = trim((string)($p['padre'] ?? ''));
+            if ($padre === '') $padre = 'Pruebas';
+            $gruposPruebas[$padre][] = $p;
+        }
+
+        try {
+            $dt = new \DateTime($registerInfo->ingreso ?? 'now');
+            $fecha = $dt->format('d/m/Y H:i');
+        } catch (\Throwable $e) {
+            $fecha = (string)($registerInfo->ingreso ?? '');
+        }
+
+        $html = view('registers/orden_pdf', [
+            'register_info'  => $registerInfo,
+            'fecha'          => $fecha,
+            'grupos_pruebas' => $gruposPruebas,
+            'registro_id'    => $id,
+        ]);
+
+        $pdfService = new PdfService();
+        $pacienteNombre = trim(($registerInfo->first_name ?? '') . '_' . ($registerInfo->last_name_fa ?? ''));
+        $filename = 'Orden_' . ($pacienteNombre ?: 'paciente') . '_' . $id . '_' . date('Y-m-d') . '.pdf';
+
+        return $this->response
+            ->setHeader('Content-Type', 'application/pdf')
+            ->setHeader('Content-Disposition', 'attachment; filename="' . $filename . '"')
+            ->setBody($pdfService->generate($html, $filename));
     }
 
     /**
@@ -397,6 +538,66 @@ class Registers extends SecureArea
             return $this->response->setJSON([
                 'success' => false,
                 'message' => 'Error al guardar. Intente nuevamente.',
+            ])->setStatusCode(500);
+        }
+    }
+
+    /**
+     * Actualiza pruebas/costos de un registro existente desde la pantalla de "crear orden".
+     */
+    public function update($id = -1): ResponseInterface
+    {
+        $id = (int) $id;
+        if ($id < 1) {
+            return $this->response->setJSON(['success' => false, 'message' => 'ID inválido'])->setStatusCode(400);
+        }
+        if (!$this->registerModel->existsRegistro($id)) {
+            return $this->response->setJSON(['success' => false, 'message' => 'Registro no encontrado'])->setStatusCode(404);
+        }
+
+        try {
+            $validation = \Config\Services::validation();
+            $validation->setRules(config('Validation')->registro ?? []);
+            if (!$validation->withRequest($this->request)->run()) {
+                return $this->response->setJSON([
+                    'success' => false,
+                    'message' => implode(' ', $validation->getErrors()),
+                ])->setStatusCode(400);
+            }
+
+            $registro = $this->request->getPost('registro');
+            $pagos    = $this->request->getPost('pagos');
+
+            $registroData = [
+                'person_id'  => $registro['person_id'] ?? null,
+                'doctor_id'  => $registro['doctor_id'] ?? null,
+                'pruebas'    => $registro['pruebas'] ?? null,
+                'prioridad'  => (int) ($registro['prioridad'] ?? 0),
+                'id_session' => session()->get('person_id'),
+            ];
+            $this->registerModel->saveRegistro($registroData, $id);
+            \App\Models\AuditoriaModel::log('registers', 'editar_orden', (string) $id);
+
+            $pagosUpd = [
+                'total_reco'  => $pagos['total_reco'] ?? null,
+                'total'       => $pagos['total'] ?? null,
+                'monto_pagar' => $pagos['monto_pagar'] ?? null,
+                'tipopago'    => $pagos['tipopago'] ?? null,
+                'saldo'       => $pagos['saldo'] ?? null,
+                'comentarios' => $pagos['comentarios'] ?? null,
+            ];
+            $this->registerModel->updatePagoByRegistroId($id, $pagosUpd);
+
+            return $this->response->setJSON([
+                'success' => true,
+                'message' => 'Registro actualizado',
+                'id'      => $id,
+            ]);
+        } catch (\Throwable $e) {
+            log_message('error', 'Registers::update ' . $e->getMessage());
+            return $this->response->setJSON([
+                'success' => false,
+                'message' => 'Error al actualizar. Intente nuevamente.',
             ])->setStatusCode(500);
         }
     }

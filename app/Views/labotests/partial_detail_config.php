@@ -31,6 +31,13 @@
                     <option value="1" <?= (($labotests_info->compleja ?? 0) == 1 ? 'selected' : '') ?>><?= lang('Labotests.labotests_yes') ?></option>
                 </select>
             </div>
+            <div class="col-md-6 mb-3">
+                <label for="mostrar_valores" class="form-label">Mostrar valores</label>
+                <select name="mostrar_valores" id="mostrar_valores" class="form-control">
+                    <option value="0" <?= ((int)($labotests_info->mostrar_valores ?? 0) === 0 ? 'selected' : '') ?>>NO</option>
+                    <option value="1" <?= ((int)($labotests_info->mostrar_valores ?? 0) === 1 ? 'selected' : '') ?>>SI</option>
+                </select>
+            </div>
         </div>
         <button type="submit" class="btn btn-primary"><?= lang('Common.common_submit') ?></button>
         <a href="<?= site_url('labotests') ?>" class="btn btn-secondary">Cancelar</a>

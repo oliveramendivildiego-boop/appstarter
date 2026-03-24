@@ -278,13 +278,112 @@ class RegisterModel extends Model
         $p  = $this->db->prefixTable('prianacategoria');
         $a  = $this->db->prefixTable('anacategoria');
 
+        $mostrarValoresSql = $this->hasColumn('prianacategoria', 'mostrar_valores')
+            ? "{$p}.mostrar_valores as mostrar_valores"
+            : "0 as mostrar_valores";
+
         return $this->db->table('priresultados')
-            ->select("{$pr}.*, {$a}.name as padre, {$p}.name as hijo, {$p}.name as nombre")
+            ->select("{$pr}.*, {$a}.name as padre, {$p}.name as hijo, {$p}.name as nombre, {$mostrarValoresSql}")
             ->join('prianacategoria', "{$p}.prianacategoria_id = {$pr}.prianacategoria_id")
             ->join('anacategoria', "{$a}.anacategoria_id = {$p}.anacategoria_id")
             ->where("{$pr}.priresultados_id", $id)
             ->get()
             ->getRow();
+    }
+
+    /**
+     * Obtiene todos los valores de referencia (priresultados) de una prueba no compuesta
+     * para mostrarlos en el reporte aunque no tengan resultado cargado.
+     */
+    public function getAllPriResultadosByPrianacategoriaForReport(int $prianacategoriaId): array
+    {
+        $pr = $this->db->prefixTable('priresultados');
+        $p  = $this->db->prefixTable('prianacategoria');
+        $a  = $this->db->prefixTable('anacategoria');
+        $mostrarValoresSql = $this->hasColumn('prianacategoria', 'mostrar_valores')
+            ? "{$p}.mostrar_valores as mostrar_valores"
+            : "0 as mostrar_valores";
+
+        return $this->db->table('priresultados')
+            ->select("{$pr}.*, {$a}.name as padre, {$p}.name as hijo, {$p}.name as nombre, {$mostrarValoresSql}")
+            ->join('prianacategoria', "{$p}.prianacategoria_id = {$pr}.prianacategoria_id")
+            ->join('anacategoria', "{$a}.anacategoria_id = {$p}.anacategoria_id")
+            ->where("{$pr}.prianacategoria_id", $prianacategoriaId)
+            ->where("({$pr}.deleted = 0 OR {$pr}.deleted IS NULL)")
+            ->orderBy("{$pr}.id_poblacion", 'ASC')
+            ->orderBy("{$pr}.priresultados_id", 'ASC')
+            ->get()
+            ->getResultArray();
+    }
+
+    /**
+     * Retorna ids de prianacategoria con mostrar_valores = 1 para un conjunto dado.
+     */
+    public function getPrianacategoriasMostrarValoresIds(array $ids): array
+    {
+        $ids = array_values(array_unique(array_filter(array_map('intval', $ids), static fn($x) => $x > 0)));
+        if (empty($ids) || !$this->hasColumn('prianacategoria', 'mostrar_valores')) {
+            return [];
+        }
+        $pt = $this->db->prefixTable('prianacategoria');
+        $rows = $this->db->table('prianacategoria')
+            ->select("{$pt}.prianacategoria_id")
+            ->whereIn("{$pt}.prianacategoria_id", $ids)
+            ->where("{$pt}.mostrar_valores", 1)
+            ->where("({$pt}.deleted = 0 OR {$pt}.deleted IS NULL)")
+            ->get()
+            ->getResultArray();
+        return array_values(array_unique(array_map(static fn($r) => (int)($r['prianacategoria_id'] ?? 0), $rows)));
+    }
+
+    /**
+     * Retorna configuración básica de prianacategoria por ids.
+     * @return array<int,array{prianacategoria_id:int,compleja:int,mostrar_valores:int,name:string,anacategoria_id:int}>
+     */
+    public function getPrianacategoriaConfigByIds(array $ids): array
+    {
+        $ids = array_values(array_unique(array_filter(array_map('intval', $ids), static fn($x) => $x > 0)));
+        if (empty($ids)) {
+            return [];
+        }
+        $pt = $this->db->prefixTable('prianacategoria');
+        $select = "{$pt}.prianacategoria_id, {$pt}.anacategoria_id, {$pt}.name, {$pt}.compleja";
+        if ($this->hasColumn('prianacategoria', 'mostrar_valores')) {
+            $select .= ", {$pt}.mostrar_valores";
+        } else {
+            $select .= ", 0 as mostrar_valores";
+        }
+        return $this->db->table('prianacategoria')
+            ->select($select)
+            ->whereIn("{$pt}.prianacategoria_id", $ids)
+            ->where("({$pt}.deleted = 0 OR {$pt}.deleted IS NULL)")
+            ->get()
+            ->getResultArray();
+    }
+
+    /**
+     * Obtiene TODAS las sub-pruebas (secanacategoria) de una prueba compuesta
+     * para reporte, sin filtrar por población/sexo.
+     */
+    public function getAllSecItemsByPrianacategoriaForReport(int $prianacategoriaId): array
+    {
+        $s = $this->db->prefixTable('secanacategoria');
+        $p = $this->db->prefixTable('prianacategoria');
+        $a = $this->db->prefixTable('anacategoria');
+        $mostrarValoresSql = $this->hasColumn('prianacategoria', 'mostrar_valores')
+            ? "{$p}.mostrar_valores as mostrar_valores"
+            : "0 as mostrar_valores";
+
+        return $this->db->table('secanacategoria')
+            ->select("{$s}.*, {$a}.name as padre, {$p}.name as hijo, {$mostrarValoresSql}")
+            ->join('prianacategoria', "{$p}.prianacategoria_id = {$s}.prianacategoria_id")
+            ->join('anacategoria', "{$a}.anacategoria_id = {$p}.anacategoria_id")
+            ->where("{$s}.prianacategoria_id", $prianacategoriaId)
+            ->where("({$s}.deleted = 0 OR {$s}.deleted IS NULL)")
+            ->orderBy("{$s}.orden", 'ASC')
+            ->orderBy("{$s}.secanacategoria_id", 'ASC')
+            ->get()
+            ->getResultArray();
     }
 
     /**
@@ -477,8 +576,12 @@ class RegisterModel extends Model
         $p = $this->db->prefixTable('prianacategoria');
         $a = $this->db->prefixTable('anacategoria');
 
+        $mostrarValoresSql = $this->hasColumn('prianacategoria', 'mostrar_valores')
+            ? "{$p}.mostrar_valores as mostrar_valores"
+            : "0 as mostrar_valores";
+
         return $this->db->table('secanacategoria')
-            ->select("{$s}.*, {$a}.name as padre, {$p}.name as hijo")
+            ->select("{$s}.*, {$a}.name as padre, {$p}.name as hijo, {$mostrarValoresSql}")
             ->join('prianacategoria', "{$p}.prianacategoria_id = {$s}.prianacategoria_id")
             ->join('anacategoria', "{$a}.anacategoria_id = {$p}.anacategoria_id")
             ->where("{$s}.prianacategoria_id", $prianacategoriaId)
@@ -522,6 +625,9 @@ class RegisterModel extends Model
         $pt = $this->db->prefixTable('prianacategoria');
         $ac = $this->db->prefixTable('anacategoria');
         $pr = $this->db->prefixTable('priresultados');
+        $mostrarValoresSelect = $this->hasColumn('prianacategoria', 'mostrar_valores')
+            ? 'pt.mostrar_valores'
+            : '0 AS mostrar_valores';
 
         $poblacionIn = empty($matchingPoblacionIds) ? "(-1)" : "(" . implode(",", array_map('intval', $matchingPoblacionIds)) . ")";
 
@@ -535,7 +641,7 @@ class RegisterModel extends Model
             $bindParams = [$sexoVal, $sexoVal];
         }
 
-        $sql = "SELECT pt.name as hijo, pt.compleja, pt.prianacategoria_id, ac.name as padre,
+        $sql = "SELECT pt.name as hijo, pt.compleja, pt.prianacategoria_id, {$mostrarValoresSelect}, ac.name as padre,
                 pr.opcion_id, pr.priresultados_id, pr.id_poblacion, pr.valor_min, pr.valor_max, pr.umedida,
                 (SELECT prfb.opcion_id FROM {$pr} prfb
                  WHERE prfb.prianacategoria_id = pt.prianacategoria_id

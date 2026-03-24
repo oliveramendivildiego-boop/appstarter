@@ -67,12 +67,15 @@
 
 <?php foreach ($grupos ?? [] as $padre => $items): ?>
     <?php
-    $hasUnidad = false;
-    $hasRango = false;
+    $conResultado = [];
+    $sinResultado = [];
     foreach ($items as $it) {
-        if (trim($it->umedida ?? '') !== '') $hasUnidad = true;
-        if (trim($it->valor_min ?? '') !== '' || trim($it->valor_max ?? '') !== '') $hasRango = true;
+        $valTmp = trim((string)($it->regvalues ?? ''));
+        if ($valTmp === '' || $valTmp === '-') $sinResultado[] = $it;
+        else $conResultado[] = $it;
     }
+    $hasUnidad = !empty(array_filter($conResultado, fn($it) => trim($it->umedida ?? '') !== ''));
+    $hasRango = !empty(array_filter($conResultado, fn($it) => (bool)($it->show_reference ?? false)));
     ?>
     <div class="group-title"><?= esc($padre) ?> - <?= esc($items[0]->hijo ?? '') ?></div>
     <table class="results">
@@ -85,7 +88,7 @@
             </tr>
         </thead>
         <tbody>
-            <?php foreach ($items as $item): ?>
+            <?php foreach ($conResultado as $item): ?>
                 <?php
                 $valor = $item->regvalues ?? '-';
                 $min = $item->valor_min ?? '';
@@ -107,11 +110,45 @@
                     <td><?= esc($item->nombre ?? '') ?></td>
                     <td class="text-center <?= $isOut ? 'out-range' : '' ?>"><?= esc($valor) ?></td>
                     <?php if ($hasUnidad): ?><td class="text-center"><?= esc($item->umedida ?? '') ?></td><?php endif; ?>
-                    <?php if ($hasRango): ?><td class="text-center ref-range"><?= esc($refRange) ?></td><?php endif; ?>
+                    <?php if ($hasRango): ?>
+                        <?php if ((bool)($item->show_reference ?? false)): ?>
+                            <td class="text-center ref-range"><?= esc($refRange) ?></td>
+                        <?php else: ?>
+                            <td class="text-center ref-range">-</td>
+                        <?php endif; ?>
+                    <?php endif; ?>
                 </tr>
             <?php endforeach; ?>
         </tbody>
     </table>
+    <?php if (!empty($sinResultado)): ?>
+    <table class="results" style="margin-top:8px;">
+        <thead>
+            <tr>
+                <th>ANÁLISIS</th>
+                <th class="text-center">RANGO REFERENCIAL</th>
+                <th class="text-center">UNIDAD</th>
+            </tr>
+        </thead>
+        <tbody>
+            <?php foreach ($sinResultado as $item): ?>
+                <?php if ((bool)($item->show_reference ?? false)): ?>
+                    <?php
+                    $min = $item->valor_min ?? '';
+                    $max = $item->valor_max ?? '';
+                    $refRange = trim($min . ' - ' . $max);
+                    if ($refRange === ' - ') $refRange = '-';
+                    ?>
+                    <tr>
+                        <td><?= esc($item->nombre ?? '') ?></td>
+                        <td class="text-center ref-range"><?= esc($refRange) ?></td>
+                        <td class="text-center"><?= esc($item->umedida ?? '') ?></td>
+                    </tr>
+                <?php endif; ?>
+            <?php endforeach; ?>
+        </tbody>
+    </table>
+    <?php endif; ?>
 <?php endforeach; ?>
 
     <div class="footer">

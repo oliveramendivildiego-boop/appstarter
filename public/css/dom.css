@@ -23,6 +23,16 @@
     border-color: var(--primary-color) !important;
     color: #fff !important;
 }
+.modal-backdrop{
+    /* Bootstrap: backdrop 1040, modal 1050. Mantener el orden para no tapar el contenido. */
+    z-index: 1040 !important;
+    pointer-events: none !important; /* Permite hacer clic/manipular lo que está detrás */
+}
+
+/* Asegura que el modal quede siempre por encima del backdrop */
+.modal{
+    z-index: 1050 !important;
+}
 
 .btn-primary:hover,
 .bg-primary:hover {
