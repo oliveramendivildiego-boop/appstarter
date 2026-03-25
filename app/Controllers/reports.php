@@ -6,6 +6,7 @@ use App\Models\ReportModel;
 use App\Models\ReactivoModel;
 use App\Models\AppConfigModel;
 use App\Models\ToquoteModel;
+use App\Models\EmployeeModel;
 
 class Reports extends SecureArea
 {
@@ -13,12 +14,14 @@ class Reports extends SecureArea
 
     protected ReportModel $reportModel;
     protected ToquoteModel $toquoteModel;
+    protected ReactivoModel $reactivoModel;
 
     public function __construct()
     {
         parent::__construct();
         $this->reportModel   = model(ReportModel::class);
         $this->toquoteModel  = model(ToquoteModel::class);
+        $this->reactivoModel = model(ReactivoModel::class);
     }
 
     public function index()
@@ -239,6 +242,18 @@ class Reports extends SecureArea
             'allowed_modules' => $this->allowed_modules,
             'user_info'       => $this->user_info,
         ]);
+    }
+
+    /**
+     * Kardex de inventario.
+     * Reutiliza el módulo de inventario para evitar duplicar lógica.
+     */
+    public function inventarioKardex()
+    {
+        $query = $this->request->getServer('QUERY_STRING');
+        $url = 'inventario/kardex' . ($query ? ('?' . $query) : '');
+
+        return redirect()->to($url);
     }
 
     /**

@@ -83,7 +83,7 @@ class ConfigService
             'default_tax_rate', 'default_tax_1_name', 'default_tax_1_rate',
             'default_tax_2_name', 'default_tax_2_rate', 'return_policy',
             'print_after_sale', 'logo', 'theme_color', 'header_brand',
-            'decimales_sugerencia', 'dias_alerta_vencimiento', 'show_order_barcode',
+            'decimales_sugerencia', 'dias_alerta_vencimiento', 'show_order_barcode', 'leyendas_enabled',
             'custom1_name', 'custom2_name', 'custom3_name', 'custom4_name', 'custom5_name',
             'custom6_name', 'custom7_name', 'custom8_name', 'custom9_name', 'custom10_name',
         ];
@@ -103,11 +103,24 @@ class ConfigService
         if (array_key_exists('show_order_barcode', $postData)) {
             $batch['show_order_barcode'] = ($postData['show_order_barcode'] === '1') ? '1' : '0';
         }
+        if (array_key_exists('leyendas_enabled', $postData)) {
+            $batch['leyendas_enabled'] = ($postData['leyendas_enabled'] === '1') ? '1' : '0';
+        }
+        if (array_key_exists('registro_folio_format', $postData)) {
+            $fmt = trim((string) $postData['registro_folio_format']);
+            if (strlen($fmt) > 128) {
+                $fmt = mb_substr($fmt, 0, 128);
+            }
+            $batch['registro_folio_format'] = $fmt;
+        }
 
+        $logoFailed = false;
         if ($logoFile && $logoFile->isValid() && !$logoFile->hasMoved()) {
             $logoPath = $this->processLogoUpload($logoFile);
             if ($logoPath) {
                 $batch['logo'] = $logoPath;
+            } else {
+                $logoFailed = true;
             }
         }
 
@@ -116,31 +129,70 @@ class ConfigService
             $this->invalidateCache();
         }
 
-        return [
+        $message = $ok ? lang('Config.config_saved') : lang('Config.config_error');
+        if ($ok && $logoFailed) {
+            $message = lang('Config.config_saved') . ' ' . lang('Config.config_logo_error');
+        }
+
+        $out = [
             'success' => $ok,
-            'message' => $ok ? lang('Config.config_saved') : lang('Config.config_error'),
+            'message' => $message,
         ];
+        if ($ok && !empty($batch['logo'])) {
+            $out['logo_path'] = $batch['logo'];
+        }
+
+        return $out;
     }
 
     protected function processLogoUpload(UploadedFile $file): ?string
     {
-        $allowedMimes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
-        if (!in_array($file->getMimeType(), $allowedMimes, true)) {
-            return null;
-        }
         if ($file->getSize() > 2 * 1024 * 1024) { // 2MB
             return null;
         }
+
+        $tmp = $file->getTempName();
+        if ($tmp === '' || !is_readable($tmp)) {
+            return null;
+        }
+
+        // Validar por contenido (getMimeType() falla a menudo en Windows: octet-stream, pjpeg, etc.)
+        $info = @getimagesize($tmp);
+        if ($info === false) {
+            return null;
+        }
+
+        $type = (int) ($info[2] ?? 0);
+        $extMap = [
+            IMAGETYPE_JPEG => 'jpg',
+            IMAGETYPE_PNG  => 'png',
+            IMAGETYPE_GIF  => 'gif',
+        ];
+        if (defined('IMAGETYPE_WEBP')) {
+            $extMap[IMAGETYPE_WEBP] = 'webp';
+        }
+        if (!isset($extMap[$type])) {
+            return null;
+        }
+        $ext = $extMap[$type];
 
         $uploadPath = FCPATH . 'images' . DIRECTORY_SEPARATOR;
         if (!is_dir($uploadPath)) {
             mkdir($uploadPath, 0755, true);
         }
-        $ext = $file->getClientExtension() ?: $file->guessExtension() ?: 'png';
+
         $newName = 'logo-lab.' . $ext;
-        if ($file->move($uploadPath, $newName)) {
-            return 'images/' . $newName;
+        if (!$file->move($uploadPath, $newName, true)) {
+            return null;
         }
-        return null;
+
+        // Dejar un solo archivo logo-lab.* (evita que quede logo-lab.png viejo al pasar a .jpg)
+        foreach (glob($uploadPath . 'logo-lab.*') ?: [] as $old) {
+            if (is_file($old) && basename($old) !== $newName) {
+                @unlink($old);
+            }
+        }
+
+        return 'images/' . $newName;
     }
 }

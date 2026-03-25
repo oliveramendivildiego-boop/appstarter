@@ -3,7 +3,7 @@
 <?= $this->section('content') ?>
 <?= view('partial/breadcrumb_nav', ['items' => [
     ['label' => lang('Module.module_registers'), 'url' => site_url('registers')],
-    ['label' => 'Orden #' . (int)($register_info->registro_id ?? 0) . ' - Insumos consumidos', 'url' => null],
+    ['label' => 'Orden ' . registro_orden_display($register_info) . ' - Insumos consumidos', 'url' => null],
 ]]) ?>
 
 <div class="card mb-4">
@@ -13,7 +13,7 @@
     <div class="card-body">
         <div class="row">
             <div class="col-md-6">
-                <p class="mb-1"><strong>No. Orden:</strong> <?= esc($register_info->registro_id ?? '-') ?></p>
+                <p class="mb-1"><strong>No. Orden:</strong> <?= esc(registro_orden_display($register_info)) ?></p>
                 <p class="mb-1"><strong>Paciente:</strong> <?= esc(trim(($paciente->first_name ?? '') . ' ' . ($paciente->last_name_fa ?? '') . ' ' . ($paciente->last_name_mom ?? '')) ?: '-') ?></p>
                 <p class="mb-1"><strong>Fecha ingreso:</strong> <?= esc($register_info->ingreso ? date('d/m/Y H:i', strtotime($register_info->ingreso)) : '-') ?></p>
             </div>
@@ -38,7 +38,7 @@
         <?php if (empty($insumos)): ?>
         <div class="p-4 text-muted">
             <i class="fas fa-info-circle me-2"></i>No hay insumos registrados para esta orden.
-            Los consumos se vinculan al indicar el número de orden al <a href="<?= site_url('reactivos') ?>">registrar salida</a> en Insumos.
+            Los consumos se vinculan al indicar el número de orden al <a href="<?= site_url('inventario') ?>">registrar salida</a> en Insumos.
         </div>
         <?php else: ?>
         <div class="table-responsive">

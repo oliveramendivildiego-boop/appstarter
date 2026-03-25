@@ -58,6 +58,10 @@
                     <i class="fas fa-box-open me-2"></i> Insumos por ingreso y vencimiento
                 </a>
                 <p class="list-group-item small text-muted mb-0">Fechas de ingreso, vencimiento y alertas según configuración.</p>
+                <a href="<?= site_url('reports/inventarioKardex') ?>" class="list-group-item list-group-item-action">
+                    <i class="fas fa-warehouse me-2"></i> Kardex de inventario por usuario
+                </a>
+                <p class="list-group-item small text-muted mb-0">Entradas, salidas, responsable, lote, orden de laboratorio y saldo acumulado por insumo.</p>
             </div>
         </div>
     </div>

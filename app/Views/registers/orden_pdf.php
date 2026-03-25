@@ -20,7 +20,7 @@
 <body>
     <h1>Orden de trabajo</h1>
     <div class="meta">
-        <div><strong>Orden:</strong> #<?= esc($register_info->registro_id ?? $registro_id ?? '') ?></div>
+        <div><strong>Orden:</strong> <?= esc(registro_orden_display($register_info)) ?></div>
         <div><strong>Fecha:</strong> <?= esc($fecha ?? '') ?></div>
         <div><strong>Paciente:</strong> <?= esc(($register_info->first_name ?? '') . ' ' . ($register_info->last_name_fa ?? '') . ' ' . ($register_info->last_name_mom ?? '')) ?></div>
         <div><strong>Doctor:</strong> <?= esc($register_info->doctor_name ?? $register_info->doctor ?? '') ?></div>

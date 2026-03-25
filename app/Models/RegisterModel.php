@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Services\RegistroFolioService;
 use CodeIgniter\Model;
 
 class RegisterModel extends Model
@@ -21,6 +22,63 @@ class RegisterModel extends Model
         return $this->db->table('registro')
             ->where('registro_id', $id)
             ->countAllResults() === 1;
+    }
+
+    /** @var bool|null */
+    private static $registroAnuladoColumnExists = null;
+
+    private function registroTieneColumnaAnulado(): bool
+    {
+        if (self::$registroAnuladoColumnExists === null) {
+            self::$registroAnuladoColumnExists = $this->hasColumn('registro', 'anulado');
+        }
+
+        return self::$registroAnuladoColumnExists;
+    }
+
+    public function isRegistroAnulado(int $registroId): bool
+    {
+        if (!$this->registroTieneColumnaAnulado()) {
+            return false;
+        }
+        $row = $this->db->table('registro')->select('anulado')->where('registro_id', $registroId)->get()->getRow();
+
+        return $row !== null && (int) ($row->anulado ?? 0) === 1;
+    }
+
+    /**
+     * Anulación lógica: el registro permanece en BD y no puede usarse en flujo operativo.
+     */
+    public function anularRegistro(int $registroId, string $motivo, ?int $personIdAnulo): bool
+    {
+        if (!$this->registroTieneColumnaAnulado()) {
+            return false;
+        }
+        if ($this->isRegistroAnulado($registroId)) {
+            return false;
+        }
+        $motivo = trim($motivo);
+        if (mb_strlen($motivo) < 5) {
+            return false;
+        }
+
+        return $this->db->table('registro')->where('registro_id', $registroId)->update([
+            'anulado'            => 1,
+            'motivo_anulacion'   => $motivo,
+            'fecha_anulacion'    => date('Y-m-d H:i:s'),
+            'person_id_anulo'    => $personIdAnulo,
+        ]) !== false;
+    }
+
+    public function getPersonShortDisplay(int $personId): string
+    {
+        $row = $this->db->table('people')
+            ->select("CONCAT(TRIM(COALESCE(first_name,'')), ' ', TRIM(COALESCE(last_name_fa,''))) AS n")
+            ->where('person_id', $personId)
+            ->get()
+            ->getRow();
+
+        return $row ? trim(preg_replace('/\s+/', ' ', (string) $row->n)) : '';
     }
 
     public function existsPago(int $id): bool
@@ -187,23 +245,45 @@ class RegisterModel extends Model
         if (ctype_digit($q)) {
             $idPrueba = (int) $q;
             $builder->orWhere("FIND_IN_SET(" . $this->db->escape($idPrueba) . ", {$r}.pruebas) > 0", null, false);
+            $builder->orWhere("{$r}.registro_id", $idPrueba);
         }
+        $builder->orLike("{$r}.numero_orden", $esc, 'both');
         $builder->groupEnd();
 
         return $builder;
     }
 
     /**
-     * Filtra por estado: completo (tiene regvalues) o incompleto (sin regvalues)
+     * Filtra por estado: completo / incompleto / anulado / activo (no anulado)
      */
     private function applyEstadoFilter($builder, string $estado, string $r, string $rv)
     {
         $estado = trim($estado);
+        $hasAnul = $this->registroTieneColumnaAnulado();
+        $notAnuladoSql = "COALESCE({$r}.anulado, 0) = 0";
+
+        if ($hasAnul && $estado === 'anulado') {
+            $builder->where("{$r}.anulado", 1);
+
+            return $builder;
+        }
+        if ($hasAnul && $estado === 'activo') {
+            $builder->where($notAnuladoSql, null, false);
+
+            return $builder;
+        }
         if ($estado === 'completo') {
+            if ($hasAnul) {
+                $builder->where($notAnuladoSql, null, false);
+            }
             $builder->where("EXISTS (SELECT 1 FROM {$rv} WHERE {$rv}.registro_id = {$r}.registro_id)", null, false);
         } elseif ($estado === 'incompleto') {
+            if ($hasAnul) {
+                $builder->where($notAnuladoSql, null, false);
+            }
             $builder->where("NOT EXISTS (SELECT 1 FROM {$rv} WHERE {$rv}.registro_id = {$r}.registro_id)", null, false);
         }
+
         return $builder;
     }
 
@@ -213,10 +293,14 @@ class RegisterModel extends Model
     public function countByDate(string $dateFrom, string $dateTo): int
     {
         $r = $this->getRegistroTable();
-        return $this->db->table('registro')
+        $b = $this->db->table('registro')
             ->where("DATE({$r}.ingreso) >=", $dateFrom)
-            ->where("DATE({$r}.ingreso) <=", $dateTo)
-            ->countAllResults();
+            ->where("DATE({$r}.ingreso) <=", $dateTo);
+        if ($this->registroTieneColumnaAnulado()) {
+            $b->where("COALESCE({$r}.anulado, 0) = 0", null, false);
+        }
+
+        return $b->countAllResults();
     }
 
     /**
@@ -1230,6 +1314,19 @@ class RegisterModel extends Model
     public function saveRegistro(array $data, $id = null)
     {
         if ($id === null || !$this->existsRegistro((int) $id)) {
+            $needFolio = !array_key_exists('numero_orden', $data)
+                || $data['numero_orden'] === null
+                || trim((string) $data['numero_orden']) === '';
+            if ($needFolio) {
+                try {
+                    $folio = (new RegistroFolioService())->generateNextFolio();
+                    if ($folio !== null) {
+                        $data['numero_orden'] = $folio;
+                    }
+                } catch (\Throwable $e) {
+                    log_message('error', 'RegisterModel::saveRegistro folio: ' . $e->getMessage());
+                }
+            }
             $this->db->table('registro')->insert($data);
             return (int) $this->db->insertID();
         }

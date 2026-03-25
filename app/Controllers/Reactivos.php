@@ -3,6 +3,8 @@
 namespace App\Controllers;
 
 use App\Models\ReactivoModel;
+use App\Models\RegisterModel;
+use App\Models\EmployeeModel;
 
 class Reactivos extends SecureArea
 {
@@ -20,7 +22,7 @@ class Reactivos extends SecureArea
         $reactivoId = (int) $reactivoId;
         $reactivo = $this->model->getReactivo($reactivoId);
         if (!$reactivo) {
-            return redirect()->to('reactivos')->with('error', 'Insumo no encontrado');
+            return redirect()->to('inventario')->with('error', 'Insumo no encontrado');
         }
         return view('reactivos/form_editar', [
             'reactivo'        => $reactivo,
@@ -47,12 +49,55 @@ class Reactivos extends SecureArea
         ]);
     }
 
+
+    public function kardex()
+    {
+        $startDate   = $this->request->getGet('start') ?? date('Y-m-01');
+        $endDate     = $this->request->getGet('end') ?? date('Y-m-d');
+        $personId    = (int) ($this->request->getGet('person_id') ?? 0);
+        $reactivoId  = (int) ($this->request->getGet('reactivo_id') ?? 0);
+        $tipoGet     = $this->request->getGet('tipo');
+        $tipo        = in_array($tipoGet, ['entrada', 'salida'], true) ? $tipoGet : null;
+
+        $rows = $this->model->getKardexMovimientos($startDate, $endDate, $personId > 0 ? $personId : null, $reactivoId > 0 ? $reactivoId : null, $tipo, 2500);
+        $resumen = $this->model->getKardexResumenPorUsuario($startDate, $endDate, $reactivoId > 0 ? $reactivoId : null, $tipo);
+        $totalMovs = $this->model->countKardexMovimientos($startDate, $endDate, $personId > 0 ? $personId : null, $reactivoId > 0 ? $reactivoId : null, $tipo);
+
+        $empleadosOpts = [];
+        foreach (model(EmployeeModel::class)->getAll(5000, 0) as $emp) {
+            $nombre = trim(($emp->first_name ?? '') . ' ' . ($emp->last_name_fa ?? '') . ' ' . ($emp->last_name_mom ?? ''));
+            $empleadosOpts[] = ['person_id' => (int) $emp->person_id, 'nombre' => $nombre !== '' ? $nombre : ('ID ' . (int) $emp->person_id)];
+        }
+
+        return view('reactivos/kardex', [
+            'subtitle'          => date('d/m/Y', strtotime($startDate)) . ' – ' . date('d/m/Y', strtotime($endDate)),
+            'rows'              => $rows,
+            'resumen'           => $resumen,
+            'startDate'         => $startDate,
+            'endDate'           => $endDate,
+            'person_id'         => $personId,
+            'reactivo_id'       => $reactivoId,
+            'tipo'              => $tipo ?? '',
+            'total_movimientos' => $totalMovs,
+            'limite_lista'      => 2500,
+            'lista_truncada'    => $totalMovs > count($rows),
+            'show_saldo'        => $reactivoId > 0,
+            'stock_actual'      => $reactivoId > 0 ? $this->model->getStockTotal($reactivoId) : null,
+            'insumos'           => $this->model->getAll(),
+            'empleados'         => $empleadosOpts,
+            'form_action'       => site_url('inventario/kardex'),
+            'allowed_modules'   => $this->allowed_modules,
+            'user_info'         => $this->user_info,
+            'current_module'    => 'reactivos',
+        ]);
+    }
+
     public function lotes($reactivoId)
     {
         $reactivoId = (int) $reactivoId;
         $reactivo = $this->model->getReactivo($reactivoId);
         if (!$reactivo) {
-            return redirect()->to('reactivos')->with('error', 'Insumo no encontrado');
+            return redirect()->to('inventario')->with('error', 'Insumo no encontrado');
         }
         $reactivo['tipo_nombre'] = $this->model->getNombreTipo((int) ($reactivo['tipo'] ?? 1));
         $lotes = $this->model->getLotes($reactivoId);
@@ -90,7 +135,7 @@ class Reactivos extends SecureArea
             'tipo'                      => (int) ($this->request->getPost('tipo') ?? ReactivoModel::TIPO_REACTIVO),
         ], $id > 0 ? $id : null);
         \App\Models\AuditoriaModel::log('reactivos', $id > 0 ? 'actualizar' : 'crear', $id > 0 ? (string) $id : null);
-        return redirect()->to('reactivos')->with('success', 'Insumo guardado');
+        return redirect()->to('inventario')->with('success', 'Insumo guardado');
     }
 
     public function savelote()
@@ -139,6 +184,9 @@ class Reactivos extends SecureArea
         $obs = $this->request->getPost('observaciones') ?: null;
         $registroId = $this->request->getPost('registro_id') ? (int) $this->request->getPost('registro_id') : null;
         $personId = session()->get('person_id') ? (int) session()->get('person_id') : null;
+        if ($registroId !== null && $registroId > 0 && model(RegisterModel::class)->isRegistroAnulado($registroId)) {
+            return redirect()->back()->with('error', 'No puede registrar consumo de inventario vinculado a una orden anulada.');
+        }
         if ($cantidad <= 0) {
             return redirect()->back()->with('error', 'Cantidad debe ser mayor a 0');
         }
@@ -154,8 +202,8 @@ class Reactivos extends SecureArea
         $reactivoId = (int) $reactivoId;
         if ($reactivoId > 0 && $this->model->deleteReactivo($reactivoId)) {
             \App\Models\AuditoriaModel::log('reactivos', 'eliminar', (string) $reactivoId);
-            return redirect()->to('reactivos')->with('success', 'Insumo eliminado');
+            return redirect()->to('inventario')->with('success', 'Insumo eliminado');
         }
-        return redirect()->to('reactivos')->with('error', 'No se pudo eliminar');
+        return redirect()->to('inventario')->with('error', 'No se pudo eliminar');
     }
 }

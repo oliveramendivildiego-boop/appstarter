@@ -74,8 +74,9 @@ class Employees extends PersonController
         'registers'      => 'Registros',
         'reports'        => 'Reportes',
         'controlcalidad' => 'Control de calidad',
-        'reactivos'      => 'Reactivos',
+        'reactivos'      => 'Inventario',
         'equipos'        => 'Equipos',
+        'leyendas'       => 'Leyendas',
         'auditoria'      => 'Auditoría',
         'employees'      => 'Empleados',
         'config'         => 'Configuración',
@@ -194,7 +195,11 @@ class Employees extends PersonController
             }
             session()->remove('user_info_' . $personId);
             session()->remove('allowed_modules_' . $personId);
-            \App\Models\AuditoriaModel::log('employees', $employee_id === null ? 'crear' : 'actualizar', (string) $personId);
+            \App\Models\AuditoriaModel::log('employees', $employee_id === null ? 'crear' : 'actualizar', (string) $personId, \App\Models\AuditoriaModel::detail([
+                'nombre' => trim(($person_data['first_name'] ?? '') . ' ' . ($person_data['last_name_fa'] ?? '')),
+                'usuario' => $employee_data['username'] ?? '',
+                'permisos' => implode(', ', $permIds),
+            ]));
 
             $msg = $employee_id === null
                 ? lang('Employees.employees_successful_adding') . ' ' . $person_data['first_name']
@@ -258,7 +263,9 @@ class Employees extends PersonController
 
         if ($success) {
             $action = $enable ? 'habilitar' : 'deshabilitar';
-            \App\Models\AuditoriaModel::log('employees', $action === 'deshabilitar' ? 'desactivar' : 'activar', (string) $personId);
+            \App\Models\AuditoriaModel::log('employees', $action === 'deshabilitar' ? 'desactivar' : 'activar', (string) $personId, \App\Models\AuditoriaModel::detail([
+                'accion' => $action,
+            ]));
             
             // Si se deshabilita, cerrar todas sus sesiones activas y destruir su sesión si está logueado
             $logoutCurrentUser = false;

@@ -196,6 +196,25 @@ if ($last_padre !== '') echo '</div>';
 endif;
 ?>
 <?php if (!empty($pruebas_info)): ?>
+<?php if (!empty($leyendas_enabled)): ?>
+<div class="row mt-2">
+    <div class="col-12">
+        <?php if (!empty($leyendas_activas)): ?>
+        <label for="leyenda_sugerida" class="form-label">Sugerencias de leyendas</label>
+        <select id="leyenda_sugerida" class="form-select mb-2">
+            <option value="">-- Seleccionar leyenda --</option>
+            <?php foreach (($leyendas_activas ?? []) as $leyenda): ?>
+                <?php $txtLey = trim((string)($leyenda['mensaje'] ?? '')); if ($txtLey === '') continue; ?>
+                <option value="<?= esc($txtLey) ?>"><?= esc($leyenda['titulo'] ?? 'Leyenda') ?></option>
+            <?php endforeach; ?>
+        </select>
+        <?php endif; ?>
+        <label for="comentario_resultado" class="form-label fw-bold">Comentarios / Nota</label>
+        <textarea id="comentario_resultado" class="form-control" rows="3" placeholder="Escriba una nota o seleccione una leyenda sugerida..."><?= esc((string)($register_info->comentario_resultado ?? '')) ?></textarea>
+        <small class="text-muted">Puede usar una leyenda sugerida y luego editar el texto manualmente.</small>
+    </div>
+</div>
+<?php endif; ?>
 <div class="mt-3">
     <button type="button" id="submit" name="btn_submit" class="btn btn-primary"><?= !empty($existentes) ? ucfirst(lang('Common.common_edit')) : lang('Common.common_submit') ?></button>
 </div>
@@ -347,7 +366,7 @@ document.addEventListener('DOMContentLoaded', function() {
     document.querySelectorAll('.sugerencia-calculada').forEach(function(el) {
         el.addEventListener('keydown', function(e) { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); this.click(); } });
     });
-    document.querySelectorAll('.form-control:not(.formula-calculada)').forEach(function(el) {
+    document.querySelectorAll('.input-con-ref:not(.formula-calculada)').forEach(function(el) {
         el.addEventListener('input', function() { actualizarCalculadas(); validarInputAlEscribir(this); });
         el.addEventListener('change', function() { actualizarCalculadas(); validarInputAlEscribir(this); });
     });
@@ -362,7 +381,7 @@ document.addEventListener('DOMContentLoaded', function() {
     function validarAntesDeEnviar() {
         var faltantes = [];
         var fueraRango = [];
-        document.querySelectorAll('.form-control').forEach(function(el) {
+        document.querySelectorAll('.input-con-ref').forEach(function(el) {
             var min = el.getAttribute('data-min');
             var max = el.getAttribute('data-max');
             var labelEl = document.querySelector('label[for="' + el.id + '"]');
@@ -393,10 +412,20 @@ document.addEventListener('DOMContentLoaded', function() {
     }
     var submitBtn = document.getElementById('submit');
     if (!submitBtn) return;
+    var leyendaSel = document.getElementById('leyenda_sugerida');
+    if (leyendaSel) {
+        leyendaSel.addEventListener('change', function() {
+            if (!this.value) return;
+            var txt = document.getElementById('comentario_resultado');
+            if (!txt) return;
+            txt.value = this.value;
+            txt.focus();
+        });
+    }
     submitBtn.addEventListener('click', function() {
         if (!validarAntesDeEnviar()) return;
         var datos = [];
-        document.querySelectorAll('.form-control').forEach(function(el) {
+        document.querySelectorAll('.input-con-ref').forEach(function(el) {
             var valor = (el.value || '').trim();
             var registroId = document.getElementById('registro_id').value;
             if (!registroId || valor === '') return;
@@ -408,6 +437,8 @@ document.addEventListener('DOMContentLoaded', function() {
         var csrfName = (typeof window.CI_CSRF_TOKEN_NAME !== 'undefined' ? window.CI_CSRF_TOKEN_NAME : null) || (document.querySelector('meta[name="csrf-token-name"]') && document.querySelector('meta[name="csrf-token-name"]').getAttribute('content'));
         var csrfVal = (typeof window.CI_CSRF_TOKEN !== 'undefined' ? window.CI_CSRF_TOKEN : null) || (document.querySelector('meta[name="csrf-token"]') && document.querySelector('meta[name="csrf-token"]').getAttribute('content'));
         var body = 'data=' + encodeURIComponent(JSON.stringify(datos));
+        body += '&registro_id=' + encodeURIComponent(document.getElementById('registro_id').value || '');
+        body += '&comentario_resultado=' + encodeURIComponent((document.getElementById('comentario_resultado') || {}).value || '');
         if (csrfName && csrfVal) body += '&' + encodeURIComponent(csrfName) + '=' + encodeURIComponent(csrfVal);
         var headers = { 'Content-Type': 'application/x-www-form-urlencoded', 'X-Requested-With': 'XMLHttpRequest' };
         if (csrfVal) headers['X-CSRF-TOKEN'] = csrfVal;

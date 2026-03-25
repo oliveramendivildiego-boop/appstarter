@@ -283,7 +283,7 @@ $alertas = $alertas_insumos ?? ['vencidos' => 0, 'por_vencer' => 0, 'total' => 0
                     <table class="table table-hover mb-0">
                         <thead class="table-light">
                             <tr>
-                                <th>#</th>
+                                <th>Orden</th>
                                 <th>Paciente</th>
                                 <th>Doctor</th>
                                 <th>Fecha</th>
@@ -293,7 +293,7 @@ $alertas = $alertas_insumos ?? ['vencidos' => 0, 'por_vencer' => 0, 'total' => 0
                         <tbody>
                             <?php foreach ($recent_registers as $reg): ?>
                             <tr>
-                                <td><?= (int)($reg->registro_id ?? 0) ?></td>
+                                <td><?= esc(registro_orden_display($reg)) ?></td>
                                 <td><?= esc($reg->paciente ?? '-') ?></td>
                                 <td><?= esc($reg->doctor ?? '-') ?></td>
                                 <td><?= !empty($reg->ingreso) ? date('d/m/Y H:i', strtotime($reg->ingreso)) : '-' ?></td>

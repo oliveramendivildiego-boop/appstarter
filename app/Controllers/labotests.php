@@ -195,6 +195,7 @@ class Labotests extends SecureArea
         }
 
         $this->labotestModel->saveCategory(['name' => $name, 'order' => $order], $id > 0 ? $id : null);
+        \App\Models\AuditoriaModel::log('labotests', $id > 0 ? 'actualizar_categoria' : 'crear_categoria', (string)($id ?: ''), \App\Models\AuditoriaModel::detail(['nombre' => $name]));
         return redirect()->to('labotests')->with('success', 'Guardado correctamente');
     }
 
@@ -219,6 +220,7 @@ class Labotests extends SecureArea
             'anacategoria_id'=> $anacategoriaId,
         ];
         $this->labotestModel->saveSubCategory($data, $prianacategoriaId > 0 ? $prianacategoriaId : null);
+        \App\Models\AuditoriaModel::log('labotests', $prianacategoriaId > 0 ? 'actualizar_analisis' : 'crear_analisis', (string)($prianacategoriaId ?: ''), \App\Models\AuditoriaModel::detail(['nombre' => $name, 'compleja' => $compleja]));
         return redirect()->to('labotests')->with('success', 'Análisis guardado correctamente');
     }
 
@@ -247,6 +249,7 @@ class Labotests extends SecureArea
             'anacategoria_id' => $anacategoriaId,
         ];
         $this->labotestModel->saveSubCategory($data, $prianacategoriaId);
+        \App\Models\AuditoriaModel::log('labotests', 'actualizar_analisis', (string)$prianacategoriaId, \App\Models\AuditoriaModel::detail(['nombre' => $name, 'costo' => $cost]));
         return redirect()->to('labotests')->with('success', 'Análisis actualizado correctamente');
     }
 
@@ -289,6 +292,7 @@ class Labotests extends SecureArea
             'opcion_id'          => (int) ($this->request->getPost('opcion_id') ?? 3),
         ];
         $this->labotestModel->saveSecItem($data, $id > 0 ? $id : null);
+        \App\Models\AuditoriaModel::log('labotests', $id > 0 ? 'actualizar_subclase' : 'crear_subclase', (string)$prianacategoriaId, \App\Models\AuditoriaModel::detail(['nombre' => $nombre, 'secanacategoria_id' => $id ?: 'nuevo']));
         // Si es fórmula calculada (formulas_id > 1), actualizar la expresión en la tabla formulas
         // para que todas las sub-clases que usan esta fórmula (VCM, Formula Eritrocitos, etc.) vean el mismo cambio
         if ($formulasId > 1 && $formulaExpresion !== '') {
@@ -366,7 +370,9 @@ class Labotests extends SecureArea
         if (!$cat || !$cat->anacategoria_id) {
             return redirect()->to('labotests')->with('error', 'Categoría no encontrada');
         }
+        $catName = $cat->name ?? '';
         $this->labotestModel->deleteCategoryWithAll($id);
+        \App\Models\AuditoriaModel::log('labotests', 'eliminar_categoria', (string)$id, \App\Models\AuditoriaModel::detail(['nombre' => $catName]));
         return redirect()->to('labotests')->with('success', 'Categoría y todos sus análisis eliminados correctamente');
     }
 
@@ -380,7 +386,9 @@ class Labotests extends SecureArea
         if (!$sub || !$sub->prianacategoria_id) {
             return redirect()->to('labotests')->with('error', 'Análisis no encontrado');
         }
+        $subName = $sub->name ?? '';
         $this->labotestModel->deletePrianacategoriaWithAll($id);
+        \App\Models\AuditoriaModel::log('labotests', 'eliminar_analisis', (string)$id, \App\Models\AuditoriaModel::detail(['nombre' => $subName]));
         return redirect()->to('labotests')->with('success', 'Análisis y configuraciones eliminados correctamente');
     }
 
@@ -505,7 +513,9 @@ class Labotests extends SecureArea
             return redirect()->back()->with('error', 'Sub-clase no encontrada');
         }
         $prianacategoriaId = (int) $sec->prianacategoria_id;
+        $secNombre = $sec->nombre ?? '';
         $this->labotestModel->deleteSecItem($id);
+        \App\Models\AuditoriaModel::log('labotests', 'eliminar_subclase', (string)$prianacategoriaId, \App\Models\AuditoriaModel::detail(['secanacategoria_id' => $id, 'nombre' => $secNombre]));
         return redirect()->to("labotests/detail/{$prianacategoriaId}")->with('success', 'Sub-clase eliminada');
     }
 

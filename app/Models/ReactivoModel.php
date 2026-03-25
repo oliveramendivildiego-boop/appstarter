@@ -9,11 +9,11 @@ class ReactivoModel extends Model
     protected $table = 'reactivo';
     protected $primaryKey = 'reactivo_id';
 
-    public const TIPO_REACTIVO = 1;
-    public const TIPO_KIT = 2;
-    public const TIPO_INSUMO = 3;
+    const TIPO_REACTIVO = 1;
+    const TIPO_KIT = 2;
+    const TIPO_INSUMO = 3;
 
-    public const UNIDADES_BASE = ['ml' => 'ml', 'g' => 'g', 'mg' => 'mg', 'unidad' => 'unidad', 'prueba' => 'prueba', 'caja' => 'caja'];
+    const UNIDADES_BASE = ['ml' => 'ml', 'g' => 'g', 'mg' => 'mg', 'unidad' => 'unidad', 'prueba' => 'prueba', 'caja' => 'caja'];
 
     public function getAll(?string $grupo = null): array
     {
@@ -114,6 +114,144 @@ class ReactivoModel extends Model
             ->limit($limit)
             ->get()
             ->getResultArray();
+    }
+
+    /**
+     * Kardex: lista de movimientos con filtros.
+     */
+    public function getKardexMovimientos(
+        string $startDate,
+        string $endDate,
+        ?int $personId = null,
+        ?int $reactivoId = null,
+        ?string $tipo = null,
+        int $limit = 2500
+    ): array {
+        $rm = $this->db->prefixTable('reactivo_movimiento');
+        $r  = $this->db->prefixTable('reactivo');
+        $rl = $this->db->prefixTable('reactivo_lote');
+        $p  = $this->db->prefixTable('people');
+        $re = $this->db->prefixTable('registro');
+
+        $builder = $this->db->table('reactivo_movimiento')
+            ->select("
+                {$rm}.movimiento_id,
+                {$rm}.fecha,
+                {$rm}.reactivo_id,
+                {$rm}.tipo,
+                {$rm}.cantidad,
+                {$rm}.person_id,
+                {$rm}.lote_id,
+                {$rm}.registro_id,
+                {$rm}.observaciones,
+                {$r}.nombre AS reactivo_nombre,
+                {$rl}.codigo_lote,
+                CONCAT(COALESCE({$p}.first_name, ''), ' ', COALESCE({$p}.last_name_fa, '')) AS usuario_nombre,
+                {$re}.numero_orden
+            ")
+            ->join('reactivo', "{$r}.reactivo_id = {$rm}.reactivo_id", 'left')
+            ->join('reactivo_lote', "{$rl}.lote_id = {$rm}.lote_id", 'left')
+            ->join('people', "{$p}.person_id = {$rm}.person_id", 'left')
+            ->join('registro', "{$re}.registro_id = {$rm}.registro_id", 'left')
+            ->where("DATE({$rm}.fecha) >=", $startDate)
+            ->where("DATE({$rm}.fecha) <=", $endDate);
+
+        if (($personId ?? 0) > 0) {
+            $builder->where("{$rm}.person_id", (int) $personId);
+        }
+        if (($reactivoId ?? 0) > 0) {
+            $builder->where("{$rm}.reactivo_id", (int) $reactivoId);
+        }
+        if (in_array($tipo, ['entrada', 'salida'], true)) {
+            $builder->where("{$rm}.tipo", $tipo);
+        }
+
+        $rows = $builder
+            ->orderBy("{$rm}.fecha", 'DESC')
+            ->orderBy("{$rm}.movimiento_id", 'DESC')
+            ->limit(max(1, (int) $limit))
+            ->get()
+            ->getResultArray();
+
+        // Saldo acumulado solo cuando se filtra un insumo específico.
+        if (($reactivoId ?? 0) > 0) {
+            $saldo = 0;
+            for ($i = count($rows) - 1; $i >= 0; $i--) {
+                $cant = (int) ($rows[$i]['cantidad'] ?? 0);
+                $esEntrada = (($rows[$i]['tipo'] ?? '') === 'entrada');
+                $saldo += $esEntrada ? $cant : -$cant;
+                $rows[$i]['saldo_acumulado'] = $saldo;
+            }
+        }
+
+        return $rows;
+    }
+
+    /**
+     * Kardex: resumen por usuario (cantidad de movimientos).
+     */
+    public function getKardexResumenPorUsuario(
+        string $startDate,
+        string $endDate,
+        ?int $reactivoId = null,
+        ?string $tipo = null
+    ): array {
+        $rm = $this->db->prefixTable('reactivo_movimiento');
+        $p  = $this->db->prefixTable('people');
+
+        $builder = $this->db->table('reactivo_movimiento')
+            ->select("
+                {$rm}.person_id,
+                CONCAT(COALESCE({$p}.first_name, ''), ' ', COALESCE({$p}.last_name_fa, '')) AS usuario_nombre,
+                COUNT(*) AS movimientos,
+                SUM(CASE WHEN {$rm}.tipo = 'entrada' THEN {$rm}.cantidad ELSE 0 END) AS total_entrada,
+                SUM(CASE WHEN {$rm}.tipo = 'salida' THEN {$rm}.cantidad ELSE 0 END) AS total_salida
+            ")
+            ->join('people', "{$p}.person_id = {$rm}.person_id", 'left')
+            ->where("DATE({$rm}.fecha) >=", $startDate)
+            ->where("DATE({$rm}.fecha) <=", $endDate);
+
+        if (($reactivoId ?? 0) > 0) {
+            $builder->where("{$rm}.reactivo_id", (int) $reactivoId);
+        }
+        if (in_array($tipo, ['entrada', 'salida'], true)) {
+            $builder->where("{$rm}.tipo", $tipo);
+        }
+
+        return $builder
+            ->groupBy("{$rm}.person_id")
+            ->orderBy('movimientos', 'DESC')
+            ->get()
+            ->getResultArray();
+    }
+
+    /**
+     * Kardex: total de movimientos para paginación/indicadores.
+     */
+    public function countKardexMovimientos(
+        string $startDate,
+        string $endDate,
+        ?int $personId = null,
+        ?int $reactivoId = null,
+        ?string $tipo = null
+    ): int {
+        $rm = $this->db->prefixTable('reactivo_movimiento');
+
+        $builder = $this->db->table('reactivo_movimiento')
+            ->where("DATE({$rm}.fecha) >=", $startDate)
+            ->where("DATE({$rm}.fecha) <=", $endDate);
+
+        if (($personId ?? 0) > 0) {
+            $builder->where("{$rm}.person_id", (int) $personId);
+        }
+        if (($reactivoId ?? 0) > 0) {
+            $builder->where("{$rm}.reactivo_id", (int) $reactivoId);
+        }
+        if (in_array($tipo, ['entrada', 'salida'], true)) {
+            $builder->where("{$rm}.tipo", $tipo);
+        }
+
+        return (int) $builder->countAllResults();
     }
 
     public function getAlertas(): array

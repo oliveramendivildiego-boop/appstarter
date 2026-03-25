@@ -60,7 +60,7 @@
             <div class="col">
                 <span class="label">Médico:</span> <?= (($doctor->gender ?? 0) == 1) ? 'Dr.' : 'Dra.' ?> <?= esc($doctor->name ?? '-') ?><br>
                 <span class="label">Fecha:</span> <?= esc($register_info->ingreso ?? '') ?><br>
-                <span class="label">No. Orden:</span> <?= esc($register_info->registro_id ?? '') ?>
+                <span class="label">No. Orden:</span> <?= esc(registro_orden_display($register_info)) ?>
             </div>
         </div>
     </div>
@@ -74,8 +74,6 @@
         if ($valTmp === '' || $valTmp === '-') $sinResultado[] = $it;
         else $conResultado[] = $it;
     }
-    $hasUnidad = !empty(array_filter($conResultado, fn($it) => trim($it->umedida ?? '') !== ''));
-    $hasRango = !empty(array_filter($conResultado, fn($it) => (bool)($it->show_reference ?? false)));
     ?>
     <div class="group-title"><?= esc($padre) ?> - <?= esc($items[0]->hijo ?? '') ?></div>
     <table class="results">
@@ -83,8 +81,7 @@
             <tr>
                 <th>ANÁLISIS</th>
                 <th class="text-center">RESULTADO</th>
-                <?php if ($hasUnidad): ?><th class="text-center">UNID</th><?php endif; ?>
-                <?php if ($hasRango): ?><th class="text-center">RANGO REFERENCIAL</th><?php endif; ?>
+                <th class="text-center">RANGO REFERENCIAL</th>
             </tr>
         </thead>
         <tbody>
@@ -103,20 +100,13 @@
                     $mx = (float) $max;
                     $isOut = ($v < $mn || $v > $mx);
                 }
-                $refRange = trim($min . ' - ' . $max);
-                if ($refRange === ' - ') $refRange = '-';
+                $resMostrar = registro_resultado_con_unidad($item->regvalues ?? '', $item->umedida ?? '');
+                $refRange = registro_rango_referencial_texto($min, $max, $item->umedida ?? '');
                 ?>
                 <tr>
                     <td><?= esc($item->nombre ?? '') ?></td>
-                    <td class="text-center <?= $isOut ? 'out-range' : '' ?>"><?= esc($valor) ?></td>
-                    <?php if ($hasUnidad): ?><td class="text-center"><?= esc($item->umedida ?? '') ?></td><?php endif; ?>
-                    <?php if ($hasRango): ?>
-                        <?php if ((bool)($item->show_reference ?? false)): ?>
-                            <td class="text-center ref-range"><?= esc($refRange) ?></td>
-                        <?php else: ?>
-                            <td class="text-center ref-range">-</td>
-                        <?php endif; ?>
-                    <?php endif; ?>
+                    <td class="text-center <?= $isOut ? 'out-range' : '' ?>"><?= esc($resMostrar) ?></td>
+                    <td class="text-center ref-range"><?= esc($refRange) ?></td>
                 </tr>
             <?php endforeach; ?>
         </tbody>
@@ -127,29 +117,37 @@
             <tr>
                 <th>ANÁLISIS</th>
                 <th class="text-center">RANGO REFERENCIAL</th>
-                <th class="text-center">UNIDAD</th>
             </tr>
         </thead>
         <tbody>
             <?php foreach ($sinResultado as $item): ?>
-                <?php if ((bool)($item->show_reference ?? false)): ?>
-                    <?php
-                    $min = $item->valor_min ?? '';
-                    $max = $item->valor_max ?? '';
-                    $refRange = trim($min . ' - ' . $max);
-                    if ($refRange === ' - ') $refRange = '-';
-                    ?>
+                <?php
+                $refRange = registro_rango_referencial_texto($item->valor_min ?? '', $item->valor_max ?? '', $item->umedida ?? '');
+                if ($refRange === '-' && trim((string)($item->umedida ?? '')) === '' && !((bool)($item->show_reference ?? false))) {
+                    continue;
+                }
+                ?>
                     <tr>
                         <td><?= esc($item->nombre ?? '') ?></td>
                         <td class="text-center ref-range"><?= esc($refRange) ?></td>
-                        <td class="text-center"><?= esc($item->umedida ?? '') ?></td>
                     </tr>
-                <?php endif; ?>
             <?php endforeach; ?>
         </tbody>
     </table>
     <?php endif; ?>
 <?php endforeach; ?>
+
+<?php $notaResultado = trim((string)($register_info->comentario_resultado ?? '')); ?>
+<?php if ($notaResultado !== ''): ?>
+    <div class="group-title" style="margin-top: 10px;">NOTAS</div>
+    <table class="results">
+        <tbody>
+            <tr>
+                <td style="white-space: pre-wrap;"><?= esc($notaResultado) ?></td>
+            </tr>
+        </tbody>
+    </table>
+<?php endif; ?>
 
     <div class="footer">
         <?= esc($lab_config['company'] ?? '') ?> - Resultados generados el <?= date('d/m/Y H:i') ?>

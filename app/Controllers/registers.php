@@ -12,6 +12,7 @@ use App\Models\MuestraModel;
 use App\Models\AppConfigModel;
 use App\Models\DoctorModel;
 use App\Models\DoctorCommissionModel;
+use App\Models\LeyendaModel;
 use CodeIgniter\HTTP\ResponseInterface;
 
 /**
@@ -71,6 +72,9 @@ class Registers extends SecureArea
         if (!$this->registerModel->existsRegistro($id)) {
             return redirect()->to('registers/lista')->with('error', 'Registro no encontrado');
         }
+        if ($this->registerModel->isRegistroAnulado($id)) {
+            return redirect()->to('registers/anulada/' . $id);
+        }
 
         $categories = $this->labotestModel->getGroupedByCategory();
         $perfiles = (model(PerfilExamenModel::class))->getAll();
@@ -95,8 +99,10 @@ class Registers extends SecureArea
         $page       = max(1, (int) ($this->request->getGet('page') ?? 1));
         $offset     = ($page - 1) * $perPage;
         $search     = trim((string) ($this->request->getGet('q') ?? ''));
-        $estado     = trim((string) ($this->request->getGet('estado') ?? ''));
-        $estado     = in_array($estado, ['completo', 'incompleto'], true) ? $estado : '';
+        $estado = trim((string) ($this->request->getGet('estado') ?? ''));
+        if (!in_array($estado, ['completo', 'incompleto', 'anulado', 'activo', ''], true)) {
+            $estado = '';
+        }
 
         if ($search !== '') {
             $registros  = $this->registerModel->getAllAnalisisWithSearch($search, $perPage, $offset, $estado);
@@ -124,10 +130,60 @@ class Registers extends SecureArea
         ]);
     }
 
+    /**
+     * Consulta solo lectura de una orden anulada (pruebas, motivo, pagos e insumos registrados).
+     */
+    public function anulada($id = -1)
+    {
+        $id = (int) $id;
+        if ($id < 1) {
+            return redirect()->to('registers/lista')->with('error', 'Registro no válido');
+        }
+        if (!$this->registerModel->existsRegistro($id)) {
+            return redirect()->to('registers/lista')->with('error', 'Registro no encontrado');
+        }
+        if (!$this->registerModel->isRegistroAnulado($id)) {
+            return redirect()->to('registers/view/' . $id);
+        }
+        $hist = $this->registerModel->getHistorialRegistro($id);
+        if (!$hist) {
+            return redirect()->to('registers/lista')->with('error', 'Registro no encontrado');
+        }
+        $info = $this->registerModel->getInfoRefill($id);
+        $nombreAnulo = '';
+        if ($info && !empty($info->person_id_anulo)) {
+            $nombreAnulo = $this->registerModel->getPersonShortDisplay((int) $info->person_id_anulo);
+        }
+        $insumos = model(\App\Models\ReactivoModel::class)->getInsumosPorRegistro($id);
+
+        return view('registers/anulada', [
+            'current_module'  => 'registers',
+            'controller_name' => 'registers',
+            'allowed_modules' => $this->allowed_modules,
+            'user_info'       => $this->user_info,
+            'historial'       => $hist,
+            'info'            => $info,
+            'nombre_anulo'    => $nombreAnulo,
+            'insumos'         => $insumos,
+        ]);
+    }
+
     private static function getTipoPagoLabel(string $tipopago): string
     {
         $map = ['1' => 'Efectivo', '2' => 'QR', '3' => 'Transferencia', '4' => 'Pendiente'];
         return $map[trim($tipopago)] ?? trim($tipopago) ?: '-';
+    }
+
+    private function bloquearSiRegistroAnuladoJson(int $id): ?ResponseInterface
+    {
+        if ($this->registerModel->isRegistroAnulado($id)) {
+            return $this->response->setJSON([
+                'success' => false,
+                'message' => 'Esta orden fue anulada y no puede modificarse.',
+            ])->setStatusCode(403);
+        }
+
+        return null;
     }
 
     private function buildRegistrosTable(array $registros): string
@@ -149,14 +205,22 @@ class Registers extends SecureArea
             $acuenta = $totalNum - $saldoNum;
             $acuentaStr = $totalNum > 0 || $saldoNum !== 0.0 ? number_format($acuenta, 2) : '';
             $montoPagadoStr = $acuentaStr ?: number_format($montoPagadoNum, 2);
+            $isAnulado = isset($r->anulado) && (int) $r->anulado === 1;
 
-            $sumTotal += $totalNum;
-            $sumMontoPagado += $acuenta;
-            $sumAcuenta += $acuenta;
-            $sumSaldo += $saldoNum;
+            if (!$isAnulado) {
+                $sumTotal += $totalNum;
+                $sumMontoPagado += $acuenta;
+                $sumAcuenta += $acuenta;
+                $sumSaldo += $saldoNum;
+            }
 
-            $html .= '<tr>';
-            $html .= '<td>' . esc($r->registro_id ?? '') . '</td>';
+            $html .= $isAnulado ? '<tr class="table-secondary">' : '<tr>';
+            $ordenDisp = registro_orden_display($r);
+            $html .= '<td title="ID interno: ' . esc((string) $rid) . '">' . esc($ordenDisp);
+            if ($isAnulado) {
+                $html .= ' <span class="badge bg-dark ms-1">Anulada</span>';
+            }
+            $html .= '</td>';
             $html .= '<td>' . esc($r->paciente ?? '') . '</td>';
             $html .= '<td>' . esc($r->doctor ?? '') . '</td>';
             $html .= '<td>' . esc($r->total ?? '') . '</td>';
@@ -165,26 +229,30 @@ class Registers extends SecureArea
             $html .= '<td>' . esc($acuentaStr) . '</td>';
             $html .= '<td>' . esc($r->saldo ?? '') . '</td>';
             $html .= '<td class="text-center">';
-            $hasRegvalues = isset($r->regvalues_count) && (int) $r->regvalues_count > 0;
-            $btnTitle = $hasRegvalues ? 'Editar' : 'Agregar';
-            $btnIcon = $hasRegvalues ? 'fa-pen' : 'fa-plus';
-            $html .= '<a href="' . site_url('registers/view/' . $rid) . '" class="btn btn-sm btn-outline-primary" title="' . esc($btnTitle) . '"><i class="fa-solid ' . esc($btnIcon) . '"></i></a> ';
-            if (!$hasRegvalues) {
-                $html .= '<a href="' . site_url('registers/edit/' . $rid) . '" class="btn btn-sm btn-outline-success" title="Editar prueba (orden)"><i class="fa-solid fa-flask"></i></a> ';
-                $html .= '<a href="' . site_url('registers/orden/' . $rid) . '" class="btn btn-sm btn-outline-secondary" title="Imprimir orden"><i class="fa-solid fa-print"></i></a> ';
+            if ($isAnulado) {
+                $html .= '<a href="' . site_url('registers/anulada/' . $rid) . '" class="btn btn-sm btn-outline-secondary" title="Ver orden anulada (solo lectura)"><i class="fa-solid fa-lock me-1"></i>Ver</a>';
+            } else {
+                $hasRegvalues = isset($r->regvalues_count) && (int) $r->regvalues_count > 0;
+                $btnTitle = $hasRegvalues ? 'Editar' : 'Agregar';
+                $btnIcon = $hasRegvalues ? 'fa-pen' : 'fa-plus';
+                $html .= '<a href="' . site_url('registers/view/' . $rid) . '" class="btn btn-sm btn-outline-primary" title="' . esc($btnTitle) . '"><i class="fa-solid ' . esc($btnIcon) . '"></i></a> ';
+                if (!$hasRegvalues) {
+                    $html .= '<a href="' . site_url('registers/edit/' . $rid) . '" class="btn btn-sm btn-outline-success" title="Editar prueba (orden)"><i class="fa-solid fa-flask"></i></a> ';
+                    $html .= '<a href="' . site_url('registers/orden/' . $rid) . '" class="btn btn-sm btn-outline-secondary" title="Imprimir orden"><i class="fa-solid fa-print"></i></a> ';
+                }
+                if ($hasRegvalues) {
+                    $html .= '<a href="' . site_url('registers/viewreport/' . $rid) . '" class="btn btn-sm btn-secondary" title="Reporte">Reporte</a> ';
+                    $html .= '<a href="' . site_url('registers/pdf/' . $rid) . '" class="btn btn-sm btn-success" target="_blank" title="PDF">PDF</a> ';
+                    $pacientePhone = trim($r->paciente_phone ?? '');
+                    $doctorPhone   = trim($r->doctor_phone ?? '');
+                    $html .= '<button type="button" class="btn btn-sm btn-success btn-whatsapp-pdf" data-id="' . $rid . '" data-paciente="' . esc($r->paciente ?? '') . '" data-doctor="' . esc($r->doctor ?? '') . '" data-paciente-phone="' . esc($pacientePhone) . '" data-doctor-phone="' . esc($doctorPhone) . '" data-ingreso="' . esc($r->ingreso ?? '') . '" title="Enviar PDF por WhatsApp"><i class="fa-brands fa-whatsapp"></i></button> ';
+                }
+                if ($saldoNum > 0) {
+                    $html .= '<button type="button" class="btn btn-sm btn-outline-warning btn-agregar-pago" data-id="' . $rid . '" data-total="' . esc($r->total ?? '') . '" data-saldo="' . esc($r->saldo ?? '') . '" data-monto="' . esc($r->monto_pagar ?? '') . '" title="Agregar pago"><i class="fa-solid fa-money-bill-wave"></i> Pago</button> ';
+                }
+                $html .= '<button type="button" class="btn btn-sm btn-outline-info btn-historial" data-id="' . $rid . '" title="Historial de pagos y pruebas"><i class="fa-solid fa-clock-rotate-left"></i></button> ';
+                $html .= '<button type="button" class="btn btn-sm btn-outline-danger btn-anular-registro" data-id="' . $rid . '" title="Anular orden (no borra de la base de datos)"><i class="fa-solid fa-ban"></i></button>';
             }
-            if ($hasRegvalues) {
-                $html .= '<a href="' . site_url('registers/viewreport/' . $rid) . '" class="btn btn-sm btn-secondary" title="Reporte">Reporte</a> ';
-                $html .= '<a href="' . site_url('registers/pdf/' . $rid) . '" class="btn btn-sm btn-success" target="_blank" title="PDF">PDF</a> ';
-                $pacientePhone = trim($r->paciente_phone ?? '');
-                $doctorPhone   = trim($r->doctor_phone ?? '');
-                $html .= '<button type="button" class="btn btn-sm btn-success btn-whatsapp-pdf" data-id="' . $rid . '" data-paciente="' . esc($r->paciente ?? '') . '" data-doctor="' . esc($r->doctor ?? '') . '" data-paciente-phone="' . esc($pacientePhone) . '" data-doctor-phone="' . esc($doctorPhone) . '" data-ingreso="' . esc($r->ingreso ?? '') . '" title="Enviar PDF por WhatsApp"><i class="fa-brands fa-whatsapp"></i></button> ';
-            }
-            if ($saldoNum > 0) {
-                $html .= '<button type="button" class="btn btn-sm btn-outline-warning btn-agregar-pago" data-id="' . $rid . '" data-total="' . esc($r->total ?? '') . '" data-saldo="' . esc($r->saldo ?? '') . '" data-monto="' . esc($r->monto_pagar ?? '') . '" title="Agregar pago"><i class="fa-solid fa-money-bill-wave"></i> Pago</button> ';
-            }
-            $html .= '<button type="button" class="btn btn-sm btn-outline-info btn-historial" data-id="' . $rid . '" title="Historial de pagos y pruebas"><i class="fa-solid fa-clock-rotate-left"></i></button> ';
-            $html .= '<button type="button" class="btn btn-sm btn-outline-danger btn-eliminar-registro" data-id="' . $rid . '" title="Eliminar"><i class="fa-solid fa-trash"></i></button>';
             $html .= '</td>';
             $html .= '</tr>';
         }
@@ -235,6 +303,9 @@ class Registers extends SecureArea
         if (!$registerInfo) {
             return redirect()->to('registers')->with('error', 'Registro no encontrado');
         }
+        if ($this->registerModel->isRegistroAnulado($id)) {
+            return redirect()->to('registers/anulada/' . $id);
+        }
 
         $pacienteType = $this->registerService->computePacienteType($registerInfo);
         $registerInfo->paciente = $pacienteType;
@@ -261,6 +332,8 @@ class Registers extends SecureArea
             'analisis'          => $analisis,
             'labotests_namecate' => $id,
             'registerModel'     => $this->registerModel,
+            'leyendas_activas'  => ($this->configModel->getValue('leyendas_enabled') === '1') ? model(LeyendaModel::class)->where('activo', 1)->where('deleted', 0)->orderBy('titulo', 'ASC')->findAll() : [],
+            'leyendas_enabled'  => ($this->configModel->getValue('leyendas_enabled') === '1'),
             'decimales_sugerencia' => $decimalesSugerencia,
             'allowed_modules'   => $this->allowed_modules,
             'user_info'         => $this->user_info,
@@ -272,6 +345,9 @@ class Registers extends SecureArea
         $id = (int) $id;
         if ($id < 1) {
             return redirect()->to('registers')->with('error', 'Registro no válido');
+        }
+        if ($this->registerModel->isRegistroAnulado($id)) {
+            return redirect()->to('registers/anulada/' . $id);
         }
 
         $data = $this->registerService->prepareReportData($id);
@@ -309,6 +385,9 @@ class Registers extends SecureArea
         $registerInfo = $this->registerModel->getInfoRefill($id);
         if (!$registerInfo) {
             return redirect()->to('registers/lista')->with('error', 'Registro no encontrado');
+        }
+        if ($this->registerModel->isRegistroAnulado($id)) {
+            return redirect()->to('registers/lista')->with('error', 'La orden está anulada; no se puede imprimir la orden de trabajo.');
         }
 
         $pacienteType = $this->registerService->computePacienteType($registerInfo);
@@ -360,6 +439,9 @@ class Registers extends SecureArea
         if (!$registerInfo) {
             return redirect()->to('registers/lista')->with('error', 'Registro no encontrado');
         }
+        if ($this->registerModel->isRegistroAnulado($id)) {
+            return redirect()->to('registers/lista')->with('error', 'La orden está anulada; no se puede generar el PDF de orden.');
+        }
 
         $pacienteType = $this->registerService->computePacienteType($registerInfo);
         $registerInfo->paciente = $pacienteType;
@@ -408,6 +490,9 @@ class Registers extends SecureArea
         if ($id < 1) {
             return redirect()->to('registers')->with('error', 'Registro no válido');
         }
+        if ($this->registerModel->isRegistroAnulado($id)) {
+            return redirect()->to('registers/anulada/' . $id);
+        }
 
         $data = $this->registerService->prepareReportData($id);
         if (!$data) {
@@ -437,6 +522,9 @@ class Registers extends SecureArea
         $id = (int) $id;
         if ($id < 1) {
             return redirect()->to('registers')->with('error', 'Registro no válido');
+        }
+        if ($this->registerModel->isRegistroAnulado($id)) {
+            return redirect()->to('registers/lista')->with('error', 'La orden está anulada; no se puede generar el PDF de resultados.');
         }
 
         $data = $this->registerService->prepareReportData($id);
@@ -492,7 +580,14 @@ class Registers extends SecureArea
             ];
 
             $registroId = $this->registerModel->saveRegistro($registroData);
-            \App\Models\AuditoriaModel::log('registers', 'crear', (string) $registroId);
+            \App\Models\AuditoriaModel::log('registers', 'crear', (string) $registroId, \App\Models\AuditoriaModel::detail([
+                'paciente_id' => $registro['person_id'] ?? null,
+                'doctor_id' => $registro['doctor_id'] ?? null,
+                'pruebas' => $registro['pruebas'] ?? null,
+                'prioridad' => (int)($registro['prioridad'] ?? 0),
+                'total' => $pagos['total'] ?? null,
+                'monto_pagar' => $pagos['monto_pagar'] ?? null,
+            ], 'Nuevo registro de orden'));
 
             $pagosData = [
                 'registro_id'  => $registroId,
@@ -554,6 +649,10 @@ class Registers extends SecureArea
         if (!$this->registerModel->existsRegistro($id)) {
             return $this->response->setJSON(['success' => false, 'message' => 'Registro no encontrado'])->setStatusCode(404);
         }
+        $blocked = $this->bloquearSiRegistroAnuladoJson($id);
+        if ($blocked !== null) {
+            return $blocked;
+        }
 
         try {
             $validation = \Config\Services::validation();
@@ -576,7 +675,14 @@ class Registers extends SecureArea
                 'id_session' => session()->get('person_id'),
             ];
             $this->registerModel->saveRegistro($registroData, $id);
-            \App\Models\AuditoriaModel::log('registers', 'editar_orden', (string) $id);
+            \App\Models\AuditoriaModel::log('registers', 'editar_orden', (string) $id, \App\Models\AuditoriaModel::detail([
+                'paciente_id' => $registro['person_id'] ?? null,
+                'doctor_id' => $registro['doctor_id'] ?? null,
+                'pruebas' => $registro['pruebas'] ?? null,
+                'prioridad' => (int)($registro['prioridad'] ?? 0),
+                'total' => $pagos['total'] ?? null,
+                'monto_pagar' => $pagos['monto_pagar'] ?? null,
+            ], 'Edición de orden existente'));
 
             $pagosUpd = [
                 'total_reco'  => $pagos['total_reco'] ?? null,
@@ -611,13 +717,29 @@ class Registers extends SecureArea
         if (!$this->registerModel->existsRegistro($id)) {
             return $this->response->setJSON(['success' => false, 'message' => 'Registro no encontrado'])->setStatusCode(404);
         }
+        if ($this->registerModel->isRegistroAnulado($id)) {
+            return $this->response->setJSON(['success' => false, 'message' => 'Esta orden ya está anulada.'])->setStatusCode(400);
+        }
+        $motivo = trim((string) ($this->request->getPost('motivo_anulacion') ?? $this->request->getPost('motivo') ?? ''));
+        if (mb_strlen($motivo) < 5) {
+            return $this->response->setJSON(['success' => false, 'message' => 'Indique el motivo de anulación (mínimo 5 caracteres).'])->setStatusCode(400);
+        }
         try {
-            $this->registerModel->deleteRegistro($id);
-            \App\Models\AuditoriaModel::log('registers', 'eliminar', (string) $id);
-            return $this->response->setJSON(['success' => true, 'message' => 'Registro eliminado']);
+            $infoBefore = $this->registerModel->getInfoRefill($id);
+            $pacienteLabel = $infoBefore ? trim(($infoBefore->first_name ?? '') . ' ' . ($infoBefore->last_name_fa ?? '')) : '';
+            $personId = session()->get('person_id') ? (int) session()->get('person_id') : null;
+            if (!$this->registerModel->anularRegistro($id, $motivo, $personId)) {
+                return $this->response->setJSON(['success' => false, 'message' => 'No se pudo anular. Verifique la migración de base de datos o el motivo indicado.'])->setStatusCode(500);
+            }
+            \App\Models\AuditoriaModel::log('registers', 'anular', (string) $id, \App\Models\AuditoriaModel::detail([
+                'paciente' => $pacienteLabel,
+                'motivo'   => $motivo,
+            ], 'Orden anulada (registro conservado)'));
+
+            return $this->response->setJSON(['success' => true, 'message' => 'Orden anulada correctamente']);
         } catch (\Throwable $e) {
             log_message('error', 'Registers::delete ' . $e->getMessage());
-            return $this->response->setJSON(['success' => false, 'message' => 'Error al eliminar'])->setStatusCode(500);
+            return $this->response->setJSON(['success' => false, 'message' => 'Error al anular'])->setStatusCode(500);
         }
     }
 
@@ -653,6 +775,10 @@ class Registers extends SecureArea
         if (!$pago) {
             return $this->response->setJSON(['success' => false, 'message' => 'Registro de pago no encontrado'])->setStatusCode(404);
         }
+        $blocked = $this->bloquearSiRegistroAnuladoJson($id);
+        if ($blocked !== null) {
+            return $blocked;
+        }
         $montoAgregar = (float) ($this->request->getPost('monto_pagar') ?? 0);
         $tipopago     = trim((string) ($this->request->getPost('tipopago') ?? '1'));
         if ($montoAgregar <= 0) {
@@ -661,6 +787,11 @@ class Registers extends SecureArea
 
         $ok = $this->registerModel->insertAbono($id, $montoAgregar, $tipopago);
         if ($ok) {
+            \App\Models\AuditoriaModel::log('registers', 'agregar_pago', (string) $id, \App\Models\AuditoriaModel::detail([
+                'monto' => $montoAgregar,
+                'tipopago' => $tipopago,
+                'saldo_anterior' => (float)($pago->saldo ?? 0),
+            ]));
             return $this->response->setJSON(['success' => true, 'message' => 'Pago agregado correctamente']);
         }
         return $this->response->setJSON(['success' => false, 'message' => 'Error al agregar pago'])->setStatusCode(500);
@@ -670,17 +801,24 @@ class Registers extends SecureArea
     {
         $registroId = (int) ($this->request->getPost('registro_id') ?? 0);
         if ($registroId < 1) return redirect()->back()->with('error', 'Registro no válido');
+        if ($this->registerModel->isRegistroAnulado($registroId)) {
+            return redirect()->back()->with('error', 'No puede crear muestra en una orden anulada.');
+        }
         $muestraModel = model(MuestraModel::class);
         if ($muestraModel->getByRegistro($registroId)) {
             return redirect()->to("registers/view/{$registroId}")->with('error', 'Ya existe una muestra para este registro');
         }
+        $tipoMuestraId = (int) ($this->request->getPost('tipo_muestra_id') ?? 1);
         $muestraModel->saveMuestra([
             'registro_id' => $registroId,
-            'tipo_muestra_id' => (int) ($this->request->getPost('tipo_muestra_id') ?? 1),
+            'tipo_muestra_id' => $tipoMuestraId,
             'estado' => 0,
             'fecha_tomada' => date('Y-m-d H:i:s'),
             'usuario_tomo' => session()->get('person_id'),
         ]);
+        \App\Models\AuditoriaModel::log('registers', 'crear_muestra', (string) $registroId, \App\Models\AuditoriaModel::detail([
+            'tipo_muestra_id' => $tipoMuestraId,
+        ]));
         return redirect()->to("registers/view/{$registroId}")->with('success', 'Muestra creada');
     }
 
@@ -691,7 +829,18 @@ class Registers extends SecureArea
         $muestraModel = model(MuestraModel::class);
         $muestra = $muestraModel->getById($muestraId);
         if (!$muestra) return redirect()->back()->with('error', 'Muestra no encontrada');
+        $regIdMuestra = (int) ($muestra['registro_id'] ?? 0);
+        if ($regIdMuestra > 0 && $this->registerModel->isRegistroAnulado($regIdMuestra)) {
+            return redirect()->back()->with('error', 'La orden está anulada; no se puede cambiar el estado de la muestra.');
+        }
+        $estadoAnterior = (int)($muestra['estado'] ?? 0);
         $muestraModel->cambiarEstado($muestraId, $nuevoEstado, (int) session()->get('person_id'));
+        $estadosMuestra = [0 => 'Tomada', 1 => 'Recibida', 2 => 'Procesada', 3 => 'Validada'];
+        \App\Models\AuditoriaModel::log('registers', 'cambiar_estado_muestra', (string)($muestra['registro_id'] ?? 0), \App\Models\AuditoriaModel::detail([
+            'muestra_id' => $muestraId,
+            'estado_anterior' => $estadosMuestra[$estadoAnterior] ?? $estadoAnterior,
+            'estado_nuevo' => $estadosMuestra[$nuevoEstado] ?? $nuevoEstado,
+        ]));
         return redirect()->to("registers/view/" . (int)($muestra['registro_id'] ?? 0))->with('success', 'Estado actualizado');
     }
 
@@ -699,9 +848,11 @@ class Registers extends SecureArea
     {
         $data = $this->request->getPost('data');
         $data = is_string($data) ? json_decode($data, true) : $data;
+        $comentario = trim((string)($this->request->getPost('comentario_resultado') ?? ''));
+        $registroIdPost = (int)($this->request->getPost('registro_id') ?? 0);
 
         if (!is_array($data)) {
-            return $this->response->setJSON(['success' => false, 'message' => 'Datos inválidos'])->setStatusCode(400);
+            $data = [];
         }
 
         $registroId = null;
@@ -712,10 +863,23 @@ class Registers extends SecureArea
                 break;
             }
         }
+        if (($registroId === null || $registroId < 1) && $registroIdPost > 0) {
+            $registroId = $registroIdPost;
+        }
+        if ($registroId !== null && $registroId > 0) {
+            $blocked = $this->bloquearSiRegistroAnuladoJson($registroId);
+            if ($blocked !== null) {
+                return $blocked;
+            }
+        }
         if ($registroId !== null) {
+            $this->registerModel->saveRegistro([
+                'comentario_resultado' => ($comentario !== '' ? $comentario : null),
+            ], $registroId);
             $this->registerModel->deleteRegvaluesByRegistroId($registroId);
         }
 
+        $valCount = 0;
         foreach ($data as $item) {
             $this->registerModel->saveRegvalues([
                 'regvalues'   => $item['valor'] ?? null,
@@ -723,6 +887,13 @@ class Registers extends SecureArea
                 'name'        => $item['id'] ?? null,
                 'id_session'  => session()->get('person_id'),
             ]);
+            $valCount++;
+        }
+        if ($registroId !== null) {
+            \App\Models\AuditoriaModel::log('registers', 'guardar_resultados', (string) $registroId, \App\Models\AuditoriaModel::detail([
+                'cantidad_valores' => $valCount,
+                'tiene_comentario' => ($comentario !== ''),
+            ]));
         }
         return $this->response->setJSON(['success' => true, 'message' => 'Guardado exitoso']);
     }
@@ -734,6 +905,20 @@ class Registers extends SecureArea
 
         if (!is_array($data)) {
             return $this->response->setJSON(['success' => false, 'message' => 'Datos inválidos'])->setStatusCode(400);
+        }
+
+        $ridAn = 0;
+        foreach ($data as $item) {
+            $ridAn = (int) ($item['registro_id'] ?? 0);
+            if ($ridAn > 0) {
+                break;
+            }
+        }
+        if ($ridAn > 0) {
+            $blocked = $this->bloquearSiRegistroAnuladoJson($ridAn);
+            if ($blocked !== null) {
+                return $blocked;
+            }
         }
 
         foreach ($data as $item) {
@@ -761,7 +946,14 @@ class Registers extends SecureArea
         if ($registroId < 1 || !in_array($tipo, ['tecnico', 'medico'])) {
             return redirect()->back()->with('error', 'Datos inválidos');
         }
+        if ($this->registerModel->isRegistroAnulado($registroId)) {
+            return redirect()->back()->with('error', 'La orden está anulada; no se puede validar.');
+        }
         $this->registerModel->validarResultados($registroId, $tipo, $obs);
+        \App\Models\AuditoriaModel::log('registers', 'validar_' . $tipo, (string) $registroId, \App\Models\AuditoriaModel::detail([
+            'tipo' => $tipo,
+            'observaciones' => $obs,
+        ]));
         $msg = $tipo === 'tecnico' ? 'Validación técnica registrada' : 'Validación médica registrada';
         return redirect()->to("registers/viewreport/{$registroId}")->with('success', $msg);
     }
@@ -774,6 +966,9 @@ class Registers extends SecureArea
         $id = (int) $id;
         if ($id < 1) {
             return $this->response->setJSON(['success' => false, 'message' => 'Registro no válido'])->setStatusCode(400);
+        }
+        if ($this->registerModel->isRegistroAnulado($id)) {
+            return $this->response->setJSON(['success' => false, 'message' => 'La orden está anulada; no se puede enviar el PDF.'])->setStatusCode(403);
         }
 
         $destinatarios = $this->request->getPost('destinatarios'); // paciente, doctor, ambos
@@ -802,7 +997,8 @@ class Registers extends SecureArea
         $pacienteNombre = trim(($paciente->first_name ?? '') . ' ' . ($paciente->last_name_fa ?? '') . ' ' . ($paciente->last_name_mom ?? ''));
         $doctorNombre   = trim($doctor->name ?? '');
         $ingreso        = $registerInfo->ingreso ?? date('Y-m-d');
-        $orden          = $registerInfo->registro_id ?? $id;
+        helper('registro');
+        $orden          = registro_orden_display($registerInfo);
 
         $msgPaciente = $this->configModel->getValue('whatsapp_message_paciente') ?: 'Estimado/a {paciente}, adjuntamos los resultados de su análisis (Orden #{orden}, {fecha}). {laboratorio}';
         $msgDoctor   = $this->configModel->getValue('whatsapp_message_doctor') ?: 'Dr/a {doctor}, adjuntamos resultados del paciente {paciente} (Orden #{orden}, {fecha}). {laboratorio}';
@@ -875,6 +1071,13 @@ class Registers extends SecureArea
         $allOk = !empty($results) && array_reduce($results, fn($a, $r) => $a && ($r['success'] ?? false), true);
         $anyOk = array_reduce($results, fn($a, $r) => $a || ($r['success'] ?? false), false);
         $msg = $anyOk ? ($allOk ? 'Enviado correctamente.' : 'Algunos envíos fallaron.') : 'No se pudo enviar.';
+
+        \App\Models\AuditoriaModel::log('registers', 'enviar_whatsapp', (string) $id, \App\Models\AuditoriaModel::detail([
+            'destinatarios' => $destinatarios,
+            'paciente' => $pacienteNombre,
+            'doctor' => $doctorNombre,
+            'resultado' => $allOk ? 'exitoso' : ($anyOk ? 'parcial' : 'fallido'),
+        ]));
 
         return $this->response->setJSON([
             'success' => $anyOk,

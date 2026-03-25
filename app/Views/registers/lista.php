@@ -16,10 +16,12 @@
     <div class="col-md-12">
         <form method="get" action="<?= site_url('registers/lista') ?>" class="d-flex flex-wrap gap-2 align-items-center">
             <input type="text" name="q" class="form-control" style="max-width:280px;" placeholder="Buscar por código de prueba, nombre, apellidos o CI del paciente..." value="<?= esc($search ?? '') ?>">
-            <select name="estado" class="form-select" style="max-width:180px;">
+            <select name="estado" class="form-select" style="max-width:220px;">
                 <option value="">Todos</option>
+                <option value="activo" <?= ($estado ?? '') === 'activo' ? 'selected' : '' ?>>Solo activas (no anuladas)</option>
                 <option value="completo" <?= ($estado ?? '') === 'completo' ? 'selected' : '' ?>>Completos (con resultados)</option>
                 <option value="incompleto" <?= ($estado ?? '') === 'incompleto' ? 'selected' : '' ?>>Incompletos (sin resultados)</option>
+                <option value="anulado" <?= ($estado ?? '') === 'anulado' ? 'selected' : '' ?>>Solo anuladas</option>
             </select>
             <button type="submit" class="btn btn-outline-primary"><i class="fa-solid fa-search"></i> Buscar</button>
             <?php if (!empty($search) || !empty($estado ?? '')): ?>
@@ -99,6 +101,28 @@
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
                 <button type="button" class="btn btn-success" id="btnEnviarWhatsapp"><i class="fa-brands fa-whatsapp me-1"></i>Enviar</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Anular orden -->
+<div class="modal fade" id="modalAnularRegistro" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="fa-solid fa-ban text-danger me-2"></i>Anular orden</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+            </div>
+            <div class="modal-body">
+                <p class="small text-muted">El registro <strong>no se borra</strong> de la base de datos. Quedará bloqueado: solo podrá consultarse el motivo y las pruebas que llevaba la orden. No se podrán usar costos operativos, resultados, pagos adicionales ni consumo de inventario vinculado a esta orden.</p>
+                <input type="hidden" id="anular_registro_id" value="">
+                <label for="anular_motivo" class="form-label fw-semibold">Motivo de la anulación <span class="text-danger">*</span></label>
+                <textarea id="anular_motivo" class="form-control" rows="4" placeholder="Explique por qué se anula esta orden (mínimo 5 caracteres)" required></textarea>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-danger" id="btnConfirmarAnular"><i class="fa-solid fa-ban me-1"></i>Confirmar anulación</button>
             </div>
         </div>
     </div>
@@ -258,7 +282,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     var reg = d.registro || {};
                     var pago = d.pago || {};
                     var html = '<div class="mb-3"><h6 class="border-bottom pb-2">Datos del registro</h6>';
-                    html += '<p class="mb-1"><strong>Orden:</strong> ' + escapeHtml(reg.registro_id || '-') + '</p>';
+                    html += '<p class="mb-1"><strong>Orden:</strong> ' + escapeHtml((reg.numero_orden && String(reg.numero_orden).trim() !== '') ? reg.numero_orden : (reg.registro_id || '-')) + '</p>';
                     html += '<p class="mb-1"><strong>Paciente:</strong> ' + escapeHtml(reg.paciente || '-') + '</p>';
                     html += '<p class="mb-1"><strong>Doctor:</strong> ' + escapeHtml(reg.doctor || '-') + '</p>';
                     html += '<p class="mb-0"><strong>Fecha ingreso:</strong> ' + escapeHtml(reg.ingreso ? new Date(reg.ingreso).toLocaleString('es') : '-') + '</p></div>';
@@ -377,26 +401,53 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
-    document.querySelectorAll('.btn-eliminar-registro').forEach(function(btn) {
+    var modalAnular = document.getElementById('modalAnularRegistro');
+    var anularRegistroId = document.getElementById('anular_registro_id');
+    var anularMotivo = document.getElementById('anular_motivo');
+    var btnConfirmarAnular = document.getElementById('btnConfirmarAnular');
+
+    document.querySelectorAll('.btn-anular-registro').forEach(function(btn) {
         btn.addEventListener('click', function() {
             var id = this.getAttribute('data-id');
+            if (!id || !modalAnular || !anularRegistroId || !anularMotivo) return;
+            anularRegistroId.value = id;
+            anularMotivo.value = '';
+            if (typeof bootstrap !== 'undefined' && bootstrap.Modal) {
+                new bootstrap.Modal(modalAnular).show();
+            }
+        });
+    });
+
+    if (btnConfirmarAnular && anularRegistroId && anularMotivo) {
+        btnConfirmarAnular.addEventListener('click', function() {
+            var id = anularRegistroId.value;
+            var motivo = (anularMotivo.value || '').trim();
             if (!id) return;
-            if (!confirm('¿Eliminar el registro #' + id + '? Esta acción no se puede deshacer.')) return;
+            if (motivo.length < 5) {
+                alert('Indique el motivo de anulación (mínimo 5 caracteres).');
+                return;
+            }
             var csrf = (typeof CI_CSRF_TOKEN !== 'undefined' && typeof CI_CSRF_TOKEN_NAME !== 'undefined')
-                ? '&' + CI_CSRF_TOKEN_NAME + '=' + encodeURIComponent(CI_CSRF_TOKEN) : '';
+                ? CI_CSRF_TOKEN_NAME + '=' + encodeURIComponent(CI_CSRF_TOKEN) : '';
+            var body = 'motivo_anulacion=' + encodeURIComponent(motivo) + (csrf ? '&' + csrf : '');
+            btnConfirmarAnular.disabled = true;
             fetch('<?= site_url('registers/delete') ?>/' + id, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'X-Requested-With': 'XMLHttpRequest' },
-                body: csrf ? csrf.substring(1) : ''
+                body: body
             })
             .then(function(r) { return r.json(); })
             .then(function(res) {
-                if (res.success) location.reload();
-                else alert(res.message || 'Error al eliminar');
+                if (res.success) {
+                    location.reload();
+                } else {
+                    alert(res.message || 'Error al anular');
+                }
             })
-            .catch(function() { alert('Error de conexión'); });
+            .catch(function() { alert('Error de conexión'); })
+            .finally(function() { btnConfirmarAnular.disabled = false; });
         });
-    });
+    }
 });
 </script>
 <?= $this->endSection() ?>

@@ -12,6 +12,7 @@ $icons = [
     'controlcalidad' => 'fa-vial-circle-check',
     'reactivos'      => 'fa-bottle-droplet',
     'equipos'        => 'fa-microscope',
+    'leyendas'       => 'fa-quote-right',
     'auditoria'      => 'fa-clipboard-list',
     'employees'      => 'fa-user-tie',
     'config'         => 'fa-gear',

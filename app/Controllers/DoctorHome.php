@@ -188,6 +188,9 @@ class DoctorHome extends BaseController
         if (!$master || (int) ($master->doctor_id ?? 0) !== $doctorId) {
             return redirect()->to(site_url('doctor/home'))->with('error', 'No tiene acceso a ese reporte');
         }
+        if ($this->registerModel->isRegistroAnulado($id)) {
+            return redirect()->to(site_url('doctor/home'))->with('error', 'Esta orden fue anulada y no está disponible.');
+        }
 
         $data = $this->registerService->prepareReportData($id);
         if (!$data) {
@@ -219,6 +222,9 @@ class DoctorHome extends BaseController
         $master = $this->registerModel->getInforeport($id);
         if (!$master || (int) ($master->doctor_id ?? 0) !== $doctorId) {
             return redirect()->to(site_url('doctor/home'))->with('error', 'No tiene acceso a ese PDF');
+        }
+        if ($this->registerModel->isRegistroAnulado($id)) {
+            return redirect()->to(site_url('doctor/home'))->with('error', 'Esta orden fue anulada y no está disponible.');
         }
 
         $data = $this->registerService->prepareReportData($id);

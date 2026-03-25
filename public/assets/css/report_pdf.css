@@ -85,6 +85,12 @@ table.results td {
     border: 1px solid #ddd;
     padding: 6px 8px;
     text-align: left;
+    vertical-align: middle;
+}
+/* Mayor especificidad que table.results td (dompdf respeta .text-center en columnas numéricas) */
+table.results th.text-center,
+table.results td.text-center {
+    text-align: center;
 }
 table.results th {
     background: #0066cc;

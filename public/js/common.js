@@ -71,6 +71,10 @@ function initAsyncForms() {
                     }
                     var msg = (d && d.message) ? d.message : (d && d.success ? 'Guardado correctamente' : 'Error al guardar');
                     showToast(msg, d && d.success ? 'success' : 'error');
+                    if (d && d.success && f.getAttribute('data-reload-on-success') === '1') {
+                        setTimeout(function () { window.location.reload(); }, 600);
+                        return;
+                    }
                     if (d && d.redirect_url) {
                         setTimeout(function () { window.location.href = d.redirect_url; }, 800);
                     }

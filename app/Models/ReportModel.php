@@ -8,6 +8,38 @@ class ReportModel extends Model
 {
     protected $table = 'registro';
 
+    /** @var bool|null */
+    private static $registroTieneCampoAnulado = null;
+
+    private function registroTieneCampoAnulado(): bool
+    {
+        if (self::$registroTieneCampoAnulado === null) {
+            try {
+                $t = $this->db->prefixTable('registro');
+                self::$registroTieneCampoAnulado = in_array('anulado', $this->db->getFieldNames($t), true);
+            } catch (\Throwable $e) {
+                self::$registroTieneCampoAnulado = false;
+            }
+        }
+
+        return self::$registroTieneCampoAnulado;
+    }
+
+    /**
+     * Excluye órdenes anuladas de totales e informes operativos.
+     *
+     * @param \CodeIgniter\Database\BaseBuilder $builder
+     * @return \CodeIgniter\Database\BaseBuilder
+     */
+    private function applySinRegistrosAnulados($builder, string $r)
+    {
+        if (!$this->registroTieneCampoAnulado()) {
+            return $builder;
+        }
+
+        return $builder->where("COALESCE({$r}.anulado, 0) = 0", null, false);
+    }
+
     /**
      * Registros de análisis por rango de fechas
      */
@@ -18,14 +50,16 @@ class ReportModel extends Model
         $d  = $this->db->prefixTable('doctors');
         $pa = $this->db->prefixTable('pago');
 
-        return $this->db->table('registro')
+        $b = $this->db->table('registro')
             ->select("{$r}.registro_id, {$r}.ingreso,
                 CONCAT({$p}.first_name, ' ', {$p}.last_name_fa, ' ', {$p}.last_name_mom) AS paciente,
                 {$d}.name as doctor, {$pa}.total as total, {$pa}.monto_pagar")
             ->join('people', "{$p}.person_id = {$r}.person_id")
             ->join('doctors', "{$d}.doctor_id = {$r}.doctor_id")
-            ->join('pago', "{$r}.registro_id = {$pa}.registro_id")
-            ->where("DATE({$r}.ingreso) >=", $startDate)
+            ->join('pago', "{$r}.registro_id = {$pa}.registro_id");
+        $b = $this->applySinRegistrosAnulados($b, $r);
+
+        return $b->where("DATE({$r}.ingreso) >=", $startDate)
             ->where("DATE({$r}.ingreso) <=", $endDate)
             ->orderBy("{$r}.ingreso", 'ASC')
             ->get()
@@ -135,10 +169,11 @@ class ReportModel extends Model
         $r  = $this->db->prefixTable('registro');
         $pa = $this->db->prefixTable('pago');
 
-        $rows = $this->db->table('registro')
+        $b = $this->db->table('registro')
             ->select("DATE({$r}.ingreso) as fecha, COUNT(*) as cantidad, SUM(CAST({$pa}.total AS DECIMAL(12,2))) as total, SUM(CAST({$pa}.monto_pagar AS DECIMAL(12,2))) as cobrado")
-            ->join('pago', "{$r}.registro_id = {$pa}.registro_id")
-            ->where("DATE({$r}.ingreso) >=", $startDate)
+            ->join('pago', "{$r}.registro_id = {$pa}.registro_id");
+        $b = $this->applySinRegistrosAnulados($b, $r);
+        $rows = $b->where("DATE({$r}.ingreso) >=", $startDate)
             ->where("DATE({$r}.ingreso) <=", $endDate)
             ->groupBy("DATE({$r}.ingreso)")
             ->orderBy('fecha', 'ASC')
@@ -156,10 +191,12 @@ class ReportModel extends Model
         $r  = $this->db->prefixTable('registro');
         $pa = $this->db->prefixTable('pago');
 
-        return $this->db->table('registro')
+        $b = $this->db->table('registro')
             ->select("COUNT(*) as total_registros, SUM(CAST({$pa}.total AS DECIMAL(12,2))) as total_facturado, SUM(CAST({$pa}.monto_pagar AS DECIMAL(12,2))) as total_cobrado")
-            ->join('pago', "{$r}.registro_id = {$pa}.registro_id")
-            ->where("DATE({$r}.ingreso) >=", $startDate)
+            ->join('pago', "{$r}.registro_id = {$pa}.registro_id");
+        $b = $this->applySinRegistrosAnulados($b, $r);
+
+        return $b->where("DATE({$r}.ingreso) >=", $startDate)
             ->where("DATE({$r}.ingreso) <=", $endDate)
             ->get()
             ->getRow();
@@ -174,11 +211,13 @@ class ReportModel extends Model
         $d  = $this->db->prefixTable('doctors');
         $pa = $this->db->prefixTable('pago');
 
-        return $this->db->table('registro')
+        $b = $this->db->table('registro')
             ->select("{$d}.name as doctor, COUNT(*) as cantidad, SUM(CAST({$pa}.total AS DECIMAL(12,2))) as total")
             ->join('doctors', "{$d}.doctor_id = {$r}.doctor_id")
-            ->join('pago', "{$r}.registro_id = {$pa}.registro_id")
-            ->where("DATE({$r}.ingreso) >=", $startDate)
+            ->join('pago', "{$r}.registro_id = {$pa}.registro_id");
+        $b = $this->applySinRegistrosAnulados($b, $r);
+
+        return $b->where("DATE({$r}.ingreso) >=", $startDate)
             ->where("DATE({$r}.ingreso) <=", $endDate)
             ->groupBy("{$r}.doctor_id")
             ->orderBy('total', 'DESC')
@@ -196,7 +235,7 @@ class ReportModel extends Model
         $d  = $this->db->prefixTable('doctors');
         $pa = $this->db->prefixTable('pago');
 
-        return $this->db->table('registro')
+        $b = $this->db->table('registro')
             ->select("{$r}.registro_id, {$r}.ingreso,
                 CONCAT({$p}.first_name, ' ', {$p}.last_name_fa, ' ', {$p}.last_name_mom) AS paciente,
                 {$d}.name as doctor,
@@ -206,8 +245,10 @@ class ReportModel extends Model
                 {$pa}.tipopago")
             ->join('people', "{$p}.person_id = {$r}.person_id")
             ->join('doctors', "{$d}.doctor_id = {$r}.doctor_id")
-            ->join('pago', "{$r}.registro_id = {$pa}.registro_id")
-            ->where("DATE({$r}.ingreso) >=", $startDate)
+            ->join('pago', "{$r}.registro_id = {$pa}.registro_id");
+        $b = $this->applySinRegistrosAnulados($b, $r);
+
+        return $b->where("DATE({$r}.ingreso) >=", $startDate)
             ->where("DATE({$r}.ingreso) <=", $endDate)
             ->orderBy("{$r}.ingreso", 'DESC')
             ->get()
@@ -224,7 +265,7 @@ class ReportModel extends Model
         $d  = $this->db->prefixTable('doctors');
         $pa = $this->db->prefixTable('pago');
 
-        return $this->db->table('registro')
+        $b = $this->db->table('registro')
             ->select("{$r}.registro_id, {$r}.ingreso,
                 CONCAT({$p}.first_name, ' ', {$p}.last_name_fa, ' ', {$p}.last_name_mom) AS paciente,
                 {$d}.name as doctor,
@@ -233,8 +274,10 @@ class ReportModel extends Model
                 CAST({$pa}.saldo AS DECIMAL(12,2)) as saldo")
             ->join('people', "{$p}.person_id = {$r}.person_id")
             ->join('doctors', "{$d}.doctor_id = {$r}.doctor_id")
-            ->join('pago', "{$r}.registro_id = {$pa}.registro_id")
-            ->where("DATE({$r}.ingreso) >=", $startDate)
+            ->join('pago', "{$r}.registro_id = {$pa}.registro_id");
+        $b = $this->applySinRegistrosAnulados($b, $r);
+
+        return $b->where("DATE({$r}.ingreso) >=", $startDate)
             ->where("DATE({$r}.ingreso) <=", $endDate)
             ->where("CAST({$pa}.saldo AS DECIMAL(12,2)) >", 0)
             ->orderBy('saldo', 'DESC')
@@ -250,13 +293,15 @@ class ReportModel extends Model
         $r  = $this->db->prefixTable('registro');
         $pa = $this->db->prefixTable('pago');
 
-        return $this->db->table('registro')
+        $b = $this->db->table('registro')
             ->select("COUNT(*) as total_registros,
                 SUM(CAST({$pa}.total AS DECIMAL(12,2))) as total_facturado,
                 SUM(CAST({$pa}.monto_pagar AS DECIMAL(12,2))) as total_cobrado,
                 SUM(CAST({$pa}.saldo AS DECIMAL(12,2))) as total_pendiente")
-            ->join('pago', "{$r}.registro_id = {$pa}.registro_id")
-            ->where("DATE({$r}.ingreso) >=", $startDate)
+            ->join('pago', "{$r}.registro_id = {$pa}.registro_id");
+        $b = $this->applySinRegistrosAnulados($b, $r);
+
+        return $b->where("DATE({$r}.ingreso) >=", $startDate)
             ->where("DATE({$r}.ingreso) <=", $endDate)
             ->get()
             ->getRow();
@@ -270,14 +315,16 @@ class ReportModel extends Model
         $r  = $this->db->prefixTable('registro');
         $pa = $this->db->prefixTable('pago');
 
-        return $this->db->table('registro')
+        $b = $this->db->table('registro')
             ->select("{$pa}.tipopago,
                 COUNT(*) as cantidad,
                 SUM(CAST({$pa}.total AS DECIMAL(12,2))) as total_facturado,
                 SUM(CAST({$pa}.monto_pagar AS DECIMAL(12,2))) as total_cobrado,
                 SUM(CAST({$pa}.saldo AS DECIMAL(12,2))) as total_pendiente")
-            ->join('pago', "{$r}.registro_id = {$pa}.registro_id")
-            ->where("DATE({$r}.ingreso) >=", $startDate)
+            ->join('pago', "{$r}.registro_id = {$pa}.registro_id");
+        $b = $this->applySinRegistrosAnulados($b, $r);
+
+        return $b->where("DATE({$r}.ingreso) >=", $startDate)
             ->where("DATE({$r}.ingreso) <=", $endDate)
             ->groupBy("{$pa}.tipopago")
             ->orderBy("{$pa}.tipopago", 'ASC')
@@ -295,7 +342,7 @@ class ReportModel extends Model
         $d  = $this->db->prefixTable('doctors');
         $pa = $this->db->prefixTable('pago');
 
-        return $this->db->table('registro')
+        $b = $this->db->table('registro')
             ->select("{$r}.registro_id, {$r}.ingreso,
                 CONCAT({$p}.first_name, ' ', {$p}.last_name_fa, ' ', {$p}.last_name_mom) AS paciente,
                 {$d}.name as doctor,
@@ -305,8 +352,10 @@ class ReportModel extends Model
                 {$pa}.tipopago")
             ->join('people', "{$p}.person_id = {$r}.person_id")
             ->join('doctors', "{$d}.doctor_id = {$r}.doctor_id")
-            ->join('pago', "{$r}.registro_id = {$pa}.registro_id")
-            ->where("DATE({$r}.ingreso) >=", $startDate)
+            ->join('pago', "{$r}.registro_id = {$pa}.registro_id");
+        $b = $this->applySinRegistrosAnulados($b, $r);
+
+        return $b->where("DATE({$r}.ingreso) >=", $startDate)
             ->where("DATE({$r}.ingreso) <=", $endDate)
             ->where("CAST({$pa}.saldo AS DECIMAL(12,2)) <= 0")
             ->orderBy("{$r}.ingreso", 'DESC')
@@ -322,14 +371,16 @@ class ReportModel extends Model
         $r  = $this->db->prefixTable('registro');
         $pa = $this->db->prefixTable('pago');
 
-        return $this->db->table('registro')
+        $b = $this->db->table('registro')
             ->select("DATE({$r}.ingreso) as fecha,
                 COUNT(*) as cantidad,
                 SUM(CAST({$pa}.total AS DECIMAL(12,2))) as total_facturado,
                 SUM(CAST({$pa}.monto_pagar AS DECIMAL(12,2))) as total_cobrado,
                 SUM(CAST({$pa}.saldo AS DECIMAL(12,2))) as total_pendiente")
-            ->join('pago', "{$r}.registro_id = {$pa}.registro_id")
-            ->where("DATE({$r}.ingreso) >=", $startDate)
+            ->join('pago', "{$r}.registro_id = {$pa}.registro_id");
+        $b = $this->applySinRegistrosAnulados($b, $r);
+
+        return $b->where("DATE({$r}.ingreso) >=", $startDate)
             ->where("DATE({$r}.ingreso) <=", $endDate)
             ->groupBy("DATE({$r}.ingreso)")
             ->orderBy('fecha', 'ASC')
@@ -346,7 +397,7 @@ class ReportModel extends Model
         $d  = $this->db->prefixTable('doctors');
         $pa = $this->db->prefixTable('pago');
 
-        return $this->db->table('registro')
+        $b = $this->db->table('registro')
             ->select("{$d}.doctor_id,
                 {$d}.name as doctor,
                 COUNT(*) as cantidad,
@@ -354,8 +405,10 @@ class ReportModel extends Model
                 SUM(CAST({$pa}.monto_pagar AS DECIMAL(12,2))) as total_cobrado,
                 SUM(CAST({$pa}.saldo AS DECIMAL(12,2))) as total_pendiente")
             ->join('doctors', "{$d}.doctor_id = {$r}.doctor_id")
-            ->join('pago', "{$r}.registro_id = {$pa}.registro_id")
-            ->where("DATE({$r}.ingreso) >=", $startDate)
+            ->join('pago', "{$r}.registro_id = {$pa}.registro_id");
+        $b = $this->applySinRegistrosAnulados($b, $r);
+
+        return $b->where("DATE({$r}.ingreso) >=", $startDate)
             ->where("DATE({$r}.ingreso) <=", $endDate)
             ->groupBy("{$d}.doctor_id, {$d}.name")
             ->orderBy('total_facturado', 'DESC')
@@ -375,15 +428,16 @@ class ReportModel extends Model
         $pt = $this->db->prefixTable('prianacategoria');
         $a  = $this->db->prefixTable('anacategoria');
 
-        $rows = $this->db->table('registro')
+        $b = $this->db->table('registro')
             ->select("{$r}.registro_id, {$r}.ingreso, {$r}.pruebas,
                 CONCAT({$p}.first_name, ' ', {$p}.last_name_fa, ' ', {$p}.last_name_mom) AS paciente,
                 {$d}.name as doctor,
                 CAST({$pa}.total AS DECIMAL(12,2)) as total")
             ->join('people', "{$p}.person_id = {$r}.person_id")
             ->join('doctors', "{$d}.doctor_id = {$r}.doctor_id")
-            ->join('pago', "{$r}.registro_id = {$pa}.registro_id")
-            ->where("DATE({$r}.ingreso) >=", $startDate)
+            ->join('pago', "{$r}.registro_id = {$pa}.registro_id");
+        $b = $this->applySinRegistrosAnulados($b, $r);
+        $rows = $b->where("DATE({$r}.ingreso) >=", $startDate)
             ->where("DATE({$r}.ingreso) <=", $endDate)
             ->where("{$r}.pruebas != '' AND {$r}.pruebas IS NOT NULL")
             ->orderBy("{$r}.ingreso", 'ASC')
@@ -425,14 +479,16 @@ class ReportModel extends Model
         $d  = $this->db->prefixTable('doctors');
         $pa = $this->db->prefixTable('pago');
 
-        return $this->db->table('registro')
+        $b = $this->db->table('registro')
             ->select("{$r}.registro_id, {$r}.ingreso,
                 CONCAT({$p}.first_name, ' ', {$p}.last_name_fa, ' ', {$p}.last_name_mom) AS paciente,
                 {$d}.name as doctor, {$pa}.total as total, {$pa}.monto_pagar")
             ->join('people', "{$p}.person_id = {$r}.person_id")
             ->join('doctors', "{$d}.doctor_id = {$r}.doctor_id")
-            ->join('pago', "{$r}.registro_id = {$pa}.registro_id")
-            ->orderBy("{$r}.ingreso", 'DESC')
+            ->join('pago', "{$r}.registro_id = {$pa}.registro_id");
+        $b = $this->applySinRegistrosAnulados($b, $r);
+
+        return $b->orderBy("{$r}.ingreso", 'DESC')
             ->limit($perPage, $offset)
             ->get()
             ->getResultArray();
@@ -446,11 +502,11 @@ class ReportModel extends Model
         $r  = $this->db->prefixTable('registro');
         $pa = $this->db->prefixTable('pago');
 
-        $row = $this->db->table('registro')
+        $b = $this->db->table('registro')
             ->select('COUNT(*) as total')
-            ->join('pago', "{$r}.registro_id = {$pa}.registro_id")
-            ->get()
-            ->getRow();
+            ->join('pago', "{$r}.registro_id = {$pa}.registro_id");
+        $b = $this->applySinRegistrosAnulados($b, $r);
+        $row = $b->get()->getRow();
 
         return (int) ($row->total ?? 0);
     }
@@ -463,10 +519,11 @@ class ReportModel extends Model
         $r  = $this->db->prefixTable('registro');
         $pa = $this->db->prefixTable('pago');
 
-        return $this->db->table('registro')
+        $b = $this->db->table('registro')
             ->select("COUNT(*) as total_registros, SUM(CAST({$pa}.total AS DECIMAL(12,2))) as total_facturado, SUM(CAST({$pa}.monto_pagar AS DECIMAL(12,2))) as total_cobrado")
-            ->join('pago', "{$r}.registro_id = {$pa}.registro_id")
-            ->get()
-            ->getRow();
+            ->join('pago', "{$r}.registro_id = {$pa}.registro_id");
+        $b = $this->applySinRegistrosAnulados($b, $r);
+
+        return $b->get()->getRow();
     }
 }

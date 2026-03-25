@@ -9,7 +9,7 @@
 <div class="alert alert-danger"><?= esc(session()->getFlashdata('error')) ?></div>
 <?php endif; ?>
 <?= view('partial/breadcrumb_nav', ['items' => [
-    ['label' => 'Insumos', 'url' => site_url('reactivos')],
+    ['label' => lang('Module.module_reactivos'), 'url' => site_url('inventario')],
     ['label' => 'Editar: ' . esc($reactivo['nombre'] ?? ''), 'url' => null],
 ]]) ?>
 
@@ -35,7 +35,7 @@
         </div>
         <div class="mt-3">
             <button type="submit" class="btn btn-primary">Guardar</button>
-            <a href="<?= site_url('reactivos') ?>" class="btn btn-secondary">Cancelar</a>
+            <a href="<?= site_url('inventario') ?>" class="btn btn-secondary">Cancelar</a>
         </div>
     </div>
 </div>

@@ -32,7 +32,7 @@
 
 <?= view('partial/breadcrumb_nav', ['items' => [
     ['label' => lang('Module.module_registers'), 'url' => site_url('registers/lista')],
-    ['label' => 'Orden #' . (int)($labotests_namecate ?? 0), 'url' => null],
+    ['label' => 'Orden ' . registro_orden_display($register_info), 'url' => null],
 ]]) ?>
 
 <div class="d-print-none mb-3">
@@ -88,7 +88,7 @@
             <hr class="my-3" />
             <div class="text-center mt-2">
                 <svg id="orden-barcode"></svg>
-                <div class="small text-muted mt-1">Orden #<?= (int)($register_info->registro_id ?? 0) ?></div>
+                <div class="small text-muted mt-1">Orden <?= esc(registro_orden_display($register_info)) ?></div>
             </div>
         <?php endif; ?>
     </div>
@@ -98,7 +98,7 @@
     <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.6/dist/JsBarcode.all.min.js"></script>
     <script>
     document.addEventListener('DOMContentLoaded', function() {
-        var orderId = '<?= (int)($register_info->registro_id ?? 0) ?>';
+        var orderId = <?= json_encode(registro_orden_display($register_info), JSON_UNESCAPED_UNICODE) ?>;
         var svg = document.getElementById('orden-barcode');
         if (!svg || !orderId) return;
         if (typeof JsBarcode === 'undefined') {

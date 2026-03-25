@@ -22,6 +22,7 @@ return [
     'config_decimales_sugerencia' => 'Decimales en sugerencias (registros)',
     'config_decimales_sugerencia_help' => 'Cantidad de decimales al mostrar el valor calculado en las sugerencias del formulario de registro (0-10).',
     'config_saved'          => 'Configuración guardada correctamente',
+    'config_logo_error'     => 'No se pudo actualizar el logo (use JPG, PNG, GIF o WebP de hasta 2 MB).',
     'config_error'          => 'Error al guardar',
     'config_save_btn'       => 'Guardar',
 ];

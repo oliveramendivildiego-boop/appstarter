@@ -33,7 +33,7 @@
         <?php $tituloMedico = ((int)($doctor->gender ?? 0) === 1) ? 'Dr.' : 'Dra.'; ?>
         <span class="fw-bold">Médico:</span> <?= $tituloMedico ?> <?= esc($doctor->name ?? '') ?><br/>
         <span class="fw-bold">Fecha:</span> <?= esc($register_info->ingreso ?? '') ?><br/>
-        <span class="fw-bold">No. Orden:</span> <?= esc($register_info->registro_id ?? '') ?>
+        <span class="fw-bold">No. Orden:</span> <?= esc(registro_orden_display($register_info)) ?>
     </div>
 </div>
 

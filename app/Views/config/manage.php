@@ -48,7 +48,7 @@
                 <h5 class="mb-0"><i class="fa-solid fa-gear me-2"></i><?= lang('Config.config_info') ?></h5>
             </div>
             <div class="card-body">
-<?= form_open_multipart(site_url('config/save'), ['id' => 'config_form', 'data-async' => '1']) ?>
+<?= form_open_multipart(site_url('config/save'), ['id' => 'config_form', 'data-async' => '1', 'data-reload-on-success' => '1']) ?>
         <div class="row">
             <div class="col-md-6 mb-3">
                 <?= form_label(lang('Config.config_company'), 'company', ['class' => 'form-label']) ?>
@@ -160,6 +160,34 @@
                 <?= form_label('Mostrar código de barras en orden registrada', 'show_order_barcode', ['class' => 'form-check-label']) ?>
             </div>
             <small class="text-muted">Si se desactiva, la orden se imprimirá sin código de barras.</small>
+        </div>
+        <div class="mb-3">
+            <input type="hidden" name="leyendas_enabled" value="0">
+            <div class="form-check">
+                <?= form_checkbox('leyendas_enabled', '1', (($config['leyendas_enabled'] ?? '0') === '1'), 'id="leyendas_enabled" class="form-check-input" autocomplete="off"') ?>
+                <?= form_label('Habilitar leyendas en pruebas', 'leyendas_enabled', ['class' => 'form-check-label']) ?>
+            </div>
+            <small class="text-muted">Si se activa, se mostrará un campo de comentarios/leyendas al registrar resultados de pruebas.</small>
+        </div>
+        <hr class="my-3">
+        <div class="mb-3">
+            <label for="registro_folio_format" class="form-label fw-bold">Formato del número de orden (recepción)</label>
+            <textarea name="registro_folio_format" id="registro_folio_format" class="form-control font-monospace" rows="2" maxlength="128" placeholder="Ej: LAB-%yyyy-%mm-%dd-%i"><?= esc($config['registro_folio_format'] ?? '') ?></textarea>
+            <div class="small text-muted mt-2">
+                <p class="mb-1">Deje vacío para usar solo el ID numérico interno del sistema (comportamiento anterior).</p>
+                <p class="mb-1"><strong>Variables</strong> (respete mayúsculas):</p>
+                <ul class="mb-1 ps-3">
+                    <li><code>%yyyy</code> — año cuatro dígitos (2026)</li>
+                    <li><code>%yy</code> — año dos dígitos (26)</li>
+                    <li><code>%mm</code> — mes con cero (01–12)</li>
+                    <li><code>%m</code> — mes sin cero (1–12)</li>
+                    <li><code>%dd</code> — día con cero (01–31)</li>
+                    <li><code>%d</code> — día sin cero (1–31)</li>
+                    <li><code>%i</code> — <strong>obligatorio</strong> si usa formato: contador que aumenta (1, 2, 3…). Se reinicia según lo que incluya la plantilla: si hay día (<code>%d</code> o <code>%dd</code>) cada día; si solo mes, cada mes; si solo año, cada año; si no hay fecha, un solo contador global.</li>
+                    <li><code>%%</code> — un símbolo <code>%</code> literal</li>
+                </ul>
+                <p class="mb-0">Puede mezclar <strong>texto fijo</strong> (letras, guiones, etc.) con las variables. Ejemplo: <code>ORD-%yyyy-%mm-%dd-%i</code> o <code>%m%dd%yyyy-%i</code>. Máximo 128 caracteres en la plantilla; el número generado no puede superar 64 caracteres.</p>
+            </div>
         </div>
         
         <button type="submit" id="config_save_btn" name="config_save_btn" class="btn btn-primary"><?= lang('Config.config_save_btn') ?></button>

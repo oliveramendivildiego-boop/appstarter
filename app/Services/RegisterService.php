@@ -449,6 +449,9 @@ class RegisterService
         if (!$registerInfo) {
             return null;
         }
+        if ($this->registerModel->isRegistroAnulado($registroId)) {
+            return null;
+        }
 
         $dt = new \DateTime($registerInfo->ingreso ?? 'now');
         $registerInfo->ingreso = $dt->format('d/m/Y');
