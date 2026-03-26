@@ -70,7 +70,7 @@
                             <td>
                                 <a href="<?= site_url('reactivos/lotes/' . (int)$r['reactivo_id']) ?>" class="btn btn-sm btn-outline-primary">Lotes</a>
                                 <a href="<?= site_url('reactivos/editar/' . (int)$r['reactivo_id']) ?>" class="btn btn-sm btn-outline-secondary">Editar</a>
-                                <?= form_open('reactivos/eliminar/' . (int)$r['reactivo_id'], ['class' => 'd-inline', 'onsubmit' => "return confirm('¿Eliminar este insumo?');"]) ?>
+                                <?= form_open('reactivos/eliminar/' . (int)$r['reactivo_id'], ['class' => 'd-inline', 'onsubmit' => "return uiConfirmForm(this, '¿Eliminar este insumo?');"]) ?>
                                 <button type="submit" class="btn btn-sm btn-outline-danger" title="Eliminar"><i class="fa-solid fa-trash"></i></button>
                                 <?= form_close() ?>
                             </td>

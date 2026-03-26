@@ -188,6 +188,21 @@
     </ul>
 </nav>
 <?php endif; ?>
+<!-- Modal mensaje (reemplaza alert para confirmaciones/mensajes) -->
+<div class="modal fade" id="modalMensajeAccion" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="modalMensajeAccionTitulo"></h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+            </div>
+            <div class="modal-body" id="modalMensajeAccionTexto"></div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-primary" data-bs-dismiss="modal">OK</button>
+            </div>
+        </div>
+    </div>
+</div>
 <?= $this->endSection() ?>
 
 <?= $this->section('scripts') ?>
@@ -198,6 +213,24 @@ function escapeHtml(str) {
     return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#039;');
 }
 document.addEventListener('DOMContentLoaded', function() {
+    // Modal mensaje general (reemplaza alert() para confirmaciones/mensajes)
+    var modalMensajeAccion = document.getElementById('modalMensajeAccion');
+    var modalMensajeAccionTitulo = document.getElementById('modalMensajeAccionTitulo');
+    var modalMensajeAccionTexto = document.getElementById('modalMensajeAccionTexto');
+
+    function mostrarMensajeModal(titulo, texto) {
+        texto = (texto == null) ? '' : String(texto);
+        if (modalMensajeAccion && modalMensajeAccionTitulo && modalMensajeAccionTexto && typeof bootstrap !== 'undefined' && bootstrap.Modal) {
+            modalMensajeAccionTitulo.textContent = titulo || 'Mensaje';
+            modalMensajeAccionTexto.textContent = texto;
+            new bootstrap.Modal(modalMensajeAccion).show();
+            return;
+        }
+        if (typeof uiAlert === 'function') {
+            uiAlert(texto, titulo || 'Mensaje');
+        }
+    }
+
     // Modal Agregar pago
     var modalPago = document.getElementById('modalAgregarPago');
     var btnAgregarPagoList = document.querySelectorAll('.btn-agregar-pago');
@@ -256,9 +289,9 @@ document.addEventListener('DOMContentLoaded', function() {
             .then(function(r) { return r.json(); })
             .then(function(res) {
                 if (res.success) { location.reload(); }
-                else { alert(res.message || 'Error al guardar'); }
+                else { mostrarMensajeModal('Error', res.message || 'Error al guardar'); }
             })
-            .catch(function() { alert('Error de conexión'); });
+            .catch(function() { mostrarMensajeModal('Error', 'Error de conexión'); });
         });
     }
 
@@ -388,12 +421,10 @@ document.addEventListener('DOMContentLoaded', function() {
                     var m = bootstrap.Modal.getInstance(modalWhatsapp);
                     if (m) m.hide();
                 }
-                alert(res.message || (res.success ? 'Enviado.' : 'Error.'));
+                mostrarMensajeModal('Resultado', res.message || (res.success ? 'Enviado.' : 'Error.'));
                 if (res.success) location.reload();
             })
-            .catch(function() {
-                alert('Error de conexión');
-            })
+            .catch(function() { mostrarMensajeModal('Error', 'Error de conexión'); })
             .finally(function() {
                 btnEnviarWhatsapp.disabled = false;
                 btnEnviarWhatsapp.innerHTML = '<i class="fa-brands fa-whatsapp me-1"></i>Enviar';
@@ -424,7 +455,7 @@ document.addEventListener('DOMContentLoaded', function() {
             var motivo = (anularMotivo.value || '').trim();
             if (!id) return;
             if (motivo.length < 5) {
-                alert('Indique el motivo de anulación (mínimo 5 caracteres).');
+                mostrarMensajeModal('Validación', 'Indique el motivo de anulación (mínimo 5 caracteres).');
                 return;
             }
             var csrf = (typeof CI_CSRF_TOKEN !== 'undefined' && typeof CI_CSRF_TOKEN_NAME !== 'undefined')
@@ -441,10 +472,10 @@ document.addEventListener('DOMContentLoaded', function() {
                 if (res.success) {
                     location.reload();
                 } else {
-                    alert(res.message || 'Error al anular');
+                    mostrarMensajeModal('Error', res.message || 'Error al anular');
                 }
             })
-            .catch(function() { alert('Error de conexión'); })
+            .catch(function() { mostrarMensajeModal('Error', 'Error de conexión'); })
             .finally(function() { btnConfirmarAnular.disabled = false; });
         });
     }

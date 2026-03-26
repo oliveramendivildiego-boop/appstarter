@@ -1,6 +1,13 @@
 <?= $this->extend('layouts/main') ?>
 
 <?= $this->section('content') ?>
+<?php
+helper('layout');
+$layoutCfg = layout_config();
+$currencySym = $layoutCfg['currency_symbol'] ?? '$';
+$currencySide = isset($layoutCfg['currency_side']) ? (string)$layoutCfg['currency_side'] : 'left';
+$currencyIsRight = strtolower(trim($currencySide)) === 'right';
+?>
 <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
     <h1 class="h2"><i class="fa-solid fa-money-check me-2"></i>Pagar Comisión</h1>
     <div class="btn-toolbar mb-2 mb-md-0">
@@ -50,7 +57,9 @@
                     <div class="row mb-3">
                         <div class="col-md-4">
                             <label class="form-label">Monto Prueba:</label>
-                            <p class="form-control-plaintext">$<?= number_format($commission->total_amount, 2) ?></p>
+                            <p class="form-control-plaintext"><?= $currencyIsRight
+                                ? (number_format($commission->total_amount, 2) . ' ' . esc($currencySym))
+                                : (esc($currencySym) . ' ' . number_format($commission->total_amount, 2)) ?></p>
                         </div>
                         <div class="col-md-4">
                             <label class="form-label">% Comisión:</label>
@@ -58,7 +67,9 @@
                         </div>
                         <div class="col-md-4">
                             <label class="form-label">Monto Comisión:</label>
-                            <p class="form-control-plaintext fw-bold text-success">$<?= number_format($commission->commission_amount, 2) ?></p>
+                            <p class="form-control-plaintext fw-bold text-success"><?= $currencyIsRight
+                                ? (number_format($commission->commission_amount, 2) . ' ' . esc($currencySym))
+                                : (esc($currencySym) . ' ' . number_format($commission->commission_amount, 2)) ?></p>
                         </div>
                     </div>
                     
@@ -103,7 +114,9 @@
                 
                 <div class="mb-3">
                     <small class="text-muted">Monto a Pagar</small>
-                    <h3 class="text-success mb-0">$<?= number_format($commission->commission_amount, 2) ?></h3>
+                    <h3 class="text-success mb-0"><?= $currencyIsRight
+                        ? (number_format($commission->commission_amount, 2) . ' ' . esc($currencySym))
+                        : (esc($currencySym) . ' ' . number_format($commission->commission_amount, 2)) ?></h3>
                 </div>
                 
                 <div class="d-grid gap-2">
@@ -127,6 +140,40 @@
         <?php endif; ?>
     </div>
 </div>
+<!-- Modal confirmación de pago -->
+<div class="modal fade" id="modalConfirmPagoComision" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="fa-solid fa-triangle-exclamation text-warning me-2"></i>Confirmar pago</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+            </div>
+            <div class="modal-body">
+                ¿Está seguro de confirmar el pago de esta comisión?
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-success" id="btnConfirmarPagoComisionAceptar">Confirmar</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal mensaje -->
+<div class="modal fade" id="modalMensajePagoComision" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="modalMensajePagoComisionTitulo">Mensaje</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+            </div>
+            <div class="modal-body" id="modalMensajePagoComisionTexto"></div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-primary" id="btnModalMensajePagoComisionOk" data-bs-dismiss="modal">OK</button>
+            </div>
+        </div>
+    </div>
+</div>
 <?= $this->endSection() ?>
 
 <?= $this->section('scripts') ?>
@@ -134,27 +181,60 @@
 $(document).ready(function() {
     $('#paymentForm').submit(function(e) {
         e.preventDefault();
-        
-        if (!confirm('¿Está seguro de confirmar el pago de esta comisión?')) {
-            return false;
-        }
-        
+
         var form = $(this);
-        $.ajax({
-            url: form.attr('action'),
-            type: 'POST',
-            data: form.serialize(),
-            dataType: 'json'
-        }).done(function(response) {
-            if (response.success) {
-                alert('Comisión pagada correctamente');
-                window.location.href = response.redirect_url;
-            } else {
-                alert(response.message);
-            }
-        }).fail(function() {
-            alert('Error al procesar el pago');
-        });
+
+        var modalConfirmPago = document.getElementById('modalConfirmPagoComision');
+        var btnAceptar = document.getElementById('btnConfirmarPagoComisionAceptar');
+        var modalMensaje = document.getElementById('modalMensajePagoComision');
+        var modalMensajeTexto = document.getElementById('modalMensajePagoComisionTexto');
+        var btnOk = document.getElementById('btnModalMensajePagoComisionOk');
+
+        function ejecutarAjax() {
+            $.ajax({
+                url: form.attr('action'),
+                type: 'POST',
+                data: form.serialize(),
+                dataType: 'json'
+            }).done(function(response) {
+                var texto = response && response.success
+                    ? 'Comisión pagada correctamente'
+                    : (response && response.message ? response.message : 'Error al procesar el pago');
+
+                if (modalMensaje && modalMensajeTexto && typeof bootstrap !== 'undefined' && bootstrap.Modal) {
+                    modalMensajeTexto.textContent = texto;
+                    var m = new bootstrap.Modal(modalMensaje);
+                    m.show();
+                    if (response && response.success && response.redirect_url && btnOk) {
+                        btnOk.onclick = function() {
+                            window.location.href = response.redirect_url;
+                        };
+                    }
+                } else {
+                    uiAlert(texto, 'Resultado');
+                    if (response && response.success && response.redirect_url) window.location.href = response.redirect_url;
+                }
+            }).fail(function() {
+                if (modalMensaje && modalMensajeTexto && typeof bootstrap !== 'undefined' && bootstrap.Modal) {
+                    modalMensajeTexto.textContent = 'Error al procesar el pago';
+                    new bootstrap.Modal(modalMensaje).show();
+                } else {
+                    uiAlert('Error al procesar el pago', 'Error');
+                }
+            });
+        }
+
+        if (modalConfirmPago && btnAceptar && typeof bootstrap !== 'undefined' && bootstrap.Modal) {
+            btnAceptar.onclick = function() {
+                var m = bootstrap.Modal.getInstance(modalConfirmPago) || new bootstrap.Modal(modalConfirmPago);
+                m.hide();
+                ejecutarAjax();
+            };
+            new bootstrap.Modal(modalConfirmPago).show();
+        } else {
+            uiConfirm('¿Está seguro de confirmar el pago de esta comisión?', 'Confirmar pago')
+                .then(function(ok) { if (ok) ejecutarAjax(); });
+        }
     });
 });
 </script>

@@ -219,6 +219,24 @@ endif;
     <button type="button" id="submit" name="btn_submit" class="btn btn-primary"><?= !empty($existentes) ? ucfirst(lang('Common.common_edit')) : lang('Common.common_submit') ?></button>
 </div>
 <?php endif; ?>
+<!-- Modal confirmación de envío (reemplaza window.confirm) -->
+<div class="modal fade" id="modalConfirmEnviar" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="fa-solid fa-triangle-exclamation text-warning me-2"></i>Confirmar envío</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+            </div>
+            <div class="modal-body">
+                <div id="modalConfirmEnviarTexto" class="text-muted" style="white-space: pre-wrap;"></div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-primary" id="modalConfirmEnviarAceptar">Enviar de todos modos</button>
+            </div>
+        </div>
+    </div>
+</div>
 </fieldset>
 
 <?= $this->endSection() ?>
@@ -406,9 +424,9 @@ document.addEventListener('DOMContentLoaded', function() {
             if (faltantes.length) msg += 'Complete los siguientes campos: ' + faltantes.join(', ') + '.\n';
             if (fueraRango.length) msg += 'Valores fuera del rango de referencia: ' + fueraRango.join('; ') + '.\n';
             msg += '¿Desea enviar igualmente?';
-            return window.confirm(msg + '\n\nCancelar = corregir datos. Aceptar = enviar de todos modos.');
+            return { needsConfirm: true, msg: msg + '\n\nCancelar = corregir datos. Aceptar = enviar de todos modos.' };
         }
-        return true;
+        return { needsConfirm: false, msg: '' };
     }
     var submitBtn = document.getElementById('submit');
     if (!submitBtn) return;
@@ -422,8 +440,8 @@ document.addEventListener('DOMContentLoaded', function() {
             txt.focus();
         });
     }
-    submitBtn.addEventListener('click', function() {
-        if (!validarAntesDeEnviar()) return;
+    function ejecutarEnvio() {
+        if (submitBtn) submitBtn.disabled = true;
         var datos = [];
         document.querySelectorAll('.input-con-ref').forEach(function(el) {
             var valor = (el.value || '').trim();
@@ -453,10 +471,34 @@ document.addEventListener('DOMContentLoaded', function() {
                 var rid = document.getElementById('registro_id').value;
                 window.location.href = '<?= site_url('registers/viewreport') ?>/' + rid;
             } else {
-                alert(res && res.message ? res.message : 'Error al guardar');
+                uiAlert(res && res.message ? res.message : 'Error al guardar', 'Error');
+                if (submitBtn) submitBtn.disabled = false;
             }
         })
-        .catch(function() { alert('Error al guardar'); });
+        .catch(function() {
+            uiAlert('Error al guardar', 'Error');
+            if (submitBtn) submitBtn.disabled = false;
+        });
+    }
+
+    submitBtn.addEventListener('click', function() {
+        var validacion = validarAntesDeEnviar();
+        if (validacion && validacion.needsConfirm) {
+            var modalEl = document.getElementById('modalConfirmEnviar');
+            var textoEl = document.getElementById('modalConfirmEnviarTexto');
+            var btnAceptar = document.getElementById('modalConfirmEnviarAceptar');
+
+            textoEl.textContent = validacion.msg || '';
+            var modal = new bootstrap.Modal(modalEl);
+            modal.show();
+            btnAceptar.onclick = function() {
+                modal.hide();
+                ejecutarEnvio();
+            };
+            return;
+        }
+
+        ejecutarEnvio();
     });
     actualizarCalculadas();
 });

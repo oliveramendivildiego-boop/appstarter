@@ -3,6 +3,13 @@
 <?= $this->section('title') ?>Mi panel<?= $this->endSection() ?>
 
 <?= $this->section('content') ?>
+<?php
+helper('layout');
+$layoutCfg = layout_config();
+$currencySym = $layoutCfg['currency_symbol'] ?? '$';
+$currencySide = isset($layoutCfg['currency_side']) ? (string)$layoutCfg['currency_side'] : 'left';
+$currencyIsRight = strtolower(trim($currencySide)) === 'right';
+?>
 <div class="container-fluid">
     <div class="row">
         <div class="col-12">
@@ -54,7 +61,9 @@
                             </div>
                             <div>
                                 <div class="ynex-stat-label">Comisiones Pendientes</div>
-                                <div class="ynex-stat-value">$<?= number_format($comision_summary->total_pending ?? 0, 2) ?></div>
+                                <div class="ynex-stat-value"><?= $currencyIsRight
+                                    ? (number_format($comision_summary->total_pending ?? 0, 2) . ' ' . esc($currencySym))
+                                    : (esc($currencySym) . ' ' . number_format($comision_summary->total_pending ?? 0, 2)) ?></div>
                                 <small class="text-muted"><?= (int)($comision_summary->pending_count ?? 0) ?> pendientes</small>
                             </div>
                         </div>
@@ -68,7 +77,9 @@
                             </div>
                             <div>
                                 <div class="ynex-stat-label">Comisiones Pagadas</div>
-                                <div class="ynex-stat-value">$<?= number_format($comision_summary->total_paid ?? 0, 2) ?></div>
+                                <div class="ynex-stat-value"><?= $currencyIsRight
+                                    ? (number_format($comision_summary->total_paid ?? 0, 2) . ' ' . esc($currencySym))
+                                    : (esc($currencySym) . ' ' . number_format($comision_summary->total_paid ?? 0, 2)) ?></div>
                                 <small class="text-muted"><?= (int)($comision_summary->paid_count ?? 0) ?> pagadas</small>
                             </div>
                         </div>
@@ -82,7 +93,9 @@
                             </div>
                             <div>
                                 <div class="ynex-stat-label">Total Comisiones</div>
-                                <div class="ynex-stat-value">$<?= number_format($comision_summary->total_commissions ?? 0, 2) ?></div>
+                                <div class="ynex-stat-value"><?= $currencyIsRight
+                                    ? (number_format($comision_summary->total_commissions ?? 0, 2) . ' ' . esc($currencySym))
+                                    : (esc($currencySym) . ' ' . number_format($comision_summary->total_commissions ?? 0, 2)) ?></div>
                                 <small class="text-muted">Acumulado total</small>
                             </div>
                         </div>
@@ -142,7 +155,9 @@
                                             </td>
                                             <td><?= esc($com->paciente_nombre ?? 'N/A') ?></td>
                                             <td>
-                                                <span class="fw-bold text-success">$<?= number_format($com->commission_amount, 2) ?></span>
+                                                <span class="fw-bold text-success"><?= $currencyIsRight
+                                                    ? (number_format($com->commission_amount, 2) . ' ' . esc($currencySym))
+                                                    : (esc($currencySym) . ' ' . number_format($com->commission_amount, 2)) ?></span>
                                                 <br><small class="text-muted"><?= number_format($com->commission_percent, 2) ?>%</small>
                                             </td>
                                             <td>
@@ -242,7 +257,7 @@ document.addEventListener('DOMContentLoaded', function() {
     form.addEventListener('submit', function(e) {
         if (!personInput.value) {
             e.preventDefault();
-            alert('Seleccione un paciente de la lista de sugerencias.');
+            uiAlert('Seleccione un paciente de la lista de sugerencias.', 'Validación');
             input.focus();
             return;
         }

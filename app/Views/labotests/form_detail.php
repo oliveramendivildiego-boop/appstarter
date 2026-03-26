@@ -154,7 +154,7 @@ if ($fe !== '') {
                     <td class="text-center">
                         <button type="button" class="btn btn-sm btn-outline-primary btn-editar-sec" title="Editar"><i class="fa-solid fa-pen"></i></button>
                         <a href="<?= site_url("labotests/duplicatesecitem/" . (int)($s['secanacategoria_id'] ?? 0)) ?>" class="btn btn-sm btn-outline-secondary" title="Duplicar"><i class="fa-solid fa-copy"></i></a>
-                        <a href="<?= site_url("labotests/deletesecitem/" . (int)($s['secanacategoria_id'] ?? 0)) ?>" class="btn btn-sm btn-outline-danger" title="Eliminar" onclick="return confirm('¿Eliminar esta sub-clase?');"><i class="fa-solid fa-trash"></i></a>
+                        <a href="<?= site_url("labotests/deletesecitem/" . (int)($s['secanacategoria_id'] ?? 0)) ?>" class="btn btn-sm btn-outline-danger" title="Eliminar" onclick="return uiConfirmLink(this, '¿Eliminar esta sub-clase?');"><i class="fa-solid fa-trash"></i></a>
                     </td>
                 </tr>
                 <?php endforeach; ?>
@@ -675,8 +675,10 @@ if ($fe !== '') {
                         if (typeof showToast === 'function') showToast('No se puede eliminar esta fórmula', 'error');
                         return;
                     }
-                    if (!confirm('¿Eliminar la fórmula "' + (opt.textContent || '') + '"? Solo es posible si no está en uso.')) return;
-                    var formData = new FormData();
+                    var confirmMsg = '¿Eliminar la fórmula "' + (opt.textContent || '') + '"? Solo es posible si no está en uso.';
+                    uiConfirm(confirmMsg, 'Confirmar').then(function(ok) {
+                        if (!ok) return;
+                        var formData = new FormData();
                     var csrfInput = document.querySelector('input[name="csrf_test_name"]') || document.querySelector('input[name*="csrf"]');
                     var csrfName = (csrfInput && csrfInput.name) ? csrfInput.name : (typeof window.CI_CSRF_TOKEN_NAME !== 'undefined' ? window.CI_CSRF_TOKEN_NAME : 'csrf_test_name');
                     var csrfVal = (csrfInput && csrfInput.value) ? csrfInput.value : (typeof window.CI_CSRF_TOKEN !== 'undefined' ? window.CI_CSRF_TOKEN : '');
@@ -716,6 +718,7 @@ if ($fe !== '') {
                     }).catch(function() {
                         btnEliminarFormula.disabled = false;
                         if (typeof showToast === 'function') showToast('Error al eliminar', 'error');
+                    });
                     });
                 });
             }

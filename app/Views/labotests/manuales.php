@@ -70,7 +70,7 @@
                             <i class="fa-solid fa-pen"></i>
                         </button>
                         <a href="<?= site_url('labotests/deletemanual/' . (int)($m['manuals_id'] ?? 0)) ?>" class="btn btn-outline-light btn-sm text-danger" title="Eliminar"
-                            onclick="return confirm('¿Eliminar este manual?');">
+                            onclick="return uiConfirmLink(this, '¿Eliminar este manual?');">
                             <i class="fa-solid fa-trash"></i>
                         </a>
                     </div>

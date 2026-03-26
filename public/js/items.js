@@ -11,9 +11,11 @@ $(document).ready(function()
     $('#generate_barcodes').click(function()
     {
     	var selected = get_selected_values();
-    	if (selected.length == 0)
+    if (selected.length == 0)
     	{
-    		alert('<?php echo $this->lang->line('items_must_select_item_for_barcode'); ?>');
+        if (typeof uiAlert === 'function') {
+            uiAlert('<?php echo $this->lang->line('items_must_select_item_for_barcode'); ?>', 'Validación');
+        }
     		return false;
     	}
 

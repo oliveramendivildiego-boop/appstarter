@@ -39,7 +39,7 @@
                                         <td><?= ((int)($l['activo'] ?? 0) === 1) ? 'Activo' : 'Inactivo' ?></td>
                                         <td class="text-center">
                                             <a href="<?= site_url('leyendas?editar=' . (int)($l['leyenda_id'] ?? 0)) ?>" class="btn btn-sm btn-outline-primary" title="Editar"><i class="fa-solid fa-pen"></i></a>
-                                            <a href="<?= site_url('leyendas/delete/' . (int)($l['leyenda_id'] ?? 0)) ?>" class="btn btn-sm btn-outline-danger" title="Eliminar" onclick="return confirm('¿Eliminar esta leyenda?');"><i class="fa-solid fa-trash"></i></a>
+                                            <a href="<?= site_url('leyendas/delete/' . (int)($l['leyenda_id'] ?? 0)) ?>" class="btn btn-sm btn-outline-danger" title="Eliminar" onclick="return uiConfirmLink(this, '¿Eliminar esta leyenda?');"><i class="fa-solid fa-trash"></i></a>
                                         </td>
                                     </tr>
                                 <?php endforeach; ?>

@@ -44,7 +44,7 @@ $opciones = isset($opciones) ? $opciones : [];
                             <input type="text" name="valor" class="form-control form-control-sm" style="width:180px" value="<?= esc($v['valor'] ?? '') ?>" required>
                             <button type="submit" class="btn btn-sm btn-outline-primary" title="Guardar"><i class="fa-solid fa-save"></i></button>
                             <?= form_close() ?>
-                            <a href="<?= site_url('config/deleteopcionvalor/' . (int)($v['opcion_valor_id'] ?? 0)) ?>" class="btn btn-sm btn-outline-danger" title="Eliminar" onclick="return confirm('¿Eliminar este valor?');"><i class="fa-solid fa-trash"></i></a>
+                            <a href="<?= site_url('config/deleteopcionvalor/' . (int)($v['opcion_valor_id'] ?? 0)) ?>" class="btn btn-sm btn-outline-danger" title="Eliminar" onclick="return uiConfirmLink(this, '¿Eliminar este valor?');"><i class="fa-solid fa-trash"></i></a>
                         </li>
                         <?php endforeach; ?>
                     </ul>
@@ -68,7 +68,7 @@ $opciones = isset($opciones) ? $opciones : [];
                             <input type="text" name="valor" class="form-control form-control-sm" style="width:180px" value="<?= esc($v[$valCol] ?? '') ?>" required>
                             <button type="submit" class="btn btn-sm btn-outline-primary" title="Guardar"><i class="fa-solid fa-save"></i></button>
                             <?= form_close() ?>
-                            <a href="<?= site_url('config/deletevalortabla/' . $ts . '/' . (int)($v[$idCol] ?? 0)) ?>" class="btn btn-sm btn-outline-danger" title="Eliminar" onclick="return confirm('¿Eliminar este valor?');"><i class="fa-solid fa-trash"></i></a>
+                            <a href="<?= site_url('config/deletevalortabla/' . $ts . '/' . (int)($v[$idCol] ?? 0)) ?>" class="btn btn-sm btn-outline-danger" title="Eliminar" onclick="return uiConfirmLink(this, '¿Eliminar este valor?');"><i class="fa-solid fa-trash"></i></a>
                         </li>
                         <?php endforeach; ?>
                     </ul>
@@ -93,7 +93,7 @@ $opciones = isset($opciones) ? $opciones : [];
                 </td>
                 <td class="text-center">
                     <?php if ($o['editable'] ?? false): ?>
-                    <a href="<?= site_url('config/deleteopcion/' . (int)($o['opciones_id'] ?? 0)) ?>" class="btn btn-sm btn-outline-danger" onclick="return confirm('¿Eliminar este tipo de resultado?');"><i class="fa-solid fa-trash"></i> Eliminar</a>
+                    <a href="<?= site_url('config/deleteopcion/' . (int)($o['opciones_id'] ?? 0)) ?>" class="btn btn-sm btn-outline-danger" onclick="return uiConfirmLink(this, '¿Eliminar este tipo de resultado?');"><i class="fa-solid fa-trash"></i> Eliminar</a>
                     <?php else: ?>
                     <span class="text-muted">—</span>
                     <?php endif; ?>

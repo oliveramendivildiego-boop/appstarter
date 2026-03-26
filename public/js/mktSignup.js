@@ -54,7 +54,7 @@ $(document).ready(function(){
 		onkeyup: false,
 		submitHandler: function() {
 			$("div.error").hide();
-        	alert("submit! use link below to go to the other step");
+            if (typeof uiAlert === 'function') uiAlert("submit! use link below to go to the other step", 'Info');
 		},
 		messages: {
 			password2: {

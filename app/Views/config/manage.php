@@ -108,6 +108,16 @@
             <div class="col-md-6 mb-3">
                 <?= form_label(lang('Config.config_currency_symbol'), 'currency_symbol', ['class' => 'form-label']) ?>
                 <?= form_input(['name' => 'currency_symbol', 'id' => 'currency_symbol', 'class' => 'form-control', 'autocomplete' => 'off', 'value' => $config['currency_symbol'] ?? '$']) ?>
+                    <?= form_label(lang('Config.config_currency_side'), 'currency_side', ['class' => 'form-label mt-3']) ?>
+                    <?= form_dropdown(
+                        'currency_side',
+                        [
+                            'left'  => lang('Config.config_currency_side_left'),
+                            'right' => lang('Config.config_currency_side_right'),
+                        ],
+                        $config['currency_side'] ?? 'left',
+                        'id="currency_side" class="form-select" autocomplete="off"'
+                    ) ?>
             </div>
             <div class="col-md-6 mb-3">
                 <?= form_label(lang('Config.config_theme_color'), 'theme_color', ['class' => 'form-label']) ?>
@@ -267,7 +277,7 @@
                         <input type="hidden" name="tab" value="poblacion">
                         <button type="submit" class="btn btn-sm btn-outline-primary" title="Editar"><i class="fa-solid fa-pen"></i></button>
                         </form>
-                        <a href="<?= site_url('config/deletepoblacion/' . (int)($p['id_poblacion'] ?? 0)) ?>" class="btn btn-sm btn-outline-danger" title="Eliminar" onclick="return confirm('¿Eliminar este grupo de población?');"><i class="fa-solid fa-trash"></i></a>
+                        <a href="<?= site_url('config/deletepoblacion/' . (int)($p['id_poblacion'] ?? 0)) ?>" class="btn btn-sm btn-outline-danger" title="Eliminar" onclick="return uiConfirmLink(this, '¿Eliminar este grupo de población?');"><i class="fa-solid fa-trash"></i></a>
                     </td>
                 </tr>
                 <?php endforeach; ?>
@@ -808,8 +818,13 @@ $(document).ready(function() {
             if (!target) return;
             var sid = target.getAttribute('data-session-id') || '';
             if (!sid) return;
-            if (!confirm('¿Cerrar esta sesión?')) return;
-            killSessionById(sid);
+            if (typeof uiConfirm === 'function') {
+                uiConfirm('¿Cerrar esta sesión?', 'Confirmar').then(function(ok) {
+                    if (ok) killSessionById(sid);
+                });
+                return;
+            }
+            // Fallback: si no existe uiConfirm, no continuar (evita confirm nativo)
         });
     }
 

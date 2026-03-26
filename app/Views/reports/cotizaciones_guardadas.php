@@ -9,8 +9,15 @@
 <?= $this->section('content') ?>
 <?= view('partial/breadcrumb_nav', ['items' => [
     ['label' => lang('Module.module_reports'), 'url' => site_url('reports')],
-    ['label' => $title ?? '', 'url' => null],
+    ['label' => isset($title) ? $title : '', 'url' => null],
 ]]) ?>
+<?php
+helper('layout');
+$layoutCfg = layout_config();
+$currencySym = (isset($layoutCfg['currency_symbol']) && (string)$layoutCfg['currency_symbol'] !== '') ? $layoutCfg['currency_symbol'] : '$';
+$currencySide = isset($layoutCfg['currency_side']) ? (string)$layoutCfg['currency_side'] : 'left';
+$currencyIsRight = strtolower(trim($currencySide)) === 'right';
+?>
 
 <?php if (session()->getFlashdata('error')): ?>
 <div class="alert alert-danger alert-dismissible fade show">
@@ -19,8 +26,8 @@
 </div>
 <?php endif; ?>
 
-<h4><?= esc($title ?? '') ?></h4>
-<p class="text-muted"><?= esc($subtitle ?? '') ?></p>
+<h4><?= esc(isset($title) ? $title : '') ?></h4>
+<p class="text-muted"><?= esc(isset($subtitle) ? $subtitle : '') ?></p>
 
 <?php
 $desde = $total > 0 ? (($page - 1) * $perPage) + 1 : 0;
@@ -42,26 +49,30 @@ $hasta = min($page * $perPage, $total);
             </tr>
         </thead>
         <tbody>
-            <?php foreach ($data ?? [] as $row):
-                $id = (int)($row['toquotelogs_id'] ?? 0);
-                $itemsJson = $row['items_json'] ?? null;
+            <?php foreach ((isset($data) && is_array($data)) ? $data : [] as $row):
+                $id = (int)(isset($row['toquotelogs_id']) ? $row['toquotelogs_id'] : 0);
+                $itemsJson = isset($row['items_json']) ? $row['items_json'] : null;
                 $items = $itemsJson ? json_decode($itemsJson, true) : [];
                 $tieneItems = is_array($items) && !empty($items);
-                $examenes = $tieneItems ? implode(', ', array_column($items, 'name')) : ($row['cotizo'] ?? '-');
+                $examenes = $tieneItems ? implode(', ', array_column($items, 'name')) : (isset($row['cotizo']) ? $row['cotizo'] : '-');
                 $examenesResumen = mb_strlen($examenes) > 100 ? mb_substr($examenes, 0, 100) . '…' : $examenes;
             ?>
             <tr>
                 <td><?= $id ?></td>
-                <td><?= esc(date('d/m/Y H:i', strtotime($row['fecha'] ?? ''))) ?></td>
-                <td><?= esc($row['usuario_cotizo'] ?? '-') ?></td>
+                <td><?= esc(date('d/m/Y H:i', strtotime(isset($row['fecha']) ? $row['fecha'] : ''))) ?></td>
+                <td><?= esc(isset($row['usuario_cotizo']) ? $row['usuario_cotizo'] : '-') ?></td>
                 <td>
                     <span class="cotizo-resumen" title="<?= esc($examenes) ?>"><?= esc($examenesResumen) ?></span>
                 </td>
-                <td class="text-end"><?= number_format((int)($row['refe'] ?? 0)) ?> Bs</td>
-                <td class="text-end"><?= number_format((int)($row['costo'] ?? 0)) ?> Bs</td>
+                <td class="text-end"><?= $currencyIsRight
+                    ? (number_format((int)(isset($row['refe']) ? $row['refe'] : 0)) . ' ' . esc($currencySym))
+                    : (esc($currencySym) . ' ' . number_format((int)(isset($row['refe']) ? $row['refe'] : 0))) ?></td>
+                <td class="text-end"><?= $currencyIsRight
+                    ? (number_format((int)(isset($row['costo']) ? $row['costo'] : 0)) . ' ' . esc($currencySym))
+                    : (esc($currencySym) . ' ' . number_format((int)(isset($row['costo']) ? $row['costo'] : 0))) ?></td>
                 <td class="text-nowrap">
                     <div class="d-flex flex-nowrap gap-1 align-items-center acciones-cotizacion">
-                        <button type="button" class="btn btn-outline-secondary btn-sm py-0 px-1 ver-detalle" data-id="<?= $id ?>" data-items="<?= esc(htmlspecialchars($itemsJson ?? '[]', ENT_QUOTES, 'UTF-8')) ?>" title="Ver detalle">
+                        <button type="button" class="btn btn-outline-secondary btn-sm py-0 px-1 ver-detalle" data-id="<?= $id ?>" data-items="<?= esc(htmlspecialchars(isset($itemsJson) ? $itemsJson : '[]', ENT_QUOTES, 'UTF-8')) ?>" title="Ver detalle">
                             <i class="fa-solid fa-eye"></i>
                         </button>
                         <?php if ($tieneItems): ?>
@@ -89,9 +100,13 @@ $hasta = min($page * $perPage, $total);
                             <?php if ($tieneItems): foreach ($items as $i => $it): ?>
                             <tr>
                                 <td><?= $i + 1 ?></td>
-                                <td><?= esc($it['name'] ?? '') ?></td>
-                                <td class="text-end"><?= number_format((int)($it['cost'] ?? 0)) ?> Bs</td>
-                                <td class="text-end"><?= number_format((int)($it['refe'] ?? 0)) ?> Bs</td>
+                                <td><?= esc(isset($it['name']) ? $it['name'] : '') ?></td>
+                                <td class="text-end"><?= $currencyIsRight
+                                    ? (number_format((int)(isset($it['cost']) ? $it['cost'] : 0)) . ' ' . esc($currencySym))
+                                    : (esc($currencySym) . ' ' . number_format((int)(isset($it['cost']) ? $it['cost'] : 0))) ?></td>
+                                <td class="text-end"><?= $currencyIsRight
+                                    ? (number_format((int)(isset($it['refe']) ? $it['refe'] : 0)) . ' ' . esc($currencySym))
+                                    : (esc($currencySym) . ' ' . number_format((int)(isset($it['refe']) ? $it['refe'] : 0))) ?></td>
                             </tr>
                             <?php endforeach; else: ?>
                             <tr><td colspan="4" class="text-muted">No hay detalle disponible (cotización antigua)</td></tr>

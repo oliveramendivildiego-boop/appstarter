@@ -10,7 +10,8 @@ use App\Models\AppConfigModel;
  */
 class LayoutService
 {
-    protected AppConfigModel $appConfig;
+    /** @var AppConfigModel */
+    protected $appConfig;
 
     public function __construct()
     {
@@ -23,7 +24,7 @@ class LayoutService
     public function getConfig(): array
     {
         helper('config');
-        $keys = $this->appConfig->getMultiple(['company', 'logo', 'header_brand', 'theme_color', 'website']);
+        $keys = $this->appConfig->getMultiple(['company', 'logo', 'header_brand', 'theme_color', 'website', 'currency_symbol', 'currency_side']);
 
         $themeColor = '#FF7218';
         if (!empty($keys['theme_color']) && preg_match('/^#[a-fA-F0-9]{3,6}$/', $keys['theme_color'])) {
@@ -37,6 +38,19 @@ class LayoutService
         $headerBrand = $keys['header_brand'] ?? 'logo';
         $showLogoInHeader = ($headerBrand === 'logo') && !empty($logoPath) && file_exists(FCPATH . $logoPath);
 
+        $currencySymbol = trim((string)($keys['currency_symbol'] ?? '$'));
+        if ($currencySymbol === '') {
+            $currencySymbol = '$';
+        }
+        $currencySideRaw = trim((string)($keys['currency_side'] ?? 'left'));
+        $currencySideLower = strtolower($currencySideRaw);
+        // Normaliza valores como "izquierda"/"derecha" a "left"/"right"
+        if ($currencySideLower === 'right' || strpos($currencySideLower, 'der') === 0) {
+            $currencySide = 'right';
+        } else {
+            $currencySide = 'left';
+        }
+
         return [
             'company'         => $keys['company'] ?? 'Laboratorio',
             'logo'            => $logoPath,
@@ -46,6 +60,8 @@ class LayoutService
             'theme_hover'     => $themeHover,
             'theme_active'    => $themeActive,
             'website'         => trim($keys['website'] ?? ''),
+            'currency_symbol'=> $currencySymbol,
+            'currency_side'  => $currencySide,
         ];
     }
 }

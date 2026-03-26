@@ -53,7 +53,7 @@ $labRight = '<a href="' . site_url('labotests/perfiles') . '" class="btn btn-out
                         <a href="<?= site_url('labotests/subview/' . $cat['id']) ?>" class="btn btn-light" title="<?= lang('Labotests.labotests_new_analysis') ?>">
                             <i class="fa-solid fa-plus"></i>
                         </a>
-                        <a href="<?= site_url('labotests/deletecategory/' . $cat['id']) ?>" class="btn btn-outline-light" title="Eliminar categoría y todos sus análisis" onclick="return confirm('¿Eliminar la categoría y todos sus análisis con configuraciones? Esta acción no se puede deshacer.');">
+                        <a href="<?= site_url('labotests/deletecategory/' . $cat['id']) ?>" class="btn btn-outline-light" title="Eliminar categoría y todos sus análisis" onclick="return uiConfirmLink(this, '¿Eliminar la categoría y todos sus análisis con configuraciones? Esta acción no se puede deshacer.');">
                             <i class="fa-solid fa-trash"></i>
                         </a>
                     </div>
@@ -70,7 +70,7 @@ $labRight = '<a href="' . site_url('labotests/perfiles') . '" class="btn btn-out
                                 <a href="<?= site_url('labotests/manuales/' . $item['id']) ?>" class="btn btn-outline-info btn-sm" title="Ver manuales y notas">
                                     <i class="fa-solid fa-book"></i>
                                 </a>
-                                <a href="<?= site_url('labotests/deleteprianacategoria/' . $item['id']) ?>" class="btn btn-outline-danger btn-sm" title="Eliminar análisis y configuraciones" onclick="return confirm('¿Eliminar este análisis y todas sus configuraciones? Esta acción no se puede deshacer.');">
+                                <a href="<?= site_url('labotests/deleteprianacategoria/' . $item['id']) ?>" class="btn btn-outline-danger btn-sm" title="Eliminar análisis y configuraciones" onclick="return uiConfirmLink(this, '¿Eliminar este análisis y todas sus configuraciones? Esta acción no se puede deshacer.');">
                                     <i class="fa-solid fa-trash"></i>
                                 </a>
                             </div>

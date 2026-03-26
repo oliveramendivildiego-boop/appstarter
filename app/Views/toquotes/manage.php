@@ -1,6 +1,13 @@
 <?= $this->extend('layouts/main') ?>
 
 <?= $this->section('content') ?>
+<?php
+helper('layout');
+$layoutCfg = layout_config();
+$currencySym = (isset($layoutCfg['currency_symbol']) && (string)$layoutCfg['currency_symbol'] !== '') ? $layoutCfg['currency_symbol'] : '$';
+$currencySide = isset($layoutCfg['currency_side']) ? (string)$layoutCfg['currency_side'] : 'left';
+$currencyIsRight = strtolower(trim($currencySide)) === 'right';
+?>
 <?= view('partial/breadcrumb_nav', [
     'items' => [['label' => lang('Module.module_toquotes'), 'url' => site_url('toquotes')]],
 ]) ?>
@@ -51,8 +58,8 @@
                         <tr>
                             <th style="width:5%">#</th>
                             <th>Análisis</th>
-                            <th class="text-end" style="width:15%">Costo (Bs)</th>
-                            <th class="text-end" style="width:15%">Ref. (Bs)</th>
+                            <th class="text-end" style="width:15%">Costo (<?= esc($currencySym) ?>)</th>
+                            <th class="text-end" style="width:15%">Ref. (<?= esc($currencySym) ?>)</th>
                             <th style="width:8%"></th>
                         </tr>
                     </thead>
@@ -61,10 +68,20 @@
             </div>
             <div class="row mt-3 border-top pt-3">
                 <div class="col-md-6">
-                    <strong>Costo total:</strong> <span id="totalCost" class="fs-5 text-primary">0</span> Bs
+                    <strong>Costo total:</strong>
+                    <?php if ($currencyIsRight): ?>
+                        <span id="totalCost" class="fs-5 text-primary">0</span> <?= esc($currencySym) ?>
+                    <?php else: ?>
+                        <?= esc($currencySym) ?> <span id="totalCost" class="fs-5 text-primary">0</span>
+                    <?php endif; ?>
                 </div>
                 <div class="col-md-6">
-                    <strong>Costo referencia:</strong> <span id="totalRefe" class="fs-5 text-secondary">0</span> Bs
+                    <strong>Costo referencia:</strong>
+                    <?php if ($currencyIsRight): ?>
+                        <span id="totalRefe" class="fs-5 text-secondary">0</span> <?= esc($currencySym) ?>
+                    <?php else: ?>
+                        <?= esc($currencySym) ?> <span id="totalRefe" class="fs-5 text-secondary">0</span>
+                    <?php endif; ?>
                 </div>
             </div>
         </div>
@@ -77,6 +94,8 @@
 <script>
 (function() {
     var selectedItems = [];
+    var currencySym = <?= json_encode($currencySym) ?>;
+    var currencyIsRight = <?= json_encode($currencyIsRight) ?>;
     var analisisInput = document.getElementById('analisisInput');
     var autocompleteDropdown = document.getElementById('autocompleteDropdown');
     var selectedEmpty = document.getElementById('selectedEmpty');
@@ -142,6 +161,11 @@
         return d.innerHTML;
     }
 
+    function formatCurrencyAmount(amount) {
+        // Asegura espacio y orden según currency_side
+        return currencyIsRight ? (amount + ' ' + currencySym) : (currencySym + ' ' + amount);
+    }
+
     var searchTimeout;
     function doSearch() {
         var q = analisisInput.value.trim();
@@ -163,7 +187,7 @@
                             var li = document.createElement('div');
                             li.className = 'list-group-item list-group-item-action';
                             li.style.cursor = 'pointer';
-                            li.innerHTML = '<strong>' + escapeHtml(it.name) + '</strong><br><small class="text-muted">' + escapeHtml(it.cat_name) + ' &middot; ' + it.cost + ' Bs / Ref: ' + it.refe + ' Bs</small>';
+                            li.innerHTML = '<strong>' + escapeHtml(it.name) + '</strong><br><small class="text-muted">' + escapeHtml(it.cat_name) + ' &middot; ' + formatCurrencyAmount(it.cost) + ' / Ref: ' + formatCurrencyAmount(it.refe) + '</small>';
                             li.dataset.id = it.id;
                             li.dataset.name = it.name;
                             li.dataset.cost = it.cost;

@@ -1,6 +1,13 @@
 <?= $this->extend('layouts/main') ?>
 
 <?= $this->section('content') ?>
+<?php
+helper('layout');
+$layoutCfg = layout_config();
+$currencySym = $layoutCfg['currency_symbol'] ?? '$';
+$currencySide = isset($layoutCfg['currency_side']) ? (string)$layoutCfg['currency_side'] : 'left';
+$currencyIsRight = strtolower(trim($currencySide)) === 'right';
+?>
 <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
     <h1 class="h2"><i class="fa-solid fa-money-check-wave me-2"></i>Pago Masivo de Comisiones - <?= esc($doctor->name) ?></h1>
     <div class="btn-toolbar mb-2 mb-md-0">
@@ -56,8 +63,20 @@
                                         </a>
                                     </td>
                                     <td><?= esc($comm->paciente_nombre ?? 'N/A') ?></td>
-                                    <td>$<?= number_format($comm->total_amount, 2) ?></td>
-                                    <td><strong>$<?= number_format($comm->commission_amount, 2) ?></strong></td>
+                                    <td>
+                                        <?php if ($currencyIsRight): ?>
+                                            <strong><?= number_format($comm->total_amount, 2) ?></strong> <?= esc($currencySym) ?>
+                                        <?php else: ?>
+                                            <?= esc($currencySym) ?> <strong><?= number_format($comm->total_amount, 2) ?></strong>
+                                        <?php endif; ?>
+                                    </td>
+                                    <td>
+                                        <?php if ($currencyIsRight): ?>
+                                            <strong><?= number_format($comm->commission_amount, 2) ?></strong> <?= esc($currencySym) ?>
+                                        <?php else: ?>
+                                            <?= esc($currencySym) ?> <strong><?= number_format($comm->commission_amount, 2) ?></strong>
+                                        <?php endif; ?>
+                                    </td>
                                     <td><?= date('d/m/Y H:i', strtotime($comm->created_date)) ?></td>
                                 </tr>
                                 <?php endforeach; ?>
@@ -66,7 +85,11 @@
                                 <tr class="table-warning">
                                     <th colspan="4">Total a Pagar:</th>
                                     <th colspan="2" class="text-success fw-bold">
-                                        $<span id="totalAmount"><?= number_format($totalAmount, 2) ?></span>
+                                        <?php if ($currencyIsRight): ?>
+                                            <span id="totalAmount"><?= number_format($totalAmount, 2) ?></span> <?= esc($currencySym) ?>
+                                        <?php else: ?>
+                                            <?= esc($currencySym) ?> <span id="totalAmount"><?= number_format($totalAmount, 2) ?></span>
+                                        <?php endif; ?>
                                     </th>
                                 </tr>
                             </tfoot>
@@ -119,7 +142,13 @@
                 
                 <div class="mb-3">
                     <small class="text-muted">Monto Total a Pagar</small>
-                    <h3 class="text-success mb-0">$<span id="totalAmountSidebar"><?= number_format($totalAmount, 2) ?></span></h3>
+                    <h3 class="text-success mb-0">
+                        <?php if ($currencyIsRight): ?>
+                            <span id="totalAmountSidebar"><?= number_format($totalAmount, 2) ?></span> <?= esc($currencySym) ?>
+                        <?php else: ?>
+                            <?= esc($currencySym) ?> <span id="totalAmountSidebar"><?= number_format($totalAmount, 2) ?></span>
+                        <?php endif; ?>
+                    </h3>
                 </div>
                 
                 <div class="d-grid gap-2">
@@ -152,7 +181,9 @@ $(document).ready(function() {
         let total = 0;
         $('.commission-checkbox:checked').each(function() {
             let row = $(this).closest('tr');
-            let amount = parseFloat(row.find('td:eq(4) strong').text().replace('$', '').replace(',', ''));
+            // El strong contiene solo el número (sin símbolo), pero puede traer separador de miles.
+            let amountText = row.find('td:eq(4) strong').text();
+            let amount = parseFloat(amountText.replace(/,/g, ''));
             total += amount;
         });
         $('#totalAmount, #totalAmountSidebar').text(total.toFixed(2));
@@ -168,30 +199,32 @@ $(document).ready(function() {
         });
         
         if (selectedIds.length === 0) {
-            alert('Seleccione al menos una comisión para pagar');
+            uiAlert('Seleccione al menos una comisión para pagar', 'Validación');
             return false;
         }
         
-        if (!confirm('¿Está seguro de pagar las ' + selectedIds.length + ' comisiones seleccionadas?')) {
-            return false;
-        }
-        
-        var form = $(this);
-        $.ajax({
-            url: form.attr('action'),
-            type: 'POST',
-            data: form.serialize(),
-            dataType: 'json'
-        }).done(function(response) {
-            if (response.success) {
-                alert(response.message);
-                window.location.href = response.redirect_url;
-            } else {
-                alert(response.message);
-            }
-        }).fail(function() {
-            alert('Error al procesar el pago masivo');
-        });
+        uiConfirm('¿Está seguro de pagar las ' + selectedIds.length + ' comisiones seleccionadas?', 'Confirmar pago')
+            .then(function(ok) {
+                if (!ok) return;
+                var form = $('#bulkPayForm');
+                $.ajax({
+                    url: form.attr('action'),
+                    type: 'POST',
+                    data: form.serialize(),
+                    dataType: 'json'
+                }).done(function(response) {
+                    if (response.success) {
+                        uiAlert(response.message, 'OK');
+                        window.location.href = response.redirect_url;
+                    } else {
+                        uiAlert(response.message, 'Error');
+                    }
+                }).fail(function() {
+                    uiAlert('Error al procesar el pago masivo', 'Error');
+                });
+            });
+
+        return false;
     });
 });
 </script>

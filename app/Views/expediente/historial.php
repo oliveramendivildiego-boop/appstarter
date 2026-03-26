@@ -276,7 +276,7 @@ document.addEventListener('DOMContentLoaded', function() {
         var pruebaKey = (pruebaSelect.value || '').trim();
         var pruebaLabel = pruebaSelect.options[pruebaSelect.selectedIndex] ? (pruebaSelect.options[pruebaSelect.selectedIndex].text || '') : '';
         if (!pruebaKey) {
-            alert('Seleccione una prueba');
+            uiAlert('Seleccione una prueba', 'Validación');
             return;
         }
 

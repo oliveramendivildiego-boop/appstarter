@@ -94,6 +94,38 @@ $pageTitle = $this->renderSection('title');
 <body class="ynex-theme">
 <div id="toast-container" class="position-fixed top-0 end-0 p-3"></div>
 
+<!-- Modal global (mensajes/confirmaciones) -->
+<div class="modal fade" id="globalModalMensaje" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="globalModalMensajeTitulo">Mensaje</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+            </div>
+            <div class="modal-body" id="globalModalMensajeTexto"></div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-primary" data-bs-dismiss="modal">OK</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="globalModalConfirmacion" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="globalModalConfirmacionTitulo">Confirmar</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+            </div>
+            <div class="modal-body" id="globalModalConfirmacionTexto"></div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal" id="globalModalConfirmacionCancelar">Cancelar</button>
+                <button type="button" class="btn btn-primary" id="globalModalConfirmacionAceptar">Confirmar</button>
+            </div>
+        </div>
+    </div>
+</div>
+
 <?php if (!empty($showLogoInHeader)): ?>
     <?php if ($showLogoInHeader): ?>
         <div class="site-watermark" aria-hidden="true">

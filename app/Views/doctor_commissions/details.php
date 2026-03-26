@@ -1,6 +1,13 @@
 <?= $this->extend('layouts/main') ?>
 
 <?= $this->section('content') ?>
+<?php
+helper('layout');
+$layoutCfg = layout_config();
+$currencySym = $layoutCfg['currency_symbol'] ?? '$';
+$currencySide = isset($layoutCfg['currency_side']) ? (string)$layoutCfg['currency_side'] : 'left';
+$currencyIsRight = strtolower(trim($currencySide)) === 'right';
+?>
 <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
     <h1 class="h2"><i class="fa-solid fa-user-doctor me-2"></i>Comisiones de <?= esc($doctor->name) ?></h1>
     <div class="btn-toolbar mb-2 mb-md-0">
@@ -65,9 +72,13 @@
                                     </a>
                                 </td>
                                 <td><?= esc($comm->paciente_nombre ?? 'N/A') ?></td>
-                                <td>$<?= number_format($comm->total_amount, 2) ?></td>
+                                <td><?= $currencyIsRight
+                                    ? (number_format($comm->total_amount, 2) . ' ' . esc($currencySym))
+                                    : (esc($currencySym) . ' ' . number_format($comm->total_amount, 2)) ?></td>
                                 <td><?= number_format($comm->commission_percent, 2) ?>%</td>
-                                <td><strong>$<?= number_format($comm->commission_amount, 2) ?></strong></td>
+                                <td><strong><?= $currencyIsRight
+                                    ? (number_format($comm->commission_amount, 2) . ' ' . esc($currencySym))
+                                    : (esc($currencySym) . ' ' . number_format($comm->commission_amount, 2)) ?></strong></td>
                                 <td><?= date('d/m/Y H:i', strtotime($comm->created_date)) ?></td>
                                 <td>
                                     <?php if ($comm->status == 0): ?>
@@ -145,19 +156,21 @@ $(document).ready(function() {
     // Eliminar comisión
     $('.delete-commission').click(function() {
         var id = $(this).data('id');
-        if (confirm('¿Está seguro de eliminar esta comisión?')) {
-            $.post('<?= site_url('doctor_commissions/delete/') ?>' + id, {<?= csrf_token() ?>: '<?= csrf_hash() ?>'})
-                .done(function(response) {
-                    if (response.success) {
-                        location.reload();
-                    } else {
-                        alert(response.message);
-                    }
-                })
-                .fail(function() {
-                    alert('Error al eliminar la comisión');
-                });
-        }
+        uiConfirm('¿Está seguro de eliminar esta comisión?', 'Confirmar eliminación')
+            .then(function(ok) {
+                if (!ok) return;
+                $.post('<?= site_url('doctor_commissions/delete/') ?>' + id, {<?= csrf_token() ?>: '<?= csrf_hash() ?>'})
+                    .done(function(response) {
+                        if (response.success) {
+                            location.reload();
+                        } else {
+                            uiAlert(response.message, 'Error');
+                        }
+                    })
+                    .fail(function() {
+                        uiAlert('Error al eliminar la comisión', 'Error');
+                    });
+            });
     });
 });
 </script>

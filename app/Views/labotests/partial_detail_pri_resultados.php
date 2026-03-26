@@ -39,7 +39,7 @@ $sexoMap = ['ambos' => 'Ambos', 'masculino' => 'Masculino', 'femenino' => 'Femen
                     <td><?= esc($opciones[(int) ($pr['opcion_id'] ?? 0)] ?? '') ?></td>
                     <td class="text-center">
                         <a href="<?= site_url("labotests/detail/{$labotests_info->prianacategoria_id}") ?>?editarpri=<?= (int) ($pr['priresultados_id'] ?? 0) ?>" class="btn btn-sm btn-outline-primary" title="Editar"><i class="fa-solid fa-pen"></i></a>
-                        <a href="<?= site_url("labotests/deletepriresultado/" . (int) ($pr['priresultados_id'] ?? 0)) ?>" class="btn btn-sm btn-outline-danger" title="Eliminar" onclick="return confirm('¿Eliminar estos valores?');"><i class="fa-solid fa-trash"></i></a>
+                        <a href="<?= site_url("labotests/deletepriresultado/" . (int) ($pr['priresultados_id'] ?? 0)) ?>" class="btn btn-sm btn-outline-danger" title="Eliminar" onclick="return uiConfirmLink(this, '¿Eliminar estos valores?');"><i class="fa-solid fa-trash"></i></a>
                     </td>
                 </tr>
                 <?php endforeach; ?>

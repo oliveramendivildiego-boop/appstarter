@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <title>Cotización - <?= esc($lab_config['company'] ?? 'Laboratorio') ?></title>
+    <title>Cotización - <?= esc(isset($lab_config['company']) ? $lab_config['company'] : 'Laboratorio') ?></title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body { font-family: DejaVu Sans, sans-serif; font-size: 11pt; padding: 20px; }
@@ -21,8 +21,15 @@
     </style>
 </head>
 <body>
+    <?php
+    helper('layout');
+    $layoutCfg = layout_config();
+    $currencySym = (isset($layoutCfg['currency_symbol']) && (string)$layoutCfg['currency_symbol'] !== '') ? $layoutCfg['currency_symbol'] : '$';
+    $currencySide = isset($layoutCfg['currency_side']) ? (string)$layoutCfg['currency_side'] : 'left';
+    $currencyIsRight = strtolower(trim($currencySide)) === 'right';
+    ?>
     <div class="header">
-        <h1><?= esc($lab_config['company'] ?? 'Laboratorio') ?></h1>
+        <h1><?= esc(isset($lab_config['company']) ? $lab_config['company'] : 'Laboratorio') ?></h1>
         <?php if (!empty($lab_config['address'])): ?>
             <p><?= esc($lab_config['address']) ?></p>
         <?php endif; ?>
@@ -35,8 +42,9 @@
     </div>
 
     <?php
-    $mostrarRefe = ($precioTipo ?? null) === 'total' ? false : true;
-    $mostrarCost = ($precioTipo ?? null) === 'refe' ? false : true;
+    $precioTipoVal = isset($precioTipo) ? $precioTipo : null;
+    $mostrarRefe = ($precioTipoVal === 'total') ? false : true;
+    $mostrarCost = ($precioTipoVal === 'refe') ? false : true;
     ?>
     <h2>COTIZACIÓN DE ANÁLISIS CLÍNICOS</h2>
 
@@ -45,17 +53,17 @@
             <tr>
                 <th style="width:5%">#</th>
                 <th>Análisis</th>
-                <?php if ($mostrarCost): ?><th class="text-right" style="width:18%">Costo (Bs)</th><?php endif; ?>
-                <?php if ($mostrarRefe): ?><th class="text-right" style="width:18%">Ref. (Bs)</th><?php endif; ?>
+                <?php if ($mostrarCost): ?><th class="text-right" style="width:18%">Costo (<?= esc($currencySym) ?>)</th><?php endif; ?>
+                <?php if ($mostrarRefe): ?><th class="text-right" style="width:18%">Ref. (<?= esc($currencySym) ?>)</th><?php endif; ?>
             </tr>
         </thead>
         <tbody>
             <?php $n = 1; foreach ($items as $it): ?>
             <tr>
                 <td><?= $n++ ?></td>
-                <td><?= esc($it['name'] ?? '') ?></td>
-                <?php if ($mostrarCost): ?><td class="text-right"><?= number_format((int)($it['cost'] ?? 0)) ?></td><?php endif; ?>
-                <?php if ($mostrarRefe): ?><td class="text-right"><?= number_format((int)($it['refe'] ?? 0)) ?></td><?php endif; ?>
+                <td><?= esc(isset($it['name']) ? $it['name'] : '') ?></td>
+                <?php if ($mostrarCost): ?><td class="text-right"><?= number_format((int)(isset($it['cost']) ? $it['cost'] : 0)) ?></td><?php endif; ?>
+                <?php if ($mostrarRefe): ?><td class="text-right"><?= number_format((int)(isset($it['refe']) ? $it['refe'] : 0)) ?></td><?php endif; ?>
             </tr>
             <?php endforeach; ?>
         </tbody>
@@ -65,13 +73,25 @@
         <?php if ($mostrarCost): ?>
         <div class="row">
             <span>Costo total:</span>
-            <strong><?= number_format($totalCost) ?> Bs</strong>
+            <strong>
+                <?php if ($currencyIsRight): ?>
+                    <?= number_format($totalCost) ?> <?= esc($currencySym) ?>
+                <?php else: ?>
+                    <?= esc($currencySym) ?> <?= number_format($totalCost) ?>
+                <?php endif; ?>
+            </strong>
         </div>
         <?php endif; ?>
         <?php if ($mostrarRefe): ?>
         <div class="row">
             <span>Costo referencia:</span>
-            <strong><?= number_format($totalRefe) ?> Bs</strong>
+            <strong>
+                <?php if ($currencyIsRight): ?>
+                    <?= number_format($totalRefe) ?> <?= esc($currencySym) ?>
+                <?php else: ?>
+                    <?= esc($currencySym) ?> <?= number_format($totalRefe) ?>
+                <?php endif; ?>
+            </strong>
         </div>
         <?php endif; ?>
     </div>

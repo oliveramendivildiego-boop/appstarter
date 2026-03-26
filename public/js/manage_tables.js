@@ -35,8 +35,13 @@ function enable_search(suggest_url,confirm_search_message)
 
 		if(get_selected_values().length >0)
 		{
-			if(!confirm(confirm_search_message))
+			if(typeof uiConfirm === 'function')
+			{
+				uiConfirm(confirm_search_message, 'Confirmar').then(function(ok) {
+					if(ok) do_search(true);
+				});
 				return;
+			}
 		}
 		do_search(true);
 	});
@@ -119,14 +124,17 @@ function enable_delete(confirm_message,none_selected_message)
 		event.preventDefault();
 		if($("#sortable_table tbody :checkbox:checked").length >0)
 		{
-			if(confirm(confirm_message))
+			if(typeof uiConfirm === 'function')
 			{
-				do_delete($(this).attr('href'));
+				var href = $(this).attr('href');
+				uiConfirm(confirm_message, 'Confirmar').then(function(ok) {
+					if(ok) do_delete(href);
+				});
 			}
 		}
 		else
 		{
-			alert(none_selected_message);
+			if(typeof uiAlert === 'function') uiAlert(none_selected_message, 'Validación');
 		}
 	});
 }
@@ -194,7 +202,7 @@ function enable_bulk_edit(none_selected_message)
 		}
 		else
 		{
-			alert(none_selected_message);
+			if(typeof uiAlert === 'function') uiAlert(none_selected_message, 'Validación');
 		}
 	});
 }

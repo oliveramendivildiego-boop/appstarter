@@ -59,7 +59,7 @@
                             <td><?= esc($p['nombre'] ?? '') ?></td>
                             <td><small><?= esc($p['pruebas'] ?? '') ?></small></td>
                             <td>
-                                <a href="<?= site_url('labotests/deleteperfil/' . (int)($p['perfil_id'] ?? 0)) ?>" class="btn btn-sm btn-outline-danger" onclick="return confirm('¿Eliminar este perfil?');"><i class="fa-solid fa-trash"></i></a>
+                                <a href="<?= site_url('labotests/deleteperfil/' . (int)($p['perfil_id'] ?? 0)) ?>" class="btn btn-sm btn-outline-danger" onclick="return uiConfirmLink(this, '¿Eliminar este perfil?');"><i class="fa-solid fa-trash"></i></a>
                             </td>
                         </tr>
                         <?php endforeach; ?>

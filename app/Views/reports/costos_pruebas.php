@@ -3,6 +3,13 @@
 <?= $this->section('title') ?><?= esc($title) ?><?= $this->endSection() ?>
 
 <?= $this->section('content') ?>
+<?php
+helper('layout');
+$layoutCfg = layout_config();
+$currencySym = $layoutCfg['currency_symbol'] ?? '$';
+$currencySide = isset($layoutCfg['currency_side']) ? (string)$layoutCfg['currency_side'] : 'left';
+$currencyIsRight = strtolower(trim($currencySide)) === 'right';
+?>
 <div class="mb-4">
     <div class="d-flex justify-content-between align-items-center">
         <div>
@@ -76,9 +83,9 @@
                                 <?php if ($categoriaActual !== null): ?>
                                     <tr class="table-secondary fw-bold">
                                         <td colspan="2" class="text-end">Subtotal <?= esc($categoriaActual) ?>:</td>
-                                        <td class="text-end">$<?= number_format($subtotalPrecio, 2) ?></td>
-                                        <td class="text-end">$<?= number_format($subtotalDerivado, 2) ?></td>
-                                        <td class="text-center">$<?= number_format($subtotalDiferencia, 2) ?></td>
+                                        <td class="text-end"><?= $currencyIsRight ? (number_format($subtotalPrecio, 2) . ' ' . esc($currencySym)) : (esc($currencySym) . ' ' . number_format($subtotalPrecio, 2)) ?></td>
+                                        <td class="text-end"><?= $currencyIsRight ? (number_format($subtotalDerivado, 2) . ' ' . esc($currencySym)) : (esc($currencySym) . ' ' . number_format($subtotalDerivado, 2)) ?></td>
+                                        <td class="text-center"><?= $currencyIsRight ? (number_format($subtotalDiferencia, 2) . ' ' . esc($currencySym)) : (esc($currencySym) . ' ' . number_format($subtotalDiferencia, 2)) ?></td>
                                     </tr>
                                 <?php endif; ?>
                                 <?php 
@@ -110,11 +117,11 @@
                             <tr>
                                 <td></td>
                                 <td><?= esc($item['prueba']) ?></td>
-                                <td class="text-end">$<?= number_format($precio, 2) ?></td>
-                                <td class="text-end">$<?= number_format($derivado, 2) ?></td>
+                                <td class="text-end"><?= $currencyIsRight ? (number_format($precio, 2) . ' ' . esc($currencySym)) : (esc($currencySym) . ' ' . number_format($precio, 2)) ?></td>
+                                <td class="text-end"><?= $currencyIsRight ? (number_format($derivado, 2) . ' ' . esc($currencySym)) : (esc($currencySym) . ' ' . number_format($derivado, 2)) ?></td>
                                 <td class="text-center">
                                     <span class="badge <?= $diferencia > 0 ? 'bg-success' : ($diferencia < 0 ? 'bg-danger' : 'bg-secondary') ?>">
-                                        $<?= number_format($diferencia, 2) ?>
+                                        <?= $currencyIsRight ? (number_format($diferencia, 2) . ' ' . esc($currencySym)) : (esc($currencySym) . ' ' . number_format($diferencia, 2)) ?>
                                     </span>
                                 </td>
                             </tr>
@@ -124,18 +131,18 @@
                         <?php if ($categoriaActual !== null): ?>
                             <tr class="table-secondary fw-bold">
                                 <td colspan="2" class="text-end">Subtotal <?= esc($categoriaActual) ?>:</td>
-                                <td class="text-end">$<?= number_format($subtotalPrecio, 2) ?></td>
-                                <td class="text-end">$<?= number_format($subtotalDerivado, 2) ?></td>
-                                <td class="text-center">$<?= number_format($subtotalDiferencia, 2) ?></td>
+                                <td class="text-end"><?= $currencyIsRight ? (number_format($subtotalPrecio, 2) . ' ' . esc($currencySym)) : (esc($currencySym) . ' ' . number_format($subtotalPrecio, 2)) ?></td>
+                                <td class="text-end"><?= $currencyIsRight ? (number_format($subtotalDerivado, 2) . ' ' . esc($currencySym)) : (esc($currencySym) . ' ' . number_format($subtotalDerivado, 2)) ?></td>
+                                <td class="text-center"><?= $currencyIsRight ? (number_format($subtotalDiferencia, 2) . ' ' . esc($currencySym)) : (esc($currencySym) . ' ' . number_format($subtotalDiferencia, 2)) ?></td>
                             </tr>
                         <?php endif; ?>
                         
                         <!-- Total general -->
                         <tr class="table-dark fw-bold fs-6">
                             <td colspan="2" class="text-end">TOTAL GENERAL:</td>
-                            <td class="text-end">$<?= number_format($totalPrecio, 2) ?></td>
-                            <td class="text-end">$<?= number_format($totalDerivado, 2) ?></td>
-                            <td class="text-center">$<?= number_format($totalDerivado - $totalPrecio, 2) ?></td>
+                            <td class="text-end"><?= $currencyIsRight ? (number_format($totalPrecio, 2) . ' ' . esc($currencySym)) : (esc($currencySym) . ' ' . number_format($totalPrecio, 2)) ?></td>
+                            <td class="text-end"><?= $currencyIsRight ? (number_format($totalDerivado, 2) . ' ' . esc($currencySym)) : (esc($currencySym) . ' ' . number_format($totalDerivado, 2)) ?></td>
+                            <td class="text-center"><?= $currencyIsRight ? (number_format($totalDerivado - $totalPrecio, 2) . ' ' . esc($currencySym)) : (esc($currencySym) . ' ' . number_format($totalDerivado - $totalPrecio, 2)) ?></td>
                         </tr>
                     </tbody>
                 </table>

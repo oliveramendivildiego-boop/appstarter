@@ -31,6 +31,72 @@ function showToast(message, type) {
 }
 
 /**
+ * Modal genérico (mensajes/confirmaciones) para reemplazar alert()/confirm()
+ */
+function uiAlert(text, title) {
+    title = title || 'Mensaje';
+    var modal = document.getElementById('globalModalMensaje');
+    var modalTitulo = document.getElementById('globalModalMensajeTitulo');
+    var modalTexto = document.getElementById('globalModalMensajeTexto');
+    if (!modal || !modalTitulo || !modalTexto || typeof bootstrap === 'undefined' || !bootstrap.Modal) {
+        if (typeof console !== 'undefined') console.warn('[uiAlert]', text);
+        return;
+    }
+    modalTitulo.textContent = title;
+    modalTexto.textContent = text == null ? '' : String(text);
+    new bootstrap.Modal(modal).show();
+}
+
+/**
+ * confirm modal -> Promise<boolean>
+ */
+function uiConfirm(message, title) {
+    title = title || 'Confirmar';
+    var modal = document.getElementById('globalModalConfirmacion');
+    var modalTitulo = document.getElementById('globalModalConfirmacionTitulo');
+    var modalTexto = document.getElementById('globalModalConfirmacionTexto');
+    var btnAceptar = document.getElementById('globalModalConfirmacionAceptar');
+    var btnCancelar = document.getElementById('globalModalConfirmacionCancelar');
+
+    if (!modal || !modalTitulo || !modalTexto || !btnAceptar || !btnCancelar || typeof bootstrap === 'undefined' || !bootstrap.Modal) {
+        if (typeof console !== 'undefined') console.warn('[uiConfirm]', message);
+        return Promise.resolve(false);
+    }
+
+    modalTitulo.textContent = title;
+    modalTexto.textContent = message == null ? '' : String(message);
+
+    return new Promise(function(resolve) {
+        var modalInstance = bootstrap.Modal.getInstance(modal) || new bootstrap.Modal(modal);
+
+        btnAceptar.onclick = function() { resolve(true); modalInstance.hide(); };
+        btnCancelar.onclick = function() { resolve(false); modalInstance.hide(); };
+        modalInstance.show();
+    });
+}
+
+// Para reemplazar confirm() en onclick de enlaces
+function uiConfirmLink(anchorEl, message, title) {
+    if (!anchorEl) return false;
+    var href = anchorEl.getAttribute('href') || '';
+    if (href === '') return false;
+
+    uiConfirm(message, title || 'Confirmar').then(function(ok) {
+        if (ok) window.location.href = href;
+    });
+    return false; // evita navegación inmediata
+}
+
+// Para reemplazar confirm() en onsubmit de formularios
+function uiConfirmForm(formEl, message, title) {
+    if (!formEl) return false;
+    uiConfirm(message, title || 'Confirmar').then(function(ok) {
+        if (ok) formEl.submit();
+    });
+    return false; // evita envío inmediato
+}
+
+/**
  * Inicializa formularios con data-async="1" para envío asíncrono
  */
 function initAsyncForms() {

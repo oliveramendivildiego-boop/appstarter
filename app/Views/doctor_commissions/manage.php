@@ -1,6 +1,13 @@
 <?= $this->extend('layouts/main') ?>
 
 <?= $this->section('content') ?>
+<?php
+helper('layout');
+$layoutCfg = layout_config();
+$currencySym = $layoutCfg['currency_symbol'] ?? '$';
+$currencySide = isset($layoutCfg['currency_side']) ? (string)$layoutCfg['currency_side'] : 'left';
+$currencyIsRight = strtolower(trim($currencySide)) === 'right';
+?>
 <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
     <h1 class="h2"><i class="fa-solid fa-dollar-sign me-2"></i>Gestión de Comisiones de Doctores</h1>
     <div class="btn-toolbar mb-2 mb-md-0">
@@ -65,11 +72,15 @@
                             <br><small class="text-muted"><?= (int) $comm->total_commissions ?> comisiones</small>
                         </td>
                         <td>
-                            <span class="text-warning fw-bold">$<?= number_format($comm->total_pending, 2) ?></span>
+                            <span class="text-warning fw-bold"><?= $currencyIsRight
+                                ? (number_format($comm->total_pending, 2) . ' ' . esc($currencySym))
+                                : (esc($currencySym) . ' ' . number_format($comm->total_pending, 2)) ?></span>
                             <br><small class="text-muted"><?= (int) $comm->pending_count ?> pendientes</small>
                         </td>
                         <td>
-                            <span class="text-success fw-bold">$<?= number_format($comm->total_paid, 2) ?></span>
+                            <span class="text-success fw-bold"><?= $currencyIsRight
+                                ? (number_format($comm->total_paid, 2) . ' ' . esc($currencySym))
+                                : (esc($currencySym) . ' ' . number_format($comm->total_paid, 2)) ?></span>
                             <br><small class="text-muted"><?= (int) $comm->paid_count ?> pagadas</small>
                         </td>
                         <td>
@@ -232,19 +243,21 @@ $(document).ready(function() {
     // Eliminar comisión
     $('.delete-commission').click(function() {
         var id = $(this).data('id');
-        if (confirm('¿Está seguro de eliminar esta comisión?')) {
-            $.post('<?= site_url('doctor_commissions/delete/') ?>' + id, {<?= csrf_token() ?>: '<?= csrf_hash() ?>'})
-                .done(function(response) {
-                    if (response.success) {
-                        location.reload();
-                    } else {
-                        alert(response.message);
-                    }
-                })
-                .fail(function() {
-                    alert('Error al eliminar la comisión');
-                });
-        }
+        uiConfirm('¿Está seguro de eliminar esta comisión?', 'Confirmar eliminación')
+            .then(function(ok) {
+                if (!ok) return;
+                $.post('<?= site_url('doctor_commissions/delete/') ?>' + id, {<?= csrf_token() ?>: '<?= csrf_hash() ?>'})
+                    .done(function(response) {
+                        if (response.success) {
+                            location.reload();
+                        } else {
+                            uiAlert(response.message, 'Error');
+                        }
+                    })
+                    .fail(function() {
+                        uiAlert('Error al eliminar la comisión', 'Error');
+                    });
+            });
     });
     
     // Formulario de pago individual
@@ -261,10 +274,10 @@ $(document).ready(function() {
                 $('#payModal').modal('hide');
                 location.href = response.redirect_url;
             } else {
-                alert(response.message);
+                uiAlert(response.message, 'Error');
             }
         }).fail(function() {
-            alert('Error al procesar el pago');
+            uiAlert('Error al procesar el pago', 'Error');
         });
     });
     
@@ -278,7 +291,7 @@ $(document).ready(function() {
         });
         
         if (selectedIds.length === 0) {
-            alert('Seleccione al menos una comisión para pagar');
+            uiAlert('Seleccione al menos una comisión para pagar', 'Validación');
             return;
         }
         
@@ -298,10 +311,10 @@ $(document).ready(function() {
                 $('#bulkPayModal').modal('hide');
                 location.href = response.redirect_url;
             } else {
-                alert(response.message);
+                uiAlert(response.message, 'Error');
             }
         }).fail(function() {
-            alert('Error al procesar el pago masivo');
+            uiAlert('Error al procesar el pago masivo', 'Error');
         });
     });
 });

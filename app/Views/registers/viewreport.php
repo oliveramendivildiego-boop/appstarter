@@ -104,7 +104,7 @@ document.addEventListener('DOMContentLoaded', function() {
             .then(function(res) {
                 window.location.href = '<?= site_url('registers') ?>';
             })
-            .catch(function() { alert('Error al guardar'); });
+            .catch(function() { uiAlert('Error al guardar', 'Error'); });
         });
     }
 });
