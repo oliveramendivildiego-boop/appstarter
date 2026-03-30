@@ -1,5 +1,10 @@
 <style>
     body { font-family: DejaVu Sans, Arial, sans-serif; font-size: 11px; color: #111; margin: 18mm 16mm; }
+    table.pair-table { width: 100%; border-collapse: collapse; font-size: 10.5pt; margin-bottom: 4px; }
+    table.pair-table td { width: 50%; vertical-align: top; padding: 8px 14px 8px 0; line-height: 1.45; }
+    table.pair-table td:nth-child(2) { padding-right: 0; padding-left: 8px; }
+    .pair-k { color: #475569; font-weight: 600; }
+    .pair-v { color: #0f172a; font-weight: normal; }
     h1 { font-size: 17px; margin: 0 0 12px 0; text-align: center; letter-spacing: 0.05em; }
     .muted { color: #555; font-size: 10px; }
     .box { border: 1px solid #ccc; padding: 10px 12px; margin-bottom: 12px; }

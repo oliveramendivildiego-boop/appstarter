@@ -76,6 +76,10 @@ class BillingDocumentService
         $formaPago = self::TIPO_PAGO[$tip] ?? ($tip !== '' ? $tip : '-');
 
         $doctorNombre = trim((string) ($reg->doctor_name ?? ''));
+        $doctorGender = isset($reg->doctor_gender) ? (int) $reg->doctor_gender : null;
+        if ($doctorGender !== null && $doctorGender !== 1 && $doctorGender !== 2) {
+            $doctorGender = null;
+        }
 
         $totalReco = (float) ($pago->total_reco ?? 0);
         $montoPag  = (float) ($pago->monto_pagar ?? 0);
@@ -106,6 +110,7 @@ class BillingDocumentService
                 $formaPago,
                 $moneda,
                 $doctorNombre,
+                $doctorGender,
                 $nit,
                 $razon !== '' ? $razon : $empresa,
                 $suc !== '' ? $suc : '1',
@@ -128,6 +133,7 @@ class BillingDocumentService
             $formaPago,
             $moneda,
             $doctorNombre,
+            $doctorGender,
         );
     }
 

@@ -92,30 +92,27 @@ $fmt = static function (float $n): string {
             padding: 12px 14px;
             margin-bottom: 16px;
         }
-        .grid-2 {
+        table.pair-table {
             width: 100%;
             border-collapse: collapse;
+            font-size: 10pt;
         }
-        .grid-2 td {
+        table.pair-table td {
             width: 50%;
             vertical-align: top;
-            padding: 4px 12px 4px 0;
+            padding: 10px 16px 10px 0;
+            line-height: 1.5;
         }
-        .grid-2 td:last-child { padding-right: 0; padding-left: 12px; }
-        .lbl {
-            font-size: 7.5pt;
-            color: #64748b;
-            text-transform: uppercase;
-            letter-spacing: 0.06em;
-            margin: 0 0 2px 0;
-        }
-        .val {
-            font-size: 10pt;
-            color: #0f172a;
-            margin: 0;
+        table.pair-table td:nth-child(2) { padding-right: 0; padding-left: 8px; }
+        table.pair-table tr:first-child td { padding-top: 4px; }
+        .pair-k {
+            color: #475569;
             font-weight: 600;
         }
-        .val-normal { font-weight: normal; color: #334155; }
+        .pair-v {
+            color: #0f172a;
+            font-weight: normal;
+        }
         table.tbl-items {
             width: 100%;
             border-collapse: collapse;
@@ -219,40 +216,9 @@ $fmt = static function (float $n): string {
         </tr>
     </table>
 
-    <p class="section-title">Datos del cliente y atención</p>
+    <p class="section-title">Cliente y atención</p>
     <div class="panel">
-        <table class="grid-2">
-            <tr>
-                <td colspan="2">
-                    <p class="lbl">Paciente</p>
-                    <p class="val val-normal"><?= esc($doc->pacienteNombre) ?></p>
-                </td>
-            </tr>
-            <?php if (trim($doc->pacienteCi) !== '' || trim($doc->pacienteTelefono) !== ''): ?>
-            <tr>
-                <?php if (trim($doc->pacienteCi) !== ''): ?>
-                <td>
-                    <p class="lbl">Documento de identidad</p>
-                    <p class="val val-normal"><?= esc($doc->pacienteCi) ?></p>
-                </td>
-                <?php endif; ?>
-                <?php if (trim($doc->pacienteTelefono) !== ''): ?>
-                <td<?= trim($doc->pacienteCi) === '' ? ' colspan="2"' : '' ?>>
-                    <p class="lbl">Teléfono</p>
-                    <p class="val val-normal"><?= esc($doc->pacienteTelefono) ?></p>
-                </td>
-                <?php endif; ?>
-            </tr>
-            <?php endif; ?>
-            <?php if (trim($doc->doctorNombre) !== ''): ?>
-            <tr>
-                <td colspan="2">
-                    <p class="lbl">Médico referente</p>
-                    <p class="val val-normal"><?= esc($doc->doctorNombre) ?></p>
-                </td>
-            </tr>
-            <?php endif; ?>
-        </table>
+        <?= view('registers/billing/_datos_cliente_atencion_pdf', ['doc' => $doc]) ?>
     </div>
 
     <p class="section-title">Detalle de conceptos</p>

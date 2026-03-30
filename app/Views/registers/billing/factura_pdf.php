@@ -30,16 +30,8 @@ $fmt = static function (float $n): string {
     <div class="box">
         <div class="box-row"><strong>N.º documento (orden):</strong> <?= esc($doc->ordenNumero) ?></div>
         <div class="box-row"><strong>Fecha de emisión:</strong> <?= esc($doc->fechaEmision) ?></div>
-        <div class="box-row"><strong>Cliente / Paciente:</strong> <?= esc($doc->pacienteNombre) ?></div>
-        <?php if (trim($doc->pacienteCi) !== ''): ?>
-            <div class="box-row"><strong>CI / NIT cliente:</strong> <?= esc($doc->pacienteCi) ?></div>
-        <?php endif; ?>
-        <?php if (trim($doc->pacienteTelefono) !== ''): ?>
-            <div class="box-row"><strong>Teléfono:</strong> <?= esc($doc->pacienteTelefono) ?></div>
-        <?php endif; ?>
-        <?php if (trim($doc->doctorNombre) !== ''): ?>
-            <div class="box-row"><strong>Médico referente:</strong> <?= esc($doc->doctorNombre) ?></div>
-        <?php endif; ?>
+        <p class="muted" style="margin:10px 0 6px 0;font-weight:bold;">Cliente y atención</p>
+        <?= view('registers/billing/_datos_cliente_atencion_pdf', ['doc' => $doc]) ?>
     </div>
 
     <table class="items">

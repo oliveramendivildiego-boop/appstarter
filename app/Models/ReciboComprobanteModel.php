@@ -25,6 +25,7 @@ class ReciboComprobanteModel
         public string $formaPagoEtiqueta,
         public string $monedaSimbolo,
         public string $doctorNombre,
+        public ?int $doctorGender = null,
     ) {
     }
 }
