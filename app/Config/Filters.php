@@ -26,6 +26,7 @@ class Filters extends BaseFilters
      */
     public array $aliases = [
         'kintformfix'   => \App\Filters\KintFormFixFilter::class,
+        'tenant'        => \App\Filters\TenantFilter::class,
         'auth'          => \App\Filters\AuthFilter::class,
         'permission'    => \App\Filters\PermissionFilter::class,
         'csrf'          => CSRF::class,
@@ -76,6 +77,7 @@ class Filters extends BaseFilters
      */
     public array $globals = [
         'before' => [
+            'tenant',
             'csrf' => ['except' => ['login', 'login/*', 'login/google_login', 'qr/*', 'customers/search', 'customers/suggest', 'employees/search', 'employees/suggest', 'doctors/search', 'doctors/suggest', 'doctor/search', 'registers/search_paciente', 'registers/search_doctor', 'registers/search_prueba', 'toquotes/exportPdf', 'toquotes/exportPdfById/*']],
         ],
         'after' => [

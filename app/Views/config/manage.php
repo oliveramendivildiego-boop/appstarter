@@ -35,6 +35,11 @@
     <li class="nav-item" role="presentation">
         <button class="nav-link <?= $activeTab === 'sin' ? 'active' : '' ?>" id="tab-sin-btn" data-bs-toggle="tab" data-bs-target="#tab-sin" type="button" role="tab">Facturación SIN</button>
     </li>
+    <?php if (($can_manage_tenants ?? false)): ?>
+    <li class="nav-item" role="presentation">
+        <button class="nav-link <?= $activeTab === 'tenants' ? 'active' : '' ?>" id="tab-tenants-btn" data-bs-toggle="tab" data-bs-target="#tab-tenants" type="button" role="tab">Tenants</button>
+    </li>
+    <?php endif; ?>
     <li class="nav-item" role="presentation">
         <button class="nav-link <?= $activeTab === 'sesiones' ? 'active' : '' ?>" id="tab-sesiones-btn" data-bs-toggle="tab" data-bs-target="#tab-sesiones" type="button" role="tab">Sesiones activas</button>
     </li>
@@ -205,6 +210,135 @@
             </div>
         </div>
     </div>
+
+    <!-- Pestaña: Tenants -->
+    <?php if (($can_manage_tenants ?? false)): ?>
+    <div class="tab-pane fade <?= $activeTab === 'tenants' ? 'show active' : '' ?>" id="tab-tenants" role="tabpanel">
+        <div class="card shadow-sm">
+            <div class="card-header bg-info text-white">
+                <h5 class="mb-0"><i class="fa-solid fa-building me-2"></i>Multi-tenant (base de datos por cliente)</h5>
+            </div>
+            <div class="card-body">
+                <p class="text-muted small mb-3">
+                    Cada tenant representa un cliente con su propia base de datos. Al guardar, se publica el mapa de conexiones para uso inmediato del runtime.
+                </p>
+
+                <div class="table-responsive mb-4">
+                    <table class="table table-sm table-bordered align-middle">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Tenant Key</th>
+                                <th>Nombre</th>
+                                <th>Host:Puerto</th>
+                                <th>DB</th>
+                                <th>Usuario</th>
+                                <th>Estado</th>
+                                <th>Default</th>
+                                <th class="text-center" style="width: 180px;">Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <?php foreach (($tenants ?? []) as $t): ?>
+                            <tr>
+                                <td><code><?= esc($t['tenant_key'] ?? '') ?></code></td>
+                                <td><?= esc($t['tenant_name'] ?? '') ?></td>
+                                <td><?= esc(($t['db_host'] ?? 'localhost') . ':' . ((int) ($t['db_port'] ?? 3306))) ?></td>
+                                <td><?= esc($t['db_name'] ?? '') ?></td>
+                                <td><?= esc($t['db_user'] ?? '') ?></td>
+                                <td>
+                                    <?php if ((int) ($t['is_active'] ?? 0) === 1): ?>
+                                        <span class="badge bg-success">Activo</span>
+                                    <?php else: ?>
+                                        <span class="badge bg-secondary">Inactivo</span>
+                                    <?php endif; ?>
+                                </td>
+                                <td>
+                                    <?php if ((int) ($t['is_default'] ?? 0) === 1): ?>
+                                        <span class="badge bg-primary">Sí</span>
+                                    <?php else: ?>
+                                        <span class="text-muted">No</span>
+                                    <?php endif; ?>
+                                </td>
+                                <td class="text-center">
+                                    <?= form_open(site_url('config/provisiontenant/' . (int) ($t['id'] ?? 0)), ['class' => 'd-inline']) ?>
+                                    <button type="submit" class="btn btn-sm btn-outline-success" title="Aprovisionar DB + migraciones"><i class="fa-solid fa-server"></i></button>
+                                    <?= form_close() ?>
+                                    <a href="<?= site_url('config?tab=tenants&tenant_edit=' . (int) ($t['id'] ?? 0)) ?>" class="btn btn-sm btn-outline-primary" title="Editar"><i class="fa-solid fa-pen"></i></a>
+                                    <a href="<?= site_url('config/deletetenant/' . (int) ($t['id'] ?? 0)) ?>" class="btn btn-sm btn-outline-danger" title="Eliminar" onclick="return uiConfirmLink(this, '¿Eliminar este tenant?');"><i class="fa-solid fa-trash"></i></a>
+                                </td>
+                            </tr>
+                            <?php endforeach; ?>
+                            <?php if (empty($tenants)): ?>
+                            <tr>
+                                <td colspan="8" class="text-muted text-center">No hay tenants configurados todavía.</td>
+                            </tr>
+                            <?php endif; ?>
+                        </tbody>
+                    </table>
+                </div>
+
+                <?php $tenantEdit = $tenant_edit_data ?? []; ?>
+                <h6 class="mb-3"><?= empty($tenantEdit) ? 'Agregar tenant' : 'Editar tenant' ?></h6>
+                <?= form_open(site_url('config/savetenant'), ['id' => 'tenant_form', 'class' => 'border rounded p-3']) ?>
+                <input type="hidden" name="tenant_id" value="<?= (int) ($tenantEdit['id'] ?? 0) ?>">
+                <div class="row">
+                    <div class="col-md-3 mb-3">
+                        <label class="form-label">Tenant key *</label>
+                        <input type="text" name="tenant_key" class="form-control" required maxlength="64" placeholder="acme" value="<?= esc($tenantEdit['tenant_key'] ?? '') ?>">
+                        <small class="text-muted">Identificador técnico (subdominio/header).</small>
+                    </div>
+                    <div class="col-md-3 mb-3">
+                        <label class="form-label">Nombre cliente *</label>
+                        <input type="text" name="tenant_name" class="form-control" required maxlength="120" placeholder="Laboratorio ACME" value="<?= esc($tenantEdit['tenant_name'] ?? '') ?>">
+                    </div>
+                    <div class="col-md-3 mb-3">
+                        <label class="form-label">DB host *</label>
+                        <input type="text" name="db_host" class="form-control" required value="<?= esc($tenantEdit['db_host'] ?? 'localhost') ?>">
+                    </div>
+                    <div class="col-md-3 mb-3">
+                        <label class="form-label">DB puerto *</label>
+                        <input type="number" name="db_port" class="form-control" min="1" max="65535" value="<?= esc((string) ($tenantEdit['db_port'] ?? '3306')) ?>">
+                    </div>
+                </div>
+                <div class="row">
+                    <div class="col-md-4 mb-3">
+                        <label class="form-label">Nombre de base *</label>
+                        <input type="text" name="db_name" class="form-control" required value="<?= esc($tenantEdit['db_name'] ?? '') ?>">
+                    </div>
+                    <div class="col-md-3 mb-3">
+                        <label class="form-label">Usuario DB *</label>
+                        <input type="text" name="db_user" class="form-control" required value="<?= esc($tenantEdit['db_user'] ?? '') ?>">
+                    </div>
+                    <div class="col-md-3 mb-3">
+                        <label class="form-label">Contraseña DB</label>
+                        <input type="text" name="db_pass" class="form-control" value="<?= esc($tenantEdit['db_pass'] ?? '') ?>">
+                    </div>
+                    <div class="col-md-2 mb-3">
+                        <label class="form-label">Prefijo tablas</label>
+                        <input type="text" name="db_prefix" class="form-control" value="<?= esc($tenantEdit['db_prefix'] ?? 'dom_') ?>">
+                    </div>
+                </div>
+                <div class="mb-3">
+                    <input type="hidden" name="is_active" value="0">
+                    <div class="form-check">
+                        <input type="checkbox" name="is_active" value="1" class="form-check-input" id="is_active_tenant" <?= ((int) ($tenantEdit['is_active'] ?? 1) === 1) ? 'checked' : '' ?>>
+                        <label class="form-check-label" for="is_active_tenant">Tenant activo</label>
+                    </div>
+                    <input type="hidden" name="is_default" value="0">
+                    <div class="form-check mt-1">
+                        <input type="checkbox" name="is_default" value="1" class="form-check-input" id="is_default_tenant" <?= ((int) ($tenantEdit['is_default'] ?? 0) === 1) ? 'checked' : '' ?>>
+                        <label class="form-check-label" for="is_default_tenant">Usar como tenant por defecto</label>
+                    </div>
+                </div>
+                <button type="submit" class="btn btn-info text-white"><?= empty($tenantEdit) ? 'Guardar tenant' : 'Actualizar tenant' ?></button>
+                <?php if (!empty($tenantEdit)): ?>
+                <a href="<?= site_url('config?tab=tenants') ?>" class="btn btn-secondary">Cancelar</a>
+                <?php endif; ?>
+                <?= form_close() ?>
+            </div>
+        </div>
+    </div>
+    <?php endif; ?>
 
     <!-- Pestaña: Sesiones activas -->
     <div class="tab-pane fade <?= $activeTab === 'sesiones' ? 'show active' : '' ?>" id="tab-sesiones" role="tabpanel">
@@ -661,6 +795,16 @@ $(document).ready(function() {
         $('#form_nueva_opcion').validate($.extend(true, {}, window.VALIDATE_COMMON_OPTIONS, {
             rules: { opciones: { required: true } },
             messages: { opciones: { required: "El nombre es obligatorio" } }
+        }));
+        $('#tenant_form').validate($.extend(true, {}, window.VALIDATE_COMMON_OPTIONS, {
+            rules: {
+                tenant_key: { required: true, maxlength: 64 },
+                tenant_name: { required: true, maxlength: 120 },
+                db_host: { required: true },
+                db_port: { required: true, number: true, min: 1, max: 65535 },
+                db_name: { required: true },
+                db_user: { required: true }
+            }
         }));
     }
 

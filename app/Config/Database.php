@@ -2,6 +2,7 @@
 
 namespace Config;
 
+use App\Libraries\TenantResolver;
 use CodeIgniter\Database\Config;
 
 /**
@@ -211,5 +212,34 @@ class Database extends Config
         $this->default['charset']  = env('database.default.charset', 'utf8mb4');
         $this->default['DBCollat'] = env('database.default.DBCollat', 'utf8mb4_general_ci');
         $this->default['port']     = (int) (env('database.default.port') ?: 3306);
+
+        $this->applyTenantDatabaseConfig();
+    }
+
+    private function applyTenantDatabaseConfig(): void
+    {
+        if (is_cli()) {
+            return;
+        }
+
+        $resolver = new TenantResolver();
+        $tenantKey = $resolver->resolveTenantKey();
+
+        if ($tenantKey === null) {
+            $tenantKey = $resolver->resolveDefaultTenantKey();
+        }
+
+        if ($tenantKey === null) {
+            return;
+        }
+
+        $tenantDbConfig = $resolver->resolveDatabaseConfig($tenantKey);
+        if ($tenantDbConfig === []) {
+            return;
+        }
+
+        foreach ($tenantDbConfig as $key => $value) {
+            $this->default[$key] = $value;
+        }
     }
 }

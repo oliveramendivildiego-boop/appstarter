@@ -1,0 +1,21 @@
+{
+    "_default": "laboratorio",
+    "tenants": {
+        "laboratorio": {
+            "hostname": "localhost",
+            "port": 3306,
+            "database": "olivtgzd_laboratorio",
+            "username": "olivtgzd_laboratorio",
+            "password": "isP.E.=^wKM[",
+            "DBPrefix": "dom_"
+        },
+        "quantum": {
+            "hostname": "localhost",
+            "port": 3306,
+            "database": "quantum",
+            "username": "root",
+            "password": "",
+            "DBPrefix": "dom_"
+        }
+    }
+}

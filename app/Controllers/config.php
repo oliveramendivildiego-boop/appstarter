@@ -4,7 +4,9 @@ namespace App\Controllers;
 
 use App\Models\OpcionModel;
 use App\Models\PoblacionModel;
+use App\Libraries\TenantResolver;
 use App\Services\ConfigService;
+use App\Services\TenantConfigService;
 use CodeIgniter\HTTP\ResponseInterface;
 
 /**
@@ -16,13 +18,17 @@ class Config extends SecureArea
     protected ?string $moduleId = 'config';
 
     protected ConfigService $configService;
+    protected TenantConfigService $tenantConfigService;
     protected PoblacionModel $poblacionModel;
     protected OpcionModel $opcionModel;
+    protected TenantResolver $tenantResolver;
 
     public function __construct()
     {
         parent::__construct();
         $this->configService  = new ConfigService();
+        $this->tenantConfigService = new TenantConfigService();
+        $this->tenantResolver = new TenantResolver();
         $this->poblacionModel = model(PoblacionModel::class);
         $this->opcionModel   = model(OpcionModel::class);
     }
@@ -46,10 +52,28 @@ class Config extends SecureArea
         }
 
         $opciones = $this->loadOpcionesForView();
+        $tenants = $this->tenantConfigService->getAll();
+        $canManageTenants = $this->canManageTenants();
+        $tenantEditId = (int) ($this->request->getGet('tenant_edit') ?? 0);
+        $tenantEditData = [];
+        if ($canManageTenants && $tenantEditId > 0) {
+            foreach ($tenants as $tenant) {
+                if ((int) ($tenant['id'] ?? 0) === $tenantEditId) {
+                    $tenantEditData = $tenant;
+                    break;
+                }
+            }
+        }
 
         $tab = $this->request->getGet('tab') ?: 'sistema';
         if ($editarGet !== null && $editarGet !== '') {
             $tab = 'poblacion';
+        }
+        if ($canManageTenants && $tenantEditId > 0) {
+            $tab = 'tenants';
+        }
+        if (!$canManageTenants && $tab === 'tenants') {
+            $tab = 'sistema';
         }
 
         return view('config/manage', [
@@ -58,6 +82,9 @@ class Config extends SecureArea
             'editar_poblacion'     => $editarPoblacion,
             'editar_poblacion_data'=> $editarPoblacionData,
             'opciones'             => $opciones,
+            'tenants'              => $tenants,
+            'tenant_edit_data'     => $tenantEditData,
+            'can_manage_tenants'   => $canManageTenants,
             'active_tab'           => $tab,
             'timezone_options'     => get_timezone_options(),
             'theme_palette'        => get_theme_color_palette(),
@@ -294,6 +321,57 @@ class Config extends SecureArea
         $this->configService->saveSinConfig($this->request->getPost());
         \App\Models\AuditoriaModel::log('config', 'sin_billing_actualizar', null);
         return redirect()->to('config?tab=sin')->with('success', 'Configuración de SIN guardada.');
+    }
+
+    public function saveTenant(): ResponseInterface
+    {
+        if (!$this->canManageTenants()) {
+            return redirect()->to('config')->with('error', 'No tiene permiso para gestionar tenants.');
+        }
+
+        $result = $this->tenantConfigService->saveFromRequest($this->request->getPost());
+        if ($result['success']) {
+            \App\Models\AuditoriaModel::log('config', 'tenant_guardar', (string) ($this->request->getPost('tenant_key') ?? ''));
+            return redirect()->to('config?tab=tenants')->with('success', $result['message']);
+        }
+
+        $editId = (int) ($this->request->getPost('tenant_id') ?? 0);
+        $url = 'config?tab=tenants';
+        if ($editId > 0) {
+            $url .= '&tenant_edit=' . $editId;
+        }
+        return redirect()->to($url)->with('error', $result['message']);
+    }
+
+    public function deleteTenant($id): ResponseInterface
+    {
+        if (!$this->canManageTenants()) {
+            return redirect()->to('config')->with('error', 'No tiene permiso para gestionar tenants.');
+        }
+
+        $tenantId = (int) $id;
+        $result = $this->tenantConfigService->delete($tenantId);
+        if ($result['success']) {
+            \App\Models\AuditoriaModel::log('config', 'tenant_eliminar', (string) $tenantId);
+            return redirect()->to('config?tab=tenants')->with('success', 'Tenant eliminado correctamente.');
+        }
+
+        return redirect()->to('config?tab=tenants')->with('error', $result['message']);
+    }
+
+    public function provisionTenant($id): ResponseInterface
+    {
+        if (!$this->canManageTenants()) {
+            return redirect()->to('config')->with('error', 'No tiene permiso para gestionar tenants.');
+        }
+
+        $tenantId = (int) $id;
+        $result = $this->tenantConfigService->provisionTenant($tenantId);
+        if ($result['success']) {
+            \App\Models\AuditoriaModel::log('config', 'tenant_provision', (string) $tenantId);
+            return redirect()->to('config?tab=tenants')->with('success', $result['message']);
+        }
+        return redirect()->to('config?tab=tenants')->with('error', $result['message']);
     }
 
     public function testSin(): ResponseInterface
@@ -578,6 +656,26 @@ class Config extends SecureArea
 
         sort($tokens, SORT_STRING);
         return sha1(implode('|', $tokens));
+    }
+
+    private function canManageTenants(): bool
+    {
+        $defaultTenant = $this->tenantResolver->resolveDefaultTenantKey();
+        if ($defaultTenant === null) {
+            return true;
+        }
+
+        $currentTenant = session()->get('tenant_key');
+        if ($currentTenant === null || $currentTenant === '') {
+            $currentTenant = $this->tenantResolver->resolveTenantKey($this->request);
+        }
+
+        // Solo bloquear cuando hay tenant explícito y no coincide con el default.
+        if ($currentTenant === null || $currentTenant === '') {
+            return true;
+        }
+
+        return (string) $currentTenant === (string) $defaultTenant;
     }
 }
 

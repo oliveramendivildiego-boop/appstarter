@@ -199,4 +199,35 @@ class App extends BaseConfig
      * @see http://www.w3.org/TR/CSP/
      */
     public bool $CSPEnabled = false;
+
+    public function __construct()
+    {
+        parent::__construct();
+
+        $rawAllowed = trim((string) env('app.allowedHostnames', ''));
+        if ($rawAllowed !== '') {
+            $this->allowedHostnames = array_values(array_filter(array_map(
+                static fn ($v) => strtolower(trim($v)),
+                explode(',', $rawAllowed)
+            )));
+        }
+
+        if (!is_cli()) {
+            $currentHost = strtolower((string) ($_SERVER['HTTP_HOST'] ?? ''));
+            $currentHost = explode(':', $currentHost)[0];
+            $baseHost = strtolower((string) parse_url($this->baseURL, PHP_URL_HOST));
+
+            $allowed = $this->allowedHostnames;
+            if ($baseHost !== '') {
+                $allowed[] = $baseHost;
+            }
+
+            if ($currentHost !== '' && in_array($currentHost, $allowed, true)) {
+                $scheme = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https' : 'http';
+                $basePath = (string) parse_url($this->baseURL, PHP_URL_PATH);
+                $basePath = $basePath !== '' ? rtrim($basePath, '/') . '/' : '/';
+                $this->baseURL = $scheme . '://' . $currentHost . $basePath;
+            }
+        }
+    }
 }
