@@ -3,6 +3,7 @@
 namespace App\Controllers;
 
 use App\Libraries\PdfService;
+use App\Services\BillingDocumentService;
 use App\Services\RegisterService;
 use App\Services\WhatsAppService;
 use App\Models\LabotestModel;
@@ -356,6 +357,10 @@ class Registers extends SecureArea
             return redirect()->to('registers')->with('error', 'Registro no encontrado');
         }
 
+        $pago = $this->registerModel->getPagoByRegistroId($id);
+        $billingService = new BillingDocumentService();
+        $pagoCompleto   = $this->registerModel->isPagoCompletoPorRegistroId($id);
+
         return view('registers/viewreport', [
             'current_module'    => 'registers',
             'controller_name'  => 'registers',
@@ -368,6 +373,10 @@ class Registers extends SecureArea
             'registerModel'     => $this->registerModel,
             'allowed_modules'   => $this->allowed_modules,
             'user_info'         => $this->user_info,
+            'sin_billing_enabled' => $billingService->isSinBillingEnabled(),
+            'comprobante_pdf_disponible' => $pago !== null && $pagoCompleto,
+            'comprobante_pdf_pendiente_pago' => $pago !== null && !$pagoCompleto,
+            'comprobante_pdf_sin_registro_pago' => $pago === null,
         ]);
     }
 
@@ -573,6 +582,44 @@ class Registers extends SecureArea
             ->setBody($pdfService->generate($html, $filename));
     }
 
+    /**
+     * PDF de recibo (SIN deshabilitado) o factura de respaldo (SIN habilitado), según configuración.
+     */
+    public function comprobantePdf($id = -1)
+    {
+        $id = (int) $id;
+        if ($id < 1) {
+            return redirect()->to('registers')->with('error', 'Registro no válido');
+        }
+        if ($this->registerModel->isRegistroAnulado($id)) {
+            return redirect()->to('registers/lista')->with('error', 'La orden está anulada; no se puede generar el comprobante.');
+        }
+
+        if (!$this->registerModel->isPagoCompletoPorRegistroId($id)) {
+            return redirect()->to('registers/viewreport/' . $id)->with(
+                'error',
+                'El recibo o factura en PDF solo está disponible cuando la orden está totalmente pagada (sin saldo pendiente).'
+            );
+        }
+
+        $billing = new BillingDocumentService();
+        $factura = $billing->isSinBillingEnabled();
+        $doc     = $billing->buildComprobante($id, $factura);
+        if ($doc === null) {
+            return redirect()->to('registers/viewreport/' . $id)->with('error', 'No hay datos de pago para esta orden; no se puede generar el comprobante.');
+        }
+
+        $html       = $billing->renderComprobanteHtml($doc, $factura);
+        $pdfService = new PdfService();
+        $tipo       = $factura ? 'Factura' : 'Recibo';
+        $filename   = $tipo . '_orden_' . preg_replace('/[^A-Za-z0-9._-]+/', '_', $doc->ordenNumero) . '_' . date('Y-m-d') . '.pdf';
+
+        return $this->response
+            ->setHeader('Content-Type', 'application/pdf')
+            ->setHeader('Content-Disposition', 'attachment; filename="' . $filename . '"')
+            ->setBody($pdfService->generate($html, $filename));
+    }
+
     public function save(): ResponseInterface
     {
         try {
@@ -770,7 +817,8 @@ class Registers extends SecureArea
         if (!$data) {
             return $this->response->setJSON(['success' => false, 'message' => 'Registro no encontrado'])->setStatusCode(404);
         }
-        $out = [
+        $billing = new BillingDocumentService();
+        $out     = [
             'registro' => $data['registro'] ? (array) $data['registro'] : (object) [],
             'pago' => $data['pago'] ? (array) $data['pago'] : (object) [],
             'tipo_pago_nombre' => $data['tipo_pago_nombre'] ?? '',
@@ -778,6 +826,8 @@ class Registers extends SecureArea
             'pruebas' => $data['pruebas'] ?? [],
             'tiene_resultados' => $data['tiene_resultados'] ?? false,
             'regvalues_count' => $data['regvalues_count'] ?? 0,
+            'pago_completo' => $this->registerModel->isPagoCompletoPorRegistroId($id),
+            'sin_billing_enabled' => $billing->isSinBillingEnabled(),
         ];
         return $this->response->setJSON(['success' => true, 'data' => $out]);
     }

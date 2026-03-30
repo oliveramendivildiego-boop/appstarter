@@ -4,6 +4,9 @@
 <?php if (session()->getFlashdata('success')): ?>
 <div class="alert alert-success"><?= esc(session()->getFlashdata('success')) ?></div>
 <?php endif; ?>
+<?php if (session()->getFlashdata('error')): ?>
+<div class="alert alert-danger"><?= esc(session()->getFlashdata('error')) ?></div>
+<?php endif; ?>
 <?= view('partial/breadcrumb_nav', ['items' => [
     ['label' => lang('Module.module_registers'), 'url' => site_url('registers')],
     ['label' => ($register_info->first_name ?? '') . ' ' . ($register_info->last_name_fa ?? ''), 'url' => site_url('registers/view/' . ($register_info->registro_id ?? ''))],
@@ -73,6 +76,28 @@ endif;
     <a href="<?= site_url('registers/pdf/' . ($labotests_namecate ?? 0)) ?>" class="btn btn-success" target="_blank">
         <i class="fa-solid fa-file-pdf me-1"></i> Descargar PDF
     </a>
+    <?php
+    $ridPdf = (int) ($labotests_namecate ?? 0);
+    $compOk = !empty($comprobante_pdf_disponible ?? false);
+    $lblComp  = !empty($sin_billing_enabled ?? false) ? 'Factura (PDF)' : 'Recibo (PDF)';
+    ?>
+    <a href="<?= site_url('registers/comprobantePdf/' . $ridPdf) ?>"
+       class="btn btn-outline-dark"
+       target="_blank"
+       title="<?= $compOk ? 'Descargar comprobante de pago' : 'Si la orden no está saldada, se mostrará un aviso al intentar descargar' ?>">
+        <i class="fa-solid fa-file-invoice-dollar me-1"></i> <?= esc($lblComp) ?>
+    </a>
+    <?php if (!$compOk): ?>
+    <div class="small text-muted mt-2 w-100">
+        <?php if (!empty($comprobante_pdf_sin_registro_pago ?? false)): ?>
+            <i class="fa-solid fa-triangle-exclamation me-1 text-warning"></i>Sin registro de pago en base de datos: cree o vincule el pago desde la lista de registros.
+        <?php elseif (!empty($comprobante_pdf_pendiente_pago ?? false)): ?>
+            <i class="fa-solid fa-circle-info me-1"></i>La descarga del comprobante queda disponible cuando el saldo sea 0 o el monto pagado cubra el total (revise en lista de registros → historial de pagos).
+        <?php else: ?>
+            <i class="fa-solid fa-circle-info me-1"></i>Si no puede descargar el comprobante, verifique el pago de la orden.
+        <?php endif; ?>
+    </div>
+    <?php endif; ?>
 </div>
 </fieldset>
 <?= $this->endSection() ?>

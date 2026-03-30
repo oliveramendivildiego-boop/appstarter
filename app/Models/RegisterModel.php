@@ -1275,6 +1275,50 @@ class RegisterModel extends Model
         ];
     }
 
+    /**
+     * Líneas de detalle comercial (nombre y costo catálogo) para recibo/factura PDF.
+     *
+     * @return list<array{descripcion: string, importe: float}>
+     */
+    public function getPruebasLineasComerciales(?string $pruebasCsv): array
+    {
+        $csv = trim((string) $pruebasCsv);
+        if ($csv === '') {
+            return [];
+        }
+        $ids = array_values(array_filter(array_map('intval', explode(',', $csv)), static fn (int $id): bool => $id > 0));
+        if ($ids === []) {
+            return [];
+        }
+        $pt = $this->db->prefixTable('prianacategoria');
+        $rows = $this->db->table('prianacategoria')
+            ->select("{$pt}.prianacategoria_id, {$pt}.name, {$pt}.cost")
+            ->whereIn("{$pt}.prianacategoria_id", $ids)
+            ->where("{$pt}.deleted", 0)
+            ->get()
+            ->getResult();
+        $byId = [];
+        foreach ($rows as $r) {
+            $pid = (int) ($r->prianacategoria_id ?? 0);
+            if ($pid < 1) {
+                continue;
+            }
+            $nombre = trim((string) ($r->name ?? ''));
+            $byId[$pid] = [
+                'descripcion' => $nombre !== '' ? $nombre : ('Prueba #' . $pid),
+                'importe'     => (float) ($r->cost ?? 0),
+            ];
+        }
+        $ordered = [];
+        foreach ($ids as $pid) {
+            if (isset($byId[$pid])) {
+                $ordered[] = $byId[$pid];
+            }
+        }
+
+        return $ordered;
+    }
+
     public function searchPrueba(string $search, int $limit = 25): array
     {
         $search = trim($search);
@@ -1366,6 +1410,59 @@ class RegisterModel extends Model
     public function getPagoByRegistroId(int $registroId): ?object
     {
         return $this->db->table('pago')->where('registro_id', $registroId)->get()->getRow();
+    }
+
+    /**
+     * Convierte montos guardados en BD o formulario (punto/coma, espacios) a float.
+     */
+    private function parseDecimalMoney(mixed $value): float
+    {
+        if (is_int($value) || is_float($value)) {
+            return (float) $value;
+        }
+        $s = trim((string) $value);
+        if ($s === '') {
+            return 0.0;
+        }
+        $s = str_replace(["\xc2\xa0", ' '], '', $s);
+        if (str_contains($s, ',') && str_contains($s, '.')) {
+            $lastComma = strrpos($s, ',');
+            $lastDot   = strrpos($s, '.');
+            if ($lastComma !== false && $lastDot !== false && $lastComma > $lastDot) {
+                $s = str_replace('.', '', $s);
+                $s = str_replace(',', '.', $s);
+            } else {
+                $s = str_replace(',', '', $s);
+            }
+        } elseif (str_contains($s, ',')) {
+            $s = str_replace(',', '.', $s);
+        }
+
+        return is_numeric($s) ? (float) $s : 0.0;
+    }
+
+    /**
+     * Indica si la orden tiene fila de pago y el monto de la orden está cubierto.
+     * Usa saldo en BD y, si hiciera falta, total vs monto_pagar (por redondeos o datos desincronizados).
+     */
+    public function isPagoCompletoPorRegistroId(int $registroId): bool
+    {
+        $pago = $this->getPagoByRegistroId($registroId);
+        if (!$pago) {
+            return false;
+        }
+        $saldo = $this->parseDecimalMoney($pago->saldo ?? 0);
+        // Tolerancia por DECIMAL/float y distintos formatos al leer desde MySQL
+        if ($saldo <= 0.02) {
+            return true;
+        }
+        $total = $this->parseDecimalMoney($pago->total ?? 0);
+        $monto = $this->parseDecimalMoney($pago->monto_pagar ?? 0);
+        if ($total <= 0.0) {
+            return $saldo <= 0.02;
+        }
+
+        return ($monto + 0.02) >= $total;
     }
 
     /**

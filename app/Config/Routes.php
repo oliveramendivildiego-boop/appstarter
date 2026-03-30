@@ -176,6 +176,7 @@ $routes->get('registers/insumos/(:num)', 'Registers::insumos/$1');
 $routes->get('registers/viewreport/(:num)', 'Registers::viewreport/$1');
 $routes->get('registers/printreport/(:num)', 'Registers::printreport/$1');
 $routes->get('registers/pdf/(:num)', 'Registers::pdf/$1');
+$routes->get('registers/comprobantePdf/(:num)', 'Registers::comprobantePdf/$1');
 $routes->post('registers/save', 'Registers::save');
 $routes->post('registers/update/(:num)', 'Registers::update/$1');
 $routes->post('registers/validar', 'Registers::validar');
