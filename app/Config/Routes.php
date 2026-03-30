@@ -174,6 +174,7 @@ $routes->get('registers/orden/(:num)', 'Registers::orden/$1');
 $routes->get('registers/ordenPdf/(:num)', 'Registers::ordenPdf/$1');
 $routes->get('registers/insumos/(:num)', 'Registers::insumos/$1');
 $routes->get('registers/viewreport/(:num)', 'Registers::viewreport/$1');
+$routes->get('registers/printreport/(:num)', 'Registers::printreport/$1');
 $routes->get('registers/pdf/(:num)', 'Registers::pdf/$1');
 $routes->post('registers/save', 'Registers::save');
 $routes->post('registers/update/(:num)', 'Registers::update/$1');

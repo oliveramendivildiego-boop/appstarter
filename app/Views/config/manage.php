@@ -184,6 +184,15 @@
                 ?>
                 <?= form_dropdown('pdf_result_template_id', $tplOpts, $selTpl, 'id="pdf_result_template_id" class="form-select" autocomplete="off"') ?>
                 <small class="text-muted d-block mt-1"><?= lang('Config.config_pdf_template_help') ?></small>
+                <label class="form-label mt-3" for="print_result_template_id"><?= lang('Config.config_print_template') ?></label>
+                <?php
+                $selPrint = (int) ($config['print_result_template_id'] ?? $selTpl);
+                if ($selPrint < 1 || ! array_key_exists((string) $selPrint, $tplOpts)) {
+                    $selPrint = $selTpl;
+                }
+                ?>
+                <?= form_dropdown('print_result_template_id', $tplOpts, $selPrint, 'id="print_result_template_id" class="form-select" autocomplete="off"') ?>
+                <small class="text-muted d-block mt-1"><?= lang('Config.config_print_template_help') ?></small>
                 <?php else: ?>
                 <div class="alert alert-warning mb-0">
                     <?= lang('Config.config_pdf_template_missing') ?>

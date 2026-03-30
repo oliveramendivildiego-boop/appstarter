@@ -77,6 +77,67 @@ class ReportPdfLayoutService
         'left'   => 15.0,
     ];
 
+    /**
+     * Marca de agua centrada (PDF e impresión). file = ruta relativa a WRITEPATH.
+     *
+     * @return array{enabled: bool, opacity: float, size_percent: int, file: ?string}
+     */
+    public static function defaultWatermarkStatic(): array
+    {
+        return [
+            'enabled'      => false,
+            'opacity'      => 0.12,
+            'size_percent' => 45,
+            'file'         => null,
+        ];
+    }
+
+    /**
+     * Valida ruta relativa guardada en layout_json (sin ..).
+     */
+    public static function sanitizeWatermarkRelativePath(string $path): ?string
+    {
+        $path = str_replace('\\', '/', trim($path));
+        if ($path === '' || str_contains($path, '..')) {
+            return null;
+        }
+        if (! preg_match('#^uploads/report_pdf_templates/[0-9]+/[a-zA-Z0-9._-]+$#', $path)) {
+            return null;
+        }
+
+        return $path;
+    }
+
+    /**
+     * Data URI para CSS/HTML (dompdf y navegador).
+     */
+    public static function getWatermarkDataUriForLayout(array $layout): ?string
+    {
+        $w = $layout['watermark'] ?? [];
+        if (empty($w['enabled']) || empty($w['file'])) {
+            return null;
+        }
+        $rel = self::sanitizeWatermarkRelativePath((string) $w['file']);
+        if ($rel === null) {
+            return null;
+        }
+        $full = WRITEPATH . str_replace('/', DIRECTORY_SEPARATOR, $rel);
+        if (! is_file($full) || ! is_readable($full)) {
+            return null;
+        }
+        $data = @file_get_contents($full);
+        if ($data === false) {
+            return null;
+        }
+        $finfo = finfo_open(FILEINFO_MIME_TYPE);
+        $mime  = $finfo ? finfo_file($finfo, $full) : false;
+        if ($finfo) {
+            finfo_close($finfo);
+        }
+
+        return 'data:' . ($mime ?: 'image/png') . ';base64,' . base64_encode($data);
+    }
+
     public static function defaultColumnForPatientField(string $id): int
     {
         return in_array($id, ['paciente_nombre', 'paciente_edad', 'paciente_telefono'], true) ? 0 : 1;
@@ -574,6 +635,7 @@ class ReportPdfLayoutService
             'section_layouts'  => self::defaultSectionLayoutsStatic(),
             'instances'        => self::defaultInstancesStatic(),
             'margins_mm'       => self::defaultMarginsMmStatic(),
+            'watermark'        => self::defaultWatermarkStatic(),
         ];
     }
 
@@ -716,24 +778,74 @@ class ReportPdfLayoutService
             $instances      = $migrated['instances'];
         }
 
+        $watermark = $this->normalizeWatermark($decoded);
+
         return [
             'version'         => 5,
             'blocks'          => $blocks,
             'section_layouts' => $sectionLayouts,
             'instances'       => $instances,
             'margins_mm'      => $marginsMm,
+            'watermark'       => $watermark,
         ];
     }
 
     /**
-     * @return array{version: int, blocks: list<array{id: string, enabled: bool}>, section_layouts: array, instances: list<array{uid: string, element_type: string, section: string, enabled: bool, column: int}>, margins_mm: array{top: float, right: float, bottom: float, left: float}}
+     * @return array{enabled: bool, opacity: float, size_percent: int, file: ?string}
+     */
+    protected function normalizeWatermark(?array $decoded): array
+    {
+        $def = self::defaultWatermarkStatic();
+        $raw = is_array($decoded) && isset($decoded['watermark']) && is_array($decoded['watermark'])
+            ? $decoded['watermark'] : [];
+        $fileRaw = isset($raw['file']) ? (string) $raw['file'] : '';
+        $file    = self::sanitizeWatermarkRelativePath($fileRaw);
+        if ($file !== null && ! is_file(WRITEPATH . str_replace('/', DIRECTORY_SEPARATOR, $file))) {
+            $file = null;
+        }
+        $wants   = ! empty($raw['enabled']);
+        $enabled = $wants && $file !== null;
+        $opacity = isset($raw['opacity']) ? (float) $raw['opacity'] : $def['opacity'];
+        $opacity = round(max(0.05, min(0.9, $opacity)), 2);
+        $size    = isset($raw['size_percent']) ? (int) $raw['size_percent'] : $def['size_percent'];
+        $size    = max(10, min(95, $size));
+
+        return [
+            'enabled'      => $enabled,
+            'opacity'      => $opacity,
+            'size_percent' => $size,
+            'file'         => $file,
+        ];
+    }
+
+    /**
+     * Plantilla usada al generar el PDF (descarga / WhatsApp).
      */
     public function getActiveLayoutForRender(): array
+    {
+        return $this->resolveLayoutForConfigKey('pdf_result_template_id');
+    }
+
+    /**
+     * Plantilla usada en la página «Imprimir» del reporte (navegador).
+     */
+    public function getPrintLayoutForRender(): array
+    {
+        return $this->resolveLayoutForConfigKey('print_result_template_id');
+    }
+
+    /**
+     * @return array{version: int, blocks: list<array{id: string, enabled: bool}>, section_layouts: array, instances: list<array{uid: string, element_type: string, section: string, enabled: bool, column: int}>, margins_mm: array, watermark: array}
+     */
+    protected function resolveLayoutForConfigKey(string $configKey): array
     {
         try {
             $configModel   = model(AppConfigModel::class);
             $templateModel = model(ReportPdfTemplateModel::class);
-            $id            = (int) $configModel->getValue('pdf_result_template_id');
+            $id            = (int) $configModel->getValue($configKey);
+            if ($id < 1 && $configKey !== 'pdf_result_template_id') {
+                $id = (int) $configModel->getValue('pdf_result_template_id');
+            }
             if ($id > 0) {
                 $row = $templateModel->find($id);
                 if ($row && ! empty($row->layout_json)) {

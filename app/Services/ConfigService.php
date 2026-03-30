@@ -128,6 +128,19 @@ class ConfigService
                 }
             }
         }
+        if (array_key_exists('print_result_template_id', $postData)) {
+            $tidP = (int) $postData['print_result_template_id'];
+            if ($tidP > 0) {
+                try {
+                    $tplModel = model(ReportPdfTemplateModel::class);
+                    if ($tplModel->find($tidP)) {
+                        $batch['print_result_template_id'] = (string) $tidP;
+                    }
+                } catch (\Throwable $e) {
+                    // ignorar
+                }
+            }
+        }
 
         $logoFailed = false;
         if ($logoFile && $logoFile->isValid() && !$logoFile->hasMoved()) {

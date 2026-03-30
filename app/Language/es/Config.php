@@ -29,6 +29,8 @@ return [
     'config_error'          => 'Error al guardar',
     'config_save_btn'       => 'Guardar',
     'config_pdf_template'   => 'Plantilla del PDF de resultados',
+    'config_print_template' => 'Plantilla para imprimir (navegador)',
+    'config_print_template_help' => 'Diseño al usar «Imprimir» en el reporte del registro. El PDF descargado usa la plantilla superior.',
     'config_pdf_template_help' => 'Orden y secciones del PDF generado desde el registro. Edite diseños en Plantillas PDF.',
     'config_pdf_templates_link' => 'Gestionar plantillas y orden de bloques',
     'config_pdf_templates_tab'  => 'Plantillas PDF',

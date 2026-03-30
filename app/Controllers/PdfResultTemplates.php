@@ -80,12 +80,67 @@ class PdfResultTemplates extends SecureArea
         }
 
         $model = model(ReportPdfTemplateModel::class);
-        if (!$model->find($id)) {
+        if (! $model->find($id)) {
             return redirect()->to('config/pdf-templates')->with('error', 'Plantilla no encontrada.');
         }
 
+        $decoded = json_decode($layoutJson, true);
+        if (! is_array($decoded) || empty($decoded['blocks']) || ! is_array($decoded['blocks'])) {
+            return redirect()->to('config/pdf-templates/edit/' . $id)->with('error', 'Diseño JSON inválido.');
+        }
+
+        if ($this->request->getPost('watermark_remove') === '1') {
+            $oldRel = is_array($decoded['watermark'] ?? null) ? ($decoded['watermark']['file'] ?? null) : null;
+            if (is_string($oldRel) && $oldRel !== '') {
+                $safe = ReportPdfLayoutService::sanitizeWatermarkRelativePath($oldRel);
+                if ($safe !== null) {
+                    $full = WRITEPATH . str_replace('/', DIRECTORY_SEPARATOR, $safe);
+                    if (is_file($full)) {
+                        @unlink($full);
+                    }
+                }
+            }
+            $decoded['watermark'] = array_merge(
+                is_array($decoded['watermark'] ?? null) ? $decoded['watermark'] : ReportPdfLayoutService::defaultWatermarkStatic(),
+                [
+                    'file'    => null,
+                    'enabled' => false,
+                ]
+            );
+        }
+
+        $upload = $this->request->getFile('watermark_upload');
+        if ($upload && $upload->isValid() && ! $upload->hasMoved()) {
+            $ext = strtolower((string) $upload->getClientExtension());
+            $allowed = ['jpg', 'jpeg', 'png', 'gif', 'webp'];
+            if (! in_array($ext, $allowed, true)) {
+                return redirect()->to('config/pdf-templates/edit/' . $id)->with('error', 'Marca de agua: use PNG, JPG, GIF o WebP.');
+            }
+            if ($upload->getSize() > 2097152) {
+                return redirect()->to('config/pdf-templates/edit/' . $id)->with('error', 'La imagen de marca de agua no debe superar 2 MB.');
+            }
+
+            $dir = WRITEPATH . 'uploads' . DIRECTORY_SEPARATOR . 'report_pdf_templates' . DIRECTORY_SEPARATOR . $id;
+            if (! is_dir($dir)) {
+                mkdir($dir, 0755, true);
+            }
+            $newName = 'wm_' . bin2hex(random_bytes(8)) . '.' . $ext;
+            $upload->move($dir, $newName);
+            if (! is_file($dir . DIRECTORY_SEPARATOR . $newName)) {
+                return redirect()->to('config/pdf-templates/edit/' . $id)->with('error', 'No se pudo guardar la marca de agua.');
+            }
+            $rel = 'uploads/report_pdf_templates/' . $id . '/' . $newName;
+            $decoded['watermark'] = array_merge(
+                is_array($decoded['watermark'] ?? null) ? $decoded['watermark'] : ReportPdfLayoutService::defaultWatermarkStatic(),
+                [
+                    'file'    => $rel,
+                    'enabled' => true,
+                ]
+            );
+        }
+
         $layoutService = new ReportPdfLayoutService();
-        $normalized    = $layoutService->normalizeLayout($layoutJson);
+        $normalized    = $layoutService->normalizeLayout(json_encode($decoded, JSON_UNESCAPED_UNICODE));
         $jsonOut       = json_encode($normalized, JSON_UNESCAPED_UNICODE);
 
         $model->update($id, [
@@ -149,6 +204,15 @@ class PdfResultTemplates extends SecureArea
             foreach ($all as $t) {
                 if ((int) $t->id !== $id) {
                     $configModel->saveValue('pdf_result_template_id', (string) $t->id);
+                    break;
+                }
+            }
+        }
+        $printId = (int) $configModel->getValue('print_result_template_id');
+        if ($printId === $id) {
+            foreach ($all as $t) {
+                if ((int) $t->id !== $id) {
+                    $configModel->saveValue('print_result_template_id', (string) $t->id);
                     break;
                 }
             }

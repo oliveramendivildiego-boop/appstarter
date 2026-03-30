@@ -69,6 +69,7 @@ endif;
 
 <div class="text-center mt-3">
     <button id="guardaranalisis" name="guardaranalisis" class="btn btn-primary">Guardar</button>
+    <a href="<?= site_url('registers/printreport/' . (int) ($labotests_namecate ?? 0)) ?>" class="btn btn-outline-primary" id="btn_print_report">Imprimir</a>
     <a href="<?= site_url('registers/pdf/' . ($labotests_namecate ?? 0)) ?>" class="btn btn-success" target="_blank">
         <i class="fa-solid fa-file-pdf me-1"></i> Descargar PDF
     </a>
@@ -79,6 +80,17 @@ endif;
 <?= $this->section('scripts') ?>
 <script>
 document.addEventListener('DOMContentLoaded', function() {
+    var printBtn = document.getElementById('btn_print_report');
+    if (printBtn) {
+        printBtn.addEventListener('click', function(e) {
+            e.preventDefault();
+            var url = printBtn.getAttribute('href');
+            var w = window.open(url, 'reportPrint', 'width=960,height=900');
+            if (!w) {
+                window.location.href = url;
+            }
+        });
+    }
     var btn = document.getElementById('guardaranalisis');
     if (btn) {
         btn.addEventListener('click', function() {

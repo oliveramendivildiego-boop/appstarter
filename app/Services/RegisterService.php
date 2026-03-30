@@ -514,4 +514,27 @@ class RegisterService
             'pdf_layout'    => $pdf_layout,
         ]);
     }
+
+    /**
+     * HTML para imprimir desde el navegador (plantilla «impresión» en configuración).
+     *
+     * @param array<string, mixed> $reportData Retorno de prepareReportData()
+     */
+    public function renderReportPrintHtml(array $reportData, string $reportUrl, string $qrDataUri, int $registroId): string
+    {
+        $layoutService = new ReportPdfLayoutService();
+        $pdf_layout    = $layoutService->getPrintLayoutForRender();
+
+        return view('registers/report_print', [
+            'register_info' => $reportData['register_info'],
+            'paciente'      => $reportData['paciente'],
+            'doctor'        => $reportData['doctor'],
+            'grupos'        => $reportData['grupos'],
+            'lab_config'    => $this->getLabConfig(),
+            'report_url'    => $reportUrl,
+            'qr_data_uri'   => $qrDataUri,
+            'pdf_layout'    => $pdf_layout,
+            'registro_id'   => $registroId,
+        ]);
+    }
 }

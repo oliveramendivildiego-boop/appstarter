@@ -372,6 +372,32 @@ class Registers extends SecureArea
     }
 
     /**
+     * Vista lista para imprimir con la plantilla configurada para impresión (no la del PDF).
+     */
+    public function printreport($id = -1)
+    {
+        $id = (int) $id;
+        if ($id < 1) {
+            return redirect()->to('registers')->with('error', 'Registro no válido');
+        }
+        if ($this->registerModel->isRegistroAnulado($id)) {
+            return redirect()->to('registers/lista')->with('error', 'La orden está anulada.');
+        }
+
+        $data = $this->registerService->prepareReportData($id);
+        if (! $data) {
+            return redirect()->to('registers')->with('error', 'Registro no encontrado');
+        }
+
+        helper('qr');
+        $reportUrl = site_url('doctor/viewreport/' . $id);
+        $qrDataUri = qr_base64($reportUrl, 100);
+        $html      = $this->registerService->renderReportPrintHtml($data, $reportUrl, $qrDataUri, $id);
+
+        return $this->response->setBody($html)->setContentType('text/html', 'UTF-8');
+    }
+
+    /**
      * Orden de trabajo (sin logo/QR): lista de pruebas a realizar.
      * Pensada para imprimir cuando la orden aún no tiene resultados cargados.
      */

@@ -27,6 +27,13 @@ foreach ($layout['instances'] ?? [] as $inst) {
     }
 }
 $mm = $layout['margins_mm'] ?? \App\Services\ReportPdfLayoutService::defaultMarginsMmStatic();
+$wm = $layout['watermark'] ?? \App\Services\ReportPdfLayoutService::defaultWatermarkStatic();
+$wmPreview = null;
+if (! empty($wm['file'])) {
+    $wmPreview = \App\Services\ReportPdfLayoutService::getWatermarkDataUriForLayout([
+        'watermark' => array_merge($wm, ['enabled' => true]),
+    ]);
+}
 $labelsShort = [
     'paciente_nombre'   => 'Paciente:',
     'paciente_edad'     => 'Edad:',
@@ -57,7 +64,7 @@ $labelsShort = [
 <h3 class="mb-2">Diseño: <?= esc($template->name ?? '') ?></h3>
 <p class="text-muted">Configure el <strong>número de columnas</strong> por zona. Arrastre elementos entre encabezado, paciente/médico y pie; puede <strong>duplicar</strong> cualquier dato (por ejemplo el logo en el pie). El orden en cada lista define el apilado dentro de la columna.</p>
 
-<?= form_open(site_url('config/pdf-templates/save'), ['id' => 'pdf_tpl_form']) ?>
+<?= form_open(site_url('config/pdf-templates/save'), ['id' => 'pdf_tpl_form', 'enctype' => 'multipart/form-data']) ?>
     <?= csrf_field() ?>
     <input type="hidden" name="id" value="<?= (int) ($template->id ?? 0) ?>">
     <input type="hidden" name="layout_json" id="layout_json" value="">
@@ -110,6 +117,40 @@ $labelsShort = [
             <div class="col-6 col-md-3">
                 <label class="form-label small" for="margin_left">Izquierda</label>
                 <input type="number" class="form-control" id="margin_left" min="0" max="50" step="0.5" value="<?= esc((string) ($mm['left'] ?? 15)) ?>">
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="card shadow-sm mb-4">
+    <div class="card-header bg-white border">
+        <h5 class="mb-0">Marca de agua (centro de la hoja)</h5>
+    </div>
+    <div class="card-body">
+        <p class="small text-muted">Imagen semitransparente detrás del contenido al generar <strong>PDF</strong> o <strong>imprimir</strong> con esta plantilla.</p>
+        <input type="hidden" name="watermark_file_rel" id="watermark_file_rel" value="<?= esc($wm['file'] ?? '') ?>">
+        <div class="row g-3">
+            <div class="col-md-6">
+                <div class="form-check mb-2">
+                    <input class="form-check-input" type="checkbox" id="wm_enabled" <?= ! empty($wm['enabled']) ? 'checked' : '' ?>>
+                    <label class="form-check-label" for="wm_enabled">Usar marca de agua</label>
+                </div>
+                <label class="form-label small" for="wm_opacity">Opacidad (0,05 – 0,9)</label>
+                <input type="number" class="form-control" id="wm_opacity" min="0.05" max="0.9" step="0.01" value="<?= esc((string) ($wm['opacity'] ?? 0.12)) ?>">
+                <label class="form-label small mt-2" for="wm_size">Tamaño (% del ancho de la hoja)</label>
+                <input type="number" class="form-control" id="wm_size" min="10" max="95" value="<?= (int) ($wm['size_percent'] ?? 45) ?>">
+            </div>
+            <div class="col-md-6">
+                <label class="form-label small" for="watermark_upload">Subir imagen (PNG, JPG, GIF, WebP; máx. 2&nbsp;MB)</label>
+                <input type="file" class="form-control" name="watermark_upload" id="watermark_upload" accept="image/jpeg,image/png,image/gif,image/webp">
+                <div class="form-check mt-3">
+                    <input class="form-check-input" type="checkbox" name="watermark_remove" id="watermark_remove" value="1">
+                    <label class="form-check-label text-danger" for="watermark_remove">Quitar imagen de marca de agua</label>
+                </div>
+                <?php if ($wmPreview): ?>
+                <p class="small mb-1 mt-2 text-muted">Archivo actual:</p>
+                <img src="<?= esc($wmPreview, 'attr') ?>" alt="" class="img-thumbnail" style="max-height: 120px;">
+                <?php endif; ?>
             </div>
         </div>
     </div>
@@ -531,6 +572,28 @@ document.addEventListener('DOMContentLoaded', function() {
             instances.push(parseInstanceLi(li, 'footer'));
         });
 
+        function buildWatermarkForJson() {
+            var relIn = document.getElementById('watermark_file_rel');
+            var rel = relIn && relIn.value ? String(relIn.value).trim() : '';
+            var removeCb = document.getElementById('watermark_remove');
+            if (removeCb && removeCb.checked) {
+                rel = '';
+            }
+            var op = parseFloat(document.getElementById('wm_opacity').value);
+            if (isNaN(op)) op = 0.12;
+            op = Math.max(0.05, Math.min(0.9, op));
+            var sz = parseInt(document.getElementById('wm_size').value, 10);
+            if (isNaN(sz)) sz = 45;
+            sz = Math.max(10, Math.min(95, sz));
+            var en = document.getElementById('wm_enabled') && document.getElementById('wm_enabled').checked;
+            return {
+                enabled: en,
+                opacity: op,
+                size_percent: sz,
+                file: rel === '' ? null : rel
+            };
+        }
+
         document.getElementById('layout_json').value = JSON.stringify({
             version: 5,
             blocks: blocks,
@@ -545,7 +608,8 @@ document.addEventListener('DOMContentLoaded', function() {
                 right: clampMargin(document.getElementById('margin_right').value),
                 bottom: clampMargin(document.getElementById('margin_bottom').value),
                 left: clampMargin(document.getElementById('margin_left').value)
-            }
+            },
+            watermark: buildWatermarkForJson()
         });
     });
 });
