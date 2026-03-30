@@ -12,6 +12,13 @@
                     $conResultado[] = $it;
                 }
             }
+            $conRefEnConResultado = false;
+            foreach ($conResultado as $it) {
+                if (registro_tiene_rango_referencial($it->valor_min ?? '', $it->valor_max ?? '')) {
+                    $conRefEnConResultado = true;
+                    break;
+                }
+            }
             ?>
             <h4 class="mt-4"><?= esc($padre) ?> - <?= esc($items[0]->hijo ?? '') ?></h4>
             <div class="table-responsive">
@@ -20,7 +27,9 @@
                     <tr>
                         <th>ANÁLISIS</th>
                         <th class="text-center">RESULTADO</th>
+                        <?php if ($conRefEnConResultado): ?>
                         <th class="text-center">RANGO REFERENCIAL</th>
+                        <?php endif; ?>
                     </tr>
                 </thead>
                 <tbody>
@@ -45,10 +54,17 @@
 						$refMostrar = registro_rango_referencial_texto($item->valor_min ?? '', $item->valor_max ?? '', $item->umedida ?? '');
 					?>
                         <?php if (is_object($item)): ?>
+                            <?php $itemConRef = registro_tiene_rango_referencial($item->valor_min ?? '', $item->valor_max ?? ''); ?>
                             <tr>
                                 <td><?= esc($item->nombre ?? '') ?></td>
+                                <?php if (!$conRefEnConResultado): ?>
+                                <td class="text-center <?= $class ?>"><?= esc($resMostrar) ?></td>
+                                <?php elseif ($itemConRef): ?>
                                 <td class="text-center <?= $class ?>"><?= esc($resMostrar) ?></td>
                                 <td class="text-center"><?= esc($refMostrar) ?></td>
+                                <?php else: ?>
+                                <td class="text-center <?= $class ?>" colspan="2"><?= esc($resMostrar) ?></td>
+                                <?php endif; ?>
                             </tr>
                         <?php endif; ?>
                     <?php endforeach; ?>

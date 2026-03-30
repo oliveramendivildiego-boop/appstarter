@@ -4,6 +4,7 @@ namespace App\Controllers;
 
 use App\Models\OpcionModel;
 use App\Models\PoblacionModel;
+use App\Models\ReportPdfTemplateModel;
 use App\Libraries\TenantResolver;
 use App\Services\ConfigService;
 use App\Services\TenantConfigService;
@@ -76,8 +77,16 @@ class Config extends SecureArea
             $tab = 'sistema';
         }
 
+        $pdf_templates = [];
+        try {
+            $pdf_templates = model(ReportPdfTemplateModel::class)->orderBy('name', 'ASC')->findAll();
+        } catch (\Throwable $e) {
+            $pdf_templates = [];
+        }
+
         return view('config/manage', [
             'config'               => $config,
+            'pdf_templates'        => $pdf_templates,
             'poblaciones'          => $poblaciones,
             'editar_poblacion'     => $editarPoblacion,
             'editar_poblacion_data'=> $editarPoblacionData,

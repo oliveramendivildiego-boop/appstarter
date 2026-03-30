@@ -28,4 +28,9 @@ return [
     'config_logo_error'     => 'No se pudo actualizar el logo (use JPG, PNG, GIF o WebP de hasta 2 MB).',
     'config_error'          => 'Error al guardar',
     'config_save_btn'       => 'Guardar',
+    'config_pdf_template'   => 'Plantilla del PDF de resultados',
+    'config_pdf_template_help' => 'Orden y secciones del PDF generado desde el registro. Edite diseños en Plantillas PDF.',
+    'config_pdf_templates_link' => 'Gestionar plantillas y orden de bloques',
+    'config_pdf_templates_tab'  => 'Plantillas PDF',
+    'config_pdf_template_missing' => 'Aún no hay plantillas en la base de datos. Ejecute en la carpeta del proyecto: php spark migrate — luego recargue esta página o abra Plantillas PDF.',
 ];

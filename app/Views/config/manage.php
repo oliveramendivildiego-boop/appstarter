@@ -43,6 +43,9 @@
     <li class="nav-item" role="presentation">
         <button class="nav-link <?= $activeTab === 'sesiones' ? 'active' : '' ?>" id="tab-sesiones-btn" data-bs-toggle="tab" data-bs-target="#tab-sesiones" type="button" role="tab">Sesiones activas</button>
     </li>
+    <li class="nav-item" role="presentation">
+        <a class="nav-link" href="<?= site_url('config/pdf-templates') ?>"><i class="fa-solid fa-file-pdf me-1"></i><?= lang('Config.config_pdf_templates_tab') ?></a>
+    </li>
 </ul>
 
 <div class="tab-content" id="configTabsContent">
@@ -160,6 +163,32 @@
                 <label for="dias_alerta_vencimiento" class="form-label">Días de alerta para vencimiento de insumos</label>
                 <?= form_input(['name' => 'dias_alerta_vencimiento', 'id' => 'dias_alerta_vencimiento', 'type' => 'number', 'min' => 1, 'max' => 365, 'class' => 'form-control', 'value' => $config['dias_alerta_vencimiento'] ?? '40', 'autocomplete' => 'off']) ?>
                 <small class="text-muted">Los lotes que venzan en los próximos X días se marcarán en amarillo en el reporte de insumos por vencimiento.</small>
+            </div>
+        </div>
+        <div class="row">
+            <div class="col-md-8 mb-3">
+                <?= form_label(lang('Config.config_pdf_template'), 'pdf_result_template_id', ['class' => 'form-label']) ?>
+                <div class="mb-2">
+                    <a href="<?= site_url('config/pdf-templates') ?>" class="btn btn-outline-primary btn-sm"><i class="fa-solid fa-file-pdf me-1"></i><?= lang('Config.config_pdf_templates_link') ?></a>
+                </div>
+                <?php if (!empty($pdf_templates)): ?>
+                <?php
+                $tplOpts = [];
+                foreach ($pdf_templates as $pt) {
+                    $tplOpts[(string) $pt->id] = $pt->name ?? ('Plantilla #' . $pt->id);
+                }
+                $selTpl = (int) ($config['pdf_result_template_id'] ?? 1);
+                if ($selTpl < 1 || ! array_key_exists((string) $selTpl, $tplOpts)) {
+                    $selTpl = (int) (array_key_first($tplOpts) ?: 1);
+                }
+                ?>
+                <?= form_dropdown('pdf_result_template_id', $tplOpts, $selTpl, 'id="pdf_result_template_id" class="form-select" autocomplete="off"') ?>
+                <small class="text-muted d-block mt-1"><?= lang('Config.config_pdf_template_help') ?></small>
+                <?php else: ?>
+                <div class="alert alert-warning mb-0">
+                    <?= lang('Config.config_pdf_template_missing') ?>
+                </div>
+                <?php endif; ?>
             </div>
         </div>
         <div class="mb-3">

@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\AppConfigModel;
+use App\Models\ReportPdfTemplateModel;
 use CodeIgniter\HTTP\Files\UploadedFile;
 
 /**
@@ -112,6 +113,20 @@ class ConfigService
                 $fmt = mb_substr($fmt, 0, 128);
             }
             $batch['registro_folio_format'] = $fmt;
+        }
+
+        if (array_key_exists('pdf_result_template_id', $postData)) {
+            $tid = (int) $postData['pdf_result_template_id'];
+            if ($tid > 0) {
+                try {
+                    $tplModel = model(ReportPdfTemplateModel::class);
+                    if ($tplModel->find($tid)) {
+                        $batch['pdf_result_template_id'] = (string) $tid;
+                    }
+                } catch (\Throwable $e) {
+                    // tabla aún no migrada u otro error: no guardar clave inválida
+                }
+            }
         }
 
         $logoFailed = false;

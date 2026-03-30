@@ -533,18 +533,9 @@ class Registers extends SecureArea
         }
 
         helper('qr');
-        $labConfig   = $this->registerService->getLabConfig();
-        $reportUrl   = site_url('doctor/viewreport/' . $id);
-        $qrDataUri   = qr_base64($reportUrl, 100);
-        $html = view('registers/report_pdf', [
-            'register_info' => $data['register_info'],
-            'paciente'      => $data['paciente'],
-            'doctor'        => $data['doctor'],
-            'grupos'        => $data['grupos'],
-            'lab_config'    => $labConfig,
-            'report_url'    => $reportUrl,
-            'qr_data_uri'   => $qrDataUri,
-        ]);
+        $reportUrl = site_url('doctor/viewreport/' . $id);
+        $qrDataUri = qr_base64($reportUrl, 100);
+        $html      = $this->registerService->renderReportPdfHtml($data, $reportUrl, $qrDataUri);
 
         $pdfService    = new PdfService();
         $pacienteNombre = trim(($data['paciente']->first_name ?? '') . '_' . ($data['paciente']->last_name_fa ?? ''));
@@ -1012,18 +1003,9 @@ class Registers extends SecureArea
         ];
 
         helper('qr');
-        $labConfigArr = $this->registerService->getLabConfig();
-        $reportUrl    = site_url('doctor/viewreport/' . $id);
-        $qrDataUri    = qr_base64($reportUrl, 100);
-        $html = view('registers/report_pdf', [
-            'register_info' => $data['register_info'],
-            'paciente'      => $data['paciente'],
-            'doctor'        => $data['doctor'],
-            'grupos'        => $data['grupos'],
-            'lab_config'    => $labConfigArr,
-            'report_url'    => $reportUrl,
-            'qr_data_uri'   => $qrDataUri,
-        ]);
+        $reportUrl = site_url('doctor/viewreport/' . $id);
+        $qrDataUri = qr_base64($reportUrl, 100);
+        $html      = $this->registerService->renderReportPdfHtml($data, $reportUrl, $qrDataUri);
         $pdfService = new PdfService();
         $filename   = 'Resultados_' . preg_replace('/\s+/', '_', $pacienteNombre) . '_' . $id . '.pdf';
         $pdfContent = $pdfService->generate($html, $filename);

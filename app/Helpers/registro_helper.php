@@ -77,3 +77,13 @@ if (! function_exists('registro_rango_referencial_texto')) {
         return $rangePart . ' ' . $u;
     }
 }
+
+if (! function_exists('registro_tiene_rango_referencial')) {
+    /**
+     * Indica si hay al menos un límite (mín. o máx.) de referencia configurado.
+     */
+    function registro_tiene_rango_referencial($min, $max): bool
+    {
+        return trim((string) ($min ?? '')) !== '' || trim((string) ($max ?? '')) !== '';
+    }
+}

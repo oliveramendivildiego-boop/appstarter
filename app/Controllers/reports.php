@@ -275,16 +275,14 @@ class Reports extends SecureArea
         
         // Cabeceras en español
         fwrite($output, "\xEF\xBB\xBF"); // BOM para UTF-8
-        fputcsv($output, ['Categoría', 'Prueba', 'Precio', 'Precio Derivado', 'Diferencia']);
+        fputcsv($output, ['Categoría', 'Prueba', 'Precio', 'Precio Derivado']);
 
         $totalPrecio = 0;
         $totalDerivado = 0;
-        $categoriaActual = null;
 
         foreach ($data as $item) {
             $precio = (float) ($item['precio'] ?? 0);
             $derivado = (float) ($item['precio_derivado'] ?? 0);
-            $diferencia = $derivado - $precio;
             
             $totalPrecio += $precio;
             $totalDerivado += $derivado;
@@ -294,13 +292,12 @@ class Reports extends SecureArea
                 $item['prueba'],
                 number_format($precio, 2, '.', ''),
                 number_format($derivado, 2, '.', ''),
-                number_format($diferencia, 2, '.', '')
             ]);
         }
 
         // Total general
         fputcsv($output, []);
-        fputcsv($output, ['TOTAL GENERAL', '', number_format($totalPrecio, 2, '.', ''), number_format($totalDerivado, 2, '.', ''), number_format($totalDerivado - $totalPrecio, 2, '.', '')]);
+        fputcsv($output, ['TOTAL GENERAL', '', number_format($totalPrecio, 2, '.', ''), number_format($totalDerivado, 2, '.', '')]);
 
         fclose($output);
         exit;

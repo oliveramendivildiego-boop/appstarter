@@ -492,4 +492,26 @@ class RegisterService
             'analisis'      => $analisis,
         ];
     }
+
+    /**
+     * HTML del PDF de resultados según la plantilla activa (orden y visibilidad de bloques).
+     *
+     * @param array<string, mixed> $reportData Retorno de prepareReportData()
+     */
+    public function renderReportPdfHtml(array $reportData, string $reportUrl, string $qrDataUri): string
+    {
+        $layoutService = new ReportPdfLayoutService();
+        $pdf_layout    = $layoutService->getActiveLayoutForRender();
+
+        return view('registers/report_pdf', [
+            'register_info' => $reportData['register_info'],
+            'paciente'      => $reportData['paciente'],
+            'doctor'        => $reportData['doctor'],
+            'grupos'        => $reportData['grupos'],
+            'lab_config'    => $this->getLabConfig(),
+            'report_url'    => $reportUrl,
+            'qr_data_uri'   => $qrDataUri,
+            'pdf_layout'    => $pdf_layout,
+        ]);
+    }
 }

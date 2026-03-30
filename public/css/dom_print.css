@@ -4,9 +4,28 @@ body
 	font-size:75%;	
 }
 
-#menubar,#footer
+/* Layout legado */
+#menubar,
+#footer,
+/* Dashboard Bootstrap (layouts/main): barra superior, sidebar, avisos */
+header.navbar,
+.sidebar,
+#toast-container,
+.site-watermark,
+.modal
 {
-	display:none;
+	display: none !important;
+}
+
+/* El contenido principal ocupa todo el ancho al imprimir */
+.container-fluid > .row.flex-nowrap > main.col-md-9,
+.container-fluid > .row.flex-nowrap > main.col-lg-10,
+.container-fluid > .row.flex-nowrap > main.ms-sm-auto
+{
+	flex: 0 0 100% !important;
+	max-width: 100% !important;
+	width: 100% !important;
+	margin-left: 0 !important;
 }
 
 #content_area

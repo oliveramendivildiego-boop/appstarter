@@ -5,53 +5,63 @@
 body {
     font-family: DejaVu Sans, sans-serif;
     font-size: 10pt;
-    margin: 15px;
+    margin: 0;
     color: #333;
 }
-.header {
+.header-grid {
     display: table;
     width: 100%;
     margin-bottom: 15px;
     border-bottom: 2px solid #0066cc;
     padding-bottom: 10px;
+    table-layout: fixed;
 }
-.logo-cell {
+.header-col {
     display: table-cell;
-    width: 100px;
-    vertical-align: middle;
+    vertical-align: top;
+    padding: 0 8px;
 }
-.logo-cell img {
-    max-height: 70px;
+.header-col-0 {
+    text-align: left;
 }
-.lab-info {
-    display: table-cell;
-    vertical-align: middle;
-    padding: 0 15px;
+.header-col-1 {
     text-align: center;
 }
-.lab-info h1 {
+.header-col-2 {
+    text-align: right;
+}
+.header-piece {
+    margin-bottom: 8px;
+}
+.header-piece p {
+    margin: 3px 0;
+    font-size: 9pt;
+}
+.header-piece-logo img {
+    max-height: 70px;
+}
+.header-piece-company h1 {
     margin: 0;
     font-size: 14pt;
     color: #0066cc;
 }
-.lab-info p {
-    margin: 3px 0;
-    font-size: 9pt;
-}
-.qr-cell {
-    display: table-cell;
-    width: 90px;
-    vertical-align: middle;
-    text-align: right;
-}
-.qr-cell .qr-img {
+.header-piece-qr .qr-img {
     max-width: 75px;
     max-height: 75px;
     height: auto;
     display: block;
     margin-left: auto;
+    margin-right: auto;
 }
-.qr-cell .qr-label {
+.header-col-2 .header-piece-qr .qr-img {
+    margin-left: auto;
+    margin-right: 0;
+}
+.header-col-0 .header-piece-qr .qr-img {
+    margin-left: 0;
+    margin-right: auto;
+}
+.header-piece-qr .qr-label {
     margin: 4px 0 0 0;
     font-size: 7pt;
     color: #555;
@@ -62,18 +72,27 @@ body {
     background: #f8f9fa;
     border-radius: 4px;
 }
-.patient-section .row {
+.patient-columns {
     display: table;
     width: 100%;
+    table-layout: fixed;
 }
-.patient-section .col {
+.patient-col {
     display: table-cell;
-    width: 50%;
-    padding: 5px 10px 5px 0;
+    padding: 5px 12px 5px 0;
     vertical-align: top;
+}
+.patient-col-1 {
+    padding-left: 12px;
+    padding-right: 0;
 }
 .patient-section .label {
     font-weight: bold;
+}
+.patient-section-lines .patient-line {
+    margin: 4px 0;
+    font-size: 9pt;
+    line-height: 1.35;
 }
 table.results {
     width: 100%;
@@ -114,13 +133,31 @@ table.results td {
     font-size: 8pt;
     color: #666;
 }
-.footer {
+.footer-grid {
+    display: table;
+    width: 100%;
     margin-top: 20px;
     padding-top: 10px;
     border-top: 1px solid #ddd;
+    table-layout: fixed;
     font-size: 8pt;
     color: #666;
-    text-align: center;
+}
+.footer-col {
+    display: table-cell;
+    vertical-align: top;
+    padding: 0 6px;
+}
+.footer-col-0 { text-align: left; }
+.footer-col-1 { text-align: center; }
+.footer-col-2 { text-align: right; }
+.footer-piece {
+    margin-bottom: 6px;
+    line-height: 1.35;
+}
+.footer-piece-policy small {
+    font-size: 7pt;
+    color: #555;
 }
 .text-center {
     text-align: center;

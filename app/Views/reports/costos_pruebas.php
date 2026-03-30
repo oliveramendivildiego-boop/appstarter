@@ -17,15 +17,20 @@ $currencyIsRight = strtolower(trim($currencySide)) === 'right';
             <p class="text-muted"><?= esc($subtitle) ?></p>
         </div>
         <?php if (!empty($data)): ?>
-            <a href="<?= site_url('reports/exportCostosPruebas') ?>?<?= !empty($busqueda) ? 'busqueda=' . urlencode($busqueda) : '' ?>" 
-               class="btn btn-success">
-                <i class="fas fa-file-excel me-1"></i> Exportar a Excel
-            </a>
+            <div>
+                <button type="button" onclick="window.print()" class="btn btn-primary me-2">
+                    <i class="fas fa-print me-1"></i> Imprimir reporte
+                </button>
+                <a href="<?= site_url('reports/exportCostosPruebas') ?>?<?= !empty($busqueda) ? 'busqueda=' . urlencode($busqueda) : '' ?>"
+                   class="btn btn-success">
+                    <i class="fas fa-file-excel me-1"></i> Exportar a Excel
+                </a>
+            </div>
         <?php endif; ?>
     </div>
 </div>
 
-<div class="card shadow-sm mb-4">
+<div class="card shadow-sm mb-4 d-print-none">
     <div class="card-header bg-primary text-white">
         <h5 class="mb-0">Búsqueda de pruebas</h5>
     </div>
@@ -69,7 +74,6 @@ $currencyIsRight = strtolower(trim($currencySide)) === 'right';
                             <th>Prueba</th>
                             <th class="text-end">Precio</th>
                             <th class="text-end">Precio Derivado</th>
-                            <th class="text-center">Diferencia</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -85,17 +89,15 @@ $currencyIsRight = strtolower(trim($currencySide)) === 'right';
                                         <td colspan="2" class="text-end">Subtotal <?= esc($categoriaActual) ?>:</td>
                                         <td class="text-end"><?= $currencyIsRight ? (number_format($subtotalPrecio, 2) . ' ' . esc($currencySym)) : (esc($currencySym) . ' ' . number_format($subtotalPrecio, 2)) ?></td>
                                         <td class="text-end"><?= $currencyIsRight ? (number_format($subtotalDerivado, 2) . ' ' . esc($currencySym)) : (esc($currencySym) . ' ' . number_format($subtotalDerivado, 2)) ?></td>
-                                        <td class="text-center"><?= $currencyIsRight ? (number_format($subtotalDiferencia, 2) . ' ' . esc($currencySym)) : (esc($currencySym) . ' ' . number_format($subtotalDiferencia, 2)) ?></td>
                                     </tr>
                                 <?php endif; ?>
                                 <?php 
                                 $categoriaActual = $item['categoria'];
                                 $subtotalPrecio = 0;
                                 $subtotalDerivado = 0;
-                                $subtotalDiferencia = 0;
                                 ?>
                                 <tr class="table-info">
-                                    <td colspan="5" class="fw-bold text-primary">
+                                    <td colspan="4" class="fw-bold text-primary">
                                         <i class="fas fa-folder me-2"></i><?= esc($item['categoria']) ?>
                                     </td>
                                 </tr>
@@ -104,11 +106,9 @@ $currencyIsRight = strtolower(trim($currencySide)) === 'right';
                             <?php 
                             $precio = (float) ($item['precio'] ?? 0);
                             $derivado = (float) ($item['precio_derivado'] ?? 0);
-                            $diferencia = $derivado - $precio;
                             
                             $subtotalPrecio += $precio;
                             $subtotalDerivado += $derivado;
-                            $subtotalDiferencia += $diferencia;
                             
                             $totalPrecio += $precio;
                             $totalDerivado += $derivado;
@@ -119,11 +119,6 @@ $currencyIsRight = strtolower(trim($currencySide)) === 'right';
                                 <td><?= esc($item['prueba']) ?></td>
                                 <td class="text-end"><?= $currencyIsRight ? (number_format($precio, 2) . ' ' . esc($currencySym)) : (esc($currencySym) . ' ' . number_format($precio, 2)) ?></td>
                                 <td class="text-end"><?= $currencyIsRight ? (number_format($derivado, 2) . ' ' . esc($currencySym)) : (esc($currencySym) . ' ' . number_format($derivado, 2)) ?></td>
-                                <td class="text-center">
-                                    <span class="badge <?= $diferencia > 0 ? 'bg-success' : ($diferencia < 0 ? 'bg-danger' : 'bg-secondary') ?>">
-                                        <?= $currencyIsRight ? (number_format($diferencia, 2) . ' ' . esc($currencySym)) : (esc($currencySym) . ' ' . number_format($diferencia, 2)) ?>
-                                    </span>
-                                </td>
                             </tr>
                         <?php endforeach; ?>
                         
@@ -133,7 +128,6 @@ $currencyIsRight = strtolower(trim($currencySide)) === 'right';
                                 <td colspan="2" class="text-end">Subtotal <?= esc($categoriaActual) ?>:</td>
                                 <td class="text-end"><?= $currencyIsRight ? (number_format($subtotalPrecio, 2) . ' ' . esc($currencySym)) : (esc($currencySym) . ' ' . number_format($subtotalPrecio, 2)) ?></td>
                                 <td class="text-end"><?= $currencyIsRight ? (number_format($subtotalDerivado, 2) . ' ' . esc($currencySym)) : (esc($currencySym) . ' ' . number_format($subtotalDerivado, 2)) ?></td>
-                                <td class="text-center"><?= $currencyIsRight ? (number_format($subtotalDiferencia, 2) . ' ' . esc($currencySym)) : (esc($currencySym) . ' ' . number_format($subtotalDiferencia, 2)) ?></td>
                             </tr>
                         <?php endif; ?>
                         
@@ -142,7 +136,6 @@ $currencyIsRight = strtolower(trim($currencySide)) === 'right';
                             <td colspan="2" class="text-end">TOTAL GENERAL:</td>
                             <td class="text-end"><?= $currencyIsRight ? (number_format($totalPrecio, 2) . ' ' . esc($currencySym)) : (esc($currencySym) . ' ' . number_format($totalPrecio, 2)) ?></td>
                             <td class="text-end"><?= $currencyIsRight ? (number_format($totalDerivado, 2) . ' ' . esc($currencySym)) : (esc($currencySym) . ' ' . number_format($totalDerivado, 2)) ?></td>
-                            <td class="text-center"><?= $currencyIsRight ? (number_format($totalDerivado - $totalPrecio, 2) . ' ' . esc($currencySym)) : (esc($currencySym) . ' ' . number_format($totalDerivado - $totalPrecio, 2)) ?></td>
                         </tr>
                     </tbody>
                 </table>
@@ -156,10 +149,28 @@ $currencyIsRight = strtolower(trim($currencySide)) === 'right';
         <i class="fas fa-arrow-left me-1"></i> Volver a reportes
     </a>
     <?php if (!empty($data)): ?>
-        <a href="<?= site_url('reports/exportCostosPruebas') ?>?<?= !empty($busqueda) ? 'busqueda=' . urlencode($busqueda) : '' ?>" 
+        <button type="button" onclick="window.print()" class="btn btn-primary">
+            <i class="fas fa-print me-1"></i> Imprimir reporte
+        </button>
+        <a href="<?= site_url('reports/exportCostosPruebas') ?>?<?= !empty($busqueda) ? 'busqueda=' . urlencode($busqueda) : '' ?>"
            class="btn btn-success">
             <i class="fas fa-file-excel me-1"></i> Exportar a Excel
         </a>
     <?php endif; ?>
 </div>
+
+<style>
+@media print {
+    .btn, .card-header, .breadcrumb {
+        display: none !important;
+    }
+    .card {
+        border: none !important;
+        box-shadow: none !important;
+    }
+    .table {
+        font-size: 12px;
+    }
+}
+</style>
 <?= $this->endSection() ?>

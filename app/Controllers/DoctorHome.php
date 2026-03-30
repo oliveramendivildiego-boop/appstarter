@@ -233,18 +233,9 @@ class DoctorHome extends BaseController
         }
 
         helper('qr');
-        $labConfig   = $this->registerService->getLabConfig();
-        $reportUrl   = site_url('doctor/viewreport/' . $id);
-        $qrDataUri   = qr_base64($reportUrl, 100);
-        $html = view('registers/report_pdf', [
-            'register_info' => $data['register_info'],
-            'paciente'      => $data['paciente'],
-            'doctor'        => $data['doctor'],
-            'grupos'        => $data['grupos'],
-            'lab_config'    => $labConfig,
-            'report_url'    => $reportUrl,
-            'qr_data_uri'   => $qrDataUri,
-        ]);
+        $reportUrl = site_url('doctor/viewreport/' . $id);
+        $qrDataUri = qr_base64($reportUrl, 100);
+        $html      = $this->registerService->renderReportPdfHtml($data, $reportUrl, $qrDataUri);
 
         $pdfService = new PdfService();
         $pacienteNombre = trim(($data['paciente']->first_name ?? '') . '_' . ($data['paciente']->last_name_fa ?? ''));

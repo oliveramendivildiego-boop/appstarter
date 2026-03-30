@@ -1,4 +1,3 @@
-esto
 <?php
 function getPoblacionLabel($paciente_id) {
     // Manejar valores nulos o vacíos
@@ -330,7 +329,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
 <style>
 @media print {
-    .btn, .card-header, .breadcrumb, nav {
+    .btn, .card-header, .breadcrumb {
         display: none !important;
     }
     .card {
