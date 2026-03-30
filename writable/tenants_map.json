@@ -4,9 +4,9 @@
         "laboratorio": {
             "hostname": "localhost",
             "port": 3306,
-            "database": "olivtgzd_laboratorio",
-            "username": "olivtgzd_laboratorio",
-            "password": "isP.E.=^wKM[",
+            "database": "laboratorio",
+            "username": "root",
+            "password": "",
             "DBPrefix": "dom_"
         },
         "quantum": {
