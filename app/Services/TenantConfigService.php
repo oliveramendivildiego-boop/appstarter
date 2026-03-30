@@ -290,7 +290,11 @@ class TenantConfigService
                 . '&& set database.default.port=' . $this->escCmd((string) ($cfg['port'] ?? 3306))
                 . '&& ' . $quotedPhp . ' ' . $quotedSpark . ' migrate --all"';
         } else {
-            $cmd = 'database.default.hostname=' . escapeshellarg((string) $cfg['hostname'])
+            // sh/bash no permiten VAR=valor con puntos en el nombre (p. ej. database.default.hostname);
+            // el shell interpreta eso como comando → "command not found". /usr/bin/env sí acepta esas claves.
+            $envBin = is_executable('/usr/bin/env') ? '/usr/bin/env' : 'env';
+            $cmd    = $envBin
+                . ' database.default.hostname=' . escapeshellarg((string) $cfg['hostname'])
                 . ' database.default.username=' . escapeshellarg((string) $cfg['username'])
                 . ' database.default.password=' . escapeshellarg((string) $cfg['password'])
                 . ' database.default.database=' . escapeshellarg((string) $cfg['database'])
