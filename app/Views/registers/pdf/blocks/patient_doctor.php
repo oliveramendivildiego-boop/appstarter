@@ -6,8 +6,10 @@ if (empty($layout['instances']) || ! is_array($layout['instances'])) {
     $layout = (new \App\Services\ReportPdfLayoutService())->getDefaultLayout();
 }
 
-[$n, $buckets] = \App\Services\ReportPdfLayoutService::columnBucketsForSection($layout, 'patient_doctor');
-$n             = max(1, $n);
+[$n, $gridItems] = \App\Services\ReportPdfLayoutService::gridItemsForSection($layout, 'patient_doctor');
+$n               = max(1, $n);
+$secLayouts      = is_array($layout['section_layouts'] ?? null) ? $layout['section_layouts'] : [];
+$sectionLayout   = is_array($secLayouts['patient_doctor'] ?? null) ? $secLayouts['patient_doctor'] : [];
 
 $elementCtx = [
     'lab_config'        => $lab_config ?? [],
@@ -20,18 +22,11 @@ $elementCtx = [
 ];
 ?>
 <div class="patient-section">
-    <div class="patient-columns">
-        <?php for ($c = 0; $c < $n; $c++):
-            $pct   = round(100 / $n, 4);
-            $align = \App\Services\ReportPdfLayoutService::columnAlign($c, $n);
-            ?>
-        <div class="patient-col patient-col-<?= $c ?>" style="width: <?= $pct ?>%; text-align: <?= esc($align) ?>;">
-            <?php foreach ($buckets[$c] as $elType):
-                echo view('registers/pdf/partials/element', array_merge($elementCtx, [
-                    'pdf_element_type' => $elType,
-                ]));
-            endforeach; ?>
-        </div>
-        <?php endfor; ?>
-    </div>
+<?= view('registers/pdf/section_layout_grid', [
+    'section_wrapper_class' => 'patient-columns patient-columns-grid',
+    'n_columns'             => $n,
+    'grid_items'            => $gridItems,
+    'element_ctx'           => $elementCtx,
+    'section_layout'        => $sectionLayout,
+]) ?>
 </div>

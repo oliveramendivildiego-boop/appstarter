@@ -6,8 +6,10 @@ if (empty($layout['instances']) || ! is_array($layout['instances'])) {
     $layout = (new \App\Services\ReportPdfLayoutService())->getDefaultLayout();
 }
 
-[$n, $buckets] = \App\Services\ReportPdfLayoutService::columnBucketsForSection($layout, 'footer');
-$n             = max(1, $n);
+[$n, $gridItems] = \App\Services\ReportPdfLayoutService::gridItemsForSection($layout, 'footer');
+$n               = max(1, $n);
+$secLayouts      = is_array($layout['section_layouts'] ?? null) ? $layout['section_layouts'] : [];
+$sectionLayout   = is_array($secLayouts['footer'] ?? null) ? $secLayouts['footer'] : [];
 
 $elementCtx = [
     'lab_config'        => $lab_config ?? [],
@@ -18,18 +20,11 @@ $elementCtx = [
     'qr_data_uri'       => $qr_data_uri ?? '',
     'pdf_logo_data_uri' => $pdf_logo_data_uri ?? '',
 ];
-?>
-<div class="footer footer-grid">
-    <?php for ($c = 0; $c < $n; $c++):
-        $pct   = round(100 / $n, 4);
-        $align = \App\Services\ReportPdfLayoutService::columnAlign($c, $n);
-        ?>
-    <div class="footer-col footer-col-<?= $c ?>" style="width: <?= $pct ?>%; text-align: <?= esc($align) ?>;">
-        <?php foreach ($buckets[$c] as $elType):
-            echo view('registers/pdf/partials/element', array_merge($elementCtx, [
-                'pdf_element_type' => $elType,
-            ]));
-        endforeach; ?>
-    </div>
-    <?php endfor; ?>
-</div>
+
+echo view('registers/pdf/section_layout_grid', [
+    'section_wrapper_class' => 'footer footer-grid',
+    'n_columns'             => $n,
+    'grid_items'            => $gridItems,
+    'element_ctx'           => $elementCtx,
+    'section_layout'        => $sectionLayout,
+]);

@@ -25,12 +25,62 @@ body {
     z-index: 1;
 }
 .header-grid {
-    display: table;
+    display: block;
     width: 100%;
     margin-bottom: 15px;
     border-bottom: 2px solid #0066cc;
     padding-bottom: 10px;
-    table-layout: fixed;
+}
+.pdf-section-table {
+    width: 100%;
+}
+.pdf-section-table td {
+    word-wrap: break-word;
+    overflow-wrap: break-word;
+    vertical-align: top;
+}
+.pdf-section-table .header-piece,
+.pdf-section-table .footer-piece,
+.pdf-section-table .patient-line {
+    margin-bottom: 8px;
+    max-width: 100%;
+    box-sizing: border-box;
+}
+/*
+ * Cuadrícula con interlineado configurable (tabla con data-pdf-lh + line-height inline).
+ * Dompdf hereda mal el line-height solo desde td; se fuerza inherit en textos y se pasan
+ * separaciones entre bloques a em para que el interlineado se note al subir/bajar el valor.
+ */
+.pdf-section-table[data-pdf-lh] .header-piece,
+.pdf-section-table[data-pdf-lh] .footer-piece,
+.pdf-section-table[data-pdf-lh] .patient-line {
+    margin-bottom: 0.4em;
+    line-height: inherit;
+}
+.pdf-section-table[data-pdf-lh] .header-piece:last-child,
+.pdf-section-table[data-pdf-lh] .footer-piece:last-child,
+.pdf-section-table[data-pdf-lh] .patient-line:last-child {
+    margin-bottom: 0;
+}
+.pdf-section-table[data-pdf-lh] td p,
+.pdf-section-table[data-pdf-lh] td h1,
+.pdf-section-table[data-pdf-lh] td .patient-line,
+.pdf-section-table[data-pdf-lh] td .footer-piece,
+.pdf-section-table[data-pdf-lh] td .header-piece-company h1,
+.pdf-section-table[data-pdf-lh] td .qr-label,
+.pdf-section-table[data-pdf-lh] td .footer-piece-policy small {
+    line-height: inherit !important;
+}
+.pdf-section-table[data-pdf-lh] td p {
+    margin: 0.1em 0 !important;
+}
+.pdf-section-table[data-pdf-lh] td .header-piece-qr .qr-label {
+    margin: 0.2em 0 0 0 !important;
+}
+.pdf-grid-cell .header-piece,
+.pdf-grid-cell .footer-piece,
+.pdf-grid-cell .patient-line {
+    margin-bottom: 8px;
 }
 .header-col {
     display: table-cell;
@@ -53,28 +103,55 @@ body {
     margin: 3px 0;
     font-size: 9pt;
 }
+.header-piece-logo {
+    max-width: 100%;
+}
 .header-piece-logo img {
+    max-width: 100%;
     max-height: 70px;
+    width: auto;
+    height: auto;
+    display: block;
+    box-sizing: border-box;
 }
 .header-piece-company h1 {
     margin: 0;
     font-size: 14pt;
     color: #0066cc;
+    max-width: 100%;
+    word-wrap: break-word;
+    overflow-wrap: break-word;
+}
+.header-piece-qr {
+    max-width: 100%;
+    word-wrap: break-word;
+    overflow-wrap: break-word;
 }
 .header-piece-qr .qr-img {
-    max-width: 75px;
+    max-width: 100%;
     max-height: 75px;
+    width: auto;
     height: auto;
     display: block;
     margin-left: auto;
     margin-right: auto;
+    box-sizing: border-box;
 }
-.header-col-2 .header-piece-qr .qr-img {
+.header-col-2 .header-piece-qr .qr-img,
+.pdf-cell--right .header-piece-qr .qr-img,
+.pdf-grid-cell--right .header-piece-qr .qr-img {
     margin-left: auto;
     margin-right: 0;
 }
-.header-col-0 .header-piece-qr .qr-img {
+.header-col-0 .header-piece-qr .qr-img,
+.pdf-cell--left .header-piece-qr .qr-img,
+.pdf-grid-cell--left .header-piece-qr .qr-img {
     margin-left: 0;
+    margin-right: auto;
+}
+.pdf-cell--center .header-piece-qr .qr-img,
+.pdf-grid-cell--center .header-piece-qr .qr-img {
+    margin-left: auto;
     margin-right: auto;
 }
 .header-piece-qr .qr-label {
@@ -92,6 +169,10 @@ body {
     display: table;
     width: 100%;
     table-layout: fixed;
+}
+.patient-columns-grid {
+    display: block;
+    width: 100%;
 }
 .patient-col {
     display: table-cell;
@@ -150,12 +231,11 @@ table.results td {
     color: #666;
 }
 .footer-grid {
-    display: table;
+    display: block;
     width: 100%;
     margin-top: 20px;
     padding-top: 10px;
     border-top: 1px solid #ddd;
-    table-layout: fixed;
     font-size: 8pt;
     color: #666;
 }

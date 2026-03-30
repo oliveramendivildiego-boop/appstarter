@@ -259,15 +259,86 @@ class ReportPdfLayoutService
     }
 
     /**
-     * @return array{header: array{columns: int}, patient_doctor: array{columns: int}, footer: array{columns: int}}
+     * @return array{header: array{columns: int, line_height: float, column_align_h: list<string>, column_align_v: list<string>}, patient_doctor: array{columns: int, line_height: float, column_align_h: list<string>, column_align_v: list<string>}, footer: array{columns: int, line_height: float, column_align_h: list<string>, column_align_v: list<string>}}
      */
     public static function defaultSectionLayoutsStatic(): array
     {
         return [
-            'header'         => ['columns' => 3],
-            'patient_doctor' => ['columns' => 2],
-            'footer'         => ['columns' => 3],
+            'header' => [
+                'columns'        => 3,
+                'line_height'    => 1.35,
+                'column_align_h' => ['left', 'center', 'right'],
+                'column_align_v' => ['top', 'top', 'top'],
+            ],
+            'patient_doctor' => [
+                'columns'        => 2,
+                'line_height'    => 1.35,
+                'column_align_h' => ['left', 'right'],
+                'column_align_v' => ['top', 'top'],
+            ],
+            'footer' => [
+                'columns'        => 3,
+                'line_height'    => 1.35,
+                'column_align_h' => ['left', 'center', 'right'],
+                'column_align_v' => ['top', 'top', 'top'],
+            ],
         ];
+    }
+
+    /**
+     * Interlineado y alineaciones por columna acotados al número de columnas actual.
+     *
+     * @return array{line_height: float, column_align_h: list<string>, column_align_v: list<string>}
+     */
+    public static function resolveSectionLayoutStyle(array $sectionLayout, int $n): array
+    {
+        $n = max(self::SECTION_COLUMN_MIN, min(self::SECTION_COLUMN_MAX, $n));
+        $lh = isset($sectionLayout['line_height']) ? (float) $sectionLayout['line_height'] : 1.35;
+        $lh = round(max(1.0, min(2.5, $lh)), 2);
+        $hRaw = $sectionLayout['column_align_h'] ?? [];
+        $vRaw = $sectionLayout['column_align_v'] ?? [];
+
+        return [
+            'line_height'    => $lh,
+            'column_align_h' => self::normalizeColumnAlignHArray(is_array($hRaw) ? $hRaw : [], $n),
+            'column_align_v' => self::normalizeColumnAlignVArray(is_array($vRaw) ? $vRaw : [], $n),
+        ];
+    }
+
+    /**
+     * @param list<mixed> $raw
+     *
+     * @return list<string>
+     */
+    public static function normalizeColumnAlignHArray(array $raw, int $n): array
+    {
+        $allowed = ['left', 'center', 'right'];
+        $out     = [];
+        $raw     = array_values($raw);
+        for ($i = 0; $i < $n; $i++) {
+            $v = isset($raw[$i]) ? strtolower(trim((string) $raw[$i])) : '';
+            $out[] = in_array($v, $allowed, true) ? $v : self::columnAlign($i, $n);
+        }
+
+        return $out;
+    }
+
+    /**
+     * @param list<mixed> $raw
+     *
+     * @return list<string>
+     */
+    public static function normalizeColumnAlignVArray(array $raw, int $n): array
+    {
+        $allowed = ['top', 'middle', 'bottom'];
+        $out     = [];
+        $raw     = array_values($raw);
+        for ($i = 0; $i < $n; $i++) {
+            $v = isset($raw[$i]) ? strtolower(trim((string) $raw[$i])) : '';
+            $out[] = in_array($v, $allowed, true) ? $v : 'top';
+        }
+
+        return $out;
     }
 
     public static function generateInstanceUid(): string
@@ -302,70 +373,38 @@ class ReportPdfLayoutService
         foreach (self::defaultHeaderFieldsStatic() as $f) {
             $col = (int) ($f['column'] ?? 0);
             $out[] = [
-                'uid'          => self::generateInstanceUid(),
-                'element_type' => (string) ($f['id'] ?? ''),
-                'section'      => 'header',
-                'enabled'      => ! empty($f['enabled']),
-                'column'       => ! empty($f['enabled']) ? max(0, min($hc - 1, $col)) : max(0, min($hc - 1, $col)),
+                'uid'           => self::generateInstanceUid(),
+                'element_type'  => (string) ($f['id'] ?? ''),
+                'section'       => 'header',
+                'enabled'       => ! empty($f['enabled']),
+                'column'        => ! empty($f['enabled']) ? max(0, min($hc - 1, $col)) : max(0, min($hc - 1, $col)),
+                'column_span'   => 1,
             ];
         }
         foreach (self::defaultPatientDoctorFieldsStatic() as $f) {
             $col = (int) ($f['column'] ?? 0);
             $out[] = [
-                'uid'          => self::generateInstanceUid(),
-                'element_type' => (string) ($f['id'] ?? ''),
-                'section'      => 'patient_doctor',
-                'enabled'      => ! empty($f['enabled']),
-                'column'       => ! empty($f['enabled']) ? max(0, min($pc - 1, $col)) : max(0, min($pc - 1, $col)),
+                'uid'           => self::generateInstanceUid(),
+                'element_type'  => (string) ($f['id'] ?? ''),
+                'section'       => 'patient_doctor',
+                'enabled'       => ! empty($f['enabled']),
+                'column'        => ! empty($f['enabled']) ? max(0, min($pc - 1, $col)) : max(0, min($pc - 1, $col)),
+                'column_span'   => 1,
             ];
         }
         foreach (self::defaultFooterFieldsStatic() as $f) {
             $col = (int) ($f['column'] ?? 0);
             $out[] = [
-                'uid'          => self::generateInstanceUid(),
-                'element_type' => (string) ($f['id'] ?? ''),
-                'section'      => 'footer',
-                'enabled'      => ! empty($f['enabled']),
-                'column'       => ! empty($f['enabled']) ? max(0, min($fc - 1, $col)) : max(0, min($fc - 1, $col)),
+                'uid'           => self::generateInstanceUid(),
+                'element_type'  => (string) ($f['id'] ?? ''),
+                'section'       => 'footer',
+                'enabled'       => ! empty($f['enabled']),
+                'column'        => ! empty($f['enabled']) ? max(0, min($fc - 1, $col)) : max(0, min($fc - 1, $col)),
+                'column_span'   => 1,
             ];
         }
 
         return $out;
-    }
-
-    /**
-     * @return array{0: int, 1: list<list<string>>}
-     */
-    public static function columnBucketsForSection(array $layout, string $section): array
-    {
-        $allowed = ['header', 'patient_doctor', 'footer'];
-        if (! in_array($section, $allowed, true)) {
-            return [1, [[]]];
-        }
-        $layouts = is_array($layout['section_layouts'] ?? null) ? $layout['section_layouts'] : [];
-        $n       = (int) ($layouts[$section]['columns'] ?? 3);
-        $n       = max(self::SECTION_COLUMN_MIN, min(self::SECTION_COLUMN_MAX, $n));
-        $buckets = [];
-        for ($i = 0; $i < $n; $i++) {
-            $buckets[$i] = [];
-        }
-        foreach ($layout['instances'] ?? [] as $inst) {
-            if (! is_array($inst)) {
-                continue;
-            }
-            if (($inst['section'] ?? '') !== $section || empty($inst['enabled'])) {
-                continue;
-            }
-            $type = (string) ($inst['element_type'] ?? '');
-            if ($type === '') {
-                continue;
-            }
-            $col = (int) ($inst['column'] ?? 0);
-            $col = max(0, min($n - 1, $col));
-            $buckets[$col][] = $type;
-        }
-
-        return [$n, $buckets];
     }
 
     public static function columnAlign(int $index, int $total): string
@@ -384,6 +423,69 @@ class ReportPdfLayoutService
     }
 
     /**
+     * Alineación del texto cuando un elemento ocupa varias columnas (índice 0-based).
+     */
+    public static function columnAlignForSpan(int $startColumn, int $span, int $totalColumns): string
+    {
+        if ($totalColumns <= 1) {
+            return 'center';
+        }
+        $end = $startColumn + $span - 1;
+        if ($startColumn === 0 && $end >= $totalColumns - 1) {
+            return 'center';
+        }
+        if ($startColumn === 0) {
+            return 'left';
+        }
+        if ($end >= $totalColumns - 1) {
+            return 'right';
+        }
+
+        return 'center';
+    }
+
+    /**
+     * Elementos de una sección en orden de lista, con columna inicial y anchura en columnas (para CSS grid).
+     *
+     * @return array{0: int, 1: list<array{element_type: string, column: int, column_span: int}>}
+     */
+    public static function gridItemsForSection(array $layout, string $section): array
+    {
+        $allowed = ['header', 'patient_doctor', 'footer'];
+        if (! in_array($section, $allowed, true)) {
+            return [1, []];
+        }
+        $layouts = is_array($layout['section_layouts'] ?? null) ? $layout['section_layouts'] : [];
+        $n       = (int) ($layouts[$section]['columns'] ?? 3);
+        $n       = max(self::SECTION_COLUMN_MIN, min(self::SECTION_COLUMN_MAX, $n));
+        $items   = [];
+        foreach ($layout['instances'] ?? [] as $inst) {
+            if (! is_array($inst)) {
+                continue;
+            }
+            if (($inst['section'] ?? '') !== $section || empty($inst['enabled'])) {
+                continue;
+            }
+            $type = (string) ($inst['element_type'] ?? '');
+            if ($type === '') {
+                continue;
+            }
+            $col = (int) ($inst['column'] ?? 0);
+            $col = max(0, min($n - 1, $col));
+            $span = isset($inst['column_span']) ? (int) $inst['column_span'] : 1;
+            $maxSpan = max(1, $n - $col);
+            $span = max(1, min($maxSpan, $span));
+            $items[] = [
+                'element_type' => $type,
+                'column'       => $col,
+                'column_span'  => $span,
+            ];
+        }
+
+        return [$n, $items];
+    }
+
+    /**
      * @return array{header: array{columns: int}, patient_doctor: array{columns: int}, footer: array{columns: int}}
      */
     protected function normalizeSectionLayouts(?array $decoded): array
@@ -394,9 +496,22 @@ class ReportPdfLayoutService
             : [];
         $out = [];
         foreach ($defaults as $key => $def) {
-            $n = isset($raw[$key]['columns']) ? (int) $raw[$key]['columns'] : (int) $def['columns'];
-            $n = max(self::SECTION_COLUMN_MIN, min(self::SECTION_COLUMN_MAX, $n));
-            $out[$key] = ['columns' => $n];
+            $rawSec = is_array($raw[$key] ?? null) ? $raw[$key] : [];
+            $n      = isset($rawSec['columns']) ? (int) $rawSec['columns'] : (int) ($def['columns'] ?? 3);
+            $n      = max(self::SECTION_COLUMN_MIN, min(self::SECTION_COLUMN_MAX, $n));
+
+            $defLh = isset($def['line_height']) ? (float) $def['line_height'] : 1.35;
+            $lh    = isset($rawSec['line_height']) ? (float) $rawSec['line_height'] : $defLh;
+            $lh    = round(max(1.0, min(2.5, $lh)), 2);
+
+            $hRaw = $rawSec['column_align_h'] ?? null;
+            $vRaw = $rawSec['column_align_v'] ?? null;
+            $out[$key] = [
+                'columns'        => $n,
+                'line_height'    => $lh,
+                'column_align_h' => self::normalizeColumnAlignHArray(is_array($hRaw) ? $hRaw : [], $n),
+                'column_align_v' => self::normalizeColumnAlignVArray(is_array($vRaw) ? $vRaw : [], $n),
+            ];
         }
 
         return $out;
@@ -436,12 +551,17 @@ class ReportPdfLayoutService
             }
             $col = $enabled ? max(0, min($cols - 1, $colRaw)) : max(0, min($cols - 1, max(0, $colRaw)));
 
+            $spanRaw = isset($row['column_span']) ? (int) $row['column_span'] : 1;
+            $maxSpan = max(1, $cols - $col);
+            $span    = max(1, min($maxSpan, $spanRaw >= 1 ? $spanRaw : 1));
+
             $out[] = [
-                'uid'          => $uid,
-                'element_type' => $type,
-                'section'      => $section,
-                'enabled'      => $enabled,
-                'column'       => $col,
+                'uid'           => $uid,
+                'element_type'  => $type,
+                'section'       => $section,
+                'enabled'       => $enabled,
+                'column'        => $col,
+                'column_span'   => $span,
             ];
         }
 
@@ -449,7 +569,7 @@ class ReportPdfLayoutService
     }
 
     /**
-     * @return array{section_layouts: array{header: array{columns: int}, patient_doctor: array{columns: int}, footer: array{columns: int}}, instances: list<array{uid: string, element_type: string, section: string, enabled: bool, column: int}>}
+     * @return array{section_layouts: array{header: array{columns: int}, patient_doctor: array{columns: int}, footer: array{columns: int}}, instances: list<array{uid: string, element_type: string, section: string, enabled: bool, column: int, column_span: int}>}
      */
     protected function migrateV4ToV5(array $decoded): array
     {
@@ -464,11 +584,12 @@ class ReportPdfLayoutService
             $enabled = ! empty($f['enabled']);
             $c       = (int) ($f['column'] ?? 0);
             $instances[] = [
-                'uid'          => self::generateInstanceUid(),
-                'element_type' => $id,
-                'section'      => 'header',
-                'enabled'      => $enabled,
-                'column'       => $enabled ? max(0, min($hc - 1, $c)) : max(0, min($hc - 1, $c)),
+                'uid'           => self::generateInstanceUid(),
+                'element_type'  => $id,
+                'section'       => 'header',
+                'enabled'       => $enabled,
+                'column'        => $enabled ? max(0, min($hc - 1, $c)) : max(0, min($hc - 1, $c)),
+                'column_span'   => 1,
             ];
         }
         foreach ($this->normalizePatientDoctorFields($decoded) as $f) {
@@ -476,11 +597,12 @@ class ReportPdfLayoutService
             $enabled = ! empty($f['enabled']);
             $c       = (int) ($f['column'] ?? 0);
             $instances[] = [
-                'uid'          => self::generateInstanceUid(),
-                'element_type' => $id,
-                'section'      => 'patient_doctor',
-                'enabled'      => $enabled,
-                'column'       => $enabled ? max(0, min($pc - 1, $c)) : max(0, min($pc - 1, $c)),
+                'uid'           => self::generateInstanceUid(),
+                'element_type'  => $id,
+                'section'       => 'patient_doctor',
+                'enabled'       => $enabled,
+                'column'        => $enabled ? max(0, min($pc - 1, $c)) : max(0, min($pc - 1, $c)),
+                'column_span'   => 1,
             ];
         }
         foreach ($this->normalizeFooterFields($decoded) as $f) {
@@ -488,11 +610,12 @@ class ReportPdfLayoutService
             $enabled = ! empty($f['enabled']);
             $c       = (int) ($f['column'] ?? 0);
             $instances[] = [
-                'uid'          => self::generateInstanceUid(),
-                'element_type' => $id,
-                'section'      => 'footer',
-                'enabled'      => $enabled,
-                'column'       => $enabled ? max(0, min($fc - 1, $c)) : max(0, min($fc - 1, $c)),
+                'uid'           => self::generateInstanceUid(),
+                'element_type'  => $id,
+                'section'       => 'footer',
+                'enabled'       => $enabled,
+                'column'        => $enabled ? max(0, min($fc - 1, $c)) : max(0, min($fc - 1, $c)),
+                'column_span'   => 1,
             ];
         }
 
