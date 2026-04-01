@@ -7,6 +7,8 @@ use App\Models\ReactivoModel;
 use App\Models\AppConfigModel;
 use App\Models\ToquoteModel;
 use App\Models\EmployeeModel;
+use App\Models\PoblacionModel;
+use App\Services\RegisterService;
 
 class Reports extends SecureArea
 {
@@ -174,6 +176,183 @@ class Reports extends SecureArea
             'allowed_modules' => $this->allowed_modules,
             'user_info'       => $this->user_info,
         ]);
+    }
+
+    /**
+     * Estadísticas en rango: pruebas, desglose por tipo, pacientes, grupo poblacional (config) y género.
+     */
+    public function estadisticasLaboratorio()
+    {
+        $startDate = $this->request->getGet('start') ?? date('Y-m-d');
+        $endDate   = $this->request->getGet('end') ?? date('Y-m-d');
+
+        $rows = $this->reportModel->getRegistrosEstadisticasLaboratorio($startDate, $endDate);
+
+        $poblaciones = model(PoblacionModel::class)->getAll();
+        $byPobId     = [];
+        foreach ($poblaciones as $p) {
+            $id = (int) ($p['id_poblacion'] ?? 0);
+            if ($id > 0) {
+                $byPobId[$id] = $p;
+            }
+        }
+
+        $registerService = new RegisterService();
+        $labelsPrueba    = $this->reportModel->getPrianacategoriaLabelsMap();
+
+        $resumen = [
+            'ordenes'              => 0,
+            'pruebas_solicitadas'  => 0,
+            'pacientes_distintos'  => 0,
+            'ordenes_sin_persona'  => 0,
+        ];
+        $porGeneroOrdenes       = ['1' => 0, '2' => 0, '_' => 0];
+        $porGeneroPacientes     = ['1' => 0, '2' => 0, '_' => 0];
+        $seenPid                = [];
+        $porPoblacion           = [];
+        $conteoPorPruebaId      = [];
+        $pacientesPorPruebaId   = [];
+
+        foreach ($rows as $row) {
+            $resumen['ordenes']++;
+            $pid = (int) ($row['person_id'] ?? 0);
+            if ($pid <= 0) {
+                $resumen['ordenes_sin_persona']++;
+            }
+
+            $pruebasStr = trim((string) ($row['pruebas'] ?? ''));
+            $idsPrueba  = $registerService->extractPrianacategoriaIdsFromRegistroPruebas($pruebasStr);
+            $resumen['pruebas_solicitadas'] += count($idsPrueba);
+            foreach ($idsPrueba as $prId) {
+                $conteoPorPruebaId[$prId] = ($conteoPorPruebaId[$prId] ?? 0) + 1;
+                if ($pid > 0) {
+                    if (!isset($pacientesPorPruebaId[$prId])) {
+                        $pacientesPorPruebaId[$prId] = [];
+                    }
+                    $pacientesPorPruebaId[$prId][$pid] = true;
+                }
+            }
+
+            $gk = $this->generoKeyReporte($row['gender'] ?? null);
+            $porGeneroOrdenes[$gk]++;
+
+            if ($pid > 0 && !isset($seenPid[$pid])) {
+                $seenPid[$pid] = true;
+                $resumen['pacientes_distintos']++;
+                $porGeneroPacientes[$gk]++;
+            }
+
+            try {
+                $ingreso = new \DateTime($row['ingreso']);
+            } catch (\Throwable $e) {
+                $ingreso = new \DateTime();
+            }
+
+            $birth = !empty($row['birthday']) ? (string) $row['birthday'] : null;
+            $gen   = isset($row['gender']) && $row['gender'] !== '' ? (int) $row['gender'] : null;
+            $matching = $registerService->getMatchingPoblacionIds($birth, $gen, $ingreso);
+            $pobId    = $this->pickPrimaryPoblacionId($matching, $byPobId);
+            $porPoblacion[$pobId] = ($porPoblacion[$pobId] ?? 0) + 1;
+        }
+
+        $porPruebaRows = [];
+        foreach ($conteoPorPruebaId as $id => $cnt) {
+            $meta = $labelsPrueba[$id] ?? null;
+            $porPruebaRows[] = [
+                'prianacategoria_id'  => $id,
+                'prueba'              => $meta['prueba'] ?? ('ID ' . $id),
+                'categoria'           => $meta['categoria'] ?? '',
+                'ordenes_con_prueba'  => $cnt,
+                'pacientes_distintos' => isset($pacientesPorPruebaId[$id]) ? count($pacientesPorPruebaId[$id]) : 0,
+            ];
+        }
+        usort($porPruebaRows, static function (array $a, array $b): int {
+            $c = ($b['ordenes_con_prueba'] ?? 0) <=> ($a['ordenes_con_prueba'] ?? 0);
+            if ($c !== 0) {
+                return $c;
+            }
+            $cc = strcasecmp((string) ($a['categoria'] ?? ''), (string) ($b['categoria'] ?? ''));
+            if ($cc !== 0) {
+                return $cc;
+            }
+
+            return strcasecmp((string) ($a['prueba'] ?? ''), (string) ($b['prueba'] ?? ''));
+        });
+
+        $poblacionGrupoRows = [];
+        foreach ($poblaciones as $p) {
+            $id = (int) ($p['id_poblacion'] ?? 0);
+            if ($id < 1) {
+                continue;
+            }
+            $poblacionGrupoRows[] = [
+                'nombre'     => (string) ($p['name'] ?? ''),
+                'rango_edad' => PoblacionModel::formatRangoEdad($p),
+                'ordenes'    => (int) ($porPoblacion[$id] ?? 0),
+            ];
+        }
+        foreach ($porPoblacion as $id => $cnt) {
+            $id = (int) $id;
+            if ($id < 1 || isset($byPobId[$id])) {
+                continue;
+            }
+            $poblacionGrupoRows[] = [
+                'nombre'     => 'Grupo #' . $id,
+                'rango_edad' => '—',
+                'ordenes'    => (int) $cnt,
+            ];
+        }
+
+        return view('reports/estadisticas_laboratorio', [
+            'title'                => 'Estadísticas de laboratorio por período',
+            'current_module'       => 'reports',
+            'subtitle'             => date('d/m/Y', strtotime($startDate)) . ' - ' . date('d/m/Y', strtotime($endDate)),
+            'startDate'            => $startDate,
+            'endDate'              => $endDate,
+            'resumen'              => $resumen,
+            'porGeneroOrdenes'     => $porGeneroOrdenes,
+            'porGeneroPacientes'   => $porGeneroPacientes,
+            'poblacionGrupoRows'  => $poblacionGrupoRows,
+            'porPruebaRows'        => $porPruebaRows,
+            'allowed_modules'      => $this->allowed_modules,
+            'user_info'            => $this->user_info,
+        ]);
+    }
+
+    private function generoKeyReporte($gender): string
+    {
+        $g = (string) $gender;
+
+        return in_array($g, ['1', '2'], true) ? $g : '_';
+    }
+
+    /**
+     * Elige un solo id_poblacion para contabilizar la orden (misma tabla que en Config → Población).
+     *
+     * @param array<int, array<string, mixed>> $byPobId
+     */
+    private function pickPrimaryPoblacionId(array $matchingIds, array $byPobId): int
+    {
+        $ids = array_values(array_unique(array_map('intval', $matchingIds)));
+        if ($ids === []) {
+            return 3;
+        }
+        usort($ids, static function (int $a, int $b) use ($byPobId): int {
+            $oa = (int) ($byPobId[$a]['orden'] ?? 999);
+            $ob = (int) ($byPobId[$b]['orden'] ?? 999);
+            if ($oa !== $ob) {
+                return $oa <=> $ob;
+            }
+            $aAd = $a === 3 ? 1 : 0;
+            $bAd = $b === 3 ? 1 : 0;
+            if ($aAd !== $bAd) {
+                return $aAd <=> $bAd;
+            }
+
+            return $a <=> $b;
+        });
+
+        return $ids[0];
     }
 
     /**

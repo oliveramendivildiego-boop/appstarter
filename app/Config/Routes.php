@@ -43,6 +43,7 @@ $routes->get('reports/ingresosFecha', 'Reports::ingresosFecha');
 $routes->get('reports/porDoctor', 'Reports::porDoctor');
 $routes->get('reports/pagos', 'Reports::pagos');
 $routes->get('reports/pruebasFecha', 'Reports::pruebasFecha');
+$routes->get('reports/estadisticasLaboratorio', 'Reports::estadisticasLaboratorio');
 $routes->get('reports/insumosVencimiento', 'Reports::insumosVencimiento');
 $routes->get('reports/inventarioKardex', 'Reports::inventarioKardex');
 $routes->get('reports/costosPruebas', 'Reports::costosPruebas');

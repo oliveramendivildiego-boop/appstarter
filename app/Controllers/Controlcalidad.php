@@ -2,6 +2,7 @@
 
 namespace App\Controllers;
 
+use App\Libraries\QcStatistics;
 use App\Models\ControlCalidadModel;
 
 class Controlcalidad extends SecureArea
@@ -36,11 +37,29 @@ class Controlcalidad extends SecureArea
         $fechaFin = $this->request->getGet('fecha_fin') ?? date('Y-m-d');
         $valores = $this->model->getValores($controlId, $fechaIni, $fechaFin);
 
+        $numeric = array_map(static fn ($v) => (float) ($v['valor'] ?? 0), $valores);
+        $qcStats = QcStatistics::sampleStats($numeric);
+
+        $series = [];
+        foreach ($valores as $v) {
+            $series[] = [
+                'fecha' => (string) ($v['fecha'] ?? ''),
+                'valor' => (float) ($v['valor'] ?? 0),
+            ];
+        }
+
+        $westgard = [];
+        if ($qcStats !== null && $qcStats['sd'] > 0) {
+            $westgard = QcStatistics::evaluateWestgard($series, $qcStats['mean'], $qcStats['sd']);
+        }
+
         return view('controlcalidad/grafica', [
             'control'          => $control,
             'valores'          => $valores,
             'fecha_ini'        => $fechaIni,
             'fecha_fin'        => $fechaFin,
+            'qc_stats'         => $qcStats,
+            'westgard'         => $westgard,
             'allowed_modules'  => $this->allowed_modules,
             'current_module'   => 'controlcalidad',
             'user_info'       => $this->user_info,
@@ -50,11 +69,20 @@ class Controlcalidad extends SecureArea
     public function savecontrol()
     {
         $id = (int) ($this->request->getPost('control_id') ?? 0);
-        $this->model->saveControl([
-            'nombre' => $this->request->getPost('nombre') ?? '',
-            'tipo'   => (int) ($this->request->getPost('tipo') ?? 1),
-        ], $id > 0 ? $id : null);
+        $post = $this->request->getPost();
+        $payload = [
+            'nombre' => $post['nombre'] ?? '',
+            'tipo'   => (int) ($post['tipo'] ?? 1),
+        ];
+        if (array_key_exists('sesgo', $post)) {
+            $rawSesgo = $post['sesgo'];
+            $payload['sesgo'] = ($rawSesgo === null || $rawSesgo === '') ? null : $rawSesgo;
+        }
+        $this->model->saveControl($payload, $id > 0 ? $id : null);
         \App\Models\AuditoriaModel::log('controlcalidad', $id > 0 ? 'actualizar' : 'crear', $id > 0 ? (string) $id : null);
+        if ($id > 0) {
+            return redirect()->to("controlcalidad/grafica/{$id}")->with('success', 'Control actualizado');
+        }
         return redirect()->to('controlcalidad')->with('success', 'Control guardado');
     }
 

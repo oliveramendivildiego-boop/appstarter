@@ -28,6 +28,9 @@
                 <a href="<?= site_url('reports/pruebasFecha') ?>" class="list-group-item list-group-item-action">
                     <i class="fas fa-vial me-2"></i> Pruebas realizadas por fecha
                 </a>
+                <a href="<?= site_url('reports/estadisticasLaboratorio') ?>" class="list-group-item list-group-item-action">
+                    <i class="fas fa-chart-pie me-2"></i> Estadísticas por período (pruebas, pacientes, población, género)
+                </a>
             </div>
         </div>
     </div>

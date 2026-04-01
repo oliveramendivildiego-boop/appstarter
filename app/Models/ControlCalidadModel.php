@@ -28,7 +28,7 @@ class ControlCalidadModel extends Model
             ->getResultArray();
     }
 
-    public function getValores(int $controlId, ?string $fechaIni = null, ?string $fechaFin = null, int $limit = 100): array
+    public function getValores(int $controlId, ?string $fechaIni = null, ?string $fechaFin = null, int $limit = 1000): array
     {
         $qb = $this->db->table('control_valor')
             ->where('control_id', $controlId)
@@ -45,6 +45,10 @@ class ControlCalidadModel extends Model
             'tipo'   => (int) ($data['tipo'] ?? 1),
             'deleted' => 0,
         ];
+        if (array_key_exists('sesgo', $data)) {
+            $raw = $data['sesgo'];
+            $save['sesgo'] = ($raw === null || $raw === '') ? null : (float) $raw;
+        }
         if ($id) {
             return $this->db->table('control_calidad')->where('control_id', $id)->update($save);
         }

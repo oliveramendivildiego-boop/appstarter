@@ -470,6 +470,59 @@ class ReportModel extends Model
     }
 
     /**
+     * Mapa prianacategoria_id => nombre de prueba y categoría (para conteos en reportes).
+     *
+     * @return array<int, array{prueba: string, categoria: string}>
+     */
+    public function getPrianacategoriaLabelsMap(): array
+    {
+        $ptbl = $this->db->prefixTable('prianacategoria');
+        $atbl = $this->db->prefixTable('anacategoria');
+
+        $rows = $this->db->table('prianacategoria')
+            ->select("{$ptbl}.prianacategoria_id, {$ptbl}.name AS prueba, {$atbl}.name AS categoria")
+            ->join('anacategoria', "{$atbl}.anacategoria_id = {$ptbl}.anacategoria_id", 'left')
+            ->where("({$ptbl}.deleted = 0 OR {$ptbl}.deleted IS NULL)")
+            ->get()
+            ->getResultArray();
+
+        $out = [];
+        foreach ($rows as $r) {
+            $out[(int) $r['prianacategoria_id']] = [
+                'prueba'    => (string) ($r['prueba'] ?? ''),
+                'categoria' => (string) ($r['categoria'] ?? ''),
+            ];
+        }
+
+        return $out;
+    }
+
+    /**
+     * Filas mínimas para estadísticas de laboratorio (población/género/pruebas) en un rango de fechas.
+     *
+     * @return list<array{registro_id:string|int,person_id:string|int,ingreso:string,pruebas:string,birthday:?string,gender:?string|int}>
+     */
+    public function getRegistrosEstadisticasLaboratorio(string $startDate, string $endDate): array
+    {
+        $r  = $this->db->prefixTable('registro');
+        $p  = $this->db->prefixTable('people');
+        $pa = $this->db->prefixTable('pago');
+
+        $b = $this->db->table('registro')
+            ->select("{$r}.registro_id, {$r}.person_id, {$r}.ingreso, {$r}.pruebas,
+                {$p}.birthday, {$p}.gender")
+            ->join('people', "{$p}.person_id = {$r}.person_id", 'left')
+            ->join('pago', "{$r}.registro_id = {$pa}.registro_id");
+        $b = $this->applySinRegistrosAnulados($b, $r);
+
+        return $b->where("DATE({$r}.ingreso) >=", $startDate)
+            ->where("DATE({$r}.ingreso) <=", $endDate)
+            ->orderBy("{$r}.ingreso", 'ASC')
+            ->get()
+            ->getResultArray();
+    }
+
+    /**
      * Todos los registros guardados (con paginación)
      */
     public function getAllRegistros(int $perPage, int $offset): array

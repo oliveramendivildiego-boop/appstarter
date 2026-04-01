@@ -26,9 +26,10 @@ class RegisterService
      * Usa edad_min, edad_max, unidad de la tabla poblacion; si no hay rango, usa lógica legacy.
      * @param string|null $birthday Fecha nacimiento (Y-m-d)
      * @param int|null $gender 1=masculino, 2=femenino
+     * @param \DateTimeInterface|string|null $referenceDate Fecha de referencia para la edad (p. ej. ingreso del registro). Por defecto hoy.
      * @return int[] ids de poblacion que aplican al paciente
      */
-    public function getMatchingPoblacionIds(?string $birthday, ?int $gender): array
+    public function getMatchingPoblacionIds(?string $birthday, ?int $gender, $referenceDate = null): array
     {
         try {
             $poblacionModel = model(PoblacionModel::class);
@@ -38,14 +39,24 @@ class RegisterService
         }
         $matching        = [];
 
+        $ref = $referenceDate;
+        if ($ref === null) {
+            $ref = new \DateTime();
+        } elseif (is_string($ref)) {
+            try {
+                $ref = new \DateTime($ref);
+            } catch (\Throwable $e) {
+                $ref = new \DateTime();
+            }
+        }
+
         $edadEnDias = null;
         $edadEnMeses = null;
         $edadEnAnios = null;
         if ($birthday) {
             try {
                 $fechaNac = new \DateTime($birthday);
-                $hoy      = new \DateTime();
-                $diff     = $hoy->diff($fechaNac);
+                $diff     = $ref->diff($fechaNac);
                 $edadEnDias  = $diff->days;
                 $edadEnMeses = $diff->y * 12 + $diff->m + $diff->d / 30.0;
                 $edadEnAnios = $diff->y + $diff->m / 12.0 + $diff->d / 365.0;
@@ -124,7 +135,7 @@ class RegisterService
      * Parsea "pruebas" del registro (ids separados por coma o contador_X).
      * @return int[]
      */
-    protected function extractPrianacategoriaIdsFromRegistroPruebas(string $pruebas): array
+    public function extractPrianacategoriaIdsFromRegistroPruebas(string $pruebas): array
     {
         $parts = explode(',', $pruebas);
         $ids = [];

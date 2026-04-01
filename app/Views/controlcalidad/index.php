@@ -47,6 +47,9 @@
                         <option value="2">Externo</option>
                     </select>
                 </div>
+                <div class="mb-2">
+                    <input type="number" step="any" name="sesgo" class="form-control form-control-sm" placeholder="Sesgo asignado (opcional)">
+                </div>
                 <button type="submit" class="btn btn-primary btn-sm">Agregar control</button>
                 <?= form_close() ?>
             </div>
