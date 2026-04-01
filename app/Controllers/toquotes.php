@@ -70,7 +70,10 @@ class Toquotes extends SecureArea
             }
             return redirect()->to('toquotes')->with('error', lang('Toquotes.toquotes_select_items'));
         }
-        return $this->generatePdfResponse($items);
+        $pdfTipo   = (string) ($this->request->getPost('pdf_tipo') ?? $this->request->getGet('pdf_tipo') ?? 'ambos');
+        $precioTipo = $this->normalizePdfPrecioTipo($pdfTipo);
+
+        return $this->generatePdfResponse($items, $precioTipo);
     }
 
     /**
@@ -91,6 +94,34 @@ class Toquotes extends SecureArea
         }
         $tipo = in_array($tipo, ['refe', 'total'], true) ? $tipo : null;
         return $this->generatePdfResponse($items, $tipo);
+    }
+
+    /**
+     * @param string $pdfTipo ambos|costo|refe (también total|ref por compatibilidad con URLs guardadas)
+     */
+    private function normalizePdfPrecioTipo(string $pdfTipo): ?string
+    {
+        $pdfTipo = strtolower(trim($pdfTipo));
+        if ($pdfTipo === 'refe' || $pdfTipo === 'ref') {
+            return 'refe';
+        }
+        if ($pdfTipo === 'total' || $pdfTipo === 'costo') {
+            return 'total';
+        }
+
+        return null;
+    }
+
+    private function pdfDownloadSlug(?string $precioTipo): string
+    {
+        if ($precioTipo === 'refe') {
+            return 'ref';
+        }
+        if ($precioTipo === 'total') {
+            return 'costo';
+        }
+
+        return 'ambos';
     }
 
     /**
@@ -122,10 +153,11 @@ class Toquotes extends SecureArea
 
             $pdfService = new PdfService();
             $pdfContent = $pdfService->generate($html, 'cotizacion.pdf');
+            $slug         = $this->pdfDownloadSlug($precioTipo);
 
             return $this->response
                 ->setHeader('Content-Type', 'application/pdf')
-                ->setHeader('Content-Disposition', 'attachment; filename="cotizacion_' . date('Y-m-d_His') . '.pdf"')
+                ->setHeader('Content-Disposition', 'attachment; filename="cotizacion_' . $slug . '_' . date('Y-m-d_His') . '.pdf"')
                 ->setBody($pdfContent);
         } catch (\Throwable $e) {
             log_message('error', 'Toquotes::generatePdfResponse: ' . $e->getMessage());

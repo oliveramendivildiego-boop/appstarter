@@ -41,9 +41,17 @@ $currencyIsRight = strtolower(trim($currencySide)) === 'right';
             <button id="guardarBtn" class="btn btn-light btn-sm me-1" disabled title="Guardar cotización">
                 <i class="fa-solid fa-floppy-disk me-1"></i>Guardar
             </button>
-            <button id="exportarPdfBtn" class="btn btn-warning btn-sm" disabled title="Exportar a PDF">
-                <i class="fa-solid fa-file-pdf me-1"></i>Exportar PDF
-            </button>
+            <div class="btn-group" role="group" aria-label="Exportar cotización a PDF">
+                <button type="button" class="btn btn-warning btn-sm pdf-export-btn" data-pdf-tipo="costo" disabled title="<?= esc(lang('Toquotes.toquotes_pdf_costo_hint')) ?>">
+                    <i class="fa-solid fa-file-pdf me-1"></i><?= esc(lang('Toquotes.toquotes_pdf_costo')) ?>
+                </button>
+                <button type="button" class="btn btn-warning btn-sm pdf-export-btn" data-pdf-tipo="refe" disabled title="<?= esc(lang('Toquotes.toquotes_pdf_refe_hint')) ?>">
+                    <i class="fa-solid fa-file-pdf me-1"></i><?= esc(lang('Toquotes.toquotes_pdf_refe')) ?>
+                </button>
+                <button type="button" class="btn btn-warning btn-sm pdf-export-btn" data-pdf-tipo="ambos" disabled title="<?= esc(lang('Toquotes.toquotes_pdf_ambos_hint')) ?>">
+                    <i class="fa-solid fa-file-pdf me-1"></i><?= esc(lang('Toquotes.toquotes_pdf_ambos')) ?>
+                </button>
+            </div>
         </div>
     </div>
     <div class="card-body">
@@ -102,7 +110,7 @@ $currencyIsRight = strtolower(trim($currencySide)) === 'right';
     var selectedList = document.getElementById('selectedList');
     var selectedTableBody = document.getElementById('selectedTableBody');
     var guardarBtn = document.getElementById('guardarBtn');
-    var exportarPdfBtn = document.getElementById('exportarPdfBtn');
+    var pdfExportBtns = document.querySelectorAll('.pdf-export-btn');
     var feedbackEl = document.getElementById('toquotesFeedback');
     var feedbackMsg = document.getElementById('toquotesFeedbackMsg');
 
@@ -142,12 +150,12 @@ $currencyIsRight = strtolower(trim($currencySide)) === 'right';
             selectedEmpty.style.display = 'none';
             selectedList.style.display = 'block';
             guardarBtn.disabled = false;
-            exportarPdfBtn.disabled = false;
+            pdfExportBtns.forEach(function(b) { b.disabled = false; });
         } else {
             selectedEmpty.style.display = 'block';
             selectedList.style.display = 'none';
             guardarBtn.disabled = true;
-            exportarPdfBtn.disabled = true;
+            pdfExportBtns.forEach(function(b) { b.disabled = true; });
         }
 
         tbody.querySelectorAll('.remove-item').forEach(function(btn) {
@@ -263,13 +271,14 @@ $currencyIsRight = strtolower(trim($currencySide)) === 'right';
         .catch(function() { showFeedback('<?= lang('Toquotes.toquotes_error') ?>', true); });
     });
 
-    exportarPdfBtn.addEventListener('click', function() {
+    function exportPdfConTipo(pdfTipo) {
         if (selectedItems.length === 0) {
             showFeedback('<?= lang('Toquotes.toquotes_select_items') ?>', true);
             return;
         }
         var data = new URLSearchParams();
         data.append('items_json', JSON.stringify(selectedItems));
+        data.append('pdf_tipo', pdfTipo);
         if (typeof window.CI_CSRF_TOKEN_NAME !== 'undefined' && window.CI_CSRF_TOKEN) {
             data.append(window.CI_CSRF_TOKEN_NAME, window.CI_CSRF_TOKEN);
         }
@@ -296,19 +305,25 @@ $currencyIsRight = strtolower(trim($currencySide)) === 'right';
             var url = URL.createObjectURL(blob);
             var a = document.createElement('a');
             a.href = url;
-            a.download = 'cotizacion_' + new Date().toISOString().slice(0,10) + '.pdf';
+            a.download = 'cotizacion_' + pdfTipo + '_' + new Date().toISOString().slice(0,10) + '.pdf';
             a.click();
             URL.revokeObjectURL(url);
-            showFeedback('PDF descargado correctamente.', false);
+            showFeedback('<?= lang('Toquotes.toquotes_pdf_ok') ?>', false);
         })
         .catch(function(err) {
-            var msg = 'Error al exportar el PDF.';
+            var msg = '<?= lang('Toquotes.toquotes_pdf_error') ?>';
             if (err && err.message) {
-                if (err.message.indexOf('HTTP 403') !== -1) msg = 'Acceso denegado. Recargue la página e intente de nuevo.';
-                else if (err.message.indexOf('HTTP 500') !== -1) msg = 'Error en el servidor. Revise los logs.';
-                else if (err.message.indexOf('Respuesta no es PDF') !== -1) msg = 'La respuesta no es un PDF válido.';
+                if (err.message.indexOf('HTTP 403') !== -1) msg = '<?= lang('Toquotes.toquotes_pdf_err_403') ?>';
+                else if (err.message.indexOf('HTTP 500') !== -1) msg = '<?= lang('Toquotes.toquotes_pdf_err_500') ?>';
+                else if (err.message.indexOf('Respuesta no es PDF') !== -1) msg = '<?= lang('Toquotes.toquotes_pdf_err_notpdf') ?>';
             }
             showFeedback(msg, true);
+        });
+    }
+
+    pdfExportBtns.forEach(function(btn) {
+        btn.addEventListener('click', function() {
+            exportPdfConTipo(btn.getAttribute('data-pdf-tipo') || 'ambos');
         });
     });
 })();
