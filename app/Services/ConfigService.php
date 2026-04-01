@@ -43,6 +43,9 @@ class ConfigService
         $data['ui_font_size_footer'] ??= '0.875';
         $data['ui_font_size_heading'] ??= '1.125';
         $data['ui_footer_text_align'] ??= 'left';
+        $data['ui_labotests_card_header_title_color'] ??= '#ffffff';
+        $data['ui_labotests_card_header_title_weight'] ??= '600';
+        $data['ui_labotests_card_header_title_style'] ??= 'normal';
         $cache->save(self::CACHE_KEY, $data, self::CACHE_TTL);
         return $data;
     }
@@ -151,10 +154,13 @@ class ConfigService
         }
 
         $logoFailed = false;
+        $previousLogoPath = trim((string) ($this->getAllAsArray()['logo'] ?? ''));
+        $newLogoFromUpload = null;
         if ($logoFile && $logoFile->isValid() && !$logoFile->hasMoved()) {
             $logoPath = $this->processLogoUpload($logoFile);
             if ($logoPath) {
                 $batch['logo'] = $logoPath;
+                $newLogoFromUpload = $logoPath;
             } else {
                 $logoFailed = true;
             }
@@ -163,6 +169,9 @@ class ConfigService
         $ok = $this->appConfigModel->batchSave($batch);
         if ($ok) {
             $this->invalidateCache();
+            if ($newLogoFromUpload !== null) {
+                $this->removePreviousUploadedLogo($previousLogoPath, $newLogoFromUpload);
+            }
         }
 
         $message = $ok ? lang('Config.config_saved') : lang('Config.config_error');
@@ -217,19 +226,35 @@ class ConfigService
             mkdir($uploadPath, 0755, true);
         }
 
-        $newName = 'logo-lab.' . $ext;
-        if (!$file->move($uploadPath, $newName, true)) {
+        // Nombre único por subida: evita sobrescribir siempre el mismo archivo (caché, despliegues, rsync).
+        $newName = 'logo-lab-' . bin2hex(random_bytes(8)) . '.' . $ext;
+        if (!$file->move($uploadPath, $newName)) {
             return null;
         }
 
-        // Dejar un solo archivo logo-lab.* (evita que quede logo-lab.png viejo al pasar a .jpg)
-        foreach (glob($uploadPath . 'logo-lab.*') ?: [] as $old) {
-            if (is_file($old) && basename($old) !== $newName) {
-                @unlink($old);
-            }
-        }
-
         return 'images/' . $newName;
+    }
+
+    /**
+     * Elimina el logo anterior solo si fue generado por esta app (prefijo images/logo-lab).
+     */
+    private function removePreviousUploadedLogo(string $previousRelative, string $newRelative): void
+    {
+        if ($previousRelative === '' || $previousRelative === $newRelative) {
+            return;
+        }
+        $previousRelative = str_replace('\\', '/', $previousRelative);
+        if (!preg_match('#^images/logo-lab#', $previousRelative)) {
+            return;
+        }
+        $full = realpath(FCPATH . $previousRelative);
+        $base = realpath(FCPATH . 'images');
+        if ($full === false || $base === false || !str_starts_with($full, $base . DIRECTORY_SEPARATOR)) {
+            return;
+        }
+        if (is_file($full)) {
+            @unlink($full);
+        }
     }
 
     /**
@@ -248,12 +273,27 @@ class ConfigService
         $radius = (int) ($post['ui_card_radius'] ?? 8);
         $radius = max(0, min(24, $radius));
 
+        $btnBorderW = (int) ($post['ui_btn_border_width'] ?? 0);
+        $btnBorderW = max(0, min(8, $btnBorderW));
+        $cardBorderW = (int) ($post['ui_card_border_width'] ?? 0);
+        $cardBorderW = max(0, min(8, $cardBorderW));
+        $btnSides   = \App\Services\LayoutService::normalizeUiBorderSides((string) ($post['ui_btn_border_sides'] ?? 'all'));
+        $cardSides  = \App\Services\LayoutService::normalizeUiBorderSides((string) ($post['ui_card_border_sides'] ?? 'all'));
+        $btnShadow  = \App\Services\LayoutService::normalizeUiShadowKey((string) ($post['ui_btn_shadow'] ?? 'none'));
+        $cardShadow = \App\Services\LayoutService::normalizeUiShadowKey((string) ($post['ui_card_shadow'] ?? 'none'));
+
+        $btnBgMode = (($post['ui_btn_primary_mode'] ?? '') === 'custom');
+        $btnHovMode = (($post['ui_btn_hover_mode'] ?? '') === 'custom');
+
         $normFs = static function (string $postKey, string $default) use ($post): string {
             return \App\Services\LayoutService::normalizeUiFontSizeRemInput((string) ($post[$postKey] ?? ''), $default);
         };
 
-        $headerCustom = (($post['ui_header_mode'] ?? '') === 'custom');
-        $linkCustom   = (($post['ui_sidebar_link_mode'] ?? '') === 'custom');
+        $headerMode = strtolower(trim((string) ($post['ui_header_mode'] ?? 'theme')));
+        if (! in_array($headerMode, ['theme', 'custom', 'transparent'], true)) {
+            $headerMode = 'theme';
+        }
+        $linkCustom = (($post['ui_sidebar_link_mode'] ?? '') === 'custom');
 
         $footerAlign = strtolower(trim((string) ($post['ui_footer_text_align'] ?? 'left')));
         if (! in_array($footerAlign, ['left', 'center', 'right'], true)) {
@@ -272,28 +312,70 @@ class ConfigService
             'ui_font_size_heading'  => $normFs('ui_font_size_heading', '1.125'),
             'ui_sidebar_position'   => $side,
             'ui_body_text_color'    => $this->normalizeUiHex((string) ($post['ui_body_text_color'] ?? ''), '#212529'),
-            'ui_sidebar_bg'         => $this->normalizeUiHex((string) ($post['ui_sidebar_bg'] ?? ''), '#f8f9fa'),
+            'ui_body_text_weight'   => \App\Services\LayoutService::normalizeUiFontWeight((string) ($post['ui_body_text_weight'] ?? ''), '400'),
+            'ui_body_text_style'    => \App\Services\LayoutService::normalizeUiFontStyle((string) ($post['ui_body_text_style'] ?? ''), 'normal'),
+            'ui_sidebar_bg'         => ! empty($post['ui_sidebar_bg_transparent'])
+                ? 'transparent'
+                : $this->normalizeUiHex((string) ($post['ui_sidebar_bg'] ?? ''), '#f8f9fa'),
             'ui_sidebar_link_color' => $linkCustom
                 ? $this->normalizeUiHex((string) ($post['ui_sidebar_link_custom'] ?? ''), '#0d6efd')
                 : '',
+            'ui_sidebar_link_weight' => \App\Services\LayoutService::normalizeUiFontWeight((string) ($post['ui_sidebar_link_weight'] ?? ''), '500'),
+            'ui_sidebar_link_style'  => \App\Services\LayoutService::normalizeUiFontStyle((string) ($post['ui_sidebar_link_style'] ?? ''), 'normal'),
             'ui_sidebar_hover_bg' => ! empty($post['ui_sidebar_hover_default'])
                 ? ''
                 : $this->normalizeUiHex((string) ($post['ui_sidebar_hover_bg'] ?? ''), '#dee2e6'),
             'ui_sidebar_active_bg' => ! empty($post['ui_sidebar_active_default'])
                 ? ''
                 : $this->normalizeUiHex((string) ($post['ui_sidebar_active_bg'] ?? ''), '#ced4da'),
-            'ui_header_bg'          => $headerCustom
-                ? $this->normalizeUiHex((string) ($post['ui_header_bg_custom'] ?? ''), '#0d6efd')
-                : '',
+            'ui_header_bg'          => match ($headerMode) {
+                'transparent' => 'transparent',
+                'custom'      => $this->normalizeUiHex((string) ($post['ui_header_bg_custom'] ?? ''), '#0d6efd'),
+                default       => '',
+            },
             'ui_header_text_color' => $this->normalizeUiHex((string) ($post['ui_header_text_color'] ?? ''), '#ffffff'),
-            'ui_main_bg'            => $this->normalizeUiHex((string) ($post['ui_main_bg'] ?? ''), '#ffffff'),
-            'ui_footer_bg'          => $this->normalizeUiHex((string) ($post['ui_footer_bg'] ?? ''), '#f8f9fa'),
+            'ui_header_text_weight' => \App\Services\LayoutService::normalizeUiFontWeight((string) ($post['ui_header_text_weight'] ?? ''), '500'),
+            'ui_header_text_style'  => \App\Services\LayoutService::normalizeUiFontStyle((string) ($post['ui_header_text_style'] ?? ''), 'normal'),
+            'ui_labotests_card_header_title_color' => $this->normalizeUiHex((string) ($post['ui_labotests_card_header_title_color'] ?? ''), '#ffffff'),
+            'ui_labotests_card_header_title_weight' => \App\Services\LayoutService::normalizeUiFontWeight((string) ($post['ui_labotests_card_header_title_weight'] ?? ''), '600'),
+            'ui_labotests_card_header_title_style' => \App\Services\LayoutService::normalizeUiFontStyle((string) ($post['ui_labotests_card_header_title_style'] ?? ''), 'normal'),
+            'ui_main_bg'            => ! empty($post['ui_main_bg_transparent'])
+                ? 'transparent'
+                : $this->normalizeUiHex((string) ($post['ui_main_bg'] ?? ''), '#ffffff'),
+            'ui_footer_bg'          => ! empty($post['ui_footer_bg_transparent'])
+                ? 'transparent'
+                : $this->normalizeUiHex((string) ($post['ui_footer_bg'] ?? ''), '#f8f9fa'),
             'ui_footer_text_color' => $this->normalizeUiHex((string) ($post['ui_footer_text_color'] ?? ''), '#6c757d'),
+            'ui_footer_text_weight' => \App\Services\LayoutService::normalizeUiFontWeight((string) ($post['ui_footer_text_weight'] ?? ''), '400'),
+            'ui_footer_text_style'  => \App\Services\LayoutService::normalizeUiFontStyle((string) ($post['ui_footer_text_style'] ?? ''), 'normal'),
             'ui_footer_text_align' => $footerAlign,
             'ui_link_color' => ! empty($post['ui_link_default'])
                 ? ''
                 : $this->normalizeUiHex((string) ($post['ui_link_color'] ?? ''), '#0d6efd'),
+            'ui_link_weight' => \App\Services\LayoutService::normalizeUiFontWeight((string) ($post['ui_link_weight'] ?? ''), '400'),
+            'ui_link_style'  => \App\Services\LayoutService::normalizeUiFontStyle((string) ($post['ui_link_style'] ?? ''), 'normal'),
             'ui_card_radius'        => (string) $radius,
+            'ui_btn_primary_bg' => $btnBgMode
+                ? $this->normalizeUiHex((string) ($post['ui_btn_primary_bg_custom'] ?? ''), '#FF7218')
+                : '',
+            'ui_btn_primary_text' => $this->normalizeUiHex((string) ($post['ui_btn_primary_text'] ?? ''), '#ffffff'),
+            'ui_btn_primary_text_weight' => \App\Services\LayoutService::normalizeUiFontWeight((string) ($post['ui_btn_primary_text_weight'] ?? ''), '500'),
+            'ui_btn_primary_text_style'  => \App\Services\LayoutService::normalizeUiFontStyle((string) ($post['ui_btn_primary_text_style'] ?? ''), 'normal'),
+            'ui_btn_primary_hover_bg' => $btnHovMode
+                ? $this->normalizeUiHex((string) ($post['ui_btn_primary_hover_custom'] ?? ''), '#000000')
+                : '',
+            'ui_btn_border_width'  => (string) $btnBorderW,
+            'ui_btn_border_color'  => $btnBorderW > 0
+                ? $this->normalizeUiHex((string) ($post['ui_btn_border_color'] ?? ''), '#212529')
+                : '',
+            'ui_btn_border_sides'  => $btnSides,
+            'ui_btn_shadow'        => $btnShadow,
+            'ui_card_border_width' => (string) $cardBorderW,
+            'ui_card_border_color' => $cardBorderW > 0
+                ? $this->normalizeUiHex((string) ($post['ui_card_border_color'] ?? ''), '#dee2e6')
+                : '',
+            'ui_card_border_sides' => $cardSides,
+            'ui_card_shadow'       => $cardShadow,
         ];
 
         $ok = $this->appConfigModel->batchSave($batch);

@@ -21,7 +21,15 @@
 .bg-primary {
     background-color: var(--primary-color) !important;
     border-color: var(--primary-color) !important;
+}
+/* Solo los botones primarios fuerzan texto blanco; .bg-primary solo pinta el fondo */
+.btn-primary {
     color: #fff !important;
+}
+/* Badges con marca: texto del tema (oscuro en modo claro, claro en dark-mode).
+   Evita blanco sobre blanco cuando --primary-color es muy claro o #fff. */
+.badge.bg-primary {
+    color: var(--text-main, #212529) !important;
 }
 .modal-backdrop{
     /* Bootstrap: backdrop 1040, modal 1050. Mantener el orden para no tapar el contenido. */

@@ -100,3 +100,160 @@
     flex-direction: column;
     justify-content: center;
 }
+
+/* Configuración → Apariencia: contraste fiable aunque el tema global use fondo oscuro o texto heredado */
+.config-tab-estilo {
+    background-color: #eef1f4;
+    color: #1a1d21;
+    padding: 0.75rem 0.5rem 1.25rem;
+    border-radius: 0.375rem;
+}
+
+.config-tab-estilo > p.text-muted {
+    color: #4a5563 !important;
+}
+
+.config-tab-estilo .card {
+    background-color: #ffffff !important;
+    color: #212529 !important;
+}
+
+.config-tab-estilo .card-body,
+.config-tab-estilo .card-body .form-label,
+.config-tab-estilo .card-body h5,
+.config-tab-estilo .card-body h6,
+.config-tab-estilo .card-body .form-check-label {
+    color: #212529 !important;
+}
+
+.config-tab-estilo .text-muted {
+    color: #5c636a !important;
+}
+
+.config-tab-estilo .text-secondary {
+    color: #495057 !important;
+}
+
+.config-tab-estilo .text-primary {
+    color: #084298 !important;
+}
+
+.config-tab-estilo .text-info-emphasis {
+    color: #055160 !important;
+}
+
+.config-tab-estilo .text-danger {
+    color: #842029 !important;
+}
+
+.config-tab-estilo .card-header.bg-primary.text-white h5,
+.config-tab-estilo .card-header.bg-primary.text-white p {
+    color: #fff !important;
+}
+
+.config-tab-estilo .card-header.bg-success.text-white h5,
+.config-tab-estilo .card-header.bg-success.text-white p {
+    color: #fff !important;
+}
+
+.config-tab-estilo .card-header.bg-secondary.text-white h5,
+.config-tab-estilo .card-header.bg-secondary.text-white p {
+    color: #fff !important;
+}
+
+.config-tab-estilo .card-header.bg-warning h5,
+.config-tab-estilo .card-header.bg-warning p {
+    color: #212529 !important;
+}
+
+.config-tab-estilo .card-header.bg-dark.text-white h5 {
+    color: #fff !important;
+}
+
+.config-tab-estilo .card-header.bg-danger.bg-opacity-10 {
+    background-color: #f8d7da !important;
+}
+
+.config-tab-estilo .card-header.bg-danger.bg-opacity-10 h5.text-danger {
+    color: #6a1a21 !important;
+}
+
+.config-tab-estilo .card-header.bg-danger.bg-opacity-10 p.text-muted {
+    color: #4a4a4a !important;
+}
+
+.config-tab-estilo .card-header.bg-primary.bg-opacity-10 {
+    background-color: #e7f1ff !important;
+    border-bottom-color: #b6d4fe !important;
+}
+
+.config-tab-estilo .card-header.bg-primary.bg-opacity-10 h5.text-primary {
+    color: #0a326e !important;
+}
+
+.config-tab-estilo .card-header.bg-primary.bg-opacity-10 p.small,
+.config-tab-estilo .card-header.bg-primary.bg-opacity-10 .text-muted {
+    color: #3d4f5f !important;
+}
+
+.config-tab-estilo .card-header.bg-info.bg-opacity-25 {
+    background-color: #cff4fc !important;
+    border-bottom-color: #9eeaf9 !important;
+}
+
+.config-tab-estilo .card-header.bg-info.bg-opacity-25 h5 {
+    color: #032830 !important;
+}
+
+.config-tab-estilo .card-header.py-3.bg-body-secondary {
+    background-color: #e9ecef !important;
+}
+
+.config-tab-estilo .card-header.py-3.bg-body-secondary h5.text-primary {
+    color: #084298 !important;
+}
+
+.config-tab-estilo .card-header.py-3.bg-body-secondary p.text-muted {
+    color: #495057 !important;
+}
+
+.config-tab-estilo .border-start.border-4.border-primary .card-header {
+    background-color: #f0f6ff !important;
+}
+
+.config-tab-estilo .border-start.border-4.border-primary .card-header h5.text-primary {
+    color: #0a326e !important;
+}
+
+.config-tab-estilo .config-section-preview {
+    background-color: #f1f3f5 !important;
+    color: #212529 !important;
+    border-color: #ced4da !important;
+}
+
+.config-tab-estilo .config-section-preview .text-muted {
+    color: #495057 !important;
+}
+
+.config-tab-estilo .config-tab-estilo__on-white {
+    color: #495057 !important;
+}
+
+.config-tab-estilo .config-font-preview,
+.config-tab-estilo .config-preview-layout-thumb {
+    color: #212529 !important;
+}
+
+.config-tab-estilo .config-zone-preview {
+    background: #f8f9fa !important;
+    color: #212529 !important;
+}
+
+.config-tab-estilo .config-zone-preview__caption,
+.config-tab-estilo .config-zone-preview__main {
+    color: #495057 !important;
+}
+
+.config-tab-estilo .config-zone-preview--heading .config-zone-preview__sub {
+    color: #495057 !important;
+}

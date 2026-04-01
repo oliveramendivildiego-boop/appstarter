@@ -191,24 +191,31 @@ body.ynex-theme .sidebar .offcanvas-body {
     background-color: transparent;
 }
 
-body.ynex-theme .sidebar .nav-link {
+html body.ynex-theme .sidebar .nav-link,
+html body.ynex-theme .sidebar a.nav-link {
     color: var(--ui-sidebar-link, var(--primary-color, #0d6efd)) !important;
     border-radius: 8px;
     margin: 0 0.5rem;
     padding: 0.625rem 1rem !important;
 }
 
-body.ynex-theme .sidebar .nav-link:hover {
+html body.ynex-theme .sidebar .nav-link i {
+    color: inherit !important;
+}
+
+html body.ynex-theme .sidebar .nav-link:hover,
+html body.ynex-theme .sidebar a.nav-link:hover {
     background-color: var(--ui-sidebar-hover-bg, rgba(0, 0, 0, 0.08)) !important;
     color: var(--ui-sidebar-link, var(--primary-color, #0d6efd)) !important;
 }
 
-body.ynex-theme .sidebar .nav-link.active {
+html body.ynex-theme .sidebar .nav-link.active,
+html body.ynex-theme .sidebar a.nav-link.active {
     background-color: var(--ui-sidebar-active-bg, rgba(0, 0, 0, 0.1)) !important;
     color: var(--ui-sidebar-link, var(--primary-active, #0a58ca)) !important;
 }
 
-body.ynex-theme .sidebar-heading {
+html body.ynex-theme .sidebar-heading {
     color: var(--ui-sidebar-link, var(--primary-color, #6c757d)) !important;
     font-size: calc(var(--ui-font-size-sidebar, 1rem) * 0.75);
 }

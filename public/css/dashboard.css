@@ -38,31 +38,21 @@
   }
 }
 
+/* Tipografía del menú lateral; el color lo fija el bloque de Apariencia más abajo (evita quedar solo en --primary-color). */
 .sidebar .nav-link {
   font-size: var(--ui-font-size-sidebar, 1rem);
-  font-weight: 500;
-  color: var(--primary-color, #0d6efd);
-}
-
-.sidebar .nav-link:hover {
-  background-color: rgba(0, 0, 0, .08);
-  color: var(--primary-hover, #0a58ca);
+  font-weight: var(--ui-sidebar-link-font-weight, 500);
+  font-style: var(--ui-sidebar-link-font-style, normal);
 }
 
 .sidebar .nav-link i {
   width: 1.25rem;
   text-align: center;
+  color: inherit !important;
 }
 
 .sidebar-heading {
   font-size: calc(var(--ui-font-size-sidebar, 1rem) * 0.75);
-  color: var(--primary-color, #6c757d);
-}
-
-.sidebar .nav-link.active {
-  color: var(--primary-active, #0a58ca);
-  font-weight: 600;
-  background-color: rgba(0, 0, 0, .08);
 }
 
 .navbar-theme {
@@ -115,6 +105,28 @@
   color: #fff !important;
 }
 
+/* Migas de pan (breadcrumb): mismo color que Apariencia → Barra superior → «Color del texto en la barra» (--ui-header-text) */
+html body.ynex-theme .breadcrumb-nav-theme.navbar-dark .navbar-nav .nav-link,
+html body.ynex-theme .breadcrumb-nav-theme.navbar-dark .navbar-nav .nav-link:focus,
+html body.ynex-theme .breadcrumb-nav-theme.navbar-dark .navbar-nav .nav-link:visited,
+html body.ynex-theme .breadcrumb-nav-theme.navbar-dark .navbar-nav span.nav-link.active {
+  color: var(--ui-header-text, #ffffff) !important;
+  font-weight: var(--ui-header-font-weight, 500) !important;
+  font-style: var(--ui-header-font-style, normal) !important;
+}
+
+html body.ynex-theme .breadcrumb-nav-theme.navbar-dark .navbar-nav a.nav-link:hover {
+  color: var(--ui-header-text, #ffffff) !important;
+  font-weight: var(--ui-header-font-weight, 500) !important;
+  font-style: var(--ui-header-font-style, normal) !important;
+  opacity: 0.88;
+}
+
+html body.ynex-theme #breadcrumbNav .navbar-nav .nav-item:not(:last-child)::after {
+  color: var(--ui-header-text, #ffffff) !important;
+  opacity: 0.65;
+}
+
 .navbar-theme .navbar-brand {
   background-color: rgba(0, 0, 0, .2);
   box-shadow: inset -1px 0 0 rgba(0, 0, 0, .2);
@@ -152,6 +164,8 @@ main {
 body.ynex-theme {
   font-family: var(--ui-font-family, system-ui, sans-serif);
   font-size: var(--ui-font-size-base, 1rem);
+  font-weight: var(--ui-body-font-weight, 400);
+  font-style: var(--ui-body-font-style, normal);
   color: var(--ui-body-color, #212529);
   background-color: var(--ui-main-bg, #fff);
 }
@@ -189,22 +203,51 @@ body.ynex-theme main .card-header {
   background-color: var(--ui-sidebar-bg, var(--bs-tertiary-bg)) !important;
 }
 
-.sidebar .nav-link {
+/* Especificidad html body para ganar a utilidades (.text-*) y a reglas sueltas de .nav-link */
+html body.ynex-theme .sidebar .nav-link,
+html body.ynex-theme .sidebar a.nav-link {
   color: var(--ui-sidebar-link, var(--primary-color, #0d6efd)) !important;
+  font-weight: var(--ui-sidebar-link-font-weight, 500) !important;
+  font-style: var(--ui-sidebar-link-font-style, normal) !important;
 }
 
-.sidebar .nav-link:hover {
+html body.ynex-theme .sidebar .nav-link:hover,
+html body.ynex-theme .sidebar a.nav-link:hover {
   background-color: var(--ui-sidebar-hover-bg, rgba(0, 0, 0, 0.08)) !important;
   color: var(--ui-sidebar-link, var(--primary-color, #0d6efd)) !important;
 }
 
-.sidebar .nav-link.active {
+html body.ynex-theme .sidebar .nav-link.active,
+html body.ynex-theme .sidebar a.nav-link.active {
   color: var(--ui-sidebar-link, var(--primary-active, #0a58ca)) !important;
   background-color: var(--ui-sidebar-active-bg, rgba(0, 0, 0, 0.08)) !important;
 }
 
-.sidebar-heading {
+html body.ynex-theme .sidebar-heading {
   color: var(--ui-sidebar-link, var(--primary-color, #6c757d)) !important;
+  font-weight: var(--ui-sidebar-link-font-weight, 500) !important;
+  font-style: var(--ui-sidebar-link-font-style, normal) !important;
+}
+
+/* Pestañas superiores en Configuración (no están en .sidebar): acople al primario / enlace menú */
+html body.ynex-theme main #configTabs.nav-tabs .nav-link {
+  color: var(--ui-sidebar-link, var(--primary-color, #0d6efd)) !important;
+  font-weight: var(--ui-sidebar-link-font-weight, 500) !important;
+  font-style: var(--ui-sidebar-link-font-style, normal) !important;
+}
+
+html body.ynex-theme main #configTabs.nav-tabs .nav-link:hover,
+html body.ynex-theme main #configTabs.nav-tabs .nav-link:focus {
+  color: var(--ui-sidebar-link, var(--primary-hover, #0a58ca)) !important;
+  font-weight: var(--ui-sidebar-link-font-weight, 500) !important;
+  font-style: var(--ui-sidebar-link-font-style, normal) !important;
+}
+
+html body.ynex-theme main #configTabs.nav-tabs .nav-link.active,
+html body.ynex-theme main #configTabs.nav-tabs .nav-item.show .nav-link {
+  color: var(--ui-sidebar-link, var(--primary-color, #0d6efd)) !important;
+  font-weight: var(--ui-sidebar-link-font-weight, 500) !important;
+  font-style: var(--ui-sidebar-link-font-style, normal) !important;
 }
 
 .navbar-theme {
@@ -213,21 +256,29 @@ body.ynex-theme main .card-header {
 
 .navbar-theme .navbar-brand {
   color: var(--ui-header-text, #fff) !important;
+  font-weight: var(--ui-header-font-weight, 500) !important;
+  font-style: var(--ui-header-font-style, normal) !important;
 }
 
 .navbar-theme-meta {
   color: var(--ui-header-text, #fff);
   opacity: 0.8;
+  font-weight: var(--ui-header-font-weight, 500);
+  font-style: var(--ui-header-font-style, normal);
 }
 
 #footer.ynex-footer {
   background-color: var(--ui-footer-bg, #f8f9fa) !important;
   color: var(--ui-footer-text, #6c757d) !important;
   font-size: var(--ui-font-size-footer, 0.875rem);
+  font-weight: var(--ui-footer-font-weight, 400);
+  font-style: var(--ui-footer-font-style, normal);
 }
 
 #footer.ynex-footer a {
   color: var(--ui-link-color, #0d6efd);
+  font-weight: var(--ui-link-font-weight, 400);
+  font-style: var(--ui-link-font-style, normal);
 }
 
 footer.ynex-footer .container-fluid,
@@ -237,8 +288,43 @@ footer.ynex-footer .container-fluid,
 
 body.ynex-theme main a:not(.btn):not(.nav-link):not(.page-link):not(.dropdown-item) {
   color: var(--ui-link-color, #0d6efd);
+  font-weight: var(--ui-link-font-weight, 400);
+  font-style: var(--ui-link-font-style, normal);
+}
+
+/* Botones primarios (Configuración → Apariencia): color, borde por lado, sombra */
+body.ynex-theme .btn-primary {
+  background-color: var(--ui-btn-primary-bg, var(--primary-color)) !important;
+  color: var(--ui-btn-primary-text, #fff) !important;
+  font-weight: var(--ui-btn-font-weight, 500) !important;
+  font-style: var(--ui-btn-font-style, normal) !important;
+  box-shadow: var(--ui-btn-shadow, none);
+  border-style: solid;
+  border-top: var(--ui-btn-bt, var(--bs-border-width, 1px) solid var(--ui-btn-primary-bg, var(--primary-color)));
+  border-right: var(--ui-btn-br, var(--bs-border-width, 1px) solid var(--ui-btn-primary-bg, var(--primary-color)));
+  border-bottom: var(--ui-btn-bb, var(--bs-border-width, 1px) solid var(--ui-btn-primary-bg, var(--primary-color)));
+  border-left: var(--ui-btn-bl, var(--bs-border-width, 1px) solid var(--ui-btn-primary-bg, var(--primary-color)));
+}
+
+body.ynex-theme .btn-primary:hover,
+body.ynex-theme .btn-primary:focus-visible {
+  background-color: var(--ui-btn-primary-hover-bg, var(--primary-hover)) !important;
+  color: var(--ui-btn-primary-text, #fff) !important;
+  font-weight: var(--ui-btn-font-weight, 500) !important;
+  font-style: var(--ui-btn-font-style, normal) !important;
+  border-top-color: var(--ui-btn-primary-hover-bg, var(--primary-hover)) !important;
+  border-right-color: var(--ui-btn-primary-hover-bg, var(--primary-hover)) !important;
+  border-bottom-color: var(--ui-btn-primary-hover-bg, var(--primary-hover)) !important;
+  border-left-color: var(--ui-btn-primary-hover-bg, var(--primary-hover)) !important;
 }
 
 main .card {
+  border: 0;
   border-radius: var(--ui-card-radius, 8px);
+  box-shadow: var(--ui-card-shadow, none);
+  border-style: solid;
+  border-top: var(--ui-card-bt, var(--bs-card-border-width, 1px) solid var(--bs-card-border-color, var(--bs-border-color-translucent)));
+  border-right: var(--ui-card-br, var(--bs-card-border-width, 1px) solid var(--bs-card-border-color, var(--bs-border-color-translucent)));
+  border-bottom: var(--ui-card-bb, var(--bs-card-border-width, 1px) solid var(--bs-card-border-color, var(--bs-border-color-translucent)));
+  border-left: var(--ui-card-bl, var(--bs-card-border-width, 1px) solid var(--bs-card-border-color, var(--bs-border-color-translucent)));
 }

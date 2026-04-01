@@ -83,3 +83,13 @@
 .formula-op-hint {
     font-size: 0.85rem;
 }
+
+/* Color del título en cabeceras .card-header.bg-primary (Config → Apariencia) */
+.card-header.bg-primary > h6.mb-0,
+.card-header.bg-primary > h6.mb-0 a.text-white,
+.card-header.bg-primary > h5.mb-0,
+.card-header.bg-primary > strong.small {
+    color: var(--ui-labotests-card-header-title, #ffffff) !important;
+    font-weight: var(--ui-labotests-card-header-font-weight, 600) !important;
+    font-style: var(--ui-labotests-card-header-font-style, normal) !important;
+}
