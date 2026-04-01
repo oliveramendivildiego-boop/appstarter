@@ -38,6 +38,7 @@
     Total cobrado: <?= number_format((float)($totales->total_cobrado ?? 0), 2) ?> Bs |
     <span class="text-danger">Total pendiente: <?= number_format((float)($totales->total_pendiente ?? 0), 2) ?> Bs</span> |
     Cantidad órdenes: <?= (int)($totales->total_registros ?? 0) ?>
+    <span class="d-block small mt-1">No se incluyen órdenes anuladas en montos ni cantidades (devolución).</span>
 </div>
 
 <h5 class="mt-4">Resumen por tipo de pago</h5>

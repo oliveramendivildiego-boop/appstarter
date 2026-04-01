@@ -29,6 +29,7 @@
 
 <h4><?= esc($title ?? '') ?></h4>
 <p class="text-muted"><?= esc($subtitle ?? '') ?></p>
+<p class="small text-muted">Totales por doctor excluyen órdenes anuladas.</p>
 
 <div class="table-responsive">
     <table class="table table-bordered table-striped">
@@ -55,7 +56,7 @@
 <p class="text-muted">No hay registros en el período seleccionado.</p>
 <?php else: ?>
 <div class="alert alert-secondary">
-    <strong>Total registros:</strong> <?= (int)($totales->total_registros ?? 0) ?> |
+    <strong>Registros facturables:</strong> <?= (int)($totales->total_registros ?? 0) ?> |
     <strong>Total facturado:</strong> <?= number_format((float)($totales->total_facturado ?? 0), 2) ?> Bs
 </div>
 <?php endif; ?>

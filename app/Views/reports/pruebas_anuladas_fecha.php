@@ -13,7 +13,7 @@
     ['label' => $title ?? '', 'url' => null],
 ]]) ?>
 
-<form method="get" action="<?= site_url('reports/registrosFecha') ?>" class="row g-3 mb-4">
+<form method="get" action="<?= site_url('reports/pruebasAnuladasFecha') ?>" class="row g-3 mb-4">
     <div class="col-auto">
         <label for="report_start" class="form-label">Desde</label>
         <input type="text" id="report_start" name="start" class="form-control flatpickr-input" value="<?= esc($startDate ?? '') ?>">
@@ -30,49 +30,39 @@
 <h4><?= esc($title ?? '') ?></h4>
 <p class="text-muted"><?= esc($subtitle ?? '') ?></p>
 
+<?php if (empty($anulacionDisponible ?? false)): ?>
+<div class="alert alert-warning">La tabla de órdenes no tiene el campo de anulación; este reporte no aplica en esta instalación.</div>
+<?php else: ?>
+<p class="small text-muted">Órdenes marcadas como <strong>anuladas</strong> (no facturables). El importe es el registrado en pago a modo de referencia histórica. No incluye órdenes eliminadas.</p>
+
 <div class="table-responsive">
     <table class="table table-bordered table-striped">
         <thead class="table-dark">
             <tr>
                 <th>No.</th>
-                <th>Estado</th>
                 <th>Fecha</th>
                 <th>Paciente</th>
                 <th>Doctor</th>
-                <th class="text-end">Total</th>
-                <th class="text-end">Cobrado</th>
+                <th>Pruebas</th>
+                <th>Motivo de anulación</th>
+                <th class="text-end">Total (ref.)</th>
             </tr>
         </thead>
         <tbody>
-            <?php foreach ($data ?? [] as $row):
-                $del = (int) ($row['estado_eliminado'] ?? 0) === 1;
-                $anul = (int) ($row['estado_anulado'] ?? 0) === 1;
-                $rvn = (int) ($row['regvalues_cnt'] ?? 0);
-                if ($del) {
-                    $estLabel = 'Eliminada';
-                    $estClass = 'bg-dark';
-                } elseif ($anul) {
-                    $estLabel = 'Anulada';
-                    $estClass = 'bg-secondary';
-                } elseif ($rvn > 0) {
-                    $estLabel = 'Completa';
-                    $estClass = 'bg-success';
-                } else {
-                    $estLabel = 'Incompleta';
-                    $estClass = 'bg-warning text-dark';
-                }
-                $facturable = !$del && !$anul;
-                $montoTotal = $facturable ? (float) ($row['total'] ?? 0) : 0.0;
-                $montoCobrado = $facturable ? (float) ($row['monto_pagar'] ?? 0) : 0.0;
-            ?>
+            <?php foreach ($data ?? [] as $row): ?>
             <tr>
                 <td><?= esc($row['registro_id'] ?? '') ?></td>
-                <td><span class="badge <?= esc($estClass) ?>"><?= esc($estLabel) ?></span></td>
                 <td><?= esc(date('d/m/Y H:i', strtotime($row['ingreso'] ?? ''))) ?></td>
                 <td><?= esc($row['paciente'] ?? '') ?></td>
                 <td><?= esc($row['doctor'] ?? '') ?></td>
-                <td class="text-end"><?= number_format($montoTotal, 2) ?> Bs<?= !$facturable ? ' <span class="text-muted small">(—)</span>' : '' ?></td>
-                <td class="text-end"><?= number_format($montoCobrado, 2) ?> Bs<?= !$facturable ? ' <span class="text-muted small">(—)</span>' : '' ?></td>
+                <td><?= esc($row['pruebas_nombres'] ?? '-') ?></td>
+                <td class="small" style="max-width: 22rem;">
+                    <?php
+                    $mot = trim((string) ($row['motivo_anulacion'] ?? ''));
+                    echo $mot !== '' ? nl2br(esc($mot)) : '<span class="text-muted">—</span>';
+                    ?>
+                </td>
+                <td class="text-end text-muted"><?= number_format((float)($row['total'] ?? 0), 2) ?> Bs</td>
             </tr>
             <?php endforeach; ?>
         </tbody>
@@ -80,14 +70,10 @@
 </div>
 
 <?php if (empty($data)): ?>
-<p class="text-muted">No hay registros en el período seleccionado.</p>
+<p class="text-muted">No hay órdenes anuladas con pruebas en el período seleccionado.</p>
 <?php else: ?>
-<div class="alert alert-secondary">
-    <strong>Registros facturables (sin anuladas):</strong> <?= (int)($totales->total_registros ?? 0) ?> |
-    <strong>Total facturado:</strong> <?= number_format((float)($totales->total_facturado ?? 0), 2) ?> Bs |
-    <strong>Total cobrado:</strong> <?= number_format((float)($totales->total_cobrado ?? 0), 2) ?> Bs
-    <span class="d-block small text-muted mt-1">Las órdenes anuladas aparecen en la tabla para consulta; no suman en totales ni en montos (devolución). En columnas Total/Cobrado se muestra 0 Bs (—). Completa = con resultados guardados.</span>
-</div>
+<p class="text-muted small">Total: <?= count($data) ?> orden(es) anulada(s).</p>
+<?php endif; ?>
 <?php endif; ?>
 <?= $this->endSection() ?>
 

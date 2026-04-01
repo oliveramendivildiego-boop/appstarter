@@ -29,6 +29,7 @@
 
 <h4><?= esc($title ?? '') ?></h4>
 <p class="text-muted"><?= esc($subtitle ?? '') ?></p>
+<p class="small text-muted">Solo órdenes <strong>completas</strong> (con al menos un resultado guardado en el sistema), no anuladas ni eliminadas, con paciente y doctor. El importe por fila no corresponde a órdenes devueltas.</p>
 
 <div class="table-responsive">
     <table class="table table-bordered table-striped">

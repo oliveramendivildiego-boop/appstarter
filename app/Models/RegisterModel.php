@@ -332,6 +332,52 @@ class RegisterModel extends Model
             ->getResultArray();
     }
 
+    /**
+     * Resuelve prianacategoria_id desde regvalues.name (formato id|nombre, c_*, noc_*).
+     * Caches opcionales reducen consultas al procesar muchas filas.
+     *
+     * @param array<int,int> $nocCache
+     * @param array<int,int> $cCache
+     */
+    public function resolvePrianacategoriaIdFromRegvalueName(string $name, array &$nocCache = [], array &$cCache = []): int
+    {
+        $name = trim($name);
+        if ($name === '') {
+            return 0;
+        }
+        if (strpos($name, '|') !== false) {
+            [$priaStr] = explode('|', $name, 2);
+
+            return (int) trim($priaStr);
+        }
+        if (strpos($name, '_') === false) {
+            return 0;
+        }
+        [$tipo, $idStr] = explode('_', $name, 2);
+        $id = (int) $idStr;
+        if ($id < 1) {
+            return 0;
+        }
+        if ($tipo === 'noc') {
+            if (!array_key_exists($id, $nocCache)) {
+                $item = $this->getAnalisisNocompleja($id);
+                $nocCache[$id] = $item ? (int) ($item->prianacategoria_id ?? 0) : 0;
+            }
+
+            return $nocCache[$id];
+        }
+        if ($tipo === 'c') {
+            if (!array_key_exists($id, $cCache)) {
+                $item = $this->getAnalisisCompleja($id);
+                $cCache[$id] = $item ? (int) ($item->prianacategoria_id ?? 0) : 0;
+            }
+
+            return $cCache[$id];
+        }
+
+        return 0;
+    }
+
     public function getFormula(int $id)
     {
         return $this->db->table('formulas')

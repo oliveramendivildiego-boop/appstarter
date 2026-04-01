@@ -88,8 +88,43 @@ class Reports extends SecureArea
         $startDate = $this->request->getGet('start') ?? date('Y-m-d');
         $endDate   = $this->request->getGet('end') ?? date('Y-m-d');
 
-        $data    = $this->reportModel->getIngresosByDateRange($startDate, $endDate);
-        $totales = $this->reportModel->getTotalesByDateRange($startDate, $endDate);
+        $facturables = $this->reportModel->getIngresosByDateRange($startDate, $endDate);
+        $anulPorDia  = $this->reportModel->getIngresosAnuladosPorDia($startDate, $endDate);
+        $totales     = $this->reportModel->getTotalesByDateRange($startDate, $endDate);
+        $totalesAnul = $this->reportModel->getTotalesAnuladosByDateRange($startDate, $endDate);
+
+        $byFecha = [];
+        foreach ($facturables as $r) {
+            $f = $r['fecha'];
+            $byFecha[$f] = [
+                'fecha'               => $f,
+                'cantidad'            => (int) ($r['cantidad'] ?? 0),
+                'total'               => (float) ($r['total'] ?? 0),
+                'cobrado'             => (float) ($r['cobrado'] ?? 0),
+                'cantidad_anuladas'   => 0,
+                'total_anulado_ref'   => 0.0,
+                'cobrado_anulado_ref' => 0.0,
+            ];
+        }
+        foreach ($anulPorDia as $r) {
+            $f = $r['fecha'];
+            if (! isset($byFecha[$f])) {
+                $byFecha[$f] = [
+                    'fecha'               => $f,
+                    'cantidad'            => 0,
+                    'total'               => 0.0,
+                    'cobrado'             => 0.0,
+                    'cantidad_anuladas'   => 0,
+                    'total_anulado_ref'   => 0.0,
+                    'cobrado_anulado_ref' => 0.0,
+                ];
+            }
+            $byFecha[$f]['cantidad_anuladas']   = (int) ($r['cantidad'] ?? 0);
+            $byFecha[$f]['total_anulado_ref']   = (float) ($r['total'] ?? 0);
+            $byFecha[$f]['cobrado_anulado_ref'] = (float) ($r['cobrado'] ?? 0);
+        }
+        ksort($byFecha);
+        $data = array_values($byFecha);
 
         return view('reports/ingresos_fecha', [
             'title'           => 'Reporte de ingresos por fecha',
@@ -97,6 +132,7 @@ class Reports extends SecureArea
             'subtitle'        => date('d/m/Y', strtotime($startDate)) . ' - ' . date('d/m/Y', strtotime($endDate)),
             'data'            => $data,
             'totales'         => $totales,
+            'totalesAnulados' => $totalesAnul,
             'startDate'       => $startDate,
             'endDate'         => $endDate,
             'allowed_modules' => $this->allowed_modules,
@@ -178,6 +214,45 @@ class Reports extends SecureArea
         ]);
     }
 
+    public function pruebasIncompletasFecha()
+    {
+        $startDate = $this->request->getGet('start') ?? date('Y-m-d');
+        $endDate   = $this->request->getGet('end') ?? date('Y-m-d');
+
+        $data = $this->reportModel->getPruebasIncompletasPorFecha($startDate, $endDate);
+
+        return view('reports/pruebas_incompletas_fecha', [
+            'title'           => 'Pruebas incompletas por fecha',
+            'current_module'  => 'reports',
+            'subtitle'        => date('d/m/Y', strtotime($startDate)) . ' - ' . date('d/m/Y', strtotime($endDate)),
+            'data'            => $data,
+            'startDate'       => $startDate,
+            'endDate'         => $endDate,
+            'allowed_modules' => $this->allowed_modules,
+            'user_info'       => $this->user_info,
+        ]);
+    }
+
+    public function pruebasAnuladasFecha()
+    {
+        $startDate = $this->request->getGet('start') ?? date('Y-m-d');
+        $endDate   = $this->request->getGet('end') ?? date('Y-m-d');
+
+        $data = $this->reportModel->getPruebasAnuladasPorFecha($startDate, $endDate);
+
+        return view('reports/pruebas_anuladas_fecha', [
+            'title'              => 'Pruebas anuladas por fecha',
+            'current_module'     => 'reports',
+            'subtitle'           => date('d/m/Y', strtotime($startDate)) . ' - ' . date('d/m/Y', strtotime($endDate)),
+            'data'               => $data,
+            'startDate'          => $startDate,
+            'endDate'            => $endDate,
+            'anulacionDisponible'=> $this->reportModel->tieneCampoAnuladoEnRegistro(),
+            'allowed_modules'    => $this->allowed_modules,
+            'user_info'          => $this->user_info,
+        ]);
+    }
+
     /**
      * Estadísticas en rango: pruebas, desglose por tipo, pacientes, grupo poblacional (config) y género.
      */
@@ -201,10 +276,10 @@ class Reports extends SecureArea
         $labelsPrueba    = $this->reportModel->getPrianacategoriaLabelsMap();
 
         $resumen = [
-            'ordenes'              => 0,
-            'pruebas_solicitadas'  => 0,
-            'pacientes_distintos'  => 0,
-            'ordenes_sin_persona'  => 0,
+            'ordenes'               => 0,
+            'pruebas_realizadas'    => 0,
+            'pacientes_distintos'   => 0,
+            'ordenes_sin_persona'   => 0,
         ];
         $porGeneroOrdenes       = ['1' => 0, '2' => 0, '_' => 0];
         $porGeneroPacientes     = ['1' => 0, '2' => 0, '_' => 0];
@@ -222,8 +297,12 @@ class Reports extends SecureArea
 
             $pruebasStr = trim((string) ($row['pruebas'] ?? ''));
             $idsPrueba  = $registerService->extractPrianacategoriaIdsFromRegistroPruebas($pruebasStr);
-            $resumen['pruebas_solicitadas'] += count($idsPrueba);
             foreach ($idsPrueba as $prId) {
+                if ($prId < 1) {
+                    continue;
+                }
+                // Misma noción que el reporte «Pruebas por fecha»: IDs en registro.pruebas (no exige regvalues).
+                $resumen['pruebas_realizadas']++;
                 $conteoPorPruebaId[$prId] = ($conteoPorPruebaId[$prId] ?? 0) + 1;
                 if ($pid > 0) {
                     if (!isset($pacientesPorPruebaId[$prId])) {

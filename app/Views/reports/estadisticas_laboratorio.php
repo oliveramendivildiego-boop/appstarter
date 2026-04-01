@@ -29,7 +29,7 @@
 
 <h4><?= esc($title ?? '') ?></h4>
 <p class="text-muted mb-4"><?= esc($subtitle ?? '') ?></p>
-<p class="text-muted small">Desglose por prueba: cada fila es un análisis del catálogo. Los <strong>grupos poblacionales</strong> son los definidos en <a href="<?= site_url('config?tab=poblacion') ?>">Configuración → Población</a>; cada orden se clasifica con la edad y sexo del paciente a la <strong>fecha de ingreso</strong> (misma lógica que en resultados).</p>
+<p class="text-muted small">Las <strong>pruebas realizadas</strong>, el desglose por prueba y el conteo de órdenes coinciden con <a href="<?= site_url('reports/pruebasFecha') ?>">Pruebas por fecha</a>: análisis en <code>registro.pruebas</code>, solo órdenes <strong>completas</strong> (hay filas en resultados), <strong>no anuladas ni eliminadas</strong>, con paciente, doctor y pago. Los nombres salen del catálogo cuando existen; si no, el ID. Los grupos poblacionales vienen de <a href="<?= site_url('config?tab=poblacion') ?>">Configuración → Población</a> según edad y sexo a la fecha de ingreso.</p>
 
 <?php
 $resumen = $resumen ?? [];
@@ -43,9 +43,9 @@ $porPruebaRows = $porPruebaRows ?? [];
     <div class="col-md-4">
         <div class="card border-primary h-100 shadow-sm">
             <div class="card-body">
-                <h6 class="text-muted text-uppercase small mb-1">Pruebas solicitadas</h6>
-                <p class="display-6 mb-0"><?= (int) ($resumen['pruebas_solicitadas'] ?? 0) ?></p>
-                <small class="text-muted">Suma de pruebas en todas las órdenes del período</small>
+                <h6 class="text-muted text-uppercase small mb-1">Pruebas realizadas</h6>
+                <p class="display-6 mb-0"><?= (int) ($resumen['pruebas_realizadas'] ?? ($resumen['pruebas_completadas'] ?? ($resumen['pruebas_solicitadas'] ?? 0))) ?></p>
+                <small class="text-muted">Total de análisis en las órdenes del período (igual que «Pruebas por fecha»)</small>
             </div>
         </div>
     </div>
@@ -74,7 +74,7 @@ $porPruebaRows = $porPruebaRows ?? [];
 </div>
 
 <div class="card shadow-sm mb-4">
-    <div class="card-header"><strong>Desglose por prueba</strong> <span class="text-muted small">listado y conteo por análisis</span></div>
+    <div class="card-header"><strong>Desglose por prueba</strong> <span class="text-muted small">por análisis solicitado en la orden</span></div>
     <div class="card-body p-0">
         <div class="table-responsive">
             <table class="table table-sm table-striped table-hover mb-0">
@@ -104,7 +104,7 @@ $porPruebaRows = $porPruebaRows ?? [];
                     </tr>
                     <?php endforeach; ?>
                     <?php if (empty($porPruebaRows)): ?>
-                    <tr><td colspan="5" class="text-muted px-3 py-3">Sin pruebas en órdenes del período.</td></tr>
+                    <tr><td colspan="5" class="text-muted px-3 py-3">Sin análisis listados en órdenes del período.</td></tr>
                     <?php endif; ?>
                 </tbody>
                 <?php if (!empty($porPruebaRows)): ?>
@@ -116,7 +116,7 @@ $porPruebaRows = $porPruebaRows ?? [];
                     </tr>
                     <tr>
                         <td colspan="5" class="small text-muted py-2">
-                            <?= count($porPruebaRows) ?> tipo(s) de prueba distintos. La suma de la columna órdenes coincide con <strong><?= (int) ($resumen['pruebas_solicitadas'] ?? 0) ?></strong> (pruebas solicitadas).
+                            <?= count($porPruebaRows) ?> tipo(s) de prueba. La suma de la columna coincide con <strong><?= (int) ($resumen['pruebas_realizadas'] ?? ($resumen['pruebas_completadas'] ?? ($resumen['pruebas_solicitadas'] ?? 0))) ?></strong> (total pruebas realizadas).
                         </td>
                     </tr>
                 </tfoot>

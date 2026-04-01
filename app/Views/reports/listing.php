@@ -28,6 +28,12 @@
                 <a href="<?= site_url('reports/pruebasFecha') ?>" class="list-group-item list-group-item-action">
                     <i class="fas fa-vial me-2"></i> Pruebas realizadas por fecha
                 </a>
+                <a href="<?= site_url('reports/pruebasIncompletasFecha') ?>" class="list-group-item list-group-item-action">
+                    <i class="fas fa-hourglass-half me-2"></i> Pruebas incompletas por fecha
+                </a>
+                <a href="<?= site_url('reports/pruebasAnuladasFecha') ?>" class="list-group-item list-group-item-action">
+                    <i class="fas fa-ban me-2"></i> Pruebas anuladas por fecha
+                </a>
                 <a href="<?= site_url('reports/estadisticasLaboratorio') ?>" class="list-group-item list-group-item-action">
                     <i class="fas fa-chart-pie me-2"></i> Estadísticas por período (pruebas, pacientes, población, género)
                 </a>
