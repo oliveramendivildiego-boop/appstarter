@@ -144,7 +144,7 @@ if (!function_exists('get_theme_color_palette')) {
     function get_theme_color_palette(): array
     {
         return [
-            '#FF7218' => 'Naranja (Laboratorio John)',
+            '#FF7218' => 'Naranja',
             /* Colores del tema Bootstrap 5.3 */
             '#0d6efd' => 'Primary / Blue',
             '#6c757d' => 'Secondary',

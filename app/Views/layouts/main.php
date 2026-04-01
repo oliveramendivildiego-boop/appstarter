@@ -23,6 +23,11 @@ $themeActive = (isset($layoutConfig['theme_active']) && $layoutConfig['theme_act
     ? $layoutConfig['theme_active']
     : $themeColor;
 
+$sidebarRight = !empty($layoutConfig['sidebar_right']);
+$uiGoogleFont = $layoutConfig['ui_google_font_href'] ?? null;
+$uiUseInter   = !empty($layoutConfig['ui_use_inter_css']);
+$uiInline     = (string) ($layoutConfig['ui_inline_style'] ?? '');
+
 $moduleCss = [
     'config'      => 'assets/css/config.css',
     'expediente'  => 'assets/css/expediente.css',
@@ -41,7 +46,7 @@ $extraCss = isset($moduleCss[$currentMod]) ? $moduleCss[$currentMod] : null;
 $pageTitle = $this->renderSection('title');
 ?>
 <!DOCTYPE html>
-<html lang="es" data-theme-primary="<?= esc($themeColor) ?>" data-theme-hover="<?= esc($themeHover) ?>" data-theme-active="<?= esc($themeActive) ?>">
+<html lang="es" data-theme-primary="<?= esc($themeColor) ?>" data-theme-hover="<?= esc($themeHover) ?>" data-theme-active="<?= esc($themeActive) ?>"<?= $uiInline !== '' ? ' style="' . htmlspecialchars($uiInline, ENT_COMPAT, 'UTF-8') . '"' : '' ?>>
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
@@ -53,8 +58,12 @@ $pageTitle = $this->renderSection('title');
     <link rel="stylesheet" href="<?= base_url('css/vendor/material-icons.css') ?>" />
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <?php if ($uiGoogleFont): ?>
+    <link href="<?= esc($uiGoogleFont) ?>" rel="stylesheet">
+    <?php endif; ?>
+    <?php if ($uiUseInter): ?>
     <link rel="stylesheet" href="<?= base_url('css/vendor/inter-font.css') ?>" />
+    <?php endif; ?>
     <link rel="stylesheet" href="<?= base_url('css/dom.css') ?>" />
     <link rel="stylesheet" href="<?= base_url('assets/css/ynex.css') ?>" />
     <link rel="stylesheet" href="<?= base_url('css/dashboard.css') ?>" />
@@ -147,20 +156,21 @@ $pageTitle = $this->renderSection('title');
     </a>
     <div class="navbar-nav d-md-none">
         <div class="nav-item text-nowrap px-3 py-2">
-            <span class="text-white-50 small"><?= date('d/m/Y H:i') ?></span>
+            <span class="small navbar-theme-meta"><?= date('d/m/Y H:i') ?></span>
         </div>
     </div>
 </header>
 
 <div class="container-fluid">
-    <div class="row flex-nowrap">
+    <div class="row flex-nowrap<?= $sidebarRight ? ' flex-row-reverse' : '' ?>">
         <?= view('partial/sidebar', [
             'allowed_modules' => $allowed_modules ?? [],
             'user_info'      => $user_info ?? null,
             'companyName'    => $companyName,
             'current_module' => $current_module ?? 'home',
+            'sidebar_right'  => $sidebarRight,
         ]) ?>
-        <main class="col-12 col-md-9 col-lg-10 px-md-4 pt-4 ms-sm-auto">
+        <main class="col-12 col-md-9 col-lg-10 px-md-4 pt-4<?= $sidebarRight ? '' : ' ms-sm-auto' ?>">
             <div class="container-fluid">
                 <?= $this->renderSection('content') ?>
             </div>

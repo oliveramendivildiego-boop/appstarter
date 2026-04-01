@@ -17,9 +17,9 @@
     z-index: 9999;
 }
 
-/* Doctor portal navbar - tema dinámico */
+/* Doctor portal / barra superior - usa --ui-header-bg si existe */
 .navbar-theme {
-    background: var(--primary-color, #FF7218) !important;
+    background: var(--ui-header-bg, var(--primary-color, #FF7218)) !important;
 }
 .navbar-brand-logo,
 .navbar-theme .navbar-brand img {

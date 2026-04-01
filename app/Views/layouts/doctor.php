@@ -17,11 +17,15 @@ $themeHover = (isset($layoutConfig['theme_hover']) && $layoutConfig['theme_hover
 $themeActive = (isset($layoutConfig['theme_active']) && $layoutConfig['theme_active'] !== null && $layoutConfig['theme_active'] !== '')
     ? $layoutConfig['theme_active']
     : $themeHover;
+$themeGradientEnd = (isset($layoutConfig['theme_gradient_end']) && $layoutConfig['theme_gradient_end'] !== null && $layoutConfig['theme_gradient_end'] !== '')
+    ? $layoutConfig['theme_gradient_end']
+    : '#4f46e5';
+$uiInline = (string) ($layoutConfig['ui_inline_style'] ?? '');
 
 $pageTitle = $this->renderSection('title');
 ?>
 <!DOCTYPE html>
-<html lang="es" data-theme-primary="<?= esc($themeColor) ?>" data-theme-hover="<?= esc($themeHover) ?>" data-theme-active="<?= esc($themeActive) ?>" class="layout-doctor">
+<html lang="es" data-theme-primary="<?= esc($themeColor) ?>" data-theme-hover="<?= esc($themeHover) ?>" data-theme-active="<?= esc($themeActive) ?>" data-theme-gradient-end="<?= esc($themeGradientEnd) ?>" class="layout-doctor"<?= $uiInline !== '' ? ' style="' . htmlspecialchars($uiInline, ENT_COMPAT, 'UTF-8') . '"' : '' ?>>
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
@@ -44,7 +48,7 @@ $pageTitle = $this->renderSection('title');
     <script src="<?= base_url('js/jquery-3.7.1.min.js') ?>"></script>
     <script src="<?= base_url('js/vendor/bootstrap.bundle.min.js') ?>"></script>
     <script src="<?= base_url('js/common.js') ?>"></script>
-    <script>(function(){var d=document.documentElement;var p=d.getAttribute('data-theme-primary');var h=d.getAttribute('data-theme-hover');var a=d.getAttribute('data-theme-active');if(p)d.style.setProperty('--primary-color',p);if(h)d.style.setProperty('--primary-hover',h);if(a)d.style.setProperty('--primary-active',a);})();</script>
+    <script>(function(){var d=document.documentElement;var p=d.getAttribute('data-theme-primary');var h=d.getAttribute('data-theme-hover');var a=d.getAttribute('data-theme-active');var g=d.getAttribute('data-theme-gradient-end');if(p)d.style.setProperty('--primary-color',p);if(h)d.style.setProperty('--primary-hover',h);if(a)d.style.setProperty('--primary-active',a);if(g)d.style.setProperty('--theme-gradient-end',g);})();</script>
     <?= $this->renderSection('head_extra') ?>
 </head>
 <body class="ynex-theme doctor-portal">

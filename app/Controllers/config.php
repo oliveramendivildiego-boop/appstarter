@@ -157,6 +157,19 @@ class Config extends SecureArea
     }
 
     /**
+     * Guarda apariencia del sistema (colores, fuente, menú).
+     */
+    public function saveUiStyle(): ResponseInterface
+    {
+        if (! $this->configService->saveUiStyleFromRequest($this->request->getPost())) {
+            return redirect()->to('config?tab=estilo')->with('error', lang('Config.config_error'));
+        }
+        \App\Models\AuditoriaModel::log('config', 'apariencia_actualizar', null, 'ui_style');
+
+        return redirect()->to('config?tab=estilo')->with('success', lang('Config.config_saved'));
+    }
+
+    /**
      * Genera respaldo SQL de la base de datos (solo para usuarios con permiso config)
      */
     public function backup()

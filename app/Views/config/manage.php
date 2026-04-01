@@ -24,6 +24,9 @@
         <button class="nav-link <?= $activeTab === 'sistema' ? 'active' : '' ?>" id="tab-sistema-btn" data-bs-toggle="tab" data-bs-target="#tab-sistema" type="button" role="tab">Configuración del sistema</button>
     </li>
     <li class="nav-item" role="presentation">
+        <button class="nav-link <?= $activeTab === 'estilo' ? 'active' : '' ?>" id="tab-estilo-btn" data-bs-toggle="tab" data-bs-target="#tab-estilo" type="button" role="tab"><?= lang('Config.config_style_tab_nav') ?></button>
+    </li>
+    <li class="nav-item" role="presentation">
         <button class="nav-link <?= $activeTab === 'poblacion' ? 'active' : '' ?>" id="tab-poblacion-btn" data-bs-toggle="tab" data-bs-target="#tab-poblacion" type="button" role="tab">Grupos de población (por edad)</button>
     </li>
     <li class="nav-item" role="presentation">
@@ -127,27 +130,6 @@
                         'id="currency_side" class="form-select" autocomplete="off"'
                     ) ?>
             </div>
-            <div class="col-md-6 mb-3">
-                <?= form_label(lang('Config.config_theme_color'), 'theme_color', ['class' => 'form-label']) ?>
-                <?php
-                $palette = $theme_palette ?? [];
-                $currentColor = strtolower($config['theme_color'] ?? '#FF7218');
-                $selectOptions = ['' => 'Personalizado'] + $palette;
-                $selectedHex = '';
-                foreach (array_keys($palette) as $h) {
-                    if (strtolower(ltrim($h, '#')) === strtolower(ltrim($currentColor, '#'))) {
-                        $selectedHex = $h;
-                        break;
-                    }
-                }
-                ?>
-                <?= form_dropdown('theme_palette_select', $selectOptions, $selectedHex, 'id="theme_palette_select" class="form-select mb-2" autocomplete="off"') ?>
-                <div class="d-flex align-items-center gap-2 flex-wrap">
-                    <input type="color" name="theme_color" id="theme_color" value="<?= esc($config['theme_color'] ?? '#FF7218') ?>" class="form-control form-control-color config-color-picker" autocomplete="off">
-                    <input type="text" id="theme_color_hex" name="theme_color_hex" value="<?= esc($config['theme_color'] ?? '#FF7218') ?>" class="form-control config-color-hex" readonly autocomplete="off">
-                </div>
-                <small class="text-muted">O elige un color personalizado con el selector.</small>
-            </div>
         </div>
         <div class="mb-3">
             <?= form_label(lang('Config.config_return_policy'), 'return_policy', ['class' => 'form-label']) ?>
@@ -248,6 +230,8 @@
             </div>
         </div>
     </div>
+
+    <?= view('config/tab_estilo', ['config' => $config, 'activeTab' => $activeTab, 'theme_palette' => $theme_palette ?? []]) ?>
 
     <!-- Pestaña: Tenants -->
     <?php if (($can_manage_tenants ?? false)): ?>

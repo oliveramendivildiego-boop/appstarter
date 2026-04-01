@@ -35,6 +35,14 @@ class ConfigService
             $data[$row->key] = $row->value;
         }
         $data['theme_color'] ??= '#FF7218';
+        $data['theme_gradient_end'] ??= '#4f46e5';
+        $data['ui_font_size_base'] ??= '1';
+        $data['ui_font_size_main'] ??= '1';
+        $data['ui_font_size_header'] ??= '1';
+        $data['ui_font_size_sidebar'] ??= '1';
+        $data['ui_font_size_footer'] ??= '0.875';
+        $data['ui_font_size_heading'] ??= '1.125';
+        $data['ui_footer_text_align'] ??= 'left';
         $cache->save(self::CACHE_KEY, $data, self::CACHE_TTL);
         return $data;
     }
@@ -222,5 +230,105 @@ class ConfigService
         }
 
         return 'images/' . $newName;
+    }
+
+    /**
+     * Guarda opciones de apariencia (pestaña Config → Apariencia).
+     */
+    public function saveUiStyleFromRequest(array $post): bool
+    {
+        $fonts = array_keys(\App\Services\LayoutService::uiFontOptionsForView());
+        $font  = strtolower(trim((string) ($post['ui_font_family'] ?? 'poppins')));
+        if (! in_array($font, $fonts, true)) {
+            $font = 'poppins';
+        }
+        $side = strtolower(trim((string) ($post['ui_sidebar_position'] ?? 'left')));
+        $side = ($side === 'right') ? 'right' : 'left';
+
+        $radius = (int) ($post['ui_card_radius'] ?? 8);
+        $radius = max(0, min(24, $radius));
+
+        $normFs = static function (string $postKey, string $default) use ($post): string {
+            return \App\Services\LayoutService::normalizeUiFontSizeRemInput((string) ($post[$postKey] ?? ''), $default);
+        };
+
+        $headerCustom = (($post['ui_header_mode'] ?? '') === 'custom');
+        $linkCustom   = (($post['ui_sidebar_link_mode'] ?? '') === 'custom');
+
+        $footerAlign = strtolower(trim((string) ($post['ui_footer_text_align'] ?? 'left')));
+        if (! in_array($footerAlign, ['left', 'center', 'right'], true)) {
+            $footerAlign = 'left';
+        }
+
+        $batch = [
+            'theme_color'         => $this->normalizeUiHex((string) ($post['theme_color'] ?? ''), '#FF7218'),
+            'theme_gradient_end'  => $this->normalizeUiHex((string) ($post['theme_gradient_end'] ?? ''), '#4f46e5'),
+            'ui_font_family'        => $font,
+            'ui_font_size_base'     => $normFs('ui_font_size_base', '1'),
+            'ui_font_size_main'     => $normFs('ui_font_size_main', '1'),
+            'ui_font_size_header'   => $normFs('ui_font_size_header', '1'),
+            'ui_font_size_sidebar'  => $normFs('ui_font_size_sidebar', '1'),
+            'ui_font_size_footer'   => $normFs('ui_font_size_footer', '0.875'),
+            'ui_font_size_heading'  => $normFs('ui_font_size_heading', '1.125'),
+            'ui_sidebar_position'   => $side,
+            'ui_body_text_color'    => $this->normalizeUiHex((string) ($post['ui_body_text_color'] ?? ''), '#212529'),
+            'ui_sidebar_bg'         => $this->normalizeUiHex((string) ($post['ui_sidebar_bg'] ?? ''), '#f8f9fa'),
+            'ui_sidebar_link_color' => $linkCustom
+                ? $this->normalizeUiHex((string) ($post['ui_sidebar_link_custom'] ?? ''), '#0d6efd')
+                : '',
+            'ui_sidebar_hover_bg' => ! empty($post['ui_sidebar_hover_default'])
+                ? ''
+                : $this->normalizeUiHex((string) ($post['ui_sidebar_hover_bg'] ?? ''), '#dee2e6'),
+            'ui_sidebar_active_bg' => ! empty($post['ui_sidebar_active_default'])
+                ? ''
+                : $this->normalizeUiHex((string) ($post['ui_sidebar_active_bg'] ?? ''), '#ced4da'),
+            'ui_header_bg'          => $headerCustom
+                ? $this->normalizeUiHex((string) ($post['ui_header_bg_custom'] ?? ''), '#0d6efd')
+                : '',
+            'ui_header_text_color' => $this->normalizeUiHex((string) ($post['ui_header_text_color'] ?? ''), '#ffffff'),
+            'ui_main_bg'            => $this->normalizeUiHex((string) ($post['ui_main_bg'] ?? ''), '#ffffff'),
+            'ui_footer_bg'          => $this->normalizeUiHex((string) ($post['ui_footer_bg'] ?? ''), '#f8f9fa'),
+            'ui_footer_text_color' => $this->normalizeUiHex((string) ($post['ui_footer_text_color'] ?? ''), '#6c757d'),
+            'ui_footer_text_align' => $footerAlign,
+            'ui_link_color' => ! empty($post['ui_link_default'])
+                ? ''
+                : $this->normalizeUiHex((string) ($post['ui_link_color'] ?? ''), '#0d6efd'),
+            'ui_card_radius'        => (string) $radius,
+        ];
+
+        $ok = $this->appConfigModel->batchSave($batch);
+        if ($ok) {
+            $this->invalidateCache();
+        }
+
+        return $ok;
+    }
+
+    private function normalizeUiHex(string $value, string $fallback): string
+    {
+        $out = $this->normalizeUiHexOrEmpty($value);
+
+        return $out !== '' ? $out : $fallback;
+    }
+
+    private function normalizeUiHexOrEmpty(string $value): string
+    {
+        $v = strtoupper(trim($value));
+        if ($v === '') {
+            return '';
+        }
+        if ($v[0] !== '#') {
+            $v = '#' . $v;
+        }
+        if (preg_match('/^#([0-9A-F]{3})$/', $v, $m)) {
+            $h = $m[1];
+
+            return '#' . $h[0] . $h[0] . $h[1] . $h[1] . $h[2] . $h[2];
+        }
+        if (preg_match('/^#([0-9A-F]{6})$/', $v)) {
+            return $v;
+        }
+
+        return '';
     }
 }

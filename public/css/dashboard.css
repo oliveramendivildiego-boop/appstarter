@@ -39,7 +39,7 @@
 }
 
 .sidebar .nav-link {
-  font-size: 16px;
+  font-size: var(--ui-font-size-sidebar, 1rem);
   font-weight: 500;
   color: var(--primary-color, #0d6efd);
 }
@@ -55,7 +55,7 @@
 }
 
 .sidebar-heading {
-  font-size: .75rem;
+  font-size: calc(var(--ui-font-size-sidebar, 1rem) * 0.75);
   color: var(--primary-color, #6c757d);
 }
 
@@ -142,4 +142,103 @@ main {
   .container-fluid .row {
     overflow-x: hidden;
   }
+  #sidebarMenu.offcanvas-end {
+    width: 280px;
+    max-width: 85vw;
+  }
+}
+
+/* —— Apariencia configurable (variables en <html style="...">) —— */
+body.ynex-theme {
+  font-family: var(--ui-font-family, system-ui, sans-serif);
+  font-size: var(--ui-font-size-base, 1rem);
+  color: var(--ui-body-color, #212529);
+  background-color: var(--ui-main-bg, #fff);
+}
+
+body.ynex-theme main {
+  font-size: var(--ui-font-size-main, 1rem);
+}
+
+header.navbar-theme {
+  font-size: var(--ui-font-size-header, 1rem);
+}
+
+header.navbar-theme .navbar-brand.fs-6 {
+  font-size: inherit !important;
+}
+
+body.ynex-theme main h1,
+body.ynex-theme main .h1 {
+  font-size: calc(var(--ui-font-size-heading, 1.125rem) * 1.28);
+}
+
+body.ynex-theme main h2,
+body.ynex-theme main .h2 {
+  font-size: calc(var(--ui-font-size-heading, 1.125rem) * 1.12);
+}
+
+body.ynex-theme main h3,
+body.ynex-theme main .h3,
+body.ynex-theme main .card-header {
+  font-size: var(--ui-font-size-heading, 1.125rem);
+}
+
+.sidebar,
+.sidebar .offcanvas-lg {
+  background-color: var(--ui-sidebar-bg, var(--bs-tertiary-bg)) !important;
+}
+
+.sidebar .nav-link {
+  color: var(--ui-sidebar-link, var(--primary-color, #0d6efd)) !important;
+}
+
+.sidebar .nav-link:hover {
+  background-color: var(--ui-sidebar-hover-bg, rgba(0, 0, 0, 0.08)) !important;
+  color: var(--ui-sidebar-link, var(--primary-color, #0d6efd)) !important;
+}
+
+.sidebar .nav-link.active {
+  color: var(--ui-sidebar-link, var(--primary-active, #0a58ca)) !important;
+  background-color: var(--ui-sidebar-active-bg, rgba(0, 0, 0, 0.08)) !important;
+}
+
+.sidebar-heading {
+  color: var(--ui-sidebar-link, var(--primary-color, #6c757d)) !important;
+}
+
+.navbar-theme {
+  background-color: var(--ui-header-bg, var(--primary-color, #212529)) !important;
+}
+
+.navbar-theme .navbar-brand {
+  color: var(--ui-header-text, #fff) !important;
+}
+
+.navbar-theme-meta {
+  color: var(--ui-header-text, #fff);
+  opacity: 0.8;
+}
+
+#footer.ynex-footer {
+  background-color: var(--ui-footer-bg, #f8f9fa) !important;
+  color: var(--ui-footer-text, #6c757d) !important;
+  font-size: var(--ui-font-size-footer, 0.875rem);
+}
+
+#footer.ynex-footer a {
+  color: var(--ui-link-color, #0d6efd);
+}
+
+footer.ynex-footer .container-fluid,
+#footer.ynex-footer .container-fluid {
+  justify-content: var(--ui-footer-justify, flex-start);
+}
+
+body.ynex-theme main a:not(.btn):not(.nav-link):not(.page-link):not(.dropdown-item) {
+  color: var(--ui-link-color, #0d6efd);
+}
+
+main .card {
+  border-radius: var(--ui-card-radius, 8px);
 }

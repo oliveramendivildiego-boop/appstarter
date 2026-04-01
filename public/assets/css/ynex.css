@@ -66,14 +66,15 @@ body.ynex-theme h6, body.ynex-theme .h6 { font-size: 0.875rem; font-weight: 600;
 
 /* ========== Navbar YNEX ========== */
 .ynex-navbar {
-    background: linear-gradient(135deg, var(--primary-color, var(--ynex-primary)) 0%, var(--ynex-primary-hover) 100%) !important;
+    background: linear-gradient(135deg, var(--primary-color, var(--ynex-primary)) 0%, var(--theme-gradient-end, var(--ynex-primary-hover)) 100%) !important;
     box-shadow: var(--ynex-shadow-md);
     padding: 0.75rem 1rem;
+    font-size: var(--ui-font-size-header, 1rem);
 }
 
 .ynex-navbar .navbar-brand {
     font-weight: 600;
-    font-size: 1.125rem;
+    font-size: inherit;
 }
 
 .ynex-navbar .navbar-brand-logo {
@@ -126,7 +127,7 @@ body.ynex-theme h6, body.ynex-theme .h6 { font-size: 0.875rem; font-weight: 600;
 }
 
 .ynex-theme .card-header.bg-primary {
-    background: linear-gradient(135deg, var(--primary-color, var(--ynex-primary)), var(--ynex-primary-hover)) !important;
+    background: linear-gradient(135deg, var(--primary-color, var(--ynex-primary)), var(--theme-gradient-end, var(--ynex-primary-hover))) !important;
     border: none;
 }
 
@@ -176,45 +177,55 @@ body.ynex-theme h6, body.ynex-theme .h6 { font-size: 0.875rem; font-weight: 600;
 }
 
 /* ========== Sidebar YNEX (dashboard principal) ========== */
+/* Usa variables de Apariencia (--ui-sidebar-*). Misma lógica que dashboard.css con especificidad body.ynex-theme. */
 body.ynex-theme .sidebar {
-    background: var(--ynex-slate-900) !important;
+    background-color: var(--ui-sidebar-bg, var(--bs-tertiary-bg, #f8f9fa)) !important;
     border: none !important;
 }
 
 body.ynex-theme .sidebar .offcanvas-lg {
-    background: var(--ynex-slate-900) !important;
+    background-color: var(--ui-sidebar-bg, var(--bs-tertiary-bg, #f8f9fa)) !important;
+}
+
+body.ynex-theme .sidebar .offcanvas-body {
+    background-color: transparent;
 }
 
 body.ynex-theme .sidebar .nav-link {
-    color: var(--ynex-slate-300) !important;
+    color: var(--ui-sidebar-link, var(--primary-color, #0d6efd)) !important;
     border-radius: 8px;
     margin: 0 0.5rem;
     padding: 0.625rem 1rem !important;
 }
 
 body.ynex-theme .sidebar .nav-link:hover {
-    background: rgba(255, 255, 255, 0.08) !important;
-    color: #fff !important;
+    background-color: var(--ui-sidebar-hover-bg, rgba(0, 0, 0, 0.08)) !important;
+    color: var(--ui-sidebar-link, var(--primary-color, #0d6efd)) !important;
 }
 
 body.ynex-theme .sidebar .nav-link.active {
-    background: var(--primary-color, var(--ynex-primary)) !important;
-    color: #fff !important;
-}
-
-body.ynex-theme .sidebar .offcanvas-title {
-    color: #fff;
-    font-weight: 600;
+    background-color: var(--ui-sidebar-active-bg, rgba(0, 0, 0, 0.1)) !important;
+    color: var(--ui-sidebar-link, var(--primary-active, #0a58ca)) !important;
 }
 
 body.ynex-theme .sidebar-heading {
-    color: var(--ynex-slate-400) !important;
-    font-size: 0.7rem;
+    color: var(--ui-sidebar-link, var(--primary-color, #6c757d)) !important;
+    font-size: calc(var(--ui-font-size-sidebar, 1rem) * 0.75);
+}
+
+body.ynex-theme .sidebar .offcanvas-header {
+    background-color: var(--ui-sidebar-bg, var(--bs-tertiary-bg, #f8f9fa));
+    border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+}
+
+body.ynex-theme .sidebar .offcanvas-title {
+    color: var(--ui-sidebar-link, var(--primary-color, #212529));
+    font-weight: 600;
 }
 
 /* Navbar principal (dashboard) con estilo YNEX */
 body.ynex-theme .navbar-theme {
-    background: linear-gradient(135deg, var(--primary-color, var(--ynex-primary)), var(--ynex-primary-hover)) !important;
+    background: linear-gradient(135deg, var(--primary-color, var(--ynex-primary)), var(--theme-gradient-end, var(--ynex-primary-hover))) !important;
     box-shadow: var(--ynex-shadow-md);
 }
 
@@ -286,13 +297,15 @@ body.ynex-theme .navbar-theme .navbar-brand {
     background: var(--ynex-slate-800);
     color: var(--ynex-slate-300);
     padding: 1rem 1.5rem;
-    font-size: 0.875rem;
+    font-size: var(--ui-font-size-footer, 0.875rem);
 }
 
 .ynex-footer .container-fluid {
     display: flex;
     align-items: center;
     flex-wrap: wrap;
+    justify-content: var(--ui-footer-justify, flex-start);
+    width: 100%;
 }
 
 .ynex-footer a {
@@ -334,7 +347,7 @@ body.ynex-theme .navbar-theme .navbar-brand {
 }
 
 .ynex-theme .breadcrumb-nav-theme {
-    background: linear-gradient(135deg, var(--primary-color, var(--ynex-primary)), var(--ynex-primary-hover)) !important;
+    background: linear-gradient(135deg, var(--primary-color, var(--ynex-primary)), var(--theme-gradient-end, var(--ynex-primary-hover))) !important;
 }
 
 /* ========== Dashboard - tabla alertas insumos (scroll horizontal) ========== */

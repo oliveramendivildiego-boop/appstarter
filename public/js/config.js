@@ -1,33 +1,30 @@
 /**
- * Módulo Config - Gestión de configuración del sistema
+ * Módulo Config - paleta de colores del tema (pestaña Apariencia).
  * Paleta Bootstrap 5.3: https://getbootstrap.com/docs/5.3/customize/color/
  */
 document.addEventListener('DOMContentLoaded', function () {
-    var form = document.getElementById('config_form');
-    var themeColor = document.getElementById('theme_color');
-    var themeHex = document.getElementById('theme_color_hex');
-    var paletteSelect = document.getElementById('theme_palette_select');
-
     function hexMatch(a, b) {
         var x = String(a || '').replace(/^#/, '').toLowerCase();
         var y = String(b || '').replace(/^#/, '').toLowerCase();
         return x === y;
     }
 
-    if (paletteSelect && themeColor && themeHex) {
-        paletteSelect.addEventListener('change', function () {
+    function bindPalettePair(paletteSelect, colorInput, hexInput) {
+        if (!colorInput || !hexInput) {
+            return;
+        }
+        if (paletteSelect) {
+            paletteSelect.addEventListener('change', function () {
+                var val = this.value;
+                if (val) {
+                    colorInput.value = val;
+                    hexInput.value = val;
+                }
+            });
+        }
+        colorInput.addEventListener('input', function () {
             var val = this.value;
-            if (val) {
-                themeColor.value = val;
-                themeHex.value = val;
-            }
-        });
-    }
-
-    if (themeColor && themeHex) {
-        themeColor.addEventListener('input', function () {
-            var val = this.value;
-            themeHex.value = val;
+            hexInput.value = val;
             if (paletteSelect) {
                 var found = false;
                 for (var i = 0; i < paletteSelect.options.length; i++) {
@@ -37,10 +34,21 @@ document.addEventListener('DOMContentLoaded', function () {
                         break;
                     }
                 }
-                if (!found) paletteSelect.value = '';
+                if (!found) {
+                    paletteSelect.value = '';
+                }
             }
         });
     }
 
-    /* El envío asíncrono y toast se manejan por common.js (form[data-async="1"]) */
+    bindPalettePair(
+        document.getElementById('theme_palette_select'),
+        document.getElementById('theme_color'),
+        document.getElementById('theme_color_hex')
+    );
+    bindPalettePair(
+        document.getElementById('theme_gradient_palette_select'),
+        document.getElementById('theme_gradient_end'),
+        document.getElementById('theme_gradient_end_hex')
+    );
 });

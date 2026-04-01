@@ -17,7 +17,10 @@ $icons = [
     'employees'      => 'fa-user-tie',
     'config'         => 'fa-gear',
 ];
-$current = $current_module ?? 'home';
+$current       = $current_module ?? 'home';
+$sidebarRight  = !empty($sidebar_right);
+$sbBorderClass = $sidebarRight ? 'border-start' : 'border-end';
+$offcanvasDir  = $sidebarRight ? 'offcanvas-end' : 'offcanvas-start';
 $has_registers = false;
 foreach ($allowed_modules ?? [] as $m) {
     if (($m->module_id ?? '') === 'registers') { $has_registers = true; break; }
@@ -27,8 +30,8 @@ foreach ($allowed_modules ?? [] as $m) {
     if (($m->module_id ?? '') === 'config') { $has_config = true; break; }
 }
 ?>
-<div class="sidebar border border-right col-md-3 col-lg-2 p-0 bg-body-tertiary">
-  <div class="offcanvas-lg offcanvas-start bg-body-tertiary" tabindex="-1" id="sidebarMenu" aria-labelledby="sidebarMenuLabel">
+<div class="sidebar border <?= esc($sbBorderClass) ?> col-md-3 col-lg-2 p-0">
+  <div class="offcanvas-lg <?= esc($offcanvasDir) ?>" tabindex="-1" id="sidebarMenu" aria-labelledby="sidebarMenuLabel">
     <div class="offcanvas-header">
       <h5 class="offcanvas-title" id="sidebarMenuLabel"><?= esc($companyName ?? 'Menu') ?></h5>
       <button type="button" class="btn-close" data-bs-dismiss="offcanvas" data-bs-target="#sidebarMenu" aria-label="Cerrar"></button>
@@ -73,7 +76,7 @@ foreach ($allowed_modules ?? [] as $m) {
         </li>
         <?php endif; ?>
       </ul>
-      <h6 class="sidebar-heading d-flex justify-content-between align-items-center px-3 mt-4 mb-1 text-body-secondary text-uppercase">
+      <h6 class="sidebar-heading d-flex justify-content-between align-items-center px-3 mt-4 mb-1 text-uppercase">
         <span><?= lang('Common.common_administration') ?: 'Administración' ?></span>
       </h6>
       <ul class="nav flex-column mb-auto">
