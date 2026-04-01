@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Libraries\RegistroIngresoDateRange;
 use App\Services\RegistroFolioService;
 use CodeIgniter\Model;
 
@@ -293,9 +294,7 @@ class RegisterModel extends Model
     public function countByDate(string $dateFrom, string $dateTo): int
     {
         $r = $this->getRegistroTable();
-        $b = $this->db->table('registro')
-            ->where("DATE({$r}.ingreso) >=", $dateFrom)
-            ->where("DATE({$r}.ingreso) <=", $dateTo);
+        $b = RegistroIngresoDateRange::apply($this->db->table('registro'), $r, $dateFrom, $dateTo);
         if ($this->registroTieneColumnaAnulado()) {
             $b->where("COALESCE({$r}.anulado, 0) = 0", null, false);
         }

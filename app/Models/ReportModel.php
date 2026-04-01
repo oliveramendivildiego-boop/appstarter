@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Libraries\RegistroIngresoDateRange;
 use CodeIgniter\Model;
 
 class ReportModel extends Model
@@ -166,8 +167,7 @@ class ReportModel extends Model
             ->join('doctors', "{$d}.doctor_id = {$r}.doctor_id")
             ->join('pago', "{$r}.registro_id = {$pa}.registro_id");
 
-        return $b->where("DATE({$r}.ingreso) >=", $startDate)
-            ->where("DATE({$r}.ingreso) <=", $endDate)
+        return RegistroIngresoDateRange::apply($b, $r, $startDate, $endDate)
             ->orderBy("{$r}.ingreso", 'ASC')
             ->get()
             ->getResultArray();
@@ -280,8 +280,7 @@ class ReportModel extends Model
             ->select("DATE({$r}.ingreso) as fecha, COUNT(*) as cantidad, SUM(CAST({$pa}.total AS DECIMAL(12,2))) as total, SUM(CAST({$pa}.monto_pagar AS DECIMAL(12,2))) as cobrado")
             ->join('pago', "{$r}.registro_id = {$pa}.registro_id");
         $b = $this->applySinRegistrosAnulados($b, $r);
-        $rows = $b->where("DATE({$r}.ingreso) >=", $startDate)
-            ->where("DATE({$r}.ingreso) <=", $endDate)
+        $rows = RegistroIngresoDateRange::apply($b, $r, $startDate, $endDate)
             ->groupBy("DATE({$r}.ingreso)")
             ->orderBy('fecha', 'ASC')
             ->get()
@@ -301,12 +300,12 @@ class ReportModel extends Model
         $r  = $this->db->prefixTable('registro');
         $pa = $this->db->prefixTable('pago');
 
-        return $this->db->table('registro')
+        $b = $this->db->table('registro')
             ->select("DATE({$r}.ingreso) as fecha, COUNT(*) as cantidad, SUM(CAST({$pa}.total AS DECIMAL(12,2))) as total, SUM(CAST({$pa}.monto_pagar AS DECIMAL(12,2))) as cobrado")
             ->join('pago', "{$r}.registro_id = {$pa}.registro_id")
-            ->where("{$r}.anulado", 1)
-            ->where("DATE({$r}.ingreso) >=", $startDate)
-            ->where("DATE({$r}.ingreso) <=", $endDate)
+            ->where("{$r}.anulado", 1);
+
+        return RegistroIngresoDateRange::apply($b, $r, $startDate, $endDate)
             ->groupBy("DATE({$r}.ingreso)")
             ->orderBy('fecha', 'ASC')
             ->get()
@@ -333,8 +332,7 @@ class ReportModel extends Model
             ->join('pago', "{$r}.registro_id = {$pa}.registro_id")
             ->where("{$r}.anulado", 1);
 
-        return $b->where("DATE({$r}.ingreso) >=", $startDate)
-            ->where("DATE({$r}.ingreso) <=", $endDate)
+        return RegistroIngresoDateRange::apply($b, $r, $startDate, $endDate)
             ->get()
             ->getRow();
     }
@@ -352,8 +350,7 @@ class ReportModel extends Model
             ->join('pago', "{$r}.registro_id = {$pa}.registro_id");
         $b = $this->applySinRegistrosAnulados($b, $r);
 
-        return $b->where("DATE({$r}.ingreso) >=", $startDate)
-            ->where("DATE({$r}.ingreso) <=", $endDate)
+        return RegistroIngresoDateRange::apply($b, $r, $startDate, $endDate)
             ->get()
             ->getRow();
     }
@@ -373,8 +370,7 @@ class ReportModel extends Model
             ->join('pago', "{$r}.registro_id = {$pa}.registro_id");
         $b = $this->applySinRegistrosAnulados($b, $r);
 
-        return $b->where("DATE({$r}.ingreso) >=", $startDate)
-            ->where("DATE({$r}.ingreso) <=", $endDate)
+        return RegistroIngresoDateRange::apply($b, $r, $startDate, $endDate)
             ->groupBy("{$r}.doctor_id")
             ->orderBy('total', 'DESC')
             ->get()
@@ -404,8 +400,7 @@ class ReportModel extends Model
             ->join('pago', "{$r}.registro_id = {$pa}.registro_id");
         $b = $this->applySinRegistrosAnulados($b, $r);
 
-        return $b->where("DATE({$r}.ingreso) >=", $startDate)
-            ->where("DATE({$r}.ingreso) <=", $endDate)
+        return RegistroIngresoDateRange::apply($b, $r, $startDate, $endDate)
             ->orderBy("{$r}.ingreso", 'DESC')
             ->get()
             ->getResultArray();
@@ -433,8 +428,7 @@ class ReportModel extends Model
             ->join('pago', "{$r}.registro_id = {$pa}.registro_id");
         $b = $this->applySinRegistrosAnulados($b, $r);
 
-        return $b->where("DATE({$r}.ingreso) >=", $startDate)
-            ->where("DATE({$r}.ingreso) <=", $endDate)
+        return RegistroIngresoDateRange::apply($b, $r, $startDate, $endDate)
             ->where("CAST({$pa}.saldo AS DECIMAL(12,2)) >", 0)
             ->orderBy('saldo', 'DESC')
             ->get()
@@ -457,8 +451,7 @@ class ReportModel extends Model
             ->join('pago', "{$r}.registro_id = {$pa}.registro_id");
         $b = $this->applySinRegistrosAnulados($b, $r);
 
-        return $b->where("DATE({$r}.ingreso) >=", $startDate)
-            ->where("DATE({$r}.ingreso) <=", $endDate)
+        return RegistroIngresoDateRange::apply($b, $r, $startDate, $endDate)
             ->get()
             ->getRow();
     }
@@ -480,8 +473,7 @@ class ReportModel extends Model
             ->join('pago', "{$r}.registro_id = {$pa}.registro_id");
         $b = $this->applySinRegistrosAnulados($b, $r);
 
-        return $b->where("DATE({$r}.ingreso) >=", $startDate)
-            ->where("DATE({$r}.ingreso) <=", $endDate)
+        return RegistroIngresoDateRange::apply($b, $r, $startDate, $endDate)
             ->groupBy("{$pa}.tipopago")
             ->orderBy("{$pa}.tipopago", 'ASC')
             ->get()
@@ -511,8 +503,7 @@ class ReportModel extends Model
             ->join('pago', "{$r}.registro_id = {$pa}.registro_id");
         $b = $this->applySinRegistrosAnulados($b, $r);
 
-        return $b->where("DATE({$r}.ingreso) >=", $startDate)
-            ->where("DATE({$r}.ingreso) <=", $endDate)
+        return RegistroIngresoDateRange::apply($b, $r, $startDate, $endDate)
             ->where("CAST({$pa}.saldo AS DECIMAL(12,2)) <= 0")
             ->orderBy("{$r}.ingreso", 'DESC')
             ->get()
@@ -536,8 +527,7 @@ class ReportModel extends Model
             ->join('pago', "{$r}.registro_id = {$pa}.registro_id");
         $b = $this->applySinRegistrosAnulados($b, $r);
 
-        return $b->where("DATE({$r}.ingreso) >=", $startDate)
-            ->where("DATE({$r}.ingreso) <=", $endDate)
+        return RegistroIngresoDateRange::apply($b, $r, $startDate, $endDate)
             ->groupBy("DATE({$r}.ingreso)")
             ->orderBy('fecha', 'ASC')
             ->get()
@@ -564,8 +554,7 @@ class ReportModel extends Model
             ->join('pago', "{$r}.registro_id = {$pa}.registro_id");
         $b = $this->applySinRegistrosAnulados($b, $r);
 
-        return $b->where("DATE({$r}.ingreso) >=", $startDate)
-            ->where("DATE({$r}.ingreso) <=", $endDate)
+        return RegistroIngresoDateRange::apply($b, $r, $startDate, $endDate)
             ->groupBy("{$d}.doctor_id, {$d}.name")
             ->orderBy('total_facturado', 'DESC')
             ->get()
@@ -596,8 +585,7 @@ class ReportModel extends Model
         $b = $this->applySinRegistrosAnulados($b, $r);
         $b = $this->applySinRegistrosEliminados($b, $r);
         $b->where("(SELECT COUNT(*) FROM {$rv} WHERE {$rv}.registro_id = {$r}.registro_id) > 0", null, false);
-        $rows = $b->where("DATE({$r}.ingreso) >=", $startDate)
-            ->where("DATE({$r}.ingreso) <=", $endDate)
+        $rows = RegistroIngresoDateRange::apply($b, $r, $startDate, $endDate)
             ->where("{$r}.pruebas != '' AND {$r}.pruebas IS NOT NULL")
             ->orderBy("{$r}.ingreso", 'ASC')
             ->get()
@@ -630,8 +618,7 @@ class ReportModel extends Model
         $b = $this->applySinRegistrosAnulados($b, $r);
         $b = $this->applySinRegistrosEliminados($b, $r);
         $b->where("(SELECT COUNT(*) FROM {$rv} WHERE {$rv}.registro_id = {$r}.registro_id) = 0", null, false);
-        $rows = $b->where("DATE({$r}.ingreso) >=", $startDate)
-            ->where("DATE({$r}.ingreso) <=", $endDate)
+        $rows = RegistroIngresoDateRange::apply($b, $r, $startDate, $endDate)
             ->where("{$r}.pruebas != '' AND {$r}.pruebas IS NOT NULL")
             ->orderBy("{$r}.ingreso", 'ASC')
             ->get()
@@ -670,8 +657,7 @@ class ReportModel extends Model
             ->join('pago', "{$r}.registro_id = {$pa}.registro_id")
             ->where("COALESCE({$r}.anulado, 0) <> 0", null, false);
         $b = $this->applySinRegistrosEliminados($b, $r);
-        $rows = $b->where("DATE({$r}.ingreso) >=", $startDate)
-            ->where("DATE({$r}.ingreso) <=", $endDate)
+        $rows = RegistroIngresoDateRange::apply($b, $r, $startDate, $endDate)
             ->where("{$r}.pruebas != '' AND {$r}.pruebas IS NOT NULL")
             ->orderBy("{$r}.ingreso", 'ASC')
             ->get()
@@ -775,8 +761,7 @@ class ReportModel extends Model
         $b = $this->applySinRegistrosEliminados($b, $r);
         $b->where("(SELECT COUNT(*) FROM {$rv} WHERE {$rv}.registro_id = {$r}.registro_id) > 0", null, false);
 
-        return $b->where("DATE({$r}.ingreso) >=", $startDate)
-            ->where("DATE({$r}.ingreso) <=", $endDate)
+        return RegistroIngresoDateRange::apply($b, $r, $startDate, $endDate)
             ->where("{$r}.pruebas != '' AND {$r}.pruebas IS NOT NULL")
             ->orderBy("{$r}.ingreso", 'ASC')
             ->get()

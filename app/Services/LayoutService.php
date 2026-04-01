@@ -115,6 +115,9 @@ class LayoutService
             'ui_sidebar_position', 'ui_body_text_color', 'ui_sidebar_bg', 'ui_sidebar_link_color',
             'ui_sidebar_hover_bg', 'ui_sidebar_active_bg', 'ui_header_bg', 'ui_header_text_color', 'ui_main_bg',
             'ui_footer_bg', 'ui_footer_text_color', 'ui_footer_text_align', 'ui_card_radius', 'ui_link_color',
+            'ui_btn_primary_bg', 'ui_btn_primary_text', 'ui_btn_primary_hover_bg',
+            'ui_btn_border_width', 'ui_btn_border_color', 'ui_btn_border_sides', 'ui_btn_shadow',
+            'ui_card_border_width', 'ui_card_border_color', 'ui_card_border_sides', 'ui_card_shadow',
         ]);
 
         $themeColor = '#FF7218';
@@ -190,6 +193,46 @@ class LayoutService
         $sidebarActiveCss = $sidebarActiveBg ?? 'rgba(0, 0, 0, 0.1)';
 
         $linkExtra = $linkColor ? '--ui-link-color:' . $linkColor . ';' : '';
+
+        $btnBg   = $this->normalizeHex($keys['ui_btn_primary_bg'] ?? '');
+        $btnText = $this->normalizeHex($keys['ui_btn_primary_text'] ?? '') ?? '#ffffff';
+        $btnHov  = $this->normalizeHex($keys['ui_btn_primary_hover_bg'] ?? '');
+        $btnExtra = '--ui-btn-primary-text:' . $btnText . ';';
+        if ($btnBg !== null && $btnBg !== '') {
+            $btnExtra .= '--ui-btn-primary-bg:' . $btnBg . ';';
+        }
+        if ($btnHov !== null && $btnHov !== '') {
+            $btnExtra .= '--ui-btn-primary-hover-bg:' . $btnHov . ';';
+        }
+
+        $btnBorderW = (int) ($keys['ui_btn_border_width'] ?? 0);
+        $btnBorderW = max(0, min(8, $btnBorderW));
+        if ($btnBorderW > 0) {
+            $btnBorderColor = $this->normalizeHex($keys['ui_btn_border_color'] ?? '') ?? '#000000';
+            $btnSides       = self::normalizeUiBorderSides((string) ($keys['ui_btn_border_sides'] ?? 'all'));
+            $btnExtra .= self::uiBorderSideVars('ui-btn', $btnBorderW, $btnBorderColor, $btnSides);
+        }
+
+        $btnShadow = self::normalizeUiShadowKey((string) ($keys['ui_btn_shadow'] ?? 'none'));
+        if ($btnShadow !== 'none') {
+            $btnExtra .= '--ui-btn-shadow:' . self::uiShadowCssValue($btnShadow) . ';';
+        }
+
+        $cardExtra = '';
+        $cardBorderW = (int) ($keys['ui_card_border_width'] ?? 0);
+        $cardBorderW = max(0, min(8, $cardBorderW));
+        if ($cardBorderW > 0) {
+            $cbc = trim((string) ($keys['ui_card_border_color'] ?? ''));
+            $cardBorderColor = $cbc === '' ? 'var(--bs-border-color)' : ($this->normalizeHex($cbc) ?? '#dee2e6');
+            $cardSides       = self::normalizeUiBorderSides((string) ($keys['ui_card_border_sides'] ?? 'all'));
+            $cardExtra .= self::uiBorderSideVars('ui-card', $cardBorderW, $cardBorderColor, $cardSides);
+        }
+
+        $cardShadow = self::normalizeUiShadowKey((string) ($keys['ui_card_shadow'] ?? 'none'));
+        if ($cardShadow !== 'none') {
+            $cardExtra .= '--ui-card-shadow:' . self::uiShadowCssValue($cardShadow) . ';';
+        }
+
         $fontSizeCss = sprintf(
             '--ui-font-size-base:%srem;--ui-font-size-main:%srem;--ui-font-size-header:%srem;--ui-font-size-sidebar:%srem;--ui-font-size-footer:%srem;--ui-font-size-heading:%srem;',
             $fsBase,
@@ -202,7 +245,7 @@ class LayoutService
         $uiInlineStyle = '--theme-gradient-end:' . $gradientEnd . ';--ui-font-family:' . $fontPreset['family'] . ';' . $fontSizeCss
             . '--ui-footer-justify:' . $footerJustify . ';'
             . sprintf(
-                '--ui-body-color:%s;--ui-sidebar-bg:%s;--ui-sidebar-link:%s;--ui-sidebar-hover-bg:%s;--ui-sidebar-active-bg:%s;--ui-header-bg:%s;--ui-header-text:%s;--ui-main-bg:%s;--ui-footer-bg:%s;--ui-footer-text:%s;--ui-card-radius:%dpx;%s',
+                '--ui-body-color:%s;--ui-sidebar-bg:%s;--ui-sidebar-link:%s;--ui-sidebar-hover-bg:%s;--ui-sidebar-active-bg:%s;--ui-header-bg:%s;--ui-header-text:%s;--ui-main-bg:%s;--ui-footer-bg:%s;--ui-footer-text:%s;--ui-card-radius:%dpx;%s%s%s',
                 $bodyColor,
                 $sidebarBg,
                 $sidebarLinkCss,
@@ -214,7 +257,9 @@ class LayoutService
                 $footerBg,
                 $footerText,
                 $radius,
-                $linkExtra
+                $linkExtra,
+                $btnExtra,
+                $cardExtra
             );
 
         return [
@@ -293,5 +338,86 @@ class LayoutService
         }
 
         return in_array($default, $allowed, true) ? $default : '1';
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    public static function uiBorderSidesOptionsForView(): array
+    {
+        return [
+            'all'    => 'Todos los lados',
+            'none'   => 'Sin borde visible (solo sombra si aplica)',
+            'top'    => 'Solo arriba',
+            'right'  => 'Solo derecha',
+            'bottom' => 'Solo abajo',
+            'left'   => 'Solo izquierda',
+            'tb'     => 'Arriba y abajo',
+            'lr'     => 'Izquierda y derecha',
+        ];
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    public static function uiShadowOptionsForView(): array
+    {
+        return [
+            'none' => 'Sin sombra',
+            'sm'   => 'Sombra suave',
+            'md'   => 'Sombra media',
+            'lg'   => 'Sombra marcada',
+        ];
+    }
+
+    public static function normalizeUiBorderSides(string $value): string
+    {
+        $v = strtolower(trim($value));
+        $ok = ['all', 'none', 'top', 'right', 'bottom', 'left', 'tb', 'lr'];
+
+        return in_array($v, $ok, true) ? $v : 'all';
+    }
+
+    public static function normalizeUiShadowKey(string $value): string
+    {
+        $v = strtolower(trim($value));
+        $ok = ['none', 'sm', 'md', 'lg'];
+
+        return in_array($v, $ok, true) ? $v : 'none';
+    }
+
+    public static function uiShadowCssValue(string $key): string
+    {
+        return match ($key) {
+            'sm' => '0 1px 3px rgba(0,0,0,0.08)',
+            'md' => '0 4px 14px rgba(0,0,0,0.12)',
+            'lg' => '0 10px 28px rgba(0,0,0,0.16)',
+            default => 'none',
+        };
+    }
+
+    /**
+     * Variables CSS por lado: --{prefix}-bt, -br, -bb, -bl.
+     */
+    public static function uiBorderSideVars(string $prefix, int $width, string $color, string $sides): string
+    {
+        $w = max(0, min(8, $width));
+        $n = 'none';
+        if ($w <= 0 || $sides === 'none') {
+            return "--{$prefix}-bt:{$n};--{$prefix}-br:{$n};--{$prefix}-bb:{$n};--{$prefix}-bl:{$n};";
+        }
+        $line = "{$w}px solid {$color}";
+        $map  = [
+            'all'    => [$line, $line, $line, $line],
+            'top'    => [$line, $n, $n, $n],
+            'right'  => [$n, $line, $n, $n],
+            'bottom' => [$n, $n, $line, $n],
+            'left'   => [$n, $n, $n, $line],
+            'tb'     => [$line, $n, $line, $n],
+            'lr'     => [$n, $line, $n, $line],
+        ];
+        $s = $map[$sides] ?? $map['all'];
+
+        return "--{$prefix}-bt:{$s[0]};--{$prefix}-br:{$s[1]};--{$prefix}-bb:{$s[2]};--{$prefix}-bl:{$s[3]};";
     }
 }
