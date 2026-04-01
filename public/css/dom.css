@@ -91,25 +91,33 @@ a.update:hover i {
     border-color: var(--primary-color) !important;
 }
 
-/* Paginación - color del tema configurado */
+/* Paginación — color/tipografía configurables (Apariencia); activo y hover siguen al primario */
 .pagination .page-link {
-    color: var(--primary-color) !important;
-    border-color: var(--primary-color) !important;
+    color: var(--ui-pagination-link-color, var(--primary-color)) !important;
+    border-color: var(--ui-pagination-link-color, var(--primary-color)) !important;
+    font-weight: var(--ui-pagination-font-weight, 400) !important;
+    font-style: var(--ui-pagination-font-style, normal) !important;
 }
 .pagination .page-link:hover {
-    background-color: var(--primary-color) !important;
-    border-color: var(--primary-color) !important;
-    color: #fff !important;
+    background-color: var(--ui-pagination-active-bg, var(--primary-color)) !important;
+    border-color: var(--ui-pagination-active-bg, var(--primary-color)) !important;
+    color: var(--ui-pagination-active-color, #fff) !important;
+    font-weight: var(--ui-pagination-font-weight, 400) !important;
+    font-style: var(--ui-pagination-font-style, normal) !important;
 }
 .pagination .page-item.active .page-link {
-    background-color: var(--primary-color) !important;
-    border-color: var(--primary-color) !important;
-    color: #fff !important;
+    background-color: var(--ui-pagination-active-bg, var(--primary-color)) !important;
+    border-color: var(--ui-pagination-active-bg, var(--primary-color)) !important;
+    color: var(--ui-pagination-active-color, #fff) !important;
+    font-weight: var(--ui-pagination-font-weight, 400) !important;
+    font-style: var(--ui-pagination-font-style, normal) !important;
 }
 .pagination .page-item.disabled .page-link {
-    color: var(--primary-color) !important;
+    color: var(--ui-pagination-link-color, var(--primary-color)) !important;
     border-color: #dee2e6 !important;
     opacity: 0.6;
+    font-weight: var(--ui-pagination-font-weight, 400) !important;
+    font-style: var(--ui-pagination-font-style, normal) !important;
 }
 
 /* Dark mode - usa el color del tema configurado */
@@ -184,15 +192,7 @@ body {
 
 #footer {
     flex-shrink: 0;
-    color: var(--primary-color) !important;
-    font-weight: 700;
-}
-#footer a {
-    color: var(--primary-color) !important;
-    font-weight: 700;
-}
-#footer a:hover {
-    color: var(--primary-hover) !important;
+    /* Color, fondo y tipografía del pie: dashboard.css / ynex (variables --ui-footer-*) */
 }
 
 #spinner {

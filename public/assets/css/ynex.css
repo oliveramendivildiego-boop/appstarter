@@ -301,10 +301,12 @@ body.ynex-theme .navbar-theme .navbar-brand {
 
 /* ========== Footer YNEX ========== */
 .ynex-footer {
-    background: var(--ynex-slate-800);
-    color: var(--ynex-slate-300);
+    background: var(--ui-footer-bg, var(--ynex-slate-800));
+    color: var(--ui-footer-text, var(--ynex-slate-300));
     padding: 1rem 1.5rem;
     font-size: var(--ui-font-size-footer, 0.875rem);
+    font-weight: var(--ui-footer-font-weight, 400);
+    font-style: var(--ui-footer-font-style, normal);
 }
 
 .ynex-footer .container-fluid {
@@ -315,13 +317,16 @@ body.ynex-theme .navbar-theme .navbar-brand {
     width: 100%;
 }
 
+/* Enlaces del pie: mismo color que el texto del pie (Apariencia); #footer.ynex-footer en dashboard refina */
 .ynex-footer a {
-    color: var(--ynex-primary-light);
-    text-decoration: none;
+    color: var(--ui-footer-text, var(--ynex-primary-light));
+    text-decoration: underline;
+    text-underline-offset: 0.15em;
 }
 
 .ynex-footer a:hover {
-    color: #fff;
+    color: var(--ui-footer-text, var(--ynex-primary-light));
+    opacity: 0.85;
 }
 
 /* ========== Formularios ========== */

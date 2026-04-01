@@ -46,6 +46,11 @@ class ConfigService
         $data['ui_labotests_card_header_title_color'] ??= '#ffffff';
         $data['ui_labotests_card_header_title_weight'] ??= '600';
         $data['ui_labotests_card_header_title_style'] ??= 'normal';
+        $data['ui_pagination_link_color'] ??= '';
+        $data['ui_pagination_link_weight'] ??= '400';
+        $data['ui_pagination_link_style'] ??= 'normal';
+        $data['ui_pagination_active_bg'] ??= '';
+        $data['ui_pagination_active_color'] ??= '';
         $cache->save(self::CACHE_KEY, $data, self::CACHE_TTL);
         return $data;
     }
@@ -339,6 +344,17 @@ class ConfigService
             'ui_labotests_card_header_title_color' => $this->normalizeUiHex((string) ($post['ui_labotests_card_header_title_color'] ?? ''), '#ffffff'),
             'ui_labotests_card_header_title_weight' => \App\Services\LayoutService::normalizeUiFontWeight((string) ($post['ui_labotests_card_header_title_weight'] ?? ''), '600'),
             'ui_labotests_card_header_title_style' => \App\Services\LayoutService::normalizeUiFontStyle((string) ($post['ui_labotests_card_header_title_style'] ?? ''), 'normal'),
+            'ui_pagination_link_color' => $this->normalizeUiHex(
+                (string) ($post['ui_pagination_link_color'] ?? ''),
+                $this->normalizeUiHex((string) ($post['theme_color'] ?? ''), '#FF7218')
+            ),
+            'ui_pagination_link_weight' => \App\Services\LayoutService::normalizeUiFontWeight((string) ($post['ui_pagination_link_weight'] ?? ''), '400'),
+            'ui_pagination_link_style' => \App\Services\LayoutService::normalizeUiFontStyle((string) ($post['ui_pagination_link_style'] ?? ''), 'normal'),
+            'ui_pagination_active_bg' => $this->normalizeUiHex(
+                (string) ($post['ui_pagination_active_bg'] ?? ''),
+                $this->normalizeUiHex((string) ($post['theme_color'] ?? ''), '#FF7218')
+            ),
+            'ui_pagination_active_color' => $this->normalizeUiHex((string) ($post['ui_pagination_active_color'] ?? ''), '#ffffff'),
             'ui_main_bg'            => ! empty($post['ui_main_bg_transparent'])
                 ? 'transparent'
                 : $this->normalizeUiHex((string) ($post['ui_main_bg'] ?? ''), '#ffffff'),

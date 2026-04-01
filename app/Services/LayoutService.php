@@ -138,6 +138,8 @@ class LayoutService
             'ui_btn_border_width', 'ui_btn_border_color', 'ui_btn_border_sides', 'ui_btn_shadow',
             'ui_card_border_width', 'ui_card_border_color', 'ui_card_border_sides', 'ui_card_shadow',
             'ui_labotests_card_header_title_color', 'ui_labotests_card_header_title_weight', 'ui_labotests_card_header_title_style',
+            'ui_pagination_link_color', 'ui_pagination_link_weight', 'ui_pagination_link_style',
+            'ui_pagination_active_bg', 'ui_pagination_active_color',
         ]);
 
         $themeColor = '#FF7218';
@@ -302,6 +304,12 @@ class LayoutService
         $labotestsCardTitleW = self::normalizeUiFontWeight((string) ($keys['ui_labotests_card_header_title_weight'] ?? ''), '600');
         $labotestsCardTitleS = self::normalizeUiFontStyle((string) ($keys['ui_labotests_card_header_title_style'] ?? ''), 'normal');
 
+        $paginationLinkHex = $this->normalizeHex($keys['ui_pagination_link_color'] ?? '') ?? $themeColor;
+        $paginationLinkW = self::normalizeUiFontWeight((string) ($keys['ui_pagination_link_weight'] ?? ''), '400');
+        $paginationLinkS = self::normalizeUiFontStyle((string) ($keys['ui_pagination_link_style'] ?? ''), 'normal');
+        $paginationActiveBg = $this->normalizeHex($keys['ui_pagination_active_bg'] ?? '') ?? $themeColor;
+        $paginationActiveColor = $this->normalizeHex($keys['ui_pagination_active_color'] ?? '') ?? '#ffffff';
+
         $uiInlineStyle = '--theme-gradient-end:' . $gradientEnd . ';--ui-font-family:' . $fontPreset['family'] . ';' . $fontSizeCss
             . '--ui-footer-justify:' . $footerJustify . ';'
             . sprintf(
@@ -327,6 +335,14 @@ class LayoutService
                 '--ui-labotests-card-header-font-weight:%s;--ui-labotests-card-header-font-style:%s;',
                 $labotestsCardTitleW,
                 $labotestsCardTitleS
+            )
+            . sprintf(
+                '--ui-pagination-link-color:%s;--ui-pagination-font-weight:%s;--ui-pagination-font-style:%s;--ui-pagination-active-bg:%s;--ui-pagination-active-color:%s;',
+                $paginationLinkHex,
+                $paginationLinkW,
+                $paginationLinkS,
+                $paginationActiveBg,
+                $paginationActiveColor
             );
 
         return [

@@ -138,6 +138,24 @@ $fwBtnText  = LayoutService::normalizeUiFontWeight((string) ($config['ui_btn_pri
 $fsBtnText  = LayoutService::normalizeUiFontStyle((string) ($config['ui_btn_primary_text_style'] ?? ''), 'normal');
 $fwLabCard  = LayoutService::normalizeUiFontWeight((string) ($config['ui_labotests_card_header_title_weight'] ?? ''), '600');
 $fsLabCard  = LayoutService::normalizeUiFontStyle((string) ($config['ui_labotests_card_header_title_style'] ?? ''), 'normal');
+$pgThemeFallback = (string) ($config['theme_color'] ?? '#FF7218');
+if (!preg_match('/^#([0-9A-Fa-f]{3}|[0-9A-Fa-f]{6})$/', $pgThemeFallback)) {
+    $pgThemeFallback = '#FF7218';
+}
+$pgLinkColor = trim((string) ($config['ui_pagination_link_color'] ?? ''));
+if (!preg_match('/^#([0-9A-Fa-f]{3}|[0-9A-Fa-f]{6})$/', $pgLinkColor)) {
+    $pgLinkColor = $pgThemeFallback;
+}
+$fwPagination = LayoutService::normalizeUiFontWeight((string) ($config['ui_pagination_link_weight'] ?? ''), '400');
+$fsPagination = LayoutService::normalizeUiFontStyle((string) ($config['ui_pagination_link_style'] ?? ''), 'normal');
+$pgActiveBg = trim((string) ($config['ui_pagination_active_bg'] ?? ''));
+if (!preg_match('/^#([0-9A-Fa-f]{3}|[0-9A-Fa-f]{6})$/', $pgActiveBg)) {
+    $pgActiveBg = $pgThemeFallback;
+}
+$pgActiveColor = trim((string) ($config['ui_pagination_active_color'] ?? ''));
+if (!preg_match('/^#([0-9A-Fa-f]{3}|[0-9A-Fa-f]{6})$/', $pgActiveColor)) {
+    $pgActiveColor = '#ffffff';
+}
 ?>
     <div class="tab-pane fade config-tab-estilo <?= $activeTab === 'estilo' ? 'show active' : '' ?>" id="tab-estilo" role="tabpanel">
         <p class="text-muted small mb-4"><?= lang('Config.config_style_tab_intro') ?></p>
@@ -552,6 +570,73 @@ $fsLabCard  = LayoutService::normalizeUiFontStyle((string) ($config['ui_labotest
                     if (input) input.addEventListener('input', syncPreview);
                     if (wSel) wSel.addEventListener('change', syncPreview);
                     if (sSel) sSel.addEventListener('change', syncPreview);
+                })();
+                </script>
+            </div>
+        </div>
+
+        <div class="card shadow-sm mb-4 overflow-hidden">
+            <div class="card-header py-3 border-bottom bg-light">
+                <h5 class="mb-0 fw-semibold text-dark"><i class="fa-solid fa-angles-right me-2"></i><?= lang('Config.config_style_section_pagination') ?></h5>
+                <p class="mb-0 mt-1 small text-muted"><?= lang('Config.config_style_section_pagination_hint') ?></p>
+            </div>
+            <div class="card-body">
+                <div class="config-section-preview mb-4 p-3 rounded-3 border bg-light">
+                    <div class="small fw-semibold text-secondary text-uppercase config-style-preview-title mb-2"><?= lang('Config.config_style_preview_caption') ?></div>
+                    <div id="config-pagination-preview-wrap" class="rounded-3 p-3 border bg-white mb-2 d-inline-block" style="--ui-pagination-link-color: <?= esc($pgLinkColor, 'attr') ?>; --ui-pagination-font-weight: <?= esc($fwPagination, 'attr') ?>; --ui-pagination-font-style: <?= esc($fsPagination, 'attr') ?>; --ui-pagination-active-bg: <?= esc($pgActiveBg, 'attr') ?>; --ui-pagination-active-color: <?= esc($pgActiveColor, 'attr') ?>;">
+                        <ul class="pagination pagination-sm mb-0">
+                            <li class="page-item"><a class="page-link" href="#" onclick="return false;">1</a></li>
+                            <li class="page-item active" aria-current="page"><span class="page-link">2</span></li>
+                            <li class="page-item"><a class="page-link" href="#" onclick="return false;">3</a></li>
+                            <li class="page-item disabled"><span class="page-link">…</span></li>
+                        </ul>
+                    </div>
+                    <p class="small text-muted mb-0"><?= lang('Config.config_style_pagination_preview_help') ?></p>
+                </div>
+                <div class="row align-items-end">
+                    <div class="col-md-6 mb-3 mb-md-0">
+                        <label class="form-label" for="ui_pagination_link_color"><?= lang('Config.config_style_pagination_link_color') ?></label>
+                        <input type="color" name="ui_pagination_link_color" id="ui_pagination_link_color" value="<?= esc($pgLinkColor) ?>" class="form-control form-control-color" title="<?= lang('Config.config_style_pagination_link_color') ?>">
+                        <small class="text-muted d-block mt-1"><?= lang('Config.config_style_pagination_link_color_help') ?></small>
+                        <?= view('config/partials/ui_font_variant', [
+                            'weightField' => 'ui_pagination_link_weight',
+                            'styleField'  => 'ui_pagination_link_style',
+                            'weightId'    => 'ui_pagination_link_weight',
+                            'styleId'     => 'ui_pagination_link_style',
+                            'weightVal'   => $fwPagination,
+                            'styleVal'    => $fsPagination,
+                        ]) ?>
+                    </div>
+                    <div class="col-md-6 mb-3 mb-md-0">
+                        <label class="form-label" for="ui_pagination_active_bg"><?= lang('Config.config_style_pagination_active_bg') ?></label>
+                        <input type="color" name="ui_pagination_active_bg" id="ui_pagination_active_bg" value="<?= esc($pgActiveBg) ?>" class="form-control form-control-color" title="<?= lang('Config.config_style_pagination_active_bg') ?>">
+                        <small class="text-muted d-block mt-1"><?= lang('Config.config_style_pagination_active_bg_help') ?></small>
+                        <label class="form-label mt-3" for="ui_pagination_active_color"><?= lang('Config.config_style_pagination_active_color') ?></label>
+                        <input type="color" name="ui_pagination_active_color" id="ui_pagination_active_color" value="<?= esc($pgActiveColor) ?>" class="form-control form-control-color" title="<?= lang('Config.config_style_pagination_active_color') ?>">
+                        <small class="text-muted d-block mt-1"><?= lang('Config.config_style_pagination_active_color_help') ?></small>
+                    </div>
+                </div>
+                <script>
+                (function () {
+                    var wrap = document.getElementById('config-pagination-preview-wrap');
+                    var input = document.getElementById('ui_pagination_link_color');
+                    var wSel = document.getElementById('ui_pagination_link_weight');
+                    var sSel = document.getElementById('ui_pagination_link_style');
+                    var activeBg = document.getElementById('ui_pagination_active_bg');
+                    var activeFg = document.getElementById('ui_pagination_active_color');
+                    if (!wrap) return;
+                    function sync() {
+                        if (input) wrap.style.setProperty('--ui-pagination-link-color', input.value);
+                        if (wSel) wrap.style.setProperty('--ui-pagination-font-weight', wSel.value);
+                        if (sSel) wrap.style.setProperty('--ui-pagination-font-style', sSel.value);
+                        if (activeBg) wrap.style.setProperty('--ui-pagination-active-bg', activeBg.value);
+                        if (activeFg) wrap.style.setProperty('--ui-pagination-active-color', activeFg.value);
+                    }
+                    if (input) input.addEventListener('input', sync);
+                    if (wSel) wSel.addEventListener('change', sync);
+                    if (sSel) sSel.addEventListener('change', sync);
+                    if (activeBg) activeBg.addEventListener('input', sync);
+                    if (activeFg) activeFg.addEventListener('input', sync);
                 })();
                 </script>
             </div>
