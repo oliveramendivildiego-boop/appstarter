@@ -191,6 +191,14 @@ class Database extends Config
         ],
     ];
 
+    /**
+     * Misma BD que database.default en .env, sin sustitución multi-tenant.
+     * Tabla tenant_configs y publicación del mapa no deben leerse desde la BD del tenant activo.
+     *
+     * @var array<string, mixed>
+     */
+    public array $management = [];
+
     public function __construct()
     {
         parent::__construct();
@@ -199,6 +207,8 @@ class Database extends Config
 
         if (ENVIRONMENT === 'testing') {
             $this->defaultGroup = 'tests';
+            $this->management   = $this->tests;
+
             return;
         }
 
@@ -212,6 +222,9 @@ class Database extends Config
         $this->default['charset']  = env('database.default.charset', 'utf8mb4');
         $this->default['DBCollat'] = env('database.default.DBCollat', 'utf8mb4_general_ci');
         $this->default['port']     = (int) (env('database.default.port') ?: 3306);
+
+        // Copia antes de aplicar tenant: catálogo tenant_configs siempre en la BD del .env
+        $this->management = array_merge($this->default);
 
         $this->applyTenantDatabaseConfig();
     }

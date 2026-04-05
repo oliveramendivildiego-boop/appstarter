@@ -6,6 +6,9 @@ use CodeIgniter\Model;
 
 class TenantConfigModel extends Model
 {
+    /** Siempre la conexión `management` (.env), no la del tenant activo */
+    protected $DBGroup = 'management';
+
     protected $table            = 'tenant_configs';
     protected $primaryKey       = 'id';
     protected $useAutoIncrement = true;
