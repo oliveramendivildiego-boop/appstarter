@@ -276,6 +276,122 @@ class RegisterService
     }
 
     /**
+     * Los separadores (es_separador) no se guardan en regvalues; el reporte solo ve filas c_* con valor.
+     * Reconstruye el orden completo de cada prueba compuesta desde secanacategoria e inserta títulos.
+     *
+     * @param array<string, list<object>> $grupos
+     * @return array<string, list<object>>
+     */
+    protected function mergeSeparadoresYOrdenCompuestoDesdePlantilla(array $grupos, array $matchingPoblacionIds, ?int $gender): array
+    {
+        foreach ($grupos as $padre => $items) {
+            if ($items === []) {
+                continue;
+            }
+            $complejoPorPria = [];
+            $otros = [];
+            foreach ($items as $it) {
+                $it = is_array($it) ? (object) $it : $it;
+                $pid = (int) ($it->prianacategoria_id ?? 0);
+                $sid = (int) ($it->secanacategoria_id ?? 0);
+                if ($pid > 0 && $sid > 0) {
+                    $complejoPorPria[$pid][] = $it;
+                } else {
+                    $otros[] = $it;
+                }
+            }
+            if ($complejoPorPria === []) {
+                continue;
+            }
+            $priaIds = array_keys($complejoPorPria);
+            usort($priaIds, static function (int $a, int $b) use ($complejoPorPria): int {
+                $minA = PHP_INT_MAX;
+                foreach ($complejoPorPria[$a] as $row) {
+                    $minA = min($minA, (int) ($row->orden ?? 0));
+                }
+                $minB = PHP_INT_MAX;
+                foreach ($complejoPorPria[$b] as $row) {
+                    $minB = min($minB, (int) ($row->orden ?? 0));
+                }
+                if ($minA !== $minB) {
+                    return $minA <=> $minB;
+                }
+
+                return $a <=> $b;
+            });
+            $mergedComplejo = [];
+            foreach ($priaIds as $priaId) {
+                $mergedComplejo = array_merge(
+                    $mergedComplejo,
+                    $this->mergeUnPrianacategoriaConSeparadoresDesdePlantilla(
+                        $priaId,
+                        $complejoPorPria[$priaId],
+                        $matchingPoblacionIds,
+                        $gender
+                    )
+                );
+            }
+            $grupos[$padre] = array_merge($otros, $mergedComplejo);
+        }
+
+        return $grupos;
+    }
+
+    /**
+     * @param list<object> $itemsObjects
+     * @return list<object>
+     */
+    protected function mergeUnPrianacategoriaConSeparadoresDesdePlantilla(
+        int $priaId,
+        array $itemsObjects,
+        array $matchingPoblacionIds,
+        ?int $gender
+    ): array {
+        $refs = $this->registerModel->getAllSecItemsByPrianacategoriaForReport($priaId, $matchingPoblacionIds, $gender);
+        if ($refs === []) {
+            return $itemsObjects;
+        }
+        $bySecId = [];
+        foreach ($itemsObjects as $it) {
+            $sid = (int) ($it->secanacategoria_id ?? 0);
+            if ($sid > 0) {
+                $bySecId[$sid] = $it;
+            }
+        }
+        $out = [];
+        foreach ($refs as $ref) {
+            $sid = (int) ($ref['secanacategoria_id'] ?? 0);
+            if ((int) ($ref['es_separador'] ?? 0) === 1) {
+                if (isset($bySecId[$sid])) {
+                    $o = $bySecId[$sid];
+                    $o->es_separador = 1;
+                    unset($bySecId[$sid]);
+                } else {
+                    $o = (object) $ref;
+                    $o->regvalues = '-';
+                    $o->es_separador = 1;
+                }
+                $out[] = $o;
+
+                continue;
+            }
+            if (isset($bySecId[$sid])) {
+                $out[] = $bySecId[$sid];
+                unset($bySecId[$sid]);
+            } else {
+                $o = (object) $ref;
+                $o->regvalues = '-';
+                $out[] = $o;
+            }
+        }
+        foreach ($bySecId as $left) {
+            $out[] = $left;
+        }
+
+        return $out;
+    }
+
+    /**
      * Cuenta cuántos resultados no vacíos se ingresaron por prianacategoria.
      * @return array<int,int> [prianacategoria_id => cantidad]
      */
@@ -345,9 +461,13 @@ class RegisterService
             foreach ($grupoActual as $it) {
                 $sameTest = ((int)($it->prianacategoria_id ?? 0) === $priaId) || (trim((string)($it->hijo ?? '')) === $hijo);
                 if ($sameTest) {
-                    $key = $isCompleja
-                        ? trim((string)($it->nombre ?? ''))
-                        : (string)((int)($it->priresultados_id ?? 0));
+                    if ($isCompleja) {
+                        $key = (int)($it->es_separador ?? 0) === 1
+                            ? 's:' . (int)($it->secanacategoria_id ?? 0)
+                            : trim((string)($it->nombre ?? ''));
+                    } else {
+                        $key = (string)((int)($it->priresultados_id ?? 0));
+                    }
                     if ($key !== '') {
                         $resultadoPorPri[$key] = (string)($it->regvalues ?? '');
                     }
@@ -362,11 +482,17 @@ class RegisterService
                 if (!$isCompleja) {
                     $item->nombre = $hijo;
                 }
-                $key = $isCompleja
-                    ? trim((string)($ref['nombre'] ?? ''))
-                    : (string)((int)($ref['priresultados_id'] ?? 0));
+                if ($isCompleja) {
+                    $key = (int)($ref['es_separador'] ?? 0) === 1
+                        ? 's:' . (int)($ref['secanacategoria_id'] ?? 0)
+                        : trim((string)($ref['nombre'] ?? ''));
+                } else {
+                    $key = (string)((int)($ref['priresultados_id'] ?? 0));
+                }
                 $val = trim((string)($resultadoPorPri[$key] ?? ''));
-                $item->regvalues = ($val === '') ? '-' : $val;
+                $item->regvalues = ((int)($ref['es_separador'] ?? 0) === 1)
+                    ? '-'
+                    : (($val === '') ? '-' : $val);
                 $item->show_reference = true;
                 $reconstruidos[] = $item;
             }
@@ -374,8 +500,10 @@ class RegisterService
             usort($reconstruidos, static function ($a, $b) {
                 $aVal = trim((string)($a->regvalues ?? ''));
                 $bVal = trim((string)($b->regvalues ?? ''));
-                $aEmpty = ($aVal === '' || $aVal === '-');
-                $bEmpty = ($bVal === '' || $bVal === '-');
+                $aSep = (int)($a->es_separador ?? 0) === 1;
+                $bSep = (int)($b->es_separador ?? 0) === 1;
+                $aEmpty = ! $aSep && ($aVal === '' || $aVal === '-');
+                $bEmpty = ! $bSep && ($bVal === '' || $bVal === '-');
                 if ($aEmpty !== $bEmpty) {
                     return $aEmpty ? 1 : -1;
                 }
@@ -394,8 +522,10 @@ class RegisterService
             usort($items, static function ($a, $b) {
                 $aVal = trim((string)($a->regvalues ?? ''));
                 $bVal = trim((string)($b->regvalues ?? ''));
-                $aEmpty = ($aVal === '' || $aVal === '-');
-                $bEmpty = ($bVal === '' || $bVal === '-');
+                $aSep = (int)($a->es_separador ?? 0) === 1;
+                $bSep = (int)($b->es_separador ?? 0) === 1;
+                $aEmpty = ! $aSep && ($aVal === '' || $aVal === '-');
+                $bEmpty = ! $bSep && ($bVal === '' || $bVal === '-');
                 if ($aEmpty !== $bEmpty) {
                     return $aEmpty ? 1 : -1;
                 }
@@ -509,6 +639,7 @@ class RegisterService
         $matchingPoblacionIds = $this->getMatchingPoblacionIds($birthday, $patientGender, $ingresoRaw);
 
         $grupos = $this->buildGruposParaReporte($registroId, $analisis, $matchingPoblacionIds, $patientGender);
+        $grupos = $this->mergeSeparadoresYOrdenCompuestoDesdePlantilla($grupos, $matchingPoblacionIds, $patientGender);
         $pruebasIds = $this->extractPrianacategoriaIdsFromRegistroPruebas((string)($registerInfo->pruebas ?? ''));
         $priasCfg = $this->registerModel->getPrianacategoriaConfigByIds($pruebasIds);
         $enteredCounts = $this->countEnteredValuesByPrianacategoria($analisis);

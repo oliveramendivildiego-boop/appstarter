@@ -222,6 +222,26 @@ table.results td {
     margin: 15px 0 8px 0;
     color: #333;
 }
+/* Subtítulo de sección (separador) encima de cada tabla de resultados; la fila de cabecera va debajo */
+.report-segment-title {
+    font-weight: bold;
+    font-size: 10pt;
+    margin: 0;
+    padding: 6px 8px;
+    background: #e9ecef;
+    color: #333;
+    border: 1px solid #ddd;
+    border-bottom: none;
+}
+.report-segment-table-wrap {
+    margin: 0 0 12px 0;
+}
+.report-segment-table-wrap table.results {
+    margin-top: 0;
+}
+.report-segment-sin-ref table.results {
+    margin-top: 0;
+}
 .out-range {
     color: #c00;
     font-weight: bold;

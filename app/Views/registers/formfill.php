@@ -112,11 +112,20 @@ foreach ($pruebas_info ?? [] as $prueba):
         $valores = $valoresTmp;
         $nombreToCid = [];
         foreach ($valores as $vv) {
+            if (! empty($vv['es_separador'])) {
+                continue;
+            }
             $nom = trim($vv['nombre'] ?? '');
-            if ($nom !== '') $nombreToCid[$nom] = 'c_' . ($vv['secanacategoria_id'] ?? '');
+            if ($nom !== '') {
+                $nombreToCid[$nom] = 'c_' . ($vv['secanacategoria_id'] ?? '');
+            }
         }
         $cidToNombre = array_flip($nombreToCid);
         foreach ($valores as $v):
+            if (! empty($v['es_separador'])) {
+                echo '<div class="col-12 mb-2"><div class="p-2 bg-light border rounded"><strong class="text-uppercase text-muted small">' . esc($v['nombre'] ?? '') . '</strong></div></div>';
+                continue;
+            }
             $vMin = trim($v['valor_min'] ?? '');
             $vMax = trim($v['valor_max'] ?? '');
             $umedida = trim($v['umedida'] ?? '');

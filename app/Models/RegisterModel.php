@@ -545,7 +545,9 @@ class RegisterModel extends Model
         $grouped = [];
         foreach ($rows as $row) {
             $nombre = trim((string) ($row['nombre'] ?? ''));
-            $grouped[$nombre][] = $row;
+            $esSep = (int) ($row['es_separador'] ?? 0) === 1;
+            $groupKey = $esSep ? ('__sep:' . (int) ($row['secanacategoria_id'] ?? 0)) : $nombre;
+            $grouped[$groupKey][] = $row;
         }
 
         $result = [];
@@ -677,8 +679,11 @@ class RegisterModel extends Model
         $builder = $makeBuilder();
         $builder->groupStart()
             ->whereIn("{$sec}.paciente_id", $pobIds)
-            ->orWhere("{$sec}.paciente_id", 3)
-            ->groupEnd();
+            ->orWhere("{$sec}.paciente_id", 3);
+        if ($this->hasColumn('secanacategoria', 'es_separador')) {
+            $builder->orWhere("{$sec}.es_separador", 1);
+        }
+        $builder->groupEnd();
         $applySexo($builder);
         if ($this->hasColumn('secanacategoria', 'orden')) {
             $builder->orderBy("{$sec}.orden", 'ASC');
@@ -709,7 +714,9 @@ class RegisterModel extends Model
             if ($nombre === '') {
                 continue;
             }
-            $byNombre[$nombre][] = $r;
+            $esSep = (int) ($r['es_separador'] ?? 0) === 1;
+            $groupKey = $esSep ? ('__sep:' . (int) ($r['secanacategoria_id'] ?? 0)) : $nombre;
+            $byNombre[$groupKey][] = $r;
         }
 
         $result = [];
@@ -857,6 +864,19 @@ class RegisterModel extends Model
      */
     private function pickBestSecanacategoriaRow(array $candidates, array $matchingPoblacionIds, ?int $gender = null): array
     {
+        if ($candidates !== []) {
+            $allSep = true;
+            foreach ($candidates as $r) {
+                if ((int) ($r['es_separador'] ?? 0) !== 1) {
+                    $allSep = false;
+                    break;
+                }
+            }
+            if ($allSep) {
+                return $candidates[0];
+            }
+        }
+
         $priority = [];
         foreach ($matchingPoblacionIds as $idx => $id) {
             $priority[(int) $id] = $idx;
@@ -892,6 +912,14 @@ class RegisterModel extends Model
             if ($bestKey === null || $key < $bestKey) {
                 $bestKey = $key;
                 $best = $r;
+            }
+        }
+
+        if ($best === null) {
+            foreach ($candidates as $r) {
+                if ((int) ($r['es_separador'] ?? 0) === 1) {
+                    return $r;
+                }
             }
         }
 

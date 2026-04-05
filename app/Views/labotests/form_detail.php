@@ -26,6 +26,9 @@ $refsPorNombre = [];   // nombre -> c_id o constante (para guardado)
 $refsCidToNombre = []; // c_id -> nombre (para carga)
 foreach ($sub_items ?? [] as $s) {
     if (($editar_sec ?? 0) && (int)($s['secanacategoria_id'] ?? 0) === $editar_sec) continue;
+    if (! empty($s['es_separador'])) {
+        continue;
+    }
     $nombre = trim($s['nombre'] ?? '');
     $cid = 'c_' . ($s['secanacategoria_id'] ?? '');
     if ($nombre !== '' && !isset($refsPorNombre[$nombre])) {
@@ -127,9 +130,24 @@ if ($feRaw !== '' && !empty($formulas_con_expresion ?? [])) {
                         'opcion_id' => (int)($s['opcion_id'] ?? 3),
                         'formula_para_textarea' => $rowFormulaTextarea,
                         'formula_nombre' => $rowFormulaNombre,
+                        'es_separador' => ! empty($s['es_separador']) ? 1 : 0,
                     ];
+                    $esSepRow = ! empty($s['es_separador']);
                 ?>
                 <tr data-sec="<?= htmlspecialchars(json_encode($rowDataSec), ENT_QUOTES, 'UTF-8') ?>" data-secanacategoria-id="<?= (int)($s['secanacategoria_id'] ?? 0) ?>">
+                    <?php if ($esSepRow): ?>
+                    <td class="text-center">
+                        <span class="sec-drag-handle" title="Arrastrar para reordenar"><i class="fa-solid fa-grip-vertical"></i></span>
+                        <button type="button" class="btn btn-sm btn-outline-secondary btn-sec-subir" title="Subir"><i class="fa-solid fa-arrow-up"></i></button>
+                        <button type="button" class="btn btn-sm btn-outline-secondary btn-sec-bajar" title="Bajar"><i class="fa-solid fa-arrow-down"></i></button>
+                    </td>
+                    <td colspan="8" class="table-secondary"><span class="badge bg-secondary me-2">Título</span><strong><?= esc($s['nombre'] ?? '') ?></strong></td>
+                    <td class="text-center">
+                        <button type="button" class="btn btn-sm btn-outline-primary btn-editar-sec" title="Editar"><i class="fa-solid fa-pen"></i></button>
+                        <a href="<?= site_url("labotests/duplicatesecitem/" . (int)($s['secanacategoria_id'] ?? 0)) ?>" class="btn btn-sm btn-outline-secondary" title="Duplicar"><i class="fa-solid fa-copy"></i></a>
+                        <a href="<?= site_url("labotests/deletesecitem/" . (int)($s['secanacategoria_id'] ?? 0)) ?>" class="btn btn-sm btn-outline-danger" title="Eliminar" onclick="return uiConfirmLink(this, '¿Eliminar esta sub-clase?');"><i class="fa-solid fa-trash"></i></a>
+                    </td>
+                    <?php else: ?>
                     <td class="text-center">
                         <span class="sec-drag-handle" title="Arrastrar para reordenar"><i class="fa-solid fa-grip-vertical"></i></span>
                         <button type="button" class="btn btn-sm btn-outline-secondary btn-sec-subir" title="Subir"><i class="fa-solid fa-arrow-up"></i></button>
@@ -156,6 +174,7 @@ if ($fe !== '') {
                         <a href="<?= site_url("labotests/duplicatesecitem/" . (int)($s['secanacategoria_id'] ?? 0)) ?>" class="btn btn-sm btn-outline-secondary" title="Duplicar"><i class="fa-solid fa-copy"></i></a>
                         <a href="<?= site_url("labotests/deletesecitem/" . (int)($s['secanacategoria_id'] ?? 0)) ?>" class="btn btn-sm btn-outline-danger" title="Eliminar" onclick="return uiConfirmLink(this, '¿Eliminar esta sub-clase?');"><i class="fa-solid fa-trash"></i></a>
                     </td>
+                    <?php endif; ?>
                 </tr>
                 <?php endforeach; ?>
             </tbody>
@@ -176,10 +195,20 @@ if ($fe !== '') {
         <input type="hidden" name="prianacategoria_id" value="<?= (int)($labotests_info->prianacategoria_id ?? 0) ?>">
         <input type="hidden" name="secanacategoria_id" id="secanacategoria_id_input" value="<?= (int)($editar_sec ?? 0) ?>">
         <div class="row">
-            <div class="col-md-3 mb-2">
-                <label class="form-label">Nombre sub-clase <span class="text-danger">*</span></label>
+            <div class="col-md-6 mb-2">
+                <label class="form-label">Nombre <span class="text-danger">*</span></label>
                 <input type="text" name="nombre" class="form-control form-control-sm" value="<?= esc($editar_sec_data['nombre'] ?? '') ?>" required>
+                <small class="text-muted">En modo título solo se usa como texto del separador en el reporte.</small>
             </div>
+            <div class="col-md-6 mb-2 d-flex align-items-end">
+                <div class="form-check">
+                    <input type="checkbox" name="es_separador" value="1" class="form-check-input" id="es_separador_cb" <?= ! empty($editar_sec_data['es_separador']) ? 'checked' : '' ?>>
+                    <label class="form-check-label" for="es_separador_cb">Título de sección (fila separadora en reporte; sin valor de resultado)</label>
+                </div>
+            </div>
+        </div>
+        <div id="wrap_campos_analito_subclase" class="<?= ! empty($editar_sec_data['es_separador']) ? 'd-none' : '' ?>">
+        <div class="row">
             <div class="col-md-2 mb-2">
                 <label class="form-label">Población <span class="text-danger">*</span></label>
                 <select name="paciente_id" class="form-control form-control-sm" required>
@@ -295,6 +324,9 @@ if ($fe !== '') {
                     <?php endforeach; ?>
                 </select>
             </div>
+        </div>
+        </div>
+        <div class="row">
             <div class="col-md-3 mb-2">
                 <button type="submit" class="btn btn-primary btn-sm mt-4" id="btn_submit_sec">Actualizar</button>
                 <button type="button" class="btn btn-secondary btn-sm mt-4" data-bs-dismiss="modal">Cancelar</button>
@@ -555,7 +587,11 @@ if ($fe !== '') {
             var formSecItem = document.getElementById('form_secitem');
             if (formSecItem && typeof $ !== 'undefined' && $.fn.validate) {
                 $(formSecItem).validate($.extend(true, {}, window.VALIDATE_COMMON_OPTIONS, {
-                    rules: { nombre: { required: true }, paciente_id: { required: true }, sexo: { required: true } },
+                    rules: {
+                        nombre: { required: true },
+                        paciente_id: { required: { depends: function() { var cb = document.getElementById('es_separador_cb'); return !cb || !cb.checked; } } },
+                        sexo: { required: { depends: function() { var cb = document.getElementById('es_separador_cb'); return !cb || !cb.checked; } } }
+                    },
                     messages: { nombre: { required: "El nombre de la sub-clase es obligatorio" }, paciente_id: { required: "La población es obligatoria" }, sexo: { required: "El sexo es obligatorio" } }
                 }));
             }
@@ -563,6 +599,16 @@ if ($fe !== '') {
                 e.preventDefault();
                 var f = this;
                 if (typeof $ !== 'undefined' && $(f).data('validator') && !$(f).validate().form()) return;
+                var sepOn = document.getElementById('es_separador_cb') && document.getElementById('es_separador_cb').checked;
+                if (sepOn) {
+                    var c0 = document.getElementById('es_calculada');
+                    if (c0) c0.checked = false;
+                    if (formulasIdHidden) formulasIdHidden.value = '1';
+                    if (formulaInput) formulaInput.value = '';
+                    if (formulaArea) formulaArea.value = '';
+                    f.submit();
+                    return;
+                }
                 var calc = document.getElementById('es_calculada');
                 var predefVal = formulaPredefSelect ? (formulaPredefSelect.options[formulaPredefSelect.selectedIndex]?.value || '') : '';
                 if (calc && calc.checked && predefVal === '') {
@@ -741,8 +787,19 @@ if ($fe !== '') {
             function openModal() {
                 if (modal) modal.show();
             }
+            function toggleCamposSeparador(on) {
+                var w = document.getElementById('wrap_campos_analito_subclase');
+                if (w) w.classList.toggle('d-none', !!on);
+            }
+            document.getElementById('es_separador_cb')?.addEventListener('change', function() {
+                toggleCamposSeparador(this.checked);
+            });
             function fillFormSec(data) {
                 data = data || {};
+                var esSep = !!(data.es_separador && (parseInt(String(data.es_separador), 10) === 1));
+                var sepCb = document.getElementById('es_separador_cb');
+                if (sepCb) sepCb.checked = esSep;
+                toggleCamposSeparador(esSep);
                 var id = (data.secanacategoria_id || 0) | 0;
                 document.getElementById('secanacategoria_id_input').value = id;
                 var byName = function(n) { return document.querySelector('#form_secitem [name="' + n + '"]'); };
@@ -755,8 +812,8 @@ if ($fe !== '') {
                 set('umedida', data.umedida);
                 set('opcion_id', data.opcion_id);
                 var calc = document.getElementById('es_calculada');
-                var fid = (data.formulas_id || 1) | 0;
-                if (calc) calc.checked = fid > 1;
+                var fid = esSep ? 1 : ((data.formulas_id || 1) | 0);
+                if (calc) calc.checked = !esSep && fid > 1;
                 document.getElementById('formulas_id_hidden').value = fid;
                 var formulasIdSelect = document.getElementById('formulas_id');
                 if (formulasIdSelect && fid <= 1) formulasIdSelect.value = '1';
@@ -787,7 +844,7 @@ if ($fe !== '') {
                 var formulaArea = document.getElementById('formula_area');
                 var formulaInput = document.getElementById('formula_expresion');
                 var formulaPredefSelect = document.getElementById('formula_predefinida_select');
-                if (formulaArea) formulaArea.value = data.formula_para_textarea || '';
+                if (formulaArea) formulaArea.value = esSep ? '' : (data.formula_para_textarea || '');
                 if (formulaInput) formulaInput.value = '';
                 var nomInp = document.getElementById('formula_nombre_input');
                 if (nomInp) nomInp.value = data.formula_nombre || '';
@@ -806,7 +863,8 @@ if ($fe !== '') {
                     formulas_id: 1,
                     opcion_id: 3,
                     formula_para_textarea: '',
-                    formula_nombre: ''
+                    formula_nombre: '',
+                    es_separador: 0
                 });
             }
             document.getElementById('btn_agregar_sec').addEventListener('click', function() {
@@ -918,6 +976,7 @@ if ($fe !== '') {
                 'opcion_id' => (int)($editar_sec_data['opcion_id'] ?? 3),
                 'formula_para_textarea' => $formulaParaTextarea ?? '',
                 'formula_nombre' => $formulaNombreInicial ?? '',
+                'es_separador' => ! empty($editar_sec_data['es_separador']) ? 1 : 0,
             ]) ?>;
             if (modalTitle) modalTitle.textContent = 'Editar sub-clase';
             if (btnSubmit) btnSubmit.textContent = 'Actualizar';

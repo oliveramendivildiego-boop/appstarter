@@ -549,6 +549,7 @@ class LabotestModel extends Model
      */
     public function saveSecItem(array $data, ?int $id = null): bool
     {
+        $esSeparador = ! empty($data['es_separador']) && (int) $data['es_separador'] === 1;
         $save = [
             'prianacategoria_id' => (int) ($data['prianacategoria_id'] ?? 0),
             'nombre'             => trim($data['nombre'] ?? ''),
@@ -562,6 +563,18 @@ class LabotestModel extends Model
             'opcion_id'          => (int) ($data['opcion_id'] ?? 3),
             'deleted'            => 0,
         ];
+        if ($esSeparador) {
+            $save['valor_min']   = '';
+            $save['valor_max']   = '';
+            $save['critico_min'] = '';
+            $save['critico_max'] = '';
+            $save['umedida']     = '';
+            $save['formulas_id'] = 1;
+            $save['opcion_id']   = 3;
+        }
+        if ($this->hasColumn('secanacategoria', 'es_separador')) {
+            $save['es_separador'] = $esSeparador ? 1 : 0;
+        }
         if ($this->hasFormulaExpresionColumn('secanacategoria')) {
             $save['formula_expresion'] = null;
         }

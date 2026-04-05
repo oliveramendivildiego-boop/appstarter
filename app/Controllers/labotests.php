@@ -261,6 +261,7 @@ class Labotests extends SecureArea
         $prianacategoriaId = (int) ($this->request->getPost('prianacategoria_id') ?? 0);
         $id = (int) ($this->request->getPost('secanacategoria_id') ?? 0);
         $nombre = trim((string) ($this->request->getPost('nombre') ?? ''));
+        $esSeparador = (int) ($this->request->getPost('es_separador') ?? 0) === 1;
         $pacienteId = (int) ($this->request->getPost('paciente_id') ?? 0);
         $sexo = trim((string) ($this->request->getPost('sexo') ?? ''));
         if ($prianacategoriaId < 1) {
@@ -269,14 +270,23 @@ class Labotests extends SecureArea
         if ($nombre === '') {
             return redirect()->back()->with('error', 'El nombre de la sub-clase es obligatorio');
         }
-        if ($pacienteId < 1) {
-            return redirect()->back()->with('error', 'La población es obligatoria');
+        if (! $esSeparador) {
+            if ($pacienteId < 1) {
+                return redirect()->back()->with('error', 'La población es obligatoria');
+            }
+            if ($sexo === '' || ! in_array($sexo, ['ambos', 'masculino', 'femenino'], true)) {
+                return redirect()->back()->with('error', 'El sexo es obligatorio');
+            }
+        } else {
+            if ($pacienteId < 1) {
+                $pacienteId = 3;
+            }
+            if ($sexo === '' || ! in_array($sexo, ['ambos', 'masculino', 'femenino'], true)) {
+                $sexo = 'ambos';
+            }
         }
-        if ($sexo === '' || ! in_array($sexo, ['ambos', 'masculino', 'femenino'], true)) {
-            return redirect()->back()->with('error', 'El sexo es obligatorio');
-        }
-        $formulasId        = (int) ($this->request->getPost('formulas_id') ?? 1);
-        $formulaExpresion  = trim($this->request->getPost('formula_expresion') ?? '');
+        $formulasId        = $esSeparador ? 1 : (int) ($this->request->getPost('formulas_id') ?? 1);
+        $formulaExpresion  = $esSeparador ? '' : trim($this->request->getPost('formula_expresion') ?? '');
         $data = [
             'prianacategoria_id' => $prianacategoriaId,
             'nombre'             => $nombre,
@@ -289,7 +299,8 @@ class Labotests extends SecureArea
             'umedida'            => $this->request->getPost('umedida') ?? '',
             'formulas_id'        => $formulasId,
             'formula_expresion'  => $formulaExpresion,
-            'opcion_id'          => (int) ($this->request->getPost('opcion_id') ?? 3),
+            'opcion_id'          => $esSeparador ? 3 : (int) ($this->request->getPost('opcion_id') ?? 3),
+            'es_separador'       => $esSeparador ? 1 : 0,
         ];
         $this->labotestModel->saveSecItem($data, $id > 0 ? $id : null);
         \App\Models\AuditoriaModel::log('labotests', $id > 0 ? 'actualizar_subclase' : 'crear_subclase', (string)$prianacategoriaId, \App\Models\AuditoriaModel::detail(['nombre' => $nombre, 'secanacategoria_id' => $id ?: 'nuevo']));
