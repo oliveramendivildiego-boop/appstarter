@@ -13,6 +13,7 @@ class TenantConfigModel extends Model
     protected $allowedFields    = [
         'tenant_key',
         'tenant_name',
+        'public_base_url',
         'db_host',
         'db_port',
         'db_name',

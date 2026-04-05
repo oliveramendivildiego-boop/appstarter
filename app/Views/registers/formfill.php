@@ -54,8 +54,12 @@ foreach ($pruebas_info ?? [] as $prueba):
     $mostrarPrueba = true;
     if (($prueba['compleja'] ?? 0) == 1) {
         $prianacategoriaIdTmp = (int)($prueba['prianacategoria_id'] ?? 0);
-        $valoresTmp = $registerModel && isset($register_info->paciente)
-            ? $registerModel->getValoresComplejaSiempre($prianacategoriaIdTmp, (int)$register_info->paciente, isset($register_info->gender) ? (int)$register_info->gender : null)
+        $valoresTmp = $registerModel
+            ? $registerModel->getValoresComplejaSiempre(
+                $prianacategoriaIdTmp,
+                $matching_poblacion_ids ?? [],
+                isset($register_info->gender) ? (int) $register_info->gender : null
+            )
             : [];
         if (empty($valoresTmp)) $mostrarPrueba = false;
     }

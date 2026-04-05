@@ -308,10 +308,11 @@ class Registers extends SecureArea
             return redirect()->to('registers/anulada/' . $id);
         }
 
-        $pacienteType = $this->registerService->computePacienteType($registerInfo);
+        $refIngreso = $registerInfo->ingreso ?? null;
+        $pacienteType = $this->registerService->computePacienteType($registerInfo, $refIngreso);
         $registerInfo->paciente = $pacienteType;
         $patientGender = isset($registerInfo->gender) ? (int) $registerInfo->gender : null;
-        $matchingPoblacionIds = $this->registerService->getMatchingPoblacionIds($registerInfo->birthday ?? null, $patientGender);
+        $matchingPoblacionIds = $this->registerService->getMatchingPoblacionIds($registerInfo->birthday ?? null, $patientGender, $refIngreso);
         $pruebasInfo = $this->registerModel->getPruebasInput($registerInfo->pruebas ?? '', $matchingPoblacionIds, $patientGender);
 
         $muestraModel = model(MuestraModel::class);
@@ -330,6 +331,7 @@ class Registers extends SecureArea
             'controller_name'   => 'registers',
             'register_info'     => $registerInfo,
             'pruebas_info'      => $pruebasInfo,
+            'matching_poblacion_ids' => $matchingPoblacionIds,
             'analisis'          => $analisis,
             'labotests_namecate' => $id,
             'registerModel'     => $this->registerModel,
@@ -425,10 +427,11 @@ class Registers extends SecureArea
             return redirect()->to('registers/lista')->with('error', 'La orden está anulada; no se puede imprimir la orden de trabajo.');
         }
 
-        $pacienteType = $this->registerService->computePacienteType($registerInfo);
+        $refIngreso = $registerInfo->ingreso ?? null;
+        $pacienteType = $this->registerService->computePacienteType($registerInfo, $refIngreso);
         $registerInfo->paciente = $pacienteType;
         $patientGender = isset($registerInfo->gender) ? (int) $registerInfo->gender : null;
-        $matchingPoblacionIds = $this->registerService->getMatchingPoblacionIds($registerInfo->birthday ?? null, $patientGender);
+        $matchingPoblacionIds = $this->registerService->getMatchingPoblacionIds($registerInfo->birthday ?? null, $patientGender, $refIngreso);
         $pruebasInfo = $this->registerModel->getPruebasInput($registerInfo->pruebas ?? '', $matchingPoblacionIds, $patientGender);
 
         // Agrupar por "padre" para mostrar solo listado de pruebas
@@ -478,10 +481,11 @@ class Registers extends SecureArea
             return redirect()->to('registers/lista')->with('error', 'La orden está anulada; no se puede generar el PDF de orden.');
         }
 
-        $pacienteType = $this->registerService->computePacienteType($registerInfo);
+        $refIngreso = $registerInfo->ingreso ?? null;
+        $pacienteType = $this->registerService->computePacienteType($registerInfo, $refIngreso);
         $registerInfo->paciente = $pacienteType;
         $patientGender = isset($registerInfo->gender) ? (int) $registerInfo->gender : null;
-        $matchingPoblacionIds = $this->registerService->getMatchingPoblacionIds($registerInfo->birthday ?? null, $patientGender);
+        $matchingPoblacionIds = $this->registerService->getMatchingPoblacionIds($registerInfo->birthday ?? null, $patientGender, $refIngreso);
         $pruebasInfo = $this->registerModel->getPruebasInput($registerInfo->pruebas ?? '', $matchingPoblacionIds, $patientGender);
 
         $gruposPruebas = [];

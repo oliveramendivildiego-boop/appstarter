@@ -86,7 +86,7 @@ class RegisterService
                 } elseif ($id === 2 && $gender === 2) {
                     $matching[] = $id;
                 } elseif (in_array($id, [0, 4, 5], true)) {
-                    $legacyType = $this->computePacienteType((object)['birthday' => $birthday, 'gender' => $gender ?? 0]);
+                    $legacyType = $this->computePacienteType((object)['birthday' => $birthday, 'gender' => $gender ?? 0], $ref);
                     if ($legacyType === $id) {
                         $matching[] = $id;
                     }
@@ -151,8 +151,9 @@ class RegisterService
     /**
      * Determina el tipo de paciente según edad y género (para rangos de referencia).
      * 0=Niños, 1=Masculino, 2=Femenino, 3=Todos, 4=Recién nacido, 5=Lactante
+     * @param \DateTimeInterface|string|null $referenceDate Fecha de referencia para la edad (p. ej. ingreso del registro). Por defecto hoy.
      */
-    public function computePacienteType(object $registerInfo): int
+    public function computePacienteType(object $registerInfo, $referenceDate = null): int
     {
         $birthday = $registerInfo->birthday ?? null;
         $gender   = (int) ($registerInfo->gender ?? 0);
@@ -161,8 +162,17 @@ class RegisterService
         }
 
         $fechaNac = new \DateTime($birthday);
-        $hoy      = new \DateTime();
-        $edad     = $hoy->diff($fechaNac);
+        $ref      = $referenceDate;
+        if ($ref === null) {
+            $ref = new \DateTime();
+        } elseif (is_string($ref)) {
+            try {
+                $ref = new \DateTime($ref);
+            } catch (\Throwable $e) {
+                $ref = new \DateTime();
+            }
+        }
+        $edad = $ref->diff($fechaNac);
 
         if ($edad->y < 13) {
             if ($edad->m <= 1) {
@@ -185,7 +195,7 @@ class RegisterService
     /**
      * Construye los grupos de análisis para la vista de reporte/PDF
      */
-    public function buildGruposParaReporte(int $registroId, array $analisis): array
+    public function buildGruposParaReporte(int $registroId, array $analisis, array $matchingPoblacionIds = [], ?int $gender = null): array
     {
         $grupos = [];
         foreach ($analisis as $prueba) {
@@ -195,7 +205,6 @@ class RegisterService
             }
             $regvalue = $prueba['regvalues'] ?? $prueba['value'] ?? '-';
 
-            // Formato por nombre: "prianacategoria_id|nombre" (ej. 12|Eritrocitos)
             if (strpos($name, '|') !== false) {
                 [$prianacategoriaIdStr, $nombre] = explode('|', $name, 2);
                 $prianacategoriaId = (int) trim($prianacategoriaIdStr);
@@ -203,7 +212,7 @@ class RegisterService
                 if ($prianacategoriaId <= 0 || $nombre === '') {
                     continue;
                 }
-                $item = $this->registerModel->getSecItemByPrianacategoriaYNombre($prianacategoriaId, $nombre);
+                $item = $this->registerModel->getSecItemByPrianacategoriaYNombre($prianacategoriaId, $nombre, $matchingPoblacionIds, $gender);
                 if (!$item) {
                     continue;
                 }
@@ -221,7 +230,6 @@ class RegisterService
                 continue;
             }
 
-            // Formato legacy: c_XXX o noc_XXX
             if (strpos($name, '_') === false) {
                 continue;
             }
@@ -229,7 +237,7 @@ class RegisterService
             $analisisId = (int) $analisisIdStr;
 
             $valores = $tipoAnalisis === 'c'
-                ? $this->registerModel->getAnalisisCompleja($analisisId)
+                ? $this->registerModel->getAnalisisComplejaConFiltros($analisisId, $matchingPoblacionIds, $gender)
                 : $this->registerModel->getAnalisisNocompleja($analisisId);
 
             if (!$valores) {
@@ -251,6 +259,19 @@ class RegisterService
                 $grupos[$padre][] = $item;
             }
         }
+
+        foreach ($grupos as $padre => $items) {
+            usort($items, static function ($a, $b) {
+                $aOrd = (int) ($a->orden ?? 0);
+                $bOrd = (int) ($b->orden ?? 0);
+                if ($aOrd !== $bOrd) {
+                    return $aOrd <=> $bOrd;
+                }
+                return ((int) ($a->secanacategoria_id ?? 0)) <=> ((int) ($b->secanacategoria_id ?? 0));
+            });
+            $grupos[$padre] = $items;
+        }
+
         return $grupos;
     }
 
@@ -296,11 +317,8 @@ class RegisterService
      * Completa filas faltantes de referencias cuando una prueba tiene mostrar_valores=1.
      * Se agregan como filas sin resultado ("-") para que aparezcan en el reporte.
      */
-    protected function appendMissingReferenceRows(array $grupos, object $registerInfo, array $eligiblePriaConfig = []): array
+    protected function appendMissingReferenceRows(array $grupos, object $registerInfo, array $eligiblePriaConfig = [], array $matchingPoblacionIds = [], ?int $gender = null): array
     {
-        $patientGender = isset($registerInfo->gender) ? (int) $registerInfo->gender : null;
-        $pacienteType = isset($registerInfo->paciente) ? (int)$registerInfo->paciente : $this->computePacienteType($registerInfo);
-
         foreach ($eligiblePriaConfig as $cfg) {
             $priaId = (int)($cfg['prianacategoria_id'] ?? 0);
             if ($priaId < 1) {
@@ -309,9 +327,7 @@ class RegisterService
             $isCompleja = (int)($cfg['compleja'] ?? 0) === 1;
 
             if ($isCompleja) {
-                // Para mostrar referencias en reporte de compuestas, incluir todas las sub-pruebas
-                // aunque no tengan resultado cargado.
-                $refs = $this->registerModel->getAllSecItemsByPrianacategoriaForReport($priaId);
+                $refs = $this->registerModel->getAllSecItemsByPrianacategoriaForReport($priaId, $matchingPoblacionIds, $gender);
             } else {
                 $refs = $this->registerModel->getAllPriResultadosByPrianacategoriaForReport($priaId);
             }
@@ -355,7 +371,6 @@ class RegisterService
                 $reconstruidos[] = $item;
             }
 
-            // Primero resultados cargados, luego sin resultado.
             usort($reconstruidos, static function ($a, $b) {
                 $aVal = trim((string)($a->regvalues ?? ''));
                 $bVal = trim((string)($b->regvalues ?? ''));
@@ -364,7 +379,12 @@ class RegisterService
                 if ($aEmpty !== $bEmpty) {
                     return $aEmpty ? 1 : -1;
                 }
-                return ((int)($a->id_poblacion ?? 0)) <=> ((int)($b->id_poblacion ?? 0));
+                $aOrd = (int)($a->orden ?? 0);
+                $bOrd = (int)($b->orden ?? 0);
+                if ($aOrd !== $bOrd) {
+                    return $aOrd <=> $bOrd;
+                }
+                return ((int)($a->secanacategoria_id ?? 0)) <=> ((int)($b->secanacategoria_id ?? 0));
             });
 
             $grupos[$padre] = array_merge($otrosItems, $reconstruidos);
@@ -379,7 +399,12 @@ class RegisterService
                 if ($aEmpty !== $bEmpty) {
                     return $aEmpty ? 1 : -1;
                 }
-                return strcmp((string)($a->nombre ?? ''), (string)($b->nombre ?? ''));
+                $aOrd = (int)($a->orden ?? 0);
+                $bOrd = (int)($b->orden ?? 0);
+                if ($aOrd !== $bOrd) {
+                    return $aOrd <=> $bOrd;
+                }
+                return ((int)($a->secanacategoria_id ?? 0)) <=> ((int)($b->secanacategoria_id ?? 0));
             });
             $grupos[$padre] = $items;
         }
@@ -464,7 +489,8 @@ class RegisterService
             return null;
         }
 
-        $dt = new \DateTime($registerInfo->ingreso ?? 'now');
+        $ingresoRaw = $registerInfo->ingreso ?? null;
+        $dt = new \DateTime($ingresoRaw ?? 'now');
         $registerInfo->ingreso = $dt->format('d/m/Y');
 
         $master = $this->registerModel->getInforeport($registroId);
@@ -475,10 +501,14 @@ class RegisterService
         $paciente = $this->preparePacienteParaReporte($paciente);
         $doctor   = $doctor ?? (object) ['name' => '-', 'gender' => 0];
 
-        $pacienteType = $this->computePacienteType($registerInfo);
+        $pacienteType = $this->computePacienteType($registerInfo, $ingresoRaw);
         $registerInfo->paciente = $pacienteType;
 
-        $grupos = $this->buildGruposParaReporte($registroId, $analisis);
+        $birthday = $registerInfo->birthday ?? null;
+        $patientGender = isset($registerInfo->gender) ? (int) $registerInfo->gender : null;
+        $matchingPoblacionIds = $this->getMatchingPoblacionIds($birthday, $patientGender, $ingresoRaw);
+
+        $grupos = $this->buildGruposParaReporte($registroId, $analisis, $matchingPoblacionIds, $patientGender);
         $pruebasIds = $this->extractPrianacategoriaIdsFromRegistroPruebas((string)($registerInfo->pruebas ?? ''));
         $priasCfg = $this->registerModel->getPrianacategoriaConfigByIds($pruebasIds);
         $enteredCounts = $this->countEnteredValuesByPrianacategoria($analisis);
@@ -492,7 +522,7 @@ class RegisterService
                 $eligiblePriaConfig[] = $cfg;
             }
         }
-        $grupos = $this->appendMissingReferenceRows($grupos, $registerInfo, $eligiblePriaConfig);
+        $grupos = $this->appendMissingReferenceRows($grupos, $registerInfo, $eligiblePriaConfig, $matchingPoblacionIds, $patientGender);
         $grupos = $this->applyReferenceVisibility($grupos, $eligiblePriaIds);
 
         return [

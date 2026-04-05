@@ -244,6 +244,11 @@
                 <p class="text-muted small mb-3">
                     Cada tenant representa un cliente con su propia base de datos. Al guardar, se publica el mapa de conexiones para uso inmediato del runtime.
                 </p>
+                <p class="small text-secondary mb-3 border-start border-3 border-secondary ps-2">
+                    <strong>Superusuario sin auditoría:</strong> en cada fila puede abrir el laboratorio de ese tenant con su usuario actual;
+                    las acciones <em>no</em> generan registros en la tabla de auditoría del tenant (sí puede haber huella en sesiones del servidor). Use solo para soporte.
+                    Si el laboratorio usa otro dominio (ej. <code>http://quantum.local</code>), indique la <strong>URL pública del tenant</strong> en el formulario de abajo o configure en <code>.env</code> <code>tenancy.publicUrlTemplate=http://{tenant_key}.local</code>: se generará un enlace de un solo uso para iniciar sesión en ese host (mismo <code>person_id</code> y usuario en la BD del tenant).
+                </p>
 
                 <div class="table-responsive mb-4">
                     <table class="table table-sm table-bordered align-middle">
@@ -256,7 +261,7 @@
                                 <th>Usuario</th>
                                 <th>Estado</th>
                                 <th>Default</th>
-                                <th class="text-center" style="width: 180px;">Acciones</th>
+                                <th class="text-center" style="width: 220px;">Acciones</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -285,6 +290,13 @@
                                     <?= form_open(site_url('config/provisiontenant/' . (int) ($t['id'] ?? 0)), ['class' => 'd-inline']) ?>
                                     <button type="submit" class="btn btn-sm btn-outline-success" title="Aprovisionar DB + migraciones"><i class="fa-solid fa-server"></i></button>
                                     <?= form_close() ?>
+                                    <?php if ((int) ($t['is_active'] ?? 0) === 1): ?>
+                                    <a href="<?= site_url('config/ghostEnterTenant/' . (int) ($t['id'] ?? 0)) ?>"
+                                       class="btn btn-sm btn-outline-dark"
+                                       target="_blank"
+                                       rel="noopener noreferrer"
+                                       title="Abre el laboratorio de este tenant en una pestaña nueva (sin registro en auditoría del tenant)"><i class="fa-solid fa-user-secret"></i></a>
+                                    <?php endif; ?>
                                     <a href="<?= site_url('config?tab=tenants&tenant_edit=' . (int) ($t['id'] ?? 0)) ?>" class="btn btn-sm btn-outline-primary" title="Editar"><i class="fa-solid fa-pen"></i></a>
                                     <a href="<?= site_url('config/deletetenant/' . (int) ($t['id'] ?? 0)) ?>" class="btn btn-sm btn-outline-danger" title="Eliminar" onclick="return uiConfirmLink(this, '¿Eliminar este tenant?');"><i class="fa-solid fa-trash"></i></a>
                                 </td>
@@ -313,6 +325,15 @@
                         <label class="form-label">Nombre cliente *</label>
                         <input type="text" name="tenant_name" class="form-control" required maxlength="120" placeholder="Laboratorio ACME" value="<?= esc($tenantEdit['tenant_name'] ?? '') ?>">
                     </div>
+                </div>
+                <div class="row">
+                    <div class="col-md-12 mb-3">
+                        <label class="form-label">URL pública del tenant (opcional)</label>
+                        <input type="url" name="public_base_url" class="form-control" maxlength="255" placeholder="http://quantum.local" value="<?= esc($tenantEdit['public_base_url'] ?? '') ?>">
+                        <small class="text-muted">Para acceder desde otro vhost con el botón de superusuario. Sin barra final. Requiere migración <code>AddPublicBaseUrlToTenantConfigs</code> y carpeta <code>writable/tenant_handoff</code> escribible.</small>
+                    </div>
+                </div>
+                <div class="row">
                     <div class="col-md-3 mb-3">
                         <label class="form-label">DB host *</label>
                         <input type="text" name="db_host" class="form-control" required value="<?= esc($tenantEdit['db_host'] ?? 'localhost') ?>">

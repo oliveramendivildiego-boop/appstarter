@@ -15,6 +15,7 @@ $routes->get('status/checkEmployeeActive', 'StatusCheck::checkEmployeeActive');
 $routes->post('status/checkEmployeeActive', 'StatusCheck::checkEmployeeActive');
 $routes->get('login', 'Login::index');
 $routes->post('login', 'Login::index');
+$routes->get('login/tenantHandoff/(:segment)', 'Login::tenantHandoff/$1');
 
 // Doctor portal (login con usuario/contraseña de doctor)
 $routes->get('doctor/home', 'DoctorHome::index');
@@ -92,6 +93,8 @@ $routes->get('config/deleteopcionvalor/(:num)', 'Config::deleteOpcionValor/$1');
 $routes->get('config/deletevalortabla/(:alpha)/(:num)', 'Config::deleteValorTabla/$1/$2');
 $routes->get('config/deletetenant/(:num)', 'Config::deleteTenant/$1');
 $routes->post('config/provisiontenant/(:num)', 'Config::provisionTenant/$1');
+$routes->match(['get', 'post'], 'config/ghostEnterTenant/(:num)', 'Config::ghostEnterTenant/$1');
+$routes->get('config/ghostExitTenant', 'Config::ghostExitTenant');
 $routes->get('seguridad', 'ModulePlaceholder::index');
 $routes->get('seguridad_aforo', 'ModulePlaceholder::index');
 $routes->get('controlcalidad', 'Controlcalidad::index');

@@ -401,6 +401,30 @@ class RegisterModel extends Model
             ->getRow();
     }
 
+    /**
+     * Dado un secanacategoria_id, obtiene la fila de la misma sub-clase (por nombre)
+     * que mejor coincide con población y sexo del paciente. Si no hay filtros, devuelve la fila original.
+     */
+    public function getAnalisisComplejaConFiltros(int $id, array $matchingPoblacionIds = [], ?int $gender = null)
+    {
+        $original = $this->getAnalisisCompleja($id);
+        if (!$original || empty($matchingPoblacionIds)) {
+            return $original;
+        }
+        $nombre = trim((string) ($original->nombre ?? ''));
+        $priaId = (int) ($original->prianacategoria_id ?? 0);
+        if ($nombre === '' || $priaId < 1) {
+            return $original;
+        }
+        $best = $this->getSecItemByPrianacategoriaYNombre($priaId, $nombre, $matchingPoblacionIds, $gender);
+        if (!$best) {
+            return $original;
+        }
+        $best->padre = $original->padre ?? ($best->padre ?? '');
+        $best->hijo = $original->hijo ?? ($best->hijo ?? '');
+        return $best;
+    }
+
     public function getAnalisisNocompleja(int $id)
     {
         $pr = $this->db->prefixTable('priresultados');
@@ -494,7 +518,7 @@ class RegisterModel extends Model
      * Obtiene TODAS las sub-pruebas (secanacategoria) de una prueba compuesta
      * para reporte, sin filtrar por población/sexo.
      */
-    public function getAllSecItemsByPrianacategoriaForReport(int $prianacategoriaId): array
+    public function getAllSecItemsByPrianacategoriaForReport(int $prianacategoriaId, array $matchingPoblacionIds = [], ?int $gender = null): array
     {
         $s = $this->db->prefixTable('secanacategoria');
         $p = $this->db->prefixTable('prianacategoria');
@@ -503,7 +527,7 @@ class RegisterModel extends Model
             ? "{$p}.mostrar_valores as mostrar_valores"
             : "0 as mostrar_valores";
 
-        return $this->db->table('secanacategoria')
+        $rows = $this->db->table('secanacategoria')
             ->select("{$s}.*, {$a}.name as padre, {$p}.name as hijo, {$mostrarValoresSql}")
             ->join('prianacategoria', "{$p}.prianacategoria_id = {$s}.prianacategoria_id")
             ->join('anacategoria', "{$a}.anacategoria_id = {$p}.anacategoria_id")
@@ -513,6 +537,38 @@ class RegisterModel extends Model
             ->orderBy("{$s}.secanacategoria_id", 'ASC')
             ->get()
             ->getResultArray();
+
+        if (empty($rows) || empty($matchingPoblacionIds)) {
+            return $rows;
+        }
+
+        $grouped = [];
+        foreach ($rows as $row) {
+            $nombre = trim((string) ($row['nombre'] ?? ''));
+            $grouped[$nombre][] = $row;
+        }
+
+        $result = [];
+        foreach ($grouped as $nombre => $candidates) {
+            if (count($candidates) === 1) {
+                $result[] = $candidates[0];
+                continue;
+            }
+            $filtered = $this->filterSecanacategoriaCandidatesBySexo($candidates, $gender);
+            $best = $this->pickBestSecanacategoriaRow($filtered, $matchingPoblacionIds, $gender);
+            $result[] = $best;
+        }
+
+        usort($result, static function ($a, $b) {
+            $aOrd = (int) ($a['orden'] ?? 0);
+            $bOrd = (int) ($b['orden'] ?? 0);
+            if ($aOrd !== $bOrd) {
+                return $aOrd <=> $bOrd;
+            }
+            return ((int) ($a['secanacategoria_id'] ?? 0)) <=> ((int) ($b['secanacategoria_id'] ?? 0));
+        });
+
+        return $result;
     }
 
     /**
@@ -563,131 +619,119 @@ class RegisterModel extends Model
 
     /**
      * Obtiene sub-clases para una prueba compuesta, agrupadas por nombre.
-     * Solo una fila por sub-clase (ej. un solo CHCM), eligiendo la referencia
-     * según la población del paciente (paciente_id = edad/sexo) y opcionalmente sexo.
+     * Una fila por nombre; la referencia usa id_poblacion guardado en paciente_id (catálogo /config población)
+     * y sexo, igual que en labotests/detail.
      *
-     * @param int $prianacategoriaId
-     * @param int $paciente Tipo de paciente (0=Niños, 1=Masculino, 2=Femenino, 3=Todos, 4=RN, 5=Lactante)
-     * @param int|null $gender Género del paciente (1=masculino, 2=femenino) para filtrar por sexo si existe columna
+     * @param int[] $matchingPoblacionIds ids dom_poblacion que aplican (edad al ingreso + sexo según RegisterService)
      */
-    public function getValoresCompleja(int $prianacategoriaId, int $paciente, ?int $gender = null): array
+    public function getValoresCompleja(int $prianacategoriaId, array $matchingPoblacionIds, ?int $gender = null): array
     {
-        $paciente = (int) $paciente;
-        $builder = $this->db->table('secanacategoria')
-            ->where('prianacategoria_id', $prianacategoriaId)
-            ->groupStart()
-            ->where('paciente_id', $paciente)
-            ->orWhere('paciente_id', 3)
-            ->groupEnd()
-            ->where('deleted', 0);
-
-        if ($gender !== null && ($gender === 1 || $gender === 2) && $this->hasColumn('secanacategoria', 'sexo')) {
-            $sexoVal = $gender === 1 ? 'masculino' : 'femenino';
-            $builder->groupStart()
-                ->where('sexo', 'ambos')
-                ->orWhere('sexo', $sexoVal)
-                ->groupEnd();
-        }
-
-        $rows = $builder
-            ->orderBy("CASE WHEN paciente_id = {$paciente} THEN 0 ELSE 1 END", 'ASC', false)
-            ->get()
-            ->getResultArray();
-
-        $porNombre = [];
-        foreach ($rows as $r) {
-            $nombre = trim($r['nombre'] ?? '');
-            if ($nombre === '') {
-                continue;
-            }
-            $pid = (int) ($r['paciente_id'] ?? 3);
-            if (!isset($porNombre[$nombre])) {
-                $porNombre[$nombre] = $r;
-            } elseif ($pid === $paciente) {
-                $porNombre[$nombre] = $r;
-            }
-        }
-        return array_values($porNombre);
+        $rows = $this->fetchSecanacategoriaRowsForCompleja($prianacategoriaId, $matchingPoblacionIds, $gender, true);
+        return $this->reduceSecanacategoriaRowsPorNombre($rows, $matchingPoblacionIds, false, $gender);
     }
 
     /**
-     * Siempre devuelve todas las sub-clases de una prueba compuesta.
-     * Identificación por nombre: una fila por nombre (ej. Eritrocitos = Eritrocitos).
-     * Se elige la fila que coincida con edad/sexo del paciente: paciente_id (Adulto Masculino=1,
-     * Femenino=2, Todos=3, etc.) y si existe columna sexo se filtra por masculino/femenino/ambos.
-     * Así para paciente adulto femenino se usa la fila con valor_min/max y fórmula de esa fila
-     * (ej. Eritrocitos Adulto Femenino 4500000-6000000, Formula Eritrocitos).
+     * Todas las sub-clases de una prueba compuesta (una fila por nombre de sub-clase).
+     * Elige valores de referencia según grupos de población configurados (paciente_id = id_poblacion),
+     * edad calculada con fecha de nacimiento e ingreso del registro, y sexo.
      */
-    public function getValoresComplejaSiempre(int $prianacategoriaId, int $paciente, ?int $gender = null): array
+    public function getValoresComplejaSiempre(int $prianacategoriaId, array $matchingPoblacionIds, ?int $gender = null): array
     {
-        $paciente = (int) $paciente;
+        $rows = $this->fetchSecanacategoriaRowsForCompleja($prianacategoriaId, $matchingPoblacionIds, $gender, false);
+        return $this->reduceSecanacategoriaRowsPorNombre($rows, $matchingPoblacionIds, true, $gender);
+    }
+
+    /**
+     * @param int[] $matchingPoblacionIds
+     * @return array<int,array<string,mixed>>
+     */
+    private function fetchSecanacategoriaRowsForCompleja(int $prianacategoriaId, array $matchingPoblacionIds, ?int $gender, bool $strictPoblacion): array
+    {
         $sec = $this->db->prefixTable('secanacategoria');
         $f = $this->db->prefixTable('formulas');
-        $builder = $this->db->table('secanacategoria')
-            ->select("{$sec}.*, {$f}.formula_expresion AS formula_expresion_desde_formulas")
-            ->join('formulas', "{$f}.formulas_id = {$sec}.formulas_id", 'left')
-            ->where("{$sec}.prianacategoria_id", $prianacategoriaId)
-            ->where("{$sec}.deleted", 0)
-            ->groupStart()
-            ->where("{$sec}.paciente_id", $paciente)
-            ->orWhere("{$sec}.paciente_id", 3);
-        if ($paciente === 3) {
-            $builder->orWhere("{$sec}.paciente_id", 1)->orWhere("{$sec}.paciente_id", 2);
-        }
-        $builder->groupEnd();
-
-        if ($gender !== null && ($gender === 1 || $gender === 2) && $this->hasColumn('secanacategoria', 'sexo')) {
-            $sexoVal = $gender === 1 ? 'masculino' : 'femenino';
-            $builder->groupStart()
-                ->where("{$sec}.sexo", 'ambos')
-                ->orWhere("{$sec}.sexo", $sexoVal)
-                ->orWhere("{$sec}.sexo IS NULL", null, false)
-                ->orWhere("{$sec}.sexo = ''", null, false)
-                ->groupEnd();
+        $pobIds = array_values(array_unique(array_map('intval', $matchingPoblacionIds)));
+        if ($pobIds === []) {
+            $pobIds = [3];
         }
 
-        if ($this->hasColumn('secanacategoria', 'orden')) {
-            $builder->orderBy("{$sec}.orden", 'ASC');
-        }
-        $rows = $builder
-            ->orderBy("CASE WHEN {$sec}.paciente_id = {$paciente} THEN 0 WHEN {$sec}.paciente_id = 3 THEN 1 ELSE 2 END", 'ASC', false)
-            ->orderBy("{$sec}.nombre", 'ASC')
-            ->get()
-            ->getResultArray();
-
-        if (empty($rows)) {
-            $builder2 = $this->db->table('secanacategoria')
+        $makeBuilder = function () use ($sec, $f, $prianacategoriaId) {
+            return $this->db->table('secanacategoria')
                 ->select("{$sec}.*, {$f}.formula_expresion AS formula_expresion_desde_formulas")
                 ->join('formulas', "{$f}.formulas_id = {$sec}.formulas_id", 'left')
                 ->where("{$sec}.prianacategoria_id", $prianacategoriaId)
-                ->where("{$sec}.deleted", 0);
+                ->where("({$sec}.deleted = 0 OR {$sec}.deleted IS NULL)");
+        };
+
+        $applySexo = function ($builder) use ($sec, $gender) {
+            if ($gender !== null && ($gender === 1 || $gender === 2) && $this->hasColumn('secanacategoria', 'sexo')) {
+                $sexoVal = $gender === 1 ? 'masculino' : 'femenino';
+                $builder->groupStart()
+                    ->where("LOWER(TRIM({$sec}.sexo)) = 'ambos'", null, false)
+                    ->orWhere("LOWER(TRIM({$sec}.sexo)) = '" . $this->db->escapeString($sexoVal) . "'", null, false)
+                    ->orWhere("{$sec}.sexo IS NULL", null, false)
+                    ->orWhere("TRIM({$sec}.sexo) = ''", null, false)
+                    ->groupEnd();
+            }
+        };
+
+        $builder = $makeBuilder();
+        $builder->groupStart()
+            ->whereIn("{$sec}.paciente_id", $pobIds)
+            ->orWhere("{$sec}.paciente_id", 3)
+            ->groupEnd();
+        $applySexo($builder);
+        if ($this->hasColumn('secanacategoria', 'orden')) {
+            $builder->orderBy("{$sec}.orden", 'ASC');
+        }
+        $rows = $builder->orderBy("{$sec}.nombre", 'ASC')->orderBy("{$sec}.paciente_id", 'ASC')->get()->getResultArray();
+
+        if ($rows === [] && ! $strictPoblacion) {
+            $builder2 = $makeBuilder();
+            $applySexo($builder2);
             if ($this->hasColumn('secanacategoria', 'orden')) {
                 $builder2->orderBy("{$sec}.orden", 'ASC');
             }
-            $rows = $builder2->orderBy("{$sec}.nombre", 'ASC')->get()->getResultArray();
+            $rows = $builder2->orderBy("{$sec}.nombre", 'ASC')->orderBy("{$sec}.paciente_id", 'ASC')->get()->getResultArray();
         }
 
-        $porNombre = [];
+        return $rows;
+    }
+
+    /**
+     * @param int[] $matchingPoblacionIds
+     * @return array<int,array<string,mixed>>
+     */
+    private function reduceSecanacategoriaRowsPorNombre(array $rows, array $matchingPoblacionIds, bool $mergeFormulaDesdeFormulas, ?int $gender = null): array
+    {
+        $byNombre = [];
         foreach ($rows as $r) {
             $nombre = trim($r['nombre'] ?? '');
             if ($nombre === '') {
                 continue;
             }
-            if (!isset($porNombre[$nombre])) {
-                $exprFromFormulas = trim($r['formula_expresion_desde_formulas'] ?? '');
-                if ($exprFromFormulas !== '' && (int)($r['formulas_id'] ?? 0) > 1) {
-                    $r['formula_expresion'] = $exprFromFormulas;
-                }
-                unset($r['formula_expresion_desde_formulas']);
-                $porNombre[$nombre] = $r;
-            }
+            $byNombre[$nombre][] = $r;
         }
-        $result = array_values($porNombre);
+
+        $result = [];
+        foreach ($byNombre as $nombre => $cands) {
+            $cands = $this->filterSecanacategoriaCandidatesBySexo($cands, $gender);
+            $chosen = $this->pickBestSecanacategoriaRow($cands, $matchingPoblacionIds, $gender);
+            if ($mergeFormulaDesdeFormulas) {
+                $exprFromFormulas = trim($chosen['formula_expresion_desde_formulas'] ?? '');
+                if ($exprFromFormulas !== '' && (int) ($chosen['formulas_id'] ?? 0) > 1) {
+                    $chosen['formula_expresion'] = $exprFromFormulas;
+                }
+            }
+            unset($chosen['formula_expresion_desde_formulas']);
+            $result[] = $chosen;
+        }
+
         if ($this->hasColumn('secanacategoria', 'orden')) {
             usort($result, static function ($a, $b) {
                 return ((int) ($a['orden'] ?? 0)) <=> ((int) ($b['orden'] ?? 0));
             });
         }
+
         return $result;
     }
 
@@ -695,7 +739,12 @@ class RegisterModel extends Model
      * Obtiene una sub-clase (secanacategoria) por prianacategoria_id y nombre.
      * Usado en reporte cuando regvalues.name viene como "prianacategoria_id|nombre".
      */
-    public function getSecItemByPrianacategoriaYNombre(int $prianacategoriaId, string $nombre)
+    /**
+     * Obtiene una sub-clase por prianacategoria_id y nombre.
+     * Si se proporcionan $matchingPoblacionIds y $gender, elige la fila que mejor
+     * coincide con la población/sexo del paciente (misma lógica que getValoresComplejaSiempre).
+     */
+    public function getSecItemByPrianacategoriaYNombre(int $prianacategoriaId, string $nombre, array $matchingPoblacionIds = [], ?int $gender = null)
     {
         $nombre = trim($nombre);
         if ($nombre === '') {
@@ -709,16 +758,29 @@ class RegisterModel extends Model
             ? "{$p}.mostrar_valores as mostrar_valores"
             : "0 as mostrar_valores";
 
-        return $this->db->table('secanacategoria')
+        $builder = $this->db->table('secanacategoria')
             ->select("{$s}.*, {$a}.name as padre, {$p}.name as hijo, {$mostrarValoresSql}")
             ->join('prianacategoria', "{$p}.prianacategoria_id = {$s}.prianacategoria_id")
             ->join('anacategoria', "{$a}.anacategoria_id = {$p}.anacategoria_id")
             ->where("{$s}.prianacategoria_id", $prianacategoriaId)
             ->where("{$s}.nombre", $nombre)
-            ->where("{$s}.deleted", 0)
-            ->limit(1)
-            ->get()
-            ->getRow();
+            ->where("{$s}.deleted", 0);
+
+        if (empty($matchingPoblacionIds)) {
+            return $builder->limit(1)->get()->getRow();
+        }
+
+        $rows = $builder->get()->getResultArray();
+        if (empty($rows)) {
+            return null;
+        }
+        if (count($rows) === 1) {
+            return (object) $rows[0];
+        }
+
+        $filtered = $this->filterSecanacategoriaCandidatesBySexo($rows, $gender);
+        $chosen = $this->pickBestSecanacategoriaRow($filtered, $matchingPoblacionIds, $gender);
+        return (object) $chosen;
     }
 
     private function hasColumn(string $table, string $column): bool
@@ -729,6 +791,111 @@ class RegisterModel extends Model
         } catch (\Throwable $e) {
             return false;
         }
+    }
+
+    /**
+     * Elige la fila cuyo id de población coincide con el paciente: prioridad según orden en $matchingPoblacionIds,
+     * desempate por id numérico (coherente con labotests/detail). $poblacionField = id_poblacion (priresultados) o paciente_id (secanacategoria, almacena id_poblacion).
+     * @param array<int,array<string,mixed>> $candidates
+     */
+    private function pickBestRowByPoblacionId(array $candidates, array $matchingPoblacionIds, string $poblacionField = 'id_poblacion'): array
+    {
+        $priority = [];
+        foreach ($matchingPoblacionIds as $idx => $id) {
+            $priority[(int) $id] = $idx;
+        }
+        $allowed = array_map('intval', $matchingPoblacionIds);
+        $best = null;
+        $bestKey = null;
+        foreach ($candidates as $r) {
+            $pop = (int) ($r[$poblacionField] ?? 0);
+            if (! in_array($pop, $allowed, true)) {
+                continue;
+            }
+            $p = $priority[$pop] ?? 9999;
+            $key = [$p, $pop];
+            if ($bestKey === null || $key < $bestKey) {
+                $bestKey = $key;
+                $best = $r;
+            }
+        }
+
+        return $best ?? $candidates[0];
+    }
+
+    private function pickBestPriresultadoRow(array $candidates, array $matchingPoblacionIds): array
+    {
+        return $this->pickBestRowByPoblacionId($candidates, $matchingPoblacionIds, 'id_poblacion');
+    }
+
+    /**
+     * Quita filas cuyo sexo contradice al paciente (defensa ante mayúsculas / datos inconsistentes).
+     * @param array<int,array<string,mixed>> $cands
+     * @return array<int,array<string,mixed>>
+     */
+    private function filterSecanacategoriaCandidatesBySexo(array $cands, ?int $gender): array
+    {
+        if ($gender !== 1 && $gender !== 2) {
+            return $cands;
+        }
+        $want = $gender === 1 ? 'masculino' : 'femenino';
+        $ok = [];
+        foreach ($cands as $r) {
+            $sx = strtolower(trim((string) ($r['sexo'] ?? '')));
+            if ($sx === '' || $sx === 'ambos' || $sx === $want) {
+                $ok[] = $r;
+            }
+        }
+
+        return $ok !== [] ? $ok : $cands;
+    }
+
+    /**
+     * Elige sub-clase (secanacategoria): primero sexo específico del paciente sobre "ambos"/vacío,
+     * luego prioridad de id_poblacion en $matchingPoblacionIds, desempate paciente_id.
+     * @param array<int,array<string,mixed>> $candidates
+     */
+    private function pickBestSecanacategoriaRow(array $candidates, array $matchingPoblacionIds, ?int $gender = null): array
+    {
+        $priority = [];
+        foreach ($matchingPoblacionIds as $idx => $id) {
+            $priority[(int) $id] = $idx;
+        }
+        $allowed = array_map('intval', $matchingPoblacionIds);
+        $sexoPaciente = null;
+        if ($gender === 1) {
+            $sexoPaciente = 'masculino';
+        } elseif ($gender === 2) {
+            $sexoPaciente = 'femenino';
+        }
+
+        $best = null;
+        $bestKey = null;
+        foreach ($candidates as $r) {
+            $pop = (int) ($r['paciente_id'] ?? 0);
+            if (! in_array($pop, $allowed, true)) {
+                continue;
+            }
+            $pPrio = $priority[$pop] ?? 9999;
+            $sx = strtolower(trim((string) ($r['sexo'] ?? '')));
+            $sexTier = 0;
+            if ($sexoPaciente !== null) {
+                if ($sx === $sexoPaciente) {
+                    $sexTier = 0;
+                } elseif ($sx === 'ambos' || $sx === '') {
+                    $sexTier = 1;
+                } else {
+                    $sexTier = 2;
+                }
+            }
+            $key = [$sexTier, $pPrio, $pop];
+            if ($bestKey === null || $key < $bestKey) {
+                $bestKey = $key;
+                $best = $r;
+            }
+        }
+
+        return $best ?? $this->pickBestRowByPoblacionId($candidates, $matchingPoblacionIds, 'paciente_id');
     }
 
     /**
@@ -793,24 +960,27 @@ class RegisterModel extends Model
                 WHERE (pt.deleted = 0 OR pt.deleted IS NULL)
                 AND (ac.deleted = 0 OR ac.deleted IS NULL)
                 AND pt.prianacategoria_id IN (" . implode(',', array_map('intval', $ids)) . ")
-                ORDER BY ac.order, pt.order, CASE WHEN pr.id_poblacion = 3 THEN 1 ELSE 0 END";
+                ORDER BY ac.order, pt.order, pr.id_poblacion ASC";
         $rows = empty($bindParams) ? $this->db->query($sql)->getResultArray() : $this->db->query($sql, $bindParams)->getResultArray();
 
         $needFallbackData = [];
         $byPria = [];
-        $especificos = array_values(array_filter($matchingPoblacionIds, fn($x) => $x !== 3));
-        $preferPoblacion = $especificos[0] ?? 3;
+
+        $grouped = [];
         foreach ($rows as $r) {
-            $compleja = (int) ($r['compleja'] ?? 0);
             $pid = (int) ($r['prianacategoria_id'] ?? 0);
-            if ($compleja === 0 && empty($r['priresultados_id'])) {
-                $filteredId = (int) ($r['priresultados_id_filtered'] ?? 0);
-                if ($filteredId > 0) {
-                    $needFallbackData[$pid] = ['row' => $r, 'priresultados_id' => $filteredId];
-                }
+            if ($pid < 1) {
                 continue;
             }
-            if ($compleja === 1 || !isset($byPria[$pid]) || (int)($r['id_poblacion'] ?? 0) === ($preferPoblacion ?? -1)) {
+            $grouped[$pid][] = $r;
+        }
+
+        foreach ($grouped as $pid => $groupRows) {
+            $r0 = $groupRows[0];
+            $compleja = (int) ($r0['compleja'] ?? 0);
+
+            if ($compleja === 1) {
+                $r = $r0;
                 if (((int) ($r['opcion_id'] ?? 0)) <= 0 && ((int) ($r['opcion_id_fallback'] ?? 0)) > 0) {
                     $r['opcion_id'] = $r['opcion_id_fallback'];
                 }
@@ -819,7 +989,33 @@ class RegisterModel extends Model
                 }
                 unset($r['opcion_id_fallback'], $r['priresultados_id_fallback'], $r['priresultados_id_filtered']);
                 $byPria[$pid] = $r;
+                continue;
             }
+
+            $candidates = [];
+            foreach ($groupRows as $r) {
+                if (! empty($r['priresultados_id'])) {
+                    $candidates[] = $r;
+                }
+            }
+
+            if ($candidates === []) {
+                $filteredId = (int) ($r0['priresultados_id_filtered'] ?? 0);
+                if ($filteredId > 0) {
+                    $needFallbackData[$pid] = ['row' => $r0, 'priresultados_id' => $filteredId];
+                }
+                continue;
+            }
+
+            $r = $this->pickBestPriresultadoRow($candidates, $matchingPoblacionIds);
+            if (((int) ($r['opcion_id'] ?? 0)) <= 0 && ((int) ($r['opcion_id_fallback'] ?? 0)) > 0) {
+                $r['opcion_id'] = $r['opcion_id_fallback'];
+            }
+            if (((int) ($r['priresultados_id'] ?? 0)) <= 0 && ((int) ($r['priresultados_id_fallback'] ?? 0)) > 0) {
+                $r['priresultados_id'] = $r['priresultados_id_fallback'];
+            }
+            unset($r['opcion_id_fallback'], $r['priresultados_id_fallback'], $r['priresultados_id_filtered']);
+            $byPria[$pid] = $r;
         }
 
         if (!empty($needFallbackData)) {

@@ -2,8 +2,9 @@
 
 namespace App\Controllers;
 
-use App\Models\EmployeeModel;
 use App\Models\DoctorModel;
+use App\Models\EmployeeModel;
+use App\Services\TenantHandoffService;
 use CodeIgniter\HTTP\ResponseInterface;
 
 class Login extends BaseController
@@ -123,5 +124,45 @@ class Login extends BaseController
         } catch (\Throwable $e) {
             return $this->response->setJSON(['success' => false, 'message' => $e->getMessage()]);
         }
+    }
+
+    /**
+     * Entrada en otro vhost (ej. quantum.local) con sesión y modo fantasma vía token de un solo uso.
+     */
+    public function tenantHandoff(string $token): ResponseInterface
+    {
+        $service = new TenantHandoffService();
+        $payload = $service->consume($token);
+        if ($payload === null) {
+            return redirect()->to(site_url('login'))->with('error', 'Enlace de acceso inválido o vencido. Genérelo de nuevo desde Configuración → Tenants.');
+        }
+        $personId = (int) ($payload['person_id'] ?? 0);
+        $expectUser = strtolower(trim((string) ($payload['username'] ?? '')));
+        if ($personId < 1 || $expectUser === '') {
+            return redirect()->to(site_url('login'))->with('error', 'Token de acceso no válido.');
+        }
+        $employeeModel = model(EmployeeModel::class);
+        $row = $employeeModel->db->table('employees')
+            ->select('person_id, username')
+            ->where('person_id', $personId)
+            ->where('deleted', 0)
+            ->where('active', 1)
+            ->get()
+            ->getRow();
+        if (! $row) {
+            return redirect()->to(site_url('login'))->with('error', 'Su usuario no existe o está inactivo en este laboratorio (mismo person_id y usuario que en el panel central).');
+        }
+        if (strtolower(trim((string) ($row->username ?? ''))) !== $expectUser) {
+            return redirect()->to(site_url('login'))->with('error', 'El usuario no coincide con este laboratorio.');
+        }
+        session()->set('person_id', $personId);
+        session()->set('user_type', 'employee');
+        session()->remove('doctor_id');
+        $agent = service('request')->getUserAgent();
+        session()->set('login_user_agent', $agent ? $agent->getAgentString() : '');
+        session()->set('suppress_tenant_audit', true);
+        session()->set('ghost_target_tenant_key', (string) ($payload['ghost_target_tenant_key'] ?? ''));
+
+        return redirect()->to(site_url('home'));
     }
 }

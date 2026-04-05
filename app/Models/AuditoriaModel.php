@@ -18,6 +18,9 @@ class AuditoriaModel extends Model
     public static function log(string $modulo, string $accion, ?string $registroId = null, ?string $datos = null): void
     {
         try {
+            if (function_exists('session') && session()->get('suppress_tenant_audit')) {
+                return;
+            }
             $request = service('request');
             $db = \Config\Database::connect();
             $db->table('auditoria')->insert([

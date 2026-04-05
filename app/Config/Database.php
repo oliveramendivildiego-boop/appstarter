@@ -223,7 +223,9 @@ class Database extends Config
         }
 
         $resolver = new TenantResolver();
-        $tenantKey = $resolver->resolveTenantKey();
+        // Nunca llamar a resolveTenantKey() aquí: usa sesión (modo fantasma) y con
+        // session.driver = DatabaseHandler provoca recursión infinita al cargar esta config.
+        $tenantKey = $resolver->resolveTenantKeyFromRequestOnly();
 
         if ($tenantKey === null) {
             $tenantKey = $resolver->resolveDefaultTenantKey();

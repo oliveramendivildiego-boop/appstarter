@@ -2,21 +2,26 @@
 
 namespace App\Libraries;
 
+use CodeIgniter\Database\Config as DbConfig;
 use CodeIgniter\HTTP\IncomingRequest;
+use Config\Database as AppDatabaseConfig;
+use Config\Session as SessionConfig;
 
 class TenantResolver
 {
     /**
-     * Detecta la llave de tenant desde header, query o subdominio.
+     * Solo request explícito (header, query, subdominio). Sin sesión.
+     * Debe usarse al construir Config\Database para no re-entrar en session()
+     * cuando el driver de sesión es DatabaseHandler (evita recursión y agotar memoria).
      */
-    public function resolveTenantKey(?IncomingRequest $request = null): ?string
+    public function resolveTenantKeyFromRequestOnly(?IncomingRequest $request = null): ?string
     {
         if ($request === null) {
-            if (!function_exists('service')) {
+            if (! function_exists('service')) {
                 return null;
             }
             $request = service('request');
-            if (!$request instanceof IncomingRequest) {
+            if (! $request instanceof IncomingRequest) {
                 return null;
             }
         }
@@ -32,26 +37,146 @@ class TenantResolver
         }
 
         $host = strtolower((string) $request->getServer('HTTP_HOST'));
-        if ($host === '') {
+        if ($host !== '') {
+            $host = explode(':', $host)[0];
+            if (! $this->isBaseApplicationHost($host)) {
+                $parts = explode('.', $host);
+                if (count($parts) >= 2) {
+                    $firstLabel = $parts[0] ?? '';
+                    if ($firstLabel !== '' && ! in_array($firstLabel, ['www', 'localhost'], true)) {
+                        $fromHost = $this->normalize($firstLabel);
+                        if ($fromHost !== null) {
+                            return $fromHost;
+                        }
+                    }
+                }
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * Detecta la llave de tenant desde header, query, subdominio y modo fantasma (sesión).
+     */
+    public function resolveTenantKey(?IncomingRequest $request = null): ?string
+    {
+        $fromRequest = $this->resolveTenantKeyFromRequestOnly($request);
+        if ($fromRequest !== null) {
+            return $fromRequest;
+        }
+
+        return $this->resolveGhostTenantKeyFromSession();
+    }
+
+    /**
+     * Si la sesión tiene modo super-usuario (sin auditoría en tenant), fija el tenant
+     * aunque no venga en query/subdominio (navegación interna sin ?tenant=).
+     */
+    public function resolveGhostTenantKeyFromSession(): ?string
+    {
+        if (! function_exists('session')) {
+            return null;
+        }
+        try {
+            $sess = session();
+        } catch (\Throwable $e) {
+            return null;
+        }
+        if (! $sess->get('suppress_tenant_audit')) {
+            return null;
+        }
+        $raw = trim((string) $sess->get('ghost_target_tenant_key'));
+        if ($raw === '') {
+            return null;
+        }
+        $key = $this->normalize($raw);
+        if ($key === null) {
+            return null;
+        }
+        if ($this->resolveDatabaseConfig($key) === []) {
             return null;
         }
 
-        $host = explode(':', $host)[0];
-        if ($this->isBaseApplicationHost($host)) {
-            return null;
+        return $key;
+    }
+
+    /**
+     * Limpia flags de acceso fantasma si el tenant guardado ya no es válido (evita suprimir auditoría en default por error).
+     */
+    public function clearGhostSessionIfTenantInvalid(): void
+    {
+        if (! function_exists('session')) {
+            return;
+        }
+        try {
+            $sess = session();
+        } catch (\Throwable $e) {
+            return;
+        }
+        if (! $sess->get('suppress_tenant_audit')) {
+            return;
+        }
+        $raw = trim((string) $sess->get('ghost_target_tenant_key'));
+        if ($raw === '') {
+            $sess->remove(['suppress_tenant_audit', 'ghost_target_tenant_key']);
+
+            return;
+        }
+        $key = $this->normalize($raw);
+        if ($key === null || $this->resolveDatabaseConfig($key) === []) {
+            $sess->remove(['suppress_tenant_audit', 'ghost_target_tenant_key']);
+        }
+    }
+
+    /**
+     * Tras resolver tenant por sesión fantasma, alinea Config\Database con ese tenant y fuerza un nuevo
+     * conector 'default' para los modelos (no se hace si las sesiones usan DatabaseHandler: misma conexión).
+     */
+    public function applyResolvedTenantToAppDatabase(string $tenantKey): void
+    {
+        $tenantDb = $this->resolveDatabaseConfig($tenantKey);
+        if ($tenantDb === []) {
+            return;
+        }
+        $dbConfig = config(AppDatabaseConfig::class);
+        foreach ($tenantDb as $k => $v) {
+            $dbConfig->default[$k] = $v;
         }
 
-        $parts = explode('.', $host);
-        if (count($parts) < 2) {
-            return null;
+        $sessionCfg = config(SessionConfig::class);
+        $driver = (string) ($sessionCfg->driver ?? '');
+        if (str_contains($driver, 'DatabaseHandler')) {
+            return;
         }
 
-        $firstLabel = $parts[0] ?? '';
-        if ($firstLabel === '' || in_array($firstLabel, ['www', 'localhost'], true)) {
-            return null;
-        }
+        $this->resetSharedDefaultDatabaseConnection();
+    }
 
-        return $this->normalize($firstLabel);
+    private function resetSharedDefaultDatabaseConnection(): void
+    {
+        $connections = DbConfig::getConnections();
+        if (! isset($connections['default'])) {
+            return;
+        }
+        try {
+            $connections['default']->close();
+        } catch (\Throwable $e) {
+            // ignorar
+        }
+        $ref = new \ReflectionClass(DbConfig::class);
+        if (! $ref->hasProperty('instances')) {
+            return;
+        }
+        $prop = $ref->getProperty('instances');
+        $prop->setAccessible(true);
+        /** @var array<string, mixed> $instances */
+        $instances = $prop->getValue();
+        if (! is_array($instances)) {
+            return;
+        }
+        unset($instances['default']);
+        $prop->setValue(null, $instances);
     }
 
     /**

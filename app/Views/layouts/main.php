@@ -101,6 +101,7 @@ $pageTitle = $this->renderSection('title');
     <?php echo $this->renderSection('head_extra'); ?>
 </head>
 <body class="ynex-theme">
+<?= view('partial/ghost_tenant_banner') ?>
 <div id="toast-container" class="position-fixed top-0 end-0 p-3"></div>
 
 <!-- Modal global (mensajes/confirmaciones) -->

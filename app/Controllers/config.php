@@ -2,12 +2,14 @@
 
 namespace App\Controllers;
 
+use App\Models\EmployeeModel;
 use App\Models\OpcionModel;
 use App\Models\PoblacionModel;
 use App\Models\ReportPdfTemplateModel;
 use App\Libraries\TenantResolver;
 use App\Services\ConfigService;
 use App\Services\TenantConfigService;
+use App\Services\TenantHandoffService;
 use CodeIgniter\HTTP\ResponseInterface;
 
 /**
@@ -394,6 +396,107 @@ class Config extends SecureArea
             return redirect()->to('config?tab=tenants')->with('success', $result['message']);
         }
         return redirect()->to('config?tab=tenants')->with('error', $result['message']);
+    }
+
+    /**
+     * Acceso al tenant como superusuario: mantiene su usuario actual pero no escribe filas en auditoría del tenant.
+     * El ID va en la URL (POST) para que el envío con target="_blank" sea fiable.
+     */
+    public function ghostEnterTenant($tenantIdFromRoute): ResponseInterface
+    {
+        if (! $this->canManageTenants()) {
+            return redirect()->to('config')->with('error', 'No tiene permiso para gestionar tenants.');
+        }
+
+        $tenantId = (int) $tenantIdFromRoute;
+        if ($tenantId < 1) {
+            return redirect()->to('config?tab=tenants')->with('error', 'Tenant no válido.');
+        }
+
+        $row = null;
+        foreach ($this->tenantConfigService->getAll() as $t) {
+            if ((int) ($t['id'] ?? 0) === $tenantId) {
+                $row = $t;
+                break;
+            }
+        }
+        if ($row === null || (int) ($row['is_active'] ?? 0) !== 1) {
+            return redirect()->to('config?tab=tenants')->with('error', 'El tenant no existe o está inactivo.');
+        }
+
+        $tenantKey = trim((string) ($row['tenant_key'] ?? ''));
+        if ($tenantKey === '') {
+            return redirect()->to('config?tab=tenants')->with('error', 'Tenant sin clave configurada.');
+        }
+
+        if ($this->tenantResolver->resolveDatabaseConfig($tenantKey) === []) {
+            return redirect()->to('config?tab=tenants')->with('error', 'No hay mapa de base de datos publicado para este tenant.');
+        }
+
+        $publicBase = $this->resolveTenantPublicBaseUrl($row);
+        $currentHost = strtolower(explode(':', (string) service('request')->getServer('HTTP_HOST'), 2)[0]);
+        $targetHost = $publicBase !== '' ? strtolower((string) parse_url($publicBase, PHP_URL_HOST)) : '';
+
+        if ($publicBase !== '' && $targetHost !== '' && $targetHost !== $currentHost) {
+            $personId = (int) session()->get('person_id');
+            $emp = model(EmployeeModel::class)->db->table('employees')
+                ->select('username')
+                ->where('person_id', $personId)
+                ->where('deleted', 0)
+                ->get()
+                ->getRow();
+            $username = trim((string) ($emp->username ?? ''));
+            if ($username === '') {
+                return redirect()->to('config?tab=tenants')->with('error', 'No se pudo obtener su usuario para el acceso al otro dominio.');
+            }
+            try {
+                $token = (new TenantHandoffService())->create($personId, $username, $tenantKey);
+            } catch (\Throwable $e) {
+                log_message('error', 'TenantHandoff: ' . $e->getMessage());
+
+                return redirect()->to('config?tab=tenants')->with('error', 'No se pudo generar el enlace de acceso. Revise permisos de writable/tenant_handoff.');
+            }
+            $handoffUrl = $publicBase . '/login/tenantHandoff/' . $token;
+
+            return redirect()->to($handoffUrl);
+        }
+
+        session()->set('suppress_tenant_audit', true);
+        session()->set('ghost_target_tenant_key', $tenantKey);
+
+        return redirect()->to(site_url('home?tenant=' . rawurlencode($tenantKey)))
+            ->with('success', 'Acceso al tenant sin registro de auditoría. Use «Salir» en la barra superior cuando termine.');
+    }
+
+    /**
+     * URL base pública del tenant (otro vhost). Columna public_base_url o .env tenancy.publicUrlTemplate.
+     */
+    private function resolveTenantPublicBaseUrl(array $row): string
+    {
+        $u = trim((string) ($row['public_base_url'] ?? ''));
+        if ($u !== '') {
+            return rtrim($u, '/');
+        }
+        $tpl = trim((string) env('tenancy.publicUrlTemplate', ''));
+        if ($tpl === '') {
+            return '';
+        }
+        $key = trim((string) ($row['tenant_key'] ?? ''));
+        if ($key === '') {
+            return '';
+        }
+
+        return rtrim(str_replace(['{tenant_key}', '{key}'], [$key, $key], $tpl), '/');
+    }
+
+    /**
+     * Desactiva el modo sin auditoría y vuelve al tenant por defecto.
+     */
+    public function ghostExitTenant(): ResponseInterface
+    {
+        session()->remove(['suppress_tenant_audit', 'ghost_target_tenant_key']);
+
+        return redirect()->to(site_url('home'));
     }
 
     public function testSin(): ResponseInterface

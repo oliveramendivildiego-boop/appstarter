@@ -33,6 +33,10 @@ class TenantConfigService
         $id = (int) ($data['tenant_id'] ?? 0);
         $tenantKey = $this->normalizeTenantKey((string) ($data['tenant_key'] ?? ''));
         $tenantName = trim((string) ($data['tenant_name'] ?? ''));
+        $publicBase = trim((string) ($data['public_base_url'] ?? ''));
+        if ($publicBase !== '' && filter_var($publicBase, FILTER_VALIDATE_URL) === false) {
+            return ['success' => false, 'message' => 'La URL pública del tenant no es válida (use http:// o https://).'];
+        }
 
         if ($tenantKey === '' || $tenantName === '') {
             return ['success' => false, 'message' => 'Tenant key y nombre son obligatorios.'];
@@ -50,6 +54,9 @@ class TenantConfigService
             'is_active' => (($data['is_active'] ?? '0') === '1') ? 1 : 0,
             'is_default' => (($data['is_default'] ?? '0') === '1') ? 1 : 0,
         ];
+        if ($this->tenantModel->db->fieldExists('public_base_url', 'tenant_configs')) {
+            $payload['public_base_url'] = $publicBase !== '' ? rtrim($publicBase, '/') : null;
+        }
 
         if ($payload['db_name'] === '' || $payload['db_user'] === '') {
             return ['success' => false, 'message' => 'Base de datos y usuario son obligatorios.'];

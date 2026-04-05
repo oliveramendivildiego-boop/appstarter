@@ -38,6 +38,18 @@ class TenantFilter implements FilterInterface
             session()->set('tenant_key', $tenantKey);
         }
 
+        // Modo fantasma sin ?tenant=: la config de BD se resolvió sin sesión (default). Reaplicar al tenant real
+        // si la sesión no usa DatabaseHandler (cerrar pool default; si usa BD para sesión, no tocar la conexión).
+        $explicit = $resolver->resolveTenantKeyFromRequestOnly();
+        $ghostMode = function_exists('session') && session()->get('suppress_tenant_audit');
+        if ($tenantKey !== null && $ghostMode && $explicit === null) {
+            $resolver->applyResolvedTenantToAppDatabase($tenantKey);
+        }
+
+        if (function_exists('session') && session_status() === PHP_SESSION_ACTIVE) {
+            $resolver->clearGhostSessionIfTenantInvalid();
+        }
+
         return null;
     }
 
