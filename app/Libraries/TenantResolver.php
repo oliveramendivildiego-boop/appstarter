@@ -322,7 +322,11 @@ class TenantResolver
         return preg_replace('/[^a-z0-9_\-]/', '', $value) ?: null;
     }
 
-    private function isBaseApplicationHost(string $host): bool
+    /**
+     * Host de la instalación principal (baseURL / tenancy.ignoreHosts), sin subdominio de tenant.
+     * Útil para no enrutar database.default al tenant por defecto cuando el admin central usa la misma URL.
+     */
+    public function isBaseApplicationHost(string $host): bool
     {
         $baseUrl = trim((string) env('app.baseURL', ''));
         if ($baseUrl === '') {

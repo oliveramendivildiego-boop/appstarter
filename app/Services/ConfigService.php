@@ -22,10 +22,28 @@ class ConfigService
     private const CACHE_KEY = 'app_config_array';
     private const CACHE_TTL = 300;
 
+    /**
+     * Clave de caché por conexión BD activa (multi-tenant): evita mezclar app_config de un tenant con otro.
+     */
+    private function appConfigCacheKey(): string
+    {
+        $db = config('Database')->default;
+        $sig = implode("\0", [
+            (string) ($db['hostname'] ?? ''),
+            (string) ($db['port'] ?? ''),
+            (string) ($db['database'] ?? ''),
+            (string) ($db['username'] ?? ''),
+            (string) ($db['DBPrefix'] ?? ''),
+        ]);
+
+        return self::CACHE_KEY . '_' . hash('sha256', $sig);
+    }
+
     public function getAllAsArray(): array
     {
         $cache = \Config\Services::cache();
-        $cached = $cache->get(self::CACHE_KEY);
+        $cacheKey = $this->appConfigCacheKey();
+        $cached = $cache->get($cacheKey);
         if ($cached !== null && is_array($cached)) {
             return $cached;
         }
@@ -51,13 +69,16 @@ class ConfigService
         $data['ui_pagination_link_style'] ??= 'normal';
         $data['ui_pagination_active_bg'] ??= '';
         $data['ui_pagination_active_color'] ??= '';
-        $cache->save(self::CACHE_KEY, $data, self::CACHE_TTL);
+        $cache->save($cacheKey, $data, self::CACHE_TTL);
         return $data;
     }
 
     public function invalidateCache(): void
     {
-        \Config\Services::cache()->delete(self::CACHE_KEY);
+        $cache = \Config\Services::cache();
+        $cache->delete($this->appConfigCacheKey());
+        // Clave legacy (sin sufijo): evitar datos cruzados tras actualizar desde cualquier tenant
+        $cache->delete(self::CACHE_KEY);
     }
 
     /**

@@ -241,6 +241,23 @@ class Database extends Config
         $tenantKey = $resolver->resolveTenantKeyFromRequestOnly();
 
         if ($tenantKey === null) {
+            // En el host principal (misma URL que app.baseURL), no sustituir database.default por el
+            // tenant marcado como _default: /config y app_config deben seguir leyendo la BD del .env.
+            // Desactivar con tenancy.centralDatabaseOnPrimaryHost=false si toda la app en la URL base
+            // debe usar siempre la BD del tenant por defecto (instalación single-tenant sin subdominio).
+            $centralOnPrimary = filter_var(
+                (string) env('tenancy.centralDatabaseOnPrimaryHost', 'true'),
+                FILTER_VALIDATE_BOOLEAN
+            );
+            if ($centralOnPrimary) {
+                $host = strtolower((string) ($_SERVER['HTTP_HOST'] ?? ''));
+                if ($host !== '') {
+                    $host = explode(':', $host, 2)[0];
+                    if ($resolver->isBaseApplicationHost($host)) {
+                        return;
+                    }
+                }
+            }
             $tenantKey = $resolver->resolveDefaultTenantKey();
         }
 
