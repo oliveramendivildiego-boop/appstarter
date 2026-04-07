@@ -216,7 +216,7 @@ if (!preg_match('/^#([0-9A-Fa-f]{3}|[0-9A-Fa-f]{6})$/', $pgActiveColor)) {
                     <p class="small text-muted mb-0 mt-3"><?= lang('Config.config_style_nav_theme_note') ?></p>
                 </div>
                 <div class="row">
-                    <div class="col-md-6 mb-3">
+                    <div class="col-md-4 mb-3">
                         <?= form_label(lang('Config.config_theme_color'), 'theme_color', ['class' => 'form-label fw-semibold']) ?>
                         <?= form_dropdown('theme_palette_select', $selectThemePal, $selectedThemeHex, 'id="theme_palette_select" class="form-select mb-2" autocomplete="off"') ?>
                         <div class="d-flex align-items-center gap-2 flex-wrap">
@@ -225,7 +225,7 @@ if (!preg_match('/^#([0-9A-Fa-f]{3}|[0-9A-Fa-f]{6})$/', $pgActiveColor)) {
                         </div>
                         <small class="text-muted"><?= lang('Config.config_theme_color_custom_hint') ?></small>
                     </div>
-                    <div class="col-md-6 mb-3">
+                    <div class="col-md-4 mb-3">
                         <?= form_label(lang('Config.config_theme_gradient_end'), 'theme_gradient_end', ['class' => 'form-label fw-semibold']) ?>
                         <?= form_dropdown('theme_gradient_palette_select', $selectThemePal, $selectedGradHex, 'id="theme_gradient_palette_select" class="form-select mb-2" autocomplete="off"') ?>
                         <div class="d-flex align-items-center gap-2 flex-wrap">
@@ -233,6 +233,11 @@ if (!preg_match('/^#([0-9A-Fa-f]{3}|[0-9A-Fa-f]{6})$/', $pgActiveColor)) {
                             <input type="text" id="theme_gradient_end_hex" value="<?= esc($config['theme_gradient_end'] ?? '#4f46e5') ?>" class="form-control config-color-hex" readonly autocomplete="off">
                         </div>
                         <small class="text-muted d-block"><?= lang('Config.config_theme_gradient_help') ?></small>
+                    </div>
+                    <div class="col-md-4 mb-3">
+                        <label class="form-label fw-semibold" for="ui_header_text_color_theme"><?= lang('Config.config_style_header_text') ?></label>
+                        <input type="color" id="ui_header_text_color_theme" value="<?= esc($config['ui_header_text_color'] ?? '#ffffff') ?>" class="form-control form-control-color">
+                        <small class="text-muted d-block"><?= lang('Config.config_style_header_text_breadcrumb_hint') ?></small>
                     </div>
                 </div>
             </div>
@@ -1009,5 +1014,16 @@ if (!preg_match('/^#([0-9A-Fa-f]{3}|[0-9A-Fa-f]{6})$/', $pgActiveColor)) {
     toggleBtnHov();
     toggleBtnBorderDeps();
     toggleCardBorderDeps();
+
+    // Duplicar control de color de texto de barra superior en sección "Marca y degradado".
+    var hdrTextMain = document.getElementById('ui_header_text_color');
+    var hdrTextTheme = document.getElementById('ui_header_text_color_theme');
+    if (hdrTextMain && hdrTextTheme) {
+        hdrTextTheme.value = hdrTextMain.value || hdrTextTheme.value;
+        var syncHdrMain = function() { hdrTextMain.value = hdrTextTheme.value; };
+        var syncHdrTheme = function() { hdrTextTheme.value = hdrTextMain.value; };
+        hdrTextTheme.addEventListener('input', syncHdrMain);
+        hdrTextMain.addEventListener('input', syncHdrTheme);
+    }
 })();
 </script>

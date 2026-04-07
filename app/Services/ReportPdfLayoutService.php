@@ -10,6 +10,62 @@ use App\Models\ReportPdfTemplateModel;
  */
 class ReportPdfLayoutService
 {
+    public const DEFAULT_TEXT_STYLE = [
+        'font_family'       => 'DejaVu Sans',
+        'font_size_pt'      => 10.0,
+        'font_weight'       => 'normal',
+        'font_color'        => '#333333',
+        'font_style'        => 'normal',
+        'text_transform'    => 'none',
+        'letter_spacing_em' => 0.0,
+        'line_height'       => 1.35,
+        'text_shadow'       => 'none',
+    ];
+
+    public const DEFAULT_CARD_HEADER_STYLE = [
+        'bg_color'      => '#E9ECEF',
+        'text_color'    => '#212529',
+        'font_family'   => 'DejaVu Sans',
+        'font_size_pt'  => 10.0,
+        'font_weight'   => '700',
+        'font_style'    => 'normal',
+        'text_transform'=> 'uppercase',
+    ];
+    public const DEFAULT_NOTES_STYLE = [
+        'title_bg_color'    => '#FFF3CD',
+        'title_text_color'  => '#664D03',
+        'body_bg_color'     => '#FFFFFF',
+        'body_text_color'   => '#333333',
+        'font_family'       => 'DejaVu Sans',
+        'font_size_pt'      => 9.5,
+        'font_weight'       => 'normal',
+        'font_style'        => 'normal',
+        'text_transform'    => 'none',
+        'line_height'       => 1.4,
+    ];
+    public const DEFAULT_RESULTS_TABLE_STYLE = [
+        'header_bg_color'   => '#0066CC',
+        'header_text_color' => '#FFFFFF',
+        'body_bg_color'     => '#FFFFFF',
+        'body_transparent'  => false,
+        'body_text_color'   => '#333333',
+        'border_color'      => '#DDDDDD',
+        'segment_bg_color'  => '#E9ECEF',
+        'segment_transparent' => false,
+        'segment_border_color' => '#DDDDDD',
+        'segment_border_width_px' => 1,
+        'segment_shadow'    => 'none',
+        'font_family'       => 'DejaVu Sans',
+        'font_size_pt'      => 9.0,
+        'font_weight'       => 'normal',
+        'font_style'        => 'normal',
+        'text_transform'    => 'none',
+        'line_height'       => 1.35,
+    ];
+    public const DEFAULT_HEADER_SECTION_STYLE = [
+        'separator_color'   => '#0066CC',
+    ];
+
     /** @var list<string> */
     public const DEFAULT_BLOCK_ORDER = ['header', 'patient_doctor', 'results', 'notes', 'footer'];
 
@@ -89,6 +145,19 @@ class ReportPdfLayoutService
             'opacity'      => 0.12,
             'size_percent' => 45,
             'file'         => null,
+        ];
+    }
+
+    /**
+     * @return array{card_header: array{bg_color: string, text_color: string, font_family: string, font_size_pt: float, font_weight: string, font_style: string, text_transform: string}}
+     */
+    public static function defaultPageStyleStatic(): array
+    {
+        return [
+            'card_header' => self::DEFAULT_CARD_HEADER_STYLE,
+            'notes'       => self::DEFAULT_NOTES_STYLE,
+            'results_table' => self::DEFAULT_RESULTS_TABLE_STYLE,
+            'header_section' => self::DEFAULT_HEADER_SECTION_STYLE,
         ];
     }
 
@@ -379,6 +448,7 @@ class ReportPdfLayoutService
                 'enabled'       => ! empty($f['enabled']),
                 'column'        => ! empty($f['enabled']) ? max(0, min($hc - 1, $col)) : max(0, min($hc - 1, $col)),
                 'column_span'   => 1,
+                'text_style'    => self::DEFAULT_TEXT_STYLE,
             ];
         }
         foreach (self::defaultPatientDoctorFieldsStatic() as $f) {
@@ -390,6 +460,7 @@ class ReportPdfLayoutService
                 'enabled'       => ! empty($f['enabled']),
                 'column'        => ! empty($f['enabled']) ? max(0, min($pc - 1, $col)) : max(0, min($pc - 1, $col)),
                 'column_span'   => 1,
+                'text_style'    => self::DEFAULT_TEXT_STYLE,
             ];
         }
         foreach (self::defaultFooterFieldsStatic() as $f) {
@@ -401,6 +472,7 @@ class ReportPdfLayoutService
                 'enabled'       => ! empty($f['enabled']),
                 'column'        => ! empty($f['enabled']) ? max(0, min($fc - 1, $col)) : max(0, min($fc - 1, $col)),
                 'column_span'   => 1,
+                'text_style'    => self::DEFAULT_TEXT_STYLE,
             ];
         }
 
@@ -479,6 +551,7 @@ class ReportPdfLayoutService
                 'element_type' => $type,
                 'column'       => $col,
                 'column_span'  => $span,
+                'text_style'   => self::normalizeTextStyle($inst['text_style'] ?? []),
             ];
         }
 
@@ -554,6 +627,7 @@ class ReportPdfLayoutService
             $spanRaw = isset($row['column_span']) ? (int) $row['column_span'] : 1;
             $maxSpan = max(1, $cols - $col);
             $span    = max(1, min($maxSpan, $spanRaw >= 1 ? $spanRaw : 1));
+            $textStyle = self::normalizeTextStyle($row['text_style'] ?? []);
 
             $out[] = [
                 'uid'           => $uid,
@@ -562,6 +636,7 @@ class ReportPdfLayoutService
                 'enabled'       => $enabled,
                 'column'        => $col,
                 'column_span'   => $span,
+                'text_style'    => $textStyle,
             ];
         }
 
@@ -590,6 +665,7 @@ class ReportPdfLayoutService
                 'enabled'       => $enabled,
                 'column'        => $enabled ? max(0, min($hc - 1, $c)) : max(0, min($hc - 1, $c)),
                 'column_span'   => 1,
+                'text_style'    => self::DEFAULT_TEXT_STYLE,
             ];
         }
         foreach ($this->normalizePatientDoctorFields($decoded) as $f) {
@@ -603,6 +679,7 @@ class ReportPdfLayoutService
                 'enabled'       => $enabled,
                 'column'        => $enabled ? max(0, min($pc - 1, $c)) : max(0, min($pc - 1, $c)),
                 'column_span'   => 1,
+                'text_style'    => self::DEFAULT_TEXT_STYLE,
             ];
         }
         foreach ($this->normalizeFooterFields($decoded) as $f) {
@@ -616,6 +693,7 @@ class ReportPdfLayoutService
                 'enabled'       => $enabled,
                 'column'        => $enabled ? max(0, min($fc - 1, $c)) : max(0, min($fc - 1, $c)),
                 'column_span'   => 1,
+                'text_style'    => self::DEFAULT_TEXT_STYLE,
             ];
         }
 
@@ -689,6 +767,242 @@ class ReportPdfLayoutService
     }
 
     /**
+     * @param mixed $raw
+     *
+     * @return array{font_family: string, font_size_pt: float, font_weight: string, font_color: string, font_style: string, text_transform: string, letter_spacing_em: float, line_height: float, text_shadow: string}
+     */
+    public static function normalizeTextStyle($raw): array
+    {
+        $def = self::DEFAULT_TEXT_STYLE;
+        $ts  = is_array($raw) ? $raw : [];
+        $family = (string) ($ts['font_family'] ?? $def['font_family']);
+        $allowedFamily = ['DejaVu Sans', 'Helvetica', 'Arial', 'Times New Roman', 'Courier New'];
+        if (! in_array($family, $allowedFamily, true)) {
+            $family = $def['font_family'];
+        }
+        $size = isset($ts['font_size_pt']) ? (float) $ts['font_size_pt'] : $def['font_size_pt'];
+        $size = round(max(6.0, min(24.0, $size)), 2);
+        $weight = strtolower(trim((string) ($ts['font_weight'] ?? $def['font_weight'])));
+        $allowedWeight = ['normal', 'bold', '100', '200', '300', '400', '500', '600', '700', '800', '900'];
+        if (! in_array($weight, $allowedWeight, true)) {
+            $weight = $def['font_weight'];
+        }
+        $color = strtoupper(trim((string) ($ts['font_color'] ?? $def['font_color'])));
+        if (! preg_match('/^#[0-9A-F]{6}$/', $color)) {
+            $color = $def['font_color'];
+        }
+        $style = strtolower(trim((string) ($ts['font_style'] ?? $def['font_style'])));
+        if (! in_array($style, ['normal', 'italic', 'oblique'], true)) {
+            $style = $def['font_style'];
+        }
+        $transform = strtolower(trim((string) ($ts['text_transform'] ?? $def['text_transform'])));
+        if (! in_array($transform, ['none', 'uppercase', 'lowercase', 'capitalize'], true)) {
+            $transform = $def['text_transform'];
+        }
+        $ls = isset($ts['letter_spacing_em']) ? (float) $ts['letter_spacing_em'] : $def['letter_spacing_em'];
+        $ls = round(max(-0.2, min(1.0, $ls)), 2);
+        $lh = isset($ts['line_height']) ? (float) $ts['line_height'] : $def['line_height'];
+        $lh = round(max(1.0, min(3.0, $lh)), 2);
+        $shadow = strtolower(trim((string) ($ts['text_shadow'] ?? $def['text_shadow'])));
+        if (! in_array($shadow, ['none', 'soft', 'medium', 'strong'], true)) {
+            $shadow = $def['text_shadow'];
+        }
+
+        return [
+            'font_family'       => $family,
+            'font_size_pt'      => $size,
+            'font_weight'       => $weight,
+            'font_color'        => $color,
+            'font_style'        => $style,
+            'text_transform'    => $transform,
+            'letter_spacing_em' => $ls,
+            'line_height'       => $lh,
+            'text_shadow'       => $shadow,
+        ];
+    }
+
+    /**
+     * @param mixed $raw
+     *
+     * @return array{bg_color: string, text_color: string, font_family: string, font_size_pt: float, font_weight: string, font_style: string, text_transform: string}
+     */
+    public static function normalizeCardHeaderStyle($raw): array
+    {
+        $def = self::DEFAULT_CARD_HEADER_STYLE;
+        $s   = is_array($raw) ? $raw : [];
+        $bg  = strtoupper(trim((string) ($s['bg_color'] ?? $def['bg_color'])));
+        $tc  = strtoupper(trim((string) ($s['text_color'] ?? $def['text_color'])));
+        if (! preg_match('/^#[0-9A-F]{6}$/', $bg)) {
+            $bg = $def['bg_color'];
+        }
+        if (! preg_match('/^#[0-9A-F]{6}$/', $tc)) {
+            $tc = $def['text_color'];
+        }
+        $family = (string) ($s['font_family'] ?? $def['font_family']);
+        $allowedFamily = ['DejaVu Sans', 'Helvetica', 'Arial', 'Times New Roman', 'Courier New'];
+        if (! in_array($family, $allowedFamily, true)) {
+            $family = $def['font_family'];
+        }
+        $size = isset($s['font_size_pt']) ? (float) $s['font_size_pt'] : $def['font_size_pt'];
+        $size = round(max(7.0, min(20.0, $size)), 2);
+        $weight = strtolower(trim((string) ($s['font_weight'] ?? $def['font_weight'])));
+        $allowedWeight = ['normal', 'bold', '100', '200', '300', '400', '500', '600', '700', '800', '900'];
+        if (! in_array($weight, $allowedWeight, true)) {
+            $weight = $def['font_weight'];
+        }
+        $style = strtolower(trim((string) ($s['font_style'] ?? $def['font_style'])));
+        if (! in_array($style, ['normal', 'italic', 'oblique'], true)) {
+            $style = $def['font_style'];
+        }
+        $transform = strtolower(trim((string) ($s['text_transform'] ?? $def['text_transform'])));
+        if (! in_array($transform, ['none', 'uppercase', 'lowercase', 'capitalize'], true)) {
+            $transform = $def['text_transform'];
+        }
+
+        return [
+            'bg_color'       => $bg,
+            'text_color'     => $tc,
+            'font_family'    => $family,
+            'font_size_pt'   => $size,
+            'font_weight'    => $weight,
+            'font_style'     => $style,
+            'text_transform' => $transform,
+        ];
+    }
+
+    /**
+     * @param mixed $raw
+     *
+     * @return array{title_bg_color: string, title_text_color: string, body_bg_color: string, body_text_color: string, font_family: string, font_size_pt: float, font_weight: string, font_style: string, text_transform: string, line_height: float}
+     */
+    public static function normalizeNotesStyle($raw): array
+    {
+        $def = self::DEFAULT_NOTES_STYLE;
+        $s   = is_array($raw) ? $raw : [];
+        $pickColor = static function (string $k, string $fallback) use ($s): string {
+            $v = strtoupper(trim((string) ($s[$k] ?? $fallback)));
+            return preg_match('/^#[0-9A-F]{6}$/', $v) ? $v : $fallback;
+        };
+        $family = (string) ($s['font_family'] ?? $def['font_family']);
+        $allowedFamily = ['DejaVu Sans', 'Helvetica', 'Arial', 'Times New Roman', 'Courier New'];
+        if (! in_array($family, $allowedFamily, true)) {
+            $family = $def['font_family'];
+        }
+        $size = isset($s['font_size_pt']) ? (float) $s['font_size_pt'] : $def['font_size_pt'];
+        $size = round(max(7.0, min(20.0, $size)), 2);
+        $weight = strtolower(trim((string) ($s['font_weight'] ?? $def['font_weight'])));
+        $allowedWeight = ['normal', 'bold', '100', '200', '300', '400', '500', '600', '700', '800', '900'];
+        if (! in_array($weight, $allowedWeight, true)) {
+            $weight = $def['font_weight'];
+        }
+        $style = strtolower(trim((string) ($s['font_style'] ?? $def['font_style'])));
+        if (! in_array($style, ['normal', 'italic', 'oblique'], true)) {
+            $style = $def['font_style'];
+        }
+        $transform = strtolower(trim((string) ($s['text_transform'] ?? $def['text_transform'])));
+        if (! in_array($transform, ['none', 'uppercase', 'lowercase', 'capitalize'], true)) {
+            $transform = $def['text_transform'];
+        }
+        $lh = isset($s['line_height']) ? (float) $s['line_height'] : $def['line_height'];
+        $lh = round(max(1.0, min(3.0, $lh)), 2);
+
+        return [
+            'title_bg_color'   => $pickColor('title_bg_color', $def['title_bg_color']),
+            'title_text_color' => $pickColor('title_text_color', $def['title_text_color']),
+            'body_bg_color'    => $pickColor('body_bg_color', $def['body_bg_color']),
+            'body_text_color'  => $pickColor('body_text_color', $def['body_text_color']),
+            'font_family'      => $family,
+            'font_size_pt'     => $size,
+            'font_weight'      => $weight,
+            'font_style'       => $style,
+            'text_transform'   => $transform,
+            'line_height'      => $lh,
+        ];
+    }
+
+    /**
+     * @param mixed $raw
+     *
+     * @return array{header_bg_color: string, header_text_color: string, body_bg_color: string, body_transparent: bool, body_text_color: string, border_color: string, segment_bg_color: string, segment_transparent: bool, segment_border_color: string, segment_border_width_px: int, segment_shadow: string, font_family: string, font_size_pt: float, font_weight: string, font_style: string, text_transform: string, line_height: float}
+     */
+    public static function normalizeResultsTableStyle($raw): array
+    {
+        $def = self::DEFAULT_RESULTS_TABLE_STYLE;
+        $s   = is_array($raw) ? $raw : [];
+        $pickColor = static function (string $k, string $fallback) use ($s): string {
+            $v = strtoupper(trim((string) ($s[$k] ?? $fallback)));
+            return preg_match('/^#[0-9A-F]{6}$/', $v) ? $v : $fallback;
+        };
+        $family = (string) ($s['font_family'] ?? $def['font_family']);
+        $allowedFamily = ['DejaVu Sans', 'Helvetica', 'Arial', 'Times New Roman', 'Courier New'];
+        if (! in_array($family, $allowedFamily, true)) {
+            $family = $def['font_family'];
+        }
+        $size = isset($s['font_size_pt']) ? (float) $s['font_size_pt'] : $def['font_size_pt'];
+        $size = round(max(7.0, min(20.0, $size)), 2);
+        $weight = strtolower(trim((string) ($s['font_weight'] ?? $def['font_weight'])));
+        $allowedWeight = ['normal', 'bold', '100', '200', '300', '400', '500', '600', '700', '800', '900'];
+        if (! in_array($weight, $allowedWeight, true)) {
+            $weight = $def['font_weight'];
+        }
+        $style = strtolower(trim((string) ($s['font_style'] ?? $def['font_style'])));
+        if (! in_array($style, ['normal', 'italic', 'oblique'], true)) {
+            $style = $def['font_style'];
+        }
+        $transform = strtolower(trim((string) ($s['text_transform'] ?? $def['text_transform'])));
+        if (! in_array($transform, ['none', 'uppercase', 'lowercase', 'capitalize'], true)) {
+            $transform = $def['text_transform'];
+        }
+        $lh = isset($s['line_height']) ? (float) $s['line_height'] : $def['line_height'];
+        $lh = round(max(1.0, min(3.0, $lh)), 2);
+        $segBw = isset($s['segment_border_width_px']) ? (int) $s['segment_border_width_px'] : (int) $def['segment_border_width_px'];
+        $segBw = max(0, min(4, $segBw));
+        $segShadow = strtolower(trim((string) ($s['segment_shadow'] ?? $def['segment_shadow'])));
+        if (! in_array($segShadow, ['none', 'soft', 'medium', 'strong'], true)) {
+            $segShadow = $def['segment_shadow'];
+        }
+
+        return [
+            'header_bg_color'   => $pickColor('header_bg_color', $def['header_bg_color']),
+            'header_text_color' => $pickColor('header_text_color', $def['header_text_color']),
+            'body_bg_color'     => $pickColor('body_bg_color', $def['body_bg_color']),
+            'body_transparent'  => ! empty($s['body_transparent']),
+            'body_text_color'   => $pickColor('body_text_color', $def['body_text_color']),
+            'border_color'      => $pickColor('border_color', $def['border_color']),
+            'segment_bg_color'  => $pickColor('segment_bg_color', $def['segment_bg_color']),
+            'segment_transparent' => ! empty($s['segment_transparent']),
+            'segment_border_color' => $pickColor('segment_border_color', $def['segment_border_color']),
+            'segment_border_width_px' => $segBw,
+            'segment_shadow'    => $segShadow,
+            'font_family'       => $family,
+            'font_size_pt'      => $size,
+            'font_weight'       => $weight,
+            'font_style'        => $style,
+            'text_transform'    => $transform,
+            'line_height'       => $lh,
+        ];
+    }
+
+    /**
+     * @param mixed $raw
+     *
+     * @return array{separator_color: string}
+     */
+    public static function normalizeHeaderSectionStyle($raw): array
+    {
+        $def = self::DEFAULT_HEADER_SECTION_STYLE;
+        $s   = is_array($raw) ? $raw : [];
+        $c   = strtoupper(trim((string) ($s['separator_color'] ?? $def['separator_color'])));
+        if (! preg_match('/^#[0-9A-F]{6}$/', $c)) {
+            $c = $def['separator_color'];
+        }
+
+        return [
+            'separator_color' => $c,
+        ];
+    }
+
+    /**
      * @return array<string, string>
      */
     public static function patientDoctorFieldLabels(): array
@@ -759,6 +1073,7 @@ class ReportPdfLayoutService
             'instances'        => self::defaultInstancesStatic(),
             'margins_mm'       => self::defaultMarginsMmStatic(),
             'watermark'        => self::defaultWatermarkStatic(),
+            'page_style'       => self::defaultPageStyleStatic(),
         ];
     }
 
@@ -902,6 +1217,13 @@ class ReportPdfLayoutService
         }
 
         $watermark = $this->normalizeWatermark($decoded);
+        $pageStyleRaw = is_array($decoded['page_style'] ?? null) ? $decoded['page_style'] : [];
+        $pageStyle = [
+            'card_header' => self::normalizeCardHeaderStyle($pageStyleRaw['card_header'] ?? []),
+            'notes'       => self::normalizeNotesStyle($pageStyleRaw['notes'] ?? []),
+            'results_table' => self::normalizeResultsTableStyle($pageStyleRaw['results_table'] ?? []),
+            'header_section' => self::normalizeHeaderSectionStyle($pageStyleRaw['header_section'] ?? []),
+        ];
 
         return [
             'version'         => 5,
@@ -910,6 +1232,7 @@ class ReportPdfLayoutService
             'instances'       => $instances,
             'margins_mm'      => $marginsMm,
             'watermark'       => $watermark,
+            'page_style'      => $pageStyle,
         ];
     }
 

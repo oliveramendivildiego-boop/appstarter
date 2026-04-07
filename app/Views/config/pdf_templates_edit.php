@@ -28,6 +28,11 @@ foreach ($layout['instances'] ?? [] as $inst) {
 }
 $mm = $layout['margins_mm'] ?? \App\Services\ReportPdfLayoutService::defaultMarginsMmStatic();
 $wm = $layout['watermark'] ?? \App\Services\ReportPdfLayoutService::defaultWatermarkStatic();
+$ps = is_array($layout['page_style'] ?? null) ? $layout['page_style'] : \App\Services\ReportPdfLayoutService::defaultPageStyleStatic();
+$ch = \App\Services\ReportPdfLayoutService::normalizeCardHeaderStyle($ps['card_header'] ?? []);
+$ns = \App\Services\ReportPdfLayoutService::normalizeNotesStyle($ps['notes'] ?? []);
+$rs = \App\Services\ReportPdfLayoutService::normalizeResultsTableStyle($ps['results_table'] ?? []);
+$hs = \App\Services\ReportPdfLayoutService::normalizeHeaderSectionStyle($ps['header_section'] ?? []);
 $wmPreview = null;
 if (! empty($wm['file'])) {
     $wmPreview = \App\Services\ReportPdfLayoutService::getWatermarkDataUriForLayout([
@@ -62,12 +67,130 @@ $labelsShort = [
 <?php endif; ?>
 
 <h3 class="mb-2">Diseño: <?= esc($template->name ?? '') ?></h3>
-<p class="text-muted">Configure el <strong>número de columnas</strong> por zona. Cada fila puede ocupar <strong>varias columnas</strong> (ej.: nombre del laboratorio en columna 2 y 3). Arrastre elementos entre secciones o duplíquelos. El orden en la lista y la cuadrícula definen la posición en el PDF e impresión.</p>
+<p class="text-muted">Configure el <strong>número de columnas</strong> por zona y, en cada tarjeta (encabezado, paciente/médico, pie), la sección <strong>Estilo de la cuadrícula</strong>: <strong>interlineado</strong> (1–2,5) y <strong>alineación por columna</strong> (izquierda/centro/derecha y arriba/centro/abajo). Los ítems en la misma fila del PDF comparten una sola fila de tabla aunque ocupen varias columnas; varios bloques con la misma columna y ancho se apilan en una celda. Arrastre elementos entre secciones o duplíquelos. <strong>Guarde la plantilla</strong> para persistir el diseño en el JSON.</p>
 
 <?= form_open(site_url('config/pdf-templates/save'), ['id' => 'pdf_tpl_form', 'enctype' => 'multipart/form-data']) ?>
     <?= csrf_field() ?>
     <input type="hidden" name="id" value="<?= (int) ($template->id ?? 0) ?>">
     <input type="hidden" name="layout_json" id="layout_json" value="">
+
+<div class="card shadow-sm mb-4 pdf-margins-card">
+    <div class="card-header bg-primary text-white">
+        <h5 class="mb-0">Estilo global de card-header (PDF / impresión)</h5>
+    </div>
+    <div class="card-body">
+        <p class="small text-muted">Aplica a los encabezados de sección del reporte (títulos tipo tarjeta como separadores de análisis).</p>
+        <div class="row g-3">
+            <div class="col-6 col-md-3">
+                <label class="form-label small" for="hs_separator_color">Separador de encabezado (línea azul)</label>
+                <input type="color" class="form-control form-control-color" id="hs_separator_color" value="<?= esc($hs['separator_color'], 'attr') ?>">
+            </div>
+            <div class="col-6 col-md-3">
+                <label class="form-label small" for="ch_bg_color">Fondo</label>
+                <input type="color" class="form-control form-control-color" id="ch_bg_color" value="<?= esc($ch['bg_color'], 'attr') ?>">
+            </div>
+            <div class="col-6 col-md-3">
+                <label class="form-label small" for="ch_text_color">Texto</label>
+                <input type="color" class="form-control form-control-color" id="ch_text_color" value="<?= esc($ch['text_color'], 'attr') ?>">
+            </div>
+            <div class="col-12 col-md-3">
+                <label class="form-label small" for="ch_font_family">Fuente</label>
+                <select class="form-select" id="ch_font_family">
+                    <?php foreach (['DejaVu Sans', 'Helvetica', 'Arial', 'Times New Roman', 'Courier New'] as $ff): ?>
+                    <option value="<?= esc($ff, 'attr') ?>" <?= $ch['font_family'] === $ff ? 'selected' : '' ?>><?= esc($ff) ?></option>
+                    <?php endforeach; ?>
+                </select>
+            </div>
+            <div class="col-6 col-md-3">
+                <label class="form-label small" for="ch_font_size">Tamaño (pt)</label>
+                <input type="number" class="form-control" id="ch_font_size" min="7" max="20" step="0.5" value="<?= esc((string) $ch['font_size_pt'], 'attr') ?>">
+            </div>
+            <div class="col-6 col-md-3">
+                <label class="form-label small" for="ch_font_weight">Grosor</label>
+                <select class="form-select" id="ch_font_weight">
+                    <?php foreach (['normal', 'bold', '400', '500', '600', '700', '800'] as $w): ?>
+                    <option value="<?= esc($w, 'attr') ?>" <?= $ch['font_weight'] === $w ? 'selected' : '' ?>><?= esc($w) ?></option>
+                    <?php endforeach; ?>
+                </select>
+            </div>
+            <div class="col-6 col-md-3">
+                <label class="form-label small" for="ch_font_style">Estilo</label>
+                <select class="form-select" id="ch_font_style">
+                    <?php foreach (['normal', 'italic', 'oblique'] as $st): ?>
+                    <option value="<?= esc($st, 'attr') ?>" <?= $ch['font_style'] === $st ? 'selected' : '' ?>><?= esc(ucfirst($st)) ?></option>
+                    <?php endforeach; ?>
+                </select>
+            </div>
+            <div class="col-6 col-md-3">
+                <label class="form-label small" for="ch_text_transform">Transformación</label>
+                <select class="form-select" id="ch_text_transform">
+                    <?php foreach (['none' => 'Normal', 'uppercase' => 'MAYÚSCULAS', 'lowercase' => 'minúsculas', 'capitalize' => 'Tipo Título'] as $k => $v): ?>
+                    <option value="<?= esc($k, 'attr') ?>" <?= $ch['text_transform'] === $k ? 'selected' : '' ?>><?= esc($v) ?></option>
+                    <?php endforeach; ?>
+                </select>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="card shadow-sm mb-4">
+    <div class="card-header bg-warning-subtle border">
+        <h5 class="mb-0">Estilo global de Notas del resultado (PDF / impresión)</h5>
+    </div>
+    <div class="card-body">
+        <div class="row g-3">
+            <div class="col-6 col-md-3"><label class="form-label small" for="ns_title_bg">Fondo título</label><input type="color" class="form-control form-control-color" id="ns_title_bg" value="<?= esc($ns['title_bg_color'], 'attr') ?>"></div>
+            <div class="col-6 col-md-3"><label class="form-label small" for="ns_title_text">Texto título</label><input type="color" class="form-control form-control-color" id="ns_title_text" value="<?= esc($ns['title_text_color'], 'attr') ?>"></div>
+            <div class="col-6 col-md-3"><label class="form-label small" for="ns_body_bg">Fondo contenido</label><input type="color" class="form-control form-control-color" id="ns_body_bg" value="<?= esc($ns['body_bg_color'], 'attr') ?>"></div>
+            <div class="col-6 col-md-3"><label class="form-label small" for="ns_body_text">Texto contenido</label><input type="color" class="form-control form-control-color" id="ns_body_text" value="<?= esc($ns['body_text_color'], 'attr') ?>"></div>
+            <div class="col-12 col-md-3"><label class="form-label small" for="ns_font_family">Fuente</label><select class="form-select" id="ns_font_family"><?php foreach (['DejaVu Sans', 'Helvetica', 'Arial', 'Times New Roman', 'Courier New'] as $ff): ?><option value="<?= esc($ff, 'attr') ?>" <?= $ns['font_family'] === $ff ? 'selected' : '' ?>><?= esc($ff) ?></option><?php endforeach; ?></select></div>
+            <div class="col-6 col-md-2"><label class="form-label small" for="ns_font_size">Tamaño</label><input type="number" class="form-control" id="ns_font_size" min="7" max="20" step="0.5" value="<?= esc((string) $ns['font_size_pt'], 'attr') ?>"></div>
+            <div class="col-6 col-md-2"><label class="form-label small" for="ns_font_weight">Grosor</label><select class="form-select" id="ns_font_weight"><?php foreach (['normal', 'bold', '400', '500', '600', '700', '800'] as $w): ?><option value="<?= esc($w, 'attr') ?>" <?= $ns['font_weight'] === $w ? 'selected' : '' ?>><?= esc($w) ?></option><?php endforeach; ?></select></div>
+            <div class="col-6 col-md-2"><label class="form-label small" for="ns_font_style">Estilo</label><select class="form-select" id="ns_font_style"><?php foreach (['normal', 'italic', 'oblique'] as $st): ?><option value="<?= esc($st, 'attr') ?>" <?= $ns['font_style'] === $st ? 'selected' : '' ?>><?= esc(ucfirst($st)) ?></option><?php endforeach; ?></select></div>
+            <div class="col-6 col-md-3"><label class="form-label small" for="ns_text_transform">Transformación</label><select class="form-select" id="ns_text_transform"><?php foreach (['none' => 'Normal', 'uppercase' => 'MAYÚSCULAS', 'lowercase' => 'minúsculas', 'capitalize' => 'Tipo Título'] as $k => $v): ?><option value="<?= esc($k, 'attr') ?>" <?= $ns['text_transform'] === $k ? 'selected' : '' ?>><?= esc($v) ?></option><?php endforeach; ?></select></div>
+            <div class="col-6 col-md-2"><label class="form-label small" for="ns_line_height">Interlineado</label><input type="number" class="form-control" id="ns_line_height" min="1" max="3" step="0.05" value="<?= esc((string) $ns['line_height'], 'attr') ?>"></div>
+        </div>
+    </div>
+</div>
+
+<div class="card shadow-sm mb-4">
+    <div class="card-header bg-info-subtle border">
+        <h5 class="mb-0">Estilo global de Tablas de resultados por prueba (PDF / impresión)</h5>
+    </div>
+    <div class="card-body">
+        <div class="row g-3">
+            <div class="col-6 col-md-3"><label class="form-label small" for="rs_header_bg">Fondo encabezado</label><input type="color" class="form-control form-control-color" id="rs_header_bg" value="<?= esc($rs['header_bg_color'], 'attr') ?>"></div>
+            <div class="col-6 col-md-3"><label class="form-label small" for="rs_header_text">Texto encabezado</label><input type="color" class="form-control form-control-color" id="rs_header_text" value="<?= esc($rs['header_text_color'], 'attr') ?>"></div>
+            <div class="col-6 col-md-3"><label class="form-label small" for="rs_body_bg">Fondo filas</label><input type="color" class="form-control form-control-color" id="rs_body_bg" value="<?= esc($rs['body_bg_color'], 'attr') ?>"></div>
+            <div class="col-6 col-md-3"><label class="form-label small" for="rs_body_text">Texto filas</label><input type="color" class="form-control form-control-color" id="rs_body_text" value="<?= esc($rs['body_text_color'], 'attr') ?>"></div>
+            <div class="col-12 col-md-3 d-flex align-items-end">
+                <div class="form-check mb-1">
+                    <input class="form-check-input" type="checkbox" id="rs_body_transparent" <?= ! empty($rs['body_transparent']) ? 'checked' : '' ?>>
+                    <label class="form-check-label small" for="rs_body_transparent">Body transparente (sin fondo)</label>
+                </div>
+            </div>
+            <div class="col-6 col-md-3"><label class="form-label small" for="rs_border_color">Color bordes</label><input type="color" class="form-control form-control-color" id="rs_border_color" value="<?= esc($rs['border_color'], 'attr') ?>"></div>
+            <div class="col-12"><hr class="my-1"></div>
+            <div class="col-12"><div class="small text-muted fw-semibold">Título de sección (fila separadora)</div></div>
+            <div class="col-6 col-md-3"><label class="form-label small" for="rs_segment_bg">Fondo</label><input type="color" class="form-control form-control-color" id="rs_segment_bg" value="<?= esc($rs['segment_bg_color'], 'attr') ?>"></div>
+            <div class="col-12 col-md-3 d-flex align-items-end">
+                <div class="form-check mb-1">
+                    <input class="form-check-input" type="checkbox" id="rs_segment_transparent" <?= ! empty($rs['segment_transparent']) ? 'checked' : '' ?>>
+                    <label class="form-check-label small" for="rs_segment_transparent">Fondo transparente</label>
+                </div>
+            </div>
+            <div class="col-6 col-md-3"><label class="form-label small" for="rs_segment_border_color">Color borde</label><input type="color" class="form-control form-control-color" id="rs_segment_border_color" value="<?= esc($rs['segment_border_color'], 'attr') ?>"></div>
+            <div class="col-6 col-md-2"><label class="form-label small" for="rs_segment_border_width">Ancho borde (px)</label><input type="number" class="form-control" id="rs_segment_border_width" min="0" max="4" step="1" value="<?= esc((string) $rs['segment_border_width_px'], 'attr') ?>"></div>
+            <div class="col-6 col-md-2"><label class="form-label small" for="rs_segment_shadow">Sombra</label><select class="form-select" id="rs_segment_shadow"><?php foreach (['none' => 'Sin sombra', 'soft' => 'Suave', 'medium' => 'Media', 'strong' => 'Fuerte'] as $k => $v): ?><option value="<?= esc($k, 'attr') ?>" <?= $rs['segment_shadow'] === $k ? 'selected' : '' ?>><?= esc($v) ?></option><?php endforeach; ?></select></div>
+            <div class="col-12 col-md-3"><label class="form-label small" for="rs_font_family">Fuente</label><select class="form-select" id="rs_font_family"><?php foreach (['DejaVu Sans', 'Helvetica', 'Arial', 'Times New Roman', 'Courier New'] as $ff): ?><option value="<?= esc($ff, 'attr') ?>" <?= $rs['font_family'] === $ff ? 'selected' : '' ?>><?= esc($ff) ?></option><?php endforeach; ?></select></div>
+            <div class="col-6 col-md-2"><label class="form-label small" for="rs_font_size">Tamaño</label><input type="number" class="form-control" id="rs_font_size" min="7" max="20" step="0.5" value="<?= esc((string) $rs['font_size_pt'], 'attr') ?>"></div>
+            <div class="col-6 col-md-2"><label class="form-label small" for="rs_font_weight">Grosor</label><select class="form-select" id="rs_font_weight"><?php foreach (['normal', 'bold', '400', '500', '600', '700', '800'] as $w): ?><option value="<?= esc($w, 'attr') ?>" <?= $rs['font_weight'] === $w ? 'selected' : '' ?>><?= esc($w) ?></option><?php endforeach; ?></select></div>
+            <div class="col-6 col-md-2"><label class="form-label small" for="rs_font_style">Estilo</label><select class="form-select" id="rs_font_style"><?php foreach (['normal', 'italic', 'oblique'] as $st): ?><option value="<?= esc($st, 'attr') ?>" <?= $rs['font_style'] === $st ? 'selected' : '' ?>><?= esc(ucfirst($st)) ?></option><?php endforeach; ?></select></div>
+            <div class="col-6 col-md-3"><label class="form-label small" for="rs_text_transform">Transformación</label><select class="form-select" id="rs_text_transform"><?php foreach (['none' => 'Normal', 'uppercase' => 'MAYÚSCULAS', 'lowercase' => 'minúsculas', 'capitalize' => 'Tipo Título'] as $k => $v): ?><option value="<?= esc($k, 'attr') ?>" <?= $rs['text_transform'] === $k ? 'selected' : '' ?>><?= esc($v) ?></option><?php endforeach; ?></select></div>
+            <div class="col-6 col-md-2"><label class="form-label small" for="rs_line_height">Interlineado</label><input type="number" class="form-control" id="rs_line_height" min="1" max="3" step="0.05" value="<?= esc((string) $rs['line_height'], 'attr') ?>"></div>
+        </div>
+    </div>
+</div>
 
 <div class="card shadow-sm mb-4">
     <div class="card-header bg-secondary text-white">
@@ -96,8 +219,8 @@ $labelsShort = [
 </div>
 
 <div class="card shadow-sm mb-4">
-    <div class="card-header bg-dark text-white">
-        <h5 class="mb-0">Márgenes de la hoja (mm)</h5>
+    <div class="card-header bg-dark text-white" style="color:#fff !important;">
+        <h5 class="mb-0" style="color:#fff !important;">Márgenes de la hoja (mm)</h5>
     </div>
     <div class="card-body">
         <p class="small text-muted">Espacio en blanco respecto al borde de la página al generar el PDF (0–50 mm).</p>
@@ -305,6 +428,50 @@ $labelsShort = [
 .pdf-preview-grid-row { display: flex; gap: 8px; border-bottom: 1px solid #dee2e6; padding-bottom: 8px; }
 .pdf-preview-grid-cell { flex: 1; min-width: 0; font-size: 0.75rem; }
 .pdf-instance-sortable { min-height: 2.5rem; }
+.pdf-margins-card .card-body {
+    background: #212529;
+    color: #fff;
+}
+.pdf-margins-card .card-body .form-label,
+.pdf-margins-card .card-body .small,
+.pdf-margins-card .card-body .text-muted {
+    color: #fff !important;
+}
+.pdf-margins-card .card-header,
+.pdf-margins-card .card-header h5 {
+    color: #fff !important;
+}
+.pdf-instance-sortable .pdf-instance-item {
+    border: 1px solid #b9c4d0 !important;
+    border-left: 4px solid #0d6efd !important;
+    border-radius: 8px !important;
+    margin-bottom: 10px;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+}
+.pdf-instance-sortable .pdf-instance-item:last-child { margin-bottom: 0; }
+.pdf-instance-head strong { font-size: 0.9rem; color: #1f2d3d; }
+.pdf-instance-head .font-monospace { font-size: 0.72rem; }
+.pdf-text-style-controls {
+    border-top: 1px dashed #d8dee5;
+    background: #fafbfc;
+    border-radius: 8px;
+    padding: 0.7rem 0.45rem 0.45rem;
+}
+.pdf-text-style-controls .form-label {
+    font-size: 0.72rem;
+    font-weight: 600;
+    color: #495057;
+    margin-bottom: 0.2rem !important;
+    line-height: 1.2;
+}
+.pdf-text-style-controls .form-select,
+.pdf-text-style-controls .form-control {
+    min-height: 2rem;
+}
+.pdf-text-style-controls .form-control-color {
+    min-height: 2rem;
+    padding: 0.15rem;
+}
 </style>
 <script>
 document.addEventListener('DOMContentLoaded', function() {
@@ -437,6 +604,53 @@ document.addEventListener('DOMContentLoaded', function() {
         return String(sectionKey).replace(/[^a-z0-9_]/g, '_');
     }
 
+    function readInstanceTextStyle(li) {
+        function readStr(sel, allowed, fallback) {
+            var el = li.querySelector(sel);
+            var v = el ? String(el.value || '').trim() : '';
+            return allowed.indexOf(v) >= 0 ? v : fallback;
+        }
+        function readNum(sel, minV, maxV, step, fallback) {
+            var el = li.querySelector(sel);
+            var n = el ? parseFloat(el.value) : NaN;
+            if (isNaN(n)) n = fallback;
+            n = Math.max(minV, Math.min(maxV, n));
+            return Math.round(n / step) * step;
+        }
+        var clrEl = li.querySelector('.instance-font-color');
+        var clr = clrEl ? String(clrEl.value || '').trim() : '#333333';
+        if (!/^#[0-9a-fA-F]{6}$/.test(clr)) clr = '#333333';
+        return {
+            font_family: readStr('.instance-font-family', ['DejaVu Sans', 'Helvetica', 'Arial', 'Times New Roman', 'Courier New'], 'DejaVu Sans'),
+            font_size_pt: readNum('.instance-font-size', 6, 24, 0.5, 10),
+            font_weight: readStr('.instance-font-weight', ['normal', 'bold', '100', '200', '300', '400', '500', '600', '700', '800', '900'], 'normal'),
+            font_color: clr,
+            font_style: readStr('.instance-font-style', ['normal', 'italic', 'oblique'], 'normal'),
+            text_transform: readStr('.instance-text-transform', ['none', 'uppercase', 'lowercase', 'capitalize'], 'none'),
+            letter_spacing_em: readNum('.instance-letter-spacing', -0.2, 1, 0.01, 0),
+            line_height: readNum('.instance-line-height', 1, 3, 0.05, 1.35),
+            text_shadow: readStr('.instance-text-shadow', ['none', 'soft', 'medium', 'strong'], 'none')
+        };
+    }
+
+    function textStyleToInlineCss(ts) {
+        var mapShadow = {
+            none: 'none',
+            soft: '0.4px 0.4px 1px rgba(0,0,0,0.28)',
+            medium: '0.7px 0.7px 1.4px rgba(0,0,0,0.35)',
+            strong: '1px 1px 2px rgba(0,0,0,0.45)'
+        };
+        return 'font-family:' + ts.font_family + ';' +
+            'font-size:' + ts.font_size_pt + 'pt;' +
+            'font-weight:' + ts.font_weight + ';' +
+            'color:' + ts.font_color + ';' +
+            'font-style:' + ts.font_style + ';' +
+            'text-transform:' + ts.text_transform + ';' +
+            'letter-spacing:' + ts.letter_spacing_em + 'em;' +
+            'line-height:' + ts.line_height + ';' +
+            'text-shadow:' + (mapShadow[ts.text_shadow] || 'none') + ';';
+    }
+
     function readSectionStyleFromDom(sectionKey, n) {
         var idS = sectionIdSafe(sectionKey);
         var lhEl = document.getElementById('sec_lh_' + idS);
@@ -540,7 +754,9 @@ document.addEventListener('DOMContentLoaded', function() {
             var type = li.getAttribute('data-element-type') || '';
             var sample = (window._elementSamples && window._elementSamples[type]) ? window._elementSamples[type] : type;
             var shortL = (window._labelsShort && window._labelsShort[type]) ? window._labelsShort[type] : '';
-            var line = shortL ? ('<span class="pdf-preview-lbl">' + escapeHtml(shortL) + '</span> ' + escapeHtml(sample)) : escapeHtml(sample);
+            var styleWrap = textStyleToInlineCss(readInstanceTextStyle(li));
+            var rawLine = shortL ? ('<span class="pdf-preview-lbl">' + escapeHtml(shortL) + '</span> ' + escapeHtml(sample)) : escapeHtml(sample);
+            var line = '<span style="' + escapeHtml(styleWrap) + '">' + rawLine + '</span>';
             items.push({ col: col, span: span, html: line });
         });
         previewEl.innerHTML = '';
@@ -760,7 +976,7 @@ document.addEventListener('DOMContentLoaded', function() {
         h.innerHTML = '<i class="fa-solid fa-grip-vertical"></i>';
         var lab = document.createElement('div');
         lab.className = 'flex-grow-1';
-        lab.innerHTML = '<strong class="d-block small">' + escapeHtml(label) + '</strong><span class="small text-muted font-monospace">' + escapeHtml(elementType) + '</span>';
+        lab.innerHTML = '';
         var bDup = document.createElement('button');
         bDup.type = 'button';
         bDup.className = 'btn btn-sm btn-outline-secondary btn-dup-instance';
@@ -777,7 +993,24 @@ document.addEventListener('DOMContentLoaded', function() {
         wrap.appendChild(lab);
         wrap.appendChild(bDup);
         wrap.appendChild(bDel);
+        var head = document.createElement('div');
+        head.className = 'pdf-instance-head mb-2 pb-2 border-bottom';
+        head.innerHTML = '<strong class="d-block">' + escapeHtml(label) + '</strong><span class="small text-muted font-monospace">' + escapeHtml(elementType) + '</span>';
+        li.appendChild(head);
         li.appendChild(wrap);
+        li.insertAdjacentHTML('beforeend',
+            '<div class="row g-3 mt-2 pdf-text-style-controls">' +
+            '  <div class="col-12 col-md-6 col-lg-4"><label class="form-label small mb-1">Fuente</label><select class="form-select form-select-sm instance-font-family"><option value="DejaVu Sans">DejaVu Sans</option><option value="Helvetica">Helvetica</option><option value="Arial">Arial</option><option value="Times New Roman">Times New Roman</option><option value="Courier New">Courier New</option></select></div>' +
+            '  <div class="col-6 col-md-3 col-lg-2"><label class="form-label small mb-1">Tamaño</label><input type="number" class="form-control form-control-sm instance-font-size" min="6" max="24" step="0.5" value="10"></div>' +
+            '  <div class="col-6 col-md-3 col-lg-2"><label class="form-label small mb-1">Grosor</label><select class="form-select form-select-sm instance-font-weight"><option value="normal">normal</option><option value="bold">bold</option><option value="100">100</option><option value="200">200</option><option value="300">300</option><option value="400">400</option><option value="500">500</option><option value="600">600</option><option value="700">700</option><option value="800">800</option><option value="900">900</option></select></div>' +
+            '  <div class="col-6 col-md-3 col-lg-2"><label class="form-label small mb-1">Color</label><input type="color" class="form-control form-control-color form-control-sm instance-font-color" value="#333333"></div>' +
+            '  <div class="col-6 col-md-3 col-lg-2"><label class="form-label small mb-1">Estilo</label><select class="form-select form-select-sm instance-font-style"><option value="normal">Normal</option><option value="italic">Italic</option><option value="oblique">Oblique</option></select></div>' +
+            '  <div class="col-6 col-md-4 col-lg-3"><label class="form-label small mb-1">Transformación</label><select class="form-select form-select-sm instance-text-transform"><option value="none">Normal</option><option value="uppercase">MAYÚSCULAS</option><option value="lowercase">minúsculas</option><option value="capitalize">Tipo Título</option></select></div>' +
+            '  <div class="col-6 col-md-4 col-lg-2"><label class="form-label small mb-1">Esp. letras</label><input type="number" class="form-control form-control-sm instance-letter-spacing" min="-0.2" max="1" step="0.01" value="0"></div>' +
+            '  <div class="col-6 col-md-4 col-lg-2"><label class="form-label small mb-1">Interlineado</label><input type="number" class="form-control form-control-sm instance-line-height" min="1" max="3" step="0.05" value="1.35"></div>' +
+            '  <div class="col-12 col-md-6 col-lg-3"><label class="form-label small mb-1">Sombra</label><select class="form-select form-select-sm instance-text-shadow"><option value="none">Sin sombra</option><option value="soft">Suave</option><option value="medium">Media</option><option value="strong">Fuerte</option></select></div>' +
+            '</div>'
+        );
         return li;
     }
 
@@ -818,6 +1051,20 @@ document.addEventListener('DOMContentLoaded', function() {
             if (isNaN(sp) || sp < 1) sp = 1;
             var clone = createInstanceRow(newUid(), type, n, en, en ? col : 0, en ? sp : 1);
             if (!en && sel) clone.querySelector('.instance-column').value = '-1';
+            var ts = readInstanceTextStyle(li);
+            var setIf = function(q, v) {
+                var el = clone.querySelector(q);
+                if (el) el.value = String(v);
+            };
+            setIf('.instance-font-family', ts.font_family);
+            setIf('.instance-font-size', ts.font_size_pt);
+            setIf('.instance-font-weight', ts.font_weight);
+            setIf('.instance-font-color', ts.font_color);
+            setIf('.instance-font-style', ts.font_style);
+            setIf('.instance-text-transform', ts.text_transform);
+            setIf('.instance-letter-spacing', ts.letter_spacing_em);
+            setIf('.instance-line-height', ts.line_height);
+            setIf('.instance-text-shadow', ts.text_shadow);
             ul.insertBefore(clone, li.nextSibling);
             wireInstanceSelects();
             rebuildAllPreviews();
@@ -845,10 +1092,14 @@ document.addEventListener('DOMContentLoaded', function() {
             var t = e.target;
             if (t && (t.classList.contains('pdf-sec-col-h') || t.classList.contains('pdf-sec-col-v'))) {
                 rebuildAllPreviews();
+            } else if (t && t.closest('.pdf-text-style-controls')) {
+                rebuildAllPreviews();
             }
         });
         pdfEditorInst.addEventListener('input', function(e) {
             if (e.target && e.target.classList.contains('pdf-sec-line-height')) {
+                rebuildAllPreviews();
+            } else if (e.target && e.target.closest('.pdf-text-style-controls')) {
                 rebuildAllPreviews();
             }
         });
@@ -877,6 +1128,68 @@ document.addEventListener('DOMContentLoaded', function() {
         return Math.max(0, Math.min(50, n));
     }
 
+    function readCardHeaderStyleForJson() {
+        function pick(id, fallback) {
+            var el = document.getElementById(id);
+            return el ? String(el.value || '').trim() : fallback;
+        }
+        function pickNum(id, min, max, fallback) {
+            var el = document.getElementById(id);
+            var n = el ? parseFloat(el.value) : NaN;
+            if (isNaN(n)) n = fallback;
+            return Math.max(min, Math.min(max, n));
+        }
+        var bg = pick('ch_bg_color', '#E9ECEF');
+        var tx = pick('ch_text_color', '#212529');
+        if (!/^#[0-9a-fA-F]{6}$/.test(bg)) bg = '#E9ECEF';
+        if (!/^#[0-9a-fA-F]{6}$/.test(tx)) tx = '#212529';
+        return {
+            card_header: {
+                bg_color: bg,
+                text_color: tx,
+                font_family: pick('ch_font_family', 'DejaVu Sans'),
+                font_size_pt: pickNum('ch_font_size', 7, 20, 10),
+                font_weight: pick('ch_font_weight', '700'),
+                font_style: pick('ch_font_style', 'normal'),
+                text_transform: pick('ch_text_transform', 'uppercase')
+            },
+            header_section: {
+                separator_color: pick('hs_separator_color', '#0066CC')
+            },
+            notes: {
+                title_bg_color: pick('ns_title_bg', '#FFF3CD'),
+                title_text_color: pick('ns_title_text', '#664D03'),
+                body_bg_color: pick('ns_body_bg', '#FFFFFF'),
+                body_text_color: pick('ns_body_text', '#333333'),
+                font_family: pick('ns_font_family', 'DejaVu Sans'),
+                font_size_pt: pickNum('ns_font_size', 7, 20, 9.5),
+                font_weight: pick('ns_font_weight', 'normal'),
+                font_style: pick('ns_font_style', 'normal'),
+                text_transform: pick('ns_text_transform', 'none'),
+                line_height: pickNum('ns_line_height', 1, 3, 1.4)
+            },
+            results_table: {
+                header_bg_color: pick('rs_header_bg', '#0066CC'),
+                header_text_color: pick('rs_header_text', '#FFFFFF'),
+                body_bg_color: pick('rs_body_bg', '#FFFFFF'),
+                body_transparent: !!(document.getElementById('rs_body_transparent') && document.getElementById('rs_body_transparent').checked),
+                body_text_color: pick('rs_body_text', '#333333'),
+                border_color: pick('rs_border_color', '#DDDDDD'),
+                segment_bg_color: pick('rs_segment_bg', '#E9ECEF'),
+                segment_transparent: !!(document.getElementById('rs_segment_transparent') && document.getElementById('rs_segment_transparent').checked),
+                segment_border_color: pick('rs_segment_border_color', '#DDDDDD'),
+                segment_border_width_px: pickNum('rs_segment_border_width', 0, 4, 1),
+                segment_shadow: pick('rs_segment_shadow', 'none'),
+                font_family: pick('rs_font_family', 'DejaVu Sans'),
+                font_size_pt: pickNum('rs_font_size', 7, 20, 9),
+                font_weight: pick('rs_font_weight', 'normal'),
+                font_style: pick('rs_font_style', 'normal'),
+                text_transform: pick('rs_text_transform', 'none'),
+                line_height: pickNum('rs_line_height', 1, 3, 1.35)
+            }
+        };
+    }
+
     function parseInstanceLi(li, section) {
         var sel = li.querySelector('.instance-column');
         var v = sel ? parseInt(sel.value, 10) : -1;
@@ -897,7 +1210,8 @@ document.addEventListener('DOMContentLoaded', function() {
             section: section,
             enabled: enabled,
             column: col,
-            column_span: span
+            column_span: span,
+            text_style: readInstanceTextStyle(li)
         };
     }
 
@@ -953,7 +1267,8 @@ document.addEventListener('DOMContentLoaded', function() {
                 bottom: clampMargin(document.getElementById('margin_bottom').value),
                 left: clampMargin(document.getElementById('margin_left').value)
             },
-            watermark: buildWatermarkForJson()
+            watermark: buildWatermarkForJson(),
+            page_style: readCardHeaderStyleForJson()
         });
     });
 });

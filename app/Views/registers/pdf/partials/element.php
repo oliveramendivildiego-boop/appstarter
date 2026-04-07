@@ -8,6 +8,7 @@ helper('registro');
 
 $type = (string) ($pdf_element_type ?? '');
 $lab  = is_array($lab_config ?? null) ? $lab_config : [];
+$ts   = \App\Services\ReportPdfLayoutService::normalizeTextStyle($pdf_text_style ?? []);
 
 $labelsPdf = [
     'paciente_nombre'    => 'Paciente:',
@@ -81,7 +82,7 @@ switch ($type) {
     case 'lab_company':
         ?>
                 <div class="header-piece header-piece-company">
-                    <h1><?= esc($lab['company'] ?? 'Laboratorio') ?></h1>
+                    <h1 style="color:<?= esc($ts['font_color'], 'attr') ?> !important;"><?= esc($lab['company'] ?? 'Laboratorio') ?></h1>
                 </div>
         <?php
         break;

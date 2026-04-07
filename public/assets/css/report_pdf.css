@@ -10,13 +10,11 @@ body {
     position: relative;
 }
 .pdf-watermark-layer {
-    position: absolute;
+    position: fixed;
     left: 0;
     top: 0;
-    right: 0;
-    bottom: 0;
     width: 100%;
-    min-height: 100%;
+    height: 100%;
     z-index: 0;
     pointer-events: none;
 }
@@ -28,7 +26,7 @@ body {
     display: block;
     width: 100%;
     margin-bottom: 15px;
-    border-bottom: 2px solid #0066cc;
+    border-bottom: 2px solid var(--pdf-header-separator-color, #0066cc);
     padding-bottom: 10px;
 }
 .pdf-section-table {
@@ -77,6 +75,10 @@ body {
 .pdf-section-table[data-pdf-lh] td .header-piece-qr .qr-label {
     margin: 0.2em 0 0 0 !important;
 }
+.pdf-el-item {
+    display: block;
+    width: 100%;
+}
 .pdf-grid-cell .header-piece,
 .pdf-grid-cell .footer-piece,
 .pdf-grid-cell .patient-line {
@@ -117,10 +119,13 @@ body {
 .header-piece-company h1 {
     margin: 0;
     font-size: 14pt;
-    color: #0066cc;
+    color: inherit;
     max-width: 100%;
     word-wrap: break-word;
     overflow-wrap: break-word;
+}
+.pdf-el-item .header-piece-company h1 {
+    color: inherit !important;
 }
 .header-piece-qr {
     max-width: 100%;
@@ -198,10 +203,16 @@ table.results {
 }
 table.results th,
 table.results td {
-    border: 1px solid #ddd;
+    border: 1px solid var(--pdf-results-border-color, #ddd);
     padding: 6px 8px;
     text-align: left;
     vertical-align: middle;
+    font-family: var(--pdf-results-font-family, "DejaVu Sans"), sans-serif;
+    font-size: var(--pdf-results-font-size, 9pt);
+    font-weight: var(--pdf-results-font-weight, normal);
+    font-style: var(--pdf-results-font-style, normal);
+    text-transform: var(--pdf-results-transform, none);
+    line-height: var(--pdf-results-line-height, 1.35);
 }
 /* Mayor especificidad que table.results td (dompdf respeta .text-center en columnas numéricas) */
 table.results th.text-center,
@@ -209,12 +220,12 @@ table.results td.text-center {
     text-align: center;
 }
 table.results th {
-    background: #0066cc;
-    color: white;
-    font-size: 9pt;
+    background: var(--pdf-results-header-bg, #0066cc);
+    color: var(--pdf-results-header-color, #fff);
 }
 table.results td {
-    font-size: 9pt;
+    background: var(--pdf-results-body-bg, #fff);
+    color: var(--pdf-results-body-color, #333);
 }
 .group-title {
     font-weight: bold;
@@ -228,10 +239,42 @@ table.results td {
     font-size: 10pt;
     margin: 0;
     padding: 6px 8px;
-    background: #e9ecef;
+    background: var(--pdf-results-segment-bg, #e9ecef);
     color: #333;
-    border: 1px solid #ddd;
+    border: var(--pdf-results-segment-border-width, 1px) solid var(--pdf-results-segment-border, #ddd);
     border-bottom: none;
+    box-shadow: var(--pdf-results-segment-shadow, none);
+}
+.pdf-card-header {
+    background: var(--pdf-card-header-bg, #e9ecef) !important;
+    color: var(--pdf-card-header-color, #212529) !important;
+    font-family: var(--pdf-card-header-font-family, "DejaVu Sans"), sans-serif !important;
+    font-size: var(--pdf-card-header-font-size, 10pt) !important;
+    font-weight: var(--pdf-card-header-font-weight, 700) !important;
+    font-style: var(--pdf-card-header-font-style, normal) !important;
+    text-transform: var(--pdf-card-header-transform, uppercase) !important;
+}
+.pdf-notes-title {
+    background: var(--pdf-notes-title-bg, #fff3cd);
+    color: var(--pdf-notes-title-color, #664d03);
+    font-family: var(--pdf-notes-font-family, "DejaVu Sans"), sans-serif;
+    font-size: var(--pdf-notes-font-size, 9.5pt);
+    font-weight: var(--pdf-notes-font-weight, normal);
+    font-style: var(--pdf-notes-font-style, normal);
+    text-transform: var(--pdf-notes-transform, none);
+    line-height: var(--pdf-notes-line-height, 1.4);
+    padding: 6px 8px;
+    border: 1px solid #ddd;
+}
+.pdf-notes-cell {
+    background: var(--pdf-notes-body-bg, #ffffff);
+    color: var(--pdf-notes-body-color, #333333);
+    font-family: var(--pdf-notes-font-family, "DejaVu Sans"), sans-serif;
+    font-size: var(--pdf-notes-font-size, 9.5pt);
+    font-weight: var(--pdf-notes-font-weight, normal);
+    font-style: var(--pdf-notes-font-style, normal);
+    text-transform: var(--pdf-notes-transform, none);
+    line-height: var(--pdf-notes-line-height, 1.4);
 }
 .report-segment-table-wrap {
     margin: 0 0 12px 0;
@@ -243,8 +286,8 @@ table.results td {
     margin-top: 0;
 }
 .out-range {
-    color: #c00;
-    font-weight: bold;
+    color: #c00 !important;
+    font-weight: 700 !important;
 }
 .ref-range {
     font-size: 8pt;

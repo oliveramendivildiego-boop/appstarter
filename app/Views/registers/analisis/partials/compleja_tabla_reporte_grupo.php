@@ -67,7 +67,7 @@ $segments = array_values(array_filter($segments, static function ($s) {
     <?= $wrapOpen ?>
         <?php if ($titleObj !== null): ?>
             <?php if ($isPdf): ?>
-            <div class="report-segment-title"><?= esc($titleObj->nombre ?? '') ?></div>
+            <div class="report-segment-title pdf-card-header"><?= esc($titleObj->nombre ?? '') ?></div>
             <?php else: ?>
             <div class="report-segment-title-web px-2 py-2 mb-2 bg-secondary bg-opacity-10 border-start border-4 border-secondary rounded-end fw-semibold text-uppercase small"><?= esc($titleObj->nombre ?? '') ?></div>
             <?php endif; ?>
@@ -153,7 +153,7 @@ $segments = array_values(array_filter($segments, static function ($s) {
         <?= $wrapSinOpen ?>
             <?php if ($titleObj !== null): ?>
                 <?php if ($isPdf): ?>
-                <div class="report-segment-title"><?= esc($titleObj->nombre ?? '') ?></div>
+                <div class="report-segment-title pdf-card-header"><?= esc($titleObj->nombre ?? '') ?></div>
                 <?php else: ?>
                 <div class="report-segment-title-web px-2 py-2 mb-2 bg-secondary bg-opacity-10 border-start border-4 border-secondary rounded-end fw-semibold text-uppercase small"><?= esc($titleObj->nombre ?? '') ?></div>
                 <?php endif; ?>

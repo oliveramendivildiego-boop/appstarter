@@ -3,7 +3,7 @@ declare(strict_types=1);
 
 /** @var string $section_wrapper_class */
 /** @var int $n_columns */
-/** @var list<array{element_type: string, column: int, column_span: int}> $grid_items */
+/** @var list<array{element_type: string, column: int, column_span: int, text_style?: array<string, mixed>}> $grid_items */
 /** @var array<string, mixed> $element_ctx */
 /** @var array<string, mixed>|null $section_layout opcional: interlineado y alineación por columna */
 $n         = max(1, (int) $n_columns);
@@ -16,8 +16,9 @@ $normalizeItem = static function (array $it, int $n): array {
     $col  = max(0, min($n - 1, (int) ($it['column'] ?? 0)));
     $span = max(1, (int) ($it['column_span'] ?? 1));
     $span = min($span, max(1, $n - $col));
+    $textStyle = is_array($it['text_style'] ?? null) ? $it['text_style'] : [];
 
-    return ['element_type' => $type, 'col' => $col, 'span' => $span];
+    return ['element_type' => $type, 'col' => $col, 'span' => $span, 'text_style' => $textStyle];
 };
 
 $rangesOverlap = static function (int $a0, int $a1, int $b0, int $b1): bool {
@@ -110,6 +111,26 @@ $secStyle     = \App\Services\ReportPdfLayoutService::resolveSectionLayoutStyle(
 $colAlignH    = $secStyle['column_align_h'];
 $colAlignV    = $secStyle['column_align_v'];
 $lineHeight   = $secStyle['line_height'];
+$textStyleCss = static function (array $raw): string {
+    $ts = \App\Services\ReportPdfLayoutService::normalizeTextStyle($raw);
+    $shadowMap = [
+        'none'   => 'none',
+        'soft'   => '0.4px 0.4px 1px rgba(0,0,0,0.28)',
+        'medium' => '0.7px 0.7px 1.4px rgba(0,0,0,0.35)',
+        'strong' => '1px 1px 2px rgba(0,0,0,0.45)',
+    ];
+    $shadow = $shadowMap[$ts['text_shadow']] ?? 'none';
+
+    return 'font-family:' . $ts['font_family'] . ';'
+        . 'font-size:' . $ts['font_size_pt'] . 'pt;'
+        . 'font-weight:' . $ts['font_weight'] . ';'
+        . 'color:' . $ts['font_color'] . ';'
+        . 'font-style:' . $ts['font_style'] . ';'
+        . 'text-transform:' . $ts['text_transform'] . ';'
+        . 'letter-spacing:' . $ts['letter_spacing_em'] . 'em;'
+        . 'line-height:' . $ts['line_height'] . ';'
+        . 'text-shadow:' . $shadow . ';';
+};
 
 $pdfTdStyle = static function (int $startCol, int $span, float $pctUnit) use ($n, $colAlignH, $colAlignV, $lineHeight): array {
     $startCol = max(0, min($n - 1, $startCol));
@@ -156,9 +177,15 @@ $pdfEmptyTdStyle = static function (int $colIdx, float $pctUnit) use ($n, $colAl
             ?>
         <td class="pdf-cell pdf-cell--<?= esc($tdInfo['alignCls']) ?>" colspan="<?= $span ?>" style="<?= esc($tdInfo['style'], 'attr') ?>">
             <?php foreach ($block['items'] as $cellItem):
-                echo view('registers/pdf/partials/element', array_merge($element_ctx, [
+                $inlineStyle = $textStyleCss(is_array($cellItem['text_style'] ?? null) ? $cellItem['text_style'] : []);
+                ?>
+            <div class="pdf-el-item" style="<?= esc($inlineStyle, 'attr') ?>">
+                <?= view('registers/pdf/partials/element', array_merge($element_ctx, [
                     'pdf_element_type' => $cellItem['element_type'],
-                ]));
+                    'pdf_text_style'   => is_array($cellItem['text_style'] ?? null) ? $cellItem['text_style'] : [],
+                ])) ?>
+            </div>
+            <?php
             endforeach; ?>
         </td>
 <?php
@@ -168,9 +195,15 @@ $pdfEmptyTdStyle = static function (int $colIdx, float $pctUnit) use ($n, $colAl
             ?>
         <td class="pdf-cell pdf-cell--<?= esc($tdInfo['alignCls']) ?>" style="<?= esc($tdInfo['style'], 'attr') ?>">
             <?php foreach ($stacks[$c] as $stackItem):
-                echo view('registers/pdf/partials/element', array_merge($element_ctx, [
+                $inlineStyle = $textStyleCss(is_array($stackItem['text_style'] ?? null) ? $stackItem['text_style'] : []);
+                ?>
+            <div class="pdf-el-item" style="<?= esc($inlineStyle, 'attr') ?>">
+                <?= view('registers/pdf/partials/element', array_merge($element_ctx, [
                     'pdf_element_type' => $stackItem['element_type'],
-                ]));
+                    'pdf_text_style'   => is_array($stackItem['text_style'] ?? null) ? $stackItem['text_style'] : [],
+                ])) ?>
+            </div>
+            <?php
             endforeach; ?>
         </td>
 <?php
