@@ -19,6 +19,7 @@ $accionBadges = [
     'agregar_pago' => 'bg-warning text-dark',
     'enviar_whatsapp' => 'bg-success',
     'cambiar_estado_muestra' => 'bg-secondary',
+    'tipo_muestra_crear' => 'bg-success', 'tipo_muestra_actualizar' => 'bg-primary', 'tipo_muestra_eliminar' => 'bg-danger',
     'desactivar' => 'bg-danger', 'activar' => 'bg-success',
 ];
 ?>

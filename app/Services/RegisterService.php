@@ -642,6 +642,26 @@ class RegisterService
         $grupos = $this->mergeSeparadoresYOrdenCompuestoDesdePlantilla($grupos, $matchingPoblacionIds, $patientGender);
         $pruebasIds = $this->extractPrianacategoriaIdsFromRegistroPruebas((string)($registerInfo->pruebas ?? ''));
         $priasCfg = $this->registerModel->getPrianacategoriaConfigByIds($pruebasIds);
+        $reportPriaTipoMuestraNombre = [];
+        try {
+            $tipoMuestraModel = model(\App\Models\TipoMuestraModel::class);
+            foreach ($priasCfg as $cfgRow) {
+                $pId = (int) ($cfgRow['prianacategoria_id'] ?? 0);
+                $tid = (int) ($cfgRow['tipo_muestra_id'] ?? 0);
+                if ($pId < 1 || $tid < 1) {
+                    continue;
+                }
+                $tmRow = $tipoMuestraModel->find($tid);
+                if (is_array($tmRow) && (int) ($tmRow['deleted'] ?? 0) === 0) {
+                    $nom = trim((string) ($tmRow['nombre'] ?? ''));
+                    if ($nom !== '') {
+                        $reportPriaTipoMuestraNombre[$pId] = $nom;
+                    }
+                }
+            }
+        } catch (\Throwable $e) {
+            $reportPriaTipoMuestraNombre = [];
+        }
         $enteredCounts = $this->countEnteredValuesByPrianacategoria($analisis);
         $eligiblePriaIds = [];
         $eligiblePriaConfig = [];
@@ -662,6 +682,7 @@ class RegisterService
             'doctor'        => $doctor,
             'grupos'        => $grupos,
             'analisis'      => $analisis,
+            'report_pria_tipo_muestra_nombre' => $reportPriaTipoMuestraNombre,
         ];
     }
 
@@ -684,6 +705,7 @@ class RegisterService
             'report_url'    => $reportUrl,
             'qr_data_uri'   => $qrDataUri,
             'pdf_layout'    => $pdf_layout,
+            'report_pria_tipo_muestra_nombre' => $reportData['report_pria_tipo_muestra_nombre'] ?? [],
         ]);
     }
 
@@ -707,6 +729,7 @@ class RegisterService
             'qr_data_uri'   => $qrDataUri,
             'pdf_layout'    => $pdf_layout,
             'registro_id'   => $registroId,
+            'report_pria_tipo_muestra_nombre' => $reportData['report_pria_tipo_muestra_nombre'] ?? [],
         ]);
     }
 }

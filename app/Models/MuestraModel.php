@@ -30,11 +30,7 @@ class MuestraModel extends Model
 
     public function getTiposMuestra(): array
     {
-        return $this->db->table('tipo_muestra')
-            ->where('(deleted = 0 OR deleted IS NULL)')
-            ->orderBy('nombre')
-            ->get()
-            ->getResultArray();
+        return model(TipoMuestraModel::class)->getAllActive();
     }
 
     public function generarCodigo(): string

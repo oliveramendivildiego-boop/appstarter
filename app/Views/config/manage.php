@@ -33,6 +33,9 @@
         <button class="nav-link <?= $activeTab === 'opciones' ? 'active' : '' ?>" id="tab-opciones-btn" data-bs-toggle="tab" data-bs-target="#tab-opciones" type="button" role="tab">Tipos de resultado</button>
     </li>
     <li class="nav-item" role="presentation">
+        <button class="nav-link <?= $activeTab === 'tipos_muestra' ? 'active' : '' ?>" id="tab-tipos_muestra-btn" data-bs-toggle="tab" data-bs-target="#tab-tipos_muestra" type="button" role="tab">Tipos de muestra</button>
+    </li>
+    <li class="nav-item" role="presentation">
         <button class="nav-link <?= $activeTab === 'whatsapp' ? 'active' : '' ?>" id="tab-whatsapp-btn" data-bs-toggle="tab" data-bs-target="#tab-whatsapp" type="button" role="tab">WhatsApp</button>
     </li>
     <li class="nav-item" role="presentation">
@@ -609,6 +612,71 @@
             </div>
             <div class="card-body">
                 <?= view('config/partial_opciones', ['opciones' => $opciones ?? []]) ?>
+            </div>
+        </div>
+    </div>
+
+    <!-- Pestaña: Tipos de muestra (recepción / etiquetas) -->
+    <div class="tab-pane fade <?= $activeTab === 'tipos_muestra' ? 'show active' : '' ?>" id="tab-tipos_muestra" role="tabpanel">
+        <div class="card shadow-sm">
+            <div class="card-header bg-secondary text-white">
+                <h5 class="mb-0"><i class="fa-solid fa-vial me-2"></i>Tipos de muestra</h5>
+            </div>
+            <div class="card-body">
+                <p class="text-muted small mb-3">
+                    Defina los tipos que aparecerán al <strong>crear una muestra</strong> en una orden (sangre, suero, orina, etc.). La eliminación es lógica y solo está permitida si ninguna muestra usa ese tipo.
+                </p>
+                <div class="table-responsive mb-4">
+                    <table class="table table-sm table-bordered align-middle">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Nombre</th>
+                                <th class="text-center" style="width: 140px; white-space: nowrap;">Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <?php foreach (($tipos_muestra ?? []) as $tm): ?>
+                            <tr>
+                                <td><?= esc($tm['nombre'] ?? '') ?></td>
+                                <td class="text-center p-2">
+                                    <div class="d-inline-flex align-items-center justify-content-center gap-1 flex-nowrap">
+                                        <form method="get" action="<?= esc(site_url('config')) ?>" class="d-inline m-0">
+                                            <input type="hidden" name="tab" value="tipos_muestra">
+                                            <input type="hidden" name="editar_tipo" value="<?= (int) ($tm['tipo_muestra_id'] ?? 0) ?>">
+                                            <button type="submit" class="btn btn-sm btn-outline-primary" title="Editar"><i class="fa-solid fa-pen"></i></button>
+                                        </form>
+                                        <a href="<?= site_url('config/deletetipomuestra/' . (int) ($tm['tipo_muestra_id'] ?? 0)) ?>" class="btn btn-sm btn-outline-danger flex-shrink-0" title="Eliminar" onclick="return uiConfirmLink(this, '¿Eliminar este tipo de muestra?');"><i class="fa-solid fa-trash"></i></a>
+                                    </div>
+                                </td>
+                            </tr>
+                            <?php endforeach; ?>
+                            <?php if (empty($tipos_muestra)): ?>
+                            <tr>
+                                <td colspan="2" class="text-muted text-center">No hay tipos definidos. Ejecute la migración de base de datos (<code>php spark migrate</code>) o agregue uno abajo.</td>
+                            </tr>
+                            <?php endif; ?>
+                        </tbody>
+                    </table>
+                </div>
+
+                <h6 class="mb-3"><?= (($editar_tipo_muestra ?? 0) > 0) ? 'Editar tipo' : 'Agregar tipo' ?></h6>
+                <?= form_open(site_url('config/savetipomuestra'), ['class' => 'border rounded p-3']) ?>
+                <input type="hidden" name="tipo_muestra_id" value="<?= (($editar_tipo_muestra ?? 0) > 0) ? (int) $editar_tipo_muestra : '' ?>">
+                <div class="row align-items-end">
+                    <div class="col-md-8 mb-2 mb-md-0">
+                        <label class="form-label">Nombre <span class="text-danger">*</span></label>
+                        <input type="text" name="nombre" class="form-control form-control-sm" maxlength="128" required
+                               value="<?= esc($editar_tipo_muestra_data['nombre'] ?? '') ?>"
+                               placeholder="Ej: Suero, Plasma, LCR…">
+                    </div>
+                    <div class="col-md-4">
+                        <button type="submit" class="btn btn-primary btn-sm me-2"><?= (($editar_tipo_muestra ?? 0) > 0) ? 'Actualizar' : 'Agregar' ?></button>
+                        <?php if (($editar_tipo_muestra ?? 0) > 0): ?>
+                        <a href="<?= site_url('config?tab=tipos_muestra') ?>" class="btn btn-secondary btn-sm">Cancelar</a>
+                        <?php endif; ?>
+                    </div>
+                </div>
+                <?= form_close() ?>
             </div>
         </div>
     </div>

@@ -133,6 +133,7 @@
     'qr_data_uri'       => $qr_data_uri ?? '',
     'pdf_watermark_uri' => null,
     'pdf_logo_data_uri' => null,
+    'report_pria_tipo_muestra_nombre' => $report_pria_tipo_muestra_nombre ?? [],
 ]) ?>
 <script>
 (function() {

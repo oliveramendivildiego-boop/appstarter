@@ -88,6 +88,8 @@ $routes->post('config/getSessionsVersion', 'Config::getSessionsVersion');
 $routes->post('config/killSession', 'Config::killSession');
 $routes->get('config/debugSessions', 'Config::debugSessions');
 $routes->get('config/deletepoblacion/(:num)', 'Config::deletePoblacion/$1');
+$routes->post('config/savetipomuestra', 'Config::saveTipoMuestra');
+$routes->get('config/deletetipomuestra/(:num)', 'Config::deleteTipoMuestra/$1');
 $routes->get('config/deleteopcion/(:num)', 'Config::deleteOpcion/$1');
 $routes->get('config/deleteopcionvalor/(:num)', 'Config::deleteOpcionValor/$1');
 $routes->get('config/deletevalortabla/(:alpha)/(:num)', 'Config::deleteValorTabla/$1/$2');

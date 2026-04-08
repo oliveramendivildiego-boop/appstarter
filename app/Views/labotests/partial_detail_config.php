@@ -1,7 +1,7 @@
 <?php
 /**
  * Partial: Formulario de configuración básica de la prueba (detalle).
- * Variables requeridas: $labotests_info
+ * Variables: $labotests_info, $tipos_muestra (lista desde config / tipo_muestra)
  */
 ?>
 <div class="card">
@@ -37,6 +37,20 @@
                     <option value="0" <?= ((int)($labotests_info->mostrar_valores ?? 0) === 0 ? 'selected' : '') ?>>NO</option>
                     <option value="1" <?= ((int)($labotests_info->mostrar_valores ?? 0) === 1 ? 'selected' : '') ?>>SI</option>
                 </select>
+            </div>
+            <div class="col-md-6 mb-3">
+                <label for="tipo_muestra_id" class="form-label">Tipo de muestra</label>
+                <select name="tipo_muestra_id" id="tipo_muestra_id" class="form-select">
+                    <option value="">— Sin especificar —</option>
+                    <?php
+                    $selTipo = (int) ($labotests_info->tipo_muestra_id ?? 0);
+                    foreach ($tipos_muestra ?? [] as $tm):
+                        $tid = (int) ($tm['tipo_muestra_id'] ?? 0);
+                    ?>
+                    <option value="<?= $tid ?>" <?= $selTipo === $tid ? 'selected' : '' ?>><?= esc($tm['nombre'] ?? '') ?></option>
+                    <?php endforeach; ?>
+                </select>
+                <small class="text-muted">Catálogo en <a href="<?= site_url('config?tab=tipos_muestra') ?>">Configuración → Tipos de muestra</a>.</small>
             </div>
         </div>
         <button type="submit" class="btn btn-primary"><?= lang('Common.common_submit') ?></button>

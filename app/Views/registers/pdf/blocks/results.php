@@ -6,5 +6,6 @@ foreach ($grupos ?? [] as $padre => $items) {
         'padre'   => $padre,
         'items'   => $items,
         'variant' => 'pdf',
+        'report_pria_tipo_muestra_nombre' => $report_pria_tipo_muestra_nombre ?? [],
     ]);
 }

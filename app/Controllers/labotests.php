@@ -5,6 +5,7 @@ namespace App\Controllers;
 use App\Models\LabotestModel;
 use App\Models\OpcionModel;
 use App\Models\PerfilExamenModel;
+use App\Models\TipoMuestraModel;
 use CodeIgniter\HTTP\ResponseInterface;
 
 class Labotests extends SecureArea
@@ -13,13 +14,27 @@ class Labotests extends SecureArea
 
     protected LabotestModel $labotestModel;
     protected OpcionModel $opcionModel;
+    protected TipoMuestraModel $tipoMuestraModel;
 
     public function __construct()
     {
         parent::__construct();
         helper('form');
-        $this->labotestModel = model(LabotestModel::class);
-        $this->opcionModel   = model(OpcionModel::class);
+        $this->labotestModel    = model(LabotestModel::class);
+        $this->opcionModel      = model(OpcionModel::class);
+        $this->tipoMuestraModel = model(TipoMuestraModel::class);
+    }
+
+    /**
+     * @return list<array{tipo_muestra_id: int, nombre: string, deleted?: int}>
+     */
+    private function loadTiposMuestraForForms(): array
+    {
+        try {
+            return $this->tipoMuestraModel->getAllActive();
+        } catch (\Throwable $e) {
+            return [];
+        }
     }
 
     public function index()
@@ -78,6 +93,7 @@ class Labotests extends SecureArea
             'labotests_info'    => $subInfo,
             'labotests_master'  => $catInfo,
             'labotests_namecate'=> $anacategoriaId,
+            'tipos_muestra'     => $this->loadTiposMuestraForForms(),
             'controller_name'   => 'labotests',
             'allowed_modules'   => $this->allowed_modules,
             'user_info'         => $this->user_info,
@@ -177,6 +193,7 @@ class Labotests extends SecureArea
             'formulas_con_expresion' => $formulasConExpresion ?? [],
             'formulas_con_expresion_deduped' => $formulasConExpresionDeduped,
             'opciones'               => $opciones,
+            'tipos_muestra'          => $this->loadTiposMuestraForForms(),
             'editar_sec'        => $editarSec,
             'editar_sec_data'   => $editarSecData,
             'editar_pri'        => $editarPri,
@@ -218,6 +235,7 @@ class Labotests extends SecureArea
             'compleja'       => $compleja,
             'mostrar_valores'=> $mostrarValores ? 1 : 0,
             'anacategoria_id'=> $anacategoriaId,
+            'tipo_muestra_id'=> (int) ($this->request->getPost('tipo_muestra_id') ?? 0),
         ];
         $this->labotestModel->saveSubCategory($data, $prianacategoriaId > 0 ? $prianacategoriaId : null);
         \App\Models\AuditoriaModel::log('labotests', $prianacategoriaId > 0 ? 'actualizar_analisis' : 'crear_analisis', (string)($prianacategoriaId ?: ''), \App\Models\AuditoriaModel::detail(['nombre' => $name, 'compleja' => $compleja]));
@@ -247,6 +265,7 @@ class Labotests extends SecureArea
             'compleja'   => $compleja,
             'mostrar_valores' => $mostrarValores ? 1 : 0,
             'anacategoria_id' => $anacategoriaId,
+            'tipo_muestra_id' => (int) ($this->request->getPost('tipo_muestra_id') ?? 0),
         ];
         $this->labotestModel->saveSubCategory($data, $prianacategoriaId);
         \App\Models\AuditoriaModel::log('labotests', 'actualizar_analisis', (string)$prianacategoriaId, \App\Models\AuditoriaModel::detail(['nombre' => $name, 'costo' => $cost]));

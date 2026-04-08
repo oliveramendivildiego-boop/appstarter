@@ -5,15 +5,29 @@
  * @var string $padre
  * @var list<object|array<string,mixed>> $items
  * @var string $variant 'web' (viewreport) o 'pdf' (PDF / impresión)
+ * @var array<int,string> $report_pria_tipo_muestra_nombre prianacategoria_id => nombre (config. en análisis clínico)
  */
 $variant = $variant ?? 'web';
 $isPdf = ($variant === 'pdf');
 
 $hijo = '';
+$priaIdTitulo = 0;
 if (! empty($items[0])) {
     $first = $items[0];
-    $hijo = is_object($first) ? ($first->hijo ?? '') : ($first['hijo'] ?? '');
+    $firstObj = is_array($first) ? (object) $first : $first;
+    $hijo = $firstObj->hijo ?? '';
 }
+foreach ($items as $rawPria) {
+    $op = is_array($rawPria) ? (object) $rawPria : $rawPria;
+    $pid = (int) ($op->prianacategoria_id ?? 0);
+    if ($pid > 0) {
+        $priaIdTitulo = $pid;
+        break;
+    }
+}
+$nombresTipoPorPria = $report_pria_tipo_muestra_nombre ?? [];
+$tipoMuestraLinea = trim((string) ($nombresTipoPorPria[$priaIdTitulo] ?? ''));
+$mostrarTipoMuestra = $tipoMuestraLinea !== '';
 
 $segments = [];
 $cur = ['title' => null, 'items' => []];
@@ -34,8 +48,14 @@ $segments = array_values(array_filter($segments, static function ($s) {
 ?>
 <?php if ($isPdf): ?>
 <div class="group-title"><?= esc($padre) ?> - <?= esc($hijo) ?></div>
+<?php if ($mostrarTipoMuestra): ?>
+<div class="report-tipo-muestra" style="font-size:9pt;color:#555;margin:0 0 10px 0;line-height:1.3;">Tipo de Muestra: <?= esc($tipoMuestraLinea) ?></div>
+<?php endif; ?>
 <?php else: ?>
-<h4 class="mt-4"><?= esc($padre) ?> - <?= esc($hijo) ?></h4>
+<h4 class="mt-4 mb-1"><?= esc($padre) ?> - <?= esc($hijo) ?></h4>
+<?php if ($mostrarTipoMuestra): ?>
+<p class="small text-muted mb-3">Tipo de Muestra: <?= esc($tipoMuestraLinea) ?></p>
+<?php endif; ?>
 <?php endif; ?>
 <?php foreach ($segments as $seg): ?>
     <?php

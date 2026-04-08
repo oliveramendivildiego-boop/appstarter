@@ -55,7 +55,10 @@ foreach ($grupos as $padre => $items):
     if ($nombreVista === 'hematologia') $viewName = 'registers/analisis/hemograma';
     elseif ($nombreVista === 'orina') $viewName = 'registers/analisis/orina';
     elseif ($nombreVista === 'heces') $viewName = 'registers/analisis/heces';
-    echo view($viewName, ['grupos' => [$padre => $items]]);
+    echo view($viewName, [
+        'grupos' => [$padre => $items],
+        'report_pria_tipo_muestra_nombre' => $report_pria_tipo_muestra_nombre ?? [],
+    ]);
 endforeach;
 endif;
 ?>

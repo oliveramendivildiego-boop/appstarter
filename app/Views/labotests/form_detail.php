@@ -16,7 +16,7 @@
 <input type="hidden" id="prianacategoria_id" name="prianacategoria_id" value="<?= (int)($labotests_info->prianacategoria_id ?? 0) ?>">
 <input type="hidden" id="anacategoria_id" name="anacategoria_id" value="<?= (int)($labotests_info->anacategoria_id ?? 0) ?>">
 
-<?= view('labotests/partial_detail_config', ['labotests_info' => $labotests_info]) ?>
+<?= view('labotests/partial_detail_config', ['labotests_info' => $labotests_info, 'tipos_muestra' => $tipos_muestra ?? []]) ?>
 
 <?= form_close() ?>
 

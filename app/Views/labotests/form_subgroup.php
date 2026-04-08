@@ -29,6 +29,20 @@
                 <option value="1" <?= (($labotests_info->compleja ?? 0) == 1 ? 'selected' : '') ?>><?= lang('Labotests.labotests_yes') ?></option>
             </select>
         </div>
+        <div class="mb-3">
+            <label for="tipo_muestra_id" class="form-label">Tipo de muestra</label>
+            <select name="tipo_muestra_id" id="tipo_muestra_id" class="form-select">
+                <option value="">— Sin especificar —</option>
+                <?php
+                $selTipoSg = (int) ($labotests_info->tipo_muestra_id ?? 0);
+                foreach ($tipos_muestra ?? [] as $tm):
+                    $tid = (int) ($tm['tipo_muestra_id'] ?? 0);
+                ?>
+                <option value="<?= $tid ?>" <?= $selTipoSg === $tid ? 'selected' : '' ?>><?= esc($tm['nombre'] ?? '') ?></option>
+                <?php endforeach; ?>
+            </select>
+            <small class="text-muted">Defínalos en <a href="<?= site_url('config?tab=tipos_muestra') ?>" target="_blank" rel="noopener">Configuración → Tipos de muestra</a>.</small>
+        </div>
         <button type="submit" class="btn btn-primary"><?= lang('Common.common_submit') ?></button>
         <a href="<?= site_url('labotests') ?>" class="btn btn-secondary">Cancelar</a>
     </div>

@@ -6,6 +6,7 @@ use App\Models\EmployeeModel;
 use App\Models\OpcionModel;
 use App\Models\PoblacionModel;
 use App\Models\ReportPdfTemplateModel;
+use App\Models\TipoMuestraModel;
 use App\Libraries\TenantResolver;
 use App\Services\ConfigService;
 use App\Services\TenantConfigService;
@@ -24,6 +25,7 @@ class Config extends SecureArea
     protected TenantConfigService $tenantConfigService;
     protected PoblacionModel $poblacionModel;
     protected OpcionModel $opcionModel;
+    protected TipoMuestraModel $tipoMuestraModel;
     protected TenantResolver $tenantResolver;
 
     public function __construct()
@@ -33,7 +35,8 @@ class Config extends SecureArea
         $this->tenantConfigService = new TenantConfigService();
         $this->tenantResolver = new TenantResolver();
         $this->poblacionModel = model(PoblacionModel::class);
-        $this->opcionModel   = model(OpcionModel::class);
+        $this->opcionModel        = model(OpcionModel::class);
+        $this->tipoMuestraModel   = model(TipoMuestraModel::class);
     }
 
     public function index()
@@ -52,6 +55,27 @@ class Config extends SecureArea
         if ($editarPoblacion >= 0) {
             $row = $this->poblacionModel->getById($editarPoblacion);
             $editarPoblacionData = is_array($row) ? $row : [];
+        }
+
+        $editarTipoMuestraId = (int) ($this->request->getGet('editar_tipo') ?? 0);
+        $editarTipoMuestraData = [];
+        $tiposMuestraLista = [];
+        try {
+            $tiposMuestraLista = $this->tipoMuestraModel->getAllActive();
+        } catch (\Throwable $e) {
+            $tiposMuestraLista = [];
+        }
+        if ($editarTipoMuestraId > 0) {
+            try {
+                $rowTipo = $this->tipoMuestraModel->find($editarTipoMuestraId);
+                if (is_array($rowTipo) && (int) ($rowTipo['deleted'] ?? 0) === 0) {
+                    $editarTipoMuestraData = $rowTipo;
+                } else {
+                    $editarTipoMuestraId = 0;
+                }
+            } catch (\Throwable $e) {
+                $editarTipoMuestraId = 0;
+            }
         }
 
         $opciones = $this->loadOpcionesForView();
@@ -78,6 +102,9 @@ class Config extends SecureArea
         if (!$canManageTenants && $tab === 'tenants') {
             $tab = 'sistema';
         }
+        if ($editarTipoMuestraId > 0) {
+            $tab = 'tipos_muestra';
+        }
 
         $pdf_templates = [];
         try {
@@ -92,6 +119,9 @@ class Config extends SecureArea
             'poblaciones'          => $poblaciones,
             'editar_poblacion'     => $editarPoblacion,
             'editar_poblacion_data'=> $editarPoblacionData,
+            'tipos_muestra'        => $tiposMuestraLista,
+            'editar_tipo_muestra'  => $editarTipoMuestraId,
+            'editar_tipo_muestra_data' => $editarTipoMuestraData,
             'opciones'             => $opciones,
             'tenants'              => $tenants,
             'tenant_edit_data'     => $tenantEditData,
@@ -237,6 +267,48 @@ class Config extends SecureArea
         $this->poblacionModel->deletePoblacion($id);
         \App\Models\AuditoriaModel::log('config', 'poblacion_eliminar', (string) $id);
         return redirect()->to('config?tab=poblacion')->with('success', 'Población eliminada.');
+    }
+
+    public function saveTipoMuestra(): ResponseInterface
+    {
+        $nombre = trim($this->request->getPost('nombre') ?? '');
+        $len    = function_exists('mb_strlen') ? mb_strlen($nombre, 'UTF-8') : strlen($nombre);
+        if ($nombre === '' || $len > 128) {
+            return redirect()->to('config?tab=tipos_muestra')->with('error', 'El nombre es obligatorio (máx. 128 caracteres).');
+        }
+        $id = (int) ($this->request->getPost('tipo_muestra_id') ?? 0);
+        if ($id > 0) {
+            $ex = $this->tipoMuestraModel->find($id);
+            if (!is_array($ex) || (int) ($ex['deleted'] ?? 0) !== 0) {
+                return redirect()->to('config?tab=tipos_muestra')->with('error', 'El tipo de muestra no existe o fue eliminado.');
+            }
+        }
+        try {
+            $saved = $this->tipoMuestraModel->saveTipo($nombre, $id > 0 ? $id : null);
+            if ($saved === false) {
+                return redirect()->to('config?tab=tipos_muestra')->with('error', 'No se pudo guardar el tipo de muestra.');
+            }
+            \App\Models\AuditoriaModel::log('config', $id > 0 ? 'tipo_muestra_actualizar' : 'tipo_muestra_crear', (string) $saved);
+        } catch (\Throwable $e) {
+            return redirect()->to('config?tab=tipos_muestra' . ($id > 0 ? '&editar_tipo=' . $id : ''))->with('error', 'Error al guardar. Ejecute las migraciones si la tabla tipo_muestra no existe.');
+        }
+
+        return redirect()->to('config?tab=tipos_muestra')->with('success', 'Tipo de muestra guardado.');
+    }
+
+    public function deleteTipoMuestra($id): ResponseInterface
+    {
+        $id = (int) $id;
+        try {
+            $result = $this->tipoMuestraModel->softDeleteIfUnused($id);
+        } catch (\Throwable $e) {
+            return redirect()->to('config?tab=tipos_muestra')->with('error', 'No se pudo eliminar.');
+        }
+        if ($result['success']) {
+            \App\Models\AuditoriaModel::log('config', 'tipo_muestra_eliminar', (string) $id);
+        }
+
+        return redirect()->to('config?tab=tipos_muestra')->with($result['success'] ? 'success' : 'error', $result['message']);
     }
 
     /**
