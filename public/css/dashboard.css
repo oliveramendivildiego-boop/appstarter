@@ -325,6 +325,25 @@ body.ynex-theme .btn-primary:focus-visible {
   border-left-color: var(--ui-btn-primary-hover-bg, var(--primary-hover)) !important;
 }
 
+/*
+ * Outline “primary” en el contenido (tablas, formularios): sobre fondo claro no usar solo
+ * --primary-color (puede ser muy claro / inicio de degradado). Alinear con el color de
+ * texto de la barra superior (Config → Apariencia → texto en la barra).
+ */
+body.ynex-theme main .btn-outline-primary {
+  color: var(--ui-header-text, #0d6efd) !important;
+  border-color: var(--ui-header-text, #0d6efd) !important;
+  background-color: transparent !important;
+}
+
+body.ynex-theme main .btn-outline-primary:hover,
+body.ynex-theme main .btn-outline-primary:focus-visible,
+body.ynex-theme main .btn-outline-primary:active {
+  background-color: var(--ui-btn-primary-bg, var(--primary-color)) !important;
+  border-color: var(--ui-btn-primary-bg, var(--primary-color)) !important;
+  color: var(--ui-btn-primary-text, #ffffff) !important;
+}
+
 main .card {
   border: 0;
   border-radius: var(--ui-card-radius, 8px);
