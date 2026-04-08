@@ -102,6 +102,16 @@ $pageTitle = $this->renderSection('title');
 </head>
 <body class="ynex-theme">
 <?= view('partial/ghost_tenant_banner') ?>
+<?php
+$subAlert = \App\Services\TenantSubscriptionService::alertForCurrentSession();
+if ($subAlert !== null):
+    $subAlertClass = ($subAlert['type'] ?? '') === 'danger' ? 'danger' : 'warning';
+?>
+<div class="alert alert-<?= esc($subAlertClass) ?> alert-dismissible fade show rounded-0 mb-0 border-0 text-center small" role="alert">
+    <?= esc($subAlert['message'] ?? '') ?>
+    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Cerrar"></button>
+</div>
+<?php endif; ?>
 <div id="toast-container" class="position-fixed top-0 end-0 p-3"></div>
 
 <!-- Modal global (mensajes/confirmaciones) -->

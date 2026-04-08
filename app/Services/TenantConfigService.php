@@ -3,6 +3,8 @@
 namespace App\Services;
 
 use App\Models\TenantConfigModel;
+use CodeIgniter\Database\MigrationRunner;
+use Config\Migrations as MigrationsConfig;
 
 class TenantConfigService
 {
@@ -279,52 +281,77 @@ class TenantConfigService
         }
     }
 
+    /**
+     * Ejecuta migraciones contra la BD del tenant usando una conexión explícita.
+     *
+     * Antes se invocaba `php spark migrate` con variables de entorno; en Windows (y con .env)
+     * esas variables suelen no aplicarse y las migraciones corrían contra database.default del .env,
+     * mezclando o dañando datos (p. ej. app_config del laboratorio principal).
+     */
     private function runMigrationsForTenant(array $cfg): array
     {
-        $phpFromEnv = trim((string) env('tenancy.phpBinary', ''));
-        $php = $phpFromEnv !== '' ? $phpFromEnv : 'php';
-        $quotedPhp = '"' . str_replace('"', '\"', $php) . '"';
         $prefix = (string) ($cfg['DBPrefix'] ?? 'dom_');
-        $sparkPath = rtrim((string) ROOTPATH, "\\/") . DIRECTORY_SEPARATOR . 'spark';
-        $quotedSpark = '"' . str_replace('"', '\"', $sparkPath) . '"';
 
-        if (PHP_OS_FAMILY === 'Windows') {
-            $cmd = 'cmd /C "set database.default.hostname=' . $this->escCmd((string) $cfg['hostname'])
-                . '&& set database.default.username=' . $this->escCmd((string) $cfg['username'])
-                . '&& set database.default.password=' . $this->escCmd((string) $cfg['password'])
-                . '&& set database.default.database=' . $this->escCmd((string) $cfg['database'])
-                . '&& set database.default.DBPrefix=' . $this->escCmd($prefix)
-                . '&& set database.default.port=' . $this->escCmd((string) ($cfg['port'] ?? 3306))
-                . '&& ' . $quotedPhp . ' ' . $quotedSpark . ' migrate --all"';
-        } else {
-            // sh/bash no permiten VAR=valor con puntos en el nombre (p. ej. database.default.hostname);
-            // el shell interpreta eso como comando → "command not found". /usr/bin/env sí acepta esas claves.
-            $envBin = is_executable('/usr/bin/env') ? '/usr/bin/env' : 'env';
-            $cmd    = $envBin
-                . ' database.default.hostname=' . escapeshellarg((string) $cfg['hostname'])
-                . ' database.default.username=' . escapeshellarg((string) $cfg['username'])
-                . ' database.default.password=' . escapeshellarg((string) $cfg['password'])
-                . ' database.default.database=' . escapeshellarg((string) $cfg['database'])
-                . ' database.default.DBPrefix=' . escapeshellarg($prefix)
-                . ' database.default.port=' . escapeshellarg((string) ($cfg['port'] ?? 3306))
-                . ' ' . $quotedPhp . ' ' . $quotedSpark . ' migrate --all';
-        }
+        $params = [
+            'DSN'          => '',
+            'hostname'     => (string) $cfg['hostname'],
+            'username'     => (string) $cfg['username'],
+            'password'     => (string) $cfg['password'],
+            'database'     => (string) $cfg['database'],
+            'DBDriver'     => 'MySQLi',
+            'DBPrefix'     => $prefix,
+            'pConnect'     => false,
+            'DBDebug'      => false,
+            'charset'      => 'utf8mb4',
+            'DBCollat'     => 'utf8mb4_general_ci',
+            'port'         => (int) ($cfg['port'] ?? 3306),
+            'swapPre'      => '',
+            'encrypt'      => false,
+            'compress'     => false,
+            'strictOn'     => false,
+            'failover'     => [],
+            'foreignKeys'  => true,
+            'dateFormat'   => [
+                'date'     => 'Y-m-d',
+                'datetime' => 'Y-m-d H:i:s',
+                'time'     => 'H:i:s',
+            ],
+        ];
 
-        $out = [];
-        $code = 1;
-        @exec($cmd . ' 2>&1', $out, $code);
-        if ($code !== 0) {
+        $db = null;
+
+        try {
+            $db = \Config\Database::connect($params, false);
+            $db->initialize();
+
+            $runner = new MigrationRunner(config(MigrationsConfig::class), $db);
+            $runner->setNamespace(null);
+            $runner->clearCliMessages();
+
+            if (! $runner->latest()) {
+                $msgs = $runner->getCliMessages();
+
+                return [
+                    'success' => false,
+                    'message' => 'Error al ejecutar migraciones en la BD del tenant: '
+                        . (implode(' | ', $msgs) !== '' ? implode(' | ', $msgs) : 'revise el registro del servidor'),
+                ];
+            }
+
+            return ['success' => true, 'message' => 'Migraciones ejecutadas.'];
+        } catch (\Throwable $e) {
             return [
                 'success' => false,
-                'message' => 'Error al ejecutar migraciones del tenant con PHP CLI "' . $php . '": '
-                    . implode(' | ', array_slice($out, -8)),
+                'message' => 'Error al migrar la BD del tenant: ' . $e->getMessage(),
             ];
+        } finally {
+            if ($db !== null) {
+                try {
+                    $db->close();
+                } catch (\Throwable $e) {
+                    // ignorar cierre
+                }
+            }
         }
-        return ['success' => true, 'message' => 'Migraciones ejecutadas.'];
-    }
-
-    private function escCmd(string $value): string
-    {
-        return str_replace(['^', '&', '|', '<', '>', '%', '"'], ['^^', '^&', '^|', '^<', '^>', '%%', '\"'], $value);
     }
 }

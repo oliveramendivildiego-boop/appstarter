@@ -75,6 +75,14 @@ foreach ($allowed_modules ?? [] as $m) {
           </a>
         </li>
         <?php endif; ?>
+        <?php if (\App\Services\TenantSubscriptionService::shouldShowClientPortal()): ?>
+        <li class="nav-item">
+          <a class="nav-link d-flex align-items-center gap-2 <?= ($current ?? '') === 'tenant_subscription' ? 'active' : '' ?>" href="<?= site_url('tenant-subscription') ?>">
+            <i class="fa-solid fa-file-invoice-dollar"></i>
+            Suscripción y comprobantes
+          </a>
+        </li>
+        <?php endif; ?>
       </ul>
       <h6 class="sidebar-heading d-flex justify-content-between align-items-center px-3 mt-4 mb-1 text-uppercase">
         <span><?= lang('Common.common_administration') ?: 'Administración' ?></span>

@@ -11,6 +11,7 @@ use App\Libraries\TenantResolver;
 use App\Services\ConfigService;
 use App\Services\TenantConfigService;
 use App\Services\TenantHandoffService;
+use App\Services\TenantSubscriptionService;
 use CodeIgniter\HTTP\ResponseInterface;
 
 /**
@@ -105,6 +106,18 @@ class Config extends SecureArea
         if ($editarTipoMuestraId > 0) {
             $tab = 'tipos_muestra';
         }
+        if ($canManageTenants && $tenantEditId <= 0 && ($this->request->getGet('tab') ?: '') === 'tenant_subscriptions') {
+            $tab = 'tenant_subscriptions';
+        }
+        if (! $canManageTenants && $tab === 'tenant_subscriptions') {
+            $tab = 'sistema';
+        }
+
+        $subSvc                 = new TenantSubscriptionService();
+        $subscription_payments  = $canManageTenants
+            ? $subSvc->listPaymentsWithTenantNames($subSvc->listPaymentsForManagement())
+            : [];
+        $billable_tenants = $canManageTenants ? $subSvc->getBillableTenants() : [];
 
         $pdf_templates = [];
         try {
@@ -126,6 +139,8 @@ class Config extends SecureArea
             'tenants'              => $tenants,
             'tenant_edit_data'     => $tenantEditData,
             'can_manage_tenants'   => $canManageTenants,
+            'subscription_payments'=> $subscription_payments,
+            'billable_tenants'     => $billable_tenants,
             'active_tab'           => $tab,
             'timezone_options'     => get_timezone_options(),
             'theme_palette'        => get_theme_color_palette(),
@@ -853,6 +868,99 @@ class Config extends SecureArea
 
         sort($tokens, SORT_STRING);
         return sha1(implode('|', $tokens));
+    }
+
+    public function saveTenantSubscriptionPayment(): ResponseInterface
+    {
+        if (! $this->canManageTenants()) {
+            return redirect()->to('config')->with('error', 'No tiene permiso para registrar pagos de suscripción.');
+        }
+
+        $tenantId    = (int) $this->request->getPost('tenant_config_id');
+        $periodStart = trim((string) $this->request->getPost('period_start'));
+        $periodEnd   = trim((string) $this->request->getPost('period_end'));
+        $amount      = (float) $this->request->getPost('amount');
+        $currency    = trim((string) $this->request->getPost('currency'));
+        $notes       = trim((string) $this->request->getPost('notes'));
+
+        $file   = $this->request->getFile('voucher_pdf');
+        $upload = null;
+        if ($file !== null && $file->getError() !== UPLOAD_ERR_NO_FILE) {
+            if (! $file->isValid()) {
+                return redirect()->to('config?tab=tenant_subscriptions')->with('error', 'El PDF adjunto no se subió correctamente.');
+            }
+            $upload = $file;
+        }
+
+        $svc    = new TenantSubscriptionService();
+        $result = $svc->createPaymentAndVoucher($tenantId, $periodStart, $periodEnd, $amount, $currency, $notes, $upload);
+        if ($result['success']) {
+            \App\Models\AuditoriaModel::log('config', 'tenant_subscription_pago', (string) ($result['id'] ?? ''));
+
+            return redirect()->to('config?tab=tenant_subscriptions')->with('success', $result['message']);
+        }
+
+        return redirect()->to('config?tab=tenant_subscriptions')->with('error', $result['message']);
+    }
+
+    public function uploadTenantSubscriptionVoucher($id): ResponseInterface
+    {
+        if (! $this->canManageTenants()) {
+            return redirect()->to('config')->with('error', 'No tiene permiso para adjuntar comprobantes.');
+        }
+
+        $payId = (int) $id;
+        $file  = $this->request->getFile('voucher_pdf');
+        if ($file === null || $file->getError() === UPLOAD_ERR_NO_FILE) {
+            return redirect()->to('config?tab=tenant_subscriptions')->with('error', 'Seleccione un archivo PDF.');
+        }
+        if (! $file->isValid()) {
+            return redirect()->to('config?tab=tenant_subscriptions')->with('error', 'El archivo no se subió correctamente.');
+        }
+
+        $svc    = new TenantSubscriptionService();
+        $result = $svc->replaceVoucherPdf($payId, $file);
+        if ($result['success']) {
+            \App\Models\AuditoriaModel::log('config', 'tenant_subscription_pdf_adjunto', (string) $payId);
+
+            return redirect()->to('config?tab=tenant_subscriptions')->with('success', $result['message']);
+        }
+
+        return redirect()->to('config?tab=tenant_subscriptions')->with('error', $result['message']);
+    }
+
+    public function downloadTenantSubscriptionVoucher($id): ResponseInterface
+    {
+        if (! $this->canManageTenants()) {
+            return redirect()->to('config')->with('error', 'No tiene permiso para descargar este comprobante.');
+        }
+
+        $payId = (int) $id;
+        $svc   = new TenantSubscriptionService();
+        $p     = $svc->findPayment($payId);
+        if (! $p) {
+            return redirect()->to('config?tab=tenant_subscriptions')->with('error', 'Comprobante no encontrado.');
+        }
+        $fn = (string) ($p['voucher_filename'] ?? '');
+        if ($fn === '' || ! preg_match('/^[a-zA-Z0-9._-]+$/', $fn)) {
+            return redirect()->to('config?tab=tenant_subscriptions')->with('error', 'Archivo no disponible.');
+        }
+        $path = $svc->voucherPath($fn);
+        if (! is_file($path) || ! is_readable($path)) {
+            return redirect()->to('config?tab=tenant_subscriptions')->with('error', 'Archivo no encontrado en disco.');
+        }
+        $binary = @file_get_contents($path);
+        if ($binary === false) {
+            return redirect()->to('config?tab=tenant_subscriptions')->with('error', 'No se pudo leer el PDF.');
+        }
+
+        $downloadName = $svc->buildVoucherDownloadFilename($payId);
+        $downloadName = str_replace(['"', "\r", "\n", '\\'], '', $downloadName);
+
+        return $this->response
+            ->setHeader('Content-Type', 'application/pdf')
+            ->setHeader('Content-Disposition', 'attachment; filename="' . $downloadName . '"')
+            ->setBody($binary);
     }
 
     private function canManageTenants(): bool

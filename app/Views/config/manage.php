@@ -1,6 +1,12 @@
 <?= $this->extend('layouts/main') ?>
 <?= $this->section('head_extra') ?>
 <script src="<?= base_url('js/vendor/jquery.validate.min.js') ?>"></script>
+<?php if (($can_manage_tenants ?? false)): ?>
+<link rel="stylesheet" href="<?= base_url('css/vendor/flatpickr.min.css') ?>">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/themes/material_green.css">
+<script src="<?= base_url('js/vendor/flatpickr.min.js') ?>"></script>
+<script src="https://cdn.jsdelivr.net/npm/flatpickr@4.6.13/dist/l10n/es.js"></script>
+<?php endif; ?>
 <?= $this->endSection() ?>
 <?= $this->section('content') ?>
 <?= view('partial/breadcrumb_nav', ['items' => [['label' => lang('Module.module_config'), 'url' => site_url('config')]]]) ?>
@@ -44,6 +50,9 @@
     <?php if (($can_manage_tenants ?? false)): ?>
     <li class="nav-item" role="presentation">
         <button class="nav-link <?= $activeTab === 'tenants' ? 'active' : '' ?>" id="tab-tenants-btn" data-bs-toggle="tab" data-bs-target="#tab-tenants" type="button" role="tab">Tenants</button>
+    </li>
+    <li class="nav-item" role="presentation">
+        <button class="nav-link <?= $activeTab === 'tenant_subscriptions' ? 'active' : '' ?>" id="tab-tenant-subscriptions-btn" data-bs-toggle="tab" data-bs-target="#tab-tenant-subscriptions" type="button" role="tab">Pagos / suscripciones</button>
     </li>
     <?php endif; ?>
     <li class="nav-item" role="presentation">
@@ -381,6 +390,104 @@
                 <a href="<?= site_url('config?tab=tenants') ?>" class="btn btn-secondary">Cancelar</a>
                 <?php endif; ?>
                 <?= form_close() ?>
+            </div>
+        </div>
+    </div>
+    <?php endif; ?>
+
+    <?php if (($can_manage_tenants ?? false)): ?>
+    <div class="tab-pane fade <?= $activeTab === 'tenant_subscriptions' ? 'show active' : '' ?>" id="tab-tenant-subscriptions" role="tabpanel">
+        <div class="card shadow-sm">
+            <div class="card-header bg-success text-white">
+                <h5 class="mb-0"><i class="fa-solid fa-file-invoice-dollar me-2"></i>Pagos y vigencia por laboratorio cliente</h5>
+            </div>
+            <div class="card-body">
+                <p class="text-muted small mb-3">
+                    Registre cada pago con el período de vigencia (desde / hasta). Puede <strong>generar un PDF automático</strong> o <strong>adjuntar su propio PDF</strong> (recibo/factura que ya tenga guardado).
+                    Los laboratorios cliente solo pueden <strong>ver y descargar</strong> el comprobante desde el menú «Suscripción y comprobantes».
+                    Si la fecha fin está a 3 días o menos (o ya venció), verán un aviso en la parte superior de la aplicación.
+                </p>
+
+                <h6 class="mb-2">Registrar pago</h6>
+                <?= form_open_multipart(site_url('config/saveTenantSubscriptionPayment'), ['class' => 'border rounded p-3 mb-4']) ?>
+                <div class="row g-3">
+                    <div class="col-md-4">
+                        <label class="form-label">Laboratorio (tenant) *</label>
+                        <select name="tenant_config_id" class="form-select" required>
+                            <option value="">— Seleccione —</option>
+                            <?php foreach (($billable_tenants ?? []) as $bt): ?>
+                            <option value="<?= (int) ($bt['id'] ?? 0) ?>"><?= esc(($bt['tenant_name'] ?? '') . ' (' . ($bt['tenant_key'] ?? '') . ')') ?></option>
+                            <?php endforeach; ?>
+                        </select>
+                    </div>
+                    <div class="col-md-2">
+                        <label class="form-label" for="tenant_sub_period_start">Vigencia desde *</label>
+                        <input type="text" name="period_start" id="tenant_sub_period_start" class="form-control flatpickr-input" required value="<?= esc(date('Y-m-d')) ?>" autocomplete="off" placeholder="Desde">
+                    </div>
+                    <div class="col-md-2">
+                        <label class="form-label" for="tenant_sub_period_end">Vigencia hasta *</label>
+                        <input type="text" name="period_end" id="tenant_sub_period_end" class="form-control flatpickr-input" required autocomplete="off" placeholder="Hasta">
+                    </div>
+                    <div class="col-md-2">
+                        <label class="form-label">Monto *</label>
+                        <input type="number" name="amount" class="form-control" step="0.01" min="0" required value="0">
+                    </div>
+                    <div class="col-md-2">
+                        <label class="form-label">Moneda</label>
+                        <input type="text" name="currency" class="form-control" maxlength="8" value="Bs" placeholder="Bs">
+                    </div>
+                    <div class="col-12">
+                        <label class="form-label">Notas (opcional)</label>
+                        <textarea name="notes" class="form-control" rows="2" placeholder="Referencia de transferencia, factura, etc."></textarea>
+                    </div>
+                    <div class="col-12">
+                        <label class="form-label" for="tenant_sub_voucher_pdf">PDF del comprobante (opcional)</label>
+                        <input type="file" name="voucher_pdf" id="tenant_sub_voucher_pdf" class="form-control" accept="application/pdf,.pdf">
+                        <small class="text-muted">Si elige un archivo, se guardará ese PDF y <strong>no</strong> se generará el comprobante automático. Máx. 15 MB.</small>
+                    </div>
+                </div>
+                <button type="submit" class="btn btn-success mt-3"><i class="fa-solid fa-plus me-1"></i> Guardar pago</button>
+                <?= form_close() ?>
+
+                <h6 class="mb-2">Historial</h6>
+                <div class="table-responsive">
+                    <table class="table table-sm table-bordered align-middle">
+                        <thead class="table-light">
+                            <tr>
+                                <th>ID</th>
+                                <th>Laboratorio</th>
+                                <th>Desde</th>
+                                <th>Hasta</th>
+                                <th>Monto</th>
+                                <th style="min-width:200px">Comprobante</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <?php foreach (($subscription_payments ?? []) as $sp): ?>
+                            <tr>
+                                <td><?= (int) ($sp['id'] ?? 0) ?></td>
+                                <td><?= esc($sp['_tenant_name'] ?? '') ?></td>
+                                <td><?= esc($sp['period_start'] ?? '') ?></td>
+                                <td><?= esc($sp['period_end'] ?? '') ?></td>
+                                <td><?= esc(number_format((float) ($sp['amount'] ?? 0), 2, ',', '.')) ?> <?= esc($sp['currency'] ?? '') ?></td>
+                                <td class="small">
+                                    <?php $spId = (int) ($sp['id'] ?? 0); ?>
+                                    <?php if (! empty($sp['voucher_filename'])): ?>
+                                    <a class="btn btn-sm btn-outline-primary mb-2 d-inline-block" href="<?= site_url('config/tenantSubscriptionVoucher/' . $spId) ?>" title="Descargar"><i class="fa-solid fa-download"></i></a>
+                                    <?php endif; ?>
+                                    <?= form_open_multipart(site_url('config/uploadTenantSubscriptionVoucher/' . $spId), ['class' => 'tenant-sub-voucher-upload']) ?>
+                                    <input type="file" name="voucher_pdf" class="form-control form-control-sm mb-1" accept="application/pdf,.pdf" required>
+                                    <button type="submit" class="btn btn-sm btn-outline-secondary"><?= ! empty($sp['voucher_filename']) ? 'Reemplazar PDF' : 'Subir PDF' ?></button>
+                                    <?= form_close() ?>
+                                </td>
+                            </tr>
+                            <?php endforeach; ?>
+                            <?php if (empty($subscription_payments)): ?>
+                            <tr><td colspan="6" class="text-center text-muted">No hay pagos registrados.</td></tr>
+                            <?php endif; ?>
+                        </tbody>
+                    </table>
+                </div>
             </div>
         </div>
     </div>
@@ -843,6 +950,14 @@ $(document).ready(function() {
             }
         });
     });
+
+    var elSubStart = document.getElementById('tenant_sub_period_start');
+    var elSubEnd = document.getElementById('tenant_sub_period_end');
+    if (elSubStart && elSubEnd && typeof flatpickr !== 'undefined') {
+        var fpOpts = { dateFormat: 'Y-m-d', locale: 'es', onOpen: function (s, d, i) { if (typeof flatpickrPositionArrowTopLeft === 'function') { flatpickrPositionArrowTopLeft(i); } } };
+        flatpickr(elSubStart, fpOpts);
+        flatpickr(elSubEnd, fpOpts);
+    }
     
     // SIN Billing Toggle
     var sinToggle = document.getElementById('sin_billing_enabled');

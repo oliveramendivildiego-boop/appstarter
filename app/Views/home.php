@@ -7,6 +7,18 @@
 <?= $this->endSection() ?>
 
 <?= $this->section('content') ?>
+<?php if (session()->getFlashdata('error')): ?>
+<div class="alert alert-danger alert-dismissible fade show">
+    <?= esc(session()->getFlashdata('error')) ?>
+    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+</div>
+<?php endif; ?>
+<?php if (session()->getFlashdata('success')): ?>
+<div class="alert alert-success alert-dismissible fade show">
+    <?= esc(session()->getFlashdata('success')) ?>
+    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+</div>
+<?php endif; ?>
 <?php
 $userName = trim(($user_info->first_name ?? '') . ' ' . ($user_info->last_name_fa ?? ''));
 $metaMes = 100;
