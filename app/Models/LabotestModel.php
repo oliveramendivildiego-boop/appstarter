@@ -20,13 +20,32 @@ class LabotestModel extends Model
         $ana = $this->db->prefixTable('anacategoria');
         $pri = $this->db->prefixTable('prianacategoria');
 
+        $sel = "{$ana}.anacategoria_id, {$ana}.name as cat_name, {$ana}.order as ana_order,
+                {$pri}.prianacategoria_id, {$pri}.name as pria_nombre, {$pri}.order as pria_order, {$pri}.cost, {$pri}.cost_deriv, {$pri}.compleja";
+        if ($this->hasColumn('prianacategoria', 'tipo_muestra_id')) {
+            $sel .= ', tm.nombre AS tipo_muestra_nombre';
+        } else {
+            $sel .= ', NULL AS tipo_muestra_nombre';
+        }
+        if ($this->hasColumn('prianacategoria', 'metodo_id')) {
+            $sel .= ', me.nombre AS metodo_nombre';
+        } else {
+            $sel .= ', NULL AS metodo_nombre';
+        }
+
         $builder = $this->db->table('anacategoria')
-            ->select("{$ana}.anacategoria_id, {$ana}.name as cat_name, {$ana}.order as ana_order,
-                      {$pri}.prianacategoria_id, {$pri}.name as pria_nombre, {$pri}.order as pria_order, {$pri}.cost, {$pri}.cost_deriv, {$pri}.compleja")
+            ->select($sel, false)
             ->join('prianacategoria', "{$ana}.anacategoria_id = {$pri}.anacategoria_id AND ({$pri}.deleted = 0 OR {$pri}.deleted IS NULL)", 'left')
             ->where("({$ana}.deleted = 0 OR {$ana}.deleted IS NULL)")
             ->orderBy("{$ana}.order", 'ASC')
             ->orderBy("{$pri}.order", 'ASC');
+
+        if ($this->hasColumn('prianacategoria', 'tipo_muestra_id')) {
+            $builder->join('tipo_muestra tm', "{$pri}.tipo_muestra_id = tm.tipo_muestra_id", 'left');
+        }
+        if ($this->hasColumn('prianacategoria', 'metodo_id')) {
+            $builder->join('metodo me', "{$pri}.metodo_id = me.metodo_id", 'left');
+        }
 
         if ($search !== null && trim($search) !== '') {
             $esc = $this->db->escapeLikeString(trim($search));
@@ -60,11 +79,13 @@ class LabotestModel extends Model
             }
             if ($row->prianacategoria_id) {
                 $grouped[$catId]['items'][] = [
-                    'id'        => $row->prianacategoria_id,
-                    'name'      => $row->pria_nombre,
-                    'cost'      => $row->cost,
-                    'cost_deriv'=> $row->cost_deriv,
-                    'compleja'  => $row->compleja,
+                    'id'             => $row->prianacategoria_id,
+                    'name'           => $row->pria_nombre,
+                    'cost'           => $row->cost,
+                    'cost_deriv'     => $row->cost_deriv,
+                    'compleja'       => $row->compleja,
+                    'tipo_muestra'   => trim((string) ($row->tipo_muestra_nombre ?? '')),
+                    'metodo'         => trim((string) ($row->metodo_nombre ?? '')),
                 ];
             }
         }

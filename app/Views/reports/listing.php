@@ -62,6 +62,18 @@
                     <i class="fas fa-chart-line me-2"></i> Valores de referencia
                 </a>
                 <p class="list-group-item small text-muted mb-0">Valores de referencia de todas las pruebas con buscador.</p>
+                <a href="<?= site_url('reports/catalogoPruebas') ?>" class="list-group-item list-group-item-action">
+                    <i class="fas fa-sitemap me-2"></i> Catálogo de pruebas (imprimir)
+                </a>
+                <p class="list-group-item small text-muted mb-0">Listado de todos los grupos con sus análisis; abre una página lista para imprimir.</p>
+                <a href="<?= site_url('reports/catalogoPruebasPdf') ?>" class="list-group-item list-group-item-action">
+                    <i class="fas fa-file-pdf me-2"></i> Catálogo de pruebas (PDF)
+                </a>
+                <p class="list-group-item small text-muted mb-0">Descarga el mismo catálogo (padres e hijos) en PDF.</p>
+                <a href="<?= site_url('reports/catalogoPruebasExcel') ?>" class="list-group-item list-group-item-action">
+                    <i class="fas fa-file-excel me-2"></i> Catálogo de pruebas (Excel)
+                </a>
+                <p class="list-group-item small text-muted mb-0">Archivo CSV con UTF-8 (compatible con Excel): grupo y análisis por fila.</p>
             </div>
         </div>
         <div class="card shadow-sm">

@@ -9,6 +9,7 @@ use App\Models\ToquoteModel;
 use App\Models\EmployeeModel;
 use App\Models\PoblacionModel;
 use App\Models\ReportePagosCierreModel;
+use App\Models\LabotestModel;
 use App\Services\RegisterService;
 use App\Libraries\PdfService;
 
@@ -20,6 +21,7 @@ class Reports extends SecureArea
     protected ToquoteModel $toquoteModel;
     protected ReactivoModel $reactivoModel;
     protected ReportePagosCierreModel $pagosCierreModel;
+    protected LabotestModel $labotestModel;
 
     public function __construct()
     {
@@ -28,6 +30,7 @@ class Reports extends SecureArea
         $this->toquoteModel     = model(ToquoteModel::class);
         $this->reactivoModel    = model(ReactivoModel::class);
         $this->pagosCierreModel = model(ReportePagosCierreModel::class);
+        $this->labotestModel    = model(LabotestModel::class);
     }
 
     public function index()
@@ -747,6 +750,90 @@ class Reports extends SecureArea
             'allowed_modules' => $this->allowed_modules,
             'user_info'       => $this->user_info,
         ]);
+    }
+
+    /**
+     * Catálogo completo: categorías (padre) y análisis (hijos), vista para imprimir.
+     */
+    public function catalogoPruebas()
+    {
+        helper('layout');
+        $layoutConfig = layout_config();
+        $categories   = $this->labotestModel->getGroupedByCategory(null);
+
+        return view('reports/catalogo_pruebas_document', [
+            'company_name' => $layoutConfig['company'] ?? 'Laboratorio',
+            'generado_en'  => date('d/m/Y H:i'),
+            'categories'   => $categories,
+            'show_toolbar' => true,
+        ]);
+    }
+
+    /**
+     * Mismo catálogo en PDF.
+     */
+    public function catalogoPruebasPdf()
+    {
+        helper('layout');
+        $layoutConfig = layout_config();
+        $categories   = $this->labotestModel->getGroupedByCategory(null);
+
+        $data = [
+            'company_name' => $layoutConfig['company'] ?? 'Laboratorio',
+            'generado_en'  => date('d/m/Y H:i'),
+            'categories'   => $categories,
+            'show_toolbar' => false,
+        ];
+
+        $html     = view('reports/catalogo_pruebas_document', $data);
+        $filename = 'catalogo_pruebas_' . date('Y-m-d') . '.pdf';
+
+        (new PdfService())->download($html, $filename);
+    }
+
+    /**
+     * Catálogo en CSV (UTF-8 con BOM) para abrir en Excel: grupo + análisis por fila.
+     */
+    public function catalogoPruebasExcel()
+    {
+        $categories = $this->labotestModel->getGroupedByCategory(null);
+        $filename   = 'catalogo_pruebas_' . date('Y-m-d_H-i-s') . '.csv';
+
+        header('Content-Type: text/csv; charset=UTF-8');
+        header('Content-Disposition: attachment; filename="' . $filename . '"');
+        header('Cache-Control: no-cache, must-revalidate');
+        header('Expires: 0');
+
+        $output = fopen('php://output', 'w');
+        fwrite($output, "\xEF\xBB\xBF");
+        fputcsv($output, ['ID grupo', 'Grupo', 'ID análisis', 'Análisis', 'Tipo prueba', 'Tipo de muestra', 'Método']);
+
+        foreach ($categories as $cat) {
+            $gid   = (int) ($cat['id'] ?? 0);
+            $gname = (string) ($cat['name'] ?? '');
+            $items = $cat['items'] ?? [];
+
+            if ($items === []) {
+                fputcsv($output, [$gid, $gname, '', '', '', '', '']);
+                continue;
+            }
+
+            foreach ($items as $it) {
+                $tipo = (int) ($it['compleja'] ?? 0) === 1 ? 'Compuesta' : 'Simple';
+                fputcsv($output, [
+                    $gid,
+                    $gname,
+                    (int) ($it['id'] ?? 0),
+                    (string) ($it['name'] ?? ''),
+                    $tipo,
+                    (string) ($it['tipo_muestra'] ?? ''),
+                    (string) ($it['metodo'] ?? ''),
+                ]);
+            }
+        }
+
+        fclose($output);
+        exit;
     }
 
     /**
