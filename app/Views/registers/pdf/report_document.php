@@ -44,6 +44,7 @@ $ctx = [
     'pdf_layout'        => $pl,
     'pdf_logo_data_uri' => $pdf_logo_data_uri,
     'report_pria_tipo_muestra_nombre' => $report_pria_tipo_muestra_nombre ?? [],
+    'report_pria_metodo_nombre'       => $report_pria_metodo_nombre ?? [],
 ];
 ?>
 <?php if ($wmUri !== null && $wmUri !== ''): ?>

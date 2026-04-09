@@ -218,4 +218,35 @@ class DashboardService
             return [];
         }
     }
+
+    /**
+     * Serie diaria de cierres de pagos (por día en que se registró el cierre en el sistema).
+     * Suma los totales del snapshot de cada cierre ese día.
+     *
+     * @return list<array{fecha: string, cierres: int, cobrado: float, facturado: float}>
+     */
+    public function getCierresPagosSeriesUltimosDias(int $dias = 30): array
+    {
+        $dias = max(7, min(90, $dias));
+        try {
+            $cierreModel = model(\App\Models\ReportePagosCierreModel::class);
+            $desde       = date('Y-m-d', strtotime('-' . ($dias - 1) . ' days'));
+            $map         = $cierreModel->getAgregadoPorDiaRegistro($desde);
+        } catch (\Throwable $e) {
+            $map = [];
+        }
+        $out = [];
+        for ($i = $dias - 1; $i >= 0; $i--) {
+            $d = date('Y-m-d', strtotime("-{$i} days"));
+            $m = $map[$d] ?? null;
+            $out[] = [
+                'fecha'     => $d,
+                'cierres'   => (int) ($m['cierres'] ?? 0),
+                'cobrado'   => (float) ($m['cobrado'] ?? 0),
+                'facturado' => (float) ($m['facturado'] ?? 0),
+            ];
+        }
+
+        return $out;
+    }
 }

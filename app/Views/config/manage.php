@@ -42,6 +42,9 @@
         <button class="nav-link <?= $activeTab === 'tipos_muestra' ? 'active' : '' ?>" id="tab-tipos_muestra-btn" data-bs-toggle="tab" data-bs-target="#tab-tipos_muestra" type="button" role="tab">Tipos de muestra</button>
     </li>
     <li class="nav-item" role="presentation">
+        <button class="nav-link <?= $activeTab === 'metodos_prueba' ? 'active' : '' ?>" id="tab-metodos_prueba-btn" data-bs-toggle="tab" data-bs-target="#tab-metodos_prueba" type="button" role="tab">Métodos de prueba</button>
+    </li>
+    <li class="nav-item" role="presentation">
         <button class="nav-link <?= $activeTab === 'whatsapp' ? 'active' : '' ?>" id="tab-whatsapp-btn" data-bs-toggle="tab" data-bs-target="#tab-whatsapp" type="button" role="tab">WhatsApp</button>
     </li>
     <li class="nav-item" role="presentation">
@@ -780,6 +783,71 @@
                         <button type="submit" class="btn btn-primary btn-sm me-2"><?= (($editar_tipo_muestra ?? 0) > 0) ? 'Actualizar' : 'Agregar' ?></button>
                         <?php if (($editar_tipo_muestra ?? 0) > 0): ?>
                         <a href="<?= site_url('config?tab=tipos_muestra') ?>" class="btn btn-secondary btn-sm">Cancelar</a>
+                        <?php endif; ?>
+                    </div>
+                </div>
+                <?= form_close() ?>
+            </div>
+        </div>
+    </div>
+
+    <!-- Pestaña: Métodos de prueba (técnica del análisis, reporte) -->
+    <div class="tab-pane fade <?= $activeTab === 'metodos_prueba' ? 'show active' : '' ?>" id="tab-metodos_prueba" role="tabpanel">
+        <div class="card shadow-sm">
+            <div class="card-header bg-secondary text-white">
+                <h5 class="mb-0"><i class="fa-solid fa-microscope me-2"></i>Métodos de prueba</h5>
+            </div>
+            <div class="card-body">
+                <p class="text-muted small mb-3">
+                    Defina los <strong>métodos o técnicas</strong> empleadas en cada análisis (por ejemplo inmunoenzimático, quimioluminiscencia). Se asignan en <strong>Análisis clínicos → detalle del análisis</strong>, debajo del tipo de muestra, y aparecen en el reporte bajo «Tipo de Muestra». Solo se puede eliminar un método si ningún análisis lo usa.
+                </p>
+                <div class="table-responsive mb-4">
+                    <table class="table table-sm table-bordered align-middle">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Nombre</th>
+                                <th class="text-center" style="width: 140px; white-space: nowrap;">Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <?php foreach (($metodos_prueba ?? []) as $mp): ?>
+                            <tr>
+                                <td><?= esc($mp['nombre'] ?? '') ?></td>
+                                <td class="text-center p-2">
+                                    <div class="d-inline-flex align-items-center justify-content-center gap-1 flex-nowrap">
+                                        <form method="get" action="<?= esc(site_url('config')) ?>" class="d-inline m-0">
+                                            <input type="hidden" name="tab" value="metodos_prueba">
+                                            <input type="hidden" name="editar_metodo" value="<?= (int) ($mp['metodo_id'] ?? 0) ?>">
+                                            <button type="submit" class="btn btn-sm btn-outline-primary" title="Editar"><i class="fa-solid fa-pen"></i></button>
+                                        </form>
+                                        <a href="<?= site_url('config/deletemetodo/' . (int) ($mp['metodo_id'] ?? 0)) ?>" class="btn btn-sm btn-outline-danger flex-shrink-0" title="Eliminar" onclick="return uiConfirmLink(this, '¿Eliminar este método?');"><i class="fa-solid fa-trash"></i></a>
+                                    </div>
+                                </td>
+                            </tr>
+                            <?php endforeach; ?>
+                            <?php if (empty($metodos_prueba)): ?>
+                            <tr>
+                                <td colspan="2" class="text-muted text-center">No hay métodos definidos. Ejecute la migración (<code>php spark migrate</code>) o agregue uno abajo.</td>
+                            </tr>
+                            <?php endif; ?>
+                        </tbody>
+                    </table>
+                </div>
+
+                <h6 class="mb-3"><?= (($editar_metodo ?? 0) > 0) ? 'Editar método' : 'Agregar método' ?></h6>
+                <?= form_open(site_url('config/savemetodo'), ['class' => 'border rounded p-3']) ?>
+                <input type="hidden" name="metodo_id" value="<?= (($editar_metodo ?? 0) > 0) ? (int) $editar_metodo : '' ?>">
+                <div class="row align-items-end">
+                    <div class="col-md-8 mb-2 mb-md-0">
+                        <label class="form-label">Nombre <span class="text-danger">*</span></label>
+                        <input type="text" name="nombre" class="form-control form-control-sm" maxlength="128" required
+                               value="<?= esc($editar_metodo_data['nombre'] ?? '') ?>"
+                               placeholder="Ej: Quimioluminiscencia, ELISA…">
+                    </div>
+                    <div class="col-md-4">
+                        <button type="submit" class="btn btn-primary btn-sm me-2"><?= (($editar_metodo ?? 0) > 0) ? 'Actualizar' : 'Agregar' ?></button>
+                        <?php if (($editar_metodo ?? 0) > 0): ?>
+                        <a href="<?= site_url('config?tab=metodos_prueba') ?>" class="btn btn-secondary btn-sm">Cancelar</a>
                         <?php endif; ?>
                     </div>
                 </div>

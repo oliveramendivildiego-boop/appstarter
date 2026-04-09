@@ -63,6 +63,40 @@ class Reactivos extends SecureArea
         $resumen = $this->model->getKardexResumenPorUsuario($startDate, $endDate, $reactivoId > 0 ? $reactivoId : null, $tipo);
         $totalMovs = $this->model->countKardexMovimientos($startDate, $endDate, $personId > 0 ? $personId : null, $reactivoId > 0 ? $reactivoId : null, $tipo);
 
+        $resumenLotesPorInsumo = [];
+        if ($reactivoId > 0) {
+            $ins = $this->model->getReactivo($reactivoId);
+            if ($ins) {
+                $resumenLotesPorInsumo[] = [
+                    'reactivo_id' => $reactivoId,
+                    'nombre'      => (string) ($ins['nombre'] ?? ''),
+                    'unidad'      => trim((string) ($ins['unidad_base'] ?? $ins['unidad'] ?? '')) ?: 'u.',
+                    'lotes'       => $this->model->getLotesResumenKardexPorReactivo($reactivoId),
+                ];
+            }
+        } else {
+            $idsVistos = [];
+            foreach ($rows as $m) {
+                $rid = (int) ($m['reactivo_id'] ?? 0);
+                if ($rid > 0) {
+                    $idsVistos[$rid] = true;
+                }
+            }
+            foreach (array_keys($idsVistos) as $rid) {
+                $ins = $this->model->getReactivo((int) $rid);
+                if (! $ins) {
+                    continue;
+                }
+                $resumenLotesPorInsumo[] = [
+                    'reactivo_id' => (int) $rid,
+                    'nombre'      => (string) ($ins['nombre'] ?? ''),
+                    'unidad'      => trim((string) ($ins['unidad_base'] ?? $ins['unidad'] ?? '')) ?: 'u.',
+                    'lotes'       => $this->model->getLotesResumenKardexPorReactivo((int) $rid),
+                ];
+            }
+            usort($resumenLotesPorInsumo, static fn (array $a, array $b): int => strcasecmp($a['nombre'], $b['nombre']));
+        }
+
         $empleadosOpts = [];
         foreach (model(EmployeeModel::class)->getAll(5000, 0) as $emp) {
             $nombre = trim(($emp->first_name ?? '') . ' ' . ($emp->last_name_fa ?? '') . ' ' . ($emp->last_name_mom ?? ''));
@@ -83,9 +117,10 @@ class Reactivos extends SecureArea
             'lista_truncada'    => $totalMovs > count($rows),
             'show_saldo'        => $reactivoId > 0,
             'stock_actual'      => $reactivoId > 0 ? $this->model->getStockTotal($reactivoId) : null,
-            'insumos'           => $this->model->getAll(),
-            'empleados'         => $empleadosOpts,
-            'form_action'       => site_url('inventario/kardex'),
+            'insumos'                 => $this->model->getAll(),
+            'resumen_lotes_por_insumo'=> $resumenLotesPorInsumo,
+            'empleados'               => $empleadosOpts,
+            'form_action'             => site_url('inventario/kardex'),
             'allowed_modules'   => $this->allowed_modules,
             'user_info'         => $this->user_info,
             'current_module'    => 'reactivos',
@@ -101,6 +136,7 @@ class Reactivos extends SecureArea
         }
         $reactivo['tipo_nombre'] = $this->model->getNombreTipo((int) ($reactivo['tipo'] ?? 1));
         $lotes = $this->model->getLotes($reactivoId);
+        $lotesConStock = $this->model->getLotesConStock($reactivoId);
         $movimientos = [];
         try {
             $movimientos = $this->model->getMovimientos($reactivoId, 30);
@@ -109,6 +145,7 @@ class Reactivos extends SecureArea
         return view('reactivos/lotes', [
             'reactivo'        => $reactivo,
             'lotes'           => $lotes,
+            'lotes_con_stock' => $lotesConStock,
             'movimientos'     => $movimientos,
             'allowed_modules' => $this->allowed_modules,
             'user_info'       => $this->user_info,
@@ -182,19 +219,62 @@ class Reactivos extends SecureArea
         $reactivoId = (int) ($this->request->getPost('reactivo_id') ?? 0);
         $cantidad = (int) ($this->request->getPost('cantidad') ?? 0);
         $obs = $this->request->getPost('observaciones') ?: null;
-        $registroId = $this->request->getPost('registro_id') ? (int) $this->request->getPost('registro_id') : null;
+        $registerModel = model(RegisterModel::class);
+        $ordenRaw = trim((string) ($this->request->getPost('numero_orden') ?? ''));
+        if ($ordenRaw === '') {
+            $ordenRaw = trim((string) ($this->request->getPost('registro_id') ?? ''));
+        }
+        $registroId = null;
+        if ($ordenRaw !== '') {
+            $registroId = $registerModel->resolveRegistroIdFromOrdenInput($ordenRaw);
+            if ($registroId === null) {
+                return redirect()->back()->withInput()->with('error', 'No existe una orden de prueba con ese número. Verifique el folio (ej. 04_2026_5) o el ID interno.');
+            }
+        }
         $personId = session()->get('person_id') ? (int) session()->get('person_id') : null;
-        if ($registroId !== null && $registroId > 0 && model(RegisterModel::class)->isRegistroAnulado($registroId)) {
+        if ($registroId !== null && $registroId > 0 && $registerModel->isRegistroAnulado($registroId)) {
             return redirect()->back()->with('error', 'No puede registrar consumo de inventario vinculado a una orden anulada.');
         }
         if ($cantidad <= 0) {
             return redirect()->back()->with('error', 'Cantidad debe ser mayor a 0');
         }
-        if ($this->model->registrarSalida($reactivoId, $cantidad, $personId, $obs, $registroId)) {
+        $loteSel = (int) ($this->request->getPost('lote_id') ?? 0);
+        $loteSel = $loteSel > 0 ? $loteSel : null;
+        $lotesConStock = $this->model->getLotesConStock($reactivoId);
+        if (count($lotesConStock) > 1 && $loteSel === null) {
+            return redirect()->back()->withInput()->with('error', 'Seleccione el lote del cual se descontará el consumo.');
+        }
+        if ($this->model->registrarSalida($reactivoId, $cantidad, $personId, $obs, $registroId, $loteSel)) {
             \App\Models\AuditoriaModel::log('reactivos', 'salida', (string) $reactivoId, "cant:{$cantidad}");
             return redirect()->back()->with('success', 'Consumo registrado');
         }
-        return redirect()->back()->with('error', 'Stock insuficiente o error al registrar');
+        return redirect()->back()->withInput()->with('error', 'Stock insuficiente en el lote elegido o error al registrar.');
+    }
+
+    public function revertirSalida()
+    {
+        $validation = \Config\Services::validation();
+        $validation->setRules(config('Validation')->revertir_salida);
+        if (!$validation->withRequest($this->request)->run()) {
+            return redirect()->back()->with('error', implode(' ', $validation->getErrors()));
+        }
+        $movimientoId = (int) ($this->request->getPost('movimiento_id') ?? 0);
+        $reactivoId   = (int) ($this->request->getPost('reactivo_id') ?? 0);
+        $result       = $this->model->revertirSalida($movimientoId, $reactivoId);
+        $messages     = [
+            'ok'           => 'Consumo anulado; el stock fue devuelto al lote.',
+            'not_found'    => 'No se encontró el movimiento.',
+            'not_salida'   => 'Solo se pueden anular consumos (salidas).',
+            'sin_lote'     => 'Este consumo es anterior y no tiene lote asociado; no se puede anular automáticamente.',
+            'lote_invalido' => 'El lote asociado ya no existe o no corresponde a este insumo.',
+        ];
+        if ($result === 'ok') {
+            \App\Models\AuditoriaModel::log('reactivos', 'salida_revertir', (string) $reactivoId, "mov:{$movimientoId}");
+
+            return redirect()->back()->with('success', $messages['ok']);
+        }
+
+        return redirect()->back()->with('error', $messages[$result] ?? 'No se pudo anular el consumo.');
     }
 
     public function eliminar($reactivoId)

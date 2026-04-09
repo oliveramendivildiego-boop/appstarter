@@ -58,6 +58,7 @@ foreach ($grupos as $padre => $items):
     echo view($viewName, [
         'grupos' => [$padre => $items],
         'report_pria_tipo_muestra_nombre' => $report_pria_tipo_muestra_nombre ?? [],
+        'report_pria_metodo_nombre'       => $report_pria_metodo_nombre ?? [],
     ]);
 endforeach;
 endif;

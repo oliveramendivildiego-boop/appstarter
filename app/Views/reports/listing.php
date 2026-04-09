@@ -16,31 +16,39 @@
                 <a href="<?= site_url('reports/cotizacionesGuardadas') ?>" class="list-group-item list-group-item-action">
                     <i class="fas fa-file-invoice-dollar me-2"></i> Todas las cotizaciones guardadas
                 </a>
+                <p class="list-group-item small text-muted mb-0">Listado de cotizaciones archivadas con detalle y opción de reimprimir PDF.</p>
                 <a href="<?= site_url('reports/registrosFecha') ?>" class="list-group-item list-group-item-action">
                     <i class="fas fa-clipboard-list me-2"></i> Registros por fecha
                 </a>
+                <p class="list-group-item small text-muted mb-0">Órdenes de análisis registradas en un rango de fechas (ingreso).</p>
                 <a href="<?= site_url('reports/ingresosFecha') ?>" class="list-group-item list-group-item-action">
                     <i class="fas fa-money-bill-wave me-2"></i> Ingresos por fecha
                 </a>
+                <p class="list-group-item small text-muted mb-0">Facturación y cobros por día; incluye referencia de órdenes anuladas.</p>
                 <a href="<?= site_url('reports/porDoctor') ?>" class="list-group-item list-group-item-action">
                     <i class="fas fa-user-md me-2"></i> Registros por doctor
                 </a>
+                <p class="list-group-item small text-muted mb-0">Cantidad de órdenes y monto total agrupados por médico solicitante.</p>
                 <a href="<?= site_url('reports/pruebasFecha') ?>" class="list-group-item list-group-item-action">
                     <i class="fas fa-vial me-2"></i> Pruebas realizadas por fecha
                 </a>
+                <p class="list-group-item small text-muted mb-0">Pruebas completas con resultados cargados en el período seleccionado.</p>
                 <a href="<?= site_url('reports/pruebasIncompletasFecha') ?>" class="list-group-item list-group-item-action">
                     <i class="fas fa-hourglass-half me-2"></i> Pruebas incompletas por fecha
                 </a>
+                <p class="list-group-item small text-muted mb-0">Órdenes ingresadas sin resultados registrados aún.</p>
                 <a href="<?= site_url('reports/pruebasAnuladasFecha') ?>" class="list-group-item list-group-item-action">
                     <i class="fas fa-ban me-2"></i> Pruebas anuladas por fecha
                 </a>
+                <p class="list-group-item small text-muted mb-0">Órdenes marcadas como anuladas dentro del rango de fechas.</p>
                 <a href="<?= site_url('reports/estadisticasLaboratorio') ?>" class="list-group-item list-group-item-action">
                     <i class="fas fa-chart-pie me-2"></i> Estadísticas por período (pruebas, pacientes, población, género)
                 </a>
+                <p class="list-group-item small text-muted mb-0">Resumen agregado: volumen de pruebas, pacientes y distribución demográfica.</p>
             </div>
         </div>
     </div>
-    <div class="col-md-6 col-lg-4 mb-4">
+    <div class="col-md-6 col-lg-4 mb-4 d-flex flex-column gap-3">
         <div class="card shadow-sm">
             <div class="card-header bg-info text-white">
                 <h5 class="mb-0">Reportes de pruebas</h5>
@@ -54,6 +62,25 @@
                     <i class="fas fa-chart-line me-2"></i> Valores de referencia
                 </a>
                 <p class="list-group-item small text-muted mb-0">Valores de referencia de todas las pruebas con buscador.</p>
+            </div>
+        </div>
+        <div class="card shadow-sm">
+            <div class="card-header bg-success text-white">
+                <h5 class="mb-0">Reportes de pagos</h5>
+            </div>
+            <div class="list-group list-group-flush">
+                <a href="<?= site_url('reports/pagos') ?>" class="list-group-item list-group-item-action">
+                    <i class="fas fa-wallet me-2"></i> Reporte de pagos
+                </a>
+                <p class="list-group-item small text-muted mb-0">Todos los pagos, pendientes de pago y resumen del período.</p>
+                <a href="<?= site_url('reports/pagosPendientes') ?>" class="list-group-item list-group-item-action">
+                    <i class="fas fa-clock me-2"></i> Pendientes de pago
+                </a>
+                <p class="list-group-item small text-muted mb-0">Solo órdenes con saldo por cobrar en el rango; total pendiente resumido.</p>
+                <a href="<?= site_url('reports/pagosCierres') ?>" class="list-group-item list-group-item-action">
+                    <i class="fas fa-file-invoice me-2"></i> Cierres de pagos
+                </a>
+                <p class="list-group-item small text-muted mb-0">Historial de cierres registrados; imprimir o PDF desde el listado.</p>
             </div>
         </div>
     </div>
@@ -71,19 +98,6 @@
                     <i class="fas fa-warehouse me-2"></i> Kardex de inventario por usuario
                 </a>
                 <p class="list-group-item small text-muted mb-0">Entradas, salidas, responsable, lote, orden de laboratorio y saldo acumulado por insumo.</p>
-            </div>
-        </div>
-    </div>
-    <div class="col-md-6 col-lg-4 mb-4">
-        <div class="card shadow-sm">
-            <div class="card-header bg-success text-white">
-                <h5 class="mb-0">Reportes de pagos</h5>
-            </div>
-            <div class="list-group list-group-flush">
-                <a href="<?= site_url('reports/pagos') ?>" class="list-group-item list-group-item-action">
-                    <i class="fas fa-wallet me-2"></i> Reporte de pagos
-                </a>
-                <p class="list-group-item small text-muted mb-0">Todos los pagos, pendientes de pago y resumen del período.</p>
             </div>
         </div>
     </div>

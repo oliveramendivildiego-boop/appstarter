@@ -6,6 +6,7 @@ use App\Models\EmployeeModel;
 use App\Models\OpcionModel;
 use App\Models\PoblacionModel;
 use App\Models\ReportPdfTemplateModel;
+use App\Models\MetodoModel;
 use App\Models\TipoMuestraModel;
 use App\Libraries\TenantResolver;
 use App\Services\ConfigService;
@@ -27,6 +28,7 @@ class Config extends SecureArea
     protected PoblacionModel $poblacionModel;
     protected OpcionModel $opcionModel;
     protected TipoMuestraModel $tipoMuestraModel;
+    protected MetodoModel $metodoModel;
     protected TenantResolver $tenantResolver;
 
     public function __construct()
@@ -38,6 +40,7 @@ class Config extends SecureArea
         $this->poblacionModel = model(PoblacionModel::class);
         $this->opcionModel        = model(OpcionModel::class);
         $this->tipoMuestraModel   = model(TipoMuestraModel::class);
+        $this->metodoModel        = model(MetodoModel::class);
     }
 
     public function index()
@@ -79,6 +82,27 @@ class Config extends SecureArea
             }
         }
 
+        $editarMetodoId = (int) ($this->request->getGet('editar_metodo') ?? 0);
+        $editarMetodoData = [];
+        $metodosLista = [];
+        try {
+            $metodosLista = $this->metodoModel->getAllActive();
+        } catch (\Throwable $e) {
+            $metodosLista = [];
+        }
+        if ($editarMetodoId > 0) {
+            try {
+                $rowMet = $this->metodoModel->find($editarMetodoId);
+                if (is_array($rowMet) && (int) ($rowMet['deleted'] ?? 0) === 0) {
+                    $editarMetodoData = $rowMet;
+                } else {
+                    $editarMetodoId = 0;
+                }
+            } catch (\Throwable $e) {
+                $editarMetodoId = 0;
+            }
+        }
+
         $opciones = $this->loadOpcionesForView();
         $tenants = $this->tenantConfigService->getAll();
         $canManageTenants = $this->canManageTenants();
@@ -105,6 +129,9 @@ class Config extends SecureArea
         }
         if ($editarTipoMuestraId > 0) {
             $tab = 'tipos_muestra';
+        }
+        if ($editarMetodoId > 0) {
+            $tab = 'metodos_prueba';
         }
         if ($canManageTenants && $tenantEditId <= 0 && ($this->request->getGet('tab') ?: '') === 'tenant_subscriptions') {
             $tab = 'tenant_subscriptions';
@@ -135,6 +162,9 @@ class Config extends SecureArea
             'tipos_muestra'        => $tiposMuestraLista,
             'editar_tipo_muestra'  => $editarTipoMuestraId,
             'editar_tipo_muestra_data' => $editarTipoMuestraData,
+            'metodos_prueba'       => $metodosLista,
+            'editar_metodo'        => $editarMetodoId,
+            'editar_metodo_data'   => $editarMetodoData,
             'opciones'             => $opciones,
             'tenants'              => $tenants,
             'tenant_edit_data'     => $tenantEditData,
@@ -324,6 +354,48 @@ class Config extends SecureArea
         }
 
         return redirect()->to('config?tab=tipos_muestra')->with($result['success'] ? 'success' : 'error', $result['message']);
+    }
+
+    public function saveMetodo(): ResponseInterface
+    {
+        $nombre = trim($this->request->getPost('nombre') ?? '');
+        $len    = function_exists('mb_strlen') ? mb_strlen($nombre, 'UTF-8') : strlen($nombre);
+        if ($nombre === '' || $len > 128) {
+            return redirect()->to('config?tab=metodos_prueba')->with('error', 'El nombre es obligatorio (máx. 128 caracteres).');
+        }
+        $id = (int) ($this->request->getPost('metodo_id') ?? 0);
+        if ($id > 0) {
+            $ex = $this->metodoModel->find($id);
+            if (! is_array($ex) || (int) ($ex['deleted'] ?? 0) !== 0) {
+                return redirect()->to('config?tab=metodos_prueba')->with('error', 'El método no existe o fue eliminado.');
+            }
+        }
+        try {
+            $saved = $this->metodoModel->saveMetodo($nombre, $id > 0 ? $id : null);
+            if ($saved === false) {
+                return redirect()->to('config?tab=metodos_prueba')->with('error', 'No se pudo guardar el método.');
+            }
+            \App\Models\AuditoriaModel::log('config', $id > 0 ? 'metodo_actualizar' : 'metodo_crear', (string) $saved);
+        } catch (\Throwable $e) {
+            return redirect()->to('config?tab=metodos_prueba' . ($id > 0 ? '&editar_metodo=' . $id : ''))->with('error', 'Error al guardar. Ejecute las migraciones si la tabla metodo no existe.');
+        }
+
+        return redirect()->to('config?tab=metodos_prueba')->with('success', 'Método guardado.');
+    }
+
+    public function deleteMetodo($id): ResponseInterface
+    {
+        $id = (int) $id;
+        try {
+            $result = $this->metodoModel->softDeleteIfUnused($id);
+        } catch (\Throwable $e) {
+            return redirect()->to('config?tab=metodos_prueba')->with('error', 'No se pudo eliminar.');
+        }
+        if ($result['success']) {
+            \App\Models\AuditoriaModel::log('config', 'metodo_eliminar', (string) $id);
+        }
+
+        return redirect()->to('config?tab=metodos_prueba')->with($result['success'] ? 'success' : 'error', $result['message']);
     }
 
     /**

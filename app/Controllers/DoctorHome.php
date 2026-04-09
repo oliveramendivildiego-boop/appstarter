@@ -205,6 +205,7 @@ class DoctorHome extends BaseController
             'analisis'           => $data['analisis'],
             'grupos'             => $data['grupos'],
             'report_pria_tipo_muestra_nombre' => $data['report_pria_tipo_muestra_nombre'] ?? [],
+            'report_pria_metodo_nombre'       => $data['report_pria_metodo_nombre'] ?? [],
             'registerModel'      => $this->registerModel,
             'doctor_info'        => $this->doctorInfo,
         ]);

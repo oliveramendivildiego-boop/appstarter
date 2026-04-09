@@ -134,6 +134,7 @@
     'pdf_watermark_uri' => null,
     'pdf_logo_data_uri' => null,
     'report_pria_tipo_muestra_nombre' => $report_pria_tipo_muestra_nombre ?? [],
+    'report_pria_metodo_nombre'       => $report_pria_metodo_nombre ?? [],
 ]) ?>
 <script>
 (function() {

@@ -1,7 +1,7 @@
 <?php
 /**
  * Partial: Formulario de configuración básica de la prueba (detalle).
- * Variables: $labotests_info, $tipos_muestra (lista desde config / tipo_muestra)
+ * Variables: $labotests_info, $tipos_muestra, $metodos_prueba (catálogos en Config)
  */
 ?>
 <div class="card">
@@ -51,6 +51,20 @@
                     <?php endforeach; ?>
                 </select>
                 <small class="text-muted">Catálogo en <a href="<?= site_url('config?tab=tipos_muestra') ?>">Configuración → Tipos de muestra</a>.</small>
+            </div>
+            <div class="col-md-6 mb-3">
+                <label for="metodo_id" class="form-label">Método</label>
+                <select name="metodo_id" id="metodo_id" class="form-select">
+                    <option value="">— Sin especificar —</option>
+                    <?php
+                    $selMet = (int) ($labotests_info->metodo_id ?? 0);
+                    foreach ($metodos_prueba ?? [] as $mp):
+                        $mid = (int) ($mp['metodo_id'] ?? 0);
+                    ?>
+                    <option value="<?= $mid ?>" <?= $selMet === $mid ? 'selected' : '' ?>><?= esc($mp['nombre'] ?? '') ?></option>
+                    <?php endforeach; ?>
+                </select>
+                <small class="text-muted">Catálogo en <a href="<?= site_url('config?tab=metodos_prueba') ?>">Configuración → Métodos de prueba</a>.</small>
             </div>
         </div>
         <button type="submit" class="btn btn-primary"><?= lang('Common.common_submit') ?></button>

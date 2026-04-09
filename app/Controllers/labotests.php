@@ -5,6 +5,7 @@ namespace App\Controllers;
 use App\Models\LabotestModel;
 use App\Models\OpcionModel;
 use App\Models\PerfilExamenModel;
+use App\Models\MetodoModel;
 use App\Models\TipoMuestraModel;
 use CodeIgniter\HTTP\ResponseInterface;
 
@@ -15,6 +16,7 @@ class Labotests extends SecureArea
     protected LabotestModel $labotestModel;
     protected OpcionModel $opcionModel;
     protected TipoMuestraModel $tipoMuestraModel;
+    protected MetodoModel $metodoModel;
 
     public function __construct()
     {
@@ -23,6 +25,7 @@ class Labotests extends SecureArea
         $this->labotestModel    = model(LabotestModel::class);
         $this->opcionModel      = model(OpcionModel::class);
         $this->tipoMuestraModel = model(TipoMuestraModel::class);
+        $this->metodoModel      = model(MetodoModel::class);
     }
 
     /**
@@ -32,6 +35,18 @@ class Labotests extends SecureArea
     {
         try {
             return $this->tipoMuestraModel->getAllActive();
+        } catch (\Throwable $e) {
+            return [];
+        }
+    }
+
+    /**
+     * @return list<array{metodo_id: int, nombre: string, deleted?: int}>
+     */
+    private function loadMetodosForForms(): array
+    {
+        try {
+            return $this->metodoModel->getAllActive();
         } catch (\Throwable $e) {
             return [];
         }
@@ -94,6 +109,7 @@ class Labotests extends SecureArea
             'labotests_master'  => $catInfo,
             'labotests_namecate'=> $anacategoriaId,
             'tipos_muestra'     => $this->loadTiposMuestraForForms(),
+            'metodos_prueba'    => $this->loadMetodosForForms(),
             'controller_name'   => 'labotests',
             'allowed_modules'   => $this->allowed_modules,
             'user_info'         => $this->user_info,
@@ -194,6 +210,7 @@ class Labotests extends SecureArea
             'formulas_con_expresion_deduped' => $formulasConExpresionDeduped,
             'opciones'               => $opciones,
             'tipos_muestra'          => $this->loadTiposMuestraForForms(),
+            'metodos_prueba'         => $this->loadMetodosForForms(),
             'editar_sec'        => $editarSec,
             'editar_sec_data'   => $editarSecData,
             'editar_pri'        => $editarPri,
@@ -236,6 +253,7 @@ class Labotests extends SecureArea
             'mostrar_valores'=> $mostrarValores ? 1 : 0,
             'anacategoria_id'=> $anacategoriaId,
             'tipo_muestra_id'=> (int) ($this->request->getPost('tipo_muestra_id') ?? 0),
+            'metodo_id'      => (int) ($this->request->getPost('metodo_id') ?? 0),
         ];
         $this->labotestModel->saveSubCategory($data, $prianacategoriaId > 0 ? $prianacategoriaId : null);
         \App\Models\AuditoriaModel::log('labotests', $prianacategoriaId > 0 ? 'actualizar_analisis' : 'crear_analisis', (string)($prianacategoriaId ?: ''), \App\Models\AuditoriaModel::detail(['nombre' => $name, 'compleja' => $compleja]));
@@ -266,10 +284,12 @@ class Labotests extends SecureArea
             'mostrar_valores' => $mostrarValores ? 1 : 0,
             'anacategoria_id' => $anacategoriaId,
             'tipo_muestra_id' => (int) ($this->request->getPost('tipo_muestra_id') ?? 0),
+            'metodo_id'       => (int) ($this->request->getPost('metodo_id') ?? 0),
         ];
         $this->labotestModel->saveSubCategory($data, $prianacategoriaId);
         \App\Models\AuditoriaModel::log('labotests', 'actualizar_analisis', (string)$prianacategoriaId, \App\Models\AuditoriaModel::detail(['nombre' => $name, 'costo' => $cost]));
-        return redirect()->to('labotests')->with('success', 'Análisis actualizado correctamente');
+
+        return redirect()->to("labotests/detail/{$prianacategoriaId}")->with('success', 'Análisis actualizado correctamente');
     }
 
     /**

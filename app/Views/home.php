@@ -207,6 +207,24 @@ $alertas = $alertas_insumos ?? ['vencidos' => 0, 'por_vencer' => 0, 'total' => 0
     </div>
 </div>
 
+<!-- Cierres de pagos (snapshots guardados) -->
+<div class="row g-3 mb-4">
+    <div class="col-12">
+        <div class="card border-0 shadow-sm">
+            <div class="card-header bg-transparent border-0 py-3 d-flex flex-wrap justify-content-between align-items-center gap-2">
+                <div>
+                    <h5 class="card-title mb-0"><i class="fa-solid fa-file-invoice-dollar me-2"></i>Cierres de pagos (últimos 30 días)</h5>
+                    <p class="text-muted small mb-0">Totales del <strong>snapshot</strong> al registrar cada cierre, agrupados por día de registro. Varios cierres el mismo día se suman.</p>
+                </div>
+                <a href="<?= site_url('reports/pagosCierres') ?>" class="btn btn-sm btn-outline-primary">Ver cierres guardados</a>
+            </div>
+            <div class="card-body">
+                <canvas id="chartCierresPagos" height="100"></canvas>
+            </div>
+        </div>
+    </div>
+</div>
+
 <!-- Ingresos por mes y Top doctores -->
 <div class="row g-3 mb-4">
     <div class="col-lg-8">
@@ -418,6 +436,91 @@ $alertas = $alertas_insumos ?? ['vencidos' => 0, 'por_vencer' => 0, 'total' => 0
     }
 
     // Gráfica de barras - Ingresos por mes
+    var cierresPagosSeries = <?= json_encode($cierres_pagos_series ?? []) ?>;
+    var currencyLabel = <?= json_encode($currency_symbol ?? '$') ?>;
+
+    var ctxCierres = document.getElementById('chartCierresPagos');
+    if (ctxCierres && typeof Chart !== 'undefined' && cierresPagosSeries.length) {
+        new Chart(ctxCierres, {
+            type: 'bar',
+            data: {
+                labels: cierresPagosSeries.map(function(r) {
+                    var d = new Date(r.fecha + 'T12:00:00');
+                    return d.toLocaleDateString('es', { day: 'numeric', month: 'short' });
+                }),
+                datasets: [
+                    {
+                        type: 'bar',
+                        label: 'Total cobrado (snapshot) ' + currencyLabel,
+                        data: cierresPagosSeries.map(function(r) { return parseFloat(r.cobrado) || 0; }),
+                        backgroundColor: 'rgba(59, 130, 246, 0.55)',
+                        borderColor: '#2563eb',
+                        borderWidth: 1,
+                        yAxisID: 'y'
+                    },
+                    {
+                        type: 'line',
+                        label: 'Total facturado (snapshot) ' + currencyLabel,
+                        data: cierresPagosSeries.map(function(r) { return parseFloat(r.facturado) || 0; }),
+                        borderColor: '#8b5cf6',
+                        backgroundColor: 'rgba(139, 92, 246, 0.15)',
+                        fill: false,
+                        tension: 0.25,
+                        yAxisID: 'y'
+                    },
+                    {
+                        type: 'line',
+                        label: 'Nº cierres',
+                        data: cierresPagosSeries.map(function(r) { return parseInt(r.cierres, 10) || 0; }),
+                        borderColor: '#f59e0b',
+                        backgroundColor: 'rgba(245, 158, 11, 0.2)',
+                        fill: false,
+                        tension: 0.3,
+                        yAxisID: 'y1',
+                        borderDash: [4, 2]
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: true,
+                interaction: { mode: 'index', intersect: false },
+                plugins: {
+                    legend: { position: 'top' },
+                    tooltip: {
+                        callbacks: {
+                            afterBody: function(items) {
+                                if (!items.length) return [];
+                                var i = items[0].dataIndex;
+                                var r = cierresPagosSeries[i];
+                                if (!r) return [];
+                                return ['Fecha: ' + r.fecha];
+                            }
+                        }
+                    }
+                },
+                scales: {
+                    y: {
+                        type: 'linear',
+                        display: true,
+                        position: 'left',
+                        title: { display: true, text: 'Monto (' + currencyLabel + ')' },
+                        beginAtZero: true
+                    },
+                    y1: {
+                        type: 'linear',
+                        display: true,
+                        position: 'right',
+                        title: { display: true, text: 'Cantidad de cierres' },
+                        beginAtZero: true,
+                        grid: { drawOnChartArea: false },
+                        ticks: { stepSize: 1 }
+                    }
+                }
+            }
+        });
+    }
+
     var ingresosPorMeses = <?= json_encode($ingresos_por_meses ?? []) ?>;
     var ctxBar = document.getElementById('chartBarras');
     if (ctxBar && typeof Chart !== 'undefined' && ingresosPorMeses.length) {

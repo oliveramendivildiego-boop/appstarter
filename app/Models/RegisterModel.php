@@ -25,6 +25,37 @@ class RegisterModel extends Model
             ->countAllResults() === 1;
     }
 
+    /**
+     * Resuelve el texto que el usuario ingresa como orden (folio en numero_orden o ID numérico interno).
+     * No usar (int) sobre folios con guiones/guiones bajos (p. ej. 04_2026_5).
+     */
+    public function resolveRegistroIdFromOrdenInput(string $raw): ?int
+    {
+        $raw = trim($raw);
+        if ($raw === '') {
+            return null;
+        }
+
+        $row = $this->db->table('registro')
+            ->select('registro_id')
+            ->where('numero_orden', $raw)
+            ->limit(1)
+            ->get()
+            ->getRow();
+        if ($row !== null) {
+            return (int) $row->registro_id;
+        }
+
+        if (ctype_digit($raw)) {
+            $id = (int) $raw;
+            if ($id > 0 && $this->existsRegistro($id)) {
+                return $id;
+            }
+        }
+
+        return null;
+    }
+
     /** @var bool|null */
     private static $registroAnuladoColumnExists = null;
 
@@ -491,7 +522,7 @@ class RegisterModel extends Model
 
     /**
      * Retorna configuración básica de prianacategoria por ids.
-     * @return array<int,array{prianacategoria_id:int,compleja:int,mostrar_valores:int,name:string,anacategoria_id:int,tipo_muestra_id?:int|null}>
+     * @return array<int,array{prianacategoria_id:int,compleja:int,mostrar_valores:int,name:string,anacategoria_id:int,tipo_muestra_id?:int|null,metodo_id?:int|null}>
      */
     public function getPrianacategoriaConfigByIds(array $ids): array
     {
@@ -510,6 +541,11 @@ class RegisterModel extends Model
             $select .= ", {$pt}.tipo_muestra_id";
         } else {
             $select .= ", NULL as tipo_muestra_id";
+        }
+        if ($this->hasColumn('prianacategoria', 'metodo_id')) {
+            $select .= ", {$pt}.metodo_id";
+        } else {
+            $select .= ", NULL as metodo_id";
         }
         return $this->db->table('prianacategoria')
             ->select($select)

@@ -13,19 +13,43 @@
     ['label' => $title ?? '', 'url' => null],
 ]]) ?>
 
-<form method="get" action="<?= site_url('reports/pagos') ?>" class="row g-3 mb-4">
+<?php if (session()->getFlashdata('success')): ?>
+<div class="alert alert-success"><?= esc(session()->getFlashdata('success')) ?></div>
+<?php endif; ?>
+<?php if (session()->getFlashdata('error')): ?>
+<div class="alert alert-danger"><?= esc(session()->getFlashdata('error')) ?></div>
+<?php endif; ?>
+
+<?php
+$cierreStart = $startDate ?? date('Y-m-d');
+$cierreEnd   = $endDate ?? date('Y-m-d');
+?>
+<div class="row g-3 mb-2 align-items-end flex-wrap">
     <div class="col-auto">
-        <label for="report_start" class="form-label">Desde</label>
-        <input type="text" id="report_start" name="start" class="form-control flatpickr-input" value="<?= esc($startDate ?? '') ?>">
+        <form method="get" action="<?= site_url('reports/pagos') ?>" class="d-flex flex-wrap align-items-end gap-3">
+            <div>
+                <label for="report_start" class="form-label">Desde</label>
+                <input type="text" id="report_start" name="start" class="form-control flatpickr-input" value="<?= esc($startDate ?? '') ?>">
+            </div>
+            <div>
+                <label for="report_end" class="form-label">Hasta</label>
+                <input type="text" id="report_end" name="end" class="form-control flatpickr-input" value="<?= esc($endDate ?? '') ?>">
+            </div>
+            <div>
+                <button type="submit" class="btn btn-primary">Filtrar</button>
+            </div>
+        </form>
     </div>
-    <div class="col-auto">
-        <label for="report_end" class="form-label">Hasta</label>
-        <input type="text" id="report_end" name="end" class="form-control flatpickr-input" value="<?= esc($endDate ?? '') ?>">
+    <div class="col-auto d-flex align-items-end gap-2 flex-wrap">
+        <?= form_open('reports/pagosCierreCrear', ['class' => 'd-inline']) ?>
+            <input type="hidden" name="start" value="<?= esc($cierreStart) ?>">
+            <input type="hidden" name="end" value="<?= esc($cierreEnd) ?>">
+            <button type="submit" class="btn btn-outline-primary">Registrar cierre</button>
+        <?= form_close() ?>
+        <a href="<?= site_url('reports/pagosCierres') ?>" class="btn btn-outline-secondary">Cierres guardados</a>
     </div>
-    <div class="col-auto d-flex align-items-end">
-        <button type="submit" class="btn btn-primary">Filtrar</button>
-    </div>
-</form>
+</div>
+<p class="small text-muted mb-0">El cierre guarda el resumen del período mostrado. Luego imprima o exporte a PDF desde <strong>Cierres guardados</strong>.</p>
 
 <h4><?= esc($title ?? '') ?></h4>
 <p class="text-muted"><?= esc($subtitle ?? '') ?></p>

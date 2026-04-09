@@ -21,7 +21,7 @@
 <?php endif; ?>
 
 <div class="row">
-    <div class="col-md-6">
+    <div class="col-md-5">
         <div class="card">
             <div class="card-header"><strong>Lotes - <?= esc($reactivo['nombre'] ?? '') ?></strong> <span class="badge bg-secondary"><?= esc($reactivo['tipo_nombre'] ?? '') ?></span></div>
             <div class="card-body">
@@ -61,21 +61,41 @@
             </div>
         </div>
     </div>
-    <div class="col-md-6">
+    <div class="col-md-7">
         <div class="card">
             <div class="card-header d-flex justify-content-between align-items-center">
                 <strong>Registrar consumo (salida)</strong>
             </div>
             <div class="card-body">
+                <?php $nLotesStock = count($lotes_con_stock ?? []); ?>
                 <?= form_open('reactivos/registrarsalida', ['id' => 'form_salida']) ?>
                 <input type="hidden" name="reactivo_id" value="<?= (int)($reactivo['reactivo_id'] ?? 0) ?>">
-                <div class="row g-2 mb-2">
-                    <div class="col-md-2"><label class="form-label small">Cantidad</label><input type="number" name="cantidad" id="cantidad_salida" class="form-control form-control-sm" placeholder="Cant." min="1"></div>
-                    <div class="col-md-2"><label class="form-label small">Nº orden (opcional)</label><input type="number" name="registro_id" class="form-control form-control-sm" placeholder="Sin prueba" min="1"></div>
-                    <div class="col-md-3"><label class="form-label small">Observaciones</label><input type="text" name="observaciones" class="form-control form-control-sm" placeholder="Opcional"></div>
-                    <div class="col-md-3 d-flex align-items-end"><button type="submit" class="btn btn-warning btn-sm">Registrar consumo</button></div>
+                <div class="row g-2 mb-2 align-items-end">
+                    <div class="col-md-3">
+                        <label class="form-label small">Lote</label>
+                        <select name="lote_id" id="lote_id_salida" class="form-select form-select-sm" <?= $nLotesStock === 0 ? 'disabled' : '' ?> <?= $nLotesStock > 1 ? 'required' : '' ?>>
+                            <?php if ($nLotesStock > 1): ?>
+                                <option value="">— Elegir lote —</option>
+                            <?php endif; ?>
+                            <?php foreach ($lotes_con_stock ?? [] as $l): ?>
+                                <option value="<?= (int) ($l['lote_id'] ?? 0) ?>" <?= $nLotesStock === 1 ? 'selected' : '' ?>>
+                                    <?= esc($l['codigo_lote'] ?? '') ?> (disp. <?= (int) ($l['cantidad'] ?? 0) ?>)
+                                </option>
+                            <?php endforeach; ?>
+                        </select>
+                    </div>
+                    <div class="col-md-2"><label class="form-label small">Cantidad</label><input type="number" name="cantidad" id="cantidad_salida" class="form-control form-control-sm" placeholder="Cant." min="1" <?= $nLotesStock === 0 ? 'disabled' : '' ?>></div>
+                    <div class="col-md-2"><label class="form-label small">Nº orden (opc.)</label><input type="text" name="numero_orden" class="form-control form-control-sm" placeholder="Folio o ID" autocomplete="off" <?= $nLotesStock === 0 ? 'disabled' : '' ?>></div>
+                    <div class="col-md-2"><label class="form-label small">Observaciones</label><input type="text" name="observaciones" class="form-control form-control-sm" placeholder="Opcional" <?= $nLotesStock === 0 ? 'disabled' : '' ?>></div>
+                    <div class="col-md-2 d-flex align-items-end"><button type="submit" class="btn btn-warning btn-sm" <?= $nLotesStock === 0 ? 'disabled' : '' ?>>Registrar consumo</button></div>
                 </div>
-                <small class="text-muted">Sin orden = consumo sin prueba asociada. Con Nº orden = vinculado a esa orden. FIFO por vencimiento. Se registra quién consumió.</small>
+                <?php if ($nLotesStock === 0): ?>
+                    <p class="small text-danger mb-0">No hay stock en ningún lote; agregue entrada antes de registrar consumo.</p>
+                <?php elseif ($nLotesStock === 1): ?>
+                    <small class="text-muted">Único lote con stock: se usará por defecto. Sin orden = consumo sin prueba. Con folio = orden existente.</small>
+                <?php else: ?>
+                    <small class="text-muted">Elija el lote del que se descuenta. Sin orden = consumo sin prueba. Con folio = orden existente.</small>
+                <?php endif; ?>
                 <?= form_close() ?>
             </div>
         </div>
@@ -85,15 +105,38 @@
             <div class="card-body p-0">
                 <div class="table-responsive">
                 <table class="table table-sm table-striped mb-0">
-                    <thead><tr><th>Fecha</th><th>Tipo</th><th>Cant.</th><th>Orden</th><th>Responsable</th></tr></thead>
+                    <thead><tr><th>Fecha</th><th>Tipo</th><th>Cant.</th><th>Lote</th><th>Orden</th><th>Responsable</th><th></th></tr></thead>
                     <tbody>
                         <?php foreach ($movimientos as $m): ?>
                         <tr>
                             <td><?= esc($m['fecha'] ?? '') ?></td>
                             <td><span class="badge <?= ($m['tipo'] ?? '') === 'entrada' ? 'bg-success' : 'bg-warning text-dark' ?>"><?= esc($m['tipo'] ?? '') ?></span></td>
                             <td><?= (int)($m['cantidad'] ?? 0) ?></td>
-                            <td><?php $rid = (int)($m['registro_id'] ?? 0); echo $rid > 0 ? '<a href="' . site_url('registers/insumos/' . $rid) . '">#' . $rid . '</a>' : '<span class="text-muted">Sin prueba</span>'; ?></td>
+                            <td><?= esc(trim((string) ($m['codigo_lote'] ?? '')) !== '' ? $m['codigo_lote'] : '—') ?></td>
+                            <td><?php
+                                $rid = (int) ($m['registro_id'] ?? 0);
+                                if ($rid > 0) {
+                                    $ordenTxt = trim((string) ($m['numero_orden'] ?? ''));
+                                    $etiqueta = $ordenTxt !== '' ? $ordenTxt : ('#' . $rid);
+                                    echo '<a href="' . site_url('registers/insumos/' . $rid) . '">' . esc($etiqueta) . '</a>';
+                                } else {
+                                    echo '<span class="text-muted">Sin prueba</span>';
+                                }
+                            ?></td>
                             <td><?= esc(trim(($m['first_name'] ?? '') . ' ' . ($m['last_name_fa'] ?? '')) ?: '-') ?></td>
+                            <td class="text-nowrap">
+                                <?php if (($m['tipo'] ?? '') === 'salida' && !empty($m['lote_id'])): ?>
+                                    <?= form_open('reactivos/revertirSalida', ['class' => 'd-inline', 'onsubmit' => "return confirm('¿Anular este consumo y devolver la cantidad al lote?');"]) ?>
+                                    <input type="hidden" name="movimiento_id" value="<?= (int) ($m['movimiento_id'] ?? 0) ?>">
+                                    <input type="hidden" name="reactivo_id" value="<?= (int) ($reactivo['reactivo_id'] ?? 0) ?>">
+                                    <button type="submit" class="btn btn-sm btn-outline-danger py-0">Anular</button>
+                                    <?= form_close() ?>
+                                <?php elseif (($m['tipo'] ?? '') === 'salida'): ?>
+                                    <span class="text-muted small" title="Registro antiguo sin lote">—</span>
+                                <?php else: ?>
+                                    —
+                                <?php endif; ?>
+                            </td>
                         </tr>
                         <?php endforeach; ?>
                     </tbody>
@@ -123,8 +166,14 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         }));
         $('#form_salida').validate($.extend(true, {}, window.VALIDATE_COMMON_OPTIONS, {
-            rules: { cantidad: { required: true, min: 1 } },
-            messages: { cantidad: { required: "La cantidad es obligatoria", min: "Debe ser al menos 1" } }
+            rules: {
+                cantidad: { required: true, min: 1 },
+                lote_id: <?= $nLotesStock > 1 ? '{ required: true }' : '{}' ?>
+            },
+            messages: {
+                cantidad: { required: "La cantidad es obligatoria", min: "Debe ser al menos 1" },
+                lote_id: { required: "Seleccione el lote" }
+            }
         }));
     }
 

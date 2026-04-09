@@ -8,7 +8,9 @@ use App\Models\AppConfigModel;
 use App\Models\ToquoteModel;
 use App\Models\EmployeeModel;
 use App\Models\PoblacionModel;
+use App\Models\ReportePagosCierreModel;
 use App\Services\RegisterService;
+use App\Libraries\PdfService;
 
 class Reports extends SecureArea
 {
@@ -17,13 +19,15 @@ class Reports extends SecureArea
     protected ReportModel $reportModel;
     protected ToquoteModel $toquoteModel;
     protected ReactivoModel $reactivoModel;
+    protected ReportePagosCierreModel $pagosCierreModel;
 
     public function __construct()
     {
         parent::__construct();
-        $this->reportModel   = model(ReportModel::class);
-        $this->toquoteModel  = model(ToquoteModel::class);
-        $this->reactivoModel = model(ReactivoModel::class);
+        $this->reportModel      = model(ReportModel::class);
+        $this->toquoteModel     = model(ToquoteModel::class);
+        $this->reactivoModel    = model(ReactivoModel::class);
+        $this->pagosCierreModel = model(ReportePagosCierreModel::class);
     }
 
     public function index()
@@ -193,6 +197,268 @@ class Reports extends SecureArea
             'allowed_modules' => $this->allowed_modules,
             'user_info'       => $this->user_info,
         ]);
+    }
+
+    /**
+     * Solo órdenes con saldo pendiente de pago en el rango de fechas.
+     */
+    public function pagosPendientes()
+    {
+        $startDate  = $this->request->getGet('start') ?? date('Y-m-d');
+        $endDate    = $this->request->getGet('end') ?? date('Y-m-d');
+        $pendientes = $this->reportModel->getPendientesPago($startDate, $endDate);
+        $totalSaldo = 0.0;
+        foreach ($pendientes as $row) {
+            $totalSaldo += (float) ($row['saldo'] ?? 0);
+        }
+
+        return view('reports/pagos_pendientes', [
+            'title'             => 'Pendientes de pago',
+            'current_module'    => 'reports',
+            'subtitle'          => date('d/m/Y', strtotime($startDate)) . ' - ' . date('d/m/Y', strtotime($endDate)),
+            'pendientes'        => $pendientes,
+            'total_saldo'       => $totalSaldo,
+            'startDate'         => $startDate,
+            'endDate'           => $endDate,
+            'allowed_modules'   => $this->allowed_modules,
+            'user_info'         => $this->user_info,
+        ]);
+    }
+
+    /**
+     * Listado de cierres de pagos guardados (imprimir / PDF solo desde el detalle).
+     */
+    public function pagosCierres()
+    {
+        $rows = [];
+        try {
+            $rows = $this->pagosCierreModel->getListado(500);
+        } catch (\Throwable $e) {
+        }
+
+        return view('reports/pagos_cierres', [
+            'title'             => 'Cierres de pagos',
+            'current_module'    => 'reports',
+            'cierres'           => $rows,
+            'allowed_modules'   => $this->allowed_modules,
+            'user_info'         => $this->user_info,
+        ]);
+    }
+
+    /**
+     * Guarda un cierre con snapshot del período (POST start, end).
+     */
+    public function pagosCierreCrear()
+    {
+        $validation = \Config\Services::validation();
+        $validation->setRules(config('Validation')->pagos_cierre_crear);
+        $backQs     = static function (string $s, string $e): string {
+            return 'reports/pagos?' . http_build_query(['start' => $s, 'end' => $e]);
+        };
+        if (!$validation->withRequest($this->request)->run()) {
+            $s = (string) ($this->request->getPost('start') ?? date('Y-m-d'));
+            $e = (string) ($this->request->getPost('end') ?? date('Y-m-d'));
+
+            return redirect()->to($backQs($s, $e))->with('error', implode(' ', $validation->getErrors()));
+        }
+        $startDate = (string) $this->request->getPost('start');
+        $endDate   = (string) $this->request->getPost('end');
+        if (strtotime($startDate) > strtotime($endDate)) {
+            return redirect()->to($backQs($startDate, $endDate))
+                ->with('error', 'La fecha inicial no puede ser posterior a la final.');
+        }
+
+        try {
+            $snapshot = $this->buildPagosCierreSnapshotPayload($startDate, $endDate);
+        } catch (\Throwable $e) {
+            return redirect()->to($backQs($startDate, $endDate))
+                ->with('error', 'No se pudo generar el cierre.');
+        }
+
+        $personId = session()->get('person_id') ? (int) session()->get('person_id') : null;
+        $nombre   = '';
+        if ($this->user_info !== null) {
+            $nombre = trim(
+                ($this->user_info->first_name ?? '') . ' ' . ($this->user_info->last_name_fa ?? '')
+            );
+        }
+
+        try {
+            $json = json_encode($snapshot, JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR);
+        } catch (\Throwable $e) {
+            return redirect()->to($backQs($startDate, $endDate))
+                ->with('error', 'No se pudo serializar el cierre.');
+        }
+
+        try {
+            $this->pagosCierreModel->insert([
+                'fecha_desde'       => $startDate,
+                'fecha_hasta'       => $endDate,
+                'snapshot_json'     => $json,
+                'person_id'         => $personId,
+                'elaborado_nombre'  => $nombre !== '' ? $nombre : null,
+                'created_at'        => date('Y-m-d H:i:s'),
+            ]);
+        } catch (\Throwable $e) {
+            return redirect()->to($backQs($startDate, $endDate))
+                ->with('error', 'No se pudo guardar el cierre. Ejecute la migración de base de datos (reporte_pagos_cierre).');
+        }
+        $newId = (int) $this->pagosCierreModel->getInsertID();
+
+        return redirect()->to('reports/pagosCierres')->with('success', 'Cierre #' . $newId . ' registrado. Desde el listado puede imprimir o exportar PDF.');
+    }
+
+    /**
+     * Documento de un cierre guardado (imprimir).
+     */
+    public function pagosCierreVer($cierreId)
+    {
+        $cierreId = (int) $cierreId;
+        $row      = $this->pagosCierreModel->findCierre($cierreId);
+        if ($row === null) {
+            return redirect()->to('reports/pagosCierres')->with('error', 'Cierre no encontrado.');
+        }
+        try {
+            $snap = json_decode($row['snapshot_json'], true, 512, JSON_THROW_ON_ERROR);
+        } catch (\Throwable $e) {
+            return redirect()->to('reports/pagosCierres')->with('error', 'Datos del cierre corruptos.');
+        }
+        if (!is_array($snap)) {
+            return redirect()->to('reports/pagosCierres')->with('error', 'Datos del cierre inválidos.');
+        }
+
+        $data               = $this->dataFromSnapshot($snap, $row['fecha_desde'], $row['fecha_hasta'], $cierreId);
+        $data['show_toolbar'] = true;
+
+        return view('reports/pagos_cierre_document', $data);
+    }
+
+    /**
+     * PDF de un cierre guardado.
+     */
+    public function pagosCierrePdf($cierreId)
+    {
+        $cierreId = (int) $cierreId;
+        $row      = $this->pagosCierreModel->findCierre($cierreId);
+        if ($row === null) {
+            return redirect()->to('reports/pagosCierres')->with('error', 'Cierre no encontrado.');
+        }
+        try {
+            $snap = json_decode($row['snapshot_json'], true, 512, JSON_THROW_ON_ERROR);
+        } catch (\Throwable $e) {
+            return redirect()->to('reports/pagosCierres')->with('error', 'Datos del cierre corruptos.');
+        }
+        if (!is_array($snap)) {
+            return redirect()->to('reports/pagosCierres')->with('error', 'Datos del cierre inválidos.');
+        }
+
+        $data               = $this->dataFromSnapshot($snap, $row['fecha_desde'], $row['fecha_hasta'], $cierreId);
+        $data['show_toolbar'] = false;
+
+        $html     = view('reports/pagos_cierre_document', $data);
+        $filename = 'cierre_pagos_' . $cierreId . '.pdf';
+
+        (new PdfService())->download($html, $filename);
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function buildPagosCierreData(string $startDate, string $endDate): array
+    {
+        helper('layout');
+        $layoutConfig = layout_config();
+
+        $pendientes            = $this->reportModel->getPendientesPago($startDate, $endDate);
+        $pagosPagados          = $this->reportModel->getPagosPagadosDetalle($startDate, $endDate);
+        $totales               = $this->reportModel->getTotalesPagos($startDate, $endDate);
+        $resumenPagosPorTipo   = $this->reportModel->getResumenPagosPorTipo($startDate, $endDate);
+        $resumenPagosPorDia    = $this->reportModel->getResumenPagosPorDia($startDate, $endDate);
+        $resumenPagosPorDoctor = $this->reportModel->getResumenPagosPorDoctor($startDate, $endDate);
+
+        $tipoPagoMap = ['1' => 'Efectivo', '2' => 'QR', '3' => 'Transferencia', '4' => 'Pendiente'];
+
+        $elaboradoPor = '';
+        if ($this->user_info !== null) {
+            $elaboradoPor = trim(
+                ($this->user_info->first_name ?? '') . ' ' . ($this->user_info->last_name_fa ?? '')
+            );
+        }
+
+        return [
+            'company_name'            => $layoutConfig['company'] ?? 'Laboratorio',
+            'startDate'               => $startDate,
+            'endDate'                 => $endDate,
+            'periodo_texto'           => date('d/m/Y', strtotime($startDate)) . ' — ' . date('d/m/Y', strtotime($endDate)),
+            'generado_en'             => date('d/m/Y H:i'),
+            'elaborado_por'           => $elaboradoPor,
+            'totales'                 => $totales,
+            'tipoPagoMap'             => $tipoPagoMap,
+            'resumenPagosPorTipo'     => $resumenPagosPorTipo,
+            'resumenPagosPorDia'      => $resumenPagosPorDia,
+            'resumenPagosPorDoctor'   => $resumenPagosPorDoctor,
+            'count_pagados'           => count($pagosPagados),
+            'count_pendientes'        => count($pendientes),
+        ];
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function buildPagosCierreSnapshotPayload(string $startDate, string $endDate): array
+    {
+        $live = $this->buildPagosCierreData($startDate, $endDate);
+        $t    = $live['totales'];
+
+        return [
+            'company_name'          => $live['company_name'],
+            'periodo_texto'         => $live['periodo_texto'],
+            'generado_en'           => $live['generado_en'],
+            'elaborado_por'         => $live['elaborado_por'],
+            'totales'               => [
+                'total_facturado'  => (float) ($t->total_facturado ?? 0),
+                'total_cobrado'    => (float) ($t->total_cobrado ?? 0),
+                'total_pendiente'  => (float) ($t->total_pendiente ?? 0),
+                'total_registros'  => (int) ($t->total_registros ?? 0),
+            ],
+            'resumenPagosPorTipo'   => $live['resumenPagosPorTipo'],
+            'resumenPagosPorDia'    => $live['resumenPagosPorDia'],
+            'resumenPagosPorDoctor' => $live['resumenPagosPorDoctor'],
+            'count_pagados'         => $live['count_pagados'],
+            'count_pendientes'      => $live['count_pendientes'],
+        ];
+    }
+
+    /**
+     * @param array<string, mixed> $snapshot
+     *
+     * @return array<string, mixed>
+     */
+    private function dataFromSnapshot(array $snapshot, string $startDate, string $endDate, ?int $cierreId = null): array
+    {
+        $tot = $snapshot['totales'] ?? [];
+
+        return [
+            'company_name'            => $snapshot['company_name'] ?? 'Laboratorio',
+            'startDate'               => $startDate,
+            'endDate'                 => $endDate,
+            'periodo_texto'           => $snapshot['periodo_texto'] ?? '',
+            'generado_en'             => $snapshot['generado_en'] ?? '',
+            'elaborado_por'           => $snapshot['elaborado_por'] ?? '',
+            'totales'                 => (object) [
+                'total_facturado'  => (float) ($tot['total_facturado'] ?? 0),
+                'total_cobrado'    => (float) ($tot['total_cobrado'] ?? 0),
+                'total_pendiente'  => (float) ($tot['total_pendiente'] ?? 0),
+                'total_registros'  => (int) ($tot['total_registros'] ?? 0),
+            ],
+            'tipoPagoMap'             => ['1' => 'Efectivo', '2' => 'QR', '3' => 'Transferencia', '4' => 'Pendiente'],
+            'resumenPagosPorTipo'     => $snapshot['resumenPagosPorTipo'] ?? [],
+            'resumenPagosPorDia'      => $snapshot['resumenPagosPorDia'] ?? [],
+            'resumenPagosPorDoctor'   => $snapshot['resumenPagosPorDoctor'] ?? [],
+            'count_pagados'           => (int) ($snapshot['count_pagados'] ?? 0),
+            'count_pendientes'        => (int) ($snapshot['count_pendientes'] ?? 0),
+            'cierre_id'               => $cierreId,
+        ];
     }
 
     public function pruebasFecha()

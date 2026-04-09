@@ -27,6 +27,7 @@ class Home extends SecureArea
         $pendientes = $dashboardService->getPendientesCobro();
         $alertasInsumos = $dashboardService->getAlertasInsumos();
         $topDoctores = $dashboardService->getTopDoctores(5);
+        $cierresPagosSeries = $dashboardService->getCierresPagosSeriesUltimosDias(30);
         $currencySym = model(AppConfigModel::class)->getValue('currency_symbol') ?: '$';
 
         return view('home', [
@@ -41,8 +42,9 @@ class Home extends SecureArea
             'ingresos_por_meses'=> $ingresosPorMeses,
             'pendientes'       => $pendientes,
             'alertas_insumos'  => $alertasInsumos,
-            'top_doctores'     => $topDoctores,
-            'currency_symbol' => $currencySym,
+            'top_doctores'          => $topDoctores,
+            'cierres_pagos_series'  => $cierresPagosSeries,
+            'currency_symbol'       => $currencySym,
         ]);
     }
 

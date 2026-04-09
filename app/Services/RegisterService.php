@@ -662,6 +662,26 @@ class RegisterService
         } catch (\Throwable $e) {
             $reportPriaTipoMuestraNombre = [];
         }
+        $reportPriaMetodoNombre = [];
+        try {
+            $metodoModel = model(\App\Models\MetodoModel::class);
+            foreach ($priasCfg as $cfgRow) {
+                $pId = (int) ($cfgRow['prianacategoria_id'] ?? 0);
+                $mid = (int) ($cfgRow['metodo_id'] ?? 0);
+                if ($pId < 1 || $mid < 1) {
+                    continue;
+                }
+                $mRow = $metodoModel->find($mid);
+                if (is_array($mRow) && (int) ($mRow['deleted'] ?? 0) === 0) {
+                    $nomM = trim((string) ($mRow['nombre'] ?? ''));
+                    if ($nomM !== '') {
+                        $reportPriaMetodoNombre[$pId] = $nomM;
+                    }
+                }
+            }
+        } catch (\Throwable $e) {
+            $reportPriaMetodoNombre = [];
+        }
         $enteredCounts = $this->countEnteredValuesByPrianacategoria($analisis);
         $eligiblePriaIds = [];
         $eligiblePriaConfig = [];
@@ -683,6 +703,7 @@ class RegisterService
             'grupos'        => $grupos,
             'analisis'      => $analisis,
             'report_pria_tipo_muestra_nombre' => $reportPriaTipoMuestraNombre,
+            'report_pria_metodo_nombre'       => $reportPriaMetodoNombre,
         ];
     }
 
@@ -706,6 +727,7 @@ class RegisterService
             'qr_data_uri'   => $qrDataUri,
             'pdf_layout'    => $pdf_layout,
             'report_pria_tipo_muestra_nombre' => $reportData['report_pria_tipo_muestra_nombre'] ?? [],
+            'report_pria_metodo_nombre'       => $reportData['report_pria_metodo_nombre'] ?? [],
         ]);
     }
 
@@ -730,6 +752,7 @@ class RegisterService
             'pdf_layout'    => $pdf_layout,
             'registro_id'   => $registroId,
             'report_pria_tipo_muestra_nombre' => $reportData['report_pria_tipo_muestra_nombre'] ?? [],
+            'report_pria_metodo_nombre'       => $reportData['report_pria_metodo_nombre'] ?? [],
         ]);
     }
 }

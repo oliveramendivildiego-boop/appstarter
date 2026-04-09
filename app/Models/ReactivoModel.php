@@ -68,6 +68,57 @@ class ReactivoModel extends Model
             ->getResultArray();
     }
 
+    /**
+     * Por cada lote del insumo: cantidad ingresada (movimientos entrada), saldo actual y fechas.
+     * Si no hay movimiento de entrada registrado, se estima ingreso como saldo + salidas del lote.
+     *
+     * @return list<array<string, mixed>>
+     */
+    public function getLotesResumenKardexPorReactivo(int $reactivoId): array
+    {
+        if ($reactivoId <= 0) {
+            return [];
+        }
+        $lotes = $this->getLotes($reactivoId);
+        $out   = [];
+        foreach ($lotes as $l) {
+            $lid = (int) ($l['lote_id'] ?? 0);
+            if ($lid <= 0) {
+                continue;
+            }
+            $sumEntrada = $this->sumCantidadMovimientosPorLote($lid, 'entrada');
+            $sumSalida  = $this->sumCantidadMovimientosPorLote($lid, 'salida');
+            $queda      = (int) round((float) ($l['cantidad'] ?? 0));
+            $ingreso    = $sumEntrada > 0 ? (int) round($sumEntrada) : (int) round($queda + $sumSalida);
+
+            $out[] = [
+                'lote_id'             => $lid,
+                'codigo_lote'         => (string) ($l['codigo_lote'] ?? ''),
+                'ingreso'             => $ingreso,
+                'queda'               => $queda,
+                'fecha_vencimiento'   => $l['fecha_vencimiento'] ?? null,
+                'fecha_ingreso'       => $l['fecha_ingreso'] ?? null,
+            ];
+        }
+
+        return $out;
+    }
+
+    private function sumCantidadMovimientosPorLote(int $loteId, string $tipo): float
+    {
+        if (! in_array($tipo, ['entrada', 'salida'], true)) {
+            return 0.0;
+        }
+        $row = $this->db->table('reactivo_movimiento')
+            ->selectSum('cantidad')
+            ->where('lote_id', $loteId)
+            ->where('tipo', $tipo)
+            ->get()
+            ->getRow();
+
+        return (float) ($row->cantidad ?? 0);
+    }
+
     public function getStockTotal(int $reactivoId): int
     {
         $r = $this->db->table('reactivo_lote')
@@ -106,9 +157,14 @@ class ReactivoModel extends Model
 
     public function getMovimientos(int $reactivoId, int $limit = 50): array
     {
+        $re = $this->db->prefixTable('registro');
+        $rl = $this->db->prefixTable('reactivo_lote');
+
         return $this->db->table('reactivo_movimiento')
-            ->select('reactivo_movimiento.*, people.first_name, people.last_name_fa')
+            ->select("reactivo_movimiento.*, people.first_name, people.last_name_fa, {$re}.numero_orden, {$rl}.codigo_lote")
             ->join('people', 'people.person_id = reactivo_movimiento.person_id', 'left')
+            ->join('registro', "{$re}.registro_id = reactivo_movimiento.registro_id", 'left')
+            ->join('reactivo_lote', "{$rl}.lote_id = reactivo_movimiento.lote_id", 'left')
             ->where('reactivo_movimiento.reactivo_id', $reactivoId)
             ->orderBy('reactivo_movimiento.fecha', 'DESC')
             ->limit($limit)
@@ -166,25 +222,12 @@ class ReactivoModel extends Model
             $builder->where("{$rm}.tipo", $tipo);
         }
 
-        $rows = $builder
+        return $builder
             ->orderBy("{$rm}.fecha", 'DESC')
             ->orderBy("{$rm}.movimiento_id", 'DESC')
             ->limit(max(1, (int) $limit))
             ->get()
             ->getResultArray();
-
-        // Saldo acumulado solo cuando se filtra un insumo específico.
-        if (($reactivoId ?? 0) > 0) {
-            $saldo = 0;
-            for ($i = count($rows) - 1; $i >= 0; $i--) {
-                $cant = (int) ($rows[$i]['cantidad'] ?? 0);
-                $esEntrada = (($rows[$i]['tipo'] ?? '') === 'entrada');
-                $saldo += $esEntrada ? $cant : -$cant;
-                $rows[$i]['saldo_acumulado'] = $saldo;
-            }
-        }
-
-        return $rows;
     }
 
     /**
@@ -486,26 +529,64 @@ class ReactivoModel extends Model
         }
     }
 
-    /** Registra salida (consumo): descuenta de lotes FIFO y crea un movimiento con responsable */
-    public function registrarSalida(int $reactivoId, int $cantidad, ?int $personId = null, ?string $observaciones = null, ?int $registroId = null): bool
+    /**
+     * Lotes del insumo con cantidad disponible mayor que cero (selector de consumo).
+     *
+     * @return list<array<string, mixed>>
+     */
+    public function getLotesConStock(int $reactivoId): array
     {
+        return array_values(array_filter(
+            $this->getLotes($reactivoId),
+            static fn (array $l): bool => (int) ($l['cantidad'] ?? 0) > 0
+        ));
+    }
+
+    /**
+     * Registra salida (consumo) desde un lote concreto.
+     * Si $loteId es null y solo hay un lote con stock, usa ese. Si hay varios, debe indicarse lote_id.
+     */
+    public function registrarSalida(
+        int $reactivoId,
+        int $cantidad,
+        ?int $personId = null,
+        ?string $observaciones = null,
+        ?int $registroId = null,
+        ?int $loteId = null
+    ): bool {
         $db = $this->db;
-        $stock = $this->getStockTotal($reactivoId);
-        if ($stock < $cantidad) {
+        if ($cantidad <= 0) {
             return false;
         }
+
+        $lotesConStock = $this->getLotesConStock($reactivoId);
+        if ($loteId === null || $loteId <= 0) {
+            if (count($lotesConStock) === 1) {
+                $loteId = (int) ($lotesConStock[0]['lote_id'] ?? 0);
+            } else {
+                return false;
+            }
+        }
+
+        $lote = $db->table('reactivo_lote')
+            ->where('lote_id', $loteId)
+            ->where('reactivo_id', $reactivoId)
+            ->where('(deleted = 0 OR deleted IS NULL)', null, false)
+            ->get()
+            ->getRowArray();
+
+        if ($lote === null) {
+            return false;
+        }
+
+        $disponible = (int) ($lote['cantidad'] ?? 0);
+        if ($disponible < $cantidad) {
+            return false;
+        }
+
         $db->transStart();
         try {
-            $restante = $cantidad;
-            $lotes = $this->getLotes($reactivoId);
-            foreach ($lotes as $l) {
-                if ($restante <= 0) break;
-                $disponible = (int) ($l['cantidad'] ?? 0);
-                if ($disponible <= 0) continue;
-                $descontar = min($restante, $disponible);
-                $db->table('reactivo_lote')->where('lote_id', $l['lote_id'])->update(['cantidad' => $disponible - $descontar]);
-                $restante -= $descontar;
-            }
+            $db->table('reactivo_lote')->where('lote_id', $loteId)->update(['cantidad' => $disponible - $cantidad]);
             $db->table('reactivo_movimiento')->insert([
                 'reactivo_id'   => $reactivoId,
                 'tipo'          => 'salida',
@@ -513,12 +594,72 @@ class ReactivoModel extends Model
                 'person_id'     => $personId,
                 'observaciones' => $observaciones,
                 'registro_id'   => $registroId,
+                'lote_id'       => $loteId,
             ]);
             $db->transComplete();
+
             return $db->transStatus();
         } catch (\Throwable $e) {
             $db->transRollback();
+
             return false;
+        }
+    }
+
+    /**
+     * Anula un movimiento de salida: devuelve la cantidad al lote y elimina el registro de movimiento.
+     *
+     * @return 'ok'|'not_found'|'not_salida'|'sin_lote'|'lote_invalido'
+     */
+    public function revertirSalida(int $movimientoId, int $reactivoId): string
+    {
+        $db = $this->db;
+        $row = $db->table('reactivo_movimiento')
+            ->where('movimiento_id', $movimientoId)
+            ->where('reactivo_id', $reactivoId)
+            ->get()
+            ->getRowArray();
+
+        if ($row === null) {
+            return 'not_found';
+        }
+        if (($row['tipo'] ?? '') !== 'salida') {
+            return 'not_salida';
+        }
+
+        $loteId = (int) ($row['lote_id'] ?? 0);
+        if ($loteId <= 0) {
+            return 'sin_lote';
+        }
+
+        $cant = (int) round((float) ($row['cantidad'] ?? 0));
+        if ($cant <= 0) {
+            return 'not_found';
+        }
+
+        $lote = $db->table('reactivo_lote')
+            ->where('lote_id', $loteId)
+            ->where('reactivo_id', $reactivoId)
+            ->where('(deleted = 0 OR deleted IS NULL)', null, false)
+            ->get()
+            ->getRowArray();
+
+        if ($lote === null) {
+            return 'lote_invalido';
+        }
+
+        $db->transStart();
+        try {
+            $nuevo = (int) ($lote['cantidad'] ?? 0) + $cant;
+            $db->table('reactivo_lote')->where('lote_id', $loteId)->update(['cantidad' => $nuevo]);
+            $db->table('reactivo_movimiento')->where('movimiento_id', $movimientoId)->delete();
+            $db->transComplete();
+
+            return $db->transStatus() ? 'ok' : 'not_found';
+        } catch (\Throwable $e) {
+            $db->transRollback();
+
+            return 'not_found';
         }
     }
 }

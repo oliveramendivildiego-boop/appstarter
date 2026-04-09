@@ -184,8 +184,26 @@ class Validation extends BaseConfig
     ];
 
     public array $salida = [
-        'reactivo_id' => ['rules' => 'required|integer|greater_than[0]'],
-        'cantidad'    => ['rules' => 'required|integer|greater_than[0]'],
+        'reactivo_id'   => ['rules' => 'required|integer|greater_than[0]'],
+        'cantidad'      => ['rules' => 'required|integer|greater_than[0]'],
+        'numero_orden'  => ['rules' => 'permit_empty|max_length[64]'],
+        'lote_id'       => ['rules' => 'permit_empty|integer|greater_than[0]'],
+    ];
+
+    public array $revertir_salida = [
+        'movimiento_id' => ['rules' => 'required|integer|greater_than[0]'],
+        'reactivo_id'   => ['rules' => 'required|integer|greater_than[0]'],
+    ];
+
+    public array $pagos_cierre_crear = [
+        'start' => [
+            'rules'  => 'required|regex_match[/^\d{4}-\d{2}-\d{2}$/]',
+            'errors' => ['regex_match' => 'La fecha inicial no es válida.'],
+        ],
+        'end' => [
+            'rules'  => 'required|regex_match[/^\d{4}-\d{2}-\d{2}$/]',
+            'errors' => ['regex_match' => 'La fecha final no es válida.'],
+        ],
     ];
 
     /**

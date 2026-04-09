@@ -6,6 +6,7 @@
  * @var list<object|array<string,mixed>> $items
  * @var string $variant 'web' (viewreport) o 'pdf' (PDF / impresión)
  * @var array<int,string> $report_pria_tipo_muestra_nombre prianacategoria_id => nombre (config. en análisis clínico)
+ * @var array<int,string> $report_pria_metodo_nombre prianacategoria_id => nombre del método (config.)
  */
 $variant = $variant ?? 'web';
 $isPdf = ($variant === 'pdf');
@@ -28,6 +29,9 @@ foreach ($items as $rawPria) {
 $nombresTipoPorPria = $report_pria_tipo_muestra_nombre ?? [];
 $tipoMuestraLinea = trim((string) ($nombresTipoPorPria[$priaIdTitulo] ?? ''));
 $mostrarTipoMuestra = $tipoMuestraLinea !== '';
+$nombresMetodoPorPria = $report_pria_metodo_nombre ?? [];
+$metodoLinea = trim((string) ($nombresMetodoPorPria[$priaIdTitulo] ?? ''));
+$mostrarMetodo = $metodoLinea !== '';
 
 $segments = [];
 $cur = ['title' => null, 'items' => []];
@@ -51,10 +55,20 @@ $segments = array_values(array_filter($segments, static function ($s) {
 <?php if ($mostrarTipoMuestra): ?>
 <div class="report-tipo-muestra" style="font-size:9pt;color:#555;margin:0 0 10px 0;line-height:1.3;">Tipo de Muestra: <?= esc($tipoMuestraLinea) ?></div>
 <?php endif; ?>
+<?php if ($mostrarMetodo): ?>
+<div class="report-metodo-prueba" style="font-size:9pt;color:#555;margin:0 0 10px 0;line-height:1.3;">Método: <?= esc($metodoLinea) ?></div>
+<?php endif; ?>
 <?php else: ?>
 <h4 class="mt-4 mb-1"><?= esc($padre) ?> - <?= esc($hijo) ?></h4>
-<?php if ($mostrarTipoMuestra): ?>
-<p class="small text-muted mb-3">Tipo de Muestra: <?= esc($tipoMuestraLinea) ?></p>
+<?php if ($mostrarTipoMuestra || $mostrarMetodo): ?>
+<div class="small text-muted mb-3">
+    <?php if ($mostrarTipoMuestra): ?>
+    <p class="mb-0">Tipo de Muestra: <?= esc($tipoMuestraLinea) ?></p>
+    <?php endif; ?>
+    <?php if ($mostrarMetodo): ?>
+    <p class="mb-0<?= $mostrarTipoMuestra ? ' mt-1' : '' ?>">Método: <?= esc($metodoLinea) ?></p>
+    <?php endif; ?>
+</div>
 <?php endif; ?>
 <?php endif; ?>
 <?php foreach ($segments as $seg): ?>

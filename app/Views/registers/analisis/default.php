@@ -5,6 +5,7 @@
                 'padre' => $padre,
                 'items' => $items,
                 'report_pria_tipo_muestra_nombre' => $report_pria_tipo_muestra_nombre ?? [],
+                'report_pria_metodo_nombre'       => $report_pria_metodo_nombre ?? [],
             ]) ?>
         <?php endforeach; ?>
     </div>

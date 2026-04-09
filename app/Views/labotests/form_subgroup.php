@@ -43,6 +43,20 @@
             </select>
             <small class="text-muted">Defínalos en <a href="<?= site_url('config?tab=tipos_muestra') ?>" target="_blank" rel="noopener">Configuración → Tipos de muestra</a>.</small>
         </div>
+        <div class="mb-3">
+            <label for="metodo_id" class="form-label">Método</label>
+            <select name="metodo_id" id="metodo_id" class="form-select">
+                <option value="">— Sin especificar —</option>
+                <?php
+                $selMetSg = (int) ($labotests_info->metodo_id ?? 0);
+                foreach ($metodos_prueba ?? [] as $mp):
+                    $mid = (int) ($mp['metodo_id'] ?? 0);
+                ?>
+                <option value="<?= $mid ?>" <?= $selMetSg === $mid ? 'selected' : '' ?>><?= esc($mp['nombre'] ?? '') ?></option>
+                <?php endforeach; ?>
+            </select>
+            <small class="text-muted">Defínalos en <a href="<?= site_url('config?tab=metodos_prueba') ?>" target="_blank" rel="noopener">Configuración → Métodos de prueba</a>.</small>
+        </div>
         <button type="submit" class="btn btn-primary"><?= lang('Common.common_submit') ?></button>
         <a href="<?= site_url('labotests') ?>" class="btn btn-secondary">Cancelar</a>
     </div>
