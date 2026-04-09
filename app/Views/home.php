@@ -214,7 +214,7 @@ $alertas = $alertas_insumos ?? ['vencidos' => 0, 'por_vencer' => 0, 'total' => 0
             <div class="card-header bg-transparent border-0 py-3 d-flex flex-wrap justify-content-between align-items-center gap-2">
                 <div>
                     <h5 class="card-title mb-0"><i class="fa-solid fa-file-invoice-dollar me-2"></i>Cierres de pagos (últimos 30 días)</h5>
-                    <p class="text-muted small mb-0">Totales del <strong>snapshot</strong> al registrar cada cierre, agrupados por día de registro. Varios cierres el mismo día se suman.</p>
+                    <p class="text-muted small mb-0">Totales del <strong>snapshot</strong> agrupados por la <strong>fecha hasta</strong> del período de cada cierre (día en que termina el rango facturado). Varios cierres con la misma fecha hasta se suman.</p>
                 </div>
                 <a href="<?= site_url('reports/pagosCierres') ?>" class="btn btn-sm btn-outline-primary">Ver cierres guardados</a>
             </div>
@@ -439,15 +439,20 @@ $alertas = $alertas_insumos ?? ['vencidos' => 0, 'por_vencer' => 0, 'total' => 0
     var cierresPagosSeries = <?= json_encode($cierres_pagos_series ?? []) ?>;
     var currencyLabel = <?= json_encode($currency_symbol ?? '$') ?>;
 
+    function labelCierreYmd(ymd) {
+        var p = (ymd || '').split('-');
+        if (p.length !== 3) return ymd || '';
+        var meses = ['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'];
+        var mi = parseInt(p[1], 10) - 1;
+        return parseInt(p[2], 10) + ' ' + (meses[mi] != null ? meses[mi] : p[1]);
+    }
+
     var ctxCierres = document.getElementById('chartCierresPagos');
     if (ctxCierres && typeof Chart !== 'undefined' && cierresPagosSeries.length) {
         new Chart(ctxCierres, {
             type: 'bar',
             data: {
-                labels: cierresPagosSeries.map(function(r) {
-                    var d = new Date(r.fecha + 'T12:00:00');
-                    return d.toLocaleDateString('es', { day: 'numeric', month: 'short' });
-                }),
+                labels: cierresPagosSeries.map(function(r) { return labelCierreYmd(r.fecha); }),
                 datasets: [
                     {
                         type: 'bar',
@@ -494,7 +499,7 @@ $alertas = $alertas_insumos ?? ['vencidos' => 0, 'por_vencer' => 0, 'total' => 0
                                 var i = items[0].dataIndex;
                                 var r = cierresPagosSeries[i];
                                 if (!r) return [];
-                                return ['Fecha: ' + r.fecha];
+                                return ['Fecha hasta (período): ' + r.fecha];
                             }
                         }
                     }

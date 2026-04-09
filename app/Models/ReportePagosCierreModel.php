@@ -38,15 +38,17 @@ class ReportePagosCierreModel extends Model
     }
 
     /**
-     * Agrupa cierres por fecha de registro (día de `created_at`) y suma montos del snapshot.
+     * Agrupa cierres por el día final del período cubierto (`fecha_hasta`, DATE en BD) y suma montos del snapshot.
+     * Así un cierre del período que termina el 30/03 aparece el 30/03 aunque se haya registrado después.
      *
      * @return array<string, array{cierres: int, cobrado: float, facturado: float}>
      */
-    public function getAgregadoPorDiaRegistro(string $desdeFechaYmd): array
+    public function getAgregadoPorDiaFechaHasta(string $desdeFechaYmd, string $hastaFechaYmd): array
     {
         try {
-            $rows = $this->where('created_at >=', $desdeFechaYmd . ' 00:00:00')
-                ->orderBy('created_at', 'ASC')
+            $rows = $this->where('fecha_hasta >=', $desdeFechaYmd)
+                ->where('fecha_hasta <=', $hastaFechaYmd)
+                ->orderBy('fecha_hasta', 'ASC')
                 ->findAll();
         } catch (\Throwable $e) {
             return [];
@@ -54,11 +56,14 @@ class ReportePagosCierreModel extends Model
 
         $map = [];
         foreach ($rows as $r) {
-            $created = (string) ($r['created_at'] ?? '');
-            if ($created === '') {
+            $fh = (string) ($r['fecha_hasta'] ?? '');
+            if ($fh === '') {
                 continue;
             }
-            $day = substr($created, 0, 10);
+            $day = substr($fh, 0, 10);
+            if ($day === '' || strlen($day) < 10) {
+                continue;
+            }
             if (! isset($map[$day])) {
                 $map[$day] = ['cierres' => 0, 'cobrado' => 0.0, 'facturado' => 0.0];
             }

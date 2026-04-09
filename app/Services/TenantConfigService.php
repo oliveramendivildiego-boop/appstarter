@@ -131,14 +131,40 @@ class TenantConfigService
 
     public function publishTenantMap(): array
     {
-        $rows = $this->tenantModel->orderBy('tenant_name', 'ASC')->findAll();
+        $rawRows = $this->tenantModel->orderBy('id', 'ASC')->findAll();
+        $byNormKey = [];
+        foreach ($rawRows as $row) {
+            $norm = $this->normalizeTenantKey((string) ($row['tenant_key'] ?? ''));
+            if ($norm === '') {
+                continue;
+            }
+            $prev = $byNormKey[$norm] ?? null;
+            if ($prev === null) {
+                $byNormKey[$norm] = $row;
+                continue;
+            }
+            $prevDef = (int) ($prev['is_default'] ?? 0) === 1;
+            $curDef  = (int) ($row['is_default'] ?? 0) === 1;
+            if ($curDef && ! $prevDef) {
+                $byNormKey[$norm] = $row;
+            } elseif ($prevDef && ! $curDef) {
+                // conservar $prev
+            } elseif ((int) ($row['id'] ?? 0) >= (int) ($prev['id'] ?? 0)) {
+                $byNormKey[$norm] = $row;
+            }
+        }
+        $rows = array_values($byNormKey);
+        usort($rows, static function (array $a, array $b): int {
+            return strcasecmp((string) ($a['tenant_name'] ?? ''), (string) ($b['tenant_name'] ?? ''));
+        });
+
         $map = [
             '_default' => null,
             'tenants' => [],
         ];
 
         foreach ($rows as $row) {
-            $key = (string) ($row['tenant_key'] ?? '');
+            $key = $this->normalizeTenantKey((string) ($row['tenant_key'] ?? ''));
             if ($key === '') {
                 continue;
             }
@@ -215,7 +241,12 @@ class TenantConfigService
             return $migrate;
         }
 
-        return ['success' => true, 'message' => 'Tenant aprovisionado correctamente (DB + migraciones).'];
+        $pub = $this->publishTenantMap();
+        if (! $pub['success']) {
+            return $pub;
+        }
+
+        return ['success' => true, 'message' => 'Tenant aprovisionado correctamente (DB + migraciones). Mapa de tenants actualizado.'];
     }
 
     private function normalizeTenantKey(string $key): string

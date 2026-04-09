@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\AppConfigModel;
+use Config\App as AppConfig;
 use App\Models\CustomerModel;
 use App\Models\DoctorModel;
 use App\Models\EmployeeModel;
@@ -220,24 +221,35 @@ class DashboardService
     }
 
     /**
-     * Serie diaria de cierres de pagos (por día en que se registró el cierre en el sistema).
-     * Suma los totales del snapshot de cada cierre ese día.
+     * Serie diaria de cierres de pagos por día final del período del cierre (`fecha_hasta`).
+     * Suma los totales del snapshot de todos los cierres cuyo período termina ese día.
      *
      * @return list<array{fecha: string, cierres: int, cobrado: float, facturado: float}>
      */
     public function getCierresPagosSeriesUltimosDias(int $dias = 30): array
     {
         $dias = max(7, min(90, $dias));
+        $tzName = config(AppConfig::class)->appTimezone ?? date_default_timezone_get();
+        try {
+            $tz = new \DateTimeZone($tzName);
+        } catch (\Throwable $e) {
+            $tz = new \DateTimeZone('UTC');
+        }
+
+        $hoy = new \DateTimeImmutable('now', $tz);
+        $desde = $hoy->modify('-' . ($dias - 1) . ' days')->format('Y-m-d');
+        $hasta = $hoy->format('Y-m-d');
+
         try {
             $cierreModel = model(\App\Models\ReportePagosCierreModel::class);
-            $desde       = date('Y-m-d', strtotime('-' . ($dias - 1) . ' days'));
-            $map         = $cierreModel->getAgregadoPorDiaRegistro($desde);
+            $map         = $cierreModel->getAgregadoPorDiaFechaHasta($desde, $hasta);
         } catch (\Throwable $e) {
             $map = [];
         }
+
         $out = [];
         for ($i = $dias - 1; $i >= 0; $i--) {
-            $d = date('Y-m-d', strtotime("-{$i} days"));
+            $d = $hoy->modify('-' . $i . ' days')->format('Y-m-d');
             $m = $map[$d] ?? null;
             $out[] = [
                 'fecha'     => $d,
