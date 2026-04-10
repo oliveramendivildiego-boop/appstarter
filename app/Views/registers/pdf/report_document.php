@@ -52,7 +52,22 @@ $ctx = [
 ];
 ?>
 <?php if ($wmUri !== null && $wmUri !== ''): ?>
-<div class="pdf-watermark-layer" style="background-image:url('<?= esc($wmUri, 'attr') ?>');opacity:<?= esc((string) $opacityW) ?>;background-size:<?= (int) $sizeW ?>% auto;background-repeat:no-repeat;background-position:center center;"></div>
+<?php
+// <img> con transform suele no pintarse en Dompdf; la opacidad en el propio img a veces no se aplica: usar contenedor + tabla centrada.
+$wmSize     = max(10, min(95, (int) $sizeW));
+$opacityCss = number_format(max(0.05, min(0.9, $opacityW)), 2, '.', '');
+?>
+<div class="pdf-watermark-layer" aria-hidden="true">
+    <div class="pdf-watermark-inner" style="opacity:<?= esc($opacityCss, 'attr') ?>;">
+        <table class="pdf-watermark-table" width="100%" cellpadding="0" cellspacing="0" role="presentation" style="width:100%;height:11in;border-collapse:collapse;border-spacing:0;">
+            <tr>
+                <td class="pdf-watermark-td" align="center" valign="middle" style="height:11in;vertical-align:middle;">
+                    <img src="<?= esc($wmUri, 'attr') ?>" alt="" class="pdf-watermark-img" style="width:<?= $wmSize ?>%;max-width:95%;height:auto;">
+                </td>
+            </tr>
+        </table>
+    </div>
+</div>
 <?php endif; ?>
 <div class="pdf-main-stack">
 <?php foreach (($pl['blocks'] ?? []) as $block):

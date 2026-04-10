@@ -21,11 +21,10 @@ $imgNone = 'border: none; outline: none; box-shadow: none; background: transpare
             ?>
             <div class="row align-items-start <?= $multi && $idx < count($report_lab_firmas) - 1 ? 'mb-4 pb-4 border-bottom' : 'mb-0' ?> g-3">
                 <div class="col-12 col-md-4">
-                    <div class="small text-muted mb-1">Validado por:</div>
+                    <div class="small text-muted mb-1">Verificado por:</div>
                     <div><?= esc(($firma['validator_name'] ?? '') !== '' ? $firma['validator_name'] : '—') ?></div>
                 </div>
                 <div class="col-12 col-md-4 text-center">
-                    <div class="small text-muted mb-1">Sello</div>
                     <?php if ($hasSealFile): ?>
                         <img src="<?= base_url($seal) ?>" alt="" class="d-inline-block" style="max-height: 110px; max-width: 100%; <?= $imgNone ?>">
                     <?php else: ?>
@@ -33,7 +32,7 @@ $imgNone = 'border: none; outline: none; box-shadow: none; background: transpare
                     <?php endif; ?>
                 </div>
                 <div class="col-12 col-md-4">
-                    <div class="small text-muted mb-1">Aprobado por:</div>
+                    <div class="small text-muted mb-1">ATENTAMENTE</div>
                     <?php if ($hasSigFile): ?>
                         <div class="mb-2">
                             <img src="<?= base_url($sig) ?>" alt="" class="d-block" style="max-height: 80px; max-width: 240px; <?= $imgNone ?>">
@@ -42,7 +41,11 @@ $imgNone = 'border: none; outline: none; box-shadow: none; background: transpare
                     <div class="fw-semibold"><?= esc(($firma['approver_name'] ?? '') !== '' ? $firma['approver_name'] : '—') ?></div>
                     <?php $cargo = trim((string) ($firma['approver_cargo'] ?? '')); ?>
                     <?php if ($cargo !== ''): ?>
-                        <div class="mt-2"><span class="small text-muted">Cargo:</span> <?= esc($cargo) ?></div>
+                        <div class="mt-2"><?= esc($cargo) ?></div>
+                    <?php endif; ?>
+                    <?php $matricula = trim((string) ($firma['approver_matricula'] ?? '')); ?>
+                    <?php if ($matricula !== ''): ?>
+                        <div class="mt-1"><span class="small text-muted">Matrícula:</span> <?= esc($matricula) ?></div>
                     <?php endif; ?>
                 </div>
             </div>

@@ -26,6 +26,23 @@
     $hs = \App\Services\ReportPdfLayoutService::normalizeHeaderSectionStyle($ps['header_section'] ?? []);
     $ns = \App\Services\ReportPdfLayoutService::normalizeNotesStyle($ps['notes'] ?? []);
     $lf = \App\Services\ReportPdfLayoutService::normalizeLabFirmasStyle($ps['lab_firmas'] ?? []);
+    $lfBodyBg = ! empty($lf['body_transparent']) ? 'transparent' : (string) $lf['body_bg_color'];
+    $lfColBorderW = max(0, min(4, (int) ($lf['column_border_width_px'] ?? 1)));
+    $lfColBorderColor = (string) ($lf['column_border_color'] ?? '#DDDDDD');
+    $hg = \App\Services\ReportPdfLayoutService::normalizeHeaderGridStyle($ps['header_grid'] ?? []);
+    $pd = \App\Services\ReportPdfLayoutService::normalizePatientDoctorGridStyle($ps['patient_doctor_grid'] ?? []);
+    $ft = \App\Services\ReportPdfLayoutService::normalizeFooterGridStyle($ps['footer_grid'] ?? []);
+    $hgBodyBg = ! empty($hg['body_transparent']) ? 'transparent' : (string) $hg['body_bg_color'];
+    $pdBodyBg = ! empty($pd['body_transparent']) ? 'transparent' : (string) $pd['body_bg_color'];
+    $ftBodyBg = ! empty($ft['body_transparent']) ? 'transparent' : (string) $ft['body_bg_color'];
+    $hgColW = max(0, min(4, (int) ($hg['column_border_width_px'] ?? 0)));
+    $pdColW = max(0, min(4, (int) ($pd['column_border_width_px'] ?? 0)));
+    $ftColW = max(0, min(4, (int) ($ft['column_border_width_px'] ?? 0)));
+    $nsTitleBg = ! empty($ns['title_transparent']) ? 'transparent' : (string) $ns['title_bg_color'];
+    $nsBodyBg = ! empty($ns['body_transparent']) ? 'transparent' : (string) $ns['body_bg_color'];
+    $nsColW = max(0, min(4, (int) ($ns['column_border_width_px'] ?? 1)));
+    $nsColColor = (string) ($ns['column_border_color'] ?? '#DDDDDD');
+    $chCardBg = ! empty($ch['bg_transparent']) ? 'transparent' : (string) $ch['bg_color'];
     $rs = \App\Services\ReportPdfLayoutService::normalizeResultsTableStyle($ps['results_table'] ?? []);
     $rsBodyBg = ! empty($rs['body_transparent']) ? 'transparent' : (string) $rs['body_bg_color'];
     $rsSegBg = ! empty($rs['segment_transparent']) ? 'transparent' : (string) $rs['segment_bg_color'];
@@ -37,11 +54,42 @@
     ];
     $rsSegShadow = $segShadowMap[$rs['segment_shadow']] ?? 'none';
     $rid = (int) ($registro_id ?? 0);
+    $pdfFooterEnabled = false;
+    foreach (is_array($pl['blocks'] ?? null) ? $pl['blocks'] : [] as $fb) {
+        if (! empty($fb['enabled']) && (string) ($fb['id'] ?? '') === 'footer') {
+            $pdfFooterEnabled = true;
+            break;
+        }
+    }
+    $pdfFooterReserveMm = 22.0;
+    $pdfFooterStripBg   = ($ftBodyBg !== 'transparent') ? $ftBodyBg : '#ffffff';
+    $ftTopOn            = ! empty($ft['section_top_border_enabled']);
+    $ftTopW             = max(0, min(6, (int) ($ft['section_top_border_width_px'] ?? 1)));
+    $ftTopColor         = (string) ($ft['section_top_border_color'] ?? '#DDDDDD');
+    $ftTopStyleCss      = ($ftTopOn && $ftTopW > 0) ? 'solid' : 'none';
+    $ftTopWpx           = ($ftTopOn && $ftTopW > 0) ? $ftTopW : 0;
     ?>
     <style>
         body { margin: <?= esc((string) $mt) ?>mm <?= esc((string) $mr) ?>mm <?= esc((string) $mb) ?>mm <?= esc((string) $ml) ?>mm !important; position: relative; background: #fff; }
+        <?php if ($pdfFooterEnabled): ?>
+        .pdf-main-stack {
+            padding-bottom: <?= esc((string) $pdfFooterReserveMm) ?>mm;
+            box-sizing: border-box;
+        }
+        .pdf-ft-block.footer-grid {
+            position: fixed;
+            left: <?= esc((string) $ml) ?>mm;
+            right: <?= esc((string) $mr) ?>mm;
+            bottom: <?= esc((string) $mb) ?>mm;
+            z-index: 2;
+            margin-top: 0 !important;
+            padding-top: 6px;
+            background: <?= esc($pdfFooterStripBg) ?>;
+            box-sizing: border-box;
+        }
+        <?php endif; ?>
         :root {
-            --pdf-card-header-bg: <?= esc($ch['bg_color']) ?>;
+            --pdf-card-header-bg: <?= esc($chCardBg) ?>;
             --pdf-card-header-color: <?= esc($ch['text_color']) ?>;
             --pdf-card-header-font-family: "<?= esc($ch['font_family']) ?>";
             --pdf-card-header-font-size: <?= esc((string) $ch['font_size_pt']) ?>pt;
@@ -49,10 +97,12 @@
             --pdf-card-header-font-style: <?= esc($ch['font_style']) ?>;
             --pdf-card-header-transform: <?= esc($ch['text_transform']) ?>;
             --pdf-header-separator-color: <?= esc($hs['separator_color']) ?>;
-            --pdf-notes-title-bg: <?= esc($ns['title_bg_color']) ?>;
+            --pdf-notes-title-bg: <?= esc($nsTitleBg) ?>;
             --pdf-notes-title-color: <?= esc($ns['title_text_color']) ?>;
-            --pdf-notes-body-bg: <?= esc($ns['body_bg_color']) ?>;
+            --pdf-notes-body-bg: <?= esc($nsBodyBg) ?>;
             --pdf-notes-body-color: <?= esc($ns['body_text_color']) ?>;
+            --pdf-notes-column-border-width: <?= esc((string) $nsColW) ?>px;
+            --pdf-notes-column-border-color: <?= esc($nsColColor) ?>;
             --pdf-notes-font-family: "<?= esc($ns['font_family']) ?>";
             --pdf-notes-font-size: <?= esc((string) $ns['font_size_pt']) ?>pt;
             --pdf-notes-font-weight: <?= esc($ns['font_weight']) ?>;
@@ -61,14 +111,53 @@
             --pdf-notes-line-height: <?= esc((string) $ns['line_height']) ?>;
             --pdf-lf-title-bg: <?= esc($lf['title_bg_color']) ?>;
             --pdf-lf-title-color: <?= esc($lf['title_text_color']) ?>;
-            --pdf-lf-body-bg: <?= esc($lf['body_bg_color']) ?>;
+            --pdf-lf-body-bg: <?= esc($lfBodyBg) ?>;
             --pdf-lf-body-color: <?= esc($lf['body_text_color']) ?>;
+            --pdf-lf-column-border-width: <?= esc((string) $lfColBorderW) ?>px;
+            --pdf-lf-column-border-color: <?= esc($lfColBorderColor) ?>;
             --pdf-lf-font-family: "<?= esc($lf['font_family']) ?>";
             --pdf-lf-font-size: <?= esc((string) $lf['font_size_pt']) ?>pt;
             --pdf-lf-font-weight: <?= esc($lf['font_weight']) ?>;
             --pdf-lf-font-style: <?= esc($lf['font_style']) ?>;
             --pdf-lf-transform: <?= esc($lf['text_transform']) ?>;
             --pdf-lf-line-height: <?= esc((string) $lf['line_height']) ?>;
+            --pdf-hg-body-bg: <?= esc($hgBodyBg) ?>;
+            --pdf-hg-body-color: <?= esc($hg['body_text_color']) ?>;
+            --pdf-hg-font-family: "<?= esc($hg['font_family']) ?>";
+            --pdf-hg-font-size: <?= esc((string) $hg['font_size_pt']) ?>pt;
+            --pdf-hg-font-weight: <?= esc($hg['font_weight']) ?>;
+            --pdf-hg-font-style: <?= esc($hg['font_style']) ?>;
+            --pdf-hg-transform: <?= esc($hg['text_transform']) ?>;
+            --pdf-hg-line-height: <?= esc((string) $hg['line_height']) ?>;
+            --pdf-hg-column-border-width: <?= esc((string) $hgColW) ?>px;
+            --pdf-hg-column-border-color: <?= esc((string) ($hg['column_border_color'] ?? '#DDDDDD')) ?>;
+            --pdf-pd-body-bg: <?= esc($pdBodyBg) ?>;
+            --pdf-pd-body-color: <?= esc($pd['body_text_color']) ?>;
+            --pdf-pd-font-family: "<?= esc($pd['font_family']) ?>";
+            --pdf-pd-font-size: <?= esc((string) $pd['font_size_pt']) ?>pt;
+            --pdf-pd-font-weight: <?= esc($pd['font_weight']) ?>;
+            --pdf-pd-font-style: <?= esc($pd['font_style']) ?>;
+            --pdf-pd-transform: <?= esc($pd['text_transform']) ?>;
+            --pdf-pd-line-height: <?= esc((string) $pd['line_height']) ?>;
+            --pdf-pd-column-border-width: <?= esc((string) $pdColW) ?>px;
+            --pdf-pd-column-border-color: <?= esc((string) ($pd['column_border_color'] ?? '#DDDDDD')) ?>;
+            --pdf-ft-body-bg: <?= esc($ftBodyBg) ?>;
+            --pdf-ft-body-color: <?= esc($ft['body_text_color']) ?>;
+            --pdf-ft-font-family: "<?= esc($ft['font_family']) ?>";
+            --pdf-ft-font-size: <?= esc((string) $ft['font_size_pt']) ?>pt;
+            --pdf-ft-font-weight: <?= esc($ft['font_weight']) ?>;
+            --pdf-ft-font-style: <?= esc($ft['font_style']) ?>;
+            --pdf-ft-transform: <?= esc($ft['text_transform']) ?>;
+            --pdf-ft-line-height: <?= esc((string) $ft['line_height']) ?>;
+            --pdf-ft-column-border-width: <?= esc((string) $ftColW) ?>px;
+            --pdf-ft-column-border-color: <?= esc((string) ($ft['column_border_color'] ?? '#DDDDDD')) ?>;
+            --pdf-ft-company-color: <?= esc((string) ($ft['footer_company_text_color'] ?? $ft['body_text_color'])) ?>;
+            --pdf-ft-label-generated-color: <?= esc((string) ($ft['label_footer_generated_color'] ?? $ft['body_text_color'])) ?>;
+            --pdf-ft-datetime-color: <?= esc((string) ($ft['label_footer_datetime_color'] ?? $ft['body_text_color'])) ?>;
+            --pdf-ft-policy-color: <?= esc((string) ($ft['footer_policy_text_color'] ?? $ft['body_text_color'])) ?>;
+            --pdf-ft-section-top-border-width: <?= esc((string) $ftTopWpx) ?>px;
+            --pdf-ft-section-top-border-style: <?= esc($ftTopStyleCss) ?>;
+            --pdf-ft-section-top-border-color: <?= esc($ftTopColor) ?>;
             --pdf-results-header-bg: <?= esc($rs['header_bg_color']) ?>;
             --pdf-results-header-color: <?= esc($rs['header_text_color']) ?>;
             --pdf-results-body-bg: <?= esc($rsBodyBg) ?>;
@@ -108,15 +197,34 @@
             color: #c00 !important;
             font-weight: 700 !important;
         }
+        table.results.pdf-notes-table td.pdf-notes-cell {
+            background: <?= esc($nsBodyBg) ?> !important;
+            color: <?= esc($ns['body_text_color']) ?> !important;
+            border-color: <?= esc($nsColColor) ?> !important;
+            font-family: "<?= esc($ns['font_family']) ?>", sans-serif !important;
+            font-size: <?= esc((string) $ns['font_size_pt']) ?>pt !important;
+            font-weight: <?= esc($ns['font_weight']) ?> !important;
+            font-style: <?= esc($ns['font_style']) ?> !important;
+            text-transform: <?= esc($ns['text_transform']) ?> !important;
+            line-height: <?= esc((string) $ns['line_height']) ?> !important;
+        }
         .header-grid {
             border-bottom-color: <?= esc($hs['separator_color']) ?> !important;
         }
-        .report-segment-title,
-        .pdf-card-header {
+        .report-segment-title {
             background: <?= esc($rsSegBg) ?> !important;
             border-color: <?= esc($rs['segment_border_color']) ?> !important;
             border-width: <?= esc((string) $rs['segment_border_width_px']) ?>px !important;
             box-shadow: <?= esc($rsSegShadow) ?> !important;
+        }
+        .report-segment-title.pdf-card-header {
+            background: <?= esc($chCardBg) ?> !important;
+            color: <?= esc($ch['text_color']) ?> !important;
+            font-family: "<?= esc($ch['font_family']) ?>", sans-serif !important;
+            font-size: <?= esc((string) $ch['font_size_pt']) ?>pt !important;
+            font-weight: <?= esc($ch['font_weight']) ?> !important;
+            font-style: <?= esc($ch['font_style']) ?> !important;
+            text-transform: <?= esc($ch['text_transform']) ?> !important;
         }
         .report-print-toolbar { padding: 10px 12px; margin: -8px -8px 16px -8px; background: #f1f3f5; border-bottom: 1px solid #dee2e6; display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
         .report-print-btn-primary { padding: 8px 16px; background: #0d6efd; color: #fff; border: none; border-radius: 6px; cursor: pointer; font-size: 14px; }

@@ -7,6 +7,7 @@ $labels = [
     'name'        => lang('Config.config_lab_validator_name'),
     'approverNm'  => lang('Config.config_lab_approver_name'),
     'cargo'       => lang('Config.config_lab_approver_cargo'),
+    'matricula'   => lang('Config.config_lab_approver_matricula'),
     'seal'        => lang('Config.config_lab_seal_image'),
     'sig'         => lang('Config.config_lab_signature_image'),
     'remove'      => lang('Config.config_lab_remove_row'),
@@ -59,8 +60,10 @@ $labels = [
                                 <div class="col-md-4">
                                     <label class="form-label small mb-0"><?= lang('Config.config_lab_approver_cargo') ?></label>
                                     <input type="text" name="approver_cargo[]" class="form-control" value="<?= esc($a['cargo']) ?>" maxlength="255" autocomplete="off">
+                                    <label class="form-label small mb-0 mt-2"><?= lang('Config.config_lab_approver_matricula') ?></label>
+                                    <input type="text" name="approver_matricula[]" class="form-control" value="<?= esc($a['matricula'] ?? '') ?>" maxlength="255" autocomplete="off">
                                 </div>
-                                <div class="col-md-4 text-md-end">
+                                <div class="col-md-4 text-md-end align-self-start">
                                     <button type="button" class="btn btn-outline-danger btn-sm lab-remove-approver"><?= lang('Config.config_lab_remove_row') ?></button>
                                 </div>
                                 <div class="col-md-6">
@@ -143,8 +146,10 @@ $labels = [
             '<div class="col-md-4">' +
             '<label class="form-label small mb-0">' + escapeHtml(L.cargo) + '</label>' +
             '<input type="text" name="approver_cargo[]" class="form-control" value="" maxlength="255" autocomplete="off">' +
+            '<label class="form-label small mb-0 mt-2">' + escapeHtml(L.matricula) + '</label>' +
+            '<input type="text" name="approver_matricula[]" class="form-control" value="" maxlength="255" autocomplete="off">' +
             '</div>' +
-            '<div class="col-md-4 text-md-end">' +
+            '<div class="col-md-4 text-md-end align-self-start">' +
             '<button type="button" class="btn btn-outline-danger btn-sm lab-remove-approver">' + escapeHtml(L.remove) + '</button>' +
             '</div>' +
             '<div class="col-md-6">' +

@@ -876,7 +876,7 @@ class RegisterService
     /**
      * Validación y aprobación por prueba (regvalues lab_val_pri_*, lab_app_pri_* + config).
      *
-     * @return list<array{prianacategoria_id:int, prueba_nombre:string, validator_name:string, approver_name:string, approver_cargo:string, approver_seal:string, approver_signature:string}>
+     * @return list<array{prianacategoria_id:int, prueba_nombre:string, validator_name:string, approver_name:string, approver_cargo:string, approver_matricula:string, approver_seal:string, approver_signature:string}>
      */
     public function buildLabFirmasParaReporte(array $analisisRows, string $pruebasCsv): array
     {
@@ -950,29 +950,32 @@ class RegisterService
                 }
             }
             $approver = ($appId !== '' && isset($appById[$appId])) ? $appById[$appId] : null;
-            $aName    = '';
-            $aCargo   = '';
-            $aSeal    = '';
-            $aSig     = '';
+            $aName      = '';
+            $aCargo     = '';
+            $aMatricula = '';
+            $aSeal      = '';
+            $aSig       = '';
             if ($appId !== '') {
                 if (is_array($approver)) {
-                    $aName  = trim((string) ($approver['name'] ?? ''));
-                    $aCargo = trim((string) ($approver['cargo'] ?? ''));
-                    $aSeal  = trim((string) ($approver['seal'] ?? ''));
-                    $aSig   = trim((string) ($approver['signature'] ?? ''));
+                    $aName      = trim((string) ($approver['name'] ?? ''));
+                    $aCargo     = trim((string) ($approver['cargo'] ?? ''));
+                    $aMatricula = trim((string) ($approver['matricula'] ?? ''));
+                    $aSeal      = trim((string) ($approver['seal'] ?? ''));
+                    $aSig       = trim((string) ($approver['signature'] ?? ''));
                 }
                 if ($aName === '') {
                     $aName = $appId;
                 }
             }
             $out[] = [
-                'prianacategoria_id' => $pid,
-                'prueba_nombre'      => $pName,
-                'validator_name'     => $vName,
-                'approver_name'      => $aName,
-                'approver_cargo'     => $aCargo,
-                'approver_seal'      => $aSeal,
-                'approver_signature' => $aSig,
+                'prianacategoria_id'   => $pid,
+                'prueba_nombre'        => $pName,
+                'validator_name'       => $vName,
+                'approver_name'        => $aName,
+                'approver_cargo'       => $aCargo,
+                'approver_matricula'   => $aMatricula,
+                'approver_seal'        => $aSeal,
+                'approver_signature'   => $aSig,
             ];
         }
 

@@ -23,37 +23,115 @@ class ReportPdfLayoutService
     ];
 
     public const DEFAULT_CARD_HEADER_STYLE = [
-        'bg_color'      => '#E9ECEF',
-        'text_color'    => '#212529',
-        'font_family'   => 'DejaVu Sans',
-        'font_size_pt'  => 10.0,
-        'font_weight'   => '700',
-        'font_style'    => 'normal',
-        'text_transform'=> 'uppercase',
+        'bg_color'        => '#E9ECEF',
+        'text_color'      => '#212529',
+        'bg_transparent'  => false,
+        'font_family'     => 'DejaVu Sans',
+        'font_size_pt'    => 10.0,
+        'font_weight'     => '700',
+        'font_style'      => 'normal',
+        'text_transform'  => 'uppercase',
     ];
     public const DEFAULT_NOTES_STYLE = [
         'title_bg_color'    => '#FFF3CD',
         'title_text_color'  => '#664D03',
+        'title_transparent' => false,
         'body_bg_color'     => '#FFFFFF',
         'body_text_color'   => '#333333',
+        'body_transparent'  => false,
         'font_family'       => 'DejaVu Sans',
         'font_size_pt'      => 9.5,
         'font_weight'       => 'normal',
         'font_style'        => 'normal',
         'text_transform'    => 'none',
         'line_height'       => 1.4,
+        'column_border_width_px' => 1,
+        'column_border_color' => '#DDDDDD',
+        'section_title'     => 'NOTAS',
+        'show_section_title'=> true,
     ];
 
     /** Textos por defecto del bloque «Validación y aprobación» en el PDF. */
     public const DEFAULT_LAB_FIRMAS_LABELS = [
-        'section_title'   => 'VALIDACIÓN Y APROBACIÓN',
-        'label_validator' => 'Validado por:',
-        'label_seal'      => 'Sello',
-        'label_approver'  => 'Aprobado por:',
-        'label_cargo'     => 'Cargo:',
+        'section_title'       => 'VALIDACIÓN Y APROBACIÓN',
+        'show_section_title'  => true,
+        'label_validator'     => 'Verificado por:',
+        'show_label_validator'=> true,
+        'validator_line_mode' => 'stacked',
+        'label_seal'          => '',
+        'show_label_seal'     => true,
+        'label_seal_line_mode'=> 'stacked',
+        'label_firma'         => 'ATENTAMENTE',
+        'show_label_firma'    => true,
+        'label_firma_line_mode'=> 'stacked',
+        'label_approver'      => '',
+        'show_label_approver' => true,
+        'label_approver_line_mode' => 'stacked',
+        'label_cargo'         => '',
+        'show_label_cargo'    => true,
+        'label_cargo_line_mode'=> 'stacked',
+        'label_matricula'     => 'Matrícula:',
+        'show_label_matricula'=> true,
+        'label_matricula_line_mode' => 'stacked',
+        'body_transparent'    => false,
+        'column_border_width_px' => 1,
+        'column_border_color' => '#DDDDDD',
+    ];
+
+    /**
+     * Solo estos tipos se reinyectan si faltan (migración); no se fuerza título/validador/sello eliminados por el usuario.
+     *
+     * @var list<string>
+     */
+    public const LAB_FIRMAS_MERGE_MISSING_TYPES = [
+        'lab_firmas_approver_signature',
+        'lab_firmas_approver_name',
+        'lab_firmas_approver_cargo',
+        'lab_firmas_matricula',
     ];
 
     public const LAB_FIRMAS_TEXT_MAX_LEN = 120;
+
+    /** Fondo/tipografía/bordes entre columnas: encabezado superior, paciente/médico, pie. */
+    public const DEFAULT_SECTION_GRID_WRAP = [
+        'body_bg_color'          => '#FFFFFF',
+        'body_text_color'        => '#333333',
+        'body_transparent'       => false,
+        'font_family'            => 'DejaVu Sans',
+        'font_size_pt'           => 9.5,
+        'font_weight'            => 'normal',
+        'font_style'             => 'normal',
+        'text_transform'         => 'none',
+        'line_height'            => 1.35,
+        'column_border_width_px' => 0,
+        'column_border_color'    => '#DDDDDD',
+    ];
+
+    /** @var array<string, string> */
+    public const PATIENT_DOCTOR_GRID_LABEL_DEFAULTS = [
+        'paciente_nombre'   => 'Paciente:',
+        'paciente_genero'   => 'Género:',
+        'paciente_edad'     => 'Edad:',
+        'paciente_telefono' => 'Teléfono:',
+        'medico'            => 'Médico:',
+        'fecha_recepcion'   => 'Fecha de recepción:',
+        'fecha_reporte'     => 'Fecha de reporte:',
+        'numero_orden'      => 'No. Orden:',
+    ];
+
+    /**
+     * Etiquetas opcionales del bloque encabezado (logo, datos de laboratorio). El QR usa label_qr_hint aparte.
+     *
+     * @var array<string, string>
+     */
+    public const HEADER_GRID_LABEL_DEFAULTS = [
+        'logo'        => '',
+        'lab_company' => '',
+        'lab_address' => '',
+        'lab_phone'   => 'Tel:',
+        'lab_email'   => 'Email:',
+        'lab_website' => '',
+    ];
 
     public const DEFAULT_RESULTS_TABLE_STYLE = [
         'header_bg_color'   => '#0066CC',
@@ -138,7 +216,10 @@ class ReportPdfLayoutService
         'lab_firmas_title',
         'lab_firmas_validator',
         'lab_firmas_seal',
-        'lab_firmas_approver',
+        'lab_firmas_approver_signature',
+        'lab_firmas_approver_name',
+        'lab_firmas_approver_cargo',
+        'lab_firmas_matricula',
     ];
 
     /** @var list<string> Elementos del bloque «Validación y aprobación» (solo sección lab_firmas). */
@@ -146,7 +227,10 @@ class ReportPdfLayoutService
         'lab_firmas_title',
         'lab_firmas_validator',
         'lab_firmas_seal',
-        'lab_firmas_approver',
+        'lab_firmas_approver_signature',
+        'lab_firmas_approver_name',
+        'lab_firmas_approver_cargo',
+        'lab_firmas_matricula',
     ];
 
     /** @var list<string> */
@@ -197,11 +281,14 @@ class ReportPdfLayoutService
     public static function defaultPageStyleStatic(): array
     {
         return [
-            'card_header'    => self::DEFAULT_CARD_HEADER_STYLE,
-            'notes'          => self::DEFAULT_NOTES_STYLE,
-            'lab_firmas'     => array_merge(self::DEFAULT_NOTES_STYLE, self::DEFAULT_LAB_FIRMAS_LABELS),
-            'results_table'  => self::DEFAULT_RESULTS_TABLE_STYLE,
-            'header_section' => self::DEFAULT_HEADER_SECTION_STYLE,
+            'card_header'         => self::DEFAULT_CARD_HEADER_STYLE,
+            'notes'               => self::DEFAULT_NOTES_STYLE,
+            'lab_firmas'          => array_merge(self::DEFAULT_NOTES_STYLE, self::DEFAULT_LAB_FIRMAS_LABELS),
+            'results_table'       => self::DEFAULT_RESULTS_TABLE_STYLE,
+            'header_section'      => self::DEFAULT_HEADER_SECTION_STYLE,
+            'header_grid'         => self::normalizeHeaderGridStyle([]),
+            'patient_doctor_grid' => self::normalizePatientDoctorGridStyle([]),
+            'footer_grid'         => self::normalizeFooterGridStyle([]),
         ];
     }
 
@@ -310,7 +397,7 @@ class ReportPdfLayoutService
             'logo'         => '[Logo]',
             'lab_company'  => 'Laboratorio Clínico Ejemplo',
             'lab_address'  => 'Calle Principal 123, Ciudad',
-            'lab_phone'    => 'Tel: 555-0100',
+            'lab_phone'    => '555-0100',
             'lab_email'    => 'contacto@lab.ejemplo',
             'lab_website'  => 'www.lab.ejemplo',
             'qr'           => '[QR]',
@@ -486,10 +573,13 @@ class ReportPdfLayoutService
     public static function labFirmasFieldLabels(): array
     {
         return [
-            'lab_firmas_title'     => 'Título del bloque (validación y aprobación)',
-            'lab_firmas_validator' => 'Validado por (nombre)',
-            'lab_firmas_seal'      => 'Sello (imagen)',
-            'lab_firmas_approver'  => 'Aprobado por (firma, nombre, cargo)',
+            'lab_firmas_title'                => 'Título del bloque (validación y aprobación)',
+            'lab_firmas_validator'          => 'Verificado por (nombre)',
+            'lab_firmas_seal'               => 'Sello (imagen)',
+            'lab_firmas_approver_signature' => 'Firma del aprobador (imagen)',
+            'lab_firmas_approver_name'      => 'Nombre del aprobador',
+            'lab_firmas_approver_cargo'     => 'Cargo del aprobador',
+            'lab_firmas_matricula'          => 'Matrícula del aprobador',
         ];
     }
 
@@ -566,14 +656,25 @@ class ReportPdfLayoutService
                 'text_style'    => self::DEFAULT_TEXT_STYLE,
             ],
         ];
-        if ($lc >= 3) {
-            $cols = [0, 1, 2];
-        } elseif ($lc === 2) {
-            $cols = [0, 1, 1];
-        } else {
-            $cols = [0, 0, 0];
-        }
-        foreach (['lab_firmas_validator', 'lab_firmas_seal', 'lab_firmas_approver'] as $idx => $tid) {
+        $types = [
+            'lab_firmas_validator',
+            'lab_firmas_seal',
+            'lab_firmas_approver_signature',
+            'lab_firmas_approver_name',
+            'lab_firmas_approver_cargo',
+            'lab_firmas_matricula',
+        ];
+        $colsByLc = [
+            6 => [0, 1, 2, 3, 4, 5],
+            5 => [0, 1, 2, 3, 4, 4],
+            4 => [0, 1, 2, 3, 3, 3],
+            3 => [0, 1, 2, 2, 2, 2],
+            2 => [0, 1, 1, 1, 1, 1],
+            1 => [0, 0, 0, 0, 0, 0],
+        ];
+        $lk = max(1, min(6, $lc));
+        $cols = $colsByLc[$lk];
+        foreach ($types as $idx => $tid) {
             $out[] = [
                 'uid'           => self::generateInstanceUid(),
                 'element_type'  => $tid,
@@ -722,10 +823,17 @@ class ReportPdfLayoutService
             }
             $typesToEmit = [];
             if ($section === 'lab_firmas') {
-                if (! in_array($type, self::LAB_FIRMAS_ELEMENT_TYPES, true)) {
+                if ($type === 'lab_firmas_approver') {
+                    $typesToEmit = [
+                        'lab_firmas_approver_signature',
+                        'lab_firmas_approver_name',
+                        'lab_firmas_approver_cargo',
+                    ];
+                } elseif (in_array($type, self::LAB_FIRMAS_ELEMENT_TYPES, true)) {
+                    $typesToEmit = [$type];
+                } else {
                     continue;
                 }
-                $typesToEmit = [$type];
             } else {
                 if (in_array($type, self::LAB_FIRMAS_ELEMENT_TYPES, true)) {
                     continue;
@@ -783,14 +891,35 @@ class ReportPdfLayoutService
      */
     protected function ensureLabFirmasInstances(array $instances, array $sectionLayouts): array
     {
+        $hasLabFirmas = false;
+        $presentTypes = [];
         foreach ($instances as $inst) {
-            if (is_array($inst) && ($inst['section'] ?? '') === 'lab_firmas') {
-                return $instances;
+            if (!is_array($inst) || ($inst['section'] ?? '') !== 'lab_firmas') {
+                continue;
+            }
+            $hasLabFirmas = true;
+            $t = (string) ($inst['element_type'] ?? '');
+            if ($t !== '') {
+                $presentTypes[$t] = true;
             }
         }
         $lc = (int) ($sectionLayouts['lab_firmas']['columns'] ?? 3);
         $lc = max(self::SECTION_COLUMN_MIN, min(self::SECTION_COLUMN_MAX, $lc));
+
+        // Si no había sección de firmas, crea el bloque completo por defecto.
+        if (!$hasLabFirmas) {
+            foreach (self::defaultLabFirmasInstancesForColumns($lc) as $row) {
+                $instances[] = $row;
+            }
+            return $instances;
+        }
+
+        // Si la sección existe, solo completar tipos de migración (no restaurar título/validador/sello quitados a mano).
         foreach (self::defaultLabFirmasInstancesForColumns($lc) as $row) {
+            $t = (string) ($row['element_type'] ?? '');
+            if ($t === '' || isset($presentTypes[$t]) || ! in_array($t, self::LAB_FIRMAS_MERGE_MISSING_TYPES, true)) {
+                continue;
+            }
             $instances[] = $row;
         }
 
@@ -1140,6 +1269,126 @@ class ReportPdfLayoutService
     /**
      * @param mixed $raw
      */
+    protected static function validateRawGridSectionPageStyleBlock($raw, string $contextLabel): ?string
+    {
+        if (! is_array($raw)) {
+            return 'Estilo inválido en: ' . $contextLabel . '.';
+        }
+        foreach (['body_bg_color', 'body_text_color'] as $k) {
+            if (isset($raw[$k]) && ! self::isValidPdfHexColor((string) $raw[$k])) {
+                return 'Color inválido en ' . $contextLabel . ' (use #RRGGBB).';
+            }
+        }
+        if (isset($raw['font_family']) && ! in_array((string) $raw['font_family'], self::ALLOWED_PDF_FONT_FAMILIES, true)) {
+            return 'Familia de fuente no permitida en ' . $contextLabel . '.';
+        }
+        if (array_key_exists('font_size_pt', $raw)) {
+            if (! is_numeric($raw['font_size_pt'])) {
+                return 'Tamaño de fuente inválido en ' . $contextLabel . '.';
+            }
+            $s = (float) $raw['font_size_pt'];
+            if ($s < 7.0 || $s > 20.0) {
+                return 'El tamaño de fuente en ' . $contextLabel . ' debe estar entre 7 y 20 pt.';
+            }
+        }
+        if (isset($raw['font_weight']) && ! in_array(strtolower(trim((string) $raw['font_weight'])), self::ALLOWED_PDF_FONT_WEIGHTS, true)) {
+            return 'Grosor de fuente no permitido en ' . $contextLabel . '.';
+        }
+        if (isset($raw['font_style']) && ! in_array(strtolower(trim((string) $raw['font_style'])), self::ALLOWED_PDF_FONT_STYLES, true)) {
+            return 'Estilo de fuente no permitido en ' . $contextLabel . '.';
+        }
+        if (isset($raw['text_transform']) && ! in_array(strtolower(trim((string) $raw['text_transform'])), self::ALLOWED_PDF_TEXT_TRANSFORMS, true)) {
+            return 'Transformación de texto no permitida en ' . $contextLabel . '.';
+        }
+        if (array_key_exists('line_height', $raw)) {
+            if (! is_numeric($raw['line_height'])) {
+                return 'Interlineado inválido en ' . $contextLabel . '.';
+            }
+            $lh = (float) $raw['line_height'];
+            if ($lh < 1.0 || $lh > 3.0) {
+                return 'El interlineado en ' . $contextLabel . ' debe estar entre 1 y 3.';
+            }
+        }
+        if (array_key_exists('column_border_width_px', $raw)) {
+            if (! is_numeric($raw['column_border_width_px'])) {
+                return 'El grosor del borde en ' . $contextLabel . ' debe ser numérico.';
+            }
+            $w = (int) $raw['column_border_width_px'];
+            if ($w < 0 || $w > 4) {
+                return 'El grosor del borde en ' . $contextLabel . ' debe estar entre 0 y 4 px.';
+            }
+        }
+        if (isset($raw['column_border_color']) && ! self::isValidPdfHexColor((string) $raw['column_border_color'])) {
+            return 'Color de borde inválido en ' . $contextLabel . ' (#RRGGBB).';
+        }
+
+        return null;
+    }
+
+    /**
+     * @param mixed $raw
+     */
+    protected static function validateRawNotesBlockExtras($raw): ?string
+    {
+        if (! is_array($raw)) {
+            return null;
+        }
+        if (array_key_exists('column_border_width_px', $raw)) {
+            if (! is_numeric($raw['column_border_width_px'])) {
+                return 'El grosor del borde en notas del resultado debe ser numérico.';
+            }
+            $w = (int) $raw['column_border_width_px'];
+            if ($w < 0 || $w > 4) {
+                return 'El grosor del borde en notas del resultado debe estar entre 0 y 4 px.';
+            }
+        }
+        if (isset($raw['column_border_color']) && ! self::isValidPdfHexColor((string) $raw['column_border_color'])) {
+            return 'Color de borde inválido en notas del resultado (#RRGGBB).';
+        }
+        if (array_key_exists('section_title', $raw)) {
+            $v = $raw['section_title'];
+            if (is_array($v) || is_object($v)) {
+                return 'El título del bloque de notas debe ser texto.';
+            }
+            $t = trim((string) $v);
+            $len = function_exists('mb_strlen') ? mb_strlen($t, 'UTF-8') : strlen($t);
+            if ($len > self::LAB_FIRMAS_TEXT_MAX_LEN) {
+                return 'El título del bloque de notas supera los ' . self::LAB_FIRMAS_TEXT_MAX_LEN . ' caracteres.';
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * @param mixed $raw
+     */
+    protected static function validateRawGridLabelStrings($raw, array $keys): ?string
+    {
+        if (! is_array($raw)) {
+            return null;
+        }
+        foreach ($keys as $k) {
+            if (! array_key_exists($k, $raw)) {
+                continue;
+            }
+            $v = $raw[$k];
+            if (is_array($v) || is_object($v)) {
+                return 'Las etiquetas de la plantilla PDF deben ser texto.';
+            }
+            $t = trim((string) $v);
+            $len = function_exists('mb_strlen') ? mb_strlen($t, 'UTF-8') : strlen($t);
+            if ($len > self::LAB_FIRMAS_TEXT_MAX_LEN) {
+                return 'Un texto de etiqueta supera los ' . self::LAB_FIRMAS_TEXT_MAX_LEN . ' caracteres.';
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * @param mixed $raw
+     */
     protected static function validateRawResultsTableStyleBlock($raw): ?string
     {
         if (! is_array($raw)) {
@@ -1249,6 +1498,145 @@ class ReportPdfLayoutService
             if ($err !== null) {
                 return $err;
             }
+            $err = self::validateRawNotesBlockExtras($ps['notes']);
+            if ($err !== null) {
+                return $err;
+            }
+        }
+        if (isset($ps['header_grid'])) {
+            $err = self::validateRawGridSectionPageStyleBlock($ps['header_grid'], 'cuadrícula de encabezado superior');
+            if ($err !== null) {
+                return $err;
+            }
+            $hgLabelKeys = ['label_qr_hint'];
+            foreach (array_keys(self::HEADER_GRID_LABEL_DEFAULTS) as $hid) {
+                $hgLabelKeys[] = 'label_' . $hid;
+            }
+            $err = self::validateRawGridLabelStrings($ps['header_grid'], $hgLabelKeys);
+            if ($err !== null) {
+                return $err;
+            }
+            $hgRaw = $ps['header_grid'];
+            if (is_array($hgRaw)) {
+                foreach (array_keys(self::HEADER_GRID_LABEL_DEFAULTS) as $hid) {
+                    $ck = 'label_' . $hid . '_text_color';
+                    if (isset($hgRaw[$ck]) && ! self::isValidPdfHexColor((string) $hgRaw[$ck])) {
+                        return 'Color inválido en encabezado (#RRGGBB): ' . $ck . '.';
+                    }
+                }
+                if (isset($hgRaw['label_qr_hint_text_color']) && ! self::isValidPdfHexColor((string) $hgRaw['label_qr_hint_text_color'])) {
+                    return 'Color inválido en leyenda del QR (#RRGGBB).';
+                }
+                $hgFsKeys = ['label_qr_hint_font_size_pt'];
+                foreach (array_keys(self::HEADER_GRID_LABEL_DEFAULTS) as $hid) {
+                    $hgFsKeys[] = 'label_' . $hid . '_font_size_pt';
+                }
+                foreach ($hgFsKeys as $sk) {
+                    if (! array_key_exists($sk, $hgRaw)) {
+                        continue;
+                    }
+                    if (! is_numeric($hgRaw[$sk])) {
+                        return 'Tamaño de fuente en encabezado inválido (' . $sk . ').';
+                    }
+                    $fs = (float) $hgRaw[$sk];
+                    if ($fs < 7.0 || $fs > 20.0) {
+                        return 'El tamaño en encabezado debe estar entre 7 y 20 pt (' . $sk . ').';
+                    }
+                }
+                $hgFwKeys = ['label_qr_hint_font_weight'];
+                foreach (array_keys(self::HEADER_GRID_LABEL_DEFAULTS) as $hid) {
+                    $hgFwKeys[] = 'label_' . $hid . '_font_weight';
+                }
+                foreach ($hgFwKeys as $wk) {
+                    if (! isset($hgRaw[$wk])) {
+                        continue;
+                    }
+                    if (! in_array(strtolower(trim((string) $hgRaw[$wk])), self::ALLOWED_PDF_FONT_WEIGHTS, true)) {
+                        return 'Grosor de fuente no permitido en encabezado (' . $wk . ').';
+                    }
+                }
+                $hgFstKeys = ['label_qr_hint_font_style'];
+                foreach (array_keys(self::HEADER_GRID_LABEL_DEFAULTS) as $hid) {
+                    $hgFstKeys[] = 'label_' . $hid . '_font_style';
+                }
+                foreach ($hgFstKeys as $fk) {
+                    if (! isset($hgRaw[$fk])) {
+                        continue;
+                    }
+                    if (! in_array(strtolower(trim((string) $hgRaw[$fk])), self::ALLOWED_PDF_FONT_STYLES, true)) {
+                        return 'Estilo de fuente no permitido en encabezado (' . $fk . ').';
+                    }
+                }
+            }
+        }
+        if (isset($ps['patient_doctor_grid'])) {
+            $err = self::validateRawGridSectionPageStyleBlock($ps['patient_doctor_grid'], 'cuadrícula paciente / médico');
+            if ($err !== null) {
+                return $err;
+            }
+            $pk = [];
+            foreach (array_keys(self::PATIENT_DOCTOR_GRID_LABEL_DEFAULTS) as $id) {
+                $pk[] = 'label_' . $id;
+            }
+            $err = self::validateRawGridLabelStrings($ps['patient_doctor_grid'], $pk);
+            if ($err !== null) {
+                return $err;
+            }
+        }
+        if (isset($ps['footer_grid'])) {
+            $err = self::validateRawGridSectionPageStyleBlock($ps['footer_grid'], 'cuadrícula de pie de página');
+            if ($err !== null) {
+                return $err;
+            }
+            $err = self::validateRawGridLabelStrings($ps['footer_grid'], ['label_footer_generated']);
+            if ($err !== null) {
+                return $err;
+            }
+            foreach (['footer_company_text_color', 'label_footer_generated_color', 'label_footer_datetime_color', 'footer_policy_text_color', 'section_top_border_color'] as $ck) {
+                if (isset($ps['footer_grid'][$ck]) && ! self::isValidPdfHexColor((string) $ps['footer_grid'][$ck])) {
+                    return 'Color inválido en pie de página (#RRGGBB): ' . $ck . '.';
+                }
+            }
+            if (array_key_exists('section_top_border_width_px', $ps['footer_grid'])) {
+                if (! is_numeric($ps['footer_grid']['section_top_border_width_px'])) {
+                    return 'El grosor del borde superior del pie debe ser numérico.';
+                }
+                $tw = (int) $ps['footer_grid']['section_top_border_width_px'];
+                if ($tw < 0 || $tw > 6) {
+                    return 'El borde superior del pie debe estar entre 0 y 6 px.';
+                }
+            }
+            $fgFsKeys = ['footer_company_font_size_pt', 'label_footer_generated_font_size_pt', 'label_footer_datetime_font_size_pt', 'footer_policy_font_size_pt'];
+            foreach ($fgFsKeys as $sk) {
+                if (! array_key_exists($sk, $ps['footer_grid'])) {
+                    continue;
+                }
+                if (! is_numeric($ps['footer_grid'][$sk])) {
+                    return 'Tamaño de fuente en pie de página inválido (' . $sk . ').';
+                }
+                $fs = (float) $ps['footer_grid'][$sk];
+                if ($fs < 7.0 || $fs > 20.0) {
+                    return 'El tamaño en pie de página debe estar entre 7 y 20 pt (' . $sk . ').';
+                }
+            }
+            $fgFwKeys = ['footer_company_font_weight', 'label_footer_generated_font_weight', 'label_footer_datetime_font_weight', 'footer_policy_font_weight'];
+            foreach ($fgFwKeys as $wk) {
+                if (! isset($ps['footer_grid'][$wk])) {
+                    continue;
+                }
+                if (! in_array(strtolower(trim((string) $ps['footer_grid'][$wk])), self::ALLOWED_PDF_FONT_WEIGHTS, true)) {
+                    return 'Grosor de fuente no permitido en pie de página (' . $wk . ').';
+                }
+            }
+            $fgFstKeys = ['footer_company_font_style', 'label_footer_generated_font_style', 'label_footer_datetime_font_style', 'footer_policy_font_style'];
+            foreach ($fgFstKeys as $fk) {
+                if (! isset($ps['footer_grid'][$fk])) {
+                    continue;
+                }
+                if (! in_array(strtolower(trim((string) $ps['footer_grid'][$fk])), self::ALLOWED_PDF_FONT_STYLES, true)) {
+                    return 'Estilo de fuente no permitido en pie de página (' . $fk . ').';
+                }
+            }
         }
         if (isset($ps['lab_firmas'])) {
             $err = self::validateRawNotesLikeStyleBlock($ps['lab_firmas'], 'firmas del laboratorio');
@@ -1256,6 +1644,10 @@ class ReportPdfLayoutService
                 return $err;
             }
             $err = self::validateRawLabFirmasTextFields($ps['lab_firmas']);
+            if ($err !== null) {
+                return $err;
+            }
+            $err = self::validateRawLabFirmasColumnStyle($ps['lab_firmas']);
             if ($err !== null) {
                 return $err;
             }
@@ -1307,13 +1699,14 @@ class ReportPdfLayoutService
         }
 
         return [
-            'bg_color'       => $bg,
-            'text_color'     => $tc,
-            'font_family'    => $family,
-            'font_size_pt'   => $size,
-            'font_weight'    => $weight,
-            'font_style'     => $style,
-            'text_transform' => $transform,
+            'bg_color'        => $bg,
+            'text_color'      => $tc,
+            'bg_transparent'  => self::labFirmasBool($s, 'bg_transparent', ! empty($def['bg_transparent'])),
+            'font_family'     => $family,
+            'font_size_pt'    => $size,
+            'font_weight'     => $weight,
+            'font_style'      => $style,
+            'text_transform'  => $transform,
         ];
     }
 
@@ -1354,14 +1747,20 @@ class ReportPdfLayoutService
         return [
             'title_bg_color'   => $pickColor('title_bg_color', $def['title_bg_color']),
             'title_text_color' => $pickColor('title_text_color', $def['title_text_color']),
+            'title_transparent'=> self::labFirmasBool($s, 'title_transparent', ! empty($def['title_transparent'])),
             'body_bg_color'    => $pickColor('body_bg_color', $def['body_bg_color']),
             'body_text_color'  => $pickColor('body_text_color', $def['body_text_color']),
+            'body_transparent' => self::labFirmasBool($s, 'body_transparent', ! empty($def['body_transparent'])),
             'font_family'      => $family,
             'font_size_pt'     => $size,
             'font_weight'      => $weight,
             'font_style'       => $style,
             'text_transform'   => $transform,
             'line_height'      => $lh,
+            'column_border_width_px' => self::normalizeLabFirmasColumnBorderWidthPx($s['column_border_width_px'] ?? null, (int) ($def['column_border_width_px'] ?? 1)),
+            'column_border_color' => self::normalizeLabFirmasBorderColor($s['column_border_color'] ?? null, (string) ($def['column_border_color'] ?? '#DDDDDD')),
+            'section_title'    => self::clipLabFirmasLabel(isset($s['section_title']) ? (string) $s['section_title'] : null, (string) ($def['section_title'] ?? 'NOTAS')),
+            'show_section_title'=> self::labFirmasBool($s, 'show_section_title', (bool) ($def['show_section_title'] ?? true)),
         ];
     }
 
@@ -1382,6 +1781,116 @@ class ReportPdfLayoutService
     }
 
     /**
+     * Etiqueta que puede quedar vacía si el usuario la borra en la plantilla (p. ej. matrícula sin prefijo).
+     */
+    public static function clipLabFirmasLabelAllowEmpty(string $value, int $maxLen = self::LAB_FIRMAS_TEXT_MAX_LEN): string
+    {
+        $t = trim($value);
+        if ($t === '') {
+            return '';
+        }
+        if (function_exists('mb_substr')) {
+            return mb_substr($t, 0, $maxLen, 'UTF-8');
+        }
+
+        return substr($t, 0, $maxLen);
+    }
+
+    /**
+     * Plantillas antiguas guardaban «Validado por»; el término deseado en reporte es «Verificado por».
+     * Solo sustituye si el texto (tras recorte) coincide exactamente con esa frase (con o sin «:»).
+     */
+    public static function mapLegacyValidatorLabel(string $clipped, string $default): string
+    {
+        $t = trim($clipped);
+        if (preg_match('/^validado\s+por:?\s*$/iu', $t)) {
+            return $default;
+        }
+
+        return $clipped;
+    }
+
+    /**
+     * «Firma:» pasó a mostrarse como «ATENTAMENTE» sobre la imagen de firma.
+     */
+    public static function mapLegacyFirmaLabel(string $clipped, string $default): string
+    {
+        $t = trim($clipped);
+        if (preg_match('/^firma:?\s*$/iu', $t)) {
+            return $default;
+        }
+
+        return $clipped;
+    }
+
+    /**
+     * Sin etiqueta sobre el nombre del aprobador; limpia textos antiguos.
+     */
+    public static function mapLegacyApproverNameLabel(string $clipped, string $default): string
+    {
+        $t = trim($clipped);
+        if (preg_match('/^aprobado\s+por:?\s*$/iu', $t) || preg_match('/^atentamente:?\s*$/iu', $t)) {
+            return $default;
+        }
+
+        return $clipped;
+    }
+
+    /**
+     * Sin prefijo «Cargo:»; solo el valor.
+     */
+    public static function mapLegacyCargoLabel(string $clipped, string $default): string
+    {
+        $t = trim($clipped);
+        if (preg_match('/^cargo:?\s*$/iu', $t)) {
+            return $default;
+        }
+
+        return $clipped;
+    }
+
+    /**
+     * Sin rótulo «Sello» sobre la imagen del sello.
+     */
+    public static function mapLegacySealLabel(string $clipped, string $default): string
+    {
+        $t = trim($clipped);
+        if (preg_match('/^sello:?\s*$/iu', $t)) {
+            return $default;
+        }
+
+        return $clipped;
+    }
+
+    /**
+     * @param array<string, mixed> $s
+     */
+    public static function labFirmasBool(array $s, string $key, bool $default = true): bool
+    {
+        if (! array_key_exists($key, $s)) {
+            return $default;
+        }
+        $v = $s[$key];
+        if (is_bool($v)) {
+            return $v;
+        }
+        if (is_int($v) || is_float($v)) {
+            return (int) $v !== 0;
+        }
+        $t = strtolower(trim((string) $v));
+
+        return in_array($t, ['1', 'true', 'yes', 'on'], true);
+    }
+
+    /**
+     * @param array<string, mixed> $s
+     */
+    public static function labFirmasLineModeInline(array $s, string $key): bool
+    {
+        return isset($s[$key]) && trim((string) $s[$key]) === 'inline';
+    }
+
+    /**
      * Estilo + textos configurables del bloque de firmas (misma forma base que notas).
      *
      * @param mixed $raw
@@ -1394,13 +1903,360 @@ class ReportPdfLayoutService
         $s   = is_array($raw) ? $raw : [];
         $def = self::DEFAULT_LAB_FIRMAS_LABELS;
 
+        $labelValidator = self::clipLabFirmasLabel(isset($s['label_validator']) ? (string) $s['label_validator'] : null, $def['label_validator']);
+        $labelValidator = self::mapLegacyValidatorLabel($labelValidator, $def['label_validator']);
+
+        $labelFirma = self::clipLabFirmasLabel(isset($s['label_firma']) ? (string) $s['label_firma'] : null, $def['label_firma']);
+        $labelFirma = self::mapLegacyFirmaLabel($labelFirma, $def['label_firma']);
+
+        $labelApprover = self::clipLabFirmasLabel(isset($s['label_approver']) ? (string) $s['label_approver'] : null, $def['label_approver']);
+        $labelApprover = self::mapLegacyApproverNameLabel($labelApprover, $def['label_approver']);
+
+        $labelCargo = self::clipLabFirmasLabel(isset($s['label_cargo']) ? (string) $s['label_cargo'] : null, $def['label_cargo']);
+        $labelCargo = self::mapLegacyCargoLabel($labelCargo, $def['label_cargo']);
+
+        $labelSeal = self::clipLabFirmasLabel(isset($s['label_seal']) ? (string) $s['label_seal'] : null, $def['label_seal']);
+        $labelSeal = self::mapLegacySealLabel($labelSeal, $def['label_seal']);
+
         return array_merge($n, [
-            'section_title'   => self::clipLabFirmasLabel(isset($s['section_title']) ? (string) $s['section_title'] : null, $def['section_title']),
-            'label_validator' => self::clipLabFirmasLabel(isset($s['label_validator']) ? (string) $s['label_validator'] : null, $def['label_validator']),
-            'label_seal'      => self::clipLabFirmasLabel(isset($s['label_seal']) ? (string) $s['label_seal'] : null, $def['label_seal']),
-            'label_approver'  => self::clipLabFirmasLabel(isset($s['label_approver']) ? (string) $s['label_approver'] : null, $def['label_approver']),
-            'label_cargo'     => self::clipLabFirmasLabel(isset($s['label_cargo']) ? (string) $s['label_cargo'] : null, $def['label_cargo']),
+            'section_title'       => self::clipLabFirmasLabel(isset($s['section_title']) ? (string) $s['section_title'] : null, $def['section_title']),
+            'show_section_title'  => self::labFirmasBool($s, 'show_section_title', (bool) $def['show_section_title']),
+            'label_validator'     => $labelValidator,
+            'show_label_validator'=> self::labFirmasBool($s, 'show_label_validator', (bool) $def['show_label_validator']),
+            'validator_line_mode' => self::labFirmasLineModeInline($s, 'validator_line_mode') ? 'inline' : 'stacked',
+            'label_seal'          => $labelSeal,
+            'show_label_seal'     => self::labFirmasBool($s, 'show_label_seal', (bool) $def['show_label_seal']),
+            'label_seal_line_mode'=> self::labFirmasLineModeInline($s, 'label_seal_line_mode') ? 'inline' : 'stacked',
+            'label_firma'         => $labelFirma,
+            'show_label_firma'    => self::labFirmasBool($s, 'show_label_firma', (bool) $def['show_label_firma']),
+            'label_firma_line_mode'=> self::labFirmasLineModeInline($s, 'label_firma_line_mode') ? 'inline' : 'stacked',
+            'label_approver'      => $labelApprover,
+            'show_label_approver' => self::labFirmasBool($s, 'show_label_approver', (bool) $def['show_label_approver']),
+            'label_approver_line_mode'=> self::labFirmasLineModeInline($s, 'label_approver_line_mode') ? 'inline' : 'stacked',
+            'label_cargo'         => $labelCargo,
+            'show_label_cargo'    => self::labFirmasBool($s, 'show_label_cargo', (bool) $def['show_label_cargo']),
+            'label_cargo_line_mode'=> self::labFirmasLineModeInline($s, 'label_cargo_line_mode') ? 'inline' : 'stacked',
+            'label_matricula'     => array_key_exists('label_matricula', $s)
+                ? self::clipLabFirmasLabelAllowEmpty((string) $s['label_matricula'])
+                : self::clipLabFirmasLabel(null, $def['label_matricula']),
+            'show_label_matricula'=> self::labFirmasBool($s, 'show_label_matricula', (bool) $def['show_label_matricula']),
+            'label_matricula_line_mode'=> self::labFirmasLineModeInline($s, 'label_matricula_line_mode') ? 'inline' : 'stacked',
+            'body_transparent'    => self::labFirmasBool($s, 'body_transparent', (bool) $def['body_transparent']),
+            'column_border_width_px' => self::normalizeLabFirmasColumnBorderWidthPx($s['column_border_width_px'] ?? null, (int) $def['column_border_width_px']),
+            'column_border_color' => self::normalizeLabFirmasBorderColor($s['column_border_color'] ?? null, (string) $def['column_border_color']),
         ]);
+    }
+
+    /**
+     * Grosor del borde entre columnas del bloque firmas (0 = sin borde).
+     */
+    public static function normalizeLabFirmasColumnBorderWidthPx($raw, int $fallback): int
+    {
+        if ($raw === null || $raw === '') {
+            return max(0, min(4, $fallback));
+        }
+        if (! is_numeric($raw)) {
+            return max(0, min(4, $fallback));
+        }
+        $w = (int) $raw;
+
+        return max(0, min(4, $w));
+    }
+
+    public static function normalizeLabFirmasBorderColor($raw, string $fallback): string
+    {
+        $v = strtoupper(trim((string) ($raw ?? '')));
+        if ($v !== '' && preg_match('/^#[0-9A-F]{6}$/', $v)) {
+            return $v;
+        }
+        $fb = strtoupper(trim($fallback));
+
+        return preg_match('/^#[0-9A-F]{6}$/', $fb) ? $fb : '#DDDDDD';
+    }
+
+    /**
+     * Cuadrícula PDF: colores de celda, tipografía y bordes entre columnas.
+     *
+     * @param array<string, mixed> $raw
+     * @param array<string, mixed> $def
+     *
+     * @return array<string, mixed>
+     */
+    public static function normalizeSectionGridWrap(array $raw, array $def): array
+    {
+        $s = $raw;
+        $pickColor = static function (string $k, string $fallback) use ($s): string {
+            $v = strtoupper(trim((string) ($s[$k] ?? $fallback)));
+
+            return preg_match('/^#[0-9A-F]{6}$/', $v) ? $v : $fallback;
+        };
+        $family = (string) ($s['font_family'] ?? $def['font_family']);
+        if (! in_array($family, self::ALLOWED_PDF_FONT_FAMILIES, true)) {
+            $family = (string) $def['font_family'];
+        }
+        $size = isset($s['font_size_pt']) ? (float) $s['font_size_pt'] : (float) ($def['font_size_pt'] ?? 9.5);
+        $size = round(max(7.0, min(20.0, $size)), 2);
+        $weight = strtolower(trim((string) ($s['font_weight'] ?? $def['font_weight'])));
+        if (! in_array($weight, self::ALLOWED_PDF_FONT_WEIGHTS, true)) {
+            $weight = (string) $def['font_weight'];
+        }
+        $style = strtolower(trim((string) ($s['font_style'] ?? $def['font_style'])));
+        if (! in_array($style, self::ALLOWED_PDF_FONT_STYLES, true)) {
+            $style = (string) $def['font_style'];
+        }
+        $transform = strtolower(trim((string) ($s['text_transform'] ?? $def['text_transform'])));
+        if (! in_array($transform, self::ALLOWED_PDF_TEXT_TRANSFORMS, true)) {
+            $transform = (string) $def['text_transform'];
+        }
+        $lh = isset($s['line_height']) ? (float) $s['line_height'] : (float) ($def['line_height'] ?? 1.35);
+        $lh = round(max(1.0, min(3.0, $lh)), 2);
+
+        return [
+            'body_bg_color'          => $pickColor('body_bg_color', (string) $def['body_bg_color']),
+            'body_text_color'        => $pickColor('body_text_color', (string) $def['body_text_color']),
+            'body_transparent'       => self::labFirmasBool($s, 'body_transparent', ! empty($def['body_transparent'])),
+            'font_family'            => $family,
+            'font_size_pt'           => $size,
+            'font_weight'            => $weight,
+            'font_style'             => $style,
+            'text_transform'         => $transform,
+            'line_height'            => $lh,
+            'column_border_width_px' => self::normalizeLabFirmasColumnBorderWidthPx($s['column_border_width_px'] ?? null, (int) ($def['column_border_width_px'] ?? 0)),
+            'column_border_color'    => self::normalizeLabFirmasBorderColor($s['column_border_color'] ?? null, (string) ($def['column_border_color'] ?? '#DDDDDD')),
+        ];
+    }
+
+    /**
+     * @param mixed $raw
+     *
+     * @return array<string, mixed>
+     */
+    public static function normalizeHeaderGridStyle($raw): array
+    {
+        $s    = is_array($raw) ? $raw : [];
+        $base = self::normalizeSectionGridWrap($s, self::DEFAULT_SECTION_GRID_WRAP);
+        $btc  = (string) $base['body_text_color'];
+        $base['label_qr_hint'] = self::clipLabFirmasLabel($s['label_qr_hint'] ?? null, 'Escanee para ver sus resultados online');
+        $base['show_label_qr_hint'] = self::labFirmasBool($s, 'show_label_qr_hint', true);
+        $base['label_qr_hint_line_mode'] = self::labFirmasLineModeInline($s, 'label_qr_hint_line_mode') ? 'inline' : 'stacked';
+
+        $gridFs  = (float) $base['font_size_pt'];
+        $gridFw  = (string) $base['font_weight'];
+        $gridFst = (string) $base['font_style'];
+        $pickPieceFs = static function (string $key) use ($s, $gridFs): float {
+            if (! array_key_exists($key, $s)) {
+                return $gridFs;
+            }
+            $v = (float) $s[$key];
+
+            return round(max(7.0, min(20.0, $v)), 2);
+        };
+        $pickPieceFw = static function (string $key) use ($s, $gridFw): string {
+            $w = strtolower(trim((string) ($s[$key] ?? $gridFw)));
+
+            return in_array($w, self::ALLOWED_PDF_FONT_WEIGHTS, true) ? $w : $gridFw;
+        };
+        $pickPieceFst = static function (string $key) use ($s, $gridFst): string {
+            $st = strtolower(trim((string) ($s[$key] ?? $gridFst)));
+
+            return in_array($st, self::ALLOWED_PDF_FONT_STYLES, true) ? $st : $gridFst;
+        };
+
+        $base['label_qr_hint_text_color']   = self::normalizeLabFirmasBorderColor($s['label_qr_hint_text_color'] ?? null, $btc);
+        $base['label_qr_hint_font_size_pt'] = $pickPieceFs('label_qr_hint_font_size_pt');
+        $base['label_qr_hint_font_weight']  = $pickPieceFw('label_qr_hint_font_weight');
+        $base['label_qr_hint_font_style']   = $pickPieceFst('label_qr_hint_font_style');
+
+        foreach (self::HEADER_GRID_LABEL_DEFAULTS as $id => $fallback) {
+            $base['label_' . $id] = self::clipLabFirmasLabel($s['label_' . $id] ?? null, $fallback);
+            $base['show_label_' . $id] = self::labFirmasBool($s, 'show_label_' . $id, true);
+            $base['label_' . $id . '_line_mode'] = self::labFirmasLineModeInline($s, 'label_' . $id . '_line_mode') ? 'inline' : 'stacked';
+            $base['label_' . $id . '_text_color'] = self::normalizeLabFirmasBorderColor($s['label_' . $id . '_text_color'] ?? null, $btc);
+            $base['label_' . $id . '_font_size_pt'] = $pickPieceFs('label_' . $id . '_font_size_pt');
+            $base['label_' . $id . '_font_weight']  = $pickPieceFw('label_' . $id . '_font_weight');
+            $base['label_' . $id . '_font_style']   = $pickPieceFst('label_' . $id . '_font_style');
+        }
+
+        return $base;
+    }
+
+    /**
+     * @param mixed $raw
+     *
+     * @return array<string, mixed>
+     */
+    public static function normalizePatientDoctorGridStyle($raw): array
+    {
+        $s = is_array($raw) ? $raw : [];
+        $wrapDef = array_merge(self::DEFAULT_SECTION_GRID_WRAP, ['body_bg_color' => '#F8F9FA']);
+        $base    = self::normalizeSectionGridWrap($s, $wrapDef);
+        foreach (self::PATIENT_DOCTOR_GRID_LABEL_DEFAULTS as $id => $fallback) {
+            $base['label_' . $id] = self::clipLabFirmasLabel($s['label_' . $id] ?? null, $fallback);
+            $base['show_label_' . $id] = self::labFirmasBool($s, 'show_label_' . $id, true);
+            $base['label_' . $id . '_line_mode'] = self::labFirmasLineModeInline($s, 'label_' . $id . '_line_mode') ? 'inline' : 'stacked';
+        }
+
+        return $base;
+    }
+
+    /**
+     * @param mixed $raw
+     *
+     * @return array<string, mixed>
+     */
+    public static function normalizeFooterGridStyle($raw): array
+    {
+        $s    = is_array($raw) ? $raw : [];
+        $base = self::normalizeSectionGridWrap($s, self::DEFAULT_SECTION_GRID_WRAP);
+        $btc  = (string) $base['body_text_color'];
+        $base['label_footer_generated'] = self::clipLabFirmasLabel($s['label_footer_generated'] ?? null, 'Resultados generados el');
+        $base['show_label_footer_generated'] = self::labFirmasBool($s, 'show_label_footer_generated', true);
+        $base['label_footer_generated_line_mode'] = self::labFirmasLineModeInline($s, 'label_footer_generated_line_mode') ? 'inline' : 'stacked';
+        $base['footer_company_text_color']      = self::normalizeLabFirmasBorderColor($s['footer_company_text_color'] ?? null, $btc);
+        $base['label_footer_generated_color']   = self::normalizeLabFirmasBorderColor($s['label_footer_generated_color'] ?? null, $btc);
+        $base['label_footer_datetime_color']    = self::normalizeLabFirmasBorderColor($s['label_footer_datetime_color'] ?? null, $btc);
+        $base['footer_policy_text_color']       = self::normalizeLabFirmasBorderColor($s['footer_policy_text_color'] ?? null, $btc);
+        $base['section_top_border_enabled']      = self::labFirmasBool($s, 'section_top_border_enabled', true);
+        $tw = isset($s['section_top_border_width_px']) ? (int) $s['section_top_border_width_px'] : 1;
+        $base['section_top_border_width_px']     = max(0, min(6, $tw));
+        $base['section_top_border_color']       = self::normalizeLabFirmasBorderColor($s['section_top_border_color'] ?? null, '#DDDDDD');
+
+        $gridFs = (float) $base['font_size_pt'];
+        $gridFw = (string) $base['font_weight'];
+        $gridFst = (string) $base['font_style'];
+        $pickPieceFs = static function (string $key) use ($s, $gridFs): float {
+            if (! array_key_exists($key, $s)) {
+                return $gridFs;
+            }
+            $v = (float) $s[$key];
+
+            return round(max(7.0, min(20.0, $v)), 2);
+        };
+        $pickPieceFw = static function (string $key) use ($s, $gridFw): string {
+            $w = strtolower(trim((string) ($s[$key] ?? $gridFw)));
+
+            return in_array($w, self::ALLOWED_PDF_FONT_WEIGHTS, true) ? $w : $gridFw;
+        };
+        $pickPieceFst = static function (string $key) use ($s, $gridFst): string {
+            $st = strtolower(trim((string) ($s[$key] ?? $gridFst)));
+
+            return in_array($st, self::ALLOWED_PDF_FONT_STYLES, true) ? $st : $gridFst;
+        };
+        $base['footer_company_font_size_pt']            = $pickPieceFs('footer_company_font_size_pt');
+        $base['footer_company_font_weight']             = $pickPieceFw('footer_company_font_weight');
+        $base['footer_company_font_style']              = $pickPieceFst('footer_company_font_style');
+        $base['label_footer_generated_font_size_pt']    = $pickPieceFs('label_footer_generated_font_size_pt');
+        $base['label_footer_generated_font_weight']      = $pickPieceFw('label_footer_generated_font_weight');
+        $base['label_footer_generated_font_style']       = $pickPieceFst('label_footer_generated_font_style');
+        $base['label_footer_datetime_font_size_pt']      = $pickPieceFs('label_footer_datetime_font_size_pt');
+        $base['label_footer_datetime_font_weight']        = $pickPieceFw('label_footer_datetime_font_weight');
+        $base['label_footer_datetime_font_style']         = $pickPieceFst('label_footer_datetime_font_style');
+        $base['footer_policy_font_size_pt']              = $pickPieceFs('footer_policy_font_size_pt');
+        $base['footer_policy_font_weight']               = $pickPieceFw('footer_policy_font_weight');
+        $base['footer_policy_font_style']                = $pickPieceFst('footer_policy_font_style');
+
+        return $base;
+    }
+
+    /**
+     * CSS inline para textos del pie (color/tipo) — evita que td.pdf-cell o estilos globales tapen variables en vista/PDF.
+     *
+     * @param array<string, mixed> $ft footer_grid normalizado o bruto
+     */
+    public static function footerGridPieceStyleAttr(array $ft, string $piece): string
+    {
+        $ft = self::normalizeFooterGridStyle($ft);
+        $fn   = (string) $ft['font_family'];
+        $ffCss = (strpbrk($fn, ' ') !== false)
+            ? '"' . str_replace(['"', '\\'], '', $fn) . '", sans-serif'
+            : str_replace(['"', '\\'], '', $fn) . ', sans-serif';
+        $lh   = (float) $ft['line_height'];
+        $tt   = (string) $ft['text_transform'];
+        $decl = static function (string $color, float $fs, string $fw, string $fst) use ($ffCss, $lh, $tt): string {
+            return 'color:' . $color
+                . ';font-family:' . $ffCss
+                . ';font-size:' . (string) $fs . 'pt'
+                . ';font-weight:' . $fw
+                . ';font-style:' . $fst
+                . ';text-transform:' . $tt
+                . ';line-height:' . (string) $lh;
+        };
+        switch ($piece) {
+            case 'company':
+                return $decl(
+                    (string) $ft['footer_company_text_color'],
+                    (float) $ft['footer_company_font_size_pt'],
+                    (string) $ft['footer_company_font_weight'],
+                    (string) $ft['footer_company_font_style']
+                );
+            case 'label_generated':
+                return $decl(
+                    (string) $ft['label_footer_generated_color'],
+                    (float) $ft['label_footer_generated_font_size_pt'],
+                    (string) $ft['label_footer_generated_font_weight'],
+                    (string) $ft['label_footer_generated_font_style']
+                );
+            case 'datetime':
+                return $decl(
+                    (string) $ft['label_footer_datetime_color'],
+                    (float) $ft['label_footer_datetime_font_size_pt'],
+                    (string) $ft['label_footer_datetime_font_weight'],
+                    (string) $ft['label_footer_datetime_font_style']
+                );
+            case 'policy':
+                return $decl(
+                    (string) $ft['footer_policy_text_color'],
+                    (float) $ft['footer_policy_font_size_pt'],
+                    (string) $ft['footer_policy_font_weight'],
+                    (string) $ft['footer_policy_font_style']
+                );
+            default:
+                return '';
+        }
+    }
+
+    /**
+     * CSS inline para etiquetas del encabezado (cuadrícula superior) y leyenda del QR.
+     *
+     * @param array<string, mixed> $hg header_grid normalizado o bruto
+     * @param string               $piece id de campo (p. ej. lab_phone) o qr_hint
+     */
+    public static function headerGridLabelPieceStyleAttr(array $hg, string $piece): string
+    {
+        $hg = self::normalizeHeaderGridStyle($hg);
+        $fn   = (string) $hg['font_family'];
+        $ffCss = (strpbrk($fn, ' ') !== false)
+            ? '"' . str_replace(['"', '\\'], '', $fn) . '", sans-serif'
+            : str_replace(['"', '\\'], '', $fn) . ', sans-serif';
+        $lh   = (float) $hg['line_height'];
+        $tt   = (string) $hg['text_transform'];
+        $decl = static function (string $color, float $fs, string $fw, string $fst) use ($ffCss, $lh, $tt): string {
+            return 'color:' . $color
+                . ';font-family:' . $ffCss
+                . ';font-size:' . (string) $fs . 'pt'
+                . ';font-weight:' . $fw
+                . ';font-style:' . $fst
+                . ';text-transform:' . $tt
+                . ';line-height:' . (string) $lh;
+        };
+        if ($piece === 'qr_hint') {
+            return $decl(
+                (string) $hg['label_qr_hint_text_color'],
+                (float) $hg['label_qr_hint_font_size_pt'],
+                (string) $hg['label_qr_hint_font_weight'],
+                (string) $hg['label_qr_hint_font_style']
+            );
+        }
+        if (! array_key_exists($piece, self::HEADER_GRID_LABEL_DEFAULTS)) {
+            return '';
+        }
+
+        return $decl(
+            (string) $hg['label_' . $piece . '_text_color'],
+            (float) $hg['label_' . $piece . '_font_size_pt'],
+            (string) $hg['label_' . $piece . '_font_weight'],
+            (string) $hg['label_' . $piece . '_font_style']
+        );
     }
 
     /**
@@ -1411,7 +2267,7 @@ class ReportPdfLayoutService
         if (! is_array($raw)) {
             return null;
         }
-        $keys = ['section_title', 'label_validator', 'label_seal', 'label_approver', 'label_cargo'];
+        $keys = ['section_title', 'label_validator', 'label_seal', 'label_firma', 'label_approver', 'label_cargo', 'label_matricula'];
         foreach ($keys as $k) {
             if (! array_key_exists($k, $raw)) {
                 continue;
@@ -1425,6 +2281,30 @@ class ReportPdfLayoutService
             if ($len > self::LAB_FIRMAS_TEXT_MAX_LEN) {
                 return 'Un texto del bloque de firmas supera los ' . self::LAB_FIRMAS_TEXT_MAX_LEN . ' caracteres.';
             }
+        }
+
+        return null;
+    }
+
+    /**
+     * @param mixed $raw
+     */
+    protected static function validateRawLabFirmasColumnStyle($raw): ?string
+    {
+        if (! is_array($raw)) {
+            return null;
+        }
+        if (array_key_exists('column_border_width_px', $raw)) {
+            if (! is_numeric($raw['column_border_width_px'])) {
+                return 'El grosor del borde en firmas del laboratorio debe ser numérico.';
+            }
+            $w = (int) $raw['column_border_width_px'];
+            if ($w < 0 || $w > 4) {
+                return 'El grosor del borde en firmas del laboratorio debe estar entre 0 y 4 px.';
+            }
+        }
+        if (isset($raw['column_border_color']) && ! self::isValidPdfHexColor((string) $raw['column_border_color'])) {
+            return 'Color de borde inválido en firmas del laboratorio (#RRGGBB).';
         }
 
         return null;
@@ -1790,11 +2670,14 @@ class ReportPdfLayoutService
         $watermark = $this->normalizeWatermark($decoded);
         $pageStyleRaw = is_array($decoded['page_style'] ?? null) ? $decoded['page_style'] : [];
         $pageStyle = [
-            'card_header'    => self::normalizeCardHeaderStyle($pageStyleRaw['card_header'] ?? []),
-            'notes'          => self::normalizeNotesStyle($pageStyleRaw['notes'] ?? []),
-            'lab_firmas'     => self::normalizeLabFirmasStyle($pageStyleRaw['lab_firmas'] ?? []),
-            'results_table'  => self::normalizeResultsTableStyle($pageStyleRaw['results_table'] ?? []),
-            'header_section' => self::normalizeHeaderSectionStyle($pageStyleRaw['header_section'] ?? []),
+            'card_header'         => self::normalizeCardHeaderStyle($pageStyleRaw['card_header'] ?? []),
+            'notes'               => self::normalizeNotesStyle($pageStyleRaw['notes'] ?? []),
+            'lab_firmas'          => self::normalizeLabFirmasStyle($pageStyleRaw['lab_firmas'] ?? []),
+            'results_table'       => self::normalizeResultsTableStyle($pageStyleRaw['results_table'] ?? []),
+            'header_section'      => self::normalizeHeaderSectionStyle($pageStyleRaw['header_section'] ?? []),
+            'header_grid'         => self::normalizeHeaderGridStyle($pageStyleRaw['header_grid'] ?? []),
+            'patient_doctor_grid' => self::normalizePatientDoctorGridStyle($pageStyleRaw['patient_doctor_grid'] ?? []),
+            'footer_grid'         => self::normalizeFooterGridStyle($pageStyleRaw['footer_grid'] ?? []),
         ];
 
         return [
@@ -1926,10 +2809,13 @@ class ReportPdfLayoutService
     public static function labFirmasPreviewSamples(): array
     {
         return [
-            'lab_firmas_title'     => 'VALIDACIÓN Y APROBACIÓN',
-            'lab_firmas_validator' => 'Ana López Martínez',
-            'lab_firmas_seal'      => '[Sello]',
-            'lab_firmas_approver'  => 'Dr. Carlos Ruiz',
+            'lab_firmas_title'                => 'VALIDACIÓN Y APROBACIÓN',
+            'lab_firmas_validator'          => 'Ana López Martínez',
+            'lab_firmas_seal'               => '[Imagen]',
+            'lab_firmas_approver_signature' => '[Firma]',
+            'lab_firmas_approver_name'      => 'Dr. Carlos Ruiz',
+            'lab_firmas_approver_cargo'     => 'Director técnico',
+            'lab_firmas_matricula'          => 'MP 12345',
         ];
     }
 }

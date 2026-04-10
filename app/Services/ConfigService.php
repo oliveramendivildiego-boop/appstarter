@@ -331,7 +331,7 @@ class ConfigService
     /**
      * Validadores y aprobadores para la pestaña de configuración (incluye migración desde campos antiguos).
      *
-     * @return array{validators: list<array{id: string, name: string}>, approvers: list<array{id: string, name: string, cargo: string, seal: string, signature: string}>}
+     * @return array{validators: list<array{id: string, name: string}>, approvers: list<array{id: string, name: string, cargo: string, matricula: string, seal: string, signature: string}>}
      */
     public function getLabValidationStateForView(): array
     {
@@ -394,6 +394,7 @@ class ConfigService
         $ids = $post['approver_id'] ?? [];
         $names = $post['approver_name'] ?? [];
         $cargos = $post['approver_cargo'] ?? [];
+        $matriculas = $post['approver_matricula'] ?? [];
         $fileSlots = $post['approver_file_slot'] ?? [];
         if (!is_array($ids)) {
             $ids = [];
@@ -404,10 +405,13 @@ class ConfigService
         if (!is_array($cargos)) {
             $cargos = [];
         }
+        if (!is_array($matriculas)) {
+            $matriculas = [];
+        }
         if (!is_array($fileSlots)) {
             $fileSlots = [];
         }
-        $nApp = max(count($ids), count($names), count($cargos));
+        $nApp = max(count($ids), count($names), count($cargos), count($matriculas));
         $newApprovers = [];
         $sealFailed = false;
         $sigFailed = false;
@@ -422,6 +426,7 @@ class ConfigService
                 $id = bin2hex(random_bytes(8));
             }
             $cargo = mb_substr(trim((string) ($cargos[$i] ?? '')), 0, 255);
+            $matricula = mb_substr(trim((string) ($matriculas[$i] ?? '')), 0, 255);
             $prev = $oldById[$id] ?? null;
             $seal = is_array($prev) ? trim((string) ($prev['seal'] ?? '')) : '';
             $signature = is_array($prev) ? trim((string) ($prev['signature'] ?? '')) : '';
@@ -461,6 +466,7 @@ class ConfigService
                 'id'          => $id,
                 'name'        => $aname,
                 'cargo'       => $cargo,
+                'matricula'   => $matricula,
                 'seal'        => $seal,
                 'signature'   => $signature,
             ];
@@ -537,7 +543,7 @@ class ConfigService
     }
 
     /**
-     * @return list<array{id: string, name: string, cargo: string, seal: string, signature: string}>
+     * @return list<array{id: string, name: string, cargo: string, matricula: string, seal: string, signature: string}>
      */
     private function decodeApproversFromStored(string $json): array
     {
@@ -566,6 +572,7 @@ class ConfigService
                 'id'        => $id,
                 'name'      => mb_substr($name, 0, 500),
                 'cargo'     => mb_substr(trim((string) ($row['cargo'] ?? '')), 0, 255),
+                'matricula' => mb_substr(trim((string) ($row['matricula'] ?? '')), 0, 255),
                 'seal'      => trim((string) ($row['seal'] ?? '')),
                 'signature' => trim((string) ($row['signature'] ?? '')),
             ];
@@ -609,7 +616,7 @@ class ConfigService
     /**
      * @param array<string, string> $cfg
      *
-     * @return list<array{id: string, name: string, cargo: string, seal: string, signature: string}>
+     * @return list<array{id: string, name: string, cargo: string, matricula: string, seal: string, signature: string}>
      */
     private function legacyApproverRowsFromCfg(array $cfg): array
     {
@@ -637,6 +644,7 @@ class ConfigService
             'id'          => $stableId,
             'name'        => mb_substr($name, 0, 500),
             'cargo'       => mb_substr($cargo, 0, 255),
+            'matricula'   => '',
             'seal'        => $seal,
             'signature'   => $signature,
         ]];

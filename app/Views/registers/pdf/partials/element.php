@@ -10,17 +10,6 @@ $type = (string) ($pdf_element_type ?? '');
 $lab  = is_array($lab_config ?? null) ? $lab_config : [];
 $ts   = \App\Services\ReportPdfLayoutService::normalizeTextStyle($pdf_text_style ?? []);
 
-$labelsPdf = [
-    'paciente_nombre'    => 'Paciente:',
-    'paciente_genero'    => 'Género:',
-    'paciente_edad'      => 'Edad:',
-    'paciente_telefono'  => 'Teléfono:',
-    'medico'             => 'Médico:',
-    'fecha_recepcion'    => 'Fecha de recepción:',
-    'fecha_reporte'      => 'Fecha de reporte:',
-    'numero_orden'       => 'No. Orden:',
-];
-
 $reportEmitidoEl = (string) ($report_emitido_en ?? \App\Services\RegisterService::formatNowForReport());
 
 $valueOf = static function (string $id) use ($paciente, $doctor, $register_info, $reportEmitidoEl): string {
@@ -67,103 +56,269 @@ if ($logoDataUri === '' && $type === 'logo') {
     }
 }
 
-if (isset($labelsPdf[$type])) {
-    ?>
-                <div class="patient-line">
-                    <span class="label"><?= esc($labelsPdf[$type]) ?></span>
-                    <?= esc($valueOf($type)) ?>
-                </div>
-    <?php
+if (array_key_exists($type, \App\Services\ReportPdfLayoutService::PATIENT_DOCTOR_GRID_LABEL_DEFAULTS)) {
+    $pdS = is_array($pdf_patient_doctor_grid_style ?? null)
+        ? $pdf_patient_doctor_grid_style
+        : \App\Services\ReportPdfLayoutService::normalizePatientDoctorGridStyle([]);
+    $showL = \App\Services\ReportPdfLayoutService::labFirmasBool($pdS, 'show_label_' . $type, true);
+    $lbl   = trim((string) ($pdS['label_' . $type] ?? ''));
+    $inline = (($pdS['label_' . $type . '_line_mode'] ?? 'stacked') === 'inline');
+    $val   = $valueOf($type);
+    $showLblText = $showL && $lbl !== '';
+    if ($inline) {
+        ?>
+                <div class="patient-line"><?php if ($showLblText): ?><span class="label"><?= esc($lbl) ?></span> <?php endif; ?><?= esc($val) ?></div>
+        <?php
+    } else {
+        if ($showLblText) {
+            ?>
+                <div class="patient-line"><span class="label"><?= esc($lbl) ?></span></div>
+            <?php
+        }
+        ?>
+                <div class="patient-line"><?= esc($val) ?></div>
+        <?php
+    }
 
     return;
 }
 
 switch ($type) {
     case 'logo':
+        $hgLogo = is_array($pdf_header_grid_style ?? null)
+            ? $pdf_header_grid_style
+            : \App\Services\ReportPdfLayoutService::normalizeHeaderGridStyle([]);
+        $lblLogo     = trim((string) ($hgLogo['label_logo'] ?? ''));
+        $showLogoL   = \App\Services\ReportPdfLayoutService::labFirmasBool($hgLogo, 'show_label_logo', true);
+        $inlineLogo  = (($hgLogo['label_logo_line_mode'] ?? 'stacked') === 'inline');
+        $showLblLogo = $showLogoL && $lblLogo !== '';
+        $stLogoLbl   = \App\Services\ReportPdfLayoutService::headerGridLabelPieceStyleAttr($hgLogo, 'logo');
         ?>
                 <div class="header-piece header-piece-logo">
-                    <?php if ($logoDataUri !== ''): ?>
+                    <?php if ($inlineLogo && $showLblLogo): ?>
+                    <div style="display:flex;flex-wrap:wrap;align-items:center;gap:8px;">
+                        <span style="<?= esc($stLogoLbl, 'attr') ?>"><?= esc($lblLogo) ?></span>
+                        <?php if ($logoDataUri !== ''): ?>
                         <img src="<?= $logoDataUri ?>" alt="Logo">
-                    <?php else: ?>
+                        <?php else: ?>
                         <strong><?= esc($lab['company'] ?? 'Laboratorio') ?></strong>
+                        <?php endif; ?>
+                    </div>
+                    <?php else: ?>
+                    <?php if ($showLblLogo): ?>
+                    <div style="margin-bottom:6px;"><span style="<?= esc($stLogoLbl, 'attr') ?>"><?= esc($lblLogo) ?></span></div>
+                    <?php endif; ?>
+                    <?php if ($logoDataUri !== ''): ?>
+                    <img src="<?= $logoDataUri ?>" alt="Logo">
+                    <?php else: ?>
+                    <strong><?= esc($lab['company'] ?? 'Laboratorio') ?></strong>
+                    <?php endif; ?>
                     <?php endif; ?>
                 </div>
         <?php
         break;
 
     case 'lab_company':
+        $hgCo = is_array($pdf_header_grid_style ?? null)
+            ? $pdf_header_grid_style
+            : \App\Services\ReportPdfLayoutService::normalizeHeaderGridStyle([]);
+        $lblCo     = trim((string) ($hgCo['label_lab_company'] ?? ''));
+        $showCoL   = \App\Services\ReportPdfLayoutService::labFirmasBool($hgCo, 'show_label_lab_company', true);
+        $inlineCo  = (($hgCo['label_lab_company_line_mode'] ?? 'stacked') === 'inline');
+        $showLblCo = $showCoL && $lblCo !== '';
+        $stCoLbl   = \App\Services\ReportPdfLayoutService::headerGridLabelPieceStyleAttr($hgCo, 'lab_company');
+        $h1CoStyle = 'color:' . esc($ts['font_color'], 'attr') . ' !important;margin:0;';
         ?>
                 <div class="header-piece header-piece-company">
-                    <h1 style="color:<?= esc($ts['font_color'], 'attr') ?> !important;"><?= esc($lab['company'] ?? 'Laboratorio') ?></h1>
+                    <?php if ($inlineCo && $showLblCo): ?>
+                    <div style="display:flex;flex-wrap:wrap;align-items:baseline;gap:8px;">
+                        <span style="<?= esc($stCoLbl, 'attr') ?>"><?= esc($lblCo) ?></span>
+                        <h1 style="<?= $h1CoStyle ?>"><?= esc($lab['company'] ?? 'Laboratorio') ?></h1>
+                    </div>
+                    <?php elseif ($showLblCo): ?>
+                    <div style="margin-bottom:6px;"><span style="<?= esc($stCoLbl, 'attr') ?>"><?= esc($lblCo) ?></span></div>
+                    <h1 style="<?= $h1CoStyle ?>"><?= esc($lab['company'] ?? 'Laboratorio') ?></h1>
+                    <?php else: ?>
+                    <h1 style="<?= $h1CoStyle ?>"><?= esc($lab['company'] ?? 'Laboratorio') ?></h1>
+                    <?php endif; ?>
                 </div>
         <?php
         break;
 
     case 'lab_address':
         if (! empty($lab['address'])) {
+            $hgAd = is_array($pdf_header_grid_style ?? null)
+                ? $pdf_header_grid_style
+                : \App\Services\ReportPdfLayoutService::normalizeHeaderGridStyle([]);
+            $lblAd     = trim((string) ($hgAd['label_lab_address'] ?? ''));
+            $showAdL   = \App\Services\ReportPdfLayoutService::labFirmasBool($hgAd, 'show_label_lab_address', true);
+            $inlineAd  = (($hgAd['label_lab_address_line_mode'] ?? 'stacked') === 'inline');
+            $showLblAd = $showAdL && $lblAd !== '';
+            $stAdLbl   = \App\Services\ReportPdfLayoutService::headerGridLabelPieceStyleAttr($hgAd, 'lab_address');
+            $valAd     = (string) $lab['address'];
             ?>
-                <div class="header-piece"><p><?= esc($lab['address']) ?></p></div>
+                <div class="header-piece">
+                    <?php if ($inlineAd && $showLblAd): ?>
+                    <p style="margin:0;"><span style="<?= esc($stAdLbl, 'attr') ?>"><?= esc($lblAd) ?></span> <?= esc($valAd) ?></p>
+                    <?php elseif ($showLblAd): ?>
+                    <p style="margin:0;"><span style="<?= esc($stAdLbl, 'attr') ?>"><?= esc($lblAd) ?></span></p>
+                    <p style="margin:0;"><?= esc($valAd) ?></p>
+                    <?php else: ?>
+                    <p style="margin:0;"><?= esc($valAd) ?></p>
+                    <?php endif; ?>
+                </div>
             <?php
         }
         break;
 
     case 'lab_phone':
         if (! empty($lab['phone'])) {
+            $hgPh = is_array($pdf_header_grid_style ?? null)
+                ? $pdf_header_grid_style
+                : \App\Services\ReportPdfLayoutService::normalizeHeaderGridStyle([]);
+            $lblPh     = trim((string) ($hgPh['label_lab_phone'] ?? ''));
+            $showPhL   = \App\Services\ReportPdfLayoutService::labFirmasBool($hgPh, 'show_label_lab_phone', true);
+            $inlinePh  = (($hgPh['label_lab_phone_line_mode'] ?? 'stacked') === 'inline');
+            $showLblPh = $showPhL && $lblPh !== '';
+            $stPhLbl   = \App\Services\ReportPdfLayoutService::headerGridLabelPieceStyleAttr($hgPh, 'lab_phone');
+            $valPh     = (string) $lab['phone'];
             ?>
-                <div class="header-piece"><p>Tel: <?= esc($lab['phone']) ?></p></div>
+                <div class="header-piece">
+                    <?php if ($inlinePh && $showLblPh): ?>
+                    <p style="margin:0;"><span style="<?= esc($stPhLbl, 'attr') ?>"><?= esc($lblPh) ?></span> <?= esc($valPh) ?></p>
+                    <?php elseif ($showLblPh): ?>
+                    <p style="margin:0;"><span style="<?= esc($stPhLbl, 'attr') ?>"><?= esc($lblPh) ?></span></p>
+                    <p style="margin:0;"><?= esc($valPh) ?></p>
+                    <?php else: ?>
+                    <p style="margin:0;"><?= esc($valPh) ?></p>
+                    <?php endif; ?>
+                </div>
             <?php
         }
         break;
 
     case 'lab_email':
         if (! empty($lab['email'])) {
+            $hgEm = is_array($pdf_header_grid_style ?? null)
+                ? $pdf_header_grid_style
+                : \App\Services\ReportPdfLayoutService::normalizeHeaderGridStyle([]);
+            $lblEm     = trim((string) ($hgEm['label_lab_email'] ?? ''));
+            $showEmL   = \App\Services\ReportPdfLayoutService::labFirmasBool($hgEm, 'show_label_lab_email', true);
+            $inlineEm  = (($hgEm['label_lab_email_line_mode'] ?? 'stacked') === 'inline');
+            $showLblEm = $showEmL && $lblEm !== '';
+            $stEmLbl   = \App\Services\ReportPdfLayoutService::headerGridLabelPieceStyleAttr($hgEm, 'lab_email');
+            $valEm     = (string) $lab['email'];
             ?>
-                <div class="header-piece"><p>Email: <?= esc($lab['email']) ?></p></div>
+                <div class="header-piece">
+                    <?php if ($inlineEm && $showLblEm): ?>
+                    <p style="margin:0;"><span style="<?= esc($stEmLbl, 'attr') ?>"><?= esc($lblEm) ?></span> <?= esc($valEm) ?></p>
+                    <?php elseif ($showLblEm): ?>
+                    <p style="margin:0;"><span style="<?= esc($stEmLbl, 'attr') ?>"><?= esc($lblEm) ?></span></p>
+                    <p style="margin:0;"><?= esc($valEm) ?></p>
+                    <?php else: ?>
+                    <p style="margin:0;"><?= esc($valEm) ?></p>
+                    <?php endif; ?>
+                </div>
             <?php
         }
         break;
 
     case 'lab_website':
         if (! empty($lab['website'])) {
+            $hgWs = is_array($pdf_header_grid_style ?? null)
+                ? $pdf_header_grid_style
+                : \App\Services\ReportPdfLayoutService::normalizeHeaderGridStyle([]);
+            $lblWs     = trim((string) ($hgWs['label_lab_website'] ?? ''));
+            $showWsL   = \App\Services\ReportPdfLayoutService::labFirmasBool($hgWs, 'show_label_lab_website', true);
+            $inlineWs  = (($hgWs['label_lab_website_line_mode'] ?? 'stacked') === 'inline');
+            $showLblWs = $showWsL && $lblWs !== '';
+            $stWsLbl   = \App\Services\ReportPdfLayoutService::headerGridLabelPieceStyleAttr($hgWs, 'lab_website');
+            $valWs     = (string) $lab['website'];
             ?>
-                <div class="header-piece"><p><?= esc($lab['website']) ?></p></div>
+                <div class="header-piece">
+                    <?php if ($inlineWs && $showLblWs): ?>
+                    <p style="margin:0;"><span style="<?= esc($stWsLbl, 'attr') ?>"><?= esc($lblWs) ?></span> <?= esc($valWs) ?></p>
+                    <?php elseif ($showLblWs): ?>
+                    <p style="margin:0;"><span style="<?= esc($stWsLbl, 'attr') ?>"><?= esc($lblWs) ?></span></p>
+                    <p style="margin:0;"><?= esc($valWs) ?></p>
+                    <?php else: ?>
+                    <p style="margin:0;"><?= esc($valWs) ?></p>
+                    <?php endif; ?>
+                </div>
             <?php
         }
         break;
 
     case 'qr':
         if (! empty($report_url) && ! empty($qr_data_uri)) {
+            $hgS = is_array($pdf_header_grid_style ?? null)
+                ? $pdf_header_grid_style
+                : \App\Services\ReportPdfLayoutService::normalizeHeaderGridStyle([]);
+            $hint     = trim((string) ($hgS['label_qr_hint'] ?? ''));
+            $showHint = \App\Services\ReportPdfLayoutService::labFirmasBool($hgS, 'show_label_qr_hint', true) && $hint !== '';
+            $inlineH  = (($hgS['label_qr_hint_line_mode'] ?? 'stacked') === 'inline');
+            $stQrHint = \App\Services\ReportPdfLayoutService::headerGridLabelPieceStyleAttr($hgS, 'qr_hint');
             ?>
                 <div class="header-piece header-piece-qr">
+                    <?php if ($inlineH && $showHint): ?>
+                    <div class="qr-inline-wrap" style="text-align:center;">
+                        <span style="display:inline-block;vertical-align:middle;max-width:58%;margin-right:6px;<?= esc($stQrHint, 'attr') ?>"><?= esc($hint) ?></span><img src="<?= $qr_data_uri ?>" alt="QR" class="qr-img" style="vertical-align:middle;">
+                    </div>
+                    <?php elseif ($inlineH): ?>
                     <img src="<?= $qr_data_uri ?>" alt="QR" class="qr-img">
-                    <p class="qr-label">Escanee para ver sus resultados online</p>
+                    <?php else: ?>
+                    <img src="<?= $qr_data_uri ?>" alt="QR" class="qr-img">
+                    <?php if ($showHint): ?>
+                    <p class="qr-label" style="<?= esc($stQrHint, 'attr') ?>"><?= esc($hint) ?></p>
+                    <?php endif; ?>
+                    <?php endif; ?>
                 </div>
             <?php
         }
         break;
 
     case 'footer_company':
+        $ftCo = is_array($pdf_footer_grid_style ?? null)
+            ? $pdf_footer_grid_style
+            : \App\Services\ReportPdfLayoutService::normalizeFooterGridStyle([]);
+        $stCo = \App\Services\ReportPdfLayoutService::footerGridPieceStyleAttr($ftCo, 'company');
         ?>
-                <div class="footer-piece"><?= esc($lab['company'] ?? '') ?></div>
+                <div class="footer-piece footer-piece-company" style="<?= esc($stCo, 'attr') ?>"><?= esc($lab['company'] ?? '') ?></div>
         <?php
         break;
 
     case 'footer_generated':
+        $ftS = is_array($pdf_footer_grid_style ?? null)
+            ? $pdf_footer_grid_style
+            : \App\Services\ReportPdfLayoutService::normalizeFooterGridStyle([]);
+        $pref   = trim((string) ($ftS['label_footer_generated'] ?? 'Resultados generados el'));
+        $showP  = \App\Services\ReportPdfLayoutService::labFirmasBool($ftS, 'show_label_footer_generated', true);
+        $inlineF = (($ftS['label_footer_generated_line_mode'] ?? 'stacked') === 'inline');
+        $showPref = $showP && $pref !== '';
+        $stLbl = \App\Services\ReportPdfLayoutService::footerGridPieceStyleAttr($ftS, 'label_generated');
+        $stDt  = \App\Services\ReportPdfLayoutService::footerGridPieceStyleAttr($ftS, 'datetime');
         ?>
-                <div class="footer-piece">Resultados generados el <?= esc($reportEmitidoEl) ?></div>
+                <div class="footer-piece footer-piece-generated"><?php if ($inlineF): ?><?php if ($showPref): ?><span class="footer-generated-label" style="<?= esc($stLbl, 'attr') ?>"><?= esc($pref) ?></span> <?php endif; ?><span class="footer-generated-datetime" style="<?= esc($stDt, 'attr') ?>"><?= esc($reportEmitidoEl) ?></span><?php else: ?><?php if ($showPref): ?><div class="footer-generated-label" style="<?= esc($stLbl, 'attr') ?>"><?= esc($pref) ?></div><?php endif; ?><div class="footer-generated-datetime" style="<?= esc($stDt, 'attr') ?>"><?= esc($reportEmitidoEl) ?></div><?php endif; ?></div>
         <?php
         break;
 
     case 'footer_policy':
         if (! empty($lab['return_policy'])) {
+            $ftPo = is_array($pdf_footer_grid_style ?? null)
+                ? $pdf_footer_grid_style
+                : \App\Services\ReportPdfLayoutService::normalizeFooterGridStyle([]);
+            $stPo = \App\Services\ReportPdfLayoutService::footerGridPieceStyleAttr($ftPo, 'policy');
             ?>
-                <div class="footer-piece footer-piece-policy"><small><?= esc($lab['return_policy']) ?></small></div>
+                <div class="footer-piece footer-piece-policy"><small class="footer-policy-text" style="<?= esc($stPo, 'attr') ?>"><?= esc($lab['return_policy']) ?></small></div>
             <?php
         }
         break;
 
     case 'lab_firmas_title':
         $lfS = is_array($lab_firmas_style ?? null) ? $lab_firmas_style : [];
+        if (! \App\Services\ReportPdfLayoutService::labFirmasBool($lfS, 'show_section_title', true)) {
+            break;
+        }
         $tit = (string) ($lfS['section_title'] ?? 'VALIDACIÓN Y APROBACIÓN');
         $shadowMap = [
             'none'   => 'none',
@@ -191,9 +346,21 @@ switch ($type) {
         $lfS = is_array($lab_firmas_style ?? null) ? $lab_firmas_style : [];
         $fr  = is_array($pdf_firma_row ?? null) ? $pdf_firma_row : [];
         $nm  = trim((string) ($fr['validator_name'] ?? ''));
+        $showL = \App\Services\ReportPdfLayoutService::labFirmasBool($lfS, 'show_label_validator', true);
+        $inline = (($lfS['validator_line_mode'] ?? 'stacked') === 'inline');
+        $lblValidator = trim((string) ($lfS['label_validator'] ?? 'Verificado por:'));
+        $showLblText = $showL && $lblValidator !== '';
         ?>
-                <div class="pdf-lab-f-sublabel" style="opacity:0.75;font-size:0.92em;margin-bottom:4px;"><?= esc($lfS['label_validator'] ?? 'Validado por:') ?></div>
+                <?php if ($inline): ?>
+                <div>
+                    <?php if ($showLblText): ?><span class="pdf-lab-f-sublabel" style="opacity:0.75;font-size:0.92em;"><?= esc($lblValidator) ?></span> <?php endif; ?><span><?= esc($nm !== '' ? $nm : '—') ?></span>
+                </div>
+                <?php else: ?>
+                <?php if ($showLblText): ?>
+                <div class="pdf-lab-f-sublabel" style="opacity:0.75;font-size:0.92em;margin-bottom:4px;"><?= esc($lblValidator) ?></div>
+                <?php endif; ?>
                 <div><?= esc($nm !== '' ? $nm : '—') ?></div>
+                <?php endif; ?>
         <?php
         break;
 
@@ -202,33 +369,133 @@ switch ($type) {
         $fr     = is_array($pdf_firma_row ?? null) ? $pdf_firma_row : [];
         $seal   = trim((string) ($fr['approver_seal'] ?? ''));
         $sealUri = ($seal !== '') ? report_image_data_uri($seal) : '';
+        $showL = \App\Services\ReportPdfLayoutService::labFirmasBool($lfS, 'show_label_seal', true);
+        $inline = (($lfS['label_seal_line_mode'] ?? 'stacked') === 'inline');
+        $lblSeal = trim((string) ($lfS['label_seal'] ?? ''));
+        $showLblText = $showL && $lblSeal !== '';
         ?>
-                <div class="pdf-lab-f-sublabel" style="opacity:0.75;font-size:0.92em;margin-bottom:6px;"><?= esc($lfS['label_seal'] ?? 'Sello') ?></div>
+                <?php if ($inline): ?>
+                <div style="display:flex;align-items:flex-end;flex-wrap:wrap;gap:6px;">
+                    <?php if ($showLblText): ?>
+                    <span class="pdf-lab-f-sublabel" style="opacity:0.75;font-size:0.92em;"><?= esc($lblSeal) ?></span>
+                    <?php endif; ?>
+                    <?php if ($sealUri !== ''): ?>
+                    <img src="<?= esc($sealUri, 'attr') ?>" alt="" class="pdf-lab-f-img" style="max-height:110px;max-width:100%;">
+                    <?php else: ?>
+                    <div style="opacity:0.6;">—</div>
+                    <?php endif; ?>
+                </div>
+                <?php else: ?>
+                <?php if ($showLblText): ?>
+                <div class="pdf-lab-f-sublabel" style="opacity:0.75;font-size:0.92em;margin-bottom:6px;"><?= esc($lblSeal) ?></div>
+                <?php endif; ?>
                 <?php if ($sealUri !== ''): ?>
                     <img src="<?= esc($sealUri, 'attr') ?>" alt="" class="pdf-lab-f-img" style="max-height:110px;max-width:100%;">
                 <?php else: ?>
                     <div style="opacity:0.6;">—</div>
                 <?php endif; ?>
+                <?php endif; ?>
         <?php
         break;
 
-    case 'lab_firmas_approver':
-        $lfS   = is_array($lab_firmas_style ?? null) ? $lab_firmas_style : [];
-        $fr    = is_array($pdf_firma_row ?? null) ? $pdf_firma_row : [];
-        $sig   = trim((string) ($fr['approver_signature'] ?? ''));
+    case 'lab_firmas_approver_signature':
+        $lfS    = is_array($lab_firmas_style ?? null) ? $lab_firmas_style : [];
+        $fr     = is_array($pdf_firma_row ?? null) ? $pdf_firma_row : [];
+        $sig    = trim((string) ($fr['approver_signature'] ?? ''));
         $sigUri = ($sig !== '') ? report_image_data_uri($sig) : '';
-        $apNm  = trim((string) ($fr['approver_name'] ?? ''));
-        $cargo = trim((string) ($fr['approver_cargo'] ?? ''));
+        $showL = \App\Services\ReportPdfLayoutService::labFirmasBool($lfS, 'show_label_firma', true);
+        $inline = (($lfS['label_firma_line_mode'] ?? 'stacked') === 'inline');
+        $lblFirma = trim((string) ($lfS['label_firma'] ?? ''));
+        $showLblText = $showL && $lblFirma !== '';
         ?>
-                <div class="pdf-lab-f-sublabel" style="opacity:0.75;font-size:0.92em;margin-bottom:6px;"><?= esc($lfS['label_approver'] ?? 'Aprobado por:') ?></div>
+                <?php if ($inline): ?>
+                <div style="display:flex;align-items:flex-end;flex-wrap:wrap;gap:6px;">
+                    <?php if ($showLblText): ?>
+                    <span class="pdf-lab-f-sublabel" style="opacity:0.75;font-size:0.92em;"><?= esc($lblFirma) ?></span>
+                    <?php endif; ?>
+                    <?php if ($sigUri !== ''): ?>
+                    <img src="<?= esc($sigUri, 'attr') ?>" alt="" class="pdf-lab-f-img" style="max-height:72px;max-width:220px;">
+                    <?php else: ?>
+                    <div style="opacity:0.6;">—</div>
+                    <?php endif; ?>
+                </div>
+                <?php else: ?>
+                <?php if ($showLblText): ?>
+                <div class="pdf-lab-f-sublabel" style="opacity:0.75;font-size:0.92em;margin-bottom:6px;"><?= esc($lblFirma) ?></div>
+                <?php endif; ?>
                 <?php if ($sigUri !== ''): ?>
-                    <div style="margin-bottom:8px;">
+                    <div style="margin-bottom:4px;">
                         <img src="<?= esc($sigUri, 'attr') ?>" alt="" class="pdf-lab-f-img" style="max-height:72px;max-width:220px;">
                     </div>
+                <?php else: ?>
+                    <div style="opacity:0.6;">—</div>
                 <?php endif; ?>
-                <div style="font-weight:600;margin-top:4px;"><?= esc($apNm !== '' ? $apNm : '—') ?></div>
-                <?php if ($cargo !== ''): ?>
-                    <div style="margin-top:6px;opacity:0.85;font-size:0.95em;"><span style="opacity:0.75;"><?= esc($lfS['label_cargo'] ?? 'Cargo:') ?></span> <?= esc($cargo) ?></div>
+                <?php endif; ?>
+        <?php
+        break;
+
+    case 'lab_firmas_approver_name':
+        $lfS  = is_array($lab_firmas_style ?? null) ? $lab_firmas_style : [];
+        $fr   = is_array($pdf_firma_row ?? null) ? $pdf_firma_row : [];
+        $apNm = trim((string) ($fr['approver_name'] ?? ''));
+        $showL = \App\Services\ReportPdfLayoutService::labFirmasBool($lfS, 'show_label_approver', true);
+        $inline = (($lfS['label_approver_line_mode'] ?? 'stacked') === 'inline');
+        $lblAp = trim((string) ($lfS['label_approver'] ?? ''));
+        $showLblText = $showL && $lblAp !== '';
+        ?>
+                <?php if ($inline): ?>
+                <div>
+                    <?php if ($showLblText): ?><span class="pdf-lab-f-sublabel" style="opacity:0.75;font-size:0.92em;"><?= esc($lblAp) ?></span> <?php endif; ?><span style="font-weight:600;"><?= esc($apNm !== '' ? $apNm : '—') ?></span>
+                </div>
+                <?php else: ?>
+                <?php if ($showLblText): ?>
+                <div class="pdf-lab-f-sublabel" style="opacity:0.75;font-size:0.92em;margin-bottom:4px;"><?= esc($lblAp) ?></div>
+                <?php endif; ?>
+                <div style="font-weight:600;"><?= esc($apNm !== '' ? $apNm : '—') ?></div>
+                <?php endif; ?>
+        <?php
+        break;
+
+    case 'lab_firmas_approver_cargo':
+        $lfS   = is_array($lab_firmas_style ?? null) ? $lab_firmas_style : [];
+        $fr    = is_array($pdf_firma_row ?? null) ? $pdf_firma_row : [];
+        $cargo = trim((string) ($fr['approver_cargo'] ?? ''));
+        $showL = \App\Services\ReportPdfLayoutService::labFirmasBool($lfS, 'show_label_cargo', true);
+        $inline = (($lfS['label_cargo_line_mode'] ?? 'stacked') === 'inline');
+        $lblCargo = trim((string) ($lfS['label_cargo'] ?? ''));
+        $showLblText = $showL && $lblCargo !== '';
+        ?>
+                <?php if ($inline): ?>
+                <div>
+                    <?php if ($showLblText): ?><span class="pdf-lab-f-sublabel" style="opacity:0.75;font-size:0.92em;"><?= esc($lblCargo) ?></span> <?php endif; ?><span style="opacity:0.95;"><?= esc($cargo !== '' ? $cargo : '—') ?></span>
+                </div>
+                <?php else: ?>
+                <?php if ($showLblText): ?>
+                <div class="pdf-lab-f-sublabel" style="opacity:0.75;font-size:0.92em;margin-bottom:4px;"><?= esc($lblCargo) ?></div>
+                <?php endif; ?>
+                <div style="opacity:0.95;"><?= esc($cargo !== '' ? $cargo : '—') ?></div>
+                <?php endif; ?>
+        <?php
+        break;
+
+    case 'lab_firmas_matricula':
+        $lfS       = is_array($lab_firmas_style ?? null) ? $lab_firmas_style : [];
+        $fr        = is_array($pdf_firma_row ?? null) ? $pdf_firma_row : [];
+        $matricula = trim((string) ($fr['approver_matricula'] ?? ''));
+        $showL = \App\Services\ReportPdfLayoutService::labFirmasBool($lfS, 'show_label_matricula', true);
+        $inline = (($lfS['label_matricula_line_mode'] ?? 'stacked') === 'inline');
+        $lblMat = trim((string) ($lfS['label_matricula'] ?? 'Matrícula:'));
+        $showLblText = $showL && $lblMat !== '';
+        ?>
+                <?php if ($inline): ?>
+                <div>
+                    <?php if ($showLblText): ?><span class="pdf-lab-f-sublabel" style="opacity:0.75;font-size:0.92em;"><?= esc($lblMat) ?></span> <?php endif; ?><span style="opacity:0.95;"><?= esc($matricula !== '' ? $matricula : '—') ?></span>
+                </div>
+                <?php else: ?>
+                <?php if ($showLblText): ?>
+                <div class="pdf-lab-f-sublabel" style="opacity:0.75;font-size:0.92em;margin-bottom:6px;"><?= esc($lblMat) ?></div>
+                <?php endif; ?>
+                <div style="opacity:0.95;"><?= esc($matricula !== '' ? $matricula : '—') ?></div>
                 <?php endif; ?>
         <?php
         break;

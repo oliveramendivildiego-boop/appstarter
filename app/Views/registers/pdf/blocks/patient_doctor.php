@@ -10,6 +10,7 @@ if (empty($layout['instances']) || ! is_array($layout['instances'])) {
 $n               = max(1, $n);
 $secLayouts      = is_array($layout['section_layouts'] ?? null) ? $layout['section_layouts'] : [];
 $sectionLayout   = is_array($secLayouts['patient_doctor'] ?? null) ? $secLayouts['patient_doctor'] : [];
+$ps              = is_array($layout['page_style'] ?? null) ? $layout['page_style'] : [];
 
 $elementCtx = [
     'lab_config'        => $lab_config ?? [],
@@ -20,9 +21,10 @@ $elementCtx = [
     'qr_data_uri'       => $qr_data_uri ?? '',
     'pdf_logo_data_uri' => $pdf_logo_data_uri ?? '',
     'report_emitido_en' => $report_emitido_en ?? \App\Services\RegisterService::formatNowForReport(),
+    'pdf_patient_doctor_grid_style' => \App\Services\ReportPdfLayoutService::normalizePatientDoctorGridStyle($ps['patient_doctor_grid'] ?? []),
 ];
 ?>
-<div class="patient-section">
+<div class="patient-section pdf-pd-block">
 <?= view('registers/pdf/section_layout_grid', [
     'section_wrapper_class' => 'patient-columns patient-columns-grid',
     'n_columns'             => $n,

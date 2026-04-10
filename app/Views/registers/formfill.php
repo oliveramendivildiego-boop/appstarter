@@ -216,7 +216,7 @@ foreach ($pruebas_info ?? [] as $prueba):
     <div class="col-12 mb-3 mt-1 pt-2 border-top lab-prueba-firma-wrap">
         <div class="row g-2 align-items-end">
             <div class="col-md-6">
-                <label class="form-label small text-muted mb-0">Validado por:</label>
+                <label class="form-label small text-muted mb-0">Verificado por:</label>
                 <select class="form-select form-select-sm lab-prueba-val-validator" data-regvalue-name="<?= esc($vk) ?>" data-prianacategoria-id="<?= $priaFirma ?>">
                     <option value="">—</option>
                     <?php foreach ($lvList as $lv): ?>
@@ -226,7 +226,7 @@ foreach ($pruebas_info ?? [] as $prueba):
                 </select>
             </div>
             <div class="col-md-6">
-                <label class="form-label small text-muted mb-0">Aprobado por:</label>
+                <label class="form-label small text-muted mb-0">ATENTAMENTE</label>
                 <select class="form-select form-select-sm lab-prueba-val-approver" data-regvalue-name="<?= esc($ak) ?>" data-prianacategoria-id="<?= $priaFirma ?>">
                     <option value="">—</option>
                     <?php foreach ($laList as $la): ?>

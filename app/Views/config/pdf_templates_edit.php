@@ -39,6 +39,28 @@ $ns = \App\Services\ReportPdfLayoutService::normalizeNotesStyle($ps['notes'] ?? 
 $lf = \App\Services\ReportPdfLayoutService::normalizeLabFirmasStyle($ps['lab_firmas'] ?? []);
 $rs = \App\Services\ReportPdfLayoutService::normalizeResultsTableStyle($ps['results_table'] ?? []);
 $hs = \App\Services\ReportPdfLayoutService::normalizeHeaderSectionStyle($ps['header_section'] ?? []);
+$hg = \App\Services\ReportPdfLayoutService::normalizeHeaderGridStyle($ps['header_grid'] ?? []);
+$pd = \App\Services\ReportPdfLayoutService::normalizePatientDoctorGridStyle($ps['patient_doctor_grid'] ?? []);
+$ft = \App\Services\ReportPdfLayoutService::normalizeFooterGridStyle($ps['footer_grid'] ?? []);
+$pdfGridChk = static function (array $a, string $k): string {
+    $v = $a[$k] ?? true;
+
+    return ($v === false || $v === 0 || $v === '0' || $v === 'false') ? '' : ' checked';
+};
+$pdfGridLineMode = static function (array $a, string $k): string {
+    return (isset($a[$k]) && trim((string) $a[$k]) === 'inline') ? 'inline' : 'stacked';
+};
+$pdFieldUi = [
+    'paciente_nombre'   => 'Nombre del paciente',
+    'paciente_genero'   => 'Género',
+    'paciente_edad'     => 'Edad',
+    'paciente_telefono' => 'Teléfono',
+    'medico'            => 'Médico',
+    'fecha_recepcion'   => 'Fecha de recepción',
+    'fecha_reporte'     => 'Fecha de reporte',
+    'numero_orden'      => 'Nº de orden',
+];
+$hgFieldUi = \App\Services\ReportPdfLayoutService::headerFieldLabels();
 $wmPreview = null;
 if (! empty($wm['file'])) {
     $wmPreview = \App\Services\ReportPdfLayoutService::getWatermarkDataUriForLayout([
@@ -56,8 +78,11 @@ $labelsShort = [
     'numero_orden'      => 'No. Orden:',
     'lab_firmas_title'     => '',
     'lab_firmas_validator' => '',
-    'lab_firmas_seal'      => '',
-    'lab_firmas_approver'  => '',
+    'lab_firmas_seal'                   => '',
+    'lab_firmas_approver_signature'     => '',
+    'lab_firmas_approver_name'          => '',
+    'lab_firmas_approver_cargo'         => '',
+    'lab_firmas_matricula'              => '',
 ];
 ?>
 <?= $this->section('content') ?>
@@ -101,6 +126,12 @@ $labelsShort = [
                 <label class="form-label small" for="ch_bg_color">Fondo</label>
                 <input type="color" class="form-control form-control-color" id="ch_bg_color" value="<?= esc($ch['bg_color'], 'attr') ?>">
             </div>
+            <div class="col-12 col-md-3 d-flex align-items-end">
+                <div class="form-check mb-1">
+                    <input class="form-check-input" type="checkbox" id="ch_bg_transparent" <?= ! empty($ch['bg_transparent']) ? 'checked' : '' ?>>
+                    <label class="form-check-label small" for="ch_bg_transparent">Fondo transparente (títulos de análisis)</label>
+                </div>
+            </div>
             <div class="col-6 col-md-3">
                 <label class="form-label small" for="ch_text_color">Texto</label>
                 <input type="color" class="form-control form-control-color" id="ch_text_color" value="<?= esc($ch['text_color'], 'attr') ?>">
@@ -141,6 +172,216 @@ $labelsShort = [
                     <?php endforeach; ?>
                 </select>
             </div>
+        </div>
+    </div>
+</div>
+
+<div class="card shadow-sm mb-4 border border-primary border-opacity-25">
+    <div class="card-header bg-primary-subtle border-bottom">
+        <h5 class="mb-0">Cuadrículas PDF: encabezado superior, paciente/médico y pie</h5>
+        <p class="small text-muted mb-0 mt-1">Fondo de celdas (con opción transparente), tipografía, bordes verticales entre columnas y textos de etiquetas editables (incl. leyenda del QR y prefijo de «generado el»).</p>
+    </div>
+    <div class="card-body">
+        <h6 class="text-secondary">Encabezado superior (logo, datos del laboratorio, QR)</h6>
+        <div class="row g-2 mb-2">
+            <div class="col-6 col-md-2"><label class="form-label small" for="hg_body_bg">Fondo celdas</label><input type="color" class="form-control form-control-color" id="hg_body_bg" value="<?= esc((string) ($hg['body_bg_color'] ?? '#FFFFFF'), 'attr') ?>"></div>
+            <div class="col-6 col-md-2"><label class="form-label small" for="hg_body_text">Texto</label><input type="color" class="form-control form-control-color" id="hg_body_text" value="<?= esc((string) ($hg['body_text_color'] ?? '#333333'), 'attr') ?>"></div>
+            <div class="col-12 col-md-3 d-flex align-items-end"><div class="form-check mb-0"><input class="form-check-input" type="checkbox" id="hg_body_transparent" <?= ! empty($hg['body_transparent']) ? 'checked' : '' ?>><label class="form-check-label small" for="hg_body_transparent">Celdas sin fondo</label></div></div>
+            <div class="col-6 col-md-2"><label class="form-label small" for="hg_column_border_width">Borde columnas (px)</label><input type="number" class="form-control form-control-sm" id="hg_column_border_width" min="0" max="4" step="1" value="<?= esc((string) (int) ($hg['column_border_width_px'] ?? 0), 'attr') ?>"></div>
+            <div class="col-6 col-md-3"><label class="form-label small" for="hg_column_border_color">Color borde</label><input type="color" class="form-control form-control-color" id="hg_column_border_color" value="<?= esc((string) ($hg['column_border_color'] ?? '#DDDDDD'), 'attr') ?>"></div>
+            <div class="col-12 col-md-3"><label class="form-label small" for="hg_font_family">Fuente</label><select class="form-select form-select-sm" id="hg_font_family"><?php foreach (['DejaVu Sans', 'Helvetica', 'Arial', 'Times New Roman', 'Courier New'] as $ff): ?><option value="<?= esc($ff, 'attr') ?>" <?= ($hg['font_family'] ?? '') === $ff ? 'selected' : '' ?>><?= esc($ff) ?></option><?php endforeach; ?></select></div>
+            <div class="col-4 col-md-2"><label class="form-label small" for="hg_font_size">Tamaño</label><input type="number" class="form-control form-control-sm" id="hg_font_size" min="7" max="20" step="0.5" value="<?= esc((string) ($hg['font_size_pt'] ?? 9.5), 'attr') ?>"></div>
+            <div class="col-4 col-md-2"><label class="form-label small" for="hg_font_weight">Grosor</label><select class="form-select form-select-sm" id="hg_font_weight"><?php foreach (['normal', 'bold', '400', '500', '600', '700', '800'] as $w): ?><option value="<?= esc($w, 'attr') ?>" <?= ($hg['font_weight'] ?? '') === $w ? 'selected' : '' ?>><?= esc($w) ?></option><?php endforeach; ?></select></div>
+            <div class="col-4 col-md-2"><label class="form-label small" for="hg_font_style">Estilo</label><select class="form-select form-select-sm" id="hg_font_style"><?php foreach (['normal', 'italic', 'oblique'] as $st): ?><option value="<?= esc($st, 'attr') ?>" <?= ($hg['font_style'] ?? '') === $st ? 'selected' : '' ?>><?= esc(ucfirst($st)) ?></option><?php endforeach; ?></select></div>
+            <div class="col-6 col-md-3"><label class="form-label small" for="hg_text_transform">Transformación</label><select class="form-select form-select-sm" id="hg_text_transform"><?php foreach (['none' => 'Normal', 'uppercase' => 'MAYÚSCULAS', 'lowercase' => 'minúsculas', 'capitalize' => 'Tipo título'] as $k => $v): ?><option value="<?= esc($k, 'attr') ?>" <?= ($hg['text_transform'] ?? '') === $k ? 'selected' : '' ?>><?= esc($v) ?></option><?php endforeach; ?></select></div>
+            <div class="col-6 col-md-2"><label class="form-label small" for="hg_line_height">Interlineado</label><input type="number" class="form-control form-control-sm" id="hg_line_height" min="1" max="3" step="0.05" value="<?= esc((string) ($hg['line_height'] ?? 1.35), 'attr') ?>"></div>
+        </div>
+        <p class="small text-muted mb-2">Etiquetas del encabezado: texto, visibilidad, disposición respecto al valor (o al QR) y tipografía del texto de etiqueta en el PDF.</p>
+        <div class="table-responsive mb-2">
+            <table class="table table-sm table-bordered align-middle mb-0">
+                <thead class="table-light"><tr class="small"><th>Elemento</th><th>Texto de la etiqueta</th><th class="text-center" style="width:6rem;">Mostrar</th><th style="min-width:9rem;">Etiqueta vs valor</th></tr></thead>
+                <tbody class="small">
+                <?php foreach (\App\Services\ReportPdfLayoutService::HEADER_GRID_LABEL_DEFAULTS as $hfid => $defHgLbl):
+                    $hgLab = (string) ($hg['label_' . $hfid] ?? $defHgLbl);
+                    ?>
+                    <tr>
+                        <td><?= esc($hgFieldUi[$hfid] ?? $hfid) ?></td>
+                        <td><input type="text" class="form-control form-control-sm" id="hg_label_<?= esc($hfid, 'attr') ?>" maxlength="120" value="<?= esc($hgLab, 'attr') ?>"></td>
+                        <td class="text-center"><input type="checkbox" class="form-check-input" id="hg_show_label_<?= esc($hfid, 'attr') ?>" value="1"<?= $pdfGridChk($hg, 'show_label_' . $hfid) ?>></td>
+                        <td>
+                            <?php $hm = $pdfGridLineMode($hg, 'label_' . $hfid . '_line_mode'); ?>
+                            <select class="form-select form-select-sm" id="hg_label_<?= esc($hfid, 'attr') ?>_line_mode">
+                                <option value="stacked" <?= $hm === 'stacked' ? 'selected' : '' ?>>Debajo</option>
+                                <option value="inline" <?= $hm === 'inline' ? 'selected' : '' ?>>Misma línea</option>
+                            </select>
+                        </td>
+                    </tr>
+                <?php endforeach; ?>
+                    <tr>
+                        <td><?= esc($hgFieldUi['qr'] ?? 'qr') ?> — leyenda</td>
+                        <td><input type="text" class="form-control form-control-sm" id="hg_label_qr_hint" maxlength="120" value="<?= esc((string) ($hg['label_qr_hint'] ?? ''), 'attr') ?>"></td>
+                        <td class="text-center"><input type="checkbox" class="form-check-input" id="hg_show_label_qr_hint" value="1"<?= $pdfGridChk($hg, 'show_label_qr_hint') ?>></td>
+                        <td>
+                            <?php $hqm = $pdfGridLineMode($hg, 'label_qr_hint_line_mode'); ?>
+                            <select class="form-select form-select-sm" id="hg_label_qr_hint_line_mode">
+                                <option value="stacked" <?= $hqm === 'stacked' ? 'selected' : '' ?>>Debajo del QR</option>
+                                <option value="inline" <?= $hqm === 'inline' ? 'selected' : '' ?>>Misma línea</option>
+                            </select>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+        <div class="table-responsive mb-3">
+            <table class="table table-sm table-bordered align-middle mb-0">
+                <thead class="table-light"><tr class="small"><th>Etiqueta (color / tipo)</th><th style="width:6rem;">Color</th><th style="width:6rem;">Tamaño (pt)</th><th style="width:7rem;">Grosor</th><th style="width:7rem;">Estilo</th></tr></thead>
+                <tbody class="small">
+                <?php
+                $hgBtc = (string) ($hg['body_text_color'] ?? '#333333');
+                foreach (array_keys(\App\Services\ReportPdfLayoutService::HEADER_GRID_LABEL_DEFAULTS) as $hfid):
+                    $cHg = (string) ($hg['label_' . $hfid . '_text_color'] ?? $hgBtc);
+                    $fsHg = $hg['label_' . $hfid . '_font_size_pt'] ?? $hg['font_size_pt'] ?? 9.5;
+                    $fwHg = (string) ($hg['label_' . $hfid . '_font_weight'] ?? $hg['font_weight'] ?? 'normal');
+                    $fstHg = (string) ($hg['label_' . $hfid . '_font_style'] ?? $hg['font_style'] ?? 'normal');
+                    ?>
+                    <tr>
+                        <td><?= esc($hgFieldUi[$hfid] ?? $hfid) ?></td>
+                        <td><input type="color" class="form-control form-control-color" id="hg_hdr_<?= esc($hfid, 'attr') ?>_color" value="<?= esc($cHg, 'attr') ?>"></td>
+                        <td><input type="number" class="form-control form-control-sm" id="hg_hdr_<?= esc($hfid, 'attr') ?>_fs" min="7" max="20" step="0.5" value="<?= esc((string) $fsHg, 'attr') ?>"></td>
+                        <td><select class="form-select form-select-sm" id="hg_hdr_<?= esc($hfid, 'attr') ?>_fw"><?php foreach (['normal', 'bold', '400', '500', '600', '700', '800'] as $w): ?><option value="<?= esc($w, 'attr') ?>" <?= $fwHg === $w ? 'selected' : '' ?>><?= esc($w) ?></option><?php endforeach; ?></select></td>
+                        <td><select class="form-select form-select-sm" id="hg_hdr_<?= esc($hfid, 'attr') ?>_fst"><?php foreach (['normal', 'italic', 'oblique'] as $st): ?><option value="<?= esc($st, 'attr') ?>" <?= $fstHg === $st ? 'selected' : '' ?>><?= esc(ucfirst($st)) ?></option><?php endforeach; ?></select></td>
+                    </tr>
+                <?php endforeach; ?>
+                    <tr>
+                        <td>Leyenda del QR</td>
+                        <?php
+                        $cQr = (string) ($hg['label_qr_hint_text_color'] ?? $hgBtc);
+                        $fsQr = $hg['label_qr_hint_font_size_pt'] ?? $hg['font_size_pt'] ?? 9.5;
+                        $fwQr = (string) ($hg['label_qr_hint_font_weight'] ?? $hg['font_weight'] ?? 'normal');
+                        $fstQr = (string) ($hg['label_qr_hint_font_style'] ?? $hg['font_style'] ?? 'normal');
+                        ?>
+                        <td><input type="color" class="form-control form-control-color" id="hg_qr_hint_color" value="<?= esc($cQr, 'attr') ?>"></td>
+                        <td><input type="number" class="form-control form-control-sm" id="hg_qr_hint_fs" min="7" max="20" step="0.5" value="<?= esc((string) $fsQr, 'attr') ?>"></td>
+                        <td><select class="form-select form-select-sm" id="hg_qr_hint_fw"><?php foreach (['normal', 'bold', '400', '500', '600', '700', '800'] as $w): ?><option value="<?= esc($w, 'attr') ?>" <?= $fwQr === $w ? 'selected' : '' ?>><?= esc($w) ?></option><?php endforeach; ?></select></td>
+                        <td><select class="form-select form-select-sm" id="hg_qr_hint_fst"><?php foreach (['normal', 'italic', 'oblique'] as $st): ?><option value="<?= esc($st, 'attr') ?>" <?= $fstQr === $st ? 'selected' : '' ?>><?= esc(ucfirst($st)) ?></option><?php endforeach; ?></select></td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+        <hr class="my-3">
+        <h6 class="text-secondary">Paciente y médico</h6>
+        <div class="row g-2 mb-2">
+            <div class="col-6 col-md-2"><label class="form-label small" for="pd_body_bg">Fondo celdas</label><input type="color" class="form-control form-control-color" id="pd_body_bg" value="<?= esc((string) ($pd['body_bg_color'] ?? '#F8F9FA'), 'attr') ?>"></div>
+            <div class="col-6 col-md-2"><label class="form-label small" for="pd_body_text">Texto</label><input type="color" class="form-control form-control-color" id="pd_body_text" value="<?= esc((string) ($pd['body_text_color'] ?? '#333333'), 'attr') ?>"></div>
+            <div class="col-12 col-md-3 d-flex align-items-end"><div class="form-check mb-0"><input class="form-check-input" type="checkbox" id="pd_body_transparent" <?= ! empty($pd['body_transparent']) ? 'checked' : '' ?>><label class="form-check-label small" for="pd_body_transparent">Celdas sin fondo</label></div></div>
+            <div class="col-6 col-md-2"><label class="form-label small" for="pd_column_border_width">Borde columnas (px)</label><input type="number" class="form-control form-control-sm" id="pd_column_border_width" min="0" max="4" step="1" value="<?= esc((string) (int) ($pd['column_border_width_px'] ?? 0), 'attr') ?>"></div>
+            <div class="col-6 col-md-3"><label class="form-label small" for="pd_column_border_color">Color borde</label><input type="color" class="form-control form-control-color" id="pd_column_border_color" value="<?= esc((string) ($pd['column_border_color'] ?? '#DDDDDD'), 'attr') ?>"></div>
+            <div class="col-12 col-md-3"><label class="form-label small" for="pd_font_family">Fuente</label><select class="form-select form-select-sm" id="pd_font_family"><?php foreach (['DejaVu Sans', 'Helvetica', 'Arial', 'Times New Roman', 'Courier New'] as $ff): ?><option value="<?= esc($ff, 'attr') ?>" <?= ($pd['font_family'] ?? '') === $ff ? 'selected' : '' ?>><?= esc($ff) ?></option><?php endforeach; ?></select></div>
+            <div class="col-4 col-md-2"><label class="form-label small" for="pd_font_size">Tamaño</label><input type="number" class="form-control form-control-sm" id="pd_font_size" min="7" max="20" step="0.5" value="<?= esc((string) ($pd['font_size_pt'] ?? 9.5), 'attr') ?>"></div>
+            <div class="col-4 col-md-2"><label class="form-label small" for="pd_font_weight">Grosor</label><select class="form-select form-select-sm" id="pd_font_weight"><?php foreach (['normal', 'bold', '400', '500', '600', '700', '800'] as $w): ?><option value="<?= esc($w, 'attr') ?>" <?= ($pd['font_weight'] ?? '') === $w ? 'selected' : '' ?>><?= esc($w) ?></option><?php endforeach; ?></select></div>
+            <div class="col-4 col-md-2"><label class="form-label small" for="pd_font_style">Estilo</label><select class="form-select form-select-sm" id="pd_font_style"><?php foreach (['normal', 'italic', 'oblique'] as $st): ?><option value="<?= esc($st, 'attr') ?>" <?= ($pd['font_style'] ?? '') === $st ? 'selected' : '' ?>><?= esc(ucfirst($st)) ?></option><?php endforeach; ?></select></div>
+            <div class="col-6 col-md-3"><label class="form-label small" for="pd_text_transform">Transformación</label><select class="form-select form-select-sm" id="pd_text_transform"><?php foreach (['none' => 'Normal', 'uppercase' => 'MAYÚSCULAS', 'lowercase' => 'minúsculas', 'capitalize' => 'Tipo título'] as $k => $v): ?><option value="<?= esc($k, 'attr') ?>" <?= ($pd['text_transform'] ?? '') === $k ? 'selected' : '' ?>><?= esc($v) ?></option><?php endforeach; ?></select></div>
+            <div class="col-6 col-md-2"><label class="form-label small" for="pd_line_height">Interlineado</label><input type="number" class="form-control form-control-sm" id="pd_line_height" min="1" max="3" step="0.05" value="<?= esc((string) ($pd['line_height'] ?? 1.35), 'attr') ?>"></div>
+        </div>
+        <div class="table-responsive mb-3">
+            <table class="table table-sm table-bordered align-middle mb-0">
+                <thead class="table-light"><tr class="small"><th>Campo</th><th>Etiqueta en PDF</th><th class="text-center" style="width:6rem;">Mostrar</th><th style="min-width:9rem;">Etiqueta vs valor</th></tr></thead>
+                <tbody class="small">
+                <?php foreach (\App\Services\ReportPdfLayoutService::PATIENT_DOCTOR_GRID_LABEL_DEFAULTS as $fid => $defLbl):
+                    $lab = (string) ($pd['label_' . $fid] ?? $defLbl);
+                    ?>
+                    <tr>
+                        <td><?= esc($pdFieldUi[$fid] ?? $fid) ?></td>
+                        <td><input type="text" class="form-control form-control-sm" id="pd_label_<?= esc($fid, 'attr') ?>" maxlength="120" value="<?= esc($lab, 'attr') ?>"></td>
+                        <td class="text-center"><input type="checkbox" class="form-check-input" id="pd_show_label_<?= esc($fid, 'attr') ?>" value="1"<?= $pdfGridChk($pd, 'show_label_' . $fid) ?>></td>
+                        <td>
+                            <?php $m = $pdfGridLineMode($pd, 'label_' . $fid . '_line_mode'); ?>
+                            <select class="form-select form-select-sm" id="pd_label_<?= esc($fid, 'attr') ?>_line_mode">
+                                <option value="stacked" <?= $m === 'stacked' ? 'selected' : '' ?>>Debajo</option>
+                                <option value="inline" <?= $m === 'inline' ? 'selected' : '' ?>>Misma línea</option>
+                            </select>
+                        </td>
+                    </tr>
+                <?php endforeach; ?>
+                </tbody>
+            </table>
+        </div>
+        <hr class="my-3">
+        <h6 class="text-secondary">Pie de página</h6>
+        <div class="row g-2 mb-2 align-items-end">
+            <div class="col-12 col-md-4">
+                <span class="small fw-semibold text-secondary d-block mb-1">Borde superior del bloque (línea sobre el pie)</span>
+                <div class="d-flex flex-wrap gap-3 align-items-center">
+                    <div class="form-check mb-0">
+                        <input class="form-check-input" type="checkbox" id="ft_section_top_border_enabled" <?= ! empty($ft['section_top_border_enabled']) ? 'checked' : '' ?>>
+                        <label class="form-check-label small" for="ft_section_top_border_enabled">Mostrar</label>
+                    </div>
+                    <div>
+                        <label class="form-label small mb-0" for="ft_section_top_border_width">Grosor (px)</label>
+                        <input type="number" class="form-control form-control-sm" id="ft_section_top_border_width" min="0" max="6" step="1" value="<?= esc((string) (int) ($ft['section_top_border_width_px'] ?? 1), 'attr') ?>" style="max-width:5rem;">
+                    </div>
+                    <div>
+                        <label class="form-label small mb-0" for="ft_section_top_border_color">Color</label>
+                        <input type="color" class="form-control form-control-color" id="ft_section_top_border_color" value="<?= esc((string) ($ft['section_top_border_color'] ?? '#DDDDDD'), 'attr') ?>">
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="row g-2 mb-2">
+            <div class="col-6 col-md-2"><label class="form-label small" for="ft_body_bg">Fondo celdas</label><input type="color" class="form-control form-control-color" id="ft_body_bg" value="<?= esc((string) ($ft['body_bg_color'] ?? '#FFFFFF'), 'attr') ?>"></div>
+            <div class="col-6 col-md-2"><label class="form-label small" for="ft_body_text">Texto</label><input type="color" class="form-control form-control-color" id="ft_body_text" value="<?= esc((string) ($ft['body_text_color'] ?? '#666666'), 'attr') ?>"></div>
+            <div class="col-12 col-md-3 d-flex align-items-end"><div class="form-check mb-0"><input class="form-check-input" type="checkbox" id="ft_body_transparent" <?= ! empty($ft['body_transparent']) ? 'checked' : '' ?>><label class="form-check-label small" for="ft_body_transparent">Celdas sin fondo</label></div></div>
+            <div class="col-6 col-md-2"><label class="form-label small" for="ft_column_border_width">Borde columnas (px)</label><input type="number" class="form-control form-control-sm" id="ft_column_border_width" min="0" max="4" step="1" value="<?= esc((string) (int) ($ft['column_border_width_px'] ?? 0), 'attr') ?>"></div>
+            <div class="col-6 col-md-3"><label class="form-label small" for="ft_column_border_color">Color borde</label><input type="color" class="form-control form-control-color" id="ft_column_border_color" value="<?= esc((string) ($ft['column_border_color'] ?? '#DDDDDD'), 'attr') ?>"></div>
+            <div class="col-12 col-md-3"><label class="form-label small" for="ft_font_family">Fuente</label><select class="form-select form-select-sm" id="ft_font_family"><?php foreach (['DejaVu Sans', 'Helvetica', 'Arial', 'Times New Roman', 'Courier New'] as $ff): ?><option value="<?= esc($ff, 'attr') ?>" <?= ($ft['font_family'] ?? '') === $ff ? 'selected' : '' ?>><?= esc($ff) ?></option><?php endforeach; ?></select></div>
+            <div class="col-4 col-md-2"><label class="form-label small" for="ft_font_size">Tamaño</label><input type="number" class="form-control form-control-sm" id="ft_font_size" min="7" max="20" step="0.5" value="<?= esc((string) ($ft['font_size_pt'] ?? 8), 'attr') ?>"></div>
+            <div class="col-4 col-md-2"><label class="form-label small" for="ft_font_weight">Grosor</label><select class="form-select form-select-sm" id="ft_font_weight"><?php foreach (['normal', 'bold', '400', '500', '600', '700', '800'] as $w): ?><option value="<?= esc($w, 'attr') ?>" <?= ($ft['font_weight'] ?? '') === $w ? 'selected' : '' ?>><?= esc($w) ?></option><?php endforeach; ?></select></div>
+            <div class="col-4 col-md-2"><label class="form-label small" for="ft_font_style">Estilo</label><select class="form-select form-select-sm" id="ft_font_style"><?php foreach (['normal', 'italic', 'oblique'] as $st): ?><option value="<?= esc($st, 'attr') ?>" <?= ($ft['font_style'] ?? '') === $st ? 'selected' : '' ?>><?= esc(ucfirst($st)) ?></option><?php endforeach; ?></select></div>
+            <div class="col-6 col-md-3"><label class="form-label small" for="ft_text_transform">Transformación</label><select class="form-select form-select-sm" id="ft_text_transform"><?php foreach (['none' => 'Normal', 'uppercase' => 'MAYÚSCULAS', 'lowercase' => 'minúsculas', 'capitalize' => 'Tipo título'] as $k => $v): ?><option value="<?= esc($k, 'attr') ?>" <?= ($ft['text_transform'] ?? '') === $k ? 'selected' : '' ?>><?= esc($v) ?></option><?php endforeach; ?></select></div>
+            <div class="col-6 col-md-2"><label class="form-label small" for="ft_line_height">Interlineado</label><input type="number" class="form-control form-control-sm" id="ft_line_height" min="1" max="3" step="0.05" value="<?= esc((string) ($ft['line_height'] ?? 1.35), 'attr') ?>"></div>
+        </div>
+        <div class="row g-2 mb-2">
+            <div class="col-6 col-md-3"><label class="form-label small" for="ft_color_company">Color nombre laboratorio</label><input type="color" class="form-control form-control-color" id="ft_color_company" value="<?= esc((string) ($ft['footer_company_text_color'] ?? $ft['body_text_color']), 'attr') ?>"></div>
+            <div class="col-6 col-md-3"><label class="form-label small" for="ft_color_label_generated">Color texto antes de la fecha</label><input type="color" class="form-control form-control-color" id="ft_color_label_generated" value="<?= esc((string) ($ft['label_footer_generated_color'] ?? $ft['body_text_color']), 'attr') ?>"></div>
+            <div class="col-6 col-md-3"><label class="form-label small" for="ft_color_datetime">Color fecha y hora</label><input type="color" class="form-control form-control-color" id="ft_color_datetime" value="<?= esc((string) ($ft['label_footer_datetime_color'] ?? $ft['body_text_color']), 'attr') ?>"></div>
+            <div class="col-6 col-md-3"><label class="form-label small" for="ft_color_policy">Color texto legal / política</label><input type="color" class="form-control form-control-color" id="ft_color_policy" value="<?= esc((string) ($ft['footer_policy_text_color'] ?? $ft['body_text_color']), 'attr') ?>"></div>
+        </div>
+        <p class="small text-muted mb-2">Tamaño, grosor y estilo por texto (si no coincide con la vista, guarde la plantilla y recargue el reporte). El PDF y viewreport usan estos valores en el HTML.</p>
+        <div class="table-responsive mb-2">
+            <table class="table table-sm table-bordered align-middle mb-0">
+                <thead class="table-light"><tr class="small"><th>Texto del pie</th><th style="width:6rem;">Tamaño (pt)</th><th style="width:7rem;">Grosor</th><th style="width:7rem;">Estilo</th></tr></thead>
+                <tbody class="small">
+                    <tr>
+                        <td>Nombre del laboratorio</td>
+                        <td><input type="number" class="form-control form-control-sm" id="ft_fs_company" min="7" max="20" step="0.5" value="<?= esc((string) ($ft['footer_company_font_size_pt'] ?? $ft['font_size_pt']), 'attr') ?>"></td>
+                        <td><select class="form-select form-select-sm" id="ft_fw_company"><?php foreach (['normal', 'bold', '400', '500', '600', '700', '800'] as $w): ?><option value="<?= esc($w, 'attr') ?>" <?= ($ft['footer_company_font_weight'] ?? $ft['font_weight']) === $w ? 'selected' : '' ?>><?= esc($w) ?></option><?php endforeach; ?></select></td>
+                        <td><select class="form-select form-select-sm" id="ft_fst_company"><?php foreach (['normal', 'italic', 'oblique'] as $st): ?><option value="<?= esc($st, 'attr') ?>" <?= ($ft['footer_company_font_style'] ?? $ft['font_style']) === $st ? 'selected' : '' ?>><?= esc(ucfirst($st)) ?></option><?php endforeach; ?></select></td>
+                    </tr>
+                    <tr>
+                        <td>Texto antes de la fecha</td>
+                        <td><input type="number" class="form-control form-control-sm" id="ft_fs_label_gen" min="7" max="20" step="0.5" value="<?= esc((string) ($ft['label_footer_generated_font_size_pt'] ?? $ft['font_size_pt']), 'attr') ?>"></td>
+                        <td><select class="form-select form-select-sm" id="ft_fw_label_gen"><?php foreach (['normal', 'bold', '400', '500', '600', '700', '800'] as $w): ?><option value="<?= esc($w, 'attr') ?>" <?= ($ft['label_footer_generated_font_weight'] ?? $ft['font_weight']) === $w ? 'selected' : '' ?>><?= esc($w) ?></option><?php endforeach; ?></select></td>
+                        <td><select class="form-select form-select-sm" id="ft_fst_label_gen"><?php foreach (['normal', 'italic', 'oblique'] as $st): ?><option value="<?= esc($st, 'attr') ?>" <?= ($ft['label_footer_generated_font_style'] ?? $ft['font_style']) === $st ? 'selected' : '' ?>><?= esc(ucfirst($st)) ?></option><?php endforeach; ?></select></td>
+                    </tr>
+                    <tr>
+                        <td>Fecha y hora generadas</td>
+                        <td><input type="number" class="form-control form-control-sm" id="ft_fs_datetime" min="7" max="20" step="0.5" value="<?= esc((string) ($ft['label_footer_datetime_font_size_pt'] ?? $ft['font_size_pt']), 'attr') ?>"></td>
+                        <td><select class="form-select form-select-sm" id="ft_fw_datetime"><?php foreach (['normal', 'bold', '400', '500', '600', '700', '800'] as $w): ?><option value="<?= esc($w, 'attr') ?>" <?= ($ft['label_footer_datetime_font_weight'] ?? $ft['font_weight']) === $w ? 'selected' : '' ?>><?= esc($w) ?></option><?php endforeach; ?></select></td>
+                        <td><select class="form-select form-select-sm" id="ft_fst_datetime"><?php foreach (['normal', 'italic', 'oblique'] as $st): ?><option value="<?= esc($st, 'attr') ?>" <?= ($ft['label_footer_datetime_font_style'] ?? $ft['font_style']) === $st ? 'selected' : '' ?>><?= esc(ucfirst($st)) ?></option><?php endforeach; ?></select></td>
+                    </tr>
+                    <tr>
+                        <td>Política / texto legal</td>
+                        <td><input type="number" class="form-control form-control-sm" id="ft_fs_policy" min="7" max="20" step="0.5" value="<?= esc((string) ($ft['footer_policy_font_size_pt'] ?? $ft['font_size_pt']), 'attr') ?>"></td>
+                        <td><select class="form-select form-select-sm" id="ft_fw_policy"><?php foreach (['normal', 'bold', '400', '500', '600', '700', '800'] as $w): ?><option value="<?= esc($w, 'attr') ?>" <?= ($ft['footer_policy_font_weight'] ?? $ft['font_weight']) === $w ? 'selected' : '' ?>><?= esc($w) ?></option><?php endforeach; ?></select></td>
+                        <td><select class="form-select form-select-sm" id="ft_fst_policy"><?php foreach (['normal', 'italic', 'oblique'] as $st): ?><option value="<?= esc($st, 'attr') ?>" <?= ($ft['footer_policy_font_style'] ?? $ft['font_style']) === $st ? 'selected' : '' ?>><?= esc(ucfirst($st)) ?></option><?php endforeach; ?></select></td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+        <div class="row g-2 align-items-end">
+            <div class="col-12 col-md-6"><label class="form-label small" for="ft_label_footer_generated">Texto antes de la fecha («Resultados generados el»)</label><input type="text" class="form-control form-control-sm" id="ft_label_footer_generated" maxlength="120" value="<?= esc((string) ($ft['label_footer_generated'] ?? ''), 'attr') ?>"></div>
+            <div class="col-6 col-md-2 text-center"><div class="form-check d-inline-block"><input class="form-check-input" type="checkbox" id="ft_show_label_footer_generated" value="1"<?= $pdfGridChk($ft, 'show_label_footer_generated') ?>><label class="form-check-label small" for="ft_show_label_footer_generated">Mostrar</label></div></div>
+            <div class="col-6 col-md-3"><label class="form-label small" for="ft_label_footer_generated_line_mode">Texto vs fecha</label><select class="form-select form-select-sm" id="ft_label_footer_generated_line_mode"><option value="stacked" <?= $pdfGridLineMode($ft, 'label_footer_generated_line_mode') === 'stacked' ? 'selected' : '' ?>>Fecha debajo</option><option value="inline" <?= $pdfGridLineMode($ft, 'label_footer_generated_line_mode') === 'inline' ? 'selected' : '' ?>>Misma línea</option></select></div>
         </div>
     </div>
 </div>
@@ -221,6 +462,25 @@ $labelsShort = [
             <div class="col-6 col-md-3"><label class="form-label small" for="ns_title_text">Texto título</label><input type="color" class="form-control form-control-color" id="ns_title_text" value="<?= esc($ns['title_text_color'], 'attr') ?>"></div>
             <div class="col-6 col-md-3"><label class="form-label small" for="ns_body_bg">Fondo contenido</label><input type="color" class="form-control form-control-color" id="ns_body_bg" value="<?= esc($ns['body_bg_color'], 'attr') ?>"></div>
             <div class="col-6 col-md-3"><label class="form-label small" for="ns_body_text">Texto contenido</label><input type="color" class="form-control form-control-color" id="ns_body_text" value="<?= esc($ns['body_text_color'], 'attr') ?>"></div>
+            <div class="col-12 col-md-3 d-flex flex-wrap align-items-end gap-3">
+                <div class="form-check mb-1">
+                    <input class="form-check-input" type="checkbox" id="ns_title_transparent" <?= ! empty($ns['title_transparent']) ? 'checked' : '' ?>>
+                    <label class="form-check-label small" for="ns_title_transparent">Título sin fondo</label>
+                </div>
+                <div class="form-check mb-1">
+                    <input class="form-check-input" type="checkbox" id="ns_body_transparent" <?= ! empty($ns['body_transparent']) ? 'checked' : '' ?>>
+                    <label class="form-check-label small" for="ns_body_transparent">Contenido sin fondo</label>
+                </div>
+            </div>
+            <div class="col-6 col-md-2"><label class="form-label small" for="ns_column_border_width">Borde título/caja (px)</label><input type="number" class="form-control" id="ns_column_border_width" min="0" max="4" step="1" value="<?= esc((string) (int) ($ns['column_border_width_px'] ?? 1), 'attr') ?>"></div>
+            <div class="col-6 col-md-3"><label class="form-label small" for="ns_column_border_color">Color del borde</label><input type="color" class="form-control form-control-color" id="ns_column_border_color" value="<?= esc((string) ($ns['column_border_color'] ?? '#DDDDDD'), 'attr') ?>"></div>
+            <div class="col-12 col-md-6"><label class="form-label small" for="ns_section_title">Título del bloque (ej. NOTAS)</label><input type="text" class="form-control" id="ns_section_title" maxlength="120" value="<?= esc((string) ($ns['section_title'] ?? ''), 'attr') ?>"></div>
+            <div class="col-12 col-md-3 d-flex align-items-end">
+                <div class="form-check mb-1">
+                    <input class="form-check-input" type="checkbox" id="ns_show_section_title" value="1" <?= ! empty($ns['show_section_title']) ? 'checked' : '' ?>>
+                    <label class="form-check-label small" for="ns_show_section_title">Mostrar título</label>
+                </div>
+            </div>
             <div class="col-12 col-md-3"><label class="form-label small" for="ns_font_family">Fuente</label><select class="form-select" id="ns_font_family"><?php foreach (['DejaVu Sans', 'Helvetica', 'Arial', 'Times New Roman', 'Courier New'] as $ff): ?><option value="<?= esc($ff, 'attr') ?>" <?= $ns['font_family'] === $ff ? 'selected' : '' ?>><?= esc($ff) ?></option><?php endforeach; ?></select></div>
             <div class="col-6 col-md-2"><label class="form-label small" for="ns_font_size">Tamaño</label><input type="number" class="form-control" id="ns_font_size" min="7" max="20" step="0.5" value="<?= esc((string) $ns['font_size_pt'], 'attr') ?>"></div>
             <div class="col-6 col-md-2"><label class="form-label small" for="ns_font_weight">Grosor</label><select class="form-select" id="ns_font_weight"><?php foreach (['normal', 'bold', '400', '500', '600', '700', '800'] as $w): ?><option value="<?= esc($w, 'attr') ?>" <?= $ns['font_weight'] === $w ? 'selected' : '' ?>><?= esc($w) ?></option><?php endforeach; ?></select></div>
@@ -234,7 +494,7 @@ $labelsShort = [
 <div class="card shadow-sm mb-4 border border-warning border-opacity-50">
     <div class="card-header bg-warning-subtle border-bottom">
         <h5 class="mb-1">Bloque «Validación y aprobación (firmas)» — estilo y textos en PDF / impresión</h5>
-        <p class="small text-muted mb-0">Colores, tipografía y etiquetas del cuadro de firmas. Active o desactive el bloque en la lista de arriba.</p>
+        <p class="small text-muted mb-0">Colores, tipografía, fondo transparente opcional, bordes entre columnas y etiquetas del cuadro de firmas. Active o desactive el bloque en la lista de arriba.</p>
     </div>
     <div class="card-body">
         <div class="row g-3">
@@ -243,6 +503,14 @@ $labelsShort = [
             <div class="col-6 col-md-3"><label class="form-label small" for="lf_title_text">Texto título</label><input type="color" class="form-control form-control-color" id="lf_title_text" value="<?= esc($lf['title_text_color'], 'attr') ?>"></div>
             <div class="col-6 col-md-3"><label class="form-label small" for="lf_body_bg">Fondo contenido</label><input type="color" class="form-control form-control-color" id="lf_body_bg" value="<?= esc($lf['body_bg_color'], 'attr') ?>"></div>
             <div class="col-6 col-md-3"><label class="form-label small" for="lf_body_text">Texto contenido</label><input type="color" class="form-control form-control-color" id="lf_body_text" value="<?= esc($lf['body_text_color'], 'attr') ?>"></div>
+            <div class="col-12 col-md-6 d-flex align-items-end">
+                <div class="form-check mb-0">
+                    <input class="form-check-input" type="checkbox" id="lf_body_transparent" value="1" <?= ! empty($lf['body_transparent']) ? 'checked' : '' ?>>
+                    <label class="form-check-label small" for="lf_body_transparent">Fondo del contenido transparente (sin color en las celdas del cuadro)</label>
+                </div>
+            </div>
+            <div class="col-6 col-md-2"><label class="form-label small" for="lf_column_border_width">Borde entre columnas (px)</label><input type="number" class="form-control" id="lf_column_border_width" min="0" max="4" step="1" value="<?= esc((string) (int) ($lf['column_border_width_px'] ?? 1), 'attr') ?>"></div>
+            <div class="col-6 col-md-3"><label class="form-label small" for="lf_column_border_color">Color del borde</label><input type="color" class="form-control form-control-color" id="lf_column_border_color" value="<?= esc((string) ($lf['column_border_color'] ?? '#DDDDDD'), 'attr') ?>"></div>
             <div class="col-12 col-md-3"><label class="form-label small" for="lf_font_family">Fuente</label><select class="form-select" id="lf_font_family"><?php foreach (['DejaVu Sans', 'Helvetica', 'Arial', 'Times New Roman', 'Courier New'] as $ff): ?><option value="<?= esc($ff, 'attr') ?>" <?= $lf['font_family'] === $ff ? 'selected' : '' ?>><?= esc($ff) ?></option><?php endforeach; ?></select></div>
             <div class="col-6 col-md-2"><label class="form-label small" for="lf_font_size">Tamaño</label><input type="number" class="form-control" id="lf_font_size" min="7" max="20" step="0.5" value="<?= esc((string) $lf['font_size_pt'], 'attr') ?>"></div>
             <div class="col-6 col-md-2"><label class="form-label small" for="lf_font_weight">Grosor</label><select class="form-select" id="lf_font_weight"><?php foreach (['normal', 'bold', '400', '500', '600', '700', '800'] as $w): ?><option value="<?= esc($w, 'attr') ?>" <?= $lf['font_weight'] === $w ? 'selected' : '' ?>><?= esc($w) ?></option><?php endforeach; ?></select></div>
@@ -250,12 +518,111 @@ $labelsShort = [
             <div class="col-6 col-md-3"><label class="form-label small" for="lf_text_transform">Transformación</label><select class="form-select" id="lf_text_transform"><?php foreach (['none' => 'Normal', 'uppercase' => 'MAYÚSCULAS', 'lowercase' => 'minúsculas', 'capitalize' => 'Tipo Título'] as $k => $v): ?><option value="<?= esc($k, 'attr') ?>" <?= $lf['text_transform'] === $k ? 'selected' : '' ?>><?= esc($v) ?></option><?php endforeach; ?></select></div>
             <div class="col-6 col-md-2"><label class="form-label small" for="lf_line_height">Interlineado</label><input type="number" class="form-control" id="lf_line_height" min="1" max="3" step="0.05" value="<?= esc((string) $lf['line_height'], 'attr') ?>"></div>
             <div class="col-12"><hr class="my-2"></div>
-            <div class="col-12"><span class="small fw-semibold text-secondary">Textos en el PDF</span> <span class="small text-muted">(máx. 120 caracteres c/u)</span></div>
-            <div class="col-12 col-md-6"><label class="form-label small" for="lf_section_title">Título de la sección</label><input type="text" class="form-control form-control-sm" id="lf_section_title" maxlength="120" value="<?= esc((string) ($lf['section_title'] ?? ''), 'attr') ?>"></div>
-            <div class="col-12 col-md-6"><label class="form-label small" for="lf_label_validator">Etiqueta columna validador</label><input type="text" class="form-control form-control-sm" id="lf_label_validator" maxlength="120" value="<?= esc((string) ($lf['label_validator'] ?? ''), 'attr') ?>"></div>
-            <div class="col-12 col-md-4"><label class="form-label small" for="lf_label_seal">Etiqueta columna sello</label><input type="text" class="form-control form-control-sm" id="lf_label_seal" maxlength="120" value="<?= esc((string) ($lf['label_seal'] ?? ''), 'attr') ?>"></div>
-            <div class="col-12 col-md-4"><label class="form-label small" for="lf_label_approver">Etiqueta columna aprobador</label><input type="text" class="form-control form-control-sm" id="lf_label_approver" maxlength="120" value="<?= esc((string) ($lf['label_approver'] ?? ''), 'attr') ?>"></div>
-            <div class="col-12 col-md-4"><label class="form-label small" for="lf_label_cargo">Etiqueta «cargo»</label><input type="text" class="form-control form-control-sm" id="lf_label_cargo" maxlength="120" value="<?= esc((string) ($lf['label_cargo'] ?? ''), 'attr') ?>"></div>
+            <div class="col-12"><span class="small fw-semibold text-secondary">Textos en el PDF</span> <span class="small text-muted">(máx. 120 caracteres c/u; puede ocultar cada etiqueta o ponerla en la misma línea que el valor)</span></div>
+            <?php
+            $lfChk = static function (array $a, string $k): string {
+                $v = $a[$k] ?? true;
+
+                return ($v === false || $v === 0 || $v === '0' || $v === 'false') ? '' : ' checked';
+            };
+            $lfSelMode = static function (array $a, string $k): string {
+                return (isset($a[$k]) && trim((string) $a[$k]) === 'inline') ? 'inline' : 'stacked';
+            };
+            ?>
+            <div class="col-12">
+                <div class="table-responsive">
+                    <table class="table table-sm table-bordered align-middle mb-0">
+                        <thead class="table-light">
+                            <tr class="small">
+                                <th style="min-width:9rem;">Bloque</th>
+                                <th>Texto</th>
+                                <th style="width:6rem;" class="text-center">Mostrar</th>
+                                <th style="min-width:9rem;">Etiqueta vs valor</th>
+                            </tr>
+                        </thead>
+                        <tbody class="small">
+                            <tr>
+                                <td>Título del bloque</td>
+                                <td><input type="text" class="form-control form-control-sm" id="lf_section_title" maxlength="120" value="<?= esc((string) ($lf['section_title'] ?? ''), 'attr') ?>"></td>
+                                <td class="text-center"><input type="checkbox" class="form-check-input" id="lf_show_section_title" value="1"<?= $lfChk($lf, 'show_section_title') ?>></td>
+                                <td class="text-muted">—</td>
+                            </tr>
+                            <tr>
+                                <td>Validador</td>
+                                <td><input type="text" class="form-control form-control-sm" id="lf_label_validator" maxlength="120" value="<?= esc((string) ($lf['label_validator'] ?? ''), 'attr') ?>"></td>
+                                <td class="text-center"><input type="checkbox" class="form-check-input" id="lf_show_label_validator" value="1"<?= $lfChk($lf, 'show_label_validator') ?>></td>
+                                <td>
+                                    <?php $vMode = $lfSelMode($lf, 'validator_line_mode'); ?>
+                                    <select class="form-select form-select-sm" id="lf_validator_line_mode">
+                                        <option value="stacked" <?= $vMode === 'stacked' ? 'selected' : '' ?>>Debajo</option>
+                                        <option value="inline" <?= $vMode === 'inline' ? 'selected' : '' ?>>Misma línea</option>
+                                    </select>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td>Sello (imagen)</td>
+                                <td><input type="text" class="form-control form-control-sm" id="lf_label_seal" maxlength="120" value="<?= esc((string) ($lf['label_seal'] ?? ''), 'attr') ?>"></td>
+                                <td class="text-center"><input type="checkbox" class="form-check-input" id="lf_show_label_seal" value="1"<?= $lfChk($lf, 'show_label_seal') ?>></td>
+                                <td>
+                                    <?php $m = $lfSelMode($lf, 'label_seal_line_mode'); ?>
+                                    <select class="form-select form-select-sm" id="lf_label_seal_line_mode">
+                                        <option value="stacked" <?= $m === 'stacked' ? 'selected' : '' ?>>Debajo</option>
+                                        <option value="inline" <?= $m === 'inline' ? 'selected' : '' ?>>Misma línea</option>
+                                    </select>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td>Firma (imagen)</td>
+                                <td><input type="text" class="form-control form-control-sm" id="lf_label_firma" maxlength="120" value="<?= esc((string) ($lf['label_firma'] ?? ''), 'attr') ?>"></td>
+                                <td class="text-center"><input type="checkbox" class="form-check-input" id="lf_show_label_firma" value="1"<?= $lfChk($lf, 'show_label_firma') ?>></td>
+                                <td>
+                                    <?php $m = $lfSelMode($lf, 'label_firma_line_mode'); ?>
+                                    <select class="form-select form-select-sm" id="lf_label_firma_line_mode">
+                                        <option value="stacked" <?= $m === 'stacked' ? 'selected' : '' ?>>Debajo</option>
+                                        <option value="inline" <?= $m === 'inline' ? 'selected' : '' ?>>Misma línea</option>
+                                    </select>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td>Nombre aprobador</td>
+                                <td><input type="text" class="form-control form-control-sm" id="lf_label_approver" maxlength="120" value="<?= esc((string) ($lf['label_approver'] ?? ''), 'attr') ?>"></td>
+                                <td class="text-center"><input type="checkbox" class="form-check-input" id="lf_show_label_approver" value="1"<?= $lfChk($lf, 'show_label_approver') ?>></td>
+                                <td>
+                                    <?php $m = $lfSelMode($lf, 'label_approver_line_mode'); ?>
+                                    <select class="form-select form-select-sm" id="lf_label_approver_line_mode">
+                                        <option value="stacked" <?= $m === 'stacked' ? 'selected' : '' ?>>Debajo</option>
+                                        <option value="inline" <?= $m === 'inline' ? 'selected' : '' ?>>Misma línea</option>
+                                    </select>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td>Cargo</td>
+                                <td><input type="text" class="form-control form-control-sm" id="lf_label_cargo" maxlength="120" value="<?= esc((string) ($lf['label_cargo'] ?? ''), 'attr') ?>"></td>
+                                <td class="text-center"><input type="checkbox" class="form-check-input" id="lf_show_label_cargo" value="1"<?= $lfChk($lf, 'show_label_cargo') ?>></td>
+                                <td>
+                                    <?php $m = $lfSelMode($lf, 'label_cargo_line_mode'); ?>
+                                    <select class="form-select form-select-sm" id="lf_label_cargo_line_mode">
+                                        <option value="stacked" <?= $m === 'stacked' ? 'selected' : '' ?>>Debajo</option>
+                                        <option value="inline" <?= $m === 'inline' ? 'selected' : '' ?>>Misma línea</option>
+                                    </select>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td>Matrícula</td>
+                                <td><input type="text" class="form-control form-control-sm" id="lf_label_matricula" maxlength="120" value="<?= esc((string) ($lf['label_matricula'] ?? ''), 'attr') ?>"></td>
+                                <td class="text-center"><input type="checkbox" class="form-check-input" id="lf_show_label_matricula" value="1"<?= $lfChk($lf, 'show_label_matricula') ?>></td>
+                                <td>
+                                    <?php $m = $lfSelMode($lf, 'label_matricula_line_mode'); ?>
+                                    <select class="form-select form-select-sm" id="lf_label_matricula_line_mode">
+                                        <option value="stacked" <?= $m === 'stacked' ? 'selected' : '' ?>>Debajo</option>
+                                        <option value="inline" <?= $m === 'inline' ? 'selected' : '' ?>>Misma línea</option>
+                                    </select>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
         </div>
     </div>
 </div>
@@ -424,7 +791,7 @@ $labelsShort = [
                 </div>
             </div>
             <div class="card-body">
-                <p class="small text-muted">Solo se imprime si el bloque «Validación y aprobación» está activo. El <strong>título</strong> se muestra una vez; validador, sello y aprobador se repiten por cada firma en el reporte.</p>
+                <p class="small text-muted">Solo se imprime si el bloque «Validación y aprobación» está activo. El <strong>título</strong> se muestra una vez; cada ítem del bloque (validador, sello, <strong>firma</strong> del aprobador, <strong>nombre</strong>, <strong>cargo</strong>, <strong>matrícula</strong>) es un elemento propio en la lista: ordénelos, asigne columna, estilo de texto y «No mostrar» como el resto. Se repiten por cada firma en el reporte. Las plantillas antiguas con «Aprobado por (todo junto)» se convierten al guardar en firma + nombre + cargo.</p>
                 <?= view('config/partials/pdf_section_style_controls', [
                     'section_key' => 'lab_firmas',
                     'col_count'   => $lCols,
@@ -565,11 +932,13 @@ document.addEventListener('DOMContentLoaded', function() {
     var secColsP = document.getElementById('sec_cols_patient');
     var secColsF = document.getElementById('sec_cols_footer');
     var secColsL = document.getElementById('sec_cols_lab_firmas');
-    var LAB_ELEMENT_TYPES = ['lab_firmas_title', 'lab_firmas_validator', 'lab_firmas_seal', 'lab_firmas_approver'];
+    var LAB_ELEMENT_TYPES = ['lab_firmas_title', 'lab_firmas_validator', 'lab_firmas_seal', 'lab_firmas_approver_signature', 'lab_firmas_approver_name', 'lab_firmas_approver_cargo', 'lab_firmas_matricula'];
 
     window._elementLabels = <?= json_encode($elLabels, JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP) ?>;
     window._elementSamples = <?= json_encode($elSamples, JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP) ?>;
     window._labelsShort = <?= json_encode($labelsShort, JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP) ?>;
+    window._headerLabelFieldIds = <?= json_encode(array_keys(\App\Services\ReportPdfLayoutService::HEADER_GRID_LABEL_DEFAULTS), JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP) ?>;
+    window._headerLabelDefaults = <?= json_encode(\App\Services\ReportPdfLayoutService::HEADER_GRID_LABEL_DEFAULTS, JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP) ?>;
     window._pdfStyleAllowlists = <?= json_encode($pdfStyleAllowlists, JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP) ?>;
 
     function pdfAllow(key) {
@@ -873,11 +1242,204 @@ document.addEventListener('DOMContentLoaded', function() {
         };
     }
 
+    /**
+     * CSS inline del pie (misma lógica que ReportPdfLayoutService::footerGridPieceStyleAttr) para la vista previa del editor.
+     */
+    function footerGridPieceStyleCss(ft, piece) {
+        if (!ft || typeof ft !== 'object') return '';
+        var fn = String(ft.font_family || 'DejaVu Sans').trim();
+        var ffCss = (fn.indexOf(' ') >= 0 || fn.indexOf('"') >= 0)
+            ? '"' + fn.replace(/["\\]/g, '') + '", sans-serif'
+            : fn.replace(/["\\]/g, '') + ', sans-serif';
+        var lh = parseFloat(ft.line_height);
+        if (isNaN(lh)) lh = 1.35;
+        lh = Math.max(1, Math.min(3, lh));
+        var tt = String(ft.text_transform || 'none');
+        function decl(color, fs, fw, fst) {
+            var fsn = parseFloat(fs);
+            if (isNaN(fsn)) fsn = parseFloat(ft.font_size_pt) || 8;
+            fsn = Math.max(7, Math.min(20, fsn));
+            return 'color:' + String(color)
+                + ';font-family:' + ffCss
+                + ';font-size:' + fsn + 'pt'
+                + ';font-weight:' + String(fw)
+                + ';font-style:' + String(fst)
+                + ';text-transform:' + tt
+                + ';line-height:' + lh;
+        }
+        switch (piece) {
+            case 'company':
+                return decl(
+                    ft.footer_company_text_color || ft.body_text_color,
+                    ft.footer_company_font_size_pt,
+                    ft.footer_company_font_weight || ft.font_weight,
+                    ft.footer_company_font_style || ft.font_style
+                );
+            case 'label_generated':
+                return decl(
+                    ft.label_footer_generated_color || ft.body_text_color,
+                    ft.label_footer_generated_font_size_pt,
+                    ft.label_footer_generated_font_weight || ft.font_weight,
+                    ft.label_footer_generated_font_style || ft.font_style
+                );
+            case 'datetime':
+                return decl(
+                    ft.label_footer_datetime_color || ft.body_text_color,
+                    ft.label_footer_datetime_font_size_pt,
+                    ft.label_footer_datetime_font_weight || ft.font_weight,
+                    ft.label_footer_datetime_font_style || ft.font_style
+                );
+            case 'policy':
+                return decl(
+                    ft.footer_policy_text_color || ft.body_text_color,
+                    ft.footer_policy_font_size_pt,
+                    ft.footer_policy_font_weight || ft.font_weight,
+                    ft.footer_policy_font_style || ft.font_style
+                );
+            default:
+                return '';
+        }
+    }
+
+    function buildFooterPreviewPieceHtml(type, sample, ft) {
+        var st = footerGridPieceStyleCss;
+        if (type === 'footer_company') {
+            return '<div class="footer-piece footer-piece-company" style="' + escapeHtml(st(ft, 'company')) + '">' + escapeHtml(sample) + '</div>';
+        }
+        if (type === 'footer_policy') {
+            return '<div class="footer-piece footer-piece-policy"><small class="footer-policy-text" style="' + escapeHtml(st(ft, 'policy')) + '">' + escapeHtml(sample) + '</small></div>';
+        }
+        if (type === 'footer_generated') {
+            var pref = String(ft.label_footer_generated != null ? ft.label_footer_generated : '').trim();
+            var showP = !!ft.show_label_footer_generated;
+            var inlineF = (ft.label_footer_generated_line_mode === 'inline');
+            var showPref = showP && pref !== '';
+            var stLbl = st(ft, 'label_generated');
+            var stDt = st(ft, 'datetime');
+            var dateSample = '10/04/2026 14:35';
+            var parts = '<div class="footer-piece footer-piece-generated">';
+            if (inlineF) {
+                if (showPref) {
+                    parts += '<span class="footer-generated-label" style="' + escapeHtml(stLbl) + '">' + escapeHtml(pref) + '</span> ';
+                }
+                parts += '<span class="footer-generated-datetime" style="' + escapeHtml(stDt) + '">' + escapeHtml(dateSample) + '</span>';
+            } else {
+                if (showPref) {
+                    parts += '<div class="footer-generated-label" style="' + escapeHtml(stLbl) + '">' + escapeHtml(pref) + '</div>';
+                }
+                parts += '<div class="footer-generated-datetime" style="' + escapeHtml(stDt) + '">' + escapeHtml(dateSample) + '</div>';
+            }
+            parts += '</div>';
+            return parts;
+        }
+        return escapeHtml(sample);
+    }
+
+    function headerGridLabelPieceStyleCss(hg, piece) {
+        if (!hg || typeof hg !== 'object') return '';
+        var fn = String(hg.font_family || 'DejaVu Sans').trim();
+        var ffCss = (fn.indexOf(' ') >= 0 || fn.indexOf('"') >= 0)
+            ? '"' + fn.replace(/["\\]/g, '') + '", sans-serif'
+            : fn.replace(/["\\]/g, '') + ', sans-serif';
+        var lh = parseFloat(hg.line_height);
+        if (isNaN(lh)) lh = 1.35;
+        lh = Math.max(1, Math.min(3, lh));
+        var tt = String(hg.text_transform || 'none');
+        function decl(color, fs, fw, fst) {
+            var fsn = parseFloat(fs);
+            if (isNaN(fsn)) fsn = parseFloat(hg.font_size_pt) || 9.5;
+            fsn = Math.max(7, Math.min(20, fsn));
+            return 'color:' + String(color)
+                + ';font-family:' + ffCss
+                + ';font-size:' + fsn + 'pt'
+                + ';font-weight:' + String(fw)
+                + ';font-style:' + String(fst)
+                + ';text-transform:' + tt
+                + ';line-height:' + lh;
+        }
+        if (piece === 'qr_hint') {
+            return decl(
+                hg.label_qr_hint_text_color || hg.body_text_color,
+                hg.label_qr_hint_font_size_pt,
+                hg.label_qr_hint_font_weight || hg.font_weight,
+                hg.label_qr_hint_font_style || hg.font_style
+            );
+        }
+        var ids = window._headerLabelFieldIds || [];
+        if (ids.indexOf(piece) < 0) return '';
+        return decl(
+            hg['label_' + piece + '_text_color'] || hg.body_text_color,
+            hg['label_' + piece + '_font_size_pt'],
+            hg['label_' + piece + '_font_weight'] || hg.font_weight,
+            hg['label_' + piece + '_font_style'] || hg.font_style
+        );
+    }
+
+    function buildHeaderPreviewPieceHtml(type, sample, hg) {
+        var st = headerGridLabelPieceStyleCss;
+        function labeledBlock(fid, valueInnerHtml) {
+            var lbl = String(hg['label_' + fid] != null ? hg['label_' + fid] : '').trim();
+            var showL = !!hg['show_label_' + fid];
+            var inline = (hg['label_' + fid + '_line_mode'] === 'inline');
+            var showTxt = showL && lbl !== '';
+            var stL = st(hg, fid);
+            if (!showTxt) return valueInnerHtml;
+            if (inline) {
+                return '<span style="' + escapeHtml(stL) + '">' + escapeHtml(lbl) + '</span> ' + valueInnerHtml;
+            }
+            return '<div><span style="' + escapeHtml(stL) + '">' + escapeHtml(lbl) + '</span></div><div>' + valueInnerHtml + '</div>';
+        }
+        if (type === 'logo') {
+            return '<div class="header-preview-logo">' + labeledBlock('logo', escapeHtml(sample)) + '</div>';
+        }
+        if (type === 'lab_company') {
+            return '<div class="header-preview-company">' + labeledBlock('lab_company', '<strong>' + escapeHtml(sample) + '</strong>') + '</div>';
+        }
+        if (type === 'lab_address') {
+            return '<div class="header-preview-addr">' + labeledBlock('lab_address', escapeHtml(sample)) + '</div>';
+        }
+        if (type === 'lab_phone') {
+            return '<div class="header-preview-phone">' + labeledBlock('lab_phone', escapeHtml(sample)) + '</div>';
+        }
+        if (type === 'lab_email') {
+            return '<div class="header-preview-email">' + labeledBlock('lab_email', escapeHtml(sample)) + '</div>';
+        }
+        if (type === 'lab_website') {
+            return '<div class="header-preview-web">' + labeledBlock('lab_website', escapeHtml(sample)) + '</div>';
+        }
+        if (type === 'qr') {
+            var hint = String(hg.label_qr_hint != null ? hg.label_qr_hint : '').trim();
+            var showH = !!hg.show_label_qr_hint && hint !== '';
+            var inlineQ = (hg.label_qr_hint_line_mode === 'inline');
+            var stQ = st(hg, 'qr_hint');
+            var img = '<span class="badge bg-secondary">[QR]</span>';
+            if (inlineQ && showH) {
+                return '<div class="text-center"><span style="display:inline-block;vertical-align:middle;margin-right:6px;' + escapeHtml(stQ) + '">' + escapeHtml(hint) + '</span>' + img + '</div>';
+            }
+            if (inlineQ) {
+                return '<div class="text-center">' + img + '</div>';
+            }
+            if (showH) {
+                return '<div class="text-center">' + img + '<div style="' + escapeHtml(stQ) + '">' + escapeHtml(hint) + '</div></div>';
+            }
+            return '<div class="text-center">' + img + '</div>';
+        }
+        return escapeHtml(sample);
+    }
+
     function rebuildGridPreview(ul, previewEl) {
         if (!previewEl || !ul) return;
         var n = colsForList(ul);
         var sectionKey = ul.getAttribute('data-section') || 'header';
         var secSt = readSectionStyleFromDom(sectionKey, n);
+        var ftFooter = null;
+        var hgHeader = null;
+        if (sectionKey === 'footer') {
+            ftFooter = readCardHeaderStyleForJson().footer_grid;
+        }
+        if (sectionKey === 'header') {
+            hgHeader = readCardHeaderStyleForJson().header_grid;
+        }
         var items = [];
         ul.querySelectorAll('.pdf-instance-item').forEach(function(li) {
             var sel = li.querySelector('.instance-column');
@@ -893,12 +1455,29 @@ document.addEventListener('DOMContentLoaded', function() {
             var sample = (window._elementSamples && window._elementSamples[type]) ? window._elementSamples[type] : type;
             var shortL = (window._labelsShort && window._labelsShort[type]) ? window._labelsShort[type] : '';
             var styleWrap = textStyleToInlineCss(readInstanceTextStyle(li));
-            var rawLine = shortL ? ('<span class="pdf-preview-lbl">' + escapeHtml(shortL) + '</span> ' + escapeHtml(sample)) : escapeHtml(sample);
+            var rawLine;
+            if (hgHeader && (type === 'logo' || type === 'lab_company' || type === 'lab_address' || type === 'lab_phone' || type === 'lab_email' || type === 'lab_website' || type === 'qr')) {
+                rawLine = buildHeaderPreviewPieceHtml(type, sample, hgHeader);
+            } else if (ftFooter && (type === 'footer_company' || type === 'footer_generated' || type === 'footer_policy')) {
+                rawLine = buildFooterPreviewPieceHtml(type, sample, ftFooter);
+            } else {
+                rawLine = shortL ? ('<span class="pdf-preview-lbl">' + escapeHtml(shortL) + '</span> ' + escapeHtml(sample)) : escapeHtml(sample);
+            }
             var line = '<span style="' + escapeHtml(styleWrap) + '">' + rawLine + '</span>';
             items.push({ col: col, span: span, html: line });
         });
         previewEl.innerHTML = '';
         var wrap = document.createElement('div');
+        if (ftFooter && ftFooter.section_top_border_enabled) {
+            var bw = parseInt(ftFooter.section_top_border_width_px, 10);
+            if (isNaN(bw)) bw = 1;
+            bw = Math.max(0, Math.min(6, bw));
+            var bc = String(ftFooter.section_top_border_color || '#DDDDDD');
+            if (bw > 0) {
+                wrap.style.borderTop = bw + 'px solid ' + bc;
+            }
+            wrap.style.paddingTop = '8px';
+        }
         wrap.style.borderBottom = '1px solid #dee2e6';
         wrap.style.paddingBottom = '8px';
         var pctNum = 100 / n;
@@ -1246,6 +1825,19 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
+    document.addEventListener('change', function(e) {
+        var t = e.target;
+        if (t && t.id && (t.id.indexOf('ft_') === 0 || t.id.indexOf('hg_') === 0)) {
+            rebuildAllPreviews();
+        }
+    });
+    document.addEventListener('input', function(e) {
+        var t = e.target;
+        if (t && t.id && (t.id.indexOf('ft_') === 0 || t.id.indexOf('hg_') === 0)) {
+            rebuildAllPreviews();
+        }
+    });
+
     if (blockList && typeof Sortable !== 'undefined') {
         new Sortable(blockList, { animation: 150, handle: '.pdf-drag-handle' });
     }
@@ -1305,18 +1897,102 @@ document.addEventListener('DOMContentLoaded', function() {
             var v = pick(id, fallback);
             return isValidPdfHexJs(v) ? v : fallback;
         }
-        function pickLfText(id, fallback) {
+        function pickLfText(id, fallback, allowEmpty) {
             var el = document.getElementById(id);
             var v = el ? String(el.value || '').trim() : '';
-            if (v === '') return fallback;
+            if (v === '') {
+                if (allowEmpty === true && el) return '';
+                return fallback;
+            }
             return v.length > 120 ? v.slice(0, 120) : v;
+        }
+        function pickChk(id, fallback) {
+            var el = document.getElementById(id);
+            if (!el) return fallback;
+            return !!el.checked;
+        }
+        function pickLineModeSelect(id) {
+            var el = document.getElementById(id);
+            var v = el ? String(el.value || '').trim() : 'stacked';
+            return v === 'inline' ? 'inline' : 'stacked';
+        }
+        function readSectionGridWrap(prefix, defBodyBg, defBodyText, defFontSize) {
+            var fs = defFontSize !== undefined ? defFontSize : 9.5;
+            return {
+                body_bg_color: pickHex(prefix + '_body_bg', defBodyBg),
+                body_text_color: pickHex(prefix + '_body_text', defBodyText),
+                body_transparent: !!(document.getElementById(prefix + '_body_transparent') && document.getElementById(prefix + '_body_transparent').checked),
+                font_family: pickAllowedDomId(prefix + '_font_family', 'font_families', 'DejaVu Sans'),
+                font_size_pt: pickNum(prefix + '_font_size', 7, 20, fs),
+                font_weight: pickAllowedDomId(prefix + '_font_weight', 'font_weights', 'normal'),
+                font_style: pickAllowedDomId(prefix + '_font_style', 'font_styles', 'normal'),
+                text_transform: pickAllowedDomId(prefix + '_text_transform', 'text_transforms', 'none'),
+                line_height: pickNum(prefix + '_line_height', 1, 3, 1.35),
+                column_border_width_px: Math.round(pickNum(prefix + '_column_border_width', 0, 4, 0)),
+                column_border_color: pickHex(prefix + '_column_border_color', '#DDDDDD')
+            };
         }
         var bg = pickHex('ch_bg_color', '#E9ECEF');
         var tx = pickHex('ch_text_color', '#212529');
+        var pdGrid = readSectionGridWrap('pd', '#F8F9FA', '#333333', 9.5);
+        var pdDefs = { paciente_nombre: 'Paciente:', paciente_genero: 'Género:', paciente_edad: 'Edad:', paciente_telefono: 'Teléfono:', medico: 'Médico:', fecha_recepcion: 'Fecha de recepción:', fecha_reporte: 'Fecha de reporte:', numero_orden: 'No. Orden:' };
+        Object.keys(pdDefs).forEach(function(fid) {
+            pdGrid['label_' + fid] = pickLfText('pd_label_' + fid, pdDefs[fid]);
+            pdGrid['show_label_' + fid] = pickChk('pd_show_label_' + fid, true);
+            pdGrid['label_' + fid + '_line_mode'] = pickLineModeSelect('pd_label_' + fid + '_line_mode');
+        });
+        var ftGrid = readSectionGridWrap('ft', '#FFFFFF', '#666666', 8);
+        var ftBaseFs = pickNum('ft_font_size', 7, 20, 8);
+        Object.assign(ftGrid, {
+            label_footer_generated: pickLfText('ft_label_footer_generated', 'Resultados generados el'),
+            show_label_footer_generated: pickChk('ft_show_label_footer_generated', true),
+            label_footer_generated_line_mode: pickLineModeSelect('ft_label_footer_generated_line_mode'),
+            footer_company_text_color: pickHex('ft_color_company', ftGrid.body_text_color),
+            label_footer_generated_color: pickHex('ft_color_label_generated', ftGrid.body_text_color),
+            label_footer_datetime_color: pickHex('ft_color_datetime', ftGrid.body_text_color),
+            footer_policy_text_color: pickHex('ft_color_policy', ftGrid.body_text_color),
+            section_top_border_enabled: pickChk('ft_section_top_border_enabled', true),
+            section_top_border_width_px: Math.round(pickNum('ft_section_top_border_width', 0, 6, 1)),
+            section_top_border_color: pickHex('ft_section_top_border_color', '#DDDDDD'),
+            footer_company_font_size_pt: pickNum('ft_fs_company', 7, 20, ftBaseFs),
+            footer_company_font_weight: pickAllowedDomId('ft_fw_company', 'font_weights', ftGrid.font_weight),
+            footer_company_font_style: pickAllowedDomId('ft_fst_company', 'font_styles', ftGrid.font_style),
+            label_footer_generated_font_size_pt: pickNum('ft_fs_label_gen', 7, 20, ftBaseFs),
+            label_footer_generated_font_weight: pickAllowedDomId('ft_fw_label_gen', 'font_weights', ftGrid.font_weight),
+            label_footer_generated_font_style: pickAllowedDomId('ft_fst_label_gen', 'font_styles', ftGrid.font_style),
+            label_footer_datetime_font_size_pt: pickNum('ft_fs_datetime', 7, 20, ftBaseFs),
+            label_footer_datetime_font_weight: pickAllowedDomId('ft_fw_datetime', 'font_weights', ftGrid.font_weight),
+            label_footer_datetime_font_style: pickAllowedDomId('ft_fst_datetime', 'font_styles', ftGrid.font_style),
+            footer_policy_font_size_pt: pickNum('ft_fs_policy', 7, 20, ftBaseFs),
+            footer_policy_font_weight: pickAllowedDomId('ft_fw_policy', 'font_weights', ftGrid.font_weight),
+            footer_policy_font_style: pickAllowedDomId('ft_fst_policy', 'font_styles', ftGrid.font_style)
+        });
+        var hgGrid = readSectionGridWrap('hg', '#FFFFFF', '#333333', 9.5);
+        var hgBaseFs = pickNum('hg_font_size', 7, 20, 9.5);
+        Object.assign(hgGrid, {
+            label_qr_hint: pickLfText('hg_label_qr_hint', 'Escanee para ver sus resultados online'),
+            show_label_qr_hint: pickChk('hg_show_label_qr_hint', true),
+            label_qr_hint_line_mode: pickLineModeSelect('hg_label_qr_hint_line_mode'),
+            label_qr_hint_text_color: pickHex('hg_qr_hint_color', hgGrid.body_text_color),
+            label_qr_hint_font_size_pt: pickNum('hg_qr_hint_fs', 7, 20, hgBaseFs),
+            label_qr_hint_font_weight: pickAllowedDomId('hg_qr_hint_fw', 'font_weights', hgGrid.font_weight),
+            label_qr_hint_font_style: pickAllowedDomId('hg_qr_hint_fst', 'font_styles', hgGrid.font_style)
+        });
+        (window._headerLabelFieldIds || []).forEach(function(fid) {
+            var defT = (window._headerLabelDefaults && Object.prototype.hasOwnProperty.call(window._headerLabelDefaults, fid)) ? window._headerLabelDefaults[fid] : '';
+            hgGrid['label_' + fid] = pickLfText('hg_label_' + fid, defT, true);
+            hgGrid['show_label_' + fid] = pickChk('hg_show_label_' + fid, true);
+            hgGrid['label_' + fid + '_line_mode'] = pickLineModeSelect('hg_label_' + fid + '_line_mode');
+            hgGrid['label_' + fid + '_text_color'] = pickHex('hg_hdr_' + fid + '_color', hgGrid.body_text_color);
+            hgGrid['label_' + fid + '_font_size_pt'] = pickNum('hg_hdr_' + fid + '_fs', 7, 20, hgBaseFs);
+            hgGrid['label_' + fid + '_font_weight'] = pickAllowedDomId('hg_hdr_' + fid + '_fw', 'font_weights', hgGrid.font_weight);
+            hgGrid['label_' + fid + '_font_style'] = pickAllowedDomId('hg_hdr_' + fid + '_fst', 'font_styles', hgGrid.font_style);
+        });
         return {
             card_header: {
                 bg_color: bg,
                 text_color: tx,
+                bg_transparent: !!(document.getElementById('ch_bg_transparent') && document.getElementById('ch_bg_transparent').checked),
                 font_family: pickAllowedDomId('ch_font_family', 'font_families', 'DejaVu Sans'),
                 font_size_pt: pickNum('ch_font_size', 7, 20, 10),
                 font_weight: pickAllowedDomId('ch_font_weight', 'font_weights', '700'),
@@ -1326,11 +2002,20 @@ document.addEventListener('DOMContentLoaded', function() {
             header_section: {
                 separator_color: pickHex('hs_separator_color', '#0066CC')
             },
+            header_grid: hgGrid,
+            patient_doctor_grid: pdGrid,
+            footer_grid: ftGrid,
             notes: {
                 title_bg_color: pickHex('ns_title_bg', '#FFF3CD'),
                 title_text_color: pickHex('ns_title_text', '#664D03'),
+                title_transparent: !!(document.getElementById('ns_title_transparent') && document.getElementById('ns_title_transparent').checked),
                 body_bg_color: pickHex('ns_body_bg', '#FFFFFF'),
                 body_text_color: pickHex('ns_body_text', '#333333'),
+                body_transparent: !!(document.getElementById('ns_body_transparent') && document.getElementById('ns_body_transparent').checked),
+                column_border_width_px: Math.round(pickNum('ns_column_border_width', 0, 4, 1)),
+                column_border_color: pickHex('ns_column_border_color', '#DDDDDD'),
+                section_title: pickLfText('ns_section_title', 'NOTAS'),
+                show_section_title: pickChk('ns_show_section_title', true),
                 font_family: pickAllowedDomId('ns_font_family', 'font_families', 'DejaVu Sans'),
                 font_size_pt: pickNum('ns_font_size', 7, 20, 9.5),
                 font_weight: pickAllowedDomId('ns_font_weight', 'font_weights', 'normal'),
@@ -1343,6 +2028,9 @@ document.addEventListener('DOMContentLoaded', function() {
                 title_text_color: pickHex('lf_title_text', '#664D03'),
                 body_bg_color: pickHex('lf_body_bg', '#FFFFFF'),
                 body_text_color: pickHex('lf_body_text', '#333333'),
+                body_transparent: !!(document.getElementById('lf_body_transparent') && document.getElementById('lf_body_transparent').checked),
+                column_border_width_px: Math.round(pickNum('lf_column_border_width', 0, 4, 1)),
+                column_border_color: pickHex('lf_column_border_color', '#DDDDDD'),
                 font_family: pickAllowedDomId('lf_font_family', 'font_families', 'DejaVu Sans'),
                 font_size_pt: pickNum('lf_font_size', 7, 20, 9.5),
                 font_weight: pickAllowedDomId('lf_font_weight', 'font_weights', 'normal'),
@@ -1350,10 +2038,25 @@ document.addEventListener('DOMContentLoaded', function() {
                 text_transform: pickAllowedDomId('lf_text_transform', 'text_transforms', 'none'),
                 line_height: pickNum('lf_line_height', 1, 3, 1.4),
                 section_title: pickLfText('lf_section_title', 'VALIDACIÓN Y APROBACIÓN'),
-                label_validator: pickLfText('lf_label_validator', 'Validado por:'),
-                label_seal: pickLfText('lf_label_seal', 'Sello'),
-                label_approver: pickLfText('lf_label_approver', 'Aprobado por:'),
-                label_cargo: pickLfText('lf_label_cargo', 'Cargo:')
+                show_section_title: pickChk('lf_show_section_title', true),
+                label_validator: pickLfText('lf_label_validator', 'Verificado por:'),
+                show_label_validator: pickChk('lf_show_label_validator', true),
+                validator_line_mode: pickLineModeSelect('lf_validator_line_mode'),
+                label_seal: pickLfText('lf_label_seal', ''),
+                show_label_seal: pickChk('lf_show_label_seal', true),
+                label_seal_line_mode: pickLineModeSelect('lf_label_seal_line_mode'),
+                label_firma: pickLfText('lf_label_firma', 'ATENTAMENTE'),
+                show_label_firma: pickChk('lf_show_label_firma', true),
+                label_firma_line_mode: pickLineModeSelect('lf_label_firma_line_mode'),
+                label_approver: pickLfText('lf_label_approver', ''),
+                show_label_approver: pickChk('lf_show_label_approver', true),
+                label_approver_line_mode: pickLineModeSelect('lf_label_approver_line_mode'),
+                label_cargo: pickLfText('lf_label_cargo', ''),
+                show_label_cargo: pickChk('lf_show_label_cargo', true),
+                label_cargo_line_mode: pickLineModeSelect('lf_label_cargo_line_mode'),
+                label_matricula: pickLfText('lf_label_matricula', 'Matrícula:', true),
+                show_label_matricula: pickChk('lf_show_label_matricula', true),
+                label_matricula_line_mode: pickLineModeSelect('lf_label_matricula_line_mode')
             },
             results_table: {
                 header_bg_color: pickHex('rs_header_bg', '#0066CC'),
@@ -1409,16 +2112,76 @@ document.addEventListener('DOMContentLoaded', function() {
         pushIfBadSelect('ch_font_style', fst, 'Estilo no permitido en card header.');
         pushIfBadSelect('ch_text_transform', tt, 'Transformación no permitida en card header.');
         pushIfBadHex('hs_separator_color', 'Color del separador de sección: use #RRGGBB.');
-        ['ns_title_bg', 'ns_title_text', 'ns_body_bg', 'ns_body_text'].forEach(function(id) {
+        ['ns_title_bg', 'ns_title_text', 'ns_body_bg', 'ns_body_text', 'ns_column_border_color'].forEach(function(id) {
             pushIfBadHex(id, 'Color inválido en notas del resultado.');
         });
+        pushIfBadNum('ns_column_border_width', 0, 4, 'Borde en notas: entre 0 y 4 px.');
         pushIfBadSelect('ns_font_family', ff, 'Fuente no permitida en notas.');
         pushIfBadNum('ns_font_size', 7, 20, 'Tamaño en notas: entre 7 y 20 pt.');
         pushIfBadSelect('ns_font_weight', fw, 'Grosor no permitido en notas.');
         pushIfBadSelect('ns_font_style', fst, 'Estilo no permitido en notas.');
         pushIfBadSelect('ns_text_transform', tt, 'Transformación no permitida en notas.');
         pushIfBadNum('ns_line_height', 1, 3, 'Interlineado en notas: entre 1 y 3.');
-        ['lf_title_bg', 'lf_title_text', 'lf_body_bg', 'lf_body_text'].forEach(function(id) {
+        ['hg_body_bg', 'hg_body_text', 'hg_column_border_color', 'pd_body_bg', 'pd_body_text', 'pd_column_border_color', 'ft_body_bg', 'ft_body_text', 'ft_column_border_color', 'ft_color_company', 'ft_color_label_generated', 'ft_color_datetime', 'ft_color_policy', 'ft_section_top_border_color'].forEach(function(id) {
+            pushIfBadHex(id, 'Color inválido en cuadrícula PDF (' + id + ').');
+        });
+        pushIfBadNum('hg_column_border_width', 0, 4, 'Borde columnas (encabezado): entre 0 y 4 px.');
+        pushIfBadNum('pd_column_border_width', 0, 4, 'Borde columnas (paciente/médico): entre 0 y 4 px.');
+        pushIfBadNum('ft_column_border_width', 0, 4, 'Borde columnas (pie): entre 0 y 4 px.');
+        pushIfBadNum('ft_section_top_border_width', 0, 6, 'Borde superior del pie: entre 0 y 6 px.');
+        ['ft_fs_company', 'ft_fs_label_gen', 'ft_fs_datetime', 'ft_fs_policy'].forEach(function(id) {
+            pushIfBadNum(id, 7, 20, 'Tamaño de fuente en pie (tabla por texto): entre 7 y 20 pt.');
+        });
+        ['ft_fw_company', 'ft_fw_label_gen', 'ft_fw_datetime', 'ft_fw_policy'].forEach(function(id) {
+            pushIfBadSelect(id, fw, 'Grosor no permitido en pie (tabla por texto).');
+        });
+        ['ft_fst_company', 'ft_fst_label_gen', 'ft_fst_datetime', 'ft_fst_policy'].forEach(function(id) {
+            pushIfBadSelect(id, fst, 'Estilo no permitido en pie (tabla por texto).');
+        });
+        pushIfBadSelect('hg_font_family', ff, 'Fuente no permitida (cuadrícula encabezado).');
+        pushIfBadNum('hg_font_size', 7, 20, 'Tamaño (cuadrícula encabezado): entre 7 y 20 pt.');
+        pushIfBadSelect('hg_font_weight', fw, 'Grosor no permitido (cuadrícula encabezado).');
+        pushIfBadSelect('hg_font_style', fst, 'Estilo no permitido (cuadrícula encabezado).');
+        pushIfBadSelect('hg_text_transform', tt, 'Transformación no permitida (cuadrícula encabezado).');
+        pushIfBadNum('hg_line_height', 1, 3, 'Interlineado (cuadrícula encabezado): entre 1 y 3.');
+        (window._headerLabelFieldIds || []).forEach(function(fid) {
+            pushIfBadHex('hg_hdr_' + fid + '_color', 'Color inválido en etiqueta del encabezado (' + fid + ').');
+            pushIfBadNum('hg_hdr_' + fid + '_fs', 7, 20, 'Tamaño de etiqueta en encabezado: entre 7 y 20 pt.');
+            pushIfBadSelect('hg_hdr_' + fid + '_fw', fw, 'Grosor no permitido en etiqueta del encabezado.');
+            pushIfBadSelect('hg_hdr_' + fid + '_fst', fst, 'Estilo no permitido en etiqueta del encabezado.');
+        });
+        pushIfBadHex('hg_qr_hint_color', 'Color inválido en leyenda del QR.');
+        pushIfBadNum('hg_qr_hint_fs', 7, 20, 'Tamaño leyenda QR: entre 7 y 20 pt.');
+        pushIfBadSelect('hg_qr_hint_fw', fw, 'Grosor no permitido en leyenda del QR.');
+        pushIfBadSelect('hg_qr_hint_fst', fst, 'Estilo no permitido en leyenda del QR.');
+        pushIfBadSelect('pd_font_family', ff, 'Fuente no permitida (cuadrícula paciente/médico).');
+        pushIfBadNum('pd_font_size', 7, 20, 'Tamaño (cuadrícula paciente/médico): entre 7 y 20 pt.');
+        pushIfBadSelect('pd_font_weight', fw, 'Grosor no permitido (cuadrícula paciente/médico).');
+        pushIfBadSelect('pd_font_style', fst, 'Estilo no permitido (cuadrícula paciente/médico).');
+        pushIfBadSelect('pd_text_transform', tt, 'Transformación no permitida (cuadrícula paciente/médico).');
+        pushIfBadNum('pd_line_height', 1, 3, 'Interlineado (cuadrícula paciente/médico): entre 1 y 3.');
+        pushIfBadSelect('ft_font_family', ff, 'Fuente no permitida (cuadrícula pie).');
+        pushIfBadNum('ft_font_size', 7, 20, 'Tamaño (cuadrícula pie): entre 7 y 20 pt.');
+        pushIfBadSelect('ft_font_weight', fw, 'Grosor no permitido (cuadrícula pie).');
+        pushIfBadSelect('ft_font_style', fst, 'Estilo no permitido (cuadrícula pie).');
+        pushIfBadSelect('ft_text_transform', tt, 'Transformación no permitida (cuadrícula pie).');
+        pushIfBadNum('ft_line_height', 1, 3, 'Interlineado (cuadrícula pie): entre 1 y 3.');
+        ['hg_label_qr_hint', 'ft_label_footer_generated'].forEach(function(id) {
+            var el = document.getElementById(id);
+            if (!el) return;
+            if (String(el.value || '').length > 120) errs.push('Texto demasiado largo en «' + id + '» (máx. 120).');
+        });
+        (window._headerLabelFieldIds || []).forEach(function(fid) {
+            var el = document.getElementById('hg_label_' + fid);
+            if (el && String(el.value || '').length > 120) errs.push('Etiqueta demasiado larga en encabezado: ' + fid + '.');
+        });
+        ['paciente_nombre', 'paciente_genero', 'paciente_edad', 'paciente_telefono', 'medico', 'fecha_recepcion', 'fecha_reporte', 'numero_orden'].forEach(function(fid) {
+            var el = document.getElementById('pd_label_' + fid);
+            if (el && String(el.value || '').length > 120) errs.push('Etiqueta demasiado larga en paciente/médico: ' + fid + '.');
+        });
+        var nsSec = document.getElementById('ns_section_title');
+        if (nsSec && String(nsSec.value || '').length > 120) errs.push('Título de notas: máx. 120 caracteres.');
+        ['lf_title_bg', 'lf_title_text', 'lf_body_bg', 'lf_body_text', 'lf_column_border_color'].forEach(function(id) {
             pushIfBadHex(id, 'Color inválido en firmas.');
         });
         pushIfBadSelect('lf_font_family', ff, 'Fuente no permitida en firmas.');
@@ -1427,7 +2190,8 @@ document.addEventListener('DOMContentLoaded', function() {
         pushIfBadSelect('lf_font_style', fst, 'Estilo no permitido en firmas.');
         pushIfBadSelect('lf_text_transform', tt, 'Transformación no permitida en firmas.');
         pushIfBadNum('lf_line_height', 1, 3, 'Interlineado en firmas: entre 1 y 3.');
-        ['lf_section_title', 'lf_label_validator', 'lf_label_seal', 'lf_label_approver', 'lf_label_cargo'].forEach(function(id) {
+        pushIfBadNum('lf_column_border_width', 0, 4, 'Borde entre columnas en firmas: entre 0 y 4 px.');
+        ['lf_section_title', 'lf_label_validator', 'lf_label_seal', 'lf_label_firma', 'lf_label_approver', 'lf_label_cargo', 'lf_label_matricula'].forEach(function(id) {
             var el = document.getElementById(id);
             if (!el) return;
             if (String(el.value || '').length > 120) errs.push('Texto demasiado largo en firmas (máx. 120 caracteres).');
