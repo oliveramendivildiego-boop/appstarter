@@ -78,6 +78,71 @@ class RegisterModel extends Model
         return $row !== null && (int) ($row->anulado ?? 0) === 1;
     }
 
+    /** @var bool solo se guarda true: si la columna aún no existía y se crea después, no quedar “cacheado” en false. */
+    private static bool $registroFechaHoraReporteFijadaColumnKnown = false;
+
+    private function registroTieneColumnaFechaHoraReporteFijada(): bool
+    {
+        if (self::$registroFechaHoraReporteFijadaColumnKnown) {
+            return true;
+        }
+        if ($this->hasColumn('registro', 'fecha_hora_reporte_fijada')) {
+            self::$registroFechaHoraReporteFijadaColumnKnown = true;
+
+            return true;
+        }
+
+        return false;
+    }
+
+    /**
+     * Valor almacenado de fecha/hora de reporte (Y-m-d H:i:s), o null si no hay columna o valor.
+     */
+    public function getReporteFechaHoraFijadaMysql(int $registroId): ?string
+    {
+        if (! $this->registroTieneColumnaFechaHoraReporteFijada()) {
+            return null;
+        }
+        $row = $this->db->table('registro')
+            ->select('fecha_hora_reporte_fijada')
+            ->where('registro_id', $registroId)
+            ->get()
+            ->getRow();
+        if ($row === null) {
+            return null;
+        }
+        $v = $row->fecha_hora_reporte_fijada ?? null;
+        if ($v === null || trim((string) $v) === '') {
+            return null;
+        }
+
+        return (string) $v;
+    }
+
+    /**
+     * Si aún no hay fecha fijada, la guarda con $mysqlNow. Devuelve el valor definitivo en BD.
+     *
+     * @return string|null Y-m-d H:i:s, o null si la columna no existe en la tabla
+     */
+    public function lockReporteFechaHoraFijada(int $registroId, string $mysqlNow): ?string
+    {
+        if (! $this->registroTieneColumnaFechaHoraReporteFijada()) {
+            return null;
+        }
+        $existing = $this->getReporteFechaHoraFijadaMysql($registroId);
+        if ($existing !== null) {
+            return $existing;
+        }
+        $builder = $this->db->table('registro');
+        $builder->where('registro_id', $registroId);
+        $builder->where('fecha_hora_reporte_fijada', null);
+        $builder->update(['fecha_hora_reporte_fijada' => $mysqlNow]);
+
+        $final = $this->getReporteFechaHoraFijadaMysql($registroId);
+
+        return $final !== null ? $final : $mysqlNow;
+    }
+
     /**
      * Anulación lógica: el registro permanece en BD y no puede usarse en flujo operativo.
      */
@@ -363,6 +428,23 @@ class RegisterModel extends Model
     }
 
     /**
+     * Nombre corto de la prueba (prianacategoria) para reportes.
+     */
+    public function getPrianacategoriaNombre(int $prianacategoriaId): string
+    {
+        if ($prianacategoriaId < 1) {
+            return '';
+        }
+        $row = $this->db->table('prianacategoria')
+            ->select('name')
+            ->where('prianacategoria_id', $prianacategoriaId)
+            ->get()
+            ->getRow();
+
+        return trim((string) ($row->name ?? ''));
+    }
+
+    /**
      * Resuelve prianacategoria_id desde regvalues.name (formato id|nombre, c_*, noc_*).
      * Caches opcionales reducen consultas al procesar muchas filas.
      *
@@ -374,6 +456,9 @@ class RegisterModel extends Model
         $name = trim($name);
         if ($name === '') {
             return 0;
+        }
+        if (preg_match('/^lab_(val|app)_pri_(\d+)$/', $name, $m) === 1) {
+            return (int) $m[2];
         }
         if (strpos($name, '|') !== false) {
             [$priaStr] = explode('|', $name, 2);

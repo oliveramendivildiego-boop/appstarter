@@ -23,6 +23,7 @@
     $ch = \App\Services\ReportPdfLayoutService::normalizeCardHeaderStyle($ps['card_header'] ?? []);
     $hs = \App\Services\ReportPdfLayoutService::normalizeHeaderSectionStyle($ps['header_section'] ?? []);
     $ns = \App\Services\ReportPdfLayoutService::normalizeNotesStyle($ps['notes'] ?? []);
+    $lf = \App\Services\ReportPdfLayoutService::normalizeNotesStyle($ps['lab_firmas'] ?? []);
     $rs = \App\Services\ReportPdfLayoutService::normalizeResultsTableStyle($ps['results_table'] ?? []);
     $rsBodyBg = ! empty($rs['body_transparent']) ? 'transparent' : (string) $rs['body_bg_color'];
     $rsSegBg = ! empty($rs['segment_transparent']) ? 'transparent' : (string) $rs['segment_bg_color'];
@@ -55,6 +56,16 @@
             --pdf-notes-font-style: <?= esc($ns['font_style']) ?>;
             --pdf-notes-transform: <?= esc($ns['text_transform']) ?>;
             --pdf-notes-line-height: <?= esc((string) $ns['line_height']) ?>;
+            --pdf-lf-title-bg: <?= esc($lf['title_bg_color']) ?>;
+            --pdf-lf-title-color: <?= esc($lf['title_text_color']) ?>;
+            --pdf-lf-body-bg: <?= esc($lf['body_bg_color']) ?>;
+            --pdf-lf-body-color: <?= esc($lf['body_text_color']) ?>;
+            --pdf-lf-font-family: "<?= esc($lf['font_family']) ?>";
+            --pdf-lf-font-size: <?= esc((string) $lf['font_size_pt']) ?>pt;
+            --pdf-lf-font-weight: <?= esc($lf['font_weight']) ?>;
+            --pdf-lf-font-style: <?= esc($lf['font_style']) ?>;
+            --pdf-lf-transform: <?= esc($lf['text_transform']) ?>;
+            --pdf-lf-line-height: <?= esc((string) $lf['line_height']) ?>;
             --pdf-results-header-bg: <?= esc($rs['header_bg_color']) ?>;
             --pdf-results-header-color: <?= esc($rs['header_text_color']) ?>;
             --pdf-results-body-bg: <?= esc($rsBodyBg) ?>;
@@ -117,10 +128,12 @@
     'lab_config'          => $lab_config,
     'report_url'          => $report_url ?? '',
     'qr_data_uri'         => $qr_data_uri ?? '',
+    'report_emitido_en'   => $report_emitido_en ?? \App\Services\RegisterService::formatNowForReport(),
     'pdf_watermark_uri'   => null,
     'pdf_logo_data_uri'   => $pdf_logo_data_uri ?? null,
     'report_pria_tipo_muestra_nombre' => $report_pria_tipo_muestra_nombre ?? [],
     'report_pria_metodo_nombre'       => $report_pria_metodo_nombre ?? [],
+    'report_lab_firmas'               => $report_lab_firmas ?? [],
 ]) ?>
 </body>
 </html>

@@ -2,6 +2,7 @@
 
 namespace App\Controllers;
 
+use App\Libraries\ReportPdfDocument;
 use App\Models\ReactivoModel;
 use App\Models\RegisterModel;
 use App\Models\EmployeeModel;
@@ -50,17 +51,20 @@ class Reactivos extends SecureArea
     }
 
 
-    public function kardex()
+    /**
+     * @return array<string, mixed>
+     */
+    private function buildKardexPageData(): array
     {
-        $startDate   = $this->request->getGet('start') ?? date('Y-m-01');
-        $endDate     = $this->request->getGet('end') ?? date('Y-m-d');
-        $personId    = (int) ($this->request->getGet('person_id') ?? 0);
-        $reactivoId  = (int) ($this->request->getGet('reactivo_id') ?? 0);
-        $tipoGet     = $this->request->getGet('tipo');
-        $tipo        = in_array($tipoGet, ['entrada', 'salida'], true) ? $tipoGet : null;
+        $startDate  = $this->request->getGet('start') ?? date('Y-m-01');
+        $endDate    = $this->request->getGet('end') ?? date('Y-m-d');
+        $personId   = (int) ($this->request->getGet('person_id') ?? 0);
+        $reactivoId = (int) ($this->request->getGet('reactivo_id') ?? 0);
+        $tipoGet    = $this->request->getGet('tipo');
+        $tipo       = in_array($tipoGet, ['entrada', 'salida'], true) ? $tipoGet : null;
 
-        $rows = $this->model->getKardexMovimientos($startDate, $endDate, $personId > 0 ? $personId : null, $reactivoId > 0 ? $reactivoId : null, $tipo, 2500);
-        $resumen = $this->model->getKardexResumenPorUsuario($startDate, $endDate, $reactivoId > 0 ? $reactivoId : null, $tipo);
+        $rows      = $this->model->getKardexMovimientos($startDate, $endDate, $personId > 0 ? $personId : null, $reactivoId > 0 ? $reactivoId : null, $tipo, 2500);
+        $resumen   = $this->model->getKardexResumenPorUsuario($startDate, $endDate, $reactivoId > 0 ? $reactivoId : null, $tipo);
         $totalMovs = $this->model->countKardexMovimientos($startDate, $endDate, $personId > 0 ? $personId : null, $reactivoId > 0 ? $reactivoId : null, $tipo);
 
         $resumenLotesPorInsumo = [];
@@ -103,28 +107,59 @@ class Reactivos extends SecureArea
             $empleadosOpts[] = ['person_id' => (int) $emp->person_id, 'nombre' => $nombre !== '' ? $nombre : ('ID ' . (int) $emp->person_id)];
         }
 
-        return view('reactivos/kardex', [
-            'subtitle'          => date('d/m/Y', strtotime($startDate)) . ' – ' . date('d/m/Y', strtotime($endDate)),
-            'rows'              => $rows,
-            'resumen'           => $resumen,
-            'startDate'         => $startDate,
-            'endDate'           => $endDate,
-            'person_id'         => $personId,
-            'reactivo_id'       => $reactivoId,
-            'tipo'              => $tipo ?? '',
-            'total_movimientos' => $totalMovs,
-            'limite_lista'      => 2500,
-            'lista_truncada'    => $totalMovs > count($rows),
-            'show_saldo'        => $reactivoId > 0,
-            'stock_actual'      => $reactivoId > 0 ? $this->model->getStockTotal($reactivoId) : null,
-            'insumos'                 => $this->model->getAll(),
-            'resumen_lotes_por_insumo'=> $resumenLotesPorInsumo,
-            'empleados'               => $empleadosOpts,
-            'form_action'             => site_url('inventario/kardex'),
-            'allowed_modules'   => $this->allowed_modules,
-            'user_info'         => $this->user_info,
-            'current_module'    => 'reactivos',
-        ]);
+        return [
+            'subtitle'                 => date('d/m/Y', strtotime($startDate)) . ' – ' . date('d/m/Y', strtotime($endDate)),
+            'rows'                     => $rows,
+            'resumen'                  => $resumen,
+            'startDate'                => $startDate,
+            'endDate'                  => $endDate,
+            'person_id'                => $personId,
+            'reactivo_id'              => $reactivoId,
+            'tipo'                     => $tipo ?? '',
+            'total_movimientos'        => $totalMovs,
+            'limite_lista'             => 2500,
+            'lista_truncada'           => $totalMovs > count($rows),
+            'show_saldo'               => $reactivoId > 0,
+            'stock_actual'             => $reactivoId > 0 ? $this->model->getStockTotal($reactivoId) : null,
+            'insumos'                  => $this->model->getAll(),
+            'resumen_lotes_por_insumo' => $resumenLotesPorInsumo,
+            'empleados'                => $empleadosOpts,
+            'form_action'              => site_url('inventario/kardex'),
+            'kardex_pdf_url'           => site_url('inventario/kardexPdf?' . http_build_query(array_filter([
+                'start'       => $startDate,
+                'end'         => $endDate,
+                'person_id'   => $personId ?: null,
+                'reactivo_id' => $reactivoId ?: null,
+                'tipo'        => $tipo,
+            ]))),
+        ];
+    }
+
+    public function kardex()
+    {
+        return view('reactivos/kardex', array_merge($this->buildKardexPageData(), [
+            'allowed_modules' => $this->allowed_modules,
+            'user_info'       => $this->user_info,
+            'current_module'  => 'reactivos',
+        ]));
+    }
+
+    public function kardexPdf()
+    {
+        $d = $this->buildKardexPageData();
+        ReportPdfDocument::download(
+            'kardex_' . date('Y-m-d') . '.pdf',
+            'Kardex de inventario',
+            (string) $d['subtitle'],
+            'reactivos/pdf/kardex_body',
+            [
+                'rows'                     => $d['rows'],
+                'resumen_lotes_por_insumo' => $d['resumen_lotes_por_insumo'],
+                'subtitle'                 => $d['subtitle'],
+                'lista_truncada'           => $d['lista_truncada'],
+                'limite_lista'             => $d['limite_lista'],
+            ]
+        );
     }
 
     public function lotes($reactivoId)

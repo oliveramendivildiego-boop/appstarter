@@ -16,27 +16,30 @@
 <div class="row mb-3">
     <div class="col-md-6">
         <?php
-        helper('layout');
+        helper(['layout', 'registro']);
         $layoutCfg = layout_config();
         $logoUrl = base_url($layoutCfg['logo'] ?? 'images/logo-john.png');
         ?>
         <img src="<?= esc($logoUrl) ?>" alt="Logo" class="report-logo-preview">
     </div>
     <div class="col-md-6 text-center">
-        <img src="<?= site_url('qr/generate') ?>?data=<?= urlencode(current_url()) ?>&size=120" alt="QR" /><br/>
+        <?php $reportPageUrl = site_url('registers/viewreport/' . (int) ($labotests_namecate ?? 0)); ?>
+        <img src="<?= site_url('qr/generate') ?>?data=<?= urlencode($reportPageUrl) ?>&size=120" alt="QR" /><br/>
         <?= esc($layoutCfg['website'] ?? '') ?>
     </div>
 </div>
 <div class="row mb-3">
     <div class="col-md-6">
         <span class="fw-bold">Paciente:</span> <?= esc(($paciente->first_name ?? '') . ' ' . ($paciente->last_name_fa ?? '') . ' ' . ($paciente->last_name_mom ?? '')) ?><br/>
+        <span class="fw-bold">Género:</span> <?= esc(paciente_genero_texto($paciente)) ?><br/>
         <span class="fw-bold">Edad:</span> <?= esc($paciente->edad ?? '-') ?><br/>
         <span class="fw-bold">Teléfono:</span> <?= esc($paciente->phone_number ?? '') ?>
     </div>
     <div class="col-md-6">
         <?php $tituloMedico = ((int)($doctor->gender ?? 0) === 1) ? 'Dr.' : 'Dra.'; ?>
         <span class="fw-bold">Médico:</span> <?= $tituloMedico ?> <?= esc($doctor->name ?? '') ?><br/>
-        <span class="fw-bold">Fecha:</span> <?= esc($register_info->ingreso ?? '') ?><br/>
+        <span class="fw-bold">Fecha de recepción:</span> <?= esc($register_info->recepcion_fecha_hora ?? '') ?><br/>
+        <span class="fw-bold">Fecha de reporte:</span> <?= esc($report_emitido_en ?? \App\Services\RegisterService::formatNowForReport()) ?><br/>
         <span class="fw-bold">No. Orden:</span> <?= esc(registro_orden_display($register_info)) ?>
     </div>
 </div>
@@ -73,6 +76,8 @@ endif;
     </div>
 </div>
 <?php endif; ?>
+
+<?= view('registers/partials/report_lab_firmas', ['report_lab_firmas' => $report_lab_firmas ?? []]) ?>
 
 <div class="text-center mt-3">
     <button id="guardaranalisis" name="guardaranalisis" class="btn btn-primary">Guardar</button>

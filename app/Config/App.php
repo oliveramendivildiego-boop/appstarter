@@ -132,6 +132,9 @@ class App extends BaseConfig
      *
      * @see https://www.php.net/manual/en/timezones.php for list of timezones
      *      supported by PHP.
+     *
+     * Respaldo si en Configuración del sistema no hay zona válida en `timezone`.
+     * En reportes se usa primero esa clave (app_config) y luego este valor.
      */
     public string $appTimezone = 'UTC';
 

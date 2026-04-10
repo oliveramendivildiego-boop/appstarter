@@ -4,6 +4,7 @@ namespace App\Controllers;
 
 use App\Libraries\PdfService;
 use App\Services\BillingDocumentService;
+use App\Services\ConfigService;
 use App\Services\RegisterService;
 use App\Services\WhatsAppService;
 use App\Models\LabotestModel;
@@ -324,6 +325,8 @@ class Registers extends SecureArea
 
         $analisis = $this->registerModel->getInfoAnalisis($id);
 
+        $labValState = (new ConfigService())->getLabValidationStateForView();
+
         return view('registers/formfill', [
             'current_module' => 'registers',
             'muestra' => $muestra,
@@ -333,6 +336,8 @@ class Registers extends SecureArea
             'pruebas_info'      => $pruebasInfo,
             'matching_poblacion_ids' => $matchingPoblacionIds,
             'analisis'          => $analisis,
+            'lab_validators'    => $labValState['validators'],
+            'lab_approvers'     => $labValState['approvers'],
             'labotests_namecate' => $id,
             'registerModel'     => $this->registerModel,
             'leyendas_activas'  => ($this->configModel->getValue('leyendas_enabled') === '1') ? model(LeyendaModel::class)->where('activo', 1)->where('deleted', 0)->orderBy('titulo', 'ASC')->findAll() : [],
@@ -374,9 +379,11 @@ class Registers extends SecureArea
             'grupos'            => $data['grupos'],
             'report_pria_tipo_muestra_nombre' => $data['report_pria_tipo_muestra_nombre'] ?? [],
             'report_pria_metodo_nombre'       => $data['report_pria_metodo_nombre'] ?? [],
+            'report_lab_firmas'               => $data['report_lab_firmas'] ?? [],
             'registerModel'     => $this->registerModel,
             'allowed_modules'   => $this->allowed_modules,
             'user_info'         => $this->user_info,
+            'report_emitido_en' => $this->registerService->reportEmitidoEnForView($id),
             'sin_billing_enabled' => $billingService->isSinBillingEnabled(),
             'comprobante_pdf_disponible' => $pago !== null && $pagoCompleto,
             'comprobante_pdf_pendiente_pago' => $pago !== null && !$pagoCompleto,
@@ -405,7 +412,8 @@ class Registers extends SecureArea
         helper('qr');
         $reportUrl = site_url('doctor/viewreport/' . $id);
         $qrDataUri = qr_base64($reportUrl, 100);
-        $html      = $this->registerService->renderReportPrintHtml($data, $reportUrl, $qrDataUri, $id);
+        $emitidoEn = $this->registerService->lockReportEmitidoEnForPrintOrPdf($id);
+        $html      = $this->registerService->renderReportPrintHtml($data, $reportUrl, $qrDataUri, $id, $emitidoEn);
 
         return $this->response->setBody($html)->setContentType('text/html', 'UTF-8');
     }
@@ -452,14 +460,27 @@ class Registers extends SecureArea
             $fecha = (string)($registerInfo->ingreso ?? '');
         }
 
+        $bcSizePct = (int) $this->configModel->getValue('order_barcode_print_size_percent');
+        if ($bcSizePct < 1) {
+            $bcSizePct = 100;
+        }
+        $bcSizePct = max(30, min(250, $bcSizePct));
+
+        $edadPacienteOrden = $this->registerService->formatEdadAlMomento($registerInfo->birthday ?? null, $refIngreso);
+
         return view('registers/orden', [
             'current_module'    => 'registers',
             'controller_name'   => 'registers',
             'register_info'     => $registerInfo,
             'fecha'             => $fecha,
+            'edad_paciente_orden' => $edadPacienteOrden,
             'labotests_namecate' => $id,
             'grupos_pruebas'    => $gruposPruebas,
             'show_order_barcode' => ($this->configModel->getValue('show_order_barcode') !== '0'),
+            'order_barcode_print_layout' => (strtolower($this->configModel->getValue('order_barcode_print_layout')) === 'horizontal')
+                ? 'horizontal'
+                : 'vertical',
+            'order_barcode_print_size_percent' => $bcSizePct,
             'allowed_modules'   => $this->allowed_modules,
             'user_info'         => $this->user_info,
         ]);
@@ -504,9 +525,12 @@ class Registers extends SecureArea
             $fecha = (string)($registerInfo->ingreso ?? '');
         }
 
+        $edadPacienteOrden = $this->registerService->formatEdadAlMomento($registerInfo->birthday ?? null, $refIngreso);
+
         $html = view('registers/orden_pdf', [
             'register_info'  => $registerInfo,
             'fecha'          => $fecha,
+            'edad_paciente_orden' => $edadPacienteOrden,
             'grupos_pruebas' => $gruposPruebas,
             'registro_id'    => $id,
         ]);
@@ -576,7 +600,8 @@ class Registers extends SecureArea
         helper('qr');
         $reportUrl = site_url('doctor/viewreport/' . $id);
         $qrDataUri = qr_base64($reportUrl, 100);
-        $html      = $this->registerService->renderReportPdfHtml($data, $reportUrl, $qrDataUri);
+        $emitidoEn = $this->registerService->lockReportEmitidoEnForPrintOrPdf($id);
+        $html      = $this->registerService->renderReportPdfHtml($data, $reportUrl, $qrDataUri, $emitidoEn);
 
         $pdfService    = new PdfService();
         $pacienteNombre = trim(($data['paciente']->first_name ?? '') . '_' . ($data['paciente']->last_name_fa ?? ''));
@@ -1087,7 +1112,8 @@ class Registers extends SecureArea
         helper('qr');
         $reportUrl = site_url('doctor/viewreport/' . $id);
         $qrDataUri = qr_base64($reportUrl, 100);
-        $html      = $this->registerService->renderReportPdfHtml($data, $reportUrl, $qrDataUri);
+        $emitidoEn = $this->registerService->reportEmitidoEnForView($id);
+        $html      = $this->registerService->renderReportPdfHtml($data, $reportUrl, $qrDataUri, $emitidoEn);
         $pdfService = new PdfService();
         $filename   = 'Resultados_' . preg_replace('/\s+/', '_', $pacienteNombre) . '_' . $id . '.pdf';
         $pdfContent = $pdfService->generate($html, $filename);

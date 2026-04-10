@@ -87,3 +87,52 @@ if (! function_exists('registro_tiene_rango_referencial')) {
         return trim((string) ($min ?? '')) !== '' || trim((string) ($max ?? '')) !== '';
     }
 }
+
+if (! function_exists('paciente_genero_texto')) {
+    /**
+     * Texto de género según people.gender (1=Masculino, 2=Femenino).
+     */
+    function paciente_genero_texto(object|array|null $person): string
+    {
+        if ($person === null) {
+            return '—';
+        }
+        $g = is_object($person)
+            ? (int) ($person->gender ?? 0)
+            : (int) ($person['gender'] ?? 0);
+
+        return match ($g) {
+            1 => 'Masculino',
+            2 => 'Femenino',
+            default => '—',
+        };
+    }
+}
+
+if (! function_exists('report_image_data_uri')) {
+    /**
+     * Data URI para imágenes en PDF (DomPDF) e impresión: lee desde FCPATH.
+     */
+    function report_image_data_uri(string $relativePath): string
+    {
+        $relativePath = str_replace('\\', '/', trim($relativePath));
+        if ($relativePath === '' || str_contains($relativePath, '..')) {
+            return '';
+        }
+        $full = FCPATH . str_replace('/', DIRECTORY_SEPARATOR, $relativePath);
+        if (! is_file($full) || ! is_readable($full)) {
+            return '';
+        }
+        $data = @file_get_contents($full);
+        if ($data === false) {
+            return '';
+        }
+        $finfo = finfo_open(FILEINFO_MIME_TYPE);
+        $mime  = $finfo ? finfo_file($finfo, $full) : false;
+        if ($finfo) {
+            finfo_close($finfo);
+        }
+
+        return 'data:' . ($mime ?: 'image/png') . ';base64,' . base64_encode($data);
+    }
+}

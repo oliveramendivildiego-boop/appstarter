@@ -276,6 +276,36 @@ table.results td {
     text-transform: var(--pdf-notes-transform, none);
     line-height: var(--pdf-notes-line-height, 1.4);
 }
+.pdf-lab-f-title {
+    background: var(--pdf-lf-title-bg, #fff3cd);
+    color: var(--pdf-lf-title-color, #664d03);
+    font-family: var(--pdf-lf-font-family, "DejaVu Sans"), sans-serif;
+    font-size: var(--pdf-lf-font-size, 9.5pt);
+    font-weight: var(--pdf-lf-font-weight, normal);
+    font-style: var(--pdf-lf-font-style, normal);
+    text-transform: var(--pdf-lf-transform, none);
+    line-height: var(--pdf-lf-line-height, 1.4);
+    padding: 6px 8px;
+    border: 1px solid #ddd;
+}
+.pdf-lab-f-cell {
+    background: var(--pdf-lf-body-bg, #ffffff);
+    color: var(--pdf-lf-body-color, #333333);
+    font-family: var(--pdf-lf-font-family, "DejaVu Sans"), sans-serif;
+    font-size: var(--pdf-lf-font-size, 9.5pt);
+    font-weight: var(--pdf-lf-font-weight, normal);
+    font-style: var(--pdf-lf-font-style, normal);
+    text-transform: var(--pdf-lf-transform, none);
+    line-height: var(--pdf-lf-line-height, 1.4);
+}
+.pdf-lab-f-img {
+    border: none !important;
+    outline: none !important;
+    box-shadow: none !important;
+    background: transparent !important;
+    padding: 0 !important;
+    vertical-align: bottom;
+}
 .report-segment-table-wrap {
     margin: 0 0 12px 0;
 }

@@ -1,15 +1,21 @@
 <?= $this->extend('layouts/main') ?>
 
 <?= $this->section('content') ?>
+<div class="d-print-none">
 <?= view('partial/breadcrumb_nav', ['items' => [
     ['label' => lang('Module.module_reports'), 'url' => site_url('reports')],
     ['label' => $title ?? '', 'url' => null],
 ]]) ?>
+</div>
+
+<?= view('reports/partials/report_actions', [
+    'pdf_url' => site_url('reports/insumosVencimientoPdf'),
+]) ?>
 
 <h4><?= esc($title ?? '') ?></h4>
 <p class="text-muted"><?= esc($subtitle ?? '') ?> — Configure en <a href="<?= site_url('config') ?>">Configuración</a> el valor "Días de alerta para vencimiento".</p>
 
-<div class="alert alert-info mb-4">
+<div class="alert alert-info mb-4 d-print-none">
     <strong>Leyenda:</strong>
     <span class="badge bg-danger me-2">Vencido</span> Lote ya vencido
     <span class="badge bg-warning text-dark me-2">Por vencer</span> Vence en los próximos <?= (int)($dias_alerta ?? 40) ?> días
@@ -65,5 +71,5 @@
 <p class="text-muted small">Total: <?= count($data) ?> lote(s).</p>
 <?php endif; ?>
 
-<p class="mt-3"><a href="<?= site_url('reports') ?>" class="btn btn-secondary">Volver</a></p>
+<p class="mt-3 d-print-none"><a href="<?= site_url('reports') ?>" class="btn btn-secondary">Volver</a></p>
 <?= $this->endSection() ?>

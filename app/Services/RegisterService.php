@@ -5,6 +5,8 @@ namespace App\Services;
 use App\Models\AppConfigModel;
 use App\Models\PoblacionModel;
 use App\Models\RegisterModel;
+use CodeIgniter\I18n\Time;
+use Config\App as AppConfig;
 
 /**
  * Servicio de registros de análisis.
@@ -201,6 +203,9 @@ class RegisterService
         foreach ($analisis as $prueba) {
             $name = $prueba['name'] ?? '';
             if (!is_string($name)) {
+                continue;
+            }
+            if (preg_match('/^lab_(val|app)_pri_\d+$/', $name) === 1) {
                 continue;
             }
             $regvalue = $prueba['regvalues'] ?? $prueba['value'] ?? '-';
@@ -573,6 +578,35 @@ class RegisterService
     }
 
     /**
+     * Texto de edad (años, meses, días) respecto a una fecha de referencia (p. ej. ingreso de la orden).
+     */
+    public function formatEdadAlMomento(?string $birthday, $referenceDate = null): string
+    {
+        $birthday = $birthday !== null ? trim((string) $birthday) : '';
+        if ($birthday === '') {
+            return '-';
+        }
+        try {
+            $fechaNac = new \DateTime($birthday);
+        } catch (\Throwable $e) {
+            return '-';
+        }
+        $ref = $referenceDate;
+        if ($ref === null) {
+            $ref = new \DateTime();
+        } elseif (is_string($ref)) {
+            try {
+                $ref = new \DateTime($ref);
+            } catch (\Throwable $e) {
+                $ref = new \DateTime();
+            }
+        }
+        $edad = $fechaNac->diff($ref);
+
+        return $edad->y . ' años, ' . $edad->m . ' meses y ' . $edad->d . ' días';
+    }
+
+    /**
      * Prepara datos del paciente para reporte (edad calculada)
      */
     public function preparePacienteParaReporte(?object $paciente): object
@@ -607,6 +641,124 @@ class RegisterService
     }
 
     /**
+     * Zona horaria para fechas del reporte: clave `timezone` en app_config (Configuración del sistema),
+     * luego `appTimezone` en app/Config/App.php, y por último UTC.
+     */
+    public static function reportDisplayTimezone(): string
+    {
+        $fromApp = trim((string) (config(AppConfig::class)->appTimezone ?? 'UTC'));
+        if ($fromApp === '') {
+            $fromApp = 'UTC';
+        }
+
+        try {
+            $cfg = (new ConfigService())->getAllAsArray();
+            $tz  = trim((string) ($cfg['timezone'] ?? ''));
+            if ($tz !== '' && self::timezoneIdIsValid($tz)) {
+                return $tz;
+            }
+        } catch (\Throwable $e) {
+            // seguir con App.php
+        }
+
+        return self::timezoneIdIsValid($fromApp) ? $fromApp : 'UTC';
+    }
+
+    private static function timezoneIdIsValid(string $tz): bool
+    {
+        try {
+            new \DateTimeZone($tz);
+
+            return true;
+        } catch (\Throwable $e) {
+            return false;
+        }
+    }
+
+    /**
+     * Fecha/hora “ahora” para el reporte (vista, impresión, PDF) en {@see reportDisplayTimezone()}.
+     */
+    public static function formatNowForReport(): string
+    {
+        $tz = self::reportDisplayTimezone();
+        try {
+            return Time::now($tz)->format('d/m/Y H:i:s');
+        } catch (\Throwable $e) {
+            return Time::now('UTC')->format('d/m/Y H:i:s');
+        }
+    }
+
+    /**
+     * Formatea un DATETIME guardado en BD (interpretado en la zona del laboratorio) a texto del reporte.
+     */
+    public static function formatStoredReporteFechaHora(string $mysqlDatetime): string
+    {
+        $tz = self::reportDisplayTimezone();
+        try {
+            $tzObj = new \DateTimeZone($tz);
+            $dt    = new \DateTimeImmutable($mysqlDatetime, $tzObj);
+        } catch (\Throwable $e) {
+            return $mysqlDatetime;
+        }
+
+        return $dt->format('d/m/Y H:i:s');
+    }
+
+    private function mysqlNowForReportTimezone(): string
+    {
+        $tz = self::reportDisplayTimezone();
+        try {
+            $tzObj = new \DateTimeZone($tz);
+        } catch (\Throwable $e) {
+            $tzObj = new \DateTimeZone('UTC');
+        }
+
+        return (new \DateTimeImmutable('now', $tzObj))->format('Y-m-d H:i:s');
+    }
+
+    /**
+     * “Fecha de reporte” en la vista web: valor fijado en BD tras imprimir/PDF, o la hora actual si aún no.
+     */
+    public function reportEmitidoEnForView(int $registroId): string
+    {
+        $raw = $this->registerModel->getReporteFechaHoraFijadaMysql($registroId);
+        if ($raw !== null) {
+            return self::formatStoredReporteFechaHora($raw);
+        }
+
+        return self::formatNowForReport();
+    }
+
+    /**
+     * Al imprimir o exportar PDF: guarda la fecha/hora la primera vez y devuelve siempre el valor fijado.
+     */
+    public function lockReportEmitidoEnForPrintOrPdf(int $registroId): string
+    {
+        $mysql = $this->mysqlNowForReportTimezone();
+        $raw   = $this->registerModel->lockReporteFechaHoraFijada($registroId, $mysql);
+        if ($raw === null) {
+            return self::formatNowForReport();
+        }
+
+        return self::formatStoredReporteFechaHora($raw);
+    }
+
+    /**
+     * Formato estándar de fechas en reporte: día/mes/año y hora con segundos.
+     */
+    public function formatReportDateTimeDisplay(?string $dateTimeRaw): string
+    {
+        if ($dateTimeRaw === null || trim($dateTimeRaw) === '') {
+            return '—';
+        }
+        try {
+            return (new \DateTime($dateTimeRaw))->format('d/m/Y H:i:s');
+        } catch (\Throwable $e) {
+            return '—';
+        }
+    }
+
+    /**
      * Prepara datos para el reporte (viewreport / PDF)
      */
     public function prepareReportData(int $registroId): ?array
@@ -620,8 +772,19 @@ class RegisterService
         }
 
         $ingresoRaw = $registerInfo->ingreso ?? null;
-        $dt = new \DateTime($ingresoRaw ?? 'now');
-        $registerInfo->ingreso = $dt->format('d/m/Y');
+        $tzReport   = self::reportDisplayTimezone();
+        try {
+            $tzObj = new \DateTimeZone($tzReport);
+        } catch (\Throwable $e) {
+            $tzObj = new \DateTimeZone('UTC');
+        }
+        $src = ($ingresoRaw !== null && trim((string) $ingresoRaw) !== '') ? (string) $ingresoRaw : 'now';
+        try {
+            $dtIngreso = new \DateTimeImmutable($src, $tzObj);
+        } catch (\Throwable $e) {
+            $dtIngreso = new \DateTimeImmutable('now', $tzObj);
+        }
+        $registerInfo->recepcion_fecha_hora = $dtIngreso->format('d/m/Y H:i:s');
 
         $master = $this->registerModel->getInforeport($registroId);
         $paciente = $master ? $this->registerModel->getInfoPaciente($master->person_id) : null;
@@ -696,6 +859,8 @@ class RegisterService
         $grupos = $this->appendMissingReferenceRows($grupos, $registerInfo, $eligiblePriaConfig, $matchingPoblacionIds, $patientGender);
         $grupos = $this->applyReferenceVisibility($grupos, $eligiblePriaIds);
 
+        $reportLabFirmas = $this->buildLabFirmasParaReporte($analisis, (string) ($registerInfo->pruebas ?? ''));
+
         return [
             'register_info' => $registerInfo,
             'paciente'      => $paciente,
@@ -704,18 +869,129 @@ class RegisterService
             'analisis'      => $analisis,
             'report_pria_tipo_muestra_nombre' => $reportPriaTipoMuestraNombre,
             'report_pria_metodo_nombre'       => $reportPriaMetodoNombre,
+            'report_lab_firmas'               => $reportLabFirmas,
         ];
+    }
+
+    /**
+     * Validación y aprobación por prueba (regvalues lab_val_pri_*, lab_app_pri_* + config).
+     *
+     * @return list<array{prianacategoria_id:int, prueba_nombre:string, validator_name:string, approver_name:string, approver_cargo:string, approver_seal:string, approver_signature:string}>
+     */
+    public function buildLabFirmasParaReporte(array $analisisRows, string $pruebasCsv): array
+    {
+        $byName = [];
+        foreach ($analisisRows as $r) {
+            $n = trim((string) ($r['name'] ?? ''));
+            if ($n === '') {
+                continue;
+            }
+            $byName[$n] = trim((string) ($r['regvalues'] ?? ''));
+        }
+
+        $configSvc = new ConfigService();
+        $state     = $configSvc->getLabValidationStateForView();
+        $valById   = [];
+        foreach ($state['validators'] ?? [] as $v) {
+            $id = (string) ($v['id'] ?? '');
+            if ($id !== '') {
+                $valById[$id] = $v;
+            }
+        }
+        $appById = [];
+        foreach ($state['approvers'] ?? [] as $a) {
+            $id = (string) ($a['id'] ?? '');
+            if ($id !== '') {
+                $appById[$id] = $a;
+            }
+        }
+
+        $candidateIds = [];
+        foreach (array_keys($byName) as $k) {
+            if (preg_match('/^lab_val_pri_(\d+)$/', $k, $m) === 1) {
+                $candidateIds[(int) $m[1]] = true;
+            }
+            if (preg_match('/^lab_app_pri_(\d+)$/', $k, $m) === 1) {
+                $candidateIds[(int) $m[1]] = true;
+            }
+        }
+        if ($candidateIds === []) {
+            return [];
+        }
+
+        $orderedIds = [];
+        foreach (array_filter(array_map('intval', explode(',', $pruebasCsv))) as $pid) {
+            if ($pid > 0 && isset($candidateIds[$pid])) {
+                $orderedIds[] = $pid;
+            }
+        }
+        foreach (array_keys($candidateIds) as $pid) {
+            if (! in_array($pid, $orderedIds, true)) {
+                $orderedIds[] = $pid;
+            }
+        }
+
+        $out = [];
+        foreach ($orderedIds as $pid) {
+            $valId = trim($byName['lab_val_pri_' . $pid] ?? '');
+            $appId = trim($byName['lab_app_pri_' . $pid] ?? '');
+            if ($valId === '' && $appId === '') {
+                continue;
+            }
+            $pName = $this->registerModel->getPrianacategoriaNombre($pid);
+            if ($pName === '') {
+                $pName = 'Prueba #' . $pid;
+            }
+            $vName = '';
+            if ($valId !== '') {
+                $vName = (string) ($valById[$valId]['name'] ?? '');
+                if ($vName === '') {
+                    $vName = $valId;
+                }
+            }
+            $approver = ($appId !== '' && isset($appById[$appId])) ? $appById[$appId] : null;
+            $aName    = '';
+            $aCargo   = '';
+            $aSeal    = '';
+            $aSig     = '';
+            if ($appId !== '') {
+                if (is_array($approver)) {
+                    $aName  = trim((string) ($approver['name'] ?? ''));
+                    $aCargo = trim((string) ($approver['cargo'] ?? ''));
+                    $aSeal  = trim((string) ($approver['seal'] ?? ''));
+                    $aSig   = trim((string) ($approver['signature'] ?? ''));
+                }
+                if ($aName === '') {
+                    $aName = $appId;
+                }
+            }
+            $out[] = [
+                'prianacategoria_id' => $pid,
+                'prueba_nombre'      => $pName,
+                'validator_name'     => $vName,
+                'approver_name'      => $aName,
+                'approver_cargo'     => $aCargo,
+                'approver_seal'      => $aSeal,
+                'approver_signature' => $aSig,
+            ];
+        }
+
+        return $out;
     }
 
     /**
      * HTML del PDF de resultados según la plantilla activa (orden y visibilidad de bloques).
      *
      * @param array<string, mixed> $reportData Retorno de prepareReportData()
+     * @param string               $reportEmitidoEn Fecha/hora de generación del PDF (d/m/Y H:i:s)
      */
-    public function renderReportPdfHtml(array $reportData, string $reportUrl, string $qrDataUri): string
+    public function renderReportPdfHtml(array $reportData, string $reportUrl, string $qrDataUri, string $reportEmitidoEn = ''): string
     {
         $layoutService = new ReportPdfLayoutService();
         $pdf_layout    = $layoutService->getActiveLayoutForRender();
+        if ($reportEmitidoEn === '') {
+            $reportEmitidoEn = self::formatNowForReport();
+        }
 
         return view('registers/report_pdf', [
             'register_info' => $reportData['register_info'],
@@ -726,8 +1002,10 @@ class RegisterService
             'report_url'    => $reportUrl,
             'qr_data_uri'   => $qrDataUri,
             'pdf_layout'    => $pdf_layout,
+            'report_emitido_en' => $reportEmitidoEn,
             'report_pria_tipo_muestra_nombre' => $reportData['report_pria_tipo_muestra_nombre'] ?? [],
             'report_pria_metodo_nombre'       => $reportData['report_pria_metodo_nombre'] ?? [],
+            'report_lab_firmas'               => $reportData['report_lab_firmas'] ?? [],
         ]);
     }
 
@@ -735,11 +1013,15 @@ class RegisterService
      * HTML para imprimir desde el navegador (plantilla «impresión» en configuración).
      *
      * @param array<string, mixed> $reportData Retorno de prepareReportData()
+     * @param string               $reportEmitidoEn Fecha/hora al abrir la vista de impresión (d/m/Y H:i:s)
      */
-    public function renderReportPrintHtml(array $reportData, string $reportUrl, string $qrDataUri, int $registroId): string
+    public function renderReportPrintHtml(array $reportData, string $reportUrl, string $qrDataUri, int $registroId, string $reportEmitidoEn = ''): string
     {
         $layoutService = new ReportPdfLayoutService();
         $pdf_layout    = $layoutService->getPrintLayoutForRender();
+        if ($reportEmitidoEn === '') {
+            $reportEmitidoEn = self::formatNowForReport();
+        }
 
         return view('registers/report_print', [
             'register_info' => $reportData['register_info'],
@@ -751,8 +1033,10 @@ class RegisterService
             'qr_data_uri'   => $qrDataUri,
             'pdf_layout'    => $pdf_layout,
             'registro_id'   => $registroId,
+            'report_emitido_en' => $reportEmitidoEn,
             'report_pria_tipo_muestra_nombre' => $reportData['report_pria_tipo_muestra_nombre'] ?? [],
             'report_pria_metodo_nombre'       => $reportData['report_pria_metodo_nombre'] ?? [],
+            'report_lab_firmas'               => $reportData['report_lab_firmas'] ?? [],
         ]);
     }
 }

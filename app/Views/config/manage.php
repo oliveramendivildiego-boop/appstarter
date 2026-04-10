@@ -30,6 +30,9 @@
         <button class="nav-link <?= $activeTab === 'sistema' ? 'active' : '' ?>" id="tab-sistema-btn" data-bs-toggle="tab" data-bs-target="#tab-sistema" type="button" role="tab">Configuración del sistema</button>
     </li>
     <li class="nav-item" role="presentation">
+        <button class="nav-link <?= $activeTab === 'lab_validacion' ? 'active' : '' ?>" id="tab-lab-validacion-btn" data-bs-toggle="tab" data-bs-target="#tab-lab-validacion" type="button" role="tab"><?= lang('Config.config_lab_validation_tab_nav') ?></button>
+    </li>
+    <li class="nav-item" role="presentation">
         <button class="nav-link <?= $activeTab === 'estilo' ? 'active' : '' ?>" id="tab-estilo-btn" data-bs-toggle="tab" data-bs-target="#tab-estilo" type="button" role="tab"><?= lang('Config.config_style_tab_nav') ?></button>
     </li>
     <li class="nav-item" role="presentation">
@@ -212,6 +215,33 @@
             <small class="text-muted">Si se desactiva, la orden se imprimirá sin código de barras.</small>
         </div>
         <div class="mb-3">
+            <label for="order_barcode_print_layout" class="form-label"><?= lang('Config.config_order_barcode_print_layout') ?></label>
+            <?php
+            $barcodeLayout = strtolower((string) ($config['order_barcode_print_layout'] ?? 'vertical'));
+            if ($barcodeLayout !== 'horizontal') {
+                $barcodeLayout = 'vertical';
+            }
+            $layoutOpts = [
+                'vertical'   => lang('Config.config_order_barcode_layout_vertical'),
+                'horizontal' => lang('Config.config_order_barcode_layout_horizontal'),
+            ];
+            ?>
+            <?= form_dropdown('order_barcode_print_layout', $layoutOpts, $barcodeLayout, 'id="order_barcode_print_layout" class="form-select" style="max-width: 22rem;" autocomplete="off"') ?>
+            <small class="text-muted d-block mt-1"><?= lang('Config.config_order_barcode_print_layout_help') ?></small>
+        </div>
+        <div class="mb-3">
+            <label for="order_barcode_print_size_percent" class="form-label"><?= lang('Config.config_order_barcode_size_percent') ?></label>
+            <?php
+            $bcSize = (int) ($config['order_barcode_print_size_percent'] ?? 100);
+            if ($bcSize < 1) {
+                $bcSize = 100;
+            }
+            $bcSize = max(30, min(250, $bcSize));
+            ?>
+            <input type="number" name="order_barcode_print_size_percent" id="order_barcode_print_size_percent" class="form-control" style="max-width: 10rem;" min="30" max="250" step="1" value="<?= $bcSize ?>" autocomplete="off">
+            <small class="text-muted d-block mt-1"><?= lang('Config.config_order_barcode_size_percent_help') ?></small>
+        </div>
+        <div class="mb-3">
             <input type="hidden" name="leyendas_enabled" value="0">
             <div class="form-check">
                 <?= form_checkbox('leyendas_enabled', '1', (($config['leyendas_enabled'] ?? '0') === '1'), 'id="leyendas_enabled" class="form-check-input" autocomplete="off"') ?>
@@ -219,6 +249,7 @@
             </div>
             <small class="text-muted">Si se activa, se mostrará un campo de comentarios/leyendas al registrar resultados de pruebas.</small>
         </div>
+
         <hr class="my-3">
         <div class="mb-3">
             <label for="registro_folio_format" class="form-label fw-bold">Formato del número de orden (recepción)</label>
@@ -245,6 +276,12 @@
             </div>
         </div>
     </div>
+
+    <?= view('config/tab_lab_validacion', [
+        'activeTab'      => $activeTab,
+        'lab_validators' => $lab_validators ?? [],
+        'lab_approvers'  => $lab_approvers ?? [],
+    ]) ?>
 
     <?= view('config/tab_estilo', ['config' => $config, 'activeTab' => $activeTab, 'theme_palette' => $theme_palette ?? []]) ?>
 

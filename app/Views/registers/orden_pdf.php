@@ -23,6 +23,7 @@
         <div><strong>Orden:</strong> <?= esc(registro_orden_display($register_info)) ?></div>
         <div><strong>Fecha:</strong> <?= esc($fecha ?? '') ?></div>
         <div><strong>Paciente:</strong> <?= esc(($register_info->first_name ?? '') . ' ' . ($register_info->last_name_fa ?? '') . ' ' . ($register_info->last_name_mom ?? '')) ?></div>
+        <div><strong>Edad:</strong> <?= esc($edad_paciente_orden ?? '-') ?></div>
         <div><strong>Doctor:</strong> <?= esc($register_info->doctor_name ?? $register_info->doctor ?? '') ?></div>
     </div>
 

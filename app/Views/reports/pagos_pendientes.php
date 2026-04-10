@@ -8,12 +8,14 @@
 <?= $this->endSection() ?>
 
 <?= $this->section('content') ?>
+<div class="d-print-none">
 <?= view('partial/breadcrumb_nav', ['items' => [
     ['label' => lang('Module.module_reports'), 'url' => site_url('reports')],
     ['label' => $title ?? '', 'url' => null],
 ]]) ?>
+</div>
 
-<form method="get" action="<?= site_url('reports/pagosPendientes') ?>" class="row g-3 mb-4">
+<form method="get" action="<?= site_url('reports/pagosPendientes') ?>" class="row g-3 mb-4 d-print-none">
     <div class="col-auto">
         <label for="pend_start" class="form-label">Desde</label>
         <input type="text" id="pend_start" name="start" class="form-control flatpickr-input" value="<?= esc($startDate ?? '') ?>">
@@ -29,6 +31,10 @@
         <a href="<?= site_url('reports/pagos?' . http_build_query(['start' => $startDate ?? '', 'end' => $endDate ?? ''])) ?>" class="btn btn-outline-secondary">Ver reporte de pagos completo</a>
     </div>
 </form>
+
+<?= view('reports/partials/report_actions', [
+    'pdf_url' => site_url('reports/pagosPendientesPdf?' . http_build_query(['start' => $startDate ?? '', 'end' => $endDate ?? ''])),
+]) ?>
 
 <h4><?= esc($title ?? '') ?></h4>
 <p class="text-muted"><?= esc($subtitle ?? '') ?></p>

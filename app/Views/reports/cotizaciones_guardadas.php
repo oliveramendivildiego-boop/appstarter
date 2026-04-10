@@ -7,10 +7,16 @@
 <?= $this->endSection() ?>
 
 <?= $this->section('content') ?>
+<div class="d-print-none">
 <?= view('partial/breadcrumb_nav', ['items' => [
     ['label' => lang('Module.module_reports'), 'url' => site_url('reports')],
     ['label' => isset($title) ? $title : '', 'url' => null],
 ]]) ?>
+</div>
+
+<?= view('reports/partials/report_actions', [
+    'pdf_url' => site_url('reports/cotizacionesGuardadasPdf'),
+]) ?>
 <?php
 helper('layout');
 $layoutCfg = layout_config();
@@ -45,7 +51,7 @@ $hasta = min($page * $perPage, $total);
                 <th>Exámenes cotizados</th>
                 <th class="text-end">Costo ref.</th>
                 <th class="text-end">Total</th>
-                <th style="width:10%">Acciones</th>
+                <th class="d-print-none" style="width:10%">Acciones</th>
             </tr>
         </thead>
         <tbody>
@@ -70,7 +76,7 @@ $hasta = min($page * $perPage, $total);
                 <td class="text-end"><?= $currencyIsRight
                     ? (number_format((int)(isset($row['costo']) ? $row['costo'] : 0)) . ' ' . esc($currencySym))
                     : (esc($currencySym) . ' ' . number_format((int)(isset($row['costo']) ? $row['costo'] : 0))) ?></td>
-                <td class="text-nowrap">
+                <td class="text-nowrap d-print-none">
                     <div class="d-flex flex-nowrap gap-1 align-items-center acciones-cotizacion">
                         <button type="button" class="btn btn-outline-secondary btn-sm py-0 px-1 ver-detalle" data-id="<?= $id ?>" data-items="<?= esc(htmlspecialchars(isset($itemsJson) ? $itemsJson : '[]', ENT_QUOTES, 'UTF-8')) ?>" title="Ver detalle">
                             <i class="fa-solid fa-eye"></i>
@@ -91,7 +97,7 @@ $hasta = min($page * $perPage, $total);
                     </div>
                 </td>
             </tr>
-            <tr class="detalle-row" id="detalle-<?= $id ?>" style="display:none;">
+            <tr class="detalle-row d-print-none" id="detalle-<?= $id ?>" style="display:none;">
                 <td colspan="7" class="bg-light py-3">
                     <strong>Detalle de la cotización:</strong>
                     <table class="table table-sm table-bordered mt-2 mb-0">

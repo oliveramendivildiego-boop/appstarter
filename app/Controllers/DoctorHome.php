@@ -206,8 +206,10 @@ class DoctorHome extends BaseController
             'grupos'             => $data['grupos'],
             'report_pria_tipo_muestra_nombre' => $data['report_pria_tipo_muestra_nombre'] ?? [],
             'report_pria_metodo_nombre'       => $data['report_pria_metodo_nombre'] ?? [],
+            'report_lab_firmas'               => $data['report_lab_firmas'] ?? [],
             'registerModel'      => $this->registerModel,
             'doctor_info'        => $this->doctorInfo,
+            'report_emitido_en'  => $this->registerService->reportEmitidoEnForView($id),
         ]);
     }
 
@@ -237,7 +239,8 @@ class DoctorHome extends BaseController
         helper('qr');
         $reportUrl = site_url('doctor/viewreport/' . $id);
         $qrDataUri = qr_base64($reportUrl, 100);
-        $html      = $this->registerService->renderReportPdfHtml($data, $reportUrl, $qrDataUri);
+        $emitidoEn = $this->registerService->reportEmitidoEnForView($id);
+        $html      = $this->registerService->renderReportPdfHtml($data, $reportUrl, $qrDataUri, $emitidoEn);
 
         $pdfService = new PdfService();
         $pacienteNombre = trim(($data['paciente']->first_name ?? '') . '_' . ($data['paciente']->last_name_fa ?? ''));

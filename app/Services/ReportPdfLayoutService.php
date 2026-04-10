@@ -67,7 +67,7 @@ class ReportPdfLayoutService
     ];
 
     /** @var list<string> */
-    public const DEFAULT_BLOCK_ORDER = ['header', 'patient_doctor', 'results', 'notes', 'footer'];
+    public const DEFAULT_BLOCK_ORDER = ['header', 'patient_doctor', 'results', 'notes', 'lab_firmas', 'footer'];
 
     /** @var list<string> Orden por defecto de cada dato dentro del bloque paciente/médico */
     public const PATIENT_DOCTOR_FIELD_ORDER = [
@@ -154,9 +154,10 @@ class ReportPdfLayoutService
     public static function defaultPageStyleStatic(): array
     {
         return [
-            'card_header' => self::DEFAULT_CARD_HEADER_STYLE,
-            'notes'       => self::DEFAULT_NOTES_STYLE,
-            'results_table' => self::DEFAULT_RESULTS_TABLE_STYLE,
+            'card_header'    => self::DEFAULT_CARD_HEADER_STYLE,
+            'notes'          => self::DEFAULT_NOTES_STYLE,
+            'lab_firmas'     => self::DEFAULT_NOTES_STYLE,
+            'results_table'  => self::DEFAULT_RESULTS_TABLE_STYLE,
             'header_section' => self::DEFAULT_HEADER_SECTION_STYLE,
         ];
     }
@@ -1008,11 +1009,11 @@ class ReportPdfLayoutService
     public static function patientDoctorFieldLabels(): array
     {
         return [
-            'paciente_nombre'   => 'Nombre del paciente',
+            'paciente_nombre'   => 'Nombre del paciente y género',
             'paciente_edad'     => 'Edad',
             'paciente_telefono' => 'Teléfono',
             'medico'             => 'Médico tratante',
-            'fecha_ingreso'      => 'Fecha de ingreso',
+            'fecha_ingreso'      => 'Fecha de recepción y fecha de reporte',
             'numero_orden'       => 'Número de orden',
         ];
     }
@@ -1052,6 +1053,7 @@ class ReportPdfLayoutService
             'patient_doctor' => 'Datos del paciente y del médico',
             'results'        => 'Tablas de resultados por prueba',
             'notes'          => 'Notas del resultado (si existen)',
+            'lab_firmas'     => 'Validación y aprobación (firmas)',
             'footer'         => 'Pie de página (fecha de generación y políticas)',
         ];
     }
@@ -1198,10 +1200,26 @@ class ReportPdfLayoutService
                 'enabled' => ! empty($b['enabled']),
             ];
         }
-        foreach (self::DEFAULT_BLOCK_ORDER as $aid) {
-            if (! in_array($aid, $seen, true)) {
-                $blocks[] = ['id' => $aid, 'enabled' => true];
+        $defOrder = self::DEFAULT_BLOCK_ORDER;
+        foreach ($defOrder as $aid) {
+            if (in_array($aid, $seen, true)) {
+                continue;
             }
+            $insertIdx = count($blocks);
+            $myPos     = array_search($aid, $defOrder, true);
+            if ($myPos !== false) {
+                for ($j = (int) $myPos + 1, $jMax = count($defOrder); $j < $jMax; $j++) {
+                    $nextId = $defOrder[$j];
+                    foreach ($blocks as $i => $existing) {
+                        if (($existing['id'] ?? '') === $nextId) {
+                            $insertIdx = $i;
+                            break 2;
+                        }
+                    }
+                }
+            }
+            array_splice($blocks, $insertIdx, 0, [['id' => $aid, 'enabled' => true]]);
+            $seen[] = $aid;
         }
 
         $marginsMm = $this->normalizeMarginsMm($decoded);
@@ -1219,9 +1237,10 @@ class ReportPdfLayoutService
         $watermark = $this->normalizeWatermark($decoded);
         $pageStyleRaw = is_array($decoded['page_style'] ?? null) ? $decoded['page_style'] : [];
         $pageStyle = [
-            'card_header' => self::normalizeCardHeaderStyle($pageStyleRaw['card_header'] ?? []),
-            'notes'       => self::normalizeNotesStyle($pageStyleRaw['notes'] ?? []),
-            'results_table' => self::normalizeResultsTableStyle($pageStyleRaw['results_table'] ?? []),
+            'card_header'    => self::normalizeCardHeaderStyle($pageStyleRaw['card_header'] ?? []),
+            'notes'          => self::normalizeNotesStyle($pageStyleRaw['notes'] ?? []),
+            'lab_firmas'     => self::normalizeNotesStyle($pageStyleRaw['lab_firmas'] ?? []),
+            'results_table'  => self::normalizeResultsTableStyle($pageStyleRaw['results_table'] ?? []),
             'header_section' => self::normalizeHeaderSectionStyle($pageStyleRaw['header_section'] ?? []),
         ];
 
@@ -1326,7 +1345,7 @@ class ReportPdfLayoutService
             'paciente_edad'     => '42 años, 3 meses y 10 días',
             'paciente_telefono' => '+52 55 1234 5678',
             'medico'             => 'Dra. María López',
-            'fecha_ingreso'      => '30/03/2026',
+            'fecha_ingreso'      => '09/04/2026 10:15:30',
             'numero_orden'       => 'A-2026-0150',
         ];
     }

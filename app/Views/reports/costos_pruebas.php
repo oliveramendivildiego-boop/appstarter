@@ -11,22 +11,22 @@ $currencySide = isset($layoutCfg['currency_side']) ? (string)$layoutCfg['currenc
 $currencyIsRight = strtolower(trim($currencySide)) === 'right';
 ?>
 <div class="mb-4">
-    <div class="d-flex justify-content-between align-items-center">
+    <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
         <div>
             <h3 class="mb-1"><?= esc($title) ?></h3>
             <p class="text-muted"><?= esc($subtitle) ?></p>
         </div>
-        <?php if (!empty($data)): ?>
-            <div>
-                <button type="button" onclick="window.print()" class="btn btn-primary me-2">
-                    <i class="fas fa-print me-1"></i> Imprimir reporte
-                </button>
-                <a href="<?= site_url('reports/exportCostosPruebas') ?>?<?= !empty($busqueda) ? 'busqueda=' . urlencode($busqueda) : '' ?>"
+        <div class="d-print-none d-flex flex-wrap gap-2 align-items-center">
+            <?= view('reports/partials/report_actions', [
+                'pdf_url' => site_url('reports/costosPruebasPdf?' . http_build_query(['busqueda' => $busqueda ?? ''])),
+            ]) ?>
+            <?php if (! empty($data)): ?>
+                <a href="<?= site_url('reports/exportCostosPruebas') ?>?<?= ! empty($busqueda) ? 'busqueda=' . urlencode($busqueda) : '' ?>"
                    class="btn btn-success">
                     <i class="fas fa-file-excel me-1"></i> Exportar a Excel
                 </a>
-            </div>
-        <?php endif; ?>
+            <?php endif; ?>
+        </div>
     </div>
 </div>
 
@@ -144,19 +144,10 @@ $currencyIsRight = strtolower(trim($currencySide)) === 'right';
     </div>
 </div>
 
-<div class="mt-3">
+<div class="mt-3 d-print-none">
     <a href="<?= site_url('reports') ?>" class="btn btn-secondary">
         <i class="fas fa-arrow-left me-1"></i> Volver a reportes
     </a>
-    <?php if (!empty($data)): ?>
-        <button type="button" onclick="window.print()" class="btn btn-primary">
-            <i class="fas fa-print me-1"></i> Imprimir reporte
-        </button>
-        <a href="<?= site_url('reports/exportCostosPruebas') ?>?<?= !empty($busqueda) ? 'busqueda=' . urlencode($busqueda) : '' ?>"
-           class="btn btn-success">
-            <i class="fas fa-file-excel me-1"></i> Exportar a Excel
-        </a>
-    <?php endif; ?>
 </div>
 
 <style>

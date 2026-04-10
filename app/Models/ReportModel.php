@@ -695,6 +695,62 @@ class ReportModel extends Model
     }
 
     /**
+     * Mapa prianacategoria_id => anacategoria_id (grupo padre) para reportes por categoría clínica.
+     *
+     * @return array<int, int>
+     */
+    public function getPrianacategoriaAnacategoriaMap(): array
+    {
+        $ptbl = $this->db->prefixTable('prianacategoria');
+
+        $rows = $this->db->table('prianacategoria')
+            ->select("{$ptbl}.prianacategoria_id, {$ptbl}.anacategoria_id")
+            ->where("({$ptbl}.deleted = 0 OR {$ptbl}.deleted IS NULL)")
+            ->get()
+            ->getResultArray();
+
+        $out = [];
+        foreach ($rows as $r) {
+            $pid = (int) ($r['prianacategoria_id'] ?? 0);
+            if ($pid < 1) {
+                continue;
+            }
+            $out[$pid] = (int) ($r['anacategoria_id'] ?? 0);
+        }
+
+        return $out;
+    }
+
+    /**
+     * Grupos de análisis (padre) activos para filtros de reporte.
+     *
+     * @return list<array{anacategoria_id: int, name: string, orden: int}>
+     */
+    public function getAnacategoriasParaReporte(): array
+    {
+        $atbl = $this->db->prefixTable('anacategoria');
+
+        $rows = $this->db->table('anacategoria')
+            ->select("{$atbl}.anacategoria_id, {$atbl}.name, {$atbl}.order as orden")
+            ->where("({$atbl}.deleted = 0 OR {$atbl}.deleted IS NULL)")
+            ->orderBy("{$atbl}.order", 'ASC')
+            ->orderBy("{$atbl}.name", 'ASC')
+            ->get()
+            ->getResultArray();
+
+        $out = [];
+        foreach ($rows as $r) {
+            $out[] = [
+                'anacategoria_id' => (int) ($r['anacategoria_id'] ?? 0),
+                'name'            => (string) ($r['name'] ?? ''),
+                'orden'           => (int) ($r['orden'] ?? 0),
+            ];
+        }
+
+        return $out;
+    }
+
+    /**
      * Por registro, prianacategoria_id con al menos un resultado cargado (regvalues no vacío y distinto de "-").
      * Usa la misma convención de name que el formulario (id|nombre, c_*, noc_*).
      *

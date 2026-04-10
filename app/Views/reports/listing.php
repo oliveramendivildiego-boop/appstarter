@@ -33,6 +33,10 @@
                     <i class="fas fa-vial me-2"></i> Pruebas realizadas por fecha
                 </a>
                 <p class="list-group-item small text-muted mb-0">Pruebas completas con resultados cargados en el período seleccionado.</p>
+                <a href="<?= site_url('reports/pruebasPorGrupoAnalisis') ?>" class="list-group-item list-group-item-action">
+                    <i class="fas fa-layer-group me-2"></i> Pruebas por grupo de análisis (padre)
+                </a>
+                <p class="list-group-item small text-muted mb-0">Por fechas y grupo clínico (p. ej. Hematología): total y detalle de cada análisis solicitado.</p>
                 <a href="<?= site_url('reports/pruebasIncompletasFecha') ?>" class="list-group-item list-group-item-action">
                     <i class="fas fa-hourglass-half me-2"></i> Pruebas incompletas por fecha
                 </a>

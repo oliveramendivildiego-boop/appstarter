@@ -204,6 +204,41 @@ foreach ($pruebas_info ?? [] as $prueba):
             endif;
         endforeach;
     endif;
+    $priaFirma = (int) ($prueba['prianacategoria_id'] ?? 0);
+    if ($priaFirma > 0):
+        $vk = 'lab_val_pri_' . $priaFirma;
+        $ak = 'lab_app_pri_' . $priaFirma;
+        $lvList = $lab_validators ?? [];
+        $laList = $lab_approvers ?? [];
+        $curV = $existentes[$vk] ?? '';
+        $curA = $existentes[$ak] ?? '';
+    ?>
+    <div class="col-12 mb-3 mt-1 pt-2 border-top lab-prueba-firma-wrap">
+        <div class="row g-2 align-items-end">
+            <div class="col-md-6">
+                <label class="form-label small text-muted mb-0">Validado por:</label>
+                <select class="form-select form-select-sm lab-prueba-val-validator" data-regvalue-name="<?= esc($vk) ?>" data-prianacategoria-id="<?= $priaFirma ?>">
+                    <option value="">—</option>
+                    <?php foreach ($lvList as $lv): ?>
+                        <?php $lid = (string) ($lv['id'] ?? ''); ?>
+                        <option value="<?= esc($lid) ?>" <?= ($curV !== '' && $curV === $lid) ? 'selected' : '' ?>><?= esc($lv['name'] ?? '') ?></option>
+                    <?php endforeach; ?>
+                </select>
+            </div>
+            <div class="col-md-6">
+                <label class="form-label small text-muted mb-0">Aprobado por:</label>
+                <select class="form-select form-select-sm lab-prueba-val-approver" data-regvalue-name="<?= esc($ak) ?>" data-prianacategoria-id="<?= $priaFirma ?>">
+                    <option value="">—</option>
+                    <?php foreach ($laList as $la): ?>
+                        <?php $aid = (string) ($la['id'] ?? ''); ?>
+                        <option value="<?= esc($aid) ?>" <?= ($curA !== '' && $curA === $aid) ? 'selected' : '' ?>><?= esc($la['name'] ?? '') ?></option>
+                    <?php endforeach; ?>
+                </select>
+            </div>
+        </div>
+    </div>
+    <?php
+    endif;
 endforeach;
 if ($last_padre !== '') echo '</div>';
 endif;
@@ -464,6 +499,12 @@ document.addEventListener('DOMContentLoaded', function() {
             var nombrePrueba = el.getAttribute('data-prueba');
             var id = (priId && nombrePrueba) ? (priId + '|' + nombrePrueba) : el.id;
             datos.push({ id: id, valor: valor, registro_id: registroId });
+        });
+        document.querySelectorAll('select.lab-prueba-val-validator, select.lab-prueba-val-approver').forEach(function(el) {
+            var registroId = document.getElementById('registro_id').value;
+            var nameKey = el.getAttribute('data-regvalue-name');
+            if (!registroId || !nameKey) return;
+            datos.push({ id: nameKey, valor: (el.value || '').trim(), registro_id: registroId });
         });
         var csrfName = (typeof window.CI_CSRF_TOKEN_NAME !== 'undefined' ? window.CI_CSRF_TOKEN_NAME : null) || (document.querySelector('meta[name="csrf-token-name"]') && document.querySelector('meta[name="csrf-token-name"]').getAttribute('content'));
         var csrfVal = (typeof window.CI_CSRF_TOKEN !== 'undefined' ? window.CI_CSRF_TOKEN : null) || (document.querySelector('meta[name="csrf-token"]') && document.querySelector('meta[name="csrf-token"]').getAttribute('content'));

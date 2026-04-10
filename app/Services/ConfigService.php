@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Models\AppConfigModel;
 use App\Models\ReportPdfTemplateModel;
 use CodeIgniter\HTTP\Files\UploadedFile;
+use CodeIgniter\HTTP\IncomingRequest;
 
 /**
  * Servicio de configuración del sistema.
@@ -69,6 +70,10 @@ class ConfigService
         $data['ui_pagination_link_style'] ??= 'normal';
         $data['ui_pagination_active_bg'] ??= '';
         $data['ui_pagination_active_color'] ??= '';
+        $data['order_barcode_print_layout'] ??= 'vertical';
+        $data['order_barcode_print_size_percent'] ??= '100';
+        $data['lab_validators_json'] ??= '[]';
+        $data['lab_approvers_json'] ??= '[]';
         $cache->save($cacheKey, $data, self::CACHE_TTL);
         return $data;
     }
@@ -121,7 +126,7 @@ class ConfigService
             'default_tax_rate', 'default_tax_1_name', 'default_tax_1_rate',
             'default_tax_2_name', 'default_tax_2_rate', 'return_policy',
             'print_after_sale', 'logo', 'theme_color', 'header_brand',
-            'decimales_sugerencia', 'dias_alerta_vencimiento', 'show_order_barcode', 'leyendas_enabled',
+            'decimales_sugerencia', 'dias_alerta_vencimiento', 'show_order_barcode', 'order_barcode_print_layout', 'order_barcode_print_size_percent', 'leyendas_enabled',
             'custom1_name', 'custom2_name', 'custom3_name', 'custom4_name', 'custom5_name',
             'custom6_name', 'custom7_name', 'custom8_name', 'custom9_name', 'custom10_name',
         ];
@@ -140,6 +145,17 @@ class ConfigService
         }
         if (array_key_exists('show_order_barcode', $postData)) {
             $batch['show_order_barcode'] = ($postData['show_order_barcode'] === '1') ? '1' : '0';
+        }
+        if (array_key_exists('order_barcode_print_layout', $postData)) {
+            $v = strtolower(trim((string) $postData['order_barcode_print_layout']));
+            $batch['order_barcode_print_layout'] = ($v === 'horizontal') ? 'horizontal' : 'vertical';
+        }
+        if (array_key_exists('order_barcode_print_size_percent', $postData)) {
+            $p = (int) $postData['order_barcode_print_size_percent'];
+            if ($p < 1) {
+                $p = 100;
+            }
+            $batch['order_barcode_print_size_percent'] = (string) max(30, min(250, $p));
         }
         if (array_key_exists('leyendas_enabled', $postData)) {
             $batch['leyendas_enabled'] = ($postData['leyendas_enabled'] === '1') ? '1' : '0';
@@ -179,9 +195,10 @@ class ConfigService
             }
         }
 
-        $logoFailed = false;
+        $logoFailed       = false;
         $previousLogoPath = trim((string) ($this->getAllAsArray()['logo'] ?? ''));
         $newLogoFromUpload = null;
+
         if ($logoFile && $logoFile->isValid() && !$logoFile->hasMoved()) {
             $logoPath = $this->processLogoUpload($logoFile);
             if ($logoPath) {
@@ -196,7 +213,7 @@ class ConfigService
         if ($ok) {
             $this->invalidateCache();
             if ($newLogoFromUpload !== null) {
-                $this->removePreviousUploadedLogo($previousLogoPath, $newLogoFromUpload);
+                $this->removeManagedConfigImage($previousLogoPath, $newLogoFromUpload, '#^images/logo-lab#');
             }
         }
 
@@ -217,6 +234,14 @@ class ConfigService
     }
 
     protected function processLogoUpload(UploadedFile $file): ?string
+    {
+        return $this->processConfigImageUpload($file, 'logo-lab-');
+    }
+
+    /**
+     * Sube imagen validada a public/images/ con prefijo de nombre conocido (logo, sello, firma).
+     */
+    protected function processConfigImageUpload(UploadedFile $file, string $basenamePrefix): ?string
     {
         if ($file->getSize() > 2 * 1024 * 1024) { // 2MB
             return null;
@@ -252,8 +277,7 @@ class ConfigService
             mkdir($uploadPath, 0755, true);
         }
 
-        // Nombre único por subida: evita sobrescribir siempre el mismo archivo (caché, despliegues, rsync).
-        $newName = 'logo-lab-' . bin2hex(random_bytes(8)) . '.' . $ext;
+        $newName = $basenamePrefix . bin2hex(random_bytes(8)) . '.' . $ext;
         if (!$file->move($uploadPath, $newName)) {
             return null;
         }
@@ -262,15 +286,17 @@ class ConfigService
     }
 
     /**
-     * Elimina el logo anterior solo si fue generado por esta app (prefijo images/logo-lab).
+     * Elimina la imagen anterior solo si coincide con un prefijo gestionado por esta app.
+     *
+     * @param non-empty-string $pathPatternRegex p.ej. '#^images/logo-lab#'
      */
-    private function removePreviousUploadedLogo(string $previousRelative, string $newRelative): void
+    private function removeManagedConfigImage(string $previousRelative, string $newRelative, string $pathPatternRegex): void
     {
         if ($previousRelative === '' || $previousRelative === $newRelative) {
             return;
         }
         $previousRelative = str_replace('\\', '/', $previousRelative);
-        if (!preg_match('#^images/logo-lab#', $previousRelative)) {
+        if (!preg_match($pathPatternRegex, $previousRelative)) {
             return;
         }
         $full = realpath(FCPATH . $previousRelative);
@@ -281,6 +307,339 @@ class ConfigService
         if (is_file($full)) {
             @unlink($full);
         }
+    }
+
+    /**
+     * Elimina un archivo bajo images/ si coincide con el prefijo gestionado (p. ej. al quitar un aprobador).
+     */
+    private function deleteManagedConfigImage(string $relativePath, string $pathPatternRegex): void
+    {
+        $relativePath = str_replace('\\', '/', trim($relativePath));
+        if ($relativePath === '' || !preg_match($pathPatternRegex, $relativePath)) {
+            return;
+        }
+        $full = realpath(FCPATH . $relativePath);
+        $base = realpath(FCPATH . 'images');
+        if ($full === false || $base === false || !str_starts_with($full, $base . DIRECTORY_SEPARATOR)) {
+            return;
+        }
+        if (is_file($full)) {
+            @unlink($full);
+        }
+    }
+
+    /**
+     * Validadores y aprobadores para la pestaña de configuración (incluye migración desde campos antiguos).
+     *
+     * @return array{validators: list<array{id: string, name: string}>, approvers: list<array{id: string, name: string, cargo: string, seal: string, signature: string}>}
+     */
+    public function getLabValidationStateForView(): array
+    {
+        $cfg = $this->getAllAsArray();
+        $validators = $this->decodeValidatorsFromStored((string) ($cfg['lab_validators_json'] ?? ''));
+        if ($validators === []) {
+            $legacy = trim((string) ($cfg['lab_validators_names'] ?? ''));
+            if ($legacy !== '') {
+                $validators = $this->legacyValidatorNamesToRows($legacy);
+            }
+        }
+
+        $approvers = $this->decodeApproversFromStored((string) ($cfg['lab_approvers_json'] ?? ''));
+        if ($approvers === []) {
+            $approvers = $this->legacyApproverRowsFromCfg($cfg);
+        }
+
+        return [
+            'validators' => $validators,
+            'approvers'  => $approvers,
+        ];
+    }
+
+    /**
+     * Guarda listas de validación/aprobación y archivos por aprobador (pestaña dedicada).
+     *
+     * @return array{success: bool, message: string}
+     */
+    public function saveLabValidationFromRequest(array $post, IncomingRequest $request): array
+    {
+        $state = $this->getLabValidationStateForView();
+        $oldApprovers = $state['approvers'];
+        $oldById = [];
+        foreach ($oldApprovers as $o) {
+            $oldById[$o['id']] = $o;
+        }
+
+        $validatorIds = $post['validator_id'] ?? [];
+        $validatorNames = $post['validator_name'] ?? [];
+        if (!is_array($validatorIds)) {
+            $validatorIds = [];
+        }
+        if (!is_array($validatorNames)) {
+            $validatorNames = [];
+        }
+        $nVal = max(count($validatorIds), count($validatorNames));
+        $validators = [];
+        for ($i = 0; $i < $nVal; $i++) {
+            $vname = mb_substr(trim((string) ($validatorNames[$i] ?? '')), 0, 500);
+            if ($vname === '') {
+                continue;
+            }
+            $vid = strtolower(preg_replace('/[^a-f0-9]/i', '', (string) ($validatorIds[$i] ?? '')));
+            if (strlen($vid) < 8 || strlen($vid) > 32) {
+                $vid = bin2hex(random_bytes(8));
+            }
+            $validators[] = ['id' => $vid, 'name' => $vname];
+        }
+
+        $ids = $post['approver_id'] ?? [];
+        $names = $post['approver_name'] ?? [];
+        $cargos = $post['approver_cargo'] ?? [];
+        $fileSlots = $post['approver_file_slot'] ?? [];
+        if (!is_array($ids)) {
+            $ids = [];
+        }
+        if (!is_array($names)) {
+            $names = [];
+        }
+        if (!is_array($cargos)) {
+            $cargos = [];
+        }
+        if (!is_array($fileSlots)) {
+            $fileSlots = [];
+        }
+        $nApp = max(count($ids), count($names), count($cargos));
+        $newApprovers = [];
+        $sealFailed = false;
+        $sigFailed = false;
+
+        for ($i = 0; $i < $nApp; $i++) {
+            $aname = mb_substr(trim((string) ($names[$i] ?? '')), 0, 500);
+            if ($aname === '') {
+                continue;
+            }
+            $id = strtolower(preg_replace('/[^a-f0-9]/i', '', (string) ($ids[$i] ?? '')));
+            if (strlen($id) < 8 || strlen($id) > 32) {
+                $id = bin2hex(random_bytes(8));
+            }
+            $cargo = mb_substr(trim((string) ($cargos[$i] ?? '')), 0, 255);
+            $prev = $oldById[$id] ?? null;
+            $seal = is_array($prev) ? trim((string) ($prev['seal'] ?? '')) : '';
+            $signature = is_array($prev) ? trim((string) ($prev['signature'] ?? '')) : '';
+
+            $slot = isset($fileSlots[$i]) ? (int) $fileSlots[$i] : $i;
+            if ($slot < 0 || $slot > 500) {
+                $slot = $i;
+            }
+
+            $fSeal = $request->getFile('approver_seal_' . $slot);
+            if ($fSeal && $fSeal->isValid() && !$fSeal->hasMoved()) {
+                $np = $this->processConfigImageUpload($fSeal, 'lab-approver-seal-');
+                if ($np) {
+                    if ($seal !== '') {
+                        $this->removeManagedConfigImage($seal, $np, '#^images/lab-approver-seal-#');
+                    }
+                    $seal = $np;
+                } else {
+                    $sealFailed = true;
+                }
+            }
+
+            $fSig = $request->getFile('approver_signature_' . $slot);
+            if ($fSig && $fSig->isValid() && !$fSig->hasMoved()) {
+                $np = $this->processConfigImageUpload($fSig, 'lab-approver-sig-');
+                if ($np) {
+                    if ($signature !== '') {
+                        $this->removeManagedConfigImage($signature, $np, '#^images/lab-approver-sig-#');
+                    }
+                    $signature = $np;
+                } else {
+                    $sigFailed = true;
+                }
+            }
+
+            $newApprovers[] = [
+                'id'          => $id,
+                'name'        => $aname,
+                'cargo'       => $cargo,
+                'seal'        => $seal,
+                'signature'   => $signature,
+            ];
+        }
+
+        $newIds = array_column($newApprovers, 'id');
+        foreach ($oldApprovers as $o) {
+            if (!in_array($o['id'], $newIds, true)) {
+                $this->deleteManagedConfigImage((string) ($o['seal'] ?? ''), '#^images/lab-approver-seal-#');
+                $this->deleteManagedConfigImage((string) ($o['signature'] ?? ''), '#^images/lab-approver-sig-#');
+            }
+        }
+
+        $batch = [
+            'lab_validators_json'        => json_encode($validators, JSON_UNESCAPED_UNICODE),
+            'lab_approvers_json'         => json_encode($newApprovers, JSON_UNESCAPED_UNICODE),
+            'lab_validators_names'       => '',
+            'lab_approvers_names'        => '',
+            'lab_signatory_cargo'        => '',
+            'lab_signatory_seal'         => '',
+            'lab_signatory_signature'    => '',
+        ];
+
+        $ok = $this->appConfigModel->batchSave($batch);
+        if ($ok) {
+            $this->invalidateCache();
+        }
+
+        $message = $ok ? lang('Config.config_saved') : lang('Config.config_error');
+        if ($ok && ($sealFailed || $sigFailed)) {
+            $parts = [lang('Config.config_saved')];
+            if ($sealFailed) {
+                $parts[] = lang('Config.config_lab_seal_error');
+            }
+            if ($sigFailed) {
+                $parts[] = lang('Config.config_lab_signature_error');
+            }
+            $message = implode(' ', $parts);
+        }
+
+        return ['success' => $ok, 'message' => $message];
+    }
+
+    /**
+     * @return list<array{id: string, name: string}>
+     */
+    private function decodeValidatorsFromStored(string $json): array
+    {
+        $json = trim($json);
+        if ($json === '' || $json === '[]') {
+            return [];
+        }
+        $arr = json_decode($json, true);
+        if (!is_array($arr)) {
+            return [];
+        }
+        $out = [];
+        foreach ($arr as $row) {
+            if (!is_array($row)) {
+                continue;
+            }
+            $id = strtolower(preg_replace('/[^a-f0-9]/i', '', (string) ($row['id'] ?? '')));
+            if (strlen($id) < 8 || strlen($id) > 32) {
+                continue;
+            }
+            $name = trim((string) ($row['name'] ?? ''));
+            if ($name === '') {
+                continue;
+            }
+            $out[] = ['id' => $id, 'name' => mb_substr($name, 0, 500)];
+        }
+
+        return $out;
+    }
+
+    /**
+     * @return list<array{id: string, name: string, cargo: string, seal: string, signature: string}>
+     */
+    private function decodeApproversFromStored(string $json): array
+    {
+        $json = trim($json);
+        if ($json === '' || $json === '[]') {
+            return [];
+        }
+        $arr = json_decode($json, true);
+        if (!is_array($arr)) {
+            return [];
+        }
+        $out = [];
+        foreach ($arr as $row) {
+            if (!is_array($row)) {
+                continue;
+            }
+            $id = strtolower(preg_replace('/[^a-f0-9]/i', '', (string) ($row['id'] ?? '')));
+            if (strlen($id) < 8 || strlen($id) > 32) {
+                continue;
+            }
+            $name = trim((string) ($row['name'] ?? ''));
+            if ($name === '') {
+                continue;
+            }
+            $out[] = [
+                'id'        => $id,
+                'name'      => mb_substr($name, 0, 500),
+                'cargo'     => mb_substr(trim((string) ($row['cargo'] ?? '')), 0, 255),
+                'seal'      => trim((string) ($row['seal'] ?? '')),
+                'signature' => trim((string) ($row['signature'] ?? '')),
+            ];
+        }
+
+        return $out;
+    }
+
+    /**
+     * @return list<array{id: string, name: string}>
+     */
+    private function legacyValidatorNamesToRows(string $text): array
+    {
+        $lines = preg_split('/\r\n|\r|\n/', $text) ?: [];
+        $names = [];
+        foreach ($lines as $line) {
+            $line = trim((string) $line);
+            if ($line === '') {
+                continue;
+            }
+            if (str_contains($line, ',')) {
+                foreach (explode(',', $line) as $p) {
+                    $p = trim($p);
+                    if ($p !== '') {
+                        $names[] = $p;
+                    }
+                }
+            } else {
+                $names[] = $line;
+            }
+        }
+        $rows = [];
+        foreach ($names as $idx => $n) {
+            $stableId = substr(hash('sha256', 'lab_val_legacy|' . $idx . '|' . $n), 0, 16);
+            $rows[] = ['id' => $stableId, 'name' => mb_substr($n, 0, 500)];
+        }
+
+        return $rows;
+    }
+
+    /**
+     * @param array<string, string> $cfg
+     *
+     * @return list<array{id: string, name: string, cargo: string, seal: string, signature: string}>
+     */
+    private function legacyApproverRowsFromCfg(array $cfg): array
+    {
+        $text = trim((string) ($cfg['lab_approvers_names'] ?? ''));
+        $cargo = trim((string) ($cfg['lab_signatory_cargo'] ?? ''));
+        $seal = trim((string) ($cfg['lab_signatory_seal'] ?? ''));
+        $signature = trim((string) ($cfg['lab_signatory_signature'] ?? ''));
+        if ($text === '' && $cargo === '' && $seal === '' && $signature === '') {
+            return [];
+        }
+        $name = '—';
+        if ($text !== '') {
+            $parts = preg_split('/\r\n|\r|\n/', $text) ?: [];
+            $name = trim((string) ($parts[0] ?? ''));
+            if ($name !== '' && str_contains($name, ',')) {
+                $name = trim(explode(',', $name)[0]);
+            }
+            if ($name === '') {
+                $name = '—';
+            }
+        }
+        $stableId = substr(hash('sha256', 'lab_approver_legacy|' . $name . '|' . $cargo), 0, 16);
+
+        return [[
+            'id'          => $stableId,
+            'name'        => mb_substr($name, 0, 500),
+            'cargo'       => mb_substr($cargo, 0, 255),
+            'seal'        => $seal,
+            'signature'   => $signature,
+        ]];
     }
 
     /**

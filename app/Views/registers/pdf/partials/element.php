@@ -11,18 +11,16 @@ $lab  = is_array($lab_config ?? null) ? $lab_config : [];
 $ts   = \App\Services\ReportPdfLayoutService::normalizeTextStyle($pdf_text_style ?? []);
 
 $labelsPdf = [
-    'paciente_nombre'    => 'Paciente:',
     'paciente_edad'      => 'Edad:',
     'paciente_telefono'  => 'Teléfono:',
     'medico'             => 'Médico:',
-    'fecha_ingreso'      => 'Fecha:',
     'numero_orden'       => 'No. Orden:',
 ];
 
+$reportEmitidoEl = (string) ($report_emitido_en ?? \App\Services\RegisterService::formatNowForReport());
+
 $valueOf = static function (string $id) use ($paciente, $doctor, $register_info): string {
     switch ($id) {
-        case 'paciente_nombre':
-            return trim(($paciente->first_name ?? '') . ' ' . ($paciente->last_name_fa ?? '') . ' ' . ($paciente->last_name_mom ?? ''));
         case 'paciente_edad':
             return (string) ($paciente->edad ?? '-');
         case 'paciente_telefono':
@@ -31,8 +29,6 @@ $valueOf = static function (string $id) use ($paciente, $doctor, $register_info)
             $tit = ((int) ($doctor->gender ?? 0) === 1) ? 'Dr.' : 'Dra.';
 
             return $tit . ' ' . ($doctor->name ?? '-');
-        case 'fecha_ingreso':
-            return (string) ($register_info->ingreso ?? '');
         case 'numero_orden':
             return registro_orden_display($register_info);
         default:
@@ -53,6 +49,38 @@ if ($logoDataUri === '' && $type === 'logo') {
         }
         $logoDataUri = 'data:' . ($mime ?: 'image/png') . ';base64,' . $logoData;
     }
+}
+
+if ($type === 'paciente_nombre') {
+    $nom = trim(($paciente->first_name ?? '') . ' ' . ($paciente->last_name_fa ?? '') . ' ' . ($paciente->last_name_mom ?? ''));
+    ?>
+                <div class="patient-line">
+                    <span class="label">Paciente:</span>
+                    <?= esc($nom !== '' ? $nom : '—') ?>
+                </div>
+                <div class="patient-line">
+                    <span class="label">Género:</span>
+                    <?= esc(paciente_genero_texto($paciente)) ?>
+                </div>
+    <?php
+
+    return;
+}
+
+if ($type === 'fecha_ingreso') {
+    $rec = (string) ($register_info->recepcion_fecha_hora ?? '');
+    ?>
+                <div class="patient-line">
+                    <span class="label">Fecha de recepción:</span>
+                    <?= esc($rec !== '' ? $rec : '—') ?>
+                </div>
+                <div class="patient-line">
+                    <span class="label">Fecha de reporte:</span>
+                    <?= esc($reportEmitidoEl) ?>
+                </div>
+    <?php
+
+    return;
 }
 
 if (isset($labelsPdf[$type])) {
@@ -138,7 +166,7 @@ switch ($type) {
 
     case 'footer_generated':
         ?>
-                <div class="footer-piece">Resultados generados el <?= date('d/m/Y H:i') ?></div>
+                <div class="footer-piece">Resultados generados el <?= esc($reportEmitidoEl) ?></div>
         <?php
         break;
 

@@ -8,6 +8,7 @@
 <?= $this->endSection() ?>
 
 <?= $this->section('content') ?>
+<div class="d-print-none">
 <?= view('partial/breadcrumb_nav', ['items' => [
     ['label' => lang('Module.module_reports'), 'url' => site_url('reports')],
     ['label' => $title ?? '', 'url' => null],
@@ -50,6 +51,11 @@ $cierreEnd   = $endDate ?? date('Y-m-d');
     </div>
 </div>
 <p class="small text-muted mb-0">El cierre guarda el resumen del período mostrado. Luego imprima o exporte a PDF desde <strong>Cierres guardados</strong>.</p>
+</div>
+
+<?= view('reports/partials/report_actions', [
+    'pdf_url' => site_url('reports/pagosPdf?' . http_build_query(['start' => $startDate ?? '', 'end' => $endDate ?? ''])),
+]) ?>
 
 <h4><?= esc($title ?? '') ?></h4>
 <p class="text-muted"><?= esc($subtitle ?? '') ?></p>

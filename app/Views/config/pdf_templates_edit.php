@@ -31,6 +31,7 @@ $wm = $layout['watermark'] ?? \App\Services\ReportPdfLayoutService::defaultWater
 $ps = is_array($layout['page_style'] ?? null) ? $layout['page_style'] : \App\Services\ReportPdfLayoutService::defaultPageStyleStatic();
 $ch = \App\Services\ReportPdfLayoutService::normalizeCardHeaderStyle($ps['card_header'] ?? []);
 $ns = \App\Services\ReportPdfLayoutService::normalizeNotesStyle($ps['notes'] ?? []);
+$lf = \App\Services\ReportPdfLayoutService::normalizeNotesStyle($ps['lab_firmas'] ?? []);
 $rs = \App\Services\ReportPdfLayoutService::normalizeResultsTableStyle($ps['results_table'] ?? []);
 $hs = \App\Services\ReportPdfLayoutService::normalizeHeaderSectionStyle($ps['header_section'] ?? []);
 $wmPreview = null;
@@ -40,11 +41,11 @@ if (! empty($wm['file'])) {
     ]);
 }
 $labelsShort = [
-    'paciente_nombre'   => 'Paciente:',
+    'paciente_nombre'   => 'Paciente / género:',
     'paciente_edad'     => 'Edad:',
     'paciente_telefono' => 'Teléfono:',
     'medico'            => 'Médico:',
-    'fecha_ingreso'     => 'Fecha:',
+    'fecha_ingreso'     => 'Fecha de recepción / Fecha de reporte:',
     'numero_orden'      => 'No. Orden:',
 ];
 ?>
@@ -149,6 +150,26 @@ $labelsShort = [
             <div class="col-6 col-md-2"><label class="form-label small" for="ns_font_style">Estilo</label><select class="form-select" id="ns_font_style"><?php foreach (['normal', 'italic', 'oblique'] as $st): ?><option value="<?= esc($st, 'attr') ?>" <?= $ns['font_style'] === $st ? 'selected' : '' ?>><?= esc(ucfirst($st)) ?></option><?php endforeach; ?></select></div>
             <div class="col-6 col-md-3"><label class="form-label small" for="ns_text_transform">Transformación</label><select class="form-select" id="ns_text_transform"><?php foreach (['none' => 'Normal', 'uppercase' => 'MAYÚSCULAS', 'lowercase' => 'minúsculas', 'capitalize' => 'Tipo Título'] as $k => $v): ?><option value="<?= esc($k, 'attr') ?>" <?= $ns['text_transform'] === $k ? 'selected' : '' ?>><?= esc($v) ?></option><?php endforeach; ?></select></div>
             <div class="col-6 col-md-2"><label class="form-label small" for="ns_line_height">Interlineado</label><input type="number" class="form-control" id="ns_line_height" min="1" max="3" step="0.05" value="<?= esc((string) $ns['line_height'], 'attr') ?>"></div>
+        </div>
+    </div>
+</div>
+
+<div class="card shadow-sm mb-4">
+    <div class="card-header bg-light border">
+        <h5 class="mb-0">Estilo global de Validación y aprobación (PDF / impresión)</h5>
+    </div>
+    <div class="card-body">
+        <div class="row g-3">
+            <div class="col-6 col-md-3"><label class="form-label small" for="lf_title_bg">Fondo título</label><input type="color" class="form-control form-control-color" id="lf_title_bg" value="<?= esc($lf['title_bg_color'], 'attr') ?>"></div>
+            <div class="col-6 col-md-3"><label class="form-label small" for="lf_title_text">Texto título</label><input type="color" class="form-control form-control-color" id="lf_title_text" value="<?= esc($lf['title_text_color'], 'attr') ?>"></div>
+            <div class="col-6 col-md-3"><label class="form-label small" for="lf_body_bg">Fondo contenido</label><input type="color" class="form-control form-control-color" id="lf_body_bg" value="<?= esc($lf['body_bg_color'], 'attr') ?>"></div>
+            <div class="col-6 col-md-3"><label class="form-label small" for="lf_body_text">Texto contenido</label><input type="color" class="form-control form-control-color" id="lf_body_text" value="<?= esc($lf['body_text_color'], 'attr') ?>"></div>
+            <div class="col-12 col-md-3"><label class="form-label small" for="lf_font_family">Fuente</label><select class="form-select" id="lf_font_family"><?php foreach (['DejaVu Sans', 'Helvetica', 'Arial', 'Times New Roman', 'Courier New'] as $ff): ?><option value="<?= esc($ff, 'attr') ?>" <?= $lf['font_family'] === $ff ? 'selected' : '' ?>><?= esc($ff) ?></option><?php endforeach; ?></select></div>
+            <div class="col-6 col-md-2"><label class="form-label small" for="lf_font_size">Tamaño</label><input type="number" class="form-control" id="lf_font_size" min="7" max="20" step="0.5" value="<?= esc((string) $lf['font_size_pt'], 'attr') ?>"></div>
+            <div class="col-6 col-md-2"><label class="form-label small" for="lf_font_weight">Grosor</label><select class="form-select" id="lf_font_weight"><?php foreach (['normal', 'bold', '400', '500', '600', '700', '800'] as $w): ?><option value="<?= esc($w, 'attr') ?>" <?= $lf['font_weight'] === $w ? 'selected' : '' ?>><?= esc($w) ?></option><?php endforeach; ?></select></div>
+            <div class="col-6 col-md-2"><label class="form-label small" for="lf_font_style">Estilo</label><select class="form-select" id="lf_font_style"><?php foreach (['normal', 'italic', 'oblique'] as $st): ?><option value="<?= esc($st, 'attr') ?>" <?= $lf['font_style'] === $st ? 'selected' : '' ?>><?= esc(ucfirst($st)) ?></option><?php endforeach; ?></select></div>
+            <div class="col-6 col-md-3"><label class="form-label small" for="lf_text_transform">Transformación</label><select class="form-select" id="lf_text_transform"><?php foreach (['none' => 'Normal', 'uppercase' => 'MAYÚSCULAS', 'lowercase' => 'minúsculas', 'capitalize' => 'Tipo Título'] as $k => $v): ?><option value="<?= esc($k, 'attr') ?>" <?= $lf['text_transform'] === $k ? 'selected' : '' ?>><?= esc($v) ?></option><?php endforeach; ?></select></div>
+            <div class="col-6 col-md-2"><label class="form-label small" for="lf_line_height">Interlineado</label><input type="number" class="form-control" id="lf_line_height" min="1" max="3" step="0.05" value="<?= esc((string) $lf['line_height'], 'attr') ?>"></div>
         </div>
     </div>
 </div>
@@ -1167,6 +1188,18 @@ document.addEventListener('DOMContentLoaded', function() {
                 font_style: pick('ns_font_style', 'normal'),
                 text_transform: pick('ns_text_transform', 'none'),
                 line_height: pickNum('ns_line_height', 1, 3, 1.4)
+            },
+            lab_firmas: {
+                title_bg_color: pick('lf_title_bg', '#FFF3CD'),
+                title_text_color: pick('lf_title_text', '#664D03'),
+                body_bg_color: pick('lf_body_bg', '#FFFFFF'),
+                body_text_color: pick('lf_body_text', '#333333'),
+                font_family: pick('lf_font_family', 'DejaVu Sans'),
+                font_size_pt: pickNum('lf_font_size', 7, 20, 9.5),
+                font_weight: pick('lf_font_weight', 'normal'),
+                font_style: pick('lf_font_style', 'normal'),
+                text_transform: pick('lf_text_transform', 'none'),
+                line_height: pickNum('lf_line_height', 1, 3, 1.4)
             },
             results_table: {
                 header_bg_color: pick('rs_header_bg', '#0066CC'),

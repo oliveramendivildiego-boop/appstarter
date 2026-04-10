@@ -1,6 +1,7 @@
 <?= $this->extend('layouts/main') ?>
 
 <?= $this->section('content') ?>
+<div class="d-print-none">
 <?= view('partial/breadcrumb_nav', ['items' => [
     ['label' => lang('Module.module_reports'), 'url' => site_url('reports')],
     ['label' => $title ?? 'Cierres de pagos', 'url' => null],
@@ -12,8 +13,13 @@
 <?php if (session()->getFlashdata('error')): ?>
     <div class="alert alert-danger"><?= esc(session()->getFlashdata('error')) ?></div>
 <?php endif; ?>
+</div>
 
-<div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+<?= view('reports/partials/report_actions', [
+    'pdf_url' => site_url('reports/pagosCierresPdf'),
+]) ?>
+
+<div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3 d-print-none">
     <div>
         <h4 class="mb-0"><?= esc($title ?? '') ?></h4>
         <p class="text-muted small mb-0">Cada cierre guarda una copia del resumen del período. La impresión y el PDF usan esos datos congelados.</p>
@@ -29,7 +35,7 @@
                 <th>Período</th>
                 <th>Registrado</th>
                 <th>Elaborado por</th>
-                <th class="text-end">Acciones</th>
+                <th class="text-end d-print-none">Acciones</th>
             </tr>
         </thead>
         <tbody>
@@ -49,7 +55,7 @@
                     <td><?= esc($periodo) ?></td>
                     <td><?= esc($creado) ?></td>
                     <td><?= esc($por !== '' ? $por : '—') ?></td>
-                    <td class="text-end text-nowrap">
+                    <td class="text-end text-nowrap d-print-none">
                         <a href="<?= site_url('reports/pagosCierre/' . $id) ?>" class="btn btn-sm btn-outline-secondary" target="_blank" rel="noopener">Imprimir</a>
                         <a href="<?= site_url('reports/pagosCierrePdf/' . $id) ?>" class="btn btn-sm btn-outline-danger">PDF</a>
                     </td>

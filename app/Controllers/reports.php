@@ -12,6 +12,7 @@ use App\Models\ReportePagosCierreModel;
 use App\Models\LabotestModel;
 use App\Services\RegisterService;
 use App\Libraries\PdfService;
+use App\Libraries\ReportPdfDocument;
 
 class Reports extends SecureArea
 {
@@ -229,7 +230,7 @@ class Reports extends SecureArea
     }
 
     /**
-     * Listado de cierres de pagos guardados (imprimir / PDF solo desde el detalle).
+     * Listado de cierres de pagos guardados (cada fila tiene imprimir/PDF del documento de cierre).
      */
     public function pagosCierres()
     {
@@ -483,6 +484,158 @@ class Reports extends SecureArea
         ]);
     }
 
+    /**
+     * @return array{secciones: list<array>, ordenes_en_periodo: int, grupos_opts: list<array>, startDate: string, endDate: string, anacategoria_id: int, subtitle: string}
+     */
+    private function collectPruebasPorGrupoAnalisisPayload(string $startDate, string $endDate, int $anacategoriaId): array
+    {
+        $rows       = $this->reportModel->getRegistrosEstadisticasLaboratorio($startDate, $endDate);
+        $parentMap  = $this->reportModel->getPrianacategoriaAnacategoriaMap();
+        $labels     = $this->reportModel->getPrianacategoriaLabelsMap();
+        $gruposOpts = $this->reportModel->getAnacategoriasParaReporte();
+
+        $byGrupoId       = [];
+        $registerService = new RegisterService();
+
+        foreach ($rows as $row) {
+            $pruebasStr = trim((string) ($row['pruebas'] ?? ''));
+            $idsPrueba  = $registerService->extractPrianacategoriaIdsFromRegistroPruebas($pruebasStr);
+            foreach ($idsPrueba as $prId) {
+                if ($prId < 1) {
+                    continue;
+                }
+                $gid = $parentMap[$prId] ?? 0;
+                if ($gid < 1) {
+                    continue;
+                }
+                if ($anacategoriaId > 0 && $gid !== $anacategoriaId) {
+                    continue;
+                }
+                if (! isset($byGrupoId[$gid])) {
+                    $byGrupoId[$gid] = [];
+                }
+                $byGrupoId[$gid][$prId] = ($byGrupoId[$gid][$prId] ?? 0) + 1;
+            }
+        }
+
+        $nombreGrupo = static function (int $gid) use ($gruposOpts): string {
+            foreach ($gruposOpts as $g) {
+                if ((int) ($g['anacategoria_id'] ?? 0) === $gid) {
+                    return (string) ($g['name'] ?? '');
+                }
+            }
+
+            return 'Grupo #' . $gid;
+        };
+
+        $buildSeccion = static function (int $gid, array $conteoPorPrueba) use ($labels, $nombreGrupo): array {
+            $detalle = [];
+            $total   = 0;
+            foreach ($conteoPorPrueba as $prId => $cnt) {
+                $cnt   = (int) $cnt;
+                $total += $cnt;
+                $meta  = $labels[$prId] ?? null;
+                $detalle[] = [
+                    'prianacategoria_id' => $prId,
+                    'prueba'             => $meta['prueba'] ?? ('ID ' . $prId),
+                    'cantidad'           => $cnt,
+                ];
+            }
+            usort($detalle, static function (array $a, array $b): int {
+                $c = ($b['cantidad'] ?? 0) <=> ($a['cantidad'] ?? 0);
+                if ($c !== 0) {
+                    return $c;
+                }
+
+                return strcasecmp((string) ($a['prueba'] ?? ''), (string) ($b['prueba'] ?? ''));
+            });
+
+            return [
+                'anacategoria_id' => $gid,
+                'nombre'          => $nombreGrupo($gid),
+                'total_pruebas'   => $total,
+                'detalle'         => $detalle,
+            ];
+        };
+
+        $secciones = [];
+        if ($anacategoriaId > 0) {
+            $conteo = $byGrupoId[$anacategoriaId] ?? [];
+            if ($conteo !== []) {
+                $secciones[] = $buildSeccion($anacategoriaId, $conteo);
+            }
+        } else {
+            $idsGrupos = array_keys($byGrupoId);
+            usort($idsGrupos, static function (int $a, int $b) use ($gruposOpts): int {
+                $oa = 999;
+                $ob = 999;
+                foreach ($gruposOpts as $g) {
+                    $id = (int) ($g['anacategoria_id'] ?? 0);
+                    if ($id === $a) {
+                        $oa = (int) ($g['orden'] ?? 999);
+                    }
+                    if ($id === $b) {
+                        $ob = (int) ($g['orden'] ?? 999);
+                    }
+                }
+                if ($oa !== $ob) {
+                    return $oa <=> $ob;
+                }
+
+                return $a <=> $b;
+            });
+            foreach ($idsGrupos as $gid) {
+                $secciones[] = $buildSeccion($gid, $byGrupoId[$gid] ?? []);
+            }
+        }
+
+        return [
+            'secciones'           => $secciones,
+            'ordenes_en_periodo'  => count($rows),
+            'grupos_opts'         => $gruposOpts,
+            'startDate'           => $startDate,
+            'endDate'             => $endDate,
+            'anacategoria_id'     => $anacategoriaId,
+            'subtitle'            => date('d/m/Y', strtotime($startDate)) . ' - ' . date('d/m/Y', strtotime($endDate)),
+        ];
+    }
+
+    /**
+     * Pruebas solicitadas en órdenes completas, agrupadas por grupo clínico (anacategoria) y detalle por análisis.
+     */
+    public function pruebasPorGrupoAnalisis()
+    {
+        $startDate      = $this->request->getGet('start') ?? date('Y-m-d');
+        $endDate        = $this->request->getGet('end') ?? date('Y-m-d');
+        $anacategoriaId = (int) ($this->request->getGet('anacategoria_id') ?? 0);
+        $payload        = $this->collectPruebasPorGrupoAnalisisPayload($startDate, $endDate, $anacategoriaId);
+
+        return view('reports/pruebas_por_grupo_analisis', array_merge($payload, [
+            'title'           => 'Pruebas por grupo de análisis clínico',
+            'current_module'  => 'reports',
+            'allowed_modules' => $this->allowed_modules,
+            'user_info'       => $this->user_info,
+        ]));
+    }
+
+    public function pruebasPorGrupoAnalisisPdf()
+    {
+        $startDate      = $this->request->getGet('start') ?? date('Y-m-d');
+        $endDate        = $this->request->getGet('end') ?? date('Y-m-d');
+        $anacategoriaId = (int) ($this->request->getGet('anacategoria_id') ?? 0);
+        $payload        = $this->collectPruebasPorGrupoAnalisisPayload($startDate, $endDate, $anacategoriaId);
+        ReportPdfDocument::download(
+            $this->safeReportPdfFilename('pruebas_por_grupo'),
+            'Pruebas por grupo de análisis',
+            (string) $payload['subtitle'],
+            'reports/pdf/content/pruebas_por_grupo_analisis',
+            [
+                'secciones'          => $payload['secciones'],
+                'ordenes_en_periodo' => $payload['ordenes_en_periodo'],
+            ]
+        );
+    }
+
     public function pruebasIncompletasFecha()
     {
         $startDate = $this->request->getGet('start') ?? date('Y-m-d');
@@ -523,13 +676,10 @@ class Reports extends SecureArea
     }
 
     /**
-     * Estadísticas en rango: pruebas, desglose por tipo, pacientes, grupo poblacional (config) y género.
+     * @return array{resumen: array, porGeneroOrdenes: array, porGeneroPacientes: array, poblacionGrupoRows: array, porPruebaRows: array}
      */
-    public function estadisticasLaboratorio()
+    private function collectEstadisticasLaboratorioPayload(string $startDate, string $endDate): array
     {
-        $startDate = $this->request->getGet('start') ?? date('Y-m-d');
-        $endDate   = $this->request->getGet('end') ?? date('Y-m-d');
-
         $rows = $this->reportModel->getRegistrosEstadisticasLaboratorio($startDate, $endDate);
 
         $poblaciones = model(PoblacionModel::class)->getAll();
@@ -550,12 +700,12 @@ class Reports extends SecureArea
             'pacientes_distintos'   => 0,
             'ordenes_sin_persona'   => 0,
         ];
-        $porGeneroOrdenes       = ['1' => 0, '2' => 0, '_' => 0];
-        $porGeneroPacientes     = ['1' => 0, '2' => 0, '_' => 0];
-        $seenPid                = [];
-        $porPoblacion           = [];
-        $conteoPorPruebaId      = [];
-        $pacientesPorPruebaId   = [];
+        $porGeneroOrdenes     = ['1' => 0, '2' => 0, '_' => 0];
+        $porGeneroPacientes   = ['1' => 0, '2' => 0, '_' => 0];
+        $seenPid              = [];
+        $porPoblacion         = [];
+        $conteoPorPruebaId    = [];
+        $pacientesPorPruebaId = [];
 
         foreach ($rows as $row) {
             $resumen['ordenes']++;
@@ -570,11 +720,10 @@ class Reports extends SecureArea
                 if ($prId < 1) {
                     continue;
                 }
-                // Misma noción que el reporte «Pruebas por fecha»: IDs en registro.pruebas (no exige regvalues).
                 $resumen['pruebas_realizadas']++;
                 $conteoPorPruebaId[$prId] = ($conteoPorPruebaId[$prId] ?? 0) + 1;
                 if ($pid > 0) {
-                    if (!isset($pacientesPorPruebaId[$prId])) {
+                    if (! isset($pacientesPorPruebaId[$prId])) {
                         $pacientesPorPruebaId[$prId] = [];
                     }
                     $pacientesPorPruebaId[$prId][$pid] = true;
@@ -584,7 +733,7 @@ class Reports extends SecureArea
             $gk = $this->generoKeyReporte($row['gender'] ?? null);
             $porGeneroOrdenes[$gk]++;
 
-            if ($pid > 0 && !isset($seenPid[$pid])) {
+            if ($pid > 0 && ! isset($seenPid[$pid])) {
                 $seenPid[$pid] = true;
                 $resumen['pacientes_distintos']++;
                 $porGeneroPacientes[$gk]++;
@@ -596,8 +745,8 @@ class Reports extends SecureArea
                 $ingreso = new \DateTime();
             }
 
-            $birth = !empty($row['birthday']) ? (string) $row['birthday'] : null;
-            $gen   = isset($row['gender']) && $row['gender'] !== '' ? (int) $row['gender'] : null;
+            $birth    = ! empty($row['birthday']) ? (string) $row['birthday'] : null;
+            $gen      = isset($row['gender']) && $row['gender'] !== '' ? (int) $row['gender'] : null;
             $matching = $registerService->getMatchingPoblacionIds($birth, $gen, $ingreso);
             $pobId    = $this->pickPrimaryPoblacionId($matching, $byPobId);
             $porPoblacion[$pobId] = ($porPoblacion[$pobId] ?? 0) + 1;
@@ -651,20 +800,48 @@ class Reports extends SecureArea
             ];
         }
 
-        return view('reports/estadisticas_laboratorio', [
-            'title'                => 'Estadísticas de laboratorio por período',
-            'current_module'       => 'reports',
-            'subtitle'             => date('d/m/Y', strtotime($startDate)) . ' - ' . date('d/m/Y', strtotime($endDate)),
-            'startDate'            => $startDate,
-            'endDate'              => $endDate,
+        return [
             'resumen'              => $resumen,
             'porGeneroOrdenes'     => $porGeneroOrdenes,
             'porGeneroPacientes'   => $porGeneroPacientes,
-            'poblacionGrupoRows'  => $poblacionGrupoRows,
+            'poblacionGrupoRows'   => $poblacionGrupoRows,
             'porPruebaRows'        => $porPruebaRows,
-            'allowed_modules'      => $this->allowed_modules,
-            'user_info'            => $this->user_info,
-        ]);
+        ];
+    }
+
+    /**
+     * Estadísticas en rango: pruebas, desglose por tipo, pacientes, grupo poblacional (config) y género.
+     */
+    public function estadisticasLaboratorio()
+    {
+        $startDate = $this->request->getGet('start') ?? date('Y-m-d');
+        $endDate   = $this->request->getGet('end') ?? date('Y-m-d');
+        $payload   = $this->collectEstadisticasLaboratorioPayload($startDate, $endDate);
+
+        return view('reports/estadisticas_laboratorio', array_merge($payload, [
+            'title'           => 'Estadísticas de laboratorio por período',
+            'current_module'  => 'reports',
+            'subtitle'        => date('d/m/Y', strtotime($startDate)) . ' - ' . date('d/m/Y', strtotime($endDate)),
+            'startDate'       => $startDate,
+            'endDate'         => $endDate,
+            'allowed_modules' => $this->allowed_modules,
+            'user_info'       => $this->user_info,
+        ]));
+    }
+
+    public function estadisticasLaboratorioPdf()
+    {
+        $startDate = $this->request->getGet('start') ?? date('Y-m-d');
+        $endDate   = $this->request->getGet('end') ?? date('Y-m-d');
+        $payload   = $this->collectEstadisticasLaboratorioPayload($startDate, $endDate);
+        $sub       = date('d/m/Y', strtotime($startDate)) . ' - ' . date('d/m/Y', strtotime($endDate));
+        ReportPdfDocument::download(
+            $this->safeReportPdfFilename('estadisticas_laboratorio'),
+            'Estadísticas de laboratorio',
+            $sub,
+            'reports/pdf/content/estadisticas_laboratorio',
+            $payload
+        );
     }
 
     private function generoKeyReporte($gender): string
@@ -1019,6 +1196,288 @@ class Reports extends SecureArea
 
         fclose($output);
         exit;
+    }
+
+    private function safeReportPdfFilename(string $base): string
+    {
+        return preg_replace('/[^A-Za-z0-9._-]+/', '_', $base) . '_' . date('Y-m-d') . '.pdf';
+    }
+
+    public function registrosFechaPdf()
+    {
+        $startDate = $this->request->getGet('start') ?? date('Y-m-d');
+        $endDate   = $this->request->getGet('end') ?? date('Y-m-d');
+        $data      = $this->reportModel->getRegistrosByDateRange($startDate, $endDate);
+        $totales   = $this->reportModel->getTotalesByDateRange($startDate, $endDate);
+        $sub       = date('d/m/Y', strtotime($startDate)) . ' - ' . date('d/m/Y', strtotime($endDate));
+        ReportPdfDocument::download(
+            $this->safeReportPdfFilename('registros_fecha'),
+            'Registros por fecha',
+            $sub,
+            'reports/pdf/content/registros_fecha',
+            ['data' => $data, 'totales' => $totales]
+        );
+    }
+
+    public function ingresosFechaPdf()
+    {
+        $startDate     = $this->request->getGet('start') ?? date('Y-m-d');
+        $endDate       = $this->request->getGet('end') ?? date('Y-m-d');
+        $facturables   = $this->reportModel->getIngresosByDateRange($startDate, $endDate);
+        $anulPorDia    = $this->reportModel->getIngresosAnuladosPorDia($startDate, $endDate);
+        $totales       = $this->reportModel->getTotalesByDateRange($startDate, $endDate);
+        $totalesAnul   = $this->reportModel->getTotalesAnuladosByDateRange($startDate, $endDate);
+        $byFecha       = [];
+        foreach ($facturables as $r) {
+            $f = $r['fecha'];
+            $byFecha[$f] = [
+                'fecha'               => $f,
+                'cantidad'            => (int) ($r['cantidad'] ?? 0),
+                'total'               => (float) ($r['total'] ?? 0),
+                'cobrado'             => (float) ($r['cobrado'] ?? 0),
+                'cantidad_anuladas'   => 0,
+                'total_anulado_ref'   => 0.0,
+                'cobrado_anulado_ref' => 0.0,
+            ];
+        }
+        foreach ($anulPorDia as $r) {
+            $f = $r['fecha'];
+            if (! isset($byFecha[$f])) {
+                $byFecha[$f] = [
+                    'fecha'               => $f,
+                    'cantidad'            => 0,
+                    'total'               => 0.0,
+                    'cobrado'             => 0.0,
+                    'cantidad_anuladas'   => 0,
+                    'total_anulado_ref'   => 0.0,
+                    'cobrado_anulado_ref' => 0.0,
+                ];
+            }
+            $byFecha[$f]['cantidad_anuladas']   = (int) ($r['cantidad'] ?? 0);
+            $byFecha[$f]['total_anulado_ref']   = (float) ($r['total'] ?? 0);
+            $byFecha[$f]['cobrado_anulado_ref'] = (float) ($r['cobrado'] ?? 0);
+        }
+        ksort($byFecha);
+        $data = array_values($byFecha);
+        $sub  = date('d/m/Y', strtotime($startDate)) . ' - ' . date('d/m/Y', strtotime($endDate));
+        ReportPdfDocument::download(
+            $this->safeReportPdfFilename('ingresos_fecha'),
+            'Ingresos por fecha',
+            $sub,
+            'reports/pdf/content/ingresos_fecha',
+            ['data' => $data, 'totales' => $totales, 'totalesAnulados' => $totalesAnul]
+        );
+    }
+
+    public function porDoctorPdf()
+    {
+        $startDate = $this->request->getGet('start') ?? date('Y-m-d');
+        $endDate   = $this->request->getGet('end') ?? date('Y-m-d');
+        $data      = $this->reportModel->getRegistrosByDoctor($startDate, $endDate);
+        $totales   = $this->reportModel->getTotalesByDateRange($startDate, $endDate);
+        $sub       = date('d/m/Y', strtotime($startDate)) . ' - ' . date('d/m/Y', strtotime($endDate));
+        ReportPdfDocument::download(
+            $this->safeReportPdfFilename('por_doctor'),
+            'Registros por doctor',
+            $sub,
+            'reports/pdf/content/por_doctor',
+            ['data' => $data, 'totales' => $totales]
+        );
+    }
+
+    public function pagosPdf()
+    {
+        $startDate = $this->request->getGet('start') ?? date('Y-m-d');
+        $endDate   = $this->request->getGet('end') ?? date('Y-m-d');
+
+        $todos                 = $this->reportModel->getReportePagos($startDate, $endDate);
+        $pendientes            = $this->reportModel->getPendientesPago($startDate, $endDate);
+        $pagosPagados          = $this->reportModel->getPagosPagadosDetalle($startDate, $endDate);
+        $totales               = $this->reportModel->getTotalesPagos($startDate, $endDate);
+        $resumenPagosPorTipo   = $this->reportModel->getResumenPagosPorTipo($startDate, $endDate);
+        $resumenPagosPorDia    = $this->reportModel->getResumenPagosPorDia($startDate, $endDate);
+        $resumenPagosPorDoctor = $this->reportModel->getResumenPagosPorDoctor($startDate, $endDate);
+        $tipoPagoMap           = ['1' => 'Efectivo', '2' => 'QR', '3' => 'Transferencia', '4' => 'Pendiente'];
+        $sub                   = date('d/m/Y', strtotime($startDate)) . ' - ' . date('d/m/Y', strtotime($endDate));
+
+        ReportPdfDocument::download(
+            $this->safeReportPdfFilename('pagos'),
+            'Reporte de pagos',
+            $sub,
+            'reports/pdf/content/pagos',
+            [
+                'tipoPagoMap'             => $tipoPagoMap,
+                'totales'                 => $totales,
+                'resumenPagosPorTipo'     => $resumenPagosPorTipo,
+                'pagosPagados'            => $pagosPagados,
+                'pendientes'              => $pendientes,
+                'resumenPagosPorDia'      => $resumenPagosPorDia,
+                'resumenPagosPorDoctor'   => $resumenPagosPorDoctor,
+                'todos'                   => $todos,
+            ]
+        );
+    }
+
+    public function pagosPendientesPdf()
+    {
+        $startDate  = $this->request->getGet('start') ?? date('Y-m-d');
+        $endDate    = $this->request->getGet('end') ?? date('Y-m-d');
+        $pendientes = $this->reportModel->getPendientesPago($startDate, $endDate);
+        $totalSaldo = 0.0;
+        foreach ($pendientes as $row) {
+            $totalSaldo += (float) ($row['saldo'] ?? 0);
+        }
+        $sub = date('d/m/Y', strtotime($startDate)) . ' - ' . date('d/m/Y', strtotime($endDate));
+        ReportPdfDocument::download(
+            $this->safeReportPdfFilename('pagos_pendientes'),
+            'Pendientes de pago',
+            $sub,
+            'reports/pdf/content/pagos_pendientes',
+            ['pendientes' => $pendientes, 'total_saldo' => $totalSaldo]
+        );
+    }
+
+    public function pagosCierresPdf()
+    {
+        $rows = [];
+        try {
+            $rows = $this->pagosCierreModel->getListado(500);
+        } catch (\Throwable $e) {
+        }
+        ReportPdfDocument::download(
+            $this->safeReportPdfFilename('pagos_cierres'),
+            'Cierres de pagos',
+            'Listado',
+            'reports/pdf/content/pagos_cierres',
+            ['cierres' => $rows]
+        );
+    }
+
+    public function cotizacionesGuardadasPdf()
+    {
+        $data = $this->toquoteModel->getAllCotizaciones(8000, 0);
+        ReportPdfDocument::download(
+            $this->safeReportPdfFilename('cotizaciones'),
+            'Cotizaciones guardadas',
+            'Hasta ' . count($data) . ' registro(s)',
+            'reports/pdf/content/cotizaciones_guardadas',
+            ['data' => $data]
+        );
+    }
+
+    public function pruebasFechaPdf()
+    {
+        $startDate = $this->request->getGet('start') ?? date('Y-m-d');
+        $endDate   = $this->request->getGet('end') ?? date('Y-m-d');
+        $data      = $this->reportModel->getPruebasPorFecha($startDate, $endDate);
+        $sub       = date('d/m/Y', strtotime($startDate)) . ' - ' . date('d/m/Y', strtotime($endDate));
+        ReportPdfDocument::download(
+            $this->safeReportPdfFilename('pruebas_fecha'),
+            'Pruebas realizadas por fecha',
+            $sub,
+            'reports/pdf/content/pruebas_fecha',
+            ['data' => $data]
+        );
+    }
+
+    public function pruebasIncompletasFechaPdf()
+    {
+        $startDate = $this->request->getGet('start') ?? date('Y-m-d');
+        $endDate   = $this->request->getGet('end') ?? date('Y-m-d');
+        $data      = $this->reportModel->getPruebasIncompletasPorFecha($startDate, $endDate);
+        $sub       = date('d/m/Y', strtotime($startDate)) . ' - ' . date('d/m/Y', strtotime($endDate));
+        ReportPdfDocument::download(
+            $this->safeReportPdfFilename('pruebas_incompletas'),
+            'Pruebas incompletas por fecha',
+            $sub,
+            'reports/pdf/content/pruebas_incompletas_fecha',
+            ['data' => $data]
+        );
+    }
+
+    public function pruebasAnuladasFechaPdf()
+    {
+        $startDate = $this->request->getGet('start') ?? date('Y-m-d');
+        $endDate   = $this->request->getGet('end') ?? date('Y-m-d');
+        $data      = $this->reportModel->getPruebasAnuladasPorFecha($startDate, $endDate);
+        $sub       = date('d/m/Y', strtotime($startDate)) . ' - ' . date('d/m/Y', strtotime($endDate));
+        ReportPdfDocument::download(
+            $this->safeReportPdfFilename('pruebas_anuladas'),
+            'Pruebas anuladas por fecha',
+            $sub,
+            'reports/pdf/content/pruebas_anuladas_fecha',
+            [
+                'data'                => $data,
+                'anulacionDisponible' => $this->reportModel->tieneCampoAnuladoEnRegistro(),
+            ]
+        );
+    }
+
+    public function insumosVencimientoPdf()
+    {
+        $reactivoModel = model(ReactivoModel::class);
+        $appConfig     = model(AppConfigModel::class);
+        $diasAlerta    = max(1, (int) ($appConfig->getValue('dias_alerta_vencimiento') ?: 40));
+        $lotes         = $reactivoModel->getTodosLotesParaReporte();
+        $hoy           = date('Y-m-d');
+        $enX           = date('Y-m-d', strtotime("+{$diasAlerta} days"));
+        foreach ($lotes as &$l) {
+            $venc = $l['fecha_vencimiento'] ?? null;
+            if (! $venc) {
+                $l['estado']       = 'sin_fecha';
+                $l['dias_restantes'] = null;
+                $l['estado_label'] = '-';
+            } else {
+                $diff = (strtotime($venc) - strtotime($hoy)) / 86400;
+                $l['dias_restantes'] = (int) round($diff);
+                if ($diff < 0) {
+                    $l['estado']       = 'vencido';
+                    $l['estado_label'] = 'Vencido';
+                } elseif ($venc <= $enX) {
+                    $l['estado']       = 'por_vencer';
+                    $l['estado_label'] = 'Por vencer (' . $l['dias_restantes'] . ' días)';
+                } else {
+                    $l['estado']       = 'ok';
+                    $l['estado_label'] = $l['dias_restantes'] . ' días';
+                }
+            }
+        }
+        unset($l);
+        ReportPdfDocument::download(
+            $this->safeReportPdfFilename('insumos_vencimiento'),
+            'Insumos por ingreso y vencimiento',
+            'Alerta ' . $diasAlerta . ' días',
+            'reports/pdf/content/insumos_vencimiento',
+            ['data' => $lotes, 'dias_alerta' => $diasAlerta]
+        );
+    }
+
+    public function costosPruebasPdf()
+    {
+        $busqueda = $this->request->getGet('busqueda') ?? '';
+        $data     = $this->reportModel->getCostosPruebas($busqueda);
+        $sub      = $busqueda !== '' ? ('Búsqueda: ' . $busqueda) : 'Catálogo completo';
+        ReportPdfDocument::download(
+            $this->safeReportPdfFilename('costos_pruebas'),
+            'Costos de pruebas',
+            $sub,
+            'reports/pdf/content/costos_pruebas',
+            ['data' => $data]
+        );
+    }
+
+    public function valoresReferenciaPdf()
+    {
+        $busqueda = $this->request->getGet('busqueda') ?? '';
+        $data     = $this->reportModel->getValoresReferencia($busqueda);
+        $sub      = $busqueda !== '' ? ('Búsqueda: ' . $busqueda) : 'Todos';
+        ReportPdfDocument::download(
+            $this->safeReportPdfFilename('valores_referencia'),
+            'Valores de referencia',
+            $sub,
+            'reports/pdf/content/valores_referencia',
+            ['data' => $data]
+        );
     }
 
     /**

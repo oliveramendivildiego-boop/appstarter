@@ -139,6 +139,9 @@ class Config extends SecureArea
         if (! $canManageTenants && $tab === 'tenant_subscriptions') {
             $tab = 'sistema';
         }
+        if (($this->request->getGet('tab') ?: '') === 'lab_validacion') {
+            $tab = 'lab_validacion';
+        }
 
         $subSvc                 = new TenantSubscriptionService();
         $subscription_payments  = $canManageTenants
@@ -153,8 +156,12 @@ class Config extends SecureArea
             $pdf_templates = [];
         }
 
+        $labValidation = $this->configService->getLabValidationStateForView();
+
         return view('config/manage', [
             'config'               => $config,
+            'lab_validators'       => $labValidation['validators'],
+            'lab_approvers'        => $labValidation['approvers'],
             'pdf_templates'        => $pdf_templates,
             'poblaciones'          => $poblaciones,
             'editar_poblacion'     => $editarPoblacion,
@@ -231,6 +238,27 @@ class Config extends SecureArea
         return $this->response
             ->setJSON($result)
             ->setStatusCode($statusCode);
+    }
+
+    /**
+     * Guarda validadores y aprobadores (pestaña Validación y aprobación).
+     */
+    public function saveLabValidation(): ResponseInterface
+    {
+        if (!$this->request->is('post')) {
+            return redirect()->to('config?tab=lab_validacion');
+        }
+
+        $result = $this->configService->saveLabValidationFromRequest($this->request->getPost(), $this->request);
+        if ($result['success'] ?? false) {
+            \App\Models\AuditoriaModel::log('config', 'lab_validacion_actualizar', null, 'lab_validators_json,lab_approvers_json');
+        }
+
+        if ($result['success'] ?? false) {
+            return redirect()->to('config?tab=lab_validacion')->with('success', $result['message']);
+        }
+
+        return redirect()->to('config?tab=lab_validacion')->with('error', $result['message']);
     }
 
     /**

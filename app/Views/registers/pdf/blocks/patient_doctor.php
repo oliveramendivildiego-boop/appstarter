@@ -19,6 +19,7 @@ $elementCtx = [
     'report_url'        => $report_url ?? '',
     'qr_data_uri'       => $qr_data_uri ?? '',
     'pdf_logo_data_uri' => $pdf_logo_data_uri ?? '',
+    'report_emitido_en' => $report_emitido_en ?? \App\Services\RegisterService::formatNowForReport(),
 ];
 ?>
 <div class="patient-section">

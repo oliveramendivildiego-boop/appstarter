@@ -8,12 +8,14 @@
 <?= $this->endSection() ?>
 
 <?= $this->section('content') ?>
+<div class="d-print-none">
 <?= view('partial/breadcrumb_nav', ['items' => [
     ['label' => lang('Module.module_reports'), 'url' => site_url('reports')],
     ['label' => $title ?? '', 'url' => null],
 ]]) ?>
+</div>
 
-<form method="get" action="<?= site_url('reports/estadisticasLaboratorio') ?>" class="row g-3 mb-4">
+<form method="get" action="<?= site_url('reports/estadisticasLaboratorio') ?>" class="row g-3 mb-4 d-print-none">
     <div class="col-auto">
         <label for="report_start" class="form-label">Desde</label>
         <input type="text" id="report_start" name="start" class="form-control flatpickr-input" value="<?= esc($startDate ?? '') ?>">
@@ -27,9 +29,13 @@
     </div>
 </form>
 
+<?= view('reports/partials/report_actions', [
+    'pdf_url' => site_url('reports/estadisticasLaboratorioPdf?' . http_build_query(['start' => $startDate ?? '', 'end' => $endDate ?? ''])),
+]) ?>
+
 <h4><?= esc($title ?? '') ?></h4>
 <p class="text-muted mb-4"><?= esc($subtitle ?? '') ?></p>
-<p class="text-muted small">Las <strong>pruebas realizadas</strong>, el desglose por prueba y el conteo de órdenes coinciden con <a href="<?= site_url('reports/pruebasFecha') ?>">Pruebas por fecha</a>: análisis en <code>registro.pruebas</code>, solo órdenes <strong>completas</strong> (hay filas en resultados), <strong>no anuladas ni eliminadas</strong>, con paciente, doctor y pago. Los nombres salen del catálogo cuando existen; si no, el ID. Los grupos poblacionales vienen de <a href="<?= site_url('config?tab=poblacion') ?>">Configuración → Población</a> según edad y sexo a la fecha de ingreso.</p>
+<p class="text-muted small d-print-none">Las <strong>pruebas realizadas</strong>, el desglose por prueba y el conteo de órdenes coinciden con <a href="<?= site_url('reports/pruebasFecha') ?>">Pruebas por fecha</a>: análisis en <code>registro.pruebas</code>, solo órdenes <strong>completas</strong> (hay filas en resultados), <strong>no anuladas ni eliminadas</strong>, con paciente, doctor y pago. Los nombres salen del catálogo cuando existen; si no, el ID. Los grupos poblacionales vienen de <a href="<?= site_url('config?tab=poblacion') ?>">Configuración → Población</a> según edad y sexo a la fecha de ingreso.</p>
 
 <?php
 $resumen = $resumen ?? [];

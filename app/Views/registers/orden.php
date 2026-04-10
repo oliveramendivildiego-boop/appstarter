@@ -59,6 +59,26 @@ $nombrePacienteOrden = trim(implode(' ', array_filter([
         page-break-inside: avoid;
         break-inside: avoid;
     }
+
+    /* Config: horizontal = 3 etiquetas por fila al imprimir solo códigos */
+    body.print-barcode-labels #barcode-labels-root.barcode-layout-horizontal {
+        display: flex !important;
+        flex-wrap: wrap !important;
+        align-items: flex-start !important;
+        justify-content: flex-start !important;
+    }
+    body.print-barcode-labels #barcode-labels-root.barcode-layout-horizontal .barcode-label-item {
+        flex: 0 0 33.333% !important;
+        width: 33.333% !important;
+        max-width: 33.333% !important;
+        box-sizing: border-box !important;
+        padding: 0.2rem 0.35rem !important;
+        margin-bottom: 0.5rem !important;
+    }
+    body.print-barcode-labels #barcode-labels-root.barcode-layout-horizontal .barcode-label-item svg {
+        max-width: 100% !important;
+        height: auto !important;
+    }
 }
 
 #barcode-labels-root {
@@ -112,6 +132,7 @@ $nombrePacienteOrden = trim(implode(' ', array_filter([
             </div>
             <div class="col-md-6 print-meta-col">
                 <div><strong>Paciente:</strong> <?= esc($nombrePacienteOrden) ?></div>
+                <div><strong>Edad:</strong> <?= esc($edad_paciente_orden ?? '-') ?></div>
                 <div><strong>Doctor:</strong> <?= esc($register_info->doctor_name ?? $register_info->doctor ?? '') ?></div>
             </div>
         </div>
@@ -157,20 +178,53 @@ $nombrePacienteOrden = trim(implode(' ', array_filter([
     document.addEventListener('DOMContentLoaded', function() {
         var orderId = <?= json_encode(registro_orden_display($register_info), JSON_UNESCAPED_UNICODE) ?>;
         var patientName = <?= json_encode($nombrePacienteOrden, JSON_UNESCAPED_UNICODE) ?>;
-        var barcodeOpts = {
+        var printLayout = <?= json_encode(($order_barcode_print_layout ?? 'vertical') === 'horizontal' ? 'horizontal' : 'vertical', JSON_UNESCAPED_UNICODE) ?>;
+        var sizePct = <?= (int) ($order_barcode_print_size_percent ?? 100) ?>;
+        if (sizePct < 30) sizePct = 100;
+        if (sizePct > 250) sizePct = 100;
+        var sz = sizePct / 100;
+        function scaleBarcodeOpts(base) {
+            var o = {
+                format: base.format,
+                displayValue: base.displayValue,
+                fontSize: Math.max(8, Math.round(base.fontSize * sz)),
+                height: Math.max(20, Math.round(base.height * sz)),
+                margin: Math.max(0, Math.round(base.margin * sz))
+            };
+            if (base.width != null) {
+                o.width = Math.max(0.5, Math.round(base.width * sz * 10) / 10);
+            }
+            return o;
+        }
+        var barcodeOptsMain = scaleBarcodeOpts({
             format: 'CODE128',
             displayValue: true,
             fontSize: 14,
             height: 55,
             margin: 6
-        };
+        });
+        var barcodeOptsLabelsVertical = scaleBarcodeOpts({
+            format: 'CODE128',
+            displayValue: true,
+            fontSize: 14,
+            height: 55,
+            margin: 6
+        });
+        var barcodeOptsLabelsHorizontal = scaleBarcodeOpts({
+            format: 'CODE128',
+            displayValue: true,
+            fontSize: 10,
+            height: 42,
+            width: 1.2,
+            margin: 2
+        });
         var svg = document.getElementById('orden-barcode');
         if (!svg || !orderId) return;
         if (typeof JsBarcode === 'undefined') {
             svg.outerHTML = '<div class="text-muted small">Orden #' + orderId + '</div>';
             return;
         }
-        JsBarcode(svg, orderId, barcodeOpts);
+        JsBarcode(svg, orderId, barcodeOptsMain);
 
         var labelsRoot = document.getElementById('barcode-labels-root');
         var copiesInput = document.getElementById('barcode-copies-input');
@@ -182,9 +236,14 @@ $nombrePacienteOrden = trim(implode(' ', array_filter([
                 if (n > 99) n = 99;
                 copiesInput.value = String(n);
                 labelsRoot.innerHTML = '';
+                labelsRoot.classList.remove('barcode-layout-horizontal');
+                if (printLayout === 'horizontal') {
+                    labelsRoot.classList.add('barcode-layout-horizontal');
+                }
+                var optsLabels = printLayout === 'horizontal' ? barcodeOptsLabelsHorizontal : barcodeOptsLabelsVertical;
                 for (var i = 0; i < n; i++) {
                     var wrap = document.createElement('div');
-                    wrap.className = 'text-center barcode-label-item mb-3';
+                    wrap.className = 'text-center barcode-label-item' + (printLayout === 'horizontal' ? '' : ' mb-3');
                     if (patientName) {
                         var nameEl = document.createElement('div');
                         nameEl.className = 'fw-semibold small mb-0';
@@ -194,14 +253,17 @@ $nombrePacienteOrden = trim(implode(' ', array_filter([
                     var el = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
                     wrap.appendChild(el);
                     labelsRoot.appendChild(wrap);
-                    JsBarcode(el, orderId, barcodeOpts);
+                    JsBarcode(el, orderId, optsLabels);
                 }
                 document.body.classList.add('print-barcode-labels');
                 window.print();
             });
             window.addEventListener('afterprint', function() {
                 document.body.classList.remove('print-barcode-labels');
-                if (labelsRoot) labelsRoot.innerHTML = '';
+                if (labelsRoot) {
+                    labelsRoot.innerHTML = '';
+                    labelsRoot.classList.remove('barcode-layout-horizontal');
+                }
             });
         }
     });

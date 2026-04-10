@@ -8,12 +8,14 @@
 <?= $this->endSection() ?>
 
 <?= $this->section('content') ?>
+<div class="d-print-none">
 <?= view('partial/breadcrumb_nav', ['items' => [
     ['label' => lang('Module.module_reports'), 'url' => site_url('reports')],
     ['label' => $title ?? '', 'url' => null],
 ]]) ?>
+</div>
 
-<form method="get" action="<?= site_url('reports/registrosFecha') ?>" class="row g-3 mb-4">
+<form method="get" action="<?= site_url('reports/registrosFecha') ?>" class="row g-3 mb-4 d-print-none">
     <div class="col-auto">
         <label for="report_start" class="form-label">Desde</label>
         <input type="text" id="report_start" name="start" class="form-control flatpickr-input" value="<?= esc($startDate ?? '') ?>">
@@ -26,6 +28,10 @@
         <button type="submit" class="btn btn-primary">Filtrar</button>
     </div>
 </form>
+
+<?= view('reports/partials/report_actions', [
+    'pdf_url' => site_url('reports/registrosFechaPdf?' . http_build_query(['start' => $startDate ?? '', 'end' => $endDate ?? ''])),
+]) ?>
 
 <h4><?= esc($title ?? '') ?></h4>
 <p class="text-muted"><?= esc($subtitle ?? '') ?></p>

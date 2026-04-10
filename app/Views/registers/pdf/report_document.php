@@ -30,6 +30,7 @@ $pdfBlockViews = [
     'patient_doctor' => 'registers/pdf/blocks/patient_doctor',
     'results'        => 'registers/pdf/blocks/results',
     'notes'          => 'registers/pdf/blocks/notes',
+    'lab_firmas'     => 'registers/pdf/blocks/lab_firmas',
     'footer'         => 'registers/pdf/blocks/footer',
 ];
 
@@ -41,10 +42,12 @@ $ctx = [
     'lab_config'        => $lab_config,
     'report_url'        => $report_url ?? '',
     'qr_data_uri'       => $qr_data_uri ?? '',
+    'report_emitido_en' => $report_emitido_en ?? \App\Services\RegisterService::formatNowForReport(),
     'pdf_layout'        => $pl,
     'pdf_logo_data_uri' => $pdf_logo_data_uri,
     'report_pria_tipo_muestra_nombre' => $report_pria_tipo_muestra_nombre ?? [],
     'report_pria_metodo_nombre'       => $report_pria_metodo_nombre ?? [],
+    'report_lab_firmas'               => $report_lab_firmas ?? [],
 ];
 ?>
 <?php if ($wmUri !== null && $wmUri !== ''): ?>
