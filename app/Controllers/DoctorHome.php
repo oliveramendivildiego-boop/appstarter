@@ -197,6 +197,8 @@ class DoctorHome extends BaseController
             return redirect()->to(site_url('doctor/home'))->with('error', 'Registro no encontrado');
         }
 
+        $publicToken = $this->registerModel->ensurePublicAccessToken($id);
+
         return view('doctor/viewreport', [
             'register_info'      => $data['register_info'],
             'labotests_namecate' => $id,
@@ -210,6 +212,7 @@ class DoctorHome extends BaseController
             'registerModel'      => $this->registerModel,
             'doctor_info'        => $this->doctorInfo,
             'report_emitido_en'  => $this->registerService->reportEmitidoEnForView($id),
+            'public_resultados_token' => $publicToken,
         ]);
     }
 
@@ -237,9 +240,12 @@ class DoctorHome extends BaseController
         }
 
         helper('qr');
-        $reportUrl = site_url('doctor/viewreport/' . $id);
+        $token     = $this->registerModel->ensurePublicAccessToken($id);
+        $reportUrl = ($token !== null && $token !== '')
+            ? site_url('resultados/' . $token)
+            : site_url('doctor/viewreport/' . $id);
         $qrDataUri = qr_base64($reportUrl, 100);
-        $emitidoEn = $this->registerService->reportEmitidoEnForView($id);
+        $emitidoEn = $this->registerService->lockReportEmitidoEnForPrintOrPdf($id);
         $html      = $this->registerService->renderReportPdfHtml($data, $reportUrl, $qrDataUri, $emitidoEn);
 
         $pdfService = new PdfService();

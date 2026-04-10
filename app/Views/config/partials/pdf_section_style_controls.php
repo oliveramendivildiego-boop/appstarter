@@ -1,7 +1,7 @@
 <?php
 declare(strict_types=1);
 
-/** @var string $section_key header|patient_doctor|footer */
+/** @var string $section_key header|patient_doctor|footer|lab_firmas */
 /** @var int $col_count */
 /** @var array<string, mixed> $sec_layout */
 $resolved = \App\Services\ReportPdfLayoutService::resolveSectionLayoutStyle($sec_layout, max(1, min(6, (int) $col_count)));

@@ -4,12 +4,12 @@
  *
  * @var string $padre
  * @var list<object|array<string,mixed>> $items
- * @var string $variant 'web' (viewreport) o 'pdf' (PDF / impresión)
+ * @var string $variant 'web' | 'pdf' | 'screen_pdf' (misma maquetación que PDF + inputs editables en pantalla)
  * @var array<int,string> $report_pria_tipo_muestra_nombre prianacategoria_id => nombre (config. en análisis clínico)
  * @var array<int,string> $report_pria_metodo_nombre prianacategoria_id => nombre del método (config.)
  */
 $variant = $variant ?? 'web';
-$isPdf = ($variant === 'pdf');
+$usePdfChrome = ($variant === 'pdf' || $variant === 'screen_pdf');
 
 $hijo = '';
 $priaIdTitulo = 0;
@@ -50,7 +50,7 @@ $segments = array_values(array_filter($segments, static function ($s) {
     return $s['title'] !== null || $s['items'] !== [];
 }));
 ?>
-<?php if ($isPdf): ?>
+<?php if ($usePdfChrome): ?>
 <div class="group-title"><?= esc($padre) ?> - <?= esc($hijo) ?></div>
 <?php if ($mostrarTipoMuestra): ?>
 <div class="report-tipo-muestra" style="font-size:9pt;color:#555;margin:0 0 10px 0;line-height:1.3;">Tipo de Muestra: <?= esc($tipoMuestraLinea) ?></div>
@@ -84,8 +84,8 @@ $segments = array_values(array_filter($segments, static function ($s) {
             break;
         }
     }
-    $mainTableClass = $isPdf ? 'results' : 'table mb-0';
-    $wrapOpen = ! $isPdf ? '<div class="table-responsive mb-3">' : '<div class="report-segment-table-wrap">';
+    $mainTableClass = $usePdfChrome ? 'results' : 'table mb-0';
+    $wrapOpen = ! $usePdfChrome ? '<div class="table-responsive mb-3">' : '<div class="report-segment-table-wrap">';
     $wrapClose = '</div>';
     $tieneConResultado = false;
     foreach ($segItems as $itChk) {
@@ -100,14 +100,14 @@ $segments = array_values(array_filter($segments, static function ($s) {
     <?php if ($tieneConResultado): ?>
     <?= $wrapOpen ?>
         <?php if ($titleObj !== null): ?>
-            <?php if ($isPdf): ?>
+            <?php if ($usePdfChrome): ?>
             <div class="report-segment-title pdf-card-header"><?= esc($titleObj->nombre ?? '') ?></div>
             <?php else: ?>
             <div class="report-segment-title-web px-2 py-2 mb-2 bg-secondary bg-opacity-10 border-start border-4 border-secondary rounded-end fw-semibold text-uppercase small"><?= esc($titleObj->nombre ?? '') ?></div>
             <?php endif; ?>
         <?php endif; ?>
         <table class="<?= esc($mainTableClass) ?>">
-            <thead<?= $isPdf ? '' : ' class="thead-dark"' ?>>
+            <thead<?= $usePdfChrome ? '' : ' class="thead-dark"' ?>>
                 <tr>
                     <th>ANÁLISIS</th>
                     <th class="text-center">RESULTADO</th>
@@ -126,7 +126,7 @@ $segments = array_values(array_filter($segments, static function ($s) {
                     }
                     $aid = $item->secanacategoria_id ?? uniqid();
                     ?>
-                    <?php if (! $isPdf): ?>
+                    <?php if ($variant !== 'pdf'): ?>
                     <input type="hidden" id="analisis_<?= esc($aid) ?>" name="analisis_<?= esc($aid) ?>" class="analisis" padre="<?= esc($padre) ?>" hijo="<?= esc($hijo) ?>" analisis="<?= esc($item->nombre ?? '') ?>" value="<?= esc($item->regvalues ?? '') ?>" unidad="<?= esc($item->umedida ?? '') ?>" min="<?= esc($item->valor_min ?? '') ?>" max="<?= esc($item->valor_max ?? '') ?>">
                     <?php endif; ?>
                     <?php
@@ -155,12 +155,12 @@ $segments = array_values(array_filter($segments, static function ($s) {
                         <tr>
                             <td><?= esc($item->nombre ?? '') ?></td>
                             <?php if (! $conRefEnSeg): ?>
-                            <td class="text-center <?= $class ?><?= $isPdf && $isOutPdf ? ' out-range' : '' ?>"><?= esc($resMostrar) ?></td>
+                            <td class="text-center <?= $class ?><?= $usePdfChrome && $isOutPdf ? ' out-range' : '' ?>"><?= esc($resMostrar) ?></td>
                             <?php elseif ($itemConRef): ?>
-                            <td class="text-center <?= $class ?><?= $isPdf && $isOutPdf ? ' out-range' : '' ?>"><?= esc($resMostrar) ?></td>
-                            <td class="text-center<?= $isPdf ? ' ref-range' : '' ?>"><?= esc($refMostrar) ?></td>
+                            <td class="text-center <?= $class ?><?= $usePdfChrome && $isOutPdf ? ' out-range' : '' ?>"><?= esc($resMostrar) ?></td>
+                            <td class="text-center<?= $usePdfChrome ? ' ref-range' : '' ?>"><?= esc($refMostrar) ?></td>
                             <?php else: ?>
-                            <td class="text-center <?= $class ?><?= $isPdf && $isOutPdf ? ' out-range' : '' ?>" colspan="2"><?= esc($resMostrar) ?></td>
+                            <td class="text-center <?= $class ?><?= $usePdfChrome && $isOutPdf ? ' out-range' : '' ?>" colspan="2"><?= esc($resMostrar) ?></td>
                             <?php endif; ?>
                         </tr>
                     <?php endif; ?>
@@ -182,18 +182,18 @@ $segments = array_values(array_filter($segments, static function ($s) {
     ?>
     <?php if ($sinEnSeg): ?>
         <?php
-        $wrapSinOpen = ! $isPdf ? '<div class="table-responsive mt-1 mb-4">' : '<div class="report-segment-table-wrap report-segment-sin-ref">';
+        $wrapSinOpen = ! $usePdfChrome ? '<div class="table-responsive mt-1 mb-4">' : '<div class="report-segment-table-wrap report-segment-sin-ref">';
         ?>
         <?= $wrapSinOpen ?>
             <?php if ($titleObj !== null): ?>
-                <?php if ($isPdf): ?>
+                <?php if ($usePdfChrome): ?>
                 <div class="report-segment-title pdf-card-header"><?= esc($titleObj->nombre ?? '') ?></div>
                 <?php else: ?>
                 <div class="report-segment-title-web px-2 py-2 mb-2 bg-secondary bg-opacity-10 border-start border-4 border-secondary rounded-end fw-semibold text-uppercase small"><?= esc($titleObj->nombre ?? '') ?></div>
                 <?php endif; ?>
             <?php endif; ?>
-            <table class="<?= esc($mainTableClass) ?>"<?= $isPdf ? ' style="margin-top:0;"' : '' ?>>
-                <thead<?= $isPdf ? '' : ' class="thead-dark"' ?>>
+            <table class="<?= esc($mainTableClass) ?>"<?= $usePdfChrome ? ' style="margin-top:0;"' : '' ?>>
+                <thead<?= $usePdfChrome ? '' : ' class="thead-dark"' ?>>
                     <tr>
                         <th>ANÁLISIS</th>
                         <th class="text-center">RANGO REFERENCIAL</th>
@@ -214,7 +214,7 @@ $segments = array_values(array_filter($segments, static function ($s) {
                         ?>
                             <tr>
                                 <td><?= esc($item->nombre ?? '') ?></td>
-                                <td class="text-center<?= $isPdf ? ' ref-range' : '' ?>"><?= esc($refMostrar) ?></td>
+                                <td class="text-center<?= $usePdfChrome ? ' ref-range' : '' ?>"><?= esc($refMostrar) ?></td>
                             </tr>
                     <?php endforeach; ?>
                 </tbody>

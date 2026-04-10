@@ -35,7 +35,14 @@ body {
 .pdf-section-table td {
     word-wrap: break-word;
     overflow-wrap: break-word;
+}
+/* vertical-align por defecto solo donde no aplica la cuadrícula (celdas sin .pdf-cell).
+ * Las celdas .pdf-cell llevan text-align y vertical-align en línea según la plantilla. */
+.pdf-section-table td:not(.pdf-cell) {
     vertical-align: top;
+}
+.pdf-section-table td.pdf-cell > .pdf-el-item {
+    text-align: inherit;
 }
 .pdf-section-table .header-piece,
 .pdf-section-table .footer-piece,
@@ -305,6 +312,22 @@ table.results td {
     background: transparent !important;
     padding: 0 !important;
     vertical-align: bottom;
+}
+/* Cuadrícula del bloque firmas (misma lógica que paciente/médico): celdas con estilo corporativo */
+.lab-firmas-pdf-block .pdf-section-table td.pdf-cell {
+    background: var(--pdf-lf-body-bg, #ffffff);
+    color: var(--pdf-lf-body-color, #333333);
+    font-family: var(--pdf-lf-font-family, "DejaVu Sans"), sans-serif;
+    font-size: var(--pdf-lf-font-size, 9.5pt);
+    font-weight: var(--pdf-lf-font-weight, normal);
+    font-style: var(--pdf-lf-font-style, normal);
+    text-transform: var(--pdf-lf-transform, none);
+    line-height: inherit;
+    border: 1px solid #ddd;
+    /* No forzar vertical-align ni text-align: vienen del estilo inline de la plantilla */
+}
+.lab-firmas-pdf-block .pdf-section-table {
+    margin-bottom: 6px;
 }
 .report-segment-table-wrap {
     margin: 0 0 12px 0;

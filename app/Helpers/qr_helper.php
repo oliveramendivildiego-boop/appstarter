@@ -24,7 +24,9 @@ if (!function_exists('qr_base64')) {
                 encoding: new \Endroid\QrCode\Encoding\Encoding('UTF-8'),
                 errorCorrectionLevel: \Endroid\QrCode\ErrorCorrectionLevel::Medium,
                 size: $size,
-                margin: 10
+                margin: 10,
+                foregroundColor: new \Endroid\QrCode\Color\Color(0, 0, 0, 0),
+                backgroundColor: new \Endroid\QrCode\Color\Color(255, 255, 255, 127),
             );
             $result = $builder->build();
             $mime   = $result->getMimeType();

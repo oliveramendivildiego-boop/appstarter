@@ -11,16 +11,26 @@ $lab  = is_array($lab_config ?? null) ? $lab_config : [];
 $ts   = \App\Services\ReportPdfLayoutService::normalizeTextStyle($pdf_text_style ?? []);
 
 $labelsPdf = [
+    'paciente_nombre'    => 'Paciente:',
+    'paciente_genero'    => 'Género:',
     'paciente_edad'      => 'Edad:',
     'paciente_telefono'  => 'Teléfono:',
     'medico'             => 'Médico:',
+    'fecha_recepcion'    => 'Fecha de recepción:',
+    'fecha_reporte'      => 'Fecha de reporte:',
     'numero_orden'       => 'No. Orden:',
 ];
 
 $reportEmitidoEl = (string) ($report_emitido_en ?? \App\Services\RegisterService::formatNowForReport());
 
-$valueOf = static function (string $id) use ($paciente, $doctor, $register_info): string {
+$valueOf = static function (string $id) use ($paciente, $doctor, $register_info, $reportEmitidoEl): string {
     switch ($id) {
+        case 'paciente_nombre':
+            $nom = trim(($paciente->first_name ?? '') . ' ' . ($paciente->last_name_fa ?? '') . ' ' . ($paciente->last_name_mom ?? ''));
+
+            return $nom !== '' ? $nom : '—';
+        case 'paciente_genero':
+            return paciente_genero_texto($paciente);
         case 'paciente_edad':
             return (string) ($paciente->edad ?? '-');
         case 'paciente_telefono':
@@ -29,6 +39,12 @@ $valueOf = static function (string $id) use ($paciente, $doctor, $register_info)
             $tit = ((int) ($doctor->gender ?? 0) === 1) ? 'Dr.' : 'Dra.';
 
             return $tit . ' ' . ($doctor->name ?? '-');
+        case 'fecha_recepcion':
+            $rec = (string) ($register_info->recepcion_fecha_hora ?? '');
+
+            return $rec !== '' ? $rec : '—';
+        case 'fecha_reporte':
+            return $reportEmitidoEl;
         case 'numero_orden':
             return registro_orden_display($register_info);
         default:
@@ -49,38 +65,6 @@ if ($logoDataUri === '' && $type === 'logo') {
         }
         $logoDataUri = 'data:' . ($mime ?: 'image/png') . ';base64,' . $logoData;
     }
-}
-
-if ($type === 'paciente_nombre') {
-    $nom = trim(($paciente->first_name ?? '') . ' ' . ($paciente->last_name_fa ?? '') . ' ' . ($paciente->last_name_mom ?? ''));
-    ?>
-                <div class="patient-line">
-                    <span class="label">Paciente:</span>
-                    <?= esc($nom !== '' ? $nom : '—') ?>
-                </div>
-                <div class="patient-line">
-                    <span class="label">Género:</span>
-                    <?= esc(paciente_genero_texto($paciente)) ?>
-                </div>
-    <?php
-
-    return;
-}
-
-if ($type === 'fecha_ingreso') {
-    $rec = (string) ($register_info->recepcion_fecha_hora ?? '');
-    ?>
-                <div class="patient-line">
-                    <span class="label">Fecha de recepción:</span>
-                    <?= esc($rec !== '' ? $rec : '—') ?>
-                </div>
-                <div class="patient-line">
-                    <span class="label">Fecha de reporte:</span>
-                    <?= esc($reportEmitidoEl) ?>
-                </div>
-    <?php
-
-    return;
 }
 
 if (isset($labelsPdf[$type])) {
@@ -176,5 +160,76 @@ switch ($type) {
                 <div class="footer-piece footer-piece-policy"><small><?= esc($lab['return_policy']) ?></small></div>
             <?php
         }
+        break;
+
+    case 'lab_firmas_title':
+        $lfS = is_array($lab_firmas_style ?? null) ? $lab_firmas_style : [];
+        $tit = (string) ($lfS['section_title'] ?? 'VALIDACIÓN Y APROBACIÓN');
+        $shadowMap = [
+            'none'   => 'none',
+            'soft'   => '0.4px 0.4px 1px rgba(0,0,0,0.28)',
+            'medium' => '0.7px 0.7px 1.4px rgba(0,0,0,0.35)',
+            'strong' => '1px 1px 2px rgba(0,0,0,0.45)',
+        ];
+        $sh = $shadowMap[$ts['text_shadow']] ?? 'none';
+        $titleStyle = 'margin:0;box-sizing:border-box;'
+            . 'font-family:' . $ts['font_family'] . ';'
+            . 'font-size:' . $ts['font_size_pt'] . 'pt;'
+            . 'font-weight:' . $ts['font_weight'] . ';'
+            . 'color:' . $ts['font_color'] . ';'
+            . 'font-style:' . $ts['font_style'] . ';'
+            . 'text-transform:' . $ts['text_transform'] . ';'
+            . 'letter-spacing:' . $ts['letter_spacing_em'] . 'em;'
+            . 'line-height:' . $ts['line_height'] . ';'
+            . 'text-shadow:' . $sh . ';';
+        ?>
+                <div class="group-title pdf-lab-f-title" style="<?= esc($titleStyle, 'attr') ?>"><?= esc($tit) ?></div>
+        <?php
+        break;
+
+    case 'lab_firmas_validator':
+        $lfS = is_array($lab_firmas_style ?? null) ? $lab_firmas_style : [];
+        $fr  = is_array($pdf_firma_row ?? null) ? $pdf_firma_row : [];
+        $nm  = trim((string) ($fr['validator_name'] ?? ''));
+        ?>
+                <div class="pdf-lab-f-sublabel" style="opacity:0.75;font-size:0.92em;margin-bottom:4px;"><?= esc($lfS['label_validator'] ?? 'Validado por:') ?></div>
+                <div><?= esc($nm !== '' ? $nm : '—') ?></div>
+        <?php
+        break;
+
+    case 'lab_firmas_seal':
+        $lfS    = is_array($lab_firmas_style ?? null) ? $lab_firmas_style : [];
+        $fr     = is_array($pdf_firma_row ?? null) ? $pdf_firma_row : [];
+        $seal   = trim((string) ($fr['approver_seal'] ?? ''));
+        $sealUri = ($seal !== '') ? report_image_data_uri($seal) : '';
+        ?>
+                <div class="pdf-lab-f-sublabel" style="opacity:0.75;font-size:0.92em;margin-bottom:6px;"><?= esc($lfS['label_seal'] ?? 'Sello') ?></div>
+                <?php if ($sealUri !== ''): ?>
+                    <img src="<?= esc($sealUri, 'attr') ?>" alt="" class="pdf-lab-f-img" style="max-height:110px;max-width:100%;">
+                <?php else: ?>
+                    <div style="opacity:0.6;">—</div>
+                <?php endif; ?>
+        <?php
+        break;
+
+    case 'lab_firmas_approver':
+        $lfS   = is_array($lab_firmas_style ?? null) ? $lab_firmas_style : [];
+        $fr    = is_array($pdf_firma_row ?? null) ? $pdf_firma_row : [];
+        $sig   = trim((string) ($fr['approver_signature'] ?? ''));
+        $sigUri = ($sig !== '') ? report_image_data_uri($sig) : '';
+        $apNm  = trim((string) ($fr['approver_name'] ?? ''));
+        $cargo = trim((string) ($fr['approver_cargo'] ?? ''));
+        ?>
+                <div class="pdf-lab-f-sublabel" style="opacity:0.75;font-size:0.92em;margin-bottom:6px;"><?= esc($lfS['label_approver'] ?? 'Aprobado por:') ?></div>
+                <?php if ($sigUri !== ''): ?>
+                    <div style="margin-bottom:8px;">
+                        <img src="<?= esc($sigUri, 'attr') ?>" alt="" class="pdf-lab-f-img" style="max-height:72px;max-width:220px;">
+                    </div>
+                <?php endif; ?>
+                <div style="font-weight:600;margin-top:4px;"><?= esc($apNm !== '' ? $apNm : '—') ?></div>
+                <?php if ($cargo !== ''): ?>
+                    <div style="margin-top:6px;opacity:0.85;font-size:0.95em;"><span style="opacity:0.75;"><?= esc($lfS['label_cargo'] ?? 'Cargo:') ?></span> <?= esc($cargo) ?></div>
+                <?php endif; ?>
+        <?php
         break;
 }

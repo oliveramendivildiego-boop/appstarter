@@ -1,10 +1,13 @@
-<?= $this->extend('layouts/doctor') ?>
-<?= $this->section('title') ?>Reporte<?= $this->endSection() ?>
+<?= $this->extend('layouts/public_resultados') ?>
+<?= $this->section('title') ?>Resultados<?= $this->endSection() ?>
 <?= $this->section('content') ?>
+<?php
+$token = trim((string) ($public_resultados_token ?? ''));
+$publicBase = $token !== '' ? site_url('resultados/' . $token) : site_url();
+?>
 <nav aria-label="breadcrumb" class="mb-3">
     <ol class="breadcrumb">
-        <li class="breadcrumb-item"><a href="<?= site_url('doctor/home') ?>">Mi panel</a></li>
-        <li class="breadcrumb-item active">Reporte #<?= esc((string) ($labotests_namecate ?? '')) ?></li>
+        <li class="breadcrumb-item active">Resultados de laboratorio</li>
     </ol>
 </nav>
 
@@ -19,12 +22,9 @@
         <img src="<?= esc($logoUrl) ?>" alt="Logo" class="report-logo-preview">
     </div>
     <div class="col-md-6 text-center">
-        <?php
-        $qrTarget = ! empty($public_resultados_token)
-            ? site_url('resultados/' . $public_resultados_token)
-            : current_url();
-        ?>
-        <img src="<?= site_url('qr/generate') ?>?data=<?= urlencode($qrTarget) ?>&size=120" alt="QR" /><br/>
+        <?php if ($token !== ''): ?>
+        <img src="<?= site_url('qr/generate') ?>?data=<?= urlencode($publicBase) ?>&size=120" alt="QR" /><br/>
+        <?php endif; ?>
         <?= esc($layoutCfg['website'] ?? '') ?>
     </div>
 </div>
@@ -54,9 +54,13 @@ if (empty($grupos)): ?>
 foreach ($grupos as $padre => $items):
     $nombreVista = strtolower($padre);
     $viewName = 'registers/analisis/default';
-    if ($nombreVista === 'hematologia') $viewName = 'registers/analisis/hemograma';
-    elseif ($nombreVista === 'orina') $viewName = 'registers/analisis/orina';
-    elseif ($nombreVista === 'heces') $viewName = 'registers/analisis/heces';
+    if ($nombreVista === 'hematologia') {
+        $viewName = 'registers/analisis/hemograma';
+    } elseif ($nombreVista === 'orina') {
+        $viewName = 'registers/analisis/orina';
+    } elseif ($nombreVista === 'heces') {
+        $viewName = 'registers/analisis/heces';
+    }
     echo view($viewName, [
         'grupos' => [$padre => $items],
         'report_pria_tipo_muestra_nombre' => $report_pria_tipo_muestra_nombre ?? [],
@@ -66,19 +70,21 @@ endforeach;
 endif;
 ?>
 
+<?php $notaResultado = trim((string)($register_info->comentario_resultado ?? '')); ?>
+<?php if ($notaResultado !== ''): ?>
+<div class="card mt-3">
+    <div class="card-header"><strong>NOTAS</strong></div>
+    <div class="card-body">
+        <div style="white-space: pre-wrap;"><?= esc($notaResultado) ?></div>
+    </div>
+</div>
+<?php endif; ?>
+
 <?= view('registers/partials/report_lab_firmas', ['report_lab_firmas' => $report_lab_firmas ?? []]) ?>
 
 <div class="text-center mt-3">
-    <a href="<?= site_url('doctor/home') ?>" class="btn btn-secondary">
-        <i class="fa-solid fa-arrow-left me-1"></i> Volver
-    </a>
-    <?php $pubTok = trim((string) ($public_resultados_token ?? '')); ?>
-    <?php if ($pubTok !== ''): ?>
-    <a href="<?= site_url('resultados/' . $pubTok . '/pdf') ?>" class="btn btn-success" target="_blank" rel="noopener">
-        <i class="fa-solid fa-file-pdf me-1"></i> Descargar PDF
-    </a>
-    <?php else: ?>
-    <a href="<?= site_url('doctor/pdf/' . ($labotests_namecate ?? 0)) ?>" class="btn btn-success" target="_blank">
+    <?php if ($token !== ''): ?>
+    <a href="<?= site_url('resultados/' . $token . '/pdf') ?>" class="btn btn-success" target="_blank" rel="noopener">
         <i class="fa-solid fa-file-pdf me-1"></i> Descargar PDF
     </a>
     <?php endif; ?>

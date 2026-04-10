@@ -1,0 +1,5 @@
+-- Obsoleto: el esquema se aplica con migraciones de CodeIgniter.
+-- Ejecute desde la raíz del proyecto:
+--   php spark migrate
+--
+-- Migración: app/Database/Migrations/2026-04-09-150000_RegistroPublicAccessToken.php

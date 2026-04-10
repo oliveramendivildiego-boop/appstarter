@@ -1,5 +1,18 @@
 <?= $this->extend('layouts/main') ?>
 <?= $this->section('title') ?>Reporte<?= $this->endSection() ?>
+
+<?= $this->section('head_extra') ?>
+<?= view('registers/partials/report_pdf_theme_styles', [
+    'pdf_layout'                     => $pdf_layout ?? [],
+    'use_sheet_padding_for_margins' => true,
+]) ?>
+<style>
+.viewreport-pdf-shell { width: 100%; overflow-x: auto; }
+.viewreport-pdf-shell .pdf-watermark-layer { z-index: 0; }
+.viewreport-pdf-shell .pdf-main-stack { position: relative; z-index: 1; }
+</style>
+<?= $this->endSection() ?>
+
 <?= $this->section('content') ?>
 <?php if (session()->getFlashdata('success')): ?>
 <div class="alert alert-success"><?= esc(session()->getFlashdata('success')) ?></div>
@@ -13,36 +26,6 @@
 ]]) ?>
 
 <fieldset id="customer_basic_info">
-<div class="row mb-3">
-    <div class="col-md-6">
-        <?php
-        helper(['layout', 'registro']);
-        $layoutCfg = layout_config();
-        $logoUrl = base_url($layoutCfg['logo'] ?? 'images/logo-john.png');
-        ?>
-        <img src="<?= esc($logoUrl) ?>" alt="Logo" class="report-logo-preview">
-    </div>
-    <div class="col-md-6 text-center">
-        <?php $reportPageUrl = site_url('registers/viewreport/' . (int) ($labotests_namecate ?? 0)); ?>
-        <img src="<?= site_url('qr/generate') ?>?data=<?= urlencode($reportPageUrl) ?>&size=120" alt="QR" /><br/>
-        <?= esc($layoutCfg['website'] ?? '') ?>
-    </div>
-</div>
-<div class="row mb-3">
-    <div class="col-md-6">
-        <span class="fw-bold">Paciente:</span> <?= esc(($paciente->first_name ?? '') . ' ' . ($paciente->last_name_fa ?? '') . ' ' . ($paciente->last_name_mom ?? '')) ?><br/>
-        <span class="fw-bold">Género:</span> <?= esc(paciente_genero_texto($paciente)) ?><br/>
-        <span class="fw-bold">Edad:</span> <?= esc($paciente->edad ?? '-') ?><br/>
-        <span class="fw-bold">Teléfono:</span> <?= esc($paciente->phone_number ?? '') ?>
-    </div>
-    <div class="col-md-6">
-        <?php $tituloMedico = ((int)($doctor->gender ?? 0) === 1) ? 'Dr.' : 'Dra.'; ?>
-        <span class="fw-bold">Médico:</span> <?= $tituloMedico ?> <?= esc($doctor->name ?? '') ?><br/>
-        <span class="fw-bold">Fecha de recepción:</span> <?= esc($register_info->recepcion_fecha_hora ?? '') ?><br/>
-        <span class="fw-bold">Fecha de reporte:</span> <?= esc($report_emitido_en ?? \App\Services\RegisterService::formatNowForReport()) ?><br/>
-        <span class="fw-bold">No. Orden:</span> <?= esc(registro_orden_display($register_info)) ?>
-    </div>
-</div>
 <input type="hidden" name="registro_id" id="registro_id" value="<?= (int)($labotests_namecate ?? 0) ?>">
 
 <?php
@@ -52,32 +35,35 @@ if (empty($grupos)): ?>
     <i class="fa-solid fa-info-circle me-2"></i>No hay resultados cargados para esta orden. Complete los resultados en <a href="<?= site_url('registers/view/' . (int)($labotests_namecate ?? 0)) ?>">Editar registro</a>.
 </div>
 <?php else:
-foreach ($grupos as $padre => $items):
-    $nombreVista = strtolower($padre);
-    $viewName = 'registers/analisis/default';
-    if ($nombreVista === 'hematologia') $viewName = 'registers/analisis/hemograma';
-    elseif ($nombreVista === 'orina') $viewName = 'registers/analisis/orina';
-    elseif ($nombreVista === 'heces') $viewName = 'registers/analisis/heces';
-    echo view($viewName, [
-        'grupos' => [$padre => $items],
-        'report_pria_tipo_muestra_nombre' => $report_pria_tipo_muestra_nombre ?? [],
-        'report_pria_metodo_nombre'       => $report_pria_metodo_nombre ?? [],
-    ]);
-endforeach;
-endif;
+helper(['qr', 'registro']);
+$rid = (int) ($labotests_namecate ?? 0);
+$reportUrl = ! empty($public_resultados_token)
+    ? site_url('resultados/' . $public_resultados_token)
+    : site_url('registers/viewreport/' . $rid);
+$qr_data_uri = qr_base64($reportUrl, 120);
 ?>
-
-<?php $notaResultado = trim((string)($register_info->comentario_resultado ?? '')); ?>
-<?php if ($notaResultado !== ''): ?>
-<div class="card mt-3">
-    <div class="card-header"><strong>NOTAS</strong></div>
-    <div class="card-body">
-        <div style="white-space: pre-wrap;"><?= esc($notaResultado) ?></div>
+<div class="viewreport-pdf-shell">
+    <div class="viewreport-pdf-sheet">
+        <?= view('registers/pdf/report_document', [
+            'pdf_layout'                      => $pdf_layout ?? [],
+            'register_info'                   => $register_info,
+            'paciente'                        => $paciente,
+            'doctor'                          => $doctor,
+            'grupos'                          => $grupos,
+            'lab_config'                      => $lab_config ?? [],
+            'report_url'                      => $reportUrl,
+            'qr_data_uri'                     => $qr_data_uri,
+            'report_emitido_en'               => $report_emitido_en ?? \App\Services\RegisterService::formatNowForReport(),
+            'pdf_watermark_uri'               => null,
+            'pdf_logo_data_uri'               => null,
+            'report_pria_tipo_muestra_nombre' => $report_pria_tipo_muestra_nombre ?? [],
+            'report_pria_metodo_nombre'       => $report_pria_metodo_nombre ?? [],
+            'report_lab_firmas'               => $report_lab_firmas ?? [],
+            'analisis_variant'                => 'screen_pdf',
+        ]) ?>
     </div>
 </div>
 <?php endif; ?>
-
-<?= view('registers/partials/report_lab_firmas', ['report_lab_firmas' => $report_lab_firmas ?? []]) ?>
 
 <div class="text-center mt-3">
     <button id="guardaranalisis" name="guardaranalisis" class="btn btn-primary">Guardar</button>

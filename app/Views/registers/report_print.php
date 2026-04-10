@@ -25,7 +25,7 @@
     $ch = \App\Services\ReportPdfLayoutService::normalizeCardHeaderStyle($ps['card_header'] ?? []);
     $hs = \App\Services\ReportPdfLayoutService::normalizeHeaderSectionStyle($ps['header_section'] ?? []);
     $ns = \App\Services\ReportPdfLayoutService::normalizeNotesStyle($ps['notes'] ?? []);
-    $lf = \App\Services\ReportPdfLayoutService::normalizeNotesStyle($ps['lab_firmas'] ?? []);
+    $lf = \App\Services\ReportPdfLayoutService::normalizeLabFirmasStyle($ps['lab_firmas'] ?? []);
     $rs = \App\Services\ReportPdfLayoutService::normalizeResultsTableStyle($ps['results_table'] ?? []);
     $rsBodyBg = ! empty($rs['body_transparent']) ? 'transparent' : (string) $rs['body_bg_color'];
     $rsSegBg = ! empty($rs['segment_transparent']) ? 'transparent' : (string) $rs['segment_bg_color'];

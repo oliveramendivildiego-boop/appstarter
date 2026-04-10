@@ -28,6 +28,8 @@ $routes->get('doctor/pdf/(:num)', 'DoctorHome::pdf/$1');
 $routes->post('doctor/search', 'DoctorHome::search');
 $routes->get('doctor/logout', 'DoctorHome::logout');
 $routes->get('qr/generate', 'Qr::generate');
+$routes->get('resultados/(:segment)/pdf', 'PublicResultados::pdf/$1');
+$routes->get('resultados/(:segment)', 'PublicResultados::view/$1');
 $routes->post('login/google_login', 'Login::googleLogin');
 
 // Customers
@@ -222,6 +224,7 @@ $routes->get('registers/insumos/(:num)', 'Registers::insumos/$1');
 $routes->get('registers/viewreport/(:num)', 'Registers::viewreport/$1');
 $routes->get('registers/printreport/(:num)', 'Registers::printreport/$1');
 $routes->get('registers/pdf/(:num)', 'Registers::pdf/$1');
+$routes->get('registers/qrResultadosPng/(:num)', 'Registers::qrResultadosPng/$1');
 $routes->get('registers/comprobantePdf/(:num)', 'Registers::comprobantePdf/$1');
 $routes->post('registers/save', 'Registers::save');
 $routes->post('registers/update/(:num)', 'Registers::update/$1');

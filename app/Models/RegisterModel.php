@@ -143,6 +143,85 @@ class RegisterModel extends Model
         return $final !== null ? $final : $mysqlNow;
     }
 
+    /** @var bool|null */
+    private static $registroPublicAccessTokenColumnExists = null;
+
+    private function registroTieneColumnaPublicAccessToken(): bool
+    {
+        if (self::$registroPublicAccessTokenColumnExists === null) {
+            self::$registroPublicAccessTokenColumnExists = $this->hasColumn('registro', 'public_access_token');
+        }
+
+        return self::$registroPublicAccessTokenColumnExists;
+    }
+
+    /**
+     * Token opaco para ver resultados sin iniciar sesión (enlace tipo resultados/{token}).
+     * Devuelve null si la columna no existe en BD (ejecute la migración SQL).
+     */
+    public function ensurePublicAccessToken(int $registroId): ?string
+    {
+        if ($registroId < 1 || ! $this->registroTieneColumnaPublicAccessToken()) {
+            return null;
+        }
+
+        $row = $this->db->table('registro')
+            ->select('public_access_token')
+            ->where('registro_id', $registroId)
+            ->get()
+            ->getRow();
+        if ($row === null) {
+            return null;
+        }
+        $existing = trim((string) ($row->public_access_token ?? ''));
+        if ($existing !== '') {
+            return $existing;
+        }
+
+        for ($i = 0; $i < 8; $i++) {
+            $token = bin2hex(random_bytes(32));
+            $dup   = $this->db->table('registro')
+                ->where('public_access_token', $token)
+                ->countAllResults();
+            if ($dup > 0) {
+                continue;
+            }
+            $updated = $this->db->table('registro')
+                ->where('registro_id', $registroId)
+                ->where('public_access_token', null)
+                ->update(['public_access_token' => $token]);
+            if ($updated) {
+                return $token;
+            }
+            $row2 = $this->db->table('registro')
+                ->select('public_access_token')
+                ->where('registro_id', $registroId)
+                ->get()
+                ->getRow();
+            if ($row2 !== null && trim((string) ($row2->public_access_token ?? '')) !== '') {
+                return trim((string) $row2->public_access_token);
+            }
+        }
+
+        return null;
+    }
+
+    public function findRegistroIdByPublicToken(string $token): ?int
+    {
+        $token = strtolower(preg_replace('/[^a-f0-9]/', '', $token) ?? '');
+        if (strlen($token) !== 64 || ! $this->registroTieneColumnaPublicAccessToken()) {
+            return null;
+        }
+
+        $row = $this->db->table('registro')
+            ->select('registro_id')
+            ->where('public_access_token', $token)
+            ->get()
+            ->getRow();
+
+        return $row !== null ? (int) $row->registro_id : null;
+    }
+
     /**
      * Anulación lógica: el registro permanece en BD y no puede usarse en flujo operativo.
      */

@@ -6,13 +6,16 @@
 <?php
 $elLabels = $element_type_labels ?? \App\Services\ReportPdfLayoutService::elementTypeLabels();
 $elSamples = $element_preview_samples ?? \App\Services\ReportPdfLayoutService::elementPreviewSamples();
+$pdfStyleAllowlists = $pdf_style_allowlists ?? \App\Services\ReportPdfLayoutService::styleAllowlistsForClient();
 $secLayouts = $layout['section_layouts'] ?? \App\Services\ReportPdfLayoutService::defaultSectionLayoutsStatic();
 $hCols = max(1, min(6, (int) ($secLayouts['header']['columns'] ?? 3)));
 $pCols = max(1, min(6, (int) ($secLayouts['patient_doctor']['columns'] ?? 2)));
 $fCols = max(1, min(6, (int) ($secLayouts['footer']['columns'] ?? 3)));
+$lCols = max(1, min(6, (int) ($secLayouts['lab_firmas']['columns'] ?? 3)));
 $instHeader = [];
 $instPatient = [];
 $instFooter = [];
+$instLabFirmas = [];
 foreach ($layout['instances'] ?? [] as $inst) {
     if (! is_array($inst)) {
         continue;
@@ -24,6 +27,8 @@ foreach ($layout['instances'] ?? [] as $inst) {
         $instPatient[] = $inst;
     } elseif ($s === 'footer') {
         $instFooter[] = $inst;
+    } elseif ($s === 'lab_firmas') {
+        $instLabFirmas[] = $inst;
     }
 }
 $mm = $layout['margins_mm'] ?? \App\Services\ReportPdfLayoutService::defaultMarginsMmStatic();
@@ -31,7 +36,7 @@ $wm = $layout['watermark'] ?? \App\Services\ReportPdfLayoutService::defaultWater
 $ps = is_array($layout['page_style'] ?? null) ? $layout['page_style'] : \App\Services\ReportPdfLayoutService::defaultPageStyleStatic();
 $ch = \App\Services\ReportPdfLayoutService::normalizeCardHeaderStyle($ps['card_header'] ?? []);
 $ns = \App\Services\ReportPdfLayoutService::normalizeNotesStyle($ps['notes'] ?? []);
-$lf = \App\Services\ReportPdfLayoutService::normalizeNotesStyle($ps['lab_firmas'] ?? []);
+$lf = \App\Services\ReportPdfLayoutService::normalizeLabFirmasStyle($ps['lab_firmas'] ?? []);
 $rs = \App\Services\ReportPdfLayoutService::normalizeResultsTableStyle($ps['results_table'] ?? []);
 $hs = \App\Services\ReportPdfLayoutService::normalizeHeaderSectionStyle($ps['header_section'] ?? []);
 $wmPreview = null;
@@ -41,12 +46,18 @@ if (! empty($wm['file'])) {
     ]);
 }
 $labelsShort = [
-    'paciente_nombre'   => 'Paciente / género:',
+    'paciente_nombre'   => 'Paciente:',
+    'paciente_genero'   => 'Género:',
     'paciente_edad'     => 'Edad:',
     'paciente_telefono' => 'Teléfono:',
     'medico'            => 'Médico:',
-    'fecha_ingreso'     => 'Fecha de recepción / Fecha de reporte:',
+    'fecha_recepcion'   => 'Fecha de recepción:',
+    'fecha_reporte'     => 'Fecha de reporte:',
     'numero_orden'      => 'No. Orden:',
+    'lab_firmas_title'     => '',
+    'lab_firmas_validator' => '',
+    'lab_firmas_seal'      => '',
+    'lab_firmas_approver'  => '',
 ];
 ?>
 <?= $this->section('content') ?>
@@ -68,7 +79,7 @@ $labelsShort = [
 <?php endif; ?>
 
 <h3 class="mb-2">Diseño: <?= esc($template->name ?? '') ?></h3>
-<p class="text-muted">Configure el <strong>número de columnas</strong> por zona y, en cada tarjeta (encabezado, paciente/médico, pie), la sección <strong>Estilo de la cuadrícula</strong>: <strong>interlineado</strong> (1–2,5) y <strong>alineación por columna</strong> (izquierda/centro/derecha y arriba/centro/abajo). Los ítems en la misma fila del PDF comparten una sola fila de tabla aunque ocupen varias columnas; varios bloques con la misma columna y ancho se apilan en una celda. Arrastre elementos entre secciones o duplíquelos. <strong>Guarde la plantilla</strong> para persistir el diseño en el JSON.</p>
+<p class="text-muted">Configure el <strong>número de columnas</strong> por zona y, en cada tarjeta (encabezado, paciente/médico, validación/firmas, pie), la sección <strong>Estilo de la cuadrícula</strong>: <strong>interlineado</strong> (1–2,5) y <strong>alineación por columna</strong> (izquierda/centro/derecha y arriba/centro/abajo). Los ítems en la misma fila del PDF comparten una sola fila de tabla aunque ocupen varias columnas; varios bloques con la misma columna y ancho se apilan en una celda. Puede arrastrar elementos entre encabezado, paciente/médico y pie; la sección de firmas tiene su propia lista. <strong>Guarde la plantilla</strong> para persistir el diseño en el JSON.</p>
 
 <?= form_open(site_url('config/pdf-templates/save'), ['id' => 'pdf_tpl_form', 'enctype' => 'multipart/form-data']) ?>
     <?= csrf_field() ?>
@@ -135,46 +146,6 @@ $labelsShort = [
 </div>
 
 <div class="card shadow-sm mb-4">
-    <div class="card-header bg-warning-subtle border">
-        <h5 class="mb-0">Estilo global de Notas del resultado (PDF / impresión)</h5>
-    </div>
-    <div class="card-body">
-        <div class="row g-3">
-            <div class="col-6 col-md-3"><label class="form-label small" for="ns_title_bg">Fondo título</label><input type="color" class="form-control form-control-color" id="ns_title_bg" value="<?= esc($ns['title_bg_color'], 'attr') ?>"></div>
-            <div class="col-6 col-md-3"><label class="form-label small" for="ns_title_text">Texto título</label><input type="color" class="form-control form-control-color" id="ns_title_text" value="<?= esc($ns['title_text_color'], 'attr') ?>"></div>
-            <div class="col-6 col-md-3"><label class="form-label small" for="ns_body_bg">Fondo contenido</label><input type="color" class="form-control form-control-color" id="ns_body_bg" value="<?= esc($ns['body_bg_color'], 'attr') ?>"></div>
-            <div class="col-6 col-md-3"><label class="form-label small" for="ns_body_text">Texto contenido</label><input type="color" class="form-control form-control-color" id="ns_body_text" value="<?= esc($ns['body_text_color'], 'attr') ?>"></div>
-            <div class="col-12 col-md-3"><label class="form-label small" for="ns_font_family">Fuente</label><select class="form-select" id="ns_font_family"><?php foreach (['DejaVu Sans', 'Helvetica', 'Arial', 'Times New Roman', 'Courier New'] as $ff): ?><option value="<?= esc($ff, 'attr') ?>" <?= $ns['font_family'] === $ff ? 'selected' : '' ?>><?= esc($ff) ?></option><?php endforeach; ?></select></div>
-            <div class="col-6 col-md-2"><label class="form-label small" for="ns_font_size">Tamaño</label><input type="number" class="form-control" id="ns_font_size" min="7" max="20" step="0.5" value="<?= esc((string) $ns['font_size_pt'], 'attr') ?>"></div>
-            <div class="col-6 col-md-2"><label class="form-label small" for="ns_font_weight">Grosor</label><select class="form-select" id="ns_font_weight"><?php foreach (['normal', 'bold', '400', '500', '600', '700', '800'] as $w): ?><option value="<?= esc($w, 'attr') ?>" <?= $ns['font_weight'] === $w ? 'selected' : '' ?>><?= esc($w) ?></option><?php endforeach; ?></select></div>
-            <div class="col-6 col-md-2"><label class="form-label small" for="ns_font_style">Estilo</label><select class="form-select" id="ns_font_style"><?php foreach (['normal', 'italic', 'oblique'] as $st): ?><option value="<?= esc($st, 'attr') ?>" <?= $ns['font_style'] === $st ? 'selected' : '' ?>><?= esc(ucfirst($st)) ?></option><?php endforeach; ?></select></div>
-            <div class="col-6 col-md-3"><label class="form-label small" for="ns_text_transform">Transformación</label><select class="form-select" id="ns_text_transform"><?php foreach (['none' => 'Normal', 'uppercase' => 'MAYÚSCULAS', 'lowercase' => 'minúsculas', 'capitalize' => 'Tipo Título'] as $k => $v): ?><option value="<?= esc($k, 'attr') ?>" <?= $ns['text_transform'] === $k ? 'selected' : '' ?>><?= esc($v) ?></option><?php endforeach; ?></select></div>
-            <div class="col-6 col-md-2"><label class="form-label small" for="ns_line_height">Interlineado</label><input type="number" class="form-control" id="ns_line_height" min="1" max="3" step="0.05" value="<?= esc((string) $ns['line_height'], 'attr') ?>"></div>
-        </div>
-    </div>
-</div>
-
-<div class="card shadow-sm mb-4">
-    <div class="card-header bg-light border">
-        <h5 class="mb-0">Estilo global de Validación y aprobación (PDF / impresión)</h5>
-    </div>
-    <div class="card-body">
-        <div class="row g-3">
-            <div class="col-6 col-md-3"><label class="form-label small" for="lf_title_bg">Fondo título</label><input type="color" class="form-control form-control-color" id="lf_title_bg" value="<?= esc($lf['title_bg_color'], 'attr') ?>"></div>
-            <div class="col-6 col-md-3"><label class="form-label small" for="lf_title_text">Texto título</label><input type="color" class="form-control form-control-color" id="lf_title_text" value="<?= esc($lf['title_text_color'], 'attr') ?>"></div>
-            <div class="col-6 col-md-3"><label class="form-label small" for="lf_body_bg">Fondo contenido</label><input type="color" class="form-control form-control-color" id="lf_body_bg" value="<?= esc($lf['body_bg_color'], 'attr') ?>"></div>
-            <div class="col-6 col-md-3"><label class="form-label small" for="lf_body_text">Texto contenido</label><input type="color" class="form-control form-control-color" id="lf_body_text" value="<?= esc($lf['body_text_color'], 'attr') ?>"></div>
-            <div class="col-12 col-md-3"><label class="form-label small" for="lf_font_family">Fuente</label><select class="form-select" id="lf_font_family"><?php foreach (['DejaVu Sans', 'Helvetica', 'Arial', 'Times New Roman', 'Courier New'] as $ff): ?><option value="<?= esc($ff, 'attr') ?>" <?= $lf['font_family'] === $ff ? 'selected' : '' ?>><?= esc($ff) ?></option><?php endforeach; ?></select></div>
-            <div class="col-6 col-md-2"><label class="form-label small" for="lf_font_size">Tamaño</label><input type="number" class="form-control" id="lf_font_size" min="7" max="20" step="0.5" value="<?= esc((string) $lf['font_size_pt'], 'attr') ?>"></div>
-            <div class="col-6 col-md-2"><label class="form-label small" for="lf_font_weight">Grosor</label><select class="form-select" id="lf_font_weight"><?php foreach (['normal', 'bold', '400', '500', '600', '700', '800'] as $w): ?><option value="<?= esc($w, 'attr') ?>" <?= $lf['font_weight'] === $w ? 'selected' : '' ?>><?= esc($w) ?></option><?php endforeach; ?></select></div>
-            <div class="col-6 col-md-2"><label class="form-label small" for="lf_font_style">Estilo</label><select class="form-select" id="lf_font_style"><?php foreach (['normal', 'italic', 'oblique'] as $st): ?><option value="<?= esc($st, 'attr') ?>" <?= $lf['font_style'] === $st ? 'selected' : '' ?>><?= esc(ucfirst($st)) ?></option><?php endforeach; ?></select></div>
-            <div class="col-6 col-md-3"><label class="form-label small" for="lf_text_transform">Transformación</label><select class="form-select" id="lf_text_transform"><?php foreach (['none' => 'Normal', 'uppercase' => 'MAYÚSCULAS', 'lowercase' => 'minúsculas', 'capitalize' => 'Tipo Título'] as $k => $v): ?><option value="<?= esc($k, 'attr') ?>" <?= $lf['text_transform'] === $k ? 'selected' : '' ?>><?= esc($v) ?></option><?php endforeach; ?></select></div>
-            <div class="col-6 col-md-2"><label class="form-label small" for="lf_line_height">Interlineado</label><input type="number" class="form-control" id="lf_line_height" min="1" max="3" step="0.05" value="<?= esc((string) $lf['line_height'], 'attr') ?>"></div>
-        </div>
-    </div>
-</div>
-
-<div class="card shadow-sm mb-4">
     <div class="card-header bg-info-subtle border">
         <h5 class="mb-0">Estilo global de Tablas de resultados por prueba (PDF / impresión)</h5>
     </div>
@@ -236,6 +207,56 @@ $labelsShort = [
             </li>
             <?php endforeach; ?>
         </ul>
+        <p class="small text-muted mt-3 mb-0">Los estilos del bloque <strong>Notas del resultado</strong> y de <strong>Validación y aprobación (firmas)</strong> se configuran justo debajo, en la misma página.</p>
+    </div>
+</div>
+
+<div class="card shadow-sm mb-4">
+    <div class="card-header bg-warning-subtle border">
+        <h5 class="mb-0">Bloque «Notas del resultado» — estilo en PDF / impresión</h5>
+    </div>
+    <div class="card-body">
+        <div class="row g-3">
+            <div class="col-6 col-md-3"><label class="form-label small" for="ns_title_bg">Fondo título</label><input type="color" class="form-control form-control-color" id="ns_title_bg" value="<?= esc($ns['title_bg_color'], 'attr') ?>"></div>
+            <div class="col-6 col-md-3"><label class="form-label small" for="ns_title_text">Texto título</label><input type="color" class="form-control form-control-color" id="ns_title_text" value="<?= esc($ns['title_text_color'], 'attr') ?>"></div>
+            <div class="col-6 col-md-3"><label class="form-label small" for="ns_body_bg">Fondo contenido</label><input type="color" class="form-control form-control-color" id="ns_body_bg" value="<?= esc($ns['body_bg_color'], 'attr') ?>"></div>
+            <div class="col-6 col-md-3"><label class="form-label small" for="ns_body_text">Texto contenido</label><input type="color" class="form-control form-control-color" id="ns_body_text" value="<?= esc($ns['body_text_color'], 'attr') ?>"></div>
+            <div class="col-12 col-md-3"><label class="form-label small" for="ns_font_family">Fuente</label><select class="form-select" id="ns_font_family"><?php foreach (['DejaVu Sans', 'Helvetica', 'Arial', 'Times New Roman', 'Courier New'] as $ff): ?><option value="<?= esc($ff, 'attr') ?>" <?= $ns['font_family'] === $ff ? 'selected' : '' ?>><?= esc($ff) ?></option><?php endforeach; ?></select></div>
+            <div class="col-6 col-md-2"><label class="form-label small" for="ns_font_size">Tamaño</label><input type="number" class="form-control" id="ns_font_size" min="7" max="20" step="0.5" value="<?= esc((string) $ns['font_size_pt'], 'attr') ?>"></div>
+            <div class="col-6 col-md-2"><label class="form-label small" for="ns_font_weight">Grosor</label><select class="form-select" id="ns_font_weight"><?php foreach (['normal', 'bold', '400', '500', '600', '700', '800'] as $w): ?><option value="<?= esc($w, 'attr') ?>" <?= $ns['font_weight'] === $w ? 'selected' : '' ?>><?= esc($w) ?></option><?php endforeach; ?></select></div>
+            <div class="col-6 col-md-2"><label class="form-label small" for="ns_font_style">Estilo</label><select class="form-select" id="ns_font_style"><?php foreach (['normal', 'italic', 'oblique'] as $st): ?><option value="<?= esc($st, 'attr') ?>" <?= $ns['font_style'] === $st ? 'selected' : '' ?>><?= esc(ucfirst($st)) ?></option><?php endforeach; ?></select></div>
+            <div class="col-6 col-md-3"><label class="form-label small" for="ns_text_transform">Transformación</label><select class="form-select" id="ns_text_transform"><?php foreach (['none' => 'Normal', 'uppercase' => 'MAYÚSCULAS', 'lowercase' => 'minúsculas', 'capitalize' => 'Tipo Título'] as $k => $v): ?><option value="<?= esc($k, 'attr') ?>" <?= $ns['text_transform'] === $k ? 'selected' : '' ?>><?= esc($v) ?></option><?php endforeach; ?></select></div>
+            <div class="col-6 col-md-2"><label class="form-label small" for="ns_line_height">Interlineado</label><input type="number" class="form-control" id="ns_line_height" min="1" max="3" step="0.05" value="<?= esc((string) $ns['line_height'], 'attr') ?>"></div>
+        </div>
+    </div>
+</div>
+
+<div class="card shadow-sm mb-4 border border-warning border-opacity-50">
+    <div class="card-header bg-warning-subtle border-bottom">
+        <h5 class="mb-1">Bloque «Validación y aprobación (firmas)» — estilo y textos en PDF / impresión</h5>
+        <p class="small text-muted mb-0">Colores, tipografía y etiquetas del cuadro de firmas. Active o desactive el bloque en la lista de arriba.</p>
+    </div>
+    <div class="card-body">
+        <div class="row g-3">
+            <div class="col-12"><span class="small fw-semibold text-secondary">Apariencia</span></div>
+            <div class="col-6 col-md-3"><label class="form-label small" for="lf_title_bg">Fondo título</label><input type="color" class="form-control form-control-color" id="lf_title_bg" value="<?= esc($lf['title_bg_color'], 'attr') ?>"></div>
+            <div class="col-6 col-md-3"><label class="form-label small" for="lf_title_text">Texto título</label><input type="color" class="form-control form-control-color" id="lf_title_text" value="<?= esc($lf['title_text_color'], 'attr') ?>"></div>
+            <div class="col-6 col-md-3"><label class="form-label small" for="lf_body_bg">Fondo contenido</label><input type="color" class="form-control form-control-color" id="lf_body_bg" value="<?= esc($lf['body_bg_color'], 'attr') ?>"></div>
+            <div class="col-6 col-md-3"><label class="form-label small" for="lf_body_text">Texto contenido</label><input type="color" class="form-control form-control-color" id="lf_body_text" value="<?= esc($lf['body_text_color'], 'attr') ?>"></div>
+            <div class="col-12 col-md-3"><label class="form-label small" for="lf_font_family">Fuente</label><select class="form-select" id="lf_font_family"><?php foreach (['DejaVu Sans', 'Helvetica', 'Arial', 'Times New Roman', 'Courier New'] as $ff): ?><option value="<?= esc($ff, 'attr') ?>" <?= $lf['font_family'] === $ff ? 'selected' : '' ?>><?= esc($ff) ?></option><?php endforeach; ?></select></div>
+            <div class="col-6 col-md-2"><label class="form-label small" for="lf_font_size">Tamaño</label><input type="number" class="form-control" id="lf_font_size" min="7" max="20" step="0.5" value="<?= esc((string) $lf['font_size_pt'], 'attr') ?>"></div>
+            <div class="col-6 col-md-2"><label class="form-label small" for="lf_font_weight">Grosor</label><select class="form-select" id="lf_font_weight"><?php foreach (['normal', 'bold', '400', '500', '600', '700', '800'] as $w): ?><option value="<?= esc($w, 'attr') ?>" <?= $lf['font_weight'] === $w ? 'selected' : '' ?>><?= esc($w) ?></option><?php endforeach; ?></select></div>
+            <div class="col-6 col-md-2"><label class="form-label small" for="lf_font_style">Estilo</label><select class="form-select" id="lf_font_style"><?php foreach (['normal', 'italic', 'oblique'] as $st): ?><option value="<?= esc($st, 'attr') ?>" <?= $lf['font_style'] === $st ? 'selected' : '' ?>><?= esc(ucfirst($st)) ?></option><?php endforeach; ?></select></div>
+            <div class="col-6 col-md-3"><label class="form-label small" for="lf_text_transform">Transformación</label><select class="form-select" id="lf_text_transform"><?php foreach (['none' => 'Normal', 'uppercase' => 'MAYÚSCULAS', 'lowercase' => 'minúsculas', 'capitalize' => 'Tipo Título'] as $k => $v): ?><option value="<?= esc($k, 'attr') ?>" <?= $lf['text_transform'] === $k ? 'selected' : '' ?>><?= esc($v) ?></option><?php endforeach; ?></select></div>
+            <div class="col-6 col-md-2"><label class="form-label small" for="lf_line_height">Interlineado</label><input type="number" class="form-control" id="lf_line_height" min="1" max="3" step="0.05" value="<?= esc((string) $lf['line_height'], 'attr') ?>"></div>
+            <div class="col-12"><hr class="my-2"></div>
+            <div class="col-12"><span class="small fw-semibold text-secondary">Textos en el PDF</span> <span class="small text-muted">(máx. 120 caracteres c/u)</span></div>
+            <div class="col-12 col-md-6"><label class="form-label small" for="lf_section_title">Título de la sección</label><input type="text" class="form-control form-control-sm" id="lf_section_title" maxlength="120" value="<?= esc((string) ($lf['section_title'] ?? ''), 'attr') ?>"></div>
+            <div class="col-12 col-md-6"><label class="form-label small" for="lf_label_validator">Etiqueta columna validador</label><input type="text" class="form-control form-control-sm" id="lf_label_validator" maxlength="120" value="<?= esc((string) ($lf['label_validator'] ?? ''), 'attr') ?>"></div>
+            <div class="col-12 col-md-4"><label class="form-label small" for="lf_label_seal">Etiqueta columna sello</label><input type="text" class="form-control form-control-sm" id="lf_label_seal" maxlength="120" value="<?= esc((string) ($lf['label_seal'] ?? ''), 'attr') ?>"></div>
+            <div class="col-12 col-md-4"><label class="form-label small" for="lf_label_approver">Etiqueta columna aprobador</label><input type="text" class="form-control form-control-sm" id="lf_label_approver" maxlength="120" value="<?= esc((string) ($lf['label_approver'] ?? ''), 'attr') ?>"></div>
+            <div class="col-12 col-md-4"><label class="form-label small" for="lf_label_cargo">Etiqueta «cargo»</label><input type="text" class="form-control form-control-sm" id="lf_label_cargo" maxlength="120" value="<?= esc((string) ($lf['label_cargo'] ?? ''), 'attr') ?>"></div>
+        </div>
     </div>
 </div>
 
@@ -320,6 +341,7 @@ $labelsShort = [
                     <select class="form-select form-select-sm" id="add_element_section" style="max-width: 14rem;">
                         <option value="header">Encabezado</option>
                         <option value="patient_doctor">Paciente / médico</option>
+                        <option value="lab_firmas">Validación / firmas</option>
                         <option value="footer">Pie de página</option>
                     </select>
                     <button type="button" class="btn btn-sm btn-primary" id="btn_add_element"><i class="fa-solid fa-plus me-1"></i> Añadir</button>
@@ -387,6 +409,40 @@ $labelsShort = [
                         <div class="pdf-preview-sheet border rounded shadow-sm bg-white mx-auto">
                             <div class="pdf-preview-sheet-bar small text-white bg-dark px-2 py-1">Paciente / médico</div>
                             <div class="pdf-preview-sheet-body p-3" id="pdf-preview-patient-block"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="card border-warning mb-4">
+            <div class="card-header bg-warning text-dark d-flex flex-wrap align-items-center justify-content-between gap-2">
+                <span class="fw-semibold">Validación y aprobación (firmas)</span>
+                <div class="d-flex align-items-center gap-2">
+                    <label class="mb-0 small text-dark" for="sec_cols_lab_firmas">Columnas</label>
+                    <input type="number" class="form-control form-control-sm" id="sec_cols_lab_firmas" min="1" max="6" value="<?= (int) $lCols ?>" style="width: 4.5rem;">
+                </div>
+            </div>
+            <div class="card-body">
+                <p class="small text-muted">Solo se imprime si el bloque «Validación y aprobación» está activo. El <strong>título</strong> se muestra una vez; validador, sello y aprobador se repiten por cada firma en el reporte.</p>
+                <?= view('config/partials/pdf_section_style_controls', [
+                    'section_key' => 'lab_firmas',
+                    'col_count'   => $lCols,
+                    'sec_layout'  => $secLayouts['lab_firmas'] ?? [],
+                ]) ?>
+                <div class="row g-4">
+                    <div class="col-lg-6">
+                        <ul id="instance-list-lab-firmas" class="list-group pdf-instance-sortable" data-section="lab_firmas">
+                            <?php foreach ($instLabFirmas as $inst): ?>
+                                <?= view('config/partials/pdf_instance_row', ['inst' => $inst, 'col_count' => $lCols, 'elLabels' => $elLabels]) ?>
+                            <?php endforeach; ?>
+                        </ul>
+                    </div>
+                    <div class="col-lg-6">
+                        <h6 class="text-uppercase text-muted small">Vista previa</h6>
+                        <div class="pdf-preview-sheet border rounded shadow-sm bg-white mx-auto">
+                            <div class="pdf-preview-sheet-bar small text-dark bg-warning px-2 py-1">Validación / firmas</div>
+                            <div class="p-2" id="pdf-preview-lab-firmas-block"></div>
                         </div>
                     </div>
                 </div>
@@ -500,16 +556,37 @@ document.addEventListener('DOMContentLoaded', function() {
     var headerList = document.getElementById('instance-list-header');
     var patientList = document.getElementById('instance-list-patient');
     var footerList = document.getElementById('instance-list-footer');
+    var labFirmasList = document.getElementById('instance-list-lab-firmas');
     var previewPatient = document.getElementById('pdf-preview-patient-block');
     var previewHeader = document.getElementById('pdf-preview-header-block');
     var previewFooter = document.getElementById('pdf-preview-footer-block');
+    var previewLabFirmas = document.getElementById('pdf-preview-lab-firmas-block');
     var secColsH = document.getElementById('sec_cols_header');
     var secColsP = document.getElementById('sec_cols_patient');
     var secColsF = document.getElementById('sec_cols_footer');
+    var secColsL = document.getElementById('sec_cols_lab_firmas');
+    var LAB_ELEMENT_TYPES = ['lab_firmas_title', 'lab_firmas_validator', 'lab_firmas_seal', 'lab_firmas_approver'];
 
     window._elementLabels = <?= json_encode($elLabels, JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP) ?>;
     window._elementSamples = <?= json_encode($elSamples, JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP) ?>;
     window._labelsShort = <?= json_encode($labelsShort, JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP) ?>;
+    window._pdfStyleAllowlists = <?= json_encode($pdfStyleAllowlists, JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP) ?>;
+
+    function pdfAllow(key) {
+        var a = window._pdfStyleAllowlists || {};
+        return Array.isArray(a[key]) ? a[key] : [];
+    }
+
+    function pickAllowedDomId(id, listKey, fallback) {
+        var allowed = pdfAllow(listKey);
+        var el = document.getElementById(id);
+        var v = el ? String(el.value || '').trim() : '';
+        return allowed.indexOf(v) >= 0 ? v : fallback;
+    }
+
+    function isValidPdfHexJs(v) {
+        return typeof v === 'string' && /^#[0-9a-fA-F]{6}$/.test(v.trim());
+    }
 
     function escapeHtml(s) {
         if (!s) return '';
@@ -536,7 +613,26 @@ document.addEventListener('DOMContentLoaded', function() {
     function colsForList(ul) {
         if (ul === headerList) return clampCols(secColsH.value);
         if (ul === patientList) return clampCols(secColsP.value);
+        if (ul === labFirmasList) return clampCols(secColsL ? secColsL.value : '3');
         return clampCols(secColsF.value);
+    }
+
+    function syncAddElementTypeOptions() {
+        var secEl = document.getElementById('add_element_section');
+        var typeEl = document.getElementById('add_element_type');
+        if (!secEl || !typeEl) return;
+        var sec = secEl.value;
+        var firstVisible = null;
+        for (var i = 0; i < typeEl.options.length; i++) {
+            var o = typeEl.options[i];
+            var t = o.value;
+            var isLab = LAB_ELEMENT_TYPES.indexOf(t) >= 0;
+            var show = (sec === 'lab_firmas') ? isLab : !isLab;
+            o.hidden = !show;
+            o.disabled = !show;
+            if (show && firstVisible === null) firstVisible = o;
+        }
+        if (firstVisible) typeEl.value = firstVisible.value;
     }
 
     function fillColumnSelect(sel, colCount, selectedValue) {
@@ -593,7 +689,7 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     function rebuildColumnSelects() {
-        [headerList, patientList, footerList].forEach(function(ul) {
+        [headerList, patientList, footerList, labFirmasList].forEach(function(ul) {
             if (!ul) return;
             var n = colsForList(ul);
             ul.querySelectorAll('.pdf-instance-item').forEach(function(li) {
@@ -625,8 +721,29 @@ document.addEventListener('DOMContentLoaded', function() {
         return String(sectionKey).replace(/[^a-z0-9_]/g, '_');
     }
 
+    /** Tbody de alineación por columna (id o data-pdf-section por si el id no coincide). */
+    function sectionStyleColsTbody(sectionKey) {
+        var idS = sectionIdSafe(sectionKey);
+        var tbody = document.getElementById('sec_style_cols_' + idS);
+        if (!tbody) {
+            tbody = document.querySelector('.pdf-sec-col-aligns[data-pdf-section="' + sectionKey + '"]');
+        }
+        return tbody;
+    }
+
+    function sectionStyleLineHeightEl(sectionKey) {
+        var idS = sectionIdSafe(sectionKey);
+        var el = document.getElementById('sec_lh_' + idS);
+        if (!el) {
+            var box = document.querySelector('.pdf-section-style-controls[data-pdf-section="' + sectionKey + '"]');
+            if (box) el = box.querySelector('.pdf-sec-line-height');
+        }
+        return el;
+    }
+
     function readInstanceTextStyle(li) {
-        function readStr(sel, allowed, fallback) {
+        function readStr(sel, listKey, fallback) {
+            var allowed = pdfAllow(listKey);
             var el = li.querySelector(sel);
             var v = el ? String(el.value || '').trim() : '';
             return allowed.indexOf(v) >= 0 ? v : fallback;
@@ -640,17 +757,17 @@ document.addEventListener('DOMContentLoaded', function() {
         }
         var clrEl = li.querySelector('.instance-font-color');
         var clr = clrEl ? String(clrEl.value || '').trim() : '#333333';
-        if (!/^#[0-9a-fA-F]{6}$/.test(clr)) clr = '#333333';
+        if (!isValidPdfHexJs(clr)) clr = '#333333';
         return {
-            font_family: readStr('.instance-font-family', ['DejaVu Sans', 'Helvetica', 'Arial', 'Times New Roman', 'Courier New'], 'DejaVu Sans'),
+            font_family: readStr('.instance-font-family', 'font_families', 'DejaVu Sans'),
             font_size_pt: readNum('.instance-font-size', 6, 24, 0.5, 10),
-            font_weight: readStr('.instance-font-weight', ['normal', 'bold', '100', '200', '300', '400', '500', '600', '700', '800', '900'], 'normal'),
+            font_weight: readStr('.instance-font-weight', 'font_weights', 'normal'),
             font_color: clr,
-            font_style: readStr('.instance-font-style', ['normal', 'italic', 'oblique'], 'normal'),
-            text_transform: readStr('.instance-text-transform', ['none', 'uppercase', 'lowercase', 'capitalize'], 'none'),
+            font_style: readStr('.instance-font-style', 'font_styles', 'normal'),
+            text_transform: readStr('.instance-text-transform', 'text_transforms', 'none'),
             letter_spacing_em: readNum('.instance-letter-spacing', -0.2, 1, 0.01, 0),
             line_height: readNum('.instance-line-height', 1, 3, 0.05, 1.35),
-            text_shadow: readStr('.instance-text-shadow', ['none', 'soft', 'medium', 'strong'], 'none')
+            text_shadow: readStr('.instance-text-shadow', 'text_shadows', 'none')
         };
     }
 
@@ -673,12 +790,11 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     function readSectionStyleFromDom(sectionKey, n) {
-        var idS = sectionIdSafe(sectionKey);
-        var lhEl = document.getElementById('sec_lh_' + idS);
+        var lhEl = sectionStyleLineHeightEl(sectionKey);
         var lh = parseFloat(lhEl && lhEl.value);
         if (isNaN(lh)) lh = 1.35;
         lh = Math.max(1, Math.min(2.5, Math.round(lh * 100) / 100));
-        var tbody = document.getElementById('sec_style_cols_' + idS);
+        var tbody = sectionStyleColsTbody(sectionKey);
         var h = [];
         var v = [];
         for (var i = 0; i < n; i++) {
@@ -694,10 +810,10 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     function rebuildSectionStyleTable(sectionKey) {
-        var idS = sectionIdSafe(sectionKey);
-        var tbody = document.getElementById('sec_style_cols_' + idS);
+        var tbody = sectionStyleColsTbody(sectionKey);
         if (!tbody) return;
-        var colsInp = sectionKey === 'header' ? secColsH : (sectionKey === 'patient_doctor' ? secColsP : secColsF);
+        var colsInp = sectionKey === 'header' ? secColsH : (sectionKey === 'patient_doctor' ? secColsP : (sectionKey === 'lab_firmas' ? secColsL : secColsF));
+        if (!colsInp) return;
         var n = clampCols(colsInp.value);
         var prevH = [];
         var prevV = [];
@@ -752,6 +868,7 @@ document.addEventListener('DOMContentLoaded', function() {
         return {
             header: pack('header', secColsH),
             patient_doctor: pack('patient_doctor', secColsP),
+            lab_firmas: pack('lab_firmas', secColsL),
             footer: pack('footer', secColsF)
         };
     }
@@ -948,6 +1065,7 @@ document.addEventListener('DOMContentLoaded', function() {
     function rebuildAllPreviews() {
         rebuildGridPreview(headerList, previewHeader);
         rebuildGridPreview(patientList, previewPatient);
+        rebuildGridPreview(labFirmasList, previewLabFirmas);
         rebuildGridPreview(footerList, previewFooter);
     }
 
@@ -1038,6 +1156,7 @@ document.addEventListener('DOMContentLoaded', function() {
     function listBySectionKey(key) {
         if (key === 'header') return headerList;
         if (key === 'patient_doctor') return patientList;
+        if (key === 'lab_firmas') return labFirmasList;
         return footerList;
     }
 
@@ -1096,12 +1215,13 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     });
 
-    [secColsH, secColsP, secColsF].forEach(function(inp) {
+    [secColsH, secColsP, secColsL, secColsF].forEach(function(inp) {
         if (!inp) return;
         inp.addEventListener('change', function() {
             rebuildColumnSelects();
             if (inp === secColsH) rebuildSectionStyleTable('header');
             else if (inp === secColsP) rebuildSectionStyleTable('patient_doctor');
+            else if (inp === secColsL) rebuildSectionStyleTable('lab_firmas');
             else if (inp === secColsF) rebuildSectionStyleTable('footer');
             rebuildAllPreviews();
         });
@@ -1139,9 +1259,30 @@ document.addEventListener('DOMContentLoaded', function() {
     if (footerList && typeof Sortable !== 'undefined') {
         new Sortable(footerList, { animation: 150, handle: '.instance-drag-handle', group: sortGroup, onEnd: rebuildAllPreviews });
     }
+    var sortGroupLab = { name: 'pdf-lab-firmas', pull: false, put: false };
+    if (labFirmasList && typeof Sortable !== 'undefined') {
+        new Sortable(labFirmasList, { animation: 150, handle: '.instance-drag-handle', group: sortGroupLab, onEnd: rebuildAllPreviews });
+    }
+
+    var addSecEl = document.getElementById('add_element_section');
+    if (addSecEl) {
+        addSecEl.addEventListener('change', syncAddElementTypeOptions);
+    }
+    syncAddElementTypeOptions();
 
     wireInstanceSelects();
     rebuildAllPreviews();
+
+    var pdfEditorRoot = document.getElementById('pdf-editor-instances');
+    if (pdfEditorRoot) {
+        pdfEditorRoot.addEventListener('blur', function(ev) {
+            var t = ev.target;
+            if (t && t.classList && (t.classList.contains('instance-font-size') || t.classList.contains('instance-letter-spacing') || t.classList.contains('instance-line-height'))) {
+                clampInstanceStyleField(t);
+                rebuildAllPreviews();
+            }
+        }, true);
+    }
 
     function clampMargin(v) {
         var n = parseFloat(v);
@@ -1160,73 +1301,205 @@ document.addEventListener('DOMContentLoaded', function() {
             if (isNaN(n)) n = fallback;
             return Math.max(min, Math.min(max, n));
         }
-        var bg = pick('ch_bg_color', '#E9ECEF');
-        var tx = pick('ch_text_color', '#212529');
-        if (!/^#[0-9a-fA-F]{6}$/.test(bg)) bg = '#E9ECEF';
-        if (!/^#[0-9a-fA-F]{6}$/.test(tx)) tx = '#212529';
+        function pickHex(id, fallback) {
+            var v = pick(id, fallback);
+            return isValidPdfHexJs(v) ? v : fallback;
+        }
+        function pickLfText(id, fallback) {
+            var el = document.getElementById(id);
+            var v = el ? String(el.value || '').trim() : '';
+            if (v === '') return fallback;
+            return v.length > 120 ? v.slice(0, 120) : v;
+        }
+        var bg = pickHex('ch_bg_color', '#E9ECEF');
+        var tx = pickHex('ch_text_color', '#212529');
         return {
             card_header: {
                 bg_color: bg,
                 text_color: tx,
-                font_family: pick('ch_font_family', 'DejaVu Sans'),
+                font_family: pickAllowedDomId('ch_font_family', 'font_families', 'DejaVu Sans'),
                 font_size_pt: pickNum('ch_font_size', 7, 20, 10),
-                font_weight: pick('ch_font_weight', '700'),
-                font_style: pick('ch_font_style', 'normal'),
-                text_transform: pick('ch_text_transform', 'uppercase')
+                font_weight: pickAllowedDomId('ch_font_weight', 'font_weights', '700'),
+                font_style: pickAllowedDomId('ch_font_style', 'font_styles', 'normal'),
+                text_transform: pickAllowedDomId('ch_text_transform', 'text_transforms', 'uppercase')
             },
             header_section: {
-                separator_color: pick('hs_separator_color', '#0066CC')
+                separator_color: pickHex('hs_separator_color', '#0066CC')
             },
             notes: {
-                title_bg_color: pick('ns_title_bg', '#FFF3CD'),
-                title_text_color: pick('ns_title_text', '#664D03'),
-                body_bg_color: pick('ns_body_bg', '#FFFFFF'),
-                body_text_color: pick('ns_body_text', '#333333'),
-                font_family: pick('ns_font_family', 'DejaVu Sans'),
+                title_bg_color: pickHex('ns_title_bg', '#FFF3CD'),
+                title_text_color: pickHex('ns_title_text', '#664D03'),
+                body_bg_color: pickHex('ns_body_bg', '#FFFFFF'),
+                body_text_color: pickHex('ns_body_text', '#333333'),
+                font_family: pickAllowedDomId('ns_font_family', 'font_families', 'DejaVu Sans'),
                 font_size_pt: pickNum('ns_font_size', 7, 20, 9.5),
-                font_weight: pick('ns_font_weight', 'normal'),
-                font_style: pick('ns_font_style', 'normal'),
-                text_transform: pick('ns_text_transform', 'none'),
+                font_weight: pickAllowedDomId('ns_font_weight', 'font_weights', 'normal'),
+                font_style: pickAllowedDomId('ns_font_style', 'font_styles', 'normal'),
+                text_transform: pickAllowedDomId('ns_text_transform', 'text_transforms', 'none'),
                 line_height: pickNum('ns_line_height', 1, 3, 1.4)
             },
             lab_firmas: {
-                title_bg_color: pick('lf_title_bg', '#FFF3CD'),
-                title_text_color: pick('lf_title_text', '#664D03'),
-                body_bg_color: pick('lf_body_bg', '#FFFFFF'),
-                body_text_color: pick('lf_body_text', '#333333'),
-                font_family: pick('lf_font_family', 'DejaVu Sans'),
+                title_bg_color: pickHex('lf_title_bg', '#FFF3CD'),
+                title_text_color: pickHex('lf_title_text', '#664D03'),
+                body_bg_color: pickHex('lf_body_bg', '#FFFFFF'),
+                body_text_color: pickHex('lf_body_text', '#333333'),
+                font_family: pickAllowedDomId('lf_font_family', 'font_families', 'DejaVu Sans'),
                 font_size_pt: pickNum('lf_font_size', 7, 20, 9.5),
-                font_weight: pick('lf_font_weight', 'normal'),
-                font_style: pick('lf_font_style', 'normal'),
-                text_transform: pick('lf_text_transform', 'none'),
-                line_height: pickNum('lf_line_height', 1, 3, 1.4)
+                font_weight: pickAllowedDomId('lf_font_weight', 'font_weights', 'normal'),
+                font_style: pickAllowedDomId('lf_font_style', 'font_styles', 'normal'),
+                text_transform: pickAllowedDomId('lf_text_transform', 'text_transforms', 'none'),
+                line_height: pickNum('lf_line_height', 1, 3, 1.4),
+                section_title: pickLfText('lf_section_title', 'VALIDACIÓN Y APROBACIÓN'),
+                label_validator: pickLfText('lf_label_validator', 'Validado por:'),
+                label_seal: pickLfText('lf_label_seal', 'Sello'),
+                label_approver: pickLfText('lf_label_approver', 'Aprobado por:'),
+                label_cargo: pickLfText('lf_label_cargo', 'Cargo:')
             },
             results_table: {
-                header_bg_color: pick('rs_header_bg', '#0066CC'),
-                header_text_color: pick('rs_header_text', '#FFFFFF'),
-                body_bg_color: pick('rs_body_bg', '#FFFFFF'),
+                header_bg_color: pickHex('rs_header_bg', '#0066CC'),
+                header_text_color: pickHex('rs_header_text', '#FFFFFF'),
+                body_bg_color: pickHex('rs_body_bg', '#FFFFFF'),
                 body_transparent: !!(document.getElementById('rs_body_transparent') && document.getElementById('rs_body_transparent').checked),
-                body_text_color: pick('rs_body_text', '#333333'),
-                border_color: pick('rs_border_color', '#DDDDDD'),
-                segment_bg_color: pick('rs_segment_bg', '#E9ECEF'),
+                body_text_color: pickHex('rs_body_text', '#333333'),
+                border_color: pickHex('rs_border_color', '#DDDDDD'),
+                segment_bg_color: pickHex('rs_segment_bg', '#E9ECEF'),
                 segment_transparent: !!(document.getElementById('rs_segment_transparent') && document.getElementById('rs_segment_transparent').checked),
-                segment_border_color: pick('rs_segment_border_color', '#DDDDDD'),
-                segment_border_width_px: pickNum('rs_segment_border_width', 0, 4, 1),
-                segment_shadow: pick('rs_segment_shadow', 'none'),
-                font_family: pick('rs_font_family', 'DejaVu Sans'),
+                segment_border_color: pickHex('rs_segment_border_color', '#DDDDDD'),
+                segment_border_width_px: Math.round(pickNum('rs_segment_border_width', 0, 4, 1)),
+                segment_shadow: pickAllowedDomId('rs_segment_shadow', 'segment_shadows', 'none'),
+                font_family: pickAllowedDomId('rs_font_family', 'font_families', 'DejaVu Sans'),
                 font_size_pt: pickNum('rs_font_size', 7, 20, 9),
-                font_weight: pick('rs_font_weight', 'normal'),
-                font_style: pick('rs_font_style', 'normal'),
-                text_transform: pick('rs_text_transform', 'none'),
+                font_weight: pickAllowedDomId('rs_font_weight', 'font_weights', 'normal'),
+                font_style: pickAllowedDomId('rs_font_style', 'font_styles', 'normal'),
+                text_transform: pickAllowedDomId('rs_text_transform', 'text_transforms', 'none'),
                 line_height: pickNum('rs_line_height', 1, 3, 1.35)
             }
         };
     }
 
+    function validatePdfEditorStylesBeforeSave() {
+        var errs = [];
+        var ff = pdfAllow('font_families');
+        var fw = pdfAllow('font_weights');
+        var fst = pdfAllow('font_styles');
+        var tt = pdfAllow('text_transforms');
+        var sh = pdfAllow('text_shadows');
+        function pushIfBadHex(id, msg) {
+            var el = document.getElementById(id);
+            if (!el) return;
+            var v = String(el.value || '').trim();
+            if (!isValidPdfHexJs(v)) errs.push(msg);
+        }
+        function pushIfBadSelect(id, allowed, msg) {
+            var el = document.getElementById(id);
+            if (!el) return;
+            if (allowed.indexOf(String(el.value || '').trim()) < 0) errs.push(msg);
+        }
+        function pushIfBadNum(id, min, max, msg) {
+            var el = document.getElementById(id);
+            if (!el) return;
+            var n = parseFloat(el.value);
+            if (isNaN(n) || n < min || n > max) errs.push(msg);
+        }
+        pushIfBadHex('ch_bg_color', 'Color de fondo (card header): use #RRGGBB.');
+        pushIfBadHex('ch_text_color', 'Color de texto (card header): use #RRGGBB.');
+        pushIfBadSelect('ch_font_family', ff, 'Fuente no permitida en card header.');
+        pushIfBadNum('ch_font_size', 7, 20, 'Tamaño de fuente del card header: entre 7 y 20 pt.');
+        pushIfBadSelect('ch_font_weight', fw, 'Grosor no permitido en card header.');
+        pushIfBadSelect('ch_font_style', fst, 'Estilo no permitido en card header.');
+        pushIfBadSelect('ch_text_transform', tt, 'Transformación no permitida en card header.');
+        pushIfBadHex('hs_separator_color', 'Color del separador de sección: use #RRGGBB.');
+        ['ns_title_bg', 'ns_title_text', 'ns_body_bg', 'ns_body_text'].forEach(function(id) {
+            pushIfBadHex(id, 'Color inválido en notas del resultado.');
+        });
+        pushIfBadSelect('ns_font_family', ff, 'Fuente no permitida en notas.');
+        pushIfBadNum('ns_font_size', 7, 20, 'Tamaño en notas: entre 7 y 20 pt.');
+        pushIfBadSelect('ns_font_weight', fw, 'Grosor no permitido en notas.');
+        pushIfBadSelect('ns_font_style', fst, 'Estilo no permitido en notas.');
+        pushIfBadSelect('ns_text_transform', tt, 'Transformación no permitida en notas.');
+        pushIfBadNum('ns_line_height', 1, 3, 'Interlineado en notas: entre 1 y 3.');
+        ['lf_title_bg', 'lf_title_text', 'lf_body_bg', 'lf_body_text'].forEach(function(id) {
+            pushIfBadHex(id, 'Color inválido en firmas.');
+        });
+        pushIfBadSelect('lf_font_family', ff, 'Fuente no permitida en firmas.');
+        pushIfBadNum('lf_font_size', 7, 20, 'Tamaño en firmas: entre 7 y 20 pt.');
+        pushIfBadSelect('lf_font_weight', fw, 'Grosor no permitido en firmas.');
+        pushIfBadSelect('lf_font_style', fst, 'Estilo no permitido en firmas.');
+        pushIfBadSelect('lf_text_transform', tt, 'Transformación no permitida en firmas.');
+        pushIfBadNum('lf_line_height', 1, 3, 'Interlineado en firmas: entre 1 y 3.');
+        ['lf_section_title', 'lf_label_validator', 'lf_label_seal', 'lf_label_approver', 'lf_label_cargo'].forEach(function(id) {
+            var el = document.getElementById(id);
+            if (!el) return;
+            if (String(el.value || '').length > 120) errs.push('Texto demasiado largo en firmas (máx. 120 caracteres).');
+        });
+        ['rs_header_bg', 'rs_header_text', 'rs_body_bg', 'rs_body_text', 'rs_border_color', 'rs_segment_bg', 'rs_segment_border_color'].forEach(function(id) {
+            pushIfBadHex(id, 'Color inválido en tabla de resultados.');
+        });
+        pushIfBadSelect('rs_font_family', ff, 'Fuente no permitida en tabla de resultados.');
+        pushIfBadNum('rs_font_size', 7, 20, 'Tamaño en tabla de resultados: entre 7 y 20 pt.');
+        pushIfBadSelect('rs_font_weight', fw, 'Grosor no permitido en tabla de resultados.');
+        pushIfBadSelect('rs_font_style', fst, 'Estilo no permitido en tabla de resultados.');
+        pushIfBadSelect('rs_text_transform', tt, 'Transformación no permitida en tabla de resultados.');
+        pushIfBadNum('rs_line_height', 1, 3, 'Interlineado en tabla de resultados: entre 1 y 3.');
+        pushIfBadNum('rs_segment_border_width', 0, 4, 'Grosor de borde de segmento: entre 0 y 4 px.');
+        pushIfBadSelect('rs_segment_shadow', pdfAllow('segment_shadows'), 'Sombra de segmento no permitida.');
+
+        document.querySelectorAll('.pdf-instance-item').forEach(function(li) {
+            var label = (li.querySelector('.pdf-instance-head strong') && li.querySelector('.pdf-instance-head strong').textContent.trim()) || 'Elemento';
+            var fam = li.querySelector('.instance-font-family');
+            if (fam && ff.indexOf(String(fam.value || '').trim()) < 0) {
+                errs.push('«' + label + '»: fuente no permitida.');
+            }
+            var fs = li.querySelector('.instance-font-size');
+            if (fs) {
+                var v = parseFloat(fs.value);
+                if (isNaN(v) || v < 6 || v > 24) errs.push('«' + label + '»: tamaño entre 6 y 24 pt.');
+            }
+            var fwEl = li.querySelector('.instance-font-weight');
+            if (fwEl && fw.indexOf(String(fwEl.value || '').trim()) < 0) errs.push('«' + label + '»: grosor no permitido.');
+            var fstEl = li.querySelector('.instance-font-style');
+            if (fstEl && fst.indexOf(String(fstEl.value || '').trim()) < 0) errs.push('«' + label + '»: estilo no permitido.');
+            var ttEl = li.querySelector('.instance-text-transform');
+            if (ttEl && tt.indexOf(String(ttEl.value || '').trim()) < 0) errs.push('«' + label + '»: transformación no permitida.');
+            var col = li.querySelector('.instance-font-color');
+            if (col && !isValidPdfHexJs(String(col.value || '').trim())) errs.push('«' + label + '»: color inválido (#RRGGBB).');
+            var ls = li.querySelector('.instance-letter-spacing');
+            if (ls) {
+                var lsV = parseFloat(ls.value);
+                if (isNaN(lsV) || lsV < -0.2 || lsV > 1) errs.push('«' + label + '»: espaciado entre letras entre -0,2 y 1 em.');
+            }
+            var lh = li.querySelector('.instance-line-height');
+            if (lh) {
+                var lhV = parseFloat(lh.value);
+                if (isNaN(lhV) || lhV < 1 || lhV > 3) errs.push('«' + label + '»: interlineado entre 1 y 3.');
+            }
+            var shEl = li.querySelector('.instance-text-shadow');
+            if (shEl && sh.indexOf(String(shEl.value || '').trim()) < 0) errs.push('«' + label + '»: sombra no permitida.');
+        });
+        return errs;
+    }
+
+    function clampInstanceStyleField(el) {
+        if (!el || !el.classList) return;
+        if (el.classList.contains('instance-font-size')) {
+            var v = parseFloat(el.value);
+            if (isNaN(v)) v = 10;
+            el.value = String(Math.max(6, Math.min(24, Math.round(v * 2) / 2)));
+        } else if (el.classList.contains('instance-letter-spacing')) {
+            var a = parseFloat(el.value);
+            if (isNaN(a)) a = 0;
+            el.value = String(Math.round(Math.max(-0.2, Math.min(1, a)) * 100) / 100);
+        } else if (el.classList.contains('instance-line-height')) {
+            var b = parseFloat(el.value);
+            if (isNaN(b)) b = 1.35;
+            el.value = String(Math.round(Math.max(1, Math.min(3, b)) * 100) / 100);
+        }
+    }
+
     function parseInstanceLi(li, section) {
         var sel = li.querySelector('.instance-column');
         var v = sel ? parseInt(sel.value, 10) : -1;
-        var cols = section === 'header' ? clampCols(secColsH.value) : (section === 'patient_doctor' ? clampCols(secColsP.value) : clampCols(secColsF.value));
+        var cols = section === 'header' ? clampCols(secColsH.value) : (section === 'patient_doctor' ? clampCols(secColsP.value) : (section === 'lab_firmas' ? clampCols(secColsL ? secColsL.value : '3') : clampCols(secColsF.value)));
         var enabled = v >= 0;
         var col = enabled ? Math.max(0, Math.min(cols - 1, v)) : 0;
         var spanSel = li.querySelector('.instance-span');
@@ -1248,7 +1521,18 @@ document.addEventListener('DOMContentLoaded', function() {
         };
     }
 
-    document.getElementById('pdf_tpl_form').addEventListener('submit', function() {
+    document.getElementById('pdf_tpl_form').addEventListener('submit', function(ev) {
+        var styleErrs = validatePdfEditorStylesBeforeSave();
+        if (styleErrs.length > 0) {
+            ev.preventDefault();
+            var maxShow = 10;
+            var msg = styleErrs.slice(0, maxShow).join('\n');
+            if (styleErrs.length > maxShow) {
+                msg += '\n… (' + styleErrs.length + ' problemas)';
+            }
+            alert('Revise los estilos antes de guardar:\n\n' + msg);
+            return;
+        }
         var blocks = [];
         blockList.querySelectorAll('.pdf-block-item').forEach(function(li) {
             var id = li.getAttribute('data-block-id');
@@ -1266,6 +1550,11 @@ document.addEventListener('DOMContentLoaded', function() {
         footerList.querySelectorAll('.pdf-instance-item').forEach(function(li) {
             instances.push(parseInstanceLi(li, 'footer'));
         });
+        if (labFirmasList) {
+            labFirmasList.querySelectorAll('.pdf-instance-item').forEach(function(li) {
+                instances.push(parseInstanceLi(li, 'lab_firmas'));
+            });
+        }
 
         function buildWatermarkForJson() {
             var relIn = document.getElementById('watermark_file_rel');
@@ -1290,7 +1579,7 @@ document.addEventListener('DOMContentLoaded', function() {
         }
 
         document.getElementById('layout_json').value = JSON.stringify({
-            version: 5,
+            version: 7,
             blocks: blocks,
             section_layouts: buildSectionLayoutsForJson(),
             instances: instances,

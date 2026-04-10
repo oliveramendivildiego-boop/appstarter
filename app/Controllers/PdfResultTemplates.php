@@ -60,6 +60,7 @@ class PdfResultTemplates extends SecureArea
             'block_labels'             => ReportPdfLayoutService::blockLabels(),
             'element_type_labels'      => ReportPdfLayoutService::elementTypeLabels(),
             'element_preview_samples'  => ReportPdfLayoutService::elementPreviewSamples(),
+            'pdf_style_allowlists'     => ReportPdfLayoutService::styleAllowlistsForClient(),
             'allowed_modules'          => $this->allowed_modules,
             'user_info'                => $this->user_info,
             'current_module'           => 'config',
@@ -87,6 +88,11 @@ class PdfResultTemplates extends SecureArea
         $decoded = json_decode($layoutJson, true);
         if (! is_array($decoded) || empty($decoded['blocks']) || ! is_array($decoded['blocks'])) {
             return redirect()->to('config/pdf-templates/edit/' . $id)->with('error', 'Diseño JSON inválido.');
+        }
+
+        $styleErr = ReportPdfLayoutService::validateLayoutDecodedStyles($decoded);
+        if ($styleErr !== null) {
+            return redirect()->to('config/pdf-templates/edit/' . $id)->with('error', $styleErr);
         }
 
         if ($this->request->getPost('watermark_remove') === '1') {

@@ -140,7 +140,8 @@ $pdfTdStyle = static function (int $startCol, int $span, float $pctUnit) use ($n
     $v        = in_array($v, ['top', 'middle', 'bottom'], true) ? $v : 'top';
     $alignCls = $h === 'left' ? 'left' : ($h === 'right' ? 'right' : 'center');
     $spanPct  = round($span * $pctUnit, 4);
-    $style    = 'width:' . $spanPct . '%;line-height:' . $lineHeight . ';text-align:' . $h . ';vertical-align:' . $v . ';padding:0 6px;';
+    /* !important: dompdf a veces aplica vertical-align:top de hojas de estilo sobre el td sin esto */
+    $style    = 'width:' . $spanPct . '%;line-height:' . $lineHeight . ';text-align:' . $h . ' !important;vertical-align:' . $v . ' !important;padding:0 6px;';
 
     return ['alignCls' => $alignCls, 'style' => $style];
 };
@@ -150,7 +151,7 @@ $pdfEmptyTdStyle = static function (int $colIdx, float $pctUnit) use ($n, $colAl
     $v      = $colAlignV[$colIdx] ?? 'top';
     $v      = in_array($v, ['top', 'middle', 'bottom'], true) ? $v : 'top';
 
-    return 'width:' . $pctUnit . '%;vertical-align:' . $v . ';padding:0 4px;line-height:' . $lineHeight . ';';
+    return 'width:' . $pctUnit . '%;vertical-align:' . $v . ' !important;padding:0 4px;line-height:' . $lineHeight . ';';
 };
 ?>
 <div class="<?= esc($section_wrapper_class) ?>">
@@ -178,14 +179,20 @@ $pdfEmptyTdStyle = static function (int $colIdx, float $pctUnit) use ($n, $colAl
         <td class="pdf-cell pdf-cell--<?= esc($tdInfo['alignCls']) ?>" colspan="<?= $span ?>" style="<?= esc($tdInfo['style'], 'attr') ?>">
             <?php foreach ($block['items'] as $cellItem):
                 $inlineStyle = $textStyleCss(is_array($cellItem['text_style'] ?? null) ? $cellItem['text_style'] : []);
-                ?>
-            <div class="pdf-el-item" style="<?= esc($inlineStyle, 'attr') ?>">
-                <?= view('registers/pdf/partials/element', array_merge($element_ctx, [
+                $elType      = (string) ($cellItem['element_type'] ?? '');
+                $elCtx       = array_merge($element_ctx, [
                     'pdf_element_type' => $cellItem['element_type'],
                     'pdf_text_style'   => is_array($cellItem['text_style'] ?? null) ? $cellItem['text_style'] : [],
-                ])) ?>
+                ]);
+                if ($elType === 'lab_firmas_title') {
+                    echo view('registers/pdf/partials/element', $elCtx);
+                } else {
+                    ?>
+            <div class="pdf-el-item" style="<?= esc($inlineStyle, 'attr') ?>">
+                <?= view('registers/pdf/partials/element', $elCtx) ?>
             </div>
             <?php
+                }
             endforeach; ?>
         </td>
 <?php
@@ -196,14 +203,20 @@ $pdfEmptyTdStyle = static function (int $colIdx, float $pctUnit) use ($n, $colAl
         <td class="pdf-cell pdf-cell--<?= esc($tdInfo['alignCls']) ?>" style="<?= esc($tdInfo['style'], 'attr') ?>">
             <?php foreach ($stacks[$c] as $stackItem):
                 $inlineStyle = $textStyleCss(is_array($stackItem['text_style'] ?? null) ? $stackItem['text_style'] : []);
-                ?>
-            <div class="pdf-el-item" style="<?= esc($inlineStyle, 'attr') ?>">
-                <?= view('registers/pdf/partials/element', array_merge($element_ctx, [
+                $elType      = (string) ($stackItem['element_type'] ?? '');
+                $elCtx       = array_merge($element_ctx, [
                     'pdf_element_type' => $stackItem['element_type'],
                     'pdf_text_style'   => is_array($stackItem['text_style'] ?? null) ? $stackItem['text_style'] : [],
-                ])) ?>
+                ]);
+                if ($elType === 'lab_firmas_title') {
+                    echo view('registers/pdf/partials/element', $elCtx);
+                } else {
+                    ?>
+            <div class="pdf-el-item" style="<?= esc($inlineStyle, 'attr') ?>">
+                <?= view('registers/pdf/partials/element', $elCtx) ?>
             </div>
             <?php
+                }
             endforeach; ?>
         </td>
 <?php

@@ -6,6 +6,7 @@ use App\Libraries\PdfService;
 use App\Services\BillingDocumentService;
 use App\Services\ConfigService;
 use App\Services\RegisterService;
+use App\Services\ReportPdfLayoutService;
 use App\Services\WhatsAppService;
 use App\Models\LabotestModel;
 use App\Models\RegisterModel;
@@ -16,6 +17,11 @@ use App\Models\DoctorModel;
 use App\Models\DoctorCommissionModel;
 use App\Models\LeyendaModel;
 use CodeIgniter\HTTP\ResponseInterface;
+use Endroid\QrCode\Builder\Builder;
+use Endroid\QrCode\Color\Color;
+use Endroid\QrCode\Encoding\Encoding;
+use Endroid\QrCode\ErrorCorrectionLevel;
+use Endroid\QrCode\Writer\PngWriter;
 
 /**
  * Registros de análisis de laboratorio.
@@ -114,7 +120,8 @@ class Registers extends SecureArea
             $total      = $this->registerModel->countAll($estado);
         }
 
-        $manageTable = $this->buildRegistrosTable($registros);
+        $whatsappOk  = (new WhatsAppService())->isConfigured();
+        $manageTable = $this->buildRegistrosTable($registros, $whatsappOk);
         $totalPages  = $total > 0 ? (int) ceil($total / $perPage) : 1;
 
         return view('registers/lista', [
@@ -170,12 +177,6 @@ class Registers extends SecureArea
         ]);
     }
 
-    private static function getTipoPagoLabel(string $tipopago): string
-    {
-        $map = ['1' => 'Efectivo', '2' => 'QR', '3' => 'Transferencia', '4' => 'Pendiente'];
-        return $map[trim($tipopago)] ?? trim($tipopago) ?: '-';
-    }
-
     private function bloquearSiRegistroAnuladoJson(int $id): ?ResponseInterface
     {
         if ($this->registerModel->isRegistroAnulado($id)) {
@@ -188,31 +189,23 @@ class Registers extends SecureArea
         return null;
     }
 
-    private function buildRegistrosTable(array $registros): string
+    private function buildRegistrosTable(array $registros, bool $whatsappConfigured = false): string
     {
         $html = '<div class="table-responsive"><table class="table table-bordered table-striped"><thead><tr>';
-        $html .= '<th>Código</th><th>Paciente</th><th>Doctor</th><th>Total</th><th>Tipo pago</th><th>Monto pagado</th><th>A cuenta</th><th>Saldo</th><th class="text-center">Acciones</th>';
+        $html .= '<th>Código</th><th>Paciente</th><th>Doctor</th><th>Total</th><th>Saldo</th><th class="text-end">Acciones</th>';
         $html .= '</tr></thead><tbody>';
 
         $sumTotal = 0;
-        $sumMontoPagado = 0;
-        $sumAcuenta = 0;
         $sumSaldo = 0;
 
         foreach ($registros as $r) {
             $rid = (int) ($r->registro_id ?? 0);
             $totalNum = (float) ($r->total ?? 0);
             $saldoNum = (float) ($r->saldo ?? 0);
-            $montoPagadoNum = (float) ($r->monto_pagar ?? 0);
-            $acuenta = $totalNum - $saldoNum;
-            $acuentaStr = $totalNum > 0 || $saldoNum !== 0.0 ? number_format($acuenta, 2) : '';
-            $montoPagadoStr = $acuentaStr ?: number_format($montoPagadoNum, 2);
             $isAnulado = isset($r->anulado) && (int) $r->anulado === 1;
 
             if (!$isAnulado) {
                 $sumTotal += $totalNum;
-                $sumMontoPagado += $acuenta;
-                $sumAcuenta += $acuenta;
                 $sumSaldo += $saldoNum;
             }
 
@@ -226,11 +219,8 @@ class Registers extends SecureArea
             $html .= '<td>' . esc($r->paciente ?? '') . '</td>';
             $html .= '<td>' . esc($r->doctor ?? '') . '</td>';
             $html .= '<td>' . esc($r->total ?? '') . '</td>';
-            $html .= '<td>' . esc(self::getTipoPagoLabel($r->tipopago ?? '')) . '</td>';
-            $html .= '<td>' . esc($montoPagadoStr) . '</td>';
-            $html .= '<td>' . esc($acuentaStr) . '</td>';
             $html .= '<td>' . esc($r->saldo ?? '') . '</td>';
-            $html .= '<td class="text-center">';
+            $html .= '<td class="text-end">';
             if ($isAnulado) {
                 $html .= '<a href="' . site_url('registers/anulada/' . $rid) . '" class="btn btn-sm btn-outline-secondary" title="Ver orden anulada (solo lectura)"><i class="fa-solid fa-lock me-1"></i>Ver</a>';
             } else {
@@ -243,14 +233,17 @@ class Registers extends SecureArea
                     $html .= '<a href="' . site_url('registers/orden/' . $rid) . '" class="btn btn-sm btn-outline-secondary" title="Imprimir orden"><i class="fa-solid fa-print"></i></a> ';
                 }
                 if ($hasRegvalues) {
-                    $html .= '<a href="' . site_url('registers/viewreport/' . $rid) . '" class="btn btn-sm btn-secondary" title="Reporte">Reporte</a> ';
-                    $html .= '<a href="' . site_url('registers/pdf/' . $rid) . '" class="btn btn-sm btn-success" target="_blank" title="PDF">PDF</a> ';
-                    $pacientePhone = trim($r->paciente_phone ?? '');
-                    $doctorPhone   = trim($r->doctor_phone ?? '');
-                    $html .= '<button type="button" class="btn btn-sm btn-success btn-whatsapp-pdf" data-id="' . $rid . '" data-paciente="' . esc($r->paciente ?? '') . '" data-doctor="' . esc($r->doctor ?? '') . '" data-paciente-phone="' . esc($pacientePhone) . '" data-doctor-phone="' . esc($doctorPhone) . '" data-ingreso="' . esc($r->ingreso ?? '') . '" title="Enviar PDF por WhatsApp"><i class="fa-brands fa-whatsapp"></i></button> ';
+                    $html .= '<a href="' . site_url('registers/viewreport/' . $rid) . '" class="btn btn-sm btn-secondary" title="Reporte"><i class="fa-solid fa-file-lines"></i></a> ';
+                    $html .= '<a href="' . site_url('registers/pdf/' . $rid) . '" class="btn btn-sm btn-success" target="_blank" title="PDF"><i class="fa-solid fa-file-pdf"></i></a> ';
+                    $html .= '<a href="' . site_url('registers/qrResultadosPng/' . $rid) . '" class="btn btn-sm btn-outline-dark" title="Descargar QR resultados PNG transparente (500×500 px)"><i class="fa-solid fa-qrcode"></i></a> ';
+                    if ($whatsappConfigured) {
+                        $pacientePhone = trim($r->paciente_phone ?? '');
+                        $doctorPhone   = trim($r->doctor_phone ?? '');
+                        $html .= '<button type="button" class="btn btn-sm btn-success btn-whatsapp-pdf" data-id="' . $rid . '" data-paciente="' . esc($r->paciente ?? '') . '" data-doctor="' . esc($r->doctor ?? '') . '" data-paciente-phone="' . esc($pacientePhone) . '" data-doctor-phone="' . esc($doctorPhone) . '" data-ingreso="' . esc($r->ingreso ?? '') . '" title="Enviar PDF por WhatsApp"><i class="fa-brands fa-whatsapp"></i></button> ';
+                    }
                 }
                 if ($saldoNum > 0) {
-                    $html .= '<button type="button" class="btn btn-sm btn-outline-warning btn-agregar-pago" data-id="' . $rid . '" data-total="' . esc($r->total ?? '') . '" data-saldo="' . esc($r->saldo ?? '') . '" data-monto="' . esc($r->monto_pagar ?? '') . '" title="Agregar pago"><i class="fa-solid fa-money-bill-wave"></i> Pago</button> ';
+                    $html .= '<button type="button" class="btn btn-sm btn-outline-warning btn-agregar-pago" data-id="' . $rid . '" data-total="' . esc($r->total ?? '') . '" data-saldo="' . esc($r->saldo ?? '') . '" data-monto="' . esc($r->monto_pagar ?? '') . '" title="Agregar pago"><i class="fa-solid fa-money-bill-wave"></i></button> ';
                 }
                 $html .= '<button type="button" class="btn btn-sm btn-outline-info btn-historial" data-id="' . $rid . '" title="Historial de pagos y pruebas"><i class="fa-solid fa-clock-rotate-left"></i></button> ';
                 $html .= '<button type="button" class="btn btn-sm btn-outline-danger btn-anular-registro" data-id="' . $rid . '" title="Anular orden (no borra de la base de datos)"><i class="fa-solid fa-ban"></i></button>';
@@ -259,13 +252,10 @@ class Registers extends SecureArea
             $html .= '</tr>';
         }
         if (empty($registros)) {
-            $html .= '<tr><td colspan="9">No hay registros.</td></tr>';
+            $html .= '<tr><td colspan="6">No hay registros.</td></tr>';
         } else {
             $html .= '<tr class="table-secondary fw-bold"><td colspan="3">Total</td>';
             $html .= '<td>' . number_format($sumTotal, 2) . '</td>';
-            $html .= '<td>—</td>';
-            $html .= '<td>' . number_format($sumMontoPagado, 2) . '</td>';
-            $html .= '<td>' . number_format($sumAcuenta, 2) . '</td>';
             $html .= '<td>' . number_format($sumSaldo, 2) . '</td>';
             $html .= '<td></td></tr>';
         }
@@ -367,12 +357,16 @@ class Registers extends SecureArea
         $pago = $this->registerModel->getPagoByRegistroId($id);
         $billingService = new BillingDocumentService();
         $pagoCompleto   = $this->registerModel->isPagoCompletoPorRegistroId($id);
+        $publicToken    = $this->registerModel->ensurePublicAccessToken($id);
+        $pdfLayout      = (new ReportPdfLayoutService())->getActiveLayoutForRender();
+        $labConfig      = $this->registerService->getLabConfig();
 
         return view('registers/viewreport', [
             'current_module'    => 'registers',
             'controller_name'  => 'registers',
             'register_info'     => $data['register_info'],
             'labotests_namecate' => $id,
+            'public_resultados_token' => $publicToken,
             'paciente'          => $data['paciente'],
             'doctor'            => $data['doctor'],
             'analisis'          => $data['analisis'],
@@ -388,6 +382,8 @@ class Registers extends SecureArea
             'comprobante_pdf_disponible' => $pago !== null && $pagoCompleto,
             'comprobante_pdf_pendiente_pago' => $pago !== null && !$pagoCompleto,
             'comprobante_pdf_sin_registro_pago' => $pago === null,
+            'pdf_layout'        => $pdfLayout,
+            'lab_config'        => $labConfig,
         ]);
     }
 
@@ -410,7 +406,7 @@ class Registers extends SecureArea
         }
 
         helper('qr');
-        $reportUrl = site_url('doctor/viewreport/' . $id);
+        $reportUrl = $this->publicReportViewerUrlForQr($id);
         $qrDataUri = qr_base64($reportUrl, 100);
         $emitidoEn = $this->registerService->lockReportEmitidoEnForPrintOrPdf($id);
         $html      = $this->registerService->renderReportPrintHtml($data, $reportUrl, $qrDataUri, $id, $emitidoEn);
@@ -598,7 +594,7 @@ class Registers extends SecureArea
         }
 
         helper('qr');
-        $reportUrl = site_url('doctor/viewreport/' . $id);
+        $reportUrl = $this->publicReportViewerUrlForQr($id);
         $qrDataUri = qr_base64($reportUrl, 100);
         $emitidoEn = $this->registerService->lockReportEmitidoEnForPrintOrPdf($id);
         $html      = $this->registerService->renderReportPdfHtml($data, $reportUrl, $qrDataUri, $emitidoEn);
@@ -611,6 +607,90 @@ class Registers extends SecureArea
             ->setHeader('Content-Type', 'application/pdf')
             ->setHeader('Content-Disposition', 'attachment; filename="' . $filename . '"')
             ->setBody($pdfService->generate($html, $filename));
+    }
+
+    /**
+     * URL para QR del reporte: visor público por token si existe columna en BD; si no, portal doctor.
+     */
+    private function publicReportViewerUrlForQr(int $registroId): string
+    {
+        $token = $this->registerModel->ensurePublicAccessToken($registroId);
+        if ($token !== null && $token !== '') {
+            return site_url('resultados/' . $token);
+        }
+
+        return site_url('doctor/viewreport/' . $registroId);
+    }
+
+    /**
+     * PNG 500×500 del QR que apunta al visor de resultados (enlace público o portal doctor).
+     * Nombre de archivo: paciente + código de orden (numero_orden o registro_id), como en la lista.
+     */
+    public function qrResultadosPng($id = -1)
+    {
+        $id = (int) $id;
+        if ($id < 1) {
+            return redirect()->to('registers/lista')->with('error', 'Registro no válido');
+        }
+        if ($this->registerModel->isRegistroAnulado($id)) {
+            return redirect()->to('registers/lista')->with('error', 'La orden está anulada.');
+        }
+        $hist = $this->registerModel->getHistorialRegistro($id);
+        if ($hist === null) {
+            return redirect()->to('registers/lista')->with('error', 'Registro no encontrado');
+        }
+        if (empty($hist['tiene_resultados'])) {
+            return redirect()->to('registers/lista')->with('error', 'El código QR solo está disponible cuando la orden ya tiene resultados (reporte y PDF).');
+        }
+
+        helper('registro');
+        $reportUrl = $this->publicReportViewerUrlForQr($id);
+        $paciente  = trim((string) ($hist['registro']->paciente ?? ''));
+        $codigo    = registro_orden_display($hist['registro']);
+        $nomPac    = $this->sanitizeFilenameSegment($paciente !== '' ? $paciente : 'paciente');
+        $nomCod    = $this->sanitizeFilenameSegment($codigo !== '' ? $codigo : (string) $id);
+        $base      = $nomPac . '_' . $nomCod;
+        if (strlen($base) > 180) {
+            $base = substr($base, 0, 180);
+        }
+        $filenameUtf8 = ($base !== '' ? $base : 'QR_resultados') . '.png';
+        $asciiName    = 'QR_' . preg_replace('/[^a-zA-Z0-9._-]+/', '_', $nomCod) . '.png';
+        if ($asciiName === 'QR_.png' || strlen($asciiName) < 6) {
+            $asciiName = 'QR_ord' . $id . '.png';
+        }
+
+        try {
+            // Fondo transparente: en Endroid/GD alpha 127 = totalmente transparente (0 = opaco).
+            $builder = new Builder(
+                writer: new PngWriter(),
+                data: $reportUrl,
+                encoding: new Encoding('UTF-8'),
+                errorCorrectionLevel: ErrorCorrectionLevel::Low,
+                size: 500,
+                margin: 10,
+                foregroundColor: new Color(0, 0, 0, 0),
+                backgroundColor: new Color(255, 255, 255, 127),
+            );
+            $result = $builder->build();
+        } catch (\Throwable $e) {
+            return redirect()->to('registers/lista')->with('error', 'No se pudo generar el código QR.');
+        }
+
+        $filenameStar = "filename*=UTF-8''" . rawurlencode($filenameUtf8);
+
+        return $this->response
+            ->setHeader('Content-Type', $result->getMimeType())
+            ->setHeader('Content-Disposition', 'attachment; filename="' . $asciiName . '"; ' . $filenameStar)
+            ->setBody($result->getString());
+    }
+
+    private function sanitizeFilenameSegment(string $str): string
+    {
+        $str = preg_replace('/[\x00-\x1F\x7F<>:"\\/|?*]+/u', '', $str) ?? '';
+        $str = preg_replace('/\s+/u', '_', trim($str)) ?? '';
+        $str = preg_replace('/_+/u', '_', $str) ?? '';
+
+        return $str;
     }
 
     /**
@@ -1110,7 +1190,7 @@ class Registers extends SecureArea
         ];
 
         helper('qr');
-        $reportUrl = site_url('doctor/viewreport/' . $id);
+        $reportUrl = $this->publicReportViewerUrlForQr($id);
         $qrDataUri = qr_base64($reportUrl, 100);
         $emitidoEn = $this->registerService->reportEmitidoEnForView($id);
         $html      = $this->registerService->renderReportPdfHtml($data, $reportUrl, $qrDataUri, $emitidoEn);

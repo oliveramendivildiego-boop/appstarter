@@ -48,6 +48,7 @@ $ctx = [
     'report_pria_tipo_muestra_nombre' => $report_pria_tipo_muestra_nombre ?? [],
     'report_pria_metodo_nombre'       => $report_pria_metodo_nombre ?? [],
     'report_lab_firmas'               => $report_lab_firmas ?? [],
+    'analisis_variant'                => $analisis_variant ?? 'pdf',
 ];
 ?>
 <?php if ($wmUri !== null && $wmUri !== ''): ?>

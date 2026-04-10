@@ -43,6 +43,18 @@ class ReportPdfLayoutService
         'text_transform'    => 'none',
         'line_height'       => 1.4,
     ];
+
+    /** Textos por defecto del bloque «Validación y aprobación» en el PDF. */
+    public const DEFAULT_LAB_FIRMAS_LABELS = [
+        'section_title'   => 'VALIDACIÓN Y APROBACIÓN',
+        'label_validator' => 'Validado por:',
+        'label_seal'      => 'Sello',
+        'label_approver'  => 'Aprobado por:',
+        'label_cargo'     => 'Cargo:',
+    ];
+
+    public const LAB_FIRMAS_TEXT_MAX_LEN = 120;
+
     public const DEFAULT_RESULTS_TABLE_STYLE = [
         'header_bg_color'   => '#0066CC',
         'header_text_color' => '#FFFFFF',
@@ -72,10 +84,12 @@ class ReportPdfLayoutService
     /** @var list<string> Orden por defecto de cada dato dentro del bloque paciente/médico */
     public const PATIENT_DOCTOR_FIELD_ORDER = [
         'paciente_nombre',
+        'paciente_genero',
         'paciente_edad',
         'paciente_telefono',
         'medico',
-        'fecha_ingreso',
+        'fecha_recepcion',
+        'fecha_reporte',
         'numero_orden',
     ];
 
@@ -111,15 +125,44 @@ class ReportPdfLayoutService
         'lab_website',
         'qr',
         'paciente_nombre',
+        'paciente_genero',
         'paciente_edad',
         'paciente_telefono',
         'medico',
-        'fecha_ingreso',
+        'fecha_recepcion',
+        'fecha_reporte',
         'numero_orden',
         'footer_company',
         'footer_generated',
         'footer_policy',
+        'lab_firmas_title',
+        'lab_firmas_validator',
+        'lab_firmas_seal',
+        'lab_firmas_approver',
     ];
+
+    /** @var list<string> Elementos del bloque «Validación y aprobación» (solo sección lab_firmas). */
+    public const LAB_FIRMAS_ELEMENT_TYPES = [
+        'lab_firmas_title',
+        'lab_firmas_validator',
+        'lab_firmas_seal',
+        'lab_firmas_approver',
+    ];
+
+    /** @var list<string> */
+    public const ALLOWED_PDF_FONT_FAMILIES = ['DejaVu Sans', 'Helvetica', 'Arial', 'Times New Roman', 'Courier New'];
+
+    /** @var list<string> */
+    public const ALLOWED_PDF_FONT_WEIGHTS = ['normal', 'bold', '100', '200', '300', '400', '500', '600', '700', '800', '900'];
+
+    /** @var list<string> */
+    public const ALLOWED_PDF_FONT_STYLES = ['normal', 'italic', 'oblique'];
+
+    /** @var list<string> */
+    public const ALLOWED_PDF_TEXT_TRANSFORMS = ['none', 'uppercase', 'lowercase', 'capitalize'];
+
+    /** @var list<string> */
+    public const ALLOWED_PDF_TEXT_SHADOWS = ['none', 'soft', 'medium', 'strong'];
 
     public const SECTION_COLUMN_MIN = 1;
 
@@ -156,7 +199,7 @@ class ReportPdfLayoutService
         return [
             'card_header'    => self::DEFAULT_CARD_HEADER_STYLE,
             'notes'          => self::DEFAULT_NOTES_STYLE,
-            'lab_firmas'     => self::DEFAULT_NOTES_STYLE,
+            'lab_firmas'     => array_merge(self::DEFAULT_NOTES_STYLE, self::DEFAULT_LAB_FIRMAS_LABELS),
             'results_table'  => self::DEFAULT_RESULTS_TABLE_STYLE,
             'header_section' => self::DEFAULT_HEADER_SECTION_STYLE,
         ];
@@ -210,7 +253,7 @@ class ReportPdfLayoutService
 
     public static function defaultColumnForPatientField(string $id): int
     {
-        return in_array($id, ['paciente_nombre', 'paciente_edad', 'paciente_telefono'], true) ? 0 : 1;
+        return in_array($id, ['paciente_nombre', 'paciente_genero', 'paciente_edad', 'paciente_telefono'], true) ? 0 : 1;
     }
 
     public static function defaultColumnForHeaderField(string $id): int
@@ -329,7 +372,7 @@ class ReportPdfLayoutService
     }
 
     /**
-     * @return array{header: array{columns: int, line_height: float, column_align_h: list<string>, column_align_v: list<string>}, patient_doctor: array{columns: int, line_height: float, column_align_h: list<string>, column_align_v: list<string>}, footer: array{columns: int, line_height: float, column_align_h: list<string>, column_align_v: list<string>}}
+     * @return array<string, array{columns: int, line_height: float, column_align_h: list<string>, column_align_v: list<string>}>
      */
     public static function defaultSectionLayoutsStatic(): array
     {
@@ -347,6 +390,12 @@ class ReportPdfLayoutService
                 'column_align_v' => ['top', 'top'],
             ],
             'footer' => [
+                'columns'        => 3,
+                'line_height'    => 1.35,
+                'column_align_h' => ['left', 'center', 'right'],
+                'column_align_v' => ['top', 'top', 'top'],
+            ],
+            'lab_firmas' => [
                 'columns'        => 3,
                 'line_height'    => 1.35,
                 'column_align_h' => ['left', 'center', 'right'],
@@ -426,8 +475,22 @@ class ReportPdfLayoutService
         return array_merge(
             self::headerFieldLabels(),
             self::patientDoctorFieldLabels(),
-            self::footerFieldLabels()
+            self::footerFieldLabels(),
+            self::labFirmasFieldLabels()
         );
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    public static function labFirmasFieldLabels(): array
+    {
+        return [
+            'lab_firmas_title'     => 'Título del bloque (validación y aprobación)',
+            'lab_firmas_validator' => 'Validado por (nombre)',
+            'lab_firmas_seal'      => 'Sello (imagen)',
+            'lab_firmas_approver'  => 'Aprobado por (firma, nombre, cargo)',
+        ];
     }
 
     /**
@@ -439,6 +502,7 @@ class ReportPdfLayoutService
         $hc      = max(self::SECTION_COLUMN_MIN, min(self::SECTION_COLUMN_MAX, (int) $layouts['header']['columns']));
         $pc      = max(self::SECTION_COLUMN_MIN, min(self::SECTION_COLUMN_MAX, (int) $layouts['patient_doctor']['columns']));
         $fc      = max(self::SECTION_COLUMN_MIN, min(self::SECTION_COLUMN_MAX, (int) $layouts['footer']['columns']));
+        $lc      = max(self::SECTION_COLUMN_MIN, min(self::SECTION_COLUMN_MAX, (int) ($layouts['lab_firmas']['columns'] ?? 3)));
         $out     = [];
         foreach (self::defaultHeaderFieldsStatic() as $f) {
             $col = (int) ($f['column'] ?? 0);
@@ -472,6 +536,50 @@ class ReportPdfLayoutService
                 'section'       => 'footer',
                 'enabled'       => ! empty($f['enabled']),
                 'column'        => ! empty($f['enabled']) ? max(0, min($fc - 1, $col)) : max(0, min($fc - 1, $col)),
+                'column_span'   => 1,
+                'text_style'    => self::DEFAULT_TEXT_STYLE,
+            ];
+        }
+        foreach (self::defaultLabFirmasInstancesForColumns($lc) as $inst) {
+            $out[] = $inst;
+        }
+
+        return $out;
+    }
+
+    /**
+     * Instancias por defecto del bloque firmas para un número de columnas dado.
+     *
+     * @return list<array{uid: string, element_type: string, section: string, enabled: bool, column: int, column_span: int, text_style: array<string, mixed>}>
+     */
+    public static function defaultLabFirmasInstancesForColumns(int $lc): array
+    {
+        $lc = max(self::SECTION_COLUMN_MIN, min(self::SECTION_COLUMN_MAX, $lc));
+        $out = [
+            [
+                'uid'           => self::generateInstanceUid(),
+                'element_type'  => 'lab_firmas_title',
+                'section'       => 'lab_firmas',
+                'enabled'       => true,
+                'column'        => 0,
+                'column_span'   => $lc,
+                'text_style'    => self::DEFAULT_TEXT_STYLE,
+            ],
+        ];
+        if ($lc >= 3) {
+            $cols = [0, 1, 2];
+        } elseif ($lc === 2) {
+            $cols = [0, 1, 1];
+        } else {
+            $cols = [0, 0, 0];
+        }
+        foreach (['lab_firmas_validator', 'lab_firmas_seal', 'lab_firmas_approver'] as $idx => $tid) {
+            $out[] = [
+                'uid'           => self::generateInstanceUid(),
+                'element_type'  => $tid,
+                'section'       => 'lab_firmas',
+                'enabled'       => true,
+                'column'        => $cols[$idx],
                 'column_span'   => 1,
                 'text_style'    => self::DEFAULT_TEXT_STYLE,
             ];
@@ -524,7 +632,7 @@ class ReportPdfLayoutService
      */
     public static function gridItemsForSection(array $layout, string $section): array
     {
-        $allowed = ['header', 'patient_doctor', 'footer'];
+        $allowed = ['header', 'patient_doctor', 'footer', 'lab_firmas'];
         if (! in_array($section, $allowed, true)) {
             return [1, []];
         }
@@ -560,7 +668,7 @@ class ReportPdfLayoutService
     }
 
     /**
-     * @return array{header: array{columns: int}, patient_doctor: array{columns: int}, footer: array{columns: int}}
+     * @return array<string, array{columns: int, line_height: float, column_align_h: list<string>, column_align_v: list<string>}>
      */
     protected function normalizeSectionLayouts(?array $decoded): array
     {
@@ -596,7 +704,7 @@ class ReportPdfLayoutService
      *
      * @return list<array{uid: string, element_type: string, section: string, enabled: bool, column: int}>
      */
-    protected function normalizeInstances(array $raw, array $sectionLayouts): array
+    protected function normalizeInstances(array $raw, array $sectionLayouts, int $sourceLayoutVersion = 7): array
     {
         $allowed = self::ELEMENT_TYPES;
         $out     = [];
@@ -605,19 +713,35 @@ class ReportPdfLayoutService
                 continue;
             }
             $type = (string) ($row['element_type'] ?? $row['type'] ?? $row['id'] ?? '');
-            if ($type === '' || ! in_array($type, $allowed, true)) {
+            if ($type === '') {
                 continue;
             }
             $section = (string) ($row['section'] ?? '');
-            if (! in_array($section, ['header', 'patient_doctor', 'footer'], true)) {
+            if (! in_array($section, ['header', 'patient_doctor', 'footer', 'lab_firmas'], true)) {
                 continue;
+            }
+            $typesToEmit = [];
+            if ($section === 'lab_firmas') {
+                if (! in_array($type, self::LAB_FIRMAS_ELEMENT_TYPES, true)) {
+                    continue;
+                }
+                $typesToEmit = [$type];
+            } else {
+                if (in_array($type, self::LAB_FIRMAS_ELEMENT_TYPES, true)) {
+                    continue;
+                }
+                if ($type === 'fecha_ingreso') {
+                    $typesToEmit = ['fecha_recepcion', 'fecha_reporte'];
+                } elseif ($type === 'paciente_nombre' && $sourceLayoutVersion < 6) {
+                    $typesToEmit = ['paciente_nombre', 'paciente_genero'];
+                } elseif (in_array($type, $allowed, true)) {
+                    $typesToEmit = [$type];
+                } else {
+                    continue;
+                }
             }
             $cols = (int) ($sectionLayouts[$section]['columns'] ?? 1);
             $cols = max(self::SECTION_COLUMN_MIN, min(self::SECTION_COLUMN_MAX, $cols));
-            $uid = (string) ($row['uid'] ?? '');
-            if ($uid === '') {
-                $uid = self::generateInstanceUid();
-            }
             $enabled = array_key_exists('enabled', $row) ? ! empty($row['enabled']) : true;
             $colRaw  = isset($row['column']) ? (int) $row['column'] : 0;
             if ($colRaw < 0) {
@@ -630,18 +754,47 @@ class ReportPdfLayoutService
             $span    = max(1, min($maxSpan, $spanRaw >= 1 ? $spanRaw : 1));
             $textStyle = self::normalizeTextStyle($row['text_style'] ?? []);
 
-            $out[] = [
-                'uid'           => $uid,
-                'element_type'  => $type,
-                'section'       => $section,
-                'enabled'       => $enabled,
-                'column'        => $col,
-                'column_span'   => $span,
-                'text_style'    => $textStyle,
-            ];
+            foreach ($typesToEmit as $emitType) {
+                $uid = (string) ($row['uid'] ?? '');
+                if ($uid === '' || count($typesToEmit) > 1) {
+                    $uid = self::generateInstanceUid();
+                }
+                $out[] = [
+                    'uid'           => $uid,
+                    'element_type'  => $emitType,
+                    'section'       => $section,
+                    'enabled'       => $enabled,
+                    'column'        => $col,
+                    'column_span'   => $span,
+                    'text_style'    => $textStyle,
+                ];
+            }
         }
 
         return $out;
+    }
+
+    /**
+     * Añade instancias por defecto de firmas si el JSON antiguo no las trae.
+     *
+     * @param list<array<string, mixed>> $instances
+     *
+     * @return list<array<string, mixed>>
+     */
+    protected function ensureLabFirmasInstances(array $instances, array $sectionLayouts): array
+    {
+        foreach ($instances as $inst) {
+            if (is_array($inst) && ($inst['section'] ?? '') === 'lab_firmas') {
+                return $instances;
+            }
+        }
+        $lc = (int) ($sectionLayouts['lab_firmas']['columns'] ?? 3);
+        $lc = max(self::SECTION_COLUMN_MIN, min(self::SECTION_COLUMN_MAX, $lc));
+        foreach (self::defaultLabFirmasInstancesForColumns($lc) as $row) {
+            $instances[] = $row;
+        }
+
+        return $instances;
     }
 
     /**
@@ -777,15 +930,13 @@ class ReportPdfLayoutService
         $def = self::DEFAULT_TEXT_STYLE;
         $ts  = is_array($raw) ? $raw : [];
         $family = (string) ($ts['font_family'] ?? $def['font_family']);
-        $allowedFamily = ['DejaVu Sans', 'Helvetica', 'Arial', 'Times New Roman', 'Courier New'];
-        if (! in_array($family, $allowedFamily, true)) {
+        if (! in_array($family, self::ALLOWED_PDF_FONT_FAMILIES, true)) {
             $family = $def['font_family'];
         }
         $size = isset($ts['font_size_pt']) ? (float) $ts['font_size_pt'] : $def['font_size_pt'];
         $size = round(max(6.0, min(24.0, $size)), 2);
         $weight = strtolower(trim((string) ($ts['font_weight'] ?? $def['font_weight'])));
-        $allowedWeight = ['normal', 'bold', '100', '200', '300', '400', '500', '600', '700', '800', '900'];
-        if (! in_array($weight, $allowedWeight, true)) {
+        if (! in_array($weight, self::ALLOWED_PDF_FONT_WEIGHTS, true)) {
             $weight = $def['font_weight'];
         }
         $color = strtoupper(trim((string) ($ts['font_color'] ?? $def['font_color'])));
@@ -793,11 +944,11 @@ class ReportPdfLayoutService
             $color = $def['font_color'];
         }
         $style = strtolower(trim((string) ($ts['font_style'] ?? $def['font_style'])));
-        if (! in_array($style, ['normal', 'italic', 'oblique'], true)) {
+        if (! in_array($style, self::ALLOWED_PDF_FONT_STYLES, true)) {
             $style = $def['font_style'];
         }
         $transform = strtolower(trim((string) ($ts['text_transform'] ?? $def['text_transform'])));
-        if (! in_array($transform, ['none', 'uppercase', 'lowercase', 'capitalize'], true)) {
+        if (! in_array($transform, self::ALLOWED_PDF_TEXT_TRANSFORMS, true)) {
             $transform = $def['text_transform'];
         }
         $ls = isset($ts['letter_spacing_em']) ? (float) $ts['letter_spacing_em'] : $def['letter_spacing_em'];
@@ -805,7 +956,7 @@ class ReportPdfLayoutService
         $lh = isset($ts['line_height']) ? (float) $ts['line_height'] : $def['line_height'];
         $lh = round(max(1.0, min(3.0, $lh)), 2);
         $shadow = strtolower(trim((string) ($ts['text_shadow'] ?? $def['text_shadow'])));
-        if (! in_array($shadow, ['none', 'soft', 'medium', 'strong'], true)) {
+        if (! in_array($shadow, self::ALLOWED_PDF_TEXT_SHADOWS, true)) {
             $shadow = $def['text_shadow'];
         }
 
@@ -820,6 +971,303 @@ class ReportPdfLayoutService
             'line_height'       => $lh,
             'text_shadow'       => $shadow,
         ];
+    }
+
+    /**
+     * Listas permitidas para validación en cliente y servidor.
+     *
+     * @return array{font_families: list<string>, font_weights: list<string>, font_styles: list<string>, text_transforms: list<string>, text_shadows: list<string>, segment_shadows: list<string>}
+     */
+    public static function styleAllowlistsForClient(): array
+    {
+        return [
+            'font_families'   => self::ALLOWED_PDF_FONT_FAMILIES,
+            'font_weights'    => self::ALLOWED_PDF_FONT_WEIGHTS,
+            'font_styles'     => self::ALLOWED_PDF_FONT_STYLES,
+            'text_transforms' => self::ALLOWED_PDF_TEXT_TRANSFORMS,
+            'text_shadows'    => self::ALLOWED_PDF_TEXT_SHADOWS,
+            'segment_shadows' => self::ALLOWED_PDF_TEXT_SHADOWS,
+        ];
+    }
+
+    public static function isValidPdfHexColor(string $v): bool
+    {
+        return (bool) preg_match('/^#[0-9A-Fa-f]{6}$/', trim($v));
+    }
+
+    /**
+     * @param mixed $raw
+     */
+    public static function validateRawTextStyleArray($raw): ?string
+    {
+        if (! is_array($raw)) {
+            return 'Los estilos de un elemento del diseño deben ser un objeto JSON.';
+        }
+        if (isset($raw['font_family']) && ! in_array((string) $raw['font_family'], self::ALLOWED_PDF_FONT_FAMILIES, true)) {
+            return 'Familia de fuente no permitida en un elemento del diseño PDF.';
+        }
+        if (array_key_exists('font_size_pt', $raw)) {
+            if (! is_numeric($raw['font_size_pt'])) {
+                return 'El tamaño de fuente de un elemento debe ser numérico.';
+            }
+            $s = (float) $raw['font_size_pt'];
+            if ($s < 6.0 || $s > 24.0) {
+                return 'El tamaño de fuente de un elemento debe estar entre 6 y 24 pt.';
+            }
+        }
+        if (isset($raw['font_weight']) && ! in_array(strtolower(trim((string) $raw['font_weight'])), self::ALLOWED_PDF_FONT_WEIGHTS, true)) {
+            return 'Grosor de fuente no permitido en un elemento del diseño PDF.';
+        }
+        if (isset($raw['font_color']) && ! self::isValidPdfHexColor((string) $raw['font_color'])) {
+            return 'Color de texto inválido en un elemento del diseño (use formato #RRGGBB).';
+        }
+        if (isset($raw['font_style']) && ! in_array(strtolower(trim((string) $raw['font_style'])), self::ALLOWED_PDF_FONT_STYLES, true)) {
+            return 'Estilo de fuente no permitido en un elemento del diseño PDF.';
+        }
+        if (isset($raw['text_transform']) && ! in_array(strtolower(trim((string) $raw['text_transform'])), self::ALLOWED_PDF_TEXT_TRANSFORMS, true)) {
+            return 'Transformación de texto no permitida en un elemento del diseño PDF.';
+        }
+        if (array_key_exists('letter_spacing_em', $raw)) {
+            if (! is_numeric($raw['letter_spacing_em'])) {
+                return 'El espaciado entre letras debe ser numérico.';
+            }
+            $ls = (float) $raw['letter_spacing_em'];
+            if ($ls < -0.2 || $ls > 1.0) {
+                return 'El espaciado entre letras debe estar entre -0,2 y 1 em.';
+            }
+        }
+        if (array_key_exists('line_height', $raw)) {
+            if (! is_numeric($raw['line_height'])) {
+                return 'El interlineado debe ser numérico.';
+            }
+            $lh = (float) $raw['line_height'];
+            if ($lh < 1.0 || $lh > 3.0) {
+                return 'El interlineado de un elemento debe estar entre 1 y 3.';
+            }
+        }
+        if (isset($raw['text_shadow']) && ! in_array(strtolower(trim((string) $raw['text_shadow'])), self::ALLOWED_PDF_TEXT_SHADOWS, true)) {
+            return 'Tipo de sombra de texto no permitido en un elemento del diseño PDF.';
+        }
+
+        return null;
+    }
+
+    /**
+     * @param mixed $raw
+     */
+    protected static function validateRawCardHeaderStyleBlock($raw): ?string
+    {
+        if (! is_array($raw)) {
+            return 'La sección de estilo del encabezado tipo tarjeta (card header) es inválida.';
+        }
+        foreach (['bg_color', 'text_color'] as $k) {
+            if (isset($raw[$k]) && ! self::isValidPdfHexColor((string) $raw[$k])) {
+                return 'Color inválido en el estilo global de encabezados de sección (#RRGGBB).';
+            }
+        }
+        if (isset($raw['font_family']) && ! in_array((string) $raw['font_family'], self::ALLOWED_PDF_FONT_FAMILIES, true)) {
+            return 'Familia de fuente no permitida en el estilo de encabezados de sección.';
+        }
+        if (array_key_exists('font_size_pt', $raw)) {
+            if (! is_numeric($raw['font_size_pt'])) {
+                return 'El tamaño de fuente del encabezado de sección debe ser numérico.';
+            }
+            $s = (float) $raw['font_size_pt'];
+            if ($s < 7.0 || $s > 20.0) {
+                return 'El tamaño de fuente del encabezado de sección debe estar entre 7 y 20 pt.';
+            }
+        }
+        if (isset($raw['font_weight']) && ! in_array(strtolower(trim((string) $raw['font_weight'])), self::ALLOWED_PDF_FONT_WEIGHTS, true)) {
+            return 'Grosor de fuente no permitido en el encabezado de sección.';
+        }
+        if (isset($raw['font_style']) && ! in_array(strtolower(trim((string) $raw['font_style'])), self::ALLOWED_PDF_FONT_STYLES, true)) {
+            return 'Estilo de fuente no permitido en el encabezado de sección.';
+        }
+        if (isset($raw['text_transform']) && ! in_array(strtolower(trim((string) $raw['text_transform'])), self::ALLOWED_PDF_TEXT_TRANSFORMS, true)) {
+            return 'Transformación de texto no permitida en el encabezado de sección.';
+        }
+
+        return null;
+    }
+
+    /**
+     * @param mixed $raw
+     */
+    protected static function validateRawNotesLikeStyleBlock($raw, string $contextLabel): ?string
+    {
+        if (! is_array($raw)) {
+            return 'Estilo inválido en: ' . $contextLabel . '.';
+        }
+        foreach (['title_bg_color', 'title_text_color', 'body_bg_color', 'body_text_color'] as $k) {
+            if (isset($raw[$k]) && ! self::isValidPdfHexColor((string) $raw[$k])) {
+                return 'Color inválido en ' . $contextLabel . ' (use #RRGGBB).';
+            }
+        }
+        if (isset($raw['font_family']) && ! in_array((string) $raw['font_family'], self::ALLOWED_PDF_FONT_FAMILIES, true)) {
+            return 'Familia de fuente no permitida en ' . $contextLabel . '.';
+        }
+        if (array_key_exists('font_size_pt', $raw)) {
+            if (! is_numeric($raw['font_size_pt'])) {
+                return 'Tamaño de fuente inválido en ' . $contextLabel . '.';
+            }
+            $s = (float) $raw['font_size_pt'];
+            if ($s < 7.0 || $s > 20.0) {
+                return 'El tamaño de fuente en ' . $contextLabel . ' debe estar entre 7 y 20 pt.';
+            }
+        }
+        if (isset($raw['font_weight']) && ! in_array(strtolower(trim((string) $raw['font_weight'])), self::ALLOWED_PDF_FONT_WEIGHTS, true)) {
+            return 'Grosor de fuente no permitido en ' . $contextLabel . '.';
+        }
+        if (isset($raw['font_style']) && ! in_array(strtolower(trim((string) $raw['font_style'])), self::ALLOWED_PDF_FONT_STYLES, true)) {
+            return 'Estilo de fuente no permitido en ' . $contextLabel . '.';
+        }
+        if (isset($raw['text_transform']) && ! in_array(strtolower(trim((string) $raw['text_transform'])), self::ALLOWED_PDF_TEXT_TRANSFORMS, true)) {
+            return 'Transformación de texto no permitida en ' . $contextLabel . '.';
+        }
+        if (array_key_exists('line_height', $raw)) {
+            if (! is_numeric($raw['line_height'])) {
+                return 'Interlineado inválido en ' . $contextLabel . '.';
+            }
+            $lh = (float) $raw['line_height'];
+            if ($lh < 1.0 || $lh > 3.0) {
+                return 'El interlineado en ' . $contextLabel . ' debe estar entre 1 y 3.';
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * @param mixed $raw
+     */
+    protected static function validateRawResultsTableStyleBlock($raw): ?string
+    {
+        if (! is_array($raw)) {
+            return 'Estilo de la tabla de resultados inválido.';
+        }
+        foreach (['header_bg_color', 'header_text_color', 'body_bg_color', 'body_text_color', 'border_color', 'segment_bg_color', 'segment_border_color'] as $k) {
+            if (isset($raw[$k]) && ! self::isValidPdfHexColor((string) $raw[$k])) {
+                return 'Color inválido en la tabla de resultados (#RRGGBB).';
+            }
+        }
+        if (isset($raw['font_family']) && ! in_array((string) $raw['font_family'], self::ALLOWED_PDF_FONT_FAMILIES, true)) {
+            return 'Familia de fuente no permitida en la tabla de resultados.';
+        }
+        if (array_key_exists('font_size_pt', $raw)) {
+            if (! is_numeric($raw['font_size_pt'])) {
+                return 'Tamaño de fuente inválido en la tabla de resultados.';
+            }
+            $s = (float) $raw['font_size_pt'];
+            if ($s < 7.0 || $s > 20.0) {
+                return 'El tamaño de fuente en la tabla de resultados debe estar entre 7 y 20 pt.';
+            }
+        }
+        if (isset($raw['font_weight']) && ! in_array(strtolower(trim((string) $raw['font_weight'])), self::ALLOWED_PDF_FONT_WEIGHTS, true)) {
+            return 'Grosor de fuente no permitido en la tabla de resultados.';
+        }
+        if (isset($raw['font_style']) && ! in_array(strtolower(trim((string) $raw['font_style'])), self::ALLOWED_PDF_FONT_STYLES, true)) {
+            return 'Estilo de fuente no permitido en la tabla de resultados.';
+        }
+        if (isset($raw['text_transform']) && ! in_array(strtolower(trim((string) $raw['text_transform'])), self::ALLOWED_PDF_TEXT_TRANSFORMS, true)) {
+            return 'Transformación de texto no permitida en la tabla de resultados.';
+        }
+        if (array_key_exists('line_height', $raw)) {
+            if (! is_numeric($raw['line_height'])) {
+                return 'Interlineado inválido en la tabla de resultados.';
+            }
+            $lh = (float) $raw['line_height'];
+            if ($lh < 1.0 || $lh > 3.0) {
+                return 'El interlineado en la tabla de resultados debe estar entre 1 y 3.';
+            }
+        }
+        if (array_key_exists('segment_border_width_px', $raw)) {
+            if (! is_numeric($raw['segment_border_width_px'])) {
+                return 'El grosor del borde de segmento debe ser numérico.';
+            }
+            $w = (int) $raw['segment_border_width_px'];
+            if ($w < 0 || $w > 4) {
+                return 'El grosor del borde de segmento debe estar entre 0 y 4 px.';
+            }
+        }
+        if (isset($raw['segment_shadow']) && ! in_array(strtolower(trim((string) $raw['segment_shadow'])), self::ALLOWED_PDF_TEXT_SHADOWS, true)) {
+            return 'Sombra de segmento no permitida en la tabla de resultados.';
+        }
+
+        return null;
+    }
+
+    /**
+     * Valida estilos del JSON de plantilla antes de normalizar (POST / API).
+     *
+     * @param array<string, mixed> $decoded
+     */
+    public static function validateLayoutDecodedStyles(array $decoded): ?string
+    {
+        if (isset($decoded['instances'])) {
+            if (! is_array($decoded['instances'])) {
+                return 'La lista de elementos del diseño es inválida.';
+            }
+            foreach ($decoded['instances'] as $inst) {
+                if (! is_array($inst)) {
+                    continue;
+                }
+                $ts = $inst['text_style'] ?? [];
+                if (! is_array($ts)) {
+                    return 'Los estilos de un elemento del diseño deben ser un objeto JSON.';
+                }
+                if ($ts === []) {
+                    continue;
+                }
+                $err = self::validateRawTextStyleArray($ts);
+                if ($err !== null) {
+                    return $err;
+                }
+            }
+        }
+        $ps = $decoded['page_style'] ?? null;
+        if ($ps === null || $ps === []) {
+            return null;
+        }
+        if (! is_array($ps)) {
+            return 'El bloque de estilos globales (page_style) es inválido.';
+        }
+        if (isset($ps['card_header'])) {
+            $err = self::validateRawCardHeaderStyleBlock($ps['card_header']);
+            if ($err !== null) {
+                return $err;
+            }
+        }
+        $headerSec = $ps['header_section'] ?? null;
+        if (is_array($headerSec) && array_key_exists('separator_color', $headerSec)) {
+            $c = (string) $headerSec['separator_color'];
+            if ($c !== '' && ! self::isValidPdfHexColor($c)) {
+                return 'Color del separador de encabezado de sección inválido (#RRGGBB).';
+            }
+        }
+        if (isset($ps['notes'])) {
+            $err = self::validateRawNotesLikeStyleBlock($ps['notes'], 'notas del resultado');
+            if ($err !== null) {
+                return $err;
+            }
+        }
+        if (isset($ps['lab_firmas'])) {
+            $err = self::validateRawNotesLikeStyleBlock($ps['lab_firmas'], 'firmas del laboratorio');
+            if ($err !== null) {
+                return $err;
+            }
+            $err = self::validateRawLabFirmasTextFields($ps['lab_firmas']);
+            if ($err !== null) {
+                return $err;
+            }
+        }
+        if (isset($ps['results_table'])) {
+            $err = self::validateRawResultsTableStyleBlock($ps['results_table']);
+            if ($err !== null) {
+                return $err;
+            }
+        }
+
+        return null;
     }
 
     /**
@@ -840,23 +1288,21 @@ class ReportPdfLayoutService
             $tc = $def['text_color'];
         }
         $family = (string) ($s['font_family'] ?? $def['font_family']);
-        $allowedFamily = ['DejaVu Sans', 'Helvetica', 'Arial', 'Times New Roman', 'Courier New'];
-        if (! in_array($family, $allowedFamily, true)) {
+        if (! in_array($family, self::ALLOWED_PDF_FONT_FAMILIES, true)) {
             $family = $def['font_family'];
         }
         $size = isset($s['font_size_pt']) ? (float) $s['font_size_pt'] : $def['font_size_pt'];
         $size = round(max(7.0, min(20.0, $size)), 2);
         $weight = strtolower(trim((string) ($s['font_weight'] ?? $def['font_weight'])));
-        $allowedWeight = ['normal', 'bold', '100', '200', '300', '400', '500', '600', '700', '800', '900'];
-        if (! in_array($weight, $allowedWeight, true)) {
+        if (! in_array($weight, self::ALLOWED_PDF_FONT_WEIGHTS, true)) {
             $weight = $def['font_weight'];
         }
         $style = strtolower(trim((string) ($s['font_style'] ?? $def['font_style'])));
-        if (! in_array($style, ['normal', 'italic', 'oblique'], true)) {
+        if (! in_array($style, self::ALLOWED_PDF_FONT_STYLES, true)) {
             $style = $def['font_style'];
         }
         $transform = strtolower(trim((string) ($s['text_transform'] ?? $def['text_transform'])));
-        if (! in_array($transform, ['none', 'uppercase', 'lowercase', 'capitalize'], true)) {
+        if (! in_array($transform, self::ALLOWED_PDF_TEXT_TRANSFORMS, true)) {
             $transform = $def['text_transform'];
         }
 
@@ -885,23 +1331,21 @@ class ReportPdfLayoutService
             return preg_match('/^#[0-9A-F]{6}$/', $v) ? $v : $fallback;
         };
         $family = (string) ($s['font_family'] ?? $def['font_family']);
-        $allowedFamily = ['DejaVu Sans', 'Helvetica', 'Arial', 'Times New Roman', 'Courier New'];
-        if (! in_array($family, $allowedFamily, true)) {
+        if (! in_array($family, self::ALLOWED_PDF_FONT_FAMILIES, true)) {
             $family = $def['font_family'];
         }
         $size = isset($s['font_size_pt']) ? (float) $s['font_size_pt'] : $def['font_size_pt'];
         $size = round(max(7.0, min(20.0, $size)), 2);
         $weight = strtolower(trim((string) ($s['font_weight'] ?? $def['font_weight'])));
-        $allowedWeight = ['normal', 'bold', '100', '200', '300', '400', '500', '600', '700', '800', '900'];
-        if (! in_array($weight, $allowedWeight, true)) {
+        if (! in_array($weight, self::ALLOWED_PDF_FONT_WEIGHTS, true)) {
             $weight = $def['font_weight'];
         }
         $style = strtolower(trim((string) ($s['font_style'] ?? $def['font_style'])));
-        if (! in_array($style, ['normal', 'italic', 'oblique'], true)) {
+        if (! in_array($style, self::ALLOWED_PDF_FONT_STYLES, true)) {
             $style = $def['font_style'];
         }
         $transform = strtolower(trim((string) ($s['text_transform'] ?? $def['text_transform'])));
-        if (! in_array($transform, ['none', 'uppercase', 'lowercase', 'capitalize'], true)) {
+        if (! in_array($transform, self::ALLOWED_PDF_TEXT_TRANSFORMS, true)) {
             $transform = $def['text_transform'];
         }
         $lh = isset($s['line_height']) ? (float) $s['line_height'] : $def['line_height'];
@@ -922,6 +1366,71 @@ class ReportPdfLayoutService
     }
 
     /**
+     * Recorta un texto de etiqueta del bloque de firmas (PDF).
+     */
+    public static function clipLabFirmasLabel(?string $value, string $fallback, int $maxLen = self::LAB_FIRMAS_TEXT_MAX_LEN): string
+    {
+        $t = trim((string) ($value ?? ''));
+        if ($t === '') {
+            return $fallback;
+        }
+        if (function_exists('mb_substr')) {
+            return mb_substr($t, 0, $maxLen, 'UTF-8');
+        }
+
+        return substr($t, 0, $maxLen);
+    }
+
+    /**
+     * Estilo + textos configurables del bloque de firmas (misma forma base que notas).
+     *
+     * @param mixed $raw
+     *
+     * @return array<string, mixed>
+     */
+    public static function normalizeLabFirmasStyle($raw): array
+    {
+        $n   = self::normalizeNotesStyle($raw);
+        $s   = is_array($raw) ? $raw : [];
+        $def = self::DEFAULT_LAB_FIRMAS_LABELS;
+
+        return array_merge($n, [
+            'section_title'   => self::clipLabFirmasLabel(isset($s['section_title']) ? (string) $s['section_title'] : null, $def['section_title']),
+            'label_validator' => self::clipLabFirmasLabel(isset($s['label_validator']) ? (string) $s['label_validator'] : null, $def['label_validator']),
+            'label_seal'      => self::clipLabFirmasLabel(isset($s['label_seal']) ? (string) $s['label_seal'] : null, $def['label_seal']),
+            'label_approver'  => self::clipLabFirmasLabel(isset($s['label_approver']) ? (string) $s['label_approver'] : null, $def['label_approver']),
+            'label_cargo'     => self::clipLabFirmasLabel(isset($s['label_cargo']) ? (string) $s['label_cargo'] : null, $def['label_cargo']),
+        ]);
+    }
+
+    /**
+     * @param mixed $raw
+     */
+    protected static function validateRawLabFirmasTextFields($raw): ?string
+    {
+        if (! is_array($raw)) {
+            return null;
+        }
+        $keys = ['section_title', 'label_validator', 'label_seal', 'label_approver', 'label_cargo'];
+        foreach ($keys as $k) {
+            if (! array_key_exists($k, $raw)) {
+                continue;
+            }
+            $v = $raw[$k];
+            if (is_array($v) || is_object($v)) {
+                return 'Los textos del bloque de firmas deben ser cadenas.';
+            }
+            $t = trim((string) $v);
+            $len = function_exists('mb_strlen') ? mb_strlen($t, 'UTF-8') : strlen($t);
+            if ($len > self::LAB_FIRMAS_TEXT_MAX_LEN) {
+                return 'Un texto del bloque de firmas supera los ' . self::LAB_FIRMAS_TEXT_MAX_LEN . ' caracteres.';
+            }
+        }
+
+        return null;
+    }
+
+    /**
      * @param mixed $raw
      *
      * @return array{header_bg_color: string, header_text_color: string, body_bg_color: string, body_transparent: bool, body_text_color: string, border_color: string, segment_bg_color: string, segment_transparent: bool, segment_border_color: string, segment_border_width_px: int, segment_shadow: string, font_family: string, font_size_pt: float, font_weight: string, font_style: string, text_transform: string, line_height: float}
@@ -935,23 +1444,21 @@ class ReportPdfLayoutService
             return preg_match('/^#[0-9A-F]{6}$/', $v) ? $v : $fallback;
         };
         $family = (string) ($s['font_family'] ?? $def['font_family']);
-        $allowedFamily = ['DejaVu Sans', 'Helvetica', 'Arial', 'Times New Roman', 'Courier New'];
-        if (! in_array($family, $allowedFamily, true)) {
+        if (! in_array($family, self::ALLOWED_PDF_FONT_FAMILIES, true)) {
             $family = $def['font_family'];
         }
         $size = isset($s['font_size_pt']) ? (float) $s['font_size_pt'] : $def['font_size_pt'];
         $size = round(max(7.0, min(20.0, $size)), 2);
         $weight = strtolower(trim((string) ($s['font_weight'] ?? $def['font_weight'])));
-        $allowedWeight = ['normal', 'bold', '100', '200', '300', '400', '500', '600', '700', '800', '900'];
-        if (! in_array($weight, $allowedWeight, true)) {
+        if (! in_array($weight, self::ALLOWED_PDF_FONT_WEIGHTS, true)) {
             $weight = $def['font_weight'];
         }
         $style = strtolower(trim((string) ($s['font_style'] ?? $def['font_style'])));
-        if (! in_array($style, ['normal', 'italic', 'oblique'], true)) {
+        if (! in_array($style, self::ALLOWED_PDF_FONT_STYLES, true)) {
             $style = $def['font_style'];
         }
         $transform = strtolower(trim((string) ($s['text_transform'] ?? $def['text_transform'])));
-        if (! in_array($transform, ['none', 'uppercase', 'lowercase', 'capitalize'], true)) {
+        if (! in_array($transform, self::ALLOWED_PDF_TEXT_TRANSFORMS, true)) {
             $transform = $def['text_transform'];
         }
         $lh = isset($s['line_height']) ? (float) $s['line_height'] : $def['line_height'];
@@ -959,7 +1466,7 @@ class ReportPdfLayoutService
         $segBw = isset($s['segment_border_width_px']) ? (int) $s['segment_border_width_px'] : (int) $def['segment_border_width_px'];
         $segBw = max(0, min(4, $segBw));
         $segShadow = strtolower(trim((string) ($s['segment_shadow'] ?? $def['segment_shadow'])));
-        if (! in_array($segShadow, ['none', 'soft', 'medium', 'strong'], true)) {
+        if (! in_array($segShadow, self::ALLOWED_PDF_TEXT_SHADOWS, true)) {
             $segShadow = $def['segment_shadow'];
         }
 
@@ -1009,11 +1516,13 @@ class ReportPdfLayoutService
     public static function patientDoctorFieldLabels(): array
     {
         return [
-            'paciente_nombre'   => 'Nombre del paciente y género',
+            'paciente_nombre'   => 'Nombre del paciente',
+            'paciente_genero'   => 'Género del paciente',
             'paciente_edad'     => 'Edad',
             'paciente_telefono' => 'Teléfono',
             'medico'             => 'Médico tratante',
-            'fecha_ingreso'      => 'Fecha de recepción y fecha de reporte',
+            'fecha_recepcion'    => 'Fecha de recepción',
+            'fecha_reporte'      => 'Fecha de reporte',
             'numero_orden'       => 'Número de orden',
         ];
     }
@@ -1069,7 +1578,7 @@ class ReportPdfLayoutService
         }
 
         return [
-            'version'          => 5,
+            'version'          => 7,
             'blocks'           => $blocks,
             'section_layouts'  => self::defaultSectionLayoutsStatic(),
             'instances'        => self::defaultInstancesStatic(),
@@ -1095,6 +1604,48 @@ class ReportPdfLayoutService
                 continue;
             }
             $id = (string) ($f['id'] ?? '');
+            if ($id === 'fecha_ingreso') {
+                $enabled = array_key_exists('enabled', $f) ? ! empty($f['enabled']) : true;
+                $colRaw  = isset($f['column']) ? (int) $f['column'] : self::defaultColumnForPatientField('fecha_recepcion');
+                if ($colRaw < 0) {
+                    $enabled = false;
+                }
+                $col = $enabled ? max(0, min(1, $colRaw)) : self::defaultColumnForPatientField('fecha_recepcion');
+                foreach (['fecha_recepcion', 'fecha_reporte'] as $subId) {
+                    if (in_array($subId, $seen, true)) {
+                        continue;
+                    }
+                    $seen[] = $subId;
+                    $fields[] = [
+                        'id'      => $subId,
+                        'enabled' => $enabled,
+                        'column'  => $col,
+                    ];
+                }
+
+                continue;
+            }
+            if ($id === 'paciente_nombre') {
+                $enabled = array_key_exists('enabled', $f) ? ! empty($f['enabled']) : true;
+                $colRaw  = isset($f['column']) ? (int) $f['column'] : self::defaultColumnForPatientField('paciente_nombre');
+                if ($colRaw < 0) {
+                    $enabled = false;
+                }
+                $col = $enabled ? max(0, min(1, $colRaw)) : self::defaultColumnForPatientField('paciente_nombre');
+                foreach (['paciente_nombre', 'paciente_genero'] as $subId) {
+                    if (in_array($subId, $seen, true)) {
+                        continue;
+                    }
+                    $seen[] = $subId;
+                    $fields[] = [
+                        'id'      => $subId,
+                        'enabled' => $enabled,
+                        'column'  => $col,
+                    ];
+                }
+
+                continue;
+            }
             if ($id === '' || ! in_array($id, $allowed, true) || in_array($id, $seen, true)) {
                 continue;
             }
@@ -1226,26 +1777,28 @@ class ReportPdfLayoutService
 
         $hasInstancesArray = isset($decoded['instances']) && is_array($decoded['instances']);
         if ($hasInstancesArray) {
-            $sectionLayouts = $this->normalizeSectionLayouts($decoded);
-            $instances      = $this->normalizeInstances($decoded['instances'], $sectionLayouts);
+            $sectionLayouts   = $this->normalizeSectionLayouts($decoded);
+            $sourceLayoutVer  = isset($decoded['version']) ? (int) $decoded['version'] : 0;
+            $instances        = $this->normalizeInstances($decoded['instances'], $sectionLayouts, $sourceLayoutVer);
         } else {
             $migrated       = $this->migrateV4ToV5($decoded);
             $sectionLayouts = $migrated['section_layouts'];
             $instances      = $migrated['instances'];
         }
+        $instances = $this->ensureLabFirmasInstances($instances, $sectionLayouts);
 
         $watermark = $this->normalizeWatermark($decoded);
         $pageStyleRaw = is_array($decoded['page_style'] ?? null) ? $decoded['page_style'] : [];
         $pageStyle = [
             'card_header'    => self::normalizeCardHeaderStyle($pageStyleRaw['card_header'] ?? []),
             'notes'          => self::normalizeNotesStyle($pageStyleRaw['notes'] ?? []),
-            'lab_firmas'     => self::normalizeNotesStyle($pageStyleRaw['lab_firmas'] ?? []),
+            'lab_firmas'     => self::normalizeLabFirmasStyle($pageStyleRaw['lab_firmas'] ?? []),
             'results_table'  => self::normalizeResultsTableStyle($pageStyleRaw['results_table'] ?? []),
             'header_section' => self::normalizeHeaderSectionStyle($pageStyleRaw['header_section'] ?? []),
         ];
 
         return [
-            'version'         => 5,
+            'version'         => 7,
             'blocks'          => $blocks,
             'section_layouts' => $sectionLayouts,
             'instances'       => $instances,
@@ -1342,10 +1895,12 @@ class ReportPdfLayoutService
     {
         return [
             'paciente_nombre'   => 'Juan Pérez García',
+            'paciente_genero'   => 'Masculino',
             'paciente_edad'     => '42 años, 3 meses y 10 días',
             'paciente_telefono' => '+52 55 1234 5678',
             'medico'             => 'Dra. María López',
-            'fecha_ingreso'      => '09/04/2026 10:15:30',
+            'fecha_recepcion'    => '09/04/2026 10:15:30',
+            'fecha_reporte'      => '10/04/2026 14:22:00',
             'numero_orden'       => 'A-2026-0150',
         ];
     }
@@ -1360,7 +1915,21 @@ class ReportPdfLayoutService
         return array_merge(
             self::headerPreviewSamples(),
             self::patientDoctorPreviewSamples(),
-            self::footerPreviewSamples()
+            self::footerPreviewSamples(),
+            self::labFirmasPreviewSamples()
         );
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    public static function labFirmasPreviewSamples(): array
+    {
+        return [
+            'lab_firmas_title'     => 'VALIDACIÓN Y APROBACIÓN',
+            'lab_firmas_validator' => 'Ana López Martínez',
+            'lab_firmas_seal'      => '[Sello]',
+            'lab_firmas_approver'  => 'Dr. Carlos Ruiz',
+        ];
     }
 }
