@@ -92,6 +92,10 @@ class ReportPdfLayoutService
 
     public const LAB_FIRMAS_TEXT_MAX_LEN = 120;
 
+    public const CUSTOM_TEXT_LABEL_MAX_LEN = 200;
+
+    public const CUSTOM_TEXT_VALUE_MAX_LEN = 500;
+
     /** Fondo/tipografía/bordes entre columnas: encabezado superior, paciente/médico, pie. */
     public const DEFAULT_SECTION_GRID_WRAP = [
         'body_bg_color'          => '#FFFFFF',
@@ -202,6 +206,7 @@ class ReportPdfLayoutService
         'lab_email',
         'lab_website',
         'qr',
+        'custom_text',
         'paciente_nombre',
         'paciente_genero',
         'paciente_edad',
@@ -561,6 +566,7 @@ class ReportPdfLayoutService
     {
         return array_merge(
             self::headerFieldLabels(),
+            ['custom_text' => 'Texto libre (etiqueta y valor editables)'],
             self::patientDoctorFieldLabels(),
             self::footerFieldLabels(),
             self::labFirmasFieldLabels()
@@ -757,12 +763,16 @@ class ReportPdfLayoutService
             $span = isset($inst['column_span']) ? (int) $inst['column_span'] : 1;
             $maxSpan = max(1, $n - $col);
             $span = max(1, min($maxSpan, $span));
-            $items[] = [
+            $item = [
                 'element_type' => $type,
                 'column'       => $col,
                 'column_span'  => $span,
                 'text_style'   => self::normalizeTextStyle($inst['text_style'] ?? []),
             ];
+            if ($type === 'custom_text') {
+                $item['custom_text'] = self::normalizeCustomTextPayload($inst['custom_text'] ?? []);
+            }
+            $items[] = $item;
         }
 
         return [$n, $items];
@@ -829,6 +839,8 @@ class ReportPdfLayoutService
                         'lab_firmas_approver_name',
                         'lab_firmas_approver_cargo',
                     ];
+                } elseif ($type === 'custom_text') {
+                    $typesToEmit = ['custom_text'];
                 } elseif (in_array($type, self::LAB_FIRMAS_ELEMENT_TYPES, true)) {
                     $typesToEmit = [$type];
                 } else {
@@ -860,14 +872,19 @@ class ReportPdfLayoutService
             $spanRaw = isset($row['column_span']) ? (int) $row['column_span'] : 1;
             $maxSpan = max(1, $cols - $col);
             $span    = max(1, min($maxSpan, $spanRaw >= 1 ? $spanRaw : 1));
-            $textStyle = self::normalizeTextStyle($row['text_style'] ?? []);
+            $customTextPayload = ($type === 'custom_text')
+                ? self::normalizeCustomTextPayload($row['custom_text'] ?? [])
+                : null;
 
             foreach ($typesToEmit as $emitType) {
                 $uid = (string) ($row['uid'] ?? '');
                 if ($uid === '' || count($typesToEmit) > 1) {
                     $uid = self::generateInstanceUid();
                 }
-                $out[] = [
+                $textStyle = ($emitType === 'custom_text')
+                    ? self::DEFAULT_TEXT_STYLE
+                    : self::normalizeTextStyle($row['text_style'] ?? []);
+                $entry = [
                     'uid'           => $uid,
                     'element_type'  => $emitType,
                     'section'       => $section,
@@ -876,6 +893,10 @@ class ReportPdfLayoutService
                     'column_span'   => $span,
                     'text_style'    => $textStyle,
                 ];
+                if ($emitType === 'custom_text') {
+                    $entry['custom_text'] = $customTextPayload ?? self::normalizeCustomTextPayload([]);
+                }
+                $out[] = $entry;
             }
         }
 
@@ -1100,6 +1121,115 @@ class ReportPdfLayoutService
             'line_height'       => $lh,
             'text_shadow'       => $shadow,
         ];
+    }
+
+    /**
+     * CSS inline a partir de un estilo de texto ya normalizado (misma lógica que la cuadrícula PDF).
+     *
+     * @param array<string, mixed> $ts {@see normalizeTextStyle()}
+     */
+    public static function textStyleNormalizedToInlineCss(array $ts): string
+    {
+        $shadowMap = [
+            'none'   => 'none',
+            'soft'   => '0.4px 0.4px 1px rgba(0,0,0,0.28)',
+            'medium' => '0.7px 0.7px 1.4px rgba(0,0,0,0.35)',
+            'strong' => '1px 1px 2px rgba(0,0,0,0.45)',
+        ];
+        $sh = $shadowMap[$ts['text_shadow']] ?? 'none';
+
+        return 'font-family:' . $ts['font_family'] . ';'
+            . 'font-size:' . $ts['font_size_pt'] . 'pt;'
+            . 'font-weight:' . $ts['font_weight'] . ';'
+            . 'color:' . $ts['font_color'] . ';'
+            . 'font-style:' . $ts['font_style'] . ';'
+            . 'text-transform:' . $ts['text_transform'] . ';'
+            . 'letter-spacing:' . $ts['letter_spacing_em'] . 'em;'
+            . 'line-height:' . $ts['line_height'] . ';'
+            . 'text-shadow:' . $sh . ';';
+    }
+
+    /**
+     * @param array<string, mixed>|null $raw
+     */
+    public static function textStyleArrayToInlineCss(?array $raw): string
+    {
+        return self::textStyleNormalizedToInlineCss(self::normalizeTextStyle($raw ?? []));
+    }
+
+    /**
+     * Texto libre por instancia: etiqueta + valor con estilos propios (no usa text_style global del elemento).
+     *
+     * @param mixed $raw
+     *
+     * @return array{label: string, value: string, show_label: bool, line_mode: string, label_style: array<string, mixed>, value_style: array<string, mixed>}
+     */
+    public static function normalizeCustomTextPayload($raw): array
+    {
+        $s = is_array($raw) ? $raw : [];
+        $lab = trim((string) ($s['label'] ?? ''));
+        if ($lab !== '') {
+            $lab = function_exists('mb_substr')
+                ? mb_substr($lab, 0, self::CUSTOM_TEXT_LABEL_MAX_LEN, 'UTF-8')
+                : substr($lab, 0, self::CUSTOM_TEXT_LABEL_MAX_LEN);
+        }
+        $val = trim((string) ($s['value'] ?? ''));
+        if ($val !== '') {
+            $val = function_exists('mb_substr')
+                ? mb_substr($val, 0, self::CUSTOM_TEXT_VALUE_MAX_LEN, 'UTF-8')
+                : substr($val, 0, self::CUSTOM_TEXT_VALUE_MAX_LEN);
+        }
+        $show = array_key_exists('show_label', $s) ? self::labFirmasBool($s, 'show_label', true) : true;
+        $inline = isset($s['line_mode']) && trim((string) $s['line_mode']) === 'inline';
+
+        return [
+            'label'        => $lab,
+            'value'        => $val,
+            'show_label'   => $show,
+            'line_mode'    => $inline ? 'inline' : 'stacked',
+            'label_style'  => self::normalizeTextStyle($s['label_style'] ?? []),
+            'value_style'  => self::normalizeTextStyle($s['value_style'] ?? []),
+        ];
+    }
+
+    /**
+     * @param mixed $raw
+     */
+    public static function validateRawCustomTextPayload($raw): ?string
+    {
+        if (! is_array($raw)) {
+            return 'El bloque «texto libre» (custom_text) debe ser un objeto JSON.';
+        }
+        foreach (['label_style', 'value_style'] as $sk) {
+            $sub = $raw[$sk] ?? [];
+            if (! is_array($sub)) {
+                return 'Estilo inválido en texto libre (' . $sk . ').';
+            }
+            if ($sub === []) {
+                continue;
+            }
+            $err = self::validateRawTextStyleArray($sub);
+            if ($err !== null) {
+                return $err;
+            }
+        }
+        foreach (['label', 'value'] as $tk) {
+            if (! array_key_exists($tk, $raw)) {
+                continue;
+            }
+            $v = $raw[$tk];
+            if (is_array($v) || is_object($v)) {
+                return 'Texto libre: ' . $tk . ' debe ser cadena.';
+            }
+            $t = (string) $v;
+            $len = function_exists('mb_strlen') ? mb_strlen($t, 'UTF-8') : strlen($t);
+            $max = $tk === 'label' ? self::CUSTOM_TEXT_LABEL_MAX_LEN : self::CUSTOM_TEXT_VALUE_MAX_LEN;
+            if ($len > $max) {
+                return 'Texto libre: ' . $tk . ' supera ' . (string) $max . ' caracteres.';
+            }
+        }
+
+        return null;
     }
 
     /**
@@ -1458,6 +1588,15 @@ class ReportPdfLayoutService
             }
             foreach ($decoded['instances'] as $inst) {
                 if (! is_array($inst)) {
+                    continue;
+                }
+                $et = (string) ($inst['element_type'] ?? '');
+                if ($et === 'custom_text') {
+                    $errCt = self::validateRawCustomTextPayload($inst['custom_text'] ?? null);
+                    if ($errCt !== null) {
+                        return $errCt;
+                    }
+
                     continue;
                 }
                 $ts = $inst['text_style'] ?? [];
@@ -2797,6 +2936,7 @@ class ReportPdfLayoutService
     {
         return array_merge(
             self::headerPreviewSamples(),
+            ['custom_text' => ''],
             self::patientDoctorPreviewSamples(),
             self::footerPreviewSamples(),
             self::labFirmasPreviewSamples()

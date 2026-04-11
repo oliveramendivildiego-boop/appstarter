@@ -18,7 +18,12 @@ $normalizeItem = static function (array $it, int $n): array {
     $span = min($span, max(1, $n - $col));
     $textStyle = is_array($it['text_style'] ?? null) ? $it['text_style'] : [];
 
-    return ['element_type' => $type, 'col' => $col, 'span' => $span, 'text_style' => $textStyle];
+    $out = ['element_type' => $type, 'col' => $col, 'span' => $span, 'text_style' => $textStyle];
+    if ($type === 'custom_text' && is_array($it['custom_text'] ?? null)) {
+        $out['custom_text'] = $it['custom_text'];
+    }
+
+    return $out;
 };
 
 $rangesOverlap = static function (int $a0, int $a1, int $b0, int $b1): bool {
@@ -178,17 +183,21 @@ $pdfEmptyTdStyle = static function (int $colIdx, float $pctUnit) use ($n, $colAl
             ?>
         <td class="pdf-cell pdf-cell--<?= esc($tdInfo['alignCls']) ?>" colspan="<?= $span ?>" style="<?= esc($tdInfo['style'], 'attr') ?>">
             <?php foreach ($block['items'] as $cellItem):
-                $inlineStyle = $textStyleCss(is_array($cellItem['text_style'] ?? null) ? $cellItem['text_style'] : []);
-                $elType      = (string) ($cellItem['element_type'] ?? '');
-                $elCtx       = array_merge($element_ctx, [
+                $elType = (string) ($cellItem['element_type'] ?? '');
+                $isCustomText = ($elType === 'custom_text');
+                $inlineStyle  = $isCustomText ? '' : $textStyleCss(is_array($cellItem['text_style'] ?? null) ? $cellItem['text_style'] : []);
+                $elCtx        = array_merge($element_ctx, [
                     'pdf_element_type' => $cellItem['element_type'],
                     'pdf_text_style'   => is_array($cellItem['text_style'] ?? null) ? $cellItem['text_style'] : [],
+                    'pdf_custom_text'  => $isCustomText
+                        ? \App\Services\ReportPdfLayoutService::normalizeCustomTextPayload($cellItem['custom_text'] ?? [])
+                        : null,
                 ]);
                 if ($elType === 'lab_firmas_title') {
                     echo view('registers/pdf/partials/element', $elCtx);
                 } else {
                     ?>
-            <div class="pdf-el-item" style="<?= esc($inlineStyle, 'attr') ?>">
+            <div class="pdf-el-item"<?= $isCustomText ? '' : ' style="' . esc($inlineStyle, 'attr') . '"' ?>>
                 <?= view('registers/pdf/partials/element', $elCtx) ?>
             </div>
             <?php
@@ -202,17 +211,21 @@ $pdfEmptyTdStyle = static function (int $colIdx, float $pctUnit) use ($n, $colAl
             ?>
         <td class="pdf-cell pdf-cell--<?= esc($tdInfo['alignCls']) ?>" style="<?= esc($tdInfo['style'], 'attr') ?>">
             <?php foreach ($stacks[$c] as $stackItem):
-                $inlineStyle = $textStyleCss(is_array($stackItem['text_style'] ?? null) ? $stackItem['text_style'] : []);
-                $elType      = (string) ($stackItem['element_type'] ?? '');
-                $elCtx       = array_merge($element_ctx, [
+                $elType = (string) ($stackItem['element_type'] ?? '');
+                $isCustomText = ($elType === 'custom_text');
+                $inlineStyle  = $isCustomText ? '' : $textStyleCss(is_array($stackItem['text_style'] ?? null) ? $stackItem['text_style'] : []);
+                $elCtx        = array_merge($element_ctx, [
                     'pdf_element_type' => $stackItem['element_type'],
                     'pdf_text_style'   => is_array($stackItem['text_style'] ?? null) ? $stackItem['text_style'] : [],
+                    'pdf_custom_text'  => $isCustomText
+                        ? \App\Services\ReportPdfLayoutService::normalizeCustomTextPayload($stackItem['custom_text'] ?? [])
+                        : null,
                 ]);
                 if ($elType === 'lab_firmas_title') {
                     echo view('registers/pdf/partials/element', $elCtx);
                 } else {
                     ?>
-            <div class="pdf-el-item" style="<?= esc($inlineStyle, 'attr') ?>">
+            <div class="pdf-el-item"<?= $isCustomText ? '' : ' style="' . esc($inlineStyle, 'attr') . '"' ?>>
                 <?= view('registers/pdf/partials/element', $elCtx) ?>
             </div>
             <?php

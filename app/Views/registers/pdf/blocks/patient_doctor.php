@@ -22,6 +22,7 @@ $elementCtx = [
     'pdf_logo_data_uri' => $pdf_logo_data_uri ?? '',
     'report_emitido_en' => $report_emitido_en ?? \App\Services\RegisterService::formatNowForReport(),
     'pdf_patient_doctor_grid_style' => \App\Services\ReportPdfLayoutService::normalizePatientDoctorGridStyle($ps['patient_doctor_grid'] ?? []),
+    'pdf_header_grid_style' => \App\Services\ReportPdfLayoutService::normalizeHeaderGridStyle($ps['header_grid'] ?? []),
 ];
 ?>
 <div class="patient-section pdf-pd-block">

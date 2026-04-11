@@ -157,6 +157,13 @@ body {
     font-size: inherit;
     color: inherit;
 }
+.pdf-hg-block .pdf-custom-text p,
+.pdf-pd-block .pdf-custom-text p,
+.pdf-ft-block .pdf-custom-text p,
+.lab-firmas-pdf-block .pdf-custom-text p {
+    font-size: inherit;
+    color: inherit;
+}
 .header-piece-logo {
     max-width: 100%;
 }
@@ -380,13 +387,7 @@ table.results td {
 .lab-firmas-pdf-block .pdf-section-table td.pdf-cell {
     background: var(--pdf-lf-body-bg, #ffffff);
     background-color: var(--pdf-lf-body-bg, #ffffff);
-    color: var(--pdf-lf-body-color, #333333);
-    font-family: var(--pdf-lf-font-family, "DejaVu Sans"), sans-serif;
-    font-size: var(--pdf-lf-font-size, 9.5pt);
-    font-weight: var(--pdf-lf-font-weight, normal);
-    font-style: var(--pdf-lf-font-style, normal);
-    text-transform: var(--pdf-lf-transform, none);
-    line-height: inherit;
+    /* Sin color/fuente en el td: cada instancia lleva tipografía en .pdf-el-item (inline); en viewreport Bootstrap heredaba mal si el td imponía la fuente de la cuadrícula. */
     border-width: var(--pdf-lf-column-border-width, 1px);
     border-style: solid;
     border-color: var(--pdf-lf-column-border-color, #ddd);
@@ -432,16 +433,23 @@ table.results td {
     background-color: transparent !important;
     background-image: none !important;
 }
+/* Heredar la tipografía del .pdf-el-item (estilo inline por instancia); evita que reglas globales (p. ej. .patient-section-lines) pisen la fuente en viewreport. */
+.pdf-hg-block .pdf-section-table td.pdf-cell > .pdf-el-item .patient-line,
+.pdf-pd-block .pdf-section-table td.pdf-cell > .pdf-el-item .patient-line,
+.pdf-ft-block .pdf-section-table td.pdf-cell > .pdf-el-item .patient-line,
+.lab-firmas-pdf-block .pdf-section-table td.pdf-cell > .pdf-el-item .patient-line {
+    font-family: inherit;
+    font-size: inherit;
+    font-weight: inherit;
+    font-style: inherit;
+    text-transform: inherit;
+    letter-spacing: inherit;
+    color: inherit;
+}
 .pdf-hg-block .pdf-section-table td.pdf-cell {
     background: var(--pdf-hg-body-bg, #ffffff);
     background-color: var(--pdf-hg-body-bg, #ffffff);
-    color: var(--pdf-hg-body-color, #333333);
-    font-family: var(--pdf-hg-font-family, "DejaVu Sans"), sans-serif;
-    font-size: var(--pdf-hg-font-size, 9.5pt);
-    font-weight: var(--pdf-hg-font-weight, normal);
-    font-style: var(--pdf-hg-font-style, normal);
-    text-transform: var(--pdf-hg-transform, none);
-    line-height: var(--pdf-hg-line-height, 1.35);
+    /* Tipografía por instancia en .pdf-el-item (inline), no en el td */
     border-left-width: var(--pdf-hg-column-border-width, 0);
     border-left-style: solid;
     border-left-color: var(--pdf-hg-column-border-color, #ddd);
@@ -453,13 +461,7 @@ table.results td {
 .pdf-pd-block .pdf-section-table td.pdf-cell {
     background: var(--pdf-pd-body-bg, #f8f9fa);
     background-color: var(--pdf-pd-body-bg, #f8f9fa);
-    color: var(--pdf-pd-body-color, #333333);
-    font-family: var(--pdf-pd-font-family, "DejaVu Sans"), sans-serif;
-    font-size: var(--pdf-pd-font-size, 9.5pt);
-    font-weight: var(--pdf-pd-font-weight, normal);
-    font-style: var(--pdf-pd-font-style, normal);
-    text-transform: var(--pdf-pd-transform, none);
-    line-height: var(--pdf-pd-line-height, 1.35);
+    /* Tipografía por instancia en .pdf-el-item (inline), no en el td */
     border-left-width: var(--pdf-pd-column-border-width, 0);
     border-left-style: solid;
     border-left-color: var(--pdf-pd-column-border-color, #ddd);
@@ -471,13 +473,7 @@ table.results td {
 .pdf-ft-block .pdf-section-table td.pdf-cell {
     background: var(--pdf-ft-body-bg, #ffffff);
     background-color: var(--pdf-ft-body-bg, #ffffff);
-    color: var(--pdf-ft-body-color, #666666);
-    font-family: var(--pdf-ft-font-family, "DejaVu Sans"), sans-serif;
-    font-size: var(--pdf-ft-font-size, 8pt);
-    font-weight: var(--pdf-ft-font-weight, normal);
-    font-style: var(--pdf-ft-font-style, normal);
-    text-transform: var(--pdf-ft-transform, none);
-    line-height: var(--pdf-ft-line-height, 1.35);
+    /* Tipografía por instancia en .pdf-el-item (inline), no en el td */
     border-left-width: var(--pdf-ft-column-border-width, 0);
     border-left-style: solid;
     border-left-color: var(--pdf-ft-column-border-color, #ddd);

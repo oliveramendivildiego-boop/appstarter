@@ -693,6 +693,19 @@ $labelsShort = [
         <h5 class="mb-0">Elementos del PDF</h5>
     </div>
     <div class="card-body">
+        <template id="tpl_pdf_custom_text_editor">
+            <?= view('config/partials/pdf_instance_custom_text_editor', [
+                'rowUid' => '__PDF_UID__',
+                'ct'     => \App\Services\ReportPdfLayoutService::normalizeCustomTextPayload([
+                    'label'       => 'Etiqueta:',
+                    'value'       => 'Valor de ejemplo',
+                    'show_label'  => true,
+                    'line_mode'   => 'stacked',
+                    'label_style' => \App\Services\ReportPdfLayoutService::DEFAULT_TEXT_STYLE,
+                    'value_style' => \App\Services\ReportPdfLayoutService::DEFAULT_TEXT_STYLE,
+                ]),
+            ]) ?>
+        </template>
         <div class="row g-3 mb-4">
             <div class="col-12 col-lg-8">
                 <label class="form-label small mb-1" for="add_element_type">Añadir elemento al diseño</label>
@@ -995,8 +1008,8 @@ document.addEventListener('DOMContentLoaded', function() {
         for (var i = 0; i < typeEl.options.length; i++) {
             var o = typeEl.options[i];
             var t = o.value;
-            var isLab = LAB_ELEMENT_TYPES.indexOf(t) >= 0;
-            var show = (sec === 'lab_firmas') ? isLab : !isLab;
+            var isLabOnly = LAB_ELEMENT_TYPES.indexOf(t) >= 0;
+            var show = (sec === 'lab_firmas') ? isLabOnly : (!isLabOnly || t === 'custom_text');
             o.hidden = !show;
             o.disabled = !show;
             if (show && firstVisible === null) firstVisible = o;
@@ -1140,6 +1153,124 @@ document.addEventListener('DOMContentLoaded', function() {
         };
     }
 
+    /** Estilo por defecto de instancia (coincide con DEFAULT_TEXT_STYLE del servidor). */
+    function defaultInstanceTextStyleJson() {
+        return {
+            font_family: 'DejaVu Sans',
+            font_size_pt: 10,
+            font_weight: 'normal',
+            font_color: '#333333',
+            font_style: 'normal',
+            text_transform: 'none',
+            letter_spacing_em: 0,
+            line_height: 1.35,
+            text_shadow: 'none'
+        };
+    }
+
+    /** Lee un bloque de estilo ct-lbl-* / ct-val-* dentro de un contenedor. */
+    function readCtStyleInScope(scope, pfx) {
+        function readStr(suf, listKey, fallback) {
+            var allowed = pdfAllow(listKey);
+            var el = scope ? scope.querySelector('.' + pfx + '-' + suf) : null;
+            var v = el ? String(el.value || '').trim() : '';
+            return allowed.indexOf(v) >= 0 ? v : fallback;
+        }
+        function readNum(suf, minV, maxV, step, fallback) {
+            var el = scope ? scope.querySelector('.' + pfx + '-' + suf) : null;
+            var n = el ? parseFloat(el.value) : NaN;
+            if (isNaN(n)) n = fallback;
+            n = Math.max(minV, Math.min(maxV, n));
+            return Math.round(n / step) * step;
+        }
+        var clrEl = scope ? scope.querySelector('.' + pfx + '-font-color') : null;
+        var clr = clrEl ? String(clrEl.value || '').trim() : '#333333';
+        if (!isValidPdfHexJs(clr)) clr = '#333333';
+        return {
+            font_family: readStr('font-family', 'font_families', 'DejaVu Sans'),
+            font_size_pt: readNum('font-size', 6, 24, 0.5, 10),
+            font_weight: readStr('font-weight', 'font_weights', 'normal'),
+            font_color: clr,
+            font_style: readStr('font-style', 'font_styles', 'normal'),
+            text_transform: readStr('text-transform', 'text_transforms', 'none'),
+            letter_spacing_em: readNum('letter-spacing', -0.2, 1, 0.01, 0),
+            line_height: readNum('line-height', 1, 3, 0.05, 1.35),
+            text_shadow: readStr('text-shadow', 'text_shadows', 'none')
+        };
+    }
+
+    function readInstanceCustomText(li) {
+        var lblIn = li.querySelector('.custom-text-label-input');
+        var valIn = li.querySelector('.custom-text-value-input');
+        var showCb = li.querySelector('.custom-text-show-label');
+        var modeSel = li.querySelector('.custom-text-line-mode');
+        var lblScope = li.querySelector('.custom-text-style-label');
+        var valScope = li.querySelector('.custom-text-style-value');
+        return {
+            label: lblIn ? String(lblIn.value || '').slice(0, 200) : '',
+            value: valIn ? String(valIn.value || '').slice(0, 500) : '',
+            show_label: !!(showCb && showCb.checked),
+            line_mode: (modeSel && modeSel.value === 'inline') ? 'inline' : 'stacked',
+            label_style: readCtStyleInScope(lblScope, 'ct-lbl'),
+            value_style: readCtStyleInScope(valScope, 'ct-val')
+        };
+    }
+
+    function applyInstanceCustomText(li, ct) {
+        if (!li || !ct || typeof ct !== 'object') return;
+        function setVal(sel, v) {
+            var el = li.querySelector(sel);
+            if (el && v != null) el.value = String(v);
+        }
+        function setChk(sel, on) {
+            var el = li.querySelector(sel);
+            if (el) el.checked = !!on;
+        }
+        setVal('.custom-text-label-input', ct.label);
+        setVal('.custom-text-value-input', ct.value);
+        setChk('.custom-text-show-label', ct.show_label);
+        setVal('.custom-text-line-mode', (ct.line_mode === 'inline') ? 'inline' : 'stacked');
+        function applyScope(scope, pfx, ts) {
+            if (!scope || !ts || typeof ts !== 'object') return;
+            function setS(suf, v) {
+                var el = scope.querySelector('.' + pfx + '-' + suf);
+                if (el && v != null) el.value = String(v);
+            }
+            setS('font-family', ts.font_family);
+            setS('font-size', ts.font_size_pt);
+            setS('font-weight', ts.font_weight);
+            setS('font-color', ts.font_color);
+            setS('font-style', ts.font_style);
+            setS('text-transform', ts.text_transform);
+            setS('letter-spacing', ts.letter_spacing_em);
+            setS('line-height', ts.line_height);
+            setS('text-shadow', ts.text_shadow);
+        }
+        applyScope(li.querySelector('.custom-text-style-label'), 'ct-lbl', ct.label_style);
+        applyScope(li.querySelector('.custom-text-style-value'), 'ct-val', ct.value_style);
+    }
+
+    function buildCustomTextPreviewInnerHtml(ct) {
+        var stL = textStyleToInlineCss(ct.label_style || defaultInstanceTextStyleJson());
+        var stV = textStyleToInlineCss(ct.value_style || defaultInstanceTextStyleJson());
+        var labT = String(ct.label || '');
+        var valT = String(ct.value || '');
+        var showLbl = !!ct.show_label && labT !== '';
+        var inlineM = (ct.line_mode === 'inline');
+        var valDisp = valT !== '' ? valT : '—';
+        if (inlineM && showLbl) {
+            return '<p style="margin:0;"><span style="' + escapeHtml(stL) + '">' + escapeHtml(labT) + '</span> <span style="' + escapeHtml(stV) + '">' + escapeHtml(valDisp) + '</span></p>';
+        }
+        if (inlineM) {
+            return '<p style="margin:0;"><span style="' + escapeHtml(stV) + '">' + escapeHtml(valDisp) + '</span></p>';
+        }
+        if (showLbl) {
+            return '<p style="margin:0;"><span style="' + escapeHtml(stL) + '">' + escapeHtml(labT) + '</span></p>' +
+                '<p style="margin:0;"><span style="' + escapeHtml(stV) + '">' + escapeHtml(valDisp) + '</span></p>';
+        }
+        return '<p style="margin:0;"><span style="' + escapeHtml(stV) + '">' + escapeHtml(valDisp) + '</span></p>';
+    }
+
     function textStyleToInlineCss(ts) {
         var mapShadow = {
             none: 'none',
@@ -1242,92 +1373,32 @@ document.addEventListener('DOMContentLoaded', function() {
         };
     }
 
-    /**
-     * CSS inline del pie (misma lógica que ReportPdfLayoutService::footerGridPieceStyleAttr) para la vista previa del editor.
-     */
-    function footerGridPieceStyleCss(ft, piece) {
-        if (!ft || typeof ft !== 'object') return '';
-        var fn = String(ft.font_family || 'DejaVu Sans').trim();
-        var ffCss = (fn.indexOf(' ') >= 0 || fn.indexOf('"') >= 0)
-            ? '"' + fn.replace(/["\\]/g, '') + '", sans-serif'
-            : fn.replace(/["\\]/g, '') + ', sans-serif';
-        var lh = parseFloat(ft.line_height);
-        if (isNaN(lh)) lh = 1.35;
-        lh = Math.max(1, Math.min(3, lh));
-        var tt = String(ft.text_transform || 'none');
-        function decl(color, fs, fw, fst) {
-            var fsn = parseFloat(fs);
-            if (isNaN(fsn)) fsn = parseFloat(ft.font_size_pt) || 8;
-            fsn = Math.max(7, Math.min(20, fsn));
-            return 'color:' + String(color)
-                + ';font-family:' + ffCss
-                + ';font-size:' + fsn + 'pt'
-                + ';font-weight:' + String(fw)
-                + ';font-style:' + String(fst)
-                + ';text-transform:' + tt
-                + ';line-height:' + lh;
-        }
-        switch (piece) {
-            case 'company':
-                return decl(
-                    ft.footer_company_text_color || ft.body_text_color,
-                    ft.footer_company_font_size_pt,
-                    ft.footer_company_font_weight || ft.font_weight,
-                    ft.footer_company_font_style || ft.font_style
-                );
-            case 'label_generated':
-                return decl(
-                    ft.label_footer_generated_color || ft.body_text_color,
-                    ft.label_footer_generated_font_size_pt,
-                    ft.label_footer_generated_font_weight || ft.font_weight,
-                    ft.label_footer_generated_font_style || ft.font_style
-                );
-            case 'datetime':
-                return decl(
-                    ft.label_footer_datetime_color || ft.body_text_color,
-                    ft.label_footer_datetime_font_size_pt,
-                    ft.label_footer_datetime_font_weight || ft.font_weight,
-                    ft.label_footer_datetime_font_style || ft.font_style
-                );
-            case 'policy':
-                return decl(
-                    ft.footer_policy_text_color || ft.body_text_color,
-                    ft.footer_policy_font_size_pt,
-                    ft.footer_policy_font_weight || ft.font_weight,
-                    ft.footer_policy_font_style || ft.font_style
-                );
-            default:
-                return '';
-        }
-    }
-
-    function buildFooterPreviewPieceHtml(type, sample, ft) {
-        var st = footerGridPieceStyleCss;
+    /** Pie: tipografía por instancia (como element.php); ft solo para textos/disposición de «generado el». */
+    function buildFooterPreviewPieceHtml(type, sample, ft, instanceTs) {
+        var sti = textStyleToInlineCss(instanceTs || defaultInstanceTextStyleJson());
         if (type === 'footer_company') {
-            return '<div class="footer-piece footer-piece-company" style="' + escapeHtml(st(ft, 'company')) + '">' + escapeHtml(sample) + '</div>';
+            return '<div class="footer-piece footer-piece-company" style="' + escapeHtml(sti) + '">' + escapeHtml(sample) + '</div>';
         }
         if (type === 'footer_policy') {
-            return '<div class="footer-piece footer-piece-policy"><small class="footer-policy-text" style="' + escapeHtml(st(ft, 'policy')) + '">' + escapeHtml(sample) + '</small></div>';
+            return '<div class="footer-piece footer-piece-policy"><small class="footer-policy-text" style="' + escapeHtml(sti) + '">' + escapeHtml(sample) + '</small></div>';
         }
         if (type === 'footer_generated') {
             var pref = String(ft.label_footer_generated != null ? ft.label_footer_generated : '').trim();
             var showP = !!ft.show_label_footer_generated;
             var inlineF = (ft.label_footer_generated_line_mode === 'inline');
             var showPref = showP && pref !== '';
-            var stLbl = st(ft, 'label_generated');
-            var stDt = st(ft, 'datetime');
             var dateSample = '10/04/2026 14:35';
             var parts = '<div class="footer-piece footer-piece-generated">';
             if (inlineF) {
                 if (showPref) {
-                    parts += '<span class="footer-generated-label" style="' + escapeHtml(stLbl) + '">' + escapeHtml(pref) + '</span> ';
+                    parts += '<span class="footer-generated-label" style="' + escapeHtml(sti) + '">' + escapeHtml(pref) + '</span> ';
                 }
-                parts += '<span class="footer-generated-datetime" style="' + escapeHtml(stDt) + '">' + escapeHtml(dateSample) + '</span>';
+                parts += '<span class="footer-generated-datetime" style="' + escapeHtml(sti) + '">' + escapeHtml(dateSample) + '</span>';
             } else {
                 if (showPref) {
-                    parts += '<div class="footer-generated-label" style="' + escapeHtml(stLbl) + '">' + escapeHtml(pref) + '</div>';
+                    parts += '<div class="footer-generated-label" style="' + escapeHtml(sti) + '">' + escapeHtml(pref) + '</div>';
                 }
-                parts += '<div class="footer-generated-datetime" style="' + escapeHtml(stDt) + '">' + escapeHtml(dateSample) + '</div>';
+                parts += '<div class="footer-generated-datetime" style="' + escapeHtml(sti) + '">' + escapeHtml(dateSample) + '</div>';
             }
             parts += '</div>';
             return parts;
@@ -1375,19 +1446,21 @@ document.addEventListener('DOMContentLoaded', function() {
         );
     }
 
-    function buildHeaderPreviewPieceHtml(type, sample, hg) {
+    function buildHeaderPreviewPieceHtml(type, sample, hg, instanceTs) {
         var st = headerGridLabelPieceStyleCss;
+        var stI = textStyleToInlineCss(instanceTs || defaultInstanceTextStyleJson());
         function labeledBlock(fid, valueInnerHtml) {
             var lbl = String(hg['label_' + fid] != null ? hg['label_' + fid] : '').trim();
             var showL = !!hg['show_label_' + fid];
             var inline = (hg['label_' + fid + '_line_mode'] === 'inline');
             var showTxt = showL && lbl !== '';
             var stL = st(hg, fid);
-            if (!showTxt) return valueInnerHtml;
+            var wrappedVal = '<span style="' + escapeHtml(stI) + '">' + valueInnerHtml + '</span>';
+            if (!showTxt) return wrappedVal;
             if (inline) {
-                return '<span style="' + escapeHtml(stL) + '">' + escapeHtml(lbl) + '</span> ' + valueInnerHtml;
+                return '<span style="' + escapeHtml(stL) + '">' + escapeHtml(lbl) + '</span> ' + wrappedVal;
             }
-            return '<div><span style="' + escapeHtml(stL) + '">' + escapeHtml(lbl) + '</span></div><div>' + valueInnerHtml + '</div>';
+            return '<div><span style="' + escapeHtml(stL) + '">' + escapeHtml(lbl) + '</span></div><div>' + wrappedVal + '</div>';
         }
         if (type === 'logo') {
             return '<div class="header-preview-logo">' + labeledBlock('logo', escapeHtml(sample)) + '</div>';
@@ -1454,16 +1527,24 @@ document.addEventListener('DOMContentLoaded', function() {
             var type = li.getAttribute('data-element-type') || '';
             var sample = (window._elementSamples && window._elementSamples[type]) ? window._elementSamples[type] : type;
             var shortL = (window._labelsShort && window._labelsShort[type]) ? window._labelsShort[type] : '';
-            var styleWrap = textStyleToInlineCss(readInstanceTextStyle(li));
-            var rawLine;
-            if (hgHeader && (type === 'logo' || type === 'lab_company' || type === 'lab_address' || type === 'lab_phone' || type === 'lab_email' || type === 'lab_website' || type === 'qr')) {
-                rawLine = buildHeaderPreviewPieceHtml(type, sample, hgHeader);
+            var line;
+            if (type === 'custom_text') {
+                line = '<div class="pdf-custom-text">' + buildCustomTextPreviewInnerHtml(readInstanceCustomText(li)) + '</div>';
             } else if (ftFooter && (type === 'footer_company' || type === 'footer_generated' || type === 'footer_policy')) {
-                rawLine = buildFooterPreviewPieceHtml(type, sample, ftFooter);
+                line = buildFooterPreviewPieceHtml(type, sample, ftFooter, readInstanceTextStyle(li));
             } else {
-                rawLine = shortL ? ('<span class="pdf-preview-lbl">' + escapeHtml(shortL) + '</span> ' + escapeHtml(sample)) : escapeHtml(sample);
+                var styleWrap = textStyleToInlineCss(readInstanceTextStyle(li));
+                var rawLine;
+                var headerLikeTypes = ['logo', 'lab_company', 'lab_address', 'lab_phone', 'lab_email', 'lab_website', 'qr'];
+                if (sectionKey === 'footer' && headerLikeTypes.indexOf(type) >= 0) {
+                    line = buildHeaderPreviewPieceHtml(type, sample, readCardHeaderStyleForJson().header_grid, readInstanceTextStyle(li));
+                } else if (hgHeader && headerLikeTypes.indexOf(type) >= 0) {
+                    line = buildHeaderPreviewPieceHtml(type, sample, hgHeader, readInstanceTextStyle(li));
+                } else {
+                    rawLine = shortL ? ('<span class="pdf-preview-lbl">' + escapeHtml(shortL) + '</span> ' + escapeHtml(sample)) : escapeHtml(sample);
+                    line = '<span style="' + escapeHtml(styleWrap) + '">' + rawLine + '</span>';
+                }
             }
-            var line = '<span style="' + escapeHtml(styleWrap) + '">' + rawLine + '</span>';
             items.push({ col: col, span: span, html: line });
         });
         previewEl.innerHTML = '';
@@ -1716,19 +1797,26 @@ document.addEventListener('DOMContentLoaded', function() {
         head.innerHTML = '<strong class="d-block">' + escapeHtml(label) + '</strong><span class="small text-muted font-monospace">' + escapeHtml(elementType) + '</span>';
         li.appendChild(head);
         li.appendChild(wrap);
-        li.insertAdjacentHTML('beforeend',
-            '<div class="row g-3 mt-2 pdf-text-style-controls">' +
-            '  <div class="col-12 col-md-6 col-lg-4"><label class="form-label small mb-1">Fuente</label><select class="form-select form-select-sm instance-font-family"><option value="DejaVu Sans">DejaVu Sans</option><option value="Helvetica">Helvetica</option><option value="Arial">Arial</option><option value="Times New Roman">Times New Roman</option><option value="Courier New">Courier New</option></select></div>' +
-            '  <div class="col-6 col-md-3 col-lg-2"><label class="form-label small mb-1">Tamaño</label><input type="number" class="form-control form-control-sm instance-font-size" min="6" max="24" step="0.5" value="10"></div>' +
-            '  <div class="col-6 col-md-3 col-lg-2"><label class="form-label small mb-1">Grosor</label><select class="form-select form-select-sm instance-font-weight"><option value="normal">normal</option><option value="bold">bold</option><option value="100">100</option><option value="200">200</option><option value="300">300</option><option value="400">400</option><option value="500">500</option><option value="600">600</option><option value="700">700</option><option value="800">800</option><option value="900">900</option></select></div>' +
-            '  <div class="col-6 col-md-3 col-lg-2"><label class="form-label small mb-1">Color</label><input type="color" class="form-control form-control-color form-control-sm instance-font-color" value="#333333"></div>' +
-            '  <div class="col-6 col-md-3 col-lg-2"><label class="form-label small mb-1">Estilo</label><select class="form-select form-select-sm instance-font-style"><option value="normal">Normal</option><option value="italic">Italic</option><option value="oblique">Oblique</option></select></div>' +
-            '  <div class="col-6 col-md-4 col-lg-3"><label class="form-label small mb-1">Transformación</label><select class="form-select form-select-sm instance-text-transform"><option value="none">Normal</option><option value="uppercase">MAYÚSCULAS</option><option value="lowercase">minúsculas</option><option value="capitalize">Tipo Título</option></select></div>' +
-            '  <div class="col-6 col-md-4 col-lg-2"><label class="form-label small mb-1">Esp. letras</label><input type="number" class="form-control form-control-sm instance-letter-spacing" min="-0.2" max="1" step="0.01" value="0"></div>' +
-            '  <div class="col-6 col-md-4 col-lg-2"><label class="form-label small mb-1">Interlineado</label><input type="number" class="form-control form-control-sm instance-line-height" min="1" max="3" step="0.05" value="1.35"></div>' +
-            '  <div class="col-12 col-md-6 col-lg-3"><label class="form-label small mb-1">Sombra</label><select class="form-select form-select-sm instance-text-shadow"><option value="none">Sin sombra</option><option value="soft">Suave</option><option value="medium">Media</option><option value="strong">Fuerte</option></select></div>' +
-            '</div>'
-        );
+        if (elementType === 'custom_text') {
+            var tplCt = document.getElementById('tpl_pdf_custom_text_editor');
+            if (tplCt && tplCt.innerHTML) {
+                li.insertAdjacentHTML('beforeend', tplCt.innerHTML.replace(/__PDF_UID__/g, uid));
+            }
+        } else {
+            li.insertAdjacentHTML('beforeend',
+                '<div class="row g-3 mt-2 pdf-text-style-controls">' +
+                '  <div class="col-12 col-md-6 col-lg-4"><label class="form-label small mb-1">Fuente</label><select class="form-select form-select-sm instance-font-family"><option value="DejaVu Sans">DejaVu Sans</option><option value="Helvetica">Helvetica</option><option value="Arial">Arial</option><option value="Times New Roman">Times New Roman</option><option value="Courier New">Courier New</option></select></div>' +
+                '  <div class="col-6 col-md-3 col-lg-2"><label class="form-label small mb-1">Tamaño</label><input type="number" class="form-control form-control-sm instance-font-size" min="6" max="24" step="0.5" value="10"></div>' +
+                '  <div class="col-6 col-md-3 col-lg-2"><label class="form-label small mb-1">Grosor</label><select class="form-select form-select-sm instance-font-weight"><option value="normal">normal</option><option value="bold">bold</option><option value="100">100</option><option value="200">200</option><option value="300">300</option><option value="400">400</option><option value="500">500</option><option value="600">600</option><option value="700">700</option><option value="800">800</option><option value="900">900</option></select></div>' +
+                '  <div class="col-6 col-md-3 col-lg-2"><label class="form-label small mb-1">Color</label><input type="color" class="form-control form-control-color form-control-sm instance-font-color" value="#333333"></div>' +
+                '  <div class="col-6 col-md-3 col-lg-2"><label class="form-label small mb-1">Estilo</label><select class="form-select form-select-sm instance-font-style"><option value="normal">Normal</option><option value="italic">Italic</option><option value="oblique">Oblique</option></select></div>' +
+                '  <div class="col-6 col-md-4 col-lg-3"><label class="form-label small mb-1">Transformación</label><select class="form-select form-select-sm instance-text-transform"><option value="none">Normal</option><option value="uppercase">MAYÚSCULAS</option><option value="lowercase">minúsculas</option><option value="capitalize">Tipo Título</option></select></div>' +
+                '  <div class="col-6 col-md-4 col-lg-2"><label class="form-label small mb-1">Esp. letras</label><input type="number" class="form-control form-control-sm instance-letter-spacing" min="-0.2" max="1" step="0.01" value="0"></div>' +
+                '  <div class="col-6 col-md-4 col-lg-2"><label class="form-label small mb-1">Interlineado</label><input type="number" class="form-control form-control-sm instance-line-height" min="1" max="3" step="0.05" value="1.35"></div>' +
+                '  <div class="col-12 col-md-6 col-lg-3"><label class="form-label small mb-1">Sombra</label><select class="form-select form-select-sm instance-text-shadow"><option value="none">Sin sombra</option><option value="soft">Suave</option><option value="medium">Media</option><option value="strong">Fuerte</option></select></div>' +
+                '</div>'
+            );
+        }
         return li;
     }
 
@@ -1770,20 +1858,24 @@ document.addEventListener('DOMContentLoaded', function() {
             if (isNaN(sp) || sp < 1) sp = 1;
             var clone = createInstanceRow(newUid(), type, n, en, en ? col : 0, en ? sp : 1);
             if (!en && sel) clone.querySelector('.instance-column').value = '-1';
-            var ts = readInstanceTextStyle(li);
-            var setIf = function(q, v) {
-                var el = clone.querySelector(q);
-                if (el) el.value = String(v);
-            };
-            setIf('.instance-font-family', ts.font_family);
-            setIf('.instance-font-size', ts.font_size_pt);
-            setIf('.instance-font-weight', ts.font_weight);
-            setIf('.instance-font-color', ts.font_color);
-            setIf('.instance-font-style', ts.font_style);
-            setIf('.instance-text-transform', ts.text_transform);
-            setIf('.instance-letter-spacing', ts.letter_spacing_em);
-            setIf('.instance-line-height', ts.line_height);
-            setIf('.instance-text-shadow', ts.text_shadow);
+            if (type === 'custom_text') {
+                applyInstanceCustomText(clone, readInstanceCustomText(li));
+            } else {
+                var ts = readInstanceTextStyle(li);
+                var setIf = function(q, v) {
+                    var el = clone.querySelector(q);
+                    if (el) el.value = String(v);
+                };
+                setIf('.instance-font-family', ts.font_family);
+                setIf('.instance-font-size', ts.font_size_pt);
+                setIf('.instance-font-weight', ts.font_weight);
+                setIf('.instance-font-color', ts.font_color);
+                setIf('.instance-font-style', ts.font_style);
+                setIf('.instance-text-transform', ts.text_transform);
+                setIf('.instance-letter-spacing', ts.letter_spacing_em);
+                setIf('.instance-line-height', ts.line_height);
+                setIf('.instance-text-shadow', ts.text_shadow);
+            }
             ul.insertBefore(clone, li.nextSibling);
             wireInstanceSelects();
             rebuildAllPreviews();
@@ -1812,14 +1904,14 @@ document.addEventListener('DOMContentLoaded', function() {
             var t = e.target;
             if (t && (t.classList.contains('pdf-sec-col-h') || t.classList.contains('pdf-sec-col-v'))) {
                 rebuildAllPreviews();
-            } else if (t && t.closest('.pdf-text-style-controls')) {
+            } else if (t && (t.closest('.pdf-text-style-controls') || t.closest('.custom-text-editor-root'))) {
                 rebuildAllPreviews();
             }
         });
         pdfEditorInst.addEventListener('input', function(e) {
             if (e.target && e.target.classList.contains('pdf-sec-line-height')) {
                 rebuildAllPreviews();
-            } else if (e.target && e.target.closest('.pdf-text-style-controls')) {
+            } else if (e.target && (e.target.closest('.pdf-text-style-controls') || e.target.closest('.custom-text-editor-root'))) {
                 rebuildAllPreviews();
             }
         });
@@ -1869,7 +1961,7 @@ document.addEventListener('DOMContentLoaded', function() {
     if (pdfEditorRoot) {
         pdfEditorRoot.addEventListener('blur', function(ev) {
             var t = ev.target;
-            if (t && t.classList && (t.classList.contains('instance-font-size') || t.classList.contains('instance-letter-spacing') || t.classList.contains('instance-line-height'))) {
+            if (t && t.classList && (t.classList.contains('instance-font-size') || t.classList.contains('instance-letter-spacing') || t.classList.contains('instance-line-height') || t.classList.contains('ct-lbl-font-size') || t.classList.contains('ct-val-font-size') || t.classList.contains('ct-lbl-letter-spacing') || t.classList.contains('ct-val-letter-spacing') || t.classList.contains('ct-lbl-line-height') || t.classList.contains('ct-val-line-height'))) {
                 clampInstanceStyleField(t);
                 rebuildAllPreviews();
             }
@@ -2208,8 +2300,50 @@ document.addEventListener('DOMContentLoaded', function() {
         pushIfBadNum('rs_segment_border_width', 0, 4, 'Grosor de borde de segmento: entre 0 y 4 px.');
         pushIfBadSelect('rs_segment_shadow', pdfAllow('segment_shadows'), 'Sombra de segmento no permitida.');
 
+        function pushCtScopeErrors(scope, pfx, partLabel, itemLabel, errs) {
+            if (!scope) return;
+            var fam = scope.querySelector('.' + pfx + '-font-family');
+            if (fam && ff.indexOf(String(fam.value || '').trim()) < 0) {
+                errs.push('«' + itemLabel + '» (' + partLabel + '): fuente no permitida.');
+            }
+            var fs = scope.querySelector('.' + pfx + '-font-size');
+            if (fs) {
+                var v = parseFloat(fs.value);
+                if (isNaN(v) || v < 6 || v > 24) errs.push('«' + itemLabel + '» (' + partLabel + '): tamaño entre 6 y 24 pt.');
+            }
+            var fwEl = scope.querySelector('.' + pfx + '-font-weight');
+            if (fwEl && fw.indexOf(String(fwEl.value || '').trim()) < 0) errs.push('«' + itemLabel + '» (' + partLabel + '): grosor no permitido.');
+            var fstEl = scope.querySelector('.' + pfx + '-font-style');
+            if (fstEl && fst.indexOf(String(fstEl.value || '').trim()) < 0) errs.push('«' + itemLabel + '» (' + partLabel + '): estilo no permitido.');
+            var ttEl = scope.querySelector('.' + pfx + '-text-transform');
+            if (ttEl && tt.indexOf(String(ttEl.value || '').trim()) < 0) errs.push('«' + itemLabel + '» (' + partLabel + '): transformación no permitida.');
+            var col = scope.querySelector('.' + pfx + '-font-color');
+            if (col && !isValidPdfHexJs(String(col.value || '').trim())) errs.push('«' + itemLabel + '» (' + partLabel + '): color inválido (#RRGGBB).');
+            var ls = scope.querySelector('.' + pfx + '-letter-spacing');
+            if (ls) {
+                var lsV = parseFloat(ls.value);
+                if (isNaN(lsV) || lsV < -0.2 || lsV > 1) errs.push('«' + itemLabel + '» (' + partLabel + '): espaciado entre letras entre -0,2 y 1 em.');
+            }
+            var lh = scope.querySelector('.' + pfx + '-line-height');
+            if (lh) {
+                var lhV = parseFloat(lh.value);
+                if (isNaN(lhV) || lhV < 1 || lhV > 3) errs.push('«' + itemLabel + '» (' + partLabel + '): interlineado entre 1 y 3.');
+            }
+            var shEl = scope.querySelector('.' + pfx + '-text-shadow');
+            if (shEl && sh.indexOf(String(shEl.value || '').trim()) < 0) errs.push('«' + itemLabel + '» (' + partLabel + '): sombra no permitida.');
+        }
         document.querySelectorAll('.pdf-instance-item').forEach(function(li) {
             var label = (li.querySelector('.pdf-instance-head strong') && li.querySelector('.pdf-instance-head strong').textContent.trim()) || 'Elemento';
+            var et = li.getAttribute('data-element-type') || '';
+            if (et === 'custom_text') {
+                var lblIn = li.querySelector('.custom-text-label-input');
+                var valIn = li.querySelector('.custom-text-value-input');
+                if (lblIn && String(lblIn.value || '').length > 200) errs.push('«' + label + '»: etiqueta demasiado larga (máx. 200).');
+                if (valIn && String(valIn.value || '').length > 500) errs.push('«' + label + '»: valor demasiado largo (máx. 500).');
+                pushCtScopeErrors(li.querySelector('.custom-text-style-label'), 'ct-lbl', 'etiqueta', label, errs);
+                pushCtScopeErrors(li.querySelector('.custom-text-style-value'), 'ct-val', 'valor', label, errs);
+                return;
+            }
             var fam = li.querySelector('.instance-font-family');
             if (fam && ff.indexOf(String(fam.value || '').trim()) < 0) {
                 errs.push('«' + label + '»: fuente no permitida.');
@@ -2245,15 +2379,15 @@ document.addEventListener('DOMContentLoaded', function() {
 
     function clampInstanceStyleField(el) {
         if (!el || !el.classList) return;
-        if (el.classList.contains('instance-font-size')) {
+        if (el.classList.contains('instance-font-size') || el.classList.contains('ct-lbl-font-size') || el.classList.contains('ct-val-font-size')) {
             var v = parseFloat(el.value);
             if (isNaN(v)) v = 10;
             el.value = String(Math.max(6, Math.min(24, Math.round(v * 2) / 2)));
-        } else if (el.classList.contains('instance-letter-spacing')) {
+        } else if (el.classList.contains('instance-letter-spacing') || el.classList.contains('ct-lbl-letter-spacing') || el.classList.contains('ct-val-letter-spacing')) {
             var a = parseFloat(el.value);
             if (isNaN(a)) a = 0;
             el.value = String(Math.round(Math.max(-0.2, Math.min(1, a)) * 100) / 100);
-        } else if (el.classList.contains('instance-line-height')) {
+        } else if (el.classList.contains('instance-line-height') || el.classList.contains('ct-lbl-line-height') || el.classList.contains('ct-val-line-height')) {
             var b = parseFloat(el.value);
             if (isNaN(b)) b = 1.35;
             el.value = String(Math.round(Math.max(1, Math.min(3, b)) * 100) / 100);
@@ -2274,15 +2408,22 @@ document.addEventListener('DOMContentLoaded', function() {
             var maxS = Math.max(1, cols - col);
             span = Math.max(1, Math.min(maxS, span));
         }
-        return {
+        var elType = li.getAttribute('data-element-type') || '';
+        var base = {
             uid: li.getAttribute('data-uid') || '',
-            element_type: li.getAttribute('data-element-type') || '',
+            element_type: elType,
             section: section,
             enabled: enabled,
             column: col,
-            column_span: span,
-            text_style: readInstanceTextStyle(li)
+            column_span: span
         };
+        if (elType === 'custom_text') {
+            base.text_style = defaultInstanceTextStyleJson();
+            base.custom_text = readInstanceCustomText(li);
+        } else {
+            base.text_style = readInstanceTextStyle(li);
+        }
+        return base;
     }
 
     document.getElementById('pdf_tpl_form').addEventListener('submit', function(ev) {

@@ -22,6 +22,7 @@ $elementCtx = [
     'pdf_logo_data_uri' => $pdf_logo_data_uri ?? '',
     'report_emitido_en' => $report_emitido_en ?? \App\Services\RegisterService::formatNowForReport(),
     'pdf_footer_grid_style' => \App\Services\ReportPdfLayoutService::normalizeFooterGridStyle($ps['footer_grid'] ?? []),
+    'pdf_header_grid_style' => \App\Services\ReportPdfLayoutService::normalizeHeaderGridStyle($ps['header_grid'] ?? []),
 ];
 
 echo view('registers/pdf/section_layout_grid', [

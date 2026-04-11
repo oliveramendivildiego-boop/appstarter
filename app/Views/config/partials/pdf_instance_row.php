@@ -23,6 +23,10 @@ $tt      = (string) ($ts['text_transform'] ?? 'none');
 $ls      = isset($ts['letter_spacing_em']) ? (float) $ts['letter_spacing_em'] : 0.0;
 $lh      = isset($ts['line_height']) ? (float) $ts['line_height'] : 1.35;
 $sh      = (string) ($ts['text_shadow'] ?? 'none');
+$isCustomText = ($type === 'custom_text');
+$ctCustom     = $isCustomText
+    ? \App\Services\ReportPdfLayoutService::normalizeCustomTextPayload($inst['custom_text'] ?? [])
+    : [];
 ?>
 <li class="list-group-item pdf-instance-item" data-uid="<?= esc($uid) ?>" data-element-type="<?= esc($type, 'attr') ?>">
     <div class="pdf-instance-head mb-2 pb-2 border-bottom">
@@ -46,6 +50,9 @@ $sh      = (string) ($ts['text_shadow'] ?? 'none');
         <button type="button" class="btn btn-sm btn-outline-secondary btn-dup-instance" title="Duplicar en esta sección"><i class="fa-regular fa-copy"></i></button>
         <button type="button" class="btn btn-sm btn-outline-danger btn-del-instance" title="Quitar"><i class="fa-solid fa-trash"></i></button>
     </div>
+    <?php if ($isCustomText): ?>
+    <?= view('config/partials/pdf_instance_custom_text_editor', ['ct' => $ctCustom, 'rowUid' => $uid]) ?>
+    <?php else: ?>
     <div class="row g-3 mt-2 pdf-text-style-controls">
         <div class="col-12 col-md-6 col-lg-4">
             <label class="form-label small mb-1">Fuente</label>
@@ -106,4 +113,5 @@ $sh      = (string) ($ts['text_shadow'] ?? 'none');
             </select>
         </div>
     </div>
+    <?php endif; ?>
 </li>
