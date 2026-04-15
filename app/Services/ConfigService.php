@@ -13,6 +13,8 @@ use CodeIgniter\HTTP\IncomingRequest;
  */
 class ConfigService
 {
+    public const CUSTOMER_INSTITUCION_DISCOUNTS_KEY = 'customer_institucion_discounts_json';
+
     protected AppConfigModel $appConfigModel;
 
     public function __construct(?AppConfigModel $appConfigModel = null)
@@ -87,6 +89,69 @@ class ConfigService
     }
 
     /**
+     * Obtiene descuentos por institución en formato [institucion => porcentaje].
+     *
+     * @return array<string,float>
+     */
+    public function getCustomerInstitutionDiscounts(): array
+    {
+        $raw = trim((string) $this->appConfigModel->getValue(self::CUSTOMER_INSTITUCION_DISCOUNTS_KEY));
+        if ($raw === '') {
+            return [];
+        }
+        $decoded = json_decode($raw, true);
+        if (!is_array($decoded)) {
+            return [];
+        }
+
+        $out = [];
+        foreach ($decoded as $institucion => $descuento) {
+            if (is_array($descuento) && isset($descuento['institucion'], $descuento['descuento'])) {
+                $institucion = (string) ($descuento['institucion'] ?? '');
+                $descuento = $descuento['descuento'] ?? 0;
+            }
+            $institucion = trim((string) $institucion);
+            if ($institucion === '') {
+                continue;
+            }
+            $val = (float) $descuento;
+            $val = max(0, min(100, $val));
+            $out[$institucion] = $val;
+        }
+
+        uksort($out, static fn (string $a, string $b): int => strcasecmp($a, $b));
+        return $out;
+    }
+
+    /**
+     * Guarda descuentos por institución (0-100).
+     *
+     * @param array<string,float|int|string> $discounts
+     */
+    public function saveCustomerInstitutionDiscounts(array $discounts): bool
+    {
+        $normalized = [];
+        foreach ($discounts as $institucion => $descuento) {
+            $institucion = trim((string) $institucion);
+            if ($institucion === '') {
+                continue;
+            }
+            $val = max(0, min(100, (float) $descuento));
+            $normalized[$institucion] = round($val, 2);
+        }
+        uksort($normalized, static fn (string $a, string $b): int => strcasecmp($a, $b));
+
+        $ok = $this->appConfigModel->saveValue(
+            self::CUSTOMER_INSTITUCION_DISCOUNTS_KEY,
+            json_encode($normalized, JSON_UNESCAPED_UNICODE)
+        );
+        if ($ok) {
+            $this->invalidateCache();
+        }
+        return $ok;
+    }
+
+    /**
      * Guarda la configuración de WhatsApp
      */
     public function saveWhatsappConfig(array $postData): bool
@@ -126,14 +191,14 @@ class ConfigService
             'default_tax_rate', 'default_tax_1_name', 'default_tax_1_rate',
             'default_tax_2_name', 'default_tax_2_rate', 'return_policy',
             'print_after_sale', 'logo', 'theme_color', 'header_brand',
-            'decimales_sugerencia', 'dias_alerta_vencimiento', 'show_order_barcode', 'order_barcode_print_layout', 'order_barcode_print_size_percent', 'leyendas_enabled',
+            'decimales_sugerencia', 'dias_alerta_vencimiento', 'stock_alerta_factor', 'show_order_barcode', 'order_barcode_print_layout', 'order_barcode_print_size_percent', 'leyendas_enabled',
             'custom1_name', 'custom2_name', 'custom3_name', 'custom4_name', 'custom5_name',
             'custom6_name', 'custom7_name', 'custom8_name', 'custom9_name', 'custom10_name',
         ];
 
         $batch = array_filter(
             array_intersect_key($postData, array_flip($keys)),
-            fn (mixed $v, mixed $k): bool => in_array($k, ['decimales_sugerencia', 'dias_alerta_vencimiento']) || ($v !== null && $v !== ''),
+            fn (mixed $v, mixed $k): bool => in_array($k, ['decimales_sugerencia', 'dias_alerta_vencimiento', 'stock_alerta_factor']) || ($v !== null && $v !== ''),
             ARRAY_FILTER_USE_BOTH
         );
         if (isset($batch['decimales_sugerencia'])) {
@@ -142,6 +207,10 @@ class ConfigService
         if (isset($batch['dias_alerta_vencimiento'])) {
             $val = (int) $batch['dias_alerta_vencimiento'];
             $batch['dias_alerta_vencimiento'] = (string) ($val > 0 ? max(1, min(365, $val)) : 40);
+        }
+        if (isset($batch['stock_alerta_factor'])) {
+            $val = (float) $batch['stock_alerta_factor'];
+            $batch['stock_alerta_factor'] = (string) max(0.5, min(3, $val > 0 ? $val : 1));
         }
         if (array_key_exists('show_order_barcode', $postData)) {
             $batch['show_order_barcode'] = ($postData['show_order_barcode'] === '1') ? '1' : '0';

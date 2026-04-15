@@ -202,6 +202,56 @@ class DashboardService
     }
 
     /**
+     * Alertas por stock bajo respecto a stock_minimo.
+     * El factor permite alertar antes del mínimo estricto.
+     */
+    public function getAlertasStockBajo(): array
+    {
+        $reactivoModel = model(ReactivoModel::class);
+        $appConfig     = model(AppConfigModel::class);
+        $factorRaw     = (float) ($appConfig->getValue('stock_alerta_factor') ?: 1);
+        $factor        = max(0.5, min(3, $factorRaw));
+
+        $rows = $reactivoModel->getAllWithStockAndTipo();
+        $items = [];
+
+        foreach ($rows as $row) {
+            $min = (int) ($row['stock_minimo'] ?? 0);
+            if ($min <= 0) {
+                continue;
+            }
+
+            $stock  = (int) ($row['stock_actual'] ?? 0);
+            $limite = (int) max(1, ceil($min * $factor));
+
+            if ($stock <= $limite) {
+                $items[] = [
+                    'reactivo_id' => (int) ($row['reactivo_id'] ?? 0),
+                    'nombre'      => (string) ($row['nombre'] ?? ''),
+                    'stock_actual'=> $stock,
+                    'stock_minimo'=> $min,
+                    'limite_alerta' => $limite,
+                    'unidad'      => (string) ($row['unidad_base'] ?? $row['unidad'] ?? ''),
+                    'critico'     => $stock < $min,
+                ];
+            }
+        }
+
+        usort($items, static function (array $a, array $b): int {
+            if (($a['critico'] ?? false) !== ($b['critico'] ?? false)) {
+                return ($a['critico'] ?? false) ? -1 : 1;
+            }
+            return ($a['stock_actual'] ?? 0) <=> ($b['stock_actual'] ?? 0);
+        });
+
+        return [
+            'total'  => count($items),
+            'items'  => array_slice($items, 0, 10),
+            'factor' => $factor,
+        ];
+    }
+
+    /**
      * Top doctores por ingresos (este mes)
      */
     public function getTopDoctores(int $limit = 5): array

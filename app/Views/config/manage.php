@@ -42,6 +42,9 @@
         <button class="nav-link <?= $activeTab === 'opciones' ? 'active' : '' ?>" id="tab-opciones-btn" data-bs-toggle="tab" data-bs-target="#tab-opciones" type="button" role="tab">Tipos de resultado</button>
     </li>
     <li class="nav-item" role="presentation">
+        <button class="nav-link <?= $activeTab === 'institucion_descuentos' ? 'active' : '' ?>" id="tab-institucion-descuentos-btn" data-bs-toggle="tab" data-bs-target="#tab-institucion-descuentos" type="button" role="tab">Descuentos por institución</button>
+    </li>
+    <li class="nav-item" role="presentation">
         <button class="nav-link <?= $activeTab === 'tipos_muestra' ? 'active' : '' ?>" id="tab-tipos_muestra-btn" data-bs-toggle="tab" data-bs-target="#tab-tipos_muestra" type="button" role="tab">Tipos de muestra</button>
     </li>
     <li class="nav-item" role="presentation">
@@ -154,15 +157,20 @@
             <?= form_textarea(['name' => 'return_policy', 'id' => 'return_policy', 'class' => 'form-control', 'rows' => 4, 'autocomplete' => 'off', 'value' => $config['return_policy'] ?? '']) ?>
         </div>
         <div class="row">
-            <div class="col-md-6 mb-3">
+            <div class="col-md-4 mb-3">
                 <?= form_label(lang('Config.config_decimales_sugerencia'), 'decimales_sugerencia', ['class' => 'form-label']) ?>
                 <?= form_input(['name' => 'decimales_sugerencia', 'id' => 'decimales_sugerencia', 'type' => 'number', 'min' => 0, 'max' => 10, 'class' => 'form-control', 'value' => $config['decimales_sugerencia'] ?? '2', 'autocomplete' => 'off']) ?>
                 <small class="text-muted"><?= lang('Config.config_decimales_sugerencia_help') ?></small>
             </div>
-            <div class="col-md-6 mb-3">
+            <div class="col-md-4 mb-3">
                 <label for="dias_alerta_vencimiento" class="form-label">Días de alerta para vencimiento de insumos</label>
                 <?= form_input(['name' => 'dias_alerta_vencimiento', 'id' => 'dias_alerta_vencimiento', 'type' => 'number', 'min' => 1, 'max' => 365, 'class' => 'form-control', 'value' => $config['dias_alerta_vencimiento'] ?? '40', 'autocomplete' => 'off']) ?>
                 <small class="text-muted">Los lotes que venzan en los próximos X días se marcarán en amarillo en el reporte de insumos por vencimiento.</small>
+            </div>
+            <div class="col-md-4 mb-3">
+                <label for="stock_alerta_factor" class="form-label">Factor alerta de stock bajo</label>
+                <?= form_input(['name' => 'stock_alerta_factor', 'id' => 'stock_alerta_factor', 'type' => 'number', 'min' => '0.5', 'max' => '3', 'step' => '0.1', 'class' => 'form-control', 'value' => $config['stock_alerta_factor'] ?? '1', 'autocomplete' => 'off']) ?>
+                <small class="text-muted">1.0 = alerta al llegar al stock mínimo. Ejemplo: 1.5 alerta antes del mínimo.</small>
             </div>
         </div>
         <div class="row">
@@ -759,6 +767,85 @@
             </div>
             <div class="card-body">
                 <?= view('config/partial_opciones', ['opciones' => $opciones ?? []]) ?>
+            </div>
+        </div>
+    </div>
+
+    <!-- Pestaña: Descuentos por institución -->
+    <div class="tab-pane fade <?= $activeTab === 'institucion_descuentos' ? 'show active' : '' ?>" id="tab-institucion-descuentos" role="tabpanel">
+        <div class="card shadow-sm">
+            <div class="card-header bg-info text-white">
+                <h5 class="mb-0"><i class="fa-solid fa-percent me-2"></i>Descuentos por institución / procedencia</h5>
+            </div>
+            <div class="card-body">
+                <p class="text-muted small mb-3">
+                    Defina el porcentaje de descuento por institución. Estas instituciones salen del campo
+                    <strong>Institución / procedencia</strong> registrado en pacientes.
+                </p>
+
+                <div class="table-responsive mb-4">
+                    <table class="table table-sm table-bordered align-middle">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Institución / procedencia</th>
+                                <th style="width: 140px;" class="text-end">Descuento (%)</th>
+                                <th style="width: 120px;" class="text-center">Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <?php foreach (($institucion_descuentos ?? []) as $idc): ?>
+                            <tr>
+                                <td><?= esc($idc['institucion'] ?? '') ?></td>
+                                <td class="text-end"><?= esc(number_format((float) ($idc['descuento'] ?? 0), 2, '.', '')) ?>%</td>
+                                <td class="text-center">
+                                    <a href="<?= site_url('config/deleteInstitucionDescuento?institucion=' . rawurlencode((string) ($idc['institucion'] ?? ''))) ?>"
+                                       class="btn btn-sm btn-outline-danger"
+                                       onclick="return uiConfirmLink(this, '¿Eliminar este descuento?');">
+                                        <i class="fa-solid fa-trash"></i>
+                                    </a>
+                                </td>
+                            </tr>
+                            <?php endforeach; ?>
+                            <?php if (empty($institucion_descuentos)): ?>
+                            <tr>
+                                <td colspan="3" class="text-center text-muted">No hay descuentos configurados todavía.</td>
+                            </tr>
+                            <?php endif; ?>
+                        </tbody>
+                    </table>
+                </div>
+
+                <?= form_open(site_url('config/saveInstitucionDescuento'), ['class' => 'border rounded p-3']) ?>
+                <div class="row align-items-end">
+                    <div class="col-md-8 mb-2 mb-md-0">
+                        <label for="institucion_descuento_select" class="form-label">Institución / procedencia</label>
+                        <select name="institucion" id="institucion_descuento_select" class="form-select" required>
+                            <option value="">-- Seleccione --</option>
+                            <?php foreach (($instituciones_disponibles ?? []) as $inst): ?>
+                            <option value="<?= esc($inst) ?>"><?= esc($inst) ?></option>
+                            <?php endforeach; ?>
+                        </select>
+                    </div>
+                    <div class="col-md-2 mb-2 mb-md-0">
+                        <label for="institucion_descuento_pct" class="form-label">Descuento %</label>
+                        <input type="number"
+                               name="descuento"
+                               id="institucion_descuento_pct"
+                               class="form-control"
+                               min="0"
+                               max="100"
+                               step="0.01"
+                               value="0"
+                               required>
+                    </div>
+                    <div class="col-md-2">
+                        <button type="submit" class="btn btn-info text-white w-100">
+                            <i class="fa-solid fa-save me-1"></i> Guardar
+                        </button>
+                    </div>
+                </div>
+                <small class="text-muted d-block mt-2">Si la institución ya existe en la tabla, al guardar se actualizará su porcentaje.</small>
+                <?= form_close() ?>
             </div>
         </div>
     </div>

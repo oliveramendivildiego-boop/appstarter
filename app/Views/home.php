@@ -28,6 +28,7 @@ $currencySym = $currency_symbol ?? '$';
 $ingresosMes = (float)($ingresos_mes ?? 0);
 $pendientes = $pendientes ?? ['total_pendiente' => 0, 'cantidad' => 0];
 $alertas = $alertas_insumos ?? ['vencidos' => 0, 'por_vencer' => 0, 'total' => 0, 'items' => []];
+$alertasStock = $alertas_stock_bajo ?? ['total' => 0, 'items' => [], 'factor' => 1];
 ?>
 <div class="d-flex flex-wrap justify-content-between align-items-center mb-4">
     <div>
@@ -177,6 +178,44 @@ $alertas = $alertas_insumos ?? ['vencidos' => 0, 'por_vencer' => 0, 'total' => 0
             </table>
         </div>
         <a href="<?= site_url('reports/insumosVencimiento') ?>" class="btn btn-sm btn-warning mt-2">Ver reporte completo <i class="fa-solid fa-arrow-right ms-1"></i></a>
+    </div>
+</div>
+<?php endif; ?>
+
+<?php if (($alertasStock['total'] ?? 0) > 0): ?>
+<div class="alert alert-danger d-flex align-items-start gap-3 mb-4" role="alert">
+    <i class="fa-solid fa-gauge-high fa-2x mt-1 flex-shrink-0"></i>
+    <div class="flex-grow-1">
+        <h6 class="alert-heading mb-2"><i class="fa-solid fa-boxes-stacked me-1"></i> Alerta de stock bajo</h6>
+        <p class="mb-2">
+            <span class="badge bg-danger me-2"><?= (int) ($alertasStock['total'] ?? 0) ?> insumo(s)</span>
+            Stock menor o igual al limite de alerta (factor <?= number_format((float) ($alertasStock['factor'] ?? 1), 2) ?>x).
+        </p>
+        <div class="table-responsive dashboard-alert-table">
+            <table class="table table-sm table-bordered mb-0 small">
+                <thead class="table-light">
+                    <tr><th>Insumo</th><th>Stock actual</th><th>Stock minimo</th><th>Limite alerta</th><th>Estado</th></tr>
+                </thead>
+                <tbody>
+                    <?php foreach (($alertasStock['items'] ?? []) as $it): ?>
+                    <tr class="<?= !empty($it['critico']) ? 'table-danger' : 'table-warning' ?>">
+                        <td><?= esc($it['nombre'] ?? '-') ?></td>
+                        <td><?= (int) ($it['stock_actual'] ?? 0) ?> <?= esc($it['unidad'] ?? '') ?></td>
+                        <td><?= (int) ($it['stock_minimo'] ?? 0) ?></td>
+                        <td><?= (int) ($it['limite_alerta'] ?? 0) ?></td>
+                        <td>
+                            <?php if (!empty($it['critico'])): ?>
+                                <span class="badge bg-danger">Critico</span>
+                            <?php else: ?>
+                                <span class="badge bg-warning text-dark">Preventivo</span>
+                            <?php endif; ?>
+                        </td>
+                    </tr>
+                    <?php endforeach; ?>
+                </tbody>
+            </table>
+        </div>
+        <a href="<?= site_url('reactivos') ?>" class="btn btn-sm btn-danger mt-2">Ir a inventario <i class="fa-solid fa-arrow-right ms-1"></i></a>
     </div>
 </div>
 <?php endif; ?>

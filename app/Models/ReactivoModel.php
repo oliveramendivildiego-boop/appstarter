@@ -543,6 +543,64 @@ class ReactivoModel extends Model
     }
 
     /**
+     * Selecciona lote para salida automática según política:
+     * - fefo: primero en vencer
+     * - fifo: primero en entrar
+     * - lifo: último en entrar
+     */
+    public function getLoteIdForAutoSalida(int $reactivoId, string $policy = 'fefo'): ?int
+    {
+        $lotes = $this->getLotesConStock($reactivoId);
+        if (empty($lotes)) {
+            return null;
+        }
+
+        $policy = strtolower(trim($policy));
+        if (! in_array($policy, ['fefo', 'fifo', 'lifo'], true)) {
+            $policy = 'fefo';
+        }
+
+        usort($lotes, static function (array $a, array $b) use ($policy): int {
+            $va = $a['fecha_vencimiento'] ?? null;
+            $vb = $b['fecha_vencimiento'] ?? null;
+            $ia = $a['fecha_ingreso'] ?? null;
+            $ib = $b['fecha_ingreso'] ?? null;
+            $la = (int) ($a['lote_id'] ?? 0);
+            $lb = (int) ($b['lote_id'] ?? 0);
+
+            if ($policy === 'lifo') {
+                if ($ia !== $ib) {
+                    return strcmp((string) $ib, (string) $ia);
+                }
+                return $lb <=> $la;
+            }
+
+            if ($policy === 'fifo') {
+                if ($ia !== $ib) {
+                    return strcmp((string) $ia, (string) $ib);
+                }
+                return $la <=> $lb;
+            }
+
+            $aNoVence = empty($va);
+            $bNoVence = empty($vb);
+            if ($aNoVence !== $bNoVence) {
+                return $aNoVence ? 1 : -1;
+            }
+            if ($va !== $vb) {
+                return strcmp((string) $va, (string) $vb);
+            }
+            if ($ia !== $ib) {
+                return strcmp((string) $ia, (string) $ib);
+            }
+            return $la <=> $lb;
+        });
+
+        $selected = $lotes[0] ?? null;
+        return $selected ? (int) ($selected['lote_id'] ?? 0) : null;
+    }
+
+    /**
      * Registra salida (consumo) desde un lote concreto.
      * Si $loteId es null y solo hay un lote con stock, usa ese. Si hay varios, debe indicarse lote_id.
      */

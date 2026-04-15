@@ -8,6 +8,7 @@ use App\Models\PoblacionModel;
 use App\Models\ReportPdfTemplateModel;
 use App\Models\MetodoModel;
 use App\Models\TipoMuestraModel;
+use App\Models\CustomerModel;
 use App\Libraries\TenantResolver;
 use App\Services\ConfigService;
 use App\Services\TenantConfigService;
@@ -29,6 +30,7 @@ class Config extends SecureArea
     protected OpcionModel $opcionModel;
     protected TipoMuestraModel $tipoMuestraModel;
     protected MetodoModel $metodoModel;
+    protected CustomerModel $customerModel;
     protected TenantResolver $tenantResolver;
 
     public function __construct()
@@ -41,6 +43,7 @@ class Config extends SecureArea
         $this->opcionModel        = model(OpcionModel::class);
         $this->tipoMuestraModel   = model(TipoMuestraModel::class);
         $this->metodoModel        = model(MetodoModel::class);
+        $this->customerModel      = model(CustomerModel::class);
     }
 
     public function index()
@@ -48,6 +51,21 @@ class Config extends SecureArea
         helper('config');
 
         $config = $this->configService->getAllAsArray();
+        $institucionDiscountsMap = $this->configService->getCustomerInstitutionDiscounts();
+        $institucionDiscounts = [];
+        foreach ($institucionDiscountsMap as $inst => $pct) {
+            $institucionDiscounts[] = [
+                'institucion' => $inst,
+                'descuento'   => round((float) $pct, 2),
+            ];
+        }
+        $institucionesDisponibles = $this->customerModel->getInstituciones();
+        foreach (array_keys($institucionDiscountsMap) as $instCfg) {
+            if (!in_array($instCfg, $institucionesDisponibles, true)) {
+                $institucionesDisponibles[] = $instCfg;
+            }
+        }
+        usort($institucionesDisponibles, static fn (string $a, string $b): int => strcasecmp($a, $b));
         try {
             $poblaciones = $this->poblacionModel->getAll();
         } catch (\Throwable $e) {
@@ -142,6 +160,9 @@ class Config extends SecureArea
         if (($this->request->getGet('tab') ?: '') === 'lab_validacion') {
             $tab = 'lab_validacion';
         }
+        if (($this->request->getGet('tab') ?: '') === 'institucion_descuentos') {
+            $tab = 'institucion_descuentos';
+        }
 
         $subSvc                 = new TenantSubscriptionService();
         $subscription_payments  = $canManageTenants
@@ -181,6 +202,8 @@ class Config extends SecureArea
             'active_tab'           => $tab,
             'timezone_options'     => get_timezone_options(),
             'theme_palette'        => get_theme_color_palette(),
+            'instituciones_disponibles' => $institucionesDisponibles,
+            'institucion_descuentos'    => $institucionDiscounts,
             'allowed_modules'      => $this->allowed_modules,
             'user_info'            => $this->user_info,
             'current_module'       => 'config',
@@ -532,6 +555,63 @@ class Config extends SecureArea
         $this->configService->saveSinConfig($this->request->getPost());
         \App\Models\AuditoriaModel::log('config', 'sin_billing_actualizar', null);
         return redirect()->to('config?tab=sin')->with('success', 'Configuración de SIN guardada.');
+    }
+
+    public function saveInstitucionDescuento(): ResponseInterface
+    {
+        $institucion = trim((string) $this->request->getPost('institucion'));
+        $descuentoRaw = trim((string) $this->request->getPost('descuento'));
+        if ($institucion === '') {
+            return redirect()->to('config?tab=institucion_descuentos')->with('error', 'Debe seleccionar una institución.');
+        }
+        if ($descuentoRaw === '' || !is_numeric($descuentoRaw)) {
+            return redirect()->to('config?tab=institucion_descuentos')->with('error', 'El descuento debe ser numérico.');
+        }
+        $descuento = max(0, min(100, (float) $descuentoRaw));
+
+        $discounts = $this->configService->getCustomerInstitutionDiscounts();
+        $needle = function_exists('mb_strtolower') ? mb_strtolower($institucion, 'UTF-8') : strtolower($institucion);
+        foreach (array_keys($discounts) as $existingInst) {
+            $existingNeedle = function_exists('mb_strtolower') ? mb_strtolower($existingInst, 'UTF-8') : strtolower($existingInst);
+            if ($existingNeedle === $needle) {
+                unset($discounts[$existingInst]);
+            }
+        }
+        $discounts[$institucion] = $descuento;
+
+        if (! $this->configService->saveCustomerInstitutionDiscounts($discounts)) {
+            return redirect()->to('config?tab=institucion_descuentos')->with('error', 'No se pudo guardar el descuento.');
+        }
+        \App\Models\AuditoriaModel::log('config', 'institucion_descuento_guardar', null, $institucion . ':' . $descuento);
+
+        return redirect()->to('config?tab=institucion_descuentos')->with('success', 'Descuento guardado correctamente.');
+    }
+
+    public function deleteInstitucionDescuento(): ResponseInterface
+    {
+        $institucion = trim((string) $this->request->getGet('institucion'));
+        if ($institucion === '') {
+            return redirect()->to('config?tab=institucion_descuentos')->with('error', 'Institución inválida.');
+        }
+        $discounts = $this->configService->getCustomerInstitutionDiscounts();
+        $needle = function_exists('mb_strtolower') ? mb_strtolower($institucion, 'UTF-8') : strtolower($institucion);
+        $removed = false;
+        foreach (array_keys($discounts) as $existingInst) {
+            $existingNeedle = function_exists('mb_strtolower') ? mb_strtolower($existingInst, 'UTF-8') : strtolower($existingInst);
+            if ($existingNeedle === $needle) {
+                unset($discounts[$existingInst]);
+                $removed = true;
+            }
+        }
+        if (! $removed) {
+            return redirect()->to('config?tab=institucion_descuentos')->with('error', 'No se encontró la institución.');
+        }
+        if (! $this->configService->saveCustomerInstitutionDiscounts($discounts)) {
+            return redirect()->to('config?tab=institucion_descuentos')->with('error', 'No se pudo eliminar el descuento.');
+        }
+        \App\Models\AuditoriaModel::log('config', 'institucion_descuento_eliminar', null, $institucion);
+
+        return redirect()->to('config?tab=institucion_descuentos')->with('success', 'Descuento eliminado.');
     }
 
     public function saveTenant(): ResponseInterface

@@ -27,6 +27,9 @@ class FacturaComprobanteModel extends ReciboComprobanteModel
         string $monedaSimbolo,
         string $doctorNombre,
         ?int $doctorGender,
+        string $institucionNombre,
+        float $institucionDescuentoPct,
+        float $institucionDescuentoMonto,
         public string $nitEmpresa,
         public string $razonSocial,
         public string $codigoSucursal,
@@ -48,6 +51,9 @@ class FacturaComprobanteModel extends ReciboComprobanteModel
             $monedaSimbolo,
             $doctorNombre,
             $doctorGender,
+            $institucionNombre,
+            $institucionDescuentoPct,
+            $institucionDescuentoMonto,
         );
     }
 }

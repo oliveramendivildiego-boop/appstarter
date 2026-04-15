@@ -6,6 +6,7 @@ use App\Models\AppConfigModel;
 use App\Models\FacturaComprobanteModel;
 use App\Models\ReciboComprobanteModel;
 use App\Models\RegisterModel;
+use App\Services\ConfigService;
 
 /**
  * Arma los datos y el HTML para recibo o factura en PDF según configuración SIN.
@@ -23,10 +24,12 @@ class BillingDocumentService
         private ?RegisterModel $registerModel = null,
         private ?AppConfigModel $appConfigModel = null,
         private ?LayoutService $layoutService = null,
+        private ?ConfigService $configService = null,
     ) {
         $this->registerModel  = $registerModel ?? model(RegisterModel::class);
         $this->appConfigModel = $appConfigModel ?? model(AppConfigModel::class);
         $this->layoutService  = $layoutService ?? new LayoutService();
+        $this->configService  = $configService ?? new ConfigService($this->appConfigModel);
     }
 
     public function isSinBillingEnabled(): bool
@@ -65,8 +68,13 @@ class BillingDocumentService
         );
         $lineas = $this->registerModel->getPruebasLineasComerciales((string) ($reg->pruebas ?? ''));
         $total  = (float) ($pago->total ?? 0);
+        $totalBruto = 0.0;
+        foreach ($lineas as $ln) {
+            $totalBruto += (float) ($ln['importe'] ?? 0);
+        }
         if ($lineas === [] && $total > 0) {
             $lineas[] = ['descripcion' => 'Servicios de laboratorio', 'importe' => $total];
+            $totalBruto = $total;
         }
         if ($lineas === []) {
             $lineas[] = ['descripcion' => 'Sin detalle de pruebas', 'importe' => 0.0];
@@ -81,9 +89,27 @@ class BillingDocumentService
             $doctorGender = null;
         }
 
-        $totalReco = (float) ($pago->total_reco ?? 0);
+        // Para el comprobante, "Total" debe reflejar la sumatoria bruta (sin descuento).
+        $totalReco = $totalBruto > 0 ? $totalBruto : (float) ($pago->total_reco ?? 0);
         $montoPag  = (float) ($pago->monto_pagar ?? 0);
         $saldo     = (float) ($pago->saldo ?? 0);
+        $institucionNombre = trim((string) ($reg->customer_institucion ?? ''));
+        $institucionDescuentoPct = 0.0;
+        if ($institucionNombre !== '') {
+            $discounts = $this->configService->getCustomerInstitutionDiscounts();
+            $needle = function_exists('mb_strtolower') ? mb_strtolower($institucionNombre, 'UTF-8') : strtolower($institucionNombre);
+            foreach ($discounts as $instCfg => $pctCfg) {
+                $cfgNeedle = function_exists('mb_strtolower') ? mb_strtolower(trim((string) $instCfg), 'UTF-8') : strtolower(trim((string) $instCfg));
+                if ($cfgNeedle === $needle) {
+                    $institucionDescuentoPct = max(0, min(100, (float) $pctCfg));
+                    break;
+                }
+            }
+        }
+        $institucionDescuentoMonto = 0.0;
+        if ($totalBruto > 0 && $totalBruto >= $total && $institucionDescuentoPct > 0) {
+            $institucionDescuentoMonto = round($totalBruto - $total, 2);
+        }
 
         $ordenNum = registro_orden_display($reg);
         $empresa  = trim((string) ($layout['company'] ?? 'Laboratorio'));
@@ -111,6 +137,9 @@ class BillingDocumentService
                 $moneda,
                 $doctorNombre,
                 $doctorGender,
+                $institucionNombre,
+                $institucionDescuentoPct,
+                $institucionDescuentoMonto,
                 $nit,
                 $razon !== '' ? $razon : $empresa,
                 $suc !== '' ? $suc : '1',
@@ -134,6 +163,9 @@ class BillingDocumentService
             $moneda,
             $doctorNombre,
             $doctorGender,
+            $institucionNombre,
+            $institucionDescuentoPct,
+            $institucionDescuentoMonto,
         );
     }
 

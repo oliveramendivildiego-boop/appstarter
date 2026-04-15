@@ -35,6 +35,8 @@ if (!empty($edit_registro)) {
             'saldo'       => $edit_pago->saldo ?? '',
             'comentarios' => $edit_pago->comentarios ?? '',
         ],
+        'institucion' => trim((string) (($edit_discount_info['institucion'] ?? '') ?: ($edit_registro->customer_institucion ?? ''))),
+        'descuento'   => (float) ($edit_discount_info['descuento'] ?? 0),
     ];
 }
 ?>
@@ -76,12 +78,41 @@ document.addEventListener('DOMContentLoaded', function() {
     function recalcular() {
         var totalCost = 0;
         pruebasSeleccionadas.forEach(function(p) { totalCost += p.cost; });
-        var val = totalCost.toFixed(2);
+        var totalReco = totalCost;
+        var pct = parseFloat((document.getElementById('customer_descuento_pct') || {}).value || 0);
+        if (isNaN(pct) || pct < 0) pct = 0;
+        if (pct > 100) pct = 100;
+        var totalConDescuento = totalReco * (1 - (pct / 100));
+        var valReco = totalConDescuento.toFixed(2);
+        var valTotal = totalConDescuento.toFixed(2);
         var reco = document.getElementById('total_reco');
         var tot = document.getElementById('total');
-        if (reco) reco.value = val;
-        if (tot) tot.value = val;
+        if (reco) reco.value = valReco;
+        if (tot) {
+            tot.value = valTotal;
+            try { tot.dispatchEvent(new Event('input', { bubbles: true })); } catch (e) {}
+        }
+        if (typeof window.updateInstitutionDiscountInfo === 'function') {
+            window.updateInstitutionDiscountInfo();
+        }
     }
+    window.recalcularTotalesRegistro = recalcular;
+
+    window.updateInstitutionDiscountInfo = function() {
+        var infoEl = document.getElementById('institucion_descuento_info');
+        var inst = ((document.getElementById('customer_institucion') || {}).value || '').trim();
+        var pct = parseFloat((document.getElementById('customer_descuento_pct') || {}).value || 0);
+        if (!infoEl) return;
+        if (!inst || isNaN(pct) || pct <= 0) {
+            infoEl.textContent = '';
+            return;
+        }
+        var totalBruto = 0;
+        pruebasSeleccionadas.forEach(function(p) { totalBruto += parseFloat(p.cost || 0); });
+        var totalVal = parseFloat((document.getElementById('total') || {}).value || 0);
+        var ahorro = (!isNaN(totalVal)) ? Math.max(0, totalBruto - totalVal) : 0;
+        infoEl.textContent = 'Institución: ' + inst + ' — descuento aplicado: ' + pct.toFixed(2) + '% (ahorro: ' + ahorro.toFixed(2) + ' Bs)';
+    };
 
     function renderPruebasLista() {
         if (!pruebaListaContainer) return;
@@ -252,6 +283,10 @@ document.addEventListener('DOMContentLoaded', function() {
             if (pacienteEl) pacienteEl.value = String(editInfo.paciente || '');
             if (doctorEl) doctorEl.value = String(editInfo.doctor || '');
             if (prioridadEl) prioridadEl.value = String(editInfo.prioridad || '0');
+            var institucionEl = document.getElementById('customer_institucion');
+            var descuentoEl = document.getElementById('customer_descuento_pct');
+            if (institucionEl) institucionEl.value = String(editInfo.institucion || '');
+            if (descuentoEl) descuentoEl.value = String(editInfo.descuento || 0);
 
             // Pago
             var p = editInfo.pago || {};
@@ -285,6 +320,9 @@ document.addEventListener('DOMContentLoaded', function() {
                 totalRecoEl.value = String(p.total_reco ?? totalRecoEl.value);
             }
             renderPruebasLista();
+            if (typeof window.updateInstitutionDiscountInfo === 'function') {
+                window.updateInstitutionDiscountInfo();
+            }
         } catch (e) {}
     }
 

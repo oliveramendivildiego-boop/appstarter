@@ -155,8 +155,23 @@ INSERT IGNORE INTO `dom_modules` (`name_lang_key`, `desc_lang_key`, `sort`, `mod
 ('module_controlcalidad', 'module_controlcalidad_desc', 55, 'controlcalidad'),
 ('module_reactivos', 'module_reactivos_desc', 56, 'reactivos'),
 ('module_equipos', 'module_equipos_desc', 57, 'equipos'),
-('module_auditoria', 'module_auditoria_desc', 58, 'auditoria');
+('module_auditoria', 'module_auditoria_desc', 58, 'auditoria'),
+('module_egresos', 'module_egresos_desc', 60, 'egresos');
 
 -- Permisos para admin (person_id=1)
 INSERT IGNORE INTO `dom_permissions` (`module_id`, `person_id`) VALUES
-('controlcalidad', 1), ('reactivos', 1), ('equipos', 1), ('auditoria', 1);
+('controlcalidad', 1), ('reactivos', 1), ('equipos', 1), ('auditoria', 1), ('egresos', 1);
+
+-- 10. Egresos
+CREATE TABLE IF NOT EXISTS `dom_egresos` (
+  `egreso_id` INT NOT NULL AUTO_INCREMENT,
+  `fecha` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `monto` DECIMAL(12,2) NOT NULL DEFAULT 0.00,
+  `tipopago` VARCHAR(20) NOT NULL DEFAULT '1',
+  `tipo_movimiento` VARCHAR(20) NOT NULL DEFAULT 'egreso',
+  `desglose` TEXT NOT NULL,
+  `deleted` TINYINT DEFAULT 0,
+  `created_at` DATETIME DEFAULT NULL,
+  `updated_at` DATETIME DEFAULT NULL,
+  PRIMARY KEY (`egreso_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8;

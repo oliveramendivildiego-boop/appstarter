@@ -4,12 +4,14 @@ namespace App\Controllers;
 
 use App\Libraries\PdfService;
 use App\Services\BillingDocumentService;
+use App\Services\AutoReactivoConsumptionService;
 use App\Services\ConfigService;
 use App\Services\RegisterService;
 use App\Services\ReportPdfLayoutService;
 use App\Services\WhatsAppService;
 use App\Models\LabotestModel;
 use App\Models\RegisterModel;
+use App\Models\CustomerModel;
 use App\Models\PerfilExamenModel;
 use App\Models\MuestraModel;
 use App\Models\AppConfigModel;
@@ -37,6 +39,8 @@ class Registers extends SecureArea
     protected AppConfigModel $configModel;
     protected DoctorModel $doctorModel;
     protected DoctorCommissionModel $commissionModel;
+    protected CustomerModel $customerModel;
+    protected ConfigService $configService;
 
     public function __construct()
     {
@@ -48,6 +52,8 @@ class Registers extends SecureArea
         $this->configModel     = model(AppConfigModel::class);
         $this->doctorModel     = model(DoctorModel::class);
         $this->commissionModel = model(DoctorCommissionModel::class);
+        $this->customerModel   = model(CustomerModel::class);
+        $this->configService   = new ConfigService();
     }
 
     public function index()
@@ -64,6 +70,7 @@ class Registers extends SecureArea
             'controller_name' => 'registers',
             'edit_registro'   => null,
             'edit_pago'       => null,
+            'edit_discount_info' => ['institucion' => '', 'descuento' => 0.0],
         ]);
     }
 
@@ -88,6 +95,7 @@ class Registers extends SecureArea
         $perfiles = (model(PerfilExamenModel::class))->getAll();
         $info = $this->registerModel->getInfoRefill($id);
         $pago = $this->registerModel->getPagoByRegistroId($id);
+        $discountInfo = $this->resolveInstitutionDiscountByPersonId((int) ($info->person_id ?? 0));
 
         return view('registers/manage', [
             'current_module'  => 'registers',
@@ -98,6 +106,7 @@ class Registers extends SecureArea
             'controller_name' => 'registers',
             'edit_registro'   => $info,
             'edit_pago'       => $pago,
+            'edit_discount_info' => $discountInfo,
         ]);
     }
 
@@ -267,6 +276,27 @@ class Registers extends SecureArea
     {
         $search = $this->request->getPost('paciente') ?? $this->request->getPost('q') ?? '';
         $data   = $this->registerModel->searchPaciente($search);
+        $discounts = $this->configService->getCustomerInstitutionDiscounts();
+        $normalizeInst = static function (string $value): string {
+            $v = trim(preg_replace('/\s+/', ' ', $value) ?? $value);
+            return function_exists('mb_strtolower') ? mb_strtolower($v, 'UTF-8') : strtolower($v);
+        };
+        $discountsNorm = [];
+        foreach ($discounts as $inst => $pct) {
+            $k = $normalizeInst((string) $inst);
+            if ($k !== '') {
+                $discountsNorm[$k] = (float) $pct;
+            }
+        }
+
+        foreach ($data as &$row) {
+            $inst = trim((string) ($row['institucion'] ?? ''));
+            $key = $normalizeInst($inst);
+            $pct = ($key !== '' && array_key_exists($key, $discountsNorm)) ? (float) $discountsNorm[$key] : 0.0;
+            $row['descuento'] = max(0, min(100, round($pct, 2)));
+        }
+        unset($row);
+
         return $this->response->setJSON($data);
     }
 
@@ -731,6 +761,125 @@ class Registers extends SecureArea
             ->setBody($pdfService->generate($html, $filename));
     }
 
+    private function parseMoneyInput(mixed $value): float
+    {
+        if (is_int($value) || is_float($value)) {
+            return (float) $value;
+        }
+        $s = trim((string) $value);
+        if ($s === '') {
+            return 0.0;
+        }
+        $s = str_replace(["\xc2\xa0", ' '], '', $s);
+        if (str_contains($s, ',') && str_contains($s, '.')) {
+            $lastComma = strrpos($s, ',');
+            $lastDot = strrpos($s, '.');
+            if ($lastComma !== false && $lastDot !== false && $lastComma > $lastDot) {
+                $s = str_replace('.', '', $s);
+                $s = str_replace(',', '.', $s);
+            } else {
+                $s = str_replace(',', '', $s);
+            }
+        } elseif (str_contains($s, ',')) {
+            $s = str_replace(',', '.', $s);
+        }
+
+        return is_numeric($s) ? (float) $s : 0.0;
+    }
+
+    /**
+     * @return array{institucion:string,descuento:float}
+     */
+    private function resolveInstitutionDiscountByPersonId(?int $personId): array
+    {
+        if (($personId ?? 0) < 1) {
+            return ['institucion' => '', 'descuento' => 0.0];
+        }
+        $info = $this->registerModel->getPatientById((int) $personId);
+        $institucion = '';
+        if ($info) {
+            $customer = $this->customerModel
+                ->groupStart()
+                    ->where('deleted', 0)
+                    ->orWhere('deleted', null)
+                ->groupEnd()
+                ->where('person_id', (int) $personId)
+                ->first();
+            if (is_array($customer)) {
+                $institucion = trim((string) ($customer['institucion'] ?? ''));
+            } elseif (is_object($customer)) {
+                $institucion = trim((string) ($customer->institucion ?? ''));
+            }
+        }
+        if ($institucion === '') {
+            return ['institucion' => '', 'descuento' => 0.0];
+        }
+
+        $discounts = $this->configService->getCustomerInstitutionDiscounts();
+        $normalizeInst = static function (string $value): string {
+            $v = trim(preg_replace('/\s+/', ' ', $value) ?? $value);
+            return function_exists('mb_strtolower') ? mb_strtolower($v, 'UTF-8') : strtolower($v);
+        };
+        $key = $normalizeInst($institucion);
+        $pct = 0.0;
+        foreach ($discounts as $instCfg => $pctCfg) {
+            $kCfg = $normalizeInst((string) $instCfg);
+            if ($kCfg === $key) {
+                $pct = (float) $pctCfg;
+                break;
+            }
+        }
+
+        return [
+            'institucion' => $institucion,
+            'descuento' => max(0, min(100, round($pct, 2))),
+        ];
+    }
+
+    /**
+     * @param array<string,mixed> $registro
+     * @param array<string,mixed> $pagos
+     * @return array<string,mixed>
+     */
+    private function buildNormalizedPagoData(array $registro, array $pagos): array
+    {
+        $lineas = $this->registerModel->getPruebasLineasComerciales((string) ($registro['pruebas'] ?? ''));
+        $totalBruto = 0.0;
+        foreach ($lineas as $ln) {
+            $totalBruto += (float) ($ln['importe'] ?? 0);
+        }
+        $discountInfo = $this->resolveInstitutionDiscountByPersonId((int) ($registro['person_id'] ?? 0));
+        $pct = (float) ($discountInfo['descuento'] ?? 0.0);
+        $total = round($totalBruto * (1 - ($pct / 100)), 2);
+        if ($total < 0) {
+            $total = 0.0;
+        }
+
+        $montoPagado = $this->parseMoneyInput($pagos['monto_pagar'] ?? 0);
+        if ($montoPagado < 0) {
+            $montoPagado = 0.0;
+        }
+        $tipopago = trim((string) ($pagos['tipopago'] ?? ''));
+        if ($tipopago === '4' && trim((string) ($pagos['monto_pagar'] ?? '')) === '') {
+            $montoPagado = 0.0;
+        }
+
+        $saldo = round($total - $montoPagado, 2);
+        if ($saldo < 0) {
+            $saldo = 0.0;
+        }
+
+        return [
+            'total_reco' => number_format($total, 2, '.', ''),
+            'total' => number_format($total, 2, '.', ''),
+            'monto_pagar' => number_format($montoPagado, 2, '.', ''),
+            'tipopago' => $tipopago,
+            'saldo' => number_format($saldo, 2, '.', ''),
+            'comentarios' => $pagos['comentarios'] ?? null,
+            'descuento_institucion' => $discountInfo,
+        ];
+    }
+
     public function save(): ResponseInterface
     {
         try {
@@ -745,6 +894,8 @@ class Registers extends SecureArea
 
             $registro = $this->request->getPost('registro');
             $pagos    = $this->request->getPost('pagos');
+            $registro = is_array($registro) ? $registro : [];
+            $pagos = is_array($pagos) ? $pagos : [];
 
             $registroData = [
                 'person_id'  => $registro['person_id'] ?? null,
@@ -755,28 +906,30 @@ class Registers extends SecureArea
             ];
 
             $registroId = $this->registerModel->saveRegistro($registroData);
+            $pagosNormalizados = $this->buildNormalizedPagoData($registroData, $pagos);
             \App\Models\AuditoriaModel::log('registers', 'crear', (string) $registroId, \App\Models\AuditoriaModel::detail([
                 'paciente_id' => $registro['person_id'] ?? null,
                 'doctor_id' => $registro['doctor_id'] ?? null,
                 'pruebas' => $registro['pruebas'] ?? null,
                 'prioridad' => (int)($registro['prioridad'] ?? 0),
-                'total' => $pagos['total'] ?? null,
-                'monto_pagar' => $pagos['monto_pagar'] ?? null,
+                'total' => $pagosNormalizados['total'] ?? null,
+                'monto_pagar' => $pagosNormalizados['monto_pagar'] ?? null,
+                'descuento_institucion' => $pagosNormalizados['descuento_institucion'] ?? null,
             ], 'Nuevo registro de orden'));
 
             $pagosData = [
                 'registro_id'  => $registroId,
-                'total_reco'   => $pagos['total_reco'] ?? null,
-                'total'        => $pagos['total'] ?? null,
-                'monto_pagar'  => $pagos['monto_pagar'] ?? null,
-                'tipopago'     => $pagos['tipopago'] ?? null,
-                'saldo'        => $pagos['saldo'] ?? null,
-                'comentarios'  => $pagos['comentarios'] ?? null,
+                'total_reco'   => $pagosNormalizados['total_reco'] ?? null,
+                'total'        => $pagosNormalizados['total'] ?? null,
+                'monto_pagar'  => $pagosNormalizados['monto_pagar'] ?? null,
+                'tipopago'     => $pagosNormalizados['tipopago'] ?? null,
+                'saldo'        => $pagosNormalizados['saldo'] ?? null,
+                'comentarios'  => $pagosNormalizados['comentarios'] ?? null,
             ];
             $this->registerModel->savePago($pagosData);
-            $montoInicial = (float) ($pagos['monto_pagar'] ?? 0);
+            $montoInicial = (float) ($pagosNormalizados['monto_pagar'] ?? 0);
             if ($montoInicial > 0) {
-                $this->registerModel->insertAbonoInicial($registroId, $montoInicial, trim($pagos['tipopago'] ?? '1'));
+                $this->registerModel->insertAbonoInicial($registroId, $montoInicial, trim((string) ($pagosNormalizados['tipopago'] ?? '1')));
             }
 
             // Crear comisión para el doctor si aplica
@@ -789,7 +942,7 @@ class Registers extends SecureArea
                     if ($hasCommission == 1) {
                         $commissionPercent = (float) $doctorInfo->commission_percent;
                         if ($commissionPercent > 0) {
-                            $totalAmount = (float) ($pagos['total'] ?? 0);
+                            $totalAmount = (float) ($pagosNormalizados['total'] ?? 0);
                             if ($totalAmount > 0) {
                                 $this->commissionModel->createCommission($doctorId, $registroId, $totalAmount, $commissionPercent);
                             }
@@ -841,6 +994,8 @@ class Registers extends SecureArea
 
             $registro = $this->request->getPost('registro');
             $pagos    = $this->request->getPost('pagos');
+            $registro = is_array($registro) ? $registro : [];
+            $pagos = is_array($pagos) ? $pagos : [];
 
             $registroData = [
                 'person_id'  => $registro['person_id'] ?? null,
@@ -849,23 +1004,25 @@ class Registers extends SecureArea
                 'prioridad'  => (int) ($registro['prioridad'] ?? 0),
                 'id_session' => session()->get('person_id'),
             ];
+            $pagosNormalizados = $this->buildNormalizedPagoData($registroData, $pagos);
             $this->registerModel->saveRegistro($registroData, $id);
             \App\Models\AuditoriaModel::log('registers', 'editar_orden', (string) $id, \App\Models\AuditoriaModel::detail([
                 'paciente_id' => $registro['person_id'] ?? null,
                 'doctor_id' => $registro['doctor_id'] ?? null,
                 'pruebas' => $registro['pruebas'] ?? null,
                 'prioridad' => (int)($registro['prioridad'] ?? 0),
-                'total' => $pagos['total'] ?? null,
-                'monto_pagar' => $pagos['monto_pagar'] ?? null,
+                'total' => $pagosNormalizados['total'] ?? null,
+                'monto_pagar' => $pagosNormalizados['monto_pagar'] ?? null,
+                'descuento_institucion' => $pagosNormalizados['descuento_institucion'] ?? null,
             ], 'Edición de orden existente'));
 
             $pagosUpd = [
-                'total_reco'  => $pagos['total_reco'] ?? null,
-                'total'       => $pagos['total'] ?? null,
-                'monto_pagar' => $pagos['monto_pagar'] ?? null,
-                'tipopago'    => $pagos['tipopago'] ?? null,
-                'saldo'       => $pagos['saldo'] ?? null,
-                'comentarios' => $pagos['comentarios'] ?? null,
+                'total_reco'  => $pagosNormalizados['total_reco'] ?? null,
+                'total'       => $pagosNormalizados['total'] ?? null,
+                'monto_pagar' => $pagosNormalizados['monto_pagar'] ?? null,
+                'tipopago'    => $pagosNormalizados['tipopago'] ?? null,
+                'saldo'       => $pagosNormalizados['saldo'] ?? null,
+                'comentarios' => $pagosNormalizados['comentarios'] ?? null,
             ];
             $this->registerModel->updatePagoByRegistroId($id, $pagosUpd);
 
@@ -1067,13 +1224,30 @@ class Registers extends SecureArea
             ]);
             $valCount++;
         }
+
+        $autoStats = ['aplicados' => 0, 'omitidos' => 0, 'errores' => 0];
+        if (($registroId ?? 0) > 0) {
+            $autoService = new AutoReactivoConsumptionService();
+            $autoStats = $autoService->applyFromRegValues(
+                (int) $registroId,
+                is_array($data) ? $data : [],
+                (int) (session()->get('person_id') ?? 0)
+            );
+        }
+
         if ($registroId !== null) {
             \App\Models\AuditoriaModel::log('registers', 'guardar_resultados', (string) $registroId, \App\Models\AuditoriaModel::detail([
                 'cantidad_valores' => $valCount,
                 'tiene_comentario' => ($comentario !== ''),
+                'consumo_auto_aplicados' => (int) ($autoStats['aplicados'] ?? 0),
+                'consumo_auto_errores' => (int) ($autoStats['errores'] ?? 0),
             ]));
         }
-        return $this->response->setJSON(['success' => true, 'message' => 'Guardado exitoso']);
+        return $this->response->setJSON([
+            'success' => true,
+            'message' => 'Guardado exitoso',
+            'consumo_auto' => $autoStats,
+        ]);
     }
 
     public function saveanalisiss(): ResponseInterface

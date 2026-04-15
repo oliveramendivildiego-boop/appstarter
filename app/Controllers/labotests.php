@@ -3,8 +3,10 @@
 namespace App\Controllers;
 
 use App\Models\LabotestModel;
+use App\Models\LabotestReactivoConfigModel;
 use App\Models\OpcionModel;
 use App\Models\PerfilExamenModel;
+use App\Models\ReactivoModel;
 use App\Models\MetodoModel;
 use App\Models\TipoMuestraModel;
 use CodeIgniter\HTTP\ResponseInterface;
@@ -17,6 +19,8 @@ class Labotests extends SecureArea
     protected OpcionModel $opcionModel;
     protected TipoMuestraModel $tipoMuestraModel;
     protected MetodoModel $metodoModel;
+    protected ReactivoModel $reactivoModel;
+    protected LabotestReactivoConfigModel $labotestReactivoConfigModel;
 
     public function __construct()
     {
@@ -26,6 +30,8 @@ class Labotests extends SecureArea
         $this->opcionModel      = model(OpcionModel::class);
         $this->tipoMuestraModel = model(TipoMuestraModel::class);
         $this->metodoModel      = model(MetodoModel::class);
+        $this->reactivoModel    = model(ReactivoModel::class);
+        $this->labotestReactivoConfigModel = model(LabotestReactivoConfigModel::class);
     }
 
     /**
@@ -215,7 +221,72 @@ class Labotests extends SecureArea
             'editar_sec_data'   => $editarSecData,
             'editar_pri'        => $editarPri,
             'editar_pri_data'   => $editarPriData,
+            'reactivos_catalogo' => $this->reactivoModel->getAllWithStockAndTipo(),
+            'reactivos_consumo_config' => $this->labotestReactivoConfigModel->getByPrianacategoria($prianacategoriaId),
+            'reactivo_lote_policies' => [
+                'fefo' => 'FEFO (vence primero)',
+                'fifo' => 'FIFO (ingresa primero)',
+                'lifo' => 'LIFO (ingresa ultimo)',
+            ],
         ]);
+    }
+
+    public function saveReactivoConsumo()
+    {
+        $prianacategoriaId = (int) ($this->request->getPost('prianacategoria_id') ?? 0);
+        $reactivoId        = (int) ($this->request->getPost('reactivo_id') ?? 0);
+        $consumoDefault    = max(1, (int) ($this->request->getPost('consumo_default') ?? 1));
+        $lotePolicy        = strtolower(trim((string) ($this->request->getPost('lote_policy') ?? 'fefo')));
+
+        if ($prianacategoriaId < 1 || $reactivoId < 1) {
+            return redirect()->back()->with('error', 'Debe seleccionar analisis y reactivo');
+        }
+        if (! in_array($lotePolicy, ['fefo', 'fifo', 'lifo'], true)) {
+            $lotePolicy = 'fefo';
+        }
+
+        $exists = $this->labotestReactivoConfigModel
+            ->where('prianacategoria_id', $prianacategoriaId)
+            ->where('reactivo_id', $reactivoId)
+            ->where('deleted', 0)
+            ->first();
+
+        $data = [
+            'prianacategoria_id' => $prianacategoriaId,
+            'reactivo_id'        => $reactivoId,
+            'consumo_default'    => $consumoDefault,
+            'lote_policy'        => $lotePolicy,
+            'enabled'            => 1,
+            'deleted'            => 0,
+        ];
+
+        if ($exists) {
+            $this->labotestReactivoConfigModel->update((int) ($exists['config_id'] ?? 0), $data);
+        } else {
+            $this->labotestReactivoConfigModel->insert($data);
+        }
+
+        return redirect()->to("labotests/detail/{$prianacategoriaId}")
+            ->with('success', 'Configuracion de consumo guardada');
+    }
+
+    public function deleteReactivoConsumo($configId)
+    {
+        $configId = (int) $configId;
+        if ($configId < 1) {
+            return redirect()->back()->with('error', 'Configuracion invalida');
+        }
+
+        $row = $this->labotestReactivoConfigModel->find($configId);
+        if (! $row) {
+            return redirect()->back()->with('error', 'Configuracion no encontrada');
+        }
+
+        $prianacategoriaId = (int) ($row['prianacategoria_id'] ?? 0);
+        $this->labotestReactivoConfigModel->softDeleteConfig($configId);
+
+        return redirect()->to("labotests/detail/{$prianacategoriaId}")
+            ->with('success', 'Configuracion eliminada');
     }
 
     public function save($id = 0)

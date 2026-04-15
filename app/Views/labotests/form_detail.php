@@ -20,6 +20,87 @@
 
 <?= form_close() ?>
 
+<div class="card mt-3">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <strong><i class="fa-solid fa-vial me-1"></i>Consumo automatico de reactivos</strong>
+        <span class="badge bg-info text-dark">Por analisis</span>
+    </div>
+    <div class="card-body">
+        <p class="text-muted mb-3">
+            Configura que reactivo se descuenta al guardar resultados de este analisis y el consumo por defecto.
+        </p>
+
+        <?= form_open('labotests/savereactivoconsumo', ['class' => 'row g-2 align-items-end mb-3']) ?>
+        <input type="hidden" name="prianacategoria_id" value="<?= (int) ($labotests_info->prianacategoria_id ?? 0) ?>">
+        <div class="col-md-5">
+            <label class="form-label">Reactivo</label>
+            <select name="reactivo_id" class="form-select" required>
+                <option value="">Seleccionar...</option>
+                <?php foreach (($reactivos_catalogo ?? []) as $rx): ?>
+                    <option value="<?= (int) ($rx['reactivo_id'] ?? 0) ?>">
+                        <?= esc($rx['nombre'] ?? '') ?> (Stock: <?= (int) ($rx['stock_actual'] ?? 0) ?> <?= esc($rx['unidad_base'] ?? $rx['unidad'] ?? '') ?>)
+                    </option>
+                <?php endforeach; ?>
+            </select>
+        </div>
+        <div class="col-md-2">
+            <label class="form-label">Consumo</label>
+            <input type="number" min="1" step="1" class="form-control" name="consumo_default" value="1" required>
+        </div>
+        <div class="col-md-3">
+            <label class="form-label">Politica de lote</label>
+            <select name="lote_policy" class="form-select" required>
+                <?php foreach (($reactivo_lote_policies ?? []) as $key => $label): ?>
+                    <option value="<?= esc($key) ?>"><?= esc($label) ?></option>
+                <?php endforeach; ?>
+            </select>
+        </div>
+        <div class="col-md-2">
+            <button type="submit" class="btn btn-success w-100">
+                <i class="fa-solid fa-plus me-1"></i>Agregar
+            </button>
+        </div>
+        <?= form_close() ?>
+
+        <div class="table-responsive">
+            <table class="table table-sm table-bordered align-middle mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th>Reactivo</th>
+                        <th class="text-center">Consumo</th>
+                        <th>Politica lote</th>
+                        <th class="text-center">Accion</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <?php if (! empty($reactivos_consumo_config ?? [])): ?>
+                        <?php foreach (($reactivos_consumo_config ?? []) as $cfg): ?>
+                            <tr>
+                                <td><?= esc($cfg['reactivo_nombre'] ?? '-') ?></td>
+                                <td class="text-center">
+                                    <?= (int) ($cfg['consumo_default'] ?? 1) ?> <?= esc($cfg['unidad_base'] ?? '') ?>
+                                </td>
+                                <td><?= esc(strtoupper((string) ($cfg['lote_policy'] ?? 'fefo'))) ?></td>
+                                <td class="text-center">
+                                    <?= form_open('labotests/deletereactivoconsumo/' . (int) ($cfg['config_id'] ?? 0), ['class' => 'd-inline']) ?>
+                                    <button type="submit" class="btn btn-sm btn-outline-danger" onclick="return confirm('Eliminar esta configuracion?')">
+                                        <i class="fa-solid fa-trash"></i>
+                                    </button>
+                                    <?= form_close() ?>
+                                </td>
+                            </tr>
+                        <?php endforeach; ?>
+                    <?php else: ?>
+                        <tr>
+                            <td colspan="4" class="text-center text-muted">Sin configuraciones de consumo automatico.</td>
+                        </tr>
+                    <?php endif; ?>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
 <?php if ($compleja ?? 0): ?>
 <?php
 $refsPorNombre = [];   // nombre -> c_id o constante (para guardado)

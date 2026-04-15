@@ -26,6 +26,9 @@ class ReciboComprobanteModel
         public string $monedaSimbolo,
         public string $doctorNombre,
         public ?int $doctorGender = null,
+        public string $institucionNombre = '',
+        public float $institucionDescuentoPct = 0.0,
+        public float $institucionDescuentoMonto = 0.0,
     ) {
     }
 }

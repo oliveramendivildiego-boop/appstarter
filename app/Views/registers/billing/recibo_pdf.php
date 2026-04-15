@@ -167,6 +167,7 @@ $fmt = static function (float $n): string {
             font-variant-numeric: tabular-nums;
             color: #334155;
             font-weight: 600;
+            white-space: nowrap;
         }
         .totals-box tr.total-final td {
             background: #0f766e;
@@ -244,8 +245,14 @@ $fmt = static function (float $n): string {
             <table>
                 <?php if ($doc->totalRecomendado > 0): ?>
                 <tr>
-                    <td class="t-lbl">Total recomendado</td>
+                    <td class="t-lbl">Total</td>
                     <td class="t-val"><?= esc($sym) ?> <?= esc($fmt($doc->totalRecomendado)) ?></td>
+                </tr>
+                <?php endif; ?>
+                <?php if (($doc->institucionDescuentoPct ?? 0) > 0): ?>
+                <tr>
+                    <td class="t-lbl">Descuento institución (<?= esc($doc->institucionNombre ?: 'Paciente') ?>, <?= esc(number_format((float) $doc->institucionDescuentoPct, 2, '.', '')) ?>%)</td>
+                    <td class="t-val">- <?= esc($sym) ?> <?= esc($fmt((float) ($doc->institucionDescuentoMonto ?? 0))) ?></td>
                 </tr>
                 <?php endif; ?>
                 <tr>

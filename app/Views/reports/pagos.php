@@ -61,6 +61,15 @@ $cierreEnd   = $endDate ?? date('Y-m-d');
 <p class="text-muted"><?= esc($subtitle ?? '') ?></p>
 
 <?php $tipoPagoMap = $tipoPagoMap ?? []; ?>
+<?php $totalesEgresos = $totalesEgresos ?? (object) []; ?>
+<?php $totalesIngresosCaja = $totalesIngresosCaja ?? (object) []; ?>
+<?php $resumenIngresosCajaPorTipo = $resumenIngresosCajaPorTipo ?? []; ?>
+<?php $ingresosCajaMov = $ingresosCajaMov ?? []; ?>
+<?php $resumenEgresosPorTipo = $resumenEgresosPorTipo ?? []; ?>
+<?php $egresos = $egresos ?? []; ?>
+<?php $cajaResumen = $cajaResumen ?? ['ingresos' => 0, 'egresos' => 0, 'saldo_neto' => 0, 'estado' => 'positivo']; ?>
+<?php $cajaPorTipo = $cajaPorTipo ?? []; ?>
+<?php $cajaPorTipoTotales = $cajaPorTipoTotales ?? ['ingresos' => 0, 'egresos' => 0, 'saldo_neto' => 0]; ?>
 
 <div class="alert alert-info mb-4">
     <strong>Resumen del período:</strong><br>
@@ -69,6 +78,56 @@ $cierreEnd   = $endDate ?? date('Y-m-d');
     <span class="text-danger">Total pendiente: <?= number_format((float)($totales->total_pendiente ?? 0), 2) ?> Bs</span> |
     Cantidad órdenes: <?= (int)($totales->total_registros ?? 0) ?>
     <span class="d-block small mt-1">No se incluyen órdenes anuladas en montos ni cantidades (devolución).</span>
+</div>
+
+<div class="alert <?= ($cajaResumen['estado'] ?? 'positivo') === 'negativo' ? 'alert-danger' : 'alert-success' ?> mb-4">
+    <strong>Cuadre de caja del período:</strong><br>
+    Ingresos por ventas (cobrado): <?= number_format((float) ($cajaResumen['ingresos_ventas'] ?? 0), 2) ?> Bs |
+    Ingresos de caja (módulo): <?= number_format((float) ($cajaResumen['ingresos_movimientos'] ?? 0), 2) ?> Bs |
+    <strong>Total ingresos: <?= number_format((float) ($cajaResumen['ingresos'] ?? 0), 2) ?> Bs</strong> |
+    Egresos: <?= number_format((float) ($cajaResumen['egresos'] ?? 0), 2) ?> Bs |
+    <strong>Saldo neto caja: <?= number_format((float) ($cajaResumen['saldo_neto'] ?? 0), 2) ?> Bs</strong>
+    <span class="d-block small mt-1">Cálculo: (total cobrado + ingresos de caja) - egresos.</span>
+</div>
+
+<h5 class="mt-4">Cuadre de caja por tipo de pago</h5>
+<div class="table-responsive mb-4">
+    <table class="table table-bordered table-striped">
+        <thead class="table-success">
+            <tr>
+                <th>Tipo de pago</th>
+                <th class="text-end">Ingresos</th>
+                <th class="text-end">Egresos</th>
+                <th class="text-end">Total disponible</th>
+            </tr>
+        </thead>
+        <tbody>
+            <?php if (!empty($cajaPorTipo)): ?>
+                <?php foreach ($cajaPorTipo as $row): ?>
+                    <tr>
+                        <td><?= esc($tipoPagoMap[$row['tipopago'] ?? ''] ?? $row['tipopago'] ?? '-') ?></td>
+                        <td class="text-end"><?= number_format((float) ($row['ingresos'] ?? 0), 2) ?> Bs</td>
+                        <td class="text-end"><?= number_format((float) ($row['egresos'] ?? 0), 2) ?> Bs</td>
+                        <td class="text-end <?= ((float) ($row['saldo_neto'] ?? 0)) < 0 ? 'text-danger fw-bold' : 'text-success fw-bold' ?>">
+                            <?= number_format((float) ($row['saldo_neto'] ?? 0), 2) ?> Bs
+                        </td>
+                    </tr>
+                <?php endforeach; ?>
+            <?php else: ?>
+                <tr><td colspan="4" class="text-muted text-center">No hay datos por tipo de pago en el período.</td></tr>
+            <?php endif; ?>
+        </tbody>
+        <tfoot>
+            <tr>
+                <th class="text-end">Total general</th>
+                <th class="text-end"><?= number_format((float) ($cajaPorTipoTotales['ingresos'] ?? 0), 2) ?> Bs</th>
+                <th class="text-end"><?= number_format((float) ($cajaPorTipoTotales['egresos'] ?? 0), 2) ?> Bs</th>
+                <th class="text-end <?= ((float) ($cajaPorTipoTotales['saldo_neto'] ?? 0)) < 0 ? 'text-danger fw-bold' : 'text-success fw-bold' ?>">
+                    <?= number_format((float) ($cajaPorTipoTotales['saldo_neto'] ?? 0), 2) ?> Bs
+                </th>
+            </tr>
+        </tfoot>
+    </table>
 </div>
 
 <h5 class="mt-4">Resumen por tipo de pago</h5>
@@ -98,6 +157,130 @@ $cierreEnd   = $endDate ?? date('Y-m-d');
                 <?php endforeach; ?>
             <?php else: ?>
                 <tr><td colspan="5" class="text-muted text-center">No hay datos en el período.</td></tr>
+            <?php endif; ?>
+        </tbody>
+    </table>
+</div>
+
+<h5 class="mt-4">Resumen de ingresos de caja por tipo de pago</h5>
+<div class="table-responsive mb-4">
+    <table class="table table-bordered table-striped">
+        <thead class="table-success">
+            <tr>
+                <th>Tipo</th>
+                <th class="text-end">Cantidad</th>
+                <th class="text-end">Total ingresos</th>
+            </tr>
+        </thead>
+        <tbody>
+            <?php if (!empty($resumenIngresosCajaPorTipo)): ?>
+                <?php foreach ($resumenIngresosCajaPorTipo as $row): ?>
+                    <tr>
+                        <td><?= esc($tipoPagoMap[$row['tipopago'] ?? ''] ?? $row['tipopago'] ?? '-') ?></td>
+                        <td class="text-end"><?= (int) ($row['cantidad'] ?? 0) ?></td>
+                        <td class="text-end"><?= number_format((float) ($row['total_ingresos'] ?? 0), 2) ?> Bs</td>
+                    </tr>
+                <?php endforeach; ?>
+            <?php else: ?>
+                <tr><td colspan="3" class="text-muted text-center">No hay ingresos de caja en el período.</td></tr>
+            <?php endif; ?>
+        </tbody>
+        <tfoot>
+            <tr>
+                <th colspan="2" class="text-end">Total ingresos de caja</th>
+                <th class="text-end"><?= number_format((float) ($totalesIngresosCaja->total_ingresos ?? 0), 2) ?> Bs</th>
+            </tr>
+        </tfoot>
+    </table>
+</div>
+
+<h5 class="mt-4">Detalle de ingresos de caja (<?= count($ingresosCajaMov) ?>)</h5>
+<div class="table-responsive mb-4">
+    <table class="table table-bordered table-striped">
+        <thead class="table-success">
+            <tr>
+                <th>No.</th>
+                <th>Fecha</th>
+                <th>Tipo pago</th>
+                <th>Desglose</th>
+                <th class="text-end">Monto</th>
+            </tr>
+        </thead>
+        <tbody>
+            <?php if (!empty($ingresosCajaMov)): ?>
+                <?php foreach ($ingresosCajaMov as $row): ?>
+                    <tr>
+                        <td><?= (int) ($row['egreso_id'] ?? 0) ?></td>
+                        <td><?= esc(date('d/m/Y H:i', strtotime((string) ($row['fecha'] ?? '')))) ?></td>
+                        <td><?= esc($tipoPagoMap[$row['tipopago'] ?? ''] ?? $row['tipopago'] ?? '-') ?></td>
+                        <td><?= esc((string) ($row['desglose'] ?? '')) ?></td>
+                        <td class="text-end"><?= number_format((float) ($row['monto'] ?? 0), 2) ?> Bs</td>
+                    </tr>
+                <?php endforeach; ?>
+            <?php else: ?>
+                <tr><td colspan="5" class="text-muted text-center">No hay ingresos de caja en el período.</td></tr>
+            <?php endif; ?>
+        </tbody>
+    </table>
+</div>
+
+<h5 class="mt-4">Resumen de egresos por tipo de pago</h5>
+<div class="table-responsive mb-4">
+    <table class="table table-bordered table-striped">
+        <thead class="table-danger">
+            <tr>
+                <th>Tipo</th>
+                <th class="text-end">Cantidad</th>
+                <th class="text-end">Total egresos</th>
+            </tr>
+        </thead>
+        <tbody>
+            <?php if (!empty($resumenEgresosPorTipo)): ?>
+                <?php foreach ($resumenEgresosPorTipo as $row): ?>
+                    <tr>
+                        <td><?= esc($tipoPagoMap[$row['tipopago'] ?? ''] ?? $row['tipopago'] ?? '-') ?></td>
+                        <td class="text-end"><?= (int) ($row['cantidad'] ?? 0) ?></td>
+                        <td class="text-end"><?= number_format((float) ($row['total_egresos'] ?? 0), 2) ?> Bs</td>
+                    </tr>
+                <?php endforeach; ?>
+            <?php else: ?>
+                <tr><td colspan="3" class="text-muted text-center">No hay egresos en el período.</td></tr>
+            <?php endif; ?>
+        </tbody>
+        <tfoot>
+            <tr>
+                <th colspan="2" class="text-end">Total egresos</th>
+                <th class="text-end"><?= number_format((float) ($totalesEgresos->total_egresos ?? 0), 2) ?> Bs</th>
+            </tr>
+        </tfoot>
+    </table>
+</div>
+
+<h5 class="mt-4">Detalle de egresos de caja (<?= count($egresos) ?>)</h5>
+<div class="table-responsive mb-4">
+    <table class="table table-bordered table-striped">
+        <thead class="table-danger">
+            <tr>
+                <th>No.</th>
+                <th>Fecha</th>
+                <th>Tipo pago</th>
+                <th>Desglose</th>
+                <th class="text-end">Monto</th>
+            </tr>
+        </thead>
+        <tbody>
+            <?php if (!empty($egresos)): ?>
+                <?php foreach ($egresos as $row): ?>
+                    <tr>
+                        <td><?= (int) ($row['egreso_id'] ?? 0) ?></td>
+                        <td><?= esc(date('d/m/Y H:i', strtotime((string) ($row['fecha'] ?? '')))) ?></td>
+                        <td><?= esc($tipoPagoMap[$row['tipopago'] ?? ''] ?? $row['tipopago'] ?? '-') ?></td>
+                        <td><?= esc((string) ($row['desglose'] ?? '')) ?></td>
+                        <td class="text-end"><?= number_format((float) ($row['monto'] ?? 0), 2) ?> Bs</td>
+                    </tr>
+                <?php endforeach; ?>
+            <?php else: ?>
+                <tr><td colspan="5" class="text-muted text-center">No hay egresos en el período.</td></tr>
             <?php endif; ?>
         </tbody>
     </table>

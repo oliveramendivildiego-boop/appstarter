@@ -485,12 +485,15 @@ class RegisterModel extends Model
         $r = $this->getRegistroTable();
         $p = $this->db->prefixTable('people');
         $d = $this->db->prefixTable('doctors');
+        $c = $this->db->prefixTable('customers');
 
         return $this->db->table('registro')
             ->select("{$r}.*, {$p}.*, {$d}.doctor_id AS doctor_doctor_id, {$d}.name AS doctor_name, {$d}.gender AS doctor_gender,
-                {$d}.address AS doctor_address, {$d}.comments AS doctor_comments, {$d}.speciality AS doctor_specialty, {$d}.phone_number AS doctor_phone")
+                {$d}.address AS doctor_address, {$d}.comments AS doctor_comments, {$d}.speciality AS doctor_specialty, {$d}.phone_number AS doctor_phone,
+                {$c}.institucion AS customer_institucion")
             ->join('people', "{$p}.person_id = {$r}.person_id")
             ->join('doctors', "{$d}.doctor_id = {$r}.doctor_id")
+            ->join('customers', "{$c}.person_id = {$r}.person_id AND (COALESCE({$c}.deleted, 0) = 0)", 'left')
             ->where('registro.registro_id', (int) $id)
             ->limit(1)
             ->get()
@@ -1363,16 +1366,20 @@ class RegisterModel extends Model
         $esc = $this->db->escapeLikeString($search);
 
         $pat = '%' . $esc . '%';
+        $p = $this->db->prefixTable('people');
+        $c = $this->db->prefixTable('customers');
         $rows = $this->db->table('people')
-            ->where("first_name != '' AND first_name != '0'")
-            ->where("last_name_fa != '' AND last_name_fa != '0'")
+            ->select("{$p}.person_id, {$p}.first_name, {$p}.last_name_fa, {$p}.last_name_mom, {$p}.ci, {$c}.institucion")
+            ->join('customers', "{$c}.person_id = {$p}.person_id AND (COALESCE({$c}.deleted, 0) = 0)")
+            ->where("{$p}.first_name != '' AND {$p}.first_name != '0'")
+            ->where("{$p}.last_name_fa != '' AND {$p}.last_name_fa != '0'")
             ->groupStart()
-            ->like('first_name', $esc, 'both')
-            ->orLike('last_name_fa', $esc, 'both')
-            ->orLike('ci', $esc, 'both')
-            ->orWhere("CONCAT(first_name, ' ', last_name_fa) LIKE", $pat)
+            ->like("{$p}.first_name", $esc, 'both')
+            ->orLike("{$p}.last_name_fa", $esc, 'both')
+            ->orLike("{$p}.ci", $esc, 'both')
+            ->orWhere("CONCAT({$p}.first_name, ' ', {$p}.last_name_fa) LIKE", $pat)
             ->groupEnd()
-            ->orderBy('last_name_fa', 'ASC')
+            ->orderBy("{$p}.last_name_fa", 'ASC')
             ->limit($limit)
             ->get()
             ->getResult();
@@ -1383,7 +1390,11 @@ class RegisterModel extends Model
             if ($full !== '') {
                 $ci = trim($r->ci ?? '');
                 $display = $ci !== '' ? $full . ' (CI: ' . $ci . ')' : $full;
-                $suggestions[] = ['value' => $display, 'data' => $r->person_id];
+                $suggestions[] = [
+                    'value' => $display,
+                    'data' => $r->person_id,
+                    'institucion' => trim((string) ($r->institucion ?? '')),
+                ];
             }
         }
         return $suggestions;

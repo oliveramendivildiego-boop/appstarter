@@ -17,6 +17,8 @@ class ReportModel extends Model
 
     /** @var bool|null */
     private static $registroTieneCampoMotivoAnulacion = null;
+    /** @var bool|null */
+    private static $egresosTieneTipoMovimiento = null;
 
     private function registroTieneCampoAnulado(): bool
     {
@@ -58,6 +60,20 @@ class ReportModel extends Model
         }
 
         return self::$registroTieneCampoMotivoAnulacion;
+    }
+
+    private function egresosTieneTipoMovimiento(): bool
+    {
+        if (self::$egresosTieneTipoMovimiento === null) {
+            try {
+                $t = $this->db->prefixTable('egresos');
+                self::$egresosTieneTipoMovimiento = in_array('tipo_movimiento', $this->db->getFieldNames($t), true);
+            } catch (\Throwable $e) {
+                self::$egresosTieneTipoMovimiento = false;
+            }
+        }
+
+        return self::$egresosTieneTipoMovimiento;
     }
 
     /**
@@ -559,6 +575,146 @@ class ReportModel extends Model
             ->orderBy('total_facturado', 'DESC')
             ->get()
             ->getResultArray();
+    }
+
+    /**
+     * Movimientos de caja por rango y tipo (egreso|ingreso).
+     *
+     * @return list<array<string, mixed>>
+     */
+    private function getMovimientosCajaByDateRange(string $startDate, string $endDate, string $tipoMovimiento): array
+    {
+        $e = $this->db->prefixTable('egresos');
+
+        $selectTipo = $this->egresosTieneTipoMovimiento()
+            ? "{$e}.tipo_movimiento"
+            : ($tipoMovimiento === 'ingreso' ? "'ingreso'" : "'egreso'");
+
+        $b = $this->db->table('egresos')
+            ->select("{$e}.egreso_id, {$e}.fecha, CAST({$e}.monto AS DECIMAL(12,2)) as monto, {$e}.tipopago, {$selectTipo} as tipo_movimiento, {$e}.desglose", false)
+            ->where("COALESCE({$e}.deleted, 0) = 0", null, false);
+
+        if ($this->egresosTieneTipoMovimiento()) {
+            $b->where("{$e}.tipo_movimiento", $tipoMovimiento);
+        } elseif ($tipoMovimiento === 'ingreso') {
+            return [];
+        }
+
+        if ($startDate !== '') {
+            $b->where("DATE({$e}.fecha) >=", $startDate);
+        }
+        if ($endDate !== '') {
+            $b->where("DATE({$e}.fecha) <=", $endDate);
+        }
+
+        return $b->orderBy("{$e}.fecha", 'DESC')
+            ->orderBy("{$e}.egreso_id", 'DESC')
+            ->get()
+            ->getResultArray();
+    }
+
+    private function getTotalesMovimientosCajaByDateRange(string $startDate, string $endDate, string $tipoMovimiento): object
+    {
+        $e = $this->db->prefixTable('egresos');
+        $cantidadAlias = $tipoMovimiento === 'ingreso' ? 'cantidad_ingresos' : 'cantidad_egresos';
+        $totalAlias = $tipoMovimiento === 'ingreso' ? 'total_ingresos' : 'total_egresos';
+
+        $b = $this->db->table('egresos')
+            ->select("COUNT(*) as {$cantidadAlias}, SUM(CAST({$e}.monto AS DECIMAL(12,2))) as {$totalAlias}", false)
+            ->where("COALESCE({$e}.deleted, 0) = 0", null, false);
+
+        if ($this->egresosTieneTipoMovimiento()) {
+            $b->where("{$e}.tipo_movimiento", $tipoMovimiento);
+        } elseif ($tipoMovimiento === 'ingreso') {
+            return (object) [$cantidadAlias => 0, $totalAlias => 0.0];
+        }
+
+        if ($startDate !== '') {
+            $b->where("DATE({$e}.fecha) >=", $startDate);
+        }
+        if ($endDate !== '') {
+            $b->where("DATE({$e}.fecha) <=", $endDate);
+        }
+
+        $row = $b->get()->getRow();
+        if ($row !== null) {
+            return $row;
+        }
+
+        return (object) [$cantidadAlias => 0, $totalAlias => 0.0];
+    }
+
+    /**
+     * @return list<array<string,mixed>>
+     */
+    private function getResumenMovimientosPorTipoPago(string $startDate, string $endDate, string $tipoMovimiento): array
+    {
+        $e = $this->db->prefixTable('egresos');
+        $totalAlias = $tipoMovimiento === 'ingreso' ? 'total_ingresos' : 'total_egresos';
+
+        $b = $this->db->table('egresos')
+            ->select("{$e}.tipopago, COUNT(*) as cantidad, SUM(CAST({$e}.monto AS DECIMAL(12,2))) as {$totalAlias}", false)
+            ->where("COALESCE({$e}.deleted, 0) = 0", null, false);
+
+        if ($this->egresosTieneTipoMovimiento()) {
+            $b->where("{$e}.tipo_movimiento", $tipoMovimiento);
+        } elseif ($tipoMovimiento === 'ingreso') {
+            return [];
+        }
+
+        if ($startDate !== '') {
+            $b->where("DATE({$e}.fecha) >=", $startDate);
+        }
+        if ($endDate !== '') {
+            $b->where("DATE({$e}.fecha) <=", $endDate);
+        }
+
+        return $b->groupBy("{$e}.tipopago")
+            ->orderBy("{$e}.tipopago", 'ASC')
+            ->get()
+            ->getResultArray();
+    }
+
+    /**
+     * Egresos registrados por rango de fechas.
+     */
+    public function getEgresosByDateRange(string $startDate, string $endDate): array
+    {
+        return $this->getMovimientosCajaByDateRange($startDate, $endDate, 'egreso');
+    }
+
+    /**
+     * Totales de egresos por período.
+     */
+    public function getTotalesEgresosByDateRange(string $startDate, string $endDate): object
+    {
+        return $this->getTotalesMovimientosCajaByDateRange($startDate, $endDate, 'egreso');
+    }
+
+    /**
+     * Resumen de egresos por tipo de pago.
+     */
+    public function getResumenEgresosPorTipo(string $startDate, string $endDate): array
+    {
+        return $this->getResumenMovimientosPorTipoPago($startDate, $endDate, 'egreso');
+    }
+
+    /**
+     * Ingresos de caja manuales por rango (módulo de movimientos).
+     */
+    public function getIngresosCajaByDateRange(string $startDate, string $endDate): array
+    {
+        return $this->getMovimientosCajaByDateRange($startDate, $endDate, 'ingreso');
+    }
+
+    public function getTotalesIngresosCajaByDateRange(string $startDate, string $endDate): object
+    {
+        return $this->getTotalesMovimientosCajaByDateRange($startDate, $endDate, 'ingreso');
+    }
+
+    public function getResumenIngresosCajaPorTipo(string $startDate, string $endDate): array
+    {
+        return $this->getResumenMovimientosPorTipoPago($startDate, $endDate, 'ingreso');
     }
 
     /**

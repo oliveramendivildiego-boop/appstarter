@@ -76,6 +76,7 @@ class Employees extends PersonController
         'controlcalidad' => 'Control de calidad',
         'reactivos'      => 'Inventario',
         'equipos'        => 'Equipos',
+        'egresos'        => 'Egresos',
         'leyendas'       => 'Leyendas',
         'auditoria'      => 'Auditoría',
         'employees'      => 'Empleados',

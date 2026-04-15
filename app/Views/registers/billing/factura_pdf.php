@@ -58,6 +58,12 @@ $fmt = static function (float $n): string {
                 <td class="val"><?= esc($sym) ?> <?= esc($fmt($doc->totalRecomendado)) ?></td>
             </tr>
         <?php endif; ?>
+        <?php if (($doc->institucionDescuentoPct ?? 0) > 0): ?>
+            <tr>
+                <td class="lbl">Descuento institución (<?= esc($doc->institucionNombre ?: 'Paciente') ?>, <?= esc(number_format((float) $doc->institucionDescuentoPct, 2, '.', '')) ?>%)</td>
+                <td class="val">- <?= esc($sym) ?> <?= esc($fmt((float) ($doc->institucionDescuentoMonto ?? 0))) ?></td>
+            </tr>
+        <?php endif; ?>
         <tr>
             <td class="lbl">Total</td>
             <td class="val"><?= esc($sym) ?> <?= esc($fmt($doc->total)) ?></td>

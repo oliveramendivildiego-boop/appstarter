@@ -18,9 +18,21 @@ document.addEventListener('DOMContentLoaded', function() {
             li.className = 'list-group-item list-group-item-action';
             li.style.cursor = 'pointer';
             li.textContent = item.value;
+            li.dataset.institucion = item.institucion || '';
+            li.dataset.descuento = String(item.descuento || 0);
             li.addEventListener('click', function() {
                 pacienteInput.value = item.value;
                 document.getElementById('person_id').value = item.data;
+                var instInput = document.getElementById('customer_institucion');
+                var descInput = document.getElementById('customer_descuento_pct');
+                if (instInput) instInput.value = item.institucion || '';
+                if (descInput) descInput.value = String(item.descuento || 0);
+                if (typeof window.updateInstitutionDiscountInfo === 'function') {
+                    window.updateInstitutionDiscountInfo();
+                }
+                if (typeof window.recalcularTotalesRegistro === 'function') {
+                    window.recalcularTotalesRegistro();
+                }
                 pacienteList.style.display = 'none';
             });
             pacienteList.appendChild(li);
@@ -57,6 +69,16 @@ document.addEventListener('DOMContentLoaded', function() {
         });
         pacienteInput.addEventListener('input', function() {
             document.getElementById('person_id').value = '';
+            var instInput = document.getElementById('customer_institucion');
+            var descInput = document.getElementById('customer_descuento_pct');
+            if (instInput) instInput.value = '';
+            if (descInput) descInput.value = '0';
+            if (typeof window.updateInstitutionDiscountInfo === 'function') {
+                window.updateInstitutionDiscountInfo();
+            }
+            if (typeof window.recalcularTotalesRegistro === 'function') {
+                window.recalcularTotalesRegistro();
+            }
             clearTimeout(pacienteTimeout);
             var q = this.value.trim();
             if (q.length < 2) {
@@ -113,6 +135,8 @@ document.addEventListener('DOMContentLoaded', function() {
 
 <input type="hidden" name="doctor_id" id="doctor_id" value="">
 <input type="hidden" name="person_id" id="person_id" value="">
+<input type="hidden" name="customer_institucion" id="customer_institucion" value="">
+<input type="hidden" name="customer_descuento_pct" id="customer_descuento_pct" value="0">
 
 <div class="row">
     <div class="col-12 col-md-6" id="paciente_container">
@@ -121,6 +145,7 @@ document.addEventListener('DOMContentLoaded', function() {
             <input type="text" name="paciente" id="paciente" class="form-control" value="" placeholder="Escriba para buscar..." autocomplete="off">
             <div id="paciente_list" class="list-group position-absolute top-100 start-0 w-100 mt-1 shadow" style="display:none; max-height:200px; overflow-y:auto; z-index:1050;"></div>
             <div class="invalid-feedback" id="paciente_error"></div>
+            <div id="institucion_descuento_info" class="small text-muted mt-2"></div>
         </div>
     </div>
     <div class="col-12 col-md-6" id="doctor_container">

@@ -7,6 +7,15 @@ $pendientes              = $pendientes ?? [];
 $resumenPagosPorDia      = $resumenPagosPorDia ?? [];
 $resumenPagosPorDoctor   = $resumenPagosPorDoctor ?? [];
 $todos                   = $todos ?? [];
+$totalesIngresosCaja     = $totalesIngresosCaja ?? (object) [];
+$resumenIngresosCajaPorTipo = $resumenIngresosCajaPorTipo ?? [];
+$ingresosCajaMov         = $ingresosCajaMov ?? [];
+$totalesEgresos          = $totalesEgresos ?? (object) [];
+$resumenEgresosPorTipo   = $resumenEgresosPorTipo ?? [];
+$egresos                 = $egresos ?? [];
+$cajaResumen             = $cajaResumen ?? ['ingresos' => 0, 'egresos' => 0, 'saldo_neto' => 0, 'estado' => 'positivo'];
+$cajaPorTipo             = $cajaPorTipo ?? [];
+$cajaPorTipoTotales      = $cajaPorTipoTotales ?? ['ingresos' => 0, 'egresos' => 0, 'saldo_neto' => 0];
 ?>
 <div class="alert-box">
     Total facturado: <?= number_format((float) ($totales->total_facturado ?? 0), 2) ?> Bs |
@@ -14,6 +23,44 @@ $todos                   = $todos ?? [];
     Pendiente: <?= number_format((float) ($totales->total_pendiente ?? 0), 2) ?> Bs |
     Órdenes: <?= (int) ($totales->total_registros ?? 0) ?>
 </div>
+<div class="alert-box">
+    Cuadre de caja | Ingresos ventas: <?= number_format((float) ($cajaResumen['ingresos_ventas'] ?? 0), 2) ?> Bs |
+    Ingresos caja: <?= number_format((float) ($cajaResumen['ingresos_movimientos'] ?? 0), 2) ?> Bs |
+    Total ingresos: <?= number_format((float) ($cajaResumen['ingresos'] ?? 0), 2) ?> Bs |
+    Egresos: <?= number_format((float) ($cajaResumen['egresos'] ?? 0), 2) ?> Bs |
+    Saldo neto: <?= number_format((float) ($cajaResumen['saldo_neto'] ?? 0), 2) ?> Bs
+</div>
+
+<h2>Cuadre de caja por tipo de pago</h2>
+<table class="pdf-t">
+    <thead>
+        <tr>
+            <th>Tipo</th>
+            <th class="text-end">Ingresos</th>
+            <th class="text-end">Egresos</th>
+            <th class="text-end">Total disponible</th>
+        </tr>
+    </thead>
+    <tbody>
+        <?php foreach ($cajaPorTipo as $row): ?>
+            <tr>
+                <td><?= esc($tipoPagoMap[$row['tipopago'] ?? ''] ?? $row['tipopago'] ?? '-') ?></td>
+                <td class="text-end"><?= number_format((float) ($row['ingresos'] ?? 0), 2) ?></td>
+                <td class="text-end"><?= number_format((float) ($row['egresos'] ?? 0), 2) ?></td>
+                <td class="text-end"><?= number_format((float) ($row['saldo_neto'] ?? 0), 2) ?></td>
+            </tr>
+        <?php endforeach; ?>
+        <?php if ($cajaPorTipo === []): ?>
+            <tr><td colspan="4" class="small">Sin datos por tipo.</td></tr>
+        <?php endif; ?>
+        <tr>
+            <td class="text-end"><strong>Total general</strong></td>
+            <td class="text-end"><strong><?= number_format((float) ($cajaPorTipoTotales['ingresos'] ?? 0), 2) ?></strong></td>
+            <td class="text-end"><strong><?= number_format((float) ($cajaPorTipoTotales['egresos'] ?? 0), 2) ?></strong></td>
+            <td class="text-end"><strong><?= number_format((float) ($cajaPorTipoTotales['saldo_neto'] ?? 0), 2) ?></strong></td>
+        </tr>
+    </tbody>
+</table>
 
 <h2>Resumen por tipo de pago</h2>
 <table class="pdf-t">
@@ -38,6 +85,114 @@ $todos                   = $todos ?? [];
         <?php endforeach; ?>
         <?php if ($resumenPagosPorTipo === []): ?>
             <tr><td colspan="5" class="small">Sin datos.</td></tr>
+        <?php endif; ?>
+    </tbody>
+</table>
+
+<h2>Resumen de ingresos de caja por tipo</h2>
+<table class="pdf-t">
+    <thead>
+        <tr>
+            <th>Tipo</th>
+            <th class="text-end">Cant.</th>
+            <th class="text-end">Ingresos</th>
+        </tr>
+    </thead>
+    <tbody>
+        <?php foreach ($resumenIngresosCajaPorTipo as $row): ?>
+            <tr>
+                <td><?= esc($tipoPagoMap[$row['tipopago'] ?? ''] ?? $row['tipopago'] ?? '-') ?></td>
+                <td class="text-end"><?= (int) ($row['cantidad'] ?? 0) ?></td>
+                <td class="text-end"><?= number_format((float) ($row['total_ingresos'] ?? 0), 2) ?></td>
+            </tr>
+        <?php endforeach; ?>
+        <?php if ($resumenIngresosCajaPorTipo === []): ?>
+            <tr><td colspan="3" class="small">Sin ingresos de caja.</td></tr>
+        <?php endif; ?>
+        <tr>
+            <td colspan="2" class="text-end"><strong>Total ingresos de caja</strong></td>
+            <td class="text-end"><strong><?= number_format((float) ($totalesIngresosCaja->total_ingresos ?? 0), 2) ?></strong></td>
+        </tr>
+    </tbody>
+</table>
+
+<h2>Detalle de ingresos de caja</h2>
+<table class="pdf-t">
+    <thead>
+        <tr>
+            <th>No.</th>
+            <th>Fecha</th>
+            <th>Tipo</th>
+            <th>Desglose</th>
+            <th class="text-end">Monto</th>
+        </tr>
+    </thead>
+    <tbody>
+        <?php foreach ($ingresosCajaMov as $row): ?>
+            <tr>
+                <td><?= (int) ($row['egreso_id'] ?? 0) ?></td>
+                <td><?= esc(date('d/m/Y H:i', strtotime((string) ($row['fecha'] ?? '')))) ?></td>
+                <td class="small"><?= esc($tipoPagoMap[$row['tipopago'] ?? ''] ?? $row['tipopago'] ?? '-') ?></td>
+                <td class="small"><?= esc((string) ($row['desglose'] ?? '')) ?></td>
+                <td class="text-end"><?= number_format((float) ($row['monto'] ?? 0), 2) ?></td>
+            </tr>
+        <?php endforeach; ?>
+        <?php if ($ingresosCajaMov === []): ?>
+            <tr><td colspan="5" class="small">Sin ingresos de caja.</td></tr>
+        <?php endif; ?>
+    </tbody>
+</table>
+
+<h2>Resumen de egresos por tipo</h2>
+<table class="pdf-t">
+    <thead>
+        <tr>
+            <th>Tipo</th>
+            <th class="text-end">Cant.</th>
+            <th class="text-end">Egresos</th>
+        </tr>
+    </thead>
+    <tbody>
+        <?php foreach ($resumenEgresosPorTipo as $row): ?>
+            <tr>
+                <td><?= esc($tipoPagoMap[$row['tipopago'] ?? ''] ?? $row['tipopago'] ?? '-') ?></td>
+                <td class="text-end"><?= (int) ($row['cantidad'] ?? 0) ?></td>
+                <td class="text-end"><?= number_format((float) ($row['total_egresos'] ?? 0), 2) ?></td>
+            </tr>
+        <?php endforeach; ?>
+        <?php if ($resumenEgresosPorTipo === []): ?>
+            <tr><td colspan="3" class="small">Sin egresos.</td></tr>
+        <?php endif; ?>
+        <tr>
+            <td colspan="2" class="text-end"><strong>Total egresos</strong></td>
+            <td class="text-end"><strong><?= number_format((float) ($totalesEgresos->total_egresos ?? 0), 2) ?></strong></td>
+        </tr>
+    </tbody>
+</table>
+
+<h2>Detalle de egresos de caja</h2>
+<table class="pdf-t">
+    <thead>
+        <tr>
+            <th>No.</th>
+            <th>Fecha</th>
+            <th>Tipo</th>
+            <th>Desglose</th>
+            <th class="text-end">Monto</th>
+        </tr>
+    </thead>
+    <tbody>
+        <?php foreach ($egresos as $row): ?>
+            <tr>
+                <td><?= (int) ($row['egreso_id'] ?? 0) ?></td>
+                <td><?= esc(date('d/m/Y H:i', strtotime((string) ($row['fecha'] ?? '')))) ?></td>
+                <td class="small"><?= esc($tipoPagoMap[$row['tipopago'] ?? ''] ?? $row['tipopago'] ?? '-') ?></td>
+                <td class="small"><?= esc((string) ($row['desglose'] ?? '')) ?></td>
+                <td class="text-end"><?= number_format((float) ($row['monto'] ?? 0), 2) ?></td>
+            </tr>
+        <?php endforeach; ?>
+        <?php if ($egresos === []): ?>
+            <tr><td colspan="5" class="small">Sin egresos.</td></tr>
         <?php endif; ?>
     </tbody>
 </table>

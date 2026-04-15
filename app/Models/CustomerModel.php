@@ -262,4 +262,40 @@ class CustomerModel extends Model
 
         return $suggestions;
     }
+
+    /**
+     * Lista instituciones/procedencias usadas por pacientes (sin duplicados).
+     *
+     * @return list<string>
+     */
+    public function getInstituciones(int $limit = 500): array
+    {
+        $c = $this->customersTable();
+        $rows = $this->db->table('customers')
+            ->select("{$c}.institucion")
+            ->where("{$c}.deleted", 0)
+            ->where("{$c}.institucion IS NOT NULL", null, false)
+            ->orderBy("{$c}.institucion", 'ASC')
+            ->limit(max(1, $limit))
+            ->get()
+            ->getResultArray();
+
+        $seen = [];
+        $out = [];
+        foreach ($rows as $row) {
+            $name = trim((string) ($row['institucion'] ?? ''));
+            if ($name === '') {
+                continue;
+            }
+            $key = function_exists('mb_strtolower') ? mb_strtolower($name, 'UTF-8') : strtolower($name);
+            if (isset($seen[$key])) {
+                continue;
+            }
+            $seen[$key] = true;
+            $out[] = $name;
+        }
+
+        usort($out, static fn (string $a, string $b): int => strcasecmp($a, $b));
+        return $out;
+    }
 }

@@ -3,6 +3,7 @@
 namespace App\Controllers;
 
 use App\Models\CustomerModel;
+use App\Services\ConfigService;
 use CodeIgniter\HTTP\ResponseInterface;
 
 class Customers extends PersonController
@@ -10,11 +11,13 @@ class Customers extends PersonController
     protected ?string $moduleId = 'customers';
 
     protected CustomerModel $customerModel;
+    protected ConfigService $configService;
 
     public function __construct()
     {
         parent::__construct();
         $this->customerModel = model(CustomerModel::class);
+        $this->configService = new ConfigService();
     }
 
     public function getFormWidth(): int
@@ -68,10 +71,19 @@ class Customers extends PersonController
     public function view(int|string $customer_id = -1)
     {
         $personInfo = $this->customerModel->getInfo($customer_id === -1 ? -1 : (int) $customer_id);
+        $instituciones = $this->customerModel->getInstituciones();
+        $institucionesFromConfig = array_keys($this->configService->getCustomerInstitutionDiscounts());
+        foreach ($institucionesFromConfig as $instCfg) {
+            if (!in_array($instCfg, $instituciones, true)) {
+                $instituciones[] = $instCfg;
+            }
+        }
+        usort($instituciones, static fn (string $a, string $b): int => strcasecmp($a, $b));
 
         return view('customers/form', [
             'current_module'   => 'customers',
             'person_info'      => $personInfo,
+            'institucion_suggestions' => $instituciones,
             'extra_head_links'  => [
                 '<script src="' . base_url('js/vendor/jquery.validate.min.js') . '"></script>',
                 '<link rel="stylesheet" href="' . base_url('css/vendor/flatpickr.min.css') . '">',

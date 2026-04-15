@@ -26,7 +26,20 @@
         </div>
         <div class="col-md-6 mb-3">
             <?= form_label('Institución / procedencia', 'institucion', ['class' => 'form-label']) ?>
-            <?= form_input(['name' => 'institucion', 'id' => 'institucion', 'class' => 'form-control', 'value' => esc($person_info->institucion ?? '')]) ?>
+            <?= form_input([
+                'name' => 'institucion',
+                'id' => 'institucion',
+                'class' => 'form-control',
+                'value' => esc($person_info->institucion ?? ''),
+                'list' => 'institucion_suggestions',
+                'autocomplete' => 'off',
+                'placeholder' => 'Ej: Hospital X, Caja Y, Empresa Z'
+            ]) ?>
+            <datalist id="institucion_suggestions">
+                <?php foreach (($institucion_suggestions ?? []) as $inst): ?>
+                    <option value="<?= esc($inst) ?>"></option>
+                <?php endforeach; ?>
+            </datalist>
         </div>
     </div>
     <div class="row mb-3">
