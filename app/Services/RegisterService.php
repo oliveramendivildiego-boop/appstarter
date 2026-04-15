@@ -979,6 +979,33 @@ class RegisterService
             ];
         }
 
+        if (count($out) > 1) {
+            $firmaKey = static function (array $row): string {
+                return implode("\0", [
+                    (string) ($row['validator_name'] ?? ''),
+                    (string) ($row['approver_name'] ?? ''),
+                    (string) ($row['approver_cargo'] ?? ''),
+                    (string) ($row['approver_matricula'] ?? ''),
+                    (string) ($row['approver_seal'] ?? ''),
+                    (string) ($row['approver_signature'] ?? ''),
+                ]);
+            };
+            $ref = $firmaKey($out[0]);
+            $allSame = true;
+            foreach ($out as $row) {
+                if ($firmaKey($row) !== $ref) {
+                    $allSame = false;
+                    break;
+                }
+            }
+            if ($allSame) {
+                $first = $out[0];
+                $first['prueba_nombre'] = '';
+
+                return [$first];
+            }
+        }
+
         return $out;
     }
 

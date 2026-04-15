@@ -50,6 +50,30 @@ if (empty($pruebas_info)):
 <div class="alert alert-warning">No hay pruebas para completar en este registro. Verifique que se hayan seleccionado pruebas al crear la orden. <a href="<?= site_url('registers') ?>">Volver a registros</a></div>
 <?php
 else:
+$labFirmaPriaIds = [];
+foreach ($pruebas_info ?? [] as $pruebaFirmaScan):
+    $mostrarFirma = true;
+    if (($pruebaFirmaScan['compleja'] ?? 0) == 1) {
+        $pidScan = (int) ($pruebaFirmaScan['prianacategoria_id'] ?? 0);
+        $valoresFirmaScan = $registerModel
+            ? $registerModel->getValoresComplejaSiempre(
+                $pidScan,
+                $matching_poblacion_ids ?? [],
+                isset($register_info->gender) ? (int) $register_info->gender : null
+            )
+            : [];
+        if ($valoresFirmaScan === []) {
+            $mostrarFirma = false;
+        }
+    }
+    if (! $mostrarFirma) {
+        continue;
+    }
+    $pidF = (int) ($pruebaFirmaScan['prianacategoria_id'] ?? 0);
+    if ($pidF > 0 && ! in_array($pidF, $labFirmaPriaIds, true)) {
+        $labFirmaPriaIds[] = $pidF;
+    }
+endforeach;
 foreach ($pruebas_info ?? [] as $prueba):
     $mostrarPrueba = true;
     if (($prueba['compleja'] ?? 0) == 1) {
@@ -204,43 +228,59 @@ foreach ($pruebas_info ?? [] as $prueba):
             endif;
         endforeach;
     endif;
-    $priaFirma = (int) ($prueba['prianacategoria_id'] ?? 0);
-    if ($priaFirma > 0):
-        $vk = 'lab_val_pri_' . $priaFirma;
-        $ak = 'lab_app_pri_' . $priaFirma;
-        $lvList = $lab_validators ?? [];
-        $laList = $lab_approvers ?? [];
-        $curV = $existentes[$vk] ?? '';
-        $curA = $existentes[$ak] ?? '';
-    ?>
-    <div class="col-12 mb-3 mt-1 pt-2 border-top lab-prueba-firma-wrap">
-        <div class="row g-2 align-items-end">
-            <div class="col-md-6">
-                <label class="form-label small text-muted mb-0">Verificado por:</label>
-                <select class="form-select form-select-sm lab-prueba-val-validator" data-regvalue-name="<?= esc($vk) ?>" data-prianacategoria-id="<?= $priaFirma ?>">
-                    <option value="">—</option>
-                    <?php foreach ($lvList as $lv): ?>
-                        <?php $lid = (string) ($lv['id'] ?? ''); ?>
-                        <option value="<?= esc($lid) ?>" <?= ($curV !== '' && $curV === $lid) ? 'selected' : '' ?>><?= esc($lv['name'] ?? '') ?></option>
-                    <?php endforeach; ?>
-                </select>
-            </div>
-            <div class="col-md-6">
-                <label class="form-label small text-muted mb-0">ATENTAMENTE</label>
-                <select class="form-select form-select-sm lab-prueba-val-approver" data-regvalue-name="<?= esc($ak) ?>" data-prianacategoria-id="<?= $priaFirma ?>">
-                    <option value="">—</option>
-                    <?php foreach ($laList as $la): ?>
-                        <?php $aid = (string) ($la['id'] ?? ''); ?>
-                        <option value="<?= esc($aid) ?>" <?= ($curA !== '' && $curA === $aid) ? 'selected' : '' ?>><?= esc($la['name'] ?? '') ?></option>
-                    <?php endforeach; ?>
-                </select>
+endforeach;
+if ($last_padre !== '') echo '</div>';
+if ($labFirmaPriaIds !== []):
+    $lvList = $lab_validators ?? [];
+    $laList = $lab_approvers ?? [];
+    $curV = '';
+    $curA = '';
+    foreach ($labFirmaPriaIds as $pidFirma) {
+        if ($curV === '') {
+            $tV = trim((string) ($existentes['lab_val_pri_' . $pidFirma] ?? ''));
+            if ($tV !== '') {
+                $curV = $tV;
+            }
+        }
+        if ($curA === '') {
+            $tA = trim((string) ($existentes['lab_app_pri_' . $pidFirma] ?? ''));
+            if ($tA !== '') {
+                $curA = $tA;
+            }
+        }
+    }
+?>
+<div class="row mb-3 mt-2">
+    <div class="col-12">
+        <div id="lab-registro-firmas-wrap" class="p-3 border rounded bg-light" data-pria-ids="<?= esc(json_encode($labFirmaPriaIds), 'attr') ?>">
+            <div class="fw-semibold small text-uppercase text-muted mb-2">Validación del laboratorio (todas las pruebas)</div>
+            <div class="row g-2 align-items-end">
+                <div class="col-md-6">
+                    <label class="form-label small text-muted mb-0" for="lab-registro-val-validator">Verificado por:</label>
+                    <select id="lab-registro-val-validator" class="form-select form-select-sm">
+                        <option value="">—</option>
+                        <?php foreach ($lvList as $lv): ?>
+                            <?php $lid = (string) ($lv['id'] ?? ''); ?>
+                            <option value="<?= esc($lid) ?>" <?= ($curV !== '' && $curV === $lid) ? 'selected' : '' ?>><?= esc($lv['name'] ?? '') ?></option>
+                        <?php endforeach; ?>
+                    </select>
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label small text-muted mb-0" for="lab-registro-val-approver">ATENTAMENTE</label>
+                    <select id="lab-registro-val-approver" class="form-select form-select-sm">
+                        <option value="">—</option>
+                        <?php foreach ($laList as $la): ?>
+                            <?php $aid = (string) ($la['id'] ?? ''); ?>
+                            <option value="<?= esc($aid) ?>" <?= ($curA !== '' && $curA === $aid) ? 'selected' : '' ?>><?= esc($la['name'] ?? '') ?></option>
+                        <?php endforeach; ?>
+                    </select>
+                </div>
             </div>
         </div>
     </div>
-    <?php
-    endif;
-endforeach;
-if ($last_padre !== '') echo '</div>';
+</div>
+<?php
+endif;
 endif;
 ?>
 <?php if (!empty($pruebas_info)): ?>
@@ -500,12 +540,25 @@ document.addEventListener('DOMContentLoaded', function() {
             var id = (priId && nombrePrueba) ? (priId + '|' + nombrePrueba) : el.id;
             datos.push({ id: id, valor: valor, registro_id: registroId });
         });
-        document.querySelectorAll('select.lab-prueba-val-validator, select.lab-prueba-val-approver').forEach(function(el) {
-            var registroId = document.getElementById('registro_id').value;
-            var nameKey = el.getAttribute('data-regvalue-name');
-            if (!registroId || !nameKey) return;
-            datos.push({ id: nameKey, valor: (el.value || '').trim(), registro_id: registroId });
-        });
+        var firmaWrap = document.getElementById('lab-registro-firmas-wrap');
+        if (firmaWrap) {
+            try {
+                var priaIds = JSON.parse(firmaWrap.getAttribute('data-pria-ids') || '[]');
+                if (Array.isArray(priaIds) && priaIds.length) {
+                    var vSel = document.getElementById('lab-registro-val-validator');
+                    var aSel = document.getElementById('lab-registro-val-approver');
+                    var registroIdF = document.getElementById('registro_id').value;
+                    if (registroIdF && vSel && aSel) {
+                        var vVal = (vSel.value || '').trim();
+                        var aVal = (aSel.value || '').trim();
+                        priaIds.forEach(function(pid) {
+                            datos.push({ id: 'lab_val_pri_' + pid, valor: vVal, registro_id: registroIdF });
+                            datos.push({ id: 'lab_app_pri_' + pid, valor: aVal, registro_id: registroIdF });
+                        });
+                    }
+                }
+            } catch (e) { /* ignore */ }
+        }
         var csrfName = (typeof window.CI_CSRF_TOKEN_NAME !== 'undefined' ? window.CI_CSRF_TOKEN_NAME : null) || (document.querySelector('meta[name="csrf-token-name"]') && document.querySelector('meta[name="csrf-token-name"]').getAttribute('content'));
         var csrfVal = (typeof window.CI_CSRF_TOKEN !== 'undefined' ? window.CI_CSRF_TOKEN : null) || (document.querySelector('meta[name="csrf-token"]') && document.querySelector('meta[name="csrf-token"]').getAttribute('content'));
         var body = 'data=' + encodeURIComponent(JSON.stringify(datos));
