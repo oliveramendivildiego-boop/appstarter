@@ -49,7 +49,20 @@ $segments[] = $cur;
 $segments = array_values(array_filter($segments, static function ($s) {
     return $s['title'] !== null || $s['items'] !== [];
 }));
+
+$groupTieneAlgunResultado = false;
+foreach ($segments as $segTmp) {
+    foreach ($segTmp['items'] as $rawIt) {
+        $itTmp = is_array($rawIt) ? (object) $rawIt : $rawIt;
+        $vTmp = trim((string) ($itTmp->regvalues ?? ''));
+        if ($vTmp !== '' && $vTmp !== '-') {
+            $groupTieneAlgunResultado = true;
+            break 2;
+        }
+    }
+}
 ?>
+<?php if ($groupTieneAlgunResultado): ?>
 <?php if ($usePdfChrome): ?>
 <div class="group-title"><?= esc($padre) ?> - <?= esc($hijo) ?></div>
 <?php if ($mostrarTipoMuestra): ?>
@@ -169,56 +182,5 @@ $segments = array_values(array_filter($segments, static function ($s) {
         </table>
     <?= $wrapClose ?>
     <?php endif; ?>
-    <?php
-    $sinEnSeg = false;
-    foreach ($segItems as $it) {
-        $it = is_array($it) ? (object) $it : $it;
-        $v = trim((string) ($it->regvalues ?? ''));
-        if ($v === '' || $v === '-') {
-            $sinEnSeg = true;
-            break;
-        }
-    }
-    ?>
-    <?php if ($sinEnSeg): ?>
-        <?php
-        $wrapSinOpen = ! $usePdfChrome ? '<div class="table-responsive mt-1 mb-4">' : '<div class="report-segment-table-wrap report-segment-sin-ref">';
-        ?>
-        <?= $wrapSinOpen ?>
-            <?php if ($titleObj !== null): ?>
-                <?php if ($usePdfChrome): ?>
-                <div class="report-segment-title pdf-card-header"><?= esc($titleObj->nombre ?? '') ?></div>
-                <?php else: ?>
-                <div class="report-segment-title-web px-2 py-2 mb-2 bg-secondary bg-opacity-10 border-start border-4 border-secondary rounded-end fw-semibold text-uppercase small"><?= esc($titleObj->nombre ?? '') ?></div>
-                <?php endif; ?>
-            <?php endif; ?>
-            <table class="<?= esc($mainTableClass) ?>"<?= $usePdfChrome ? ' style="margin-top:0;"' : '' ?>>
-                <thead<?= $usePdfChrome ? '' : ' class="thead-dark"' ?>>
-                    <tr>
-                        <th>ANÁLISIS</th>
-                        <th class="text-center">RANGO REFERENCIAL</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <?php foreach ($segItems as $item): ?>
-                        <?php
-                        $item = is_array($item) ? (object) $item : $item;
-                        $valTmp = trim((string) ($item->regvalues ?? ''));
-                        if ($valTmp !== '' && $valTmp !== '-') {
-                            continue;
-                        }
-                        $refMostrar = registro_rango_referencial_texto($item->valor_min ?? '', $item->valor_max ?? '', $item->umedida ?? '');
-                        if ($refMostrar === '-' && trim((string) ($item->umedida ?? '')) === '' && ! ((bool) ($item->show_reference ?? false))) {
-                            continue;
-                        }
-                        ?>
-                            <tr>
-                                <td><?= esc($item->nombre ?? '') ?></td>
-                                <td class="text-center<?= $usePdfChrome ? ' ref-range' : '' ?>"><?= esc($refMostrar) ?></td>
-                            </tr>
-                    <?php endforeach; ?>
-                </tbody>
-            </table>
-        <?= $wrapClose ?>
-    <?php endif; ?>
 <?php endforeach; ?>
+<?php endif; ?>

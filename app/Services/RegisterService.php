@@ -564,6 +564,40 @@ class RegisterService
         return $grupos;
     }
 
+    /**
+     * @param array<string, list<object|array<string, mixed>>> $grupos
+     * @return array<string, list<object|array<string, mixed>>>
+     */
+    protected function dropGruposSinValorIngresado(array $grupos): array
+    {
+        foreach ($grupos as $padre => $items) {
+            if (! $this->grupoTieneAlgunValorIngresado($items)) {
+                unset($grupos[$padre]);
+            }
+        }
+
+        return $grupos;
+    }
+
+    /**
+     * @param list<object|array<string, mixed>> $items
+     */
+    protected function grupoTieneAlgunValorIngresado(array $items): bool
+    {
+        foreach ($items as $raw) {
+            $it = is_array($raw) ? (object) $raw : $raw;
+            if ((int) ($it->es_separador ?? 0) === 1) {
+                continue;
+            }
+            $v = trim((string) ($it->regvalues ?? ''));
+            if ($v !== '' && $v !== '-') {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
     protected function resolveRegvalue(int $formId, string $rawValue, int $registroId): string
     {
         if ($formId === 1 || $formId === 0) {
@@ -858,6 +892,7 @@ class RegisterService
         }
         $grupos = $this->appendMissingReferenceRows($grupos, $registerInfo, $eligiblePriaConfig, $matchingPoblacionIds, $patientGender);
         $grupos = $this->applyReferenceVisibility($grupos, $eligiblePriaIds);
+        $grupos = $this->dropGruposSinValorIngresado($grupos);
 
         $reportLabFirmas = $this->buildLabFirmasParaReporte($analisis, (string) ($registerInfo->pruebas ?? ''));
 

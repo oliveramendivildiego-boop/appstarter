@@ -264,10 +264,32 @@ body {
     font-size: 9pt;
     line-height: 1.35;
 }
+/* Salto de hoja entre bloques de prueba (siguiente grupo completo en página nueva). */
+.report-pdf-grupo-prueba:not(.report-pdf-grupo-prueba-first) {
+    page-break-before: always;
+    break-before: page;
+}
+.report-pdf-grupo-prueba > .group-title {
+    page-break-after: avoid;
+    break-after: avoid;
+}
+/*
+ * Repetir cabecera de resultados en cada página cuando la tabla continúa (Dompdf + impresión).
+ * table-header-group es el valor estándar para thead; se declara explícito por si algún CSS global lo altera.
+ */
 table.results {
     width: 100%;
     border-collapse: collapse;
     margin: 15px 0;
+    page-break-inside: auto;
+    break-inside: auto;
+}
+table.results thead {
+    display: table-header-group;
+}
+table.results thead th {
+    page-break-inside: avoid;
+    break-inside: avoid;
 }
 table.results th,
 table.results td {
@@ -312,6 +334,8 @@ table.results td {
     border: var(--pdf-results-segment-border-width, 1px) solid var(--pdf-results-segment-border, #ddd);
     border-bottom: none;
     box-shadow: var(--pdf-results-segment-shadow, none);
+    page-break-after: avoid;
+    break-after: avoid;
 }
 .pdf-card-header {
     background: var(--pdf-card-header-bg, #e9ecef) !important;
@@ -513,6 +537,8 @@ table.results td {
 }
 .report-segment-table-wrap {
     margin: 0 0 12px 0;
+    page-break-inside: auto;
+    break-inside: auto;
 }
 .report-segment-table-wrap table.results {
     margin-top: 0;
