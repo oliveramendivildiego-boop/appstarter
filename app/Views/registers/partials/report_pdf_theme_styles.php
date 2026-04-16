@@ -253,7 +253,7 @@ table.results.pdf-notes-table td.pdf-notes-cell {
     box-shadow: <?= esc($rsSegShadow) ?> !important;
 }
 .report-segment-title.pdf-card-header {
-    background: <?= esc($chCardBg) ?> !important;
+    background: <?= esc($rsSegBg) ?> !important;
     color: <?= esc($ch['text_color']) ?> !important;
     font-family: "<?= esc($ch['font_family']) ?>", sans-serif !important;
     font-size: <?= esc((string) $ch['font_size_pt']) ?>pt !important;
