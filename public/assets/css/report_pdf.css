@@ -62,6 +62,21 @@ body {
     z-index: 1;
     isolation: isolate;
 }
+/* Contadores de paginación (Dompdf / CSS Paged Media).
+ * Si el motor no soporta `counter(pages)`, el valor puede venir vacío.
+ */
+.pdf-counter-page::before {
+    content: counter(page);
+}
+.pdf-counter-pages::before {
+    content: counter(pages);
+}
+.pdf-counter-page,
+.pdf-counter-pages {
+    display: inline-block;
+    min-width: 1ch;
+    white-space: nowrap;
+}
 .header-grid {
     display: block;
     width: 100%;

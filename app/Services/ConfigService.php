@@ -74,6 +74,9 @@ class ConfigService
         $data['ui_pagination_active_color'] ??= '';
         $data['order_barcode_print_layout'] ??= 'vertical';
         $data['order_barcode_print_size_percent'] ??= '100';
+        $data['print_paper_size'] ??= 'letter';
+        $data['print_pagination_enabled'] ??= '0';
+        $data['print_pagination_position'] ??= 'bottom-right';
         $data['lab_validators_json'] ??= '[]';
         $data['lab_approvers_json'] ??= '[]';
         $cache->save($cacheKey, $data, self::CACHE_TTL);
@@ -191,7 +194,8 @@ class ConfigService
             'default_tax_rate', 'default_tax_1_name', 'default_tax_1_rate',
             'default_tax_2_name', 'default_tax_2_rate', 'return_policy',
             'print_after_sale', 'logo', 'theme_color', 'header_brand',
-            'decimales_sugerencia', 'dias_alerta_vencimiento', 'stock_alerta_factor', 'show_order_barcode', 'order_barcode_print_layout', 'order_barcode_print_size_percent', 'leyendas_enabled',
+            'decimales_sugerencia', 'dias_alerta_vencimiento', 'stock_alerta_factor', 'show_order_barcode', 'order_barcode_print_layout', 'order_barcode_print_size_percent',
+            'print_paper_size', 'print_pagination_enabled', 'print_pagination_position', 'leyendas_enabled',
             'custom1_name', 'custom2_name', 'custom3_name', 'custom4_name', 'custom5_name',
             'custom6_name', 'custom7_name', 'custom8_name', 'custom9_name', 'custom10_name',
         ];
@@ -225,6 +229,22 @@ class ConfigService
                 $p = 100;
             }
             $batch['order_barcode_print_size_percent'] = (string) max(30, min(250, $p));
+        }
+        if (array_key_exists('print_paper_size', $postData)) {
+            $paper = strtolower(trim((string) $postData['print_paper_size']));
+            $allowedPaper = ['letter', 'a4', 'legal'];
+            $batch['print_paper_size'] = in_array($paper, $allowedPaper, true) ? $paper : 'letter';
+        }
+        if (array_key_exists('print_pagination_enabled', $postData)) {
+            $batch['print_pagination_enabled'] = ($postData['print_pagination_enabled'] === '1') ? '1' : '0';
+        }
+        if (array_key_exists('print_pagination_position', $postData)) {
+            $pos = strtolower(trim((string) $postData['print_pagination_position']));
+            $allowedPos = [
+                'top-left', 'top-center', 'top-right',
+                'bottom-left', 'bottom-center', 'bottom-right',
+            ];
+            $batch['print_pagination_position'] = in_array($pos, $allowedPos, true) ? $pos : 'bottom-right';
         }
         if (array_key_exists('leyendas_enabled', $postData)) {
             $batch['leyendas_enabled'] = ($postData['leyendas_enabled'] === '1') ? '1' : '0';

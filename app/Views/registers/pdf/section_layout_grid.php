@@ -6,6 +6,7 @@ declare(strict_types=1);
 /** @var list<array{element_type: string, column: int, column_span: int, text_style?: array<string, mixed>}> $grid_items */
 /** @var array<string, mixed> $element_ctx */
 /** @var array<string, mixed>|null $section_layout opcional: interlineado y alineación por columna */
+$n_rows_local = isset($n_rows) ? max(1, (int) $n_rows) : 1;
 $n         = max(1, (int) $n_columns);
 $pct       = round(100 / $n, 4);
 $items     = $grid_items;
@@ -22,6 +23,12 @@ $normalizeItem = static function (array $it, int $n): array {
     if ($type === 'custom_text' && is_array($it['custom_text'] ?? null)) {
         $out['custom_text'] = $it['custom_text'];
     }
+    // Overrides opcionales por instancia (paciente/médico).
+    foreach (['label_value_gap_px', 'label_space_above_px', 'label_space_below_px'] as $k) {
+        if (array_key_exists($k, $it)) {
+            $out[$k] = (int) ($it[$k] ?? 0);
+        }
+    }
 
     return $out;
 };
@@ -30,11 +37,123 @@ $rangesOverlap = static function (int $a0, int $a1, int $b0, int $b1): bool {
     return $a0 < $b1 && $b0 < $a1;
 };
 
+// Si existe `grid_row` en las instancias, renderizamos en modo grilla explícita.
+$explicitGrid = false;
+$maxGridRow   = 0;
+foreach ($items as $it) {
+    if (! is_array($it)) {
+        continue;
+    }
+    if (array_key_exists('grid_row', $it) && $it['grid_row'] !== null) {
+        $explicitGrid = true;
+        $gr = (int) ($it['grid_row'] ?? 0);
+        $maxGridRow = max($maxGridRow, $gr);
+    }
+}
+
 /** @var list<array{colspans: list<array{col: int, span: int, items: list<array}>}, stacks: list<list<array>|null>}> */
 $rows = [];
-$i    = 0;
 
-while ($i < $itemCount) {
+if ($explicitGrid) {
+    $n_rows_local = max($n_rows_local, $maxGridRow + 1);
+    $itemsByRow = array_fill(0, $n_rows_local, []);
+    foreach ($items as $it) {
+        if (! is_array($it)) {
+            continue;
+        }
+        if (! array_key_exists('grid_row', $it) || $it['grid_row'] === null) {
+            continue;
+        }
+        $r = (int) ($it['grid_row'] ?? 0);
+        if ($r < 0 || $r >= $n_rows_local) {
+            continue;
+        }
+        $itemsByRow[$r][] = $it;
+    }
+
+    $cellFromExplicitItem = static function (array $it, int $col, int $span): array {
+        $type = (string) ($it['element_type'] ?? '');
+        $ts   = is_array($it['text_style'] ?? null) ? $it['text_style'] : [];
+        $out  = ['element_type' => $type, 'col' => $col, 'span' => $span, 'text_style' => $ts];
+        foreach (['label_value_gap_px', 'label_space_above_px', 'label_space_below_px'] as $k) {
+            if (array_key_exists($k, $it)) {
+                $out[$k] = (int) ($it[$k] ?? 0);
+            }
+        }
+        if ($type === 'custom_text' && is_array($it['custom_text'] ?? null)) {
+            $out['custom_text'] = $it['custom_text'];
+        }
+        return $out;
+    };
+
+    for ($r = 0; $r < $n_rows_local; $r++) {
+        $colspans = [];
+        $stacks   = array_fill(0, $n, null);
+
+        // Regiones agrupadas por (col inicio + span) => stack de instancias.
+        /** @var array<string, array{col:int, span:int, items:list<array>}> $regions */
+        $regions = [];
+        foreach ($itemsByRow[$r] as $it) {
+            if (! is_array($it)) {
+                continue;
+            }
+            $colStart = max(0, min($n - 1, (int) ($it['column'] ?? 0)));
+            $span     = max(1, (int) ($it['column_span'] ?? 1));
+            $span     = min($span, max(1, $n - $colStart));
+            $stackIx  = (int) ($it['grid_stack'] ?? 0);
+
+            $key = $colStart . ':' . $span;
+            if (! isset($regions[$key])) {
+                $regions[$key] = ['col' => $colStart, 'span' => $span, 'items' => []];
+            }
+            $regions[$key]['items'][] = ['stack' => $stackIx, 'it' => $it];
+        }
+
+        // Renderizamos por orden de columna inicial para que la iteración sea consistente.
+        $regionsArr = array_values($regions);
+        usort($regionsArr, static function ($a, $b) {
+            return ($a['col'] <=> $b['col']) ?: ($a['span'] <=> $b['span']);
+        });
+        $regions = $regionsArr;
+
+        // Para evitar dobles renders cuando hay colisiones (no deberían existir si el UI valida),
+        // marcamos columnas ocupadas.
+        $occupiedUntil = array_fill(0, $n, null);
+        foreach ($regions as $reg) {
+            $colStart = (int) $reg['col'];
+            $spanReg  = (int) $reg['span'];
+            for ($cc = $colStart; $cc < $colStart + $spanReg && $cc < $n; $cc++) {
+                // Si hay superposición, nos quedamos con la primera región encontrada.
+                if ($occupiedUntil[$cc] !== null) {
+                    continue 2;
+                }
+            }
+            for ($cc = $colStart; $cc < $colStart + $spanReg && $cc < $n; $cc++) {
+                $occupiedUntil[$cc] = $colStart;
+            }
+
+            // Orden de stack por grid_stack.
+            $stackItems = $reg['items'];
+            usort($stackItems, static function ($A, $B) {
+                return ($A['stack'] <=> $B['stack']) ?: 0;
+            });
+            $cellItems = [];
+            foreach ($stackItems as $si) {
+                $cellItems[] = $cellFromExplicitItem($si['it'], $colStart, $spanReg);
+            }
+
+            if ($spanReg > 1) {
+                $colspans[] = ['col' => $colStart, 'span' => $spanReg, 'items' => $cellItems];
+            } else {
+                $stacks[$colStart] = $cellItems;
+            }
+        }
+
+        $rows[] = ['colspans' => $colspans, 'stacks' => $stacks];
+    }
+} else {
+    $i = 0;
+    while ($i < $itemCount) {
     /** @var list<array{col: int, span: int, items: list<array}>} */
     $colspans = [];
     /** @var list<list<array{element_type: string, col: int, span: int}>|null> */
@@ -107,8 +226,9 @@ while ($i < $itemCount) {
         continue;
     }
 
-    $rows[] = ['colspans' => $colspans, 'stacks' => $stacks];
-    $i      = $j;
+        $rows[] = ['colspans' => $colspans, 'stacks' => $stacks];
+        $i      = $j;
+    }
 }
 
 $secLayoutRaw = is_array($section_layout ?? null) ? $section_layout : [];
@@ -189,6 +309,9 @@ $pdfEmptyTdStyle = static function (int $colIdx, float $pctUnit) use ($n, $colAl
                 $elCtx        = array_merge($element_ctx, [
                     'pdf_element_type' => $cellItem['element_type'],
                     'pdf_text_style'   => is_array($cellItem['text_style'] ?? null) ? $cellItem['text_style'] : [],
+                    'pdf_label_value_gap_px' => array_key_exists('label_value_gap_px', $cellItem) ? (int) ($cellItem['label_value_gap_px'] ?? 0) : null,
+                    'pdf_label_space_above_px' => array_key_exists('label_space_above_px', $cellItem) ? (int) ($cellItem['label_space_above_px'] ?? 0) : null,
+                    'pdf_label_space_below_px' => array_key_exists('label_space_below_px', $cellItem) ? (int) ($cellItem['label_space_below_px'] ?? 0) : null,
                     'pdf_custom_text'  => $isCustomText
                         ? \App\Services\ReportPdfLayoutService::normalizeCustomTextPayload($cellItem['custom_text'] ?? [])
                         : null,
@@ -217,6 +340,9 @@ $pdfEmptyTdStyle = static function (int $colIdx, float $pctUnit) use ($n, $colAl
                 $elCtx        = array_merge($element_ctx, [
                     'pdf_element_type' => $stackItem['element_type'],
                     'pdf_text_style'   => is_array($stackItem['text_style'] ?? null) ? $stackItem['text_style'] : [],
+                    'pdf_label_value_gap_px' => array_key_exists('label_value_gap_px', $stackItem) ? (int) ($stackItem['label_value_gap_px'] ?? 0) : null,
+                    'pdf_label_space_above_px' => array_key_exists('label_space_above_px', $stackItem) ? (int) ($stackItem['label_space_above_px'] ?? 0) : null,
+                    'pdf_label_space_below_px' => array_key_exists('label_space_below_px', $stackItem) ? (int) ($stackItem['label_space_below_px'] ?? 0) : null,
                     'pdf_custom_text'  => $isCustomText
                         ? \App\Services\ReportPdfLayoutService::normalizeCustomTextPayload($stackItem['custom_text'] ?? [])
                         : null,

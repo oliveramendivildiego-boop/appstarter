@@ -64,20 +64,37 @@ if (array_key_exists($type, \App\Services\ReportPdfLayoutService::PATIENT_DOCTOR
     $showL = \App\Services\ReportPdfLayoutService::labFirmasBool($pdS, 'show_label_' . $type, true);
     $lbl   = trim((string) ($pdS['label_' . $type] ?? ''));
     $inline = (($pdS['label_' . $type . '_line_mode'] ?? 'stacked') === 'inline');
+    $gapPx = isset($pdf_label_value_gap_px)
+        ? (int) $pdf_label_value_gap_px
+        : (array_key_exists('label_' . $type . '_value_gap_px', $pdS) ? (int) $pdS['label_' . $type . '_value_gap_px'] : 0);
+    $mtPx  = isset($pdf_label_space_above_px)
+        ? (int) $pdf_label_space_above_px
+        : (array_key_exists('label_' . $type . '_space_above_px', $pdS) ? (int) $pdS['label_' . $type . '_space_above_px'] : 0);
+    $mbPx  = isset($pdf_label_space_below_px)
+        ? (int) $pdf_label_space_below_px
+        : (array_key_exists('label_' . $type . '_space_below_px', $pdS) ? (int) $pdS['label_' . $type . '_space_below_px'] : 0);
     $val   = $valueOf($type);
     $showLblText = $showL && $lbl !== '';
     if ($inline) {
         ?>
-                <div class="patient-line"><?php if ($showLblText): ?><span class="label"><?= esc($lbl) ?></span> <?php endif; ?><?= esc($val) ?></div>
+                <div class="patient-line" style="margin-top:<?= (int) max(0, $mtPx) ?>px;margin-bottom:<?= (int) max(0, $mbPx) ?>px;">
+                    <?php if ($showLblText): ?>
+                        <span class="label" style="margin-right:<?= (int) max(0, $gapPx) ?>px;"><?= esc($lbl) ?></span>
+                    <?php endif; ?>
+                    <span style="<?= $showLblText ? '' : 'margin-left:' . (int) max(0, $gapPx) . 'px;' ?>"><?= esc($val) ?></span>
+                </div>
         <?php
     } else {
         if ($showLblText) {
             ?>
-                <div class="patient-line"><span class="label"><?= esc($lbl) ?></span></div>
+                <div class="patient-line" style="margin-top:<?= (int) max(0, $mtPx) ?>px;margin-bottom:<?= (int) max(0, $gapPx) ?>px;">
+                    <span class="label"><?= esc($lbl) ?></span>
+                </div>
             <?php
         }
+        $valMt = $showLblText ? 0 : ((int) max(0, $mtPx) + (int) max(0, $gapPx));
         ?>
-                <div class="patient-line"><?= esc($val) ?></div>
+                <div class="patient-line" style="margin-top:<?= (int) max(0, $valMt) ?>px;margin-bottom:<?= (int) max(0, $mbPx) ?>px;"><?= esc($val) ?></div>
         <?php
     }
 
@@ -276,6 +293,54 @@ switch ($type) {
                 </div>
             <?php
         }
+        break;
+
+    case 'paciente_institucion':
+        $hgInst = is_array($pdf_header_grid_style ?? null)
+            ? $pdf_header_grid_style
+            : \App\Services\ReportPdfLayoutService::normalizeHeaderGridStyle([]);
+        $lblInst     = trim((string) ($hgInst['label_paciente_institucion'] ?? ''));
+        $showInstL   = \App\Services\ReportPdfLayoutService::labFirmasBool($hgInst, 'show_label_paciente_institucion', true);
+        $inlineInst  = (($hgInst['label_paciente_institucion_line_mode'] ?? 'stacked') === 'inline');
+        $showLblInst = $showInstL && $lblInst !== '';
+        $stInstLbl   = \App\Services\ReportPdfLayoutService::headerGridLabelPieceStyleAttr($hgInst, 'paciente_institucion');
+        $valInstRaw  = trim((string) ($paciente->paciente_institucion ?? ''));
+        $valInst     = $valInstRaw !== '' ? $valInstRaw : '—';
+        ?>
+                <div class="header-piece">
+                    <?php if ($inlineInst && $showLblInst): ?>
+                    <p style="margin:0;"><span style="<?= esc($stInstLbl, 'attr') ?>"><?= esc($lblInst) ?></span> <span style="<?= esc($stInst, 'attr') ?>"><?= esc($valInst) ?></span></p>
+                    <?php elseif ($showLblInst): ?>
+                    <p style="margin:0;"><span style="<?= esc($stInstLbl, 'attr') ?>"><?= esc($lblInst) ?></span></p>
+                    <p style="margin:0;"><span style="<?= esc($stInst, 'attr') ?>"><?= esc($valInst) ?></span></p>
+                    <?php else: ?>
+                    <p style="margin:0;"><span style="<?= esc($stInst, 'attr') ?>"><?= esc($valInst) ?></span></p>
+                    <?php endif; ?>
+                </div>
+        <?php
+        break;
+
+    case 'pdf_pages_total':
+        $hgPg = is_array($pdf_header_grid_style ?? null)
+            ? $pdf_header_grid_style
+            : \App\Services\ReportPdfLayoutService::normalizeHeaderGridStyle([]);
+        $lblPg     = trim((string) ($hgPg['label_pdf_pages_total'] ?? ''));
+        $showPgL   = \App\Services\ReportPdfLayoutService::labFirmasBool($hgPg, 'show_label_pdf_pages_total', true);
+        $inlinePg  = (($hgPg['label_pdf_pages_total_line_mode'] ?? 'stacked') === 'inline');
+        $showLblPg = $showPgL && $lblPg !== '';
+        $stPgLbl   = \App\Services\ReportPdfLayoutService::headerGridLabelPieceStyleAttr($hgPg, 'pdf_pages_total');
+        ?>
+                <div class="header-piece">
+                    <?php if ($inlinePg && $showLblPg): ?>
+                    <p style="margin:0;"><span style="<?= esc($stPgLbl, 'attr') ?>"><?= esc($lblPg) ?></span> <span style="<?= esc($stInst, 'attr') ?>"><?= '__PDF_TOTAL_PAGES__' ?></span></p>
+                    <?php elseif ($showLblPg): ?>
+                    <p style="margin:0;"><span style="<?= esc($stPgLbl, 'attr') ?>"><?= esc($lblPg) ?></span></p>
+                    <p style="margin:0;"><span style="<?= esc($stInst, 'attr') ?>"><?= '__PDF_TOTAL_PAGES__' ?></span></p>
+                    <?php else: ?>
+                    <p style="margin:0;"><span style="<?= esc($stInst, 'attr') ?>"><?= '__PDF_TOTAL_PAGES__' ?></span></p>
+                    <?php endif; ?>
+                </div>
+        <?php
         break;
 
     case 'qr':

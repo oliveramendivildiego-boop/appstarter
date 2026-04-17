@@ -2,6 +2,7 @@
 /** @var array $inst */
 /** @var int $col_count */
 /** @var array<string, string> $elLabels */
+/** @var array<string, mixed> $pd_grid */
 $uid    = (string) ($inst['uid'] ?? '');
 $type   = (string) ($inst['element_type'] ?? '');
 $label  = $elLabels[$type] ?? $type;
@@ -27,8 +28,17 @@ $isCustomText = ($type === 'custom_text');
 $ctCustom     = $isCustomText
     ? \App\Services\ReportPdfLayoutService::normalizeCustomTextPayload($inst['custom_text'] ?? [])
     : [];
+$sectionKey = (string) ($inst['section'] ?? '');
+$gridRow = array_key_exists('grid_row', $inst) ? max(0, (int) ($inst['grid_row'] ?? 0)) : '';
+$gridStack = array_key_exists('grid_stack', $inst) ? max(0, (int) ($inst['grid_stack'] ?? 0)) : '';
+$pdTypes = ['paciente_nombre', 'paciente_genero', 'paciente_edad', 'paciente_telefono', 'medico', 'fecha_recepcion', 'fecha_reporte', 'numero_orden'];
+$pdGrid = is_array($pd_grid ?? null) ? $pd_grid : [];
+$canPdSpacing = ($sectionKey === 'patient_doctor' && in_array($type, $pdTypes, true) && !$isCustomText);
+$gapDef = $canPdSpacing ? ((int) ($inst['label_value_gap_px'] ?? $pdGrid['label_' . $type . '_value_gap_px'] ?? 0)) : 0;
+$mtDef = $canPdSpacing ? ((int) ($inst['label_space_above_px'] ?? $pdGrid['label_' . $type . '_space_above_px'] ?? 0)) : 0;
+$mbDef = $canPdSpacing ? ((int) ($inst['label_space_below_px'] ?? $pdGrid['label_' . $type . '_space_below_px'] ?? 0)) : 0;
 ?>
-<li class="list-group-item pdf-instance-item" data-uid="<?= esc($uid) ?>" data-element-type="<?= esc($type, 'attr') ?>">
+<li class="list-group-item pdf-instance-item" data-uid="<?= esc($uid) ?>" data-element-type="<?= esc($type, 'attr') ?>" data-grid-row="<?= esc((string) $gridRow, 'attr') ?>" data-grid-stack="<?= esc((string) $gridStack, 'attr') ?>">
     <div class="pdf-instance-head mb-2 pb-2 border-bottom">
         <strong class="d-block"><?= esc($label) ?></strong>
         <span class="small text-muted font-monospace"><?= esc($type) ?></span>
@@ -113,5 +123,21 @@ $ctCustom     = $isCustomText
             </select>
         </div>
     </div>
+    <?php if ($canPdSpacing): ?>
+    <div class="row g-3 mt-2 pdf-patient-spacing-controls">
+        <div class="col-12 col-md-4 col-lg-4">
+            <label class="form-label small mb-1">Separación label/valor (px)</label>
+            <input type="number" class="form-control form-control-sm instance-pd-label-value-gap-px" min="0" max="40" step="1" value="<?= esc((string) $gapDef, 'attr') ?>">
+        </div>
+        <div class="col-12 col-md-4 col-lg-4">
+            <label class="form-label small mb-1">Espacio arriba (px)</label>
+            <input type="number" class="form-control form-control-sm instance-pd-space-above-px" min="0" max="40" step="1" value="<?= esc((string) $mtDef, 'attr') ?>">
+        </div>
+        <div class="col-12 col-md-4 col-lg-4">
+            <label class="form-label small mb-1">Espacio abajo (px)</label>
+            <input type="number" class="form-control form-control-sm instance-pd-space-below-px" min="0" max="40" step="1" value="<?= esc((string) $mbDef, 'attr') ?>">
+        </div>
+    </div>
+    <?php endif; ?>
     <?php endif; ?>
 </li>

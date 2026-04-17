@@ -135,6 +135,8 @@ class ReportPdfLayoutService
         'lab_phone'   => 'Tel:',
         'lab_email'   => 'Email:',
         'lab_website' => '',
+        'paciente_institucion' => 'Institución:',
+        'pdf_pages_total'      => 'Páginas:',
     ];
 
     public const DEFAULT_RESULTS_TABLE_STYLE = [
@@ -180,9 +182,11 @@ class ReportPdfLayoutService
         'logo',
         'lab_company',
         'lab_address',
+        'paciente_institucion',
         'lab_phone',
         'lab_email',
         'lab_website',
+        'pdf_pages_total',
         'qr',
     ];
 
@@ -205,6 +209,8 @@ class ReportPdfLayoutService
         'lab_phone',
         'lab_email',
         'lab_website',
+        'paciente_institucion',
+        'pdf_pages_total',
         'qr',
         'custom_text',
         'paciente_nombre',
@@ -294,6 +300,7 @@ class ReportPdfLayoutService
             'header_grid'         => self::normalizeHeaderGridStyle([]),
             'patient_doctor_grid' => self::normalizePatientDoctorGridStyle([]),
             'footer_grid'         => self::normalizeFooterGridStyle([]),
+            'print_pagination'    => self::normalizePrintPaginationStyle([]),
         ];
     }
 
@@ -356,6 +363,9 @@ class ReportPdfLayoutService
         if ($id === 'qr') {
             return 2;
         }
+        if ($id === 'pdf_pages_total') {
+            return 2;
+        }
 
         return 1;
     }
@@ -389,6 +399,8 @@ class ReportPdfLayoutService
             'lab_phone'    => 'Teléfono',
             'lab_email'    => 'Correo electrónico',
             'lab_website'  => 'Sitio web',
+            'paciente_institucion' => 'Institución del paciente',
+            'pdf_pages_total'      => 'Número de páginas (total)',
             'qr'           => 'Código QR (enlace al reporte en línea)',
         ];
     }
@@ -402,9 +414,11 @@ class ReportPdfLayoutService
             'logo'         => '[Logo]',
             'lab_company'  => 'Laboratorio Clínico Ejemplo',
             'lab_address'  => 'Calle Principal 123, Ciudad',
+            'paciente_institucion' => 'Institución del paciente (Ej.)',
             'lab_phone'    => '555-0100',
             'lab_email'    => 'contacto@lab.ejemplo',
             'lab_website'  => 'www.lab.ejemplo',
+            'pdf_pages_total' => '12',
             'qr'           => '[QR]',
         ];
     }
@@ -464,31 +478,35 @@ class ReportPdfLayoutService
     }
 
     /**
-     * @return array<string, array{columns: int, line_height: float, column_align_h: list<string>, column_align_v: list<string>}>
+     * @return array<string, array{columns: int, rows: int, line_height: float, column_align_h: list<string>, column_align_v: list<string>}>
      */
     public static function defaultSectionLayoutsStatic(): array
     {
         return [
             'header' => [
                 'columns'        => 3,
+                'rows'           => 3,
                 'line_height'    => 1.35,
                 'column_align_h' => ['left', 'center', 'right'],
                 'column_align_v' => ['top', 'top', 'top'],
             ],
             'patient_doctor' => [
                 'columns'        => 2,
+                'rows'           => 4,
                 'line_height'    => 1.35,
                 'column_align_h' => ['left', 'right'],
                 'column_align_v' => ['top', 'top'],
             ],
             'footer' => [
                 'columns'        => 3,
+                'rows'           => 2,
                 'line_height'    => 1.35,
                 'column_align_h' => ['left', 'center', 'right'],
                 'column_align_v' => ['top', 'top', 'top'],
             ],
             'lab_firmas' => [
                 'columns'        => 3,
+                'rows'           => 3,
                 'line_height'    => 1.35,
                 'column_align_h' => ['left', 'center', 'right'],
                 'column_align_v' => ['top', 'top', 'top'],
@@ -769,6 +787,20 @@ class ReportPdfLayoutService
                 'column_span'  => $span,
                 'text_style'   => self::normalizeTextStyle($inst['text_style'] ?? []),
             ];
+            if (array_key_exists('grid_row', $inst) && $inst['grid_row'] !== null) {
+                $item['grid_row'] = max(0, (int) $inst['grid_row']);
+            }
+            if (array_key_exists('grid_stack', $inst) && $inst['grid_stack'] !== null) {
+                $item['grid_stack'] = max(0, (int) $inst['grid_stack']);
+            }
+            // Override de espaciado por instancia (cuando el usuario lo configura en el editor).
+            foreach (['label_value_gap_px', 'label_space_above_px', 'label_space_below_px'] as $k) {
+                if (array_key_exists($k, $inst) && $inst[$k] !== null) {
+                    $v = (int) $inst[$k];
+                    $v = max(0, min(40, $v));
+                    $item[$k] = $v;
+                }
+            }
             if ($type === 'custom_text') {
                 $item['custom_text'] = self::normalizeCustomTextPayload($inst['custom_text'] ?? []);
             }
@@ -779,7 +811,7 @@ class ReportPdfLayoutService
     }
 
     /**
-     * @return array<string, array{columns: int, line_height: float, column_align_h: list<string>, column_align_v: list<string>}>
+     * @return array<string, array{columns: int, rows: int, line_height: float, column_align_h: list<string>, column_align_v: list<string>}>
      */
     protected function normalizeSectionLayouts(?array $decoded): array
     {
@@ -792,6 +824,8 @@ class ReportPdfLayoutService
             $rawSec = is_array($raw[$key] ?? null) ? $raw[$key] : [];
             $n      = isset($rawSec['columns']) ? (int) $rawSec['columns'] : (int) ($def['columns'] ?? 3);
             $n      = max(self::SECTION_COLUMN_MIN, min(self::SECTION_COLUMN_MAX, $n));
+            $r      = isset($rawSec['rows']) ? (int) $rawSec['rows'] : (int) ($def['rows'] ?? 3);
+            $r      = max(1, min(50, $r));
 
             $defLh = isset($def['line_height']) ? (float) $def['line_height'] : 1.35;
             $lh    = isset($rawSec['line_height']) ? (float) $rawSec['line_height'] : $defLh;
@@ -801,6 +835,7 @@ class ReportPdfLayoutService
             $vRaw = $rawSec['column_align_v'] ?? null;
             $out[$key] = [
                 'columns'        => $n,
+                'rows'           => $r,
                 'line_height'    => $lh,
                 'column_align_h' => self::normalizeColumnAlignHArray(is_array($hRaw) ? $hRaw : [], $n),
                 'column_align_v' => self::normalizeColumnAlignVArray(is_array($vRaw) ? $vRaw : [], $n),
@@ -872,6 +907,19 @@ class ReportPdfLayoutService
             $spanRaw = isset($row['column_span']) ? (int) $row['column_span'] : 1;
             $maxSpan = max(1, $cols - $col);
             $span    = max(1, min($maxSpan, $spanRaw >= 1 ? $spanRaw : 1));
+
+            $hasGridRow   = array_key_exists('grid_row', $row);
+            $hasGridStack = array_key_exists('grid_stack', $row);
+            $gridRow      = $hasGridRow ? max(0, (int) ($row['grid_row'] ?? 0)) : null;
+            $gridStack    = $hasGridStack ? max(0, (int) ($row['grid_stack'] ?? 0)) : null;
+
+            // Espacios opcionales por instancia (solo sección paciente/médico).
+            $gapRaw = array_key_exists('label_value_gap_px', $row) ? (int) $row['label_value_gap_px'] : null;
+            $mtRaw  = array_key_exists('label_space_above_px', $row) ? (int) $row['label_space_above_px'] : null;
+            $mbRaw  = array_key_exists('label_space_below_px', $row) ? (int) $row['label_space_below_px'] : null;
+            $gapVal = $gapRaw === null ? null : max(0, min(40, $gapRaw));
+            $mtVal  = $mtRaw === null ? null : max(0, min(40, $mtRaw));
+            $mbVal  = $mbRaw === null ? null : max(0, min(40, $mbRaw));
             $customTextPayload = ($type === 'custom_text')
                 ? self::normalizeCustomTextPayload($row['custom_text'] ?? [])
                 : null;
@@ -893,6 +941,17 @@ class ReportPdfLayoutService
                     'column_span'   => $span,
                     'text_style'    => $textStyle,
                 ];
+                if ($hasGridRow && $gridRow !== null) {
+                    $entry['grid_row'] = $gridRow;
+                }
+                if ($hasGridStack && $gridStack !== null) {
+                    $entry['grid_stack'] = $gridStack;
+                }
+                if ($section === 'patient_doctor' && in_array($emitType, self::PATIENT_DOCTOR_FIELD_ORDER, true)) {
+                    if ($gapVal !== null) $entry['label_value_gap_px'] = $gapVal;
+                    if ($mtVal !== null) $entry['label_space_above_px'] = $mtVal;
+                    if ($mbVal !== null) $entry['label_space_below_px'] = $mbVal;
+                }
                 if ($emitType === 'custom_text') {
                     $entry['custom_text'] = $customTextPayload ?? self::normalizeCustomTextPayload([]);
                 }
@@ -1797,6 +1856,27 @@ class ReportPdfLayoutService
                 return $err;
             }
         }
+        if (isset($ps['print_pagination'])) {
+            if (! is_array($ps['print_pagination'])) {
+                return 'La configuración de paginación de impresión es inválida.';
+            }
+            $pp = $ps['print_pagination'];
+            if (isset($pp['label_position'])) {
+                $allowed = ['top-left', 'top-center', 'top-right', 'bottom-left', 'bottom-center', 'bottom-right'];
+                if (! in_array(strtolower(trim((string) $pp['label_position'])), $allowed, true)) {
+                    return 'Posición de etiqueta de paginación no válida.';
+                }
+            }
+            if (isset($pp['value_position'])) {
+                $allowed = ['top-left', 'top-center', 'top-right', 'bottom-left', 'bottom-center', 'bottom-right'];
+                if (! in_array(strtolower(trim((string) $pp['value_position'])), $allowed, true)) {
+                    return 'Posición de valor de paginación no válida.';
+                }
+            }
+            if (isset($pp['label_text']) && ! is_scalar($pp['label_text'])) {
+                return 'Texto de etiqueta de paginación inválido.';
+            }
+        }
 
         return null;
     }
@@ -2233,6 +2313,15 @@ class ReportPdfLayoutService
             $base['label_' . $id] = self::clipLabFirmasLabel($s['label_' . $id] ?? null, $fallback);
             $base['show_label_' . $id] = self::labFirmasBool($s, 'show_label_' . $id, true);
             $base['label_' . $id . '_line_mode'] = self::labFirmasLineModeInline($s, 'label_' . $id . '_line_mode') ? 'inline' : 'stacked';
+            $gap = array_key_exists('label_' . $id . '_value_gap_px', $s) && is_numeric($s['label_' . $id . '_value_gap_px'])
+                ? (int) $s['label_' . $id . '_value_gap_px'] : 0;
+            $mt  = array_key_exists('label_' . $id . '_space_above_px', $s) && is_numeric($s['label_' . $id . '_space_above_px'])
+                ? (int) $s['label_' . $id . '_space_above_px'] : 0;
+            $mb  = array_key_exists('label_' . $id . '_space_below_px', $s) && is_numeric($s['label_' . $id . '_space_below_px'])
+                ? (int) $s['label_' . $id . '_space_below_px'] : 0;
+            $base['label_' . $id . '_value_gap_px']   = max(0, min(40, $gap));
+            $base['label_' . $id . '_space_above_px'] = max(0, min(40, $mt));
+            $base['label_' . $id . '_space_below_px'] = max(0, min(40, $mb));
         }
 
         return $base;
@@ -2295,6 +2384,43 @@ class ReportPdfLayoutService
         $base['footer_policy_font_style']                = $pickPieceFst('footer_policy_font_style');
 
         return $base;
+    }
+
+    /**
+     * Paginación en impresión directa (navegador): posiciones separadas para etiqueta y valor.
+     *
+     * @param mixed $raw
+     *
+     * @return array{enabled: bool, label_text: string, label_position: string, value_position: string}
+     */
+    public static function normalizePrintPaginationStyle($raw): array
+    {
+        $s = is_array($raw) ? $raw : [];
+        $allowedPos = ['top-left', 'top-center', 'top-right', 'bottom-left', 'bottom-center', 'bottom-right'];
+        $lp = strtolower(trim((string) ($s['label_position'] ?? 'bottom-left')));
+        if (! in_array($lp, $allowedPos, true)) {
+            $lp = 'bottom-left';
+        }
+        $vp = strtolower(trim((string) ($s['value_position'] ?? 'bottom-right')));
+        if (! in_array($vp, $allowedPos, true)) {
+            $vp = 'bottom-right';
+        }
+        $txt = trim((string) ($s['label_text'] ?? 'Página'));
+        if ($txt === '') {
+            $txt = 'Página';
+        }
+        if (function_exists('mb_substr')) {
+            $txt = mb_substr($txt, 0, 60, 'UTF-8');
+        } else {
+            $txt = substr($txt, 0, 60);
+        }
+
+        return [
+            'enabled'        => self::labFirmasBool($s, 'enabled', false),
+            'label_text'     => $txt,
+            'label_position' => $lp,
+            'value_position' => $vp,
+        ];
     }
 
     /**
@@ -2817,6 +2943,7 @@ class ReportPdfLayoutService
             'header_grid'         => self::normalizeHeaderGridStyle($pageStyleRaw['header_grid'] ?? []),
             'patient_doctor_grid' => self::normalizePatientDoctorGridStyle($pageStyleRaw['patient_doctor_grid'] ?? []),
             'footer_grid'         => self::normalizeFooterGridStyle($pageStyleRaw['footer_grid'] ?? []),
+            'print_pagination'    => self::normalizePrintPaginationStyle($pageStyleRaw['print_pagination'] ?? []),
         ];
 
         return [

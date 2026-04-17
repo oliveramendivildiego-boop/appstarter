@@ -68,8 +68,38 @@
     $ftTopColor         = (string) ($ft['section_top_border_color'] ?? '#DDDDDD');
     $ftTopStyleCss      = ($ftTopOn && $ftTopW > 0) ? 'solid' : 'none';
     $ftTopWpx           = ($ftTopOn && $ftTopW > 0) ? $ftTopW : 0;
+    $printPaper         = strtolower((string) ($lab_config['print_paper_size'] ?? 'letter'));
+    if (! in_array($printPaper, ['letter', 'a4', 'legal'], true)) {
+        $printPaper = 'letter';
+    }
+    $printPageCssSize = ($printPaper === 'a4') ? 'A4 portrait' : (($printPaper === 'legal') ? 'legal portrait' : 'letter portrait');
+    $pp = \App\Services\ReportPdfLayoutService::normalizePrintPaginationStyle($ps['print_pagination'] ?? []);
+    $printPaginationEnabled = ! empty($pp['enabled']);
+    $printPaginationLabelText = (string) ($pp['label_text'] ?? 'Página');
+    $ppToCssPos = static function (string $pos, float $mt, float $mr, float $mb, float $ml): string {
+        $parts = explode('-', strtolower(trim($pos)), 2);
+        $v = $parts[0] ?? 'bottom';
+        $h = $parts[1] ?? 'right';
+        $css = ($v === 'top')
+            ? ('top:' . max(1, $mt) . 'mm;')
+            : ('bottom:' . max(1, $mb) . 'mm;');
+        if ($h === 'left') {
+            $css .= 'left:' . max(1, $ml) . 'mm;';
+        } elseif ($h === 'center') {
+            $css .= 'left:50%;transform:translateX(-50%);';
+        } else {
+            $css .= 'right:' . max(1, $mr) . 'mm;';
+        }
+        return $css;
+    };
+    $printPagLabelCssPos = $ppToCssPos((string) ($pp['label_position'] ?? 'bottom-left'), $mt, $mr, $mb, $ml);
+    $printPagValueCssPos = $ppToCssPos((string) ($pp['value_position'] ?? 'bottom-right'), $mt, $mr, $mb, $ml);
     ?>
     <style>
+        @page {
+            size: <?= esc($printPageCssSize) ?>;
+            margin: <?= esc((string) $mt) ?>mm <?= esc((string) $mr) ?>mm <?= esc((string) $mb) ?>mm <?= esc((string) $ml) ?>mm;
+        }
         body { margin: <?= esc((string) $mt) ?>mm <?= esc((string) $mr) ?>mm <?= esc((string) $mb) ?>mm <?= esc((string) $ml) ?>mm !important; position: relative; background: #fff; }
         <?php if ($pdfFooterEnabled): ?>
         .pdf-main-stack {
@@ -232,6 +262,28 @@
         @media print {
             .report-print-toolbar { display: none !important; }
         }
+        /* En impresión directa (navegador), el total de páginas lo inyecta JS
+         * para evitar valores 0 en motores sin soporte confiable de counter(pages). */
+        body.js-total-pages-ready .pdf-counter-pages::before {
+            content: '' !important;
+        }
+        .print-pagination-fixed {
+            position: fixed;
+            z-index: 20;
+            font-size: 9pt;
+            color: #333;
+            background: rgba(255, 255, 255, 0.8);
+            border: 1px solid #d6d6d6;
+            border-radius: 4px;
+            padding: 2px 6px;
+            line-height: 1.2;
+        }
+        .print-pagination-label-fixed {
+            <?= esc($printPagLabelCssPos, 'css') ?>
+        }
+        .print-pagination-value-fixed {
+            <?= esc($printPagValueCssPos, 'css') ?>
+        }
     </style>
 </head>
 <body>
@@ -241,6 +293,14 @@
     <a href="<?= site_url('registers/viewreport/' . $rid) ?>" class="report-print-btn-secondary">Volver al reporte</a>
     <?php endif; ?>
 </div>
+<?php if ($printPaginationEnabled): ?>
+<div class="print-pagination-fixed print-pagination-label-fixed" aria-hidden="true">
+    <?= esc($printPaginationLabelText) ?>
+</div>
+<div class="print-pagination-fixed print-pagination-value-fixed" aria-hidden="true">
+    <span class="pdf-counter-page"></span> / <span class="print-total-pages">1</span>
+</div>
+<?php endif; ?>
 <?= view('registers/pdf/report_document', [
     'pdf_layout'        => $pdf_layout ?? [],
     'register_info'     => $register_info,
@@ -259,9 +319,40 @@
 ]) ?>
 <script>
 (function() {
+    var MM_TO_PX = 96 / 25.4;
+    var PAGE_HEIGHT_MM = <?= json_encode($printPaper === 'a4' ? 297.0 : ($printPaper === 'legal' ? 355.6 : 279.4)) ?>;
+    var marginTopMm = <?= json_encode((float) $mt) ?>;
+    var marginBottomMm = <?= json_encode((float) $mb) ?>;
+
+    function estimateTotalPagesForPrint() {
+        var content = document.querySelector('.pdf-main-stack') || document.body;
+        var printableHeightMm = PAGE_HEIGHT_MM - marginTopMm - marginBottomMm;
+        if (!isFinite(printableHeightMm) || printableHeightMm <= 0) printableHeightMm = 240;
+        var printablePx = printableHeightMm * MM_TO_PX;
+        if (!isFinite(printablePx) || printablePx <= 0) printablePx = 900;
+        var total = Math.ceil(content.scrollHeight / printablePx);
+        if (!isFinite(total) || total < 1) total = 1;
+        return total;
+    }
+
+    function applyBrowserTotalPages() {
+        var total = estimateTotalPagesForPrint();
+        document.querySelectorAll('.pdf-counter-pages').forEach(function(el) {
+            el.textContent = String(total);
+        });
+        document.querySelectorAll('.print-total-pages').forEach(function(el) {
+            el.textContent = String(total);
+        });
+        document.body.classList.add('js-total-pages-ready');
+    }
+
     function openPrintDialog() {
+        applyBrowserTotalPages();
         window.print();
     }
+    window.addEventListener('beforeprint', function() {
+        applyBrowserTotalPages();
+    });
     window.addEventListener('afterprint', function() {
         setTimeout(function() {
             window.close();

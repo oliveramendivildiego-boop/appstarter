@@ -14,6 +14,7 @@ use Config\App as AppConfig;
  */
 class RegisterService
 {
+    private const TOTAL_PAGES_TOKEN = '__PDF_TOTAL_PAGES__';
     protected RegisterModel $registerModel;
     protected AppConfigModel $appConfigModel;
 
@@ -651,7 +652,9 @@ class RegisterService
             'last_name_mom' => '',
             'edad'         => '-',
             'phone_number' => '',
+            'paciente_institucion' => '',
         ];
+        $paciente->paciente_institucion = trim((string) ($paciente->paciente_institucion ?? ''));
         if (!empty($paciente->birthday)) {
             $fechaNac = new \DateTime($paciente->birthday);
             $hoy      = new \DateTime();
@@ -1088,7 +1091,7 @@ class RegisterService
             $reportEmitidoEn = self::formatNowForReport();
         }
 
-        return view('registers/report_print', [
+        $html = view('registers/report_print', [
             'register_info' => $reportData['register_info'],
             'paciente'      => $reportData['paciente'],
             'doctor'        => $reportData['doctor'],
@@ -1103,5 +1106,9 @@ class RegisterService
             'report_pria_metodo_nombre'       => $reportData['report_pria_metodo_nombre'] ?? [],
             'report_lab_firmas'               => $reportData['report_lab_firmas'] ?? [],
         ]);
+
+        // En impresión directa (HTML + window.print) no se usa PdfService, así que el token
+        // de total de páginas debe volver al contador CSS del navegador para no verse literal.
+        return str_replace(self::TOTAL_PAGES_TOKEN, '<span class="pdf-counter-pages"></span>', $html);
     }
 }

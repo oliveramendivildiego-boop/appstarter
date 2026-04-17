@@ -250,6 +250,49 @@
             <small class="text-muted d-block mt-1"><?= lang('Config.config_order_barcode_size_percent_help') ?></small>
         </div>
         <div class="mb-3">
+            <label for="print_paper_size" class="form-label"><?= lang('Config.config_print_paper_size') ?></label>
+            <?php
+            $printPaper = strtolower((string) ($config['print_paper_size'] ?? 'letter'));
+            if (!in_array($printPaper, ['letter', 'a4', 'legal'], true)) {
+                $printPaper = 'letter';
+            }
+            $printPaperOpts = [
+                'letter' => lang('Config.config_print_paper_letter'),
+                'a4'     => lang('Config.config_print_paper_a4'),
+                'legal'  => lang('Config.config_print_paper_legal'),
+            ];
+            ?>
+            <?= form_dropdown('print_paper_size', $printPaperOpts, $printPaper, 'id="print_paper_size" class="form-select" style="max-width: 16rem;" autocomplete="off"') ?>
+            <small class="text-muted d-block mt-1"><?= lang('Config.config_print_paper_size_help') ?></small>
+        </div>
+        <div class="mb-3">
+            <input type="hidden" name="print_pagination_enabled" value="0">
+            <div class="form-check">
+                <?= form_checkbox('print_pagination_enabled', '1', (($config['print_pagination_enabled'] ?? '0') === '1'), 'id="print_pagination_enabled" class="form-check-input" autocomplete="off"') ?>
+                <?= form_label(lang('Config.config_print_pagination_enabled'), 'print_pagination_enabled', ['class' => 'form-check-label']) ?>
+            </div>
+        </div>
+        <div class="mb-3">
+            <label for="print_pagination_position" class="form-label"><?= lang('Config.config_print_pagination_position') ?></label>
+            <?php
+            $printPos = strtolower((string) ($config['print_pagination_position'] ?? 'bottom-right'));
+            $allowedPrintPos = ['top-left', 'top-center', 'top-right', 'bottom-left', 'bottom-center', 'bottom-right'];
+            if (!in_array($printPos, $allowedPrintPos, true)) {
+                $printPos = 'bottom-right';
+            }
+            $printPosOpts = [
+                'top-left'      => lang('Config.config_print_pagination_top_left'),
+                'top-center'    => lang('Config.config_print_pagination_top_center'),
+                'top-right'     => lang('Config.config_print_pagination_top_right'),
+                'bottom-left'   => lang('Config.config_print_pagination_bottom_left'),
+                'bottom-center' => lang('Config.config_print_pagination_bottom_center'),
+                'bottom-right'  => lang('Config.config_print_pagination_bottom_right'),
+            ];
+            ?>
+            <?= form_dropdown('print_pagination_position', $printPosOpts, $printPos, 'id="print_pagination_position" class="form-select" style="max-width: 16rem;" autocomplete="off"') ?>
+            <small class="text-muted d-block mt-1"><?= lang('Config.config_print_pagination_position_help') ?></small>
+        </div>
+        <div class="mb-3">
             <input type="hidden" name="leyendas_enabled" value="0">
             <div class="form-check">
                 <?= form_checkbox('leyendas_enabled', '1', (($config['leyendas_enabled'] ?? '0') === '1'), 'id="leyendas_enabled" class="form-check-input" autocomplete="off"') ?>

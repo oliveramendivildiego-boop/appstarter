@@ -42,6 +42,7 @@ $hs = \App\Services\ReportPdfLayoutService::normalizeHeaderSectionStyle($ps['hea
 $hg = \App\Services\ReportPdfLayoutService::normalizeHeaderGridStyle($ps['header_grid'] ?? []);
 $pd = \App\Services\ReportPdfLayoutService::normalizePatientDoctorGridStyle($ps['patient_doctor_grid'] ?? []);
 $ft = \App\Services\ReportPdfLayoutService::normalizeFooterGridStyle($ps['footer_grid'] ?? []);
+$pp = \App\Services\ReportPdfLayoutService::normalizePrintPaginationStyle($ps['print_pagination'] ?? []);
 $pdfGridChk = static function (array $a, string $k): string {
     $v = $a[$k] ?? true;
 
@@ -285,7 +286,7 @@ $labelsShort = [
         </div>
         <div class="table-responsive mb-3">
             <table class="table table-sm table-bordered align-middle mb-0">
-                <thead class="table-light"><tr class="small"><th>Campo</th><th>Etiqueta en PDF</th><th class="text-center" style="width:6rem;">Mostrar</th><th style="min-width:9rem;">Etiqueta vs valor</th></tr></thead>
+                <thead class="table-light"><tr class="small"><th>Campo</th><th>Etiqueta en PDF</th><th class="text-center" style="width:6rem;">Mostrar</th><th style="min-width:9rem;">Etiqueta vs valor</th><th style="width:8.5rem;">Entre etiqueta y resultado (px)</th><th style="width:7.5rem;">Arriba (px)</th><th style="width:7.5rem;">Abajo (px)</th></tr></thead>
                 <tbody class="small">
                 <?php foreach (\App\Services\ReportPdfLayoutService::PATIENT_DOCTOR_GRID_LABEL_DEFAULTS as $fid => $defLbl):
                     $lab = (string) ($pd['label_' . $fid] ?? $defLbl);
@@ -301,6 +302,9 @@ $labelsShort = [
                                 <option value="inline" <?= $m === 'inline' ? 'selected' : '' ?>>Misma línea</option>
                             </select>
                         </td>
+                        <td><input type="number" class="form-control form-control-sm" id="pd_label_<?= esc($fid, 'attr') ?>_value_gap_px" min="0" max="40" step="1" value="<?= esc((string) (int) ($pd['label_' . $fid . '_value_gap_px'] ?? 0), 'attr') ?>"></td>
+                        <td><input type="number" class="form-control form-control-sm" id="pd_label_<?= esc($fid, 'attr') ?>_space_above_px" min="0" max="40" step="1" value="<?= esc((string) (int) ($pd['label_' . $fid . '_space_above_px'] ?? 0), 'attr') ?>"></td>
+                        <td><input type="number" class="form-control form-control-sm" id="pd_label_<?= esc($fid, 'attr') ?>_space_below_px" min="0" max="40" step="1" value="<?= esc((string) (int) ($pd['label_' . $fid . '_space_below_px'] ?? 0), 'attr') ?>"></td>
                     </tr>
                 <?php endforeach; ?>
                 </tbody>
@@ -382,6 +386,36 @@ $labelsShort = [
             <div class="col-12 col-md-6"><label class="form-label small" for="ft_label_footer_generated">Texto antes de la fecha («Resultados generados el»)</label><input type="text" class="form-control form-control-sm" id="ft_label_footer_generated" maxlength="120" value="<?= esc((string) ($ft['label_footer_generated'] ?? ''), 'attr') ?>"></div>
             <div class="col-6 col-md-2 text-center"><div class="form-check d-inline-block"><input class="form-check-input" type="checkbox" id="ft_show_label_footer_generated" value="1"<?= $pdfGridChk($ft, 'show_label_footer_generated') ?>><label class="form-check-label small" for="ft_show_label_footer_generated">Mostrar</label></div></div>
             <div class="col-6 col-md-3"><label class="form-label small" for="ft_label_footer_generated_line_mode">Texto vs fecha</label><select class="form-select form-select-sm" id="ft_label_footer_generated_line_mode"><option value="stacked" <?= $pdfGridLineMode($ft, 'label_footer_generated_line_mode') === 'stacked' ? 'selected' : '' ?>>Fecha debajo</option><option value="inline" <?= $pdfGridLineMode($ft, 'label_footer_generated_line_mode') === 'inline' ? 'selected' : '' ?>>Misma línea</option></select></div>
+        </div>
+        <hr class="my-3">
+        <h6 class="text-secondary">Paginación en impresión directa (label / valor)</h6>
+        <div class="row g-2 align-items-end">
+            <div class="col-12 col-md-3">
+                <div class="form-check mb-0">
+                    <input class="form-check-input" type="checkbox" id="pp_enabled" <?= ! empty($pp['enabled']) ? 'checked' : '' ?>>
+                    <label class="form-check-label small" for="pp_enabled">Mostrar paginación fija</label>
+                </div>
+            </div>
+            <div class="col-12 col-md-3">
+                <label class="form-label small" for="pp_label_text">Texto de etiqueta</label>
+                <input type="text" class="form-control form-control-sm" id="pp_label_text" maxlength="60" value="<?= esc((string) ($pp['label_text'] ?? 'Página'), 'attr') ?>">
+            </div>
+            <div class="col-12 col-md-3">
+                <label class="form-label small" for="pp_label_position">Posición del label</label>
+                <select class="form-select form-select-sm" id="pp_label_position">
+                    <?php foreach (['top-left' => 'Arriba izquierda', 'top-center' => 'Arriba centro', 'top-right' => 'Arriba derecha', 'bottom-left' => 'Abajo izquierda', 'bottom-center' => 'Abajo centro', 'bottom-right' => 'Abajo derecha'] as $k => $v): ?>
+                    <option value="<?= esc($k, 'attr') ?>" <?= ($pp['label_position'] ?? 'bottom-left') === $k ? 'selected' : '' ?>><?= esc($v) ?></option>
+                    <?php endforeach; ?>
+                </select>
+            </div>
+            <div class="col-12 col-md-3">
+                <label class="form-label small" for="pp_value_position">Posición del valor</label>
+                <select class="form-select form-select-sm" id="pp_value_position">
+                    <?php foreach (['top-left' => 'Arriba izquierda', 'top-center' => 'Arriba centro', 'top-right' => 'Arriba derecha', 'bottom-left' => 'Abajo izquierda', 'bottom-center' => 'Abajo centro', 'bottom-right' => 'Abajo derecha'] as $k => $v): ?>
+                    <option value="<?= esc($k, 'attr') ?>" <?= ($pp['value_position'] ?? 'bottom-right') === $k ? 'selected' : '' ?>><?= esc($v) ?></option>
+                    <?php endforeach; ?>
+                </select>
+            </div>
         </div>
     </div>
 </div>
@@ -707,7 +741,7 @@ $labelsShort = [
             ]) ?>
         </template>
         <div class="row g-3 mb-4">
-            <div class="col-12 col-lg-8">
+            <div class="col-12 col-lg-6">
                 <label class="form-label small mb-1" for="add_element_type">Añadir elemento al diseño</label>
                 <div class="d-flex flex-wrap gap-2 align-items-center">
                     <select class="form-select form-select-sm" id="add_element_type" style="max-width: 22rem;">
@@ -727,6 +761,25 @@ $labelsShort = [
                     <button type="button" class="btn btn-sm btn-primary" id="btn_add_element"><i class="fa-solid fa-plus me-1"></i> Añadir</button>
                 </div>
             </div>
+            <div class="col-12 col-lg-6">
+                <label class="form-label small mb-1" for="palette_span_select">Campos arrastrables (drag & drop)</label>
+                <div class="d-flex flex-wrap gap-2 align-items-center mb-2">
+                    <select class="form-select form-select-sm" id="palette_span_select" style="max-width: 12rem;">
+                        <option value="1">Ancho nuevo: 1 col.</option>
+                        <option value="2">Ancho nuevo: 2 cols.</option>
+                        <option value="3">Ancho nuevo: 3 cols.</option>
+                        <option value="4">Ancho nuevo: 4 cols.</option>
+                        <option value="5">Ancho nuevo: 5 cols.</option>
+                        <option value="6">Ancho nuevo: 6 cols.</option>
+                    </select>
+                    <div class="form-check ms-2">
+                        <input class="form-check-input" type="checkbox" id="toggle_instance_lists" checked>
+                        <label class="form-check-label small" for="toggle_instance_lists">Mostrar lista avanzada</label>
+                    </div>
+                    <span class="small text-muted">Arrastrá estos campos a cualquier matriz. Si soltás sobre un item, hace replace y conserva el ancho del destino.</span>
+                </div>
+                <div id="pdf-field-palette" class="pdf-field-palette"></div>
+            </div>
         </div>
 
         <div class="card border-info mb-4">
@@ -743,8 +796,15 @@ $labelsShort = [
                     'col_count'   => $hCols,
                     'sec_layout'  => $secLayouts['header'] ?? [],
                 ]) ?>
+                <div class="pdf-grid-editor-wrap mb-4">
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <h6 class="text-uppercase text-muted small mb-0">Matriz editable</h6>
+                        <span class="small text-muted">Drop en la celda: agrega al final del stack. Drop sobre un item: replace.</span>
+                    </div>
+                    <div id="grid-editor-header" class="pdf-grid-editor" data-section="header"></div>
+                </div>
                 <div class="row g-4">
-                    <div class="col-lg-6">
+                    <div class="col-lg-6 pdf-instance-list-col">
                         <ul id="instance-list-header" class="list-group pdf-instance-sortable" data-section="header">
                             <?php foreach ($instHeader as $inst): ?>
                                 <?= view('config/partials/pdf_instance_row', ['inst' => $inst, 'col_count' => $hCols, 'elLabels' => $elLabels]) ?>
@@ -776,11 +836,18 @@ $labelsShort = [
                     'col_count'   => $pCols,
                     'sec_layout'  => $secLayouts['patient_doctor'] ?? [],
                 ]) ?>
+                <div class="pdf-grid-editor-wrap mb-4">
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <h6 class="text-uppercase text-muted small mb-0">Matriz editable</h6>
+                        <span class="small text-muted">Los espacios, tipografías y alineaciones se conservan por instancia.</span>
+                    </div>
+                    <div id="grid-editor-patient" class="pdf-grid-editor" data-section="patient_doctor"></div>
+                </div>
                 <div class="row g-4">
-                    <div class="col-lg-6">
+                    <div class="col-lg-6 pdf-instance-list-col">
                         <ul id="instance-list-patient" class="list-group pdf-instance-sortable" data-section="patient_doctor">
                             <?php foreach ($instPatient as $inst): ?>
-                                <?= view('config/partials/pdf_instance_row', ['inst' => $inst, 'col_count' => $pCols, 'elLabels' => $elLabels]) ?>
+                                <?= view('config/partials/pdf_instance_row', ['inst' => $inst, 'col_count' => $pCols, 'elLabels' => $elLabels, 'pd_grid' => $pd]) ?>
                             <?php endforeach; ?>
                         </ul>
                     </div>
@@ -810,8 +877,15 @@ $labelsShort = [
                     'col_count'   => $lCols,
                     'sec_layout'  => $secLayouts['lab_firmas'] ?? [],
                 ]) ?>
+                <div class="pdf-grid-editor-wrap mb-4">
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <h6 class="text-uppercase text-muted small mb-0">Matriz editable</h6>
+                        <span class="small text-muted">Podés apilar varios elementos dentro del mismo espacio.</span>
+                    </div>
+                    <div id="grid-editor-lab-firmas" class="pdf-grid-editor" data-section="lab_firmas"></div>
+                </div>
                 <div class="row g-4">
-                    <div class="col-lg-6">
+                    <div class="col-lg-6 pdf-instance-list-col">
                         <ul id="instance-list-lab-firmas" class="list-group pdf-instance-sortable" data-section="lab_firmas">
                             <?php foreach ($instLabFirmas as $inst): ?>
                                 <?= view('config/partials/pdf_instance_row', ['inst' => $inst, 'col_count' => $lCols, 'elLabels' => $elLabels]) ?>
@@ -844,8 +918,15 @@ $labelsShort = [
                     'col_count'   => $fCols,
                     'sec_layout'  => $secLayouts['footer'] ?? [],
                 ]) ?>
+                <div class="pdf-grid-editor-wrap mb-4">
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <h6 class="text-uppercase text-muted small mb-0">Matriz editable</h6>
+                        <span class="small text-muted">El ancho de destino se mantiene en los replace.</span>
+                    </div>
+                    <div id="grid-editor-footer" class="pdf-grid-editor" data-section="footer"></div>
+                </div>
                 <div class="row g-4">
-                    <div class="col-lg-6">
+                    <div class="col-lg-6 pdf-instance-list-col">
                         <ul id="instance-list-footer" class="list-group pdf-instance-sortable" data-section="footer">
                             <?php foreach ($instFooter as $inst): ?>
                                 <?= view('config/partials/pdf_instance_row', ['inst' => $inst, 'col_count' => $fCols, 'elLabels' => $elLabels]) ?>
@@ -929,6 +1010,132 @@ $labelsShort = [
     min-height: 2rem;
     padding: 0.15rem;
 }
+.pdf-field-palette {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+}
+.pdf-palette-item {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    padding: 0.4rem 0.65rem;
+    border: 1px solid #c7d3df;
+    border-radius: 999px;
+    background: #fff;
+    cursor: grab;
+    font-size: 0.8rem;
+    user-select: none;
+}
+.pdf-palette-item:active,
+.pdf-grid-chip:active {
+    cursor: grabbing;
+}
+.pdf-grid-editor-wrap {
+    border-top: 1px dashed #d8dee5;
+    padding-top: 1rem;
+    overflow-x: auto;
+}
+.pdf-grid-editor {
+    display: flex;
+    flex-direction: column;
+    gap: 0.6rem;
+}
+.pdf-grid-row-editor {
+    display: grid;
+    gap: 0.6rem;
+    width: max-content;
+    min-width: 100%;
+}
+.pdf-grid-cell-editor {
+    min-width: 170px;
+    min-height: 84px;
+    border: 1px dashed #b9c4d0;
+    border-radius: 10px;
+    background: #fbfcfe;
+    padding: 0.45rem;
+    transition: border-color 0.15s ease, box-shadow 0.15s ease, background 0.15s ease;
+}
+.pdf-grid-cell-editor.is-drop-target,
+.pdf-grid-chip.is-drop-target {
+    border-color: #0d6efd !important;
+    box-shadow: 0 0 0 2px rgba(13, 110, 253, 0.15);
+    background: #eef5ff !important;
+}
+.pdf-grid-cell-stack {
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+    min-height: 100%;
+}
+.pdf-grid-cell-empty {
+    color: #6c757d;
+    font-size: 0.72rem;
+    text-align: center;
+    padding-top: 1.1rem;
+}
+.pdf-grid-cell-add {
+    margin-top: 0.35rem;
+    text-align: center;
+}
+.pdf-grid-cell-add .btn {
+    --bs-btn-padding-y: 0.1rem;
+    --bs-btn-padding-x: 0.45rem;
+    --bs-btn-font-size: 0.68rem;
+    line-height: 1.2;
+    white-space: nowrap;
+    min-width: 1.9rem;
+}
+.pdf-grid-chip {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 0.5rem;
+    border: 1px solid #d0d7de;
+    border-radius: 8px;
+    background: #fff;
+    padding: 0.45rem 0.55rem;
+    cursor: grab;
+}
+.pdf-grid-chip-main {
+    min-width: 0;
+}
+.pdf-grid-chip-actions {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.2rem;
+    flex-wrap: nowrap;
+    flex: 0 0 auto;
+}
+.pdf-grid-chip-actions .btn {
+    --bs-btn-padding-y: 0.1rem;
+    --bs-btn-padding-x: 0.35rem;
+    --bs-btn-font-size: 0.66rem;
+    line-height: 1.2;
+    min-width: 1.7rem;
+    white-space: nowrap;
+}
+.pdf-grid-chip-title {
+    font-size: 0.78rem;
+    font-weight: 600;
+    color: #1f2d3d;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.pdf-grid-chip-meta {
+    font-size: 0.68rem;
+    color: #6c757d;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.pdf-grid-row-label {
+    font-size: 0.72rem;
+    font-weight: 600;
+    color: #6c757d;
+    margin-bottom: 0.2rem;
+}
 </style>
 <script>
 document.addEventListener('DOMContentLoaded', function() {
@@ -941,10 +1148,22 @@ document.addEventListener('DOMContentLoaded', function() {
     var previewHeader = document.getElementById('pdf-preview-header-block');
     var previewFooter = document.getElementById('pdf-preview-footer-block');
     var previewLabFirmas = document.getElementById('pdf-preview-lab-firmas-block');
+    var gridEditorHeader = document.getElementById('grid-editor-header');
+    var gridEditorPatient = document.getElementById('grid-editor-patient');
+    var gridEditorFooter = document.getElementById('grid-editor-footer');
+    var gridEditorLabFirmas = document.getElementById('grid-editor-lab-firmas');
+    var fieldPalette = document.getElementById('pdf-field-palette');
+    var paletteSpanSelect = document.getElementById('palette_span_select');
+    var toggleInstanceLists = document.getElementById('toggle_instance_lists');
+    var activeDragPayload = null;
     var secColsH = document.getElementById('sec_cols_header');
     var secColsP = document.getElementById('sec_cols_patient');
     var secColsF = document.getElementById('sec_cols_footer');
     var secColsL = document.getElementById('sec_cols_lab_firmas');
+    var secRowsH = document.getElementById('sec_rows_header');
+    var secRowsP = document.getElementById('sec_rows_patient_doctor');
+    var secRowsF = document.getElementById('sec_rows_footer');
+    var secRowsL = document.getElementById('sec_rows_lab_firmas');
     var LAB_ELEMENT_TYPES = ['lab_firmas_title', 'lab_firmas_validator', 'lab_firmas_seal', 'lab_firmas_approver_signature', 'lab_firmas_approver_name', 'lab_firmas_approver_cargo', 'lab_firmas_matricula'];
 
     window._elementLabels = <?= json_encode($elLabels, JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP) ?>;
@@ -983,6 +1202,12 @@ document.addEventListener('DOMContentLoaded', function() {
         return Math.max(1, Math.min(6, n));
     }
 
+    function clampRows(v) {
+        var n = parseInt(v, 10);
+        if (isNaN(n)) return 3;
+        return Math.max(1, Math.min(50, n));
+    }
+
     function newUid() {
         if (window.crypto && crypto.getRandomValues) {
             var a = new Uint8Array(8);
@@ -997,6 +1222,64 @@ document.addEventListener('DOMContentLoaded', function() {
         if (ul === patientList) return clampCols(secColsP.value);
         if (ul === labFirmasList) return clampCols(secColsL ? secColsL.value : '3');
         return clampCols(secColsF.value);
+    }
+
+    function rowsForSectionKey(sectionKey) {
+        if (sectionKey === 'header') return clampRows(secRowsH ? secRowsH.value : '3');
+        if (sectionKey === 'patient_doctor') return clampRows(secRowsP ? secRowsP.value : '4');
+        if (sectionKey === 'lab_firmas') return clampRows(secRowsL ? secRowsL.value : '3');
+        return clampRows(secRowsF ? secRowsF.value : '2');
+    }
+
+    function gridRootForSection(sectionKey) {
+        if (sectionKey === 'header') return gridEditorHeader;
+        if (sectionKey === 'patient_doctor') return gridEditorPatient;
+        if (sectionKey === 'lab_firmas') return gridEditorLabFirmas;
+        return gridEditorFooter;
+    }
+
+    function listForSection(sectionKey) {
+        if (sectionKey === 'header') return headerList;
+        if (sectionKey === 'patient_doctor') return patientList;
+        if (sectionKey === 'lab_firmas') return labFirmasList;
+        return footerList;
+    }
+
+    function findInstanceByUid(sectionKey, uid) {
+        var ul = listForSection(sectionKey);
+        if (!ul || !uid) return null;
+        var found = null;
+        ul.querySelectorAll('.pdf-instance-item').forEach(function(li) {
+            if (!found && li.getAttribute('data-uid') === uid) found = li;
+        });
+        return found;
+    }
+
+    function instanceDisplayLabel(type) {
+        return (window._elementLabels && window._elementLabels[type]) ? window._elementLabels[type] : type;
+    }
+
+    function refreshInstanceHeader(li, elementType) {
+        if (!li) return;
+        var label = instanceDisplayLabel(elementType);
+        li.setAttribute('data-element-type', elementType);
+        var headStrong = li.querySelector('.pdf-instance-head strong');
+        var headMono = li.querySelector('.pdf-instance-head .font-monospace');
+        if (headStrong) headStrong.textContent = label;
+        if (headMono) headMono.textContent = elementType;
+    }
+
+    function syncSpanOptionsFromPlacement(li) {
+        if (!li) return;
+        updateSpanOptionsForRow(li);
+        var spanSel = li.querySelector('.instance-span');
+        var colSel = li.querySelector('.instance-column');
+        if (!spanSel || !colSel) return;
+        if (String(colSel.value) === '-1') return;
+        var maxS = spanSel.options.length > 0 ? spanSel.options.length : 1;
+        var cur = parseInt(spanSel.value, 10);
+        if (isNaN(cur) || cur < 1) cur = 1;
+        if (cur > maxS) spanSel.value = String(maxS);
     }
 
     function syncAddElementTypeOptions() {
@@ -1015,6 +1298,35 @@ document.addEventListener('DOMContentLoaded', function() {
             if (show && firstVisible === null) firstVisible = o;
         }
         if (firstVisible) typeEl.value = firstVisible.value;
+    }
+
+    function renderFieldPalette() {
+        if (!fieldPalette) return;
+        var html = '';
+        Object.keys(window._elementLabels || {}).forEach(function(type) {
+            html += '<div class="pdf-palette-item" draggable="true" data-type="' + escapeHtml(type) + '">' +
+                '<i class="fa-solid fa-grip-lines text-muted"></i>' +
+                '<span>' + escapeHtml(window._elementLabels[type]) + '</span>' +
+                '</div>';
+        });
+        fieldPalette.innerHTML = html;
+        fieldPalette.querySelectorAll('.pdf-palette-item').forEach(function(el) {
+            el.addEventListener('dragstart', function(ev) {
+                var span = paletteSpanSelect ? clampCols(paletteSpanSelect.value) : 1;
+                var payload = {
+                    kind: 'palette',
+                    element_type: el.getAttribute('data-type') || '',
+                    span: span
+                };
+                activeDragPayload = payload;
+                ev.dataTransfer.setData('text/plain', JSON.stringify(payload));
+                ev.dataTransfer.effectAllowed = 'copy';
+            });
+            el.addEventListener('dragend', function() {
+                activeDragPayload = null;
+                clearGridDropHighlights();
+            });
+        });
     }
 
     function fillColumnSelect(sel, colCount, selectedValue) {
@@ -1081,6 +1393,420 @@ document.addEventListener('DOMContentLoaded', function() {
                 updateSpanOptionsForRow(li);
             });
         });
+    }
+
+    function applyPlacementToLi(li, sectionKey, rowIdx, colIdx, spanVal, stackIdx) {
+        if (!li) return;
+        var ul = listForSection(sectionKey);
+        if (!ul) return;
+        if (li.parentElement !== ul) ul.appendChild(li);
+        li.setAttribute('data-grid-row', String(Math.max(0, rowIdx)));
+        li.setAttribute('data-grid-stack', String(Math.max(0, stackIdx)));
+        var colSel = li.querySelector('.instance-column');
+        if (colSel) colSel.value = String(Math.max(0, colIdx));
+        syncSpanOptionsFromPlacement(li);
+        var spanSel = li.querySelector('.instance-span');
+        if (spanSel) {
+            var maxS = spanSel.options.length > 0 ? spanSel.options.length : 1;
+            var finalSpan = Math.max(1, Math.min(maxS, spanVal));
+            spanSel.value = String(finalSpan);
+        }
+    }
+
+    function stackCountForRegion(sectionKey, rowIdx, colIdx, spanVal) {
+        var ul = listForSection(sectionKey);
+        if (!ul) return 0;
+        var count = 0;
+        ul.querySelectorAll('.pdf-instance-item').forEach(function(li) {
+            var colSel = li.querySelector('.instance-column');
+            var enabledVal = colSel ? parseInt(colSel.value, 10) : -1;
+            if (isNaN(enabledVal) || enabledVal < 0) return;
+            var p = readGridPlacement(li, sectionKey);
+            if (p.row == null) return;
+            if (p.row === rowIdx && p.col === colIdx && p.span === spanVal) count++;
+        });
+        return count;
+    }
+
+    function addTypeToRegion(sectionKey, rowIdx, colIdx, spanVal, typeOpt) {
+        var ul = listForSection(sectionKey);
+        if (!ul) return;
+        var type = typeOpt || selectedTypeForSection(sectionKey);
+        if (!type || !isTypeAllowedInSection(type, sectionKey)) return;
+        var span = Math.max(1, spanVal || 1);
+        var stackIdx = stackCountForRegion(sectionKey, rowIdx, colIdx, span);
+        var li = createInstanceRow(newUid(), type, colsForList(ul), true, colIdx, span, sectionKey);
+        applyPlacementToLi(li, sectionKey, rowIdx, colIdx, span, stackIdx);
+        ul.appendChild(li);
+        wireInstanceSelects();
+    }
+
+    function readGridPlacement(li, sectionKey) {
+        var ul = listForSection(sectionKey);
+        var n = colsForList(ul);
+        var rowRaw = li.getAttribute('data-grid-row');
+        var stackRaw = li.getAttribute('data-grid-stack');
+        var row = (rowRaw == null || String(rowRaw).trim() === '') ? null : Math.max(0, parseInt(rowRaw, 10) || 0);
+        var stack = (stackRaw == null || String(stackRaw).trim() === '') ? null : Math.max(0, parseInt(stackRaw, 10) || 0);
+        var colSel = li.querySelector('.instance-column');
+        var col = colSel ? parseInt(colSel.value, 10) : 0;
+        if (isNaN(col) || col < 0) col = 0;
+        var spanSel = li.querySelector('.instance-span');
+        var span = spanSel && !spanSel.disabled ? parseInt(spanSel.value, 10) : 1;
+        if (isNaN(span) || span < 1) span = 1;
+        span = Math.max(1, Math.min(Math.max(1, n - col), span));
+        return { row: row, stack: stack, col: col, span: span };
+    }
+
+    function packImplicitGridForSection(sectionKey) {
+        var ul = listForSection(sectionKey);
+        if (!ul) return;
+        var n = colsForList(ul);
+        var items = [];
+        ul.querySelectorAll('.pdf-instance-item').forEach(function(li) {
+            var colSel = li.querySelector('.instance-column');
+            var v = colSel ? parseInt(colSel.value, 10) : -1;
+            if (isNaN(v) || v < 0) return;
+            var spanSel = li.querySelector('.instance-span');
+            var span = spanSel && !spanSel.disabled ? parseInt(spanSel.value, 10) : 1;
+            if (isNaN(span) || span < 1) span = 1;
+            span = Math.max(1, Math.min(Math.max(1, n - v), span));
+            items.push({ li: li, col: v, span: span });
+        });
+        var i = 0;
+        var rowIdx = 0;
+        function rangesOverlap(a0, a1, b0, b1) {
+            return a0 < b1 && b0 < a1;
+        }
+        while (i < items.length) {
+            var colspans = [];
+            var stacks = new Array(n).fill(null);
+            function canPlace(norm) {
+                var c = norm.col;
+                var s = norm.span;
+                if (s > 1) {
+                    for (var k = 0; k < colspans.length; k++) {
+                        if (colspans[k].col === c && colspans[k].span === s) return true;
+                    }
+                    for (var x = 0; x < colspans.length; x++) {
+                        if (rangesOverlap(c, c + s, colspans[x].col, colspans[x].col + colspans[x].span)) return false;
+                    }
+                    for (var cc = c; cc < c + s; cc++) {
+                        if (stacks[cc] !== null && stacks[cc].length > 0) return false;
+                    }
+                    return true;
+                }
+                for (var j = 0; j < colspans.length; j++) {
+                    if (c >= colspans[j].col && c < colspans[j].col + colspans[j].span) return false;
+                }
+                return true;
+            }
+            function place(norm) {
+                var c = norm.col;
+                var s = norm.span;
+                if (s > 1) {
+                    for (var k = 0; k < colspans.length; k++) {
+                        if (colspans[k].col === c && colspans[k].span === s) {
+                            colspans[k].items.push(norm);
+                            return;
+                        }
+                    }
+                    colspans.push({ col: c, span: s, items: [norm] });
+                } else {
+                    if (!stacks[c]) stacks[c] = [];
+                    stacks[c].push(norm);
+                }
+            }
+            var j = i;
+            while (j < items.length) {
+                if (!canPlace(items[j])) break;
+                place(items[j]);
+                j++;
+            }
+            if (j === i) {
+                i++;
+                continue;
+            }
+            colspans.forEach(function(region) {
+                region.items.forEach(function(norm, idx) {
+                    norm.li.setAttribute('data-grid-row', String(rowIdx));
+                    norm.li.setAttribute('data-grid-stack', String(idx));
+                });
+            });
+            stacks.forEach(function(stack) {
+                if (!stack) return;
+                stack.forEach(function(norm, idx) {
+                    norm.li.setAttribute('data-grid-row', String(rowIdx));
+                    norm.li.setAttribute('data-grid-stack', String(idx));
+                });
+            });
+            rowIdx++;
+            i = j;
+        }
+    }
+
+    function ensureGridPlacementForSection(sectionKey) {
+        var ul = listForSection(sectionKey);
+        if (!ul) return;
+        var missing = false;
+        ul.querySelectorAll('.pdf-instance-item').forEach(function(li) {
+            var colSel = li.querySelector('.instance-column');
+            var v = colSel ? parseInt(colSel.value, 10) : -1;
+            if (isNaN(v) || v < 0) return;
+            var rowRaw = li.getAttribute('data-grid-row');
+            if (rowRaw == null || String(rowRaw).trim() === '') missing = true;
+        });
+        if (missing) packImplicitGridForSection(sectionKey);
+    }
+
+    function rangesOverlapGrid(a0, a1, b0, b1) {
+        return a0 < b1 && b0 < a1;
+    }
+
+    function canResizeRegion(sectionKey, rowIdx, colIdx, oldSpan, nextSpan) {
+        var ul = listForSection(sectionKey);
+        if (!ul) return false;
+        var row = Math.max(0, rowIdx);
+        var col = Math.max(0, colIdx);
+        var n = colsForList(ul);
+        var maxByCols = Math.max(1, n - col);
+        var span = Math.max(1, Math.min(maxByCols, nextSpan));
+        var oldEnd = col + Math.max(1, oldSpan);
+        var newEnd = col + span;
+        var ok = true;
+        ul.querySelectorAll('.pdf-instance-item').forEach(function(li) {
+            if (!ok) return;
+            var p = readGridPlacement(li, sectionKey);
+            if (p.row == null || p.row !== row) return;
+            if (p.col === col && p.span === oldSpan) return;
+            var end = p.col + Math.max(1, p.span);
+            if (rangesOverlapGrid(col, newEnd, p.col, end)) ok = false;
+        });
+        // También debe ser al menos tan ancho como el rango previo ocupado por la región.
+        if (span < 1 || newEnd <= col || oldEnd <= col) ok = false;
+        return ok;
+    }
+
+    function applyRegionSpan(sectionKey, rowIdx, colIdx, oldSpan, nextSpan) {
+        var ul = listForSection(sectionKey);
+        if (!ul) return false;
+        var n = colsForList(ul);
+        var span = Math.max(1, Math.min(Math.max(1, n - colIdx), nextSpan));
+        if (!canResizeRegion(sectionKey, rowIdx, colIdx, oldSpan, span)) return false;
+        ul.querySelectorAll('.pdf-instance-item').forEach(function(li) {
+            var p = readGridPlacement(li, sectionKey);
+            if (p.row == null) return;
+            if (p.row !== rowIdx || p.col !== colIdx || p.span !== oldSpan) return;
+            var spanSel = li.querySelector('.instance-span');
+            if (spanSel) {
+                syncSpanOptionsFromPlacement(li);
+                var maxS = spanSel.options.length > 0 ? spanSel.options.length : 1;
+                spanSel.value = String(Math.max(1, Math.min(maxS, span)));
+            }
+        });
+        return true;
+    }
+
+    function normalizeRegionStacks(sectionKey, rowIdx, colIdx, spanVal) {
+        var ul = listForSection(sectionKey);
+        if (!ul) return [];
+        var list = [];
+        ul.querySelectorAll('.pdf-instance-item').forEach(function(li) {
+            var colSel = li.querySelector('.instance-column');
+            var enabledVal = colSel ? parseInt(colSel.value, 10) : -1;
+            if (isNaN(enabledVal) || enabledVal < 0) return;
+            var p = readGridPlacement(li, sectionKey);
+            if (p.row == null) return;
+            if (p.row === rowIdx && p.col === colIdx && p.span === spanVal) {
+                list.push({ li: li, stack: p.stack == null ? 0 : p.stack });
+            }
+        });
+        list.sort(function(a, b) { return a.stack - b.stack; });
+        list.forEach(function(rec, idx) {
+            rec.li.setAttribute('data-grid-stack', String(idx));
+        });
+        return list.map(function(rec) { return rec.li; });
+    }
+
+    function mergeRegionWithNextRow(sectionKey, rowIdx, colIdx, spanVal) {
+        var ul = listForSection(sectionKey);
+        if (!ul) return false;
+        var nextRow = rowIdx + 1;
+        var secRows = rowsForSectionKey(sectionKey);
+        if (nextRow >= secRows) return false;
+
+        var curr = normalizeRegionStacks(sectionKey, rowIdx, colIdx, spanVal);
+        var next = normalizeRegionStacks(sectionKey, nextRow, colIdx, spanVal);
+        if (!next || next.length === 0) return false;
+
+        var start = curr.length;
+        next.forEach(function(li, idx) {
+            li.setAttribute('data-grid-row', String(rowIdx));
+            li.setAttribute('data-grid-stack', String(start + idx));
+        });
+        normalizeRegionStacks(sectionKey, rowIdx, colIdx, spanVal);
+        return true;
+    }
+
+    function validateGridConflictsBeforeSave() {
+        var errors = [];
+        ['header', 'patient_doctor', 'lab_firmas', 'footer'].forEach(function(sectionKey) {
+            var ul = listForSection(sectionKey);
+            if (!ul) return;
+            var sectionLabel = sectionKey === 'patient_doctor' ? 'Paciente / médico' : (sectionKey === 'lab_firmas' ? 'Validación / firmas' : (sectionKey === 'header' ? 'Encabezado' : 'Pie'));
+            var rows = rowsForSectionKey(sectionKey);
+            var cols = colsForList(ul);
+            var byRow = {};
+            ul.querySelectorAll('.pdf-instance-item').forEach(function(li) {
+                var colSel = li.querySelector('.instance-column');
+                var enabledVal = colSel ? parseInt(colSel.value, 10) : -1;
+                if (isNaN(enabledVal) || enabledVal < 0) return;
+                var p = readGridPlacement(li, sectionKey);
+                var row = p.row == null ? 0 : Math.max(0, Math.min(rows - 1, p.row));
+                if (!byRow[row]) byRow[row] = [];
+                byRow[row].push({
+                    uid: li.getAttribute('data-uid') || '',
+                    type: li.getAttribute('data-element-type') || '',
+                    col: Math.max(0, Math.min(cols - 1, p.col)),
+                    span: Math.max(1, Math.min(Math.max(1, cols - p.col), p.span))
+                });
+            });
+            Object.keys(byRow).forEach(function(rk) {
+                var rowIdx = parseInt(rk, 10);
+                var regions = {};
+                byRow[rk].forEach(function(rec) {
+                    var key = rec.col + ':' + rec.span;
+                    if (!regions[key]) regions[key] = [];
+                    regions[key].push(rec);
+                });
+                var keys = Object.keys(regions).map(function(k) {
+                    var p = k.split(':');
+                    return { col: parseInt(p[0], 10), span: parseInt(p[1], 10), key: k };
+                }).sort(function(a, b) { return a.col - b.col; });
+                for (var i = 0; i < keys.length; i++) {
+                    for (var j = i + 1; j < keys.length; j++) {
+                        var a = keys[i], b = keys[j];
+                        if (rangesOverlapGrid(a.col, a.col + a.span, b.col, b.col + b.span)) {
+                            errors.push('Conflicto de matriz en ' + sectionLabel + ' (fila ' + (rowIdx + 1) + '): celdas superpuestas.');
+                            i = keys.length;
+                            break;
+                        }
+                    }
+                }
+            });
+        });
+        return errors;
+    }
+
+    function buildSectionGridEditor(sectionKey) {
+        var ul = listForSection(sectionKey);
+        var root = gridRootForSection(sectionKey);
+        if (!ul || !root) return;
+        ensureGridPlacementForSection(sectionKey);
+        var cols = colsForList(ul);
+        var rows = rowsForSectionKey(sectionKey);
+        root.innerHTML = '';
+        var itemsByRegion = {};
+        ul.querySelectorAll('.pdf-instance-item').forEach(function(li) {
+            var colSel = li.querySelector('.instance-column');
+            var enabledVal = colSel ? parseInt(colSel.value, 10) : -1;
+            if (isNaN(enabledVal) || enabledVal < 0) return;
+            var p = readGridPlacement(li, sectionKey);
+            var row = p.row == null ? 0 : Math.min(rows - 1, p.row);
+            li.setAttribute('data-grid-row', String(row));
+            var key = row + ':' + p.col + ':' + p.span;
+            if (!itemsByRegion[key]) itemsByRegion[key] = [];
+            itemsByRegion[key].push({ li: li, row: row, col: p.col, span: p.span, stack: p.stack == null ? 0 : p.stack });
+        });
+        Object.keys(itemsByRegion).forEach(function(key) {
+            itemsByRegion[key].sort(function(a, b) { return a.stack - b.stack; });
+        });
+
+        for (var row = 0; row < rows; row++) {
+            var rowWrap = document.createElement('div');
+            var lbl = document.createElement('div');
+            lbl.className = 'pdf-grid-row-label';
+            lbl.textContent = 'Fila ' + (row + 1);
+            rowWrap.appendChild(lbl);
+            var grid = document.createElement('div');
+            grid.className = 'pdf-grid-row-editor';
+            grid.style.gridTemplateColumns = 'repeat(' + cols + ', minmax(170px, 1fr))';
+
+            var occupied = {};
+            Object.keys(itemsByRegion).forEach(function(key) {
+                var parts = key.split(':');
+                if (parseInt(parts[0], 10) !== row) return;
+                var c = parseInt(parts[1], 10);
+                var s = parseInt(parts[2], 10);
+                for (var x = c; x < c + s; x++) occupied[x] = true;
+            });
+
+            for (var col = 0; col < cols; col++) {
+                if (occupied[col]) {
+                    // solo renderiza la región al inicio.
+                    var foundRegion = null;
+                    Object.keys(itemsByRegion).some(function(key) {
+                        var parts = key.split(':');
+                        if (parseInt(parts[0], 10) === row && parseInt(parts[1], 10) === col) {
+                            foundRegion = { key: key, span: parseInt(parts[2], 10), items: itemsByRegion[key] };
+                            return true;
+                        }
+                        return false;
+                    });
+                    if (!foundRegion) continue;
+                    var cell = document.createElement('div');
+                    cell.className = 'pdf-grid-cell-editor';
+                    cell.style.gridColumn = String(col + 1) + ' / span ' + foundRegion.span;
+                    cell.setAttribute('data-drop-row', String(row));
+                    cell.setAttribute('data-drop-col', String(col));
+                    cell.setAttribute('data-drop-span', String(foundRegion.span));
+                    cell.setAttribute('data-drop-section', sectionKey);
+                    var stack = document.createElement('div');
+                    stack.className = 'pdf-grid-cell-stack';
+                    foundRegion.items.forEach(function(rec, idx) {
+                        var chip = document.createElement('div');
+                        chip.className = 'pdf-grid-chip';
+                        chip.draggable = true;
+                        chip.setAttribute('data-uid', rec.li.getAttribute('data-uid') || '');
+                        chip.setAttribute('data-section', sectionKey);
+                        chip.setAttribute('data-row', String(row));
+                        chip.setAttribute('data-col', String(col));
+                        chip.setAttribute('data-span', String(foundRegion.span));
+                        chip.setAttribute('data-stack', String(idx));
+                        chip.innerHTML = '<div class="pdf-grid-chip-main"><div class="pdf-grid-chip-title">' + escapeHtml(instanceDisplayLabel(rec.li.getAttribute('data-element-type') || '')) + '</div><div class="pdf-grid-chip-meta">' + escapeHtml(rec.li.getAttribute('data-element-type') || '') + ' · ' + escapeHtml(foundRegion.span === 1 ? '1 col.' : (foundRegion.span + ' cols.')) + '</div></div>' +
+                            '<div class="pdf-grid-chip-actions">' +
+                            '<button type="button" class="btn btn-sm btn-outline-secondary pdf-grid-chip-span-dec" title="Reducir ancho"><i class="fa-solid fa-minus"></i></button>' +
+                            '<button type="button" class="btn btn-sm btn-outline-secondary pdf-grid-chip-merge-col" title="Unir columnas"><i class="fa-solid fa-arrows-left-right"></i></button>' +
+                            '<button type="button" class="btn btn-sm btn-outline-secondary pdf-grid-chip-merge-row" title="Unir filas"><i class="fa-solid fa-arrows-up-down"></i></button>' +
+                            '<button type="button" class="btn btn-sm btn-outline-secondary pdf-grid-chip-edit" title="Editar"><i class="fa-solid fa-pen"></i></button>' +
+                            '</div>';
+                        stack.appendChild(chip);
+                    });
+                    var addWrap = document.createElement('div');
+                    addWrap.className = 'pdf-grid-cell-add';
+                    addWrap.innerHTML = '<button type="button" class="btn btn-sm btn-outline-primary pdf-grid-add-cell" title="Agregar aquí" data-add-section="' + sectionKey + '" data-add-row="' + row + '" data-add-col="' + col + '" data-add-span="' + foundRegion.span + '"><i class="fa-solid fa-circle-plus"></i></button>';
+                    stack.appendChild(addWrap);
+                    cell.appendChild(stack);
+                    grid.appendChild(cell);
+                    col += foundRegion.span - 1;
+                } else {
+                    var empty = document.createElement('div');
+                    empty.className = 'pdf-grid-cell-editor';
+                    empty.setAttribute('data-drop-row', String(row));
+                    empty.setAttribute('data-drop-col', String(col));
+                    empty.setAttribute('data-drop-span', '1');
+                    empty.setAttribute('data-drop-section', sectionKey);
+                    empty.innerHTML = '<div class="pdf-grid-cell-stack"><div class="pdf-grid-cell-empty">Soltá aquí</div><div class="pdf-grid-cell-add"><button type="button" class="btn btn-sm btn-outline-primary pdf-grid-add-cell" title="Agregar aquí" data-add-section="' + sectionKey + '" data-add-row="' + row + '" data-add-col="' + col + '" data-add-span="1"><i class="fa-solid fa-circle-plus"></i></button></div></div>';
+                    grid.appendChild(empty);
+                }
+            }
+            rowWrap.appendChild(grid);
+            root.appendChild(rowWrap);
+        }
+    }
+
+    function rebuildGridEditors() {
+        ['header', 'patient_doctor', 'lab_firmas', 'footer'].forEach(buildSectionGridEditor);
     }
 
     function columnAlign(idx, total) {
@@ -1355,21 +2081,22 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     function buildSectionLayoutsForJson() {
-        function pack(secKey, colsInput) {
+        function pack(secKey, colsInput, rowsInput) {
             var n = clampCols(colsInput.value);
             var st = readSectionStyleFromDom(secKey, n);
             return {
                 columns: n,
+                rows: clampRows(rowsInput && rowsInput.value),
                 line_height: st.line_height,
                 column_align_h: st.column_align_h,
                 column_align_v: st.column_align_v
             };
         }
         return {
-            header: pack('header', secColsH),
-            patient_doctor: pack('patient_doctor', secColsP),
-            lab_firmas: pack('lab_firmas', secColsL),
-            footer: pack('footer', secColsF)
+            header: pack('header', secColsH, secRowsH),
+            patient_doctor: pack('patient_doctor', secColsP, secRowsP),
+            lab_firmas: pack('lab_firmas', secColsL, secRowsL),
+            footer: pack('footer', secColsF, secRowsF)
         };
     }
 
@@ -1480,6 +2207,12 @@ document.addEventListener('DOMContentLoaded', function() {
         if (type === 'lab_website') {
             return '<div class="header-preview-web">' + labeledBlock('lab_website', escapeHtml(sample)) + '</div>';
         }
+        if (type === 'paciente_institucion') {
+            return '<div class="header-preview-institucion">' + labeledBlock('paciente_institucion', escapeHtml(sample)) + '</div>';
+        }
+        if (type === 'pdf_pages_total') {
+            return '<div class="header-preview-pages-total">' + labeledBlock('pdf_pages_total', escapeHtml(sample)) + '</div>';
+        }
         if (type === 'qr') {
             var hint = String(hg.label_qr_hint != null ? hg.label_qr_hint : '').trim();
             var showH = !!hg.show_label_qr_hint && hint !== '';
@@ -1507,11 +2240,15 @@ document.addEventListener('DOMContentLoaded', function() {
         var secSt = readSectionStyleFromDom(sectionKey, n);
         var ftFooter = null;
         var hgHeader = null;
+        var pdHeader = null;
         if (sectionKey === 'footer') {
             ftFooter = readCardHeaderStyleForJson().footer_grid;
         }
         if (sectionKey === 'header') {
             hgHeader = readCardHeaderStyleForJson().header_grid;
+        }
+        if (sectionKey === 'patient_doctor') {
+            pdHeader = readCardHeaderStyleForJson().patient_doctor_grid;
         }
         var items = [];
         ul.querySelectorAll('.pdf-instance-item').forEach(function(li) {
@@ -1535,8 +2272,50 @@ document.addEventListener('DOMContentLoaded', function() {
             } else {
                 var styleWrap = textStyleToInlineCss(readInstanceTextStyle(li));
                 var rawLine;
-                var headerLikeTypes = ['logo', 'lab_company', 'lab_address', 'lab_phone', 'lab_email', 'lab_website', 'qr'];
-                if (sectionKey === 'footer' && headerLikeTypes.indexOf(type) >= 0) {
+                var headerLikeTypes = ['logo', 'lab_company', 'lab_address', 'paciente_institucion', 'lab_phone', 'lab_email', 'lab_website', 'pdf_pages_total', 'qr'];
+                if (sectionKey === 'patient_doctor' && ['paciente_nombre','paciente_genero','paciente_edad','paciente_telefono','medico','fecha_recepcion','fecha_reporte','numero_orden'].indexOf(type) >= 0 && pdHeader) {
+                    var showLpd = !!pdHeader['show_label_' + type];
+                    var lblPd = String(pdHeader['label_' + type] != null ? pdHeader['label_' + type] : '').trim();
+                    var inlinePd = (pdHeader['label_' + type + '_line_mode'] === 'inline');
+                    var gapPd = parseInt(pdHeader['label_' + type + '_value_gap_px'], 10);
+                    if (isNaN(gapPd)) gapPd = 0;
+                    var mtPd = parseInt(pdHeader['label_' + type + '_space_above_px'], 10);
+                    if (isNaN(mtPd)) mtPd = 0;
+                    var mbPd = parseInt(pdHeader['label_' + type + '_space_below_px'], 10);
+                    if (isNaN(mbPd)) mbPd = 0;
+                    // Overrides por instancia (si existen en el editor).
+                    var ovGapEl = li.querySelector('.instance-pd-label-value-gap-px');
+                    var ovMtEl = li.querySelector('.instance-pd-space-above-px');
+                    var ovMbEl = li.querySelector('.instance-pd-space-below-px');
+                    if (ovGapEl) {
+                        var ovG = parseInt(ovGapEl.value, 10);
+                        if (!isNaN(ovG)) gapPd = Math.max(0, Math.min(40, ovG));
+                    }
+                    if (ovMtEl) {
+                        var ovA = parseInt(ovMtEl.value, 10);
+                        if (!isNaN(ovA)) mtPd = Math.max(0, Math.min(40, ovA));
+                    }
+                    if (ovMbEl) {
+                        var ovB = parseInt(ovMbEl.value, 10);
+                        if (!isNaN(ovB)) mbPd = Math.max(0, Math.min(40, ovB));
+                    }
+                    var valPd = escapeHtml(sample);
+                    var lblEsc = escapeHtml(lblPd);
+                    var showLblText = showLpd && lblPd !== '';
+                    if (inlinePd) {
+                        rawLine = '<div class="patient-line" style="margin-top:' + mtPd + 'px;margin-bottom:' + mbPd + 'px;">'
+                            + (showLblText ? ('<span class="label" style="margin-right:' + gapPd + 'px;">' + lblEsc + '</span>') : '')
+                            + (showLblText ? valPd : '<span style="margin-left:' + gapPd + 'px;display:inline-block;">' + valPd + '</span>')
+                            + '</div>';
+                    } else {
+                        var valMtPd = showLblText ? 0 : (mtPd + gapPd);
+                        rawLine = (showLblText
+                            ? ('<div class="patient-line" style="margin-top:' + mtPd + 'px;margin-bottom:' + gapPd + 'px;"><span class="label">' + lblEsc + '</span></div>')
+                            : '')
+                            + '<div class="patient-line" style="margin-top:' + valMtPd + 'px;margin-bottom:' + mbPd + 'px;">' + valPd + '</div>';
+                    }
+                    line = '<div style="' + escapeHtml(styleWrap) + '">' + rawLine + '</div>';
+                } else if (sectionKey === 'footer' && headerLikeTypes.indexOf(type) >= 0) {
                     line = buildHeaderPreviewPieceHtml(type, sample, readCardHeaderStyleForJson().header_grid, readInstanceTextStyle(li));
                 } else if (hgHeader && headerLikeTypes.indexOf(type) >= 0) {
                     line = buildHeaderPreviewPieceHtml(type, sample, hgHeader, readInstanceTextStyle(li));
@@ -1723,6 +2502,7 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     function rebuildAllPreviews() {
+        rebuildGridEditors();
         rebuildGridPreview(headerList, previewHeader);
         rebuildGridPreview(patientList, previewPatient);
         rebuildGridPreview(labFirmasList, previewLabFirmas);
@@ -1746,13 +2526,33 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
-    function createInstanceRow(uid, elementType, colCount, enabled, column, columnSpan) {
+    function createInstanceRow(uid, elementType, colCount, enabled, column, columnSpan, sectionKey) {
         if (columnSpan == null) columnSpan = 1;
         var label = (window._elementLabels && window._elementLabels[elementType]) ? window._elementLabels[elementType] : elementType;
+        var pdTypes = ['paciente_nombre', 'paciente_genero', 'paciente_edad', 'paciente_telefono', 'medico', 'fecha_recepcion', 'fecha_reporte', 'numero_orden'];
+        var pdSpacingDefaults = { gap: 0, above: 0, below: 0 };
+        if (sectionKey === 'patient_doctor' && pdTypes.indexOf(elementType) >= 0) {
+            var pdHeader;
+            try {
+                pdHeader = readCardHeaderStyleForJson().patient_doctor_grid;
+            } catch (e) {
+                pdHeader = null;
+            }
+            if (pdHeader) {
+                var g = parseInt(pdHeader['label_' + elementType + '_value_gap_px'], 10);
+                var a = parseInt(pdHeader['label_' + elementType + '_space_above_px'], 10);
+                var b = parseInt(pdHeader['label_' + elementType + '_space_below_px'], 10);
+                pdSpacingDefaults.gap = isNaN(g) ? 0 : Math.max(0, Math.min(40, g));
+                pdSpacingDefaults.above = isNaN(a) ? 0 : Math.max(0, Math.min(40, a));
+                pdSpacingDefaults.below = isNaN(b) ? 0 : Math.max(0, Math.min(40, b));
+            }
+        }
         var li = document.createElement('li');
         li.className = 'list-group-item pdf-instance-item';
         li.setAttribute('data-uid', uid);
         li.setAttribute('data-element-type', elementType);
+        li.setAttribute('data-grid-row', '');
+        li.setAttribute('data-grid-stack', '');
         var sel = document.createElement('select');
         sel.className = 'form-select form-select-sm instance-column';
         sel.style.maxWidth = '11rem';
@@ -1803,6 +2603,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 li.insertAdjacentHTML('beforeend', tplCt.innerHTML.replace(/__PDF_UID__/g, uid));
             }
         } else {
+            var addPdSpacing = (sectionKey === 'patient_doctor' && pdTypes.indexOf(elementType) >= 0);
             li.insertAdjacentHTML('beforeend',
                 '<div class="row g-3 mt-2 pdf-text-style-controls">' +
                 '  <div class="col-12 col-md-6 col-lg-4"><label class="form-label small mb-1">Fuente</label><select class="form-select form-select-sm instance-font-family"><option value="DejaVu Sans">DejaVu Sans</option><option value="Helvetica">Helvetica</option><option value="Arial">Arial</option><option value="Times New Roman">Times New Roman</option><option value="Courier New">Courier New</option></select></div>' +
@@ -1814,10 +2615,103 @@ document.addEventListener('DOMContentLoaded', function() {
                 '  <div class="col-6 col-md-4 col-lg-2"><label class="form-label small mb-1">Esp. letras</label><input type="number" class="form-control form-control-sm instance-letter-spacing" min="-0.2" max="1" step="0.01" value="0"></div>' +
                 '  <div class="col-6 col-md-4 col-lg-2"><label class="form-label small mb-1">Interlineado</label><input type="number" class="form-control form-control-sm instance-line-height" min="1" max="3" step="0.05" value="1.35"></div>' +
                 '  <div class="col-12 col-md-6 col-lg-3"><label class="form-label small mb-1">Sombra</label><select class="form-select form-select-sm instance-text-shadow"><option value="none">Sin sombra</option><option value="soft">Suave</option><option value="medium">Media</option><option value="strong">Fuerte</option></select></div>' +
-                '</div>'
+                '</div>' +
+                (addPdSpacing
+                    ? (
+                        '<div class="row g-3 mt-2 pdf-patient-spacing-controls">' +
+                        '  <div class="col-12 col-md-4 col-lg-4"><label class="form-label small mb-1">Separación label/valor (px)</label>' +
+                        '    <input type="number" class="form-control form-control-sm instance-pd-label-value-gap-px" min="0" max="40" step="1" value="' + pdSpacingDefaults.gap + '"></div>' +
+                        '  <div class="col-12 col-md-4 col-lg-4"><label class="form-label small mb-1">Espacio arriba (px)</label>' +
+                        '    <input type="number" class="form-control form-control-sm instance-pd-space-above-px" min="0" max="40" step="1" value="' + pdSpacingDefaults.above + '"></div>' +
+                        '  <div class="col-12 col-md-4 col-lg-4"><label class="form-label small mb-1">Espacio abajo (px)</label>' +
+                        '    <input type="number" class="form-control form-control-sm instance-pd-space-below-px" min="0" max="40" step="1" value="' + pdSpacingDefaults.below + '"></div>' +
+                        '</div>'
+                    )
+                    : '')
             );
         }
         return li;
+    }
+
+    function isTypeAllowedInSection(type, sectionKey) {
+        var isLabOnly = LAB_ELEMENT_TYPES.indexOf(type) >= 0;
+        if (sectionKey === 'lab_firmas') return isLabOnly || type === 'custom_text';
+        return !isLabOnly;
+    }
+
+    function firstAllowedTypeForSection(sectionKey) {
+        var out = null;
+        Object.keys(window._elementLabels || {}).some(function(type) {
+            if (!isTypeAllowedInSection(type, sectionKey)) return false;
+            out = type;
+            return true;
+        });
+        return out;
+    }
+
+    function selectedTypeForSection(sectionKey) {
+        var addTypeEl = document.getElementById('add_element_type');
+        var t = addTypeEl ? String(addTypeEl.value || '') : '';
+        if (t && isTypeAllowedInSection(t, sectionKey)) return t;
+        return firstAllowedTypeForSection(sectionKey);
+    }
+
+    function readDragPayload(ev) {
+        var raw = ev.dataTransfer ? ev.dataTransfer.getData('text/plain') : '';
+        if (!raw) return null;
+        try {
+            return JSON.parse(raw);
+        } catch (e) {
+            return null;
+        }
+    }
+
+    function dragPayloadFromEventOrState(ev) {
+        var p = readDragPayload(ev);
+        if (p) return p;
+        return activeDragPayload;
+    }
+
+    function copyStandardStyleIfPossible(fromLi, toLi) {
+        if (!fromLi || !toLi) return;
+        if ((fromLi.getAttribute('data-element-type') || '') === 'custom_text') return;
+        if ((toLi.getAttribute('data-element-type') || '') === 'custom_text') return;
+        var ts = readInstanceTextStyle(fromLi);
+        function setIf(q, v) {
+            var el = toLi.querySelector(q);
+            if (el) el.value = String(v);
+        }
+        setIf('.instance-font-family', ts.font_family);
+        setIf('.instance-font-size', ts.font_size_pt);
+        setIf('.instance-font-weight', ts.font_weight);
+        setIf('.instance-font-color', ts.font_color);
+        setIf('.instance-font-style', ts.font_style);
+        setIf('.instance-text-transform', ts.text_transform);
+        setIf('.instance-letter-spacing', ts.letter_spacing_em);
+        setIf('.instance-line-height', ts.line_height);
+        setIf('.instance-text-shadow', ts.text_shadow);
+        ['.instance-pd-label-value-gap-px', '.instance-pd-space-above-px', '.instance-pd-space-below-px'].forEach(function(q) {
+            var src = fromLi.querySelector(q);
+            var dst = toLi.querySelector(q);
+            if (src && dst) dst.value = String(src.value || '0');
+        });
+    }
+
+    function replaceTargetWithPalette(targetLi, sectionKey, newType) {
+        if (!targetLi || !sectionKey || !newType) return;
+        if (!isTypeAllowedInSection(newType, sectionKey)) return;
+        var ul = listForSection(sectionKey);
+        var n = colsForList(ul);
+        var place = readGridPlacement(targetLi, sectionKey);
+        var colSel = targetLi.querySelector('.instance-column');
+        var enabled = colSel ? parseInt(colSel.value, 10) >= 0 : true;
+        var replacement = createInstanceRow(newUid(), newType, n, enabled, place.col, place.span, sectionKey);
+        replacement.setAttribute('data-grid-row', targetLi.getAttribute('data-grid-row') || '');
+        replacement.setAttribute('data-grid-stack', targetLi.getAttribute('data-grid-stack') || '');
+        copyStandardStyleIfPossible(targetLi, replacement);
+        ul.insertBefore(replacement, targetLi.nextSibling);
+        targetLi.remove();
+        wireInstanceSelects();
     }
 
     function listBySectionKey(key) {
@@ -1835,7 +2729,7 @@ document.addEventListener('DOMContentLoaded', function() {
         var ul = listBySectionKey(sec);
         if (!ul || !type) return;
         var n = colsForList(ul);
-        ul.appendChild(createInstanceRow(newUid(), type, n, true, 0, 1));
+        ul.appendChild(createInstanceRow(newUid(), type, n, true, 0, 1, sec));
         wireInstanceSelects();
         rebuildAllPreviews();
     });
@@ -1856,7 +2750,8 @@ document.addEventListener('DOMContentLoaded', function() {
             var spanOrig = li.querySelector('.instance-span');
             var sp = en && spanOrig && !spanOrig.disabled ? parseInt(spanOrig.value, 10) : 1;
             if (isNaN(sp) || sp < 1) sp = 1;
-            var clone = createInstanceRow(newUid(), type, n, en, en ? col : 0, en ? sp : 1);
+            var sectionKey = ul ? (ul.getAttribute('data-section') || '') : '';
+            var clone = createInstanceRow(newUid(), type, n, en, en ? col : 0, en ? sp : 1, sectionKey);
             if (!en && sel) clone.querySelector('.instance-column').value = '-1';
             if (type === 'custom_text') {
                 applyInstanceCustomText(clone, readInstanceCustomText(li));
@@ -1875,6 +2770,12 @@ document.addEventListener('DOMContentLoaded', function() {
                 setIf('.instance-letter-spacing', ts.letter_spacing_em);
                 setIf('.instance-line-height', ts.line_height);
                 setIf('.instance-text-shadow', ts.text_shadow);
+                // Espacios opcionales label/valor (paciente/médico) por instancia.
+                ['.instance-pd-label-value-gap-px', '.instance-pd-space-above-px', '.instance-pd-space-below-px'].forEach(function(q) {
+                    var src = li.querySelector(q);
+                    var dst = clone.querySelector(q);
+                    if (src && dst) dst.value = String(src.value || '0');
+                });
             }
             ul.insertBefore(clone, li.nextSibling);
             wireInstanceSelects();
@@ -1897,6 +2798,13 @@ document.addEventListener('DOMContentLoaded', function() {
             rebuildAllPreviews();
         });
     });
+    [secRowsH, secRowsP, secRowsL, secRowsF].forEach(function(inp) {
+        if (!inp) return;
+        inp.addEventListener('change', function() {
+            inp.value = String(clampRows(inp.value));
+            rebuildAllPreviews();
+        });
+    });
 
     var pdfEditorInst = document.getElementById('pdf-editor-instances');
     if (pdfEditorInst) {
@@ -1916,6 +2824,162 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         });
     }
+
+    function clearGridDropHighlights() {
+        document.querySelectorAll('.pdf-grid-cell-editor.is-drop-target, .pdf-grid-chip.is-drop-target').forEach(function(el) {
+            el.classList.remove('is-drop-target');
+        });
+    }
+
+    document.addEventListener('dragstart', function(ev) {
+        var chip = ev.target.closest('.pdf-grid-chip');
+        if (!chip) return;
+        var payload = {
+            kind: 'instance',
+            uid: chip.getAttribute('data-uid') || '',
+            section: chip.getAttribute('data-section') || ''
+        };
+        activeDragPayload = payload;
+        ev.dataTransfer.setData('text/plain', JSON.stringify(payload));
+        ev.dataTransfer.effectAllowed = 'move';
+    });
+    document.addEventListener('dragend', function() {
+        activeDragPayload = null;
+        clearGridDropHighlights();
+    });
+
+    document.addEventListener('dragover', function(ev) {
+        var chip = ev.target.closest('.pdf-grid-chip');
+        var cell = ev.target.closest('.pdf-grid-cell-editor');
+        if (!chip && !cell) return;
+        var payload = dragPayloadFromEventOrState(ev);
+        if (!payload) return;
+        ev.preventDefault();
+        clearGridDropHighlights();
+        (chip || cell).classList.add('is-drop-target');
+        if (ev.dataTransfer) ev.dataTransfer.dropEffect = payload.kind === 'palette' ? 'copy' : 'move';
+    });
+
+    document.addEventListener('dragleave', function(ev) {
+        var t = ev.target.closest('.pdf-grid-cell-editor, .pdf-grid-chip');
+        if (t) t.classList.remove('is-drop-target');
+    });
+
+    document.addEventListener('drop', function(ev) {
+        var chip = ev.target.closest('.pdf-grid-chip');
+        var cell = ev.target.closest('.pdf-grid-cell-editor');
+        if (!chip && !cell) return;
+        var payload = dragPayloadFromEventOrState(ev);
+        clearGridDropHighlights();
+        if (!payload) return;
+        ev.preventDefault();
+
+        if (chip) {
+            var targetUid = chip.getAttribute('data-uid') || '';
+            var targetSection = chip.getAttribute('data-section') || '';
+            var targetLi = findInstanceByUid(targetSection, targetUid);
+            if (!targetLi) return;
+            var targetPlacement = readGridPlacement(targetLi, targetSection);
+
+            if (payload.kind === 'palette') {
+                replaceTargetWithPalette(targetLi, targetSection, payload.element_type || '');
+            } else if (payload.kind === 'instance') {
+                var srcLi = findInstanceByUid(payload.section || '', payload.uid || '');
+                if (!srcLi || srcLi === targetLi) return;
+                if (!isTypeAllowedInSection(srcLi.getAttribute('data-element-type') || '', targetSection)) return;
+                applyPlacementToLi(srcLi, targetSection, targetPlacement.row == null ? 0 : targetPlacement.row, targetPlacement.col, targetPlacement.span, targetPlacement.stack == null ? 0 : targetPlacement.stack);
+                targetLi.remove();
+                wireInstanceSelects();
+            }
+            rebuildAllPreviews();
+            activeDragPayload = null;
+            return;
+        }
+
+        if (cell) {
+            var sectionKey = cell.getAttribute('data-drop-section') || '';
+            var ul = listForSection(sectionKey);
+            if (!ul) return;
+            var rowIdx = parseInt(cell.getAttribute('data-drop-row') || '0', 10);
+            var colIdx = parseInt(cell.getAttribute('data-drop-col') || '0', 10);
+            var cellSpan = parseInt(cell.getAttribute('data-drop-span') || '1', 10);
+            if (isNaN(rowIdx)) rowIdx = 0;
+            if (isNaN(colIdx)) colIdx = 0;
+            if (isNaN(cellSpan) || cellSpan < 1) cellSpan = 1;
+            var stackCount = cell.querySelectorAll('.pdf-grid-chip').length;
+
+            if (payload.kind === 'palette') {
+                if (!isTypeAllowedInSection(payload.element_type || '', sectionKey)) return;
+                var span = Math.max(1, Math.min(Math.max(1, colsForList(ul) - colIdx), payload.span || 1));
+                if (cell.querySelectorAll('.pdf-grid-chip').length > 0) {
+                    // región existente: usa el ancho de la región.
+                    span = cellSpan;
+                }
+                var li = createInstanceRow(newUid(), payload.element_type || '', colsForList(ul), true, colIdx, span, sectionKey);
+                applyPlacementToLi(li, sectionKey, rowIdx, colIdx, span, stackCount);
+                ul.appendChild(li);
+                wireInstanceSelects();
+            } else if (payload.kind === 'instance') {
+                var srcList = listForSection(payload.section || '');
+                var srcLi = srcList ? findInstanceByUid(payload.section || '', payload.uid || '') : null;
+                if (!srcLi) return;
+                if (!isTypeAllowedInSection(srcLi.getAttribute('data-element-type') || '', sectionKey)) return;
+                var srcPlacement = readGridPlacement(srcLi, payload.section || sectionKey);
+                var spanMove = srcPlacement.span;
+                if (cell.querySelectorAll('.pdf-grid-chip').length > 0) spanMove = cellSpan;
+                applyPlacementToLi(srcLi, sectionKey, rowIdx, colIdx, spanMove, stackCount);
+                wireInstanceSelects();
+            }
+            rebuildAllPreviews();
+            activeDragPayload = null;
+        }
+    });
+
+    document.addEventListener('click', function(ev) {
+        var addCellBtn = ev.target.closest('.pdf-grid-add-cell');
+        if (addCellBtn) {
+            var secAdd = addCellBtn.getAttribute('data-add-section') || '';
+            var rowAdd = parseInt(addCellBtn.getAttribute('data-add-row') || '0', 10);
+            var colAdd = parseInt(addCellBtn.getAttribute('data-add-col') || '0', 10);
+            var spanAdd = parseInt(addCellBtn.getAttribute('data-add-span') || '1', 10);
+            if (isNaN(rowAdd) || isNaN(colAdd) || isNaN(spanAdd)) return;
+            addTypeToRegion(secAdd, rowAdd, colAdd, spanAdd, selectedTypeForSection(secAdd));
+            rebuildAllPreviews();
+            return;
+        }
+
+        var spanDec = ev.target.closest('.pdf-grid-chip-span-dec');
+        var mergeCol = ev.target.closest('.pdf-grid-chip-merge-col');
+        var mergeRow = ev.target.closest('.pdf-grid-chip-merge-row');
+        if (spanDec || mergeCol || mergeRow) {
+            var chipSpan = (spanDec || mergeCol || mergeRow).closest('.pdf-grid-chip');
+            if (!chipSpan) return;
+            var section = chipSpan.getAttribute('data-section') || '';
+            var row = parseInt(chipSpan.getAttribute('data-row') || '0', 10);
+            var col = parseInt(chipSpan.getAttribute('data-col') || '0', 10);
+            var spanCur = parseInt(chipSpan.getAttribute('data-span') || '1', 10);
+            if (isNaN(row) || isNaN(col) || isNaN(spanCur)) return;
+            var ok = false;
+            if (spanDec) {
+                ok = applyRegionSpan(section, row, col, spanCur, spanCur - 1);
+            } else if (mergeCol) {
+                ok = applyRegionSpan(section, row, col, spanCur, spanCur + 1);
+            } else if (mergeRow) {
+                ok = mergeRegionWithNextRow(section, row, col, spanCur);
+            }
+            if (ok) {
+                rebuildGridEditors();
+                rebuildAllPreviews();
+            }
+            return;
+        }
+        var btn = ev.target.closest('.pdf-grid-chip-edit');
+        if (!btn) return;
+        var chip = btn.closest('.pdf-grid-chip');
+        if (!chip) return;
+        var li = findInstanceByUid(chip.getAttribute('data-section') || '', chip.getAttribute('data-uid') || '');
+        if (li) li.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    });
 
     document.addEventListener('change', function(e) {
         var t = e.target;
@@ -1953,6 +3017,17 @@ document.addEventListener('DOMContentLoaded', function() {
         addSecEl.addEventListener('change', syncAddElementTypeOptions);
     }
     syncAddElementTypeOptions();
+    renderFieldPalette();
+    if (toggleInstanceLists) {
+        var applyListVisibility = function() {
+            var show = !!toggleInstanceLists.checked;
+            document.querySelectorAll('.pdf-instance-list-col').forEach(function(el) {
+                el.style.display = show ? '' : 'none';
+            });
+        };
+        toggleInstanceLists.addEventListener('change', applyListVisibility);
+        applyListVisibility();
+    }
 
     wireInstanceSelects();
     rebuildAllPreviews();
@@ -1961,7 +3036,7 @@ document.addEventListener('DOMContentLoaded', function() {
     if (pdfEditorRoot) {
         pdfEditorRoot.addEventListener('blur', function(ev) {
             var t = ev.target;
-            if (t && t.classList && (t.classList.contains('instance-font-size') || t.classList.contains('instance-letter-spacing') || t.classList.contains('instance-line-height') || t.classList.contains('ct-lbl-font-size') || t.classList.contains('ct-val-font-size') || t.classList.contains('ct-lbl-letter-spacing') || t.classList.contains('ct-val-letter-spacing') || t.classList.contains('ct-lbl-line-height') || t.classList.contains('ct-val-line-height'))) {
+            if (t && t.classList && (t.classList.contains('instance-font-size') || t.classList.contains('instance-letter-spacing') || t.classList.contains('instance-line-height') || t.classList.contains('instance-pd-label-value-gap-px') || t.classList.contains('instance-pd-space-above-px') || t.classList.contains('instance-pd-space-below-px') || t.classList.contains('ct-lbl-font-size') || t.classList.contains('ct-val-font-size') || t.classList.contains('ct-lbl-letter-spacing') || t.classList.contains('ct-val-letter-spacing') || t.classList.contains('ct-lbl-line-height') || t.classList.contains('ct-val-line-height'))) {
                 clampInstanceStyleField(t);
                 rebuildAllPreviews();
             }
@@ -2008,6 +3083,12 @@ document.addEventListener('DOMContentLoaded', function() {
             var v = el ? String(el.value || '').trim() : 'stacked';
             return v === 'inline' ? 'inline' : 'stacked';
         }
+        function pickPaginationPos(id, fallback) {
+            var el = document.getElementById(id);
+            var v = el ? String(el.value || '').trim() : fallback;
+            var allowed = ['top-left', 'top-center', 'top-right', 'bottom-left', 'bottom-center', 'bottom-right'];
+            return allowed.indexOf(v) >= 0 ? v : fallback;
+        }
         function readSectionGridWrap(prefix, defBodyBg, defBodyText, defFontSize) {
             var fs = defFontSize !== undefined ? defFontSize : 9.5;
             return {
@@ -2032,6 +3113,9 @@ document.addEventListener('DOMContentLoaded', function() {
             pdGrid['label_' + fid] = pickLfText('pd_label_' + fid, pdDefs[fid]);
             pdGrid['show_label_' + fid] = pickChk('pd_show_label_' + fid, true);
             pdGrid['label_' + fid + '_line_mode'] = pickLineModeSelect('pd_label_' + fid + '_line_mode');
+            pdGrid['label_' + fid + '_value_gap_px'] = pickNum('pd_label_' + fid + '_value_gap_px', 0, 40, 0);
+            pdGrid['label_' + fid + '_space_above_px'] = pickNum('pd_label_' + fid + '_space_above_px', 0, 40, 0);
+            pdGrid['label_' + fid + '_space_below_px'] = pickNum('pd_label_' + fid + '_space_below_px', 0, 40, 0);
         });
         var ftGrid = readSectionGridWrap('ft', '#FFFFFF', '#666666', 8);
         var ftBaseFs = pickNum('ft_font_size', 7, 20, 8);
@@ -2097,6 +3181,12 @@ document.addEventListener('DOMContentLoaded', function() {
             header_grid: hgGrid,
             patient_doctor_grid: pdGrid,
             footer_grid: ftGrid,
+            print_pagination: {
+                enabled: pickChk('pp_enabled', false),
+                label_text: pickLfText('pp_label_text', 'Página'),
+                label_position: pickPaginationPos('pp_label_position', 'bottom-left'),
+                value_position: pickPaginationPos('pp_value_position', 'bottom-right')
+            },
             notes: {
                 title_bg_color: pickHex('ns_title_bg', '#FFF3CD'),
                 title_text_color: pickHex('ns_title_text', '#664D03'),
@@ -2263,6 +3353,16 @@ document.addEventListener('DOMContentLoaded', function() {
             if (!el) return;
             if (String(el.value || '').length > 120) errs.push('Texto demasiado largo en «' + id + '» (máx. 120).');
         });
+        var ppLbl = document.getElementById('pp_label_text');
+        if (ppLbl && String(ppLbl.value || '').length > 60) errs.push('Texto de etiqueta de paginación: máx. 60 caracteres.');
+        ['pp_label_position', 'pp_value_position'].forEach(function(id) {
+            var el = document.getElementById(id);
+            if (!el) return;
+            var v = String(el.value || '').trim();
+            if (['top-left', 'top-center', 'top-right', 'bottom-left', 'bottom-center', 'bottom-right'].indexOf(v) < 0) {
+                errs.push('Posición inválida en paginación (' + id + ').');
+            }
+        });
         (window._headerLabelFieldIds || []).forEach(function(fid) {
             var el = document.getElementById('hg_label_' + fid);
             if (el && String(el.value || '').length > 120) errs.push('Etiqueta demasiado larga en encabezado: ' + fid + '.');
@@ -2270,6 +3370,11 @@ document.addEventListener('DOMContentLoaded', function() {
         ['paciente_nombre', 'paciente_genero', 'paciente_edad', 'paciente_telefono', 'medico', 'fecha_recepcion', 'fecha_reporte', 'numero_orden'].forEach(function(fid) {
             var el = document.getElementById('pd_label_' + fid);
             if (el && String(el.value || '').length > 120) errs.push('Etiqueta demasiado larga en paciente/médico: ' + fid + '.');
+        });
+        ['paciente_nombre', 'paciente_genero', 'paciente_edad', 'paciente_telefono', 'medico', 'fecha_recepcion', 'fecha_reporte', 'numero_orden'].forEach(function(fid) {
+            pushIfBadNum('pd_label_' + fid + '_value_gap_px', 0, 40, 'Separación entre etiqueta y valor (px): entre 0 y 40.');
+            pushIfBadNum('pd_label_' + fid + '_space_above_px', 0, 40, 'Espacio arriba (px): entre 0 y 40.');
+            pushIfBadNum('pd_label_' + fid + '_space_below_px', 0, 40, 'Espacio abajo (px): entre 0 y 40.');
         });
         var nsSec = document.getElementById('ns_section_title');
         if (nsSec && String(nsSec.value || '').length > 120) errs.push('Título de notas: máx. 120 caracteres.');
@@ -2373,6 +3478,22 @@ document.addEventListener('DOMContentLoaded', function() {
             }
             var shEl = li.querySelector('.instance-text-shadow');
             if (shEl && sh.indexOf(String(shEl.value || '').trim()) < 0) errs.push('«' + label + '»: sombra no permitida.');
+            // Espaciado label/valor por instancia (paciente/médico).
+            var gEl = li.querySelector('.instance-pd-label-value-gap-px');
+            if (gEl) {
+                var gV = parseInt(gEl.value, 10);
+                if (isNaN(gV) || gV < 0 || gV > 40) errs.push('«' + label + '»: Separación label/valor (px): entre 0 y 40.');
+            }
+            var aEl = li.querySelector('.instance-pd-space-above-px');
+            if (aEl) {
+                var aV = parseInt(aEl.value, 10);
+                if (isNaN(aV) || aV < 0 || aV > 40) errs.push('«' + label + '»: Espacio arriba (px): entre 0 y 40.');
+            }
+            var bEl = li.querySelector('.instance-pd-space-below-px');
+            if (bEl) {
+                var bV = parseInt(bEl.value, 10);
+                if (isNaN(bV) || bV < 0 || bV > 40) errs.push('«' + label + '»: Espacio abajo (px): entre 0 y 40.');
+            }
         });
         return errs;
     }
@@ -2391,10 +3512,19 @@ document.addEventListener('DOMContentLoaded', function() {
             var b = parseFloat(el.value);
             if (isNaN(b)) b = 1.35;
             el.value = String(Math.round(Math.max(1, Math.min(3, b)) * 100) / 100);
+        } else if (
+            el.classList.contains('instance-pd-label-value-gap-px') ||
+            el.classList.contains('instance-pd-space-above-px') ||
+            el.classList.contains('instance-pd-space-below-px')
+        ) {
+            var n = parseInt(el.value, 10);
+            if (isNaN(n)) n = 0;
+            el.value = String(Math.max(0, Math.min(40, n)));
         }
     }
 
     function parseInstanceLi(li, section) {
+        var pdTypes = ['paciente_nombre', 'paciente_genero', 'paciente_edad', 'paciente_telefono', 'medico', 'fecha_recepcion', 'fecha_reporte', 'numero_orden'];
         var sel = li.querySelector('.instance-column');
         var v = sel ? parseInt(sel.value, 10) : -1;
         var cols = section === 'header' ? clampCols(secColsH.value) : (section === 'patient_doctor' ? clampCols(secColsP.value) : (section === 'lab_firmas' ? clampCols(secColsL ? secColsL.value : '3') : clampCols(secColsF.value)));
@@ -2417,17 +3547,40 @@ document.addEventListener('DOMContentLoaded', function() {
             column: col,
             column_span: span
         };
+        var gridRowRaw = li.getAttribute('data-grid-row');
+        var gridStackRaw = li.getAttribute('data-grid-stack');
+        if (gridRowRaw !== null && String(gridRowRaw).trim() !== '') {
+            base.grid_row = Math.max(0, parseInt(gridRowRaw, 10) || 0);
+        }
+        if (gridStackRaw !== null && String(gridStackRaw).trim() !== '') {
+            base.grid_stack = Math.max(0, parseInt(gridStackRaw, 10) || 0);
+        }
         if (elType === 'custom_text') {
             base.text_style = defaultInstanceTextStyleJson();
             base.custom_text = readInstanceCustomText(li);
         } else {
             base.text_style = readInstanceTextStyle(li);
         }
+        if (section === 'patient_doctor' && pdTypes.indexOf(elType) >= 0) {
+            function readInt(sel, fallback) {
+                var el = li.querySelector(sel);
+                var n = el ? parseInt(el.value, 10) : NaN;
+                if (isNaN(n)) n = fallback;
+                return Math.max(0, Math.min(40, n));
+            }
+            base.label_value_gap_px = readInt('.instance-pd-label-value-gap-px', 0);
+            base.label_space_above_px = readInt('.instance-pd-space-above-px', 0);
+            base.label_space_below_px = readInt('.instance-pd-space-below-px', 0);
+        }
         return base;
     }
 
     document.getElementById('pdf_tpl_form').addEventListener('submit', function(ev) {
         var styleErrs = validatePdfEditorStylesBeforeSave();
+        var gridErrs = validateGridConflictsBeforeSave();
+        if (gridErrs.length > 0) {
+            styleErrs = styleErrs.concat(gridErrs);
+        }
         if (styleErrs.length > 0) {
             ev.preventDefault();
             var maxShow = 10;

@@ -10,6 +10,22 @@ use Dompdf\Options;
  */
 class PdfService
 {
+    private const TOTAL_PAGES_TOKEN = '__PDF_TOTAL_PAGES__';
+
+    protected function makeDompdf(Options $options): Dompdf
+    {
+        $dompdf = new Dompdf($options);
+        $dompdf->setPaper('letter', 'portrait');
+
+        return $dompdf;
+    }
+
+    protected function renderHtmlToDompdf(Dompdf $dompdf, string $html): void
+    {
+        $dompdf->loadHtml($html, 'UTF-8');
+        $dompdf->render();
+    }
+
     /**
      * Genera PDF desde HTML
      */
@@ -20,10 +36,20 @@ class PdfService
         $options->set('isRemoteEnabled', true);
         $options->set('defaultFont', 'DejaVu Sans');
 
-        $dompdf = new Dompdf($options);
-        $dompdf->loadHtml($html, 'UTF-8');
-        $dompdf->setPaper('letter', 'portrait');
-        $dompdf->render();
+        // Dompdf no garantiza counter(pages) correcto dentro del flujo (puede dar 0 en PDFs de 1 página).
+        // Para el elemento "total de páginas" hacemos doble render solo si existe el token.
+        if (strpos($html, self::TOTAL_PAGES_TOKEN) !== false) {
+            $probe = $this->makeDompdf($options);
+            $this->renderHtmlToDompdf($probe, $html);
+            $pageCount = (int) $probe->getCanvas()->get_page_count();
+            if ($pageCount < 1) {
+                $pageCount = 1;
+            }
+            $html = str_replace(self::TOTAL_PAGES_TOKEN, (string) $pageCount, $html);
+        }
+
+        $dompdf = $this->makeDompdf($options);
+        $this->renderHtmlToDompdf($dompdf, $html);
 
         return $dompdf->output();
     }
