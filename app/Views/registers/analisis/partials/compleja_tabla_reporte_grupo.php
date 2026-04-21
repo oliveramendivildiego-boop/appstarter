@@ -7,6 +7,7 @@
  * @var string $variant 'web' | 'pdf' | 'screen_pdf' (misma maquetación que PDF + inputs editables en pantalla)
  * @var array<int,string> $report_pria_tipo_muestra_nombre prianacategoria_id => nombre (config. en análisis clínico)
  * @var array<int,string> $report_pria_metodo_nombre prianacategoria_id => nombre del método (config.)
+ * @var array<int,list<array<string,mixed>>> $report_pria_refs_consolidada tabla consolidada de refs. por población (pruebas compuestas)
  */
 $variant = $variant ?? 'web';
 $usePdfChrome = ($variant === 'pdf' || $variant === 'screen_pdf');
@@ -185,4 +186,65 @@ foreach ($segments as $segTmp) {
     <?= $wrapClose ?>
     <?php endif; ?>
 <?php endforeach; ?>
+<?php
+$refsMatrixAll = $report_pria_refs_consolidada ?? [];
+if ($priaIdTitulo > 0 && ! empty($refsMatrixAll[$priaIdTitulo]) && $groupTieneAlgunResultado) :
+    $matrixRows = $refsMatrixAll[$priaIdTitulo];
+    $showSexoCol = false;
+    foreach ($matrixRows as $mr) {
+        $sx = strtolower(trim((string) ($mr['sexo'] ?? '')));
+        if ($sx !== '' && $sx !== 'ambos') {
+            $showSexoCol = true;
+            break;
+        }
+    }
+    $matrixWrapOpen = ! $usePdfChrome ? '<div class="table-responsive mb-3">' : '<div class="report-segment-table-wrap report-refs-matrix-wrap">';
+    $matrixTableClass = $usePdfChrome ? 'results report-refs-matrix' : 'table table-sm table-bordered mb-0';
+    ?>
+<?= $matrixWrapOpen ?>
+    <?php if ($usePdfChrome): ?>
+    <div class="report-refs-matrix-title pdf-card-header" style="margin-top:10px;">Valores de referencia por grupo poblacional</div>
+    <?php else: ?>
+    <div class="report-refs-matrix-title-web px-2 py-2 mt-3 mb-2 bg-light border-start border-4 border-secondary rounded-end small fw-semibold text-uppercase">Valores de referencia por grupo poblacional</div>
+    <?php endif; ?>
+    <table class="<?= esc($matrixTableClass, 'attr') ?>"<?= $usePdfChrome ? ' style="font-size:8pt;width:100%;"' : '' ?>>
+        <thead<?= $usePdfChrome ? '' : ' class="table-light"' ?>>
+            <tr>
+                <th>Grupo poblacional</th>
+                <th>Parámetro</th>
+                <?php if ($showSexoCol): ?>
+                <th class="text-center">Sexo</th>
+                <?php endif; ?>
+                <th class="text-center">Valor de referencia</th>
+            </tr>
+        </thead>
+        <tbody>
+            <?php foreach ($matrixRows as $mrow) : ?>
+                <?php
+                $mrow = is_array($mrow) ? $mrow : [];
+                if (! registro_tiene_rango_referencial($mrow['valor_min'] ?? '', $mrow['valor_max'] ?? '')) {
+                    continue;
+                }
+                $sexoTxt = trim((string) ($mrow['sexo'] ?? ''));
+                $sexoLower = strtolower($sexoTxt);
+                if ($sexoLower === 'ambos' || $sexoLower === '') {
+                    $sexoTxt = '—';
+                } else {
+                    $sexoTxt = esc($sexoTxt);
+                }
+                $refTxt = registro_rango_referencial_texto($mrow['valor_min'] ?? '', $mrow['valor_max'] ?? '', $mrow['umedida'] ?? '');
+                ?>
+            <tr>
+                <td><?= esc(trim((string) ($mrow['poblacion_nombre'] ?? ''))) ?></td>
+                <td><?= esc(trim((string) ($mrow['nombre'] ?? ''))) ?></td>
+                <?php if ($showSexoCol): ?>
+                <td class="text-center"><?= $sexoTxt ?></td>
+                <?php endif; ?>
+                <td class="text-center"><?= esc($refTxt) ?></td>
+            </tr>
+            <?php endforeach; ?>
+        </tbody>
+    </table>
+</div>
+<?php endif; ?>
 <?php endif; ?>

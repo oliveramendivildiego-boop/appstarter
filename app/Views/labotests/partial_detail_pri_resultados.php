@@ -32,7 +32,7 @@ $sexoMap = ['ambos' => 'Ambos', 'masculino' => 'Masculino', 'femenino' => 'Femen
                 <?php
                 $rowDataPri = [
                     'priresultados_id' => (int) ($pr['priresultados_id'] ?? 0),
-                    'id_poblacion' => (int) ($pr['id_poblacion'] ?? 3),
+                    'id_poblacion' => (int) ($pr['id_poblacion'] ?? 15),
                     'sexo' => $pr['sexo'] ?? 'ambos',
                     'valor_min' => $pr['valor_min'] ?? '',
                     'valor_max' => $pr['valor_max'] ?? '',
@@ -244,7 +244,7 @@ $sexoMap = ['ambos' => 'Ambos', 'masculino' => 'Masculino', 'femenino' => 'Femen
     function fillFormPri(data) {
         data = data || {};
         if (inputId) inputId.value = String((data.priresultados_id || 0) | 0);
-        setField('id_poblacion', (data.id_poblacion || 3) | 0);
+        setField('id_poblacion', (data.id_poblacion || 15) | 0);
         setField('sexo', data.sexo || 'ambos');
         setField('valor_min', data.valor_min || '');
         setField('valor_max', data.valor_max || '');
@@ -276,7 +276,7 @@ $sexoMap = ['ambos' => 'Ambos', 'masculino' => 'Masculino', 'femenino' => 'Femen
     function clearFormPri() {
         fillFormPri({
             priresultados_id: 0,
-            id_poblacion: 3,
+            id_poblacion: 15,
             sexo: 'ambos',
             valor_min: '',
             valor_max: '',
@@ -559,7 +559,7 @@ $sexoMap = ['ambos' => 'Ambos', 'masculino' => 'Masculino', 'femenino' => 'Femen
     <?php if ($editar_pri ?? 0): ?>
     fillFormPri(<?= json_encode([
         'priresultados_id' => (int) ($editar_pri ?? 0),
-        'id_poblacion' => (int) ($editar_pri_data['id_poblacion'] ?? 3),
+        'id_poblacion' => (int) ($editar_pri_data['id_poblacion'] ?? 15),
         'sexo' => $editar_pri_data['sexo'] ?? 'ambos',
         'valor_min' => $editar_pri_data['valor_min'] ?? '',
         'valor_max' => $editar_pri_data['valor_max'] ?? '',

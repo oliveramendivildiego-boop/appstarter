@@ -65,6 +65,7 @@ foreach ($grupos as $padre => $items):
         'grupos' => [$padre => $items],
         'report_pria_tipo_muestra_nombre' => $report_pria_tipo_muestra_nombre ?? [],
         'report_pria_metodo_nombre'       => $report_pria_metodo_nombre ?? [],
+        'report_pria_refs_consolidada'    => $report_pria_refs_consolidada ?? [],
     ]);
 endforeach;
 endif;

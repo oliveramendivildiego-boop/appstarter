@@ -404,6 +404,7 @@ class Registers extends SecureArea
             'report_pria_tipo_muestra_nombre' => $data['report_pria_tipo_muestra_nombre'] ?? [],
             'report_pria_metodo_nombre'       => $data['report_pria_metodo_nombre'] ?? [],
             'report_lab_firmas'               => $data['report_lab_firmas'] ?? [],
+            'report_pria_refs_consolidada'    => $data['report_pria_refs_consolidada'] ?? [],
             'registerModel'     => $this->registerModel,
             'allowed_modules'   => $this->allowed_modules,
             'user_info'         => $this->user_info,

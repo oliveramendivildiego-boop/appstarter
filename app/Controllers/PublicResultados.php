@@ -45,6 +45,7 @@ class PublicResultados extends BaseController
             'report_pria_tipo_muestra_nombre' => $data['report_pria_tipo_muestra_nombre'] ?? [],
             'report_pria_metodo_nombre'       => $data['report_pria_metodo_nombre'] ?? [],
             'report_lab_firmas'               => $data['report_lab_firmas'] ?? [],
+            'report_pria_refs_consolidada'    => $data['report_pria_refs_consolidada'] ?? [],
             'report_emitido_en'               => $registerService->reportEmitidoEnForView($id),
             'public_resultados_token'         => strtolower((string) preg_replace('/[^a-f0-9]/', '', $token)),
         ]);

@@ -782,6 +782,63 @@ class RegisterModel extends Model
     }
 
     /**
+     * Todas las filas de referencia de sub-análisis (secanacategoria) de una prueba compuesta,
+     * sin colapsar por población: para tabla consolidada en reporte cuando hay varios grupos poblacionales.
+     *
+     * @return list<array<string,mixed>>
+     */
+    public function getSecReferenciasConsolidadasSinColapsar(int $prianacategoriaId): array
+    {
+        if ($prianacategoriaId < 1) {
+            return [];
+        }
+        $s  = $this->db->prefixTable('secanacategoria');
+        $p  = $this->db->prefixTable('prianacategoria');
+        $a  = $this->db->prefixTable('anacategoria');
+        $pb = $this->db->prefixTable('poblacion');
+
+        $select = "{$s}.secanacategoria_id, {$s}.prianacategoria_id, {$s}.nombre, {$s}.paciente_id, {$s}.valor_min, {$s}.valor_max, {$s}.umedida, {$pb}.name AS poblacion_nombre, {$pb}.orden AS poblacion_orden";
+        if ($this->hasColumn('secanacategoria', 'sexo')) {
+            $select .= ", {$s}.sexo";
+        }
+
+        $builder = $this->db->table('secanacategoria')
+            ->select($select)
+            ->join('prianacategoria', "{$p}.prianacategoria_id = {$s}.prianacategoria_id")
+            ->join('anacategoria', "{$a}.anacategoria_id = {$p}.anacategoria_id")
+            ->join('poblacion', "{$pb}.id_poblacion = {$s}.paciente_id", 'left')
+            ->where("{$s}.prianacategoria_id", $prianacategoriaId)
+            ->where("({$s}.deleted = 0 OR {$s}.deleted IS NULL)");
+
+        if ($this->hasColumn('secanacategoria', 'es_separador')) {
+            $builder->groupStart()
+                ->where("{$s}.es_separador", 0)
+                ->orWhere("{$s}.es_separador IS NULL", null, false)
+                ->groupEnd();
+        }
+
+        if ($this->hasColumn('secanacategoria', 'orden')) {
+            $builder->orderBy("{$s}.orden", 'ASC')
+                ->orderBy("{$pb}.orden", 'ASC');
+        } else {
+            $builder->orderBy("{$pb}.orden", 'ASC');
+        }
+
+        $rows = $builder->orderBy("{$s}.secanacategoria_id", 'ASC')->get()->getResultArray();
+
+        foreach ($rows as &$r) {
+            $nomPob = (string) ($r['poblacion_nombre'] ?? '');
+            $r['poblacion_nombre'] = html_entity_decode($nomPob, ENT_QUOTES | ENT_HTML5, 'UTF-8');
+            if (trim($r['poblacion_nombre']) === '') {
+                $r['poblacion_nombre'] = (string) ($r['paciente_id'] ?? '');
+            }
+        }
+        unset($r);
+
+        return $rows;
+    }
+
+    /**
      * Obtiene la fila del registro (para reporte: person_id, doctor_id, ingreso).
      * No hace JOIN con regvalues para que el reporte muestre paciente/doctor aunque aún no haya valores guardados.
      */
@@ -862,7 +919,7 @@ class RegisterModel extends Model
         $f = $this->db->prefixTable('formulas');
         $pobIds = array_values(array_unique(array_map('intval', $matchingPoblacionIds)));
         if ($pobIds === []) {
-            $pobIds = [3];
+            $pobIds = [15];
         }
 
         $makeBuilder = function () use ($sec, $f, $prianacategoriaId) {
@@ -888,7 +945,7 @@ class RegisterModel extends Model
         $builder = $makeBuilder();
         $builder->groupStart()
             ->whereIn("{$sec}.paciente_id", $pobIds)
-            ->orWhere("{$sec}.paciente_id", 3);
+            ->orWhere("{$sec}.paciente_id", 15);
         if ($this->hasColumn('secanacategoria', 'es_separador')) {
             $builder->orWhere("{$sec}.es_separador", 1);
         }
@@ -1190,7 +1247,7 @@ class RegisterModel extends Model
                  WHERE prff.prianacategoria_id = pt.prianacategoria_id
                    AND pt.compleja = 0 AND (prff.deleted = 0 OR prff.deleted IS NULL)
                    AND prff.id_poblacion IN {$poblacionIn}{$sexoCondFallback}
-                 ORDER BY CASE WHEN prff.id_poblacion = 3 THEN 1 ELSE 0 END
+                 ORDER BY CASE WHEN prff.id_poblacion = 15 THEN 1 ELSE 0 END
                  LIMIT 1) AS priresultados_id_filtered
                 FROM {$pt} pt
                 LEFT JOIN {$ac} ac ON ac.anacategoria_id = pt.anacategoria_id
@@ -1283,7 +1340,7 @@ class RegisterModel extends Model
                 $r['umedida'] = $fr['umedida'] ?? '';
                 $r['formulas_id'] = $fr['formulas_id'] ?? 1;
                 $r['formula_expresion'] = $fr['formula_expresion'] ?? '';
-                $r['id_poblacion'] = $fr['id_poblacion'] ?? 3;
+                $r['id_poblacion'] = $fr['id_poblacion'] ?? 15;
                 unset($r['opcion_id_fallback'], $r['priresultados_id_fallback'], $r['priresultados_id_filtered']);
                 $byPria[$pid] = $r;
             }

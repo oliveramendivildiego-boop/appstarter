@@ -1443,33 +1443,17 @@ class Reports extends SecureArea
     {
         $busqueda = $this->request->getGet('busqueda') ?? '';
         $data = $this->reportModel->getValoresReferencia($busqueda);
-
-        // Depuración temporal - comparar con exportación
-        error_log('=== VISTA DEBUG ===');
-        error_log('Total registros en vista: ' . count($data));
-        error_log('Búsqueda en vista: "' . $busqueda . '"');
-        
-        $conValores = 0;
-        $sinValores = 0;
-        foreach ($data as $item) {
-            if (!empty($item['valor_min']) || !empty($item['valor_max'])) {
-                $conValores++;
-            } else {
-                $sinValores++;
-            }
-        }
-        error_log('Vista - Registros con valores: ' . $conValores);
-        error_log('Vista - Registros sin valores: ' . $sinValores);
-        error_log('=== FIN VISTA DEBUG ===');
+        $poblacionLabels = $this->poblacionLabelMap();
 
         return view('reports/valores_referencia', [
-            'title'           => 'Reporte de valores de referencia',
-            'current_module'  => 'reports',
-            'subtitle'        => 'Valores de referencia de todas las pruebas',
-            'data'            => $data,
-            'busqueda'        => $busqueda,
-            'allowed_modules' => $this->allowed_modules,
-            'user_info'       => $this->user_info,
+            'title'             => 'Reporte de valores de referencia',
+            'current_module'    => 'reports',
+            'subtitle'          => 'Valores de referencia de todas las pruebas',
+            'data'              => $data,
+            'busqueda'          => $busqueda,
+            'poblacion_labels'  => $poblacionLabels,
+            'allowed_modules'   => $this->allowed_modules,
+            'user_info'         => $this->user_info,
         ]);
     }
 
@@ -1480,29 +1464,7 @@ class Reports extends SecureArea
     {
         $busqueda = $this->request->getGet('busqueda') ?? '';
         $data = $this->reportModel->getValoresReferencia($busqueda);
-
-        // Depuración temporal
-        error_log('=== EXPORTACIÓN DEBUG ===');
-        error_log('Total registros obtenidos: ' . count($data));
-        error_log('Búsqueda: "' . $busqueda . '"');
-        
-        $conValores = 0;
-        $sinValores = 0;
-        foreach ($data as $item) {
-            if (!empty($item['valor_min']) || !empty($item['valor_max'])) {
-                $conValores++;
-            } else {
-                $sinValores++;
-            }
-        }
-        error_log('Registros con valores: ' . $conValores);
-        error_log('Registros sin valores: ' . $sinValores);
-        
-        // Mostrar primeras 5 filas para depuración
-        for ($i = 0; $i < min(5, count($data)); $i++) {
-            error_log('Registro ' . ($i + 1) . ': ' . json_encode($data[$i]));
-        }
-        error_log('=== FIN EXPORTACIÓN DEBUG ===');
+        $poblacionLabels = $this->poblacionLabelMap();
 
         $filename = 'valores_referencia_' . date('Y-m-d_H-i-s') . '.csv';
         
@@ -1524,7 +1486,7 @@ class Reports extends SecureArea
             }
             
             // Funciones helper para exportación
-            $poblacion = $this->getPoblacionLabel($item['poblacion'] ?? 3);
+            $poblacion = $this->labelForPoblacionId($item['poblacion'] ?? null, $poblacionLabels);
             $sexo = $this->getSexoLabel($item['sexo'] ?? 'ambos');
             
             fputcsv($output, [
@@ -1909,28 +1871,45 @@ class Reports extends SecureArea
             'Valores de referencia',
             $sub,
             'reports/pdf/content/valores_referencia',
-            ['data' => $data]
+            [
+                'data'              => $data,
+                'poblacion_labels'  => $this->poblacionLabelMap(),
+            ]
         );
     }
 
     /**
-     * Helper para obtener etiqueta de población
+     * id_poblacion / paciente_id => nombre (tabla poblacion, misma fuente que Config → Población).
+     *
+     * @return array<int, string>
      */
-    private function getPoblacionLabel($paciente_id)
+    private function poblacionLabelMap(): array
     {
-        // Manejar valores nulos o vacíos
-        if ($paciente_id === null || $paciente_id === '' || $paciente_id === 0) {
-            return 'Adulto'; // Valor por defecto
+        $map = [];
+        foreach (model(PoblacionModel::class)->getAll() as $row) {
+            $map[(int) ($row['id_poblacion'] ?? 0)] = (string) ($row['name'] ?? '');
         }
-        
-        $poblaciones = [
-            1 => 'Recién nacido',
-            2 => 'Niño', 
-            3 => 'Adulto',
-            4 => 'Adulto mayor',
-            5 => 'Embarazada'
-        ];
-        return $poblaciones[$paciente_id] ?? 'Adulto'; // Valor por defecto si no encuentra
+
+        return $map;
+    }
+
+    /**
+     * Etiqueta legible para un id de población; si no está en catálogo, muestra el id numérico.
+     */
+    private function labelForPoblacionId($poblacionId, array $map): string
+    {
+        if ($poblacionId === null || $poblacionId === '') {
+            return '—';
+        }
+        $id = (int) $poblacionId;
+        if ($id === 0) {
+            return '—';
+        }
+        if (isset($map[$id]) && $map[$id] !== '') {
+            return $map[$id];
+        }
+
+        return (string) $id;
     }
 
     /**

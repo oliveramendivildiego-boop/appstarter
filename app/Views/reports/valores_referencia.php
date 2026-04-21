@@ -1,20 +1,16 @@
 <?php
-function getPoblacionLabel($paciente_id) {
-    // Manejar valores nulos o vacíos
-    if ($paciente_id === null || $paciente_id === '' || $paciente_id === 0) {
-        return 'Adulto'; // Valor por defecto
+$poblacionLabels = $poblacion_labels ?? [];
+$pobLabel       = static function ($id) use ($poblacionLabels): string {
+    if ($id === null || $id === '') {
+        return '—';
     }
-    
-    $poblaciones = [
-        1 => 'Recién nacido',
-        2 => 'Niño', 
-        3 => 'Adulto',
-        4 => 'Adulto mayor',
-        5 => 'Embarazada'
-    ];
-    
-    return $poblaciones[$paciente_id] ?? 'Adulto'; // Valor por defecto si no encuentra
-}
+    $i = (int) $id;
+    if ($i === 0) {
+        return '—';
+    }
+
+    return $poblacionLabels[$i] ?? (string) $i;
+};
 
 function getSexoLabel($sexo) {
     if ($sexo === 'masculino') return 'Masculino';
@@ -147,7 +143,7 @@ function getSexoLabel($sexo) {
                     <td><?= esc($item['analisis'] ?? 'N/A') ?></td>
                     <td class="text-center">
                         <span class="badge bg-info">
-                            <?= getPoblacionLabel($item['poblacion'] ?? 3) ?>
+                            <?= esc($pobLabel($item['poblacion'] ?? null)) ?>
                         </span>
                     </td>
                     <td class="text-center">

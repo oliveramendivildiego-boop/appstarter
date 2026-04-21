@@ -209,6 +209,7 @@ class DoctorHome extends BaseController
             'report_pria_tipo_muestra_nombre' => $data['report_pria_tipo_muestra_nombre'] ?? [],
             'report_pria_metodo_nombre'       => $data['report_pria_metodo_nombre'] ?? [],
             'report_lab_firmas'               => $data['report_lab_firmas'] ?? [],
+            'report_pria_refs_consolidada'    => $data['report_pria_refs_consolidada'] ?? [],
             'registerModel'      => $this->registerModel,
             'doctor_info'        => $this->doctorInfo,
             'report_emitido_en'  => $this->registerService->reportEmitidoEnForView($id),

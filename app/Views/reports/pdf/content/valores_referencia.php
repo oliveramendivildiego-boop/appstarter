@@ -1,6 +1,17 @@
 <?php
-$data = $data ?? [];
-$pobL = [1 => 'Recién nacido', 2 => 'Niño', 3 => 'Adulto', 4 => 'Adulto mayor', 5 => 'Embarazada'];
+$data            = $data ?? [];
+$poblacionLabels = $poblacion_labels ?? [];
+$pobPdf          = static function ($id) use ($poblacionLabels): string {
+    if ($id === null || $id === '') {
+        return '—';
+    }
+    $i = (int) $id;
+    if ($i === 0) {
+        return '—';
+    }
+
+    return $poblacionLabels[$i] ?? (string) $i;
+};
 ?>
 <p class="small mb-1">Filas con valor mín/máx definido (mismo criterio que exportación CSV).</p>
 <table class="pdf-t">
@@ -22,8 +33,7 @@ $pobL = [1 => 'Recién nacido', 2 => 'Niño', 3 => 'Adulto', 4 => 'Adulto mayor'
                 continue;
             } ?>
             <?php
-            $pid = (int) ($item['poblacion'] ?? 3);
-            $pob = $pobL[$pid] ?? 'Adulto';
+            $pob = $pobPdf($item['poblacion'] ?? null);
             $sx  = (string) ($item['sexo'] ?? 'ambos');
             $sxL = $sx === 'masculino' ? 'M' : ($sx === 'femenino' ? 'F' : 'Ambos');
             ?>

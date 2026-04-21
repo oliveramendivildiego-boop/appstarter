@@ -652,7 +652,7 @@ class Labotests extends SecureArea
         }
         $data = [
             'prianacategoria_id' => $prianacategoriaId,
-            'id_poblacion'      => (int) ($this->request->getPost('id_poblacion') ?? 3),
+            'id_poblacion'      => (int) ($this->request->getPost('id_poblacion') ?? 15),
             'sexo'              => $this->request->getPost('sexo') ?? 'ambos',
             'valor_min'         => $this->request->getPost('valor_min') ?? '',
             'valor_max'         => $this->request->getPost('valor_max') ?? '',

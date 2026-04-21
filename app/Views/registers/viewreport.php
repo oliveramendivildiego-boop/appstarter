@@ -59,6 +59,7 @@ $qr_data_uri = qr_base64($reportUrl, 120);
             'report_pria_tipo_muestra_nombre' => $report_pria_tipo_muestra_nombre ?? [],
             'report_pria_metodo_nombre'       => $report_pria_metodo_nombre ?? [],
             'report_lab_firmas'               => $report_lab_firmas ?? [],
+            'report_pria_refs_consolidada'    => $report_pria_refs_consolidada ?? [],
             'analisis_variant'                => 'screen_pdf',
         ]) ?>
     </div>

@@ -148,7 +148,13 @@ if ($feRaw !== '' && !empty($formulas_con_expresion ?? [])) {
 }
 ?>
 <div class="card card-tabla-sub-items mt-3">
-    <div class="card-header"><strong>Valores de sub-clases (prueba compuesta)</strong></div>
+    <div class="card-header d-flex flex-wrap align-items-center gap-2">
+        <strong>Valores de sub-clases (prueba compuesta)</strong>
+        <?php if (! empty($sub_items)): ?>
+        <span class="badge bg-secondary"><?= count($sub_items) ?> filas</span>
+        <span class="text-muted small">Agrupadas por población; cada analito puede tener una fila por grupo y sexo.</span>
+        <?php endif; ?>
+    </div>
     <div class="card-body">
         <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.2/Sortable.min.js"></script>
         <div class="wrapper-tabla-sub-items">
@@ -294,7 +300,7 @@ if ($fe !== '') {
                 <label class="form-label">Población <span class="text-danger">*</span></label>
                 <select name="paciente_id" class="form-control form-control-sm" required>
                     <?php foreach ($poblaciones ?? [] as $p): ?>
-                    <option value="<?= (int)$p['id_poblacion'] ?>" <?= ((int)($editar_sec_data['paciente_id'] ?? 3) === (int)$p['id_poblacion']) ? 'selected' : '' ?>><?= esc($p['name'] ?? '') ?></option>
+                    <option value="<?= (int)$p['id_poblacion'] ?>" <?= ((int)($editar_sec_data['paciente_id'] ?? 15) === (int)$p['id_poblacion']) ? 'selected' : '' ?>><?= esc($p['name'] ?? '') ?></option>
                     <?php endforeach; ?>
                 </select>
             </div>

@@ -38,7 +38,7 @@ class RegisterService
             $poblacionModel = model(PoblacionModel::class);
             $poblaciones    = $poblacionModel->getAll();
         } catch (\Throwable $e) {
-            return [3];
+            return [15];
         }
         $matching        = [];
 
@@ -125,11 +125,11 @@ class RegisterService
 
         $matching = array_unique($matching);
         if (empty($matching)) {
-            return [3];
+            return [15];
         }
         $result = array_values($matching);
-        if (!in_array(3, $result, true)) {
-            $result[] = 3;
+        if (! in_array(15, $result, true)) {
+            $result[] = 15;
         }
         return $result;
     }
@@ -223,7 +223,7 @@ class RegisterService
                     continue;
                 }
                 $item = is_array($item) ? (object) $item : $item;
-                $padre = $item->padre ?? '';
+                $padre = trim((string) ($item->padre ?? ''));
                 if ($padre === '') {
                     continue;
                 }
@@ -253,7 +253,7 @@ class RegisterService
 
             foreach ($valores as $item) {
                 $item  = is_array($item) ? (object) $item : $item;
-                $padre = $item->padre ?? '';
+                $padre = trim((string) ($item->padre ?? ''));
                 if ($padre === '') {
                     continue;
                 }
@@ -465,7 +465,10 @@ class RegisterService
             $otrosItems = [];
             $resultadoPorPri = [];
             foreach ($grupoActual as $it) {
-                $sameTest = ((int)($it->prianacategoria_id ?? 0) === $priaId) || (trim((string)($it->hijo ?? '')) === $hijo);
+                $itPria = (int) ($it->prianacategoria_id ?? 0);
+                // Solo coincidir por hijo si la fila no trae prianacategoria_id (datos antiguos); si no, otra prueba con el mismo nombre de categoría absorbería filas y duplicaría bloques.
+                $sameTest = ($itPria === $priaId)
+                    || ($itPria === 0 && $priaId > 0 && trim((string) ($it->hijo ?? '')) === $hijo);
                 if ($sameTest) {
                     if ($isCompleja) {
                         $key = (int)($it->es_separador ?? 0) === 1
@@ -799,6 +802,51 @@ class RegisterService
     }
 
     /**
+     * Tablas consolidadas de referencia (prueba compuesta + mostrar_valores) cuando hay más de una fila por parámetro (p. ej. Hemograma por grupo poblacional).
+     *
+     * @param list<array<string,mixed>> $eligiblePriaConfig
+     * @return array<int, list<array<string,mixed>>> prianacategoria_id => filas
+     */
+    protected function buildReportPriaRefsConsolidada(array $eligiblePriaConfig): array
+    {
+        $out = [];
+        foreach ($eligiblePriaConfig as $cfg) {
+            if ((int) ($cfg['compleja'] ?? 0) !== 1) {
+                continue;
+            }
+            $pid = (int) ($cfg['prianacategoria_id'] ?? 0);
+            if ($pid < 1) {
+                continue;
+            }
+            $rows = $this->registerModel->getSecReferenciasConsolidadasSinColapsar($pid);
+            if (count($rows) < 2) {
+                continue;
+            }
+            $countsPorNombre = [];
+            foreach ($rows as $r) {
+                $n = trim((string) ($r['nombre'] ?? ''));
+                if ($n === '') {
+                    continue;
+                }
+                $countsPorNombre[$n] = ($countsPorNombre[$n] ?? 0) + 1;
+            }
+            $hasMultiPoblacion = false;
+            foreach ($countsPorNombre as $cnt) {
+                if ($cnt > 1) {
+                    $hasMultiPoblacion = true;
+                    break;
+                }
+            }
+            if (! $hasMultiPoblacion) {
+                continue;
+            }
+            $out[$pid] = $rows;
+        }
+
+        return $out;
+    }
+
+    /**
      * Prepara datos para el reporte (viewreport / PDF)
      */
     public function prepareReportData(int $registroId): ?array
@@ -900,6 +948,7 @@ class RegisterService
         $grupos = $this->dropGruposSinValorIngresado($grupos);
 
         $reportLabFirmas = $this->buildLabFirmasParaReporte($analisis, (string) ($registerInfo->pruebas ?? ''));
+        $reportPriaRefsConsolidada = $this->buildReportPriaRefsConsolidada($eligiblePriaConfig);
 
         return [
             'register_info' => $registerInfo,
@@ -910,6 +959,7 @@ class RegisterService
             'report_pria_tipo_muestra_nombre' => $reportPriaTipoMuestraNombre,
             'report_pria_metodo_nombre'       => $reportPriaMetodoNombre,
             'report_lab_firmas'               => $reportLabFirmas,
+            'report_pria_refs_consolidada'    => $reportPriaRefsConsolidada,
         ];
     }
 
@@ -1076,6 +1126,7 @@ class RegisterService
             'report_pria_tipo_muestra_nombre' => $reportData['report_pria_tipo_muestra_nombre'] ?? [],
             'report_pria_metodo_nombre'       => $reportData['report_pria_metodo_nombre'] ?? [],
             'report_lab_firmas'               => $reportData['report_lab_firmas'] ?? [],
+            'report_pria_refs_consolidada'    => $reportData['report_pria_refs_consolidada'] ?? [],
         ]);
     }
 
@@ -1107,6 +1158,7 @@ class RegisterService
             'report_pria_tipo_muestra_nombre' => $reportData['report_pria_tipo_muestra_nombre'] ?? [],
             'report_pria_metodo_nombre'       => $reportData['report_pria_metodo_nombre'] ?? [],
             'report_lab_firmas'               => $reportData['report_lab_firmas'] ?? [],
+            'report_pria_refs_consolidada'    => $reportData['report_pria_refs_consolidada'] ?? [],
         ]);
 
         // En impresión directa (HTML + window.print) no se usa PdfService, así que el token

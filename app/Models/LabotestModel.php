@@ -322,18 +322,67 @@ class LabotestModel extends Model
 
     /**
      * Obtiene sub-clases (secanacategoria) de una prueba compuesta.
-     * Orden: por columna orden si existe, luego nombre, paciente_id.
+     * Orden en pantalla: por columna orden (drag-and-drop en labotests/detail), luego población, sexo e id.
+     * Si varias filas empatan en orden (datos antiguos), se desempata como antes por población y sexo.
      */
     public function getSubItems(int $prianacategoriaId): array
     {
         $builder = $this->db->table('secanacategoria')
             ->where('prianacategoria_id', $prianacategoriaId)
             ->where('(deleted = 0 OR deleted IS NULL)');
-        if ($this->hasColumn('secanacategoria', 'orden')) {
-            $builder->orderBy('orden', 'ASC');
+        $rows = $builder->get()->getResultArray();
+
+        $pobOrd = [];
+        try {
+            $pobRows = $this->db->table('poblacion')
+                ->select('id_poblacion, orden')
+                ->where('(deleted = 0 OR deleted IS NULL)')
+                ->get()
+                ->getResultArray();
+        } catch (\Throwable $e) {
+            $pobRows = $this->db->table('poblacion')
+                ->select('id_poblacion, orden')
+                ->get()
+                ->getResultArray();
         }
-        $builder->orderBy('nombre')->orderBy('paciente_id');
-        return $builder->get()->getResultArray();
+        foreach ($pobRows as $p) {
+            $pobOrd[(int) ($p['id_poblacion'] ?? 0)] = (int) ($p['orden'] ?? 9999);
+        }
+
+        $sexRank = static function (array $r): int {
+            return match (strtolower(trim((string) ($r['sexo'] ?? '')))) {
+                'masculino' => 0,
+                'femenino'  => 1,
+                default     => 2,
+            };
+        };
+
+        usort($rows, static function (array $a, array $b) use ($pobOrd, $sexRank): int {
+            $oA = (int) ($a['orden'] ?? 0);
+            $oB = (int) ($b['orden'] ?? 0);
+            if ($oA !== $oB) {
+                return $oA <=> $oB;
+            }
+            $pidA = (int) ($a['paciente_id'] ?? 0);
+            $pidB = (int) ($b['paciente_id'] ?? 0);
+            $ordPA = $pobOrd[$pidA] ?? 9998;
+            $ordPB = $pobOrd[$pidB] ?? 9998;
+            if ($ordPA !== $ordPB) {
+                return $ordPA <=> $ordPB;
+            }
+            $sx = $sexRank($a) <=> $sexRank($b);
+            if ($sx !== 0) {
+                return $sx;
+            }
+            $nom = strcmp(trim((string) ($a['nombre'] ?? '')), trim((string) ($b['nombre'] ?? '')));
+            if ($nom !== 0) {
+                return $nom;
+            }
+
+            return ((int) ($a['secanacategoria_id'] ?? 0)) <=> ((int) ($b['secanacategoria_id'] ?? 0));
+        });
+
+        return $rows;
     }
 
     /**
@@ -576,7 +625,7 @@ class LabotestModel extends Model
         $save = [
             'prianacategoria_id' => (int) ($data['prianacategoria_id'] ?? 0),
             'nombre'             => trim($data['nombre'] ?? ''),
-            'paciente_id'        => (int) ($data['paciente_id'] ?? 3),
+            'paciente_id'        => (int) ($data['paciente_id'] ?? 15),
             'valor_min'          => (string) ($data['valor_min'] ?? ''),
             'valor_max'          => (string) ($data['valor_max'] ?? ''),
             'critico_min'        => (string) ($data['critico_min'] ?? ''),
@@ -703,7 +752,7 @@ class LabotestModel extends Model
     {
         $save = [
             'prianacategoria_id' => (int) ($data['prianacategoria_id'] ?? 0),
-            'id_poblacion'      => (int) ($data['id_poblacion'] ?? 3),
+            'id_poblacion'      => (int) ($data['id_poblacion'] ?? 15),
             'valor_min'         => (string) ($data['valor_min'] ?? ''),
             'valor_max'         => (string) ($data['valor_max'] ?? ''),
             'critico_min'       => (string) ($data['critico_min'] ?? ''),
