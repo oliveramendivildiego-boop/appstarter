@@ -551,9 +551,18 @@ document.addEventListener('DOMContentLoaded', function() {
             var valor = (el.value || '').trim();
             var registroId = document.getElementById('registro_id').value;
             if (!registroId || valor === '') return;
-            var priId = el.getAttribute('data-prianacategoria-id');
-            var nombrePrueba = el.getAttribute('data-prueba');
-            var id = (priId && nombrePrueba) ? (priId + '|' + nombrePrueba) : el.id;
+            // c_* y noc_* son únicos por fila (secanacategoria_id / priresultados_id).
+            // No usar priId|nombre aquí: varias sub-pruebas pueden llamarse igual ("Sensible")
+            // y colisionarían en regvalues.name.
+            var id = el.id || '';
+            if (id.indexOf('c_') !== 0 && id.indexOf('noc_') !== 0) {
+                var priId = el.getAttribute('data-prianacategoria-id');
+                var nombrePrueba = el.getAttribute('data-prueba');
+                if (priId && nombrePrueba) {
+                    id = priId + '|' + nombrePrueba;
+                }
+            }
+            if (!id) return;
             datos.push({ id: id, valor: valor, registro_id: registroId });
         });
         var firmaWrap = document.getElementById('lab-registro-firmas-wrap');

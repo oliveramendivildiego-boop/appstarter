@@ -243,7 +243,10 @@ class RegisterService
             $analisisId = (int) $analisisIdStr;
 
             $valores = $tipoAnalisis === 'c'
-                ? $this->registerModel->getAnalisisComplejaConFiltros($analisisId, $matchingPoblacionIds, $gender)
+                // En reporte, si el resultado viene de regvalues c_* debe respetar
+                // exactamente la sub-prueba guardada (secanacategoria_id), sin remap
+                // por nombre/población para no perder resultados cargados.
+                ? $this->registerModel->getAnalisisCompleja($analisisId)
                 : $this->registerModel->getAnalisisNocompleja($analisisId);
 
             if (!$valores) {
@@ -464,6 +467,7 @@ class RegisterService
             $grupoActual = $grupos[$padre] ?? [];
             $otrosItems = [];
             $resultadoPorPri = [];
+            $itemPorKey = [];
             foreach ($grupoActual as $it) {
                 $itPria = (int) ($it->prianacategoria_id ?? 0);
                 // Solo coincidir por hijo si la fila no trae prianacategoria_id (datos antiguos); si no, otra prueba con el mismo nombre de categoría absorbería filas y duplicaría bloques.
@@ -471,14 +475,15 @@ class RegisterService
                     || ($itPria === 0 && $priaId > 0 && trim((string) ($it->hijo ?? '')) === $hijo);
                 if ($sameTest) {
                     if ($isCompleja) {
-                        $key = (int)($it->es_separador ?? 0) === 1
-                            ? 's:' . (int)($it->secanacategoria_id ?? 0)
-                            : trim((string)($it->nombre ?? ''));
+                        // En complejas, usar secanacategoria_id evita perder valores cuando
+                        // existen varias filas con el mismo nombre.
+                        $key = (string) ((int) ($it->secanacategoria_id ?? 0));
                     } else {
                         $key = (string)((int)($it->priresultados_id ?? 0));
                     }
                     if ($key !== '') {
                         $resultadoPorPri[$key] = (string)($it->regvalues ?? '');
+                        $itemPorKey[$key] = $it;
                     }
                     continue;
                 }
@@ -487,16 +492,14 @@ class RegisterService
 
             $reconstruidos = [];
             foreach ($refs as $ref) {
-                $item = (object) $ref;
-                if (!$isCompleja) {
-                    $item->nombre = $hijo;
-                }
                 if ($isCompleja) {
-                    $key = (int)($ref['es_separador'] ?? 0) === 1
-                        ? 's:' . (int)($ref['secanacategoria_id'] ?? 0)
-                        : trim((string)($ref['nombre'] ?? ''));
+                    $key = (string) ((int) ($ref['secanacategoria_id'] ?? 0));
                 } else {
                     $key = (string)((int)($ref['priresultados_id'] ?? 0));
+                }
+                $item = isset($itemPorKey[$key]) ? $itemPorKey[$key] : (object) $ref;
+                if (!$isCompleja) {
+                    $item->nombre = $hijo;
                 }
                 $val = trim((string)($resultadoPorPri[$key] ?? ''));
                 $item->regvalues = ((int)($ref['es_separador'] ?? 0) === 1)
@@ -504,6 +507,13 @@ class RegisterService
                     : (($val === '') ? '-' : $val);
                 $item->show_reference = true;
                 $reconstruidos[] = $item;
+                unset($itemPorKey[$key]);
+            }
+
+            // Mantener cualquier fila realmente cargada por el usuario aunque no
+            // esté en la plantilla de referencias filtrada por población.
+            foreach ($itemPorKey as $leftover) {
+                $reconstruidos[] = $leftover;
             }
 
             usort($reconstruidos, static function ($a, $b) {

@@ -969,39 +969,49 @@ class RegisterModel extends Model
     }
 
     /**
+     * Mantiene todas las filas que aplican (incluyendo nombres repetidos).
+     *
      * @param int[] $matchingPoblacionIds
      * @return array<int,array<string,mixed>>
      */
     private function reduceSecanacategoriaRowsPorNombre(array $rows, array $matchingPoblacionIds, bool $mergeFormulaDesdeFormulas, ?int $gender = null): array
     {
-        $byNombre = [];
-        foreach ($rows as $r) {
-            $nombre = trim($r['nombre'] ?? '');
+        $rows = $this->filterSecanacategoriaCandidatesBySexo($rows, $gender);
+
+        $seen = [];
+        $result = [];
+        foreach ($rows as $row) {
+            $nombre = trim((string) ($row['nombre'] ?? ''));
             if ($nombre === '') {
                 continue;
             }
-            $esSep = (int) ($r['es_separador'] ?? 0) === 1;
-            $groupKey = $esSep ? ('__sep:' . (int) ($r['secanacategoria_id'] ?? 0)) : $nombre;
-            $byNombre[$groupKey][] = $r;
-        }
 
-        $result = [];
-        foreach ($byNombre as $nombre => $cands) {
-            $cands = $this->filterSecanacategoriaCandidatesBySexo($cands, $gender);
-            $chosen = $this->pickBestSecanacategoriaRow($cands, $matchingPoblacionIds, $gender);
+            // Evita duplicar la misma fila por joins, pero conserva nombres repetidos.
+            $secId = (int) ($row['secanacategoria_id'] ?? 0);
+            $dedupeKey = $secId > 0 ? (string) $secId : md5(json_encode($row, JSON_UNESCAPED_UNICODE));
+            if (isset($seen[$dedupeKey])) {
+                continue;
+            }
+            $seen[$dedupeKey] = true;
+
             if ($mergeFormulaDesdeFormulas) {
-                $exprFromFormulas = trim($chosen['formula_expresion_desde_formulas'] ?? '');
-                if ($exprFromFormulas !== '' && (int) ($chosen['formulas_id'] ?? 0) > 1) {
-                    $chosen['formula_expresion'] = $exprFromFormulas;
+                $exprFromFormulas = trim((string) ($row['formula_expresion_desde_formulas'] ?? ''));
+                if ($exprFromFormulas !== '' && (int) ($row['formulas_id'] ?? 0) > 1) {
+                    $row['formula_expresion'] = $exprFromFormulas;
                 }
             }
-            unset($chosen['formula_expresion_desde_formulas']);
-            $result[] = $chosen;
+
+            unset($row['formula_expresion_desde_formulas']);
+            $result[] = $row;
         }
 
         if ($this->hasColumn('secanacategoria', 'orden')) {
             usort($result, static function ($a, $b) {
-                return ((int) ($a['orden'] ?? 0)) <=> ((int) ($b['orden'] ?? 0));
+                $cmp = ((int) ($a['orden'] ?? 0)) <=> ((int) ($b['orden'] ?? 0));
+                if ($cmp !== 0) {
+                    return $cmp;
+                }
+                return ((int) ($a['secanacategoria_id'] ?? 0)) <=> ((int) ($b['secanacategoria_id'] ?? 0));
             });
         }
 
