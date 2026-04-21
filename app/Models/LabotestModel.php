@@ -694,12 +694,12 @@ class LabotestModel extends Model
     }
 
     /**
-     * Duplica una sub-clase con los mismos datos (nombre con " (copia)").
+     * Duplica una sub-clase con los mismos datos.
      * Conserva compatibilidad devolviendo el ID de la primera copia creada.
      */
     public function duplicateSecItem(int $id): ?int
     {
-        $result = $this->duplicateSecItemMany($id, 1);
+        $result = $this->duplicateSecItemMany($id, 1, 'copia_numerada');
         return $result['first_id'] > 0 ? $result['first_id'] : null;
     }
 
@@ -708,9 +708,10 @@ class LabotestModel extends Model
      *
      * @return array{inserted:int, first_id:int}
      */
-    public function duplicateSecItemMany(int $id, int $copies = 1): array
+    public function duplicateSecItemMany(int $id, int $copies = 1, string $nameMode = 'copia_numerada'): array
     {
         $copies = max(1, min(100, $copies));
+        $nameMode = in_array($nameMode, ['same', 'copia_numerada'], true) ? $nameMode : 'copia_numerada';
         $row = $this->db->table('secanacategoria')
             ->where('secanacategoria_id', $id)
             ->where('(deleted = 0 OR deleted IS NULL)')
@@ -736,7 +737,10 @@ class LabotestModel extends Model
         for ($i = 1; $i <= $copies; $i++) {
             $newRow = $row;
             unset($newRow['secanacategoria_id']);
-            $newRow['nombre'] = trim((string) ($row['nombre'] ?? '')) . ' (copia ' . $i . ')';
+            $baseName = trim((string) ($row['nombre'] ?? ''));
+            $newRow['nombre'] = $nameMode === 'same'
+                ? $baseName
+                : ($baseName . ' (copia ' . $i . ')');
             $newRow['deleted'] = 0;
             if ($hasOrden) {
                 $newRow['orden'] = $nextOrden++;

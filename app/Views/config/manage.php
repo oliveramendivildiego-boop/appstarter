@@ -809,7 +809,12 @@
                 <a href="<?= site_url('labotests') ?>" class="btn btn-light btn-sm"><i class="fa-solid fa-flask-vial me-1"></i> Ir a Análisis clínicos</a>
             </div>
             <div class="card-body">
-                <?= view('config/partial_opciones', ['opciones' => $opciones ?? []]) ?>
+                <div id="opciones-content">
+                    <?= view('config/partial_opciones', [
+                        'opciones' => $opciones ?? [],
+                        'opciones_pagination' => $opciones_pagination ?? [],
+                    ]) ?>
+                </div>
             </div>
         </div>
     </div>
@@ -1267,6 +1272,106 @@ $(document).ready(function() {
                 db_user: { required: true }
             }
         }));
+    }
+
+    function initNuevaOpcionValidation() {
+        if (!$.fn.validate || !$('#form_nueva_opcion').length) return;
+        $('#form_nueva_opcion').validate($.extend(true, {}, window.VALIDATE_COMMON_OPTIONS, {
+            rules: { opciones: { required: true } },
+            messages: { opciones: { required: "El nombre es obligatorio" } }
+        }));
+    }
+
+    function syncCsrfToken(csrfName, csrfToken) {
+        if (!csrfName || !csrfToken) return;
+        document.querySelectorAll('input[name="' + csrfName + '"]').forEach(function(input) {
+            input.value = csrfToken;
+        });
+        if (typeof window.CI_CSRF_TOKEN_NAME !== 'undefined') {
+            window.CI_CSRF_TOKEN_NAME = csrfName;
+        }
+        if (typeof window.CI_CSRF_TOKEN !== 'undefined') {
+            window.CI_CSRF_TOKEN = csrfToken;
+        }
+    }
+
+    function refreshOpcionesContent(response) {
+        var cont = document.getElementById('opciones-content');
+        if (!cont || !response || typeof response.html !== 'string') return;
+        cont.innerHTML = response.html;
+        initNuevaOpcionValidation();
+    }
+
+    function showOpcionesToast(message, ok) {
+        if (typeof showToast === 'function' && message) {
+            showToast(message, ok ? 'success' : 'error');
+        }
+    }
+
+    var opcionesTab = document.getElementById('tab-opciones');
+    if (opcionesTab) {
+        opcionesTab.addEventListener('submit', function(event) {
+            var form = event.target;
+            if (!(form instanceof HTMLFormElement)) return;
+
+            var action = String(form.getAttribute('action') || '');
+            var isOpcionesAction = /config\/(saveopcion|saveopcionvalor|savevalortabla)/i.test(action);
+            if (!isOpcionesAction) return;
+
+            event.preventDefault();
+            var formData = new FormData(form);
+            fetch(action, {
+                method: 'POST',
+                body: formData,
+                headers: { 'X-Requested-With': 'XMLHttpRequest' }
+            }).then(function(r) {
+                return r.json().then(function(data) {
+                    return { ok: r.ok, data: data };
+                });
+            }).then(function(result) {
+                var payload = result.data || {};
+                syncCsrfToken(payload.csrf_name, payload.csrf_token);
+                refreshOpcionesContent(payload);
+                showOpcionesToast(payload.message || (result.ok ? 'Guardado correctamente.' : 'No se pudo guardar.'), result.ok);
+            }).catch(function() {
+                showOpcionesToast('Error al guardar. Intente nuevamente.', false);
+            });
+        });
+
+        opcionesTab.addEventListener('click', function(event) {
+            if (event.defaultPrevented) return;
+            var link = event.target.closest('a');
+            if (!link) return;
+            var href = String(link.getAttribute('href') || '');
+            var isDeleteAction = /config\/(deleteopcion\/|deleteopcionvalor\/|deletevalortabla\/)/i.test(href);
+            if (!isDeleteAction) return;
+
+            event.preventDefault();
+            var proceed = function() {
+                fetch(href, {
+                    headers: { 'X-Requested-With': 'XMLHttpRequest' }
+                }).then(function(r) {
+                    return r.json().then(function(data) {
+                        return { ok: r.ok, data: data };
+                    });
+                }).then(function(result) {
+                    var payload = result.data || {};
+                    syncCsrfToken(payload.csrf_name, payload.csrf_token);
+                    refreshOpcionesContent(payload);
+                    showOpcionesToast(payload.message || (result.ok ? 'Eliminado correctamente.' : 'No se pudo eliminar.'), result.ok);
+                }).catch(function() {
+                    showOpcionesToast('Error al eliminar. Intente nuevamente.', false);
+                });
+            };
+
+            if (typeof uiConfirm === 'function') {
+                uiConfirm('¿Confirmar eliminación?', 'Confirmar').then(function(ok) {
+                    if (ok) proceed();
+                });
+                return;
+            }
+            proceed();
+        });
     }
 
     // Cerrar todas las sesiones

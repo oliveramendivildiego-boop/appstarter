@@ -20,6 +20,55 @@
 
 <?= form_close() ?>
 
+<script>
+(function() {
+    var detailForm = document.getElementById('detail_form');
+    if (!detailForm) return;
+    detailForm.addEventListener('submit', function(e) {
+        e.preventDefault();
+        var submitBtn = detailForm.querySelector('button[type="submit"]');
+        var originalHtml = submitBtn ? submitBtn.innerHTML : '';
+        if (submitBtn) {
+            submitBtn.disabled = true;
+            submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span>Guardando...';
+        }
+
+        var fd = new FormData(detailForm);
+        fetch(detailForm.action, {
+            method: 'POST',
+            body: fd,
+            headers: { 'X-Requested-With': 'XMLHttpRequest' }
+        }).then(function(r) {
+            return r.json().then(function(d) {
+                return { ok: r.ok, data: d || {} };
+            });
+        }).then(function(result) {
+            var d = result.data || {};
+            if (d.csrf_token && d.csrf_name) {
+                if (typeof window.CI_CSRF_TOKEN !== 'undefined') window.CI_CSRF_TOKEN = d.csrf_token;
+                if (typeof window.CI_CSRF_TOKEN_NAME !== 'undefined') window.CI_CSRF_TOKEN_NAME = d.csrf_name;
+                document.querySelectorAll('input[name*="csrf"]').forEach(function(inp) {
+                    inp.name = d.csrf_name;
+                    inp.value = d.csrf_token;
+                });
+            }
+            if (typeof showToast === 'function') {
+                showToast(d.message || (result.ok ? 'Guardado correctamente' : 'No se pudo guardar'), result.ok ? 'success' : 'error');
+            }
+        }).catch(function() {
+            if (typeof showToast === 'function') {
+                showToast('Error al guardar', 'error');
+            }
+        }).finally(function() {
+            if (submitBtn) {
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = originalHtml;
+            }
+        });
+    });
+})();
+</script>
+
 <div class="card mt-3">
     <div class="card-header d-flex justify-content-between align-items-center">
         <strong><i class="fa-solid fa-file-arrow-up me-1"></i>Exportar / Importar configuración</strong>
@@ -380,6 +429,15 @@ if ($fe !== '') {
                         <input type="hidden" id="duplicar_sec_url" value="">
                         <label for="duplicar_sec_copias" class="form-label">Cantidad de copias</label>
                         <input type="number" id="duplicar_sec_copias" class="form-control" min="1" max="100" step="1" value="1" required>
+                        <label class="form-label mt-3 mb-2 d-block">Nombre de las copias</label>
+                        <div class="form-check">
+                            <input class="form-check-input" type="radio" name="duplicar_sec_name_mode" id="duplicar_sec_name_mode_copy" value="copia_numerada" checked>
+                            <label class="form-check-label" for="duplicar_sec_name_mode_copy">Con sufijo (copia ##)</label>
+                        </div>
+                        <div class="form-check">
+                            <input class="form-check-input" type="radio" name="duplicar_sec_name_mode" id="duplicar_sec_name_mode_same" value="same">
+                            <label class="form-check-label" for="duplicar_sec_name_mode_same">Con el mismo nombre original</label>
+                        </div>
                         <small class="text-muted">Valor por defecto: 1</small>
                     </div>
                     <div class="modal-footer">
@@ -1377,16 +1435,23 @@ if ($fe !== '') {
                     btnConfirmarDuplicarSec.addEventListener('click', function() {
                         var url = duplicarSecUrlInput ? duplicarSecUrlInput.value : '';
                         var copies = parseInt((duplicarSecCopiasInput && duplicarSecCopiasInput.value) ? duplicarSecCopiasInput.value : '1', 10);
+                        var modeInput = document.querySelector('input[name="duplicar_sec_name_mode"]:checked');
+                        var nameMode = modeInput ? String(modeInput.value || '') : 'copia_numerada';
                         if (!url) return;
                         copies = isNaN(copies) ? 1 : Math.max(1, Math.min(100, copies));
                         var fd = new FormData();
                         fd.append('copies', String(copies));
+                        var normalizedMode = nameMode === 'same' ? 'same' : 'copia_numerada';
+                        fd.append('name_mode', normalizedMode);
+                        fd.append('duplicar_sec_name_mode', normalizedMode);
+                        var targetUrl = url + (url.indexOf('?') >= 0 ? '&' : '?') + 'name_mode=' + encodeURIComponent(normalizedMode);
                         var csrfData = getCsrfData();
                         if (csrfData.value) fd.append(csrfData.name, csrfData.value);
                         var headers = { 'X-Requested-With': 'XMLHttpRequest' };
+                        headers['X-Name-Mode'] = normalizedMode;
                         if (csrfData.value) headers['X-CSRF-TOKEN'] = csrfData.value;
                         btnConfirmarDuplicarSec.disabled = true;
-                        fetch(url, {
+                        fetch(targetUrl, {
                             method: 'POST',
                             body: fd,
                             headers: headers
@@ -1426,6 +1491,8 @@ if ($fe !== '') {
                         e.preventDefault();
                         if (duplicarSecUrlInput) duplicarSecUrlInput.value = duplicar.getAttribute('href') || '';
                         if (duplicarSecCopiasInput) duplicarSecCopiasInput.value = '1';
+                        var defaultMode = document.getElementById('duplicar_sec_name_mode_copy');
+                        if (defaultMode) defaultMode.checked = true;
                         if (modalDuplicarSecInst) {
                             modalDuplicarSecInst.show();
                             setTimeout(function() { if (duplicarSecCopiasInput) duplicarSecCopiasInput.focus(); }, 200);

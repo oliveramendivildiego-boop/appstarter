@@ -121,7 +121,8 @@ class Config extends SecureArea
             }
         }
 
-        $opciones = $this->loadOpcionesForView();
+        $opcionesPageData = $this->loadOpcionesPageForView($this->resolveOpcionesPage(), 10);
+        $opciones = $opcionesPageData['items'];
         $tenants = $this->tenantConfigService->getAll();
         $canManageTenants = $this->canManageTenants();
         $tenantEditId = (int) ($this->request->getGet('tenant_edit') ?? 0);
@@ -194,6 +195,7 @@ class Config extends SecureArea
             'editar_metodo'        => $editarMetodoId,
             'editar_metodo_data'   => $editarMetodoData,
             'opciones'             => $opciones,
+            'opciones_pagination'  => $opcionesPageData['pagination'],
             'tenants'              => $tenants,
             'tenant_edit_data'     => $tenantEditData,
             'can_manage_tenants'   => $canManageTenants,
@@ -213,9 +215,8 @@ class Config extends SecureArea
     /**
      * Carga datos de opciones (tipos de resultado) para la vista
      */
-    private function loadOpcionesForView(): array
+    private function enrichOpcionesForView(array $opciones): array
     {
-        $opciones = $this->opcionModel->findAll();
         foreach ($opciones as &$o) {
             $tabla = trim($o['tabla'] ?? '');
             $o['valores'] = ($tabla === 'opcion_valores')
@@ -227,6 +228,73 @@ class Config extends SecureArea
             $o['editable'] = $this->opcionModel->isEditable((int) $o['opciones_id']);
         }
         return $opciones;
+    }
+
+    private function loadOpcionesForView(): array
+    {
+        return $this->enrichOpcionesForView($this->opcionModel->findAll());
+    }
+
+    private function loadOpcionesPageForView(int $page, int $perPage = 10): array
+    {
+        $page = max(1, $page);
+        $perPage = max(1, $perPage);
+        $total = (int) $this->opcionModel->countAllResults();
+        $pages = max(1, (int) ceil($total / $perPage));
+        if ($page > $pages) {
+            $page = $pages;
+        }
+        $offset = ($page - 1) * $perPage;
+        $rows = $this->opcionModel->orderBy('opciones_id', 'ASC')->findAll($perPage, $offset);
+
+        return [
+            'items' => $this->enrichOpcionesForView($rows),
+            'pagination' => [
+                'page' => $page,
+                'per_page' => $perPage,
+                'total' => $total,
+                'pages' => $pages,
+            ],
+        ];
+    }
+
+    private function resolveOpcionesPage(): int
+    {
+        $raw = $this->request->getPost('opciones_page');
+        if ($raw === null || $raw === '') {
+            $raw = $this->request->getGet('opciones_page');
+        }
+        $page = (int) $raw;
+        return $page > 0 ? $page : 1;
+    }
+
+    private function opcionesTabUrl(?int $page = null): string
+    {
+        $targetPage = $page ?? $this->resolveOpcionesPage();
+        $targetPage = max(1, (int) $targetPage);
+        return 'config?tab=opciones&opciones_page=' . $targetPage;
+    }
+
+    private function shouldReturnJson(): bool
+    {
+        $accept = strtolower((string) $this->request->getHeaderLine('Accept'));
+        return $this->request->isAJAX()
+            || strpos($accept, 'application/json') !== false;
+    }
+
+    private function buildOpcionesPayload(bool $success, string $message): array
+    {
+        $pageData = $this->loadOpcionesPageForView($this->resolveOpcionesPage(), 10);
+        return [
+            'success'    => $success,
+            'message'    => $message,
+            'html'       => view('config/partial_opciones', [
+                'opciones' => $pageData['items'],
+                'opciones_pagination' => $pageData['pagination'],
+            ]),
+            'csrf_token' => csrf_hash(),
+            'csrf_name'  => csrf_token(),
+        ];
     }
 
     public function save(): ResponseInterface
@@ -454,14 +522,72 @@ class Config extends SecureArea
      */
     public function opciones()
     {
-        return redirect()->to('config?tab=opciones');
+        return redirect()->to($this->opcionesTabUrl());
+    }
+
+    public function exportOpciones(): ResponseInterface
+    {
+        $payload = [
+            'schema' => 'lab-config-opciones-v1',
+            'generated_at' => date('c'),
+            'opciones' => $this->buildOpcionesExportData(),
+        ];
+        $json = json_encode($payload, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+        if ($json === false) {
+            return redirect()->to($this->opcionesTabUrl())->with('error', 'No se pudo generar el archivo de exportación.');
+        }
+
+        \App\Models\AuditoriaModel::log('config', 'opciones_exportar', null);
+        $filename = 'opciones_config_' . date('Ymd_His') . '.json';
+        return $this->response
+            ->setHeader('Content-Type', 'application/json; charset=utf-8')
+            ->setHeader('Content-Disposition', 'attachment; filename="' . $filename . '"')
+            ->setBody($json);
+    }
+
+    public function importOpciones(): ResponseInterface
+    {
+        $file = $this->request->getFile('opciones_file');
+        if ($file === null || $file->getError() === UPLOAD_ERR_NO_FILE) {
+            return redirect()->to($this->opcionesTabUrl())->with('error', 'Seleccione un archivo JSON para importar.');
+        }
+        if (! $file->isValid()) {
+            return redirect()->to($this->opcionesTabUrl())->with('error', 'El archivo no se subió correctamente.');
+        }
+        if (strtolower((string) $file->getExtension()) !== 'json') {
+            return redirect()->to($this->opcionesTabUrl())->with('error', 'Formato inválido. Debe ser un archivo .json.');
+        }
+
+        $raw = @file_get_contents($file->getTempName());
+        if ($raw === false || trim($raw) === '') {
+            return redirect()->to($this->opcionesTabUrl())->with('error', 'El archivo está vacío o no se pudo leer.');
+        }
+        $data = json_decode($raw, true);
+        if (!is_array($data) || !isset($data['opciones']) || !is_array($data['opciones'])) {
+            return redirect()->to($this->opcionesTabUrl())->with('error', 'Archivo JSON inválido para importación de opciones.');
+        }
+
+        try {
+            $summary = $this->applyOpcionesImport($data['opciones']);
+        } catch (\Throwable $e) {
+            return redirect()->to($this->opcionesTabUrl())->with('error', 'Error al importar opciones: ' . $e->getMessage());
+        }
+
+        \App\Models\AuditoriaModel::log('config', 'opciones_importar', null, json_encode($summary, JSON_UNESCAPED_UNICODE));
+        return redirect()->to($this->opcionesTabUrl())->with(
+            'success',
+            'Importación completada. Tipos procesados: ' . (int) ($summary['opciones'] ?? 0) . ', valores agregados/actualizados: ' . (int) ($summary['valores'] ?? 0) . '.'
+        );
     }
 
     public function saveOpcion(): ResponseInterface
     {
         $nombre = trim($this->request->getPost('opciones') ?? '');
         if ($nombre === '') {
-            return redirect()->to('config?tab=opciones')->with('error', 'El nombre es obligatorio.');
+            if ($this->shouldReturnJson()) {
+                return $this->response->setJSON($this->buildOpcionesPayload(false, 'El nombre es obligatorio.'))->setStatusCode(400);
+            }
+            return redirect()->to($this->opcionesTabUrl())->with('error', 'El nombre es obligatorio.');
         }
         $id = (int) ($this->request->getPost('opciones_id') ?? 0);
         $tabla = 'opcion_valores';
@@ -477,7 +603,139 @@ class Config extends SecureArea
         if ($opcionesId > 0 && $id <= 0) {
             \App\Models\AuditoriaModel::log('config', 'opcion_crear', (string) $opcionesId);
         }
-        return redirect()->to('config?tab=opciones')->with('success', 'Tipo de resultado guardado.');
+        if ($this->shouldReturnJson()) {
+            return $this->response->setJSON($this->buildOpcionesPayload(true, 'Tipo de resultado guardado.'));
+        }
+        return redirect()->to($this->opcionesTabUrl())->with('success', 'Tipo de resultado guardado.');
+    }
+
+    private function buildOpcionesExportData(): array
+    {
+        $rows = $this->loadOpcionesForView();
+        $out = [];
+        foreach ($rows as $row) {
+            $tabla = trim((string) ($row['tabla'] ?? 'opcion_valores'));
+            $valores = [];
+            foreach (($row['valores'] ?? []) as $v) {
+                if ($tabla === 'opcion_valores') {
+                    $val = trim((string) ($v['valor'] ?? ''));
+                } elseif ($tabla === 'opcpositivo') {
+                    $val = trim((string) ($v['opcpositivo'] ?? ''));
+                } elseif ($tabla === 'opcreactivo') {
+                    $val = trim((string) ($v['opcreactivo'] ?? ''));
+                } else {
+                    $firstKey = array_key_first($v);
+                    $val = trim((string) ($firstKey !== null ? ($v[$firstKey] ?? '') : ''));
+                }
+                if ($val !== '') {
+                    $valores[] = $val;
+                }
+            }
+            $out[] = [
+                'opciones_id' => (int) ($row['opciones_id'] ?? 0),
+                'opciones'    => trim((string) ($row['opciones'] ?? '')),
+                'tabla'       => $tabla,
+                'editable'    => (bool) ($row['editable'] ?? false),
+                'valores'     => array_values(array_unique($valores)),
+            ];
+        }
+
+        return $out;
+    }
+
+    private function applyOpcionesImport(array $items): array
+    {
+        $db = \Config\Database::connect();
+        $db->transStart();
+
+        $processedOpciones = 0;
+        $processedValores = 0;
+
+        foreach ($items as $item) {
+            if (!is_array($item)) {
+                continue;
+            }
+            $nombre = trim((string) ($item['opciones'] ?? ''));
+            $tabla = trim((string) ($item['tabla'] ?? 'opcion_valores'));
+            if ($nombre === '' || !in_array($tabla, ['opcion_valores', 'opcpositivo', 'opcreactivo'], true)) {
+                continue;
+            }
+
+            $opcionId = $this->resolveImportOpcionId($nombre, $tabla, $item);
+            if ($opcionId < 1) {
+                continue;
+            }
+            $processedOpciones++;
+
+            $valores = isset($item['valores']) && is_array($item['valores']) ? $item['valores'] : [];
+            foreach ($valores as $val) {
+                $valor = trim((string) $val);
+                if ($valor === '') {
+                    continue;
+                }
+                if ($tabla === 'opcion_valores') {
+                    $exists = $db->table('opcion_valores')
+                        ->where('opciones_id', $opcionId)
+                        ->where('valor', $valor)
+                        ->countAllResults();
+                    if ($exists < 1) {
+                        $this->opcionModel->saveValor([
+                            'opcion_valor_id' => 0,
+                            'opciones_id'     => $opcionId,
+                            'valor'           => $valor,
+                            'orden'           => 0,
+                        ]);
+                        $processedValores++;
+                    }
+                    continue;
+                }
+
+                $table = $tabla;
+                $col = $table;
+                $exists = $db->table($table)->where($col, $valor)->countAllResults();
+                if ($exists < 1) {
+                    $this->opcionModel->saveValorTabla($table, 0, $valor);
+                    $processedValores++;
+                }
+            }
+        }
+
+        $db->transComplete();
+        if (!$db->transStatus()) {
+            throw new \RuntimeException('No se pudieron guardar los datos importados.');
+        }
+
+        return ['opciones' => $processedOpciones, 'valores' => $processedValores];
+    }
+
+    private function resolveImportOpcionId(string $nombre, string $tabla, array $item): int
+    {
+        $importId = (int) ($item['opciones_id'] ?? 0);
+        if ($importId > 0) {
+            $existing = $this->opcionModel->find($importId);
+            if (is_array($existing)) {
+                $this->opcionModel->saveOpcion([
+                    'opciones_id' => $importId,
+                    'opciones'    => $nombre,
+                    'tabla'       => trim((string) ($existing['tabla'] ?? $tabla)),
+                ]);
+                return $importId;
+            }
+        }
+
+        $foundByName = $this->opcionModel
+            ->where('opciones', $nombre)
+            ->where('tabla', $tabla)
+            ->first();
+        if (is_array($foundByName)) {
+            return (int) ($foundByName['opciones_id'] ?? 0);
+        }
+
+        return (int) $this->opcionModel->saveOpcion([
+            'opciones_id' => 0,
+            'opciones'    => $nombre,
+            'tabla'       => $tabla,
+        ]);
     }
 
     public function deleteOpcion($id): ResponseInterface
@@ -487,7 +745,11 @@ class Config extends SecureArea
         if ($result['success']) {
             \App\Models\AuditoriaModel::log('config', 'opcion_eliminar', (string) $id);
         }
-        return redirect()->to('config?tab=opciones')->with($result['success'] ? 'success' : 'error', $result['message']);
+        if ($this->shouldReturnJson()) {
+            $statusCode = $result['success'] ? 200 : 400;
+            return $this->response->setJSON($this->buildOpcionesPayload((bool) $result['success'], (string) ($result['message'] ?? '')))->setStatusCode($statusCode);
+        }
+        return redirect()->to($this->opcionesTabUrl())->with($result['success'] ? 'success' : 'error', $result['message']);
     }
 
     public function saveOpcionValor(): ResponseInterface
@@ -495,11 +757,17 @@ class Config extends SecureArea
         $opcionesId = (int) ($this->request->getPost('opciones_id') ?? 0);
         $valor = trim($this->request->getPost('valor') ?? '');
         if ($opcionesId < 1 || $valor === '') {
-            return redirect()->to('config?tab=opciones')->with('error', 'Datos incompletos.');
+            if ($this->shouldReturnJson()) {
+                return $this->response->setJSON($this->buildOpcionesPayload(false, 'Datos incompletos.'))->setStatusCode(400);
+            }
+            return redirect()->to($this->opcionesTabUrl())->with('error', 'Datos incompletos.');
         }
         $row = $this->opcionModel->find($opcionesId);
         if (!$row || trim($row['tabla'] ?? '') !== 'opcion_valores') {
-            return redirect()->to('config?tab=opciones')->with('error', 'Solo se pueden editar valores en opciones personalizadas.');
+            if ($this->shouldReturnJson()) {
+                return $this->response->setJSON($this->buildOpcionesPayload(false, 'Solo se pueden editar valores en opciones personalizadas.'))->setStatusCode(400);
+            }
+            return redirect()->to($this->opcionesTabUrl())->with('error', 'Solo se pueden editar valores en opciones personalizadas.');
         }
         $this->opcionModel->saveValor([
             'opcion_valor_id' => (int) ($this->request->getPost('opcion_valor_id') ?? 0),
@@ -507,14 +775,20 @@ class Config extends SecureArea
             'valor'           => $valor,
             'orden'           => (int) ($this->request->getPost('orden') ?? 0),
         ]);
-        return redirect()->to('config?tab=opciones')->with('success', 'Valor guardado.');
+        if ($this->shouldReturnJson()) {
+            return $this->response->setJSON($this->buildOpcionesPayload(true, 'Valor guardado.'));
+        }
+        return redirect()->to($this->opcionesTabUrl())->with('success', 'Valor guardado.');
     }
 
     public function deleteOpcionValor($id): ResponseInterface
     {
         $id = (int) $id;
         $this->opcionModel->deleteValor($id);
-        return redirect()->back()->with('success', 'Valor eliminado.');
+        if ($this->shouldReturnJson()) {
+            return $this->response->setJSON($this->buildOpcionesPayload(true, 'Valor eliminado.'));
+        }
+        return redirect()->to($this->opcionesTabUrl())->with('success', 'Valor eliminado.');
     }
 
     public function saveValorTabla(): ResponseInterface
@@ -523,10 +797,16 @@ class Config extends SecureArea
         $valorId = (int) ($this->request->getPost('valor_id') ?? 0);
         $valor   = trim($this->request->getPost('valor') ?? '');
         if (!in_array($tabla, ['opcpositivo', 'opcreactivo'], true) || $valor === '') {
-            return redirect()->to('config?tab=opciones')->with('error', 'Datos incompletos.');
+            if ($this->shouldReturnJson()) {
+                return $this->response->setJSON($this->buildOpcionesPayload(false, 'Datos incompletos.'))->setStatusCode(400);
+            }
+            return redirect()->to($this->opcionesTabUrl())->with('error', 'Datos incompletos.');
         }
         $this->opcionModel->saveValorTabla($tabla, $valorId, $valor);
-        return redirect()->to('config?tab=opciones')->with('success', 'Valor guardado.');
+        if ($this->shouldReturnJson()) {
+            return $this->response->setJSON($this->buildOpcionesPayload(true, 'Valor guardado.'));
+        }
+        return redirect()->to($this->opcionesTabUrl())->with('success', 'Valor guardado.');
     }
 
     public function deleteValorTabla($tabla, $id): ResponseInterface
@@ -534,10 +814,16 @@ class Config extends SecureArea
         $tabla = in_array($tabla, ['opcpositivo', 'opcreactivo'], true) ? $tabla : '';
         $id    = (int) $id;
         if ($tabla === '') {
-            return redirect()->to('config?tab=opciones')->with('error', 'Parámetros inválidos.');
+            if ($this->shouldReturnJson()) {
+                return $this->response->setJSON($this->buildOpcionesPayload(false, 'Parámetros inválidos.'))->setStatusCode(400);
+            }
+            return redirect()->to($this->opcionesTabUrl())->with('error', 'Parámetros inválidos.');
         }
         $this->opcionModel->deleteValorTabla($tabla, $id);
-        return redirect()->back()->with('success', 'Valor eliminado.');
+        if ($this->shouldReturnJson()) {
+            return $this->response->setJSON($this->buildOpcionesPayload(true, 'Valor eliminado.'));
+        }
+        return redirect()->to($this->opcionesTabUrl())->with('success', 'Valor eliminado.');
     }
 
     /**

@@ -343,6 +343,14 @@ class Labotests extends SecureArea
         $anacategoriaId = (int) ($this->request->getPost('anacategoria_id') ?? 0);
 
         if (trim($name) === '' || $prianacategoriaId < 1) {
+            if ($this->request->isAJAX()) {
+                return $this->response->setJSON([
+                    'success' => false,
+                    'message' => 'Datos incompletos',
+                    'csrf_token' => csrf_hash(),
+                    'csrf_name' => csrf_token(),
+                ])->setStatusCode(400);
+            }
             return redirect()->back()->withInput()->with('error', 'Datos incompletos');
         }
 
@@ -359,6 +367,15 @@ class Labotests extends SecureArea
         ];
         $this->labotestModel->saveSubCategory($data, $prianacategoriaId);
         \App\Models\AuditoriaModel::log('labotests', 'actualizar_analisis', (string)$prianacategoriaId, \App\Models\AuditoriaModel::detail(['nombre' => $name, 'costo' => $cost]));
+
+        if ($this->request->isAJAX()) {
+            return $this->response->setJSON([
+                'success' => true,
+                'message' => 'Análisis actualizado correctamente',
+                'csrf_token' => csrf_hash(),
+                'csrf_name' => csrf_token(),
+            ]);
+        }
 
         return redirect()->to("labotests/detail/{$prianacategoriaId}")->with('success', 'Análisis actualizado correctamente');
     }
@@ -624,7 +641,24 @@ class Labotests extends SecureArea
         $prianacategoriaId = (int) ($sec->prianacategoria_id ?? 0);
         $copies = (int) ($this->request->getPost('copies') ?? $this->request->getGet('copies') ?? 1);
         $copies = max(1, min(100, $copies));
-        $result = $this->labotestModel->duplicateSecItemMany($id, $copies);
+        $nameModeRaw = $this->request->getPost('name_mode');
+        if ($nameModeRaw === null || $nameModeRaw === '') {
+            $nameModeRaw = $this->request->getPost('duplicar_sec_name_mode');
+        }
+        if ($nameModeRaw === null || $nameModeRaw === '') {
+            $nameModeRaw = $this->request->getGet('name_mode');
+        }
+        if ($nameModeRaw === null || $nameModeRaw === '') {
+            $nameModeRaw = $this->request->getGet('duplicar_sec_name_mode');
+        }
+        if ($nameModeRaw === null || $nameModeRaw === '') {
+            $nameModeRaw = $this->request->getHeaderLine('X-Name-Mode');
+        }
+        $nameMode = strtolower(trim((string) ($nameModeRaw ?? 'copia_numerada')));
+        if (! in_array($nameMode, ['same', 'copia_numerada'], true)) {
+            $nameMode = 'copia_numerada';
+        }
+        $result = $this->labotestModel->duplicateSecItemMany($id, $copies, $nameMode);
         $inserted = (int) ($result['inserted'] ?? 0);
 
         if ($inserted < 1) {
