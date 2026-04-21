@@ -153,6 +153,9 @@ if ($feRaw !== '' && !empty($formulas_con_expresion ?? [])) {
         <?php if (! empty($sub_items)): ?>
         <span class="badge bg-secondary"><?= count($sub_items) ?> filas</span>
         <span class="text-muted small">Agrupadas por población; cada analito puede tener una fila por grupo y sexo.</span>
+        <button type="button" class="btn btn-sm btn-outline-primary ms-auto" id="btn_abrir_modal_orden_sec" title="Lista compacta para reordenar más rápido">
+            <i class="fa-solid fa-list-ol me-1"></i> Orden rápido
+        </button>
         <?php endif; ?>
     </div>
     <div class="card-body">
@@ -220,13 +223,24 @@ if ($feRaw !== '' && !empty($formulas_con_expresion ?? [])) {
                         'es_separador' => ! empty($s['es_separador']) ? 1 : 0,
                     ];
                     $esSepRow = ! empty($s['es_separador']);
+                    $sexoEtq = match ($s['sexo'] ?? '') {
+                        'masculino' => 'M',
+                        'femenino'  => 'F',
+                        default     => 'Ambos',
+                    };
+                    $pobEtq = $pobMap[(int) ($s['paciente_id'] ?? 0)] ?? (string) ($s['paciente_id'] ?? '');
+                    $etiquetaOrden = $esSepRow
+                        ? ('Título · ' . trim((string) ($s['nombre'] ?? '')))
+                        : (trim((string) ($s['nombre'] ?? '')) . ' · ' . $pobEtq . ' · ' . $sexoEtq);
                 ?>
-                <tr data-sec="<?= htmlspecialchars(json_encode($rowDataSec), ENT_QUOTES, 'UTF-8') ?>" data-secanacategoria-id="<?= (int)($s['secanacategoria_id'] ?? 0) ?>">
+                <tr data-sec="<?= htmlspecialchars(json_encode($rowDataSec), ENT_QUOTES, 'UTF-8') ?>" data-secanacategoria-id="<?= (int)($s['secanacategoria_id'] ?? 0) ?>" data-orden-etiqueta="<?= esc($etiquetaOrden, 'attr') ?>">
                     <?php if ($esSepRow): ?>
-                    <td class="text-center">
+                    <td class="text-center text-nowrap">
                         <span class="sec-drag-handle" title="Arrastrar para reordenar"><i class="fa-solid fa-grip-vertical"></i></span>
-                        <button type="button" class="btn btn-sm btn-outline-secondary btn-sec-subir" title="Subir"><i class="fa-solid fa-arrow-up"></i></button>
-                        <button type="button" class="btn btn-sm btn-outline-secondary btn-sec-bajar" title="Bajar"><i class="fa-solid fa-arrow-down"></i></button>
+                        <button type="button" class="btn btn-sm btn-outline-secondary btn-sec-primero" title="Ir al inicio de la lista"><i class="fa-solid fa-angles-up"></i></button>
+                        <button type="button" class="btn btn-sm btn-outline-secondary btn-sec-subir" title="Subir una fila"><i class="fa-solid fa-arrow-up"></i></button>
+                        <button type="button" class="btn btn-sm btn-outline-secondary btn-sec-bajar" title="Bajar una fila"><i class="fa-solid fa-arrow-down"></i></button>
+                        <button type="button" class="btn btn-sm btn-outline-secondary btn-sec-ultimo" title="Ir al final de la lista"><i class="fa-solid fa-angles-down"></i></button>
                     </td>
                     <td colspan="8" class="table-secondary"><span class="badge bg-secondary me-2">Título</span><strong><?= esc($s['nombre'] ?? '') ?></strong></td>
                     <td class="text-center">
@@ -235,10 +249,12 @@ if ($feRaw !== '' && !empty($formulas_con_expresion ?? [])) {
                         <a href="<?= site_url("labotests/deletesecitem/" . (int)($s['secanacategoria_id'] ?? 0)) ?>" class="btn btn-sm btn-outline-danger" title="Eliminar" onclick="return uiConfirmLink(this, '¿Eliminar esta sub-clase?');"><i class="fa-solid fa-trash"></i></a>
                     </td>
                     <?php else: ?>
-                    <td class="text-center">
+                    <td class="text-center text-nowrap">
                         <span class="sec-drag-handle" title="Arrastrar para reordenar"><i class="fa-solid fa-grip-vertical"></i></span>
-                        <button type="button" class="btn btn-sm btn-outline-secondary btn-sec-subir" title="Subir"><i class="fa-solid fa-arrow-up"></i></button>
-                        <button type="button" class="btn btn-sm btn-outline-secondary btn-sec-bajar" title="Bajar"><i class="fa-solid fa-arrow-down"></i></button>
+                        <button type="button" class="btn btn-sm btn-outline-secondary btn-sec-primero" title="Ir al inicio de la lista"><i class="fa-solid fa-angles-up"></i></button>
+                        <button type="button" class="btn btn-sm btn-outline-secondary btn-sec-subir" title="Subir una fila"><i class="fa-solid fa-arrow-up"></i></button>
+                        <button type="button" class="btn btn-sm btn-outline-secondary btn-sec-bajar" title="Bajar una fila"><i class="fa-solid fa-arrow-down"></i></button>
+                        <button type="button" class="btn btn-sm btn-outline-secondary btn-sec-ultimo" title="Ir al final de la lista"><i class="fa-solid fa-angles-down"></i></button>
                     </td>
                     <td><?= esc($s['nombre'] ?? '') ?></td>
                     <td><?= esc($pobMap[(int)($s['paciente_id'] ?? 0)] ?? $s['paciente_id'] ?? '') ?></td>
@@ -267,6 +283,28 @@ if ($fe !== '') {
             </tbody>
         </table>
         </div>
+
+        <?php if (! empty($sub_items)): ?>
+        <div class="modal fade" id="modalOrdenSecItems" tabindex="-1" aria-labelledby="modalOrdenSecItemsTitle" aria-hidden="true">
+            <div class="modal-dialog modal-dialog-scrollable">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title" id="modalOrdenSecItemsTitle">Orden rápido</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+                    </div>
+                    <div class="modal-body">
+                        <p class="text-muted small mb-2">Lista compacta: arrastra el asa <i class="fa-solid fa-grip-vertical text-secondary"></i> para mover varias filas de golpe. <strong>Aplicar y guardar</strong> actualiza la tabla y el servidor.</p>
+                        <ul class="list-group mt-3 lista-orden-sec-modal" id="listaOrdenSecItems" style="max-height: 62vh; overflow-y: auto;"></ul>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
+                        <button type="button" class="btn btn-primary" id="btn_aplicar_orden_sec_modal">Aplicar y guardar</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <?php endif; ?>
+
         <hr>
         <button type="button" class="btn btn-primary btn-sm mb-3" id="btn_agregar_sec"><?= empty($sub_items) ? 'Agregar primera sub-clase' : 'Agregar sub-clase' ?></button>
 
@@ -974,6 +1012,7 @@ if ($fe !== '') {
                 });
             });
             var tablaSub = document.getElementById('tabla_sub_items');
+            var sortableModalOrden = null;
             if (tablaSub) {
                 function getOrderIds() {
                     var tbody = tablaSub.querySelector('tbody');
@@ -1032,13 +1071,115 @@ if ($fe !== '') {
                     }
                     guardarOrden();
                 }
+                function moverFilaExtremo(tr, alInicio) {
+                    var tbody = tablaSub.querySelector('tbody');
+                    if (!tbody) return;
+                    var rows = [].slice.call(tbody.querySelectorAll('tr[data-secanacategoria-id]'));
+                    if (rows.length < 2) return;
+                    var idx = rows.indexOf(tr);
+                    if (idx < 0) return;
+                    if (alInicio) {
+                        if (idx === 0) return;
+                        tbody.insertBefore(tr, rows[0]);
+                    } else {
+                        if (idx === rows.length - 1) return;
+                        tbody.appendChild(tr);
+                    }
+                    guardarOrden();
+                }
+                function aplicarOrdenDesdeModal() {
+                    var tbody = tablaSub.querySelector('tbody');
+                    var list = document.getElementById('listaOrdenSecItems');
+                    if (!tbody || !list) return;
+                    var items = list.querySelectorAll('li[data-secanacategoria-id]');
+                    if (items.length === 0) return;
+                    var frag = document.createDocumentFragment();
+                    for (var i = 0; i < items.length; i++) {
+                        var id = parseInt(items[i].getAttribute('data-secanacategoria-id'), 10);
+                        if (id < 1) continue;
+                        var tr = tablaSub.querySelector('tr[data-secanacategoria-id="' + id + '"]');
+                        if (tr) frag.appendChild(tr);
+                    }
+                    tbody.appendChild(frag);
+                    guardarOrden();
+                    var modalOrdenEl = document.getElementById('modalOrdenSecItems');
+                    if (modalOrdenEl && typeof bootstrap !== 'undefined') {
+                        var inst = bootstrap.Modal.getInstance(modalOrdenEl);
+                        if (inst) inst.hide();
+                    }
+                }
+                function poblarListaOrdenModal() {
+                    var list = document.getElementById('listaOrdenSecItems');
+                    if (!list) return;
+                    list.innerHTML = '';
+                    getOrderIds().forEach(function(id) {
+                        var tr = tablaSub.querySelector('tr[data-secanacategoria-id="' + id + '"]');
+                        if (!tr) return;
+                        var label = tr.getAttribute('data-orden-etiqueta') || ('#' + id);
+                        var li = document.createElement('li');
+                        li.className = 'list-group-item d-flex align-items-center gap-2 py-2';
+                        li.setAttribute('data-secanacategoria-id', String(id));
+                        var h = document.createElement('span');
+                        h.className = 'sec-orden-modal-handle text-muted flex-shrink-0';
+                        h.style.cursor = 'grab';
+                        h.title = 'Arrastrar';
+                        h.innerHTML = '<i class="fa-solid fa-grip-vertical"></i>';
+                        var t = document.createElement('span');
+                        t.className = 'flex-grow-1 small text-break';
+                        t.textContent = label;
+                        li.appendChild(h);
+                        li.appendChild(t);
+                        list.appendChild(li);
+                    });
+                }
+                var modalOrdenSecEl = document.getElementById('modalOrdenSecItems');
+                var modalOrdenSecInst = null;
+                if (modalOrdenSecEl && typeof bootstrap !== 'undefined') {
+                    modalOrdenSecInst = bootstrap.Modal.getInstance(modalOrdenSecEl) || new bootstrap.Modal(modalOrdenSecEl);
+                    modalOrdenSecEl.addEventListener('show.bs.modal', function() {
+                        if (sortableModalOrden) {
+                            sortableModalOrden.destroy();
+                            sortableModalOrden = null;
+                        }
+                        poblarListaOrdenModal();
+                    });
+                    modalOrdenSecEl.addEventListener('shown.bs.modal', function() {
+                        var list = document.getElementById('listaOrdenSecItems');
+                        if (list && typeof Sortable !== 'undefined' && list.children.length) {
+                            sortableModalOrden = new Sortable(list, {
+                                handle: '.sec-orden-modal-handle',
+                                animation: 150,
+                                ghostClass: 'list-group-item-secondary'
+                            });
+                        }
+                    });
+                    modalOrdenSecEl.addEventListener('hidden.bs.modal', function() {
+                        if (sortableModalOrden) {
+                            sortableModalOrden.destroy();
+                            sortableModalOrden = null;
+                        }
+                    });
+                }
+                var btnAbrirOrden = document.getElementById('btn_abrir_modal_orden_sec');
+                if (btnAbrirOrden && modalOrdenSecInst) {
+                    btnAbrirOrden.addEventListener('click', function() { modalOrdenSecInst.show(); });
+                }
+                var btnAplicarOrden = document.getElementById('btn_aplicar_orden_sec_modal');
+                if (btnAplicarOrden) {
+                    btnAplicarOrden.addEventListener('click', aplicarOrdenDesdeModal);
+                }
                 tablaSub.addEventListener('click', function(e) {
                     var subir = e.target.closest('.btn-sec-subir');
                     var bajar = e.target.closest('.btn-sec-bajar');
-                    var tr = (subir || bajar) && (subir || bajar).closest('tr');
+                    var primero = e.target.closest('.btn-sec-primero');
+                    var ultimo = e.target.closest('.btn-sec-ultimo');
+                    var btn = subir || bajar || primero || ultimo;
+                    var tr = btn && btn.closest('tr');
                     if (!tr) return;
                     if (subir) { e.preventDefault(); moverFila(tr, -1); }
                     if (bajar) { e.preventDefault(); moverFila(tr, 1); }
+                    if (primero) { e.preventDefault(); moverFilaExtremo(tr, true); }
+                    if (ultimo) { e.preventDefault(); moverFilaExtremo(tr, false); }
                 });
                 var tbody = tablaSub.querySelector('tbody');
                 if (tbody && typeof Sortable !== 'undefined') {
