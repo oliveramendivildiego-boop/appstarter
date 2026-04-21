@@ -73,7 +73,7 @@ INSERT INTO `dom_anacategoria` (`name`, `order`, `deleted`, `anacategoria_id`) V
 
 CREATE TABLE IF NOT EXISTS `dom_app_config` (
   `key` varchar(255) NOT NULL,
-  `value` varchar(255) NOT NULL,
+  `value` mediumtext NOT NULL,
   PRIMARY KEY (`key`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8;
 

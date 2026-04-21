@@ -1158,6 +1158,7 @@ class RegisterModel extends Model
         $pt = $this->db->prefixTable('prianacategoria');
         $ac = $this->db->prefixTable('anacategoria');
         $pr = $this->db->prefixTable('priresultados');
+        $f  = $this->db->prefixTable('formulas');
         $mostrarValoresSelect = $this->hasColumn('prianacategoria', 'mostrar_valores')
             ? 'pt.mostrar_valores'
             : '0 AS mostrar_valores';
@@ -1176,6 +1177,7 @@ class RegisterModel extends Model
 
         $sql = "SELECT pt.name as hijo, pt.compleja, pt.prianacategoria_id, {$mostrarValoresSelect}, ac.name as padre,
                 pr.opcion_id, pr.priresultados_id, pr.id_poblacion, pr.valor_min, pr.valor_max, pr.umedida,
+                pr.formulas_id, f.formula_expresion AS formula_expresion,
                 (SELECT prfb.opcion_id FROM {$pr} prfb
                  WHERE prfb.prianacategoria_id = pt.prianacategoria_id
                    AND pt.compleja = 0 AND (prfb.deleted = 0 OR prfb.deleted IS NULL)
@@ -1194,6 +1196,7 @@ class RegisterModel extends Model
                 LEFT JOIN {$ac} ac ON ac.anacategoria_id = pt.anacategoria_id
                 LEFT JOIN {$pr} pr ON pr.prianacategoria_id = pt.prianacategoria_id
                     AND pt.compleja = 0 AND (pr.deleted = 0 OR pr.deleted IS NULL) AND pr.id_poblacion IN {$poblacionIn}{$sexoCond}
+                LEFT JOIN {$f} f ON f.formulas_id = pr.formulas_id
                 WHERE (pt.deleted = 0 OR pt.deleted IS NULL)
                 AND (ac.deleted = 0 OR ac.deleted IS NULL)
                 AND pt.prianacategoria_id IN (" . implode(',', array_map('intval', $ids)) . ")
@@ -1257,8 +1260,10 @@ class RegisterModel extends Model
 
         if (!empty($needFallbackData)) {
             $prIds = array_unique(array_column($needFallbackData, 'priresultados_id'));
+            $f = $this->db->prefixTable('formulas');
             $fallbackRows = $this->db->table('priresultados')
-                ->select('priresultados_id, prianacategoria_id, opcion_id, valor_min, valor_max, umedida, id_poblacion')
+                ->select("priresultados.priresultados_id, priresultados.prianacategoria_id, priresultados.opcion_id, priresultados.valor_min, priresultados.valor_max, priresultados.umedida, priresultados.id_poblacion, priresultados.formulas_id, {$f}.formula_expresion AS formula_expresion")
+                ->join('formulas', "{$f}.formulas_id = priresultados.formulas_id", 'left')
                 ->whereIn('priresultados_id', $prIds)
                 ->get()
                 ->getResultArray();
@@ -1276,6 +1281,8 @@ class RegisterModel extends Model
                 $r['valor_min'] = $fr['valor_min'] ?? '';
                 $r['valor_max'] = $fr['valor_max'] ?? '';
                 $r['umedida'] = $fr['umedida'] ?? '';
+                $r['formulas_id'] = $fr['formulas_id'] ?? 1;
+                $r['formula_expresion'] = $fr['formula_expresion'] ?? '';
                 $r['id_poblacion'] = $fr['id_poblacion'] ?? 3;
                 unset($r['opcion_id_fallback'], $r['priresultados_id_fallback'], $r['priresultados_id_filtered']);
                 $byPria[$pid] = $r;

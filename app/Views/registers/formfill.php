@@ -96,6 +96,12 @@ foreach ($pruebas_info ?? [] as $prueba):
     endif;
 
     if (($prueba['compleja'] ?? 0) == 0):
+        $formulaExprNoc = trim((string) ($prueba['formula_expresion'] ?? ''));
+        $formulaExprNoc = preg_replace('/\b1\b/', '[valor]', $formulaExprNoc);
+        $formulasIdNoc = (int) ($prueba['formulas_id'] ?? 1);
+        $esCalculadaNoc = $formulaExprNoc !== '' && $formulasIdNoc > 1;
+        $idsEnFormulaNoc = $esCalculadaNoc && preg_match_all('/c_\d+/', $formulaExprNoc, $mNoc) ? array_unique($mNoc[0]) : [];
+        $esFormulaValorNoc = $esCalculadaNoc && count($idsEnFormulaNoc) === 0;
         if (($prueba['opcion_id'] ?? '') != 3 && ($prueba['opcion_id'] ?? '') != '' && (int)($prueba['opcion_id'] ?? 0) > 0):
             $pMin = trim($prueba['valor_min'] ?? ''); $pMax = trim($prueba['valor_max'] ?? ''); $pUmed = trim($prueba['umedida'] ?? '');
             $pRef = ($pMin !== '' || $pMax !== '') ? ' <small class="text-muted">(Ref: ' . ($pMin ?: 'â€¦') . ' - ' . ($pMax ?: 'â€¦') . ($pUmed ? ' ' . $pUmed : '') . ')</small>' : '';
@@ -113,11 +119,21 @@ foreach ($pruebas_info ?? [] as $prueba):
             $pRef = ($pMin !== '' || $pMax !== '') ? ' <small class="text-muted">(Ref: ' . ($pMin ?: 'â€¦') . ' - ' . ($pMax ?: 'â€¦') . ($pUmed ? ' ' . $pUmed : '') . ')</small>' : '';
             echo '<div class="col-md-6 mb-3"><div class="mb-3">';
             $nocRid = 'noc_' . esc($rid);
-            echo '<label for="' . $nocRid . '" class="form-label">' . esc($prueba['hijo'] ?? '') . $pRef . ':</label>';
+            echo '<label for="' . $nocRid . '" class="form-label">' . esc($prueba['hijo'] ?? '') . $pRef . ($esCalculadaNoc ? ' <span class="badge badge-calculada">' . ($esFormulaValorNoc ? 'FÃ³rmula (valor Ã— expresiÃ³n)' : 'Calculada') . '</span>' : '') . ':</label>';
             $valRid = $existentes['noc_' . $rid] ?? '';
-            $attrs = 'name="noc_' . esc($rid) . '" id="noc_' . esc($rid) . '" class="form-control input-con-ref" value="' . esc($valRid) . '"';
+            $classes = $esCalculadaNoc ? 'form-control formula-calculada input-con-ref' : 'form-control input-con-ref';
+            $attrs = 'name="noc_' . esc($rid) . '" id="noc_' . esc($rid) . '" class="' . $classes . '" value="' . esc($valRid) . '"';
             if ($pMin !== '') $attrs .= ' data-min="' . esc($pMin) . '"'; if ($pMax !== '') $attrs .= ' data-max="' . esc($pMax) . '"';
+            if ($pUmed !== '') $attrs .= ' data-umedida="' . esc($pUmed) . '"';
+            if ($esCalculadaNoc) {
+                $attrs .= ' data-formula="' . esc($formulaExprNoc) . '"';
+                if ($formulasIdNoc > 1) $attrs .= ' data-formula-id="' . $formulasIdNoc . '"';
+                $attrs .= $esFormulaValorNoc ? ' placeholder="Escriba el valor (ej. 50)"' : ' placeholder="Escriba o use la sugerencia"';
+            }
             echo '<input type="text" ' . $attrs . '><span class="invalid-feedback d-block" data-msg-for="noc_' . esc($rid) . '"></span>';
+            if ($esCalculadaNoc) {
+                echo '<span class="sugerencia-calculada small text-muted mt-1 d-block" data-sugerencia-for="noc_' . esc($rid) . '" role="button" tabindex="0" title="Clic para usar este valor">Sugerencia: â€”</span>';
+            }
             echo '</div></div>';
         else:
             $rid = $prueba['priresultados_id'] ?? $prueba['prianacategoria_id'] ?? '';

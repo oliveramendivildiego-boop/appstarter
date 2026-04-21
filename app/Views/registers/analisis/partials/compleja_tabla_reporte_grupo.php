@@ -55,7 +55,7 @@ foreach ($segments as $segTmp) {
     foreach ($segTmp['items'] as $rawIt) {
         $itTmp = is_array($rawIt) ? (object) $rawIt : $rawIt;
         $vTmp = trim((string) ($itTmp->regvalues ?? ''));
-        if ($vTmp !== '' && $vTmp !== '-') {
+        if (($vTmp !== '' && $vTmp !== '-') || !empty($itTmp->show_reference)) {
             $groupTieneAlgunResultado = true;
             break 2;
         }
@@ -92,7 +92,8 @@ foreach ($segments as $segTmp) {
     foreach ($segItems as $it) {
         $it = is_array($it) ? (object) $it : $it;
         $valTmp = trim((string) ($it->regvalues ?? ''));
-        if ($valTmp !== '' && $valTmp !== '-' && registro_tiene_rango_referencial($it->valor_min ?? '', $it->valor_max ?? '')) {
+        $mustShowRef = !empty($it->show_reference);
+        if ((($valTmp !== '' && $valTmp !== '-') || $mustShowRef) && registro_tiene_rango_referencial($it->valor_min ?? '', $it->valor_max ?? '')) {
             $conRefEnSeg = true;
             break;
         }
@@ -104,7 +105,7 @@ foreach ($segments as $segTmp) {
     foreach ($segItems as $itChk) {
         $itChk = is_array($itChk) ? (object) $itChk : $itChk;
         $vChk = trim((string) ($itChk->regvalues ?? ''));
-        if ($vChk !== '' && $vChk !== '-') {
+        if (($vChk !== '' && $vChk !== '-') || !empty($itChk->show_reference)) {
             $tieneConResultado = true;
             break;
         }
@@ -134,7 +135,8 @@ foreach ($segments as $segTmp) {
                     <?php
                     $item = is_array($item) ? (object) $item : $item;
                     $valTmp = trim((string) ($item->regvalues ?? ''));
-                    if ($valTmp === '' || $valTmp === '-') {
+                    $mustShowRef = !empty($item->show_reference);
+                    if (($valTmp === '' || $valTmp === '-') && !$mustShowRef) {
                         continue;
                     }
                     $aid = $item->secanacategoria_id ?? uniqid();

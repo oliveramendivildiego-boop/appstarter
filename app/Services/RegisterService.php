@@ -549,8 +549,8 @@ class RegisterService
     }
 
     /**
-     * Aplica visibilidad de referencia por regla:
-     * mostrar solo si prueba está en mostrar_valores=1 y tiene exactamente 1 valor ingresado.
+     * Aplica visibilidad de referencia por prueba.
+     * Se muestra cuando la prueba está en mostrar_valores=1.
      */
     protected function applyReferenceVisibility(array $grupos, array $eligiblePriaIds): array
     {
@@ -572,7 +572,7 @@ class RegisterService
     protected function dropGruposSinValorIngresado(array $grupos): array
     {
         foreach ($grupos as $padre => $items) {
-            if (! $this->grupoTieneAlgunValorIngresado($items)) {
+            if (! $this->grupoTieneAlgunValorIngresado($items, true)) {
                 unset($grupos[$padre]);
             }
         }
@@ -583,12 +583,15 @@ class RegisterService
     /**
      * @param list<object|array<string, mixed>> $items
      */
-    protected function grupoTieneAlgunValorIngresado(array $items): bool
+    protected function grupoTieneAlgunValorIngresado(array $items, bool $considerarShowReference = false): bool
     {
         foreach ($items as $raw) {
             $it = is_array($raw) ? (object) $raw : $raw;
             if ((int) ($it->es_separador ?? 0) === 1) {
                 continue;
+            }
+            if ($considerarShowReference && !empty($it->show_reference)) {
+                return true;
             }
             $v = trim((string) ($it->regvalues ?? ''));
             if ($v !== '' && $v !== '-') {
@@ -882,13 +885,12 @@ class RegisterService
         } catch (\Throwable $e) {
             $reportPriaMetodoNombre = [];
         }
-        $enteredCounts = $this->countEnteredValuesByPrianacategoria($analisis);
         $eligiblePriaIds = [];
         $eligiblePriaConfig = [];
         foreach ($priasCfg as $cfg) {
             $pid = (int)($cfg['prianacategoria_id'] ?? 0);
             $mostrar = (int)($cfg['mostrar_valores'] ?? 0) === 1;
-            if ($mostrar && (int)($enteredCounts[$pid] ?? 0) === 1) {
+            if ($mostrar) {
                 $eligiblePriaIds[] = $pid;
                 $eligiblePriaConfig[] = $cfg;
             }
