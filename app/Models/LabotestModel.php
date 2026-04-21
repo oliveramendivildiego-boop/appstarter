@@ -694,23 +694,64 @@ class LabotestModel extends Model
     }
 
     /**
-     * Duplica una sub-clase con los mismos datos (nombre con " (copia)")
+     * Duplica una sub-clase con los mismos datos (nombre con " (copia)").
+     * Conserva compatibilidad devolviendo el ID de la primera copia creada.
      */
     public function duplicateSecItem(int $id): ?int
     {
+        $result = $this->duplicateSecItemMany($id, 1);
+        return $result['first_id'] > 0 ? $result['first_id'] : null;
+    }
+
+    /**
+     * Duplica una sub-clase N veces.
+     *
+     * @return array{inserted:int, first_id:int}
+     */
+    public function duplicateSecItemMany(int $id, int $copies = 1): array
+    {
+        $copies = max(1, min(100, $copies));
         $row = $this->db->table('secanacategoria')
             ->where('secanacategoria_id', $id)
             ->where('(deleted = 0 OR deleted IS NULL)')
             ->get()
             ->getRowArray();
         if (!$row) {
-            return null;
+            return ['inserted' => 0, 'first_id' => 0];
         }
-        unset($row['secanacategoria_id']);
-        $row['nombre'] = trim($row['nombre'] ?? '') . ' (copia)';
-        $row['deleted'] = 0;
-        $this->db->table('secanacategoria')->insert($row);
-        return (int) $this->db->insertID();
+
+        $hasOrden = $this->hasColumn('secanacategoria', 'orden');
+        $nextOrden = 0;
+        if ($hasOrden) {
+            $max = $this->db->table('secanacategoria')
+                ->where('prianacategoria_id', (int) ($row['prianacategoria_id'] ?? 0))
+                ->selectMax('orden')
+                ->get()
+                ->getRow();
+            $nextOrden = 1 + (int) ($max->orden ?? 0);
+        }
+
+        $firstId = 0;
+        $inserted = 0;
+        for ($i = 1; $i <= $copies; $i++) {
+            $newRow = $row;
+            unset($newRow['secanacategoria_id']);
+            $newRow['nombre'] = trim((string) ($row['nombre'] ?? '')) . ' (copia ' . $i . ')';
+            $newRow['deleted'] = 0;
+            if ($hasOrden) {
+                $newRow['orden'] = $nextOrden++;
+            }
+            $ok = $this->db->table('secanacategoria')->insert($newRow);
+            if ($ok !== false) {
+                $inserted++;
+                $newId = (int) $this->db->insertID();
+                if ($firstId < 1) {
+                    $firstId = $newId;
+                }
+            }
+        }
+
+        return ['inserted' => $inserted, 'first_id' => $firstId];
     }
 
     /**
@@ -743,6 +784,24 @@ class LabotestModel extends Model
         return $this->db->table('secanacategoria')
             ->where('secanacategoria_id', $id)
             ->update(['deleted' => 1]);
+    }
+
+    /**
+     * Eliminar (soft) sub-clases en lote para una prueba.
+     */
+    public function deleteSecItemsBulk(int $prianacategoriaId, array $ids): int
+    {
+        $ids = array_values(array_unique(array_filter(array_map('intval', $ids), static fn(int $v): bool => $v > 0)));
+        if ($prianacategoriaId < 1 || $ids === []) {
+            return 0;
+        }
+
+        $this->db->table('secanacategoria')
+            ->where('prianacategoria_id', $prianacategoriaId)
+            ->whereIn('secanacategoria_id', $ids)
+            ->update(['deleted' => 1]);
+
+        return $this->db->affectedRows();
     }
 
     /**
@@ -819,5 +878,199 @@ class LabotestModel extends Model
         $save['cost']      = (int) ($data['cost'] ?? 0);
         $save['cost_deriv']= (int) ($data['cost_deriv'] ?? 0);
         return $this->db->table('prianacategoria')->insert($save) !== false;
+    }
+
+    /**
+     * Construye payload exportable de la configuracion de detalle de una prueba.
+     */
+    public function buildDetailConfigExport(int $prianacategoriaId): ?array
+    {
+        $subInfo = $this->getSubInfo($prianacategoriaId, null);
+        if (! $subInfo || ! ($subInfo->prianacategoria_id ?? null)) {
+            return null;
+        }
+
+        $isCompleja = (int) ($subInfo->compleja ?? 0) === 1;
+        $payload = [
+            'schema_version'    => 1,
+            'exported_at'       => date('c'),
+            'prianacategoria_id'=> (int) ($subInfo->prianacategoria_id ?? 0),
+            'anacategoria_id'   => (int) ($subInfo->anacategoria_id ?? 0),
+            'prueba_nombre'     => (string) ($subInfo->name ?? ''),
+            'compleja'          => $isCompleja ? 1 : 0,
+            'mostrar_valores'   => (int) ($subInfo->mostrar_valores ?? 0),
+        ];
+
+        if ($isCompleja) {
+            $rows = $this->getSubItems($prianacategoriaId);
+            $payload['sub_items'] = array_map(static function (array $r): array {
+                return [
+                    'nombre'       => (string) ($r['nombre'] ?? ''),
+                    'paciente_id'  => (int) ($r['paciente_id'] ?? 15),
+                    'sexo'         => (string) ($r['sexo'] ?? 'ambos'),
+                    'valor_min'    => (string) ($r['valor_min'] ?? ''),
+                    'valor_max'    => (string) ($r['valor_max'] ?? ''),
+                    'critico_min'  => (string) ($r['critico_min'] ?? ''),
+                    'critico_max'  => (string) ($r['critico_max'] ?? ''),
+                    'umedida'      => (string) ($r['umedida'] ?? ''),
+                    'formulas_id'  => (int) ($r['formulas_id'] ?? 1),
+                    'opcion_id'    => (int) ($r['opcion_id'] ?? 3),
+                    'es_separador' => (int) ($r['es_separador'] ?? 0) === 1 ? 1 : 0,
+                    'orden'        => (int) ($r['orden'] ?? 0),
+                ];
+            }, $rows);
+        } else {
+            $rows = $this->getPriResultados($prianacategoriaId);
+            $payload['priresultados'] = array_map(static function (array $r): array {
+                return [
+                    'id_poblacion' => (int) ($r['id_poblacion'] ?? 15),
+                    'sexo'         => (string) ($r['sexo'] ?? 'ambos'),
+                    'valor_min'    => (string) ($r['valor_min'] ?? ''),
+                    'valor_max'    => (string) ($r['valor_max'] ?? ''),
+                    'critico_min'  => (string) ($r['critico_min'] ?? ''),
+                    'critico_max'  => (string) ($r['critico_max'] ?? ''),
+                    'umedida'      => (string) ($r['umedida'] ?? ''),
+                    'formulas_id'  => (int) ($r['formulas_id'] ?? 1),
+                    'opcion_id'    => (int) ($r['opcion_id'] ?? 3),
+                ];
+            }, $rows);
+        }
+
+        return $payload;
+    }
+
+    /**
+     * Importa configuracion de detalle a una prueba existente.
+     * Reemplaza completamente filas actuales (soft-delete + insert).
+     *
+     * @return array{success: bool, message: string, imported?: int}
+     */
+    public function importDetailConfig(int $prianacategoriaId, array $payload): array
+    {
+        $subInfo = $this->getSubInfo($prianacategoriaId, null);
+        if (! $subInfo || ! ($subInfo->prianacategoria_id ?? null)) {
+            return ['success' => false, 'message' => 'Prueba no encontrada'];
+        }
+
+        $targetCompleja = (int) ($subInfo->compleja ?? 0) === 1;
+        $sourceCompleja = (int) ($payload['compleja'] ?? ($targetCompleja ? 1 : 0)) === 1;
+        if ($sourceCompleja !== $targetCompleja) {
+            return ['success' => false, 'message' => 'El archivo no corresponde al tipo de prueba (compuesta/no compuesta)'];
+        }
+
+        $rows = $targetCompleja
+            ? (is_array($payload['sub_items'] ?? null) ? $payload['sub_items'] : [])
+            : (is_array($payload['priresultados'] ?? null) ? $payload['priresultados'] : []);
+
+        if (count($rows) === 0) {
+            return ['success' => false, 'message' => 'El archivo no contiene filas para importar'];
+        }
+
+        $imported = 0;
+        $this->db->transStart();
+        if ($targetCompleja) {
+            $this->db->table('secanacategoria')
+                ->where('prianacategoria_id', $prianacategoriaId)
+                ->update(['deleted' => 1]);
+
+            foreach ($rows as $idx => $raw) {
+                if (! is_array($raw)) {
+                    continue;
+                }
+                $esSeparador = (int) ($raw['es_separador'] ?? 0) === 1;
+                $formulaId = (int) ($raw['formulas_id'] ?? 1);
+                if (! $this->formulaExists($formulaId)) {
+                    $formulaId = 1;
+                }
+                $insert = [
+                    'prianacategoria_id' => $prianacategoriaId,
+                    'nombre'             => trim((string) ($raw['nombre'] ?? '')),
+                    'paciente_id'        => (int) ($raw['paciente_id'] ?? 15),
+                    'valor_min'          => (string) ($raw['valor_min'] ?? ''),
+                    'valor_max'          => (string) ($raw['valor_max'] ?? ''),
+                    'critico_min'        => (string) ($raw['critico_min'] ?? ''),
+                    'critico_max'        => (string) ($raw['critico_max'] ?? ''),
+                    'umedida'            => (string) ($raw['umedida'] ?? ''),
+                    'formulas_id'        => $esSeparador ? 1 : $formulaId,
+                    'opcion_id'          => $esSeparador ? 3 : (int) ($raw['opcion_id'] ?? 3),
+                    'deleted'            => 0,
+                ];
+                if ($this->hasColumn('secanacategoria', 'sexo')) {
+                    $sexo = strtolower(trim((string) ($raw['sexo'] ?? 'ambos')));
+                    $insert['sexo'] = in_array($sexo, ['masculino', 'femenino'], true) ? $sexo : 'ambos';
+                }
+                if ($this->hasColumn('secanacategoria', 'es_separador')) {
+                    $insert['es_separador'] = $esSeparador ? 1 : 0;
+                }
+                if ($esSeparador) {
+                    $insert['valor_min']   = '';
+                    $insert['valor_max']   = '';
+                    $insert['critico_min'] = '';
+                    $insert['critico_max'] = '';
+                    $insert['umedida']     = '';
+                }
+                if ($this->hasColumn('secanacategoria', 'orden')) {
+                    $insert['orden'] = (int) ($raw['orden'] ?? $idx);
+                }
+                $ok = $this->db->table('secanacategoria')->insert($insert);
+                if ($ok !== false) {
+                    $imported++;
+                }
+            }
+        } else {
+            $this->db->table('priresultados')
+                ->where('prianacategoria_id', $prianacategoriaId)
+                ->update(['deleted' => 1]);
+
+            foreach ($rows as $raw) {
+                if (! is_array($raw)) {
+                    continue;
+                }
+                $formulaId = (int) ($raw['formulas_id'] ?? 1);
+                if (! $this->formulaExists($formulaId)) {
+                    $formulaId = 1;
+                }
+                $insert = [
+                    'prianacategoria_id' => $prianacategoriaId,
+                    'id_poblacion'       => (int) ($raw['id_poblacion'] ?? 15),
+                    'valor_min'          => (string) ($raw['valor_min'] ?? ''),
+                    'valor_max'          => (string) ($raw['valor_max'] ?? ''),
+                    'critico_min'        => (string) ($raw['critico_min'] ?? ''),
+                    'critico_max'        => (string) ($raw['critico_max'] ?? ''),
+                    'umedida'            => (string) ($raw['umedida'] ?? ''),
+                    'formulas_id'        => $formulaId,
+                    'opcion_id'          => (int) ($raw['opcion_id'] ?? 3),
+                    'deleted'            => 0,
+                ];
+                if ($this->hasColumn('priresultados', 'sexo')) {
+                    $sexo = strtolower(trim((string) ($raw['sexo'] ?? 'ambos')));
+                    $insert['sexo'] = in_array($sexo, ['masculino', 'femenino'], true) ? $sexo : 'ambos';
+                }
+                $ok = $this->db->table('priresultados')->insert($insert);
+                if ($ok !== false) {
+                    $imported++;
+                }
+            }
+        }
+        $this->db->transComplete();
+        if (! $this->db->transStatus()) {
+            return ['success' => false, 'message' => 'No se pudo completar la importación'];
+        }
+
+        return [
+            'success'  => true,
+            'message'  => 'Configuración importada correctamente',
+            'imported' => $imported,
+        ];
+    }
+
+    private function formulaExists(int $formulasId): bool
+    {
+        if ($formulasId < 1) {
+            return false;
+        }
+        return $this->db->table('formulas')
+            ->where('formulas_id', $formulasId)
+            ->countAllResults() > 0;
     }
 }

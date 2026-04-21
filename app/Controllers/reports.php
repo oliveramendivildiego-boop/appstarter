@@ -1463,10 +1463,11 @@ class Reports extends SecureArea
     public function exportValoresReferencia()
     {
         $busqueda = $this->request->getGet('busqueda') ?? '';
+        $soloSinValores = (int) ($this->request->getGet('solo_sin_valores') ?? 0) === 1;
         $data = $this->reportModel->getValoresReferencia($busqueda);
         $poblacionLabels = $this->poblacionLabelMap();
 
-        $filename = 'valores_referencia_' . date('Y-m-d_H-i-s') . '.csv';
+        $filename = ($soloSinValores ? 'valores_referencia_sin_valores_' : 'valores_referencia_') . date('Y-m-d_H-i-s') . '.csv';
         
         header('Content-Type: text/csv');
         header('Content-Disposition: attachment; filename="' . $filename . '"');
@@ -1480,8 +1481,11 @@ class Reports extends SecureArea
         fputcsv($output, ['Categoría', 'Prueba', 'Análisis', 'Población', 'Sexo', 'Valor Mínimo', 'Valor Máximo', 'Unidad']);
 
         foreach ($data as $index => $item) {
-            // Solo exportar pruebas que tienen valores
-            if (empty($item['valor_min']) && empty($item['valor_max'])) {
+            $tieneValores = $this->hasValoresReferenciaConfigurados($item);
+            if ($soloSinValores && $tieneValores) {
+                continue;
+            }
+            if (! $soloSinValores && ! $tieneValores) {
                 continue;
             }
             
@@ -1495,8 +1499,8 @@ class Reports extends SecureArea
                 $item['analisis'] ?? '',
                 $poblacion,
                 $sexo,
-                $item['valor_min'] ?? '',
-                $item['valor_max'] ?? '',
+                $this->csvValue($item['valor_min'] ?? null),
+                $this->csvValue($item['valor_max'] ?? null),
                 $item['umedida'] ?? ''
             ]);
         }
@@ -1910,6 +1914,30 @@ class Reports extends SecureArea
         }
 
         return (string) $id;
+    }
+
+    /**
+     * Determina si una fila tiene valor mínimo/máximo configurado.
+     * Considera "0" como valor válido.
+     *
+     * @param array<string, mixed> $item
+     */
+    private function hasValoresReferenciaConfigurados(array $item): bool
+    {
+        return $this->csvValue($item['valor_min'] ?? null) !== ''
+            || $this->csvValue($item['valor_max'] ?? null) !== '';
+    }
+
+    /**
+     * Normaliza valores para exportación CSV, preservando 0 como valor válido.
+     */
+    private function csvValue($value): string
+    {
+        if ($value === null) {
+            return '';
+        }
+        $text = trim((string) $value);
+        return $text;
     }
 
     /**

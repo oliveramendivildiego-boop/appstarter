@@ -1,6 +1,13 @@
 <?= $this->extend('layouts/main') ?>
 <?php $pageTitle = !empty($edit_registro) ? 'Editar orden' : 'Nuevo registro'; ?>
 <?= $this->section('title') ?><?= esc($pageTitle) ?><?= $this->endSection() ?>
+<?= $this->section('head_extra') ?>
+<script src="<?= base_url('js/vendor/jquery.validate.min.js') ?>"></script>
+<link rel="stylesheet" href="<?= base_url('css/vendor/flatpickr.min.css') ?>">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/themes/material_green.css">
+<script src="<?= base_url('js/vendor/flatpickr.min.js') ?>"></script>
+<script src="https://cdn.jsdelivr.net/npm/flatpickr@4.6.13/dist/l10n/es.js"></script>
+<?= $this->endSection() ?>
 <?= $this->section('content') ?>
 <?php
 $pruebasLookup = [];
@@ -44,7 +51,9 @@ if (!empty($edit_registro)) {
 <?= view('partial/breadcrumb_nav', [
     'items' => [['label' => lang('Module.module_registers'), 'url' => site_url('registers')]],
     'right' => '<a href="' . site_url('registers/lista') . '" class="btn btn-outline-primary">Ver lista</a>' .
-        '<a href="' . site_url('expediente') . '" class="btn btn-outline-info">Historial paciente</a>',
+        '<a href="' . site_url('expediente') . '" class="btn btn-outline-info">Historial paciente</a>' .
+        '<button type="button" id="btn_open_modal_paciente" class="btn btn-outline-success" data-bs-toggle="modal" data-bs-target="#modalCrearPaciente"><i class="fa-solid fa-user-plus me-1"></i>Paciente</button>' .
+        '<button type="button" id="btn_open_modal_doctor" class="btn btn-outline-secondary" data-bs-toggle="modal" data-bs-target="#modalCrearDoctor"><i class="fa-solid fa-user-doctor me-1"></i>Doctor</button>',
 ]) ?>
 
 <div id="registers_form_error" class="alert alert-danger" style="display:none;"></div>
@@ -63,6 +72,130 @@ if (!empty($edit_registro)) {
         <?= view('registers/form_pagos') ?>
     </div>
 </div>
+
+<div class="modal fade" id="modalCrearPaciente" tabindex="-1" aria-labelledby="modalCrearPacienteLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="modalCrearPacienteLabel"><i class="fa-solid fa-user-plus me-2"></i>Nuevo paciente</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+            </div>
+            <div class="modal-body">
+                <div id="crear_paciente_alert" class="alert" style="display:none;"></div>
+                <form id="form_crear_paciente" autocomplete="off">
+                    <div class="row g-3">
+                        <div class="col-12 col-md-4">
+                            <label for="np_ci" class="form-label">CI</label>
+                            <input type="text" class="form-control" id="np_ci" name="ci">
+                        </div>
+                        <div class="col-12 col-md-4">
+                            <label for="np_first_name" class="form-label">Nombre <span class="text-danger">*</span></label>
+                            <input type="text" class="form-control" id="np_first_name" name="first_name" required>
+                        </div>
+                        <div class="col-12 col-md-4">
+                            <label for="np_last_name_fa" class="form-label">Apellido paterno <span class="text-danger">*</span></label>
+                            <input type="text" class="form-control" id="np_last_name_fa" name="last_name_fa" required>
+                        </div>
+                        <div class="col-12 col-md-4">
+                            <label for="np_last_name_mom" class="form-label">Apellido materno</label>
+                            <input type="text" class="form-control" id="np_last_name_mom" name="last_name_mom">
+                        </div>
+                        <div class="col-12 col-md-4">
+                            <label for="np_phone_number" class="form-label">Teléfono</label>
+                            <input type="text" class="form-control" id="np_phone_number" name="phone_number">
+                        </div>
+                        <div class="col-12 col-md-4">
+                            <label for="np_email" class="form-label">Correo</label>
+                            <input type="email" class="form-control" id="np_email" name="email">
+                        </div>
+                        <div class="col-12 col-md-4">
+                            <label for="np_birthday" class="form-label">Fecha nacimiento <span class="text-danger">*</span></label>
+                            <input type="text" class="form-control" id="np_birthday" name="birthday" placeholder="AAAA-MM-DD" required>
+                        </div>
+                        <div class="col-12 col-md-4">
+                            <label for="np_gender" class="form-label">Género <span class="text-danger">*</span></label>
+                            <select class="form-select" id="np_gender" name="gender" required>
+                                <option value="">Seleccione...</option>
+                                <option value="1">Masculino</option>
+                                <option value="2">Femenino</option>
+                            </select>
+                        </div>
+                        <div class="col-12 col-md-4">
+                            <label for="np_institucion" class="form-label">Institución</label>
+                            <input type="text" class="form-control" id="np_institucion" name="institucion">
+                        </div>
+                        <div class="col-12 col-md-4">
+                            <label for="np_seguro" class="form-label">Seguro</label>
+                            <input type="text" class="form-control" id="np_seguro" name="seguro">
+                        </div>
+                        <div class="col-12">
+                            <label for="np_comments" class="form-label">Comentarios</label>
+                            <textarea class="form-control" id="np_comments" name="comments" rows="2"></textarea>
+                        </div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" id="btn_guardar_paciente_modal" class="btn btn-success">
+                    <i class="fa-solid fa-floppy-disk me-1"></i>Guardar paciente
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="modalCrearDoctor" tabindex="-1" aria-labelledby="modalCrearDoctorLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="modalCrearDoctorLabel"><i class="fa-solid fa-user-doctor me-2"></i>Nuevo doctor</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+            </div>
+            <div class="modal-body">
+                <div id="crear_doctor_alert" class="alert" style="display:none;"></div>
+                <form id="form_crear_doctor" autocomplete="off">
+                    <div class="row g-3">
+                        <div class="col-12 col-md-6">
+                            <label for="nd_name" class="form-label">Nombre <span class="text-danger">*</span></label>
+                            <input type="text" class="form-control" id="nd_name" name="name" required>
+                        </div>
+                        <div class="col-12 col-md-6">
+                            <label for="nd_phone_number" class="form-label">Teléfono <span class="text-danger">*</span></label>
+                            <input type="text" class="form-control" id="nd_phone_number" name="phone_number" required>
+                        </div>
+                        <div class="col-12 col-md-4">
+                            <label for="nd_gender" class="form-label">Género <span class="text-danger">*</span></label>
+                            <select class="form-select" id="nd_gender" name="gender" required>
+                                <option value="">Seleccione...</option>
+                                <option value="1">Masculino</option>
+                                <option value="2">Femenino</option>
+                            </select>
+                        </div>
+                        <div class="col-12 col-md-8">
+                            <label for="nd_speciality" class="form-label">Especialidad <span class="text-danger">*</span></label>
+                            <input type="text" class="form-control" id="nd_speciality" name="speciality" required>
+                        </div>
+                        <div class="col-12">
+                            <label for="nd_address" class="form-label">Dirección <span class="text-danger">*</span></label>
+                            <input type="text" class="form-control" id="nd_address" name="address" required>
+                        </div>
+                        <div class="col-12">
+                            <label for="nd_comments" class="form-label">Comentarios</label>
+                            <textarea class="form-control" id="nd_comments" name="comments" rows="2"></textarea>
+                        </div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" id="btn_guardar_doctor_modal" class="btn btn-secondary">
+                    <i class="fa-solid fa-floppy-disk me-1"></i>Guardar doctor
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
 <?= $this->endSection() ?>
 
 <?= $this->section('scripts') ?>
@@ -72,8 +205,51 @@ document.addEventListener('DOMContentLoaded', function() {
     var pruebaListDropdown = document.getElementById('prueba_list');
     var pruebaListaContainer = document.getElementById('pruebas_lista');
     var guardarBtn = document.getElementById('guardar');
+    var pacienteModalEl = document.getElementById('modalCrearPaciente');
+    var doctorModalEl = document.getElementById('modalCrearDoctor');
+    var pacienteModal = (typeof bootstrap !== 'undefined' && pacienteModalEl) ? bootstrap.Modal.getOrCreateInstance(pacienteModalEl) : null;
+    var doctorModal = (typeof bootstrap !== 'undefined' && doctorModalEl) ? bootstrap.Modal.getOrCreateInstance(doctorModalEl) : null;
     var pruebasSeleccionadas = []; // {id, name, padre, cost}
     var editInfo = (typeof window.EDIT_REGISTRO !== 'undefined') ? window.EDIT_REGISTRO : null;
+
+    function getCsrfPair() {
+        if (typeof window.CI_CSRF_TOKEN_NAME === 'undefined' || typeof window.CI_CSRF_TOKEN === 'undefined') {
+            return null;
+        }
+        return { name: window.CI_CSRF_TOKEN_NAME, value: window.CI_CSRF_TOKEN };
+    }
+
+    function updateCsrfFromResponse(res) {
+        if (!res || typeof res !== 'object') return;
+        if (res.csrf_name && res.csrf_token) {
+            window.CI_CSRF_TOKEN_NAME = res.csrf_name;
+            window.CI_CSRF_TOKEN = res.csrf_token;
+        }
+    }
+
+    function showInlineAlert(alertEl, isSuccess, message) {
+        if (!alertEl) return;
+        alertEl.className = 'alert ' + (isSuccess ? 'alert-success' : 'alert-danger');
+        alertEl.textContent = message || '';
+        alertEl.style.display = 'block';
+    }
+
+    function hideInlineAlert(alertEl) {
+        if (!alertEl) return;
+        alertEl.style.display = 'none';
+        alertEl.textContent = '';
+    }
+
+    function toBodyString(formEl) {
+        var fd = new FormData(formEl);
+        var params = new URLSearchParams();
+        fd.forEach(function(value, key) {
+            params.append(key, value == null ? '' : String(value));
+        });
+        var csrf = getCsrfPair();
+        if (csrf) params.append(csrf.name, csrf.value);
+        return params.toString();
+    }
 
     function recalcular() {
         var totalCost = 0;
@@ -266,6 +442,164 @@ document.addEventListener('DOMContentLoaded', function() {
             .catch(function() {
                 var errDiv = document.getElementById('registers_form_error');
                 if (errDiv) { errDiv.textContent = 'Error en la petición.'; errDiv.className = 'alert alert-danger'; errDiv.style.display = 'block'; }
+            });
+        });
+    }
+
+    var formCrearPaciente = document.getElementById('form_crear_paciente');
+    var formCrearDoctor = document.getElementById('form_crear_doctor');
+    var btnGuardarPacienteModal = document.getElementById('btn_guardar_paciente_modal');
+    var btnGuardarDoctorModal = document.getElementById('btn_guardar_doctor_modal');
+    var pacienteAlert = document.getElementById('crear_paciente_alert');
+    var doctorAlert = document.getElementById('crear_doctor_alert');
+    var pacienteValidator = null;
+    var doctorValidator = null;
+
+    if (typeof flatpickr !== 'undefined') {
+        flatpickr('#np_birthday', {
+            dateFormat: 'Y-m-d',
+            maxDate: 'today',
+            locale: 'es',
+            onOpen: function(selectedDates, dateStr, instance) {
+                if (typeof flatpickrPositionArrowTopLeft === 'function') {
+                    flatpickrPositionArrowTopLeft(instance);
+                }
+            }
+        });
+    }
+
+    if (typeof window.jQuery !== 'undefined' && typeof window.jQuery.fn.validate === 'function') {
+        pacienteValidator = window.jQuery('#form_crear_paciente').validate(window.jQuery.extend(true, {}, window.VALIDATE_COMMON_OPTIONS || {}, {
+            rules: {
+                first_name: { required: true, minlength: 2 },
+                last_name_fa: { required: true, minlength: 2 },
+                email: { email: true },
+                birthday: { required: true, date: true },
+                gender: { required: true }
+            },
+            messages: {
+                first_name: { required: 'Por favor ingrese su nombre(s)', minlength: 'El nombre debe tener al menos 2 caracteres' },
+                last_name_fa: { required: 'Por favor ingrese su apellido(s)', minlength: 'Debe tener al menos 2 caracteres' },
+                email: { email: 'Ingrese un correo válido' },
+                birthday: { required: 'Seleccione su fecha de nacimiento', date: 'Ingrese una fecha válida' },
+                gender: { required: 'Seleccione su género' }
+            }
+        }));
+
+        doctorValidator = window.jQuery('#form_crear_doctor').validate(window.jQuery.extend(true, {}, window.VALIDATE_COMMON_OPTIONS || {}, {
+            rules: {
+                name: { required: true, minlength: 2 },
+                phone_number: { required: true, maxlength: 50 },
+                gender: { required: true },
+                speciality: { required: true, maxlength: 255 },
+                address: { required: true, maxlength: 255 }
+            },
+            messages: {
+                name: { required: 'Por favor ingrese nombre(s) y apellido(s)', minlength: 'El nombre debe tener al menos 2 caracteres' },
+                phone_number: { required: 'El teléfono es obligatorio' },
+                gender: { required: 'Seleccione su género' },
+                speciality: { required: 'La especialidad es obligatoria' },
+                address: { required: 'La dirección es obligatoria' }
+            }
+        }));
+    }
+
+    if (btnGuardarPacienteModal && formCrearPaciente) {
+        btnGuardarPacienteModal.addEventListener('click', function() {
+            hideInlineAlert(pacienteAlert);
+            if (pacienteValidator) {
+                if (!pacienteValidator.form()) return;
+            } else if (!formCrearPaciente.checkValidity()) {
+                formCrearPaciente.reportValidity();
+                return;
+            }
+            btnGuardarPacienteModal.disabled = true;
+            fetch('<?= site_url('customers/save') ?>', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8',
+                    'X-Requested-With': 'XMLHttpRequest'
+                },
+                body: toBodyString(formCrearPaciente)
+            })
+            .then(function(r) { return r.json().catch(function() { return {}; }); })
+            .then(function(res) {
+                updateCsrfFromResponse(res);
+                if (!res.success || !res.person_id || parseInt(res.person_id, 10) < 1) {
+                    showInlineAlert(pacienteAlert, false, res.message || 'No se pudo crear el paciente.');
+                    return;
+                }
+                var firstName = (document.getElementById('np_first_name') || {}).value || '';
+                var apPat = (document.getElementById('np_last_name_fa') || {}).value || '';
+                var apMat = (document.getElementById('np_last_name_mom') || {}).value || '';
+                var nombrePaciente = [firstName, apPat, apMat].join(' ').replace(/\s+/g, ' ').trim();
+                var institucion = ((document.getElementById('np_institucion') || {}).value || '').trim();
+                var pacienteInput = document.getElementById('paciente');
+                var personIdInput = document.getElementById('person_id');
+                var instInput = document.getElementById('customer_institucion');
+                var descInput = document.getElementById('customer_descuento_pct');
+                if (pacienteInput) pacienteInput.value = nombrePaciente;
+                if (personIdInput) personIdInput.value = String(res.person_id);
+                if (instInput) instInput.value = institucion;
+                if (descInput) descInput.value = '0';
+                if (typeof window.updateInstitutionDiscountInfo === 'function') {
+                    window.updateInstitutionDiscountInfo();
+                }
+                if (typeof window.recalcularTotalesRegistro === 'function') {
+                    window.recalcularTotalesRegistro();
+                }
+                formCrearPaciente.reset();
+                hideInlineAlert(pacienteAlert);
+                if (pacienteModal) pacienteModal.hide();
+            })
+            .catch(function() {
+                showInlineAlert(pacienteAlert, false, 'Error de red al guardar el paciente.');
+            })
+            .finally(function() {
+                btnGuardarPacienteModal.disabled = false;
+            });
+        });
+    }
+
+    if (btnGuardarDoctorModal && formCrearDoctor) {
+        btnGuardarDoctorModal.addEventListener('click', function() {
+            hideInlineAlert(doctorAlert);
+            if (doctorValidator) {
+                if (!doctorValidator.form()) return;
+            } else if (!formCrearDoctor.checkValidity()) {
+                formCrearDoctor.reportValidity();
+                return;
+            }
+            btnGuardarDoctorModal.disabled = true;
+            fetch('<?= site_url('doctors/save') ?>', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8',
+                    'X-Requested-With': 'XMLHttpRequest'
+                },
+                body: toBodyString(formCrearDoctor)
+            })
+            .then(function(r) { return r.json().catch(function() { return {}; }); })
+            .then(function(res) {
+                updateCsrfFromResponse(res);
+                if (!res.success || !res.doctor_id || parseInt(res.doctor_id, 10) < 1) {
+                    showInlineAlert(doctorAlert, false, res.message || 'No se pudo crear el doctor.');
+                    return;
+                }
+                var nombreDoctor = (((document.getElementById('nd_name') || {}).value) || '').trim();
+                var doctorInput = document.getElementById('doctor');
+                var doctorIdInput = document.getElementById('doctor_id');
+                if (doctorInput) doctorInput.value = nombreDoctor;
+                if (doctorIdInput) doctorIdInput.value = String(res.doctor_id);
+                formCrearDoctor.reset();
+                hideInlineAlert(doctorAlert);
+                if (doctorModal) doctorModal.hide();
+            })
+            .catch(function() {
+                showInlineAlert(doctorAlert, false, 'Error de red al guardar el doctor.');
+            })
+            .finally(function() {
+                btnGuardarDoctorModal.disabled = false;
             });
         });
     }

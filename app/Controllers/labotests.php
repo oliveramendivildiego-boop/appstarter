@@ -616,11 +616,107 @@ class Labotests extends SecureArea
         $id = (int) $id;
         $sec = $this->labotestModel->getSecItemInfo($id);
         if (!$sec) {
+            if ($this->request->isAJAX()) {
+                return $this->response->setJSON(['success' => false, 'message' => 'Sub-clase no encontrada'])->setStatusCode(404);
+            }
             return redirect()->back()->with('error', 'Sub-clase no encontrada');
         }
         $prianacategoriaId = (int) ($sec->prianacategoria_id ?? 0);
-        $this->labotestModel->duplicateSecItem($id);
-        return redirect()->to("labotests/detail/{$prianacategoriaId}")->with('success', 'Sub-clase duplicada correctamente');
+        $copies = (int) ($this->request->getPost('copies') ?? $this->request->getGet('copies') ?? 1);
+        $copies = max(1, min(100, $copies));
+        $result = $this->labotestModel->duplicateSecItemMany($id, $copies);
+        $inserted = (int) ($result['inserted'] ?? 0);
+
+        if ($inserted < 1) {
+            if ($this->request->isAJAX()) {
+                return $this->response->setJSON(['success' => false, 'message' => 'No se pudo duplicar la sub-clase'])->setStatusCode(400);
+            }
+            return redirect()->to("labotests/detail/{$prianacategoriaId}")->with('error', 'No se pudo duplicar la sub-clase');
+        }
+
+        $message = $inserted === 1
+            ? 'Sub-clase duplicada correctamente'
+            : ('Sub-clase duplicada ' . $inserted . ' veces correctamente');
+
+        if ($this->request->isAJAX()) {
+            $json = ['success' => true, 'message' => $message, 'inserted' => $inserted];
+            if (function_exists('csrf_hash')) {
+                $json['csrf_token'] = csrf_hash();
+                $json['csrf_name'] = csrf_token();
+            }
+            return $this->response->setJSON($json);
+        }
+
+        return redirect()->to("labotests/detail/{$prianacategoriaId}")->with('success', $message);
+    }
+
+    /**
+     * Exporta la configuración de detalle (compuesta/no compuesta) en JSON.
+     */
+    public function exportdetailconfig($id): ResponseInterface
+    {
+        $id = (int) $id;
+        $payload = $this->labotestModel->buildDetailConfigExport($id);
+        if (! $payload) {
+            return redirect()->to('labotests')->with('error', 'Prueba no encontrada');
+        }
+
+        $json = json_encode($payload, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+        if ($json === false) {
+            return redirect()->to("labotests/detail/{$id}")->with('error', 'No se pudo generar el archivo de exportación');
+        }
+
+        $tipo = ((int) ($payload['compleja'] ?? 0) === 1) ? 'compuesta' : 'simple';
+        $filename = 'labotest_' . $id . '_' . $tipo . '_' . date('Ymd_His') . '.json';
+
+        return $this->response
+            ->download($filename, $json)
+            ->setContentType('application/json');
+    }
+
+    /**
+     * Importa configuración de detalle desde JSON y reemplaza filas actuales.
+     */
+    public function importdetailconfig($id)
+    {
+        $id = (int) $id;
+        if ($id < 1) {
+            return redirect()->to('labotests')->with('error', 'Prueba inválida');
+        }
+
+        $file = $this->request->getFile('config_file');
+        if (! $file || ! $file->isValid()) {
+            return redirect()->to("labotests/detail/{$id}")->with('error', 'Debe seleccionar un archivo JSON válido');
+        }
+
+        $ext = strtolower((string) $file->getExtension());
+        if ($ext !== 'json') {
+            return redirect()->to("labotests/detail/{$id}")->with('error', 'El archivo debe ser .json');
+        }
+
+        $tmpPath = $file->getTempName();
+        $content = is_string($tmpPath) && $tmpPath !== '' ? @file_get_contents($tmpPath) : false;
+        if (! is_string($content) || trim($content) === '') {
+            return redirect()->to("labotests/detail/{$id}")->with('error', 'El archivo está vacío');
+        }
+
+        $payload = json_decode($content, true);
+        if (! is_array($payload)) {
+            return redirect()->to("labotests/detail/{$id}")->with('error', 'JSON inválido');
+        }
+
+        $result = $this->labotestModel->importDetailConfig($id, $payload);
+        if (! ($result['success'] ?? false)) {
+            return redirect()->to("labotests/detail/{$id}")->with('error', (string) ($result['message'] ?? 'No se pudo importar'));
+        }
+
+        $imported = (int) ($result['imported'] ?? 0);
+        \App\Models\AuditoriaModel::log('labotests', 'importar_configuracion_detalle', (string) $id, \App\Models\AuditoriaModel::detail([
+            'filas_importadas' => $imported,
+        ]));
+
+        return redirect()->to("labotests/detail/{$id}")
+            ->with('success', 'Configuración importada correctamente (' . $imported . ' filas)');
     }
 
     /**
@@ -638,6 +734,50 @@ class Labotests extends SecureArea
         $this->labotestModel->deleteSecItem($id);
         \App\Models\AuditoriaModel::log('labotests', 'eliminar_subclase', (string)$prianacategoriaId, \App\Models\AuditoriaModel::detail(['secanacategoria_id' => $id, 'nombre' => $secNombre]));
         return redirect()->to("labotests/detail/{$prianacategoriaId}")->with('success', 'Sub-clase eliminada');
+    }
+
+    /**
+     * Eliminar sub-clases en lote
+     */
+    public function deletesecitemsbulk(): ResponseInterface
+    {
+        $prianacategoriaId = (int) ($this->request->getPost('prianacategoria_id') ?? 0);
+        $ids = $this->request->getPost('secanacategoria_ids');
+        $ids = is_array($ids) ? $ids : [];
+        $ids = array_values(array_unique(array_filter(array_map('intval', $ids), static fn(int $v): bool => $v > 0)));
+
+        if ($prianacategoriaId < 1 || $ids === []) {
+            return $this->response->setJSON([
+                'success' => false,
+                'message' => 'Debe seleccionar al menos una sub-clase',
+            ])->setStatusCode(400);
+        }
+
+        $deletedCount = $this->labotestModel->deleteSecItemsBulk($prianacategoriaId, $ids);
+        if ($deletedCount > 0) {
+            \App\Models\AuditoriaModel::log(
+                'labotests',
+                'eliminar_subclases_masivo',
+                (string) $prianacategoriaId,
+                \App\Models\AuditoriaModel::detail([
+                    'total' => $deletedCount,
+                    'ids' => $ids,
+                ])
+            );
+        }
+
+        $json = [
+            'success' => $deletedCount > 0,
+            'message' => $deletedCount > 0
+                ? ('Se eliminaron ' . $deletedCount . ' sub-clases')
+                : 'No se eliminaron sub-clases',
+            'deleted' => $deletedCount,
+        ];
+        if (function_exists('csrf_hash')) {
+            $json['csrf_token'] = csrf_hash();
+            $json['csrf_name'] = csrf_token();
+        }
+        return $this->response->setJSON($json)->setStatusCode($deletedCount > 0 ? 200 : 400);
     }
 
     /**

@@ -17,6 +17,10 @@ function getSexoLabel($sexo) {
     if ($sexo === 'femenino') return 'Femenino';
     return 'Ambos';
 }
+
+function hasConfiguredValue($value): bool {
+    return $value !== null && trim((string) $value) !== '';
+}
 ?>
 
 <?= $this->extend('layouts/main') ?>
@@ -33,11 +37,19 @@ function getSexoLabel($sexo) {
         <div class="d-print-none d-flex flex-wrap gap-2 align-items-center">
             <?= view('reports/partials/report_actions', [
                 'pdf_url' => site_url('reports/valoresReferenciaPdf?' . http_build_query(['busqueda' => $busqueda ?? ''])),
+                'container_class' => 'd-print-none d-flex flex-wrap gap-2 align-items-center mb-0',
             ]) ?>
             <?php if (! empty($data)): ?>
                 <a href="<?= site_url('reports/exportValoresReferencia') ?>?<?= ! empty($busqueda) ? 'busqueda=' . urlencode($busqueda) : '' ?>"
                    class="btn btn-success">
-                    <i class="fas fa-file-excel me-1"></i> Exportar a Excel
+                    <i class="fas fa-file-excel me-1"></i> Exportar con valores
+                </a>
+                <a href="<?= site_url('reports/exportValoresReferencia') ?>?<?= http_build_query([
+                    'busqueda' => $busqueda ?? '',
+                    'solo_sin_valores' => 1,
+                ]) ?>"
+                   class="btn btn-outline-success">
+                    <i class="fas fa-file-export me-1"></i> Exportar sin valores
                 </a>
             <?php endif; ?>
         </div>
@@ -112,7 +124,7 @@ function getSexoLabel($sexo) {
                         </tbody>
                     <?php endif; ?>
                     <?php $pruebaActual = $item['prueba']; ?>
-                    <?php $hasValues = !empty($item['valor_min']) || !empty($item['valor_max']); ?>
+                    <?php $hasValues = hasConfiguredValue($item['valor_min'] ?? null) || hasConfiguredValue($item['valor_max'] ?? null); ?>
                     <tr class="table-primary <?= $hasValues ? 'subcategoria-header' : '' ?>" <?= $hasValues ? 'data-prueba="' . esc($item['prueba']) . '"' : '' ?>>
                         <td colspan="6" class="fw-bold <?= $hasValues ? 'cursor-pointer' : '' ?>">
                             <?php if ($hasValues): ?>
@@ -138,7 +150,7 @@ function getSexoLabel($sexo) {
                     <?php endif; ?>
                 <?php endif; ?>
                 
-                <?php if (!empty($item['valor_min']) || !empty($item['valor_max'])): ?>
+                <?php if (hasConfiguredValue($item['valor_min'] ?? null) || hasConfiguredValue($item['valor_max'] ?? null)): ?>
                 <tr>
                     <td><?= esc($item['analisis'] ?? 'N/A') ?></td>
                     <td class="text-center">
@@ -152,14 +164,14 @@ function getSexoLabel($sexo) {
                         </span>
                     </td>
                     <td class="text-center">
-                        <?php if (!empty($item['valor_min'])): ?>
+                        <?php if (hasConfiguredValue($item['valor_min'] ?? null)): ?>
                             <span class="badge bg-info"><?= esc($item['valor_min']) ?></span>
                         <?php else: ?>
                             <span class="text-muted">-</span>
                         <?php endif; ?>
                     </td>
                     <td class="text-center">
-                        <?php if (!empty($item['valor_max'])): ?>
+                        <?php if (hasConfiguredValue($item['valor_max'] ?? null)): ?>
                             <span class="badge bg-info"><?= esc($item['valor_max']) ?></span>
                         <?php else: ?>
                             <span class="text-muted">-</span>
@@ -199,7 +211,7 @@ function getSexoLabel($sexo) {
                     <div class="col-md-3">
                         <strong>Con rango definido:</strong><br>
                         <span class="badge bg-warning">
-                            <?= count(array_filter($data, fn($item) => !empty($item['valor_min']) && !empty($item['valor_max']))) ?>
+                            <?= count(array_filter($data, fn($item) => hasConfiguredValue($item['valor_min'] ?? null) && hasConfiguredValue($item['valor_max'] ?? null))) ?>
                         </span>
                     </div>
                 </div>
@@ -246,10 +258,6 @@ document.addEventListener('DOMContentLoaded', function() {
             filasOcultar.push(nextElement);
             nextElement = nextElement.nextElementSibling;
             
-            // Seguridad para evitar bucles infinitos
-            if (filasOcultar.length > 100) {
-                break;
-            }
         }
         
         // Ocultar o mostrar todas las filas
@@ -277,39 +285,10 @@ document.addEventListener('DOMContentLoaded', function() {
         pruebaHeader.dataset.expanded = isVisible ? 'false' : 'true';
     }
     
-    // Inicializar todas las pruebas como contraídas excepto la primera
+    // Inicializar todas las pruebas como expandidas
     const allPruebas = document.querySelectorAll('.subcategoria-header');
-    allPruebas.forEach(function(prueba, index) {
-        if (index === 0) {
-            // Primera prueba expandida
-            prueba.dataset.expanded = 'true';
-        } else {
-            // Resto contraídas
-            prueba.dataset.expanded = 'false';
-            
-            // Ocultar las filas de las pruebas contraídas
-            let nextElement = prueba.nextElementSibling;
-            let filasOcultar = [];
-            
-            while (nextElement) {
-                if (nextElement.classList.contains('subcategoria-header')) break;
-                filasOcultar.push(nextElement);
-                nextElement = nextElement.nextElementSibling;
-                if (filasOcultar.length > 100) break;
-            }
-            
-            // Ocultar las filas
-            filasOcultar.forEach(function(fila) {
-                fila.style.display = 'none';
-            });
-            
-            // Cambiar icono a contraído
-            const icon = prueba.querySelector('i');
-            if (icon) {
-                icon.classList.remove('fa-vial');
-                icon.classList.add('fa-chevron-down');
-            }
-        }
+    allPruebas.forEach(function(prueba) {
+        prueba.dataset.expanded = 'true';
     });
 });
 </script>

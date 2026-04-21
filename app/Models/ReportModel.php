@@ -281,7 +281,24 @@ class ReportModel extends Model
         $data1 = $builder1->get()->getResultArray();
         $data2 = $builder2->get()->getResultArray();
 
-        return array_merge($data1, $data2);
+        $rows = array_merge($data1, $data2);
+        usort($rows, static function (array $a, array $b): int {
+            $cmp = strcasecmp((string) ($a['categoria'] ?? ''), (string) ($b['categoria'] ?? ''));
+            if ($cmp !== 0) {
+                return $cmp;
+            }
+            $cmp = strcasecmp((string) ($a['prueba'] ?? ''), (string) ($b['prueba'] ?? ''));
+            if ($cmp !== 0) {
+                return $cmp;
+            }
+            $cmp = strcasecmp((string) ($a['analisis'] ?? ''), (string) ($b['analisis'] ?? ''));
+            if ($cmp !== 0) {
+                return $cmp;
+            }
+            return ((int) ($a['poblacion'] ?? 0)) <=> ((int) ($b['poblacion'] ?? 0));
+        });
+
+        return $rows;
     }
 
     /**

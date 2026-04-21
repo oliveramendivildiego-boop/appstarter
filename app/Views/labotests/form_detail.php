@@ -22,6 +22,57 @@
 
 <div class="card mt-3">
     <div class="card-header d-flex justify-content-between align-items-center">
+        <strong><i class="fa-solid fa-file-arrow-up me-1"></i>Exportar / Importar configuración</strong>
+        <span class="badge bg-secondary"><?= ($compleja ?? 0) ? 'Prueba compuesta' : 'Prueba no compuesta' ?></span>
+    </div>
+    <div class="card-body">
+        <p class="text-muted mb-3">
+            Exporta la configuración actual de esta prueba en JSON o importa un archivo para reemplazar sus filas de detalle.
+        </p>
+        <div class="row g-2 align-items-end">
+            <div class="col-md-4">
+                <a href="<?= site_url('labotests/exportdetailconfig/' . (int)($labotests_info->prianacategoria_id ?? 0)) ?>" class="btn btn-outline-primary w-100">
+                    <i class="fa-solid fa-download me-1"></i>Exportar JSON
+                </a>
+            </div>
+            <div class="col-md-8">
+                <?= form_open_multipart('labotests/importdetailconfig/' . (int)($labotests_info->prianacategoria_id ?? 0), ['class' => 'row g-2', 'id' => 'form_import_detail_config']) ?>
+                <div class="col-md-8">
+                    <input type="file" name="config_file" class="form-control" accept=".json,application/json" required>
+                </div>
+                <div class="col-md-4">
+                    <button type="submit" class="btn btn-success w-100">
+                        <i class="fa-solid fa-upload me-1"></i>Importar JSON
+                    </button>
+                </div>
+                <?= form_close() ?>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+(function() {
+    var importForm = document.getElementById('form_import_detail_config');
+    if (!importForm) return;
+    importForm.addEventListener('submit', function(e) {
+        e.preventDefault();
+        var msg = 'Esto reemplazará la configuración actual de esta prueba. ¿Continuar?';
+        if (typeof uiConfirm === 'function') {
+            uiConfirm(msg, 'Confirmar importación').then(function(ok) {
+                if (ok) importForm.submit();
+            });
+            return;
+        }
+        if (window.confirm(msg)) {
+            importForm.submit();
+        }
+    });
+})();
+</script>
+
+<div class="card mt-3">
+    <div class="card-header d-flex justify-content-between align-items-center">
         <strong><i class="fa-solid fa-vial me-1"></i>Consumo automatico de reactivos</strong>
         <span class="badge bg-info text-dark">Por analisis</span>
     </div>
@@ -156,6 +207,9 @@ if ($feRaw !== '' && !empty($formulas_con_expresion ?? [])) {
         <button type="button" class="btn btn-sm btn-outline-primary ms-auto" id="btn_abrir_modal_orden_sec" title="Lista compacta para reordenar más rápido">
             <i class="fa-solid fa-list-ol me-1"></i> Orden rápido
         </button>
+        <button type="button" class="btn btn-sm btn-outline-danger" id="btn_eliminar_sec_seleccionadas" disabled>
+            <i class="fa-solid fa-trash me-1"></i>Eliminar seleccionadas
+        </button>
         <?php endif; ?>
     </div>
     <div class="card-body">
@@ -164,6 +218,9 @@ if ($feRaw !== '' && !empty($formulas_con_expresion ?? [])) {
         <table class="table table-bordered" id="tabla_sub_items">
             <thead>
                 <tr>
+                    <th class="text-center">
+                        <input type="checkbox" id="sec_check_all" title="Seleccionar todas">
+                    </th>
                     <th class="text-center col-orden">Orden</th>
                     <th>Sub-clase</th>
                     <th>Población</th>
@@ -235,6 +292,9 @@ if ($feRaw !== '' && !empty($formulas_con_expresion ?? [])) {
                 ?>
                 <tr data-sec="<?= htmlspecialchars(json_encode($rowDataSec), ENT_QUOTES, 'UTF-8') ?>" data-secanacategoria-id="<?= (int)($s['secanacategoria_id'] ?? 0) ?>" data-orden-etiqueta="<?= esc($etiquetaOrden, 'attr') ?>">
                     <?php if ($esSepRow): ?>
+                    <td class="text-center">
+                        <input type="checkbox" class="sec-check-item" value="<?= (int)($s['secanacategoria_id'] ?? 0) ?>">
+                    </td>
                     <td class="text-center text-nowrap">
                         <span class="sec-drag-handle" title="Arrastrar para reordenar"><i class="fa-solid fa-grip-vertical"></i></span>
                         <button type="button" class="btn btn-sm btn-outline-secondary btn-sec-primero" title="Ir al inicio de la lista"><i class="fa-solid fa-angles-up"></i></button>
@@ -245,10 +305,13 @@ if ($feRaw !== '' && !empty($formulas_con_expresion ?? [])) {
                     <td colspan="8" class="table-secondary"><span class="badge bg-secondary me-2">Título</span><strong><?= esc($s['nombre'] ?? '') ?></strong></td>
                     <td class="text-center">
                         <button type="button" class="btn btn-sm btn-outline-primary btn-editar-sec" title="Editar"><i class="fa-solid fa-pen"></i></button>
-                        <a href="<?= site_url("labotests/duplicatesecitem/" . (int)($s['secanacategoria_id'] ?? 0)) ?>" class="btn btn-sm btn-outline-secondary" title="Duplicar"><i class="fa-solid fa-copy"></i></a>
-                        <a href="<?= site_url("labotests/deletesecitem/" . (int)($s['secanacategoria_id'] ?? 0)) ?>" class="btn btn-sm btn-outline-danger" title="Eliminar" onclick="return uiConfirmLink(this, '¿Eliminar esta sub-clase?');"><i class="fa-solid fa-trash"></i></a>
+                        <a href="<?= site_url("labotests/duplicatesecitem/" . (int)($s['secanacategoria_id'] ?? 0)) ?>" class="btn btn-sm btn-outline-secondary btn-sec-duplicar" title="Duplicar"><i class="fa-solid fa-copy"></i></a>
+                        <a href="<?= site_url("labotests/deletesecitem/" . (int)($s['secanacategoria_id'] ?? 0)) ?>" class="btn btn-sm btn-outline-danger btn-sec-eliminar" title="Eliminar"><i class="fa-solid fa-trash"></i></a>
                     </td>
                     <?php else: ?>
+                    <td class="text-center">
+                        <input type="checkbox" class="sec-check-item" value="<?= (int)($s['secanacategoria_id'] ?? 0) ?>">
+                    </td>
                     <td class="text-center text-nowrap">
                         <span class="sec-drag-handle" title="Arrastrar para reordenar"><i class="fa-solid fa-grip-vertical"></i></span>
                         <button type="button" class="btn btn-sm btn-outline-secondary btn-sec-primero" title="Ir al inicio de la lista"><i class="fa-solid fa-angles-up"></i></button>
@@ -274,8 +337,8 @@ if ($fe !== '') {
                     <td><?= esc($opciones[(int)($s['opcion_id'] ?? 0)] ?? '') ?></td>
                     <td class="text-center">
                         <button type="button" class="btn btn-sm btn-outline-primary btn-editar-sec" title="Editar"><i class="fa-solid fa-pen"></i></button>
-                        <a href="<?= site_url("labotests/duplicatesecitem/" . (int)($s['secanacategoria_id'] ?? 0)) ?>" class="btn btn-sm btn-outline-secondary" title="Duplicar"><i class="fa-solid fa-copy"></i></a>
-                        <a href="<?= site_url("labotests/deletesecitem/" . (int)($s['secanacategoria_id'] ?? 0)) ?>" class="btn btn-sm btn-outline-danger" title="Eliminar" onclick="return uiConfirmLink(this, '¿Eliminar esta sub-clase?');"><i class="fa-solid fa-trash"></i></a>
+                        <a href="<?= site_url("labotests/duplicatesecitem/" . (int)($s['secanacategoria_id'] ?? 0)) ?>" class="btn btn-sm btn-outline-secondary btn-sec-duplicar" title="Duplicar"><i class="fa-solid fa-copy"></i></a>
+                        <a href="<?= site_url("labotests/deletesecitem/" . (int)($s['secanacategoria_id'] ?? 0)) ?>" class="btn btn-sm btn-outline-danger btn-sec-eliminar" title="Eliminar"><i class="fa-solid fa-trash"></i></a>
                     </td>
                     <?php endif; ?>
                 </tr>
@@ -304,6 +367,28 @@ if ($fe !== '') {
             </div>
         </div>
         <?php endif; ?>
+
+        <div class="modal fade" id="modalDuplicarSecItem" tabindex="-1" aria-labelledby="modalDuplicarSecItemTitle" aria-hidden="true">
+            <div class="modal-dialog">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title" id="modalDuplicarSecItemTitle">Duplicar sub-clase</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+                    </div>
+                    <div class="modal-body">
+                        <p class="mb-2">Indique cuántas copias desea crear.</p>
+                        <input type="hidden" id="duplicar_sec_url" value="">
+                        <label for="duplicar_sec_copias" class="form-label">Cantidad de copias</label>
+                        <input type="number" id="duplicar_sec_copias" class="form-control" min="1" max="100" step="1" value="1" required>
+                        <small class="text-muted">Valor por defecto: 1</small>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
+                        <button type="button" class="btn btn-primary" id="btn_confirmar_duplicar_sec">Duplicar</button>
+                    </div>
+                </div>
+            </div>
+        </div>
 
         <hr>
         <button type="button" class="btn btn-primary btn-sm mb-3" id="btn_agregar_sec"><?= empty($sub_items) ? 'Agregar primera sub-clase' : 'Agregar sub-clase' ?></button>
@@ -998,22 +1083,94 @@ if ($fe !== '') {
                 clearFormSec();
                 openModal();
             });
-            document.querySelectorAll('.btn-editar-sec').forEach(function(btn) {
-                btn.addEventListener('click', function() {
-                    var tr = btn.closest('tr');
-                    var dataStr = tr && tr.getAttribute('data-sec');
-                    if (!dataStr) return;
-                    var data = {};
-                    try { data = JSON.parse(dataStr); } catch (e) { return; }
-                    if (modalTitle) modalTitle.textContent = 'Editar sub-clase';
-                    if (btnSubmit) btnSubmit.textContent = 'Actualizar';
-                    fillFormSec(data);
-                    openModal();
-                });
-            });
             var tablaSub = document.getElementById('tabla_sub_items');
             var sortableModalOrden = null;
             if (tablaSub) {
+                var secCheckAll = document.getElementById('sec_check_all');
+                var btnEliminarSeleccionadas = document.getElementById('btn_eliminar_sec_seleccionadas');
+                var modalDuplicarSecEl = document.getElementById('modalDuplicarSecItem');
+                var modalDuplicarSecInst = (modalDuplicarSecEl && typeof bootstrap !== 'undefined')
+                    ? (bootstrap.Modal.getInstance(modalDuplicarSecEl) || new bootstrap.Modal(modalDuplicarSecEl))
+                    : null;
+                var duplicarSecUrlInput = document.getElementById('duplicar_sec_url');
+                var duplicarSecCopiasInput = document.getElementById('duplicar_sec_copias');
+                var btnConfirmarDuplicarSec = document.getElementById('btn_confirmar_duplicar_sec');
+
+                function actualizarBadgeFilas() {
+                    var badge = document.querySelector('.card-tabla-sub-items .card-header .badge.bg-secondary');
+                    if (!badge) return;
+                    var total = tablaSub.querySelectorAll('tbody tr[data-secanacategoria-id]').length;
+                    badge.textContent = String(total) + ' filas';
+                }
+                function getCsrfData() {
+                    var csrf = document.querySelector('input[name="csrf_test_name"]') || document.querySelector('input[name*="csrf"]');
+                    var csrfName = (csrf && csrf.name) ? csrf.name : (typeof window.CI_CSRF_TOKEN_NAME !== 'undefined' ? window.CI_CSRF_TOKEN_NAME : 'csrf_test_name');
+                    var csrfVal = (csrf && csrf.value) ? csrf.value : (typeof window.CI_CSRF_TOKEN !== 'undefined' ? window.CI_CSRF_TOKEN : '');
+                    return { name: csrfName, value: csrfVal };
+                }
+                function applyCsrfFromJson(d) {
+                    if (!d || !d.csrf_token || !d.csrf_name) return;
+                    window.CI_CSRF_TOKEN = d.csrf_token;
+                    window.CI_CSRF_TOKEN_NAME = d.csrf_name;
+                    document.querySelectorAll('input[name="csrf_test_name"], input[name*="csrf"]').forEach(function(inp) {
+                        inp.name = d.csrf_name;
+                        inp.value = d.csrf_token;
+                    });
+                }
+                function getSelectedSecIds() {
+                    var ids = [];
+                    tablaSub.querySelectorAll('tbody .sec-check-item:checked').forEach(function(chk) {
+                        var id = parseInt(chk.value, 10);
+                        if (id > 0) ids.push(id);
+                    });
+                    return ids;
+                }
+                function syncSecCheckAllState() {
+                    if (!secCheckAll) return;
+                    var all = tablaSub.querySelectorAll('tbody .sec-check-item');
+                    var checked = tablaSub.querySelectorAll('tbody .sec-check-item:checked');
+                    secCheckAll.checked = all.length > 0 && checked.length === all.length;
+                    secCheckAll.indeterminate = checked.length > 0 && checked.length < all.length;
+                }
+                function actualizarEstadoSeleccion() {
+                    var selected = getSelectedSecIds();
+                    if (btnEliminarSeleccionadas) {
+                        btnEliminarSeleccionadas.disabled = selected.length === 0;
+                        btnEliminarSeleccionadas.innerHTML = selected.length > 0
+                            ? '<i class="fa-solid fa-trash me-1"></i>Eliminar seleccionadas (' + selected.length + ')'
+                            : '<i class="fa-solid fa-trash me-1"></i>Eliminar seleccionadas';
+                    }
+                    syncSecCheckAllState();
+                }
+                function refrescarTablaDesdeRespuesta(htmlText) {
+                    var parser = new DOMParser();
+                    var doc = parser.parseFromString(htmlText || '', 'text/html');
+                    var nuevoBody = doc.querySelector('#tabla_sub_items tbody');
+                    var tbodyActual = tablaSub.querySelector('tbody');
+                    if (!nuevoBody || !tbodyActual) return false;
+                    tbodyActual.innerHTML = nuevoBody.innerHTML;
+                    actualizarBadgeFilas();
+                    actualizarEstadoSeleccion();
+                    return true;
+                }
+                function ejecutarAccionFila(url, mensajeExito) {
+                    if (!url) return;
+                    fetch(url, {
+                        method: 'GET',
+                        headers: { 'X-Requested-With': 'XMLHttpRequest' }
+                    }).then(function(r) { return r.text(); }).then(function(html) {
+                        if (!refrescarTablaDesdeRespuesta(html)) {
+                            throw new Error('No se pudo actualizar la tabla');
+                        }
+                        if (typeof showToast === 'function' && mensajeExito) {
+                            showToast(mensajeExito, 'success');
+                        }
+                    }).catch(function() {
+                        if (typeof showToast === 'function') {
+                            showToast('No se pudo completar la acción', 'error');
+                        }
+                    });
+                }
                 function getOrderIds() {
                     var tbody = tablaSub.querySelector('tbody');
                     if (!tbody) return [];
@@ -1168,7 +1325,127 @@ if ($fe !== '') {
                 if (btnAplicarOrden) {
                     btnAplicarOrden.addEventListener('click', aplicarOrdenDesdeModal);
                 }
+                if (secCheckAll) {
+                    secCheckAll.addEventListener('change', function() {
+                        tablaSub.querySelectorAll('tbody .sec-check-item').forEach(function(chk) {
+                            chk.checked = !!secCheckAll.checked;
+                        });
+                        actualizarEstadoSeleccion();
+                    });
+                }
+                tablaSub.addEventListener('change', function(e) {
+                    if (e.target && e.target.classList.contains('sec-check-item')) {
+                        actualizarEstadoSeleccion();
+                    }
+                });
+                if (btnEliminarSeleccionadas) {
+                    btnEliminarSeleccionadas.addEventListener('click', function() {
+                        var ids = getSelectedSecIds();
+                        if (ids.length < 1) return;
+                        var msg = '¿Eliminar ' + ids.length + ' sub-clase(s) seleccionada(s)?';
+                        var confirmar = (typeof uiConfirm === 'function')
+                            ? uiConfirm(msg, 'Confirmar eliminación masiva')
+                            : Promise.resolve(window.confirm(msg));
+                        confirmar.then(function(ok) {
+                            if (!ok) return;
+                            var fd = new FormData();
+                            fd.append('prianacategoria_id', String(prianacategoriaId));
+                            ids.forEach(function(id) { fd.append('secanacategoria_ids[]', String(id)); });
+                            var csrfData = getCsrfData();
+                            if (csrfData.value) fd.append(csrfData.name, csrfData.value);
+                            var headers = { 'X-Requested-With': 'XMLHttpRequest' };
+                            if (csrfData.value) headers['X-CSRF-TOKEN'] = csrfData.value;
+                            fetch('<?= site_url('labotests/deletesecitemsbulk') ?>', {
+                                method: 'POST',
+                                body: fd,
+                                headers: headers
+                            }).then(function(r) { return r.json(); }).then(function(d) {
+                                applyCsrfFromJson(d);
+                                if (d.success) {
+                                    if (typeof showToast === 'function') showToast(d.message || 'Eliminación completada', 'success');
+                                    window.location.reload();
+                                } else if (typeof showToast === 'function') {
+                                    showToast(d.message || 'No se pudo eliminar', 'error');
+                                }
+                            }).catch(function() {
+                                if (typeof showToast === 'function') showToast('No se pudo eliminar en lote', 'error');
+                            });
+                        });
+                    });
+                }
+                if (btnConfirmarDuplicarSec) {
+                    btnConfirmarDuplicarSec.addEventListener('click', function() {
+                        var url = duplicarSecUrlInput ? duplicarSecUrlInput.value : '';
+                        var copies = parseInt((duplicarSecCopiasInput && duplicarSecCopiasInput.value) ? duplicarSecCopiasInput.value : '1', 10);
+                        if (!url) return;
+                        copies = isNaN(copies) ? 1 : Math.max(1, Math.min(100, copies));
+                        var fd = new FormData();
+                        fd.append('copies', String(copies));
+                        var csrfData = getCsrfData();
+                        if (csrfData.value) fd.append(csrfData.name, csrfData.value);
+                        var headers = { 'X-Requested-With': 'XMLHttpRequest' };
+                        if (csrfData.value) headers['X-CSRF-TOKEN'] = csrfData.value;
+                        btnConfirmarDuplicarSec.disabled = true;
+                        fetch(url, {
+                            method: 'POST',
+                            body: fd,
+                            headers: headers
+                        }).then(function(r) { return r.json(); }).then(function(d) {
+                            btnConfirmarDuplicarSec.disabled = false;
+                            applyCsrfFromJson(d);
+                            if (d.success) {
+                                if (typeof showToast === 'function') showToast(d.message || 'Sub-clase duplicada', 'success');
+                                if (modalDuplicarSecInst) modalDuplicarSecInst.hide();
+                                window.location.reload();
+                            } else if (typeof showToast === 'function') {
+                                showToast(d.message || 'No se pudo duplicar', 'error');
+                            }
+                        }).catch(function() {
+                            btnConfirmarDuplicarSec.disabled = false;
+                            if (typeof showToast === 'function') showToast('No se pudo duplicar la sub-clase', 'error');
+                        });
+                    });
+                }
                 tablaSub.addEventListener('click', function(e) {
+                    var editar = e.target.closest('.btn-editar-sec');
+                    if (editar) {
+                        e.preventDefault();
+                        var trEdit = editar.closest('tr');
+                        var dataStr = trEdit && trEdit.getAttribute('data-sec');
+                        if (!dataStr) return;
+                        var data = {};
+                        try { data = JSON.parse(dataStr); } catch (err) { return; }
+                        if (modalTitle) modalTitle.textContent = 'Editar sub-clase';
+                        if (btnSubmit) btnSubmit.textContent = 'Actualizar';
+                        fillFormSec(data);
+                        openModal();
+                        return;
+                    }
+                    var duplicar = e.target.closest('.btn-sec-duplicar');
+                    if (duplicar) {
+                        e.preventDefault();
+                        if (duplicarSecUrlInput) duplicarSecUrlInput.value = duplicar.getAttribute('href') || '';
+                        if (duplicarSecCopiasInput) duplicarSecCopiasInput.value = '1';
+                        if (modalDuplicarSecInst) {
+                            modalDuplicarSecInst.show();
+                            setTimeout(function() { if (duplicarSecCopiasInput) duplicarSecCopiasInput.focus(); }, 200);
+                        } else {
+                            ejecutarAccionFila(duplicar.getAttribute('href'), 'Sub-clase duplicada correctamente');
+                        }
+                        return;
+                    }
+                    var eliminar = e.target.closest('.btn-sec-eliminar');
+                    if (eliminar) {
+                        e.preventDefault();
+                        var confirmar = (typeof uiConfirm === 'function')
+                            ? uiConfirm('¿Eliminar esta sub-clase?', 'Confirmar')
+                            : Promise.resolve(window.confirm('¿Eliminar esta sub-clase?'));
+                        confirmar.then(function(ok) {
+                            if (!ok) return;
+                            ejecutarAccionFila(eliminar.getAttribute('href'), 'Sub-clase eliminada');
+                        });
+                        return;
+                    }
                     var subir = e.target.closest('.btn-sec-subir');
                     var bajar = e.target.closest('.btn-sec-bajar');
                     var primero = e.target.closest('.btn-sec-primero');
@@ -1190,6 +1467,7 @@ if ($fe !== '') {
                         onEnd: function() { guardarOrden(); }
                     });
                 }
+                actualizarEstadoSeleccion();
             }
             <?php if ($editar_sec ?? 0): ?>
             var editarSecDataInicial = <?= json_encode([

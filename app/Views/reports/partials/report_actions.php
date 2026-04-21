@@ -1,7 +1,8 @@
 <?php
 $pdfUrl = $pdf_url ?? null;
+$containerClass = $container_class ?? 'd-print-none mb-3 d-flex flex-wrap gap-2 align-items-center';
 ?>
-<div class="d-print-none mb-3 d-flex flex-wrap gap-2 align-items-center">
+<div class="<?= esc($containerClass) ?>">
     <button type="button" class="btn btn-primary" onclick="window.print()" title="Imprimir">
         <i class="fas fa-print me-1"></i> Imprimir
     </button>
