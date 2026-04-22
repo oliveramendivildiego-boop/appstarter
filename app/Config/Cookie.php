@@ -3,6 +3,7 @@
 namespace Config;
 
 use CodeIgniter\Config\BaseConfig;
+use DateTimeImmutable;
 use DateTimeInterface;
 
 class Cookie extends BaseConfig
@@ -12,6 +13,8 @@ class Cookie extends BaseConfig
         parent::__construct();
         // Usar path '/' para que la cookie de sesión se envíe en subdirectorios
         $this->path = '/';
+        // Mantener cookie por 4 horas para evitar cierre al cerrar/reabrir navegador.
+        $this->expires = (new DateTimeImmutable('now'))->modify('+4 hours');
     }
     /**
      * --------------------------------------------------------------------------
@@ -33,7 +36,7 @@ class Cookie extends BaseConfig
      *
      * @var DateTimeInterface|int|string
      */
-    public $expires = 0;
+    public $expires = 14400;
 
     /**
      * --------------------------------------------------------------------------

@@ -6,6 +6,23 @@
 
 (function() {
     'use strict';
+
+    // Interruptor temporal para diagnóstico:
+    // - variable global: window.SESSION_MONITOR_DISABLED = true
+    // - o localStorage: localStorage.setItem('disableSessionMonitor', '1')
+    var monitorDisabled = false;
+    try {
+        monitorDisabled = window.SESSION_MONITOR_DISABLED === true
+            || window.SESSION_MONITOR_DISABLED === 'true'
+            || localStorage.getItem('disableSessionMonitor') === '1';
+    } catch (e) {
+        monitorDisabled = window.SESSION_MONITOR_DISABLED === true
+            || window.SESSION_MONITOR_DISABLED === 'true';
+    }
+    if (monitorDisabled) {
+        console.warn('Session monitor desactivado temporalmente para diagnóstico');
+        return;
+    }
     
     // Solo ejecutar en páginas que requieren login (no en login.php)
     if (window.location.pathname.includes('/login') || 

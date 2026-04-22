@@ -37,7 +37,7 @@ foreach ($allowed_modules ?? [] as $m) {
       <h5 class="offcanvas-title" id="sidebarMenuLabel"><?= esc($companyName ?? 'Menu') ?></h5>
       <button type="button" class="btn-close" data-bs-dismiss="offcanvas" data-bs-target="#sidebarMenu" aria-label="Cerrar"></button>
     </div>
-    <div class="offcanvas-body d-md-flex flex-column p-0 pt-lg-3 overflow-y-auto">
+    <div class="offcanvas-body d-md-flex flex-column p-0 pt-lg-3">
       <ul class="nav flex-column">
         <li class="nav-item">
           <a class="nav-link d-flex align-items-center gap-2 <?= $current === 'home' ? 'active' : '' ?>" href="<?= site_url('home') ?>"<?= $current === 'home' ? ' aria-current="page"' : '' ?>>
@@ -46,7 +46,7 @@ foreach ($allowed_modules ?? [] as $m) {
           </a>
         </li>
         <?php foreach ($allowed_modules ?? [] as $module): ?>
-        <?php if (($module->module_id ?? '') === 'config') continue; ?>
+        <?php if (in_array(($module->module_id ?? ''), ['config', 'interpretacion_clinica', 'interpretacion-clinica'], true)) continue; ?>
         <?php $icon = $icons[$module->module_id] ?? 'fa-circle'; ?>
         <?php if (($module->module_id ?? '') === 'registers'): ?>
         <?php $uri = trim(uri_string(), '/'); $isRegistersNuevo = ($uri === 'registers'); ?>

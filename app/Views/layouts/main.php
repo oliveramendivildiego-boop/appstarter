@@ -76,6 +76,7 @@ $pageTitle = $this->renderSection('title');
       BASE_URL = '<?= site_url() ?>';
       window.CI_CSRF_TOKEN = '<?= csrf_hash() ?>';
       window.CI_CSRF_TOKEN_NAME = '<?= csrf_token() ?>';
+      window.SESSION_MONITOR_DISABLED = <?= filter_var((string) env('session.monitorDisabled', 'false'), FILTER_VALIDATE_BOOLEAN) ? 'true' : 'false' ?>;
     </script>
     <script src="<?= base_url('js/jquery-3.7.1.min.js') ?>"></script>
     <script src="<?= base_url('js/jquery.autocomplete.js') ?>"></script>

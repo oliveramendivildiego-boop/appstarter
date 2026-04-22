@@ -29,7 +29,7 @@ class Session extends BaseConfig
      * Session Expiration
      * --------------------------------------------------------------------------
      */
-    public int $expiration = 7200;
+    public int $expiration = 14400;
 
     /**
      * --------------------------------------------------------------------------
