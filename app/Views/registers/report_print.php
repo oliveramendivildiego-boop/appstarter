@@ -62,6 +62,8 @@
         }
     }
     $pdfFooterReserveMm = 22.0;
+    $printBottomReserveMm = $pdfFooterEnabled ? $pdfFooterReserveMm : 0.0;
+    $printBottomMarginMm = $mb + $printBottomReserveMm;
     $pdfFooterStripBg   = ($ftBodyBg !== 'transparent') ? $ftBodyBg : '#ffffff';
     $ftTopOn            = ! empty($ft['section_top_border_enabled']);
     $ftTopW             = max(0, min(6, (int) ($ft['section_top_border_width_px'] ?? 1)));
@@ -75,6 +77,8 @@
     $printPageCssSize = ($printPaper === 'a4') ? 'A4 portrait' : (($printPaper === 'legal') ? 'legal portrait' : 'letter portrait');
     $pp = \App\Services\ReportPdfLayoutService::normalizePrintPaginationStyle($ps['print_pagination'] ?? []);
     $printPaginationEnabled = ! empty($pp['enabled']);
+    // Si la plantilla ya define pie de página, no superponer paginación fija del navegador.
+    $renderFixedPrintPagination = $printPaginationEnabled && ! $pdfFooterEnabled;
     $printPaginationLabelText = (string) ($pp['label_text'] ?? 'Página');
     $ppToCssPos = static function (string $pos, float $mt, float $mr, float $mb, float $ml): string {
         $parts = explode('-', strtolower(trim($pos)), 2);
@@ -98,9 +102,9 @@
     <style>
         @page {
             size: <?= esc($printPageCssSize) ?>;
-            margin: <?= esc((string) $mt) ?>mm <?= esc((string) $mr) ?>mm <?= esc((string) $mb) ?>mm <?= esc((string) $ml) ?>mm;
+            margin: <?= esc((string) $mt) ?>mm <?= esc((string) $mr) ?>mm <?= esc((string) $printBottomMarginMm) ?>mm <?= esc((string) $ml) ?>mm;
         }
-        body { margin: <?= esc((string) $mt) ?>mm <?= esc((string) $mr) ?>mm <?= esc((string) $mb) ?>mm <?= esc((string) $ml) ?>mm !important; position: relative; background: #fff; }
+        body { margin: <?= esc((string) $mt) ?>mm <?= esc((string) $mr) ?>mm <?= esc((string) $printBottomMarginMm) ?>mm <?= esc((string) $ml) ?>mm !important; position: relative; background: #fff; }
         <?php if ($pdfFooterEnabled): ?>
         .pdf-main-stack {
             padding-bottom: <?= esc((string) $pdfFooterReserveMm) ?>mm;
@@ -110,10 +114,12 @@
             position: fixed;
             left: <?= esc((string) $ml) ?>mm;
             right: <?= esc((string) $mr) ?>mm;
-            bottom: <?= esc((string) $mb) ?>mm;
+            /* Anclar al borde inferior de cada hoja; no desplazar por márgenes aquí. */
+            bottom: 0;
             z-index: 2;
             margin-top: 0 !important;
             padding-top: 6px;
+            padding-bottom: <?= esc((string) $mb) ?>mm;
             background: <?= esc($pdfFooterStripBg) ?>;
             box-sizing: border-box;
         }
@@ -307,7 +313,7 @@
     <a href="<?= site_url('registers/viewreport/' . $rid) ?>" class="report-print-btn-secondary">Volver al reporte</a>
     <?php endif; ?>
 </div>
-<?php if ($printPaginationEnabled): ?>
+<?php if ($renderFixedPrintPagination): ?>
 <div class="print-pagination-fixed print-pagination-label-fixed" aria-hidden="true">
     <?= esc($printPaginationLabelText) ?>
 </div>

@@ -279,10 +279,9 @@ body {
     font-size: 9pt;
     line-height: 1.35;
 }
-/* Salto de hoja entre bloques de prueba (siguiente grupo completo en página nueva). */
+/* No forzar salto de hoja por grupo; dejar que el motor de impresión fluya el contenido. */
 .report-pdf-grupo-prueba:not(.report-pdf-grupo-prueba-first) {
-    page-break-before: always;
-    break-before: page;
+    margin-top: 10px;
 }
 .report-pdf-grupo-prueba > .group-title {
     page-break-after: avoid;
