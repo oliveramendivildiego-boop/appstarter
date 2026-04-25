@@ -6,6 +6,8 @@ use App\Libraries\PdfService;
 use App\Models\DoctorModel;
 use App\Models\RegisterModel;
 use App\Models\DoctorCommissionModel;
+use App\Services\DoctorClinicalInsightService;
+use App\Services\PatientResultChartService;
 use App\Services\RegisterService;
 
 /**
@@ -16,6 +18,8 @@ class DoctorHome extends BaseController
     protected DoctorModel $doctorModel;
     protected RegisterModel $registerModel;
     protected RegisterService $registerService;
+    protected DoctorClinicalInsightService $clinicalInsightService;
+    protected PatientResultChartService $chartService;
     protected DoctorCommissionModel $commissionModel;
     protected ?object $doctorInfo = null;
 
@@ -36,6 +40,8 @@ class DoctorHome extends BaseController
         $this->doctorModel = model(DoctorModel::class);
         $this->registerModel = model(RegisterModel::class);
         $this->registerService = new RegisterService($this->registerModel);
+        $this->clinicalInsightService = new DoctorClinicalInsightService();
+        $this->chartService = new PatientResultChartService($this->clinicalInsightService);
         $this->commissionModel = model(DoctorCommissionModel::class);
         $this->doctorInfo = $this->doctorModel->getInfo((int) session()->get('doctor_id'));
     }
@@ -48,20 +54,36 @@ class DoctorHome extends BaseController
         $offset = ($page - 1) * $perPage;
 
         $pacientes = $this->registerModel->getPacientesByDoctorId($doctorId);
-        $registrosRecientes = $this->registerModel->getRegistrosByDoctorId($doctorId, $perPage, $offset);
-        $totalRegistros = $this->registerModel->countRegistrosByDoctorId($doctorId);
-        $totalPages = max(1, (int) ceil($totalRegistros / $perPage));
+        $clinicalFilters = $this->clinicalSearchFiltersFromRequest();
+        $clinicalSearchActive = $this->hasClinicalSearchFilters($clinicalFilters);
+        if ($clinicalSearchActive) {
+            $registrosRecientes = $this->clinicalSearchResults($doctorId, $clinicalFilters);
+            $totalRegistros = count($registrosRecientes);
+            $totalPages = 1;
+            $page = 1;
+        } else {
+            $registrosRecientes = $this->registerModel->getRegistrosByDoctorId($doctorId, $perPage, $offset);
+            $totalRegistros = $this->registerModel->countRegistrosByDoctorId($doctorId);
+            $totalPages = max(1, (int) ceil($totalRegistros / $perPage));
+        }
+        $clinicalSummaries = $this->summariesForRegisters($registrosRecientes);
+        $doctorSummary = $this->buildDoctorDashboardSummary($doctorId);
         
         // Obtener resumen de comisiones solo si el doctor tiene habilitadas las comisiones
         $comisionSummary = null;
         $comisionesRecientes = [];
+        $hideCommissionDetails = false;
         
         if ($this->doctorModel->hasColumn('has_commission') && isset($this->doctorInfo->has_commission)) {
             $hasCommission = (int) $this->doctorInfo->has_commission;
             if ($hasCommission == 1) {
+                $hideCommissionDetails = $this->doctorModel->hasColumn('hide_commission_details')
+                    && (int) ($this->doctorInfo->hide_commission_details ?? 0) === 1;
                 $comisionSummary = $this->commissionModel->getCommissionSummaryByDoctor($doctorId);
-                // Obtener comisiones pagadas con detalles completos
-                $comisionesRecientes = $this->commissionModel->getPaidCommissionsWithDetails($doctorId, 5);
+                if (!$hideCommissionDetails) {
+                    // Obtener comisiones pagadas con detalles completos
+                    $comisionesRecientes = $this->commissionModel->getPaidCommissionsWithDetails($doctorId, 5);
+                }
             }
         }
 
@@ -75,6 +97,11 @@ class DoctorHome extends BaseController
             'totalPages'        => $totalPages,
             'comision_summary'  => $comisionSummary,
             'comisiones_recientes' => $comisionesRecientes,
+            'hide_commission_details' => $hideCommissionDetails,
+            'clinical_filters'  => $clinicalFilters,
+            'clinical_search_active' => $clinicalSearchActive,
+            'clinical_summaries' => $clinicalSummaries,
+            'doctor_summary'    => $doctorSummary,
         ]);
     }
 
@@ -138,30 +165,39 @@ class DoctorHome extends BaseController
             return $this->response->setJSON(['success' => false, 'message' => 'Seleccione una prueba'])->setStatusCode(400);
         }
 
-        $serie = $this->registerModel->getSeriePruebaByPersonAndDoctor($personId, $doctorId, $prueba);
-        if (empty($serie)) {
-            return $this->response->setJSON(['success' => true, 'labels' => [], 'valor' => [], 'minimo' => [], 'maximo' => []]);
+        $series = $this->chartSeriesForRequest($personId, $doctorId, $prueba);
+        if (empty($series[0]['rows'])) {
+            return $this->response->setJSON(['success' => true, 'labels' => [], 'valor' => [], 'minimo' => [], 'maximo' => [], 'series' => []]);
         }
 
-        $labels = [];
-        $valor = [];
-        $minimo = [];
-        $maximo = [];
+        return $this->response->setJSON($this->chartService->buildPayload(
+            $series,
+            trim((string) ($this->request->getGet('range') ?? 'all')),
+            trim((string) ($this->request->getGet('date_from') ?? '')),
+            trim((string) ($this->request->getGet('date_to') ?? ''))
+        ));
+    }
 
-        foreach ($serie as $row) {
-            $labels[] = !empty($row['ingreso']) ? date('d/m/Y', strtotime((string) $row['ingreso'])) : '-';
-            $valor[] = $this->toFloatOrNull($row['valor'] ?? null);
-            $minimo[] = $this->toFloatOrNull($row['minimo'] ?? null);
-            $maximo[] = $this->toFloatOrNull($row['maximo'] ?? null);
+    /**
+     * @return list<array<string, mixed>>
+     */
+    private function chartSeriesForRequest(int $personId, int $doctorId, string $primaryKey): array
+    {
+        $compareKey = trim((string) ($this->request->getGet('compare') ?? ''));
+        $series = [];
+        foreach ([$primaryKey, $compareKey] as $idx => $key) {
+            if ($key === '' || ($idx === 1 && $key === $primaryKey)) {
+                continue;
+            }
+            $rows = $this->registerModel->getSeriePruebaByPersonAndDoctor($personId, $doctorId, $key);
+            $series[] = [
+                'key' => $key,
+                'label' => (string) ($rows[0]['label'] ?? $key),
+                'rows' => $rows,
+            ];
         }
 
-        return $this->response->setJSON([
-            'success' => true,
-            'labels'  => $labels,
-            'valor'   => $valor,
-            'minimo'  => $minimo,
-            'maximo'  => $maximo,
-        ]);
+        return $series;
     }
 
     private function toFloatOrNull($raw): ?float
@@ -214,6 +250,46 @@ class DoctorHome extends BaseController
             'doctor_info'        => $this->doctorInfo,
             'report_emitido_en'  => $this->registerService->reportEmitidoEnForView($id),
             'public_resultados_token' => $publicToken,
+            'clinical_summary'   => $this->clinicalInsightService->summarizeReport($data['grupos'], $this->clinicalContextFromRegister($data['register_info'])),
+        ]);
+    }
+
+    /**
+     * Endpoint JSON de historial longitudinal por paciente del doctor.
+     */
+    public function history(int $personId = 0)
+    {
+        $doctorId = (int) session()->get('doctor_id');
+        if ($personId < 1) {
+            return $this->response->setJSON(['success' => false, 'message' => 'Paciente no válido'])->setStatusCode(400);
+        }
+
+        $paciente = $this->registerModel->getPatientById($personId);
+        if (!$paciente) {
+            return $this->response->setJSON(['success' => false, 'message' => 'Paciente no encontrado'])->setStatusCode(404);
+        }
+
+        $registros = $this->registerModel->getRegistrosByPersonAndDoctor($personId, $doctorId, 100);
+        $history = [];
+        foreach ($registros as $registro) {
+            $registroId = (int) ($registro->registro_id ?? 0);
+            $data = $registroId > 0 ? $this->registerService->prepareReportData($registroId) : null;
+            $summary = $data ? $this->clinicalInsightService->summarizeReport($data['grupos'], $this->clinicalContextFromRegister($data['register_info'])) : null;
+            $history[] = [
+                'registro_id' => $registroId,
+                'ingreso' => $registro->ingreso ?? null,
+                'paciente' => $registro->paciente ?? '',
+                'summary' => $summary,
+            ];
+        }
+
+        return $this->response->setJSON([
+            'success' => true,
+            'patient' => [
+                'person_id' => $personId,
+                'name' => trim(($paciente->first_name ?? '') . ' ' . ($paciente->last_name_fa ?? '') . ' ' . ($paciente->last_name_mom ?? '')),
+            ],
+            'history' => $history,
         ]);
     }
 
@@ -268,6 +344,203 @@ class DoctorHome extends BaseController
         $doctorId = (int) session()->get('doctor_id');
         $suggestions = $this->registerModel->searchPacienteForDoctor($q, $doctorId);
         return $this->response->setJSON($suggestions);
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function clinicalSearchFiltersFromRequest(): array
+    {
+        $query = trim((string) ($this->request->getGet('clinical_query') ?? ''));
+        $parsedQuery = $this->parseClinicalQuery($query);
+
+        return [
+            'q' => trim((string) ($this->request->getGet('q') ?? '')),
+            'date_from' => trim((string) ($this->request->getGet('date_from') ?? '')),
+            'date_to' => trim((string) ($this->request->getGet('date_to') ?? '')),
+            'only_altered' => (int) ($this->request->getGet('only_altered') ?? 0) === 1,
+            'clinical_query' => $query,
+            'parsed_query' => $parsedQuery,
+        ];
+    }
+
+    /**
+     * @param array<string, mixed> $filters
+     */
+    private function hasClinicalSearchFilters(array $filters): bool
+    {
+        return trim((string) ($filters['q'] ?? '')) !== ''
+            || trim((string) ($filters['date_from'] ?? '')) !== ''
+            || trim((string) ($filters['date_to'] ?? '')) !== ''
+            || !empty($filters['only_altered'])
+            || trim((string) ($filters['clinical_query'] ?? '')) !== '';
+    }
+
+    /**
+     * @param array<string, mixed> $filters
+     * @return list<object>
+     */
+    private function clinicalSearchResults(int $doctorId, array $filters): array
+    {
+        $base = $this->registerModel->getRegistrosByDoctorAdvanced($doctorId, $filters, 150, 0);
+        $out = [];
+        $parsedQuery = $filters['parsed_query'] ?? null;
+        foreach ($base as $registro) {
+            $registroId = (int) ($registro->registro_id ?? 0);
+            if ($registroId < 1) {
+                continue;
+            }
+            $data = $this->registerService->prepareReportData($registroId);
+            if (!$data) {
+                continue;
+            }
+            $summary = $this->clinicalInsightService->summarizeReport($data['grupos'], $this->clinicalContextFromRegister($data['register_info']));
+            if (!empty($filters['only_altered']) && (int) ($summary['altered_count'] ?? 0) < 1 && (int) ($summary['critical_count'] ?? 0) < 1) {
+                continue;
+            }
+            if (is_array($parsedQuery) && !$this->reportMatchesClinicalQuery($data['grupos'], $parsedQuery)) {
+                continue;
+            }
+            $registro->clinical_summary = $summary;
+            $out[] = $registro;
+            if (count($out) >= 50) {
+                break;
+            }
+        }
+
+        return $out;
+    }
+
+    /**
+     * @param list<object> $registros
+     * @return array<int, array<string, mixed>>
+     */
+    private function summariesForRegisters(array $registros): array
+    {
+        $summaries = [];
+        foreach ($registros as $registro) {
+            $registroId = (int) ($registro->registro_id ?? 0);
+            if ($registroId < 1) {
+                continue;
+            }
+            if (isset($registro->clinical_summary) && is_array($registro->clinical_summary)) {
+                $summaries[$registroId] = $registro->clinical_summary;
+                continue;
+            }
+            $data = $this->registerService->prepareReportData($registroId);
+            if ($data) {
+                $summaries[$registroId] = $this->clinicalInsightService->summarizeReport($data['grupos'], $this->clinicalContextFromRegister($data['register_info']));
+            }
+        }
+
+        return $summaries;
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function buildDoctorDashboardSummary(int $doctorId): array
+    {
+        $recent = $this->registerModel->getRegistrosByDoctorAdvanced($doctorId, [], 25, 0);
+        $altered = 0;
+        $critical = 0;
+        $top = [];
+        foreach ($recent as $registro) {
+            $registroId = (int) ($registro->registro_id ?? 0);
+            $data = $registroId > 0 ? $this->registerService->prepareReportData($registroId) : null;
+            if (!$data) {
+                continue;
+            }
+            $summary = $this->clinicalInsightService->summarizeReport($data['grupos'], $this->clinicalContextFromRegister($data['register_info']));
+            $altered += (int) ($summary['altered_count'] ?? 0);
+            $critical += (int) ($summary['critical_count'] ?? 0);
+            foreach (($summary['top_alterations'] ?? []) as $alt) {
+                $alt['registro_id'] = $registroId;
+                $alt['paciente'] = (string) ($registro->paciente ?? '');
+                $top[] = $alt;
+            }
+        }
+        usort($top, static function (array $a, array $b): int {
+            return ((float) ($b['score'] ?? 0)) <=> ((float) ($a['score'] ?? 0));
+        });
+        $status = $critical > 0 ? 'Crítico' : ($altered > 0 ? 'Riesgo' : 'Normal');
+
+        return [
+            'sample_size' => count($recent),
+            'altered_count' => $altered,
+            'critical_count' => $critical,
+            'status' => $status,
+            'status_class' => $status === 'Crítico' ? 'danger' : ($status === 'Riesgo' ? 'warning' : 'success'),
+            'top_alterations' => array_slice($top, 0, 5),
+            'interpretation' => $critical > 0
+                ? 'Hay resultados críticos recientes que requieren priorización.'
+                : ($altered > 0 ? 'Hay alteraciones recientes para revisar en contexto clínico.' : 'No se detectan alteraciones recientes en las órdenes evaluadas.'),
+        ];
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    private function clinicalContextFromRegister(object $registerInfo): array
+    {
+        return [
+            'diagnostico_presuntivo' => (string) ($registerInfo->diagnostico_presuntivo ?? $registerInfo->diagnostico ?? ''),
+            'motivo_estudio' => (string) ($registerInfo->motivo_estudio ?? $registerInfo->motivo ?? $registerInfo->comentario_resultado ?? ''),
+        ];
+    }
+
+    /**
+     * @return array{parameter:string,operator:string,value:float}|null
+     */
+    private function parseClinicalQuery(string $query): ?array
+    {
+        if (!preg_match('/^\s*(.+?)\s*(>=|<=|=|>|<)\s*(-?\d+(?:[\.,]\d+)?)\s*$/u', $query, $m)) {
+            return null;
+        }
+
+        return [
+            'parameter' => mb_strtolower(trim($m[1])),
+            'operator' => $m[2],
+            'value' => (float) str_replace(',', '.', $m[3]),
+        ];
+    }
+
+    /**
+     * @param array<string, list<object>> $grupos
+     * @param array{parameter:string,operator:string,value:float} $query
+     */
+    private function reportMatchesClinicalQuery(array $grupos, array $query): bool
+    {
+        foreach ($grupos as $items) {
+            foreach ($items as $item) {
+                $row = is_array($item) ? (object) $item : $item;
+                $label = mb_strtolower(trim((string) ($row->nombre ?? $row->hijo ?? '')));
+                if ($label === '' || mb_strpos($label, $query['parameter']) === false) {
+                    continue;
+                }
+                $value = $this->toFloatOrNull($row->regvalues ?? null);
+                if ($value === null && trim((string) ($row->regvalues ?? '')) !== '') {
+                    $value = $this->toFloatOrNull(preg_replace('/[^0-9,\.\-]/', '', (string) $row->regvalues));
+                }
+                if ($value === null) {
+                    continue;
+                }
+                if ($this->compareClinicalValue($value, $query['operator'], (float) $query['value'])) {
+                    return true;
+                }
+            }
+        }
+
+        return false;
+    }
+
+    private function compareClinicalValue(float $left, string $operator, float $right): bool
+    {
+        if ($operator === '>') return $left > $right;
+        if ($operator === '<') return $left < $right;
+        if ($operator === '>=') return $left >= $right;
+        if ($operator === '<=') return $left <= $right;
+        return abs($left - $right) < 0.0001;
     }
 
     public function logout()

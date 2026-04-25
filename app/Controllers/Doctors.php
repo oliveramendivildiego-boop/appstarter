@@ -112,7 +112,13 @@ class Doctors extends SecureArea
             'email'        => $this->request->getPost('email'),
             'commission_percent' => $this->request->getPost('commission_percent') ?? 0.00,
             'has_commission' => $this->request->getPost('has_commission') ?? 0,
+            'hide_commission_details' => $this->request->getPost('hide_commission_details') ?? 0,
         ];
+
+        $id = ($doctor_id === -1 || $doctor_id === '-1') ? null : (int) $doctor_id;
+        if ($id === null && trim((string) ($doctor_data['username'] ?? '')) === '' && trim((string) ($doctor_data['email'] ?? '')) === '') {
+            $doctor_data['password'] = '';
+        }
 
         if (
             !$this->doctorModel->supportsLoginColumns()
@@ -134,8 +140,6 @@ class Doctors extends SecureArea
             }
             return redirect()->back()->withInput()->with('error', $msg);
         }
-
-        $id = ($doctor_id === -1 || $doctor_id === '-1') ? null : (int) $doctor_id;
 
         $result = $this->doctorModel->saveDoctor($doctor_data, $id);
         if ($result !== false) {

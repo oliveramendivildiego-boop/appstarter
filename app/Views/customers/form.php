@@ -16,7 +16,7 @@
 <?php endif; ?>
 <?php $validationErrors = session()->getFlashdata('errors'); ?>
 <?php $pid = $person_info->person_id ?? ''; $saveId = ($pid === '' || $pid === null) ? '-1' : (int) $pid; ?>
-<?= form_open(site_url('customers/save/' . $saveId), ['id' => 'customer_form', 'data-async' => '1']) ?>
+<?= form_open(site_url('customers/save/' . $saveId), ['id' => 'customer_form', 'data-async' => '1', 'autocomplete' => 'off']) ?>
 <fieldset id="customer_basic_info">
     <?= view('people/form_basic_info', ['person_info' => $person_info]) ?>
     <div class="row">

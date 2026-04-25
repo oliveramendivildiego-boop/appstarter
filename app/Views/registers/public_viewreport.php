@@ -84,10 +84,14 @@ endif;
 <?= view('registers/partials/report_lab_firmas', ['report_lab_firmas' => $report_lab_firmas ?? []]) ?>
 
 <div class="text-center mt-3">
-    <?php if ($token !== ''): ?>
+    <?php if ($token !== '' && !empty($doctor_assigned ?? false)): ?>
     <a href="<?= site_url('resultados/' . $token . '/pdf') ?>" class="btn btn-success" target="_blank" rel="noopener">
         <i class="fa-solid fa-file-pdf me-1"></i> Descargar PDF
     </a>
+    <?php elseif ($token !== ''): ?>
+    <div class="small text-muted">
+        El PDF estará disponible cuando la orden tenga un doctor asignado.
+    </div>
     <?php endif; ?>
 </div>
 </fieldset>

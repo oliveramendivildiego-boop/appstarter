@@ -886,7 +886,7 @@ class RegisterService
 
         $master = $this->registerModel->getInforeport($registroId);
         $paciente = $master ? $this->registerModel->getInfoPaciente($master->person_id) : null;
-        $doctor   = $master ? $this->registerModel->getInfoDoctor($master->doctor_id) : null;
+        $doctor   = $master ? $this->registerModel->getInfoDoctor((int) ($master->doctor_id ?? 0)) : null;
         $analisis = $this->registerModel->getInfoAnalisis($registroId);
 
         $paciente = $this->preparePacienteParaReporte($paciente);

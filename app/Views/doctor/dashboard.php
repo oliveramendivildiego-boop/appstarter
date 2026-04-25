@@ -9,6 +9,11 @@ $layoutCfg = layout_config();
 $currencySym = $layoutCfg['currency_symbol'] ?? '$';
 $currencySide = isset($layoutCfg['currency_side']) ? (string)$layoutCfg['currency_side'] : 'left';
 $currencyIsRight = strtolower(trim($currencySide)) === 'right';
+$hideCommissionDetails = !empty($hide_commission_details);
+$doctorSummary = $doctor_summary ?? [];
+$clinicalFilters = $clinical_filters ?? [];
+$clinicalSummaries = $clinical_summaries ?? [];
+$summaryStatusClass = $doctorSummary['status_class'] ?? 'success';
 ?>
 <div class="container-fluid">
     <div class="row">
@@ -50,9 +55,155 @@ $currencyIsRight = strtolower(trim($currencySide)) === 'right';
                 </div>
             </div>
 
+            <div class="row mb-4 g-3">
+                <div class="col-md-3">
+                    <div class="card border-0 shadow-sm h-100 ynex-stat-card">
+                        <div class="card-body d-flex align-items-center">
+                            <div class="ynex-stat-icon <?= esc($summaryStatusClass) ?> me-3">
+                                <i class="fa-solid fa-heart-pulse"></i>
+                            </div>
+                            <div>
+                                <div class="ynex-stat-label">Estado general</div>
+                                <div class="ynex-stat-value"><?= esc($doctorSummary['status'] ?? 'Normal') ?></div>
+                                <small class="text-muted">Últimos <?= (int) ($doctorSummary['sample_size'] ?? 0) ?> reportes</small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="card border-0 shadow-sm h-100 ynex-stat-card">
+                        <div class="card-body d-flex align-items-center">
+                            <div class="ynex-stat-icon warning me-3">
+                                <i class="fa-solid fa-triangle-exclamation"></i>
+                            </div>
+                            <div>
+                                <div class="ynex-stat-label">Valores alterados</div>
+                                <div class="ynex-stat-value"><?= (int) ($doctorSummary['altered_count'] ?? 0) ?></div>
+                                <small class="text-muted">Acumulado reciente</small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="card border-0 shadow-sm h-100 ynex-stat-card">
+                        <div class="card-body d-flex align-items-center">
+                            <div class="ynex-stat-icon danger me-3">
+                                <i class="fa-solid fa-bell"></i>
+                            </div>
+                            <div>
+                                <div class="ynex-stat-label">Críticos</div>
+                                <div class="ynex-stat-value"><?= (int) ($doctorSummary['critical_count'] ?? 0) ?></div>
+                                <small class="text-muted">Priorización inmediata</small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="card border-0 shadow-sm h-100">
+                        <div class="card-body">
+                            <div class="fw-semibold mb-1">Interpretación global</div>
+                            <p class="small text-muted mb-0"><?= esc($doctorSummary['interpretation'] ?? 'Sin datos recientes para interpretar.') ?></p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card border-0 shadow-sm mb-4">
+                <div class="card-header bg-transparent py-3">
+                    <h5 class="card-title mb-0 fw-semibold"><i class="fa-solid fa-magnifying-glass-chart me-2"></i>Buscador avanzado</h5>
+                </div>
+                <div class="card-body">
+                    <form method="get" action="<?= site_url('doctor/home') ?>" class="row g-3 align-items-end">
+                        <div class="col-md-3">
+                            <label class="form-label">Nombre, CI u orden</label>
+                            <input type="text" name="q" class="form-control" value="<?= esc($clinicalFilters['q'] ?? '') ?>" placeholder="Paciente, CI, orden">
+                        </div>
+                        <div class="col-md-2">
+                            <label class="form-label">Desde</label>
+                            <input type="date" name="date_from" class="form-control" value="<?= esc($clinicalFilters['date_from'] ?? '') ?>">
+                        </div>
+                        <div class="col-md-2">
+                            <label class="form-label">Hasta</label>
+                            <input type="date" name="date_to" class="form-control" value="<?= esc($clinicalFilters['date_to'] ?? '') ?>">
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label">Query clínica</label>
+                            <input type="text" name="clinical_query" class="form-control" value="<?= esc($clinicalFilters['clinical_query'] ?? '') ?>" placeholder="Ej: glucosa > 126">
+                        </div>
+                        <div class="col-md-2">
+                            <div class="form-check mb-2">
+                                <input class="form-check-input" type="checkbox" name="only_altered" value="1" id="only_altered" <?= !empty($clinicalFilters['only_altered']) ? 'checked' : '' ?>>
+                                <label class="form-check-label" for="only_altered">Solo alterados</label>
+                            </div>
+                            <div class="d-flex gap-2">
+                                <button type="submit" class="btn btn-primary btn-sm">Filtrar</button>
+                                <a href="<?= site_url('doctor/home') ?>" class="btn btn-outline-secondary btn-sm">Limpiar</a>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <?php if (!empty($doctorSummary['top_alterations'])): ?>
+            <div class="card border-0 shadow-sm mb-4">
+                <div class="card-header bg-transparent py-3">
+                    <h5 class="card-title mb-0 fw-semibold"><i class="fa-solid fa-list-check me-2"></i>Top 5 alteraciones recientes</h5>
+                </div>
+                <div class="card-body p-0">
+                    <div class="table-responsive">
+                        <table class="table table-sm mb-0 align-middle">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Paciente</th>
+                                    <th>Parámetro</th>
+                                    <th>Valor</th>
+                                    <th>Clasificación</th>
+                                    <th></th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <?php foreach ($doctorSummary['top_alterations'] as $alt): ?>
+                                <tr>
+                                    <td><?= esc($alt['paciente'] ?? '-') ?></td>
+                                    <td><?= esc($alt['nombre'] ?? '-') ?></td>
+                                    <td><?= esc(trim(($alt['valor'] ?? '-') . ' ' . ($alt['unidad'] ?? ''))) ?></td>
+                                    <td>
+                                        <span class="badge bg-<?= !empty($alt['critico']) ? 'danger' : 'warning text-dark' ?>">
+                                            <?= !empty($alt['critico']) ? 'Crítico' : esc($alt['direccion'] ?? 'Alterado') ?>
+                                        </span>
+                                    </td>
+                                    <td class="text-end">
+                                        <a href="<?= site_url('doctor/viewreport/' . (int) ($alt['registro_id'] ?? 0)) ?>" class="btn btn-sm btn-outline-primary" target="_blank">Ver</a>
+                                    </td>
+                                </tr>
+                                <?php endforeach; ?>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+            <?php endif; ?>
+
             <!-- Sección de Comisiones -->
             <?php if (isset($comision_summary) && $comision_summary !== null): ?>
             <div class="row mb-4 g-3">
+                <?php if ($hideCommissionDetails): ?>
+                <div class="col-md-4">
+                    <div class="card border-0 shadow-sm h-100 ynex-stat-card">
+                        <div class="card-body d-flex align-items-center">
+                            <div class="ynex-stat-icon info me-3">
+                                <i class="fa-solid fa-money-check"></i>
+                            </div>
+                            <div>
+                                <div class="ynex-stat-label">Monto pagado</div>
+                                <div class="ynex-stat-value"><?= $currencyIsRight
+                                    ? (number_format($comision_summary->total_paid ?? 0, 2) . ' ' . esc($currencySym))
+                                    : (esc($currencySym) . ' ' . number_format($comision_summary->total_paid ?? 0, 2)) ?></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <?php else: ?>
                 <div class="col-md-4">
                     <div class="card border-0 shadow-sm h-100 ynex-stat-card">
                         <div class="card-body d-flex align-items-center">
@@ -101,6 +252,7 @@ $currencyIsRight = strtolower(trim($currencySide)) === 'right';
                         </div>
                     </div>
                 </div>
+                <?php endif; ?>
             </div>
             <?php endif; ?>
 
@@ -127,6 +279,7 @@ $currencyIsRight = strtolower(trim($currencySide)) === 'right';
                         </div>
                     </div>
 
+                    <?php if (!$hideCommissionDetails): ?>
                     <!-- Comisiones Pagadas Recientes -->
                     <div class="card border-0 shadow-sm">
                         <div class="card-header bg-transparent py-3">
@@ -179,6 +332,7 @@ $currencyIsRight = strtolower(trim($currencySide)) === 'right';
                             <?php endif; ?>
                         </div>
                     </div>
+                    <?php endif; ?>
                 </div>
                 <div class="col-xl-7">
                     <div class="card border-0 shadow-sm">
@@ -194,6 +348,7 @@ $currencyIsRight = strtolower(trim($currencySide)) === 'right';
                                             <th>#</th>
                                             <th>Paciente</th>
                                             <th>Fecha</th>
+                                            <th>Estado</th>
                                             <th></th>
                                         </tr>
                                     </thead>
@@ -203,6 +358,19 @@ $currencyIsRight = strtolower(trim($currencySide)) === 'right';
                                             <td><?= (int)($reg->registro_id ?? 0) ?></td>
                                             <td><?= esc($reg->paciente ?? '-') ?></td>
                                             <td><?= !empty($reg->ingreso) ? date('d/m/Y H:i', strtotime($reg->ingreso)) : '-' ?></td>
+                                            <td>
+                                                <?php
+                                                $rid = (int) ($reg->registro_id ?? 0);
+                                                $sum = $clinicalSummaries[$rid] ?? null;
+                                                $badge = $sum['status_class'] ?? 'secondary';
+                                                ?>
+                                                <?php if ($sum): ?>
+                                                    <span class="badge bg-<?= esc($badge) ?>"><?= esc($sum['status'] ?? 'Normal') ?></span>
+                                                    <small class="text-muted d-block"><?= (int) ($sum['altered_count'] ?? 0) ?> alt. / <?= (int) ($sum['critical_count'] ?? 0) ?> crit.</small>
+                                                <?php else: ?>
+                                                    <span class="badge bg-secondary">Sin resumen</span>
+                                                <?php endif; ?>
+                                            </td>
                                             <td>
                                                 <a href="<?= site_url('doctor/viewreport/' . ($reg->registro_id ?? 0)) ?>" class="btn btn-sm btn-outline-primary" target="_blank">Ver reporte</a>
                                             </td>

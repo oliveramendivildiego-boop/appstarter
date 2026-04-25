@@ -68,10 +68,18 @@ $qr_data_uri = qr_base64($reportUrl, 120);
 
 <div class="text-center mt-3">
     <button id="guardaranalisis" name="guardaranalisis" class="btn btn-primary">Guardar</button>
-    <a href="<?= site_url('registers/printreport/' . (int) ($labotests_namecate ?? 0)) ?>" class="btn btn-outline-primary" id="btn_print_report">Imprimir</a>
-    <a href="<?= site_url('registers/pdf/' . ($labotests_namecate ?? 0)) ?>" class="btn btn-success" target="_blank">
-        <i class="fa-solid fa-file-pdf me-1"></i> Descargar PDF
-    </a>
+    <?php $doctorAssigned = !empty($doctor_assigned ?? false); ?>
+    <?php if ($doctorAssigned): ?>
+        <a href="<?= site_url('registers/printreport/' . (int) ($labotests_namecate ?? 0)) ?>" class="btn btn-outline-primary" id="btn_print_report">Imprimir</a>
+        <a href="<?= site_url('registers/pdf/' . ($labotests_namecate ?? 0)) ?>" class="btn btn-success" target="_blank">
+            <i class="fa-solid fa-file-pdf me-1"></i> Descargar PDF
+        </a>
+    <?php else: ?>
+        <button type="button" class="btn btn-outline-primary" disabled>Imprimir</button>
+        <button type="button" class="btn btn-success" disabled>
+            <i class="fa-solid fa-file-pdf me-1"></i> Descargar PDF
+        </button>
+    <?php endif; ?>
     <?php
     $ridPdf = (int) ($labotests_namecate ?? 0);
     $compOk = !empty($comprobante_pdf_disponible ?? false);
@@ -92,6 +100,11 @@ $qr_data_uri = qr_base64($reportUrl, 120);
         <?php else: ?>
             <i class="fa-solid fa-circle-info me-1"></i>Si no puede descargar el comprobante, verifique el pago de la orden.
         <?php endif; ?>
+    </div>
+    <?php endif; ?>
+    <?php if (!$doctorAssigned): ?>
+    <div class="small text-warning mt-2 w-100">
+        <i class="fa-solid fa-triangle-exclamation me-1"></i>Asigne un doctor para habilitar impresión y PDF de resultados.
     </div>
     <?php endif; ?>
 </div>

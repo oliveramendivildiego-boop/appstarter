@@ -44,6 +44,67 @@
     </div>
 </div>
 
+<?php if (!empty($clinical_summary)): ?>
+<div class="card border-0 shadow-sm mb-3">
+    <div class="card-header bg-transparent py-3 d-flex justify-content-between align-items-center">
+        <h5 class="mb-0 fw-semibold"><i class="fa-solid fa-stethoscope me-2"></i>Resumen médico automático</h5>
+        <span class="badge bg-<?= esc($clinical_summary['status_class'] ?? 'secondary') ?>"><?= esc($clinical_summary['status'] ?? 'Normal') ?></span>
+    </div>
+    <div class="card-body">
+        <div class="row g-3">
+            <div class="col-md-3">
+                <div class="small text-muted">Valores alterados</div>
+                <div class="h4 mb-0"><?= (int) ($clinical_summary['altered_count'] ?? 0) ?></div>
+            </div>
+            <div class="col-md-3">
+                <div class="small text-muted">Críticos</div>
+                <div class="h4 mb-0 text-danger"><?= (int) ($clinical_summary['critical_count'] ?? 0) ?></div>
+            </div>
+            <div class="col-md-6">
+                <div class="small text-muted">Interpretación global</div>
+                <p class="mb-0"><?= esc($clinical_summary['global_interpretation'] ?? '') ?></p>
+            </div>
+        </div>
+        <?php if (!empty($clinical_summary['top_alterations'])): ?>
+        <div class="mt-3">
+            <div class="fw-semibold mb-2">Top alteraciones</div>
+            <div class="d-flex flex-wrap gap-2">
+                <?php foreach ($clinical_summary['top_alterations'] as $alt): ?>
+                    <span class="badge bg-<?= !empty($alt['critico']) ? 'danger' : 'warning text-dark' ?>">
+                        <?= esc($alt['nombre'] ?? '-') ?>: <?= esc($alt['valor'] ?? '-') ?>
+                    </span>
+                <?php endforeach; ?>
+            </div>
+        </div>
+        <?php endif; ?>
+        <?php if (!empty($clinical_summary['recommendations'])): ?>
+        <div class="mt-3">
+            <div class="fw-semibold mb-2">Recomendaciones clínicas</div>
+            <ul class="mb-0 small">
+                <?php foreach ($clinical_summary['recommendations'] as $rec): ?>
+                    <li><strong><?= esc($rec['priority'] ?? 'Sugerida') ?>:</strong> <?= esc($rec['text'] ?? '') ?></li>
+                <?php endforeach; ?>
+            </ul>
+        </div>
+        <?php endif; ?>
+        <?php if (!empty($clinical_summary['microbiology'])): ?>
+        <div class="alert alert-info mt-3 mb-0">
+            <div class="fw-semibold mb-1">Microbiología avanzada</div>
+            <?php foreach ($clinical_summary['microbiology'] as $micro): ?>
+                <div class="small">
+                    <strong><?= esc($micro['nombre'] ?? 'Hallazgo') ?>:</strong>
+                    <?= esc($micro['meaning'] ?? '') ?>
+                    <?php if (!empty($micro['pattern'])): ?>
+                        Patrón detectado: <?= esc($micro['pattern']) ?>.
+                    <?php endif; ?>
+                </div>
+            <?php endforeach; ?>
+        </div>
+        <?php endif; ?>
+    </div>
+</div>
+<?php endif; ?>
+
 <?php
 $grupos = $grupos ?? [];
 if (empty($grupos)): ?>

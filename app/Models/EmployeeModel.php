@@ -213,6 +213,33 @@ class EmployeeModel extends Model
         return null;
     }
 
+    public function verifyPassword(int $personId, string $password): bool
+    {
+        if ($personId <= 0 || $password === '') {
+            return false;
+        }
+
+        return $this->db->table($this->table)
+            ->where('person_id', $personId)
+            ->where('password', md5($password))
+            ->where('deleted', 0)
+            ->where('active', 1)
+            ->countAllResults() === 1;
+    }
+
+    public function updatePassword(int $personId, string $password): bool
+    {
+        if ($personId <= 0 || $password === '') {
+            return false;
+        }
+
+        return $this->db->table($this->table)
+            ->where('person_id', $personId)
+            ->where('deleted', 0)
+            ->where('active', 1)
+            ->update(['password' => md5($password)]) !== false;
+    }
+
     public function getAll(int $limit = 10000, int $offset = 0): array
     {
         $p = $this->peopleTable();
@@ -318,7 +345,7 @@ class EmployeeModel extends Model
         $password = $employee_data['password'] ?? '';
 
         if (!$employee_id || !$this->exists($employee_id)) {
-            if (empty($username)) {
+            if (empty($username) || $password === '') {
                 $db->transRollback();
                 return false;
             }
@@ -326,7 +353,7 @@ class EmployeeModel extends Model
                 $db->transRollback();
                 return false;
             }
-            $hash = md5($password ?: 'password');
+            $hash = md5($password);
             $rolId = isset($employee_data['rol_id']) && $employee_data['rol_id'] ? (int) $employee_data['rol_id'] : null;
             $success = $this->db->table('employees')->insert([
                 'username'   => $username,

@@ -45,6 +45,60 @@ class DoctorCommissionModel extends Model
     }
 
     /**
+     * Mantiene la comisión pendiente alineada con el total real de la orden.
+     * Las comisiones ya pagadas quedan como snapshot histórico.
+     */
+    public function syncPendingCommissionForRegistro(
+        int $registroId,
+        int $doctorId,
+        float $totalAmount,
+        float $commissionPercent,
+        bool $enabled
+    ): bool {
+        if (!$this->tableExists()) {
+            return false;
+        }
+
+        $pending = $this->where('registro_id', $registroId)
+            ->where('status', 0)
+            ->orderBy('commission_id', 'DESC')
+            ->first();
+
+        if (!$enabled || $doctorId < 1 || $totalAmount <= 0 || $commissionPercent <= 0) {
+            if ($pending) {
+                return $this->delete((int) $pending->commission_id) !== false;
+            }
+
+            return true;
+        }
+
+        $commissionAmount = round(($totalAmount * $commissionPercent) / 100, 2);
+        $data = [
+            'doctor_id'          => $doctorId,
+            'registro_id'        => $registroId,
+            'total_amount'       => $totalAmount,
+            'commission_percent' => $commissionPercent,
+            'commission_amount'  => $commissionAmount,
+        ];
+
+        if ($pending) {
+            return $this->update((int) $pending->commission_id, $data) !== false;
+        }
+
+        $hasPaid = $this->where('registro_id', $registroId)
+            ->where('status', 1)
+            ->countAllResults() > 0;
+        if ($hasPaid) {
+            return true;
+        }
+
+        $data['created_date'] = date('Y-m-d H:i:s');
+        $data['status']       = 0;
+
+        return $this->insert($data) !== false;
+    }
+
+    /**
      * Obtiene comisiones agrupadas por doctor con paginación y filtros
      */
     public function getCommissionsGroupedByDoctor(int $limit = 20, int $offset = 0, string $status = ''): array

@@ -89,6 +89,12 @@ foreach ($allowed_modules ?? [] as $m) {
         <span><?= lang('Common.common_administration') ?: 'Administración' ?></span>
       </h6>
       <ul class="nav flex-column mb-auto">
+        <li class="nav-item">
+          <a class="nav-link d-flex align-items-center gap-2 <?= $current === 'account' ? 'active' : '' ?>" href="<?= site_url('account/password') ?>">
+            <i class="fa-solid fa-key"></i>
+            Cambiar contraseña
+          </a>
+        </li>
         <?php if ($has_config): ?>
         <li class="nav-item">
           <a class="nav-link d-flex align-items-center gap-2 <?= $current === 'config' ? 'active' : '' ?>" href="<?= site_url('config') ?>">

@@ -17,9 +17,92 @@
 .chart-container-responsive canvas {
     max-width: 100% !important;
 }
+.clinical-chart-card {
+    border: 0;
+}
+.clinical-chart-canvas {
+    width: 100%;
+    max-width: 1100px;
+    height: 460px;
+}
+.clinical-chart-summary {
+    display: grid;
+    gap: 0.75rem;
+    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+}
+.clinical-summary-card {
+    border: 1px solid #dbeafe;
+    border-left: 4px solid #2563eb;
+    border-radius: 0.75rem;
+    background: linear-gradient(135deg, #f8fbff 0%, #ffffff 100%);
+    padding: 0.85rem;
+    box-shadow: 0 0.25rem 0.75rem rgba(15, 23, 42, 0.05);
+}
+.clinical-summary-card.compare {
+    border-color: #ede9fe;
+    border-left-color: #7c3aed;
+}
+.clinical-summary-label {
+    color: #64748b;
+    font-size: 0.75rem;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+}
+.clinical-summary-title {
+    color: #0f172a;
+    font-weight: 700;
+    margin-top: 0.2rem;
+}
+.clinical-summary-value {
+    color: #0f172a;
+    font-size: 1.55rem;
+    font-weight: 800;
+    line-height: 1.15;
+    margin-top: 0.25rem;
+}
+.clinical-summary-meta {
+    align-items: center;
+    color: #475569;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.45rem;
+    margin-top: 0.45rem;
+}
+.clinical-summary-trend {
+    color: #334155;
+    font-size: 0.82rem;
+    margin-top: 0.5rem;
+}
+.clinical-summary-flag {
+    background: #fef2f2;
+    border: 1px solid #fecaca;
+    border-radius: 999px;
+    color: #991b1b;
+    display: inline-flex;
+    font-size: 0.75rem;
+    font-weight: 700;
+    margin-top: 0.6rem;
+    padding: 0.2rem 0.55rem;
+}
+.clinical-date-input {
+    background-color: #ffffff;
+    border-color: #86efac;
+    cursor: pointer;
+}
+.clinical-date-input:focus {
+    border-color: #198754;
+    box-shadow: 0 0 0 0.2rem rgba(25, 135, 84, 0.18);
+}
 @media (max-width: 576px) {
     .chart-container-responsive {
         min-height: 220px;
         height: 240px;
+    }
+    .clinical-chart-canvas {
+        height: 380px;
+    }
+    .clinical-summary-value {
+        font-size: 1.45rem;
     }
 }

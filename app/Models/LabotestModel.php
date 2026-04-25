@@ -112,6 +112,20 @@ class LabotestModel extends Model
     }
 
     /**
+     * Opciones de categorías activas para selects.
+     */
+    public function getCategoryOptions(): array
+    {
+        return $this->db->table('anacategoria')
+            ->select('anacategoria_id, name')
+            ->where('(deleted = 0 OR deleted IS NULL)')
+            ->orderBy('order', 'ASC')
+            ->orderBy('name', 'ASC')
+            ->get()
+            ->getResultArray();
+    }
+
+    /**
      * Obtiene info de una categoría (grupo)
      */
     public function getCategoryInfo($id)
@@ -882,6 +896,202 @@ class LabotestModel extends Model
         $save['cost']      = (int) ($data['cost'] ?? 0);
         $save['cost_deriv']= (int) ($data['cost_deriv'] ?? 0);
         return $this->db->table('prianacategoria')->insert($save) !== false;
+    }
+
+    /**
+     * Duplica una prueba completa hacia otra categoría, conservando sus configuraciones.
+     */
+    public function duplicateAnalysisToParent(int $sourceId, int $targetParentId): ?int
+    {
+        $source = $this->db->table('prianacategoria')
+            ->where('prianacategoria_id', $sourceId)
+            ->where('(deleted = 0 OR deleted IS NULL)')
+            ->get()
+            ->getRowArray();
+        if (! $source) {
+            return null;
+        }
+
+        $sourceParentId = (int) ($source['anacategoria_id'] ?? 0);
+        $targetParent = $this->getCategoryInfo($targetParentId);
+        if ($targetParentId < 1 || $targetParentId === $sourceParentId || ! ($targetParent->anacategoria_id ?? null)) {
+            return null;
+        }
+
+        $maxOrder = $this->db->table('prianacategoria')
+            ->where('anacategoria_id', $targetParentId)
+            ->where('(deleted = 0 OR deleted IS NULL)')
+            ->selectMax('order', 'max_order')
+            ->get()
+            ->getRowArray();
+
+        $newAnalysis = $source;
+        unset($newAnalysis['prianacategoria_id']);
+        $newAnalysis['anacategoria_id'] = $targetParentId;
+        $newAnalysis['order'] = 1 + (int) ($maxOrder['max_order'] ?? 0);
+        $newAnalysis['deleted'] = 0;
+
+        $now = date('Y-m-d H:i:s');
+        if (array_key_exists('created_at', $newAnalysis)) {
+            $newAnalysis['created_at'] = $now;
+        }
+        if (array_key_exists('updated_at', $newAnalysis)) {
+            $newAnalysis['updated_at'] = $now;
+        }
+
+        $this->db->transStart();
+        $this->db->table('prianacategoria')->insert($newAnalysis);
+        $newAnalysisId = (int) $this->db->insertID();
+
+        if ($newAnalysisId > 0) {
+            $this->duplicateAnalysisRows('secanacategoria', 'secanacategoria_id', $sourceId, $newAnalysisId);
+            $this->duplicateAnalysisRows('priresultados', 'priresultados_id', $sourceId, $newAnalysisId);
+            $this->duplicateAnalysisRows('manuals', 'manuals_id', $sourceId, $newAnalysisId);
+            $this->duplicateAnalysisRows('labotest_reactivo_config', 'config_id', $sourceId, $newAnalysisId);
+        }
+
+        $this->db->transComplete();
+
+        if (! $this->db->transStatus() || $newAnalysisId < 1) {
+            return null;
+        }
+
+        return $newAnalysisId;
+    }
+
+    private function duplicateAnalysisRows(string $table, string $primaryKey, int $sourceId, int $newAnalysisId): void
+    {
+        try {
+            $rows = $this->db->table($table)
+                ->where('prianacategoria_id', $sourceId)
+                ->where('(deleted = 0 OR deleted IS NULL)')
+                ->get()
+                ->getResultArray();
+        } catch (\Throwable $e) {
+            return;
+        }
+
+        $now = date('Y-m-d H:i:s');
+        foreach ($rows as $row) {
+            unset($row[$primaryKey]);
+            $row['prianacategoria_id'] = $newAnalysisId;
+            if (array_key_exists('created_at', $row)) {
+                $row['created_at'] = $now;
+            }
+            if (array_key_exists('updated_at', $row)) {
+                $row['updated_at'] = $now;
+            }
+            $this->db->table($table)->insert($row);
+        }
+    }
+
+    /**
+     * Reubica análisis entre categorías y actualiza únicamente su orden dentro de cada padre.
+     *
+     * @param array<int, array{parent_id:int, children:array<int,int>}> $groups
+     */
+    public function updateAnalysisPlacement(array $groups): bool
+    {
+        $cleanGroups = [];
+        foreach ($groups as $group) {
+            $parentId = (int) ($group['parent_id'] ?? 0);
+            $children = array_values(array_unique(array_filter(array_map('intval', (array) ($group['children'] ?? [])))));
+            if ($parentId < 1) {
+                continue;
+            }
+            $cleanGroups[$parentId] = $children;
+        }
+
+        if ($cleanGroups === []) {
+            return false;
+        }
+
+        $parentIds = array_keys($cleanGroups);
+        $validParents = $this->db->table('anacategoria')
+            ->select('anacategoria_id')
+            ->whereIn('anacategoria_id', $parentIds)
+            ->where('(deleted = 0 OR deleted IS NULL)')
+            ->get()
+            ->getResultArray();
+        $validParentIds = array_map('intval', array_column($validParents, 'anacategoria_id'));
+        if ($validParentIds === []) {
+            return false;
+        }
+
+        $requestedChildIds = [];
+        foreach ($cleanGroups as $children) {
+            $requestedChildIds = array_merge($requestedChildIds, $children);
+        }
+        $requestedChildIds = array_values(array_unique(array_filter($requestedChildIds)));
+
+        $validChildIds = [];
+        if ($requestedChildIds !== []) {
+            $validChildren = $this->db->table('prianacategoria')
+                ->select('prianacategoria_id')
+                ->whereIn('prianacategoria_id', $requestedChildIds)
+                ->where('(deleted = 0 OR deleted IS NULL)')
+                ->get()
+                ->getResultArray();
+            $validChildIds = array_map('intval', array_column($validChildren, 'prianacategoria_id'));
+        }
+        $validChildLookup = array_flip($validChildIds);
+
+        $this->db->transStart();
+        foreach ($cleanGroups as $parentId => $children) {
+            if (! in_array((int) $parentId, $validParentIds, true)) {
+                continue;
+            }
+
+            foreach ($children as $order => $childId) {
+                if (! isset($validChildLookup[$childId])) {
+                    continue;
+                }
+
+                $this->db->table('prianacategoria')
+                    ->where('prianacategoria_id', $childId)
+                    ->update([
+                        'anacategoria_id' => (int) $parentId,
+                        'order' => (int) $order,
+                    ]);
+            }
+        }
+
+        foreach ($cleanGroups as $parentId => $children) {
+            if (! in_array((int) $parentId, $validParentIds, true)) {
+                continue;
+            }
+
+            $desired = array_values(array_filter($children, static fn($childId) => isset($validChildLookup[$childId])));
+            $desiredLookup = array_flip($desired);
+            $currentRows = $this->db->table('prianacategoria')
+                ->select('prianacategoria_id')
+                ->where('anacategoria_id', (int) $parentId)
+                ->where('(deleted = 0 OR deleted IS NULL)')
+                ->orderBy('order', 'ASC')
+                ->orderBy('prianacategoria_id', 'ASC')
+                ->get()
+                ->getResultArray();
+
+            $remaining = [];
+            foreach ($currentRows as $row) {
+                $childId = (int) ($row['prianacategoria_id'] ?? 0);
+                if ($childId > 0 && ! isset($desiredLookup[$childId])) {
+                    $remaining[] = $childId;
+                }
+            }
+
+            foreach (array_merge($desired, $remaining) as $order => $childId) {
+                $this->db->table('prianacategoria')
+                    ->where('prianacategoria_id', $childId)
+                    ->update([
+                        'anacategoria_id' => (int) $parentId,
+                        'order' => (int) $order,
+                    ]);
+            }
+        }
+        $this->db->transComplete();
+
+        return $this->db->transStatus();
     }
 
     /**

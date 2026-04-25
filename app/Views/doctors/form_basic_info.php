@@ -6,22 +6,22 @@ $doctor_info = $doctor_info ?? new stdClass();
 <div class="row">
     <div class="col-md-6 mb-3">
         <?= form_label(lang('Doctors.doctors_name') . ':', 'name', ['class' => 'form-label required']) ?>
-        <?= form_input(['name' => 'name', 'id' => 'name', 'class' => 'form-control', 'value' => $doctor_info->name ?? '']) ?>
+        <?= form_input(['name' => 'name', 'id' => 'name', 'class' => 'form-control', 'value' => $doctor_info->name ?? '', 'autocomplete' => 'off']) ?>
     </div>
     <div class="col-md-6 mb-3">
         <?= form_label(lang('Doctors.doctors_phone') . ':', 'phone_number', ['class' => 'form-label required']) ?>
-        <?= form_input(['name' => 'phone_number', 'id' => 'phone_number', 'class' => 'form-control', 'value' => $doctor_info->phone_number ?? '']) ?>
+        <?= form_input(['name' => 'phone_number', 'id' => 'phone_number', 'class' => 'form-control', 'value' => $doctor_info->phone_number ?? '', 'autocomplete' => 'off']) ?>
     </div>
 </div>
 
 <div class="row">
     <div class="col-md-6 mb-3">
         <?= form_label(lang('Doctors.doctors_speciality') . ':', 'speciality', ['class' => 'form-label required']) ?>
-        <?= form_input(['name' => 'speciality', 'id' => 'speciality', 'class' => 'form-control', 'value' => $doctor_info->speciality ?? '']) ?>
+        <?= form_input(['name' => 'speciality', 'id' => 'speciality', 'class' => 'form-control', 'value' => $doctor_info->speciality ?? '', 'autocomplete' => 'off']) ?>
     </div>
     <div class="col-md-6 mb-3">
         <?= form_label(lang('Doctors.doctors_address') . ':', 'address', ['class' => 'form-label required']) ?>
-        <?= form_input(['name' => 'address', 'id' => 'address', 'class' => 'form-control', 'value' => $doctor_info->address ?? '']) ?>
+        <?= form_input(['name' => 'address', 'id' => 'address', 'class' => 'form-control', 'value' => $doctor_info->address ?? '', 'autocomplete' => 'off']) ?>
     </div>
 </div>
 
@@ -47,6 +47,13 @@ $doctor_info = $doctor_info ?? new stdClass();
         </div>
         <small class="form-text text-muted">Porcentaje de comisión que recibirá el doctor por cada prueba realizada.</small>
     </div>
+    <div class="col-md-6 mb-3">
+        <div class="form-check mt-4">
+            <?= form_checkbox(['name' => 'hide_commission_details', 'id' => 'hide_commission_details', 'class' => 'form-check-input', 'value' => '1', 'checked' => ($doctor_info->hide_commission_details ?? 0) == 1]) ?>
+            <?= form_label('Ocultar detalle de comisiones en el portal', 'hide_commission_details', ['class' => 'form-check-label']) ?>
+        </div>
+        <small class="form-text text-muted">El doctor solo verá el monto pagado, sin registros, pacientes ni porcentaje.</small>
+    </div>
 </div>
 
 <hr class="my-4">
@@ -55,15 +62,15 @@ $doctor_info = $doctor_info ?? new stdClass();
 <div class="row">
     <div class="col-md-4 mb-3">
         <?= form_label('Usuario', 'username', ['class' => 'form-label']) ?>
-        <?= form_input(['name' => 'username', 'id' => 'username', 'class' => 'form-control', 'value' => $doctor_info->username ?? '', 'placeholder' => 'Ej: dr.garcia']) ?>
+        <?= form_input(['name' => 'username', 'id' => 'username', 'class' => 'form-control', 'value' => $doctor_info->username ?? '', 'placeholder' => 'Ej: dr.garcia', 'autocomplete' => 'off', 'data-lpignore' => 'true', 'data-1p-ignore' => 'true']) ?>
     </div>
     <div class="col-md-4 mb-3">
         <?= form_label('Contraseña', 'password', ['class' => 'form-label']) ?>
-        <?= form_password(['name' => 'password', 'id' => 'password', 'class' => 'form-control', 'value' => '', 'placeholder' => (isset($doctor_info->username) && $doctor_info->username) ? 'Dejar vacío para no cambiar' : '']) ?>
+        <?= form_password(['name' => 'password', 'id' => 'password', 'class' => 'form-control', 'value' => '', 'placeholder' => (isset($doctor_info->username) && $doctor_info->username) ? 'Dejar vacío para no cambiar' : '', 'autocomplete' => 'new-password', 'data-lpignore' => 'true', 'data-1p-ignore' => 'true']) ?>
     </div>
     <div class="col-md-4 mb-3">
         <?= form_label('Correo', 'email', ['class' => 'form-label']) ?>
-        <?= form_input(['name' => 'email', 'id' => 'email', 'type' => 'email', 'class' => 'form-control', 'value' => $doctor_info->email ?? '', 'placeholder' => 'Para login con correo']) ?>
+        <?= form_input(['name' => 'email', 'id' => 'email', 'type' => 'email', 'class' => 'form-control', 'value' => $doctor_info->email ?? '', 'placeholder' => 'Para login con correo', 'autocomplete' => 'off', 'data-lpignore' => 'true', 'data-1p-ignore' => 'true']) ?>
     </div>
 </div>
 

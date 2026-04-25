@@ -15,3 +15,60 @@
     border-color: var(--bs-success, #198754) !important;
     box-shadow: 0 0 0 0.2rem rgba(25, 135, 84, 0.25);
 }
+
+.registros-table > tbody > tr.registro-prioridad > td {
+    background-color: #fff1f2 !important;
+    color: #842029;
+}
+
+.registros-table > tbody > tr.registro-prioridad:hover > td {
+    background-color: #ffe4e8 !important;
+}
+
+.registros-table .registro-prioridad-codigo {
+    border-left: 6px solid #dc3545 !important;
+}
+
+.registros-table .registros-acciones-col {
+    min-width: 135px;
+}
+
+.registros-table .registros-acciones {
+    display: flex;
+    flex-wrap: nowrap;
+    gap: 0.25rem;
+    justify-content: flex-end;
+    align-items: center;
+}
+
+.registros-table .registros-acciones .btn-icono-accion {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 2rem;
+    height: 2rem;
+    padding: 0;
+    line-height: 1;
+}
+
+.registros-table .registros-acciones .btn-accion-mas {
+    white-space: nowrap;
+}
+
+.registros-table .registros-acciones-menu {
+    min-width: 235px;
+}
+
+@media (max-width: 767.98px) {
+    .registros-table .registros-acciones-col {
+        min-width: 120px;
+    }
+
+    .registros-table .registros-acciones {
+        justify-content: flex-end;
+    }
+
+    .registros-table .registros-acciones .btn-accion-mas .d-none.d-md-inline {
+        display: none !important;
+    }
+}

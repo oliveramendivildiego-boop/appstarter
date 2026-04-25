@@ -150,7 +150,7 @@ document.addEventListener('DOMContentLoaded', function() {
     </div>
     <div class="col-12 col-md-6" id="doctor_container">
         <div class="mb-3 position-relative">
-            <label for="doctor" class="form-label">Doctor: <span class="text-danger">*</span></label>
+            <label for="doctor" class="form-label">Doctor: <span class="text-muted">(opcional)</span></label>
             <input type="text" name="doctor" id="doctor" class="form-control" value="" placeholder="Escriba para buscar..." autocomplete="off">
             <div id="doctor_list" class="list-group position-absolute top-100 start-0 w-100 mt-1 shadow" style="display:none; max-height:200px; overflow-y:auto; z-index:1050;"></div>
             <div class="invalid-feedback" id="doctor_error"></div>
@@ -163,6 +163,18 @@ document.addEventListener('DOMContentLoaded', function() {
                 <option value="0" selected>Rutina</option>
                 <option value="1">Urgente</option>
             </select>
+        </div>
+    </div>
+    <div class="col-12 col-md-6">
+        <div class="mb-3">
+            <label for="diagnostico_presuntivo" class="form-label">Diagnóstico presuntivo:</label>
+            <input type="text" id="diagnostico_presuntivo" class="form-control" maxlength="255" placeholder="Ej: diabetes en estudio, anemia, infección urinaria">
+        </div>
+    </div>
+    <div class="col-12 col-md-6">
+        <div class="mb-3">
+            <label for="motivo_estudio" class="form-label">Motivo de estudio:</label>
+            <input type="text" id="motivo_estudio" class="form-control" maxlength="255" placeholder="Control, sospecha clínica, seguimiento">
         </div>
     </div>
     <div class="col-12 col-md-6" id="prueba_search_container">

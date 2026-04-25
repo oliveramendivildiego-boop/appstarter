@@ -4,6 +4,11 @@ $sym = $doc->monedaSimbolo;
 $fmt = static function (float $n): string {
     return number_format($n, 2, ',', '.');
 };
+$descuentoMonto = (float) ($doc->institucionDescuentoMonto ?? 0);
+$descuentoLabel = 'Descuento';
+if (($doc->institucionDescuentoPct ?? 0) > 0) {
+    $descuentoLabel = 'Descuento institución (' . ($doc->institucionNombre ?: 'Paciente') . ', ' . number_format((float) $doc->institucionDescuentoPct, 2, '.', '') . '%)';
+}
 ?>
 <!DOCTYPE html>
 <html lang="es">
@@ -243,16 +248,16 @@ $fmt = static function (float $n): string {
     <table class="totals-wrap"><tr><td>
         <div class="totals-box">
             <table>
-                <?php if ($doc->totalRecomendado > 0): ?>
+                <?php if ($descuentoMonto > 0 && $doc->totalRecomendado > 0): ?>
                 <tr>
-                    <td class="t-lbl">Total</td>
+                    <td class="t-lbl">Total recomendado</td>
                     <td class="t-val"><?= esc($sym) ?> <?= esc($fmt($doc->totalRecomendado)) ?></td>
                 </tr>
                 <?php endif; ?>
-                <?php if (($doc->institucionDescuentoPct ?? 0) > 0): ?>
+                <?php if ($descuentoMonto > 0): ?>
                 <tr>
-                    <td class="t-lbl">Descuento institución (<?= esc($doc->institucionNombre ?: 'Paciente') ?>, <?= esc(number_format((float) $doc->institucionDescuentoPct, 2, '.', '')) ?>%)</td>
-                    <td class="t-val">- <?= esc($sym) ?> <?= esc($fmt((float) ($doc->institucionDescuentoMonto ?? 0))) ?></td>
+                    <td class="t-lbl"><?= esc($descuentoLabel) ?></td>
+                    <td class="t-val">- <?= esc($sym) ?> <?= esc($fmt($descuentoMonto)) ?></td>
                 </tr>
                 <?php endif; ?>
                 <tr>

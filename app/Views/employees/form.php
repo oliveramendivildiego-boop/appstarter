@@ -15,7 +15,7 @@
     </div>
     <div class="card-body">
         <?php $pid = $employee_info->person_id ?? ''; $saveId = ($pid === '' || $pid === null) ? '-1' : (int) $pid; ?>
-        <?= form_open(site_url('employees/save/' . $saveId), ['id' => 'employee_form', 'data-async' => '1']) ?>
+        <?= form_open(site_url('employees/save/' . $saveId), ['id' => 'employee_form', 'data-async' => '1', 'autocomplete' => 'off']) ?>
 
         <?= view('people/form_basic_info', ['person_info' => $employee_info]) ?>
 
@@ -37,11 +37,11 @@
         <div class="row">
             <div class="col-md-6 mb-3">
                 <?= form_label(lang('Employees.employees_username') . ' <span class="text-danger">*</span>', 'username', ['class' => 'form-label']) ?>
-                <?= form_input(['name' => 'username', 'id' => 'username', 'class' => 'form-control', 'value' => $employee_info->username ?? '', 'autocomplete' => 'username']) ?>
+                <?= form_input(['name' => 'username', 'id' => 'username', 'class' => 'form-control', 'value' => $employee_info->username ?? '', 'autocomplete' => 'off', 'data-lpignore' => 'true', 'data-1p-ignore' => 'true']) ?>
             </div>
             <div class="col-md-6 mb-3">
                 <?= form_label(lang('Employees.employees_password') . ' ' . (!empty($employee_info->person_id) && (int)$employee_info->person_id > 0 ? '(opcional)' : '') . ' <span class="text-danger">*</span>', 'password', ['class' => 'form-label']) ?>
-                <?= form_password(['name' => 'password', 'id' => 'password', 'class' => 'form-control', 'autocomplete' => 'new-password', 'value' => '']) ?>
+                <?= form_password(['name' => 'password', 'id' => 'password', 'class' => 'form-control', 'autocomplete' => 'new-password', 'data-lpignore' => 'true', 'data-1p-ignore' => 'true', 'value' => '']) ?>
                 <?php if (!empty($employee_info->person_id) && (int)$employee_info->person_id > 0): ?>
                 <small class="text-muted"><?= lang('Employees.employees_password_help') ?></small>
                 <?php endif; ?>
@@ -99,6 +99,10 @@
 $(document).ready(function() {
     flatpickr("#birthday", { dateFormat: "Y-m-d", maxDate: "today", locale: "es", onOpen: function(s,d,i){ if (typeof flatpickrPositionArrowTopLeft === 'function') flatpickrPositionArrowTopLeft(i); } });
     var isEdit = <?= !empty($employee_info->person_id) && (int)$employee_info->person_id > 0 ? 'true' : 'false' ?>;
+    if (!isEdit) {
+        setTimeout(function() { $('#username, #password').val(''); }, 100);
+        setTimeout(function() { $('#username, #password').val(''); }, 500);
+    }
     $("#employee_form").validate($.extend(true, {}, window.VALIDATE_COMMON_OPTIONS, {
         rules: {
             first_name: { required: true, minlength: 2 },

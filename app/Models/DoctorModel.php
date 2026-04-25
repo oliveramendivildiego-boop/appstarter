@@ -10,7 +10,7 @@ class DoctorModel extends Model
     protected $primaryKey       = 'doctor_id';
     protected $useAutoIncrement = true;
     protected $returnType       = 'object';
-    protected $allowedFields    = ['name', 'phone_number', 'gender', 'speciality', 'address', 'deleted', 'comments', 'username', 'password', 'email', 'commission_percent', 'has_commission'];
+    protected $allowedFields    = ['name', 'phone_number', 'gender', 'speciality', 'address', 'deleted', 'comments', 'username', 'password', 'email', 'commission_percent', 'has_commission', 'hide_commission_details'];
     /** @var array<string,bool>|null */
     private ?array $columnCache = null;
 
@@ -75,6 +75,7 @@ class DoctorModel extends Model
             'email'        => '',
             'commission_percent' => 0.00,
             'has_commission' => 0,
+            'hide_commission_details' => 0,
         ];
     }
 
@@ -103,13 +104,20 @@ class DoctorModel extends Model
             $payload['has_commission'] = (int) ($data['has_commission'] ?? 0);
         }
 
+        if ($this->hasColumn('hide_commission_details')) {
+            $payload['hide_commission_details'] = (int) ($data['hide_commission_details'] ?? 0);
+        }
+
         if ($this->supportsLoginColumns()) {
             $payload['username'] = trim($data['username'] ?? '') ?: null;
             $payload['email']    = trim($data['email'] ?? '') ?: null;
         }
 
         $password = $data['password'] ?? '';
-        if ($password !== '' && $this->hasColumn('password')) {
+        $hasLoginIdentifier = trim((string) ($payload['username'] ?? '')) !== ''
+            || trim((string) ($payload['email'] ?? '')) !== ''
+            || (bool) $doctor_id;
+        if ($password !== '' && $hasLoginIdentifier && $this->hasColumn('password')) {
             $payload['password'] = md5($password);
         }
 
@@ -126,9 +134,6 @@ class DoctorModel extends Model
         $payload['deleted'] = 0;
         if (!empty($payload['username'] ?? '') && $this->usernameExists((string) $payload['username'])) {
             return false;
-        }
-        if (empty($payload['password'] ?? '') && !empty($payload['username'] ?? '')) {
-            $payload['password'] = md5('doctor123');
         }
         return $this->insert($payload) ? $this->getInsertID() : false;
     }

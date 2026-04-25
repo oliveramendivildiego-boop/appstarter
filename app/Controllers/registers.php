@@ -95,6 +95,7 @@ class Registers extends SecureArea
         $perfiles = (model(PerfilExamenModel::class))->getAll();
         $info = $this->registerModel->getInfoRefill($id);
         $pago = $this->registerModel->getPagoByRegistroId($id);
+        $regvaluesCount = count($this->registerModel->getInfoAnalisis($id));
         $discountInfo = $this->resolveInstitutionDiscountByPersonId((int) ($info->person_id ?? 0));
 
         return view('registers/manage', [
@@ -106,6 +107,7 @@ class Registers extends SecureArea
             'controller_name' => 'registers',
             'edit_registro'   => $info,
             'edit_pago'       => $pago,
+            'edit_regvalues_count' => $regvaluesCount,
             'edit_discount_info' => $discountInfo,
         ]);
     }
@@ -200,7 +202,7 @@ class Registers extends SecureArea
 
     private function buildRegistrosTable(array $registros, bool $whatsappConfigured = false): string
     {
-        $html = '<div class="table-responsive"><table class="table table-bordered table-striped"><thead><tr>';
+        $html = '<div class="table-responsive"><table class="table table-bordered table-striped registros-table"><thead><tr>';
         $html .= '<th>Código</th><th>Paciente</th><th>Doctor</th><th>Total</th><th>Saldo</th><th class="text-end">Acciones</th>';
         $html .= '</tr></thead><tbody>';
 
@@ -210,52 +212,99 @@ class Registers extends SecureArea
         foreach ($registros as $r) {
             $rid = (int) ($r->registro_id ?? 0);
             $totalNum = (float) ($r->total ?? 0);
+            $montoPagadoNum = (float) ($r->monto_pagar ?? 0);
             $saldoNum = (float) ($r->saldo ?? 0);
             $isAnulado = isset($r->anulado) && (int) $r->anulado === 1;
+            $isPrioridad = !$isAnulado && isset($r->prioridad) && (int) $r->prioridad === 1;
+            $hasDoctor = (int) ($r->doctor_id ?? 0) > 0;
 
             if (!$isAnulado) {
                 $sumTotal += $totalNum;
                 $sumSaldo += $saldoNum;
             }
 
-            $html .= $isAnulado ? '<tr class="table-secondary">' : '<tr>';
+            $rowClass = $isAnulado ? 'table-secondary' : ($isPrioridad ? 'registro-prioridad table-danger fw-semibold' : '');
+            $html .= '<tr' . ($rowClass !== '' ? ' class="' . $rowClass . '"' : '') . '>';
             $ordenDisp = registro_orden_display($r);
-            $html .= '<td title="ID interno: ' . esc((string) $rid) . '">' . esc($ordenDisp);
+            $codigoTdClass = $isPrioridad ? ' class="registro-prioridad-codigo"' : '';
+            $html .= '<td' . $codigoTdClass . ' title="ID interno: ' . esc((string) $rid) . '">' . esc($ordenDisp);
             if ($isAnulado) {
                 $html .= ' <span class="badge bg-dark ms-1">Anulada</span>';
+            } elseif ($isPrioridad) {
+                $html .= ' <span class="badge bg-danger ms-1"><i class="fa-solid fa-triangle-exclamation me-1"></i>Urgente</span>';
             }
             $html .= '</td>';
             $html .= '<td>' . esc($r->paciente ?? '') . '</td>';
-            $html .= '<td>' . esc($r->doctor ?? '') . '</td>';
+            $html .= '<td>' . ($hasDoctor ? esc($r->doctor ?? '') : '<span class="text-muted">Sin doctor</span>') . '</td>';
             $html .= '<td>' . esc($r->total ?? '') . '</td>';
             $html .= '<td>' . esc($r->saldo ?? '') . '</td>';
-            $html .= '<td class="text-end">';
+            $html .= '<td class="text-end registros-acciones-col">';
             if ($isAnulado) {
-                $html .= '<a href="' . site_url('registers/anulada/' . $rid) . '" class="btn btn-sm btn-outline-secondary" title="Ver orden anulada (solo lectura)"><i class="fa-solid fa-lock me-1"></i>Ver</a>';
+                $html .= '<div class="registros-acciones justify-content-end">';
+                $html .= '<a href="' . site_url('registers/anulada/' . $rid) . '" class="btn btn-sm btn-outline-secondary btn-accion-texto" title="Ver orden anulada (solo lectura)"><i class="fa-solid fa-lock me-1"></i>Ver</a>';
+                $html .= '</div>';
             } else {
+                $html .= '<div class="registros-acciones">';
                 $hasRegvalues = isset($r->regvalues_count) && (int) $r->regvalues_count > 0;
                 $btnTitle = $hasRegvalues ? 'Editar' : 'Agregar';
                 $btnIcon = $hasRegvalues ? 'fa-pen' : 'fa-plus';
-                $html .= '<a href="' . site_url('registers/view/' . $rid) . '" class="btn btn-sm btn-outline-primary" title="' . esc($btnTitle) . '"><i class="fa-solid ' . esc($btnIcon) . '"></i></a> ';
-                if (!$hasRegvalues) {
-                    $html .= '<a href="' . site_url('registers/edit/' . $rid) . '" class="btn btn-sm btn-outline-success" title="Editar prueba (orden)"><i class="fa-solid fa-flask"></i></a> ';
-                    $html .= '<a href="' . site_url('registers/orden/' . $rid) . '" class="btn btn-sm btn-outline-secondary" title="Imprimir orden"><i class="fa-solid fa-print"></i></a> ';
+                $html .= '<a href="' . site_url('registers/view/' . $rid) . '" class="btn btn-sm btn-outline-primary btn-icono-accion" title="' . esc($btnTitle) . '"><i class="fa-solid ' . esc($btnIcon) . '"></i></a> ';
+                $editOrderTitle = $hasRegvalues ? 'Agregar más pruebas a la orden' : 'Editar prueba (orden)';
+                $html .= '<a href="' . site_url('registers/edit/' . $rid) . '" class="btn btn-sm btn-outline-success btn-icono-accion" title="' . esc($editOrderTitle) . '"><i class="fa-solid fa-flask"></i></a>';
+                $btnMasClass = ($saldoNum > 0) ? 'btn-warning' : 'btn-outline-secondary';
+                $html .= '<div class="dropdown">';
+                $html .= '<button class="btn btn-sm ' . $btnMasClass . ' dropdown-toggle btn-accion-mas" type="button" data-bs-toggle="dropdown" aria-expanded="false" title="Más acciones"><i class="fa-solid fa-ellipsis"></i><span class="ms-1 d-none d-md-inline">Más</span></button>';
+                $html .= '<ul class="dropdown-menu dropdown-menu-end shadow-sm registros-acciones-menu">';
+                $pacientePhone = trim($r->paciente_phone ?? '');
+                $doctorPhone   = trim($r->doctor_phone ?? '');
+                $html .= '<li><a class="dropdown-item" href="' . site_url('registers/view/' . $rid) . '"><i class="fa-solid ' . esc($btnIcon) . ' me-2 text-primary"></i>' . esc($btnTitle) . ' resultado</a></li>';
+                $html .= '<li><a class="dropdown-item" href="' . site_url('registers/edit/' . $rid) . '"><i class="fa-solid fa-flask me-2 text-success"></i>' . esc($editOrderTitle) . '</a></li>';
+                $html .= '<li><hr class="dropdown-divider"></li>';
+                if ($hasDoctor) {
+                    $html .= '<li><a class="dropdown-item" href="' . site_url('registers/orden/' . $rid) . '"><i class="fa-solid fa-print me-2 text-secondary"></i>Imprimir orden</a></li>';
+                } else {
+                    $html .= '<li><span class="dropdown-item text-muted disabled"><i class="fa-solid fa-print me-2"></i>Imprimir orden (asigne doctor)</span></li>';
                 }
                 if ($hasRegvalues) {
-                    $html .= '<a href="' . site_url('registers/viewreport/' . $rid) . '" class="btn btn-sm btn-secondary" title="Reporte"><i class="fa-solid fa-file-lines"></i></a> ';
-                    $html .= '<a href="' . site_url('registers/pdf/' . $rid) . '" class="btn btn-sm btn-success" target="_blank" title="PDF"><i class="fa-solid fa-file-pdf"></i></a> ';
-                    $html .= '<a href="' . site_url('registers/qrResultadosPng/' . $rid) . '" class="btn btn-sm btn-outline-dark" title="Descargar QR resultados PNG transparente (500×500 px)"><i class="fa-solid fa-qrcode"></i></a> ';
-                    if ($whatsappConfigured) {
-                        $pacientePhone = trim($r->paciente_phone ?? '');
-                        $doctorPhone   = trim($r->doctor_phone ?? '');
-                        $html .= '<button type="button" class="btn btn-sm btn-success btn-whatsapp-pdf" data-id="' . $rid . '" data-paciente="' . esc($r->paciente ?? '') . '" data-doctor="' . esc($r->doctor ?? '') . '" data-paciente-phone="' . esc($pacientePhone) . '" data-doctor-phone="' . esc($doctorPhone) . '" data-ingreso="' . esc($r->ingreso ?? '') . '" title="Enviar PDF por WhatsApp"><i class="fa-brands fa-whatsapp"></i></button> ';
+                    $html .= '<li><a class="dropdown-item" href="' . site_url('registers/viewreport/' . $rid) . '"><i class="fa-solid fa-file-lines me-2 text-secondary"></i>Ver reporte</a></li>';
+                } else {
+                    $html .= '<li><span class="dropdown-item text-muted disabled"><i class="fa-solid fa-file-lines me-2"></i>Ver reporte (sin resultados)</span></li>';
+                }
+                if ($hasRegvalues && $hasDoctor) {
+                    $html .= '<li><a class="dropdown-item" href="' . site_url('registers/pdf/' . $rid) . '" target="_blank"><i class="fa-solid fa-file-pdf me-2 text-success"></i>Descargar PDF</a></li>';
+                } elseif (!$hasRegvalues) {
+                    $html .= '<li><span class="dropdown-item text-muted disabled"><i class="fa-solid fa-file-pdf me-2"></i>Descargar PDF (sin resultados)</span></li>';
+                } else {
+                    $html .= '<li><span class="dropdown-item text-muted disabled"><i class="fa-solid fa-file-pdf me-2"></i>Descargar PDF (asigne doctor)</span></li>';
+                }
+                if ($hasRegvalues) {
+                    $html .= '<li><a class="dropdown-item" href="' . site_url('registers/qrResultadosPng/' . $rid) . '"><i class="fa-solid fa-qrcode me-2 text-dark"></i>Descargar QR resultados</a></li>';
+                } else {
+                    $html .= '<li><span class="dropdown-item text-muted disabled"><i class="fa-solid fa-qrcode me-2"></i>Descargar QR resultados (sin resultados)</span></li>';
+                }
+                if ($whatsappConfigured) {
+                    if ($hasRegvalues && $hasDoctor) {
+                        $html .= '<li><button type="button" class="dropdown-item btn-whatsapp-pdf" data-id="' . $rid . '" data-paciente="' . esc($r->paciente ?? '') . '" data-doctor="' . esc($r->doctor ?? '') . '" data-paciente-phone="' . esc($pacientePhone) . '" data-doctor-phone="' . esc($doctorPhone) . '" data-ingreso="' . esc($r->ingreso ?? '') . '"><i class="fa-brands fa-whatsapp me-2 text-success"></i>Enviar por WhatsApp</button></li>';
+                    } elseif (!$hasRegvalues) {
+                        $html .= '<li><span class="dropdown-item text-muted disabled"><i class="fa-brands fa-whatsapp me-2"></i>Enviar por WhatsApp (sin resultados)</span></li>';
+                    } elseif (!$hasDoctor) {
+                        $html .= '<li><span class="dropdown-item text-muted disabled"><i class="fa-brands fa-whatsapp me-2"></i>Enviar por WhatsApp (asigne doctor)</span></li>';
                     }
                 }
                 if ($saldoNum > 0) {
-                    $html .= '<button type="button" class="btn btn-sm btn-outline-warning btn-agregar-pago" data-id="' . $rid . '" data-total="' . esc($r->total ?? '') . '" data-saldo="' . esc($r->saldo ?? '') . '" data-monto="' . esc($r->monto_pagar ?? '') . '" title="Agregar pago"><i class="fa-solid fa-money-bill-wave"></i></button> ';
+                    $html .= '<li><button type="button" class="dropdown-item btn-agregar-pago" data-id="' . $rid . '" data-total="' . esc($r->total ?? '') . '" data-saldo="' . esc($r->saldo ?? '') . '" data-monto="' . esc($r->monto_pagar ?? '') . '"><i class="fa-solid fa-money-bill-wave me-2 text-warning"></i>Agregar pago</button></li>';
                 }
-                $html .= '<button type="button" class="btn btn-sm btn-outline-info btn-historial" data-id="' . $rid . '" title="Historial de pagos y pruebas"><i class="fa-solid fa-clock-rotate-left"></i></button> ';
-                $html .= '<button type="button" class="btn btn-sm btn-outline-danger btn-anular-registro" data-id="' . $rid . '" title="Anular orden (no borra de la base de datos)"><i class="fa-solid fa-ban"></i></button>';
+                if ($saldoNum <= 0.02 || ($totalNum > 0 && ($montoPagadoNum + 0.02) >= $totalNum)) {
+                    $html .= '<li><a class="dropdown-item" href="' . site_url('registers/comprobantePdf/' . $rid) . '" target="_blank"><i class="fa-solid fa-file-invoice-dollar me-2 text-dark"></i>Descargar comprobante</a></li>';
+                } else {
+                    $html .= '<li><span class="dropdown-item text-muted disabled"><i class="fa-solid fa-file-invoice-dollar me-2"></i>Descargar comprobante (pago pendiente)</span></li>';
+                }
+                $html .= '<li><button type="button" class="dropdown-item btn-historial" data-id="' . $rid . '"><i class="fa-solid fa-clock-rotate-left me-2 text-info"></i>Historial de pagos y pruebas</button></li>';
+                $html .= '<li><hr class="dropdown-divider"></li>';
+                $html .= '<li><button type="button" class="dropdown-item text-danger btn-anular-registro" data-id="' . $rid . '"><i class="fa-solid fa-ban me-2 text-danger"></i>Anular orden</button></li>';
+                $html .= '</ul>';
+                $html .= '</div>';
+                $html .= '</div>';
             }
             $html .= '</td>';
             $html .= '</tr>';
@@ -413,6 +462,7 @@ class Registers extends SecureArea
             'comprobante_pdf_disponible' => $pago !== null && $pagoCompleto,
             'comprobante_pdf_pendiente_pago' => $pago !== null && !$pagoCompleto,
             'comprobante_pdf_sin_registro_pago' => $pago === null,
+            'doctor_assigned'    => $this->registerModel->registroTieneDoctorAsignado($id),
             'pdf_layout'        => $pdfLayout,
             'lab_config'        => $labConfig,
         ]);
@@ -434,6 +484,9 @@ class Registers extends SecureArea
         $data = $this->registerService->prepareReportData($id);
         if (! $data) {
             return redirect()->to('registers')->with('error', 'Registro no encontrado');
+        }
+        if (!$this->registerModel->registroTieneDoctorAsignado($id)) {
+            return redirect()->to('registers/lista')->with('error', 'Debe asignar un doctor antes de imprimir o generar PDF de esta orden.');
         }
 
         helper('qr');
@@ -462,6 +515,9 @@ class Registers extends SecureArea
         }
         if ($this->registerModel->isRegistroAnulado($id)) {
             return redirect()->to('registers/lista')->with('error', 'La orden está anulada; no se puede imprimir la orden de trabajo.');
+        }
+        if (!$this->registerModel->registroTieneDoctorAsignado($id)) {
+            return redirect()->to('registers/lista')->with('error', 'Debe asignar un doctor antes de imprimir o generar PDF de esta orden.');
         }
 
         $refIngreso = $registerInfo->ingreso ?? null;
@@ -529,6 +585,9 @@ class Registers extends SecureArea
         }
         if ($this->registerModel->isRegistroAnulado($id)) {
             return redirect()->to('registers/lista')->with('error', 'La orden está anulada; no se puede generar el PDF de orden.');
+        }
+        if (!$this->registerModel->registroTieneDoctorAsignado($id)) {
+            return redirect()->to('registers/lista')->with('error', 'Debe asignar un doctor antes de imprimir o generar PDF de esta orden.');
         }
 
         $refIngreso = $registerInfo->ingreso ?? null;
@@ -622,6 +681,9 @@ class Registers extends SecureArea
         $data = $this->registerService->prepareReportData($id);
         if (!$data) {
             return redirect()->to('registers')->with('error', 'Registro no encontrado');
+        }
+        if (!$this->registerModel->registroTieneDoctorAsignado($id)) {
+            return redirect()->to('registers/lista')->with('error', 'Debe asignar un doctor antes de imprimir o generar PDF de esta orden.');
         }
 
         helper('qr');
@@ -788,6 +850,13 @@ class Registers extends SecureArea
         return is_numeric($s) ? (float) $s : 0.0;
     }
 
+    private function normalizeOptionalDoctorId(mixed $value): int
+    {
+        $doctorId = (int) $value;
+
+        return $doctorId > 0 ? $doctorId : 0;
+    }
+
     /**
      * @return array{institucion:string,descuento:float}
      */
@@ -851,7 +920,13 @@ class Registers extends SecureArea
         }
         $discountInfo = $this->resolveInstitutionDiscountByPersonId((int) ($registro['person_id'] ?? 0));
         $pct = (float) ($discountInfo['descuento'] ?? 0.0);
-        $total = round($totalBruto * (1 - ($pct / 100)), 2);
+        $totalReco = $totalBruto > 0
+            ? $totalBruto
+            : $this->parseMoneyInput($pagos['total_reco'] ?? 0);
+        $totalDefault = round($totalReco * (1 - ($pct / 100)), 2);
+        $total = array_key_exists('total', $pagos)
+            ? $this->parseMoneyInput($pagos['total'])
+            : $totalDefault;
         if ($total < 0) {
             $total = 0.0;
         }
@@ -871,7 +946,7 @@ class Registers extends SecureArea
         }
 
         return [
-            'total_reco' => number_format($total, 2, '.', ''),
+            'total_reco' => number_format(max(0.0, $totalReco), 2, '.', ''),
             'total' => number_format($total, 2, '.', ''),
             'monto_pagar' => number_format($montoPagado, 2, '.', ''),
             'tipopago' => $tipopago,
@@ -879,6 +954,52 @@ class Registers extends SecureArea
             'comentarios' => $pagos['comentarios'] ?? null,
             'descuento_institucion' => $discountInfo,
         ];
+    }
+
+    private function syncDoctorCommissionForRegistro(int $registroId, int $doctorId, float $totalAmount): void
+    {
+        try {
+            $enabled = false;
+            $commissionPercent = 0.0;
+
+            if ($doctorId > 0) {
+                $doctorInfo = $this->doctorModel->find($doctorId);
+                if ($doctorInfo && $this->doctorModel->supportsCommissionColumn() && isset($doctorInfo->commission_percent)) {
+                    $hasCommission = isset($doctorInfo->has_commission) ? (int) $doctorInfo->has_commission : 1;
+                    $commissionPercent = (float) $doctorInfo->commission_percent;
+                    $enabled = $hasCommission === 1 && $commissionPercent > 0;
+                }
+            }
+
+            $this->commissionModel->syncPendingCommissionForRegistro(
+                $registroId,
+                $doctorId,
+                $totalAmount,
+                $commissionPercent,
+                $enabled
+            );
+        } catch (\Throwable $e) {
+            log_message('error', 'Registers::syncDoctorCommissionForRegistro ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * Agrega campos clínicos opcionales solo si la migración correspondiente ya existe.
+     *
+     * @param array<string, mixed> $registroData
+     * @param array<string, mixed> $registroPost
+     * @return array<string, mixed>
+     */
+    private function withClinicalContextFields(array $registroData, array $registroPost): array
+    {
+        foreach (['diagnostico_presuntivo', 'motivo_estudio'] as $field) {
+            if ($this->registerModel->hasRegistroColumn($field)) {
+                $value = trim((string) ($registroPost[$field] ?? ''));
+                $registroData[$field] = $value !== '' ? $value : null;
+            }
+        }
+
+        return $registroData;
     }
 
     public function save(): ResponseInterface
@@ -897,20 +1018,22 @@ class Registers extends SecureArea
             $pagos    = $this->request->getPost('pagos');
             $registro = is_array($registro) ? $registro : [];
             $pagos = is_array($pagos) ? $pagos : [];
+            $doctorId = $this->normalizeOptionalDoctorId($registro['doctor_id'] ?? 0);
 
             $registroData = [
                 'person_id'  => $registro['person_id'] ?? null,
-                'doctor_id'  => $registro['doctor_id'] ?? null,
+                'doctor_id'  => $doctorId,
                 'pruebas'    => $registro['pruebas'] ?? null,
                 'prioridad'  => (int) ($registro['prioridad'] ?? 0),
                 'id_session' => session()->get('person_id'),
             ];
+            $registroData = $this->withClinicalContextFields($registroData, $registro);
 
             $registroId = $this->registerModel->saveRegistro($registroData);
             $pagosNormalizados = $this->buildNormalizedPagoData($registroData, $pagos);
             \App\Models\AuditoriaModel::log('registers', 'crear', (string) $registroId, \App\Models\AuditoriaModel::detail([
                 'paciente_id' => $registro['person_id'] ?? null,
-                'doctor_id' => $registro['doctor_id'] ?? null,
+                'doctor_id' => $doctorId,
                 'pruebas' => $registro['pruebas'] ?? null,
                 'prioridad' => (int)($registro['prioridad'] ?? 0),
                 'total' => $pagosNormalizados['total'] ?? null,
@@ -933,24 +1056,11 @@ class Registers extends SecureArea
                 $this->registerModel->insertAbonoInicial($registroId, $montoInicial, trim((string) ($pagosNormalizados['tipopago'] ?? '1')));
             }
 
-            // Crear comisión para el doctor si aplica
-            $doctorId = (int) ($registro['doctor_id'] ?? 0);
-            if ($doctorId > 0) {
-                $doctorInfo = $this->doctorModel->find($doctorId);
-                if ($doctorInfo && $this->doctorModel->supportsCommissionColumn() && isset($doctorInfo->commission_percent)) {
-                    // Verificar si el doctor tiene habilitado el uso de comisiones
-                    $hasCommission = isset($doctorInfo->has_commission) ? (int) $doctorInfo->has_commission : 1; // Por defecto 1 para compatibilidad
-                    if ($hasCommission == 1) {
-                        $commissionPercent = (float) $doctorInfo->commission_percent;
-                        if ($commissionPercent > 0) {
-                            $totalAmount = (float) ($pagosNormalizados['total'] ?? 0);
-                            if ($totalAmount > 0) {
-                                $this->commissionModel->createCommission($doctorId, $registroId, $totalAmount, $commissionPercent);
-                            }
-                        }
-                    }
-                }
-            }
+            $this->syncDoctorCommissionForRegistro(
+                $registroId,
+                $doctorId,
+                (float) ($pagosNormalizados['total'] ?? 0)
+            );
 
             return $this->response->setJSON([
                 'success' => true,
@@ -997,19 +1107,45 @@ class Registers extends SecureArea
             $pagos    = $this->request->getPost('pagos');
             $registro = is_array($registro) ? $registro : [];
             $pagos = is_array($pagos) ? $pagos : [];
+            $doctorId = $this->normalizeOptionalDoctorId($registro['doctor_id'] ?? 0);
+            $currentInfo = $this->registerModel->getInfoRefill($id);
+            $hasRegvalues = count($this->registerModel->getInfoAnalisis($id)) > 0;
+            if ($hasRegvalues) {
+                $parsePruebas = static function (?string $csv): array {
+                    $ids = [];
+                    foreach (explode(',', (string) $csv) as $rawId) {
+                        $idPrueba = (int) trim($rawId);
+                        if ($idPrueba > 0) {
+                            $ids[$idPrueba] = true;
+                        }
+                    }
+
+                    return array_keys($ids);
+                };
+                $currentPruebas = $parsePruebas((string) ($currentInfo->pruebas ?? ''));
+                $postedPruebas = $parsePruebas((string) ($registro['pruebas'] ?? ''));
+                $missingExisting = array_diff($currentPruebas, $postedPruebas);
+                if ($missingExisting !== []) {
+                    return $this->response->setJSON([
+                        'success' => false,
+                        'message' => 'La orden ya tiene resultados. Puede agregar más pruebas, pero no quitar pruebas existentes.',
+                    ])->setStatusCode(400);
+                }
+            }
 
             $registroData = [
                 'person_id'  => $registro['person_id'] ?? null,
-                'doctor_id'  => $registro['doctor_id'] ?? null,
+                'doctor_id'  => $doctorId,
                 'pruebas'    => $registro['pruebas'] ?? null,
                 'prioridad'  => (int) ($registro['prioridad'] ?? 0),
                 'id_session' => session()->get('person_id'),
             ];
+            $registroData = $this->withClinicalContextFields($registroData, $registro);
             $pagosNormalizados = $this->buildNormalizedPagoData($registroData, $pagos);
             $this->registerModel->saveRegistro($registroData, $id);
             \App\Models\AuditoriaModel::log('registers', 'editar_orden', (string) $id, \App\Models\AuditoriaModel::detail([
                 'paciente_id' => $registro['person_id'] ?? null,
-                'doctor_id' => $registro['doctor_id'] ?? null,
+                'doctor_id' => $doctorId,
                 'pruebas' => $registro['pruebas'] ?? null,
                 'prioridad' => (int)($registro['prioridad'] ?? 0),
                 'total' => $pagosNormalizados['total'] ?? null,
@@ -1026,6 +1162,11 @@ class Registers extends SecureArea
                 'comentarios' => $pagosNormalizados['comentarios'] ?? null,
             ];
             $this->registerModel->updatePagoByRegistroId($id, $pagosUpd);
+            $this->syncDoctorCommissionForRegistro(
+                $id,
+                $doctorId,
+                (float) ($pagosNormalizados['total'] ?? 0)
+            );
 
             return $this->response->setJSON([
                 'success' => true,
@@ -1332,6 +1473,12 @@ class Registers extends SecureArea
         $data = $this->registerService->prepareReportData($id);
         if (!$data) {
             return $this->response->setJSON(['success' => false, 'message' => 'Registro no encontrado'])->setStatusCode(404);
+        }
+        if (!$this->registerModel->registroTieneDoctorAsignado($id)) {
+            return $this->response->setJSON([
+                'success' => false,
+                'message' => 'Debe asignar un doctor antes de generar o enviar el PDF.',
+            ])->setStatusCode(400);
         }
 
         $paciente = $data['paciente'] ?? null;

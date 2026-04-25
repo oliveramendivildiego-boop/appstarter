@@ -48,6 +48,7 @@ class PublicResultados extends BaseController
             'report_pria_refs_consolidada'    => $data['report_pria_refs_consolidada'] ?? [],
             'report_emitido_en'               => $registerService->reportEmitidoEnForView($id),
             'public_resultados_token'         => strtolower((string) preg_replace('/[^a-f0-9]/', '', $token)),
+            'doctor_assigned'                 => $registerModel->registroTieneDoctorAsignado($id),
         ]);
     }
 
@@ -66,6 +67,9 @@ class PublicResultados extends BaseController
         $data            = $registerService->prepareReportData($id);
         if (! $data) {
             return $this->response->setStatusCode(404)->setBody('Registro no encontrado.');
+        }
+        if (! $registerModel->registroTieneDoctorAsignado($id)) {
+            return $this->response->setStatusCode(403)->setBody('Debe asignarse un doctor antes de generar el PDF.');
         }
 
         $cleanToken = strtolower((string) preg_replace('/[^a-f0-9]/', '', $token));

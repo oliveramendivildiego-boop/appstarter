@@ -23,7 +23,7 @@ $dmRight = ($doctor_info->doctor_id ?? 0)
 <?php $validationErrors = session()->getFlashdata('errors'); ?>
 <?php
 $saveId = isset($doctor_info->doctor_id) && $doctor_info->doctor_id !== '' && $doctor_info->doctor_id !== null ? $doctor_info->doctor_id : -1;
-echo form_open(site_url('doctors/save/' . $saveId), ['id' => 'doctor_form', 'data-async' => '1', 'method' => 'post']);
+echo form_open(site_url('doctors/save/' . $saveId), ['id' => 'doctor_form', 'data-async' => '1', 'method' => 'post', 'autocomplete' => 'off']);
 echo csrf_field();
 ?>
 <fieldset id="customer_basic_info">
@@ -42,6 +42,12 @@ echo form_submit(['name' => 'submit', 'id' => 'submit', 'value' => lang('Common.
 <?= $this->section('scripts') ?>
 <script>
 $(document).ready(function() {
+    var isNewDoctor = <?= $saveId === -1 ? 'true' : 'false' ?>;
+    if (isNewDoctor) {
+        setTimeout(function() { $('#username, #password, #email').val(''); }, 100);
+        setTimeout(function() { $('#username, #password, #email').val(''); }, 500);
+    }
+
     $("#doctor_form").validate($.extend(true, {}, window.VALIDATE_COMMON_OPTIONS, {
         rules: {
             name: { required: true, minlength: 2 },
@@ -68,6 +74,7 @@ $(document).ready(function() {
         } else {
             $('#commission_field').hide();
             $('#commission_percent').val('0.00');
+            $('#hide_commission_details').prop('checked', false);
         }
     });
     

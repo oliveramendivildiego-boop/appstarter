@@ -75,6 +75,7 @@ class Labotests extends SecureArea
             'page'             => $result['page'],
             'total_pages'      => $result['total_pages'],
             'search'           => $search,
+            'category_options'  => $this->labotestModel->getCategoryOptions(),
             'allowed_modules'  => $this->allowed_modules,
             'user_info'        => $this->user_info,
             'current_module'   => 'labotests',
@@ -460,6 +461,90 @@ class Labotests extends SecureArea
             $json['csrf_name'] = csrf_token();
         }
         return $this->response->setJSON($json);
+    }
+
+    /**
+     * Mueve análisis entre categorías y reordena los hijos visibles de cada padre.
+     */
+    public function reorderAnalysis(): ResponseInterface
+    {
+        $payload = $this->request->getPost('groups');
+        if (! is_array($payload)) {
+            $payload = is_string($payload) ? json_decode($payload, true) : [];
+        }
+
+        if (! is_array($payload) || $payload === []) {
+            return $this->response->setJSON([
+                'success' => false,
+                'message' => 'No se recibio el orden de los analisis',
+                'csrf_token' => csrf_hash(),
+                'csrf_name' => csrf_token(),
+            ])->setStatusCode(400);
+        }
+
+        $saved = $this->labotestModel->updateAnalysisPlacement($payload);
+        if (! $saved) {
+            return $this->response->setJSON([
+                'success' => false,
+                'message' => 'No se pudo guardar el nuevo orden',
+                'csrf_token' => csrf_hash(),
+                'csrf_name' => csrf_token(),
+            ])->setStatusCode(400);
+        }
+
+        \App\Models\AuditoriaModel::log(
+            'labotests',
+            'reordenar_analisis',
+            '',
+            \App\Models\AuditoriaModel::detail(['grupos' => count($payload)])
+        );
+
+        return $this->response->setJSON([
+            'success' => true,
+            'message' => 'Orden guardado',
+            'csrf_token' => csrf_hash(),
+            'csrf_name' => csrf_token(),
+        ]);
+    }
+
+    /**
+     * Duplica una prueba completa hacia otra categoría padre.
+     */
+    public function duplicateAnalysisToParent()
+    {
+        $sourceId = (int) ($this->request->getPost('prianacategoria_id') ?? 0);
+        $targetParentId = (int) ($this->request->getPost('target_anacategoria_id') ?? 0);
+
+        if ($sourceId < 1 || $targetParentId < 1) {
+            return redirect()->to('labotests')->with('error', 'Debe seleccionar la prueba y el padre destino');
+        }
+
+        $source = $this->labotestModel->getSubInfo($sourceId, null);
+        if (! $source || ! ($source->prianacategoria_id ?? null)) {
+            return redirect()->to('labotests')->with('error', 'Prueba no encontrada');
+        }
+
+        if ((int) ($source->anacategoria_id ?? 0) === $targetParentId) {
+            return redirect()->to('labotests')->with('error', 'Seleccione un padre diferente para duplicar la prueba');
+        }
+
+        $newId = $this->labotestModel->duplicateAnalysisToParent($sourceId, $targetParentId);
+        if (! $newId) {
+            return redirect()->to('labotests')->with('error', 'No se pudo duplicar la prueba');
+        }
+
+        \App\Models\AuditoriaModel::log(
+            'labotests',
+            'duplicar_analisis',
+            (string) $newId,
+            \App\Models\AuditoriaModel::detail([
+                'origen' => $sourceId,
+                'destino_padre' => $targetParentId,
+                'nombre' => (string) ($source->name ?? ''),
+            ])
+        );
+
+        return redirect()->to('labotests')->with('success', 'Prueba duplicada correctamente');
     }
 
     /**

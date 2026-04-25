@@ -7,6 +7,75 @@
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/themes/material_green.css">
 <script src="<?= base_url('js/vendor/flatpickr.min.js') ?>"></script>
 <script src="https://cdn.jsdelivr.net/npm/flatpickr@4.6.13/dist/l10n/es.js"></script>
+<style>
+    #modalSeleccionPruebas .modal-dialog {
+        max-width: 96vw;
+    }
+    #modalSeleccionPruebas .modal-content {
+        min-height: 90vh;
+    }
+    #modalSeleccionPruebas .modal-body {
+        max-height: calc(90vh - 140px);
+        overflow-y: auto;
+    }
+    #modal_pruebas_lista {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+        gap: .5rem;
+    }
+    #modal_pruebas_lista .list-group-item {
+        border-width: 1px;
+        border-radius: .35rem;
+        font-size: .875rem;
+        padding: .5rem .6rem;
+    }
+    #modal_pruebas_lista .modal-prueba-categoria-header {
+        background: #0d6efd;
+        border: 1px solid #0a58ca;
+        border-radius: .35rem;
+        color: #fff;
+        padding: .35rem .5rem;
+    }
+    #modal_pruebas_lista .modal-prueba-categoria-header .form-check-label {
+        font-weight: 700;
+    }
+    #modal_pruebas_lista .modal-prueba-categoria-header .form-check-input {
+        border-color: #111;
+        box-shadow: 0 0 0 2px rgba(255, 255, 255, .65);
+    }
+    #modal_pruebas_lista .form-check {
+        min-height: 1.25rem;
+    }
+    #modal_pruebas_lista .form-check-input {
+        border: 2px solid #198754;
+        box-shadow: 0 0 0 1px rgba(25, 135, 84, .15);
+        height: 1.05rem;
+        margin-top: .15rem;
+        width: 1.05rem;
+    }
+    #modal_pruebas_lista .form-check-input:checked {
+        background-color: #198754;
+        border-color: #198754;
+    }
+    #modal_pruebas_lista .modal-prueba-categoria-header .form-check-input {
+        border-color: #111;
+        box-shadow: 0 0 0 2px rgba(255, 255, 255, .65);
+    }
+    #modal_pruebas_lista .modal-prueba-item-row .form-check-label::before {
+        background: #20c997;
+        border-radius: 50%;
+        box-shadow: 0 0 0 3px rgba(32, 201, 151, .16);
+        content: "";
+        display: inline-block;
+        height: .48rem;
+        margin: 0 .45rem .05rem 0;
+        width: .48rem;
+    }
+    #modal_pruebas_lista .badge {
+        font-size: .7rem;
+        white-space: nowrap;
+    }
+</style>
 <?= $this->endSection() ?>
 <?= $this->section('content') ?>
 <?php
@@ -22,7 +91,8 @@ foreach ($categories ?? [] as $cat) {
     }
 }
 ?>
-<script>window.PRUEBAS_LOOKUP = <?= json_encode($pruebasLookup) ?>;</script>
+<script>window.PRUEBAS_LOOKUP = <?= json_encode($pruebasLookup, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP) ?>;</script>
+<script>window.PRUEBAS_CATEGORIES = <?= json_encode($categories ?? [], JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP) ?>;</script>
 <?php
 $editPayload = null;
 if (!empty($edit_registro)) {
@@ -33,7 +103,10 @@ if (!empty($edit_registro)) {
         'paciente'    => trim((string)(($edit_registro->first_name ?? '') . ' ' . ($edit_registro->last_name_fa ?? ''))),
         'doctor'      => trim((string)($edit_registro->doctor_name ?? '')),
         'prioridad'   => (int)($edit_registro->prioridad ?? 0),
+        'diagnostico_presuntivo' => (string)($edit_registro->diagnostico_presuntivo ?? ''),
+        'motivo_estudio' => (string)($edit_registro->motivo_estudio ?? ''),
         'pruebas'     => (string)($edit_registro->pruebas ?? ''),
+        'regvalues_count' => (int)($edit_regvalues_count ?? 0),
         'pago'        => [
             'total_reco'  => $edit_pago->total_reco ?? '',
             'total'       => $edit_pago->total ?? '',
@@ -62,7 +135,12 @@ if (!empty($edit_registro)) {
         <?= view('registers/form_basic_info') ?>
         <div id="pruebas_error" class="text-danger small mb-2" style="display:none;"></div>
         <div class="mb-3">
-            <label class="form-label">Pruebas seleccionadas:</label>
+            <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-2">
+                <label class="form-label mb-0">Pruebas seleccionadas:</label>
+                <button type="button" id="btn_open_modal_pruebas" class="btn btn-outline-primary btn-sm" data-bs-toggle="modal" data-bs-target="#modalSeleccionPruebas">
+                    <i class="fa-solid fa-list-check me-1"></i>Seleccionar pruebas
+                </button>
+            </div>
             <div id="pruebas_lista" class="border rounded p-2 bg-light" style="min-height:60px;">
                 <p class="text-muted small mb-0">Use el buscador para agregar pruebas. La lista aparecerá aquí.</p>
             </div>
@@ -70,6 +148,32 @@ if (!empty($edit_registro)) {
     </div>
     <div class="col-md-4 mb-3">
         <?= view('registers/form_pagos') ?>
+    </div>
+</div>
+
+<div class="modal fade" id="modalSeleccionPruebas" tabindex="-1" aria-labelledby="modalSeleccionPruebasLabel" aria-hidden="true">
+    <div class="modal-dialog modal-xl modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="modalSeleccionPruebasLabel"><i class="fa-solid fa-flask-vial me-2"></i>Seleccionar pruebas</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-3">
+                    <label for="modal_pruebas_search" class="form-label">Buscar análisis</label>
+                    <input type="text" class="form-control" id="modal_pruebas_search" placeholder="Escriba para filtrar por padre o prueba">
+                </div>
+                <div id="modal_pruebas_lista">
+                    <p class="text-muted small mb-0">No hay análisis configurados.</p>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" id="btn_agregar_pruebas_modal" class="btn btn-primary">
+                    <i class="fa-solid fa-plus me-1"></i>Agregar
+                </button>
+            </div>
+        </div>
     </div>
 </div>
 
@@ -205,9 +309,17 @@ document.addEventListener('DOMContentLoaded', function() {
     var pruebaListDropdown = document.getElementById('prueba_list');
     var pruebaListaContainer = document.getElementById('pruebas_lista');
     var guardarBtn = document.getElementById('guardar');
+    var pruebasModalEl = document.getElementById('modalSeleccionPruebas');
+    var pruebasModal = (typeof bootstrap !== 'undefined' && pruebasModalEl) ? bootstrap.Modal.getOrCreateInstance(pruebasModalEl) : null;
+    var modalPruebasLista = document.getElementById('modal_pruebas_lista');
+    var modalPruebasSearch = document.getElementById('modal_pruebas_search');
+    var btnAgregarPruebasModal = document.getElementById('btn_agregar_pruebas_modal');
+    var modalPruebasSeleccionadas = {};
     var pacienteModalEl = document.getElementById('modalCrearPaciente');
     var doctorModalEl = document.getElementById('modalCrearDoctor');
-    var pacienteModal = (typeof bootstrap !== 'undefined' && pacienteModalEl) ? bootstrap.Modal.getOrCreateInstance(pacienteModalEl) : null;
+    // focus: false -> flatpickr ancla el calendario en <body> y el "focus trap" de Bootstrap
+    // impedía teclear el año; mismo comportamiento que en customers (sin modal).
+    var pacienteModal = (typeof bootstrap !== 'undefined' && pacienteModalEl) ? bootstrap.Modal.getOrCreateInstance(pacienteModalEl, { focus: false }) : null;
     var doctorModal = (typeof bootstrap !== 'undefined' && doctorModalEl) ? bootstrap.Modal.getOrCreateInstance(doctorModalEl) : null;
     var pruebasSeleccionadas = []; // {id, name, padre, cost}
     var editInfo = (typeof window.EDIT_REGISTRO !== 'undefined') ? window.EDIT_REGISTRO : null;
@@ -259,7 +371,7 @@ document.addEventListener('DOMContentLoaded', function() {
         if (isNaN(pct) || pct < 0) pct = 0;
         if (pct > 100) pct = 100;
         var totalConDescuento = totalReco * (1 - (pct / 100));
-        var valReco = totalConDescuento.toFixed(2);
+        var valReco = totalReco.toFixed(2);
         var valTotal = totalConDescuento.toFixed(2);
         var reco = document.getElementById('total_reco');
         var tot = document.getElementById('total');
@@ -287,7 +399,11 @@ document.addEventListener('DOMContentLoaded', function() {
         pruebasSeleccionadas.forEach(function(p) { totalBruto += parseFloat(p.cost || 0); });
         var totalVal = parseFloat((document.getElementById('total') || {}).value || 0);
         var ahorro = (!isNaN(totalVal)) ? Math.max(0, totalBruto - totalVal) : 0;
-        infoEl.textContent = 'Institución: ' + inst + ' — descuento aplicado: ' + pct.toFixed(2) + '% (ahorro: ' + ahorro.toFixed(2) + ' Bs)';
+        if (ahorro > 0) {
+            infoEl.textContent = 'Institución: ' + inst + ' — descuento aplicado: ' + pct.toFixed(2) + '% (ahorro: ' + ahorro.toFixed(2) + ' Bs)';
+        } else {
+            infoEl.textContent = 'Institución: ' + inst + ' — descuento configurado: ' + pct.toFixed(2) + '% (sin ahorro aplicado)';
+        }
     };
 
     function renderPruebasLista() {
@@ -302,9 +418,12 @@ document.addEventListener('DOMContentLoaded', function() {
                 row.dataset.id = p.id;
                 var displayName = (p.name || '');
                 if (p.padre) displayName += ' <span class="text-muted small">(' + p.padre + ')</span>';
+                var removeButton = p.locked
+                    ? '<button type="button" class="btn btn-outline-secondary btn-sm" disabled title="Esta prueba ya tiene resultados"><i class="fa-solid fa-lock"></i></button>'
+                    : '<button type="button" class="btn btn-outline-danger btn-sm quitar-prueba" data-idx="' + idx + '" title="Eliminar"><i class="fa-solid fa-times"></i></button>';
                 row.innerHTML = '<span class="flex-grow-1">' + displayName + '</span>' +
                     '<span class="badge bg-secondary me-2">' + (p.cost || 0) + ' Bs</span>' +
-                    '<button type="button" class="btn btn-outline-danger btn-sm quitar-prueba" data-idx="' + idx + '" title="Eliminar"><i class="fa-solid fa-times"></i></button>';
+                    removeButton;
                 pruebaListaContainer.appendChild(row);
             });
         }
@@ -318,14 +437,135 @@ document.addEventListener('DOMContentLoaded', function() {
             id: item.data,
             name: item.value || '',
             padre: item.padre || '',
-            cost: parseFloat(item.cost || 0)
+            cost: parseFloat(item.cost || 0),
+            locked: !!item.locked
         });
         renderPruebasLista();
     }
 
     function quitarPrueba(idx) {
+        if (pruebasSeleccionadas[idx] && pruebasSeleccionadas[idx].locked) return;
         pruebasSeleccionadas.splice(idx, 1);
         renderPruebasLista();
+    }
+
+    function getPruebasSeleccionadasIds() {
+        var ids = {};
+        pruebasSeleccionadas.forEach(function(p) {
+            ids[String(p.id)] = true;
+        });
+        return ids;
+    }
+
+    function updateCategoriaCheckboxState(categoryBlock) {
+        if (!categoryBlock) return;
+        var parentCheck = categoryBlock.querySelector('.modal-prueba-categoria');
+        var childChecks = categoryBlock.querySelectorAll('.modal-prueba-item');
+        if (!parentCheck || !childChecks.length) return;
+        var checkedCount = 0;
+        childChecks.forEach(function(chk) {
+            if (chk.checked) checkedCount++;
+        });
+        parentCheck.checked = checkedCount === childChecks.length;
+        parentCheck.indeterminate = checkedCount > 0 && checkedCount < childChecks.length;
+    }
+
+    function syncModalPruebasSeleccionadas() {
+        if (!modalPruebasLista) return;
+        modalPruebasLista.querySelectorAll('.modal-prueba-item').forEach(function(chk) {
+            chk.checked = !!modalPruebasSeleccionadas[String(chk.value)];
+        });
+        modalPruebasLista.querySelectorAll('.modal-prueba-categoria-block').forEach(updateCategoriaCheckboxState);
+    }
+
+    function renderModalPruebasLista(filterText) {
+        if (!modalPruebasLista) return;
+        var categories = Array.isArray(window.PRUEBAS_CATEGORIES) ? window.PRUEBAS_CATEGORIES : [];
+        var filter = (filterText || '').toLowerCase().trim();
+        modalPruebasLista.innerHTML = '';
+        var rendered = 0;
+
+        categories.forEach(function(cat, catIdx) {
+            var catName = String(cat.name || '');
+            var items = Array.isArray(cat.items) ? cat.items : [];
+            var visibleItems = items.filter(function(item) {
+                if (!filter) return true;
+                return catName.toLowerCase().indexOf(filter) !== -1 || String(item.name || '').toLowerCase().indexOf(filter) !== -1;
+            });
+            if (!visibleItems.length) return;
+
+            var block = document.createElement('div');
+            block.className = 'list-group-item modal-prueba-categoria-block';
+
+            var header = document.createElement('div');
+            header.className = 'form-check modal-prueba-categoria-header mb-2';
+            var parentId = 'modal_prueba_cat_' + catIdx;
+            var parentCheck = document.createElement('input');
+            parentCheck.type = 'checkbox';
+            parentCheck.className = 'form-check-input modal-prueba-categoria';
+            parentCheck.id = parentId;
+            var parentLabel = document.createElement('label');
+            parentLabel.className = 'form-check-label';
+            parentLabel.htmlFor = parentId;
+            parentLabel.textContent = catName || 'Sin categoría';
+            header.appendChild(parentCheck);
+            header.appendChild(parentLabel);
+            block.appendChild(header);
+
+            var children = document.createElement('div');
+            children.className = 'ps-2';
+            visibleItems.forEach(function(item) {
+                var itemId = String(item.id || '');
+                if (!itemId) return;
+                var row = document.createElement('div');
+                row.className = 'form-check modal-prueba-item-row d-flex align-items-start gap-1 mb-1';
+                var checkId = 'modal_prueba_' + itemId;
+                var chk = document.createElement('input');
+                chk.type = 'checkbox';
+                chk.className = 'form-check-input modal-prueba-item';
+                chk.id = checkId;
+                chk.value = itemId;
+                chk.dataset.name = item.name || '';
+                chk.dataset.padre = catName;
+                chk.dataset.cost = item.cost || 0;
+                var label = document.createElement('label');
+                label.className = 'form-check-label flex-grow-1 lh-sm';
+                label.htmlFor = checkId;
+                label.textContent = item.name || ('Prueba #' + itemId);
+                var badge = document.createElement('span');
+                badge.className = 'badge bg-secondary';
+                badge.textContent = (item.cost || 0) + ' Bs';
+                row.appendChild(chk);
+                row.appendChild(label);
+                row.appendChild(badge);
+                children.appendChild(row);
+            });
+            block.appendChild(children);
+            modalPruebasLista.appendChild(block);
+            rendered++;
+        });
+
+        if (!rendered) {
+            modalPruebasLista.innerHTML = '<p class="text-muted small mb-0">No se encontraron análisis.</p>';
+            return;
+        }
+        syncModalPruebasSeleccionadas();
+    }
+
+    function agregarPruebasDesdeModal() {
+        Object.keys(modalPruebasSeleccionadas).forEach(function(id) {
+            if (!modalPruebasSeleccionadas[id]) return;
+            var info = (window.PRUEBAS_LOOKUP || {})[id];
+            if (info) {
+                agregarPrueba({
+                    data: id,
+                    value: info.name || '',
+                    padre: info.padre || '',
+                    cost: info.cost || 0
+                });
+            }
+        });
+        if (pruebasModal) pruebasModal.hide();
     }
 
 
@@ -345,6 +585,43 @@ document.addEventListener('DOMContentLoaded', function() {
         if (err) { err.textContent = msg; }
     }
 
+    if (pruebasModalEl) {
+        pruebasModalEl.addEventListener('show.bs.modal', function() {
+            modalPruebasSeleccionadas = getPruebasSeleccionadasIds();
+            if (modalPruebasSearch) modalPruebasSearch.value = '';
+            renderModalPruebasLista('');
+        });
+    }
+    if (modalPruebasSearch) {
+        modalPruebasSearch.addEventListener('input', function() {
+            renderModalPruebasLista(this.value);
+        });
+    }
+    if (modalPruebasLista) {
+        modalPruebasLista.addEventListener('change', function(e) {
+            var parent = e.target.closest('.modal-prueba-categoria');
+            if (parent) {
+                var block = parent.closest('.modal-prueba-categoria-block');
+                if (block) {
+                    block.querySelectorAll('.modal-prueba-item').forEach(function(chk) {
+                        chk.checked = parent.checked;
+                        modalPruebasSeleccionadas[String(chk.value)] = parent.checked;
+                    });
+                    updateCategoriaCheckboxState(block);
+                }
+                return;
+            }
+            var child = e.target.closest('.modal-prueba-item');
+            if (child) {
+                modalPruebasSeleccionadas[String(child.value)] = child.checked;
+                updateCategoriaCheckboxState(child.closest('.modal-prueba-categoria-block'));
+            }
+        });
+    }
+    if (btnAgregarPruebasModal) {
+        btnAgregarPruebasModal.addEventListener('click', agregarPruebasDesdeModal);
+    }
+
     if (guardarBtn) {
         guardarBtn.addEventListener('click', function(e) {
             e.preventDefault();
@@ -356,7 +633,9 @@ document.addEventListener('DOMContentLoaded', function() {
                 person_id: (document.getElementById('person_id') || {}).value || '',
                 doctor_id: (document.getElementById('doctor_id') || {}).value || '',
                 pruebas: pruebasStr,
-                prioridad: prioridad
+                prioridad: prioridad,
+                diagnostico_presuntivo: (document.getElementById('diagnostico_presuntivo') || {}).value || '',
+                motivo_estudio: (document.getElementById('motivo_estudio') || {}).value || ''
             };
             var tipopagoVal = (document.getElementById('tipopago') || {}).value || '';
             var esPendiente = tipopagoVal === '4';
@@ -378,10 +657,6 @@ document.addEventListener('DOMContentLoaded', function() {
             if (!registroData.person_id || registroData.person_id === '0') {
                 var p = document.getElementById('paciente');
                 mostrarError(p, 'Seleccione un paciente.'); primero = primero || p;
-            }
-            if (!registroData.doctor_id || registroData.doctor_id === '0') {
-                var d = document.getElementById('doctor');
-                mostrarError(d, 'Seleccione un doctor.'); primero = primero || d;
             }
             if (pruebasStr === '') {
                 var pe = document.getElementById('pruebas_error');
@@ -423,6 +698,8 @@ document.addEventListener('DOMContentLoaded', function() {
                     '&registro[doctor_id]=' + encodeURIComponent(registroData.doctor_id) +
                     '&registro[pruebas]=' + encodeURIComponent(registroData.pruebas) +
                     '&registro[prioridad]=' + encodeURIComponent(registroData.prioridad) +
+                    '&registro[diagnostico_presuntivo]=' + encodeURIComponent(registroData.diagnostico_presuntivo) +
+                    '&registro[motivo_estudio]=' + encodeURIComponent(registroData.motivo_estudio) +
                     '&pagos[total_reco]=' + encodeURIComponent(pagosData.total_reco) +
                     '&pagos[total]=' + encodeURIComponent(pagosData.total) +
                     '&pagos[monto_pagar]=' + encodeURIComponent(pagosData.monto_pagar) +
@@ -456,16 +733,20 @@ document.addEventListener('DOMContentLoaded', function() {
     var doctorValidator = null;
 
     if (typeof flatpickr !== 'undefined') {
-        flatpickr('#np_birthday', {
-            dateFormat: 'Y-m-d',
-            maxDate: 'today',
-            locale: 'es',
-            onOpen: function(selectedDates, dateStr, instance) {
-                if (typeof flatpickrPositionArrowTopLeft === 'function') {
-                    flatpickrPositionArrowTopLeft(instance);
+        var npBirthdayInp = document.getElementById('np_birthday');
+        if (npBirthdayInp) {
+            flatpickr(npBirthdayInp, {
+                dateFormat: 'Y-m-d',
+                maxDate: 'today',
+                locale: 'es',
+                allowInput: true,
+                onOpen: function(selectedDates, dateStr, instance) {
+                    if (typeof flatpickrPositionArrowTopLeft === 'function') {
+                        flatpickrPositionArrowTopLeft(instance);
+                    }
                 }
-            }
-        });
+            });
+        }
     }
 
     if (typeof window.jQuery !== 'undefined' && typeof window.jQuery.fn.validate === 'function') {
@@ -612,11 +893,15 @@ document.addEventListener('DOMContentLoaded', function() {
             var pacienteEl = document.getElementById('paciente');
             var doctorEl = document.getElementById('doctor');
             var prioridadEl = document.getElementById('prioridad');
+            var diagnosticoEl = document.getElementById('diagnostico_presuntivo');
+            var motivoEl = document.getElementById('motivo_estudio');
             if (personIdEl) personIdEl.value = String(editInfo.person_id || '');
             if (doctorIdEl) doctorIdEl.value = String(editInfo.doctor_id || '');
             if (pacienteEl) pacienteEl.value = String(editInfo.paciente || '');
             if (doctorEl) doctorEl.value = String(editInfo.doctor || '');
             if (prioridadEl) prioridadEl.value = String(editInfo.prioridad || '0');
+            if (diagnosticoEl) diagnosticoEl.value = String(editInfo.diagnostico_presuntivo || '');
+            if (motivoEl) motivoEl.value = String(editInfo.motivo_estudio || '');
             var institucionEl = document.getElementById('customer_institucion');
             var descuentoEl = document.getElementById('customer_descuento_pct');
             if (institucionEl) institucionEl.value = String(editInfo.institucion || '');
@@ -644,7 +929,13 @@ document.addEventListener('DOMContentLoaded', function() {
                     .forEach(function(id) {
                         var info = (window.PRUEBAS_LOOKUP || {})[id];
                         if (info) {
-                            agregarPrueba({ value: info.name, padre: info.padre, data: id, cost: info.cost });
+                            agregarPrueba({
+                                value: info.name,
+                                padre: info.padre,
+                                data: id,
+                                cost: info.cost,
+                                locked: (parseInt(editInfo.regvalues_count || 0, 10) > 0)
+                            });
                         }
                     });
             }

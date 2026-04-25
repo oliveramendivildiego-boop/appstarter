@@ -222,11 +222,5 @@ class Validation extends BaseConfig
                 'required' => 'Debe seleccionar un paciente.',
             ],
         ],
-        'registro.doctor_id' => [
-            'rules'  => 'required',
-            'errors' => [
-                'required' => 'Debe seleccionar un doctor.',
-            ],
-        ],
     ];
 }

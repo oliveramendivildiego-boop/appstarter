@@ -1,6 +1,31 @@
 /**
  * Módulo Labotests - form_detail, sub-clases, fórmulas
  */
+.labotests-analysis-list {
+    min-height: 3rem;
+}
+.labotests-analysis-drag {
+    cursor: grab;
+    color: #6c757d;
+    line-height: 1;
+    user-select: none;
+}
+.labotests-analysis-drag:active {
+    cursor: grabbing;
+}
+.labotests-analysis-item {
+    gap: 0.75rem;
+}
+.labotests-analysis-item.sortable-chosen {
+    background: #f8fbff;
+}
+.labotests-sortable-ghost {
+    opacity: 0.45;
+    background: #e7f1ff;
+}
+.labotests-empty-item {
+    pointer-events: none;
+}
 #tabla_sub_items .sec-drag-handle {
     cursor: grab;
     padding: 0.25rem;
