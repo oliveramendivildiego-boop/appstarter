@@ -321,12 +321,11 @@ document.addEventListener('DOMContentLoaded', function() {
                     html += '<p class="mb-0"><strong>Fecha ingreso:</strong> ' + escapeHtml(reg.ingreso ? new Date(reg.ingreso).toLocaleString('es') : '-') + '</p></div>';
                     html += '<div class="mb-3"><h6 class="border-bottom pb-2">Historial de pagos</h6>';
                     html += '<p class="mb-2"><strong>Total orden:</strong> ' + escapeHtml(pago.total || '0') + ' Bs &nbsp;|&nbsp; <strong>Pagado:</strong> ' + escapeHtml(pago.monto_pagar || '0') + ' Bs &nbsp;|&nbsp; <strong>Saldo:</strong> ' + escapeHtml(pago.saldo || '0') + ' Bs</p>';
-                    if (d.pago_completo) {
-                        var urlComp = '<?= site_url('registers/comprobantePdf') ?>/' + encodeURIComponent(rid);
-                        var lblComp = d.sin_billing_enabled ? 'Descargar factura (PDF)' : 'Descargar recibo (PDF)';
-                        html += '<p class="mb-2"><a href="' + urlComp + '" class="btn btn-sm btn-outline-secondary" target="_blank" rel="noopener"><i class="fa-solid fa-file-invoice-dollar me-1"></i>' + escapeHtml(lblComp) + '</a></p>';
-                    } else if (pago && Object.keys(pago).length > 0) {
-                        html += '<p class="small text-muted mb-2"><i class="fa-solid fa-circle-info me-1"></i>El recibo o factura en PDF estará disponible cuando el saldo de la orden sea cero.</p>';
+                    var urlComp = '<?= site_url('registers/comprobantePdf') ?>/' + encodeURIComponent(rid);
+                    var lblComp = d.sin_billing_enabled ? 'Descargar factura (PDF)' : 'Descargar recibo (PDF)';
+                    html += '<p class="mb-2"><a href="' + urlComp + '" class="btn btn-sm btn-outline-secondary" target="_blank" rel="noopener"><i class="fa-solid fa-file-invoice-dollar me-1"></i>' + escapeHtml(lblComp) + '</a></p>';
+                    if (!d.pago_completo && pago && Object.keys(pago).length > 0) {
+                        html += '<p class="small text-muted mb-2"><i class="fa-solid fa-circle-info me-1"></i>El comprobante mostrará el saldo pendiente si la orden aún no está saldada.</p>';
                     }
                     if (d.abonos && d.abonos.length > 0) {
                         html += '<div class="table-responsive"><table class="table table-sm table-bordered"><thead><tr><th>Fecha</th><th>Monto</th><th>Método</th></tr></thead><tbody>';

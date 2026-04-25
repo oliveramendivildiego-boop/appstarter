@@ -176,11 +176,29 @@ class BillingDocumentService
 
     public function renderComprobanteHtml(object $doc, bool $comoFactura): string
     {
+        $style = $this->buildComprobanteStyleConfig();
         if ($comoFactura && $doc instanceof FacturaComprobanteModel) {
-            return (string) view('registers/billing/factura_pdf', ['doc' => $doc]);
+            return (string) view('registers/billing/factura_pdf', ['doc' => $doc, 'comprobante_style' => $style]);
         }
 
-        return (string) view('registers/billing/recibo_pdf', ['doc' => $doc]);
+        return (string) view('registers/billing/recibo_pdf', ['doc' => $doc, 'comprobante_style' => $style]);
+    }
+
+    /**
+     * @return array{primary:string,secondary:string,text:string,tagline:string,footer_note:string,show_doctor:bool}
+     */
+    private function buildComprobanteStyleConfig(): array
+    {
+        $cfg = $this->configService->getAllAsArray();
+
+        return [
+            'primary' => trim((string) ($cfg['comprobante_primary_color'] ?? '#0f766e')) ?: '#0f766e',
+            'secondary' => trim((string) ($cfg['comprobante_secondary_color'] ?? '#134e4a')) ?: '#134e4a',
+            'text' => trim((string) ($cfg['comprobante_text_color'] ?? '#1e293b')) ?: '#1e293b',
+            'tagline' => trim((string) ($cfg['comprobante_tagline'] ?? 'Constancia de pago')) ?: 'Constancia de pago',
+            'footer_note' => trim((string) ($cfg['comprobante_footer_note'] ?? 'Documento interno de constancia de pago emitido por el laboratorio. No reemplaza un comprobante fiscal electrónico ni factura validada ante el SIN.')) ?: 'Documento interno de constancia de pago emitido por el laboratorio. No reemplaza un comprobante fiscal electrónico ni factura validada ante el SIN.',
+            'show_doctor' => ((string) ($cfg['comprobante_show_doctor'] ?? '1')) !== '0',
+        ];
     }
 
     /**

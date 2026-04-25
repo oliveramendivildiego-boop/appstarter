@@ -296,11 +296,7 @@ class Registers extends SecureArea
                 if ($saldoNum > 0) {
                     $html .= '<li><button type="button" class="dropdown-item btn-agregar-pago" data-id="' . $rid . '" data-total="' . esc($r->total ?? '') . '" data-saldo="' . esc($r->saldo ?? '') . '" data-monto="' . esc($r->monto_pagar ?? '') . '"><i class="fa-solid fa-money-bill-wave me-2 text-warning"></i>Agregar pago</button></li>';
                 }
-                if ($saldoNum <= 0.02 || ($totalNum > 0 && ($montoPagadoNum + 0.02) >= $totalNum)) {
-                    $html .= '<li><a class="dropdown-item" href="' . site_url('registers/comprobantePdf/' . $rid) . '" target="_blank"><i class="fa-solid fa-file-invoice-dollar me-2 text-dark"></i>Descargar comprobante</a></li>';
-                } else {
-                    $html .= '<li><span class="dropdown-item text-muted disabled"><i class="fa-solid fa-file-invoice-dollar me-2"></i>Descargar comprobante (pago pendiente)</span></li>';
-                }
+                $html .= '<li><a class="dropdown-item" href="' . site_url('registers/comprobantePdf/' . $rid) . '" target="_blank"><i class="fa-solid fa-file-invoice-dollar me-2 text-dark"></i>Descargar comprobante</a></li>';
                 $html .= '<li><button type="button" class="dropdown-item btn-historial" data-id="' . $rid . '"><i class="fa-solid fa-clock-rotate-left me-2 text-info"></i>Historial de pagos y pruebas</button></li>';
                 $html .= '<li><hr class="dropdown-divider"></li>';
                 $html .= '<li><button type="button" class="dropdown-item text-danger btn-anular-registro" data-id="' . $rid . '"><i class="fa-solid fa-ban me-2 text-danger"></i>Anular orden</button></li>';
@@ -799,13 +795,6 @@ class Registers extends SecureArea
         }
         if ($this->registerModel->isRegistroAnulado($id)) {
             return redirect()->to('registers/lista')->with('error', 'La orden está anulada; no se puede generar el comprobante.');
-        }
-
-        if (!$this->registerModel->isPagoCompletoPorRegistroId($id)) {
-            return redirect()->to('registers/viewreport/' . $id)->with(
-                'error',
-                'El recibo o factura en PDF solo está disponible cuando la orden está totalmente pagada (sin saldo pendiente).'
-            );
         }
 
         $billing = new BillingDocumentService();

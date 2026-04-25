@@ -54,27 +54,35 @@ $opcionesTotalPages = max(1, (int) ($opcionesPagination['pages'] ?? 1));
                 </td>
                 <td>
                     <?php if ($o['usa_valores_genericos'] ?? false): ?>
-                    <ul class="list-unstyled mb-0 small">
+                    <ul class="list-unstyled mb-0 small opcion-valores-list" data-opciones-id="<?= (int)($o['opciones_id'] ?? 0) ?>">
                         <?php foreach ($o['valores'] ?? [] as $v): ?>
-                        <li class="d-flex align-items-center gap-2 py-1">
+                        <li class="d-flex align-items-center gap-2 py-1 opcion-valor-item" draggable="true" data-valor-id="<?= (int)($v['opcion_valor_id'] ?? 0) ?>">
+                            <span class="text-muted opcion-drag-handle" title="Arrastrar para reordenar"><i class="fa-solid fa-grip-vertical"></i></span>
                             <?= form_open('config/saveopcionvalor', ['class' => 'd-flex align-items-center gap-1 flex-grow-1']) ?>
                             <input type="hidden" name="opciones_id" value="<?= (int)($o['opciones_id'] ?? 0) ?>">
                             <input type="hidden" name="opciones_page" value="<?= $opcionesCurrentPage ?>">
                             <input type="hidden" name="opcion_valor_id" value="<?= (int)($v['opcion_valor_id'] ?? 0) ?>">
                             <input type="hidden" name="orden" value="<?= (int)($v['orden'] ?? 0) ?>">
-                            <input type="text" name="valor" class="form-control form-control-sm" style="width:180px" value="<?= esc($v['valor'] ?? '') ?>" required>
-                            <button type="submit" class="btn btn-sm btn-outline-primary" title="Guardar"><i class="fa-solid fa-save"></i></button>
+                            <input type="text" name="valor" class="form-control form-control-sm opcion-valor-input" value="<?= esc($v['valor'] ?? '') ?>" required>
+                            <div class="btn-group btn-group-sm ms-1" role="group" aria-label="Acciones del valor">
+                                <button type="submit" class="btn btn-outline-primary" title="Guardar"><i class="fa-solid fa-save"></i></button>
+                                <a href="<?= site_url('config/deleteopcionvalor/' . (int)($v['opcion_valor_id'] ?? 0) . '?opciones_page=' . $opcionesCurrentPage) ?>" class="btn btn-outline-danger" title="Eliminar" onclick="return uiConfirmLink(this, '¿Eliminar este valor?');"><i class="fa-solid fa-trash"></i></a>
+                            </div>
                             <?= form_close() ?>
-                            <a href="<?= site_url('config/deleteopcionvalor/' . (int)($v['opcion_valor_id'] ?? 0) . '?opciones_page=' . $opcionesCurrentPage) ?>" class="btn btn-sm btn-outline-danger" title="Eliminar" onclick="return uiConfirmLink(this, '¿Eliminar este valor?');"><i class="fa-solid fa-trash"></i></a>
                         </li>
                         <?php endforeach; ?>
                     </ul>
+                    <?= form_open('config/reorderopcionvalores', ['class' => 'opcion-reorder-form d-none']) ?>
+                    <input type="hidden" name="opciones_id" value="<?= (int)($o['opciones_id'] ?? 0) ?>">
+                    <input type="hidden" name="opciones_page" value="<?= $opcionesCurrentPage ?>">
+                    <input type="hidden" name="ordered_ids" value="">
+                    <?= form_close() ?>
                     <div class="mt-2">
                         <?= form_open('config/saveopcionvalor', ['class' => 'd-flex align-items-center gap-2']) ?>
                         <input type="hidden" name="opciones_id" value="<?= (int)($o['opciones_id'] ?? 0) ?>">
                         <input type="hidden" name="opciones_page" value="<?= $opcionesCurrentPage ?>">
                         <input type="hidden" name="opcion_valor_id" value="0">
-                        <input type="text" name="valor" class="form-control form-control-sm" style="width:200px" placeholder="Nuevo valor..." required>
+                        <input type="text" name="valor" class="form-control form-control-sm opcion-valor-input" placeholder="Nuevo valor..." required>
                         <input type="hidden" name="orden" value="0">
                         <button type="submit" class="btn btn-success btn-sm"><i class="fa-solid fa-plus me-1"></i> Agregar</button>
                         <?= form_close() ?>
@@ -127,6 +135,113 @@ $opcionesTotalPages = max(1, (int) ($opcionesPagination['pages'] ?? 1));
         </tbody>
     </table>
 </div>
+
+<style>
+.opcion-valor-input {
+    min-width: 280px;
+    width: 100%;
+    max-width: 520px;
+}
+.opcion-drag-handle {
+    cursor: grab;
+}
+.opcion-drag-handle:active {
+    cursor: grabbing;
+}
+.opcion-valor-item.dragging {
+    opacity: .65;
+}
+</style>
+
+<script>
+(function () {
+    var lists = document.querySelectorAll('.opcion-valores-list');
+    if (!lists.length) {
+        return;
+    }
+
+    function getDragAfterElement(container, y) {
+        var candidates = Array.prototype.slice.call(container.querySelectorAll('.opcion-valor-item:not(.dragging)'));
+        var closest = { offset: Number.NEGATIVE_INFINITY, element: null };
+        candidates.forEach(function (child) {
+            var box = child.getBoundingClientRect();
+            var offset = y - box.top - box.height / 2;
+            if (offset < 0 && offset > closest.offset) {
+                closest = { offset: offset, element: child };
+            }
+        });
+        return closest.element;
+    }
+
+    lists.forEach(function (list) {
+        var items = list.querySelectorAll('.opcion-valor-item');
+        items.forEach(function (item) {
+            item.addEventListener('dragstart', function () {
+                item.classList.add('dragging');
+            });
+            item.addEventListener('dragend', function () {
+                item.classList.remove('dragging');
+                var form = list.parentElement.querySelector('.opcion-reorder-form');
+                if (!form) {
+                    return;
+                }
+                var ordered = Array.prototype.map.call(list.querySelectorAll('.opcion-valor-item'), function (row) {
+                    return row.getAttribute('data-valor-id') || '';
+                }).filter(function (id) { return id !== ''; });
+                var target = form.querySelector('input[name="ordered_ids"]');
+                if (!target || !ordered.length) {
+                    return;
+                }
+                target.value = ordered.join(',');
+                var formData = new FormData(form);
+                fetch(form.action, {
+                    method: 'POST',
+                    body: formData,
+                    headers: {
+                        'X-Requested-With': 'XMLHttpRequest',
+                        'Accept': 'application/json'
+                    },
+                    credentials: 'same-origin'
+                })
+                .then(function (response) {
+                    if (!response.ok) {
+                        throw new Error('No se pudo guardar el orden.');
+                    }
+                    return response.json();
+                })
+                .then(function (json) {
+                    if (!json || json.success !== true) {
+                        throw new Error((json && json.message) ? json.message : 'No se pudo guardar el orden.');
+                    }
+                    if (json.csrf_name && json.csrf_token) {
+                        var csrfInput = form.querySelector('input[name="' + json.csrf_name + '"]');
+                        if (csrfInput) {
+                            csrfInput.value = json.csrf_token;
+                        }
+                    }
+                })
+                .catch(function (err) {
+                    alert(err && err.message ? err.message : 'Error al guardar el orden.');
+                });
+            });
+        });
+
+        list.addEventListener('dragover', function (e) {
+            e.preventDefault();
+            var dragging = list.querySelector('.opcion-valor-item.dragging');
+            if (!dragging) {
+                return;
+            }
+            var afterElement = getDragAfterElement(list, e.clientY);
+            if (afterElement == null) {
+                list.appendChild(dragging);
+            } else {
+                list.insertBefore(dragging, afterElement);
+            }
+        });
+    });
+})();
+</script>
 
 <?php if ($opcionesTotalPages > 1): ?>
 <nav aria-label="Paginación tipos de resultado" class="mb-4">

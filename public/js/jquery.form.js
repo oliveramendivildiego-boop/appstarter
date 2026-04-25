@@ -169,8 +169,8 @@ $.fn.ajaxSubmit = function(options) {
 		var form = $form[0];
 
 		if ($(':input[name=submit]', form).length) {
-			if (typeof uiAlert === 'function') uiAlert('Error: Form elements must not be named "submit".', 'Error');
-			else if (typeof console !== 'undefined') console.error('Error: Form elements must not be named "submit".');
+			if (typeof uiAlert === 'function') uiAlert('Error: Los elementos del formulario no deben llamarse "submit".', 'Error');
+			else if (typeof console !== 'undefined') console.error('Error: Los elementos del formulario no deben llamarse "submit".');
 			return;
 		}
 

@@ -9,6 +9,13 @@ $descuentoLabel = 'Descuento';
 if (($doc->institucionDescuentoPct ?? 0) > 0) {
     $descuentoLabel = 'Descuento institución (' . ($doc->institucionNombre ?: 'Paciente') . ', ' . number_format((float) $doc->institucionDescuentoPct, 2, '.', '') . '%)';
 }
+$comprobante_style = isset($comprobante_style) && is_array($comprobante_style) ? $comprobante_style : [];
+$primaryColor = $comprobante_style['primary'] ?? '#0f766e';
+$secondaryColor = $comprobante_style['secondary'] ?? '#134e4a';
+$textColor = $comprobante_style['text'] ?? '#1e293b';
+$tagline = trim((string) ($comprobante_style['tagline'] ?? 'Constancia de pago'));
+$footerNote = trim((string) ($comprobante_style['footer_note'] ?? 'Documento interno de constancia de pago emitido por el laboratorio. No reemplaza un comprobante fiscal electrónico ni factura validada ante el SIN.'));
+$showDoctor = (bool) ($comprobante_style['show_doctor'] ?? true);
 ?>
 <!DOCTYPE html>
 <html lang="es">
@@ -22,13 +29,13 @@ if (($doc->institucionDescuentoPct ?? 0) > 0) {
             font-family: DejaVu Sans, Arial, Helvetica, sans-serif;
             font-size: 10.5pt;
             line-height: 1.45;
-            color: #1e293b;
+            color: <?= esc($textColor) ?>;
             margin: 0;
             padding: 0;
         }
         .accent-bar {
             height: 5px;
-            background: #0f766e;
+            background: <?= esc($primaryColor) ?>;
             margin: 0 0 16px 0;
         }
         .doc-header {
@@ -40,7 +47,7 @@ if (($doc->institucionDescuentoPct ?? 0) > 0) {
         .brand-name {
             font-size: 16pt;
             font-weight: bold;
-            color: #0f172a;
+            color: <?= esc($textColor) ?>;
             letter-spacing: -0.02em;
             margin: 0 0 4px 0;
         }
@@ -57,7 +64,7 @@ if (($doc->institucionDescuentoPct ?? 0) > 0) {
         .receipt-badge-inner {
             display: inline-block;
             text-align: right;
-            border: 2px solid #0f766e;
+            border: 2px solid <?= esc($primaryColor) ?>;
             border-radius: 6px;
             padding: 10px 14px;
             background: #f0fdfa;
@@ -65,14 +72,14 @@ if (($doc->institucionDescuentoPct ?? 0) > 0) {
         .receipt-badge-title {
             font-size: 8pt;
             font-weight: bold;
-            color: #0f766e;
+            color: <?= esc($primaryColor) ?>;
             letter-spacing: 0.18em;
             margin: 0 0 6px 0;
         }
         .receipt-badge-orden {
             font-size: 14pt;
             font-weight: bold;
-            color: #134e4a;
+            color: <?= esc($secondaryColor) ?>;
             margin: 0;
         }
         .receipt-badge-fecha {
@@ -83,7 +90,7 @@ if (($doc->institucionDescuentoPct ?? 0) > 0) {
         .section-title {
             font-size: 7.5pt;
             font-weight: bold;
-            color: #0f766e;
+            color: <?= esc($primaryColor) ?>;
             text-transform: uppercase;
             letter-spacing: 0.14em;
             margin: 0 0 8px 0;
@@ -115,7 +122,7 @@ if (($doc->institucionDescuentoPct ?? 0) > 0) {
             font-weight: 600;
         }
         .pair-v {
-            color: #0f172a;
+            color: <?= esc($textColor) ?>;
             font-weight: normal;
         }
         table.tbl-items {
@@ -125,7 +132,7 @@ if (($doc->institucionDescuentoPct ?? 0) > 0) {
             font-size: 9.5pt;
         }
         table.tbl-items thead th {
-            background: #134e4a;
+            background: <?= esc($secondaryColor) ?>;
             color: #fff;
             font-size: 7.5pt;
             font-weight: bold;
@@ -145,7 +152,7 @@ if (($doc->institucionDescuentoPct ?? 0) > 0) {
             text-align: right;
             white-space: nowrap;
             font-variant-numeric: tabular-nums;
-            color: #0f172a;
+            color: <?= esc($textColor) ?>;
             font-weight: 600;
         }
         .totals-wrap {
@@ -175,7 +182,7 @@ if (($doc->institucionDescuentoPct ?? 0) > 0) {
             white-space: nowrap;
         }
         .totals-box tr.total-final td {
-            background: #0f766e;
+            background: <?= esc($primaryColor) ?>;
             color: #fff;
             font-size: 10.5pt;
             font-weight: bold;
@@ -210,7 +217,7 @@ if (($doc->institucionDescuentoPct ?? 0) > 0) {
         <tr>
             <td>
                 <p class="brand-name"><?= esc($doc->empresaNombre) ?></p>
-                <p class="brand-tagline">Constancia de pago</p>
+                <p class="brand-tagline"><?= esc($tagline) ?></p>
             </td>
             <td class="receipt-badge">
                 <div class="receipt-badge-inner">
@@ -224,7 +231,7 @@ if (($doc->institucionDescuentoPct ?? 0) > 0) {
 
     <p class="section-title">Cliente y atención</p>
     <div class="panel">
-        <?= view('registers/billing/_datos_cliente_atencion_pdf', ['doc' => $doc]) ?>
+        <?= view('registers/billing/_datos_cliente_atencion_pdf', ['doc' => $doc, 'show_doctor' => $showDoctor]) ?>
     </div>
 
     <p class="section-title">Detalle de conceptos</p>
@@ -280,8 +287,7 @@ if (($doc->institucionDescuentoPct ?? 0) > 0) {
     </td></tr></table>
 
     <div class="foot">
-        Documento interno de constancia de pago emitido por el laboratorio.<br/>
-        No reemplaza un comprobante fiscal electrónico ni factura validada ante el SIN.
+        <?= esc($footerNote) ?>
     </div>
 </body>
 </html>

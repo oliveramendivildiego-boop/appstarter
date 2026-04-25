@@ -11,6 +11,7 @@ $ciTxt        = trim($doc->pacienteCi ?? '') !== '' ? $doc->pacienteCi : '—';
 $telTxt       = trim($doc->pacienteTelefono ?? '') !== '' ? $doc->pacienteTelefono : '—';
 $instTxt      = trim((string) ($doc->institucionNombre ?? ''));
 $instDctoPct  = (float) ($doc->institucionDescuentoPct ?? 0);
+$showDoctor   = isset($show_doctor) ? (bool) $show_doctor : true;
 ?>
 <table class="pair-table">
     <tr>
@@ -21,14 +22,22 @@ $instDctoPct  = (float) ($doc->institucionDescuentoPct ?? 0);
             <span class="pair-k">Documento de identidad: </span><span class="pair-v"><?= esc($ciTxt) ?></span>
         </td>
     </tr>
-    <tr>
-        <td>
-            <span class="pair-k">Teléfono: </span><span class="pair-v"><?= esc($telTxt) ?></span>
-        </td>
-        <td>
-            <span class="pair-k">Médico referente: </span><span class="pair-v"><?= esc($doctorTxt) ?></span>
-        </td>
-    </tr>
+    <?php if ($showDoctor): ?>
+        <tr>
+            <td>
+                <span class="pair-k">Teléfono: </span><span class="pair-v"><?= esc($telTxt) ?></span>
+            </td>
+            <td>
+                <span class="pair-k">Médico referente: </span><span class="pair-v"><?= esc($doctorTxt) ?></span>
+            </td>
+        </tr>
+    <?php else: ?>
+        <tr>
+            <td colspan="2">
+                <span class="pair-k">Teléfono: </span><span class="pair-v"><?= esc($telTxt) ?></span>
+            </td>
+        </tr>
+    <?php endif; ?>
     <tr>
         <td colspan="2">
             <span class="pair-k">Institución / procedencia: </span>

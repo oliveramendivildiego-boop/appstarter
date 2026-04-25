@@ -9,17 +9,22 @@ $descuentoLabel = 'Descuento';
 if (($doc->institucionDescuentoPct ?? 0) > 0) {
     $descuentoLabel = 'Descuento institución (' . ($doc->institucionNombre ?: 'Paciente') . ', ' . number_format((float) $doc->institucionDescuentoPct, 2, '.', '') . '%)';
 }
+$comprobante_style = isset($comprobante_style) && is_array($comprobante_style) ? $comprobante_style : [];
+$tagline = trim((string) ($comprobante_style['tagline'] ?? 'Constancia de pago'));
+$footerNote = trim((string) ($comprobante_style['footer_note'] ?? 'Documento de respaldo con fines informativos. La factura electrónica válida ante el SIN se genera mediante el sistema de facturación autorizado cuando la integración esté operativa.'));
+$showDoctor = (bool) ($comprobante_style['show_doctor'] ?? true);
 ?>
 <!DOCTYPE html>
 <html lang="es">
 <head>
     <meta charset="UTF-8">
     <title>Factura — Orden <?= esc($doc->ordenNumero) ?></title>
-    <?= view('registers/billing/_comprobante_estilos') ?>
+    <?= view('registers/billing/_comprobante_estilos', ['comprobante_style' => $comprobante_style]) ?>
 </head>
 <body>
     <h1>FACTURA / COMPROBANTE DE VENTA</h1>
-    <p class="muted" style="text-align:center;margin:0 0 6px 0;"><?= esc($doc->razonSocial) ?></p>
+    <p class="muted" style="text-align:center;margin:0 0 4px 0;"><?= esc($doc->razonSocial) ?></p>
+    <p class="muted" style="text-align:center;margin:0 0 8px 0;"><?= esc($tagline) ?></p>
     <?php if (trim($doc->nitEmpresa) !== ''): ?>
         <p class="muted" style="text-align:center;margin:0 0 14px 0;">NIT: <?= esc($doc->nitEmpresa) ?>
             <?php if (trim($doc->codigoSucursal) !== ''): ?> — Sucursal <?= esc($doc->codigoSucursal) ?><?php endif; ?>
@@ -36,7 +41,7 @@ if (($doc->institucionDescuentoPct ?? 0) > 0) {
         <div class="box-row"><strong>N.º documento (orden):</strong> <?= esc($doc->ordenNumero) ?></div>
         <div class="box-row"><strong>Fecha de emisión:</strong> <?= esc($doc->fechaEmision) ?></div>
         <p class="muted" style="margin:10px 0 6px 0;font-weight:bold;">Cliente y atención</p>
-        <?= view('registers/billing/_datos_cliente_atencion_pdf', ['doc' => $doc]) ?>
+        <?= view('registers/billing/_datos_cliente_atencion_pdf', ['doc' => $doc, 'show_doctor' => $showDoctor]) ?>
     </div>
 
     <table class="items">
@@ -88,8 +93,7 @@ if (($doc->institucionDescuentoPct ?? 0) > 0) {
     </table>
 
     <div class="foot">
-        Documento de respaldo con fines informativos. La factura electrónica válida ante el SIN se genera mediante el sistema
-        de facturación autorizado cuando la integración esté operativa.
+        <?= esc($footerNote) ?>
     </div>
 </body>
 </html>

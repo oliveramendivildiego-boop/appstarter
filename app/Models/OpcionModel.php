@@ -158,6 +158,37 @@ class OpcionModel extends Model
     }
 
     /**
+     * Reordena los valores de una opción personalizada.
+     *
+     * @param int $opcionesId
+     * @param list<int> $orderedIds
+     */
+    public function reorderValores(int $opcionesId, array $orderedIds): bool
+    {
+        if ($opcionesId < 1 || empty($orderedIds)) {
+            return false;
+        }
+
+        $ids = array_values(array_unique(array_map('intval', $orderedIds)));
+        $ids = array_values(array_filter($ids, static fn (int $id): bool => $id > 0));
+        if (empty($ids)) {
+            return false;
+        }
+
+        $db = $this->db;
+        $db->transStart();
+        foreach ($ids as $index => $valorId) {
+            $db->table('opcion_valores')
+                ->where('opcion_valor_id', $valorId)
+                ->where('opciones_id', $opcionesId)
+                ->update(['orden' => $index + 1]);
+        }
+        $db->transComplete();
+
+        return $db->transStatus() !== false;
+    }
+
+    /**
      * Elimina un valor de opcion_valores
      */
     public function deleteValor(int $opcionValorId): bool

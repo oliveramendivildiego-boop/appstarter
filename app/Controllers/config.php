@@ -366,6 +366,19 @@ class Config extends SecureArea
     }
 
     /**
+     * Guarda estilo del comprobante PDF (recibo/factura).
+     */
+    public function saveComprobanteStyle(): ResponseInterface
+    {
+        if (! $this->configService->saveComprobanteStyleFromRequest($this->request->getPost())) {
+            return redirect()->to('config?tab=comprobante')->with('error', lang('Config.config_error'));
+        }
+        \App\Models\AuditoriaModel::log('config', 'comprobante_estilo_actualizar', null, 'comprobante_style');
+
+        return redirect()->to('config?tab=comprobante')->with('success', lang('Config.config_saved'));
+    }
+
+    /**
      * Genera respaldo SQL de la base de datos (solo para usuarios con permiso config)
      */
     public function backup()
@@ -789,6 +802,41 @@ class Config extends SecureArea
             return $this->response->setJSON($this->buildOpcionesPayload(true, 'Valor eliminado.'));
         }
         return redirect()->to($this->opcionesTabUrl())->with('success', 'Valor eliminado.');
+    }
+
+    public function reorderOpcionValores(): ResponseInterface
+    {
+        $opcionesId = (int) ($this->request->getPost('opciones_id') ?? 0);
+        $rawOrder = (string) ($this->request->getPost('ordered_ids') ?? '');
+        $orderedIds = array_values(array_filter(array_map('intval', explode(',', $rawOrder))));
+        if ($opcionesId < 1 || empty($orderedIds)) {
+            if ($this->shouldReturnJson()) {
+                return $this->response->setJSON($this->buildOpcionesPayload(false, 'Orden inválido.'))->setStatusCode(400);
+            }
+            return redirect()->to($this->opcionesTabUrl())->with('error', 'Orden inválido.');
+        }
+
+        $row = $this->opcionModel->find($opcionesId);
+        if (!$row || trim((string) ($row['tabla'] ?? '')) !== 'opcion_valores') {
+            if ($this->shouldReturnJson()) {
+                return $this->response->setJSON($this->buildOpcionesPayload(false, 'Solo se puede reordenar en opciones personalizadas.'))->setStatusCode(400);
+            }
+            return redirect()->to($this->opcionesTabUrl())->with('error', 'Solo se puede reordenar en opciones personalizadas.');
+        }
+
+        $ok = $this->opcionModel->reorderValores($opcionesId, $orderedIds);
+        if (!$ok) {
+            if ($this->shouldReturnJson()) {
+                return $this->response->setJSON($this->buildOpcionesPayload(false, 'No se pudo guardar el orden.'))->setStatusCode(500);
+            }
+            return redirect()->to($this->opcionesTabUrl())->with('error', 'No se pudo guardar el orden.');
+        }
+
+        if ($this->shouldReturnJson()) {
+            return $this->response->setJSON($this->buildOpcionesPayload(true, 'Orden actualizado.'));
+        }
+
+        return redirect()->to($this->opcionesTabUrl())->with('success', 'Orden actualizado.');
     }
 
     public function saveValorTabla(): ResponseInterface

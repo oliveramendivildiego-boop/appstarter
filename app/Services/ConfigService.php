@@ -79,6 +79,12 @@ class ConfigService
         $data['print_pagination_position'] ??= 'bottom-right';
         $data['lab_validators_json'] ??= '[]';
         $data['lab_approvers_json'] ??= '[]';
+        $data['comprobante_primary_color'] ??= '#0f766e';
+        $data['comprobante_secondary_color'] ??= '#134e4a';
+        $data['comprobante_text_color'] ??= '#1e293b';
+        $data['comprobante_tagline'] ??= 'Constancia de pago';
+        $data['comprobante_footer_note'] ??= 'Documento interno de constancia de pago emitido por el laboratorio. No reemplaza un comprobante fiscal electrónico ni factura validada ante el SIN.';
+        $data['comprobante_show_doctor'] ??= '1';
         $cache->save($cacheKey, $data, self::CACHE_TTL);
         return $data;
     }
@@ -872,6 +878,44 @@ class ConfigService
         ];
 
         $ok = $this->appConfigModel->batchSave($batch);
+        if ($ok) {
+            $this->invalidateCache();
+        }
+
+        return $ok;
+    }
+
+    /**
+     * Guarda estilo/contenido del comprobante PDF.
+     */
+    public function saveComprobanteStyleFromRequest(array $post): bool
+    {
+        $primary = $this->normalizeUiHex((string) ($post['comprobante_primary_color'] ?? ''), '#0f766e');
+        $secondary = $this->normalizeUiHex((string) ($post['comprobante_secondary_color'] ?? ''), '#134e4a');
+        $text = $this->normalizeUiHex((string) ($post['comprobante_text_color'] ?? ''), '#1e293b');
+
+        $tagline = trim((string) ($post['comprobante_tagline'] ?? ''));
+        if ($tagline === '') {
+            $tagline = 'Constancia de pago';
+        }
+        $tagline = mb_substr($tagline, 0, 120);
+
+        $footer = trim((string) ($post['comprobante_footer_note'] ?? ''));
+        if ($footer === '') {
+            $footer = 'Documento interno de constancia de pago emitido por el laboratorio. No reemplaza un comprobante fiscal electrónico ni factura validada ante el SIN.';
+        }
+        $footer = mb_substr($footer, 0, 600);
+
+        $showDoctor = ((string) ($post['comprobante_show_doctor'] ?? '1')) === '0' ? '0' : '1';
+
+        $ok = $this->appConfigModel->batchSave([
+            'comprobante_primary_color' => $primary,
+            'comprobante_secondary_color' => $secondary,
+            'comprobante_text_color' => $text,
+            'comprobante_tagline' => $tagline,
+            'comprobante_footer_note' => $footer,
+            'comprobante_show_doctor' => $showDoctor,
+        ]);
         if ($ok) {
             $this->invalidateCache();
         }

@@ -13,6 +13,28 @@ window.VALIDATE_COMMON_OPTIONS = {
     }
 };
 
+// Fuerza mensajes por defecto de jQuery Validate en español.
+if (typeof jQuery !== 'undefined' && jQuery.validator && jQuery.validator.messages) {
+    jQuery.extend(jQuery.validator.messages, {
+        required: "Este campo es obligatorio.",
+        remote: "Corrija este campo.",
+        email: "Ingrese un correo electrónico válido.",
+        url: "Ingrese una URL válida.",
+        date: "Ingrese una fecha válida.",
+        dateISO: "Ingrese una fecha válida (ISO).",
+        number: "Ingrese un número válido.",
+        digits: "Ingrese solo dígitos.",
+        creditcard: "Ingrese un número de tarjeta válido.",
+        equalTo: "Ingrese el mismo valor nuevamente.",
+        maxlength: jQuery.validator.format("No ingrese más de {0} caracteres."),
+        minlength: jQuery.validator.format("Ingrese al menos {0} caracteres."),
+        rangelength: jQuery.validator.format("Ingrese un valor entre {0} y {1} caracteres."),
+        range: jQuery.validator.format("Ingrese un valor entre {0} y {1}."),
+        max: jQuery.validator.format("Ingrese un valor menor o igual a {0}."),
+        min: jQuery.validator.format("Ingrese un valor mayor o igual a {0}.")
+    });
+}
+
 /**
  * Muestra errores de servidor en los campos del formulario (cuando se redirige con with('errors', {...}))
  * Debe llamarse en DOMContentLoaded si window.CI_VALIDATION_ERRORS existe.

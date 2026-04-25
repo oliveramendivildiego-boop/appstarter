@@ -36,6 +36,9 @@
         <button class="nav-link <?= $activeTab === 'estilo' ? 'active' : '' ?>" id="tab-estilo-btn" data-bs-toggle="tab" data-bs-target="#tab-estilo" type="button" role="tab"><?= lang('Config.config_style_tab_nav') ?></button>
     </li>
     <li class="nav-item" role="presentation">
+        <button class="nav-link <?= $activeTab === 'comprobante' ? 'active' : '' ?>" id="tab-comprobante-btn" data-bs-toggle="tab" data-bs-target="#tab-comprobante" type="button" role="tab">Estilo comprobante</button>
+    </li>
+    <li class="nav-item" role="presentation">
         <button class="nav-link <?= $activeTab === 'poblacion' ? 'active' : '' ?>" id="tab-poblacion-btn" data-bs-toggle="tab" data-bs-target="#tab-poblacion" type="button" role="tab">Grupos de población (por edad)</button>
     </li>
     <li class="nav-item" role="presentation">
@@ -335,6 +338,51 @@
     ]) ?>
 
     <?= view('config/tab_estilo', ['config' => $config, 'activeTab' => $activeTab, 'theme_palette' => $theme_palette ?? []]) ?>
+
+    <div class="tab-pane fade <?= $activeTab === 'comprobante' ? 'show active' : '' ?>" id="tab-comprobante" role="tabpanel">
+        <div class="card shadow-sm">
+            <div class="card-header bg-secondary text-white">
+                <h5 class="mb-0"><i class="fa-solid fa-file-invoice me-2"></i>Personalización de comprobante PDF</h5>
+            </div>
+            <div class="card-body">
+                <?= form_open(site_url('config/saveComprobanteStyle'), ['class' => 'row g-3']) ?>
+                <div class="col-md-4">
+                    <label for="comprobante_primary_color" class="form-label">Color principal</label>
+                    <input type="color" class="form-control form-control-color" id="comprobante_primary_color" name="comprobante_primary_color" value="<?= esc($config['comprobante_primary_color'] ?? '#0f766e') ?>" title="Color principal del comprobante">
+                </div>
+                <div class="col-md-4">
+                    <label for="comprobante_secondary_color" class="form-label">Color secundario</label>
+                    <input type="color" class="form-control form-control-color" id="comprobante_secondary_color" name="comprobante_secondary_color" value="<?= esc($config['comprobante_secondary_color'] ?? '#134e4a') ?>" title="Color secundario del comprobante">
+                </div>
+                <div class="col-md-4">
+                    <label for="comprobante_text_color" class="form-label">Color de texto base</label>
+                    <input type="color" class="form-control form-control-color" id="comprobante_text_color" name="comprobante_text_color" value="<?= esc($config['comprobante_text_color'] ?? '#1e293b') ?>" title="Color del texto principal">
+                </div>
+                <div class="col-md-8">
+                    <label for="comprobante_tagline" class="form-label">Subtítulo</label>
+                    <input type="text" class="form-control" id="comprobante_tagline" name="comprobante_tagline" maxlength="120" value="<?= esc($config['comprobante_tagline'] ?? 'Constancia de pago') ?>" placeholder="Ej: Recibo oficial del laboratorio">
+                    <small class="text-muted">Se muestra bajo el nombre del laboratorio en el PDF.</small>
+                </div>
+                <div class="col-md-4 d-flex align-items-end">
+                    <div class="form-check mb-2">
+                        <input type="hidden" name="comprobante_show_doctor" value="0">
+                        <input class="form-check-input" type="checkbox" id="comprobante_show_doctor" name="comprobante_show_doctor" value="1" <?= (($config['comprobante_show_doctor'] ?? '1') === '1') ? 'checked' : '' ?>>
+                        <label class="form-check-label" for="comprobante_show_doctor">
+                            Mostrar médico en comprobante
+                        </label>
+                    </div>
+                </div>
+                <div class="col-12">
+                    <label for="comprobante_footer_note" class="form-label">Texto final (pie del comprobante)</label>
+                    <textarea class="form-control" id="comprobante_footer_note" name="comprobante_footer_note" rows="3" maxlength="600" placeholder="Mensaje legal o informativo..."><?= esc($config['comprobante_footer_note'] ?? 'Documento interno de constancia de pago emitido por el laboratorio. No reemplaza un comprobante fiscal electrónico ni factura validada ante el SIN.') ?></textarea>
+                </div>
+                <div class="col-12">
+                    <button type="submit" class="btn btn-primary"><i class="fa-solid fa-save me-1"></i>Guardar estilo de comprobante</button>
+                </div>
+                <?= form_close() ?>
+            </div>
+        </div>
+    </div>
 
     <!-- Pestaña: Tenants -->
     <?php if (($can_manage_tenants ?? false)): ?>

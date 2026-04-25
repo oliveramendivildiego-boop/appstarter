@@ -24,7 +24,7 @@ $(document).ready(function(){
 			}, 1);
 		}
 		return result;
-	}, "Your password must be at least 6 characters long and contain at least one number and one character.");
+	}, "La contraseña debe tener al menos 6 caracteres e incluir al menos un número y una letra.");
 
 	// a custom method making the default value for companyurl ("http://") invalid, without displaying the "invalid url" message
 	jQuery.validator.addMethod("defaultInvalid", function(value, element) {
@@ -43,8 +43,8 @@ $(document).ready(function(){
 			var errors = validator.numberOfInvalids();
 			if (errors) {
 				var message = errors == 1
-					? 'You missed 1 field. It has been highlighted below'
-					: 'You missed ' + errors + ' fields.  They have been highlighted below';
+					? 'Falta completar 1 campo. Se resaltó abajo.'
+					: 'Faltan completar ' + errors + ' campos. Se resaltaron abajo.';
 				$("div.error span").html(message);
 				$("div.error").show();
 			} else {
@@ -54,17 +54,17 @@ $(document).ready(function(){
 		onkeyup: false,
 		submitHandler: function() {
 			$("div.error").hide();
-            if (typeof uiAlert === 'function') uiAlert("submit! use link below to go to the other step", 'Info');
+            if (typeof uiAlert === 'function') uiAlert("Formulario enviado. Use el enlace de abajo para continuar al siguiente paso.", 'Info');
 		},
 		messages: {
 			password2: {
 				required: " ",
-				equalTo: "Please enter the same password as above"
+				equalTo: "Ingrese la misma contraseña de arriba"
 			},
 			email: {
 				required: " ",
-				email: "Please enter a valid email address, example: you@yourdomain.com",
-				remote: jQuery.validator.format("{0} is already taken, please enter a different address.")
+				email: "Ingrese un correo electrónico válido, por ejemplo: usuario@dominio.com",
+				remote: jQuery.validator.format("{0} ya está en uso, ingrese otra dirección.")
 			}
 		},
 		debug:true
