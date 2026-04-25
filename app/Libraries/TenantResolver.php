@@ -66,7 +66,43 @@ class TenantResolver
             return $fromRequest;
         }
 
-        return $this->resolveGhostTenantKeyFromSession();
+        $fromGhost = $this->resolveGhostTenantKeyFromSession();
+        if ($fromGhost !== null) {
+            return $fromGhost;
+        }
+
+        return $this->resolveTenantKeyFromSession();
+    }
+
+    /**
+     * Tenant fijado en sesión por navegación interna sin ?tenant=.
+     */
+    public function resolveTenantKeyFromSession(): ?string
+    {
+        if (! function_exists('session')) {
+            return null;
+        }
+        try {
+            $sess = session();
+        } catch (\Throwable $e) {
+            return null;
+        }
+
+        $raw = trim((string) $sess->get('tenant_key'));
+        if ($raw === '') {
+            return null;
+        }
+
+        $key = $this->normalize($raw);
+        if ($key === null) {
+            return null;
+        }
+
+        if ($this->resolveDatabaseConfig($key) === []) {
+            return null;
+        }
+
+        return $key;
     }
 
     /**
@@ -131,7 +167,10 @@ class TenantResolver
 
     /**
      * Tras resolver tenant por sesión fantasma, alinea Config\Database con ese tenant y fuerza un nuevo
-     * conector 'default' para los modelos (no se hace si las sesiones usan DatabaseHandler: misma conexión).
+     * conector 'default' para los modelos.
+     *
+     * Si las sesiones usan DatabaseHandler en el mismo grupo `default`, no se resetea para evitar
+     * cerrar la misma conexión compartida por la sesión.
      */
     public function applyResolvedTenantToAppDatabase(string $tenantKey): void
     {
@@ -146,7 +185,8 @@ class TenantResolver
 
         $sessionCfg = config(SessionConfig::class);
         $driver = (string) ($sessionCfg->driver ?? '');
-        if (str_contains($driver, 'DatabaseHandler')) {
+        $sessionGroup = strtolower((string) ($sessionCfg->DBGroup ?? 'default'));
+        if (str_contains($driver, 'DatabaseHandler') && ($sessionGroup === '' || $sessionGroup === 'default')) {
             return;
         }
 

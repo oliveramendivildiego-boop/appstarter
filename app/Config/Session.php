@@ -77,7 +77,7 @@ class Session extends BaseConfig
      *
      * DB Group for the database session.
      */
-    public ?string $DBGroup = 'default';
+    public ?string $DBGroup = 'management';
 
     /**
      * --------------------------------------------------------------------------
