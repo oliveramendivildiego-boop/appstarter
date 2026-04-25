@@ -120,8 +120,29 @@ class DoctorHome extends BaseController
             return redirect()->to(site_url('doctor/home'))->with('error', 'Paciente no encontrado');
         }
 
-        $registros = $this->registerModel->getRegistrosByPersonAndDoctor($personId, $doctorId, 100);
-        $antecedentes = $this->registerModel->getAntecedentesPaciente($personId, 0, 10, $doctorId);
+        $perPage = 15;
+        $hPage = max(1, (int) $this->request->getGet('h_page'));
+        $aPage = max(1, (int) $this->request->getGet('a_page'));
+
+        $totalRegistrosCount = $this->registerModel->countRegistrosByPersonAndDoctor($personId, $doctorId);
+        $hTotalPages = $totalRegistrosCount > 0 ? (int) ceil($totalRegistrosCount / $perPage) : 0;
+        if ($hTotalPages > 0) {
+            $hPage = min($hPage, $hTotalPages);
+        } else {
+            $hPage = 1;
+        }
+        $registros = $this->registerModel->getRegistrosByPersonAndDoctor($personId, $doctorId, $perPage, ($hPage - 1) * $perPage);
+
+        $totalAntecedentesCount = $this->registerModel->countAntecedentesPaciente($personId, 0, $doctorId);
+        $aTotalPages = $totalAntecedentesCount > 0 ? (int) ceil($totalAntecedentesCount / $perPage) : 0;
+        if ($aTotalPages > 0) {
+            $aPage = min($aPage, $aTotalPages);
+        } else {
+            $aPage = 1;
+        }
+        $antecedentes = $totalAntecedentesCount > 0
+            ? $this->registerModel->getAntecedentesPaciente($personId, 0, $perPage, $doctorId, ($aPage - 1) * $perPage)
+            : [];
         $pruebasPaciente = $this->registerModel->getPruebasByPersonAndDoctor($personId, $doctorId);
 
         $pacienteNombre = trim(($paciente->first_name ?? '') . ' ' . ($paciente->last_name_fa ?? '') . ' ' . ($paciente->last_name_mom ?? ''));
@@ -135,18 +156,26 @@ class DoctorHome extends BaseController
         }
 
         return view('expediente/historial', [
-            'paciente'        => $paciente,
-            'pacienteNombre'  => $pacienteNombre,
-            'registros'       => $registros,
-            'antecedentes'    => $antecedentes,
-            'doctor_info'     => $this->doctorInfo,
-            'doctor_portal'   => true,
-            'report_url_base' => site_url('doctor/viewreport/'),
-            'pdf_url_base'    => site_url('doctor/pdf/'),
-            'back_url'        => site_url('doctor/home'),
-            'back_label'      => 'Volver al panel',
-            'pruebas_paciente'=> $pruebasPaciente,
-            'chart_data_url'  => site_url('doctor/expediente_chart/' . $personId),
+            'paciente'                 => $paciente,
+            'pacienteNombre'           => $pacienteNombre,
+            'registros'                => $registros,
+            'antecedentes'             => $antecedentes,
+            'doctor_info'              => $this->doctorInfo,
+            'doctor_portal'            => true,
+            'report_url_base'          => site_url('doctor/viewreport/'),
+            'pdf_url_base'             => site_url('doctor/pdf/'),
+            'back_url'                 => site_url('doctor/home'),
+            'back_label'               => 'Volver al panel',
+            'pruebas_paciente'         => $pruebasPaciente,
+            'chart_data_url'           => site_url('doctor/expediente_chart/' . $personId),
+            'total_registros_count'    => $totalRegistrosCount,
+            'total_antecedentes_count' => $totalAntecedentesCount,
+            'h_page'                   => $hPage,
+            'a_page'                   => $aPage,
+            'h_total_pages'            => $hTotalPages,
+            'a_total_pages'            => $aTotalPages,
+            'expediente_per_page'      => $perPage,
+            'expediente_pager_base'    => site_url('doctor/expediente/' . $personId),
         ]);
     }
 

@@ -48,8 +48,29 @@ class Expediente extends SecureArea
             return redirect()->to('expediente')->with('error', 'Paciente no encontrado');
         }
 
-        $registros = $this->registerModel->getRegistrosByPersonId($personId, 100);
-        $antecedentes = $this->registerModel->getAntecedentesPaciente($personId, 0, 10);
+        $perPage = 15;
+        $hPage = max(1, (int) $this->request->getGet('h_page'));
+        $aPage = max(1, (int) $this->request->getGet('a_page'));
+
+        $totalRegistrosCount = $this->registerModel->countRegistrosByPersonId($personId);
+        $hTotalPages = $totalRegistrosCount > 0 ? (int) ceil($totalRegistrosCount / $perPage) : 0;
+        if ($hTotalPages > 0) {
+            $hPage = min($hPage, $hTotalPages);
+        } else {
+            $hPage = 1;
+        }
+        $registros = $this->registerModel->getRegistrosByPersonId($personId, $perPage, ($hPage - 1) * $perPage);
+
+        $totalAntecedentesCount = $this->registerModel->countAntecedentesPaciente($personId, 0, null);
+        $aTotalPages = $totalAntecedentesCount > 0 ? (int) ceil($totalAntecedentesCount / $perPage) : 0;
+        if ($aTotalPages > 0) {
+            $aPage = min($aPage, $aTotalPages);
+        } else {
+            $aPage = 1;
+        }
+        $antecedentes = $totalAntecedentesCount > 0
+            ? $this->registerModel->getAntecedentesPaciente($personId, 0, $perPage, null, ($aPage - 1) * $perPage)
+            : [];
         $pruebasPaciente = $this->registerModel->getPruebasByPersonId($personId);
 
         $pacienteNombre = trim(($paciente->first_name ?? '') . ' ' . ($paciente->last_name_fa ?? '') . ' ' . ($paciente->last_name_mom ?? ''));
@@ -63,15 +84,23 @@ class Expediente extends SecureArea
         }
 
         return view('expediente/historial', [
-            'paciente'        => $paciente,
-            'pacienteNombre'  => $pacienteNombre,
-            'registros'       => $registros,
-            'antecedentes'    => $antecedentes,
-            'allowed_modules' => $this->allowed_modules,
-            'user_info'       => $this->user_info,
-            'current_module'  => 'expediente',
-            'pruebas_paciente'=> $pruebasPaciente,
-            'chart_data_url'  => site_url('expediente/chart/' . $personId),
+            'paciente'                 => $paciente,
+            'pacienteNombre'           => $pacienteNombre,
+            'registros'                => $registros,
+            'antecedentes'             => $antecedentes,
+            'allowed_modules'          => $this->allowed_modules,
+            'user_info'                => $this->user_info,
+            'current_module'           => 'expediente',
+            'pruebas_paciente'         => $pruebasPaciente,
+            'chart_data_url'           => site_url('expediente/chart/' . $personId),
+            'total_registros_count'    => $totalRegistrosCount,
+            'total_antecedentes_count' => $totalAntecedentesCount,
+            'h_page'                   => $hPage,
+            'a_page'                   => $aPage,
+            'h_total_pages'            => $hTotalPages,
+            'a_total_pages'            => $aTotalPages,
+            'expediente_per_page'      => $perPage,
+            'expediente_pager_base'    => site_url('expediente/view/' . $personId),
         ]);
     }
 

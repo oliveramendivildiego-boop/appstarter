@@ -1521,9 +1521,23 @@ class RegisterModel extends Model
     }
 
     /**
+     * Cuenta registros del paciente con resultados (misma lógica que getRegistrosByPersonId).
+     */
+    public function countRegistrosByPersonId(int $personId): int
+    {
+        $r  = $this->getRegistroTable();
+        $rv = $this->db->prefixTable('regvalues');
+
+        return (int) $this->db->table('registro')
+            ->where("{$r}.person_id", $personId)
+            ->where("EXISTS (SELECT 1 FROM {$rv} WHERE {$rv}.registro_id = {$r}.registro_id)", null, false)
+            ->countAllResults();
+    }
+
+    /**
      * Obtiene todos los registros de un paciente ordenados por fecha
      */
-    public function getRegistrosByPersonId(int $personId, int $limit = 200): array
+    public function getRegistrosByPersonId(int $personId, int $limit = 200, int $offset = 0): array
     {
         $r  = $this->getRegistroTable();
         $p  = $this->db->prefixTable('people');
@@ -1541,7 +1555,7 @@ class RegisterModel extends Model
             ->where("{$r}.person_id", $personId)
             ->where("EXISTS (SELECT 1 FROM {$rv} WHERE {$rv}.registro_id = {$r}.registro_id)", null, false)
             ->orderBy("{$r}.ingreso", 'DESC')
-            ->limit($limit)
+            ->limit($limit, $offset)
             ->get()
             ->getResult();
     }
@@ -1552,8 +1566,9 @@ class RegisterModel extends Model
      * @param int $currentRegistroId Excluir este registro
      * @param int $limit Máximo de registros anteriores a incluir
      * @param int|null $doctorId Si se provee, solo registros de ese doctor (para portal doctor)
+     * @param int $offset Desplazamiento para paginación
      */
-    public function getAntecedentesPaciente(int $personId, int $currentRegistroId = 0, int $limit = 10, ?int $doctorId = null): array
+    public function getAntecedentesPaciente(int $personId, int $currentRegistroId = 0, int $limit = 10, ?int $doctorId = null, int $offset = 0): array
     {
         $r  = $this->getRegistroTable();
         $rv = $this->db->prefixTable('regvalues');
@@ -1563,11 +1578,29 @@ class RegisterModel extends Model
             ->where("{$r}.registro_id !=", $currentRegistroId)
             ->where("EXISTS (SELECT 1 FROM {$rv} WHERE {$rv}.registro_id = {$r}.registro_id)", null, false)
             ->orderBy("{$r}.ingreso", 'DESC')
-            ->limit($limit);
+            ->limit($limit, $offset);
         if ($doctorId !== null && $doctorId > 0) {
             $builder->where("{$r}.doctor_id", $doctorId);
         }
         return $builder->get()->getResult();
+    }
+
+    /**
+     * Cuenta antecedentes (mismos filtros que getAntecedentesPaciente).
+     */
+    public function countAntecedentesPaciente(int $personId, int $currentRegistroId = 0, ?int $doctorId = null): int
+    {
+        $r  = $this->getRegistroTable();
+        $rv = $this->db->prefixTable('regvalues');
+        $builder = $this->db->table('registro')
+            ->where("{$r}.person_id", $personId)
+            ->where("{$r}.registro_id !=", $currentRegistroId)
+            ->where("EXISTS (SELECT 1 FROM {$rv} WHERE {$rv}.registro_id = {$r}.registro_id)", null, false);
+        if ($doctorId !== null && $doctorId > 0) {
+            $builder->where("{$r}.doctor_id", $doctorId);
+        }
+
+        return (int) $builder->countAllResults();
     }
 
     /**
@@ -1749,9 +1782,24 @@ class RegisterModel extends Model
     }
 
     /**
+     * Cuenta registros con resultados del paciente para un doctor.
+     */
+    public function countRegistrosByPersonAndDoctor(int $personId, int $doctorId): int
+    {
+        $r  = $this->getRegistroTable();
+        $rv = $this->db->prefixTable('regvalues');
+
+        return (int) $this->db->table('registro')
+            ->where("{$r}.person_id", $personId)
+            ->where("{$r}.doctor_id", $doctorId)
+            ->where("EXISTS (SELECT 1 FROM {$rv} WHERE {$rv}.registro_id = {$r}.registro_id)", null, false)
+            ->countAllResults();
+    }
+
+    /**
      * Registros de un paciente vistos por un doctor específico
      */
-    public function getRegistrosByPersonAndDoctor(int $personId, int $doctorId, int $limit = 200): array
+    public function getRegistrosByPersonAndDoctor(int $personId, int $doctorId, int $limit = 200, int $offset = 0): array
     {
         $r  = $this->getRegistroTable();
         $p  = $this->db->prefixTable('people');
@@ -1767,7 +1815,7 @@ class RegisterModel extends Model
             ->where("{$r}.doctor_id", $doctorId)
             ->where("EXISTS (SELECT 1 FROM {$rv} WHERE {$rv}.registro_id = {$r}.registro_id)", null, false)
             ->orderBy("{$r}.ingreso", 'DESC')
-            ->limit($limit)
+            ->limit($limit, $offset)
             ->get()
             ->getResult();
     }

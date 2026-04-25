@@ -261,6 +261,20 @@
         .report-print-btn-secondary { padding: 8px 16px; background: #fff; color: #333; border: 1px solid #ced4da; border-radius: 6px; cursor: pointer; font-size: 14px; text-decoration: none; display: inline-block; }
         @media print {
             .report-print-toolbar { display: none !important; }
+            /* Fuerza a los navegadores a conservar colores de fondo en impresión. */
+            body,
+            table.results th,
+            table.results td,
+            .report-segment-title,
+            .pdf-card-header,
+            .pdf-notes-title,
+            .pdf-notes-cell,
+            .pdf-lab-f-title,
+            .pdf-lab-f-cell {
+                -webkit-print-color-adjust: exact !important;
+                print-color-adjust: exact !important;
+                color-adjust: exact !important;
+            }
         }
         /* En impresión directa (navegador), el total de páginas lo inyecta JS
          * para evitar valores 0 en motores sin soporte confiable de counter(pages). */

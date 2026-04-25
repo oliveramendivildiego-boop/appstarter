@@ -267,8 +267,10 @@ class Registers extends SecureArea
                 }
                 if ($hasRegvalues) {
                     $html .= '<li><a class="dropdown-item" href="' . site_url('registers/viewreport/' . $rid) . '"><i class="fa-solid fa-file-lines me-2 text-secondary"></i>Ver reporte</a></li>';
+                    $html .= '<li><a class="dropdown-item" href="' . site_url('registers/printreport/' . $rid) . '" target="_blank"><i class="fa-solid fa-print me-2 text-secondary"></i>Imprimir reporte</a></li>';
                 } else {
                     $html .= '<li><span class="dropdown-item text-muted disabled"><i class="fa-solid fa-file-lines me-2"></i>Ver reporte (sin resultados)</span></li>';
+                    $html .= '<li><span class="dropdown-item text-muted disabled"><i class="fa-solid fa-print me-2"></i>Imprimir reporte (sin resultados)</span></li>';
                 }
                 if ($hasRegvalues && $hasDoctor) {
                     $html .= '<li><a class="dropdown-item" href="' . site_url('registers/pdf/' . $rid) . '" target="_blank"><i class="fa-solid fa-file-pdf me-2 text-success"></i>Descargar PDF</a></li>';

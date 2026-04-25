@@ -7,6 +7,15 @@ $backUrl = isset($back_url) ? $back_url : site_url('expediente');
 $backLabel = isset($back_label) ? $back_label : 'Buscar otro paciente';
 $chartDataUrl = isset($chart_data_url) ? $chart_data_url : '';
 $pruebasPaciente = isset($pruebas_paciente) ? $pruebas_paciente : [];
+$totalRegistrosCount = isset($total_registros_count) ? (int) $total_registros_count : count($registros);
+$totalAntecedentesCount = isset($total_antecedentes_count) ? (int) $total_antecedentes_count : (isset($antecedentes) && is_array($antecedentes) ? count($antecedentes) : 0);
+$expedientePerPage = isset($expediente_per_page) ? (int) $expediente_per_page : 15;
+$hPage = isset($h_page) ? (int) $h_page : 1;
+$aPage = isset($a_page) ? (int) $a_page : 1;
+$hTotalPages = isset($h_total_pages) ? (int) $h_total_pages : 0;
+$aTotalPages = isset($a_total_pages) ? (int) $a_total_pages : 0;
+$expedientePagerBase = isset($expediente_pager_base) ? $expediente_pager_base : site_url('expediente/view/' . (int) (isset($paciente->person_id) ? $paciente->person_id : 0));
+$showAntecedentes = $totalAntecedentesCount > 0;
 ?>
 <?php if ($isDoctorPortal): ?>
 <?= $this->extend('layouts/doctor') ?>
@@ -124,7 +133,7 @@ $pruebasPaciente = isset($pruebas_paciente) ? $pruebas_paciente : [];
             <div class="col-md-6">
                 <p class="mb-1"><strong>Correo:</strong> <?= esc(isset($paciente->email) ? $paciente->email : '-') ?></p>
                 <p class="mb-1"><strong>Dirección:</strong> <?= esc(isset($paciente->address_1) ? $paciente->address_1 : '-') ?></p>
-                <p class="mb-0"><strong>Total de estudios:</strong> <?= count($registros) ?></p>
+                <p class="mb-0"><strong>Total de estudios:</strong> <?= (int) $totalRegistrosCount ?></p>
             </div>
         </div>
         <div class="mt-3">
@@ -181,11 +190,23 @@ $pruebasPaciente = isset($pruebas_paciente) ? $pruebas_paciente : [];
                     </tbody>
                 </table>
             </div>
+            <?php if ($totalRegistrosCount > 0) : ?>
+                <?= view('expediente/pager', [
+                    'pager_base'  => $expedientePagerBase,
+                    'this_param'  => 'h_page',
+                    'other_param' => 'a_page',
+                    'this_page'   => $hPage,
+                    'other_page'  => $aPage,
+                    'total_pages' => $hTotalPages,
+                    'total_items' => $totalRegistrosCount,
+                    'per_page'    => $expedientePerPage,
+                ]) ?>
+            <?php endif; ?>
         <?php endif; ?>
     </div>
 </div>
 
-<?php if (!empty($antecedentes)): ?>
+<?php if ($showAntecedentes): ?>
 <div class="card shadow-sm mt-4">
     <div class="card-header bg-secondary text-white">
         <h5 class="mb-0"><i class="fa-solid fa-history me-2"></i>Antecedentes (estudios previos)</h5>
@@ -205,6 +226,16 @@ $pruebasPaciente = isset($pruebas_paciente) ? $pruebas_paciente : [];
                 </li>
             <?php endforeach; ?>
         </ul>
+        <?= view('expediente/pager', [
+            'pager_base'  => $expedientePagerBase,
+            'this_param'  => 'a_page',
+            'other_param' => 'h_page',
+            'this_page'   => $aPage,
+            'other_page'  => $hPage,
+            'total_pages' => $aTotalPages,
+            'total_items' => $totalAntecedentesCount,
+            'per_page'    => $expedientePerPage,
+        ]) ?>
     </div>
 </div>
 <?php endif; ?>
