@@ -62,8 +62,7 @@
         }
     }
     $pdfFooterReserveMm = 22.0;
-    $printBottomReserveMm = $pdfFooterEnabled ? $pdfFooterReserveMm : 0.0;
-    $printBottomMarginMm = $mb + $printBottomReserveMm;
+    $printBottomMarginMm = $mb + ($pdfFooterEnabled ? $pdfFooterReserveMm : 0.0);
     $pdfFooterStripBg   = ($ftBodyBg !== 'transparent') ? $ftBodyBg : '#ffffff';
     $ftTopOn            = ! empty($ft['section_top_border_enabled']);
     $ftTopW             = max(0, min(6, (int) ($ft['section_top_border_width_px'] ?? 1)));
@@ -74,6 +73,8 @@
     if (! in_array($printPaper, ['letter', 'a4', 'legal'], true)) {
         $printPaper = 'letter';
     }
+    // Calibración fina para impresión física: algunos drivers dejan el footer visualmente alto.
+    $printFooterNudgeMm = ($pdfFooterEnabled && $printPaper === 'a4') ? -2.0 : (($pdfFooterEnabled && in_array($printPaper, ['letter', 'legal'], true)) ? -2.5 : 0.0);
     $printPageCssSize = ($printPaper === 'a4') ? 'A4 portrait' : (($printPaper === 'legal') ? 'legal portrait' : 'letter portrait');
     $pp = \App\Services\ReportPdfLayoutService::normalizePrintPaginationStyle($ps['print_pagination'] ?? []);
     $printPaginationEnabled = ! empty($pp['enabled']);
@@ -104,21 +105,18 @@
             size: <?= esc($printPageCssSize) ?>;
             margin: <?= esc((string) $mt) ?>mm <?= esc((string) $mr) ?>mm <?= esc((string) $printBottomMarginMm) ?>mm <?= esc((string) $ml) ?>mm;
         }
-        body { margin: <?= esc((string) $mt) ?>mm <?= esc((string) $mr) ?>mm <?= esc((string) $printBottomMarginMm) ?>mm <?= esc((string) $ml) ?>mm !important; position: relative; background: #fff; }
+        body { margin: <?= esc((string) $mt) ?>mm <?= esc((string) $mr) ?>mm <?= esc((string) $mb) ?>mm <?= esc((string) $ml) ?>mm !important; position: relative; background: #fff; }
         <?php if ($pdfFooterEnabled): ?>
-        .pdf-main-stack {
-            padding-bottom: <?= esc((string) $pdfFooterReserveMm) ?>mm;
-            box-sizing: border-box;
-        }
         .pdf-ft-block.footer-grid {
             position: fixed;
-            left: <?= esc((string) $ml) ?>mm;
-            right: <?= esc((string) $mr) ?>mm;
-            /* Anclar al borde inferior de cada hoja; no desplazar por márgenes aquí. */
-            bottom: 0;
+            left: 0;
+            right: 0;
+            bottom: <?= esc((string) $printFooterNudgeMm) ?>mm;
             z-index: 2;
             margin-top: 0 !important;
             padding-top: 6px;
+            padding-left: <?= esc((string) $ml) ?>mm;
+            padding-right: <?= esc((string) $mr) ?>mm;
             padding-bottom: <?= esc((string) $mb) ?>mm;
             background: <?= esc($pdfFooterStripBg) ?>;
             box-sizing: border-box;
@@ -266,6 +264,10 @@
         .report-print-btn-primary { padding: 8px 16px; background: #0d6efd; color: #fff; border: none; border-radius: 6px; cursor: pointer; font-size: 14px; }
         .report-print-btn-secondary { padding: 8px 16px; background: #fff; color: #333; border: 1px solid #ced4da; border-radius: 6px; cursor: pointer; font-size: 14px; text-decoration: none; display: inline-block; }
         @media print {
+            body {
+                margin: 0 !important;
+                padding: 0 !important;
+            }
             .report-print-toolbar { display: none !important; }
             /* Fuerza a los navegadores a conservar colores de fondo en impresión. */
             body,
@@ -343,7 +345,7 @@
     var MM_TO_PX = 96 / 25.4;
     var PAGE_HEIGHT_MM = <?= json_encode($printPaper === 'a4' ? 297.0 : ($printPaper === 'legal' ? 355.6 : 279.4)) ?>;
     var marginTopMm = <?= json_encode((float) $mt) ?>;
-    var marginBottomMm = <?= json_encode((float) $mb) ?>;
+    var marginBottomMm = <?= json_encode((float) $printBottomMarginMm) ?>;
 
     function estimateTotalPagesForPrint() {
         var content = document.querySelector('.pdf-main-stack') || document.body;

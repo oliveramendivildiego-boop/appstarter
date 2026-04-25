@@ -2697,6 +2697,29 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
+    function copyInstanceValues(fromLi, toLi) {
+        if (!fromLi || !toLi) return;
+        var srcType = fromLi.getAttribute('data-element-type') || '';
+        if (srcType === 'custom_text') {
+            applyInstanceCustomText(toLi, readInstanceCustomText(fromLi));
+            return;
+        }
+        copyStandardStyleIfPossible(fromLi, toLi);
+    }
+
+    function cloneInstanceRowWithValues(fromLi, sectionKey, colCount, enabled, col, span) {
+        if (!fromLi) return null;
+        var srcType = fromLi.getAttribute('data-element-type') || '';
+        if (!srcType || !isTypeAllowedInSection(srcType, sectionKey)) return null;
+        var clone = createInstanceRow(newUid(), srcType, colCount, enabled, enabled ? col : 0, enabled ? span : 1, sectionKey);
+        if (!enabled) {
+            var cloneCol = clone.querySelector('.instance-column');
+            if (cloneCol) cloneCol.value = '-1';
+        }
+        copyInstanceValues(fromLi, clone);
+        return clone;
+    }
+
     function replaceTargetWithPalette(targetLi, sectionKey, newType) {
         if (!targetLi || !sectionKey || !newType) return;
         if (!isTypeAllowedInSection(newType, sectionKey)) return;
@@ -2832,6 +2855,24 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     document.addEventListener('dragstart', function(ev) {
+        var listInst = ev.target.closest('.pdf-instance-item');
+        if (listInst) {
+            var listSection = (listInst.parentElement && listInst.parentElement.getAttribute('data-section')) || '';
+            var listUid = listInst.getAttribute('data-uid') || '';
+            if (listUid && listSection) {
+                var listPayload = {
+                    kind: 'instance_copy',
+                    uid: listUid,
+                    section: listSection
+                };
+                activeDragPayload = listPayload;
+                if (ev.dataTransfer) {
+                    ev.dataTransfer.setData('text/plain', JSON.stringify(listPayload));
+                    ev.dataTransfer.effectAllowed = 'copy';
+                }
+            }
+            return;
+        }
         var chip = ev.target.closest('.pdf-grid-chip');
         if (!chip) return;
         var payload = {
@@ -2857,7 +2898,10 @@ document.addEventListener('DOMContentLoaded', function() {
         ev.preventDefault();
         clearGridDropHighlights();
         (chip || cell).classList.add('is-drop-target');
-        if (ev.dataTransfer) ev.dataTransfer.dropEffect = payload.kind === 'palette' ? 'copy' : 'move';
+        if (ev.dataTransfer) {
+            var isCopy = (payload.kind === 'palette' || payload.kind === 'instance_copy');
+            ev.dataTransfer.dropEffect = isCopy ? 'copy' : 'move';
+        }
     });
 
     document.addEventListener('dragleave', function(ev) {
@@ -2883,6 +2927,19 @@ document.addEventListener('DOMContentLoaded', function() {
 
             if (payload.kind === 'palette') {
                 replaceTargetWithPalette(targetLi, targetSection, payload.element_type || '');
+            } else if (payload.kind === 'instance_copy') {
+                var copySrcLi = findInstanceByUid(payload.section || '', payload.uid || '');
+                if (!copySrcLi) return;
+                var targetUl = listForSection(targetSection);
+                if (!targetUl) return;
+                var targetCols = colsForList(targetUl);
+                var targetRow = targetPlacement.row == null ? 0 : targetPlacement.row;
+                var copyClone = cloneInstanceRowWithValues(copySrcLi, targetSection, targetCols, true, targetPlacement.col, targetPlacement.span);
+                if (!copyClone) return;
+                applyPlacementToLi(copyClone, targetSection, targetRow, targetPlacement.col, targetPlacement.span, targetPlacement.stack == null ? 0 : targetPlacement.stack);
+                targetUl.insertBefore(copyClone, targetLi.nextSibling);
+                targetLi.remove();
+                wireInstanceSelects();
             } else if (payload.kind === 'instance') {
                 var srcLi = findInstanceByUid(payload.section || '', payload.uid || '');
                 if (!srcLi || srcLi === targetLi) return;
@@ -2918,6 +2975,20 @@ document.addEventListener('DOMContentLoaded', function() {
                 var li = createInstanceRow(newUid(), payload.element_type || '', colsForList(ul), true, colIdx, span, sectionKey);
                 applyPlacementToLi(li, sectionKey, rowIdx, colIdx, span, stackCount);
                 ul.appendChild(li);
+                wireInstanceSelects();
+            } else if (payload.kind === 'instance_copy') {
+                var copyList = listForSection(payload.section || '');
+                var copySrc = copyList ? findInstanceByUid(payload.section || '', payload.uid || '') : null;
+                if (!copySrc) return;
+                if (!isTypeAllowedInSection(copySrc.getAttribute('data-element-type') || '', sectionKey)) return;
+                var srcPlace = readGridPlacement(copySrc, payload.section || sectionKey);
+                var spanCopy = srcPlace.span;
+                if (cell.querySelectorAll('.pdf-grid-chip').length > 0) spanCopy = cellSpan;
+                spanCopy = Math.max(1, Math.min(Math.max(1, colsForList(ul) - colIdx), spanCopy || 1));
+                var cloneLi = cloneInstanceRowWithValues(copySrc, sectionKey, colsForList(ul), true, colIdx, spanCopy);
+                if (!cloneLi) return;
+                applyPlacementToLi(cloneLi, sectionKey, rowIdx, colIdx, spanCopy, stackCount);
+                ul.appendChild(cloneLi);
                 wireInstanceSelects();
             } else if (payload.kind === 'instance') {
                 var srcList = listForSection(payload.section || '');
