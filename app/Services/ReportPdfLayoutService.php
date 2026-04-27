@@ -117,6 +117,7 @@ class ReportPdfLayoutService
         'paciente_genero'   => 'Género:',
         'paciente_edad'     => 'Edad:',
         'paciente_telefono' => 'Teléfono:',
+        'diagnostico_presuntivo' => 'Diagnóstico presuntivo:',
         'medico'            => 'Médico:',
         'fecha_recepcion'   => 'Fecha de recepción:',
         'fecha_reporte'     => 'Fecha de reporte:',
@@ -157,6 +158,27 @@ class ReportPdfLayoutService
         'font_style'        => 'normal',
         'text_transform'    => 'none',
         'line_height'       => 1.35,
+        'matrix_text_align' => 'center',
+        'matrix_vertical_align' => 'middle',
+        'matrix_text_color' => '#333333',
+        'matrix_font_size_pt' => 8.0,
+        'matrix_font_weight' => 'normal',
+        'matrix_font_style' => 'normal',
+        'matrix_text_transform' => 'none',
+        'matrix_header_text_color' => '#1F2937',
+        'matrix_header_font_family' => 'DejaVu Sans',
+        'matrix_header_font_size_pt' => 8.0,
+        'matrix_header_font_weight' => 'bold',
+        'matrix_header_font_style' => 'normal',
+        'matrix_header_text_transform' => 'uppercase',
+        'matrix_col_population_align' => 'left',
+        'matrix_col_parameter_align' => 'left',
+        'matrix_col_sex_align' => 'center',
+        'matrix_col_reference_align' => 'center',
+        'matrix_hdr_population_align' => 'left',
+        'matrix_hdr_parameter_align' => 'left',
+        'matrix_hdr_sex_align' => 'center',
+        'matrix_hdr_reference_align' => 'center',
     ];
     public const DEFAULT_HEADER_SECTION_STYLE = [
         'separator_color'   => '#0066CC',
@@ -171,6 +193,7 @@ class ReportPdfLayoutService
         'paciente_genero',
         'paciente_edad',
         'paciente_telefono',
+        'diagnostico_presuntivo',
         'medico',
         'fecha_recepcion',
         'fecha_reporte',
@@ -217,6 +240,7 @@ class ReportPdfLayoutService
         'paciente_genero',
         'paciente_edad',
         'paciente_telefono',
+        'diagnostico_presuntivo',
         'medico',
         'fecha_recepcion',
         'fecha_reporte',
@@ -258,6 +282,10 @@ class ReportPdfLayoutService
 
     /** @var list<string> */
     public const ALLOWED_PDF_TEXT_SHADOWS = ['none', 'soft', 'medium', 'strong'];
+    /** @var list<string> */
+    public const ALLOWED_PDF_TEXT_ALIGNS = ['left', 'center', 'right', 'justify'];
+    /** @var list<string> */
+    public const ALLOWED_PDF_VERTICAL_ALIGNS = ['top', 'middle', 'bottom'];
 
     public const SECTION_COLUMN_MIN = 1;
 
@@ -1294,7 +1322,7 @@ class ReportPdfLayoutService
     /**
      * Listas permitidas para validación en cliente y servidor.
      *
-     * @return array{font_families: list<string>, font_weights: list<string>, font_styles: list<string>, text_transforms: list<string>, text_shadows: list<string>, segment_shadows: list<string>}
+     * @return array{font_families: list<string>, font_weights: list<string>, font_styles: list<string>, text_transforms: list<string>, text_shadows: list<string>, segment_shadows: list<string>, text_aligns: list<string>, vertical_aligns: list<string>}
      */
     public static function styleAllowlistsForClient(): array
     {
@@ -1305,6 +1333,8 @@ class ReportPdfLayoutService
             'text_transforms' => self::ALLOWED_PDF_TEXT_TRANSFORMS,
             'text_shadows'    => self::ALLOWED_PDF_TEXT_SHADOWS,
             'segment_shadows' => self::ALLOWED_PDF_TEXT_SHADOWS,
+            'text_aligns'     => self::ALLOWED_PDF_TEXT_ALIGNS,
+            'vertical_aligns' => self::ALLOWED_PDF_VERTICAL_ALIGNS,
         ];
     }
 
@@ -1630,6 +1660,71 @@ class ReportPdfLayoutService
         if (isset($raw['segment_shadow']) && ! in_array(strtolower(trim((string) $raw['segment_shadow'])), self::ALLOWED_PDF_TEXT_SHADOWS, true)) {
             return 'Sombra de segmento no permitida en la tabla de resultados.';
         }
+        if (isset($raw['matrix_text_align']) && ! in_array(strtolower(trim((string) $raw['matrix_text_align'])), self::ALLOWED_PDF_TEXT_ALIGNS, true)) {
+            return 'Alineación horizontal no permitida en la matriz de referencia.';
+        }
+        if (isset($raw['matrix_vertical_align']) && ! in_array(strtolower(trim((string) $raw['matrix_vertical_align'])), self::ALLOWED_PDF_VERTICAL_ALIGNS, true)) {
+            return 'Alineación vertical no permitida en la matriz de referencia.';
+        }
+        if (isset($raw['matrix_text_color']) && ! self::isValidPdfHexColor((string) $raw['matrix_text_color'])) {
+            return 'Color de texto inválido en la matriz de referencia (#RRGGBB).';
+        }
+        if (array_key_exists('matrix_font_size_pt', $raw)) {
+            if (! is_numeric($raw['matrix_font_size_pt'])) {
+                return 'Tamaño de fuente inválido en la matriz de referencia.';
+            }
+            $mfs = (float) $raw['matrix_font_size_pt'];
+            if ($mfs < 7.0 || $mfs > 20.0) {
+                return 'El tamaño de fuente en la matriz de referencia debe estar entre 7 y 20 pt.';
+            }
+        }
+        if (isset($raw['matrix_font_weight']) && ! in_array(strtolower(trim((string) $raw['matrix_font_weight'])), self::ALLOWED_PDF_FONT_WEIGHTS, true)) {
+            return 'Grosor de fuente no permitido en la matriz de referencia.';
+        }
+        if (isset($raw['matrix_font_style']) && ! in_array(strtolower(trim((string) $raw['matrix_font_style'])), self::ALLOWED_PDF_FONT_STYLES, true)) {
+            return 'Estilo de fuente no permitido en la matriz de referencia.';
+        }
+        if (isset($raw['matrix_text_transform']) && ! in_array(strtolower(trim((string) $raw['matrix_text_transform'])), self::ALLOWED_PDF_TEXT_TRANSFORMS, true)) {
+            return 'Transformación de texto no permitida en la matriz de referencia.';
+        }
+        if (isset($raw['matrix_header_text_color']) && ! self::isValidPdfHexColor((string) $raw['matrix_header_text_color'])) {
+            return 'Color de texto inválido en los encabezados de la matriz de referencia (#RRGGBB).';
+        }
+        if (isset($raw['matrix_header_font_family']) && ! in_array((string) $raw['matrix_header_font_family'], self::ALLOWED_PDF_FONT_FAMILIES, true)) {
+            return 'Familia de fuente no permitida en encabezados de la matriz de referencia.';
+        }
+        if (array_key_exists('matrix_header_font_size_pt', $raw)) {
+            if (! is_numeric($raw['matrix_header_font_size_pt'])) {
+                return 'Tamaño de fuente inválido en encabezados de la matriz de referencia.';
+            }
+            $mhfs = (float) $raw['matrix_header_font_size_pt'];
+            if ($mhfs < 7.0 || $mhfs > 20.0) {
+                return 'El tamaño de fuente en encabezados de la matriz de referencia debe estar entre 7 y 20 pt.';
+            }
+        }
+        if (isset($raw['matrix_header_font_weight']) && ! in_array(strtolower(trim((string) $raw['matrix_header_font_weight'])), self::ALLOWED_PDF_FONT_WEIGHTS, true)) {
+            return 'Grosor de fuente no permitido en encabezados de la matriz de referencia.';
+        }
+        if (isset($raw['matrix_header_font_style']) && ! in_array(strtolower(trim((string) $raw['matrix_header_font_style'])), self::ALLOWED_PDF_FONT_STYLES, true)) {
+            return 'Estilo de fuente no permitido en encabezados de la matriz de referencia.';
+        }
+        if (isset($raw['matrix_header_text_transform']) && ! in_array(strtolower(trim((string) $raw['matrix_header_text_transform'])), self::ALLOWED_PDF_TEXT_TRANSFORMS, true)) {
+            return 'Transformación de texto no permitida en encabezados de la matriz de referencia.';
+        }
+        foreach ([
+            'matrix_col_population_align',
+            'matrix_col_parameter_align',
+            'matrix_col_sex_align',
+            'matrix_col_reference_align',
+            'matrix_hdr_population_align',
+            'matrix_hdr_parameter_align',
+            'matrix_hdr_sex_align',
+            'matrix_hdr_reference_align',
+        ] as $ak) {
+            if (isset($raw[$ak]) && ! in_array(strtolower(trim((string) $raw[$ak])), self::ALLOWED_PDF_TEXT_ALIGNS, true)) {
+                return 'Alineación no permitida en columnas de la matriz de referencia (' . $ak . ').';
+            }
+        }
 
         return null;
     }
@@ -1765,6 +1860,18 @@ class ReportPdfLayoutService
                         return 'Estilo de fuente no permitido en encabezado (' . $fk . ').';
                     }
                 }
+                $hgTtKeys = ['label_qr_hint_text_transform'];
+                foreach (array_keys(self::HEADER_GRID_LABEL_DEFAULTS) as $hid) {
+                    $hgTtKeys[] = 'label_' . $hid . '_text_transform';
+                }
+                foreach ($hgTtKeys as $tk) {
+                    if (! isset($hgRaw[$tk])) {
+                        continue;
+                    }
+                    if (! in_array(strtolower(trim((string) $hgRaw[$tk])), self::ALLOWED_PDF_TEXT_TRANSFORMS, true)) {
+                        return 'Transformación de texto no permitida en encabezado (' . $tk . ').';
+                    }
+                }
             }
         }
         if (isset($ps['patient_doctor_grid'])) {
@@ -1779,6 +1886,67 @@ class ReportPdfLayoutService
             $err = self::validateRawGridLabelStrings($ps['patient_doctor_grid'], $pk);
             if ($err !== null) {
                 return $err;
+            }
+            $pdRaw = $ps['patient_doctor_grid'];
+            if (is_array($pdRaw)) {
+                foreach (array_keys(self::PATIENT_DOCTOR_GRID_LABEL_DEFAULTS) as $pid) {
+                    $ck = 'label_' . $pid . '_text_color';
+                    if (isset($pdRaw[$ck]) && ! self::isValidPdfHexColor((string) $pdRaw[$ck])) {
+                        return 'Color inválido en paciente/médico (#RRGGBB): ' . $ck . '.';
+                    }
+                }
+                $pdFsKeys = [];
+                foreach (array_keys(self::PATIENT_DOCTOR_GRID_LABEL_DEFAULTS) as $pid) {
+                    $pdFsKeys[] = 'label_' . $pid . '_font_size_pt';
+                }
+                foreach ($pdFsKeys as $sk) {
+                    if (! array_key_exists($sk, $pdRaw)) {
+                        continue;
+                    }
+                    if (! is_numeric($pdRaw[$sk])) {
+                        return 'Tamaño de fuente en paciente/médico inválido (' . $sk . ').';
+                    }
+                    $fs = (float) $pdRaw[$sk];
+                    if ($fs < 7.0 || $fs > 20.0) {
+                        return 'El tamaño en paciente/médico debe estar entre 7 y 20 pt (' . $sk . ').';
+                    }
+                }
+                $pdFwKeys = [];
+                foreach (array_keys(self::PATIENT_DOCTOR_GRID_LABEL_DEFAULTS) as $pid) {
+                    $pdFwKeys[] = 'label_' . $pid . '_font_weight';
+                }
+                foreach ($pdFwKeys as $wk) {
+                    if (! isset($pdRaw[$wk])) {
+                        continue;
+                    }
+                    if (! in_array(strtolower(trim((string) $pdRaw[$wk])), self::ALLOWED_PDF_FONT_WEIGHTS, true)) {
+                        return 'Grosor de fuente no permitido en paciente/médico (' . $wk . ').';
+                    }
+                }
+                $pdFstKeys = [];
+                foreach (array_keys(self::PATIENT_DOCTOR_GRID_LABEL_DEFAULTS) as $pid) {
+                    $pdFstKeys[] = 'label_' . $pid . '_font_style';
+                }
+                foreach ($pdFstKeys as $fk) {
+                    if (! isset($pdRaw[$fk])) {
+                        continue;
+                    }
+                    if (! in_array(strtolower(trim((string) $pdRaw[$fk])), self::ALLOWED_PDF_FONT_STYLES, true)) {
+                        return 'Estilo de fuente no permitido en paciente/médico (' . $fk . ').';
+                    }
+                }
+                $pdTtKeys = [];
+                foreach (array_keys(self::PATIENT_DOCTOR_GRID_LABEL_DEFAULTS) as $pid) {
+                    $pdTtKeys[] = 'label_' . $pid . '_text_transform';
+                }
+                foreach ($pdTtKeys as $tk) {
+                    if (! isset($pdRaw[$tk])) {
+                        continue;
+                    }
+                    if (! in_array(strtolower(trim((string) $pdRaw[$tk])), self::ALLOWED_PDF_TEXT_TRANSFORMS, true)) {
+                        return 'Transformación de texto no permitida en paciente/médico (' . $tk . ').';
+                    }
+                }
             }
         }
         if (isset($ps['footer_grid'])) {
@@ -1833,6 +2001,15 @@ class ReportPdfLayoutService
                 }
                 if (! in_array(strtolower(trim((string) $ps['footer_grid'][$fk])), self::ALLOWED_PDF_FONT_STYLES, true)) {
                     return 'Estilo de fuente no permitido en pie de página (' . $fk . ').';
+                }
+            }
+            $fgTtKeys = ['footer_company_text_transform', 'label_footer_generated_text_transform', 'label_footer_datetime_text_transform', 'footer_policy_text_transform'];
+            foreach ($fgTtKeys as $tk) {
+                if (! isset($ps['footer_grid'][$tk])) {
+                    continue;
+                }
+                if (! in_array(strtolower(trim((string) $ps['footer_grid'][$tk])), self::ALLOWED_PDF_TEXT_TRANSFORMS, true)) {
+                    return 'Transformación de texto no permitida en pie de página (' . $tk . ').';
                 }
             }
         }
@@ -2280,11 +2457,18 @@ class ReportPdfLayoutService
 
             return in_array($st, self::ALLOWED_PDF_FONT_STYLES, true) ? $st : $gridFst;
         };
+        $gridTt = (string) $base['text_transform'];
+        $pickPieceTt = static function (string $key) use ($s, $gridTt): string {
+            $tt = strtolower(trim((string) ($s[$key] ?? $gridTt)));
+
+            return in_array($tt, self::ALLOWED_PDF_TEXT_TRANSFORMS, true) ? $tt : $gridTt;
+        };
 
         $base['label_qr_hint_text_color']   = self::normalizeLabFirmasBorderColor($s['label_qr_hint_text_color'] ?? null, $btc);
         $base['label_qr_hint_font_size_pt'] = $pickPieceFs('label_qr_hint_font_size_pt');
         $base['label_qr_hint_font_weight']  = $pickPieceFw('label_qr_hint_font_weight');
         $base['label_qr_hint_font_style']   = $pickPieceFst('label_qr_hint_font_style');
+        $base['label_qr_hint_text_transform'] = $pickPieceTt('label_qr_hint_text_transform');
 
         foreach (self::HEADER_GRID_LABEL_DEFAULTS as $id => $fallback) {
             $base['label_' . $id] = self::clipLabFirmasLabel($s['label_' . $id] ?? null, $fallback);
@@ -2294,6 +2478,7 @@ class ReportPdfLayoutService
             $base['label_' . $id . '_font_size_pt'] = $pickPieceFs('label_' . $id . '_font_size_pt');
             $base['label_' . $id . '_font_weight']  = $pickPieceFw('label_' . $id . '_font_weight');
             $base['label_' . $id . '_font_style']   = $pickPieceFst('label_' . $id . '_font_style');
+            $base['label_' . $id . '_text_transform'] = $pickPieceTt('label_' . $id . '_text_transform');
         }
 
         return $base;
@@ -2309,10 +2494,43 @@ class ReportPdfLayoutService
         $s = is_array($raw) ? $raw : [];
         $wrapDef = array_merge(self::DEFAULT_SECTION_GRID_WRAP, ['body_bg_color' => '#F8F9FA']);
         $base    = self::normalizeSectionGridWrap($s, $wrapDef);
+        $btc     = (string) $base['body_text_color'];
+        $gridFs  = (float) $base['font_size_pt'];
+        $gridFw  = (string) $base['font_weight'];
+        $gridFst = (string) $base['font_style'];
+        $gridTt  = (string) $base['text_transform'];
+        $pickPieceFs = static function (string $key) use ($s, $gridFs): float {
+            if (! array_key_exists($key, $s)) {
+                return $gridFs;
+            }
+            $v = (float) $s[$key];
+
+            return round(max(7.0, min(20.0, $v)), 2);
+        };
+        $pickPieceFw = static function (string $key) use ($s, $gridFw): string {
+            $w = strtolower(trim((string) ($s[$key] ?? $gridFw)));
+
+            return in_array($w, self::ALLOWED_PDF_FONT_WEIGHTS, true) ? $w : $gridFw;
+        };
+        $pickPieceFst = static function (string $key) use ($s, $gridFst): string {
+            $st = strtolower(trim((string) ($s[$key] ?? $gridFst)));
+
+            return in_array($st, self::ALLOWED_PDF_FONT_STYLES, true) ? $st : $gridFst;
+        };
+        $pickPieceTt = static function (string $key) use ($s, $gridTt): string {
+            $tt = strtolower(trim((string) ($s[$key] ?? $gridTt)));
+
+            return in_array($tt, self::ALLOWED_PDF_TEXT_TRANSFORMS, true) ? $tt : $gridTt;
+        };
         foreach (self::PATIENT_DOCTOR_GRID_LABEL_DEFAULTS as $id => $fallback) {
             $base['label_' . $id] = self::clipLabFirmasLabel($s['label_' . $id] ?? null, $fallback);
             $base['show_label_' . $id] = self::labFirmasBool($s, 'show_label_' . $id, true);
             $base['label_' . $id . '_line_mode'] = self::labFirmasLineModeInline($s, 'label_' . $id . '_line_mode') ? 'inline' : 'stacked';
+            $base['label_' . $id . '_text_color'] = self::normalizeLabFirmasBorderColor($s['label_' . $id . '_text_color'] ?? null, $btc);
+            $base['label_' . $id . '_font_size_pt'] = $pickPieceFs('label_' . $id . '_font_size_pt');
+            $base['label_' . $id . '_font_weight'] = $pickPieceFw('label_' . $id . '_font_weight');
+            $base['label_' . $id . '_font_style'] = $pickPieceFst('label_' . $id . '_font_style');
+            $base['label_' . $id . '_text_transform'] = $pickPieceTt('label_' . $id . '_text_transform');
             $gap = array_key_exists('label_' . $id . '_value_gap_px', $s) && is_numeric($s['label_' . $id . '_value_gap_px'])
                 ? (int) $s['label_' . $id . '_value_gap_px'] : 0;
             $mt  = array_key_exists('label_' . $id . '_space_above_px', $s) && is_numeric($s['label_' . $id . '_space_above_px'])
@@ -2370,18 +2588,28 @@ class ReportPdfLayoutService
 
             return in_array($st, self::ALLOWED_PDF_FONT_STYLES, true) ? $st : $gridFst;
         };
+        $gridTt = (string) $base['text_transform'];
+        $pickPieceTt = static function (string $key) use ($s, $gridTt): string {
+            $tt = strtolower(trim((string) ($s[$key] ?? $gridTt)));
+
+            return in_array($tt, self::ALLOWED_PDF_TEXT_TRANSFORMS, true) ? $tt : $gridTt;
+        };
         $base['footer_company_font_size_pt']            = $pickPieceFs('footer_company_font_size_pt');
         $base['footer_company_font_weight']             = $pickPieceFw('footer_company_font_weight');
         $base['footer_company_font_style']              = $pickPieceFst('footer_company_font_style');
+        $base['footer_company_text_transform']          = $pickPieceTt('footer_company_text_transform');
         $base['label_footer_generated_font_size_pt']    = $pickPieceFs('label_footer_generated_font_size_pt');
         $base['label_footer_generated_font_weight']      = $pickPieceFw('label_footer_generated_font_weight');
         $base['label_footer_generated_font_style']       = $pickPieceFst('label_footer_generated_font_style');
+        $base['label_footer_generated_text_transform']   = $pickPieceTt('label_footer_generated_text_transform');
         $base['label_footer_datetime_font_size_pt']      = $pickPieceFs('label_footer_datetime_font_size_pt');
         $base['label_footer_datetime_font_weight']        = $pickPieceFw('label_footer_datetime_font_weight');
         $base['label_footer_datetime_font_style']         = $pickPieceFst('label_footer_datetime_font_style');
+        $base['label_footer_datetime_text_transform']     = $pickPieceTt('label_footer_datetime_text_transform');
         $base['footer_policy_font_size_pt']              = $pickPieceFs('footer_policy_font_size_pt');
         $base['footer_policy_font_weight']               = $pickPieceFw('footer_policy_font_weight');
         $base['footer_policy_font_style']                = $pickPieceFst('footer_policy_font_style');
+        $base['footer_policy_text_transform']            = $pickPieceTt('footer_policy_text_transform');
 
         return $base;
     }
@@ -2436,8 +2664,7 @@ class ReportPdfLayoutService
             ? '"' . str_replace(['"', '\\'], '', $fn) . '", sans-serif'
             : str_replace(['"', '\\'], '', $fn) . ', sans-serif';
         $lh   = (float) $ft['line_height'];
-        $tt   = (string) $ft['text_transform'];
-        $decl = static function (string $color, float $fs, string $fw, string $fst) use ($ffCss, $lh, $tt): string {
+        $decl = static function (string $color, float $fs, string $fw, string $fst, string $tt) use ($ffCss, $lh): string {
             return 'color:' . $color
                 . ';font-family:' . $ffCss
                 . ';font-size:' . (string) $fs . 'pt'
@@ -2452,28 +2679,32 @@ class ReportPdfLayoutService
                     (string) $ft['footer_company_text_color'],
                     (float) $ft['footer_company_font_size_pt'],
                     (string) $ft['footer_company_font_weight'],
-                    (string) $ft['footer_company_font_style']
+                    (string) $ft['footer_company_font_style'],
+                    (string) $ft['footer_company_text_transform']
                 );
             case 'label_generated':
                 return $decl(
                     (string) $ft['label_footer_generated_color'],
                     (float) $ft['label_footer_generated_font_size_pt'],
                     (string) $ft['label_footer_generated_font_weight'],
-                    (string) $ft['label_footer_generated_font_style']
+                    (string) $ft['label_footer_generated_font_style'],
+                    (string) $ft['label_footer_generated_text_transform']
                 );
             case 'datetime':
                 return $decl(
                     (string) $ft['label_footer_datetime_color'],
                     (float) $ft['label_footer_datetime_font_size_pt'],
                     (string) $ft['label_footer_datetime_font_weight'],
-                    (string) $ft['label_footer_datetime_font_style']
+                    (string) $ft['label_footer_datetime_font_style'],
+                    (string) $ft['label_footer_datetime_text_transform']
                 );
             case 'policy':
                 return $decl(
                     (string) $ft['footer_policy_text_color'],
                     (float) $ft['footer_policy_font_size_pt'],
                     (string) $ft['footer_policy_font_weight'],
-                    (string) $ft['footer_policy_font_style']
+                    (string) $ft['footer_policy_font_style'],
+                    (string) $ft['footer_policy_text_transform']
                 );
             default:
                 return '';
@@ -2494,8 +2725,7 @@ class ReportPdfLayoutService
             ? '"' . str_replace(['"', '\\'], '', $fn) . '", sans-serif'
             : str_replace(['"', '\\'], '', $fn) . ', sans-serif';
         $lh   = (float) $hg['line_height'];
-        $tt   = (string) $hg['text_transform'];
-        $decl = static function (string $color, float $fs, string $fw, string $fst) use ($ffCss, $lh, $tt): string {
+        $decl = static function (string $color, float $fs, string $fw, string $fst, string $tt) use ($ffCss, $lh): string {
             return 'color:' . $color
                 . ';font-family:' . $ffCss
                 . ';font-size:' . (string) $fs . 'pt'
@@ -2509,7 +2739,8 @@ class ReportPdfLayoutService
                 (string) $hg['label_qr_hint_text_color'],
                 (float) $hg['label_qr_hint_font_size_pt'],
                 (string) $hg['label_qr_hint_font_weight'],
-                (string) $hg['label_qr_hint_font_style']
+                (string) $hg['label_qr_hint_font_style'],
+                (string) $hg['label_qr_hint_text_transform']
             );
         }
         if (! array_key_exists($piece, self::HEADER_GRID_LABEL_DEFAULTS)) {
@@ -2520,8 +2751,35 @@ class ReportPdfLayoutService
             (string) $hg['label_' . $piece . '_text_color'],
             (float) $hg['label_' . $piece . '_font_size_pt'],
             (string) $hg['label_' . $piece . '_font_weight'],
-            (string) $hg['label_' . $piece . '_font_style']
+            (string) $hg['label_' . $piece . '_font_style'],
+            (string) $hg['label_' . $piece . '_text_transform']
         );
+    }
+
+    /**
+     * CSS inline para etiquetas de paciente/médico por campo.
+     *
+     * @param array<string, mixed> $pd patient_doctor_grid normalizado o bruto
+     */
+    public static function patientDoctorGridLabelStyleAttr(array $pd, string $piece): string
+    {
+        $pd = self::normalizePatientDoctorGridStyle($pd);
+        if (! array_key_exists($piece, self::PATIENT_DOCTOR_GRID_LABEL_DEFAULTS)) {
+            return '';
+        }
+        $fn   = (string) $pd['font_family'];
+        $ffCss = (strpbrk($fn, ' ') !== false)
+            ? '"' . str_replace(['"', '\\'], '', $fn) . '", sans-serif'
+            : str_replace(['"', '\\'], '', $fn) . ', sans-serif';
+        $lh   = (float) $pd['line_height'];
+
+        return 'color:' . (string) $pd['label_' . $piece . '_text_color']
+            . ';font-family:' . $ffCss
+            . ';font-size:' . (string) ((float) $pd['label_' . $piece . '_font_size_pt']) . 'pt'
+            . ';font-weight:' . (string) $pd['label_' . $piece . '_font_weight']
+            . ';font-style:' . (string) $pd['label_' . $piece . '_font_style']
+            . ';text-transform:' . (string) $pd['label_' . $piece . '_text_transform']
+            . ';line-height:' . (string) $lh;
     }
 
     /**
@@ -2578,7 +2836,7 @@ class ReportPdfLayoutService
     /**
      * @param mixed $raw
      *
-     * @return array{header_bg_color: string, header_text_color: string, body_bg_color: string, body_transparent: bool, body_text_color: string, border_color: string, segment_bg_color: string, segment_transparent: bool, segment_border_color: string, segment_border_width_px: int, segment_shadow: string, font_family: string, font_size_pt: float, font_weight: string, font_style: string, text_transform: string, line_height: float}
+     * @return array{header_bg_color: string, header_text_color: string, body_bg_color: string, body_transparent: bool, body_text_color: string, border_color: string, segment_bg_color: string, segment_transparent: bool, segment_border_color: string, segment_border_width_px: int, segment_shadow: string, font_family: string, font_size_pt: float, font_weight: string, font_style: string, text_transform: string, line_height: float, matrix_text_align: string, matrix_vertical_align: string, matrix_text_color: string, matrix_font_size_pt: float, matrix_font_weight: string, matrix_font_style: string, matrix_text_transform: string, matrix_header_text_color: string, matrix_header_font_family: string, matrix_header_font_size_pt: float, matrix_header_font_weight: string, matrix_header_font_style: string, matrix_header_text_transform: string, matrix_col_population_align: string, matrix_col_parameter_align: string, matrix_col_sex_align: string, matrix_col_reference_align: string, matrix_hdr_population_align: string, matrix_hdr_parameter_align: string, matrix_hdr_sex_align: string, matrix_hdr_reference_align: string}
      */
     public static function normalizeResultsTableStyle($raw): array
     {
@@ -2614,6 +2872,50 @@ class ReportPdfLayoutService
         if (! in_array($segShadow, self::ALLOWED_PDF_TEXT_SHADOWS, true)) {
             $segShadow = $def['segment_shadow'];
         }
+        $matrixAlign = strtolower(trim((string) ($s['matrix_text_align'] ?? $def['matrix_text_align'])));
+        if (! in_array($matrixAlign, self::ALLOWED_PDF_TEXT_ALIGNS, true)) {
+            $matrixAlign = $def['matrix_text_align'];
+        }
+        $matrixVAlign = strtolower(trim((string) ($s['matrix_vertical_align'] ?? $def['matrix_vertical_align'])));
+        if (! in_array($matrixVAlign, self::ALLOWED_PDF_VERTICAL_ALIGNS, true)) {
+            $matrixVAlign = $def['matrix_vertical_align'];
+        }
+        $matrixFs = isset($s['matrix_font_size_pt']) ? (float) $s['matrix_font_size_pt'] : (float) $def['matrix_font_size_pt'];
+        $matrixFs = round(max(7.0, min(20.0, $matrixFs)), 2);
+        $matrixFw = strtolower(trim((string) ($s['matrix_font_weight'] ?? $def['matrix_font_weight'])));
+        if (! in_array($matrixFw, self::ALLOWED_PDF_FONT_WEIGHTS, true)) {
+            $matrixFw = $def['matrix_font_weight'];
+        }
+        $matrixFst = strtolower(trim((string) ($s['matrix_font_style'] ?? $def['matrix_font_style'])));
+        if (! in_array($matrixFst, self::ALLOWED_PDF_FONT_STYLES, true)) {
+            $matrixFst = $def['matrix_font_style'];
+        }
+        $matrixTt = strtolower(trim((string) ($s['matrix_text_transform'] ?? $def['matrix_text_transform'])));
+        if (! in_array($matrixTt, self::ALLOWED_PDF_TEXT_TRANSFORMS, true)) {
+            $matrixTt = $def['matrix_text_transform'];
+        }
+        $mhFamily = (string) ($s['matrix_header_font_family'] ?? $def['matrix_header_font_family']);
+        if (! in_array($mhFamily, self::ALLOWED_PDF_FONT_FAMILIES, true)) {
+            $mhFamily = (string) $def['matrix_header_font_family'];
+        }
+        $mhSize = isset($s['matrix_header_font_size_pt']) ? (float) $s['matrix_header_font_size_pt'] : (float) $def['matrix_header_font_size_pt'];
+        $mhSize = round(max(7.0, min(20.0, $mhSize)), 2);
+        $mhWeight = strtolower(trim((string) ($s['matrix_header_font_weight'] ?? $def['matrix_header_font_weight'])));
+        if (! in_array($mhWeight, self::ALLOWED_PDF_FONT_WEIGHTS, true)) {
+            $mhWeight = (string) $def['matrix_header_font_weight'];
+        }
+        $mhStyle = strtolower(trim((string) ($s['matrix_header_font_style'] ?? $def['matrix_header_font_style'])));
+        if (! in_array($mhStyle, self::ALLOWED_PDF_FONT_STYLES, true)) {
+            $mhStyle = (string) $def['matrix_header_font_style'];
+        }
+        $mhTransform = strtolower(trim((string) ($s['matrix_header_text_transform'] ?? $def['matrix_header_text_transform'])));
+        if (! in_array($mhTransform, self::ALLOWED_PDF_TEXT_TRANSFORMS, true)) {
+            $mhTransform = (string) $def['matrix_header_text_transform'];
+        }
+        $pickColAlign = static function (string $key) use ($s, $def): string {
+            $v = strtolower(trim((string) ($s[$key] ?? ($def[$key] ?? 'center'))));
+            return in_array($v, self::ALLOWED_PDF_TEXT_ALIGNS, true) ? $v : (string) ($def[$key] ?? 'center');
+        };
 
         return [
             'header_bg_color'   => $pickColor('header_bg_color', $def['header_bg_color']),
@@ -2633,6 +2935,27 @@ class ReportPdfLayoutService
             'font_style'        => $style,
             'text_transform'    => $transform,
             'line_height'       => $lh,
+            'matrix_text_align' => $matrixAlign,
+            'matrix_vertical_align' => $matrixVAlign,
+            'matrix_text_color' => $pickColor('matrix_text_color', $def['matrix_text_color']),
+            'matrix_font_size_pt' => $matrixFs,
+            'matrix_font_weight' => $matrixFw,
+            'matrix_font_style' => $matrixFst,
+            'matrix_text_transform' => $matrixTt,
+            'matrix_header_text_color' => $pickColor('matrix_header_text_color', $def['matrix_header_text_color']),
+            'matrix_header_font_family' => $mhFamily,
+            'matrix_header_font_size_pt' => $mhSize,
+            'matrix_header_font_weight' => $mhWeight,
+            'matrix_header_font_style' => $mhStyle,
+            'matrix_header_text_transform' => $mhTransform,
+            'matrix_col_population_align' => $pickColAlign('matrix_col_population_align'),
+            'matrix_col_parameter_align' => $pickColAlign('matrix_col_parameter_align'),
+            'matrix_col_sex_align' => $pickColAlign('matrix_col_sex_align'),
+            'matrix_col_reference_align' => $pickColAlign('matrix_col_reference_align'),
+            'matrix_hdr_population_align' => $pickColAlign('matrix_hdr_population_align'),
+            'matrix_hdr_parameter_align' => $pickColAlign('matrix_hdr_parameter_align'),
+            'matrix_hdr_sex_align' => $pickColAlign('matrix_hdr_sex_align'),
+            'matrix_hdr_reference_align' => $pickColAlign('matrix_hdr_reference_align'),
         ];
     }
 
@@ -2665,6 +2988,7 @@ class ReportPdfLayoutService
             'paciente_genero'   => 'Género del paciente',
             'paciente_edad'     => 'Edad',
             'paciente_telefono' => 'Teléfono',
+            'diagnostico_presuntivo' => 'Diagnóstico presuntivo',
             'medico'             => 'Médico tratante',
             'fecha_recepcion'    => 'Fecha de recepción',
             'fecha_reporte'      => 'Fecha de reporte',
@@ -3047,6 +3371,7 @@ class ReportPdfLayoutService
             'paciente_genero'   => 'Masculino',
             'paciente_edad'     => '42 años, 3 meses y 10 días',
             'paciente_telefono' => '+52 55 1234 5678',
+            'diagnostico_presuntivo' => 'Diabetes mellitus en estudio',
             'medico'             => 'Dra. María López',
             'fecha_recepcion'    => '09/04/2026 10:15:30',
             'fecha_reporte'      => '10/04/2026 14:22:00',

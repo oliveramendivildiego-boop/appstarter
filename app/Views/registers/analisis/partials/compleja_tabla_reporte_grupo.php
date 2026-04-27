@@ -210,12 +210,12 @@ if ($priaIdTitulo > 0 && ! empty($refsMatrixAll[$priaIdTitulo]) && $groupTieneAl
     <table class="<?= esc($matrixTableClass, 'attr') ?>"<?= $usePdfChrome ? ' style="font-size:8pt;width:100%;"' : '' ?>>
         <thead<?= $usePdfChrome ? '' : ' class="table-light"' ?>>
             <tr>
-                <th>Grupo poblacional</th>
-                <th>Parámetro</th>
+                <th class="matrix-col-population">Grupo poblacional</th>
+                <th class="matrix-col-parameter">Parámetro</th>
                 <?php if ($showSexoCol): ?>
-                <th class="text-center">Sexo</th>
+                <th class="text-center matrix-col-sex">Sexo</th>
                 <?php endif; ?>
-                <th class="text-center">Valor de referencia</th>
+                <th class="text-center matrix-col-reference">Valor de referencia</th>
             </tr>
         </thead>
         <tbody>
@@ -235,12 +235,12 @@ if ($priaIdTitulo > 0 && ! empty($refsMatrixAll[$priaIdTitulo]) && $groupTieneAl
                 $refTxt = registro_rango_referencial_texto($mrow['valor_min'] ?? '', $mrow['valor_max'] ?? '', $mrow['umedida'] ?? '');
                 ?>
             <tr>
-                <td><?= esc(trim((string) ($mrow['poblacion_nombre'] ?? ''))) ?></td>
-                <td><?= esc(trim((string) ($mrow['nombre'] ?? ''))) ?></td>
+                <td class="matrix-col-population"><?= esc(trim((string) ($mrow['poblacion_nombre'] ?? ''))) ?></td>
+                <td class="matrix-col-parameter"><?= esc(trim((string) ($mrow['nombre'] ?? ''))) ?></td>
                 <?php if ($showSexoCol): ?>
-                <td class="text-center"><?= $sexoTxt ?></td>
+                <td class="text-center matrix-col-sex"><?= $sexoTxt ?></td>
                 <?php endif; ?>
-                <td class="text-center"><?= esc($refTxt) ?></td>
+                <td class="text-center matrix-col-reference"><?= esc($refTxt) ?></td>
             </tr>
             <?php endforeach; ?>
         </tbody>

@@ -25,44 +25,62 @@
 <?php endif; ?>
 
 <?php $activeTab = isset($active_tab) ? $active_tab : 'sistema'; ?>
-<ul class="nav nav-tabs mb-3" id="configTabs" role="tablist">
+<style>
+#configTabs.config-tabs-nav {
+    border-bottom: 0;
+    gap: .45rem;
+}
+#configTabs.config-tabs-nav .nav-link {
+    border: 1px solid #cfd8e3;
+    border-radius: .65rem;
+    background: #f4f7fb;
+    color: #2d4059;
+    font-weight: 600;
+    padding: .45rem .85rem;
+    transition: all .15s ease-in-out;
+}
+#configTabs.config-tabs-nav .nav-link:hover,
+#configTabs.config-tabs-nav .nav-link:focus {
+    background: #eaf1fb;
+    border-color: #9db6d8;
+    color: #1d3557;
+}
+#configTabs.config-tabs-nav .nav-link.active {
+    background: #1f6fd7;
+    border-color: #1f6fd7;
+    color: #fff;
+    box-shadow: 0 .2rem .6rem rgba(31, 111, 215, .25);
+}
+</style>
+<ul class="nav nav-tabs mb-3 config-tabs-nav" id="configTabs" role="tablist">
     <li class="nav-item" role="presentation">
         <button class="nav-link <?= $activeTab === 'sistema' ? 'active' : '' ?>" id="tab-sistema-btn" data-bs-toggle="tab" data-bs-target="#tab-sistema" type="button" role="tab">Configuración del sistema</button>
-    </li>
-    <li class="nav-item" role="presentation">
-        <button class="nav-link <?= $activeTab === 'lab_validacion' ? 'active' : '' ?>" id="tab-lab-validacion-btn" data-bs-toggle="tab" data-bs-target="#tab-lab-validacion" type="button" role="tab"><?= lang('Config.config_lab_validation_tab_nav') ?></button>
-    </li>
-    <li class="nav-item" role="presentation">
-        <button class="nav-link <?= $activeTab === 'estilo' ? 'active' : '' ?>" id="tab-estilo-btn" data-bs-toggle="tab" data-bs-target="#tab-estilo" type="button" role="tab"><?= lang('Config.config_style_tab_nav') ?></button>
-    </li>
-    <li class="nav-item" role="presentation">
-        <button class="nav-link <?= $activeTab === 'comprobante' ? 'active' : '' ?>" id="tab-comprobante-btn" data-bs-toggle="tab" data-bs-target="#tab-comprobante" type="button" role="tab">Estilo comprobante</button>
-    </li>
-    <li class="nav-item" role="presentation">
-        <button class="nav-link <?= $activeTab === 'poblacion' ? 'active' : '' ?>" id="tab-poblacion-btn" data-bs-toggle="tab" data-bs-target="#tab-poblacion" type="button" role="tab">Grupos de población (por edad)</button>
-    </li>
-    <li class="nav-item" role="presentation">
-        <button class="nav-link <?= $activeTab === 'opciones' ? 'active' : '' ?>" id="tab-opciones-btn" data-bs-toggle="tab" data-bs-target="#tab-opciones" type="button" role="tab">Tipos de resultado</button>
     </li>
     <li class="nav-item" role="presentation">
         <button class="nav-link <?= $activeTab === 'institucion_descuentos' ? 'active' : '' ?>" id="tab-institucion-descuentos-btn" data-bs-toggle="tab" data-bs-target="#tab-institucion-descuentos" type="button" role="tab">Descuentos por institución</button>
     </li>
     <li class="nav-item" role="presentation">
-        <button class="nav-link <?= $activeTab === 'tipos_muestra' ? 'active' : '' ?>" id="tab-tipos_muestra-btn" data-bs-toggle="tab" data-bs-target="#tab-tipos_muestra" type="button" role="tab">Tipos de muestra</button>
+        <button class="nav-link <?= $activeTab === 'comprobante' ? 'active' : '' ?>" id="tab-comprobante-btn" data-bs-toggle="tab" data-bs-target="#tab-comprobante" type="button" role="tab">Estilo comprobante</button>
+    </li>
+    <li class="nav-item" role="presentation">
+        <button class="nav-link <?= $activeTab === 'estilo' ? 'active' : '' ?>" id="tab-estilo-btn" data-bs-toggle="tab" data-bs-target="#tab-estilo" type="button" role="tab"><?= lang('Config.config_style_tab_nav') ?></button>
+    </li>
+    <li class="nav-item" role="presentation">
+        <button class="nav-link <?= $activeTab === 'sin' ? 'active' : '' ?>" id="tab-sin-btn" data-bs-toggle="tab" data-bs-target="#tab-sin" type="button" role="tab">Facturación SIN</button>
+    </li>
+    <li class="nav-item" role="presentation">
+        <button class="nav-link <?= $activeTab === 'poblacion' ? 'active' : '' ?>" id="tab-poblacion-btn" data-bs-toggle="tab" data-bs-target="#tab-poblacion" type="button" role="tab">Grupos de población (por edad)</button>
+    </li>
+    <li class="nav-item" role="presentation">
+        <button class="nav-link <?= $activeTab === 'lab_validacion' ? 'active' : '' ?>" id="tab-lab-validacion-btn" data-bs-toggle="tab" data-bs-target="#tab-lab-validacion" type="button" role="tab"><?= lang('Config.config_lab_validation_tab_nav') ?></button>
     </li>
     <li class="nav-item" role="presentation">
         <button class="nav-link <?= $activeTab === 'metodos_prueba' ? 'active' : '' ?>" id="tab-metodos_prueba-btn" data-bs-toggle="tab" data-bs-target="#tab-metodos_prueba" type="button" role="tab">Métodos de prueba</button>
     </li>
     <li class="nav-item" role="presentation">
-        <button class="nav-link <?= $activeTab === 'whatsapp' ? 'active' : '' ?>" id="tab-whatsapp-btn" data-bs-toggle="tab" data-bs-target="#tab-whatsapp" type="button" role="tab">WhatsApp</button>
-    </li>
-    <li class="nav-item" role="presentation">
-        <button class="nav-link <?= $activeTab === 'sin' ? 'active' : '' ?>" id="tab-sin-btn" data-bs-toggle="tab" data-bs-target="#tab-sin" type="button" role="tab">Facturación SIN</button>
+        <a class="nav-link" href="<?= site_url('config/pdf-templates') ?>"><i class="fa-solid fa-file-pdf me-1"></i><?= lang('Config.config_pdf_templates_tab') ?></a>
     </li>
     <?php if (($can_manage_tenants ?? false)): ?>
-    <li class="nav-item" role="presentation">
-        <button class="nav-link <?= $activeTab === 'tenants' ? 'active' : '' ?>" id="tab-tenants-btn" data-bs-toggle="tab" data-bs-target="#tab-tenants" type="button" role="tab">Tenants</button>
-    </li>
     <li class="nav-item" role="presentation">
         <button class="nav-link <?= $activeTab === 'tenant_subscriptions' ? 'active' : '' ?>" id="tab-tenant-subscriptions-btn" data-bs-toggle="tab" data-bs-target="#tab-tenant-subscriptions" type="button" role="tab">Pagos / suscripciones</button>
     </li>
@@ -70,8 +88,19 @@
     <li class="nav-item" role="presentation">
         <button class="nav-link <?= $activeTab === 'sesiones' ? 'active' : '' ?>" id="tab-sesiones-btn" data-bs-toggle="tab" data-bs-target="#tab-sesiones" type="button" role="tab">Sesiones activas</button>
     </li>
+    <?php if (($can_manage_tenants ?? false)): ?>
     <li class="nav-item" role="presentation">
-        <a class="nav-link" href="<?= site_url('config/pdf-templates') ?>"><i class="fa-solid fa-file-pdf me-1"></i><?= lang('Config.config_pdf_templates_tab') ?></a>
+        <button class="nav-link <?= $activeTab === 'tenants' ? 'active' : '' ?>" id="tab-tenants-btn" data-bs-toggle="tab" data-bs-target="#tab-tenants" type="button" role="tab">Tenants</button>
+    </li>
+    <?php endif; ?>
+    <li class="nav-item" role="presentation">
+        <button class="nav-link <?= $activeTab === 'tipos_muestra' ? 'active' : '' ?>" id="tab-tipos_muestra-btn" data-bs-toggle="tab" data-bs-target="#tab-tipos_muestra" type="button" role="tab">Tipos de muestra</button>
+    </li>
+    <li class="nav-item" role="presentation">
+        <button class="nav-link <?= $activeTab === 'opciones' ? 'active' : '' ?>" id="tab-opciones-btn" data-bs-toggle="tab" data-bs-target="#tab-opciones" type="button" role="tab">Tipos de resultado</button>
+    </li>
+    <li class="nav-item" role="presentation">
+        <button class="nav-link <?= $activeTab === 'whatsapp' ? 'active' : '' ?>" id="tab-whatsapp-btn" data-bs-toggle="tab" data-bs-target="#tab-whatsapp" type="button" role="tab">WhatsApp</button>
     </li>
 </ul>
 

@@ -208,6 +208,27 @@ body { margin: <?= esc((string) $mt) ?>mm <?= esc((string) $mr) ?>mm <?= esc((st
     --pdf-results-font-style: <?= esc($rs['font_style']) ?>;
     --pdf-results-transform: <?= esc($rs['text_transform']) ?>;
     --pdf-results-line-height: <?= esc((string) $rs['line_height']) ?>;
+    --pdf-results-matrix-align: <?= esc((string) ($rs['matrix_text_align'] ?? 'center')) ?>;
+    --pdf-results-matrix-vertical-align: <?= esc((string) ($rs['matrix_vertical_align'] ?? 'middle')) ?>;
+    --pdf-results-matrix-color: <?= esc((string) ($rs['matrix_text_color'] ?? $rs['body_text_color'])) ?>;
+    --pdf-results-matrix-font-size: <?= esc((string) ($rs['matrix_font_size_pt'] ?? $rs['font_size_pt'])) ?>pt;
+    --pdf-results-matrix-font-weight: <?= esc((string) ($rs['matrix_font_weight'] ?? $rs['font_weight'])) ?>;
+    --pdf-results-matrix-font-style: <?= esc((string) ($rs['matrix_font_style'] ?? $rs['font_style'])) ?>;
+    --pdf-results-matrix-transform: <?= esc((string) ($rs['matrix_text_transform'] ?? $rs['text_transform'])) ?>;
+    --pdf-results-matrix-header-color: <?= esc((string) ($rs['matrix_header_text_color'] ?? $rs['header_text_color'])) ?>;
+    --pdf-results-matrix-header-font-family: "<?= esc((string) ($rs['matrix_header_font_family'] ?? $rs['font_family'])) ?>";
+    --pdf-results-matrix-header-font-size: <?= esc((string) ($rs['matrix_header_font_size_pt'] ?? $rs['font_size_pt'])) ?>pt;
+    --pdf-results-matrix-header-font-weight: <?= esc((string) ($rs['matrix_header_font_weight'] ?? $rs['font_weight'])) ?>;
+    --pdf-results-matrix-header-font-style: <?= esc((string) ($rs['matrix_header_font_style'] ?? $rs['font_style'])) ?>;
+    --pdf-results-matrix-header-transform: <?= esc((string) ($rs['matrix_header_text_transform'] ?? $rs['text_transform'])) ?>;
+    --pdf-results-matrix-col-population-align: <?= esc((string) ($rs['matrix_col_population_align'] ?? 'left')) ?>;
+    --pdf-results-matrix-col-parameter-align: <?= esc((string) ($rs['matrix_col_parameter_align'] ?? 'left')) ?>;
+    --pdf-results-matrix-col-sex-align: <?= esc((string) ($rs['matrix_col_sex_align'] ?? 'center')) ?>;
+    --pdf-results-matrix-col-reference-align: <?= esc((string) ($rs['matrix_col_reference_align'] ?? 'center')) ?>;
+    --pdf-results-matrix-hdr-population-align: <?= esc((string) ($rs['matrix_hdr_population_align'] ?? 'left')) ?>;
+    --pdf-results-matrix-hdr-parameter-align: <?= esc((string) ($rs['matrix_hdr_parameter_align'] ?? 'left')) ?>;
+    --pdf-results-matrix-hdr-sex-align: <?= esc((string) ($rs['matrix_hdr_sex_align'] ?? 'center')) ?>;
+    --pdf-results-matrix-hdr-reference-align: <?= esc((string) ($rs['matrix_hdr_reference_align'] ?? 'center')) ?>;
 }
 table.results th {
     background: <?= esc($rs['header_bg_color']) ?> !important;
@@ -232,6 +253,33 @@ table.results .out-range {
     color: #c00 !important;
     font-weight: 700 !important;
 }
+.report-refs-matrix th,
+.report-refs-matrix td {
+    vertical-align: var(--pdf-results-matrix-vertical-align) !important;
+    color: var(--pdf-results-matrix-color) !important;
+}
+.report-refs-matrix td {
+    font-size: var(--pdf-results-matrix-font-size) !important;
+    font-weight: var(--pdf-results-matrix-font-weight) !important;
+    font-style: var(--pdf-results-matrix-font-style) !important;
+    text-transform: var(--pdf-results-matrix-transform) !important;
+}
+.report-refs-matrix th {
+    color: var(--pdf-results-matrix-header-color) !important;
+    font-family: var(--pdf-results-matrix-header-font-family), sans-serif !important;
+    font-size: var(--pdf-results-matrix-header-font-size) !important;
+    font-weight: var(--pdf-results-matrix-header-font-weight) !important;
+    font-style: var(--pdf-results-matrix-header-font-style) !important;
+    text-transform: var(--pdf-results-matrix-header-transform) !important;
+}
+.report-refs-matrix th.matrix-col-population { text-align: var(--pdf-results-matrix-hdr-population-align) !important; }
+.report-refs-matrix th.matrix-col-parameter { text-align: var(--pdf-results-matrix-hdr-parameter-align) !important; }
+.report-refs-matrix th.matrix-col-sex { text-align: var(--pdf-results-matrix-hdr-sex-align) !important; }
+.report-refs-matrix th.matrix-col-reference { text-align: var(--pdf-results-matrix-hdr-reference-align) !important; }
+.report-refs-matrix td.matrix-col-population { text-align: var(--pdf-results-matrix-col-population-align) !important; }
+.report-refs-matrix td.matrix-col-parameter { text-align: var(--pdf-results-matrix-col-parameter-align) !important; }
+.report-refs-matrix td.matrix-col-sex { text-align: var(--pdf-results-matrix-col-sex-align) !important; }
+.report-refs-matrix td.matrix-col-reference { text-align: var(--pdf-results-matrix-col-reference-align) !important; }
 table.results.pdf-notes-table td.pdf-notes-cell {
     background: <?= esc($nsBodyBg) ?> !important;
     color: <?= esc($ns['body_text_color']) ?> !important;

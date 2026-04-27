@@ -56,6 +56,7 @@ $pdFieldUi = [
     'paciente_genero'   => 'Género',
     'paciente_edad'     => 'Edad',
     'paciente_telefono' => 'Teléfono',
+    'diagnostico_presuntivo' => 'Diagnóstico presuntivo',
     'medico'            => 'Médico',
     'fecha_recepcion'   => 'Fecha de recepción',
     'fecha_reporte'     => 'Fecha de reporte',
@@ -73,6 +74,7 @@ $labelsShort = [
     'paciente_genero'   => 'Género:',
     'paciente_edad'     => 'Edad:',
     'paciente_telefono' => 'Teléfono:',
+    'diagnostico_presuntivo' => 'Diagnóstico presuntivo:',
     'medico'            => 'Médico:',
     'fecha_recepcion'   => 'Fecha de recepción:',
     'fecha_reporte'     => 'Fecha de reporte:',
@@ -111,8 +113,28 @@ $labelsShort = [
     <?= csrf_field() ?>
     <input type="hidden" name="id" value="<?= (int) ($template->id ?? 0) ?>">
     <input type="hidden" name="layout_json" id="layout_json" value="">
+    <div class="d-flex flex-wrap gap-2 mb-3">
+        <button type="submit" class="btn btn-primary"><i class="fa-solid fa-floppy-disk me-1"></i> Guardar plantilla</button>
+        <a href="<?= site_url('config/pdf-templates') ?>" class="btn btn-outline-secondary">Volver al listado</a>
+        <a href="<?= site_url('config') ?>?tab=sistema" class="btn btn-outline-secondary">Configuración</a>
+    </div>
 
-<div class="card shadow-sm mb-4 pdf-margins-card">
+<div class="card shadow-sm mb-4">
+    <div class="card-body py-3">
+        <ul class="nav nav-tabs flex-wrap gap-1" id="pdf_config_tabs" role="tablist">
+            <li class="nav-item" role="presentation"><button class="nav-link active" type="button" data-config-tab="general">General</button></li>
+            <li class="nav-item" role="presentation"><button class="nav-link" type="button" data-config-tab="header">Encabezado</button></li>
+            <li class="nav-item" role="presentation"><button class="nav-link" type="button" data-config-tab="patient_doctor">Paciente / médico</button></li>
+            <li class="nav-item" role="presentation"><button class="nav-link" type="button" data-config-tab="results">Resultados</button></li>
+            <li class="nav-item" role="presentation"><button class="nav-link" type="button" data-config-tab="notes">Notas</button></li>
+            <li class="nav-item" role="presentation"><button class="nav-link" type="button" data-config-tab="lab_firmas">Validación / firmas</button></li>
+            <li class="nav-item" role="presentation"><button class="nav-link" type="button" data-config-tab="footer">Pie</button></li>
+        </ul>
+        <p class="small text-muted mt-2 mb-0">Cada pestaña muestra solo la configuración del bloque correspondiente.</p>
+    </div>
+</div>
+
+<div class="card shadow-sm mb-4 pdf-margins-card pdf-config-panel" data-config-panels="general">
     <div class="card-header bg-primary text-white">
         <h5 class="mb-0">Estilo global de card-header (PDF / impresión)</h5>
     </div>
@@ -177,12 +199,13 @@ $labelsShort = [
     </div>
 </div>
 
-<div class="card shadow-sm mb-4 border border-primary border-opacity-25">
+<div class="card shadow-sm mb-4 border border-primary border-opacity-25 pdf-config-panel" data-config-panels="header,patient_doctor,footer">
     <div class="card-header bg-primary-subtle border-bottom">
         <h5 class="mb-0">Cuadrículas PDF: encabezado superior, paciente/médico y pie</h5>
         <p class="small text-muted mb-0 mt-1">Fondo de celdas (con opción transparente), tipografía, bordes verticales entre columnas y textos de etiquetas editables (incl. leyenda del QR y prefijo de «generado el»).</p>
     </div>
     <div class="card-body">
+        <div class="pdf-subpanel" data-config-subpanel="header">
         <h6 class="text-secondary">Encabezado superior (logo, datos del laboratorio, QR)</h6>
         <div class="row g-2 mb-2">
             <div class="col-6 col-md-2"><label class="form-label small" for="hg_body_bg">Fondo celdas</label><input type="color" class="form-control form-control-color" id="hg_body_bg" value="<?= esc((string) ($hg['body_bg_color'] ?? '#FFFFFF'), 'attr') ?>"></div>
@@ -235,7 +258,7 @@ $labelsShort = [
         </div>
         <div class="table-responsive mb-3">
             <table class="table table-sm table-bordered align-middle mb-0">
-                <thead class="table-light"><tr class="small"><th>Etiqueta (color / tipo)</th><th style="width:6rem;">Color</th><th style="width:6rem;">Tamaño (pt)</th><th style="width:7rem;">Grosor</th><th style="width:7rem;">Estilo</th></tr></thead>
+                <thead class="table-light"><tr class="small"><th>Etiqueta (color / tipo)</th><th style="width:6rem;">Color</th><th style="width:6rem;">Tamaño (pt)</th><th style="width:7rem;">Grosor</th><th style="width:7rem;">Estilo</th><th style="width:9rem;">Transformación</th></tr></thead>
                 <tbody class="small">
                 <?php
                 $hgBtc = (string) ($hg['body_text_color'] ?? '#333333');
@@ -244,6 +267,7 @@ $labelsShort = [
                     $fsHg = $hg['label_' . $hfid . '_font_size_pt'] ?? $hg['font_size_pt'] ?? 9.5;
                     $fwHg = (string) ($hg['label_' . $hfid . '_font_weight'] ?? $hg['font_weight'] ?? 'normal');
                     $fstHg = (string) ($hg['label_' . $hfid . '_font_style'] ?? $hg['font_style'] ?? 'normal');
+                    $ttHg = (string) ($hg['label_' . $hfid . '_text_transform'] ?? $hg['text_transform'] ?? 'none');
                     ?>
                     <tr>
                         <td><?= esc($hgFieldUi[$hfid] ?? $hfid) ?></td>
@@ -251,6 +275,7 @@ $labelsShort = [
                         <td><input type="number" class="form-control form-control-sm" id="hg_hdr_<?= esc($hfid, 'attr') ?>_fs" min="7" max="20" step="0.5" value="<?= esc((string) $fsHg, 'attr') ?>"></td>
                         <td><select class="form-select form-select-sm" id="hg_hdr_<?= esc($hfid, 'attr') ?>_fw"><?php foreach (['normal', 'bold', '400', '500', '600', '700', '800'] as $w): ?><option value="<?= esc($w, 'attr') ?>" <?= $fwHg === $w ? 'selected' : '' ?>><?= esc($w) ?></option><?php endforeach; ?></select></td>
                         <td><select class="form-select form-select-sm" id="hg_hdr_<?= esc($hfid, 'attr') ?>_fst"><?php foreach (['normal', 'italic', 'oblique'] as $st): ?><option value="<?= esc($st, 'attr') ?>" <?= $fstHg === $st ? 'selected' : '' ?>><?= esc(ucfirst($st)) ?></option><?php endforeach; ?></select></td>
+                        <td><select class="form-select form-select-sm" id="hg_hdr_<?= esc($hfid, 'attr') ?>_tt"><?php foreach (['none' => 'Normal', 'uppercase' => 'MAYÚSCULAS', 'lowercase' => 'minúsculas', 'capitalize' => 'Tipo título'] as $k => $v): ?><option value="<?= esc($k, 'attr') ?>" <?= $ttHg === $k ? 'selected' : '' ?>><?= esc($v) ?></option><?php endforeach; ?></select></td>
                     </tr>
                 <?php endforeach; ?>
                     <tr>
@@ -260,16 +285,20 @@ $labelsShort = [
                         $fsQr = $hg['label_qr_hint_font_size_pt'] ?? $hg['font_size_pt'] ?? 9.5;
                         $fwQr = (string) ($hg['label_qr_hint_font_weight'] ?? $hg['font_weight'] ?? 'normal');
                         $fstQr = (string) ($hg['label_qr_hint_font_style'] ?? $hg['font_style'] ?? 'normal');
+                        $ttQr = (string) ($hg['label_qr_hint_text_transform'] ?? $hg['text_transform'] ?? 'none');
                         ?>
                         <td><input type="color" class="form-control form-control-color" id="hg_qr_hint_color" value="<?= esc($cQr, 'attr') ?>"></td>
                         <td><input type="number" class="form-control form-control-sm" id="hg_qr_hint_fs" min="7" max="20" step="0.5" value="<?= esc((string) $fsQr, 'attr') ?>"></td>
                         <td><select class="form-select form-select-sm" id="hg_qr_hint_fw"><?php foreach (['normal', 'bold', '400', '500', '600', '700', '800'] as $w): ?><option value="<?= esc($w, 'attr') ?>" <?= $fwQr === $w ? 'selected' : '' ?>><?= esc($w) ?></option><?php endforeach; ?></select></td>
                         <td><select class="form-select form-select-sm" id="hg_qr_hint_fst"><?php foreach (['normal', 'italic', 'oblique'] as $st): ?><option value="<?= esc($st, 'attr') ?>" <?= $fstQr === $st ? 'selected' : '' ?>><?= esc(ucfirst($st)) ?></option><?php endforeach; ?></select></td>
+                        <td><select class="form-select form-select-sm" id="hg_qr_hint_tt"><?php foreach (['none' => 'Normal', 'uppercase' => 'MAYÚSCULAS', 'lowercase' => 'minúsculas', 'capitalize' => 'Tipo título'] as $k => $v): ?><option value="<?= esc($k, 'attr') ?>" <?= $ttQr === $k ? 'selected' : '' ?>><?= esc($v) ?></option><?php endforeach; ?></select></td>
                     </tr>
                 </tbody>
             </table>
         </div>
-        <hr class="my-3">
+        </div>
+        <hr class="my-3 pdf-subpanel-divider" data-config-subpanel="patient_doctor">
+        <div class="pdf-subpanel" data-config-subpanel="patient_doctor">
         <h6 class="text-secondary">Paciente y médico</h6>
         <div class="row g-2 mb-2">
             <div class="col-6 col-md-2"><label class="form-label small" for="pd_body_bg">Fondo celdas</label><input type="color" class="form-control form-control-color" id="pd_body_bg" value="<?= esc((string) ($pd['body_bg_color'] ?? '#F8F9FA'), 'attr') ?>"></div>
@@ -286,10 +315,16 @@ $labelsShort = [
         </div>
         <div class="table-responsive mb-3">
             <table class="table table-sm table-bordered align-middle mb-0">
-                <thead class="table-light"><tr class="small"><th>Campo</th><th>Etiqueta en PDF</th><th class="text-center" style="width:6rem;">Mostrar</th><th style="min-width:9rem;">Etiqueta vs valor</th><th style="width:8.5rem;">Entre etiqueta y resultado (px)</th><th style="width:7.5rem;">Arriba (px)</th><th style="width:7.5rem;">Abajo (px)</th></tr></thead>
+                <thead class="table-light"><tr class="small"><th>Campo</th><th>Etiqueta en PDF</th><th class="text-center" style="width:6rem;">Mostrar</th><th style="min-width:9rem;">Etiqueta vs valor</th><th style="width:6rem;">Color</th><th style="width:6rem;">Tamaño (pt)</th><th style="width:7rem;">Grosor</th><th style="width:7rem;">Estilo</th><th style="width:9rem;">Transformación</th><th style="width:8.5rem;">Entre etiqueta y resultado (px)</th><th style="width:7.5rem;">Arriba (px)</th><th style="width:7.5rem;">Abajo (px)</th></tr></thead>
                 <tbody class="small">
                 <?php foreach (\App\Services\ReportPdfLayoutService::PATIENT_DOCTOR_GRID_LABEL_DEFAULTS as $fid => $defLbl):
                     $lab = (string) ($pd['label_' . $fid] ?? $defLbl);
+                    $pdBtc = (string) ($pd['body_text_color'] ?? '#333333');
+                    $cPd = (string) ($pd['label_' . $fid . '_text_color'] ?? $pdBtc);
+                    $fsPd = $pd['label_' . $fid . '_font_size_pt'] ?? $pd['font_size_pt'] ?? 9.5;
+                    $fwPd = (string) ($pd['label_' . $fid . '_font_weight'] ?? $pd['font_weight'] ?? 'normal');
+                    $fstPd = (string) ($pd['label_' . $fid . '_font_style'] ?? $pd['font_style'] ?? 'normal');
+                    $ttPd = (string) ($pd['label_' . $fid . '_text_transform'] ?? $pd['text_transform'] ?? 'none');
                     ?>
                     <tr>
                         <td><?= esc($pdFieldUi[$fid] ?? $fid) ?></td>
@@ -302,6 +337,11 @@ $labelsShort = [
                                 <option value="inline" <?= $m === 'inline' ? 'selected' : '' ?>>Misma línea</option>
                             </select>
                         </td>
+                        <td><input type="color" class="form-control form-control-color" id="pd_lbl_<?= esc($fid, 'attr') ?>_color" value="<?= esc($cPd, 'attr') ?>"></td>
+                        <td><input type="number" class="form-control form-control-sm" id="pd_lbl_<?= esc($fid, 'attr') ?>_fs" min="7" max="20" step="0.5" value="<?= esc((string) $fsPd, 'attr') ?>"></td>
+                        <td><select class="form-select form-select-sm" id="pd_lbl_<?= esc($fid, 'attr') ?>_fw"><?php foreach (['normal', 'bold', '400', '500', '600', '700', '800'] as $w): ?><option value="<?= esc($w, 'attr') ?>" <?= $fwPd === $w ? 'selected' : '' ?>><?= esc($w) ?></option><?php endforeach; ?></select></td>
+                        <td><select class="form-select form-select-sm" id="pd_lbl_<?= esc($fid, 'attr') ?>_fst"><?php foreach (['normal', 'italic', 'oblique'] as $st): ?><option value="<?= esc($st, 'attr') ?>" <?= $fstPd === $st ? 'selected' : '' ?>><?= esc(ucfirst($st)) ?></option><?php endforeach; ?></select></td>
+                        <td><select class="form-select form-select-sm" id="pd_lbl_<?= esc($fid, 'attr') ?>_tt"><?php foreach (['none' => 'Normal', 'uppercase' => 'MAYÚSCULAS', 'lowercase' => 'minúsculas', 'capitalize' => 'Tipo título'] as $k => $v): ?><option value="<?= esc($k, 'attr') ?>" <?= $ttPd === $k ? 'selected' : '' ?>><?= esc($v) ?></option><?php endforeach; ?></select></td>
                         <td><input type="number" class="form-control form-control-sm" id="pd_label_<?= esc($fid, 'attr') ?>_value_gap_px" min="0" max="40" step="1" value="<?= esc((string) (int) ($pd['label_' . $fid . '_value_gap_px'] ?? 0), 'attr') ?>"></td>
                         <td><input type="number" class="form-control form-control-sm" id="pd_label_<?= esc($fid, 'attr') ?>_space_above_px" min="0" max="40" step="1" value="<?= esc((string) (int) ($pd['label_' . $fid . '_space_above_px'] ?? 0), 'attr') ?>"></td>
                         <td><input type="number" class="form-control form-control-sm" id="pd_label_<?= esc($fid, 'attr') ?>_space_below_px" min="0" max="40" step="1" value="<?= esc((string) (int) ($pd['label_' . $fid . '_space_below_px'] ?? 0), 'attr') ?>"></td>
@@ -310,7 +350,9 @@ $labelsShort = [
                 </tbody>
             </table>
         </div>
-        <hr class="my-3">
+        </div>
+        <hr class="my-3 pdf-subpanel-divider" data-config-subpanel="footer">
+        <div class="pdf-subpanel" data-config-subpanel="footer">
         <h6 class="text-secondary">Pie de página</h6>
         <div class="row g-2 mb-2 align-items-end">
             <div class="col-12 col-md-4">
@@ -353,31 +395,35 @@ $labelsShort = [
         <p class="small text-muted mb-2">Tamaño, grosor y estilo por texto (si no coincide con la vista, guarde la plantilla y recargue el reporte). El PDF y viewreport usan estos valores en el HTML.</p>
         <div class="table-responsive mb-2">
             <table class="table table-sm table-bordered align-middle mb-0">
-                <thead class="table-light"><tr class="small"><th>Texto del pie</th><th style="width:6rem;">Tamaño (pt)</th><th style="width:7rem;">Grosor</th><th style="width:7rem;">Estilo</th></tr></thead>
+                <thead class="table-light"><tr class="small"><th>Texto del pie</th><th style="width:6rem;">Tamaño (pt)</th><th style="width:7rem;">Grosor</th><th style="width:7rem;">Estilo</th><th style="width:9rem;">Transformación</th></tr></thead>
                 <tbody class="small">
                     <tr>
                         <td>Nombre del laboratorio</td>
                         <td><input type="number" class="form-control form-control-sm" id="ft_fs_company" min="7" max="20" step="0.5" value="<?= esc((string) ($ft['footer_company_font_size_pt'] ?? $ft['font_size_pt']), 'attr') ?>"></td>
                         <td><select class="form-select form-select-sm" id="ft_fw_company"><?php foreach (['normal', 'bold', '400', '500', '600', '700', '800'] as $w): ?><option value="<?= esc($w, 'attr') ?>" <?= ($ft['footer_company_font_weight'] ?? $ft['font_weight']) === $w ? 'selected' : '' ?>><?= esc($w) ?></option><?php endforeach; ?></select></td>
                         <td><select class="form-select form-select-sm" id="ft_fst_company"><?php foreach (['normal', 'italic', 'oblique'] as $st): ?><option value="<?= esc($st, 'attr') ?>" <?= ($ft['footer_company_font_style'] ?? $ft['font_style']) === $st ? 'selected' : '' ?>><?= esc(ucfirst($st)) ?></option><?php endforeach; ?></select></td>
+                        <td><select class="form-select form-select-sm" id="ft_tt_company"><?php foreach (['none' => 'Normal', 'uppercase' => 'MAYÚSCULAS', 'lowercase' => 'minúsculas', 'capitalize' => 'Tipo título'] as $k => $v): ?><option value="<?= esc($k, 'attr') ?>" <?= ($ft['footer_company_text_transform'] ?? $ft['text_transform']) === $k ? 'selected' : '' ?>><?= esc($v) ?></option><?php endforeach; ?></select></td>
                     </tr>
                     <tr>
                         <td>Texto antes de la fecha</td>
                         <td><input type="number" class="form-control form-control-sm" id="ft_fs_label_gen" min="7" max="20" step="0.5" value="<?= esc((string) ($ft['label_footer_generated_font_size_pt'] ?? $ft['font_size_pt']), 'attr') ?>"></td>
                         <td><select class="form-select form-select-sm" id="ft_fw_label_gen"><?php foreach (['normal', 'bold', '400', '500', '600', '700', '800'] as $w): ?><option value="<?= esc($w, 'attr') ?>" <?= ($ft['label_footer_generated_font_weight'] ?? $ft['font_weight']) === $w ? 'selected' : '' ?>><?= esc($w) ?></option><?php endforeach; ?></select></td>
                         <td><select class="form-select form-select-sm" id="ft_fst_label_gen"><?php foreach (['normal', 'italic', 'oblique'] as $st): ?><option value="<?= esc($st, 'attr') ?>" <?= ($ft['label_footer_generated_font_style'] ?? $ft['font_style']) === $st ? 'selected' : '' ?>><?= esc(ucfirst($st)) ?></option><?php endforeach; ?></select></td>
+                        <td><select class="form-select form-select-sm" id="ft_tt_label_gen"><?php foreach (['none' => 'Normal', 'uppercase' => 'MAYÚSCULAS', 'lowercase' => 'minúsculas', 'capitalize' => 'Tipo título'] as $k => $v): ?><option value="<?= esc($k, 'attr') ?>" <?= ($ft['label_footer_generated_text_transform'] ?? $ft['text_transform']) === $k ? 'selected' : '' ?>><?= esc($v) ?></option><?php endforeach; ?></select></td>
                     </tr>
                     <tr>
                         <td>Fecha y hora generadas</td>
                         <td><input type="number" class="form-control form-control-sm" id="ft_fs_datetime" min="7" max="20" step="0.5" value="<?= esc((string) ($ft['label_footer_datetime_font_size_pt'] ?? $ft['font_size_pt']), 'attr') ?>"></td>
                         <td><select class="form-select form-select-sm" id="ft_fw_datetime"><?php foreach (['normal', 'bold', '400', '500', '600', '700', '800'] as $w): ?><option value="<?= esc($w, 'attr') ?>" <?= ($ft['label_footer_datetime_font_weight'] ?? $ft['font_weight']) === $w ? 'selected' : '' ?>><?= esc($w) ?></option><?php endforeach; ?></select></td>
                         <td><select class="form-select form-select-sm" id="ft_fst_datetime"><?php foreach (['normal', 'italic', 'oblique'] as $st): ?><option value="<?= esc($st, 'attr') ?>" <?= ($ft['label_footer_datetime_font_style'] ?? $ft['font_style']) === $st ? 'selected' : '' ?>><?= esc(ucfirst($st)) ?></option><?php endforeach; ?></select></td>
+                        <td><select class="form-select form-select-sm" id="ft_tt_datetime"><?php foreach (['none' => 'Normal', 'uppercase' => 'MAYÚSCULAS', 'lowercase' => 'minúsculas', 'capitalize' => 'Tipo título'] as $k => $v): ?><option value="<?= esc($k, 'attr') ?>" <?= ($ft['label_footer_datetime_text_transform'] ?? $ft['text_transform']) === $k ? 'selected' : '' ?>><?= esc($v) ?></option><?php endforeach; ?></select></td>
                     </tr>
                     <tr>
                         <td>Política / texto legal</td>
                         <td><input type="number" class="form-control form-control-sm" id="ft_fs_policy" min="7" max="20" step="0.5" value="<?= esc((string) ($ft['footer_policy_font_size_pt'] ?? $ft['font_size_pt']), 'attr') ?>"></td>
                         <td><select class="form-select form-select-sm" id="ft_fw_policy"><?php foreach (['normal', 'bold', '400', '500', '600', '700', '800'] as $w): ?><option value="<?= esc($w, 'attr') ?>" <?= ($ft['footer_policy_font_weight'] ?? $ft['font_weight']) === $w ? 'selected' : '' ?>><?= esc($w) ?></option><?php endforeach; ?></select></td>
                         <td><select class="form-select form-select-sm" id="ft_fst_policy"><?php foreach (['normal', 'italic', 'oblique'] as $st): ?><option value="<?= esc($st, 'attr') ?>" <?= ($ft['footer_policy_font_style'] ?? $ft['font_style']) === $st ? 'selected' : '' ?>><?= esc(ucfirst($st)) ?></option><?php endforeach; ?></select></td>
+                        <td><select class="form-select form-select-sm" id="ft_tt_policy"><?php foreach (['none' => 'Normal', 'uppercase' => 'MAYÚSCULAS', 'lowercase' => 'minúsculas', 'capitalize' => 'Tipo título'] as $k => $v): ?><option value="<?= esc($k, 'attr') ?>" <?= ($ft['footer_policy_text_transform'] ?? $ft['text_transform']) === $k ? 'selected' : '' ?>><?= esc($v) ?></option><?php endforeach; ?></select></td>
                     </tr>
                 </tbody>
             </table>
@@ -417,10 +463,11 @@ $labelsShort = [
                 </select>
             </div>
         </div>
+        </div>
     </div>
 </div>
 
-<div class="card shadow-sm mb-4">
+<div class="card shadow-sm mb-4 pdf-config-panel" data-config-panels="results">
     <div class="card-header bg-info-subtle border">
         <h5 class="mb-0">Estilo global de Tablas de resultados por prueba (PDF / impresión)</h5>
     </div>
@@ -455,11 +502,57 @@ $labelsShort = [
             <div class="col-6 col-md-2"><label class="form-label small" for="rs_font_style">Estilo</label><select class="form-select" id="rs_font_style"><?php foreach (['normal', 'italic', 'oblique'] as $st): ?><option value="<?= esc($st, 'attr') ?>" <?= $rs['font_style'] === $st ? 'selected' : '' ?>><?= esc(ucfirst($st)) ?></option><?php endforeach; ?></select></div>
             <div class="col-6 col-md-3"><label class="form-label small" for="rs_text_transform">Transformación</label><select class="form-select" id="rs_text_transform"><?php foreach (['none' => 'Normal', 'uppercase' => 'MAYÚSCULAS', 'lowercase' => 'minúsculas', 'capitalize' => 'Tipo Título'] as $k => $v): ?><option value="<?= esc($k, 'attr') ?>" <?= $rs['text_transform'] === $k ? 'selected' : '' ?>><?= esc($v) ?></option><?php endforeach; ?></select></div>
             <div class="col-6 col-md-2"><label class="form-label small" for="rs_line_height">Interlineado</label><input type="number" class="form-control" id="rs_line_height" min="1" max="3" step="0.05" value="<?= esc((string) $rs['line_height'], 'attr') ?>"></div>
+            <div class="col-12"><hr class="my-1"></div>
+            <div class="col-12"><div class="small text-muted fw-semibold">Matriz de valores referenciales (tabla poblacional)</div></div>
+            <div class="col-6 col-md-3"><label class="form-label small" for="rs_matrix_align">Alineación horizontal</label><select class="form-select" id="rs_matrix_align"><?php foreach (['left' => 'Izquierda', 'center' => 'Centro', 'right' => 'Derecha', 'justify' => 'Justificado'] as $k => $v): ?><option value="<?= esc($k, 'attr') ?>" <?= ($rs['matrix_text_align'] ?? 'center') === $k ? 'selected' : '' ?>><?= esc($v) ?></option><?php endforeach; ?></select></div>
+            <div class="col-6 col-md-3"><label class="form-label small" for="rs_matrix_valign">Alineación vertical</label><select class="form-select" id="rs_matrix_valign"><?php foreach (['top' => 'Arriba', 'middle' => 'Centro', 'bottom' => 'Abajo'] as $k => $v): ?><option value="<?= esc($k, 'attr') ?>" <?= ($rs['matrix_vertical_align'] ?? 'middle') === $k ? 'selected' : '' ?>><?= esc($v) ?></option><?php endforeach; ?></select></div>
+            <div class="col-6 col-md-3"><label class="form-label small" for="rs_matrix_text_color">Color texto matriz</label><input type="color" class="form-control form-control-color" id="rs_matrix_text_color" value="<?= esc((string) ($rs['matrix_text_color'] ?? '#333333'), 'attr') ?>"></div>
+            <div class="col-6 col-md-2"><label class="form-label small" for="rs_matrix_font_size">Tamaño matriz</label><input type="number" class="form-control" id="rs_matrix_font_size" min="7" max="20" step="0.5" value="<?= esc((string) ($rs['matrix_font_size_pt'] ?? 8), 'attr') ?>"></div>
+            <div class="col-6 col-md-2"><label class="form-label small" for="rs_matrix_font_weight">Grosor matriz</label><select class="form-select" id="rs_matrix_font_weight"><?php foreach (['normal', 'bold', '400', '500', '600', '700', '800'] as $w): ?><option value="<?= esc($w, 'attr') ?>" <?= (($rs['matrix_font_weight'] ?? 'normal') === $w) ? 'selected' : '' ?>><?= esc($w) ?></option><?php endforeach; ?></select></div>
+            <div class="col-6 col-md-2"><label class="form-label small" for="rs_matrix_font_style">Estilo matriz</label><select class="form-select" id="rs_matrix_font_style"><?php foreach (['normal', 'italic', 'oblique'] as $st): ?><option value="<?= esc($st, 'attr') ?>" <?= (($rs['matrix_font_style'] ?? 'normal') === $st) ? 'selected' : '' ?>><?= esc(ucfirst($st)) ?></option><?php endforeach; ?></select></div>
+            <div class="col-6 col-md-3"><label class="form-label small" for="rs_matrix_text_transform">Transformación matriz</label><select class="form-select" id="rs_matrix_text_transform"><?php foreach (['none' => 'Normal', 'uppercase' => 'MAYÚSCULAS', 'lowercase' => 'minúsculas', 'capitalize' => 'Tipo Título'] as $k => $v): ?><option value="<?= esc($k, 'attr') ?>" <?= (($rs['matrix_text_transform'] ?? 'none') === $k) ? 'selected' : '' ?>><?= esc($v) ?></option><?php endforeach; ?></select></div>
+            <div class="col-12"><div class="small text-muted fw-semibold mt-1">Encabezados de matriz</div></div>
+            <div class="col-6 col-md-3"><label class="form-label small" for="rs_matrix_header_text_color">Color texto header</label><input type="color" class="form-control form-control-color" id="rs_matrix_header_text_color" value="<?= esc((string) ($rs['matrix_header_text_color'] ?? '#1F2937'), 'attr') ?>"></div>
+            <div class="col-12 col-md-3"><label class="form-label small" for="rs_matrix_header_font_family">Fuente header</label><select class="form-select" id="rs_matrix_header_font_family"><?php foreach (['DejaVu Sans', 'Helvetica', 'Arial', 'Times New Roman', 'Courier New'] as $ff): ?><option value="<?= esc($ff, 'attr') ?>" <?= (($rs['matrix_header_font_family'] ?? 'DejaVu Sans') === $ff) ? 'selected' : '' ?>><?= esc($ff) ?></option><?php endforeach; ?></select></div>
+            <div class="col-6 col-md-2"><label class="form-label small" for="rs_matrix_header_font_size">Tamaño header</label><input type="number" class="form-control" id="rs_matrix_header_font_size" min="7" max="20" step="0.5" value="<?= esc((string) ($rs['matrix_header_font_size_pt'] ?? 8), 'attr') ?>"></div>
+            <div class="col-6 col-md-2"><label class="form-label small" for="rs_matrix_header_font_weight">Grosor header</label><select class="form-select" id="rs_matrix_header_font_weight"><?php foreach (['normal', 'bold', '400', '500', '600', '700', '800'] as $w): ?><option value="<?= esc($w, 'attr') ?>" <?= (($rs['matrix_header_font_weight'] ?? 'bold') === $w) ? 'selected' : '' ?>><?= esc($w) ?></option><?php endforeach; ?></select></div>
+            <div class="col-6 col-md-2"><label class="form-label small" for="rs_matrix_header_font_style">Estilo header</label><select class="form-select" id="rs_matrix_header_font_style"><?php foreach (['normal', 'italic', 'oblique'] as $st): ?><option value="<?= esc($st, 'attr') ?>" <?= (($rs['matrix_header_font_style'] ?? 'normal') === $st) ? 'selected' : '' ?>><?= esc(ucfirst($st)) ?></option><?php endforeach; ?></select></div>
+            <div class="col-6 col-md-3"><label class="form-label small" for="rs_matrix_header_text_transform">Transformación header</label><select class="form-select" id="rs_matrix_header_text_transform"><?php foreach (['none' => 'Normal', 'uppercase' => 'MAYÚSCULAS', 'lowercase' => 'minúsculas', 'capitalize' => 'Tipo Título'] as $k => $v): ?><option value="<?= esc($k, 'attr') ?>" <?= (($rs['matrix_header_text_transform'] ?? 'uppercase') === $k) ? 'selected' : '' ?>><?= esc($v) ?></option><?php endforeach; ?></select></div>
+            <div class="col-12"><div class="small text-muted fw-semibold mt-1">Alineación por columna (header / contenido)</div></div>
+            <div class="col-12">
+                <div class="table-responsive">
+                    <table class="table table-sm table-bordered align-middle mb-0">
+                        <thead class="table-light"><tr><th>Columna</th><th>Header</th><th>Contenido</th></tr></thead>
+                        <tbody class="small">
+                            <tr>
+                                <td>Grupo poblacional</td>
+                                <td><select class="form-select form-select-sm" id="rs_matrix_hdr_population_align"><?php foreach (['left' => 'Izquierda', 'center' => 'Centro', 'right' => 'Derecha', 'justify' => 'Justificado'] as $k => $v): ?><option value="<?= esc($k, 'attr') ?>" <?= (($rs['matrix_hdr_population_align'] ?? 'left') === $k) ? 'selected' : '' ?>><?= esc($v) ?></option><?php endforeach; ?></select></td>
+                                <td><select class="form-select form-select-sm" id="rs_matrix_col_population_align"><?php foreach (['left' => 'Izquierda', 'center' => 'Centro', 'right' => 'Derecha', 'justify' => 'Justificado'] as $k => $v): ?><option value="<?= esc($k, 'attr') ?>" <?= (($rs['matrix_col_population_align'] ?? 'left') === $k) ? 'selected' : '' ?>><?= esc($v) ?></option><?php endforeach; ?></select></td>
+                            </tr>
+                            <tr>
+                                <td>Parámetro</td>
+                                <td><select class="form-select form-select-sm" id="rs_matrix_hdr_parameter_align"><?php foreach (['left' => 'Izquierda', 'center' => 'Centro', 'right' => 'Derecha', 'justify' => 'Justificado'] as $k => $v): ?><option value="<?= esc($k, 'attr') ?>" <?= (($rs['matrix_hdr_parameter_align'] ?? 'left') === $k) ? 'selected' : '' ?>><?= esc($v) ?></option><?php endforeach; ?></select></td>
+                                <td><select class="form-select form-select-sm" id="rs_matrix_col_parameter_align"><?php foreach (['left' => 'Izquierda', 'center' => 'Centro', 'right' => 'Derecha', 'justify' => 'Justificado'] as $k => $v): ?><option value="<?= esc($k, 'attr') ?>" <?= (($rs['matrix_col_parameter_align'] ?? 'left') === $k) ? 'selected' : '' ?>><?= esc($v) ?></option><?php endforeach; ?></select></td>
+                            </tr>
+                            <tr>
+                                <td>Sexo</td>
+                                <td><select class="form-select form-select-sm" id="rs_matrix_hdr_sex_align"><?php foreach (['left' => 'Izquierda', 'center' => 'Centro', 'right' => 'Derecha', 'justify' => 'Justificado'] as $k => $v): ?><option value="<?= esc($k, 'attr') ?>" <?= (($rs['matrix_hdr_sex_align'] ?? 'center') === $k) ? 'selected' : '' ?>><?= esc($v) ?></option><?php endforeach; ?></select></td>
+                                <td><select class="form-select form-select-sm" id="rs_matrix_col_sex_align"><?php foreach (['left' => 'Izquierda', 'center' => 'Centro', 'right' => 'Derecha', 'justify' => 'Justificado'] as $k => $v): ?><option value="<?= esc($k, 'attr') ?>" <?= (($rs['matrix_col_sex_align'] ?? 'center') === $k) ? 'selected' : '' ?>><?= esc($v) ?></option><?php endforeach; ?></select></td>
+                            </tr>
+                            <tr>
+                                <td>Valor de referencia</td>
+                                <td><select class="form-select form-select-sm" id="rs_matrix_hdr_reference_align"><?php foreach (['left' => 'Izquierda', 'center' => 'Centro', 'right' => 'Derecha', 'justify' => 'Justificado'] as $k => $v): ?><option value="<?= esc($k, 'attr') ?>" <?= (($rs['matrix_hdr_reference_align'] ?? 'center') === $k) ? 'selected' : '' ?>><?= esc($v) ?></option><?php endforeach; ?></select></td>
+                                <td><select class="form-select form-select-sm" id="rs_matrix_col_reference_align"><?php foreach (['left' => 'Izquierda', 'center' => 'Centro', 'right' => 'Derecha', 'justify' => 'Justificado'] as $k => $v): ?><option value="<?= esc($k, 'attr') ?>" <?= (($rs['matrix_col_reference_align'] ?? 'center') === $k) ? 'selected' : '' ?>><?= esc($v) ?></option><?php endforeach; ?></select></td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
         </div>
     </div>
 </div>
 
-<div class="card shadow-sm mb-4">
+<div class="card shadow-sm mb-4 pdf-config-panel" data-config-panels="general">
     <div class="card-header bg-secondary text-white">
         <h5 class="mb-0">Bloques del documento (orden vertical)</h5>
     </div>
@@ -486,7 +579,7 @@ $labelsShort = [
     </div>
 </div>
 
-<div class="card shadow-sm mb-4">
+<div class="card shadow-sm mb-4 pdf-config-panel" data-config-panels="notes">
     <div class="card-header bg-warning-subtle border">
         <h5 class="mb-0">Bloque «Notas del resultado» — estilo en PDF / impresión</h5>
     </div>
@@ -525,7 +618,7 @@ $labelsShort = [
     </div>
 </div>
 
-<div class="card shadow-sm mb-4 border border-warning border-opacity-50">
+<div class="card shadow-sm mb-4 border border-warning border-opacity-50 pdf-config-panel" data-config-panels="lab_firmas">
     <div class="card-header bg-warning-subtle border-bottom">
         <h5 class="mb-1">Bloque «Validación y aprobación (firmas)» — estilo y textos en PDF / impresión</h5>
         <p class="small text-muted mb-0">Colores, tipografía, fondo transparente opcional, bordes entre columnas y etiquetas del cuadro de firmas. Active o desactive el bloque en la lista de arriba.</p>
@@ -661,7 +754,7 @@ $labelsShort = [
     </div>
 </div>
 
-<div class="card shadow-sm mb-4">
+<div class="card shadow-sm mb-4 pdf-config-panel" data-config-panels="general">
     <div class="card-header bg-dark text-white" style="color:#fff !important;">
         <h5 class="mb-0" style="color:#fff !important;">Márgenes de la hoja (mm)</h5>
     </div>
@@ -688,7 +781,7 @@ $labelsShort = [
     </div>
 </div>
 
-<div class="card shadow-sm mb-4">
+<div class="card shadow-sm mb-4 pdf-config-panel" data-config-panels="general">
     <div class="card-header bg-white border">
         <h5 class="mb-0">Marca de agua (centro de la hoja)</h5>
     </div>
@@ -722,7 +815,7 @@ $labelsShort = [
     </div>
 </div>
 
-<div class="card shadow-sm mb-4" id="pdf-editor-instances">
+<div class="card shadow-sm mb-4 pdf-config-panel" data-config-panels="general,header,patient_doctor,lab_firmas,footer" id="pdf-editor-instances">
     <div class="card-header bg-light border">
         <h5 class="mb-0">Elementos del PDF</h5>
     </div>
@@ -740,7 +833,7 @@ $labelsShort = [
                 ]),
             ]) ?>
         </template>
-        <div class="row g-3 mb-4">
+        <div class="row g-3 mb-4 pdf-general-only-controls">
             <div class="col-12 col-lg-6">
                 <label class="form-label small mb-1" for="add_element_type">Añadir elemento al diseño</label>
                 <div class="d-flex flex-wrap gap-2 align-items-center">
@@ -782,7 +875,7 @@ $labelsShort = [
             </div>
         </div>
 
-        <div class="card border-info mb-4">
+        <div class="card border-info mb-4 pdf-section-editor" data-config-section="header">
             <div class="card-header bg-info text-white d-flex flex-wrap align-items-center justify-content-between gap-2">
                 <span class="fw-semibold">Encabezado</span>
                 <div class="d-flex align-items-center gap-2">
@@ -822,7 +915,7 @@ $labelsShort = [
             </div>
         </div>
 
-        <div class="card border-primary mb-4">
+        <div class="card border-primary mb-4 pdf-section-editor" data-config-section="patient_doctor">
             <div class="card-header bg-primary text-white d-flex flex-wrap align-items-center justify-content-between gap-2">
                 <span class="fw-semibold">Paciente y médico</span>
                 <div class="d-flex align-items-center gap-2">
@@ -862,7 +955,7 @@ $labelsShort = [
             </div>
         </div>
 
-        <div class="card border-warning mb-4">
+        <div class="card border-warning mb-4 pdf-section-editor" data-config-section="lab_firmas">
             <div class="card-header bg-warning text-dark d-flex flex-wrap align-items-center justify-content-between gap-2">
                 <span class="fw-semibold">Validación y aprobación (firmas)</span>
                 <div class="d-flex align-items-center gap-2">
@@ -903,7 +996,7 @@ $labelsShort = [
             </div>
         </div>
 
-        <div class="card border-secondary mb-0" style="border-color: #6f42c1 !important;">
+        <div class="card border-secondary mb-0 pdf-section-editor" data-config-section="footer" style="border-color: #6f42c1 !important;">
             <div class="card-header text-white d-flex flex-wrap align-items-center justify-content-between gap-2" style="background-color: #6f42c1;">
                 <span class="fw-semibold">Pie de página</span>
                 <div class="d-flex align-items-center gap-2">
@@ -966,6 +1059,7 @@ $labelsShort = [
 .pdf-preview-grid-row { display: flex; gap: 8px; border-bottom: 1px solid #dee2e6; padding-bottom: 8px; }
 .pdf-preview-grid-cell { flex: 1; min-width: 0; font-size: 0.75rem; }
 .pdf-instance-sortable { min-height: 2.5rem; }
+.pdf-config-panel-hidden { display: none !important; }
 .pdf-margins-card .card-body {
     background: #212529;
     color: #fff;
@@ -1139,6 +1233,39 @@ $labelsShort = [
 </style>
 <script>
 document.addEventListener('DOMContentLoaded', function() {
+    function csvHasToken(csv, token) {
+        if (!csv) return false;
+        return String(csv).split(',').map(function(s) { return s.trim(); }).indexOf(token) >= 0;
+    }
+    function applyConfigTab(tabKey) {
+        document.querySelectorAll('#pdf_config_tabs .nav-link[data-config-tab]').forEach(function(btn) {
+            btn.classList.toggle('active', String(btn.getAttribute('data-config-tab') || '') === tabKey);
+        });
+        document.querySelectorAll('.pdf-config-panel[data-config-panels]').forEach(function(panel) {
+            var groups = String(panel.getAttribute('data-config-panels') || '');
+            panel.classList.toggle('pdf-config-panel-hidden', !csvHasToken(groups, tabKey));
+        });
+        document.querySelectorAll('.pdf-subpanel[data-config-subpanel]').forEach(function(panel) {
+            panel.classList.toggle('pdf-config-panel-hidden', String(panel.getAttribute('data-config-subpanel') || '') !== tabKey);
+        });
+        document.querySelectorAll('.pdf-subpanel-divider[data-config-subpanel]').forEach(function(hr) {
+            hr.classList.toggle('pdf-config-panel-hidden', String(hr.getAttribute('data-config-subpanel') || '') !== tabKey);
+        });
+        document.querySelectorAll('.pdf-section-editor[data-config-section]').forEach(function(panel) {
+            panel.classList.toggle('pdf-config-panel-hidden', String(panel.getAttribute('data-config-section') || '') !== tabKey);
+        });
+        document.querySelectorAll('.pdf-general-only-controls').forEach(function(panel) {
+            panel.classList.toggle('pdf-config-panel-hidden', tabKey !== 'general');
+        });
+    }
+    document.querySelectorAll('#pdf_config_tabs .nav-link[data-config-tab]').forEach(function(btn) {
+        btn.addEventListener('click', function() {
+            var key = String(btn.getAttribute('data-config-tab') || 'general');
+            applyConfigTab(key);
+        });
+    });
+    applyConfigTab('general');
+
     var blockList = document.getElementById('pdf-block-list');
     var headerList = document.getElementById('instance-list-header');
     var patientList = document.getElementById('instance-list-patient');
@@ -2273,7 +2400,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 var styleWrap = textStyleToInlineCss(readInstanceTextStyle(li));
                 var rawLine;
                 var headerLikeTypes = ['logo', 'lab_company', 'lab_address', 'paciente_institucion', 'lab_phone', 'lab_email', 'lab_website', 'pdf_pages_total', 'qr'];
-                if (sectionKey === 'patient_doctor' && ['paciente_nombre','paciente_genero','paciente_edad','paciente_telefono','medico','fecha_recepcion','fecha_reporte','numero_orden'].indexOf(type) >= 0 && pdHeader) {
+                if (sectionKey === 'patient_doctor' && ['paciente_nombre','paciente_genero','paciente_edad','paciente_telefono','diagnostico_presuntivo','medico','fecha_recepcion','fecha_reporte','numero_orden'].indexOf(type) >= 0 && pdHeader) {
                     var showLpd = !!pdHeader['show_label_' + type];
                     var lblPd = String(pdHeader['label_' + type] != null ? pdHeader['label_' + type] : '').trim();
                     var inlinePd = (pdHeader['label_' + type + '_line_mode'] === 'inline');
@@ -2529,7 +2656,7 @@ document.addEventListener('DOMContentLoaded', function() {
     function createInstanceRow(uid, elementType, colCount, enabled, column, columnSpan, sectionKey) {
         if (columnSpan == null) columnSpan = 1;
         var label = (window._elementLabels && window._elementLabels[elementType]) ? window._elementLabels[elementType] : elementType;
-        var pdTypes = ['paciente_nombre', 'paciente_genero', 'paciente_edad', 'paciente_telefono', 'medico', 'fecha_recepcion', 'fecha_reporte', 'numero_orden'];
+        var pdTypes = ['paciente_nombre', 'paciente_genero', 'paciente_edad', 'paciente_telefono', 'diagnostico_presuntivo', 'medico', 'fecha_recepcion', 'fecha_reporte', 'numero_orden'];
         var pdSpacingDefaults = { gap: 0, above: 0, below: 0 };
         if (sectionKey === 'patient_doctor' && pdTypes.indexOf(elementType) >= 0) {
             var pdHeader;
@@ -3179,11 +3306,16 @@ document.addEventListener('DOMContentLoaded', function() {
         var bg = pickHex('ch_bg_color', '#E9ECEF');
         var tx = pickHex('ch_text_color', '#212529');
         var pdGrid = readSectionGridWrap('pd', '#F8F9FA', '#333333', 9.5);
-        var pdDefs = { paciente_nombre: 'Paciente:', paciente_genero: 'Género:', paciente_edad: 'Edad:', paciente_telefono: 'Teléfono:', medico: 'Médico:', fecha_recepcion: 'Fecha de recepción:', fecha_reporte: 'Fecha de reporte:', numero_orden: 'No. Orden:' };
+        var pdDefs = { paciente_nombre: 'Paciente:', paciente_genero: 'Género:', paciente_edad: 'Edad:', paciente_telefono: 'Teléfono:', diagnostico_presuntivo: 'Diagnóstico presuntivo:', medico: 'Médico:', fecha_recepcion: 'Fecha de recepción:', fecha_reporte: 'Fecha de reporte:', numero_orden: 'No. Orden:' };
         Object.keys(pdDefs).forEach(function(fid) {
             pdGrid['label_' + fid] = pickLfText('pd_label_' + fid, pdDefs[fid]);
             pdGrid['show_label_' + fid] = pickChk('pd_show_label_' + fid, true);
             pdGrid['label_' + fid + '_line_mode'] = pickLineModeSelect('pd_label_' + fid + '_line_mode');
+            pdGrid['label_' + fid + '_text_color'] = pickHex('pd_lbl_' + fid + '_color', pdGrid.body_text_color);
+            pdGrid['label_' + fid + '_font_size_pt'] = pickNum('pd_lbl_' + fid + '_fs', 7, 20, pdGrid.font_size_pt);
+            pdGrid['label_' + fid + '_font_weight'] = pickAllowedDomId('pd_lbl_' + fid + '_fw', 'font_weights', pdGrid.font_weight);
+            pdGrid['label_' + fid + '_font_style'] = pickAllowedDomId('pd_lbl_' + fid + '_fst', 'font_styles', pdGrid.font_style);
+            pdGrid['label_' + fid + '_text_transform'] = pickAllowedDomId('pd_lbl_' + fid + '_tt', 'text_transforms', pdGrid.text_transform);
             pdGrid['label_' + fid + '_value_gap_px'] = pickNum('pd_label_' + fid + '_value_gap_px', 0, 40, 0);
             pdGrid['label_' + fid + '_space_above_px'] = pickNum('pd_label_' + fid + '_space_above_px', 0, 40, 0);
             pdGrid['label_' + fid + '_space_below_px'] = pickNum('pd_label_' + fid + '_space_below_px', 0, 40, 0);
@@ -3204,15 +3336,19 @@ document.addEventListener('DOMContentLoaded', function() {
             footer_company_font_size_pt: pickNum('ft_fs_company', 7, 20, ftBaseFs),
             footer_company_font_weight: pickAllowedDomId('ft_fw_company', 'font_weights', ftGrid.font_weight),
             footer_company_font_style: pickAllowedDomId('ft_fst_company', 'font_styles', ftGrid.font_style),
+            footer_company_text_transform: pickAllowedDomId('ft_tt_company', 'text_transforms', ftGrid.text_transform),
             label_footer_generated_font_size_pt: pickNum('ft_fs_label_gen', 7, 20, ftBaseFs),
             label_footer_generated_font_weight: pickAllowedDomId('ft_fw_label_gen', 'font_weights', ftGrid.font_weight),
             label_footer_generated_font_style: pickAllowedDomId('ft_fst_label_gen', 'font_styles', ftGrid.font_style),
+            label_footer_generated_text_transform: pickAllowedDomId('ft_tt_label_gen', 'text_transforms', ftGrid.text_transform),
             label_footer_datetime_font_size_pt: pickNum('ft_fs_datetime', 7, 20, ftBaseFs),
             label_footer_datetime_font_weight: pickAllowedDomId('ft_fw_datetime', 'font_weights', ftGrid.font_weight),
             label_footer_datetime_font_style: pickAllowedDomId('ft_fst_datetime', 'font_styles', ftGrid.font_style),
+            label_footer_datetime_text_transform: pickAllowedDomId('ft_tt_datetime', 'text_transforms', ftGrid.text_transform),
             footer_policy_font_size_pt: pickNum('ft_fs_policy', 7, 20, ftBaseFs),
             footer_policy_font_weight: pickAllowedDomId('ft_fw_policy', 'font_weights', ftGrid.font_weight),
-            footer_policy_font_style: pickAllowedDomId('ft_fst_policy', 'font_styles', ftGrid.font_style)
+            footer_policy_font_style: pickAllowedDomId('ft_fst_policy', 'font_styles', ftGrid.font_style),
+            footer_policy_text_transform: pickAllowedDomId('ft_tt_policy', 'text_transforms', ftGrid.text_transform)
         });
         var hgGrid = readSectionGridWrap('hg', '#FFFFFF', '#333333', 9.5);
         var hgBaseFs = pickNum('hg_font_size', 7, 20, 9.5);
@@ -3223,7 +3359,8 @@ document.addEventListener('DOMContentLoaded', function() {
             label_qr_hint_text_color: pickHex('hg_qr_hint_color', hgGrid.body_text_color),
             label_qr_hint_font_size_pt: pickNum('hg_qr_hint_fs', 7, 20, hgBaseFs),
             label_qr_hint_font_weight: pickAllowedDomId('hg_qr_hint_fw', 'font_weights', hgGrid.font_weight),
-            label_qr_hint_font_style: pickAllowedDomId('hg_qr_hint_fst', 'font_styles', hgGrid.font_style)
+            label_qr_hint_font_style: pickAllowedDomId('hg_qr_hint_fst', 'font_styles', hgGrid.font_style),
+            label_qr_hint_text_transform: pickAllowedDomId('hg_qr_hint_tt', 'text_transforms', hgGrid.text_transform)
         });
         (window._headerLabelFieldIds || []).forEach(function(fid) {
             var defT = (window._headerLabelDefaults && Object.prototype.hasOwnProperty.call(window._headerLabelDefaults, fid)) ? window._headerLabelDefaults[fid] : '';
@@ -3234,6 +3371,7 @@ document.addEventListener('DOMContentLoaded', function() {
             hgGrid['label_' + fid + '_font_size_pt'] = pickNum('hg_hdr_' + fid + '_fs', 7, 20, hgBaseFs);
             hgGrid['label_' + fid + '_font_weight'] = pickAllowedDomId('hg_hdr_' + fid + '_fw', 'font_weights', hgGrid.font_weight);
             hgGrid['label_' + fid + '_font_style'] = pickAllowedDomId('hg_hdr_' + fid + '_fst', 'font_styles', hgGrid.font_style);
+            hgGrid['label_' + fid + '_text_transform'] = pickAllowedDomId('hg_hdr_' + fid + '_tt', 'text_transforms', hgGrid.text_transform);
         });
         return {
             card_header: {
@@ -3328,7 +3466,28 @@ document.addEventListener('DOMContentLoaded', function() {
                 font_weight: pickAllowedDomId('rs_font_weight', 'font_weights', 'normal'),
                 font_style: pickAllowedDomId('rs_font_style', 'font_styles', 'normal'),
                 text_transform: pickAllowedDomId('rs_text_transform', 'text_transforms', 'none'),
-                line_height: pickNum('rs_line_height', 1, 3, 1.35)
+                line_height: pickNum('rs_line_height', 1, 3, 1.35),
+                matrix_text_align: pickAllowedDomId('rs_matrix_align', 'text_aligns', 'center'),
+                matrix_vertical_align: pickAllowedDomId('rs_matrix_valign', 'vertical_aligns', 'middle'),
+                matrix_text_color: pickHex('rs_matrix_text_color', '#333333'),
+                matrix_font_size_pt: pickNum('rs_matrix_font_size', 7, 20, 8),
+                matrix_font_weight: pickAllowedDomId('rs_matrix_font_weight', 'font_weights', 'normal'),
+                matrix_font_style: pickAllowedDomId('rs_matrix_font_style', 'font_styles', 'normal'),
+                matrix_text_transform: pickAllowedDomId('rs_matrix_text_transform', 'text_transforms', 'none'),
+                matrix_header_text_color: pickHex('rs_matrix_header_text_color', '#1F2937'),
+                matrix_header_font_family: pickAllowedDomId('rs_matrix_header_font_family', 'font_families', 'DejaVu Sans'),
+                matrix_header_font_size_pt: pickNum('rs_matrix_header_font_size', 7, 20, 8),
+                matrix_header_font_weight: pickAllowedDomId('rs_matrix_header_font_weight', 'font_weights', 'bold'),
+                matrix_header_font_style: pickAllowedDomId('rs_matrix_header_font_style', 'font_styles', 'normal'),
+                matrix_header_text_transform: pickAllowedDomId('rs_matrix_header_text_transform', 'text_transforms', 'uppercase'),
+                matrix_col_population_align: pickAllowedDomId('rs_matrix_col_population_align', 'text_aligns', 'left'),
+                matrix_col_parameter_align: pickAllowedDomId('rs_matrix_col_parameter_align', 'text_aligns', 'left'),
+                matrix_col_sex_align: pickAllowedDomId('rs_matrix_col_sex_align', 'text_aligns', 'center'),
+                matrix_col_reference_align: pickAllowedDomId('rs_matrix_col_reference_align', 'text_aligns', 'center'),
+                matrix_hdr_population_align: pickAllowedDomId('rs_matrix_hdr_population_align', 'text_aligns', 'left'),
+                matrix_hdr_parameter_align: pickAllowedDomId('rs_matrix_hdr_parameter_align', 'text_aligns', 'left'),
+                matrix_hdr_sex_align: pickAllowedDomId('rs_matrix_hdr_sex_align', 'text_aligns', 'center'),
+                matrix_hdr_reference_align: pickAllowedDomId('rs_matrix_hdr_reference_align', 'text_aligns', 'center')
             }
         };
     }
@@ -3340,6 +3499,8 @@ document.addEventListener('DOMContentLoaded', function() {
         var fst = pdfAllow('font_styles');
         var tt = pdfAllow('text_transforms');
         var sh = pdfAllow('text_shadows');
+        var ta = pdfAllow('text_aligns');
+        var va = pdfAllow('vertical_aligns');
         function pushIfBadHex(id, msg) {
             var el = document.getElementById(id);
             if (!el) return;
@@ -3438,11 +3599,11 @@ document.addEventListener('DOMContentLoaded', function() {
             var el = document.getElementById('hg_label_' + fid);
             if (el && String(el.value || '').length > 120) errs.push('Etiqueta demasiado larga en encabezado: ' + fid + '.');
         });
-        ['paciente_nombre', 'paciente_genero', 'paciente_edad', 'paciente_telefono', 'medico', 'fecha_recepcion', 'fecha_reporte', 'numero_orden'].forEach(function(fid) {
+        ['paciente_nombre', 'paciente_genero', 'paciente_edad', 'paciente_telefono', 'diagnostico_presuntivo', 'medico', 'fecha_recepcion', 'fecha_reporte', 'numero_orden'].forEach(function(fid) {
             var el = document.getElementById('pd_label_' + fid);
             if (el && String(el.value || '').length > 120) errs.push('Etiqueta demasiado larga en paciente/médico: ' + fid + '.');
         });
-        ['paciente_nombre', 'paciente_genero', 'paciente_edad', 'paciente_telefono', 'medico', 'fecha_recepcion', 'fecha_reporte', 'numero_orden'].forEach(function(fid) {
+        ['paciente_nombre', 'paciente_genero', 'paciente_edad', 'paciente_telefono', 'diagnostico_presuntivo', 'medico', 'fecha_recepcion', 'fecha_reporte', 'numero_orden'].forEach(function(fid) {
             pushIfBadNum('pd_label_' + fid + '_value_gap_px', 0, 40, 'Separación entre etiqueta y valor (px): entre 0 y 40.');
             pushIfBadNum('pd_label_' + fid + '_space_above_px', 0, 40, 'Espacio arriba (px): entre 0 y 40.');
             pushIfBadNum('pd_label_' + fid + '_space_below_px', 0, 40, 'Espacio abajo (px): entre 0 y 40.');
@@ -3475,6 +3636,31 @@ document.addEventListener('DOMContentLoaded', function() {
         pushIfBadNum('rs_line_height', 1, 3, 'Interlineado en tabla de resultados: entre 1 y 3.');
         pushIfBadNum('rs_segment_border_width', 0, 4, 'Grosor de borde de segmento: entre 0 y 4 px.');
         pushIfBadSelect('rs_segment_shadow', pdfAllow('segment_shadows'), 'Sombra de segmento no permitida.');
+        pushIfBadSelect('rs_matrix_align', ta, 'Alineación horizontal no permitida en matriz de referencia.');
+        pushIfBadSelect('rs_matrix_valign', va, 'Alineación vertical no permitida en matriz de referencia.');
+        pushIfBadHex('rs_matrix_text_color', 'Color inválido en matriz de referencia.');
+        pushIfBadNum('rs_matrix_font_size', 7, 20, 'Tamaño en matriz de referencia: entre 7 y 20 pt.');
+        pushIfBadSelect('rs_matrix_font_weight', fw, 'Grosor no permitido en matriz de referencia.');
+        pushIfBadSelect('rs_matrix_font_style', fst, 'Estilo no permitido en matriz de referencia.');
+        pushIfBadSelect('rs_matrix_text_transform', tt, 'Transformación no permitida en matriz de referencia.');
+        pushIfBadHex('rs_matrix_header_text_color', 'Color inválido en headers de matriz de referencia.');
+        pushIfBadSelect('rs_matrix_header_font_family', ff, 'Fuente no permitida en headers de matriz de referencia.');
+        pushIfBadNum('rs_matrix_header_font_size', 7, 20, 'Tamaño en headers de matriz de referencia: entre 7 y 20 pt.');
+        pushIfBadSelect('rs_matrix_header_font_weight', fw, 'Grosor no permitido en headers de matriz de referencia.');
+        pushIfBadSelect('rs_matrix_header_font_style', fst, 'Estilo no permitido en headers de matriz de referencia.');
+        pushIfBadSelect('rs_matrix_header_text_transform', tt, 'Transformación no permitida en headers de matriz de referencia.');
+        [
+            'rs_matrix_col_population_align',
+            'rs_matrix_col_parameter_align',
+            'rs_matrix_col_sex_align',
+            'rs_matrix_col_reference_align',
+            'rs_matrix_hdr_population_align',
+            'rs_matrix_hdr_parameter_align',
+            'rs_matrix_hdr_sex_align',
+            'rs_matrix_hdr_reference_align'
+        ].forEach(function(id) {
+            pushIfBadSelect(id, ta, 'Alineación no permitida en columnas de matriz de referencia (' + id + ').');
+        });
 
         function pushCtScopeErrors(scope, pfx, partLabel, itemLabel, errs) {
             if (!scope) return;
@@ -3595,7 +3781,7 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     function parseInstanceLi(li, section) {
-        var pdTypes = ['paciente_nombre', 'paciente_genero', 'paciente_edad', 'paciente_telefono', 'medico', 'fecha_recepcion', 'fecha_reporte', 'numero_orden'];
+        var pdTypes = ['paciente_nombre', 'paciente_genero', 'paciente_edad', 'paciente_telefono', 'diagnostico_presuntivo', 'medico', 'fecha_recepcion', 'fecha_reporte', 'numero_orden'];
         var sel = li.querySelector('.instance-column');
         var v = sel ? parseInt(sel.value, 10) : -1;
         var cols = section === 'header' ? clampCols(secColsH.value) : (section === 'patient_doctor' ? clampCols(secColsP.value) : (section === 'lab_firmas' ? clampCols(secColsL ? secColsL.value : '3') : clampCols(secColsF.value)));

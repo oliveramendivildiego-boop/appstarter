@@ -25,6 +25,8 @@ $valueOf = static function (string $id) use ($paciente, $doctor, $register_info,
             return (string) ($paciente->edad ?? '-');
         case 'paciente_telefono':
             return (string) ($paciente->phone_number ?? '-');
+        case 'diagnostico_presuntivo':
+            return trim((string) ($register_info->diagnostico_presuntivo ?? ''));
         case 'medico':
             $tit = ((int) ($doctor->gender ?? 0) === 1) ? 'Dr.' : 'Dra.';
 
@@ -74,12 +76,16 @@ if (array_key_exists($type, \App\Services\ReportPdfLayoutService::PATIENT_DOCTOR
         ? (int) $pdf_label_space_below_px
         : (array_key_exists('label_' . $type . '_space_below_px', $pdS) ? (int) $pdS['label_' . $type . '_space_below_px'] : 0);
     $val   = $valueOf($type);
+    if ($type === 'diagnostico_presuntivo' && trim($val) === '') {
+        return;
+    }
     $showLblText = $showL && $lbl !== '';
+    $stPdLbl = \App\Services\ReportPdfLayoutService::patientDoctorGridLabelStyleAttr($pdS, $type);
     if ($inline) {
         ?>
                 <div class="patient-line" style="margin-top:<?= (int) max(0, $mtPx) ?>px;margin-bottom:<?= (int) max(0, $mbPx) ?>px;">
                     <?php if ($showLblText): ?>
-                        <span class="label" style="margin-right:<?= (int) max(0, $gapPx) ?>px;"><?= esc($lbl) ?></span>
+                        <span class="label" style="margin-right:<?= (int) max(0, $gapPx) ?>px;<?= esc($stPdLbl, 'attr') ?>"><?= esc($lbl) ?></span>
                     <?php endif; ?>
                     <span style="<?= $showLblText ? '' : 'margin-left:' . (int) max(0, $gapPx) . 'px;' ?>"><?= esc($val) ?></span>
                 </div>
@@ -88,7 +94,7 @@ if (array_key_exists($type, \App\Services\ReportPdfLayoutService::PATIENT_DOCTOR
         if ($showLblText) {
             ?>
                 <div class="patient-line" style="margin-top:<?= (int) max(0, $mtPx) ?>px;margin-bottom:<?= (int) max(0, $gapPx) ?>px;">
-                    <span class="label"><?= esc($lbl) ?></span>
+                    <span class="label" style="<?= esc($stPdLbl, 'attr') ?>"><?= esc($lbl) ?></span>
                 </div>
             <?php
         }
@@ -372,8 +378,10 @@ switch ($type) {
         break;
 
     case 'footer_company':
-        // Tipografía: estilo por instancia (Elementos del PDF); el card «Pie» solo define textos/leyendas.
-        $stCo = \App\Services\ReportPdfLayoutService::textStyleNormalizedToInlineCss($ts);
+        $ftS = is_array($pdf_footer_grid_style ?? null)
+            ? $pdf_footer_grid_style
+            : \App\Services\ReportPdfLayoutService::normalizeFooterGridStyle([]);
+        $stCo = \App\Services\ReportPdfLayoutService::footerGridPieceStyleAttr($ftS, 'company');
         ?>
                 <div class="footer-piece footer-piece-company" style="<?= esc($stCo, 'attr') ?>"><?= esc($lab['company'] ?? '') ?></div>
         <?php
@@ -387,15 +395,19 @@ switch ($type) {
         $showP  = \App\Services\ReportPdfLayoutService::labFirmasBool($ftS, 'show_label_footer_generated', true);
         $inlineF = (($ftS['label_footer_generated_line_mode'] ?? 'stacked') === 'inline');
         $showPref = $showP && $pref !== '';
-        $stInst = \App\Services\ReportPdfLayoutService::textStyleNormalizedToInlineCss($ts);
+        $stPref = \App\Services\ReportPdfLayoutService::footerGridPieceStyleAttr($ftS, 'label_generated');
+        $stDt   = \App\Services\ReportPdfLayoutService::footerGridPieceStyleAttr($ftS, 'datetime');
         ?>
-                <div class="footer-piece footer-piece-generated"><?php if ($inlineF): ?><?php if ($showPref): ?><span class="footer-generated-label" style="<?= esc($stInst, 'attr') ?>"><?= esc($pref) ?></span> <?php endif; ?><span class="footer-generated-datetime" style="<?= esc($stInst, 'attr') ?>"><?= esc($reportEmitidoEl) ?></span><?php else: ?><?php if ($showPref): ?><div class="footer-generated-label" style="<?= esc($stInst, 'attr') ?>"><?= esc($pref) ?></div><?php endif; ?><div class="footer-generated-datetime" style="<?= esc($stInst, 'attr') ?>"><?= esc($reportEmitidoEl) ?></div><?php endif; ?></div>
+                <div class="footer-piece footer-piece-generated"><?php if ($inlineF): ?><?php if ($showPref): ?><span class="footer-generated-label" style="<?= esc($stPref, 'attr') ?>"><?= esc($pref) ?></span> <?php endif; ?><span class="footer-generated-datetime" style="<?= esc($stDt, 'attr') ?>"><?= esc($reportEmitidoEl) ?></span><?php else: ?><?php if ($showPref): ?><div class="footer-generated-label" style="<?= esc($stPref, 'attr') ?>"><?= esc($pref) ?></div><?php endif; ?><div class="footer-generated-datetime" style="<?= esc($stDt, 'attr') ?>"><?= esc($reportEmitidoEl) ?></div><?php endif; ?></div>
         <?php
         break;
 
     case 'footer_policy':
         if (! empty($lab['return_policy'])) {
-            $stPo = \App\Services\ReportPdfLayoutService::textStyleNormalizedToInlineCss($ts);
+            $ftS = is_array($pdf_footer_grid_style ?? null)
+                ? $pdf_footer_grid_style
+                : \App\Services\ReportPdfLayoutService::normalizeFooterGridStyle([]);
+            $stPo = \App\Services\ReportPdfLayoutService::footerGridPieceStyleAttr($ftS, 'policy');
             ?>
                 <div class="footer-piece footer-piece-policy"><small class="footer-policy-text" style="<?= esc($stPo, 'attr') ?>"><?= esc($lab['return_policy']) ?></small></div>
             <?php
