@@ -972,15 +972,6 @@ class RegisterModel extends Model
         }
         $rows = $builder->orderBy("{$sec}.nombre", 'ASC')->orderBy("{$sec}.paciente_id", 'ASC')->get()->getResultArray();
 
-        if ($rows === [] && ! $strictPoblacion) {
-            $builder2 = $makeBuilder();
-            $applySexo($builder2);
-            if ($this->hasColumn('secanacategoria', 'orden')) {
-                $builder2->orderBy("{$sec}.orden", 'ASC');
-            }
-            $rows = $builder2->orderBy("{$sec}.nombre", 'ASC')->orderBy("{$sec}.paciente_id", 'ASC')->get()->getResultArray();
-        }
-
         return $rows;
     }
 

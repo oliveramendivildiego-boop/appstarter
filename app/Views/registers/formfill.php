@@ -38,6 +38,10 @@ if (!empty($muestra)): ?>
 <?php
 $registerModel = $registerModel ?? null;
 $last_padre = '';
+$pobMap = [];
+foreach (($poblaciones_catalogo ?? []) as $pobRow) {
+    $pobMap[(int) ($pobRow['id_poblacion'] ?? 0)] = (string) ($pobRow['name'] ?? '');
+}
 $existentes = [];
 foreach ($analisis ?? [] as $row) {
     $n = $row['name'] ?? null;
@@ -46,8 +50,11 @@ foreach ($analisis ?? [] as $row) {
     }
 }
 if (empty($pruebas_info)):
+    $pruebas_info = $pruebas_info_fallback ?? [];
+endif;
+if (empty($pruebas_info)):
 ?>
-<div class="alert alert-warning">No hay pruebas para completar en este registro. Verifique que se hayan seleccionado pruebas al crear la orden. <a href="<?= site_url('registers') ?>">Volver a registros</a></div>
+<div class="alert alert-warning">No hay pruebas para completar en este registro. <a href="<?= site_url('registers') ?>">Volver a registros</a></div>
 <?php
 else:
 $labFirmaPriaIds = [];
@@ -75,6 +82,12 @@ foreach ($pruebas_info ?? [] as $pruebaFirmaScan):
     }
 endforeach;
 foreach ($pruebas_info ?? [] as $prueba):
+    if (($prueba['padre'] ?? '') != $last_padre):
+        if ($last_padre !== '') echo '</div>';
+        echo '<div class="row mb-3"><div class="col-12"><strong class="text-uppercase">' . esc($prueba['padre'] ?? '') . '</strong></div>';
+        $last_padre = $prueba['padre'] ?? '';
+    endif;
+
     $mostrarPrueba = true;
     if (($prueba['compleja'] ?? 0) == 1) {
         $prianacategoriaIdTmp = (int)($prueba['prianacategoria_id'] ?? 0);
@@ -85,14 +98,79 @@ foreach ($pruebas_info ?? [] as $prueba):
                 isset($register_info->gender) ? (int) $register_info->gender : null
             )
             : [];
-        if (empty($valoresTmp)) $mostrarPrueba = false;
+        if (empty($valoresTmp)) {
+            $mostrarPrueba = false;
+            $refsTabla = $registerModel ? $registerModel->getSecReferenciasConsolidadasSinColapsar($prianacategoriaIdTmp) : [];
+            echo '<div class="col-12 mb-3">';
+            echo '<div class="alert alert-warning mb-2">';
+            echo '<i class="fa-solid fa-triangle-exclamation me-2"></i>';
+            echo 'La prueba <strong>' . esc($prueba['hijo'] ?? ('ID ' . $prianacategoriaIdTmp)) . '</strong> no tiene valores de referencia para la población/edad del paciente.';
+            echo '</div>';
+            if (!empty($refsTabla)) {
+                echo '<div class="table-responsive border rounded bg-white">';
+                echo '<table class="table table-sm table-striped mb-0">';
+                echo '<thead><tr><th>Parámetro</th><th>Población</th><th>Género</th><th>Valor mín.</th><th>Valor máx.</th><th>Unidad</th></tr></thead><tbody>';
+                foreach ($refsTabla as $refRow) {
+                    $sexoRef = trim((string) ($refRow['sexo'] ?? ''));
+                    if ($sexoRef === '') {
+                        $sexoRef = 'ambos';
+                    }
+                    echo '<tr>';
+                    echo '<td>' . esc($refRow['nombre'] ?? '') . '</td>';
+                    echo '<td>' . esc($refRow['poblacion_nombre'] ?? '') . '</td>';
+                    echo '<td>' . esc(ucfirst($sexoRef)) . '</td>';
+                    echo '<td>' . esc((string) ($refRow['valor_min'] ?? '')) . '</td>';
+                    echo '<td>' . esc((string) ($refRow['valor_max'] ?? '')) . '</td>';
+                    echo '<td>' . esc((string) ($refRow['umedida'] ?? '')) . '</td>';
+                    echo '</tr>';
+                }
+                echo '</tbody></table></div>';
+            } else {
+                echo '<div class="small text-muted">No hay filas de referencia configuradas para esta prueba.</div>';
+            }
+            echo '</div>';
+        }
     }
     if (!$mostrarPrueba) continue;
 
-    if (($prueba['padre'] ?? '') != $last_padre):
-        if ($last_padre !== '') echo '</div>';
-        echo '<div class="row mb-3"><div class="col-12"><strong class="text-uppercase">' . esc($prueba['padre'] ?? '') . '</strong></div>';
-        $last_padre = $prueba['padre'] ?? '';
+    $sinReferenciaSimple = (($prueba['compleja'] ?? 0) == 0) && ((int) ($prueba['priresultados_id'] ?? 0) < 1);
+    if ($sinReferenciaSimple):
+        $prianacategoriaIdTmp = (int) ($prueba['prianacategoria_id'] ?? 0);
+        $refsSimple = $registerModel ? $registerModel->getAllPriResultadosByPrianacategoriaForReport($prianacategoriaIdTmp) : [];
+        echo '<div class="col-12 mb-3">';
+        echo '<div class="alert alert-warning mb-2">';
+        echo '<i class="fa-solid fa-triangle-exclamation me-2"></i>';
+        echo 'La prueba <strong>' . esc($prueba['hijo'] ?? ('ID ' . $prianacategoriaIdTmp)) . '</strong> no tiene valores de referencia para la población/edad del paciente.';
+        echo '</div>';
+        if (!empty($refsSimple)) {
+            echo '<div class="table-responsive border rounded bg-white">';
+            echo '<table class="table table-sm table-striped mb-0">';
+            echo '<thead><tr><th>Parámetro</th><th>Población</th><th>Género</th><th>Valor mín.</th><th>Valor máx.</th><th>Unidad</th></tr></thead><tbody>';
+            foreach ($refsSimple as $refRow) {
+                $idPob = (int) ($refRow['id_poblacion'] ?? 0);
+                $nomPob = trim((string) ($pobMap[$idPob] ?? ''));
+                if ($nomPob === '') {
+                    $nomPob = (string) $idPob;
+                }
+                $sexoRef = trim((string) ($refRow['sexo'] ?? ''));
+                if ($sexoRef === '') {
+                    $sexoRef = 'ambos';
+                }
+                echo '<tr>';
+                echo '<td>' . esc($refRow['nombre'] ?? '') . '</td>';
+                echo '<td>' . esc($nomPob) . '</td>';
+                echo '<td>' . esc(ucfirst($sexoRef)) . '</td>';
+                echo '<td>' . esc((string) ($refRow['valor_min'] ?? '')) . '</td>';
+                echo '<td>' . esc((string) ($refRow['valor_max'] ?? '')) . '</td>';
+                echo '<td>' . esc((string) ($refRow['umedida'] ?? '')) . '</td>';
+                echo '</tr>';
+            }
+            echo '</tbody></table></div>';
+        } else {
+            echo '<div class="small text-muted">No hay filas de referencia configuradas para esta prueba.</div>';
+        }
+        echo '</div>';
+        continue;
     endif;
 
     if (($prueba['compleja'] ?? 0) == 0):

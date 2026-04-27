@@ -382,6 +382,21 @@ class Registers extends SecureArea
         $patientGender = isset($registerInfo->gender) ? (int) $registerInfo->gender : null;
         $matchingPoblacionIds = $this->registerService->getMatchingPoblacionIds($registerInfo->birthday ?? null, $patientGender, $refIngreso);
         $pruebasInfo = $this->registerModel->getPruebasInput($registerInfo->pruebas ?? '', $matchingPoblacionIds, $patientGender);
+        $pruebasInfoFallback = [];
+        if ($pruebasInfo === []) {
+            $pruebasIds = $this->registerService->extractPrianacategoriaIdsFromRegistroPruebas((string) ($registerInfo->pruebas ?? ''));
+            $cfgRows = $this->registerModel->getPrianacategoriaConfigByIds($pruebasIds);
+            foreach ($cfgRows as $cfg) {
+                $anacategoriaId = (int) ($cfg['anacategoria_id'] ?? 0);
+                $catInfo = $anacategoriaId > 0 ? $this->labotestModel->getCategoryInfo($anacategoriaId) : null;
+                $pruebasInfoFallback[] = [
+                    'prianacategoria_id' => (int) ($cfg['prianacategoria_id'] ?? 0),
+                    'hijo'               => (string) ($cfg['name'] ?? ''),
+                    'padre'              => (string) ($catInfo->name ?? 'Sin categoría'),
+                    'compleja'           => (int) ($cfg['compleja'] ?? 0),
+                ];
+            }
+        }
 
         $muestraModel = model(MuestraModel::class);
         $muestra = $muestraModel->getByRegistro($id);
@@ -393,6 +408,7 @@ class Registers extends SecureArea
         $analisis = $this->registerModel->getInfoAnalisis($id);
 
         $labValState = (new ConfigService())->getLabValidationStateForView();
+        $poblacionesCatalogo = $this->labotestModel->getPoblaciones();
 
         return view('registers/formfill', [
             'current_module' => 'registers',
@@ -401,10 +417,12 @@ class Registers extends SecureArea
             'controller_name'   => 'registers',
             'register_info'     => $registerInfo,
             'pruebas_info'      => $pruebasInfo,
+            'pruebas_info_fallback' => $pruebasInfoFallback,
             'matching_poblacion_ids' => $matchingPoblacionIds,
             'analisis'          => $analisis,
             'lab_validators'    => $labValState['validators'],
             'lab_approvers'     => $labValState['approvers'],
+            'poblaciones_catalogo' => $poblacionesCatalogo,
             'labotests_namecate' => $id,
             'registerModel'     => $this->registerModel,
             'leyendas_activas'  => ($this->configModel->getValue('leyendas_enabled') === '1') ? model(LeyendaModel::class)->where('activo', 1)->where('deleted', 0)->orderBy('titulo', 'ASC')->findAll() : [],

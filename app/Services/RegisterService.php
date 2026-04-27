@@ -176,9 +176,11 @@ class RegisterService
             }
         }
         $edad = $ref->diff($fechaNac);
+        $edadTotalDias = (int) ($edad->days ?? 0);
 
         if ($edad->y < 13) {
-            if ($edad->m <= 1) {
+            // Recién nacido: 0-28 días (evita clasificar por "mes 1" casos > 28 días).
+            if ($edadTotalDias <= 28) {
                 return 4;
             }
             if ($edad->y <= 1) {
