@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Models\AppConfigModel;
 use App\Models\PoblacionModel;
 use App\Models\RegisterModel;
+use App\Services\ConfigService;
 use CodeIgniter\I18n\Time;
 use Config\App as AppConfig;
 
@@ -888,11 +889,23 @@ class RegisterService
 
         $master = $this->registerModel->getInforeport($registroId);
         $paciente = $master ? $this->registerModel->getInfoPaciente($master->person_id) : null;
-        $doctor   = $master ? $this->registerModel->getInfoDoctor((int) ($master->doctor_id ?? 0)) : null;
+        $doctorId = $master ? (int) ($master->doctor_id ?? 0) : 0;
+        $doctor   = ($doctorId > 0) ? $this->registerModel->getInfoDoctor($doctorId) : null;
         $analisis = $this->registerModel->getInfoAnalisis($registroId);
 
         $paciente = $this->preparePacienteParaReporte($paciente);
-        $doctor   = $doctor ?? (object) ['name' => '-', 'gender' => 0];
+        if ($doctor === null || $doctorId < 1) {
+            $cfg     = new ConfigService();
+            $labelSd = trim((string) ($cfg->getAllAsArray()['label_sin_doctor'] ?? ''));
+            if ($labelSd === '') {
+                $labelSd = 'Sin doctor';
+            }
+            $doctor = (object) [
+                'name'                     => $labelSd,
+                'gender'                   => null,
+                'report_sin_prefijo_medico' => true,
+            ];
+        }
 
         $pacienteType = $this->computePacienteType($registerInfo, $ingresoRaw);
         $registerInfo->paciente = $pacienteType;

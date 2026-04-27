@@ -36,8 +36,12 @@
         <span class="fw-bold">Teléfono:</span> <?= esc($paciente->phone_number ?? '') ?>
     </div>
     <div class="col-md-6">
+        <?php if (!empty($doctor->report_sin_prefijo_medico ?? false)) : ?>
+        <span class="fw-bold">Médico:</span> <?= esc($doctor->name ?? '') ?><br/>
+        <?php else : ?>
         <?php $tituloMedico = ((int)($doctor->gender ?? 0) === 1) ? 'Dr.' : 'Dra.'; ?>
         <span class="fw-bold">Médico:</span> <?= $tituloMedico ?> <?= esc($doctor->name ?? '') ?><br/>
+        <?php endif; ?>
         <span class="fw-bold">Fecha de recepción:</span> <?= esc($register_info->recepcion_fecha_hora ?? '') ?><br/>
         <span class="fw-bold">Fecha de reporte:</span> <?= esc($report_emitido_en ?? \App\Services\RegisterService::formatNowForReport()) ?><br/>
         <span class="fw-bold">No. Orden:</span> <?= esc(registro_orden_display($register_info)) ?>

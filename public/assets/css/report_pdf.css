@@ -208,7 +208,7 @@ body {
 }
 .header-piece-qr .qr-img {
     max-width: 100%;
-    max-height: 75px;
+    max-height: calc(75px * var(--pdf-qr-size-percent, 100) / 100);
     width: auto;
     height: auto;
     display: block;
@@ -328,6 +328,10 @@ table.results td {
     font-style: var(--pdf-results-font-style, normal);
     text-transform: var(--pdf-results-transform, none);
     line-height: var(--pdf-results-line-height, 1.35);
+}
+table.results:not(.pdf-notes-table) th,
+table.results:not(.pdf-notes-table) td {
+    padding: var(--pdf-results-cell-padding-v, 6px) 8px;
 }
 /* Mayor especificidad que table.results td (dompdf respeta .text-center en columnas numéricas) */
 table.results th.text-center,

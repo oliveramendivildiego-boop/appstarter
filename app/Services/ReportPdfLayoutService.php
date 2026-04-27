@@ -158,6 +158,7 @@ class ReportPdfLayoutService
         'font_style'        => 'normal',
         'text_transform'    => 'none',
         'line_height'       => 1.35,
+        'cell_padding_v_px' => 6,
         'matrix_text_align' => 'center',
         'matrix_vertical_align' => 'middle',
         'matrix_text_color' => '#333333',
@@ -1648,6 +1649,15 @@ class ReportPdfLayoutService
                 return 'El interlineado en la tabla de resultados debe estar entre 1 y 3.';
             }
         }
+        if (array_key_exists('cell_padding_v_px', $raw)) {
+            if (! is_numeric($raw['cell_padding_v_px'])) {
+                return 'Relleno vertical de filas inválido en la tabla de resultados.';
+            }
+            $cp = (int) $raw['cell_padding_v_px'];
+            if ($cp < 0 || $cp > 20) {
+                return 'El relleno vertical de filas en la tabla de resultados debe estar entre 0 y 20 px.';
+            }
+        }
         if (array_key_exists('segment_border_width_px', $raw)) {
             if (! is_numeric($raw['segment_border_width_px'])) {
                 return 'El grosor del borde de segmento debe ser numérico.';
@@ -1819,6 +1829,15 @@ class ReportPdfLayoutService
                 }
                 if (isset($hgRaw['label_qr_hint_text_color']) && ! self::isValidPdfHexColor((string) $hgRaw['label_qr_hint_text_color'])) {
                     return 'Color inválido en leyenda del QR (#RRGGBB).';
+                }
+                if (array_key_exists('qr_size_percent', $hgRaw)) {
+                    if (! is_numeric($hgRaw['qr_size_percent'])) {
+                        return 'Tamaño del QR (%) inválido en el encabezado.';
+                    }
+                    $qsp = (int) $hgRaw['qr_size_percent'];
+                    if ($qsp < 50 || $qsp > 200) {
+                        return 'El tamaño del QR en el encabezado debe estar entre 50 y 200 %.';
+                    }
                 }
                 $hgFsKeys = ['label_qr_hint_font_size_pt'];
                 foreach (array_keys(self::HEADER_GRID_LABEL_DEFAULTS) as $hid) {
@@ -2469,6 +2488,8 @@ class ReportPdfLayoutService
         $base['label_qr_hint_font_weight']  = $pickPieceFw('label_qr_hint_font_weight');
         $base['label_qr_hint_font_style']   = $pickPieceFst('label_qr_hint_font_style');
         $base['label_qr_hint_text_transform'] = $pickPieceTt('label_qr_hint_text_transform');
+        $qrPct = isset($s['qr_size_percent']) ? (int) $s['qr_size_percent'] : 100;
+        $base['qr_size_percent'] = max(50, min(200, $qrPct));
 
         foreach (self::HEADER_GRID_LABEL_DEFAULTS as $id => $fallback) {
             $base['label_' . $id] = self::clipLabFirmasLabel($s['label_' . $id] ?? null, $fallback);
@@ -2482,6 +2503,18 @@ class ReportPdfLayoutService
         }
 
         return $base;
+    }
+
+    /**
+     * Tamaño en píxeles del PNG del QR (50–500) a partir de la plantilla. Base de generación 100 px al 100 %.
+     */
+    public static function qrImagePixelSizeFromLayout(array $pdfLayout): int
+    {
+        $ps = is_array($pdfLayout['page_style'] ?? null) ? $pdfLayout['page_style'] : [];
+        $hg = self::normalizeHeaderGridStyle($ps['header_grid'] ?? []);
+        $pct = (int) ($hg['qr_size_percent'] ?? 100);
+
+        return (int) max(50, min(500, (int) round(100 * $pct / 100)));
     }
 
     /**
@@ -2836,7 +2869,7 @@ class ReportPdfLayoutService
     /**
      * @param mixed $raw
      *
-     * @return array{header_bg_color: string, header_text_color: string, body_bg_color: string, body_transparent: bool, body_text_color: string, border_color: string, segment_bg_color: string, segment_transparent: bool, segment_border_color: string, segment_border_width_px: int, segment_shadow: string, font_family: string, font_size_pt: float, font_weight: string, font_style: string, text_transform: string, line_height: float, matrix_text_align: string, matrix_vertical_align: string, matrix_text_color: string, matrix_font_size_pt: float, matrix_font_weight: string, matrix_font_style: string, matrix_text_transform: string, matrix_header_text_color: string, matrix_header_font_family: string, matrix_header_font_size_pt: float, matrix_header_font_weight: string, matrix_header_font_style: string, matrix_header_text_transform: string, matrix_col_population_align: string, matrix_col_parameter_align: string, matrix_col_sex_align: string, matrix_col_reference_align: string, matrix_hdr_population_align: string, matrix_hdr_parameter_align: string, matrix_hdr_sex_align: string, matrix_hdr_reference_align: string}
+     * @return array{header_bg_color: string, header_text_color: string, body_bg_color: string, body_transparent: bool, body_text_color: string, border_color: string, segment_bg_color: string, segment_transparent: bool, segment_border_color: string, segment_border_width_px: int, segment_shadow: string, font_family: string, font_size_pt: float, font_weight: string, font_style: string, text_transform: string, line_height: float, cell_padding_v_px: int, matrix_text_align: string, matrix_vertical_align: string, matrix_text_color: string, matrix_font_size_pt: float, matrix_font_weight: string, matrix_font_style: string, matrix_text_transform: string, matrix_header_text_color: string, matrix_header_font_family: string, matrix_header_font_size_pt: float, matrix_header_font_weight: string, matrix_header_font_style: string, matrix_header_text_transform: string, matrix_col_population_align: string, matrix_col_parameter_align: string, matrix_col_sex_align: string, matrix_col_reference_align: string, matrix_hdr_population_align: string, matrix_hdr_parameter_align: string, matrix_hdr_sex_align: string, matrix_hdr_reference_align: string}
      */
     public static function normalizeResultsTableStyle($raw): array
     {
@@ -2866,6 +2899,8 @@ class ReportPdfLayoutService
         }
         $lh = isset($s['line_height']) ? (float) $s['line_height'] : $def['line_height'];
         $lh = round(max(1.0, min(3.0, $lh)), 2);
+        $cellPadV = isset($s['cell_padding_v_px']) ? (int) $s['cell_padding_v_px'] : (int) ($def['cell_padding_v_px'] ?? 6);
+        $cellPadV = max(0, min(20, $cellPadV));
         $segBw = isset($s['segment_border_width_px']) ? (int) $s['segment_border_width_px'] : (int) $def['segment_border_width_px'];
         $segBw = max(0, min(4, $segBw));
         $segShadow = strtolower(trim((string) ($s['segment_shadow'] ?? $def['segment_shadow'])));
@@ -2935,6 +2970,7 @@ class ReportPdfLayoutService
             'font_style'        => $style,
             'text_transform'    => $transform,
             'line_height'       => $lh,
+            'cell_padding_v_px' => $cellPadV,
             'matrix_text_align' => $matrixAlign,
             'matrix_vertical_align' => $matrixVAlign,
             'matrix_text_color' => $pickColor('matrix_text_color', $def['matrix_text_color']),

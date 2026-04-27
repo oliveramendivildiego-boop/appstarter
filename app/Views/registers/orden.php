@@ -6,6 +6,13 @@ $nombrePacienteOrden = trim(implode(' ', array_filter([
     $register_info->last_name_fa ?? '',
     $register_info->last_name_mom ?? '',
 ])));
+$doctorOrdenDisplay = trim((string) ($register_info->doctor_name ?? $register_info->doctor ?? ''));
+if ($doctorOrdenDisplay === '') {
+    $doctorOrdenDisplay = isset($label_sin_doctor) ? trim((string) $label_sin_doctor) : 'Sin doctor';
+    if ($doctorOrdenDisplay === '') {
+        $doctorOrdenDisplay = 'Sin doctor';
+    }
+}
 ?>
 <?= $this->section('content') ?>
 <style>
@@ -133,7 +140,7 @@ $nombrePacienteOrden = trim(implode(' ', array_filter([
             <div class="col-md-6 print-meta-col">
                 <div><strong>Paciente:</strong> <?= esc($nombrePacienteOrden) ?></div>
                 <div><strong>Edad:</strong> <?= esc($edad_paciente_orden ?? '-') ?></div>
-                <div><strong>Doctor:</strong> <?= esc($register_info->doctor_name ?? $register_info->doctor ?? '') ?></div>
+                <div><strong>Doctor:</strong> <?= esc($doctorOrdenDisplay) ?></div>
             </div>
         </div>
 

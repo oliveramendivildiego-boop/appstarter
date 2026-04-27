@@ -154,6 +154,14 @@ document.addEventListener('DOMContentLoaded', function() {
             <input type="text" name="doctor" id="doctor" class="form-control" value="" placeholder="Escriba para buscar..." autocomplete="off">
             <div id="doctor_list" class="list-group position-absolute top-100 start-0 w-100 mt-1 shadow" style="display:none; max-height:200px; overflow-y:auto; z-index:1050;"></div>
             <div class="invalid-feedback" id="doctor_error"></div>
+            <?php
+            $labelSd = isset($label_sin_doctor) ? trim((string) $label_sin_doctor) : '';
+            if ($labelSd !== '') :
+                ?>
+            <p class="small text-muted mb-0 mt-1">Si no elige médico del catálogo, en la lista y en la orden impresa/PDF aparecerá: «<?= esc($labelSd) ?>».</p>
+                <?php
+            endif;
+            ?>
         </div>
     </div>
     <div class="col-12 col-md-6" id="prioridad_container">

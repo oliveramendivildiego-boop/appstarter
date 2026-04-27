@@ -183,6 +183,18 @@
                         'id="currency_side" class="form-select" autocomplete="off"'
                     ) ?>
             </div>
+            <div class="col-md-6 mb-3">
+                <label for="label_sin_doctor" class="form-label"><?= lang('Config.config_label_sin_doctor') ?></label>
+                <?= form_input([
+                    'name'        => 'label_sin_doctor',
+                    'id'          => 'label_sin_doctor',
+                    'class'       => 'form-control',
+                    'maxlength'   => 160,
+                    'value'       => $config['label_sin_doctor'] ?? 'Sin doctor',
+                    'autocomplete'=> 'off',
+                ]) ?>
+                <small class="text-muted"><?= lang('Config.config_label_sin_doctor_help') ?></small>
+            </div>
         </div>
         <div class="mb-3">
             <?= form_label(lang('Config.config_return_policy'), 'return_policy', ['class' => 'form-label']) ?>

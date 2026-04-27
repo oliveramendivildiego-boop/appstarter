@@ -56,6 +56,16 @@ class Registers extends SecureArea
         $this->configService   = new ConfigService();
     }
 
+    /**
+     * Texto configurado en Configuración cuando la orden no tiene médico del catálogo (lista, ayudas).
+     */
+    private function getLabelSinDoctorConfig(): string
+    {
+        $label = trim((string) ($this->configService->getAllAsArray()['label_sin_doctor'] ?? ''));
+
+        return $label !== '' ? $label : 'Sin doctor';
+    }
+
     public function index()
     {
         $categories = $this->labotestModel->getGroupedByCategory();
@@ -71,6 +81,7 @@ class Registers extends SecureArea
             'edit_registro'   => null,
             'edit_pago'       => null,
             'edit_discount_info' => ['institucion' => '', 'descuento' => 0.0],
+            'label_sin_doctor' => $this->getLabelSinDoctorConfig(),
         ]);
     }
 
@@ -109,6 +120,7 @@ class Registers extends SecureArea
             'edit_pago'       => $pago,
             'edit_regvalues_count' => $regvaluesCount,
             'edit_discount_info' => $discountInfo,
+            'label_sin_doctor' => $this->getLabelSinDoctorConfig(),
         ]);
     }
 
@@ -202,6 +214,8 @@ class Registers extends SecureArea
 
     private function buildRegistrosTable(array $registros, bool $whatsappConfigured = false): string
     {
+        $labelSinDoctor = $this->getLabelSinDoctorConfig();
+
         $html = '<div class="table-responsive"><table class="table table-bordered table-striped registros-table"><thead><tr>';
         $html .= '<th>Código</th><th>Paciente</th><th>Doctor</th><th>Total</th><th>Saldo</th><th class="text-end">Acciones</th>';
         $html .= '</tr></thead><tbody>';
@@ -235,7 +249,7 @@ class Registers extends SecureArea
             }
             $html .= '</td>';
             $html .= '<td>' . esc($r->paciente ?? '') . '</td>';
-            $html .= '<td>' . ($hasDoctor ? esc($r->doctor ?? '') : '<span class="text-muted">Sin doctor</span>') . '</td>';
+            $html .= '<td>' . ($hasDoctor ? esc($r->doctor ?? '') : '<span class="text-muted">' . esc($labelSinDoctor) . '</span>') . '</td>';
             $html .= '<td>' . esc($r->total ?? '') . '</td>';
             $html .= '<td>' . esc($r->saldo ?? '') . '</td>';
             $html .= '<td class="text-end registros-acciones-col">';
@@ -260,11 +274,7 @@ class Registers extends SecureArea
                 $html .= '<li><a class="dropdown-item" href="' . site_url('registers/view/' . $rid) . '"><i class="fa-solid ' . esc($btnIcon) . ' me-2 text-primary"></i>' . esc($btnTitle) . ' resultado</a></li>';
                 $html .= '<li><a class="dropdown-item" href="' . site_url('registers/edit/' . $rid) . '"><i class="fa-solid fa-flask me-2 text-success"></i>' . esc($editOrderTitle) . '</a></li>';
                 $html .= '<li><hr class="dropdown-divider"></li>';
-                if ($hasDoctor) {
-                    $html .= '<li><a class="dropdown-item" href="' . site_url('registers/orden/' . $rid) . '"><i class="fa-solid fa-print me-2 text-secondary"></i>Imprimir orden</a></li>';
-                } else {
-                    $html .= '<li><span class="dropdown-item text-muted disabled"><i class="fa-solid fa-print me-2"></i>Imprimir orden (asigne doctor)</span></li>';
-                }
+                $html .= '<li><a class="dropdown-item" href="' . site_url('registers/orden/' . $rid) . '"><i class="fa-solid fa-print me-2 text-secondary"></i>Imprimir orden</a></li>';
                 if ($hasRegvalues) {
                     $html .= '<li><a class="dropdown-item" href="' . site_url('registers/viewreport/' . $rid) . '"><i class="fa-solid fa-file-lines me-2 text-secondary"></i>Ver reporte</a></li>';
                     $html .= '<li><a class="dropdown-item" href="' . site_url('registers/printreport/' . $rid) . '" target="_blank"><i class="fa-solid fa-print me-2 text-secondary"></i>Imprimir reporte</a></li>';
@@ -272,12 +282,10 @@ class Registers extends SecureArea
                     $html .= '<li><span class="dropdown-item text-muted disabled"><i class="fa-solid fa-file-lines me-2"></i>Ver reporte (sin resultados)</span></li>';
                     $html .= '<li><span class="dropdown-item text-muted disabled"><i class="fa-solid fa-print me-2"></i>Imprimir reporte (sin resultados)</span></li>';
                 }
-                if ($hasRegvalues && $hasDoctor) {
+                if ($hasRegvalues) {
                     $html .= '<li><a class="dropdown-item" href="' . site_url('registers/pdf/' . $rid) . '" target="_blank"><i class="fa-solid fa-file-pdf me-2 text-success"></i>Descargar PDF</a></li>';
-                } elseif (!$hasRegvalues) {
-                    $html .= '<li><span class="dropdown-item text-muted disabled"><i class="fa-solid fa-file-pdf me-2"></i>Descargar PDF (sin resultados)</span></li>';
                 } else {
-                    $html .= '<li><span class="dropdown-item text-muted disabled"><i class="fa-solid fa-file-pdf me-2"></i>Descargar PDF (asigne doctor)</span></li>';
+                    $html .= '<li><span class="dropdown-item text-muted disabled"><i class="fa-solid fa-file-pdf me-2"></i>Descargar PDF (sin resultados)</span></li>';
                 }
                 if ($hasRegvalues) {
                     $html .= '<li><a class="dropdown-item" href="' . site_url('registers/qrResultadosPng/' . $rid) . '"><i class="fa-solid fa-qrcode me-2 text-dark"></i>Descargar QR resultados</a></li>';
@@ -285,12 +293,11 @@ class Registers extends SecureArea
                     $html .= '<li><span class="dropdown-item text-muted disabled"><i class="fa-solid fa-qrcode me-2"></i>Descargar QR resultados (sin resultados)</span></li>';
                 }
                 if ($whatsappConfigured) {
-                    if ($hasRegvalues && $hasDoctor) {
-                        $html .= '<li><button type="button" class="dropdown-item btn-whatsapp-pdf" data-id="' . $rid . '" data-paciente="' . esc($r->paciente ?? '') . '" data-doctor="' . esc($r->doctor ?? '') . '" data-paciente-phone="' . esc($pacientePhone) . '" data-doctor-phone="' . esc($doctorPhone) . '" data-ingreso="' . esc($r->ingreso ?? '') . '"><i class="fa-brands fa-whatsapp me-2 text-success"></i>Enviar por WhatsApp</button></li>';
-                    } elseif (!$hasRegvalues) {
+                    if ($hasRegvalues) {
+                        $docWa = $hasDoctor ? ($r->doctor ?? '') : $labelSinDoctor;
+                        $html .= '<li><button type="button" class="dropdown-item btn-whatsapp-pdf" data-id="' . $rid . '" data-paciente="' . esc($r->paciente ?? '') . '" data-doctor="' . esc($docWa) . '" data-paciente-phone="' . esc($pacientePhone) . '" data-doctor-phone="' . esc($doctorPhone) . '" data-ingreso="' . esc($r->ingreso ?? '') . '"><i class="fa-brands fa-whatsapp me-2 text-success"></i>Enviar por WhatsApp</button></li>';
+                    } else {
                         $html .= '<li><span class="dropdown-item text-muted disabled"><i class="fa-brands fa-whatsapp me-2"></i>Enviar por WhatsApp (sin resultados)</span></li>';
-                    } elseif (!$hasDoctor) {
-                        $html .= '<li><span class="dropdown-item text-muted disabled"><i class="fa-brands fa-whatsapp me-2"></i>Enviar por WhatsApp (asigne doctor)</span></li>';
                     }
                 }
                 if ($saldoNum > 0) {
@@ -478,7 +485,6 @@ class Registers extends SecureArea
             'comprobante_pdf_disponible' => $pago !== null && $pagoCompleto,
             'comprobante_pdf_pendiente_pago' => $pago !== null && !$pagoCompleto,
             'comprobante_pdf_sin_registro_pago' => $pago === null,
-            'doctor_assigned'    => $this->registerModel->registroTieneDoctorAsignado($id),
             'pdf_layout'        => $pdfLayout,
             'lab_config'        => $labConfig,
         ]);
@@ -501,13 +507,12 @@ class Registers extends SecureArea
         if (! $data) {
             return redirect()->to('registers')->with('error', 'Registro no encontrado');
         }
-        if (!$this->registerModel->registroTieneDoctorAsignado($id)) {
-            return redirect()->to('registers/lista')->with('error', 'Debe asignar un doctor antes de imprimir o generar PDF de esta orden.');
-        }
 
         helper('qr');
         $reportUrl = $this->publicReportViewerUrlForQr($id);
-        $qrDataUri = qr_base64($reportUrl, 100);
+        $qrLayout  = (new \App\Services\ReportPdfLayoutService())->getPrintLayoutForRender();
+        $qrPx      = \App\Services\ReportPdfLayoutService::qrImagePixelSizeFromLayout($qrLayout);
+        $qrDataUri = qr_base64($reportUrl, $qrPx);
         $emitidoEn = $this->registerService->lockReportEmitidoEnForPrintOrPdf($id);
         $html      = $this->registerService->renderReportPrintHtml($data, $reportUrl, $qrDataUri, $id, $emitidoEn);
 
@@ -531,9 +536,6 @@ class Registers extends SecureArea
         }
         if ($this->registerModel->isRegistroAnulado($id)) {
             return redirect()->to('registers/lista')->with('error', 'La orden está anulada; no se puede imprimir la orden de trabajo.');
-        }
-        if (!$this->registerModel->registroTieneDoctorAsignado($id)) {
-            return redirect()->to('registers/lista')->with('error', 'Debe asignar un doctor antes de imprimir o generar PDF de esta orden.');
         }
 
         $refIngreso = $registerInfo->ingreso ?? null;
@@ -575,6 +577,7 @@ class Registers extends SecureArea
             'edad_paciente_orden' => $edadPacienteOrden,
             'labotests_namecate' => $id,
             'grupos_pruebas'    => $gruposPruebas,
+            'label_sin_doctor'  => $this->getLabelSinDoctorConfig(),
             'show_order_barcode' => ($this->configModel->getValue('show_order_barcode') !== '0'),
             'order_barcode_print_layout' => (strtolower($this->configModel->getValue('order_barcode_print_layout')) === 'horizontal')
                 ? 'horizontal'
@@ -602,9 +605,6 @@ class Registers extends SecureArea
         if ($this->registerModel->isRegistroAnulado($id)) {
             return redirect()->to('registers/lista')->with('error', 'La orden está anulada; no se puede generar el PDF de orden.');
         }
-        if (!$this->registerModel->registroTieneDoctorAsignado($id)) {
-            return redirect()->to('registers/lista')->with('error', 'Debe asignar un doctor antes de imprimir o generar PDF de esta orden.');
-        }
 
         $refIngreso = $registerInfo->ingreso ?? null;
         $pacienteType = $this->registerService->computePacienteType($registerInfo, $refIngreso);
@@ -630,11 +630,12 @@ class Registers extends SecureArea
         $edadPacienteOrden = $this->registerService->formatEdadAlMomento($registerInfo->birthday ?? null, $refIngreso);
 
         $html = view('registers/orden_pdf', [
-            'register_info'  => $registerInfo,
-            'fecha'          => $fecha,
+            'register_info'    => $registerInfo,
+            'fecha'            => $fecha,
             'edad_paciente_orden' => $edadPacienteOrden,
-            'grupos_pruebas' => $gruposPruebas,
-            'registro_id'    => $id,
+            'grupos_pruebas'   => $gruposPruebas,
+            'registro_id'      => $id,
+            'label_sin_doctor' => $this->getLabelSinDoctorConfig(),
         ]);
 
         $pdfService = new PdfService();
@@ -698,13 +699,12 @@ class Registers extends SecureArea
         if (!$data) {
             return redirect()->to('registers')->with('error', 'Registro no encontrado');
         }
-        if (!$this->registerModel->registroTieneDoctorAsignado($id)) {
-            return redirect()->to('registers/lista')->with('error', 'Debe asignar un doctor antes de imprimir o generar PDF de esta orden.');
-        }
 
         helper('qr');
         $reportUrl = $this->publicReportViewerUrlForQr($id);
-        $qrDataUri = qr_base64($reportUrl, 100);
+        $qrLayout  = (new \App\Services\ReportPdfLayoutService())->getActiveLayoutForRender();
+        $qrPx      = \App\Services\ReportPdfLayoutService::qrImagePixelSizeFromLayout($qrLayout);
+        $qrDataUri = qr_base64($reportUrl, $qrPx);
         $emitidoEn = $this->registerService->lockReportEmitidoEnForPrintOrPdf($id);
         $html      = $this->registerService->renderReportPdfHtml($data, $reportUrl, $qrDataUri, $emitidoEn);
 
@@ -1483,12 +1483,6 @@ class Registers extends SecureArea
         if (!$data) {
             return $this->response->setJSON(['success' => false, 'message' => 'Registro no encontrado'])->setStatusCode(404);
         }
-        if (!$this->registerModel->registroTieneDoctorAsignado($id)) {
-            return $this->response->setJSON([
-                'success' => false,
-                'message' => 'Debe asignar un doctor antes de generar o enviar el PDF.',
-            ])->setStatusCode(400);
-        }
 
         $paciente = $data['paciente'] ?? null;
         $doctor   = $data['doctor'] ?? null;
@@ -1522,7 +1516,9 @@ class Registers extends SecureArea
 
         helper('qr');
         $reportUrl = $this->publicReportViewerUrlForQr($id);
-        $qrDataUri = qr_base64($reportUrl, 100);
+        $qrLayout  = (new \App\Services\ReportPdfLayoutService())->getActiveLayoutForRender();
+        $qrPx      = \App\Services\ReportPdfLayoutService::qrImagePixelSizeFromLayout($qrLayout);
+        $qrDataUri = qr_base64($reportUrl, $qrPx);
         $emitidoEn = $this->registerService->reportEmitidoEnForView($id);
         $html      = $this->registerService->renderReportPdfHtml($data, $reportUrl, $qrDataUri, $emitidoEn);
         $pdfService = new PdfService();

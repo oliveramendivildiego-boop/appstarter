@@ -219,6 +219,7 @@ $labelsShort = [
             <div class="col-4 col-md-2"><label class="form-label small" for="hg_font_style">Estilo</label><select class="form-select form-select-sm" id="hg_font_style"><?php foreach (['normal', 'italic', 'oblique'] as $st): ?><option value="<?= esc($st, 'attr') ?>" <?= ($hg['font_style'] ?? '') === $st ? 'selected' : '' ?>><?= esc(ucfirst($st)) ?></option><?php endforeach; ?></select></div>
             <div class="col-6 col-md-3"><label class="form-label small" for="hg_text_transform">Transformación</label><select class="form-select form-select-sm" id="hg_text_transform"><?php foreach (['none' => 'Normal', 'uppercase' => 'MAYÚSCULAS', 'lowercase' => 'minúsculas', 'capitalize' => 'Tipo título'] as $k => $v): ?><option value="<?= esc($k, 'attr') ?>" <?= ($hg['text_transform'] ?? '') === $k ? 'selected' : '' ?>><?= esc($v) ?></option><?php endforeach; ?></select></div>
             <div class="col-6 col-md-2"><label class="form-label small" for="hg_line_height">Interlineado</label><input type="number" class="form-control form-control-sm" id="hg_line_height" min="1" max="3" step="0.05" value="<?= esc((string) ($hg['line_height'] ?? 1.35), 'attr') ?>"></div>
+            <div class="col-6 col-md-2"><label class="form-label small" for="hg_qr_size_percent" title="100 % = tamaño base; mayor = QR más grande en el PDF">Tamaño QR (%)</label><input type="number" class="form-control form-control-sm" id="hg_qr_size_percent" min="50" max="200" step="5" value="<?= esc((string) (int) ($hg['qr_size_percent'] ?? 100), 'attr') ?>"></div>
         </div>
         <p class="small text-muted mb-2">Etiquetas del encabezado: texto, visibilidad, disposición respecto al valor (o al QR) y tipografía del texto de etiqueta en el PDF.</p>
         <div class="table-responsive mb-2">
@@ -502,6 +503,7 @@ $labelsShort = [
             <div class="col-6 col-md-2"><label class="form-label small" for="rs_font_style">Estilo</label><select class="form-select" id="rs_font_style"><?php foreach (['normal', 'italic', 'oblique'] as $st): ?><option value="<?= esc($st, 'attr') ?>" <?= $rs['font_style'] === $st ? 'selected' : '' ?>><?= esc(ucfirst($st)) ?></option><?php endforeach; ?></select></div>
             <div class="col-6 col-md-3"><label class="form-label small" for="rs_text_transform">Transformación</label><select class="form-select" id="rs_text_transform"><?php foreach (['none' => 'Normal', 'uppercase' => 'MAYÚSCULAS', 'lowercase' => 'minúsculas', 'capitalize' => 'Tipo Título'] as $k => $v): ?><option value="<?= esc($k, 'attr') ?>" <?= $rs['text_transform'] === $k ? 'selected' : '' ?>><?= esc($v) ?></option><?php endforeach; ?></select></div>
             <div class="col-6 col-md-2"><label class="form-label small" for="rs_line_height">Interlineado</label><input type="number" class="form-control" id="rs_line_height" min="1" max="3" step="0.05" value="<?= esc((string) $rs['line_height'], 'attr') ?>"></div>
+            <div class="col-6 col-md-2"><label class="form-label small" for="rs_cell_padding_v" title="Espacio arriba y abajo en cada celda; controla el alto de la fila">Relleno vertical filas (px)</label><input type="number" class="form-control" id="rs_cell_padding_v" min="0" max="20" step="1" value="<?= esc((string) (int) ($rs['cell_padding_v_px'] ?? 6), 'attr') ?>"></div>
             <div class="col-12"><hr class="my-1"></div>
             <div class="col-12"><div class="small text-muted fw-semibold">Matriz de valores referenciales (tabla poblacional)</div></div>
             <div class="col-6 col-md-3"><label class="form-label small" for="rs_matrix_align">Alineación horizontal</label><select class="form-select" id="rs_matrix_align"><?php foreach (['left' => 'Izquierda', 'center' => 'Centro', 'right' => 'Derecha', 'justify' => 'Justificado'] as $k => $v): ?><option value="<?= esc($k, 'attr') ?>" <?= ($rs['matrix_text_align'] ?? 'center') === $k ? 'selected' : '' ?>><?= esc($v) ?></option><?php endforeach; ?></select></div>
@@ -3360,7 +3362,8 @@ document.addEventListener('DOMContentLoaded', function() {
             label_qr_hint_font_size_pt: pickNum('hg_qr_hint_fs', 7, 20, hgBaseFs),
             label_qr_hint_font_weight: pickAllowedDomId('hg_qr_hint_fw', 'font_weights', hgGrid.font_weight),
             label_qr_hint_font_style: pickAllowedDomId('hg_qr_hint_fst', 'font_styles', hgGrid.font_style),
-            label_qr_hint_text_transform: pickAllowedDomId('hg_qr_hint_tt', 'text_transforms', hgGrid.text_transform)
+            label_qr_hint_text_transform: pickAllowedDomId('hg_qr_hint_tt', 'text_transforms', hgGrid.text_transform),
+            qr_size_percent: Math.round(pickNum('hg_qr_size_percent', 50, 200, 100))
         });
         (window._headerLabelFieldIds || []).forEach(function(fid) {
             var defT = (window._headerLabelDefaults && Object.prototype.hasOwnProperty.call(window._headerLabelDefaults, fid)) ? window._headerLabelDefaults[fid] : '';
@@ -3467,6 +3470,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 font_style: pickAllowedDomId('rs_font_style', 'font_styles', 'normal'),
                 text_transform: pickAllowedDomId('rs_text_transform', 'text_transforms', 'none'),
                 line_height: pickNum('rs_line_height', 1, 3, 1.35),
+                cell_padding_v_px: Math.round(pickNum('rs_cell_padding_v', 0, 20, 6)),
                 matrix_text_align: pickAllowedDomId('rs_matrix_align', 'text_aligns', 'center'),
                 matrix_vertical_align: pickAllowedDomId('rs_matrix_valign', 'vertical_aligns', 'middle'),
                 matrix_text_color: pickHex('rs_matrix_text_color', '#333333'),
@@ -3558,6 +3562,7 @@ document.addEventListener('DOMContentLoaded', function() {
         pushIfBadSelect('hg_font_style', fst, 'Estilo no permitido (cuadrícula encabezado).');
         pushIfBadSelect('hg_text_transform', tt, 'Transformación no permitida (cuadrícula encabezado).');
         pushIfBadNum('hg_line_height', 1, 3, 'Interlineado (cuadrícula encabezado): entre 1 y 3.');
+        pushIfBadNum('hg_qr_size_percent', 50, 200, 'Tamaño del QR (encabezado): entre 50 y 200 %.');
         (window._headerLabelFieldIds || []).forEach(function(fid) {
             pushIfBadHex('hg_hdr_' + fid + '_color', 'Color inválido en etiqueta del encabezado (' + fid + ').');
             pushIfBadNum('hg_hdr_' + fid + '_fs', 7, 20, 'Tamaño de etiqueta en encabezado: entre 7 y 20 pt.');
@@ -3634,6 +3639,7 @@ document.addEventListener('DOMContentLoaded', function() {
         pushIfBadSelect('rs_font_style', fst, 'Estilo no permitido en tabla de resultados.');
         pushIfBadSelect('rs_text_transform', tt, 'Transformación no permitida en tabla de resultados.');
         pushIfBadNum('rs_line_height', 1, 3, 'Interlineado en tabla de resultados: entre 1 y 3.');
+        pushIfBadNum('rs_cell_padding_v', 0, 20, 'Relleno vertical de filas (tabla de resultados): entre 0 y 20 px.');
         pushIfBadNum('rs_segment_border_width', 0, 4, 'Grosor de borde de segmento: entre 0 y 4 px.');
         pushIfBadSelect('rs_segment_shadow', pdfAllow('segment_shadows'), 'Sombra de segmento no permitida.');
         pushIfBadSelect('rs_matrix_align', ta, 'Alineación horizontal no permitida en matriz de referencia.');

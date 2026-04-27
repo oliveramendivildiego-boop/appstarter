@@ -28,9 +28,13 @@ $valueOf = static function (string $id) use ($paciente, $doctor, $register_info,
         case 'diagnostico_presuntivo':
             return trim((string) ($register_info->diagnostico_presuntivo ?? ''));
         case 'medico':
+            $nombreMed = trim((string) ($doctor->name ?? ''));
+            if (! empty($doctor->report_sin_prefijo_medico ?? false)) {
+                return $nombreMed !== '' ? $nombreMed : '—';
+            }
             $tit = ((int) ($doctor->gender ?? 0) === 1) ? 'Dr.' : 'Dra.';
 
-            return $tit . ' ' . ($doctor->name ?? '-');
+            return $tit . ' ' . ($nombreMed !== '' ? $nombreMed : '-');
         case 'fecha_recepcion':
             $rec = (string) ($register_info->recepcion_fecha_hora ?? '');
 

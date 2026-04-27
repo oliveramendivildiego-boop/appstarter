@@ -18,8 +18,12 @@
                 <p class="mb-1"><strong>Fecha ingreso:</strong> <?= esc($register_info->ingreso ? date('d/m/Y H:i', strtotime($register_info->ingreso)) : '-') ?></p>
             </div>
             <div class="col-md-6">
+                <?php if (!empty($doctor->report_sin_prefijo_medico ?? false)) : ?>
+                <p class="mb-1"><strong>Médico:</strong> <?= esc($doctor->name ?? '-') ?></p>
+                <?php else : ?>
                 <?php $tituloMedico = ((int)($doctor->gender ?? 0) === 1) ? 'Dr.' : 'Dra.'; ?>
                 <p class="mb-1"><strong>Médico:</strong> <?= $tituloMedico ?> <?= esc($doctor->name ?? '-') ?></p>
+                <?php endif; ?>
                 <p class="mb-1"><strong>Total orden:</strong> <?= number_format((float)(($pago ?? null)?->total ?? 0), 2) ?> Bs</p>
                 <p class="mb-0"><strong>Pruebas:</strong> <?= esc($register_info->pruebas ?? '-') ?></p>
             </div>

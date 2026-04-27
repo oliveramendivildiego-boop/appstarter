@@ -18,13 +18,26 @@
     </style>
 </head>
 <body>
+    <?php
+    helper('registro');
+    $doctorOrdenPdf = trim((string) ($register_info->doctor_name ?? ''));
+    if ($doctorOrdenPdf === '') {
+        $doctorOrdenPdf = trim((string) ($register_info->doctor ?? ''));
+    }
+    if ($doctorOrdenPdf === '') {
+        $doctorOrdenPdf = isset($label_sin_doctor) ? trim((string) $label_sin_doctor) : 'Sin doctor';
+        if ($doctorOrdenPdf === '') {
+            $doctorOrdenPdf = 'Sin doctor';
+        }
+    }
+    ?>
     <h1>Orden de trabajo</h1>
     <div class="meta">
         <div><strong>Orden:</strong> <?= esc(registro_orden_display($register_info)) ?></div>
         <div><strong>Fecha:</strong> <?= esc($fecha ?? '') ?></div>
         <div><strong>Paciente:</strong> <?= esc(($register_info->first_name ?? '') . ' ' . ($register_info->last_name_fa ?? '') . ' ' . ($register_info->last_name_mom ?? '')) ?></div>
         <div><strong>Edad:</strong> <?= esc($edad_paciente_orden ?? '-') ?></div>
-        <div><strong>Doctor:</strong> <?= esc($register_info->doctor_name ?? $register_info->doctor ?? '') ?></div>
+        <div><strong>Doctor:</strong> <?= esc($doctorOrdenPdf) ?></div>
     </div>
 
     <?php if (!empty($grupos_pruebas ?? [])): ?>

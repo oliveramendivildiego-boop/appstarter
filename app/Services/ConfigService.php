@@ -85,6 +85,7 @@ class ConfigService
         $data['comprobante_tagline'] ??= 'Constancia de pago';
         $data['comprobante_footer_note'] ??= 'Documento interno de constancia de pago emitido por el laboratorio. No reemplaza un comprobante fiscal electrónico ni factura validada ante el SIN.';
         $data['comprobante_show_doctor'] ??= '1';
+        $data['label_sin_doctor'] ??= 'Sin doctor';
         $cache->save($cacheKey, $data, self::CACHE_TTL);
         return $data;
     }
@@ -254,6 +255,13 @@ class ConfigService
         }
         if (array_key_exists('leyendas_enabled', $postData)) {
             $batch['leyendas_enabled'] = ($postData['leyendas_enabled'] === '1') ? '1' : '0';
+        }
+        if (array_key_exists('label_sin_doctor', $postData)) {
+            $t = trim((string) ($postData['label_sin_doctor'] ?? ''));
+            if (mb_strlen($t) > 160) {
+                $t = mb_substr($t, 0, 160);
+            }
+            $batch['label_sin_doctor'] = $t;
         }
         if (array_key_exists('registro_folio_format', $postData)) {
             $fmt = trim((string) $postData['registro_folio_format']);

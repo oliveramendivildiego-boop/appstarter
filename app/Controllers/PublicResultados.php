@@ -48,7 +48,6 @@ class PublicResultados extends BaseController
             'report_pria_refs_consolidada'    => $data['report_pria_refs_consolidada'] ?? [],
             'report_emitido_en'               => $registerService->reportEmitidoEnForView($id),
             'public_resultados_token'         => strtolower((string) preg_replace('/[^a-f0-9]/', '', $token)),
-            'doctor_assigned'                 => $registerModel->registroTieneDoctorAsignado($id),
         ]);
     }
 
@@ -68,14 +67,13 @@ class PublicResultados extends BaseController
         if (! $data) {
             return $this->response->setStatusCode(404)->setBody('Registro no encontrado.');
         }
-        if (! $registerModel->registroTieneDoctorAsignado($id)) {
-            return $this->response->setStatusCode(403)->setBody('Debe asignarse un doctor antes de generar el PDF.');
-        }
 
         $cleanToken = strtolower((string) preg_replace('/[^a-f0-9]/', '', $token));
         helper('qr');
         $reportUrl = site_url('resultados/' . $cleanToken);
-        $qrDataUri = qr_base64($reportUrl, 100);
+        $qrLayout  = (new \App\Services\ReportPdfLayoutService())->getActiveLayoutForRender();
+        $qrPx      = \App\Services\ReportPdfLayoutService::qrImagePixelSizeFromLayout($qrLayout);
+        $qrDataUri = qr_base64($reportUrl, $qrPx);
         $emitidoEn = $registerService->lockReportEmitidoEnForPrintOrPdf($id);
         $html      = $registerService->renderReportPdfHtml($data, $reportUrl, $qrDataUri, $emitidoEn);
 

@@ -36,8 +36,12 @@ $publicBase = $token !== '' ? site_url('resultados/' . $token) : site_url();
         <span class="fw-bold">Teléfono:</span> <?= esc($paciente->phone_number ?? '') ?>
     </div>
     <div class="col-md-6">
+        <?php if (!empty($doctor->report_sin_prefijo_medico ?? false)) : ?>
+        <span class="fw-bold">Médico:</span> <?= esc($doctor->name ?? '') ?><br/>
+        <?php else : ?>
         <?php $tituloMedico = ((int)($doctor->gender ?? 0) === 1) ? 'Dr.' : 'Dra.'; ?>
         <span class="fw-bold">Médico:</span> <?= $tituloMedico ?> <?= esc($doctor->name ?? '') ?><br/>
+        <?php endif; ?>
         <span class="fw-bold">Fecha de recepción:</span> <?= esc($register_info->recepcion_fecha_hora ?? '') ?><br/>
         <span class="fw-bold">Fecha de reporte:</span> <?= esc($report_emitido_en ?? \App\Services\RegisterService::formatNowForReport()) ?><br/>
         <span class="fw-bold">No. Orden:</span> <?= esc(registro_orden_display($register_info)) ?>
@@ -84,14 +88,10 @@ endif;
 <?= view('registers/partials/report_lab_firmas', ['report_lab_firmas' => $report_lab_firmas ?? []]) ?>
 
 <div class="text-center mt-3">
-    <?php if ($token !== '' && !empty($doctor_assigned ?? false)): ?>
+    <?php if ($token !== ''): ?>
     <a href="<?= site_url('resultados/' . $token . '/pdf') ?>" class="btn btn-success" target="_blank" rel="noopener">
         <i class="fa-solid fa-file-pdf me-1"></i> Descargar PDF
     </a>
-    <?php elseif ($token !== ''): ?>
-    <div class="small text-muted">
-        El PDF estará disponible cuando la orden tenga un doctor asignado.
-    </div>
     <?php endif; ?>
 </div>
 </fieldset>

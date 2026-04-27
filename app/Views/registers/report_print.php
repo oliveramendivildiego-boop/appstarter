@@ -165,6 +165,7 @@
             --pdf-hg-line-height: <?= esc((string) $hg['line_height']) ?>;
             --pdf-hg-column-border-width: <?= esc((string) $hgColW) ?>px;
             --pdf-hg-column-border-color: <?= esc((string) ($hg['column_border_color'] ?? '#DDDDDD')) ?>;
+            --pdf-qr-size-percent: <?= (int) ($hg['qr_size_percent'] ?? 100) ?>;
             --pdf-pd-body-bg: <?= esc($pdBodyBg) ?>;
             --pdf-pd-body-color: <?= esc($pd['body_text_color']) ?>;
             --pdf-pd-font-family: "<?= esc($pd['font_family']) ?>";
@@ -207,6 +208,7 @@
             --pdf-results-font-style: <?= esc($rs['font_style']) ?>;
             --pdf-results-transform: <?= esc($rs['text_transform']) ?>;
             --pdf-results-line-height: <?= esc((string) $rs['line_height']) ?>;
+            --pdf-results-cell-padding-v: <?= (int) ($rs['cell_padding_v_px'] ?? 6) ?>px;
             --pdf-results-matrix-align: <?= esc((string) ($rs['matrix_text_align'] ?? 'center')) ?>;
             --pdf-results-matrix-vertical-align: <?= esc((string) ($rs['matrix_vertical_align'] ?? 'middle')) ?>;
             --pdf-results-matrix-color: <?= esc((string) ($rs['matrix_text_color'] ?? $rs['body_text_color'])) ?>;
@@ -246,6 +248,11 @@
             font-style: <?= esc($rs['font_style']) ?> !important;
             text-transform: <?= esc($rs['text_transform']) ?> !important;
             line-height: <?= esc((string) $rs['line_height']) ?> !important;
+        }
+        table.results:not(.pdf-notes-table) th,
+        table.results:not(.pdf-notes-table) td {
+            padding-top: <?= (int) ($rs['cell_padding_v_px'] ?? 6) ?>px !important;
+            padding-bottom: <?= (int) ($rs['cell_padding_v_px'] ?? 6) ?>px !important;
         }
         table.results td.out-range,
         table.results .out-range {

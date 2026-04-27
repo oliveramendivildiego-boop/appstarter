@@ -350,7 +350,9 @@ class DoctorHome extends BaseController
         $reportUrl = ($token !== null && $token !== '')
             ? site_url('resultados/' . $token)
             : site_url('doctor/viewreport/' . $id);
-        $qrDataUri = qr_base64($reportUrl, 100);
+        $qrLayout  = (new \App\Services\ReportPdfLayoutService())->getActiveLayoutForRender();
+        $qrPx      = \App\Services\ReportPdfLayoutService::qrImagePixelSizeFromLayout($qrLayout);
+        $qrDataUri = qr_base64($reportUrl, $qrPx);
         $emitidoEn = $this->registerService->lockReportEmitidoEnForPrintOrPdf($id);
         $html      = $this->registerService->renderReportPdfHtml($data, $reportUrl, $qrDataUri, $emitidoEn);
 
