@@ -3,6 +3,7 @@
 namespace App\Controllers;
 
 use App\Models\DoctorModel;
+use CodeIgniter\HTTP\RedirectResponse;
 use CodeIgniter\HTTP\ResponseInterface;
 
 class Doctors extends SecureArea
@@ -170,6 +171,15 @@ class Doctors extends SecureArea
             }
         }
 
+        return redirect()->to(site_url('doctors'));
+    }
+
+    /**
+     * El botón Borrar usa href doctors/delete; el borrado va por POST desde manage_tables.js.
+     * Si alguien abre esa URL con GET, redirigimos al listado en lugar de mostrar 404.
+     */
+    public function deleteRedirect($id = null): RedirectResponse
+    {
         return redirect()->to(site_url('doctors'));
     }
 

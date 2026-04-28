@@ -103,12 +103,22 @@ if (!function_exists('get_doctor_data_row')) {
     {
         $table_data_row = '<tr>';
         $table_data_row .= "<td width='5%'><input type='checkbox' id='doctor_{$doctor->doctor_id}' name='doctor_{$doctor->doctor_id}' value='{$doctor->doctor_id}'/></td>";
-        $table_data_row .= '<td width="25%">' . (function_exists('character_limiter') ? character_limiter($doctor->name ?? '', 20) : substr($doctor->name ?? '', 0, 20)) . '</td>';
-        $table_data_row .= '<td width="15%">' . ($doctor->phone_number ?? '') . '</td>';
-        $table_data_row .= '<td width="25%">' . (function_exists('character_limiter') ? character_limiter($doctor->speciality ?? '', 20) : substr($doctor->speciality ?? '', 0, 20)) . '</td>';
-        $table_data_row .= '<td width="25%">' . (function_exists('character_limiter') ? character_limiter($doctor->address ?? '', 20) : substr($doctor->address ?? '', 0, 20)) . '</td>';
+        $table_data_row .= '<td width="23%">' . (function_exists('character_limiter') ? character_limiter($doctor->name ?? '', 20) : substr($doctor->name ?? '', 0, 20)) . '</td>';
+        $table_data_row .= '<td width="13%">' . ($doctor->phone_number ?? '') . '</td>';
+        $table_data_row .= '<td width="23%">' . (function_exists('character_limiter') ? character_limiter($doctor->speciality ?? '', 20) : substr($doctor->speciality ?? '', 0, 20)) . '</td>';
+        $table_data_row .= '<td width="23%">' . (function_exists('character_limiter') ? character_limiter($doctor->address ?? '', 20) : substr($doctor->address ?? '', 0, 20)) . '</td>';
         $editIcon = '<i class="fa-solid fa-pen" aria-hidden="true"></i>';
-        $table_data_row .= '<td width="5%" class="text-center">' . anchor('doctors/view/' . $doctor->doctor_id . '/', $editIcon, ['class' => 'update', 'title' => lang('Doctors.doctors_update')]) . '</td>';
+        $actions = anchor('doctors/view/' . $doctor->doctor_id . '/', $editIcon, ['class' => 'update', 'title' => lang('Doctors.doctors_update')]);
+        $phone = trim($doctor->phone_number ?? '');
+        $phoneClean = preg_replace('/\D/', '', $phone);
+        if ($phoneClean !== '') {
+            $waNum = (strlen($phoneClean) <= 9) ? '591' . ltrim($phoneClean, '0') : $phoneClean;
+            $waUrl = 'https://wa.me/' . $waNum;
+            $actions .= ' <a href="' . esc($waUrl) . '" target="_blank" rel="noopener" class="text-success" title="WhatsApp"><i class="fa-brands fa-whatsapp"></i></a>';
+        } else {
+            $actions .= ' <span class="text-secondary" title="Sin teléfono"><i class="fa-brands fa-whatsapp" style="opacity:0.4"></i></span>';
+        }
+        $table_data_row .= '<td width="13%" class="text-center text-nowrap">' . $actions . '</td>';
         $table_data_row .= '</tr>';
         return $table_data_row;
     }

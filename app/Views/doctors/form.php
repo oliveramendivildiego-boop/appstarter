@@ -8,7 +8,7 @@ $dmItems = $doctor_info->doctor_id
     ? [['label' => lang('Module.module_doctors'), 'url' => site_url($controller_name ?? 'doctors')], ['label' => $doctor_info->name ?? '', 'url' => site_url(($controller_name ?? 'doctors') . '/view/' . $doctor_info->doctor_id)]]
     : [['label' => lang('Module.module_doctors'), 'url' => site_url($controller_name ?? 'doctors')], ['label' => lang('Doctors.doctors_new'), 'url' => null]];
 $dmRight = ($doctor_info->doctor_id ?? 0)
-    ? anchor(($controller_name ?? 'doctors') . '/delete/' . ($doctor_info->doctor_id ?? 0), lang('Common.common_delete'), ['class' => 'btn btn-danger', 'title' => lang('Common.common_delete')])
+    ? '<button type="button" id="doctor_delete_btn" class="btn btn-danger" title="' . esc(lang('Common.common_delete')) . '" data-doctor-id="' . esc((string) $doctor_info->doctor_id, 'attr') . '">' . esc(lang('Common.common_delete')) . '</button>'
     : '';
 ?>
 <?= view('partial/breadcrumb_nav', ['items' => $dmItems, 'right' => $dmRight]) ?>
@@ -42,6 +42,38 @@ echo form_submit(['name' => 'submit', 'id' => 'submit', 'value' => lang('Common.
 <?= $this->section('scripts') ?>
 <script>
 $(document).ready(function() {
+    $('#doctor_delete_btn').on('click', function() {
+        var doctorId = $(this).data('doctor-id');
+        var confirmMsg = <?= json_encode(lang('Doctors.doctors_confirm_delete_one')) ?>;
+        var deleteUrl = '<?= site_url(($controller_name ?? 'doctors') . '/delete') ?>';
+        var listUrl = '<?= site_url($controller_name ?? 'doctors') ?>';
+        function runDelete() {
+            var payload = { 'ids[]': doctorId };
+            if (typeof window.CI_CSRF_TOKEN_NAME !== 'undefined' && typeof window.CI_CSRF_TOKEN !== 'undefined') {
+                payload[window.CI_CSRF_TOKEN_NAME] = window.CI_CSRF_TOKEN;
+            }
+            $.post(deleteUrl, payload, function(response) {
+                if (response && response.success) {
+                    if (typeof showToast === 'function') {
+                        showToast(response.message || '', 'success');
+                    }
+                    window.location.href = listUrl;
+                } else if (typeof showToast === 'function') {
+                    showToast((response && response.message) ? response.message : 'Error', 'error');
+                }
+            }, 'json').fail(function() {
+                if (typeof showToast === 'function') {
+                    showToast('Error al eliminar', 'error');
+                }
+            });
+        }
+        if (typeof uiConfirm === 'function') {
+            uiConfirm(confirmMsg, 'Confirmar').then(function(ok) { if (ok) runDelete(); });
+        } else if (window.confirm(confirmMsg)) {
+            runDelete();
+        }
+    });
+
     var isNewDoctor = <?= $saveId === -1 ? 'true' : 'false' ?>;
     if (isNewDoctor) {
         setTimeout(function() { $('#username, #password, #email').val(''); }, 100);

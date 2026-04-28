@@ -284,4 +284,7 @@ $routes->post('doctors/suggest', 'Doctors::suggest');
 $routes->post('doctors/saves/(:num)', 'Doctors::saves/$1');
 $routes->post('doctors/save/(:any)', 'Doctors::saves/$1');
 $routes->post('doctors/save', 'Doctors::saves');
+// GET evita 404 si se abre el href del botón Borrar sin POST (anchor); la eliminación real sigue siendo POST desde JS
+$routes->get('doctors/delete/(:num)', 'Doctors::deleteRedirect/$1');
+$routes->get('doctors/delete', 'Doctors::deleteRedirect');
 $routes->post('doctors/delete', 'Doctors::delete');

@@ -4,6 +4,7 @@ return [
     'doctors_new'                  => 'Nuevo Doctor',
     'doctors_update'                => 'Actualizar Doctor',
     'doctors_confirm_delete'        => '¿Estás seguro de que quieres borrar a los doctores seleccionados?',
+    'doctors_confirm_delete_one'    => '¿Está seguro de que desea eliminar este médico?',
     'doctors_none_selected'         => 'No has seleccionado doctores para ser borrados',
     'doctors_confirm_search'        => '¿Confirmar búsqueda? Se borrarán las selecciones actuales.',
     'doctors_error_adding_updating'  => 'Error agregando/actualizando doctor',
