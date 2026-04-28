@@ -1835,8 +1835,8 @@ class ReportPdfLayoutService
                         return 'Tamaño del QR (%) inválido en el encabezado.';
                     }
                     $qsp = (int) $hgRaw['qr_size_percent'];
-                    if ($qsp < 50 || $qsp > 200) {
-                        return 'El tamaño del QR en el encabezado debe estar entre 50 y 200 %.';
+                    if ($qsp < 50 || $qsp > 400) {
+                        return 'El tamaño del QR en el encabezado debe estar entre 50 y 400 %.';
                     }
                 }
                 $hgFsKeys = ['label_qr_hint_font_size_pt'];
@@ -2489,7 +2489,7 @@ class ReportPdfLayoutService
         $base['label_qr_hint_font_style']   = $pickPieceFst('label_qr_hint_font_style');
         $base['label_qr_hint_text_transform'] = $pickPieceTt('label_qr_hint_text_transform');
         $qrPct = isset($s['qr_size_percent']) ? (int) $s['qr_size_percent'] : 100;
-        $base['qr_size_percent'] = max(50, min(200, $qrPct));
+        $base['qr_size_percent'] = max(50, min(400, $qrPct));
 
         foreach (self::HEADER_GRID_LABEL_DEFAULTS as $id => $fallback) {
             $base['label_' . $id] = self::clipLabFirmasLabel($s['label_' . $id] ?? null, $fallback);
@@ -2506,7 +2506,7 @@ class ReportPdfLayoutService
     }
 
     /**
-     * Tamaño en píxeles del PNG del QR (50–500) a partir de la plantilla. Base de generación 100 px al 100 %.
+     * Tamaño en píxeles del PNG del QR (50–500) a partir de la plantilla. Base de generación 100 px al 100 % (escala con qr_size_percent hasta 400 %).
      */
     public static function qrImagePixelSizeFromLayout(array $pdfLayout): int
     {

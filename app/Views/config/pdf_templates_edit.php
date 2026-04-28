@@ -219,7 +219,7 @@ $labelsShort = [
             <div class="col-4 col-md-2"><label class="form-label small" for="hg_font_style">Estilo</label><select class="form-select form-select-sm" id="hg_font_style"><?php foreach (['normal', 'italic', 'oblique'] as $st): ?><option value="<?= esc($st, 'attr') ?>" <?= ($hg['font_style'] ?? '') === $st ? 'selected' : '' ?>><?= esc(ucfirst($st)) ?></option><?php endforeach; ?></select></div>
             <div class="col-6 col-md-3"><label class="form-label small" for="hg_text_transform">Transformación</label><select class="form-select form-select-sm" id="hg_text_transform"><?php foreach (['none' => 'Normal', 'uppercase' => 'MAYÚSCULAS', 'lowercase' => 'minúsculas', 'capitalize' => 'Tipo título'] as $k => $v): ?><option value="<?= esc($k, 'attr') ?>" <?= ($hg['text_transform'] ?? '') === $k ? 'selected' : '' ?>><?= esc($v) ?></option><?php endforeach; ?></select></div>
             <div class="col-6 col-md-2"><label class="form-label small" for="hg_line_height">Interlineado</label><input type="number" class="form-control form-control-sm" id="hg_line_height" min="1" max="3" step="0.05" value="<?= esc((string) ($hg['line_height'] ?? 1.35), 'attr') ?>"></div>
-            <div class="col-6 col-md-2"><label class="form-label small" for="hg_qr_size_percent" title="100 % = tamaño base; mayor = QR más grande en el PDF">Tamaño QR (%)</label><input type="number" class="form-control form-control-sm" id="hg_qr_size_percent" min="50" max="200" step="5" value="<?= esc((string) (int) ($hg['qr_size_percent'] ?? 100), 'attr') ?>"></div>
+            <div class="col-6 col-md-3"><label class="form-label small" for="hg_qr_size_percent" title="100 % = tamaño base del PDF (~75 px de alto). Suba el porcentaje para ampliar el código QR (máx. 400 %).">Tamaño del código QR (%)</label><input type="number" class="form-control form-control-sm" id="hg_qr_size_percent" min="50" max="400" step="5" value="<?= esc((string) (int) ($hg['qr_size_percent'] ?? 100), 'attr') ?>"><span class="form-text small text-muted d-block">50–400 % respecto al tamaño base</span></div>
         </div>
         <p class="small text-muted mb-2">Etiquetas del encabezado: texto, visibilidad, disposición respecto al valor (o al QR) y tipografía del texto de etiqueta en el PDF.</p>
         <div class="table-responsive mb-2">
@@ -470,10 +470,21 @@ $labelsShort = [
 
 <div class="card shadow-sm mb-4 pdf-config-panel" data-config-panels="results">
     <div class="card-header bg-info-subtle border">
-        <h5 class="mb-0">Estilo global de Tablas de resultados por prueba (PDF / impresión)</h5>
+        <h5 class="mb-1">Resultados en el PDF</h5>
+        <p class="small text-muted mb-0">Tabla por prueba, filas separadoras entre análisis y matriz de referencia. Use las secciones siguientes en orden: colores → tipografía → espacio entre filas del PDF → títulos de sección → matriz poblacional.</p>
     </div>
     <div class="card-body">
-        <div class="row g-3">
+        <div class="accordion accordion-flush pdf-results-accordion" id="accordion_pdf_results">
+            <div class="accordion-item border rounded mb-2 overflow-hidden">
+                <h2 class="accordion-header m-0">
+                    <button class="accordion-button py-2" type="button" data-bs-toggle="collapse" data-bs-target="#pdf_rs_panel_colors" aria-expanded="true" aria-controls="pdf_rs_panel_colors">
+                        <span class="fw-semibold">1. Colores de la tabla principal</span>
+                        <span class="small text-muted ms-2 d-none d-md-inline">Encabezado, cuerpo y bordes</span>
+                    </button>
+                </h2>
+                <div id="pdf_rs_panel_colors" class="accordion-collapse collapse show" data-bs-parent="#accordion_pdf_results">
+                    <div class="accordion-body pt-0">
+                        <div class="row g-3">
             <div class="col-6 col-md-3"><label class="form-label small" for="rs_header_bg">Fondo encabezado</label><input type="color" class="form-control form-control-color" id="rs_header_bg" value="<?= esc($rs['header_bg_color'], 'attr') ?>"></div>
             <div class="col-6 col-md-3"><label class="form-label small" for="rs_header_text">Texto encabezado</label><input type="color" class="form-control form-control-color" id="rs_header_text" value="<?= esc($rs['header_text_color'], 'attr') ?>"></div>
             <div class="col-6 col-md-3"><label class="form-label small" for="rs_body_bg">Fondo filas</label><input type="color" class="form-control form-control-color" id="rs_body_bg" value="<?= esc($rs['body_bg_color'], 'attr') ?>"></div>
@@ -485,8 +496,62 @@ $labelsShort = [
                 </div>
             </div>
             <div class="col-6 col-md-3"><label class="form-label small" for="rs_border_color">Color bordes</label><input type="color" class="form-control form-control-color" id="rs_border_color" value="<?= esc($rs['border_color'], 'attr') ?>"></div>
-            <div class="col-12"><hr class="my-1"></div>
-            <div class="col-12"><div class="small text-muted fw-semibold">Título de sección (fila separadora)</div></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="accordion-item border rounded mb-2 overflow-hidden">
+                <h2 class="accordion-header m-0">
+                    <button class="accordion-button collapsed py-2" type="button" data-bs-toggle="collapse" data-bs-target="#pdf_rs_panel_type" aria-expanded="false" aria-controls="pdf_rs_panel_type">
+                        <span class="fw-semibold">2. Tipografía de la tabla principal</span>
+                        <span class="small text-muted ms-2 d-none d-md-inline">Fuente, tamaño e interlineado del contenido</span>
+                    </button>
+                </h2>
+                <div id="pdf_rs_panel_type" class="accordion-collapse collapse" data-bs-parent="#accordion_pdf_results">
+                    <div class="accordion-body pt-0">
+                        <div class="row g-3">
+            <div class="col-12 col-md-3"><label class="form-label small" for="rs_font_family">Fuente</label><select class="form-select" id="rs_font_family"><?php foreach (['DejaVu Sans', 'Helvetica', 'Arial', 'Times New Roman', 'Courier New'] as $ff): ?><option value="<?= esc($ff, 'attr') ?>" <?= $rs['font_family'] === $ff ? 'selected' : '' ?>><?= esc($ff) ?></option><?php endforeach; ?></select></div>
+            <div class="col-6 col-md-2"><label class="form-label small" for="rs_font_size">Tamaño</label><input type="number" class="form-control" id="rs_font_size" min="7" max="20" step="0.5" value="<?= esc((string) $rs['font_size_pt'], 'attr') ?>"></div>
+            <div class="col-6 col-md-2"><label class="form-label small" for="rs_font_weight">Grosor</label><select class="form-select" id="rs_font_weight"><?php foreach (['normal', 'bold', '400', '500', '600', '700', '800'] as $w): ?><option value="<?= esc($w, 'attr') ?>" <?= $rs['font_weight'] === $w ? 'selected' : '' ?>><?= esc($w) ?></option><?php endforeach; ?></select></div>
+            <div class="col-6 col-md-2"><label class="form-label small" for="rs_font_style">Estilo</label><select class="form-select" id="rs_font_style"><?php foreach (['normal', 'italic', 'oblique'] as $st): ?><option value="<?= esc($st, 'attr') ?>" <?= $rs['font_style'] === $st ? 'selected' : '' ?>><?= esc(ucfirst($st)) ?></option><?php endforeach; ?></select></div>
+            <div class="col-6 col-md-3"><label class="form-label small" for="rs_text_transform">Transformación</label><select class="form-select" id="rs_text_transform"><?php foreach (['none' => 'Normal', 'uppercase' => 'MAYÚSCULAS', 'lowercase' => 'minúsculas', 'capitalize' => 'Tipo Título'] as $k => $v): ?><option value="<?= esc($k, 'attr') ?>" <?= $rs['text_transform'] === $k ? 'selected' : '' ?>><?= esc($v) ?></option><?php endforeach; ?></select></div>
+            <div class="col-6 col-md-2"><label class="form-label small" for="rs_line_height">Interlineado</label><input type="number" class="form-control" id="rs_line_height" min="1" max="3" step="0.05" value="<?= esc((string) $rs['line_height'], 'attr') ?>"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="accordion-item border rounded mb-2 overflow-hidden">
+                <h2 class="accordion-header m-0">
+                    <button class="accordion-button collapsed py-2" type="button" data-bs-toggle="collapse" data-bs-target="#pdf_rs_panel_density" aria-expanded="false" aria-controls="pdf_rs_panel_density">
+                        <span class="fw-semibold">3. Espacio entre filas en el PDF</span>
+                        <span class="small text-muted ms-2 d-none d-md-inline">Altura de cada fila de resultado</span>
+                    </button>
+                </h2>
+                <div id="pdf_rs_panel_density" class="accordion-collapse collapse" data-bs-parent="#accordion_pdf_results">
+                    <div class="accordion-body pt-0">
+                        <p class="small text-muted mb-2">Si las filas se ven muy altas o muy apretadas en el PDF, ajuste el <strong>relleno vertical</strong> (principal) y el interlineado en la sección anterior.</p>
+                        <div class="row g-3">
+            <div class="col-12 col-md-4 col-lg-3">
+                <label class="form-label small" for="rs_cell_padding_v" title="Espacio arriba y abajo en cada celda; controla el alto de la fila">Relleno vertical por fila (px)</label>
+                <input type="number" class="form-control" id="rs_cell_padding_v" min="0" max="20" step="1" value="<?= esc((string) (int) ($rs['cell_padding_v_px'] ?? 6), 'attr') ?>">
+            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="accordion-item border rounded mb-2 overflow-hidden">
+                <h2 class="accordion-header m-0">
+                    <button class="accordion-button collapsed py-2" type="button" data-bs-toggle="collapse" data-bs-target="#pdf_rs_panel_segment" aria-expanded="false" aria-controls="pdf_rs_panel_segment">
+                        <span class="fw-semibold">4. Fila separadora entre pruebas / secciones</span>
+                        <span class="small text-muted ms-2 d-none d-md-inline">Título de cada bloque de análisis</span>
+                    </button>
+                </h2>
+                <div id="pdf_rs_panel_segment" class="accordion-collapse collapse" data-bs-parent="#accordion_pdf_results">
+                    <div class="accordion-body pt-0">
+                        <div class="row g-3">
             <div class="col-6 col-md-3"><label class="form-label small" for="rs_segment_bg">Fondo</label><input type="color" class="form-control form-control-color" id="rs_segment_bg" value="<?= esc($rs['segment_bg_color'], 'attr') ?>"></div>
             <div class="col-12 col-md-3 d-flex align-items-end">
                 <div class="form-check mb-1">
@@ -497,15 +562,22 @@ $labelsShort = [
             <div class="col-6 col-md-3"><label class="form-label small" for="rs_segment_border_color">Color borde</label><input type="color" class="form-control form-control-color" id="rs_segment_border_color" value="<?= esc($rs['segment_border_color'], 'attr') ?>"></div>
             <div class="col-6 col-md-2"><label class="form-label small" for="rs_segment_border_width">Ancho borde (px)</label><input type="number" class="form-control" id="rs_segment_border_width" min="0" max="4" step="1" value="<?= esc((string) $rs['segment_border_width_px'], 'attr') ?>"></div>
             <div class="col-6 col-md-2"><label class="form-label small" for="rs_segment_shadow">Sombra</label><select class="form-select" id="rs_segment_shadow"><?php foreach (['none' => 'Sin sombra', 'soft' => 'Suave', 'medium' => 'Media', 'strong' => 'Fuerte'] as $k => $v): ?><option value="<?= esc($k, 'attr') ?>" <?= $rs['segment_shadow'] === $k ? 'selected' : '' ?>><?= esc($v) ?></option><?php endforeach; ?></select></div>
-            <div class="col-12 col-md-3"><label class="form-label small" for="rs_font_family">Fuente</label><select class="form-select" id="rs_font_family"><?php foreach (['DejaVu Sans', 'Helvetica', 'Arial', 'Times New Roman', 'Courier New'] as $ff): ?><option value="<?= esc($ff, 'attr') ?>" <?= $rs['font_family'] === $ff ? 'selected' : '' ?>><?= esc($ff) ?></option><?php endforeach; ?></select></div>
-            <div class="col-6 col-md-2"><label class="form-label small" for="rs_font_size">Tamaño</label><input type="number" class="form-control" id="rs_font_size" min="7" max="20" step="0.5" value="<?= esc((string) $rs['font_size_pt'], 'attr') ?>"></div>
-            <div class="col-6 col-md-2"><label class="form-label small" for="rs_font_weight">Grosor</label><select class="form-select" id="rs_font_weight"><?php foreach (['normal', 'bold', '400', '500', '600', '700', '800'] as $w): ?><option value="<?= esc($w, 'attr') ?>" <?= $rs['font_weight'] === $w ? 'selected' : '' ?>><?= esc($w) ?></option><?php endforeach; ?></select></div>
-            <div class="col-6 col-md-2"><label class="form-label small" for="rs_font_style">Estilo</label><select class="form-select" id="rs_font_style"><?php foreach (['normal', 'italic', 'oblique'] as $st): ?><option value="<?= esc($st, 'attr') ?>" <?= $rs['font_style'] === $st ? 'selected' : '' ?>><?= esc(ucfirst($st)) ?></option><?php endforeach; ?></select></div>
-            <div class="col-6 col-md-3"><label class="form-label small" for="rs_text_transform">Transformación</label><select class="form-select" id="rs_text_transform"><?php foreach (['none' => 'Normal', 'uppercase' => 'MAYÚSCULAS', 'lowercase' => 'minúsculas', 'capitalize' => 'Tipo Título'] as $k => $v): ?><option value="<?= esc($k, 'attr') ?>" <?= $rs['text_transform'] === $k ? 'selected' : '' ?>><?= esc($v) ?></option><?php endforeach; ?></select></div>
-            <div class="col-6 col-md-2"><label class="form-label small" for="rs_line_height">Interlineado</label><input type="number" class="form-control" id="rs_line_height" min="1" max="3" step="0.05" value="<?= esc((string) $rs['line_height'], 'attr') ?>"></div>
-            <div class="col-6 col-md-2"><label class="form-label small" for="rs_cell_padding_v" title="Espacio arriba y abajo en cada celda; controla el alto de la fila">Relleno vertical filas (px)</label><input type="number" class="form-control" id="rs_cell_padding_v" min="0" max="20" step="1" value="<?= esc((string) (int) ($rs['cell_padding_v_px'] ?? 6), 'attr') ?>"></div>
-            <div class="col-12"><hr class="my-1"></div>
-            <div class="col-12"><div class="small text-muted fw-semibold">Matriz de valores referenciales (tabla poblacional)</div></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="accordion-item border rounded mb-2 overflow-hidden">
+                <h2 class="accordion-header m-0">
+                    <button class="accordion-button collapsed py-2" type="button" data-bs-toggle="collapse" data-bs-target="#pdf_rs_panel_matrix" aria-expanded="false" aria-controls="pdf_rs_panel_matrix">
+                        <span class="fw-semibold">5. Matriz de valores referenciales</span>
+                        <span class="small text-muted ms-2 d-none d-md-inline">Tabla poblacional</span>
+                    </button>
+                </h2>
+                <div id="pdf_rs_panel_matrix" class="accordion-collapse collapse" data-bs-parent="#accordion_pdf_results">
+                    <div class="accordion-body pt-0">
+                        <div class="small fw-semibold text-secondary mb-2">Texto y encabezados de la matriz</div>
+                        <div class="row g-3">
             <div class="col-6 col-md-3"><label class="form-label small" for="rs_matrix_align">Alineación horizontal</label><select class="form-select" id="rs_matrix_align"><?php foreach (['left' => 'Izquierda', 'center' => 'Centro', 'right' => 'Derecha', 'justify' => 'Justificado'] as $k => $v): ?><option value="<?= esc($k, 'attr') ?>" <?= ($rs['matrix_text_align'] ?? 'center') === $k ? 'selected' : '' ?>><?= esc($v) ?></option><?php endforeach; ?></select></div>
             <div class="col-6 col-md-3"><label class="form-label small" for="rs_matrix_valign">Alineación vertical</label><select class="form-select" id="rs_matrix_valign"><?php foreach (['top' => 'Arriba', 'middle' => 'Centro', 'bottom' => 'Abajo'] as $k => $v): ?><option value="<?= esc($k, 'attr') ?>" <?= ($rs['matrix_vertical_align'] ?? 'middle') === $k ? 'selected' : '' ?>><?= esc($v) ?></option><?php endforeach; ?></select></div>
             <div class="col-6 col-md-3"><label class="form-label small" for="rs_matrix_text_color">Color texto matriz</label><input type="color" class="form-control form-control-color" id="rs_matrix_text_color" value="<?= esc((string) ($rs['matrix_text_color'] ?? '#333333'), 'attr') ?>"></div>
@@ -548,6 +620,10 @@ $labelsShort = [
                             </tr>
                         </tbody>
                     </table>
+                </div>
+            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -875,6 +951,14 @@ $labelsShort = [
                 </div>
                 <div id="pdf-field-palette" class="pdf-field-palette"></div>
             </div>
+            <div class="col-12 border-top pt-3 mt-1">
+                <label class="form-label small mb-1" for="pdf_grid_editor_row_gap">Separación entre filas en la cuadrícula (solo vista del editor, no el PDF)</label>
+                <div class="d-flex flex-wrap align-items-center gap-3">
+                    <input type="range" class="form-range m-0" id="pdf_grid_editor_row_gap" min="2" max="18" step="1" value="6" style="max-width: 22rem;">
+                    <span class="small text-muted" id="pdf_grid_editor_row_gap_hint">0,60 rem</span>
+                </div>
+                <p class="small text-muted mb-0 mt-1">Si cada fila del diseño se ve muy alta, baje este valor. La pestaña <strong>Resultados</strong> tiene el control equivalente para el PDF (<em>Relleno vertical por fila</em>).</p>
+            </div>
         </div>
 
         <div class="card border-info mb-4 pdf-section-editor" data-config-section="header">
@@ -1135,17 +1219,17 @@ $labelsShort = [
 .pdf-grid-editor {
     display: flex;
     flex-direction: column;
-    gap: 0.6rem;
+    gap: var(--pdf-grid-editor-gap, 0.45rem);
 }
 .pdf-grid-row-editor {
     display: grid;
-    gap: 0.6rem;
+    gap: var(--pdf-grid-row-inner-gap, 0.45rem);
     width: max-content;
     min-width: 100%;
 }
 .pdf-grid-cell-editor {
     min-width: 170px;
-    min-height: 84px;
+    min-height: var(--pdf-grid-cell-min-height, 72px);
     border: 1px dashed #b9c4d0;
     border-radius: 10px;
     background: #fbfcfe;
@@ -1232,6 +1316,12 @@ $labelsShort = [
     color: #6c757d;
     margin-bottom: 0.2rem;
 }
+.pdf-results-accordion .accordion-button {
+    font-size: 0.95rem;
+}
+.pdf-results-accordion .accordion-button:not(.collapsed) {
+    box-shadow: none;
+}
 </style>
 <script>
 document.addEventListener('DOMContentLoaded', function() {
@@ -1267,6 +1357,36 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     });
     applyConfigTab('general');
+
+    (function pdfGridEditorGapPrefs() {
+        var rangeEl = document.getElementById('pdf_grid_editor_row_gap');
+        var hintEl = document.getElementById('pdf_grid_editor_row_gap_hint');
+        if (!rangeEl) return;
+        function applyGap(val) {
+            var v = Math.max(2, Math.min(18, parseInt(val, 10) || 6));
+            var rem = (v / 10).toFixed(2).replace('.', ',');
+            var inner = (Math.max(2, v - 1) / 10).toFixed(2).replace('.', ',');
+            document.documentElement.style.setProperty('--pdf-grid-editor-gap', (v / 10) + 'rem');
+            document.documentElement.style.setProperty('--pdf-grid-row-inner-gap', (Math.max(2, v - 1) / 10) + 'rem');
+            document.documentElement.style.setProperty('--pdf-grid-cell-min-height', (56 + Math.round(v * 2.2)) + 'px');
+            if (hintEl) {
+                hintEl.textContent = rem + ' rem entre filas · ' + inner + ' rem entre columnas';
+            }
+            try {
+                localStorage.setItem('pdfTplGridEditorRowGap', String(v));
+            } catch (e) { /* ignore */ }
+        }
+        try {
+            var saved = localStorage.getItem('pdfTplGridEditorRowGap');
+            if (saved !== null && saved !== '') {
+                rangeEl.value = String(Math.max(2, Math.min(18, parseInt(saved, 10) || 6)));
+            }
+        } catch (e) { /* ignore */ }
+        applyGap(rangeEl.value);
+        rangeEl.addEventListener('input', function() {
+            applyGap(rangeEl.value);
+        });
+    })();
 
     var blockList = document.getElementById('pdf-block-list');
     var headerList = document.getElementById('instance-list-header');
@@ -2347,7 +2467,12 @@ document.addEventListener('DOMContentLoaded', function() {
             var showH = !!hg.show_label_qr_hint && hint !== '';
             var inlineQ = (hg.label_qr_hint_line_mode === 'inline');
             var stQ = st(hg, 'qr_hint');
-            var img = '<span class="badge bg-secondary">[QR]</span>';
+            var qrPctPrev = parseInt(hg.qr_size_percent, 10);
+            if (isNaN(qrPctPrev)) qrPctPrev = 100;
+            qrPctPrev = Math.max(50, Math.min(400, qrPctPrev));
+            var qrBoxPx = Math.round(36 * qrPctPrev / 100);
+            var qrFs = Math.max(8, Math.round(10 * qrPctPrev / 100));
+            var img = '<span style="display:inline-block;width:' + qrBoxPx + 'px;height:' + qrBoxPx + 'px;line-height:' + qrBoxPx + 'px;text-align:center;background:#6c757d;color:#fff;border-radius:4px;font-size:' + qrFs + 'px;font-weight:600;vertical-align:middle">QR</span>';
             if (inlineQ && showH) {
                 return '<div class="text-center"><span style="display:inline-block;vertical-align:middle;margin-right:6px;' + escapeHtml(stQ) + '">' + escapeHtml(hint) + '</span>' + img + '</div>';
             }
@@ -3363,7 +3488,7 @@ document.addEventListener('DOMContentLoaded', function() {
             label_qr_hint_font_weight: pickAllowedDomId('hg_qr_hint_fw', 'font_weights', hgGrid.font_weight),
             label_qr_hint_font_style: pickAllowedDomId('hg_qr_hint_fst', 'font_styles', hgGrid.font_style),
             label_qr_hint_text_transform: pickAllowedDomId('hg_qr_hint_tt', 'text_transforms', hgGrid.text_transform),
-            qr_size_percent: Math.round(pickNum('hg_qr_size_percent', 50, 200, 100))
+            qr_size_percent: Math.round(pickNum('hg_qr_size_percent', 50, 400, 100))
         });
         (window._headerLabelFieldIds || []).forEach(function(fid) {
             var defT = (window._headerLabelDefaults && Object.prototype.hasOwnProperty.call(window._headerLabelDefaults, fid)) ? window._headerLabelDefaults[fid] : '';
@@ -3562,7 +3687,7 @@ document.addEventListener('DOMContentLoaded', function() {
         pushIfBadSelect('hg_font_style', fst, 'Estilo no permitido (cuadrícula encabezado).');
         pushIfBadSelect('hg_text_transform', tt, 'Transformación no permitida (cuadrícula encabezado).');
         pushIfBadNum('hg_line_height', 1, 3, 'Interlineado (cuadrícula encabezado): entre 1 y 3.');
-        pushIfBadNum('hg_qr_size_percent', 50, 200, 'Tamaño del QR (encabezado): entre 50 y 200 %.');
+        pushIfBadNum('hg_qr_size_percent', 50, 400, 'Tamaño del QR (encabezado): entre 50 y 400 %.');
         (window._headerLabelFieldIds || []).forEach(function(fid) {
             pushIfBadHex('hg_hdr_' + fid + '_color', 'Color inválido en etiqueta del encabezado (' + fid + ').');
             pushIfBadNum('hg_hdr_' + fid + '_fs', 7, 20, 'Tamaño de etiqueta en encabezado: entre 7 y 20 pt.');

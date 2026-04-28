@@ -319,7 +319,11 @@ table.results tbody {
 table.results th,
 table.results td {
     border: 1px solid var(--pdf-results-border-color, #ddd);
-    padding: 6px 8px;
+    /* Solo horizontal aquí: el relleno vertical lo define la plantilla en
+       report_pdf_theme_styles.php con px e !important (Dompdf aplica mal var()
+       y el shorthand padding frente a reglas posteriores). */
+    padding-left: 8px;
+    padding-right: 8px;
     text-align: left;
     vertical-align: middle;
     font-family: var(--pdf-results-font-family, "DejaVu Sans"), sans-serif;
@@ -328,10 +332,6 @@ table.results td {
     font-style: var(--pdf-results-font-style, normal);
     text-transform: var(--pdf-results-transform, none);
     line-height: var(--pdf-results-line-height, 1.35);
-}
-table.results:not(.pdf-notes-table) th,
-table.results:not(.pdf-notes-table) td {
-    padding: var(--pdf-results-cell-padding-v, 6px) 8px;
 }
 /* Mayor especificidad que table.results td (dompdf respeta .text-center en columnas numéricas) */
 table.results th.text-center,
@@ -489,6 +489,19 @@ table.results td {
 .pdf-pd-block .pdf-el-item {
     background-color: transparent !important;
     background-image: none !important;
+}
+/*
+ * Paciente / médico: en la vista HTML los márgenes se ven bien; en PDF (Dompdf) quedaba más aire
+ * entre filas porque el motor no colapsa márgenes como el navegador y además se sumaban
+ * margin-bottom global en .patient-line + margin-bottom:6px en cada tabla de section_layout_grid.
+ * Reseteamos márgenes en hoja y el espaciado queda solo en los estilos inline de element.php.
+ */
+.pdf-pd-block table.pdf-section-table {
+    margin-bottom: 2px !important;
+}
+.pdf-pd-block .pdf-section-table .patient-line {
+    margin-top: 0;
+    margin-bottom: 0;
 }
 /* Heredar la tipografía del .pdf-el-item (estilo inline por instancia); evita que reglas globales (p. ej. .patient-section-lines) pisen la fuente en viewreport. */
 .pdf-hg-block .pdf-section-table td.pdf-cell > .pdf-el-item .patient-line,

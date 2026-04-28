@@ -252,8 +252,7 @@ table.results td {
 }
 table.results:not(.pdf-notes-table) th,
 table.results:not(.pdf-notes-table) td {
-    padding-top: <?= (int) ($rs['cell_padding_v_px'] ?? 6) ?>px !important;
-    padding-bottom: <?= (int) ($rs['cell_padding_v_px'] ?? 6) ?>px !important;
+    padding: <?= (int) ($rs['cell_padding_v_px'] ?? 6) ?>px 8px !important;
 }
 table.results td.out-range,
 table.results .out-range {
