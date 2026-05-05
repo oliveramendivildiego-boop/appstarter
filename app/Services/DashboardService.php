@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\AppConfigModel;
+use App\Services\TenantSubscriptionService;
 use Config\App as AppConfig;
 use App\Models\CustomerModel;
 use App\Models\DoctorModel;
@@ -248,6 +249,27 @@ class DashboardService
             'total'  => count($items),
             'items'  => array_slice($items, 0, 10),
             'factor' => $factor,
+        ];
+    }
+
+    /**
+     * Suscripciones de laboratorios cliente (solo vista tenant principal / multitenant).
+     *
+     * @return array{dias_alerta: int, items: list<array<string,mixed>>, total: int}
+     */
+    public function getTenantsSuscripcionAlerta(): array
+    {
+        $svc = new TenantSubscriptionService();
+        if (! $svc->isMultiTenant() || $svc->isNonDefaultTenantSession()) {
+            return ['dias_alerta' => $svc->getSubscriptionWarningDays(), 'items' => [], 'total' => 0];
+        }
+        $dias = $svc->getSubscriptionWarningDays();
+        $items = $svc->getBillableTenantsSuscripcionResumen($dias);
+
+        return [
+            'dias_alerta' => $dias,
+            'items'       => $items,
+            'total'       => count($items),
         ];
     }
 

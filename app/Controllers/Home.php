@@ -30,6 +30,7 @@ class Home extends SecureArea
         $topDoctores = $dashboardService->getTopDoctores(5);
         $cierresPagosSeries = $dashboardService->getCierresPagosSeriesUltimosDias(30);
         $currencySym = model(AppConfigModel::class)->getValue('currency_symbol') ?: '$';
+        $alertasSuscripcionTenants = $dashboardService->getTenantsSuscripcionAlerta();
 
         return view('home', [
             'allowed_modules'   => $this->allowed_modules,
@@ -47,6 +48,20 @@ class Home extends SecureArea
             'top_doctores'          => $topDoctores,
             'cierres_pagos_series'  => $cierresPagosSeries,
             'currency_symbol'       => $currencySym,
+            'alertas_suscripcion_tenants' => $alertasSuscripcionTenants,
+        ]);
+    }
+
+    /**
+     * Pantalla de acceso suspendido por suscripción vencida (laboratorio cliente).
+     */
+    public function subscriptionBlocked()
+    {
+        return view('subscription_blocked', [
+            'allowed_modules' => $this->allowed_modules,
+            'user_info'       => $this->user_info,
+            'current_module'  => 'home',
+            'hide_sidebar'    => true,
         ]);
     }
 

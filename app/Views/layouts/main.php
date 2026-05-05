@@ -24,6 +24,7 @@ $themeActive = (isset($layoutConfig['theme_active']) && $layoutConfig['theme_act
     : $themeColor;
 
 $sidebarRight = !empty($layoutConfig['sidebar_right']);
+$hideSidebar  = !empty($hide_sidebar);
 $uiGoogleFont = $layoutConfig['ui_google_font_href'] ?? null;
 $uiUseInter   = !empty($layoutConfig['ui_use_inter_css']);
 $uiInline     = (string) ($layoutConfig['ui_inline_style'] ?? '');
@@ -108,9 +109,11 @@ $subAlert = \App\Services\TenantSubscriptionService::alertForCurrentSession();
 if ($subAlert !== null):
     $subAlertClass = ($subAlert['type'] ?? '') === 'danger' ? 'danger' : 'warning';
 ?>
-<div class="alert alert-<?= esc($subAlertClass) ?> alert-dismissible fade show rounded-0 mb-0 border-0 text-center small" role="alert">
+<div class="alert alert-<?= esc($subAlertClass) ?> <?= ($subAlertClass === 'danger') ? '' : 'alert-dismissible' ?> fade show rounded-0 mb-0 border-0 text-center small" role="alert">
     <?= esc($subAlert['message'] ?? '') ?>
+    <?php if ($subAlertClass !== 'danger'): ?>
     <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Cerrar"></button>
+    <?php endif; ?>
 </div>
 <?php endif; ?>
 <div id="toast-container" class="position-fixed top-0 end-0 p-3"></div>
@@ -175,6 +178,7 @@ if ($subAlert !== null):
 
 <div class="container-fluid">
     <div class="row flex-nowrap<?= $sidebarRight ? ' flex-row-reverse' : '' ?>">
+        <?php if (! $hideSidebar): ?>
         <?= view('partial/sidebar', [
             'allowed_modules' => $allowed_modules ?? [],
             'user_info'      => $user_info ?? null,
@@ -182,7 +186,8 @@ if ($subAlert !== null):
             'current_module' => $current_module ?? 'home',
             'sidebar_right'  => $sidebarRight,
         ]) ?>
-        <main class="col-12 col-md-9 col-lg-10 px-md-4 pt-4<?= $sidebarRight ? '' : ' ms-sm-auto' ?>">
+        <?php endif; ?>
+        <main class="<?= $hideSidebar ? 'col-12' : 'col-12 col-md-9 col-lg-10' ?> px-md-4 pt-4<?= $hideSidebar ? '' : ($sidebarRight ? '' : ' ms-sm-auto') ?>">
             <div class="container-fluid">
                 <?= $this->renderSection('content') ?>
             </div>

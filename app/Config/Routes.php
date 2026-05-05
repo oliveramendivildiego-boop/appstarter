@@ -9,6 +9,7 @@ use CodeIgniter\Router\RouteCollection;
  
 $routes->get('/', 'Home::index');
 $routes->get('home', 'Home::index');
+$routes->get('subscription-blocked', 'Home::subscriptionBlocked');
 $routes->get('tenant-subscription', 'TenantSubscription::index');
 $routes->get('tenant-subscription/voucher/(:num)', 'TenantSubscription::voucher/$1');
 $routes->get('no_access/(:any)', 'NoAccess::index/$1');
@@ -136,6 +137,7 @@ $routes->get('config/deleteopcion/(:num)', 'Config::deleteOpcion/$1');
 $routes->get('config/deleteopcionvalor/(:num)', 'Config::deleteOpcionValor/$1');
 $routes->get('config/deletevalortabla/(:alpha)/(:num)', 'Config::deleteValorTabla/$1/$2');
 $routes->get('config/deletetenant/(:num)', 'Config::deleteTenant/$1');
+$routes->post('config/saveTenantSubscriptionAlertDays', 'Config::saveTenantSubscriptionAlertDays');
 $routes->post('config/saveTenantSubscriptionPayment', 'Config::saveTenantSubscriptionPayment');
 $routes->post('config/uploadTenantSubscriptionVoucher/(:num)', 'Config::uploadTenantSubscriptionVoucher/$1');
 $routes->get('config/tenantSubscriptionVoucher/(:num)', 'Config::downloadTenantSubscriptionVoucher/$1');

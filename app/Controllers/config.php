@@ -152,6 +152,9 @@ class Config extends SecureArea
         if ($editarMetodoId > 0) {
             $tab = 'metodos_prueba';
         }
+        if (($this->request->getGet('tab') ?: '') === 'tenant-subscriptions') {
+            $tab = 'tenant_subscriptions';
+        }
         if ($canManageTenants && $tenantEditId <= 0 && ($this->request->getGet('tab') ?: '') === 'tenant_subscriptions') {
             $tab = 'tenant_subscriptions';
         }
@@ -170,6 +173,9 @@ class Config extends SecureArea
             ? $subSvc->listPaymentsWithTenantNames($subSvc->listPaymentsForManagement())
             : [];
         $billable_tenants = $canManageTenants ? $subSvc->getBillableTenants() : [];
+        $appCfg                 = model(\App\Models\AppConfigModel::class);
+        $rawSubAlert            = $appCfg->getValue('dias_alerta_suscripcion_tenant');
+        $tenant_subscription_alert_days_form = $rawSubAlert !== '' ? max(1, min(90, (int) $rawSubAlert)) : $subSvc->getSubscriptionWarningDays();
 
         $pdf_templates = [];
         try {
@@ -201,6 +207,10 @@ class Config extends SecureArea
             'can_manage_tenants'   => $canManageTenants,
             'subscription_payments'=> $subscription_payments,
             'billable_tenants'     => $billable_tenants,
+            'tenant_subscription_alert_days_form' => $tenant_subscription_alert_days_form,
+            'tenant_subscription_resumen_admin'   => $canManageTenants && $subSvc->isMultiTenant()
+                ? $subSvc->getBillableTenantsSuscripcionResumen($subSvc->getSubscriptionWarningDays())
+                : [],
             'active_tab'           => $tab,
             'timezone_options'     => get_timezone_options(),
             'theme_palette'        => get_theme_color_palette(),
@@ -1382,6 +1392,20 @@ class Config extends SecureArea
 
         sort($tokens, SORT_STRING);
         return sha1(implode('|', $tokens));
+    }
+
+    public function saveTenantSubscriptionAlertDays(): ResponseInterface
+    {
+        if (! $this->canManageTenants()) {
+            return redirect()->to('config')->with('error', 'No tiene permiso para modificar esta configuración.');
+        }
+
+        $d = (int) $this->request->getPost('dias_alerta_suscripcion_tenant');
+        $d = max(1, min(90, $d));
+        model(\App\Models\AppConfigModel::class)->saveValue('dias_alerta_suscripcion_tenant', (string) $d);
+        \App\Models\AuditoriaModel::log('config', 'tenant_subscription_dias_alerta', (string) $d);
+
+        return redirect()->to('config?tab=tenant_subscriptions')->with('success', 'Días de aviso de suscripción actualizados.');
     }
 
     public function saveTenantSubscriptionPayment(): ResponseInterface

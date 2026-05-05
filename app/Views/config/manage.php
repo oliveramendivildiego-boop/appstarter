@@ -585,8 +585,46 @@
                 <p class="text-muted small mb-3">
                     Registre cada pago con el período de vigencia (desde / hasta). Puede <strong>generar un PDF automático</strong> o <strong>adjuntar su propio PDF</strong> (recibo/factura que ya tenga guardado).
                     Los laboratorios cliente solo pueden <strong>ver y descargar</strong> el comprobante desde el menú «Suscripción y comprobantes».
-                    Si la fecha fin está a 3 días o menos (o ya venció), verán un aviso en la parte superior de la aplicación.
+                    Si la fecha fin del último pago está dentro del plazo de aviso configurado abajo (por defecto 4 días), verán un aviso en la parte superior; <strong>si la vigencia ya venció, el sistema bloquea el acceso</strong> hasta registrar un nuevo período pagado.
                 </p>
+
+                <div class="border rounded p-3 mb-4 bg-light">
+                    <h6 class="mb-2"><i class="fa-solid fa-bell me-1"></i> Aviso previo al vencimiento</h6>
+                    <p class="small text-muted mb-2">Cantidad de días antes del fin de vigencia del último pago en que el laboratorio cliente verá la alerta (y el tenant principal verá el listado en el dashboard). Valores entre 1 y 90.</p>
+                    <?= form_open(site_url('config/saveTenantSubscriptionAlertDays'), ['class' => 'row g-2 align-items-end']) ?>
+                    <div class="col-auto">
+                        <label class="form-label mb-0" for="dias_alerta_suscripcion_tenant">Días de aviso</label>
+                        <input type="number" name="dias_alerta_suscripcion_tenant" id="dias_alerta_suscripcion_tenant" class="form-control" min="1" max="90" required value="<?= (int) ($tenant_subscription_alert_days_form ?? 4) ?>">
+                    </div>
+                    <div class="col-auto">
+                        <button type="submit" class="btn btn-outline-primary">Guardar</button>
+                    </div>
+                    <?= form_close() ?>
+                </div>
+
+                <?php $subRes = $tenant_subscription_resumen_admin ?? []; ?>
+                <?php if (! empty($subRes)): ?>
+                <div class="alert alert-warning d-flex align-items-start gap-2 mb-4">
+                    <i class="fa-solid fa-triangle-exclamation mt-1"></i>
+                    <div class="small">
+                        <strong>Atención:</strong> hay laboratorios cliente con el último pago por vencer o ya vencido (según los <?= (int) ($tenant_subscription_alert_days_form ?? 4) ?> día(s) de aviso). Revise el historial y registre la renovación.
+                        <div class="table-responsive mt-2 mb-0">
+                            <table class="table table-sm table-bordered bg-white mb-0">
+                                <thead class="table-light"><tr><th>Laboratorio</th><th>Fin vigencia</th><th>Estado</th></tr></thead>
+                                <tbody>
+                                    <?php foreach ($subRes as $sr): ?>
+                                    <tr class="<?= (($sr['estado'] ?? '') === 'vencido') ? 'table-danger' : '' ?>">
+                                        <td><?= esc($sr['tenant_name'] ?? '') ?></td>
+                                        <td><?= ! empty($sr['period_end']) ? date('d/m/Y', strtotime((string) $sr['period_end'])) : '-' ?></td>
+                                        <td><?= ($sr['estado'] ?? '') === 'vencido' ? '<span class="badge bg-danger">Vencido</span>' : '<span class="badge bg-warning text-dark">' . (int) ($sr['days_left'] ?? 0) . ' día(s)</span>' ?></td>
+                                    </tr>
+                                    <?php endforeach; ?>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+                <?php endif; ?>
 
                 <h6 class="mb-2">Registrar pago</h6>
                 <?= form_open_multipart(site_url('config/saveTenantSubscriptionPayment'), ['class' => 'border rounded p-3 mb-4']) ?>

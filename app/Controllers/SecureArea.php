@@ -3,6 +3,7 @@
 namespace App\Controllers;
 
 use App\Models\EmployeeModel;
+use App\Services\TenantSubscriptionService;
 use CodeIgniter\HTTP\Exceptions\RedirectException;
 
 abstract class SecureArea extends BaseController
@@ -33,6 +34,28 @@ abstract class SecureArea extends BaseController
         $this->user_info = $this->getCachedUserInfo($employeeModel, $personId);
         if (!$employeeModel->hasPermission($this->moduleId, $personId)) {
             throw new RedirectException(redirect()->to(site_url('no_access/' . $this->moduleId)));
+        }
+
+        $subSvc = new TenantSubscriptionService();
+        if ($subSvc->isChildTenantSubscriptionExpired()) {
+            helper('url');
+            $uri = trim((string) uri_string(), '/');
+            $allowed = [
+                'subscription-blocked',
+                'home/logout',
+                'tenant-subscription',
+                'status/checkEmployeeActive',
+            ];
+            $ok = false;
+            foreach ($allowed as $prefix) {
+                if ($uri === $prefix || str_starts_with($uri, $prefix . '/')) {
+                    $ok = true;
+                    break;
+                }
+            }
+            if (! $ok) {
+                throw new RedirectException(redirect()->to(site_url('subscription-blocked')));
+            }
         }
         $this->allowed_modules = $this->getCachedAllowedModules($employeeModel, $personId);
     }

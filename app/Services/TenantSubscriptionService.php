@@ -66,6 +66,20 @@ class TenantSubscriptionService
     }
 
     /**
+     * Días antes del fin de vigencia del último pago en que se muestra aviso (config: dias_alerta_suscripcion_tenant, default 4).
+     */
+    public function getSubscriptionWarningDays(): int
+    {
+        $raw = model(AppConfigModel::class)->getValue('dias_alerta_suscripcion_tenant');
+        $n   = (int) $raw;
+        if ($n < 1) {
+            $n = 4;
+        }
+
+        return min(90, $n);
+    }
+
+    /**
      * @return array{type: string, message: string}|null
      */
     public static function alertForCurrentSession(): ?array
@@ -77,6 +91,98 @@ class TenantSubscriptionService
         }
 
         return $svc->getExpiryAlertForTenantKey($key);
+    }
+
+    /**
+     * Último período pagado (mayor period_end) y días hasta el fin de vigencia (negativo = vencido).
+     *
+     * @return array{period_end: string, days_left: int, payment_id: int}|null
+     */
+    public function getLatestSubscriptionExpiryInfo(string $tenantKey): ?array
+    {
+        if ($tenantKey === '') {
+            return null;
+        }
+        $list = $this->listPaymentsForTenantKey($tenantKey);
+        if ($list === []) {
+            return null;
+        }
+        usort($list, static function ($a, $b) {
+            return strcmp((string) ($b['period_end'] ?? ''), (string) ($a['period_end'] ?? ''));
+        });
+        $latest = $list[0];
+        $endStr = (string) ($latest['period_end'] ?? '');
+        $tsEnd  = strtotime($endStr . ' 23:59:59');
+        $tsToday = strtotime('today');
+        if ($tsEnd === false || $tsToday === false) {
+            return null;
+        }
+        $daysLeft = (int) floor(($tsEnd - $tsToday) / 86400);
+        $pid      = (int) ($latest['id'] ?? 0);
+
+        return [
+            'period_end' => $endStr,
+            'days_left'  => $daysLeft,
+            'payment_id' => $pid,
+        ];
+    }
+
+    /**
+     * Laboratorio cliente (sesión no default) con vigencia del último pago ya vencida.
+     */
+    public function isChildTenantSubscriptionExpired(): bool
+    {
+        if (! $this->isNonDefaultTenantSession()) {
+            return false;
+        }
+        $key = $this->sessionTenantKey();
+        if ($key === null) {
+            return false;
+        }
+        $info = $this->getLatestSubscriptionExpiryInfo($key);
+
+        return $info !== null && ($info['days_left'] ?? 0) < 0;
+    }
+
+    /**
+     * Para el dashboard del tenant principal: laboratorios cliente con último pago por vencer o vencido (según días de aviso).
+     *
+     * @return list<array{tenant_config_id: int, tenant_name: string, tenant_key: string, period_end: string, days_left: int, estado: string}>
+     */
+    public function getBillableTenantsSuscripcionResumen(int $warningDays): array
+    {
+        if (! $this->isMultiTenant()) {
+            return [];
+        }
+        $warningDays = max(1, min(90, $warningDays));
+        $out         = [];
+        foreach ($this->getBillableTenants() as $t) {
+            $key = (string) ($t['tenant_key'] ?? '');
+            $info = $this->getLatestSubscriptionExpiryInfo($key);
+            if ($info === null) {
+                continue;
+            }
+            $d = (int) ($info['days_left'] ?? 999);
+            if ($d < 0 || ($d >= 0 && $d <= $warningDays)) {
+                $out[] = [
+                    'tenant_config_id' => (int) ($t['id'] ?? 0),
+                    'tenant_name'      => (string) ($t['tenant_name'] ?? ''),
+                    'tenant_key'       => $key,
+                    'period_end'       => (string) ($info['period_end'] ?? ''),
+                    'days_left'        => $d,
+                    'estado'           => $d < 0 ? 'vencido' : 'por_vencer',
+                ];
+            }
+        }
+        usort($out, static function (array $a, array $b): int {
+            if (($a['estado'] ?? '') !== ($b['estado'] ?? '')) {
+                return ($a['estado'] ?? '') === 'vencido' ? -1 : 1;
+            }
+
+            return ($a['days_left'] ?? 999) <=> ($b['days_left'] ?? 999);
+        });
+
+        return $out;
     }
 
     public function getTenantConfigRowByKey(string $tenantKey): ?array
@@ -419,13 +525,14 @@ class TenantSubscriptionService
         }
         $daysLeft = (int) floor(($tsEnd - $tsToday) / 86400);
         $endFmt   = date('d/m/Y', $tsEnd);
+        $warnDays = $this->getSubscriptionWarningDays();
         if ($daysLeft < 0) {
             return [
                 'type'    => 'danger',
                 'message' => 'La vigencia de su suscripción finalizó el ' . $endFmt . '. Contacte a administración.',
             ];
         }
-        if ($daysLeft <= 3) {
+        if ($daysLeft <= $warnDays) {
             return [
                 'type'    => 'warning',
                 'message' => 'Su suscripción vence el ' . $endFmt . ' (quedan ' . $daysLeft . ' día(s)).',

@@ -37,6 +37,44 @@ $alertasStock = $alertas_stock_bajo ?? ['total' => 0, 'items' => [], 'factor' =>
     </div>
 </div>
 
+<?php
+$subsTenants = $alertas_suscripcion_tenants ?? ['total' => 0, 'items' => [], 'dias_alerta' => 4];
+?>
+<?php if (($subsTenants['total'] ?? 0) > 0): ?>
+<div class="alert alert-warning d-flex align-items-start gap-3 mb-4" role="alert">
+    <i class="fa-solid fa-building-user fa-2x mt-1 flex-shrink-0"></i>
+    <div class="flex-grow-1">
+        <h6 class="alert-heading mb-2"><i class="fa-solid fa-file-invoice-dollar me-1"></i> Suscripciones de laboratorios cliente</h6>
+        <p class="mb-2 small">
+            Último pago por vencer o vencido (aviso desde <?= (int) ($subsTenants['dias_alerta'] ?? 4) ?> día(s) antes del fin de vigencia).
+            <a href="<?= site_url('config?tab=tenant_subscriptions') ?>">Configurar en Pagos / suscripciones</a>.
+        </p>
+        <div class="table-responsive dashboard-alert-table">
+            <table class="table table-sm table-bordered mb-0 small">
+                <thead class="table-light">
+                    <tr><th>Laboratorio</th><th>Fin vigencia</th><th>Estado</th></tr>
+                </thead>
+                <tbody>
+                    <?php foreach (($subsTenants['items'] ?? []) as $st): ?>
+                    <tr class="<?= (($st['estado'] ?? '') === 'vencido') ? 'table-danger' : 'table-warning' ?>">
+                        <td><?= esc($st['tenant_name'] ?? '') ?> <span class="text-muted">(<?= esc($st['tenant_key'] ?? '') ?>)</span></td>
+                        <td><?= !empty($st['period_end']) ? date('d/m/Y', strtotime((string) $st['period_end'])) : '-' ?></td>
+                        <td>
+                            <?php if (($st['estado'] ?? '') === 'vencido'): ?>
+                                <span class="badge bg-danger">Vencido</span>
+                            <?php else: ?>
+                                <span class="badge bg-warning text-dark"><?= (int) ($st['days_left'] ?? 0) ?> día(s)</span>
+                            <?php endif; ?>
+                        </td>
+                    </tr>
+                    <?php endforeach; ?>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+<?php endif; ?>
+
 <!-- Widget meta del mes -->
 <div class="card border-0 shadow-sm mb-4">
     <div class="card-body">
