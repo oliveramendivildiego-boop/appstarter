@@ -924,6 +924,7 @@ document.addEventListener('DOMContentLoaded', function() {
             // Pruebas
             var pruebasStr = String(editInfo.pruebas || '').trim();
             if (pruebasStr) {
+                var hasResults = (parseInt(editInfo.regvalues_count || 0, 10) > 0);
                 pruebasStr.split(',').map(function(x) { return String(parseInt(x, 10)); })
                     .filter(function(x) { return x !== 'NaN'; })
                     .forEach(function(id) {
@@ -934,9 +935,19 @@ document.addEventListener('DOMContentLoaded', function() {
                                 padre: info.padre,
                                 data: id,
                                 cost: info.cost,
-                                locked: (parseInt(editInfo.regvalues_count || 0, 10) > 0)
+                                locked: hasResults
                             });
+                            return;
                         }
+
+                        // Conserva IDs históricos (fuera de catálogo) para no perderlos al guardar.
+                        agregarPrueba({
+                            value: 'Prueba #' + id + ' (no disponible en catálogo)',
+                            padre: 'Histórico',
+                            data: id,
+                            cost: 0,
+                            locked: hasResults
+                        });
                     });
             }
 
