@@ -223,6 +223,8 @@ class Config extends SecureArea
                 : [],
             'tenant_backup_schedule'   => $tenantBackupSchedule,
             'tenant_backup_timezone_id' => $tenantBackupTimezoneId,
+            'tenant_backup_cron_url'    => $canManageTenants ? site_url('cron/tenant-backup-schedule') : '',
+            'tenant_backup_cron_ready'  => $canManageTenants && trim((string) env('tenantBackup.cronKey', '')) !== '',
             'active_tab'           => $tab,
             'timezone_options'     => get_timezone_options(),
             'theme_palette'        => get_theme_color_palette(),

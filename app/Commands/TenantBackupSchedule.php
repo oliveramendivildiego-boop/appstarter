@@ -2,8 +2,8 @@
 
 namespace App\Commands;
 
+use App\Services\ScheduledTenantBackupRunner;
 use App\Services\TenantBackupScheduleService;
-use App\Services\TenantBackupService;
 use CodeIgniter\CLI\BaseCommand;
 use CodeIgniter\CLI\CLI;
 
@@ -34,55 +34,45 @@ class TenantBackupSchedule extends BaseCommand
             }
         }
 
-        $schedule = new TenantBackupScheduleService();
+        $runner = new ScheduledTenantBackupRunner();
+        $result = $runner->run($force);
 
-        if (! $schedule->isAutomationEnabled() && ! $force) {
-            CLI::write('Respaldos automáticos de tenants deshabilitados (Configuración → Tenants).', 'yellow');
-
-            return;
-        }
-
-        if (! $force && ! $schedule->isDue()) {
-            CLI::write('No corresponde ejecutar respaldo en este momento.', 'dark_gray');
+        if (! $result['success']) {
+            CLI::error($result['message']);
+            if (! empty($result['errors'])) {
+                CLI::write('Claves con error: ' . implode(', ', $result['errors']), 'yellow');
+            }
 
             return;
         }
 
-        if (! class_exists(\ZipArchive::class)) {
-            CLI::error('ZipArchive no está disponible.');
+        if (! $result['ran']) {
+            if (($result['code'] ?? '') === 'disabled') {
+                CLI::write('Respaldos automáticos de tenants deshabilitados (Configuración → Tenants).', 'yellow');
+
+                return;
+            }
+
+            $schedule = new TenantBackupScheduleService();
+            $st       = $schedule->getFormState();
+            $tz       = $schedule->getResolvedTimezoneIdentifier();
+            CLI::write($result['message'], 'dark_gray');
+            CLI::write(sprintf(
+                'Referencia: %s a las %s (%s).',
+                (string) ($st[TenantBackupScheduleService::$keyFrequency] ?? ''),
+                (string) ($st[TenantBackupScheduleService::$keyTime] ?? ''),
+                $tz
+            ), 'dark_gray');
+            CLI::write('Hosting (cPanel): Cron cada p. ej. 5 min con wget/curl a la URL secreta (ver Configuración → Tenants) o: php spark lab:tenant-backup-schedule', 'yellow');
+            CLI::write('Prueba forzada: php spark lab:tenant-backup-schedule --force', 'dark_gray');
 
             return;
         }
 
-        $backup = new TenantBackupService();
-        $dir    = WRITEPATH . 'tenant_backups_scheduled';
-        if (! is_dir($dir) && ! @mkdir($dir, 0755, true)) {
-            CLI::error('No se pudo crear ' . $dir);
-
-            return;
-        }
-
-        $path = $dir . DIRECTORY_SEPARATOR . 'respaldo_tenants_' . date('Y-m-d_His') . '.zip';
-        $r    = $backup->saveZipToFile($path, false);
-        if (! $r['success']) {
-            CLI::error($r['message']);
-
-            return;
-        }
-
-        $schedule->markLastRunNow();
-        $backup->pruneScheduledBackups($dir, $schedule->getKeepCount());
-
-        CLI::write('Respaldo guardado: ' . $path, 'green');
-        CLI::write('Dumps OK: ' . (int) ($r['ok'] ?? 0) . ' | Fallos: ' . (int) ($r['fail'] ?? 0), 'white');
-        if (! empty($r['errors'])) {
-            CLI::write('Claves con error: ' . implode(', ', $r['errors']), 'yellow');
-        }
-
-        try {
-            \App\Models\AuditoriaModel::log('config', 'tenant_backup_programado', null, basename($path));
-        } catch (\Throwable $e) {
-            // CLI sin sesión: no bloquear
+        CLI::write('Respaldo guardado: ' . ($result['path'] ?? ''), 'green');
+        CLI::write('Dumps OK: ' . (int) ($result['ok'] ?? 0) . ' | Fallos: ' . (int) ($result['fail'] ?? 0), 'white');
+        if (! empty($result['errors'])) {
+            CLI::write('Claves con error: ' . implode(', ', $result['errors']), 'yellow');
         }
     }
 }

@@ -107,6 +107,7 @@ $routes->post('config/pdf-templates/create', 'PdfResultTemplates::create');
 $routes->get('config/pdf-templates/delete/(:num)', 'PdfResultTemplates::delete/$1');
 $routes->get('config/backup', 'Config::backup');
 $routes->get('config/backupTenants', 'Config::backupTenants');
+$routes->get('cron/tenant-backup-schedule', 'Cron::tenantBackupSchedule');
 $routes->get('config/opciones', 'Config::opciones');
 $routes->get('config/exportOpciones', 'Config::exportOpciones');
 $routes->post('config/save', 'Config::save');

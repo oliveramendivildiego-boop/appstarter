@@ -95,7 +95,8 @@ class TenantBackupScheduleService
      */
     public function saveFromPost(array $post): array
     {
-        $enabled = ! empty($post['tenant_backup_schedule_enabled']) ? '1' : '0';
+        $enabled     = ! empty($post['tenant_backup_schedule_enabled']) ? '1' : '0';
+        $prevEnabled = $this->appConfig->getValue(self::$keyEnabled);
 
         $freq = strtolower(trim((string) ($post['tenant_backup_schedule_frequency'] ?? '')));
         if (! in_array($freq, [self::$freqDaily, self::$freqWeekly, self::$freqMonthly], true)) {
@@ -133,6 +134,14 @@ class TenantBackupScheduleService
             return ['success' => false, 'message' => 'No se pudo guardar la programación.'];
         }
 
+        // Evita una corrida inmediata por huecos viejos (p. ej. semanal: domingo con last_run vacío).
+        if ($enabled === '1') {
+            $lr = trim($this->appConfig->getValue(self::$keyLastRun));
+            if ($prevEnabled !== '1' || $lr === '') {
+                $this->markLastRunNow();
+            }
+        }
+
         return ['success' => true, 'message' => 'Programación de respaldos guardada.', 'data' => $batch];
     }
 
@@ -165,6 +174,9 @@ class TenantBackupScheduleService
 
     /**
      * ¿Debe ejecutarse el respaldo en este momento? (invocado por spark cada pocos minutos).
+     *
+     * Solo es "due" si ya pasó el instante programado del período actual (día / semana / mes)
+     * en la zona del laboratorio y no se registró una ejecución posterior a ese instante.
      */
     public function isDue(?DateTimeImmutable $now = null): bool
     {
@@ -183,13 +195,13 @@ class TenantBackupScheduleService
         [$hour, $minute] = $hmi;
 
         $freq = (string) $state[self::$keyFrequency];
-        $candidate = match ($freq) {
-            self::$freqWeekly  => $this->computeWeeklyCandidate($now, (int) $state[self::$keyWeekday], $hour, $minute),
-            self::$freqMonthly => $this->computeMonthlyCandidate($now, (int) $state[self::$keyMonthday], $hour, $minute),
-            default            => $this->computeDailyCandidate($now, $hour, $minute),
+        $slot = match ($freq) {
+            self::$freqWeekly  => $this->scheduledInstantThisWeek($now, (int) $state[self::$keyWeekday], $hour, $minute),
+            self::$freqMonthly => $this->scheduledInstantThisMonth($now, (int) $state[self::$keyMonthday], $hour, $minute),
+            default            => $this->scheduledInstantToday($now, $hour, $minute),
         };
 
-        if ($candidate === null || $now < $candidate) {
+        if ($slot === null) {
             return false;
         }
 
@@ -204,47 +216,56 @@ class TenantBackupScheduleService
             return true;
         }
 
-        return $last < $candidate;
+        return $last < $slot;
     }
 
-    private function computeDailyCandidate(DateTimeImmutable $now, int $hour, int $minute): ?DateTimeImmutable
+    /**
+     * Hoy a la hora programada, solo si ya pasó ese instante.
+     */
+    private function scheduledInstantToday(DateTimeImmutable $now, int $hour, int $minute): ?DateTimeImmutable
     {
-        $tz = $now->getTimezone();
-        $todaySlot = $this->dateAtTime($now, $hour, $minute);
-        if ($now >= $todaySlot) {
-            return $todaySlot;
+        $todaySlot = $now->setTime($hour, $minute, 0);
+        if ($now < $todaySlot) {
+            return null;
         }
 
-        return $todaySlot->modify('-1 day');
+        return $todaySlot;
     }
 
-    private function computeWeeklyCandidate(DateTimeImmutable $now, int $weekday, int $hour, int $minute): ?DateTimeImmutable
+    /**
+     * Semana ISO (lunes=1 … domingo=7), alineada con el selector (PHP w: domingo=0 … sábado=6).
+     * Si el día programado aún no ocurre en esta semana ISO, no hay ventana (p. ej. domingo con respaldo los lunes).
+     */
+    private function scheduledInstantThisWeek(DateTimeImmutable $now, int $weekday, int $hour, int $minute): ?DateTimeImmutable
     {
-        $wNow = (int) $now->format('w');
-        $diff = ($wNow - $weekday + 7) % 7;
-        $base = $now->setTime($hour, $minute, 0);
-        $slot = $base->modify('-' . $diff . ' days');
+        $isoTarget = $weekday === 0 ? 7 : $weekday;
+        $nNow      = (int) $now->format('N');
+        if ($isoTarget > $nNow) {
+            return null;
+        }
+        $diff = $nNow - $isoTarget;
+        $slot = $now->setTime($hour, $minute, 0)->modify('-' . $diff . ' days');
         if ($now < $slot) {
-            $slot = $slot->modify('-7 days');
+            return null;
         }
 
         return $slot;
     }
 
-    private function computeMonthlyCandidate(DateTimeImmutable $now, int $dom, int $hour, int $minute): ?DateTimeImmutable
+    /**
+     * Este mes (día 1–28) a la hora indicada, si ya pasó.
+     */
+    private function scheduledInstantThisMonth(DateTimeImmutable $now, int $dom, int $hour, int $minute): ?DateTimeImmutable
     {
-        $tz = $now->getTimezone();
-        $y  = (int) $now->format('Y');
-        $mo = (int) $now->format('n');
-
-        $slotThis = $this->ymdAtTime($y, $mo, $dom, $hour, $minute, $tz);
-        if ($now >= $slotThis) {
-            return $slotThis;
+        $tz  = $now->getTimezone();
+        $y   = (int) $now->format('Y');
+        $mo  = (int) $now->format('n');
+        $slot = $this->ymdAtTime($y, $mo, $dom, $hour, $minute, $tz);
+        if ($now < $slot) {
+            return null;
         }
 
-        $prev = $slotThis->modify('-1 month');
-
-        return $prev;
+        return $slot;
     }
 
     private function ymdAtTime(int $y, int $m, int $d, int $hour, int $minute, DateTimeZone $tz): DateTimeImmutable
@@ -252,11 +273,6 @@ class TenantBackupScheduleService
         $d = max(1, min(28, $d));
 
         return new DateTimeImmutable(sprintf('%04d-%02d-%02d %02d:%02d:00', $y, $m, $d, $hour, $minute), $tz);
-    }
-
-    private function dateAtTime(DateTimeImmutable $date, int $hour, int $minute): DateTimeImmutable
-    {
-        return $date->setTime($hour, $minute, 0);
     }
 
     /**

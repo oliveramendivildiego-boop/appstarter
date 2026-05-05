@@ -113,7 +113,7 @@ class Filters extends BaseFilters
     public array $filters = [
         'auth' => [
             'before' => ['home*', 'subscription-blocked', 'account*', 'no_access*', 'config*', 'customers*', 'doctors*', 'employees*', 'registers*', 'labotests*', 'toquotes*', 'expediente*', 'reports*', 'controlcalidad*', 'reactivos*', 'inventario*', 'equipos*', 'auditoria*', 'item_kits', 'items*', 'sales*', 'suppliers*', 'receivings*', 'giftcards*', 'seguridad*', 'doctor*'],
-            'except' => ['registers/servePdfFile/*', 'resultados', 'resultados/*'],
+            'except' => ['registers/servePdfFile/*', 'resultados', 'resultados/*', 'cron/*'],
         ],
     ];
 }

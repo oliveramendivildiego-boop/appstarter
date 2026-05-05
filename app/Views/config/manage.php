@@ -467,9 +467,26 @@
                             </span>
                         </span>
                     </h6>
+                    <div class="alert alert-warning small py-2 mb-3" role="alert">
+                        <strong>Importante:</strong> guardar aquí solo define la hora; <strong>no ejecuta nada por sí solo</strong>.
+                        Tiene que existir algo que llame al sistema cada pocos minutos (idealmente cada 5).
+                    </div>
+                    <div class="alert alert-info small py-2 mb-3" role="alert">
+                        <strong>cPanel / hosting (Namecheap, etc.):</strong> en <em>cPanel → Cron Jobs</em> programe cada 5 minutos un comando como:
+                        <br><code class="user-select-all d-inline-block mt-1">wget -q -O - "<?= esc(rtrim((string) ($tenant_backup_cron_url ?? ''), '/')) ?>?token=SU_CLAVE_SECRETA"</code>
+                        <br>Sustituya <code>SU_CLAVE_SECRETA</code> por el valor de <code>tenantBackup.cronKey</code> en el archivo <code>.env</code> del servidor (cadena larga y aleatoria; si está vacío, la URL no hace nada y responde 404).
+                        <?php if (! empty($tenant_backup_cron_ready)): ?>
+                            <br><span class="text-success">Token cron configurado en el servidor.</span>
+                        <?php else: ?>
+                            <br><span class="text-danger">Aún no hay <code>tenantBackup.cronKey</code> en <code>.env</code>; añádalo y suba el archivo.</span>
+                        <?php endif; ?>
+                        <br>También puede usar un servicio externo gratuito (p. ej. cron-job.org) que haga una petición GET a esa misma URL cada 5 minutos.
+                        <br><strong>En su PC local</strong> no hace falta PHP: el respaldo se genera en el <strong>servidor</strong>. Para copiar los ZIP a su equipo use el <em>Administrador de archivos</em> de cPanel, <strong>FTP/SFTP</strong> o <strong>WinSCP</strong> apuntando a <code>writable/tenant_backups_scheduled/</code> dentro del proyecto (puede automatizar la sincronización en su PC).
+                        <br><strong>Servidor con SSH:</strong> alternativa <code>php spark lab:tenant-backup-schedule</code> desde la raíz del proyecto.
+                    </div>
                     <p class="small text-muted mb-3">
-                        El campo <strong>Hora (24 h)</strong> y el comando programado usan la misma zona que el reloj (pestaña «Configuración del sistema» → «Zona horaria»).
-                        En el servidor debe existir una tarea que ejecute periódicamente el comando indicado abajo (por ejemplo cada 5 minutos).
+                        Al activar por primera vez se guarda la hora actual como referencia para la <strong>próxima</strong> franja.
+                        El campo <strong>Hora (24 h)</strong> usa la misma zona que el reloj (pestaña «Configuración del sistema» → «Zona horaria»).
                     </p>
                     <?= form_open(site_url('config/saveTenantBackupSchedule'), ['class' => 'row g-3 align-items-end']) ?>
                     <div class="col-12">
