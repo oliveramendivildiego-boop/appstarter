@@ -224,7 +224,7 @@ class Database extends Config
         $this->default['port']     = (int) (env('database.default.port') ?: 3306);
 
         // Copia antes de aplicar tenant: catálogo tenant_configs siempre en la BD del .env
-        $this->management = array_merge($this->default);
+        $this->management = $this->deepCopyArray($this->default);
 
         $this->applyTenantDatabaseConfig();
     }
@@ -273,5 +273,27 @@ class Database extends Config
         foreach ($tenantDbConfig as $key => $value) {
             $this->default[$key] = $value;
         }
+    }
+
+    /**
+     * @param array<string, mixed> $source
+     * @return array<string, mixed>
+     */
+    private function deepCopyArray(array $source): array
+    {
+        $copy = [];
+        foreach ($source as $key => $value) {
+            if (is_array($value)) {
+                $copy[$key] = $this->deepCopyArray($value);
+                continue;
+            }
+            if (is_object($value)) {
+                $copy[$key] = clone $value;
+                continue;
+            }
+            $copy[$key] = $value;
+        }
+
+        return $copy;
     }
 }
