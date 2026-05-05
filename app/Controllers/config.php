@@ -11,6 +11,8 @@ use App\Models\TipoMuestraModel;
 use App\Models\CustomerModel;
 use App\Libraries\TenantResolver;
 use App\Services\ConfigService;
+use App\Services\TenantBackupScheduleService;
+use App\Services\TenantBackupService;
 use App\Services\TenantConfigService;
 use App\Services\TenantHandoffService;
 use App\Services\TenantSubscriptionService;
@@ -186,6 +188,14 @@ class Config extends SecureArea
 
         $labValidation = $this->configService->getLabValidationStateForView();
 
+        $tenantBackupSchedule     = [];
+        $tenantBackupTimezoneId   = '';
+        if ($canManageTenants) {
+            $tbsSvc                 = new TenantBackupScheduleService();
+            $tenantBackupSchedule   = $tbsSvc->getFormState();
+            $tenantBackupTimezoneId = $tbsSvc->getResolvedTimezoneIdentifier();
+        }
+
         return view('config/manage', [
             'config'               => $config,
             'lab_validators'       => $labValidation['validators'],
@@ -211,6 +221,8 @@ class Config extends SecureArea
             'tenant_subscription_resumen_admin'   => $canManageTenants && $subSvc->isMultiTenant()
                 ? $subSvc->getBillableTenantsSuscripcionResumen($subSvc->getSubscriptionWarningDays())
                 : [],
+            'tenant_backup_schedule'   => $tenantBackupSchedule,
+            'tenant_backup_timezone_id' => $tenantBackupTimezoneId,
             'active_tab'           => $tab,
             'timezone_options'     => get_timezone_options(),
             'theme_palette'        => get_theme_color_palette(),
@@ -415,6 +427,53 @@ class Config extends SecureArea
                 ->setStatusCode(200);
         }
         return redirect()->to('config')->with('error', 'No se pudo generar el respaldo. Verifique que mysqldump esté instalado.');
+    }
+
+    /**
+     * Genera respaldo SQL de todos los tenants activos (incluido el default) en un ZIP.
+     */
+    public function backupTenants()
+    {
+        if (! $this->canManageTenants()) {
+            return redirect()->to('config')->with('error', 'No tiene permiso para respaldar tenants.');
+        }
+
+        $svc    = new TenantBackupService();
+        $result = $svc->buildZipBinary(false);
+        if (! ($result['success'] ?? false) || ($result['binary'] ?? null) === null) {
+            return redirect()->to('config?tab=tenants')->with('error', (string) ($result['message'] ?? 'No se pudo generar el respaldo.'));
+        }
+
+        $status = 'ok:' . (int) ($result['ok'] ?? 0) . ',fail:' . (int) ($result['fail'] ?? 0);
+        \App\Models\AuditoriaModel::log('config', 'tenant_backup_descargar', null, $status);
+        $filename = 'respaldo_tenants_' . date('Y-m-d_His') . '.zip';
+
+        return $this->response
+            ->setHeader('Content-Type', 'application/zip')
+            ->setHeader('Content-Disposition', 'attachment; filename="' . $filename . '"')
+            ->setBody((string) $result['binary'])
+            ->setStatusCode(200);
+    }
+
+    /**
+     * Guarda programación de respaldos automáticos (app_config).
+     */
+    public function saveTenantBackupSchedule(): ResponseInterface
+    {
+        if (! $this->canManageTenants()) {
+            return redirect()->to('config')->with('error', 'No tiene permiso para modificar esta configuración.');
+        }
+
+        $svc    = new TenantBackupScheduleService();
+        $result = $svc->saveFromPost($this->request->getPost());
+        if ($result['success'] ?? false) {
+            $this->configService->invalidateCache();
+            \App\Models\AuditoriaModel::log('config', 'tenant_backup_schedule_guardar', null, (string) (($result['data'][TenantBackupScheduleService::$keyFrequency] ?? '') . '@' . ($result['data'][TenantBackupScheduleService::$keyTime] ?? '')));
+
+            return redirect()->to('config?tab=tenants')->with('success', $result['message']);
+        }
+
+        return redirect()->to('config?tab=tenants')->with('error', (string) ($result['message'] ?? 'Error al guardar.'));
     }
 
     /**

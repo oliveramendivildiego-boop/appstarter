@@ -441,6 +441,98 @@
                     las acciones <em>no</em> generan registros en la tabla de auditoría del tenant (sí puede haber huella en sesiones del servidor). Use solo para soporte.
                     Si el laboratorio usa otro dominio (ej. <code>http://quantum.local</code>), indique la <strong>URL pública del tenant</strong> en el formulario de abajo o configure en <code>.env</code> <code>tenancy.publicUrlTemplate=http://{tenant_key}.local</code>: se generará un enlace de un solo uso para iniciar sesión en ese host (mismo <code>person_id</code> y usuario en la BD del tenant).
                 </p>
+                <div class="d-flex flex-wrap gap-2 mb-3">
+                    <a href="<?= site_url('config/backupTenants') ?>"
+                       class="btn btn-outline-primary"
+                       onclick="return uiConfirmLink(this, 'Se descargará un ZIP con respaldos SQL de todos los tenants activos (incluido el default). ¿Continuar?');">
+                        <i class="fa-solid fa-download me-1"></i>Respaldar todos los tenants
+                    </a>
+                    <small class="text-muted align-self-center">Genera un ZIP con un archivo <code>.sql</code> por cada tenant activo, incluido el marcado como default.</small>
+                </div>
+
+                <?php
+                $tbs = $tenant_backup_schedule ?? [];
+                $tbsTzId = (string) ($tenant_backup_timezone_id ?? 'UTC');
+                ?>
+                <div class="border rounded p-3 mb-4 bg-light">
+                    <h6 class="mb-2 d-flex flex-wrap align-items-center gap-2">
+                        <span class="me-1"><i class="fa-solid fa-clock me-1"></i>Respaldos automáticos (programados)</span>
+                        <span class="d-inline-flex align-items-center gap-2 ms-md-auto">
+                            <span class="small text-muted text-nowrap">Hora del laboratorio</span>
+                            <span class="badge bg-dark font-monospace px-2 py-2 fs-6"
+                                id="tbs-lab-clock"
+                                data-timezone="<?= esc($tbsTzId, 'attr') ?>"
+                                title="Zona horaria (configuración del sistema): <?= esc($tbsTzId, 'attr') ?>. La hora programada del respaldo se interpreta en esta zona.">
+                                --:--:--
+                            </span>
+                        </span>
+                    </h6>
+                    <p class="small text-muted mb-3">
+                        El campo <strong>Hora (24 h)</strong> y el comando programado usan la misma zona que el reloj (pestaña «Configuración del sistema» → «Zona horaria»).
+                        En el servidor debe existir una tarea que ejecute periódicamente el comando indicado abajo (por ejemplo cada 5 minutos).
+                    </p>
+                    <?= form_open(site_url('config/saveTenantBackupSchedule'), ['class' => 'row g-3 align-items-end']) ?>
+                    <div class="col-12">
+                        <div class="form-check">
+                            <input type="checkbox" name="tenant_backup_schedule_enabled" value="1" class="form-check-input" id="tbs_enabled"
+                                <?= (($tbs[\App\Services\TenantBackupScheduleService::$keyEnabled] ?? '0') === '1') ? 'checked' : '' ?>>
+                            <label class="form-check-label" for="tbs_enabled">Activar respaldos automáticos</label>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label" for="tbs_freq">Frecuencia</label>
+                        <select name="tenant_backup_schedule_frequency" id="tbs_freq" class="form-select">
+                            <?php
+                            $f = (string) ($tbs[\App\Services\TenantBackupScheduleService::$keyFrequency] ?? 'daily');
+                            ?>
+                            <option value="<?= esc(\App\Services\TenantBackupScheduleService::$freqDaily) ?>" <?= $f === \App\Services\TenantBackupScheduleService::$freqDaily ? 'selected' : '' ?>>Cada día</option>
+                            <option value="<?= esc(\App\Services\TenantBackupScheduleService::$freqWeekly) ?>" <?= $f === \App\Services\TenantBackupScheduleService::$freqWeekly ? 'selected' : '' ?>>Cada semana</option>
+                            <option value="<?= esc(\App\Services\TenantBackupScheduleService::$freqMonthly) ?>" <?= $f === \App\Services\TenantBackupScheduleService::$freqMonthly ? 'selected' : '' ?>>Cada mes</option>
+                        </select>
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label" for="tbs_time">Hora (24 h)</label>
+                        <input type="time" name="tenant_backup_schedule_time" id="tbs_time" class="form-control" required
+                            value="<?= esc((string) ($tbs[\App\Services\TenantBackupScheduleService::$keyTime] ?? '02:30')) ?>">
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label" for="tbs_wd">Día (solo semanal)</label>
+                        <?php $wd = (int) ($tbs[\App\Services\TenantBackupScheduleService::$keyWeekday] ?? 1); ?>
+                        <select name="tenant_backup_schedule_weekday" id="tbs_wd" class="form-select">
+                            <?php
+                            $days = [0 => 'Domingo', 1 => 'Lunes', 2 => 'Martes', 3 => 'Miércoles', 4 => 'Jueves', 5 => 'Viernes', 6 => 'Sábado'];
+                            foreach ($days as $k => $label): ?>
+                            <option value="<?= (int) $k ?>" <?= $wd === $k ? 'selected' : '' ?>><?= esc($label) ?></option>
+                            <?php endforeach; ?>
+                        </select>
+                        <small class="text-muted">Mismo criterio que PHP: 0 = domingo.</small>
+                    </div>
+                    <div class="col-md-2">
+                        <label class="form-label" for="tbs_md">Día del mes</label>
+                        <?php $md = (int) ($tbs[\App\Services\TenantBackupScheduleService::$keyMonthday] ?? 1); ?>
+                        <input type="number" name="tenant_backup_schedule_monthday" id="tbs_md" class="form-control" min="1" max="28" value="<?= max(1, min(28, $md)) ?>">
+                        <small class="text-muted">Solo mensual (1–28).</small>
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label" for="tbs_keep">Conservar últimos</label>
+                        <input type="number" name="tenant_backup_schedule_keep" id="tbs_keep" class="form-control" min="1" max="100" value="<?= (int) ($tbs[\App\Services\TenantBackupScheduleService::$keyKeep] ?? 14) ?>">
+                        <small class="text-muted">Archivos ZIP en disco.</small>
+                    </div>
+                    <div class="col-12">
+                        <button type="submit" class="btn btn-primary"><i class="fa-solid fa-save me-1"></i>Guardar programación</button>
+                    </div>
+                    <div class="col-12">
+                        <p class="small mb-1"><strong>Última ejecución automática:</strong>
+                            <?php $lr = trim((string) ($tbs[\App\Services\TenantBackupScheduleService::$keyLastRun] ?? '')); ?>
+                            <?= $lr !== '' ? esc($lr) : '<span class="text-muted">—</span>' ?>
+                        </p>
+                        <p class="small mb-0"><strong>Comando (Programador de tareas de Windows o cron):</strong><br>
+                            <code class="user-select-all">cd /d <?= esc(rtrim(ROOTPATH, '/\\')) ?> &amp;&amp; php spark lab:tenant-backup-schedule</code><br>
+                            <span class="text-muted">Prueba manual forzada: <code>php spark lab:tenant-backup-schedule --force</code>. Los archivos quedan en <code>writable/tenant_backups_scheduled/</code>.</span>
+                        </p>
+                    </div>
+                    <?= form_close() ?>
+                </div>
 
                 <div class="table-responsive mb-4">
                     <table class="table table-sm table-bordered align-middle">
@@ -1325,6 +1417,31 @@ $(document).ready(function() {
         flatpickr(elSubStart, fpOpts);
         flatpickr(elSubEnd, fpOpts);
     }
+
+    (function initTenantBackupLabClock() {
+        var el = document.getElementById('tbs-lab-clock');
+        if (!el || typeof Intl === 'undefined' || !Intl.DateTimeFormat) {
+            return;
+        }
+        var tz = el.getAttribute('data-timezone') || 'UTC';
+        function tick() {
+            try {
+                var fmt = new Intl.DateTimeFormat('es', {
+                    timeZone: tz,
+                    hour: '2-digit',
+                    minute: '2-digit',
+                    second: '2-digit',
+                    hour12: false
+                });
+                el.textContent = fmt.format(new Date());
+            } catch (err) {
+                el.textContent = '—';
+                el.setAttribute('title', 'Zona no válida en el navegador: ' + tz);
+            }
+        }
+        tick();
+        setInterval(tick, 1000);
+    })();
     
     // SIN Billing Toggle
     var sinToggle = document.getElementById('sin_billing_enabled');

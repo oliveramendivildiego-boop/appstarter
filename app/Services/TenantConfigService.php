@@ -8,7 +8,8 @@ use Config\Migrations as MigrationsConfig;
 
 class TenantConfigService
 {
-    private TenantConfigModel $tenantModel;
+    /** @var TenantConfigModel */
+    private $tenantModel;
 
     public function __construct(?TenantConfigModel $tenantModel = null)
     {
@@ -247,6 +248,54 @@ class TenantConfigService
         }
 
         return ['success' => true, 'message' => 'Tenant aprovisionado correctamente (DB + migraciones). Mapa de tenants actualizado.'];
+    }
+
+    /**
+     * Devuelve conexiones listas para respaldo (password descifrada).
+     *
+     * @return array<int, array<string, mixed>>
+     */
+    public function listBackupConnections(bool $excludeDefault = true): array
+    {
+        if (!$this->tenantModel->db->tableExists('tenant_configs')) {
+            return [];
+        }
+
+        $rows = $this->tenantModel->orderBy('tenant_name', 'ASC')->findAll();
+        $out = [];
+        foreach ($rows as $row) {
+            if ((int) ($row['is_active'] ?? 0) !== 1) {
+                continue;
+            }
+            if ($excludeDefault && (int) ($row['is_default'] ?? 0) === 1) {
+                continue;
+            }
+
+            $dbName = trim((string) ($row['db_name'] ?? ''));
+            $dbUser = trim((string) ($row['db_user'] ?? ''));
+            if ($dbName === '' || $dbUser === '') {
+                continue;
+            }
+
+            $plainPass = $this->decryptSecret((string) ($row['db_pass'] ?? ''));
+            if ($plainPass === null) {
+                continue;
+            }
+
+            $out[] = [
+                'id'          => (int) ($row['id'] ?? 0),
+                'tenant_key'  => (string) ($row['tenant_key'] ?? ''),
+                'tenant_name' => (string) ($row['tenant_name'] ?? ''),
+                'db_host'     => (string) ($row['db_host'] ?? 'localhost'),
+                'db_port'     => (int) ($row['db_port'] ?? 3306),
+                'db_name'     => $dbName,
+                'db_user'     => $dbUser,
+                'db_pass'     => $plainPass,
+                'db_prefix'   => (string) ($row['db_prefix'] ?? 'dom_'),
+            ];
+        }
+
+        return $out;
     }
 
     private function normalizeTenantKey(string $key): string

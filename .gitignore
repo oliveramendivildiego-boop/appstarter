@@ -68,6 +68,10 @@ writable/debugbar/*
 # Mapa multi-tenant generado en cada servidor; no subir el de otro entorno
 writable/tenants_map.json
 
+# Respaldos ZIP programados de tenants (generados en el servidor)
+writable/tenant_backups_scheduled/*
+!writable/tenant_backups_scheduled/index.html
+
 php_errors.log
 
 #-------------------------
