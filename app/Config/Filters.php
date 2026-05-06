@@ -38,6 +38,7 @@ class Filters extends BaseFilters
         'forcehttps'    => ForceHTTPS::class,
         'pagecache'     => PageCache::class,
         'performance'   => PerformanceMetrics::class,
+        'tenant_backup_web_tick' => \App\Filters\TenantBackupWebTickFilter::class,
     ];
 
     /**
@@ -81,6 +82,7 @@ class Filters extends BaseFilters
             'csrf' => ['except' => ['login', 'login/*', 'login/google_login', 'qr/*', 'customers/search', 'customers/suggest', 'employees/search', 'employees/suggest', 'doctors/search', 'doctors/suggest', 'doctor/search', 'registers/search_paciente', 'registers/search_doctor', 'registers/search_prueba', 'toquotes/exportPdf', 'toquotes/exportPdfById/*']],
         ],
         'after' => [
+            'tenant_backup_web_tick',
             // 'honeypot',
             // 'secureheaders',
         ],
