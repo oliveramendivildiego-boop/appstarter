@@ -32,11 +32,14 @@ if ($headerIsCustom && preg_match('/^#([0-9A-Fa-f]{3}|[0-9A-Fa-f]{6})$/', $heade
         ? '#' . $headerBgSaved[1] . $headerBgSaved[1] . $headerBgSaved[2] . $headerBgSaved[2] . $headerBgSaved[3] . $headerBgSaved[3]
         : $headerBgSaved);
 }
+$headerPick = LayoutService::htmlColorPickerValue($headerPick, '#FF7218');
 $linkSaved       = trim((string) ($config['ui_sidebar_link_color'] ?? ''));
 $linkIsCustom    = $linkSaved !== '';
 $linkPick        = $linkIsCustom ? $linkSaved : (string) ($config['theme_color'] ?? '#0d6efd');
+$linkPick        = LayoutService::htmlColorPickerValue($linkPick, '#0d6efd');
 $linkUi          = trim((string) ($config['ui_link_color'] ?? ''));
 $linkUiVal       = $linkUi !== '' ? $linkUi : '#0d6efd';
+$linkUiVal       = LayoutService::htmlColorPickerValue($linkUiVal, '#0d6efd');
 $hoverBgVal      = trim((string) ($config['ui_sidebar_hover_bg'] ?? ''));
 $activeBgVal     = trim((string) ($config['ui_sidebar_active_bg'] ?? ''));
 
@@ -72,6 +75,7 @@ $labotestsCardTitleColor = trim((string) ($config['ui_labotests_card_header_titl
 if (!preg_match('/^#([0-9A-Fa-f]{3}|[0-9A-Fa-f]{6})$/', $labotestsCardTitleColor)) {
     $labotestsCardTitleColor = '#ffffff';
 }
+$labotestsCardTitleColor = LayoutService::htmlColorPickerValue($labotestsCardTitleColor, '#ffffff');
 $barBgApprox = match ($headerMode) {
     'transparent' => '#e9ecef',
     'custom'      => $headerPick,
@@ -114,6 +118,7 @@ foreach (array_keys($palette) as $h) {
 
 $btnPrimaryCustom = trim((string) ($config['ui_btn_primary_bg'] ?? '')) !== '';
 $btnPreviewBgHex  = $btnPrimaryCustom ? trim((string) $config['ui_btn_primary_bg']) : (string) ($config['theme_color'] ?? '#FF7218');
+$btnPreviewBgHex  = LayoutService::htmlColorPickerValue($btnPreviewBgHex, '#FF7218');
 $btnHovCustom     = trim((string) ($config['ui_btn_primary_hover_bg'] ?? '')) !== '';
 $uiBtnBw          = max(0, min(8, (int) ($config['ui_btn_border_width'] ?? 0)));
 $uiCardBw         = max(0, min(8, (int) ($config['ui_card_border_width'] ?? 0)));
@@ -156,6 +161,9 @@ $pgActiveColor = trim((string) ($config['ui_pagination_active_color'] ?? ''));
 if (!preg_match('/^#([0-9A-Fa-f]{3}|[0-9A-Fa-f]{6})$/', $pgActiveColor)) {
     $pgActiveColor = '#ffffff';
 }
+$pgLinkColor   = LayoutService::htmlColorPickerValue($pgLinkColor, $pgThemeFallback);
+$pgActiveBg    = LayoutService::htmlColorPickerValue($pgActiveBg, $pgThemeFallback);
+$pgActiveColor = LayoutService::htmlColorPickerValue($pgActiveColor, '#ffffff');
 ?>
     <div class="tab-pane fade config-tab-estilo <?= $activeTab === 'estilo' ? 'show active' : '' ?>" id="tab-estilo" role="tabpanel">
         <p class="text-muted small mb-4"><?= lang('Config.config_style_tab_intro') ?></p>
@@ -220,8 +228,8 @@ if (!preg_match('/^#([0-9A-Fa-f]{3}|[0-9A-Fa-f]{6})$/', $pgActiveColor)) {
                         <?= form_label(lang('Config.config_theme_color'), 'theme_color', ['class' => 'form-label fw-semibold']) ?>
                         <?= form_dropdown('theme_palette_select', $selectThemePal, $selectedThemeHex, 'id="theme_palette_select" class="form-select mb-2" autocomplete="off"') ?>
                         <div class="d-flex align-items-center gap-2 flex-wrap">
-                            <input type="color" name="theme_color" id="theme_color" value="<?= esc($config['theme_color'] ?? '#FF7218') ?>" class="form-control form-control-color config-color-picker" autocomplete="off">
-                            <input type="text" id="theme_color_hex" value="<?= esc($config['theme_color'] ?? '#FF7218') ?>" class="form-control config-color-hex" readonly autocomplete="off">
+                            <input type="color" name="theme_color" id="theme_color" value="<?= esc(LayoutService::htmlColorPickerValue($config['theme_color'] ?? '', '#FF7218')) ?>" class="form-control form-control-color config-color-picker" autocomplete="off">
+                            <input type="text" id="theme_color_hex" value="<?= esc(LayoutService::htmlColorPickerValue($config['theme_color'] ?? '', '#FF7218')) ?>" class="form-control config-color-hex" readonly autocomplete="off">
                         </div>
                         <small class="text-muted"><?= lang('Config.config_theme_color_custom_hint') ?></small>
                     </div>
@@ -229,14 +237,14 @@ if (!preg_match('/^#([0-9A-Fa-f]{3}|[0-9A-Fa-f]{6})$/', $pgActiveColor)) {
                         <?= form_label(lang('Config.config_theme_gradient_end'), 'theme_gradient_end', ['class' => 'form-label fw-semibold']) ?>
                         <?= form_dropdown('theme_gradient_palette_select', $selectThemePal, $selectedGradHex, 'id="theme_gradient_palette_select" class="form-select mb-2" autocomplete="off"') ?>
                         <div class="d-flex align-items-center gap-2 flex-wrap">
-                            <input type="color" name="theme_gradient_end" id="theme_gradient_end" value="<?= esc($config['theme_gradient_end'] ?? '#4f46e5') ?>" class="form-control form-control-color config-color-picker" autocomplete="off">
-                            <input type="text" id="theme_gradient_end_hex" value="<?= esc($config['theme_gradient_end'] ?? '#4f46e5') ?>" class="form-control config-color-hex" readonly autocomplete="off">
+                            <input type="color" name="theme_gradient_end" id="theme_gradient_end" value="<?= esc(LayoutService::htmlColorPickerValue($config['theme_gradient_end'] ?? '', '#4f46e5')) ?>" class="form-control form-control-color config-color-picker" autocomplete="off">
+                            <input type="text" id="theme_gradient_end_hex" value="<?= esc(LayoutService::htmlColorPickerValue($config['theme_gradient_end'] ?? '', '#4f46e5')) ?>" class="form-control config-color-hex" readonly autocomplete="off">
                         </div>
                         <small class="text-muted d-block"><?= lang('Config.config_theme_gradient_help') ?></small>
                     </div>
                     <div class="col-md-4 mb-3">
                         <label class="form-label fw-semibold" for="ui_header_text_color_theme"><?= lang('Config.config_style_header_text') ?></label>
-                        <input type="color" id="ui_header_text_color_theme" value="<?= esc($config['ui_header_text_color'] ?? '#ffffff') ?>" class="form-control form-control-color">
+                        <input type="color" id="ui_header_text_color_theme" value="<?= esc(LayoutService::htmlColorPickerValue($config['ui_header_text_color'] ?? '', '#ffffff')) ?>" class="form-control form-control-color">
                         <small class="text-muted d-block"><?= lang('Config.config_style_header_text_breadcrumb_hint') ?></small>
                     </div>
                 </div>
@@ -271,7 +279,7 @@ if (!preg_match('/^#([0-9A-Fa-f]{3}|[0-9A-Fa-f]{6})$/', $pgActiveColor)) {
                     </div>
                     <div class="col-lg-6 mb-3">
                         <label class="form-label fw-semibold" for="ui_btn_primary_text"><?= lang('Config.config_style_btn_text') ?></label>
-                        <input type="color" name="ui_btn_primary_text" id="ui_btn_primary_text" value="<?= esc($config['ui_btn_primary_text'] ?? '#ffffff') ?>" class="form-control form-control-color">
+                        <input type="color" name="ui_btn_primary_text" id="ui_btn_primary_text" value="<?= esc(LayoutService::htmlColorPickerValue($config['ui_btn_primary_text'] ?? '', '#ffffff')) ?>" class="form-control form-control-color">
                         <?= view('config/partials/ui_font_variant', [
                             'weightField' => 'ui_btn_primary_text_weight',
                             'styleField'  => 'ui_btn_primary_text_style',
@@ -291,7 +299,7 @@ if (!preg_match('/^#([0-9A-Fa-f]{3}|[0-9A-Fa-f]{6})$/', $pgActiveColor)) {
                             <input class="form-check-input" type="radio" name="ui_btn_hover_mode" id="ui_btn_hov_custom" value="custom" <?= $btnHovCustom ? 'checked' : '' ?> autocomplete="off">
                             <label class="form-check-label" for="ui_btn_hov_custom"><?= lang('Config.config_style_custom_color') ?></label>
                         </div>
-                        <input type="color" name="ui_btn_primary_hover_custom" id="ui_btn_primary_hover_custom" value="<?= esc($btnHovCustom ? (string) $config['ui_btn_primary_hover_bg'] : '#000000') ?>" class="form-control form-control-color">
+                        <input type="color" name="ui_btn_primary_hover_custom" id="ui_btn_primary_hover_custom" value="<?= esc(LayoutService::htmlColorPickerValue($btnHovCustom ? (string) ($config['ui_btn_primary_hover_bg'] ?? '') : '#000000', '#000000')) ?>" class="form-control form-control-color">
                     </div>
                 </div>
                 <hr class="text-muted">
@@ -304,7 +312,7 @@ if (!preg_match('/^#([0-9A-Fa-f]{3}|[0-9A-Fa-f]{6})$/', $pgActiveColor)) {
                     </div>
                     <div class="col-md-4 mb-3">
                         <label class="form-label" for="ui_btn_border_color"><?= lang('Config.config_style_btn_border_color') ?></label>
-                        <input type="color" name="ui_btn_border_color" id="ui_btn_border_color" value="<?= esc($config['ui_btn_border_color'] ?? '#212529') ?>" class="form-control form-control-color">
+                        <input type="color" name="ui_btn_border_color" id="ui_btn_border_color" value="<?= esc(LayoutService::htmlColorPickerValue($config['ui_btn_border_color'] ?? '', '#212529')) ?>" class="form-control form-control-color">
                     </div>
                     <div class="col-md-4 mb-3">
                         <label class="form-label" for="ui_btn_border_sides"><?= lang('Config.config_style_btn_border_sides') ?></label>
@@ -515,7 +523,7 @@ if (!preg_match('/^#([0-9A-Fa-f]{3}|[0-9A-Fa-f]{6})$/', $pgActiveColor)) {
                     </div>
                     <div class="col-md-6 mb-3">
                         <label class="form-label" for="ui_header_text_color"><?= lang('Config.config_style_header_text') ?></label>
-                        <input type="color" name="ui_header_text_color" id="ui_header_text_color" value="<?= esc($config['ui_header_text_color'] ?? '#ffffff') ?>" class="form-control form-control-color">
+                        <input type="color" name="ui_header_text_color" id="ui_header_text_color" value="<?= esc(LayoutService::htmlColorPickerValue($config['ui_header_text_color'] ?? '', '#ffffff')) ?>" class="form-control form-control-color">
                         <small class="text-muted d-block mt-1"><?= lang('Config.config_style_header_text_breadcrumb_hint') ?></small>
                         <?= view('config/partials/ui_font_variant', [
                             'weightField' => 'ui_header_text_weight',
@@ -548,7 +556,7 @@ if (!preg_match('/^#([0-9A-Fa-f]{3}|[0-9A-Fa-f]{6})$/', $pgActiveColor)) {
                 <div class="row align-items-end">
                     <div class="col-md-6 mb-3 mb-md-0">
                         <label class="form-label" for="ui_labotests_card_header_title_color"><?= lang('Config.config_style_labotests_card_title_color') ?></label>
-                        <input type="color" name="ui_labotests_card_header_title_color" id="ui_labotests_card_header_title_color" value="<?= esc($labotestsCardTitleColor) ?>" class="form-control form-control-color" title="<?= lang('Config.config_style_labotests_card_title_color') ?>">
+                        <input type="color" name="ui_labotests_card_header_title_color" id="ui_labotests_card_header_title_color" value="<?= esc(LayoutService::htmlColorPickerValue($labotestsCardTitleColor, '#ffffff')) ?>" class="form-control form-control-color" title="<?= lang('Config.config_style_labotests_card_title_color') ?>">
                         <small class="text-muted d-block mt-1"><?= lang('Config.config_style_labotests_card_title_color_help') ?></small>
                         <?= view('config/partials/ui_font_variant', [
                             'weightField' => 'ui_labotests_card_header_title_weight',
@@ -601,7 +609,7 @@ if (!preg_match('/^#([0-9A-Fa-f]{3}|[0-9A-Fa-f]{6})$/', $pgActiveColor)) {
                 <div class="row align-items-end">
                     <div class="col-md-6 mb-3 mb-md-0">
                         <label class="form-label" for="ui_pagination_link_color"><?= lang('Config.config_style_pagination_link_color') ?></label>
-                        <input type="color" name="ui_pagination_link_color" id="ui_pagination_link_color" value="<?= esc($pgLinkColor) ?>" class="form-control form-control-color" title="<?= lang('Config.config_style_pagination_link_color') ?>">
+                        <input type="color" name="ui_pagination_link_color" id="ui_pagination_link_color" value="<?= esc(LayoutService::htmlColorPickerValue($pgLinkColor, $pgThemeFallback)) ?>" class="form-control form-control-color" title="<?= lang('Config.config_style_pagination_link_color') ?>">
                         <small class="text-muted d-block mt-1"><?= lang('Config.config_style_pagination_link_color_help') ?></small>
                         <?= view('config/partials/ui_font_variant', [
                             'weightField' => 'ui_pagination_link_weight',
@@ -614,10 +622,10 @@ if (!preg_match('/^#([0-9A-Fa-f]{3}|[0-9A-Fa-f]{6})$/', $pgActiveColor)) {
                     </div>
                     <div class="col-md-6 mb-3 mb-md-0">
                         <label class="form-label" for="ui_pagination_active_bg"><?= lang('Config.config_style_pagination_active_bg') ?></label>
-                        <input type="color" name="ui_pagination_active_bg" id="ui_pagination_active_bg" value="<?= esc($pgActiveBg) ?>" class="form-control form-control-color" title="<?= lang('Config.config_style_pagination_active_bg') ?>">
+                        <input type="color" name="ui_pagination_active_bg" id="ui_pagination_active_bg" value="<?= esc(LayoutService::htmlColorPickerValue($pgActiveBg, $pgThemeFallback)) ?>" class="form-control form-control-color" title="<?= lang('Config.config_style_pagination_active_bg') ?>">
                         <small class="text-muted d-block mt-1"><?= lang('Config.config_style_pagination_active_bg_help') ?></small>
                         <label class="form-label mt-3" for="ui_pagination_active_color"><?= lang('Config.config_style_pagination_active_color') ?></label>
-                        <input type="color" name="ui_pagination_active_color" id="ui_pagination_active_color" value="<?= esc($pgActiveColor) ?>" class="form-control form-control-color" title="<?= lang('Config.config_style_pagination_active_color') ?>">
+                        <input type="color" name="ui_pagination_active_color" id="ui_pagination_active_color" value="<?= esc(LayoutService::htmlColorPickerValue($pgActiveColor, '#ffffff')) ?>" class="form-control form-control-color" title="<?= lang('Config.config_style_pagination_active_color') ?>">
                         <small class="text-muted d-block mt-1"><?= lang('Config.config_style_pagination_active_color_help') ?></small>
                     </div>
                 </div>
@@ -683,7 +691,7 @@ if (!preg_match('/^#([0-9A-Fa-f]{3}|[0-9A-Fa-f]{6})$/', $pgActiveColor)) {
                             <input class="form-check-input" type="checkbox" name="ui_sidebar_bg_transparent" id="ui_sidebar_bg_transparent" value="1" autocomplete="off" <?= $sidebarBgTransparent ? 'checked' : '' ?>>
                             <label class="form-check-label" for="ui_sidebar_bg_transparent"><?= lang('Config.config_style_bg_transparent') ?></label>
                         </div>
-                        <input type="color" name="ui_sidebar_bg" id="ui_sidebar_bg" value="<?= esc($sidebarBgTransparent ? '#f8f9fa' : $sidebarBgStored) ?>" class="form-control form-control-color" title="<?= lang('Config.config_style_sidebar_bg') ?>">
+                        <input type="color" name="ui_sidebar_bg" id="ui_sidebar_bg" value="<?= esc($sidebarBgTransparent ? '#f8f9fa' : LayoutService::htmlColorPickerValue($sidebarBgStored, '#f8f9fa')) ?>" class="form-control form-control-color" title="<?= lang('Config.config_style_sidebar_bg') ?>">
                         <small class="text-muted d-block mt-1"><?= lang('Config.config_style_sidebar_bg_help') ?></small>
                         <small class="text-muted d-block"><?= lang('Config.config_style_sidebar_transparent_help') ?></small>
                     </div>
@@ -715,7 +723,7 @@ if (!preg_match('/^#([0-9A-Fa-f]{3}|[0-9A-Fa-f]{6})$/', $pgActiveColor)) {
                             <input class="form-check-input" type="checkbox" name="ui_sidebar_hover_default" id="ui_sidebar_hover_default" value="1" autocomplete="off" <?= $hoverBgVal === '' ? 'checked' : '' ?>>
                             <label class="form-check-label" for="ui_sidebar_hover_default"><?= lang('Config.config_style_hover_auto') ?></label>
                         </div>
-                        <input type="color" name="ui_sidebar_hover_bg" id="ui_sidebar_hover_bg" value="<?= esc($hoverBgVal !== '' ? $hoverBgVal : '#dee2e6') ?>" class="form-control form-control-color">
+                        <input type="color" name="ui_sidebar_hover_bg" id="ui_sidebar_hover_bg" value="<?= esc(LayoutService::htmlColorPickerValue($hoverBgVal !== '' ? $hoverBgVal : '#dee2e6', '#dee2e6')) ?>" class="form-control form-control-color">
                     </div>
                     <div class="col-md-6 mb-3">
                         <label class="form-label"><?= lang('Config.config_style_sidebar_active') ?></label>
@@ -724,7 +732,7 @@ if (!preg_match('/^#([0-9A-Fa-f]{3}|[0-9A-Fa-f]{6})$/', $pgActiveColor)) {
                             <input class="form-check-input" type="checkbox" name="ui_sidebar_active_default" id="ui_sidebar_active_default" value="1" autocomplete="off" <?= $activeBgVal === '' ? 'checked' : '' ?>>
                             <label class="form-check-label" for="ui_sidebar_active_default"><?= lang('Config.config_style_active_auto') ?></label>
                         </div>
-                        <input type="color" name="ui_sidebar_active_bg" id="ui_sidebar_active_bg" value="<?= esc($activeBgVal !== '' ? $activeBgVal : '#ced4da') ?>" class="form-control form-control-color">
+                        <input type="color" name="ui_sidebar_active_bg" id="ui_sidebar_active_bg" value="<?= esc(LayoutService::htmlColorPickerValue($activeBgVal !== '' ? $activeBgVal : '#ced4da', '#ced4da')) ?>" class="form-control form-control-color">
                     </div>
                 </div>
             </div>
@@ -747,7 +755,7 @@ if (!preg_match('/^#([0-9A-Fa-f]{3}|[0-9A-Fa-f]{6})$/', $pgActiveColor)) {
                 <div class="row">
                     <div class="col-md-4 mb-3">
                         <label class="form-label" for="ui_body_text_color"><?= lang('Config.config_style_body_text') ?></label>
-                        <input type="color" name="ui_body_text_color" id="ui_body_text_color" value="<?= esc($config['ui_body_text_color'] ?? '#212529') ?>" class="form-control form-control-color">
+                        <input type="color" name="ui_body_text_color" id="ui_body_text_color" value="<?= esc(LayoutService::htmlColorPickerValue($config['ui_body_text_color'] ?? '', '#212529')) ?>" class="form-control form-control-color">
                         <?= view('config/partials/ui_font_variant', [
                             'weightField' => 'ui_body_text_weight',
                             'styleField'  => 'ui_body_text_style',
@@ -764,7 +772,7 @@ if (!preg_match('/^#([0-9A-Fa-f]{3}|[0-9A-Fa-f]{6})$/', $pgActiveColor)) {
                             <input class="form-check-input" type="checkbox" name="ui_main_bg_transparent" id="ui_main_bg_transparent" value="1" autocomplete="off" <?= $mainBgTransparent ? 'checked' : '' ?>>
                             <label class="form-check-label" for="ui_main_bg_transparent"><?= lang('Config.config_style_bg_transparent') ?></label>
                         </div>
-                        <input type="color" name="ui_main_bg" id="ui_main_bg" value="<?= esc($mainBgTransparent ? '#ffffff' : $mainBgStored) ?>" class="form-control form-control-color" title="<?= lang('Config.config_style_main_bg') ?>">
+                        <input type="color" name="ui_main_bg" id="ui_main_bg" value="<?= esc($mainBgTransparent ? '#ffffff' : LayoutService::htmlColorPickerValue($mainBgStored, '#ffffff')) ?>" class="form-control form-control-color" title="<?= lang('Config.config_style_main_bg') ?>">
                         <small class="text-muted d-block mt-1"><?= lang('Config.config_style_main_bg_transparent_help') ?></small>
                     </div>
                     <div class="col-md-4 mb-3">
@@ -808,12 +816,12 @@ if (!preg_match('/^#([0-9A-Fa-f]{3}|[0-9A-Fa-f]{6})$/', $pgActiveColor)) {
                             <input class="form-check-input" type="checkbox" name="ui_footer_bg_transparent" id="ui_footer_bg_transparent" value="1" autocomplete="off" <?= $footerBgTransparent ? 'checked' : '' ?>>
                             <label class="form-check-label" for="ui_footer_bg_transparent"><?= lang('Config.config_style_bg_transparent') ?></label>
                         </div>
-                        <input type="color" name="ui_footer_bg" id="ui_footer_bg" value="<?= esc($footerBgTransparent ? '#f8f9fa' : $footerBgStored) ?>" class="form-control form-control-color" title="<?= lang('Config.config_style_footer_bg') ?>">
+                        <input type="color" name="ui_footer_bg" id="ui_footer_bg" value="<?= esc($footerBgTransparent ? '#f8f9fa' : LayoutService::htmlColorPickerValue($footerBgStored, '#f8f9fa')) ?>" class="form-control form-control-color" title="<?= lang('Config.config_style_footer_bg') ?>">
                         <small class="text-muted d-block mt-1"><?= lang('Config.config_style_footer_transparent_help') ?></small>
                     </div>
                     <div class="col-md-6 mb-3">
                         <label class="form-label" for="ui_footer_text_color"><?= lang('Config.config_style_footer_text') ?></label>
-                        <input type="color" name="ui_footer_text_color" id="ui_footer_text_color" value="<?= esc($config['ui_footer_text_color'] ?? '#6c757d') ?>" class="form-control form-control-color">
+                        <input type="color" name="ui_footer_text_color" id="ui_footer_text_color" value="<?= esc(LayoutService::htmlColorPickerValue($config['ui_footer_text_color'] ?? '', '#6c757d')) ?>" class="form-control form-control-color">
                         <?= view('config/partials/ui_font_variant', [
                             'weightField' => 'ui_footer_text_weight',
                             'styleField'  => 'ui_footer_text_style',
@@ -881,7 +889,7 @@ if (!preg_match('/^#([0-9A-Fa-f]{3}|[0-9A-Fa-f]{6})$/', $pgActiveColor)) {
                     </div>
                     <div class="col-md-4 mb-3">
                         <label class="form-label" for="ui_card_border_color"><?= lang('Config.config_style_card_border_color') ?></label>
-                        <input type="color" name="ui_card_border_color" id="ui_card_border_color" value="<?= esc($config['ui_card_border_color'] ?? '#dee2e6') ?>" class="form-control form-control-color">
+                        <input type="color" name="ui_card_border_color" id="ui_card_border_color" value="<?= esc(LayoutService::htmlColorPickerValue($config['ui_card_border_color'] ?? '', '#dee2e6')) ?>" class="form-control form-control-color">
                     </div>
                     <div class="col-md-4 mb-3">
                         <label class="form-label" for="ui_card_border_sides"><?= lang('Config.config_style_card_border_sides') ?></label>

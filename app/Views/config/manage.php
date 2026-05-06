@@ -389,15 +389,15 @@
                 <?= form_open(site_url('config/saveComprobanteStyle'), ['class' => 'row g-3']) ?>
                 <div class="col-md-4">
                     <label for="comprobante_primary_color" class="form-label">Color principal</label>
-                    <input type="color" class="form-control form-control-color" id="comprobante_primary_color" name="comprobante_primary_color" value="<?= esc($config['comprobante_primary_color'] ?? '#0f766e') ?>" title="Color principal del comprobante">
+                    <input type="color" class="form-control form-control-color" id="comprobante_primary_color" name="comprobante_primary_color" value="<?= esc(\App\Services\LayoutService::htmlColorPickerValue($config['comprobante_primary_color'] ?? '', '#0f766e')) ?>" title="Color principal del comprobante">
                 </div>
                 <div class="col-md-4">
                     <label for="comprobante_secondary_color" class="form-label">Color secundario</label>
-                    <input type="color" class="form-control form-control-color" id="comprobante_secondary_color" name="comprobante_secondary_color" value="<?= esc($config['comprobante_secondary_color'] ?? '#134e4a') ?>" title="Color secundario del comprobante">
+                    <input type="color" class="form-control form-control-color" id="comprobante_secondary_color" name="comprobante_secondary_color" value="<?= esc(\App\Services\LayoutService::htmlColorPickerValue($config['comprobante_secondary_color'] ?? '', '#134e4a')) ?>" title="Color secundario del comprobante">
                 </div>
                 <div class="col-md-4">
                     <label for="comprobante_text_color" class="form-label">Color de texto base</label>
-                    <input type="color" class="form-control form-control-color" id="comprobante_text_color" name="comprobante_text_color" value="<?= esc($config['comprobante_text_color'] ?? '#1e293b') ?>" title="Color del texto principal">
+                    <input type="color" class="form-control form-control-color" id="comprobante_text_color" name="comprobante_text_color" value="<?= esc(\App\Services\LayoutService::htmlColorPickerValue($config['comprobante_text_color'] ?? '', '#1e293b')) ?>" title="Color del texto principal">
                 </div>
                 <div class="col-md-8">
                     <label for="comprobante_tagline" class="form-label">Subtítulo</label>

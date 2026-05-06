@@ -79,6 +79,32 @@ class LayoutService
         $this->appConfig = model(AppConfigModel::class);
     }
 
+    /**
+     * Valor #rrggbb para el atributo value de inputs HTML type="color" (nunca vacío).
+     */
+    public static function htmlColorPickerValue(?string $raw, string $fallback): string
+    {
+        foreach ([trim((string) $raw), trim($fallback), '#000000'] as $candidate) {
+            if ($candidate === '') {
+                continue;
+            }
+            $v = strtoupper($candidate);
+            if (($v[0] ?? '') !== '#') {
+                $v = '#' . $v;
+            }
+            if (preg_match('/^#([0-9A-F]{3})$/', $v, $m)) {
+                $h = $m[1];
+
+                return '#' . $h[0] . $h[0] . $h[1] . $h[1] . $h[2] . $h[2];
+            }
+            if (preg_match('/^#([0-9A-F]{6})$/', $v)) {
+                return $v;
+            }
+        }
+
+        return '#000000';
+    }
+
     private function normalizeHex(?string $value): ?string
     {
         $v = strtoupper(trim((string) $value));

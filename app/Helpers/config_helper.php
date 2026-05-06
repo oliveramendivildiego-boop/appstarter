@@ -14,6 +14,18 @@ if (!function_exists('safe_mb_trim')) {
     }
 }
 
+if (!function_exists('config_html_color_picker_value')) {
+    /**
+     * Valor válido para atributo value de <input type="color"> (#rrggbb en 6 hex).
+     *
+     * @see \App\Services\LayoutService::htmlColorPickerValue()
+     */
+    function config_html_color_picker_value(?string $raw, string $fallback): string
+    {
+        return \App\Services\LayoutService::htmlColorPickerValue($raw, $fallback);
+    }
+}
+
 if (!function_exists('darken_hex_color')) {
     /**
      * Oscurece un color hex para hover/estados activos
