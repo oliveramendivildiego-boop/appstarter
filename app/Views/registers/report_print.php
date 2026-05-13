@@ -62,7 +62,10 @@
         }
     }
     $pdfFooterReserveMm = 22.0;
-    $printBottomMarginMm = $mb + ($pdfFooterEnabled ? $pdfFooterReserveMm : 0.0);
+    // Impresión en navegador: el pie fijo + margen @page deben cubrir la altura real del bloque pie
+    // (dirección, teléfono, email, paddings). Si no, la última fila de tabla queda tapada o recortada.
+    $pdfFooterPrintPageBottomBufferMm = 22.0;
+    $printBottomMarginMm = $mb + ($pdfFooterEnabled ? ($pdfFooterReserveMm + $pdfFooterPrintPageBottomBufferMm) : 0.0);
     $pdfFooterStripBg   = ($ftBodyBg !== 'transparent') ? $ftBodyBg : '#ffffff';
     $ftTopOn            = ! empty($ft['section_top_border_enabled']);
     $ftTopW             = max(0, min(6, (int) ($ft['section_top_border_width_px'] ?? 1)));
@@ -81,8 +84,13 @@
     if ($printPaperCustomH <= 0) {
         $printPaperCustomH = 297.0;
     }
-    // Calibración fina para impresión física: algunos drivers dejan el footer visualmente alto.
-    $printFooterNudgeMm = ($pdfFooterEnabled && $printPaper === 'a4') ? -2.0 : (($pdfFooterEnabled && in_array($printPaper, ['letter', 'legal', 'custom'], true)) ? -2.5 : 0.0);
+    // Valores negativos empujaban el pie hacia el área útil y solapaban tablas (p. ej. última fila Widal).
+    $printFooterNudgeMm = 0.0;
+    // Impresión: muchos motores anclan `fixed` + `bottom:0` al borde inferior del área de contenido (encima
+    // del margin-bottom de @page). Hundimos el pie por esa franja para alinearlo al borde físico de la hoja
+    // (respetando padding-bottom = margen inferior de plantilla sobre el borde).
+    $printFooterSinkIntoPageBottomMarginMm = $pdfFooterEnabled ? max(0.0, $printBottomMarginMm - $mb) : 0.0;
+    $printFooterBottomPrintCssMm = round(0.0 - $printFooterSinkIntoPageBottomMarginMm, 3);
     if ($printPaper === 'custom') {
         $printPageCssSize = (string) $printPaperCustomW . 'mm ' . (string) $printPaperCustomH . 'mm';
     } else {
@@ -120,16 +128,18 @@
         }
         body { margin: <?= esc((string) $mt) ?>mm <?= esc((string) $mr) ?>mm <?= esc((string) $mb) ?>mm <?= esc((string) $ml) ?>mm !important; position: relative; background: #fff; }
         <?php if ($pdfFooterEnabled): ?>
+        /* Pie al borde inferior de cada hoja (impresión); ancho alineado a márgenes izq./der. de la plantilla */
         .pdf-ft-block.footer-grid {
             position: fixed;
-            left: 0;
-            right: 0;
+            left: <?= esc((string) $ml) ?>mm;
+            right: <?= esc((string) $mr) ?>mm;
+            width: auto;
             bottom: <?= esc((string) $printFooterNudgeMm) ?>mm;
             z-index: 2;
-            margin-top: 0 !important;
+            margin: 0;
             padding-top: 6px;
-            padding-left: <?= esc((string) $ml) ?>mm;
-            padding-right: <?= esc((string) $mr) ?>mm;
+            padding-left: 0;
+            padding-right: 0;
             padding-bottom: <?= esc((string) $mb) ?>mm;
             background: <?= esc($pdfFooterStripBg) ?>;
             box-sizing: border-box;
@@ -331,9 +341,67 @@
         .report-print-btn-primary { padding: 8px 16px; background: #0d6efd; color: #fff; border: none; border-radius: 6px; cursor: pointer; font-size: 14px; }
         .report-print-btn-secondary { padding: 8px 16px; background: #fff; color: #333; border: 1px solid #ced4da; border-radius: 6px; cursor: pointer; font-size: 14px; text-decoration: none; display: inline-block; }
         @media print {
-            body {
+            body.report-browser-print .pdf-ft-block.footer-grid {
+                position: fixed !important;
+                left: 0 !important;
+                right: 0 !important;
+                width: auto !important;
+                bottom: <?= esc((string) $printFooterBottomPrintCssMm, 'css') ?>mm !important;
+                margin: 0 !important;
+                padding-top: 6px !important;
+                padding-left: <?= esc((string) $ml) ?>mm !important;
+                padding-right: <?= esc((string) $mr) ?>mm !important;
+                padding-bottom: <?= esc((string) $mb) ?>mm !important;
+                box-sizing: border-box !important;
+            }
+            body.report-browser-print {
                 margin: 0 !important;
                 padding: 0 !important;
+            }
+            html,
+            body.report-browser-print,
+            body.report-browser-print .pdf-main-stack {
+                overflow: visible !important;
+            }
+            body.report-browser-print .pdf-main-stack {
+                isolation: auto !important;
+            }
+            /* Cabecera de grupo y título de segmento: intentar no partir (sin forzar página nueva). */
+            body.report-browser-print .report-pdf-grupo-cabecera {
+                display: flow-root;
+                break-inside: avoid-page !important;
+                page-break-inside: avoid !important;
+            }
+            body.report-browser-print .report-segment-table-wrap > .report-segment-title {
+                break-after: avoid-page !important;
+                page-break-after: avoid !important;
+            }
+            body.report-browser-print .report-segment-table-wrap > .report-segment-title + table.results {
+                break-before: avoid !important;
+                page-break-before: avoid !important;
+            }
+            /* Las tablas largas deben poder partirse entre filas; evitar avoid en el wrap evita recortes con el pie fijo. */
+            body.report-browser-print .report-segment-table-wrap,
+            body.report-browser-print .report-refs-matrix-wrap {
+                break-inside: auto !important;
+                page-break-inside: auto !important;
+            }
+            body.report-browser-print table.results tbody tr {
+                break-inside: avoid !important;
+                page-break-inside: avoid !important;
+            }
+            body.report-browser-print table.results > thead:first-of-type + tbody > tr:first-child {
+                break-before: avoid !important;
+                page-break-before: avoid !important;
+            }
+            /*
+             * En pantalla/PDF se evita salto entre cabecera de grupo y primera tabla; al imprimir
+             * en Chrome eso a veces deja la tabla en un hueco pequeño y parte filas (p. ej. Widal).
+             * Aquí se permite el salto entre cabecera y tabla para que la tabla pueda ir entera a la hoja siguiente.
+             */
+            body.report-browser-print .report-pdf-grupo-cabecera + .report-segment-table-wrap {
+                break-before: auto !important;
+                page-break-before: auto !important;
             }
             .report-print-toolbar { display: none !important; }
             /* Fuerza a los navegadores a conservar colores de fondo en impresión. */
@@ -375,7 +443,7 @@
         }
     </style>
 </head>
-<body>
+<body class="report-browser-print">
 <div class="report-print-toolbar">
     <button type="button" class="report-print-btn-primary" onclick="window.print()">Imprimir de nuevo</button>
     <?php if ($rid > 0): ?>
