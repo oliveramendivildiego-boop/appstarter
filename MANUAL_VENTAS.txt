@@ -1,0 +1,214 @@
+================================================================================
+  MANUAL / DOSSIER COMERCIAL — SISTEMA DE GESTIÓN PARA LABORATORIO CLÍNICO
+  Material para presentaciones, propuestas y conversaciones de venta
+================================================================================
+
+NOTA PARA EL EQUIPO COMERCIAL
+-----------------------------
+Este documento resume lo que el sistema hace hoy en esta plataforma (CodeIgniter),
+con foco en diferenciación y valor para laboratorios clínicos, redes de labs
+y operadores que buscan digitalizar recepción, resultados, inventario y control
+financiero en un solo entorno. Ajuste precios, SLA y branding según su oferta.
+
+
+1. PROPUESTA DE VALOR (ELEVATOR PITCH)
+--------------------------------------
+"Plataforma integral para laboratorio clínico: catálogo técnico flexible,
+recepción y validación de resultados con informes PDF profesionales, cobros y
+cierres de caja, comisiones médicas, inventario con kardex y alertas, control
+de calidad con gráficas, equipos y mantenimiento, y reportes gerenciales listos
+para imprimir o exportar — con opción multitenant, portal para médicos y
+entrega de resultados al paciente por enlace seguro."
+
+
+2. QUÉ LO HACE DIFERENCIAL
+--------------------------
+
+A) Flujo clínico completo en un solo sistema  
+   No es solo un LIMS abstracto ni solo una caja: une catálogo de análisis
+   (con fórmulas, métodos, muestras y consumo de reactivos), la operación de
+   ventanilla (cotización + recepción + pagos), la emisión de informes y la
+   trazabilidad posterior (historial del paciente, auditoría).
+
+B) Informes y comunicación al paciente  
+   • PDF de resultados con plantillas configurables.  
+   • Comprobantes y orden de trabajo.  
+   • Código QR orientado a consulta de resultados.  
+   • Integración con WhatsApp para envío desde la recepción (según configuración).  
+   • Enlace público con token para ver/descargar resultados sin dar acceso al core.
+
+C) Gestión financiera alineada al laboratorio  
+   • Ingresos por fecha, pendientes de cobro, reporte de pagos.  
+   • Cierres de pagos con historial y documentos asociados — pensado para arqueo
+     y control interno.  
+   • Módulo de egresos para gastos operativos.  
+   • Comisiones por doctor con detalle, pago individual y pago masivo.
+
+D) Inventario inteligente  
+   • Lotes, vencimientos, movimientos, kardex con responsable y vínculo a orden.  
+   • Reportes de vencimiento y de kardex por usuario.  
+   • Consumo automático de insumos al procesar pruebas cuando el catálogo lo define
+     — reduce discrepancias entre producción y stock.
+
+E) Calidad y acreditación  
+   • Módulo de control de calidad con gráficas Levey-Jennings — argumento fuerte
+     frente a laboratorios que certifican o auditan procesos.
+
+F) Inteligencia operativa en el tablero  
+   El inicio muestra KPIs y alertas: ingresos, pendientes de cobro, insumos y
+   stock bajo, actividad por doctor, series de cierres — el director técnico o
+   gerencia ve de un vistazo dónde apretar.
+
+G) Escalabilidad comercial (multitenant)  
+   Modelo apto para quien vende el software a varios laboratorios: instancias
+   por cliente, portal de suscripción y comprobantes para laboratorios hijos,
+   alertas de vencimiento de servicio, respaldos programados y herramientas de
+   administración central (según despliegue).
+
+H) Seguridad operativa  
+   • Permisos por módulo y por empleado.  
+   • Auditoría de acciones.  
+   • Gestión de sesiones (incluye herramientas avanzadas en configuración).  
+   • Portal de doctores con credenciales propias, separado del personal interno.
+
+I) Catálogo potente para laboratorios reales  
+   • Perfiles de pruebas, duplicación de estructuras, import/export de configuración
+     de análisis — baja el costo de implementar nuevas pruebas o migrar de otro sistema.  
+   • Manuales por análisis (procedimiento/documentación en el mismo repositorio).
+
+
+3. PERFILES DE CLIENTE IDEAL
+----------------------------
+• Laboratorios clínicos medianos que crecieron con hojas de cálculo y necesitan
+  unificar recepción, resultados y cobros.  
+• Redes o franquicias que requieren misma plataforma con datos aislados por sede
+  o marca (multitenant).  
+• Laboratorios con fuerte relación con médicos remitentes (comisiones y reportes
+  por doctor).  
+• Labs que ya tienen control de calidad formal o están en camino a ello.  
+• Organizaciones que quieren reducir errores de inventario y vencimientos.
+
+
+4. CATÁLOGO DE MÓDULOS (L ENGUAJE DE BENEFICIO)
+-----------------------------------------------
+
+Inicio / Dashboard  
+  Ventaja: decisión diaria informada; menos reuniones para saber "cómo vamos".
+
+Pacientes  
+  Ventaja: datos únicos; base para historial, estadísticas y fidelización.
+
+Doctores  
+  Ventaja: agiliza recepción y alimenta reportes de derivación.
+
+Análisis clínicos (catálogo)  
+  Ventaja: flexibilidad técnica sin depender de desarrollos constantes; fórmulas,
+  referencias por población, consumo de reactivos.
+
+Cotizar  
+  Ventaja: transparencia de precios en ventanilla; PDF listo para el paciente.
+
+Recepción  
+  Ventaja: corazón del negocio — orden, resultados, validación, anulaciones
+  trazables, muestras, pagos.
+
+Historial paciente (expediente)  
+  Ventaja: medicina de precisión operativa — evolución y gráficas en un clic.
+
+Reportes (suite amplia)  
+  Ventaja: desde estadísticas demográficas hasta catálogo en Excel; cuenta
+  cuentas por cobrar y productividad por grupo de análisis.
+
+Control de calidad  
+  Ventaja: soporte documental y visual para normas y auditorías.
+
+Inventario / insumos  
+  Ventaja: menos pérdidas por vencimiento; kardex explicable frente a inspectores
+  o socios.
+
+Equipos  
+  Ventaja: activos críticos rastreados; mantenimiento no queda solo en el cuaderno.
+
+Egresos  
+  Ventaja: margen real — ingresos del lab vs gastos en el mismo ecosistema.
+
+Leyendas  
+  Ventaja: consistencia legal y clínica en todos los informes.
+
+Comisiones  
+  Ventaja: retención de médicos sin planillas externas y con pagos masivos.
+
+Auditoría  
+  Ventaja: responsabilidad clara; baja el riesgo en disputas internas o externas.
+
+Empleados  
+  Ventaja: gobierno de accesos alineado a funciones (recepción vs bioquímico vs admin).
+
+Configuración  
+  Ventaja: marca blanca visual, plantillas PDF, integraciones (ej. WhatsApp),
+  respaldos y políticas de institución — sin tocar código.
+
+Portal médico + resultados públicos  
+  Ventaja: menos llamadas repetitivas; el médico y el paciente se autosirven
+  con enlaces seguros.
+
+
+5. COMPETENCIA Y CÓMO POSICIONARSE
+------------------------------------
+Frente a "solo LIMS" o "solo facturación": este producto cruza ambos mundos con
+énfasis en laboratorio clínico latinoamericano (referencias, comisiones, caja,
+WhatsApp).  
+
+Frente a soluciones genéricas ERP: aquí el modelo de datos es de análisis,
+muestras, validación y plantillas de resultado — no de SKU genérico.
+
+Frente a software legacy: stack web moderna (PHP/CodeIgniter), lista para
+navegador, reportes exportables y multitenant si el negocio lo exige.
+
+
+6. OBJECIONES FRECUENTES — RESPUESTAS CORTAS
+--------------------------------------------
+"¿Podemos migrar nuestro catálogo?"  
+  Hay importación de configuración de detalle de análisis y herramientas de
+  catálogo; el esfuerzo depende de la limpieza de datos fuente.
+
+"¿Y si tenemos varias sucursales?"  
+  Opción multitenant y configuración central; cada cliente ve solo su data.
+
+"¿Cumple para auditarme?"  
+  Auditoría, trazabilidad de inventario, control de calidad y reportes
+  exportables apoyan procesos; la certificación final depende de procedimientos
+  del laboratorio.
+
+"¿El paciente puede ver resultados online?"  
+  Sí, por enlace con token y PDF; sin exposición del sistema completo.
+
+
+7. DEMO SUGERIDA (45 MINUTOS)
+------------------------------
+1. Dashboard — alertas y pendientes de cobro.  
+2. Cotizar → Recepción nueva orden → carga rápida de un resultado → validar → PDF.  
+3. Mostrar enlace público / QR (sin login).  
+4. Reporte de pruebas por grupo + pendientes de pago + cierre de pagos.  
+5. Inventario: lote con vencimiento y kardex.  
+6. Control de calidad: gráfica.  
+7. Comisiones: listado y pago.  
+8. Si aplica: multitenant y portal suscripción.
+
+Cierre: próximo paso piloto en una sucursal + plan de migración de catálogo.
+
+
+8. ENTREGABLES QUE PUEDE PROMETER (CON SU EQUIPO LEGAL/COMERCIAL)
+------------------------------------------------------------------
+• Implementación y capacitación por módulos.  
+• Plantillas de informe acordes a la marca del cliente.  
+• Política de respaldo y continuidad según contrato.  
+• Roadmap de mejoras (definir internamente — no comprometer funciones no
+  desplegadas en su rama sin validación técnica).
+
+
+================================================================================
+Documento generado a partir de la funcionalidad observada en el código del
+proyecto. Manténgalo actualizado cuando se liberen módulos nuevos o cambios
+relevantes de producto.
+================================================================================

@@ -1,0 +1,948 @@
+================================================================================
+                    MANUAL DE USUARIO — SISTEMA WEB DE LABORATORIO CLÍNICO
+          (Recepción, resultados, inventario, calidad, reportes y administración)
+================================================================================
+
+-------------------------------------------------------------------------------
+1. INTRODUCCIÓN
+-------------------------------------------------------------------------------
+
+1.1 Objetivo del sistema
+-------------------------
+La aplicación es un sistema web integral para la operación de laboratorios
+clínicos. Permite gestionar pacientes y médicos solicitantes, definir y cotizar
+análisis, registrar órdenes de trabajo (“recepción”), cargar y validar resultados,
+emitir informes en PDF, registrar cobros y cierres, controlar insumos con kardex,
+llevar equipos y mantenimientos, registrar controles de calidad (incluyendo
+gráficas tipo Levey-Jennings), comisiones de doctores, egresos, leyendas en
+informes, auditoría de acciones y empleados con permisos por módulo.
+En instalaciones multitenant, permite además separar datos por laboratorio y
+gestionar suscripción y comprobantes para laboratorios cliente.
+
+1.2 Alcance del manual
+----------------------
+Este documento describe el uso funcional de la interfaz web para personal del
+laboratorio (recepción, área técnica, calidad, administración). No cubre
+instalación de servidores, desarrollo ni parametrización avanzada de base de
+datos. La terminología del manual coincide con las etiquetas del sistema en
+español (ej.: “Recepción”, “Pacientes”, “Análisis clínicos”, “Inventario”).
+
+1.3 Perfil del usuario
+----------------------
+Lector principal: operador de sistema con conocimientos básicos de navegación
+web y procedimientos del laboratorio. Algunas secciones (Configuración, Empleados,
+catálogo completo de análisis) están pensadas para supervisores o administradores.
+Los médicos con usuario propio utilizan un portal aparte (rutas bajo “doctor/…”)
+descrito en la subsección correspondiente. Lo que cada persona puede abrir
+depende de los módulos asignados a su cuenta en el registro de empleados.
+
+===============================================================================
+2. REQUISITOS DEL SISTEMA
+===============================================================================
+
+2.1 Hardware mínimo y recomendado
+----------------------------------
+Mínimo (puesto de trabajo que solo consulta o recepciona):
+  1. Procesador: dual-core 1,5 GHz o superior.
+  2. Memoria RAM: 4 GB.
+  3. Pantalla: resolución 1366×768.
+  4. Almacenamiento: espacio suficiente para PDF temporales del navegador.
+
+Recomendado (uso intensivo, varias pestañas, visualización de gráficas en inicio
+y control de calidad):
+  1. Procesador: quad-core reciente.
+  2. Memoria RAM: 8 GB o más.
+  3. Pantalla: 1920×1080 o superior.
+  4. Ratón o panel táctil preciso para tablas y formularios extensos.
+
+2.2 Software requerido (navegador y sistema operativo)
+-------------------------------------------------------
+  1. Navegador actualizado: Google Chrome, Microsoft Edge o Mozilla Firefox
+     (versiones recientes con soporte de JavaScript y CSS moderno).
+  2. JavaScript habilitado (obligatorio para formularios, tablas dinámicas y
+     gráficas del tablero).
+  3. Sistema operativo: Windows 10/11, macOS o GNU/Linux, siempre que el
+     navegador cumpla lo anterior.
+  4. Impresora opcional: configurada en el equipo para imprimir informes y
+     órdenes desde el navegador (vista previa de impresión del PDF o HTML).
+
+2.3 Conectividad necesaria
+--------------------------
+  1. Conexión de red al servidor donde está instalada la aplicación (LAN, VPN
+     o Internet según el despliegue del laboratorio).
+  2. Si se utiliza inicio de sesión con Google, el cliente debe poder resolver
+     “accounts.google.com” y “oauth2.googleapis.com” (solo cuando el administrador
+     activa esa opción).
+  3. Ancho de banda estable recomendado para subida de archivos (comprobantes
+     de suscripción, adjuntos si los hubiera) y descarga de PDF generados.
+
+===============================================================================
+3. ACCESO AL SISTEMA
+===============================================================================
+
+3.1 URL de acceso
+-----------------
+  1. La dirección exacta la define la instalación (por ejemplo, en entorno local
+     de desarrollo el proyecto puede estar configurado como
+     “http://laboratorio.local/”; en producción suele ser “https://…” con dominio
+     del laboratorio o proveedor).
+  2. Rutas habituales a anotar:
+     • Pantalla de inicio de sesión: “/login” (relativo a la URL base).
+     • Tras entrar correctamente como empleado: redirección a “/home”.
+     • Portal del médico (si aplica): “/doctor/home” tras login con usuario de
+       doctor.
+  3. Si la URL no carga, verificar conexión, VPN y que no falte “https://” o el
+     subdominio indicado por TI.
+
+3.2 Inicio de sesión (usuario y contraseña)
+--------------------------------------------
+Procedimiento:
+  1. Abrir la URL de acceso y llegar a la pantalla “Inicio de sesión”
+     (título y nombre del laboratorio según configuración visual).
+  2. En “Usuario”, indicar el nombre de usuario o correo electrónico que figura
+     en la ficha del empleado (el campo acepta “placeholder” textual:
+     “Usuario o correo electrónico”).
+  3. En “Contraseña”, escribir la clave suministrada por el administrador.
+  4. Pulsar el botón de inicio de sesión (etiqueta según idioma, típicamente
+     “Iniciar sesión” / “Login”).
+  5. Si las credenciales son de empleado activo, el sistema abre el “Dashboard”
+     (Inicio) con el menú lateral y el resumen de actividad.
+  6. Si las credenciales corresponden a un doctor con portal habilitado, el
+     sistema redirige a la página principal del portal médico.
+
+Ejemplo práctico:
+  Usuario “recepcion01” inicia sesión un viernes por la mañana; tras validar,
+  ve el saludo con su nombre en el tablero y los accesos permitidos en la barra
+  lateral (solo los módulos que el administrador marcó para ese empleado).
+
+3.3 Recuperación de contraseña
+-------------------------------
+Importante: en la versión actual de la aplicación no existe un enlace público de
+“Olvidé mi contraseña” que envíe correo automático.
+
+Procedimiento para el usuario final:
+  1. Solicitar al administrador del sistema o al responsable de TI que restablezca
+     o asigne una nueva contraseña en el módulo “Empleados”.
+  2. Una vez obtenida la nueva clave, entrar en “Cambiar contraseña”
+     (ruta “account/password”, sección Administración del menú) y definir una
+     contraseña personal que cumpla las reglas del sistema (véase apartado 5.x
+     sobre validaciones).
+
+Los médicos con acceso al portal siguen el mismo criterio: la clave se gestiona
+desde la ficha del doctor en “Doctores” (usuario y contraseña opcionales del
+portal).
+
+===============================================================================
+4. INTERFAZ DEL SISTEMA
+===============================================================================
+
+4.1 Descripción del menú principal (barra lateral)
+---------------------------------------------------
+El menú lateral (“sidebar”) lista únicamente los módulos autorizados para el
+usuario conectado. Orden típico (puede variar según orden en base de datos):
+
+  1. Inicio — icono “casa”; lleva al Dashboard (/home).
+  2. Módulos operativos — cada uno con icono Font Awesome asociado según función:
+     • Pacientes (hospital-usuario)
+     • Doctores (user-doctor)
+     • Comisiones (signo dólar)
+     • Análisis clínicos (frasco)
+     • Cotizar (factura/dólar)
+     • Recepción (libro médico), con subentrada “Nuevo registro”
+     • Historial paciente (carpeta) — visible si el usuario tiene acceso a
+       Recepción y aparece como acceso directo al expediente
+     • Reportes (gráfica)
+     • Control de calidad (vial verificado)
+     • Inventario (gota) — etiqueta en sistema “Inventario” para insumos/reactivos
+     • Equipos (microscopio)
+     • Egresos (billetes)
+     • Leyendas (comillas)
+     • Auditoría (portapapeles)
+  3. Suscripción y comprobantes — solo en sesiones de laboratorio “cliente”
+     (tenant hijo); enlace a “tenant-subscription”.
+  4. Bloque “Administración” al pie:
+     • Cambiar contraseña (llave)
+     • Configuración (engranaje) — solo si el usuario tiene permiso al módulo
+
+En pantallas estrechas (móvil/tablet), el menú se comporta como “offcanvas”:
+botón de hamburguesa en la barra superior para abrir/cerrar.
+
+4.2 Descripción del Dashboard (Inicio)
+--------------------------------------
+Al entrar en Inicio se muestra, entre otros:
+
+  1. Saludo con el nombre del empleado y texto de contexto: resumen de actividad,
+     registros e ingresos.
+  2. Tarjeta de “meta del mes” con barra de progreso (registros del mes vs meta
+     configurada, p. ej. 100 órdenes).
+  3. Gráficas con Chart.js: actividad reciente, distribución de registros, etc.
+  4. Indicadores financieros: ingresos del mes, evolución mensual, pendientes de
+     cobro (monto y cantidad de órdenes).
+  5. Alertas de insumos: vencidos, por vencer y totales; alertas de stock bajo.
+  6. Ranking de doctores (volumen).
+  7. Serie de cierres de pagos en los últimos días.
+  8. Si el usuario es administrador de una instalación multitenant: aviso de
+     suscripciones de laboratorios cliente próximas a vencer o vencidas, con
+     enlace a configuración de pagos/suscripciones.
+
+Ejemplo práctico:
+  La bioquímica a cargo revisa el bloque “Pendientes de cobro” y ve que hay
+  órdenes del día con saldo; coordina con recepción antes del cierre.
+
+4.3 Botones e iconos relevantes
+-------------------------------
+  1. Barra superior oscura (navbar): logo del laboratorio o nombre; en móvil,
+     toggler para el menú lateral.
+  2. Font Awesome en menú y acciones (guardar, imprimir, PDF, cerrar, etc.).
+  3. Alertas Bootstrap: mensajes verdes (éxito), rojos (error), amarillos (aviso)
+     tras guardar formularios o al cargar el Dashboard.
+  4. En recepción y catálogos amplios, suelen aparecer tablas con búsqueda y
+     acciones en fila (ver, editar, PDF, según permisos).
+  5. Impresión: muchas pantallas abren PDF en nueva pestaña o lanzan diálogo de
+     impresión del navegador.
+
+===============================================================================
+5. MÓDULOS DEL SISTEMA (DETALLADO)
+===============================================================================
+
+Convención para todos los módulos:
+  • Si al abrir una URL sin permiso aparece la leyenda “No tienes permiso para
+    acceder a este módulo.”, debe solicitarse el acceso al administrador.
+  • Los nombres en pantalla corresponden a las cadenas del idioma español del
+    sistema.
+
+-------------------------------------------------------------------------------
+5.1 Inicio (Dashboard)
+-------------------------------------------------------------------------------
+
+5.1.1 Descripción funcional
+Consolidar métricas operativas y financieras del día y del mes, con alertas
+de inventario y, si aplica, de suscripciones de laboratorios hijos.
+
+5.1.2 Procedimiento paso a paso
+  1. Tras el login, confirmar que la URL sea “…/home” o que el ítem “Inicio”
+     esté activo en el menú.
+  2. Revisar de arriba hacia abajo: alertas amarillas/rojas, meta del mes,
+     gráficas y tablas resumidas.
+  3. Usar enlaces dentro de alertas (ej.: “Configurar en Pagos / suscripciones”)
+     solo si el rol incluye Configuración.
+
+5.1.3 Campos y validaciones
+No hay formulario de datos propio; la información depende de la integridad de
+registros en otros módulos.
+
+5.1.4 Resultados esperados
+Visión clara de carga de trabajo, cobros pendientes y riesgos de inventario
+sin abrir aún cada módulo.
+
+Ejemplo: Un viernes, el responsable ve “por vencer” tres lotes de reactivo y
+abre Inventario desde el menú para confirmar fechas exactas.
+
+-------------------------------------------------------------------------------
+5.2 Pacientes
+-------------------------------------------------------------------------------
+
+5.2.1 Descripción funcional
+Alta, edición, búsqueda y gestión de personas atendidas por el laboratorio
+(base para recepción e historial).
+
+5.2.2 Procedimiento paso a paso (típico)
+  1. En el menú, seleccionar “Pacientes”.
+  2. Para nuevo paciente, usar la acción de crear/nuevo según la pantalla de
+     gestión de personas.
+  3. Completar datos básicos (identificación, nombre, contacto según formulario).
+  4. Guardar y verificar que el registro aparece en la tabla; usar búsqueda para
+     localizarlo en recepción por nombre o documento.
+
+5.2.3 Campos y validaciones
+Las reglas exactas dependen del formulario configurado; suelen ser obligatorios
+identificación y nombre. Corregir duplicados antes de registrar órdenes para no
+fragmentar el historial.
+
+5.2.4 Resultados esperados
+Paciente localizable en autocompletado al armar cotizaciones y órdenes.
+
+Ejemplo: Registrar “Ana Morales, CI 1234567” para asociar dos hemogramas en
+fechas distintas bajo la misma ficha.
+
+-------------------------------------------------------------------------------
+5.3 Doctores
+-------------------------------------------------------------------------------
+
+5.3.1 Descripción funcional
+Registro de médicos solicitantes; puede incluir usuario y contraseña opcionales
+para el portal del médico.
+
+5.3.2 Procedimiento paso a paso
+  1. Abrir “Doctores” desde el menú.
+  2. Alta o edición de médico; completar datos básicos.
+  3. Si el médico debe consultar resultados en línea, completar usuario y
+     contraseña del portal (texto de ayuda en pantalla indica que es opcional).
+  4. Guardar; probar login en “/doctor/home” si el servicio está habilitado.
+
+5.3.3 Campos y validaciones
+Según formulario; la contraseña de portal, si se usa, debe comunicarse al médico
+por canal seguro.
+
+5.3.4 Resultados esperados
+Médico seleccionable en recepción y reportes “por doctor”.
+
+-------------------------------------------------------------------------------
+5.4 Comisiones (doctores)
+-------------------------------------------------------------------------------
+
+5.4.1 Descripción funcional
+Liquidación y pago de comisiones generadas por las reglas del laboratorio
+relacionadas con órdenes y médicos.
+
+5.4.2 Procedimiento paso a paso
+  1. Abrir “Comisiones”.
+  2. Revisar listados y montos pendientes.
+  3. Abrir el detalle de un registro si la pantalla lo permite.
+  4. Registrar pago individual o masivo según botones disponibles (procesar pago
+     / pago masivo).
+  5. Confirmar que el estado del ítem refleja lo pagado.
+
+5.4.3 Campos y validaciones
+Dependerán del flujo de cada pantalla; verificar siempre montos antes de
+confirmar pago.
+
+5.4.4 Resultados esperados
+Historial de comisiones alineado con la política interna del laboratorio.
+
+-------------------------------------------------------------------------------
+5.5 Análisis clínicos (catálogo)
+-------------------------------------------------------------------------------
+
+5.5.1 Descripción funcional
+Definición del catálogo: categorías, análisis padre/hijo, opciones de resultado,
+métodos, tipos de muestra, fórmulas, consumo de reactivos por prueba, perfiles,
+manuales asociados; importación/exportación de configuración de detalle.
+
+5.5.2 Procedimiento paso a paso (visión usuario autorizado)
+  1. Entrar en “Análisis clínicos”.
+  2. Navegar al análisis o categoría a editar (vista, subvista, detalle según UI).
+  3. Para una prueba nueva: crear estructura, ítems de resultado, referencias,
+     método y muestra.
+  4. Opcional: definir consumo de reactivos por prueba para descuento automático
+     de inventario.
+  5. Guardar cambios; verificar en “Cotizar” o “Recepción” que la prueba aparece.
+
+5.5.3 Campos y validaciones
+Errores de configuración aquí afectan informes y referencias: solo personal
+técnico/administración debe modificar. Las importaciones de configuración deben
+probarse primero en copia si el laboratorio dispone de ella.
+
+5.5.4 Resultados esperados
+Catálogo coherente con la oferta real del laboratorio y con los PDF de resultados.
+
+Ejemplo: Agregar “Vitamina D” con rango de referencia adulto y vínculo a método
+ensayado en el equipo principal.
+
+-------------------------------------------------------------------------------
+5.6 Cotizar
+-------------------------------------------------------------------------------
+
+5.6.1 Descripción funcional
+Armar presupuestos con pruebas del catálogo, guardarlos y exportarlos a PDF.
+
+5.6.2 Procedimiento paso a paso
+  1. Abrir “Cotizar”.
+  2. Buscar y agregar análisis al presupuesto.
+  3. Guardar la cotización si el flujo lo permite.
+  4. Generar PDF (desde la pantalla o por identificador de cotización según
+     enlace de exportación).
+
+5.6.3 Campos y validaciones
+Cantidades y selección de pruebas deben coincidir con lo acordado con el
+paciente antes de pasar a “Nuevo registro” en Recepción.
+
+5.6.4 Resultados esperados
+PDF u hoja de cotización para entrega al paciente o archivo interno.
+
+Ejemplo: Cotización combinada “Perfil lipídico + glucosa” para el mismo paciente
+antes de concretar la orden pagada.
+
+-------------------------------------------------------------------------------
+5.7 Recepción (órdenes y resultados)
+-------------------------------------------------------------------------------
+
+5.7.1 Descripción funcional
+Corazón operativo: creación de órdenes, lista de registros del día/histórico,
+carga de resultados, validación, pagos, PDF de orden y de resultados, comprobante,
+WhatsApp (si está configurado), muestras, anulación controlada, código QR de
+resultados cuando ya existen informe y PDF.
+
+5.7.2 Procedimiento paso a paso — Nueva orden
+  1. En el menú bajo “Recepción”, elegir “Nuevo registro” (ruta “/registers”).
+  2. Buscar y seleccionar paciente (autocompletado); si no existe, crear en
+     “Pacientes” y volver.
+  3. Seleccionar médico solicitante.
+  4. Agregar análisis solicitados desde el buscador de pruebas.
+  5. Registrar forma de pago / montos según pantalla.
+  6. Guardar la orden; anotar número interno que muestre el sistema para
+     seguimiento.
+
+5.7.3 Procedimiento — Trabajo sobre orden existente
+  1. Abrir “Recepción” → lista (“/registers/lista”).
+  2. Localizar la orden (fecha, paciente, número).
+  3. Abrir vista o edición según permiso; cargar valores de resultado por ítem.
+  4. Ejecutar validación cuando los datos estén completos (acción “validar”
+     según interfaz).
+  5. Generar PDF de resultados, imprimir u ofrecer enlace público/QR según
+     política del laboratorio.
+
+5.7.4 Campos y validaciones (mensajes reales del sistema)
+Algunos mensajes que puede encontrar el usuario (referencia técnica):
+  • “Registro no válido” / “Registro no encontrado” — ID incorrecto o borrado.
+  • “La orden está anulada.” — no se permiten acciones de trabajo sobre esa orden.
+  • “La orden está anulada; no se puede imprimir la orden de trabajo.” — coherente
+    con bloqueo de anulados.
+  • “La orden está anulada; no se puede generar el PDF de resultados.”
+  • “El código QR solo está disponible cuando la orden ya tiene resultados
+    (reporte y PDF).”
+  • “No hay datos de pago para esta orden; no se puede generar el comprobante.”
+  • “No puede crear muestra en una orden anulada.”
+  • “Ya existe una muestra para este registro” — evitar duplicado.
+  • “Muestra no encontrada” — identificador de muestra erróneo.
+
+5.7.5 Resultados esperados
+Orden procesada, informe validado, cobro reflejado y trazabilidad de muestra
+cuando el flujo lo exige.
+
+Ejemplo numérico: Orden del día para paciente CI 1234567 con hemograma completo;
+tras validar, el PDF muestra referencias y métodos configurados en “Análisis
+clínicos”.
+
+-------------------------------------------------------------------------------
+5.8 Historial paciente (Expediente)
+-------------------------------------------------------------------------------
+
+5.8.1 Descripción funcional
+Búsqueda de paciente y consulta de historia de órdenes; acceso a gráficas de
+evolución cuando están disponibles para ese paciente.
+
+5.8.2 Procedimiento paso a paso
+  1. Clic en “Historial paciente” en el menú (“/expediente”).
+  2. Buscar por criterio indicado en pantalla.
+  3. Abrir expediente o vista detallada; navegar entre órdenes previas.
+  4. Abrir gráfica de evolución si existe enlace por análisis.
+
+5.8.3 Campos y validaciones
+Dependerán del criterio de búsqueda (documento, nombre, etc.).
+
+5.8.4 Resultados esperados
+Visión longitudinal sin abrir una a una todas las filas de la lista de recepción.
+
+-------------------------------------------------------------------------------
+5.9 Reportes
+-------------------------------------------------------------------------------
+
+5.9.1 Descripción funcional
+Centro de generación de listados y PDF/Excel según tipo: laboratorio, pagos,
+catálogo, insumos.
+
+5.9.2 Procedimiento paso a paso (genérico)
+  1. Menú “Reportes” → pantalla de tarjetas agrupadas.
+  2. Elegir, por ejemplo:
+     • Cotizaciones guardadas
+     • Registros por fecha
+     • Ingresos por fecha
+     • Registros por doctor
+     • Pruebas realizadas por fecha
+     • Pruebas por grupo de análisis (padre)
+     • Pruebas incompletas por fecha
+     • Pruebas anuladas por fecha
+     • Estadísticas por período (pruebas, pacientes, población, género)
+     • Costos de todas las pruebas
+     • Valores de referencia (con buscador)
+     • Catálogo de pruebas — imprimir / PDF / Excel (CSV UTF-8)
+     • Reporte de pagos / Pendientes de pago / Cierres de pagos
+     • Insumos por ingreso y vencimiento
+     • Kardex de inventario por usuario
+  3. Indicar rango de fechas u otros filtros que Solicite la pantalla.
+  4. Ejecutar consulta; usar botón de PDF o impresión del navegador si aplica.
+
+5.9.3 Campos y validaciones
+Fechas coherentes (desde/hasta); permisos de módulo “Reportes”.
+
+5.9.4 Resultados esperados
+Archivo o vista imprimible para archivo físico o auditoría.
+
+Ejemplo: Al cierre mensual, generar “Ingresos por fecha” del 01/05/2026 al
+31/05/2026 y archivar el PDF en la contabilidad.
+
+-------------------------------------------------------------------------------
+5.10 Control de calidad
+-------------------------------------------------------------------------------
+
+5.10.1 Descripción funcional
+Registro de controles y valores; visualización de gráficas (p. ej. Levey-Jennings)
+para líneas de control.
+
+5.10.2 Procedimiento paso a paso
+  1. Abrir “Control de calidad”.
+  2. Registrar control o lote según formulario.
+  3. Ingresar mediciones; guardar.
+  4. Abrir la vista de gráfica por control cuando exista enlace “/controlcalidad/
+     grafica/{id}”.
+
+5.10.3 Campos y validaciones
+Datos numéricos según ensayo; revisar política interna de límites Westgard o
+equivalente fuera del software.
+
+5.10.4 Resultados esperados
+Trazabilidad gráfica y numérica de controles para auditorías.
+
+-------------------------------------------------------------------------------
+5.11 Inventario (insumos / reactivos)
+-------------------------------------------------------------------------------
+
+5.11.1 Descripción funcional
+Catálogo de insumos, lotes, entradas y salidas, kardex imprimible; consumo puede
+vincularse a órdenes; alertas en Dashboard por vencimiento y stock bajo.
+
+5.11.2 Procedimiento paso a paso
+  1. Entrar en “Inventario” (“/reactivos” o “/inventario”).
+  2. Alta o edición de insumo; carga de lotes con fechas.
+  3. Registrar salida de almacén; si hay error, usar reverso de salida si está
+     habilitado.
+  4. Consultar kardex en pantalla o PDF desde la opción correspondiente.
+
+5.11.3 Campos y validaciones
+Fechas de vencimiento obligatorias según procedimiento del laboratorio;
+coherencia con unidades de medida.
+
+5.11.4 Resultados esperados
+Stock alineado con producción y reportes de vencimiento sin sorpresas.
+
+-------------------------------------------------------------------------------
+5.12 Equipos
+-------------------------------------------------------------------------------
+
+5.12.1 Descripción funcional
+Inventario de equipos de laboratorio y registro de mantenimientos.
+
+5.12.2 Procedimiento paso a paso
+  1. Abrir “Equipos”.
+  2. Registrar equipo (identificación, datos técnicos según formulario).
+  3. Desde detalle, registrar eventos de mantenimiento con fecha y descripción.
+
+5.12.3 Campos y validaciones
+Fechas lógicas (mantenimiento posterior a puesta en servicio).
+
+5.12.4 Resultados esperados
+Historial de equipo disponible para acreditación o soporte del fabricante.
+
+-------------------------------------------------------------------------------
+5.13 Egresos
+-------------------------------------------------------------------------------
+
+5.13.1 Descripción funcional
+Registro de egresos con monto, tipo de pago y desglose (gastos operativos).
+
+5.13.2 Procedimiento paso a paso
+  1. Abrir “Egresos”.
+  2. Nuevo registro; completar monto, clasificación y descripción.
+  3. Guardar; verificar en listado.
+
+5.13.3 Campos y validaciones
+Montos positivos y categorías acordes a contabilidad interna.
+
+5.13.4 Resultados esperados
+Base para conciliar gastos frente a ingresos del Dashboard.
+
+-------------------------------------------------------------------------------
+5.14 Leyendas
+-------------------------------------------------------------------------------
+
+5.14.1 Descripción funcional
+Textos reutilizables (avisos legales, notas al pie) para informes u otros usos
+según configuración.
+
+5.14.2 Procedimiento paso a paso
+  1. Abrir “Leyendas”.
+  2. Crear o editar texto; guardar.
+  3. Coordinar con el responsable técnico antes de cambiar leyendas legales.
+
+5.14.3 Campos y validaciones
+Longitud y caracteres según formulario.
+
+5.14.4 Resultados esperados
+Uniformidad de mensajes en todos los informes que consumen esa leyenda.
+
+-------------------------------------------------------------------------------
+5.15 Auditoría
+-------------------------------------------------------------------------------
+
+5.15.1 Descripción funcional
+Consulta de acciones registradas en el sistema (trazabilidad de usuario).
+
+5.15.2 Procedimiento paso a paso
+  1. Abrir “Auditoría”.
+  2. Filtrar por fecha o tipo si la UI lo permite.
+  3. Revisar registros de interés (ej.: cambio de contraseña cuenta propia).
+
+5.15.3 Campos y validaciones
+Solo lectura para el usuario estándar.
+
+5.15.4 Resultados esperados
+Evidencia ante disputas internas o revisiones de calidad.
+
+-------------------------------------------------------------------------------
+5.16 Empleados
+-------------------------------------------------------------------------------
+
+5.16.1 Descripción funcional
+Creación de cuentas internas, contraseñas y asignación de módulos permitidos
+según lista operativa del sistema (Pacientes, Doctores, Comisiones, Análisis
+clínicos, Cotizar, Registros, Reportes, Control de calidad, Inventario, Equipos,
+Egresos, Leyendas, Auditoría, Empleados, Configuración).
+
+5.16.2 Procedimiento paso a paso
+  1. Abrir “Empleados”.
+  2. Nuevo empleado: usuario, nombre, contraseña (validación en cliente:
+     obligatoria, mínimo 4 caracteres en formulario de empleados).
+  3. Marcar checkboxes de módulos a los que tendrá acceso.
+  4. Guardar; comunicar credenciales por canal seguro.
+
+5.16.3 Campos y validaciones
+Contraseña mínimo 4 caracteres; usuario único. Desactivar empleados que ya no
+deben entrar (el sistema puede cerrar sesión si el estado pasa a inactivo —
+verificación periódica “checkEmployeeActive”).
+
+5.16.4 Resultados esperados
+Principio de mínimo privilegio: cada rol solo ve lo necesario.
+
+-------------------------------------------------------------------------------
+5.17 Configuración
+-------------------------------------------------------------------------------
+
+5.17.1 Descripción funcional
+Parámetros globales del laboratorio: identidad visual, moneda, validaciones de
+laboratorio, población y referencias, WhatsApp, plantillas PDF de resultados,
+respaldos, multitenant, sesiones, suscripciones, entre otros (pestañas según
+implementación).
+
+5.17.2 Procedimiento paso a paso
+  1. Solo usuarios con permiso “Configuración”.
+  2. Navegar pestañas; aplicar cambios y guardar sección por sección según botones.
+  3. Documentar cambios críticos (nombre legal, SIN, rutas de respaldo).
+
+5.17.3 Campos y validaciones
+Algunos campos son técnicos (certificados, BD de tenant); requieren personal TI.
+
+5.17.4 Resultados esperados
+Apariencia y comportamiento del sistema alineados al laboratorio.
+
+-------------------------------------------------------------------------------
+5.18 Suscripción y comprobantes (laboratorio cliente)
+-------------------------------------------------------------------------------
+
+5.18.1 Descripción funcional
+Consulta de vigencia y comprobantes de pago del servicio para instancias “hijas”
+en modelo multitenant.
+
+5.18.2 Procedimiento paso a paso
+  1. Si el ítem aparece en el menú, abrir “Suscripción y comprobantes”.
+  2. Revisar fechas de vigencia y documentos cargados.
+  3. Si el acceso está suspendido, seguir instrucciones en pantalla de
+     “Acceso suspendido” y contactar al laboratorio principal.
+
+5.18.3 Campos y validaciones
+Subida de archivos según política del proveedor.
+
+5.18.4 Resultados esperados
+Continuidad del servicio sin interrupciones por vencimiento.
+
+-------------------------------------------------------------------------------
+5.19 Resultados públicos (paciente, sin login)
+-------------------------------------------------------------------------------
+
+5.19.1 Descripción funcional
+Enlace con token en rutas “resultados/{token}” y “resultados/{token}/pdf” para
+ver o descargar informe sin usuario del sistema.
+
+5.19.2 Procedimiento (laboratorio)
+  1. Desde la orden validada, generar u obtener el enlace según flujo interno
+     (seguridad: compartir solo por canales acordados).
+  2. Entregar al paciente.
+
+5.19.3 Procedimiento (paciente)
+  1. Abrir el enlace en el navegador.
+  2. Revisar PDF o vista web; descargar si está disponible.
+
+5.19.4 Resultados esperados
+Visualización del informe; si la orden fue anulada, mensaje de indisponibilidad.
+
+-------------------------------------------------------------------------------
+5.20 Portal del médico (doctor)
+-------------------------------------------------------------------------------
+
+5.20.1 Descripción funcional
+Acceso separado con credenciales de doctor para buscar pacientes y ver historial,
+reportes y PDF según permisos.
+
+5.20.2 Procedimiento paso a paso
+  1. Ir a “/login” e iniciar con usuario/clave del médico (misma pantalla que
+     empleados; el sistema dirige a “/doctor/home” si corresponde).
+  2. Buscar paciente vía “/doctor/search” (POST desde interfaz).
+  3. Abrir expediente, historial, gráfica o PDF según enlaces “doctor/expediente/…”
+     , “doctor/viewreport/…”, etc.
+
+5.20.3 Campos y validaciones
+Mismo mensaje de error genérico si falla: “Usuario o contraseña incorrectos”.
+
+5.20.4 Resultados esperados
+El médico no accede a módulos administrativos de empleados.
+
+===============================================================================
+6. FLUJOS DE TRABAJO
+===============================================================================
+
+6.1 Flujo: Cotización → Recepción → Resultado → Entrega
+--------------------------------------------------------
+  1. Módulo “Cotizar”: armar presupuesto para el paciente “Roberto Díaz” con
+     perfil hepático; exportar PDF y acordar precio en ventanilla.
+  2. “Recepción” → “Nuevo registro”: crear la orden con el mismo paciente y
+     análisis; registrar pago (total o parcial según política).
+  3. Área técnica: desde “Recepción” → lista, abrir la orden, cargar resultados
+     de cada parámetro.
+  4. Usuario autorizado: validar la orden.
+  5. Generar PDF de resultados; opcionalmente enviar WhatsApp o entregar enlace
+     público / QR.
+  6. Recepción/caja: si quedó saldo, registrar pago adicional hasta cerrar según
+     reportes de pendientes.
+
+6.2 Flujo: Control de stock con producción
+-----------------------------------------
+  1. En “Análisis clínicos”, confirmar que cada prueba tiene consumo de reactivo
+     definido (si aplica descuento automático).
+  2. Ejecutar órdenes en “Recepción”.
+  3. En “Inventario”, revisar saldos y kardex; cruzar con “Reportes” → “Insumos
+     por ingreso y vencimiento” mensualmente.
+
+6.3 Flujo: Cierre de caja y comisiones
+--------------------------------------
+  1. Durante el día, registrar pagos en cada orden.
+  2. Al finalizar, usar “Reportes” → “Reporte de pagos” o “Cierres de pagos” según
+     procedimiento interno.
+  3. En “Comisiones”, liquidar médicos correspondientes al período.
+
+===============================================================================
+7. MANEJO DE ERRORES
+===============================================================================
+
+7.1 Lista de situaciones comunes, significado y solución
+---------------------------------------------------------
+
+┌───┬──────────────────────────────────────────────┬──────────────────────────┐
+│ # │ Mensaje o síntoma                            │ Significado y solución │
+├───┼──────────────────────────────────────────────┼──────────────────────────┤
+│ 1 │ "Usuario o contraseña incorrectos"           │ Credenciales erróneas o│
+│   │                                              │ usuario inactivo.       │
+│   │                                              │ Verificar mayúsculas,   │
+│   │                                              │ pedir reseteo al admin. │
+├───┼──────────────────────────────────────────────┼──────────────────────────┤
+│ 2 │ Redirección a "/login" al abrir cualquier     │ Sesión cerrada o no    │
+│   │ módulo                                       │ iniciada. Volver a     │
+│   │                                              │ entrar.                │
+├───┼──────────────────────────────────────────────┼──────────────────────────┤
+│ 3 │ "No tienes permiso para acceder a este        │ Sin permiso al módulo. │
+│   │ módulo."                                     │ Solicitar asignación   │
+│   │                                              │ en "Empleados".        │
+├───┼──────────────────────────────────────────────┼──────────────────────────┤
+│ 4 │ Página "Acceso suspendido" (suscripción)     │ Vigencia de pago       │
+│   │                                              │ vencida (tenant hijo). │
+│   │                                              │ Abrir comprobantes o   │
+│   │                                              │ contactar sede central.│
+├───┼──────────────────────────────────────────────┼──────────────────────────┤
+│ 5 │ "La contraseña actual no es correcta."       │ Error al cambiar clave │
+│   │ (Cambiar contraseña)                         │ en account/password.   │
+│   │                                              │ Reintentar.            │
+├───┼──────────────────────────────────────────────┼──────────────────────────┤
+│ 6 │ "La nueva contraseña debe tener al menos     │ Validación de política │
+│   │ 4 caracteres."                               │ mínima.                 │
+├───┼──────────────────────────────────────────────┼──────────────────────────┤
+│ 7 │ "La confirmación no coincide con la nueva    │ Campos nueva clave y   │
+│   │ contraseña."                                 │ confirmación distintos. │
+├───┼──────────────────────────────────────────────┼──────────────────────────┤
+│ 8 │ "Registro no encontrado" / "Registro no      │ ID incorrecto o       │
+│   │ válido" (Recepción)                          │ registro borrado.       │
+│   │                                              │ Volver a lista.        │
+├───┼──────────────────────────────────────────────┼──────────────────────────┤
+│ 9 │ "La orden está anulada."                     │ No operar sobre esa    │
+│   │                                              │ orden; usar copia      │
+│   │                                              │ autorizada si aplica.  │
+├───┼──────────────────────────────────────────────┼──────────────────────────┤
+│10 │ "El código QR solo está disponible cuando la │ Completar validación e  │
+│   │ orden ya tiene resultados (reporte y PDF)."  │ informe antes del QR.  │
+├───┼──────────────────────────────────────────────┼──────────────────────────┤
+│11 │ "No hay datos de pago para esta orden; no se │ Registrar pagos antes  │
+│   │ puede generar el comprobante."               │ del comprobante.       │
+├───┼──────────────────────────────────────────────┼──────────────────────────┤
+│12 │ "No se puede mostrar el reporte" / enlace    │ Token inválido, orden  │
+│   │ público inválido                             │ anulada o enlace mal   │
+│   │                                              │ copiado. Pedir nuevo   │
+│   │                                              │ enlace al lab.         │
+├───┼──────────────────────────────────────────────┼──────────────────────────┤
+│13 │ Google login: "login_google_not_configured"  │ SSO desactivado: usar  │
+│   │ o mensaje de correo no verificado             │ usuario/contraseña.    │
+├───┼──────────────────────────────────────────────┼──────────────────────────┤
+│14 │ Sesión cerrada de repente                    │ El administrador       │
+│   │                                              │ desactivó al empleado  │
+│   │                                              │ (checkEmployeeActive). │
+│   │                                              │ Contactar a soporte.   │
+└───┴──────────────────────────────────────────────┴──────────────────────────┘
+
+7.2 Errores de conectividad o navegador
+---------------------------------------
+  1. Página en blanco: revisar bloqueo de JavaScript o extensiones.
+  2. Recursos CDN (Chart.js en inicio): si la red bloquea CDN, gráficas pueden
+     fallar; reportar a TI para política de red o empaquetado local.
+
+===============================================================================
+8. SEGURIDAD
+===============================================================================
+
+8.1 Roles de usuario
+---------------------
+No hay nombres de rol fijos visibles en todo el manual; el “rol” efectivo es la
+suma de módulos marcados en la ficha del empleado (más el rol interno de base de
+datos si se usa en otros informes). Perfiles típicos construidos por el admin:
+  • Recepción: Pacientes, Cotizar, Recepción, Reportes básicos.
+  • Laboratorio: Recepción (solo resultados), Análisis clínicos (lectura o edición
+    según política), Inventario, Control de calidad.
+  • Administración: todos los módulos incluido Empleados y Configuración.
+  • Médico: solo portal “doctor/…”, no barra lateral de empleados.
+
+8.2 Control de accesos
+----------------------
+  1. Cada acceso a módulo bajo SecureArea comprueba sesión de empleado y permiso
+     por module_id.
+  2. Sesión de doctor se separa: un doctor autenticado no debe mezclarse con la
+     sesión de empleado en la misma ventana.
+  3. Multitenant: laboratorio cliente bloqueado si la suscripción expiró, salvo
+     rutas permitidas (logout, suscripción, verificación de sesión).
+
+8.3 Buenas prácticas
+--------------------
+  1. No compartir usuario; crear una cuenta por persona en “Empleados”.
+  2. Contraseñas robustas (aunque el mínimo sea 4 caracteres, usar combinación
+     larga en producción).
+  3. Cerrar sesión al abandonar el puesto.
+  4. No reenviar enlaces de resultados públicos en grupos masivos sin anonimizar
+     según política de privacidad (HIPAA/LPDP según jurisdicción).
+  5. Reportar inmediatamente accesos no autorizados observados en “Auditoría”.
+  6. Mantener navegador actualizado.
+
+===============================================================================
+9. PREGUNTAS FRECUENTES (FAQ)
+===============================================================================
+
+P1: ¿Puedo recuperar mi contraseña solo desde la pantalla de login?
+R: No. Debe gestionar el administrador o TI (véase sección 3.3).
+
+P2: ¿Por qué no veo el módulo “Configuración”?
+R: Su usuario no tiene permiso; pida al administrador que active el módulo en
+   su ficha de empleado.
+
+P3: ¿El médico usa la misma pantalla de login?
+R: Sí, la misma URL /login; el sistema redirecciona al portal médico si las
+   credenciales son de doctor.
+
+P4: ¿Puedo anular una orden y seguir cargando resultados?
+R: No. Los mensajes del sistema bloquean acciones sobre órdenes anuladas.
+
+P5: ¿Dónde veo los pendientes de cobro?
+R: En el Dashboard (Inicio) y en reportes de pagos / pendientes.
+
+P6: ¿Qué pasa si mi usuario fue desactivado estando yo conectado?
+R: La sesión puede invalidarse en la siguiente verificación; deberá contactar
+   al administrador.
+
+P7: ¿Puedo usar correo en lugar de usuario?
+R: Sí en el campo de usuario si el empleado o doctor tiene email configurado
+   para login; también existe login con Google si está habilitado.
+
+P8: ¿Los informes tienen el logo del laboratorio?
+R: Sí, si está configurado en Configuración / identidad visual del layout.
+
+===============================================================================
+10. SOPORTE TÉCNICO
+===============================================================================
+
+10.1 Contacto
+-------------
+Complete con los datos reales de su organización:
+
+  Razón social / Laboratorio: ___________________________________________
+  Responsable de sistemas:     ___________________________________________
+  Correo de soporte:          ___________________________________________
+  Teléfono / interno:         ___________________________________________
+  Horario de atención:        ___________________________________________
+  Proveedor del software:     Olivera Solutions (según pie de página del sistema)
+
+10.2 Procedimiento para reportar problemas
+------------------------------------------
+  1. Anotar fecha y hora aproximada, usuario afectado, módulo (ej. Recepción) y
+     número de orden si aplica.
+  2. Copiar el texto exacto del mensaje de error mostrado en pantalla.
+  3. Indicar navegador y versión (Chrome 120, etc.).
+  4. Si es bloqueo de suscripción, adjuntar captura de “Acceso suspendido” o
+     pantalla de comprobantes.
+  5. Enviar el ticket al correo de soporte o sistema de incidencias interno.
+  6. No enviar contraseñas por correo.
+
+===============================================================================
+11. ANEXOS
+===============================================================================
+
+11.1 Espacio reservado para capturas de pantalla
+------------------------------------------------
+(Inserte imágenes numeradas; se recomienda PNG o JPG comprimido.)
+
+  Figura A-1: Pantalla de login con logo del laboratorio.
+  Figura A-2: Dashboard con meta del mes y gráficas.
+  Figura A-3: Menú lateral mostrando módulos típicos.
+  Figura A-4: Formulario de “Nuevo registro” (Recepción) — datos paciente.
+  Figura A-5: Carga de resultados en orden abierta.
+  Figura A-6: PDF de resultado validado (ejemplo sin datos personales reales).
+  Figura A-7: Reporte “Ingresos por fecha” — vista previa.
+  Figura A-8: Inventario — ficha de insumo y lotes.
+  Figura A-9: Control de calidad — gráfica Levey-Jennings.
+  Figura A-10: Pantalla “No tienes permiso para acceder a este módulo.”
+
+11.2 Ejemplos de reportes (referencia de nombres del sistema)
+--------------------------------------------------------------
+Nombre en menú interno                    Uso sugerido
+------------------------------------------------------------------
+Todas las cotizaciones guardadas           Archivo comercial
+Registros por fecha                         Auditoría de órdenes
+Ingresos por fecha                          Cierre contable diario
+Registros por doctor                        Convenios médicos
+Pruebas realizadas por fecha                Productividad técnica
+Pruebas por grupo de análisis (padre)       Mix de solicitudes
+Pruebas incompletas por fecha                Seguimiento TAT
+Pruebas anuladas por fecha                   Control interno
+Estadísticas por período (…)                 Gerencia geodemográfica
+Costos de todas las pruebas                  Lista de precios derivada
+Valores de referencia                        Consulta rápida
+Catálogo de pruebas (imprimir / PDF / Excel) Oferta institucional
+Reporte de pagos / Pendientes / Cierres      Tesorería
+Insumos por ingreso y vencimiento            Compras y almacén
+Kardex de inventario por usuario             Trazabilidad de lotes
+
+11.3 Glosario breve
+-------------------
+  • Orden / Registro: solicitud de análisis asociada a un paciente.
+  • Validar: acción que confirma que los resultados están completos y
+    autorizados para emitir informe.
+  • Tenant: instancia de laboratorio en despliegues multitenant.
+  • Kardex: libro de movimientos de inventario por ítem.
+
+================================================================================
+Fin del Manual de Usuario. Documento basado en el comportamiento de la aplicación
+(CodeIgniter), rutas y mensajes revisados. Actualizar al cambiar módulos o textos.
+Última revisión estructural: mayo 2026.
+================================================================================
