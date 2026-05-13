@@ -70,12 +70,25 @@
     $ftTopStyleCss      = ($ftTopOn && $ftTopW > 0) ? 'solid' : 'none';
     $ftTopWpx           = ($ftTopOn && $ftTopW > 0) ? $ftTopW : 0;
     $printPaper         = strtolower((string) ($lab_config['print_paper_size'] ?? 'letter'));
-    if (! in_array($printPaper, ['letter', 'a4', 'legal'], true)) {
+    if (! in_array($printPaper, ['letter', 'a4', 'legal', 'custom'], true)) {
         $printPaper = 'letter';
     }
+    $printPaperCustomW = max(50.0, min(999.0, (float) ($lab_config['print_paper_width_mm'] ?? 210)));
+    $printPaperCustomH = max(50.0, min(999.0, (float) ($lab_config['print_paper_height_mm'] ?? 297)));
+    if ($printPaperCustomW <= 0) {
+        $printPaperCustomW = 210.0;
+    }
+    if ($printPaperCustomH <= 0) {
+        $printPaperCustomH = 297.0;
+    }
     // Calibración fina para impresión física: algunos drivers dejan el footer visualmente alto.
-    $printFooterNudgeMm = ($pdfFooterEnabled && $printPaper === 'a4') ? -2.0 : (($pdfFooterEnabled && in_array($printPaper, ['letter', 'legal'], true)) ? -2.5 : 0.0);
-    $printPageCssSize = ($printPaper === 'a4') ? 'A4 portrait' : (($printPaper === 'legal') ? 'legal portrait' : 'letter portrait');
+    $printFooterNudgeMm = ($pdfFooterEnabled && $printPaper === 'a4') ? -2.0 : (($pdfFooterEnabled && in_array($printPaper, ['letter', 'legal', 'custom'], true)) ? -2.5 : 0.0);
+    if ($printPaper === 'custom') {
+        $printPageCssSize = (string) $printPaperCustomW . 'mm ' . (string) $printPaperCustomH . 'mm';
+    } else {
+        $printPageCssSize = ($printPaper === 'a4') ? 'A4 portrait' : (($printPaper === 'legal') ? 'legal portrait' : 'letter portrait');
+    }
+    $printPageHeightMm = $printPaper === 'a4' ? 297.0 : ($printPaper === 'legal' ? 355.6 : ($printPaper === 'custom' ? $printPaperCustomH : 279.4));
     $pp = \App\Services\ReportPdfLayoutService::normalizePrintPaginationStyle($ps['print_pagination'] ?? []);
     $printPaginationEnabled = ! empty($pp['enabled']);
     // Si la plantilla ya define pie de página, no superponer paginación fija del navegador.
@@ -397,7 +410,7 @@
 <script>
 (function() {
     var MM_TO_PX = 96 / 25.4;
-    var PAGE_HEIGHT_MM = <?= json_encode($printPaper === 'a4' ? 297.0 : ($printPaper === 'legal' ? 355.6 : 279.4)) ?>;
+    var PAGE_HEIGHT_MM = <?= json_encode($printPageHeightMm) ?>;
     var marginTopMm = <?= json_encode((float) $mt) ?>;
     var marginBottomMm = <?= json_encode((float) $printBottomMarginMm) ?>;
 

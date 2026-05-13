@@ -279,13 +279,29 @@ body {
     font-size: 9pt;
     line-height: 1.35;
 }
-/* No forzar salto de hoja por grupo; dejar que el motor de impresión fluya el contenido. */
+/* Cabecera del laboratorio (logo/título): evitar corte a mitad de bloque al imprimir */
+.header.header-grid.pdf-hg-block {
+    page-break-inside: avoid;
+    break-inside: avoid-page;
+    page-break-after: avoid;
+    break-after: avoid;
+}
+/* No forzar salto de hoja por grupo entero; el contenido fluye. La cabecera (título + muestra + método) sí se mantiene unida. */
 .report-pdf-grupo-prueba:not(.report-pdf-grupo-prueba-first) {
     margin-top: 10px;
 }
-.report-pdf-grupo-prueba > .group-title {
+.report-pdf-grupo-cabecera {
+    page-break-inside: avoid;
+    break-inside: avoid-page;
+}
+.report-pdf-grupo-cabecera .group-title {
     page-break-after: avoid;
     break-after: avoid;
+}
+/* Mantener la primera tabla del grupo con su cabecera (título/muestra/método) cuando quepa */
+.report-pdf-grupo-cabecera + .report-segment-table-wrap {
+    page-break-before: avoid;
+    break-before: avoid;
 }
 /*
  * Repetir cabecera de resultados en cada página cuando la tabla continúa (Dompdf + impresión).
@@ -364,7 +380,7 @@ table.results td {
     border-bottom: none;
     box-shadow: var(--pdf-results-segment-shadow, none);
     page-break-after: avoid;
-    break-after: avoid;
+    break-after: avoid-page;
 }
 .pdf-card-header {
     background: var(--pdf-card-header-bg, #e9ecef) !important;
@@ -585,6 +601,19 @@ table.results td {
     margin: 0 0 12px 0;
     page-break-inside: auto;
     break-inside: auto;
+}
+/* Que la tabla de resultados no quede huérfana en la página siguiente respecto al título de segmento */
+.report-segment-table-wrap > .report-segment-title + table.results {
+    page-break-before: avoid;
+    break-before: avoid;
+}
+.report-refs-matrix-wrap > .report-refs-matrix-title {
+    page-break-after: avoid;
+    break-after: avoid-page;
+}
+.report-refs-matrix-wrap > .report-refs-matrix-title + table.report-refs-matrix {
+    page-break-before: avoid;
+    break-before: avoid;
 }
 .report-segment-table-wrap table.results {
     margin-top: 0;

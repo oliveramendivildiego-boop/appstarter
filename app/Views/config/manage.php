@@ -297,16 +297,34 @@
             <label for="print_paper_size" class="form-label"><?= lang('Config.config_print_paper_size') ?></label>
             <?php
             $printPaper = strtolower((string) ($config['print_paper_size'] ?? 'letter'));
-            if (!in_array($printPaper, ['letter', 'a4', 'legal'], true)) {
+            if (! in_array($printPaper, ['letter', 'a4', 'legal', 'custom'], true)) {
                 $printPaper = 'letter';
             }
             $printPaperOpts = [
                 'letter' => lang('Config.config_print_paper_letter'),
                 'a4'     => lang('Config.config_print_paper_a4'),
                 'legal'  => lang('Config.config_print_paper_legal'),
+                'custom' => lang('Config.config_print_paper_custom'),
             ];
+            $ppW = (float) ($config['print_paper_width_mm'] ?? 210);
+            $ppH = (float) ($config['print_paper_height_mm'] ?? 297);
+            $ppW = max(50.0, min(999.0, $ppW > 0 ? $ppW : 210.0));
+            $ppH = max(50.0, min(999.0, $ppH > 0 ? $ppH : 297.0));
             ?>
             <?= form_dropdown('print_paper_size', $printPaperOpts, $printPaper, 'id="print_paper_size" class="form-select" style="max-width: 16rem;" autocomplete="off"') ?>
+            <div id="print_paper_custom_wrap" class="mt-2" style="display: none;">
+                <div class="row g-2 align-items-end" style="max-width: 22rem;">
+                    <div class="col-6">
+                        <label for="print_paper_width_mm" class="form-label small mb-0"><?= lang('Config.config_print_paper_width_mm') ?></label>
+                        <input type="number" name="print_paper_width_mm" id="print_paper_width_mm" class="form-control" min="50" max="999" step="0.1" value="<?= esc((string) $ppW) ?>" autocomplete="off">
+                    </div>
+                    <div class="col-6">
+                        <label for="print_paper_height_mm" class="form-label small mb-0"><?= lang('Config.config_print_paper_height_mm') ?></label>
+                        <input type="number" name="print_paper_height_mm" id="print_paper_height_mm" class="form-control" min="50" max="999" step="0.1" value="<?= esc((string) $ppH) ?>" autocomplete="off">
+                    </div>
+                </div>
+                <small class="text-muted d-block mt-1"><?= lang('Config.config_print_paper_custom_dims_help') ?></small>
+            </div>
             <small class="text-muted d-block mt-1"><?= lang('Config.config_print_paper_size_help') ?></small>
         </div>
         <div class="mb-3">
@@ -1464,6 +1482,29 @@ $(document).ready(function() {
         setInterval(tick, 1000);
     })();
     
+    // Tamaño de hoja personalizado (impresión directa)
+    (function initPrintPaperCustom() {
+        var sel = document.getElementById('print_paper_size');
+        var wrap = document.getElementById('print_paper_custom_wrap');
+        if (!sel || !wrap) {
+            return;
+        }
+        var w = document.getElementById('print_paper_width_mm');
+        var h = document.getElementById('print_paper_height_mm');
+        function sync() {
+            var on = sel.value === 'custom';
+            wrap.style.display = on ? 'block' : 'none';
+            if (w) {
+                w.disabled = !on;
+            }
+            if (h) {
+                h.disabled = !on;
+            }
+        }
+        sel.addEventListener('change', sync);
+        sync();
+    })();
+
     // SIN Billing Toggle
     var sinToggle = document.getElementById('sin_billing_enabled');
     if (sinToggle) {

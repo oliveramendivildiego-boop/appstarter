@@ -75,6 +75,8 @@ class ConfigService
         $data['order_barcode_print_layout'] ??= 'vertical';
         $data['order_barcode_print_size_percent'] ??= '100';
         $data['print_paper_size'] ??= 'letter';
+        $data['print_paper_width_mm'] ??= '210';
+        $data['print_paper_height_mm'] ??= '297';
         $data['print_pagination_enabled'] ??= '0';
         $data['print_pagination_position'] ??= 'bottom-right';
         $data['lab_validators_json'] ??= '[]';
@@ -239,8 +241,16 @@ class ConfigService
         }
         if (array_key_exists('print_paper_size', $postData)) {
             $paper = strtolower(trim((string) $postData['print_paper_size']));
-            $allowedPaper = ['letter', 'a4', 'legal'];
+            $allowedPaper = ['letter', 'a4', 'legal', 'custom'];
             $batch['print_paper_size'] = in_array($paper, $allowedPaper, true) ? $paper : 'letter';
+        }
+        if (($batch['print_paper_size'] ?? '') === 'custom') {
+            $w = isset($postData['print_paper_width_mm']) ? (float) $postData['print_paper_width_mm'] : 210.0;
+            $h = isset($postData['print_paper_height_mm']) ? (float) $postData['print_paper_height_mm'] : 297.0;
+            $w = max(50.0, min(999.0, $w));
+            $h = max(50.0, min(999.0, $h));
+            $batch['print_paper_width_mm'] = (string) round($w, 1);
+            $batch['print_paper_height_mm'] = (string) round($h, 1);
         }
         if (array_key_exists('print_pagination_enabled', $postData)) {
             $batch['print_pagination_enabled'] = ($postData['print_pagination_enabled'] === '1') ? '1' : '0';

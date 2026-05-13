@@ -65,6 +65,7 @@ foreach ($segments as $segTmp) {
 ?>
 <?php if ($groupTieneAlgunResultado): ?>
 <?php if ($usePdfChrome): ?>
+<div class="report-pdf-grupo-cabecera">
 <div class="group-title"><?= esc($padre) ?> - <?= esc($hijo) ?></div>
 <?php if ($mostrarTipoMuestra): ?>
 <div class="report-tipo-muestra" style="font-size:9pt;color:#555;margin:0 0 10px 0;line-height:1.3;">Tipo de Muestra: <?= esc($tipoMuestraLinea) ?></div>
@@ -72,6 +73,7 @@ foreach ($segments as $segTmp) {
 <?php if ($mostrarMetodo): ?>
 <div class="report-metodo-prueba" style="font-size:9pt;color:#555;margin:0 0 10px 0;line-height:1.3;">Método: <?= esc($metodoLinea) ?></div>
 <?php endif; ?>
+</div>
 <?php else: ?>
 <h4 class="mt-4 mb-1"><?= esc($padre) ?> - <?= esc($hijo) ?></h4>
 <?php if ($mostrarTipoMuestra || $mostrarMetodo): ?>
