@@ -389,7 +389,7 @@ class Reports extends SecureArea
                 'snapshot_json'     => $json,
                 'person_id'         => $personId,
                 'elaborado_nombre'  => $nombre !== '' ? $nombre : null,
-                'created_at'        => date('Y-m-d H:i:s'),
+                'created_at'        => RegisterService::mysqlNowForReport(),
             ]);
         } catch (\Throwable $e) {
             return redirect()->to($backQs($startDate, $endDate))

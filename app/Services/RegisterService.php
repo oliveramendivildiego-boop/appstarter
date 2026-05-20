@@ -760,7 +760,10 @@ class RegisterService
         return $dt->format('d/m/Y H:i:s');
     }
 
-    private function mysqlNowForReportTimezone(): string
+    /**
+     * DATETIME actual en la zona del laboratorio (para guardar en BD sin offset).
+     */
+    public static function mysqlNowForReport(): string
     {
         $tz = self::reportDisplayTimezone();
         try {
@@ -770,6 +773,11 @@ class RegisterService
         }
 
         return (new \DateTimeImmutable('now', $tzObj))->format('Y-m-d H:i:s');
+    }
+
+    private function mysqlNowForReportTimezone(): string
+    {
+        return self::mysqlNowForReport();
     }
 
     /**

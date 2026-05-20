@@ -47,7 +47,9 @@
                 $periodo = $fd && $fh
                     ? (date('d/m/Y', strtotime($fd)) . ' — ' . date('d/m/Y', strtotime($fh)))
                     : '-';
-                $creado = !empty($c['created_at']) ? date('d/m/Y H:i', strtotime($c['created_at'])) : '-';
+                $creado = !empty($c['created_at'])
+                    ? \App\Services\RegisterService::formatStoredReporteFechaHora((string) $c['created_at'])
+                    : '-';
                 $por    = trim((string) ($c['elaborado_nombre'] ?? ''));
                 ?>
                 <tr>
