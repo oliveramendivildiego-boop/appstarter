@@ -351,7 +351,7 @@
                 padding-top: 6px !important;
                 padding-left: <?= esc((string) $ml) ?>mm !important;
                 padding-right: <?= esc((string) $mr) ?>mm !important;
-                padding-bottom: <?= esc((string) $mb) ?>mm !important;
+                padding-bottom: 0 !important;
                 box-sizing: border-box !important;
             }
             body.report-browser-print {
