@@ -496,6 +496,80 @@ class ReportModel extends Model
     {
         $r  = $this->db->prefixTable('registro');
         $pa = $this->db->prefixTable('pago');
+        $ab = $this->db->prefixTable('pago_abono');
+
+        if ($this->db->tableExists('pago_abono')) {
+            $resumen = [];
+
+            // Fuente principal: historial real de abonos por tipo.
+            $bAbonos = $this->db->table('pago_abono')
+                ->select("{$ab}.tipopago,
+                    COUNT(DISTINCT {$ab}.registro_id) as cantidad,
+                    0.00 as total_facturado,
+                    SUM(CAST({$ab}.monto AS DECIMAL(12,2))) as total_cobrado,
+                    0.00 as total_pendiente", false)
+                ->join('registro', "{$r}.registro_id = {$ab}.registro_id");
+            $bAbonos = $this->applySinRegistrosAnulados($bAbonos, $r);
+            $rowsAbonos = RegistroIngresoDateRange::apply($bAbonos, $r, $startDate, $endDate)
+                ->groupBy("{$ab}.tipopago")
+                ->orderBy("{$ab}.tipopago", 'ASC')
+                ->get()
+                ->getResultArray();
+
+            foreach ($rowsAbonos as $row) {
+                $tipo = (string) ($row['tipopago'] ?? '');
+                if ($tipo === '') {
+                    continue;
+                }
+                $resumen[$tipo] = [
+                    'tipopago' => $tipo,
+                    'cantidad' => (int) ($row['cantidad'] ?? 0),
+                    'total_facturado' => 0.0,
+                    'total_cobrado' => (float) ($row['total_cobrado'] ?? 0),
+                    'total_pendiente' => 0.0,
+                ];
+            }
+
+            // Compatibilidad: registros antiguos sin filas en pago_abono.
+            $bLegacy = $this->db->table('registro')
+                ->select("{$pa}.tipopago,
+                    COUNT(*) as cantidad,
+                    0.00 as total_facturado,
+                    SUM(CAST({$pa}.monto_pagar AS DECIMAL(12,2))) as total_cobrado,
+                    0.00 as total_pendiente", false)
+                ->join('pago', "{$r}.registro_id = {$pa}.registro_id")
+                ->join('pago_abono', "{$ab}.registro_id = {$r}.registro_id", 'left')
+                ->where("{$ab}.registro_id IS NULL", null, false);
+            $bLegacy = $this->applySinRegistrosAnulados($bLegacy, $r);
+            $rowsLegacy = RegistroIngresoDateRange::apply($bLegacy, $r, $startDate, $endDate)
+                ->groupBy("{$pa}.tipopago")
+                ->orderBy("{$pa}.tipopago", 'ASC')
+                ->get()
+                ->getResultArray();
+
+            foreach ($rowsLegacy as $row) {
+                $tipo = (string) ($row['tipopago'] ?? '');
+                if ($tipo === '') {
+                    continue;
+                }
+                if (!isset($resumen[$tipo])) {
+                    $resumen[$tipo] = [
+                        'tipopago' => $tipo,
+                        'cantidad' => 0,
+                        'total_facturado' => 0.0,
+                        'total_cobrado' => 0.0,
+                        'total_pendiente' => 0.0,
+                    ];
+                }
+                $resumen[$tipo]['cantidad'] += (int) ($row['cantidad'] ?? 0);
+                $resumen[$tipo]['total_cobrado'] += (float) ($row['total_cobrado'] ?? 0);
+            }
+
+            if ($resumen !== []) {
+                ksort($resumen, SORT_NATURAL);
+                return array_values($resumen);
+            }
+        }
 
         $b = $this->db->table('registro')
             ->select("{$pa}.tipopago,
