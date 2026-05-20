@@ -193,6 +193,337 @@ class ConfigService
     }
 
     /**
+     * Directorio de certificados SIN (relativo a WRITEPATH).
+     */
+    public function getSinCertificateStorageDir(): string
+    {
+        return rtrim(WRITEPATH, DIRECTORY_SEPARATOR) . DIRECTORY_SEPARATOR . 'uploads' . DIRECTORY_SEPARATOR . 'sin_certificates';
+    }
+
+    /**
+     * @return array{success:bool,message:string}
+     */
+    public function saveSinConfig(array $postData, ?UploadedFile $p12File = null): array
+    {
+        $enabled = ! empty($postData['sin_billing_enabled']);
+        $batch   = [
+            'sin_billing_enabled' => $enabled ? '1' : '0',
+        ];
+
+        if ($enabled) {
+            $keys = [
+                'sin_api_endpoint',
+                'sin_nit',
+                'sin_business_name',
+                'sin_branch_code',
+                'sin_system_type',
+                'sin_emission_mode',
+                'sin_activity_code',
+            ];
+            foreach ($keys as $k) {
+                $batch[$k] = trim((string) ($postData[$k] ?? ''));
+            }
+            if ($batch['sin_branch_code'] === '') {
+                $batch['sin_branch_code'] = '1';
+            }
+
+            $newPassword = trim((string) ($postData['sin_certificate_password'] ?? ''));
+            $storedPassword = trim((string) $this->appConfigModel->getValue('sin_certificate_password'));
+            $password = $newPassword !== '' ? $newPassword : $storedPassword;
+
+            $hasP12 = trim((string) $this->appConfigModel->getValue('sin_certificate_p12_path')) !== '';
+            $uploadingP12 = $p12File !== null && $p12File->getError() !== UPLOAD_ERR_NO_FILE;
+
+            if ($uploadingP12) {
+                if ($password === '') {
+                    return ['success' => false, 'message' => 'Indique la contraseña del certificado .p12.'];
+                }
+                $certResult = $this->processSinCertificateP12Upload($p12File, $password);
+                if (! ($certResult['success'] ?? false)) {
+                    return ['success' => false, 'message' => (string) ($certResult['message'] ?? 'No se pudo procesar el certificado.')];
+                }
+                $batch['sin_certificate_p12_path'] = (string) ($certResult['p12_path'] ?? '');
+                $batch['sin_certificate_path']       = (string) ($certResult['pem_path'] ?? '');
+            } elseif (! $hasP12) {
+                return ['success' => false, 'message' => 'Debe subir el certificado digital (.p12) emitido por DigiCert.'];
+            }
+
+            if ($newPassword !== '') {
+                $batch['sin_certificate_password'] = $newPassword;
+            }
+
+            $missing = [];
+            if ($batch['sin_api_endpoint'] === '') {
+                $missing[] = 'endpoint de API';
+            }
+            if ($batch['sin_nit'] === '') {
+                $missing[] = 'NIT';
+            }
+            if ($batch['sin_business_name'] === '') {
+                $missing[] = 'razón social';
+            }
+            if ($batch['sin_system_type'] === '') {
+                $missing[] = 'tipo de sistema';
+            }
+            if ($batch['sin_emission_mode'] === '') {
+                $missing[] = 'modalidad de emisión';
+            }
+            if ($batch['sin_activity_code'] === '') {
+                $missing[] = 'código de actividad';
+            }
+            if ($missing !== []) {
+                return [
+                    'success' => false,
+                    'message' => 'Complete los campos obligatorios: ' . implode(', ', $missing) . '.',
+                ];
+            }
+        }
+
+        $ok = $this->appConfigModel->batchSave($batch);
+        if ($ok) {
+            $this->invalidateCache();
+        }
+
+        return [
+            'success' => $ok,
+            'message' => $ok ? 'Configuración de SIN guardada.' : 'No se pudo guardar la configuración SIN.',
+        ];
+    }
+
+    /**
+     * @return array{success:bool,message:string}
+     */
+    public function testSinConnection(): array
+    {
+        if ($this->appConfigModel->getValue('sin_billing_enabled') !== '1') {
+            return ['success' => false, 'message' => 'La facturación SIN está deshabilitada.'];
+        }
+
+        $endpoint = trim((string) $this->appConfigModel->getValue('sin_api_endpoint'));
+        if ($endpoint === '' || filter_var($endpoint, FILTER_VALIDATE_URL) === false) {
+            return ['success' => false, 'message' => 'El endpoint de API no es una URL válida.'];
+        }
+
+        $p12Full = $this->resolveSinCertificateFullPath('sin_certificate_p12_path');
+        if ($p12Full === null || ! is_readable($p12Full)) {
+            return ['success' => false, 'message' => 'No hay certificado .p12 cargado o no es accesible en el servidor.'];
+        }
+
+        $password = trim((string) $this->appConfigModel->getValue('sin_certificate_password'));
+        if ($password === '') {
+            return ['success' => false, 'message' => 'Falta la contraseña del certificado. Guarde la configuración con la contraseña correcta.'];
+        }
+
+        $parsed = $this->readPkcs12Bundle($p12Full, $password);
+        if (! ($parsed['success'] ?? false)) {
+            return ['success' => false, 'message' => (string) ($parsed['message'] ?? 'No se pudo leer el certificado.')];
+        }
+
+        $pemFull = $this->resolveSinCertificateFullPath('sin_certificate_path');
+        if ($pemFull === null || ! is_readable($pemFull)) {
+            return ['success' => false, 'message' => 'El PEM derivado del certificado no está disponible. Vuelva a subir el archivo .p12.'];
+        }
+
+        $subject = (string) ($parsed['subject'] ?? '');
+        $msg     = 'Certificado válido';
+        if ($subject !== '') {
+            $msg .= ' (' . $subject . ')';
+        }
+        $msg .= '. Endpoint configurado.';
+
+        if (! extension_loaded('openssl')) {
+            return ['success' => false, 'message' => 'La extensión OpenSSL de PHP no está habilitada en el servidor.'];
+        }
+
+        return ['success' => true, 'message' => $msg];
+    }
+
+    /**
+     * @return array{success:bool,message:string,p12_path?:string,pem_path?:string}
+     */
+    private function processSinCertificateP12Upload(UploadedFile $file, string $password): array
+    {
+        if (! $file->isValid()) {
+            return ['success' => false, 'message' => 'El archivo del certificado no se subió correctamente.'];
+        }
+        if ($file->getSize() > 2 * 1024 * 1024) {
+            return ['success' => false, 'message' => 'El certificado no debe superar 2 MB.'];
+        }
+
+        if (! extension_loaded('openssl')) {
+            return ['success' => false, 'message' => 'OpenSSL no está disponible en PHP; no se puede procesar el certificado.'];
+        }
+
+        $tmp = $file->getTempName();
+        if ($tmp === '' || ! is_readable($tmp)) {
+            return ['success' => false, 'message' => 'No se pudo leer el archivo temporal del certificado.'];
+        }
+
+        $parsed = $this->readPkcs12Bundle($tmp, $password);
+        if (! ($parsed['success'] ?? false)) {
+            return ['success' => false, 'message' => (string) ($parsed['message'] ?? 'Contraseña incorrecta o archivo .p12 inválido.')];
+        }
+
+        $ext = $this->resolveSinPkcs12Extension($file);
+        if ($ext === null) {
+            return ['success' => false, 'message' => 'El archivo debe ser un certificado .p12 (DigiCert). Renombre el archivo con extensión .p12 e intente de nuevo.'];
+        }
+
+        $dir = $this->getSinCertificateStorageDir();
+        if (! is_dir($dir) && ! @mkdir($dir, 0750, true)) {
+            return ['success' => false, 'message' => 'No se pudo crear la carpeta de certificados en el servidor.'];
+        }
+
+        $token   = bin2hex(random_bytes(8));
+        $p12Name = 'sin-cert-' . $token . '.' . $ext;
+        if (! $file->move($dir, $p12Name)) {
+            return ['success' => false, 'message' => 'No se pudo guardar el certificado en el servidor.'];
+        }
+
+        $p12Rel = 'uploads/sin_certificates/' . $p12Name;
+        $pemRel = 'uploads/sin_certificates/sin-cert-' . $token . '.pem';
+        $pemFull = WRITEPATH . str_replace('/', DIRECTORY_SEPARATOR, $pemRel);
+        $pemBody = (string) ($parsed['cert'] ?? '') . "\n" . (string) ($parsed['pkey'] ?? '');
+        if (isset($parsed['extracerts']) && is_string($parsed['extracerts']) && $parsed['extracerts'] !== '') {
+            $pemBody .= "\n" . $parsed['extracerts'];
+        }
+        if (@file_put_contents($pemFull, $pemBody) === false) {
+            @unlink($dir . DIRECTORY_SEPARATOR . $p12Name);
+
+            return ['success' => false, 'message' => 'No se pudo generar el archivo PEM del certificado.'];
+        }
+        @chmod($pemFull, 0640);
+
+        $this->removePreviousSinCertificateFiles($p12Rel, $pemRel);
+
+        return [
+            'success'  => true,
+            'message'  => 'Certificado cargado correctamente.',
+            'p12_path' => $p12Rel,
+            'pem_path' => $pemRel,
+        ];
+    }
+
+    /**
+     * Extensión según nombre original (getExtension() de CI4 suele devolver "bin" u otro valor con .p12 en Windows).
+     * Solo se invoca después de validar el contenido PKCS#12 con OpenSSL.
+     */
+    private function resolveSinPkcs12Extension(UploadedFile $file): ?string
+    {
+        $blocked = ['pdf', 'jpg', 'jpeg', 'png', 'gif', 'zip', 'doc', 'docx', 'txt', 'json', 'xml', 'html', 'php'];
+        $candidates = array_filter([
+            strtolower((string) $file->getClientExtension()),
+            strtolower(pathinfo((string) $file->getClientName(), PATHINFO_EXTENSION)),
+            strtolower(pathinfo((string) $file->getName(), PATHINFO_EXTENSION)),
+            strtolower((string) $file->getExtension()),
+        ], static fn (string $v): bool => $v !== '');
+
+        foreach ($candidates as $ext) {
+            $ext = ltrim($ext, '.');
+            if (in_array($ext, $blocked, true)) {
+                return null;
+            }
+            if ($ext === 'p12' || $ext === 'pfx') {
+                return $ext;
+            }
+        }
+
+        $clientName = strtolower(trim((string) $file->getClientName()));
+        if (str_ends_with($clientName, '.p12')) {
+            return 'p12';
+        }
+        if (str_ends_with($clientName, '.pfx')) {
+            return 'pfx';
+        }
+
+        // Contenido PKCS#12 válido: el servidor a menudo reporta "bin" u otra extensión incorrecta
+        return 'p12';
+    }
+
+    /**
+     * @return array{success:bool,message:string,cert?:string,pkey?:string,extracerts?:string,subject?:string}
+     */
+    private function readPkcs12Bundle(string $p12Path, string $password): array
+    {
+        if (! extension_loaded('openssl')) {
+            return ['success' => false, 'message' => 'OpenSSL no está habilitado.'];
+        }
+
+        $raw = @file_get_contents($p12Path);
+        if ($raw === false || $raw === '') {
+            return ['success' => false, 'message' => 'No se pudo leer el archivo del certificado.'];
+        }
+
+        $certs = [];
+        if (! @openssl_pkcs12_read($raw, $certs, $password)) {
+            return ['success' => false, 'message' => 'Contraseña incorrecta o archivo .p12 corrupto.'];
+        }
+
+        $cert = trim((string) ($certs['cert'] ?? ''));
+        $pkey = trim((string) ($certs['pkey'] ?? ''));
+        if ($cert === '' || $pkey === '') {
+            return ['success' => false, 'message' => 'El certificado no contiene clave privada o certificado público.'];
+        }
+
+        $subject = '';
+        $x509 = @openssl_x509_read($cert);
+        if ($x509 !== false) {
+            $info = @openssl_x509_parse($x509);
+            if (is_array($info)) {
+                $subject = trim((string) ($info['name'] ?? ($info['subject']['CN'] ?? '')));
+            }
+        }
+
+        $extra = '';
+        if (! empty($certs['extracerts']) && is_array($certs['extracerts'])) {
+            $extra = implode("\n", array_map('strval', $certs['extracerts']));
+        }
+
+        return [
+            'success'    => true,
+            'message'    => 'OK',
+            'cert'       => $cert,
+            'pkey'       => $pkey,
+            'extracerts' => $extra,
+            'subject'    => $subject,
+        ];
+    }
+
+    private function resolveSinCertificateFullPath(string $configKey): ?string
+    {
+        $rel = trim((string) $this->appConfigModel->getValue($configKey));
+        if ($rel === '' || str_contains($rel, '..')) {
+            return null;
+        }
+        $rel = str_replace('\\', '/', $rel);
+        if (! preg_match('#^uploads/sin_certificates/[a-zA-Z0-9._-]+$#', $rel)) {
+            return null;
+        }
+        $full = WRITEPATH . str_replace('/', DIRECTORY_SEPARATOR, $rel);
+        $base = realpath($this->getSinCertificateStorageDir());
+        $real = realpath($full);
+        if ($base === false || $real === false || ! str_starts_with($real, $base . DIRECTORY_SEPARATOR)) {
+            return is_file($full) ? $full : null;
+        }
+
+        return $real;
+    }
+
+    private function removePreviousSinCertificateFiles(string $newP12Rel, string $newPemRel): void
+    {
+        foreach (['sin_certificate_p12_path', 'sin_certificate_path'] as $key) {
+            $rel = trim((string) $this->appConfigModel->getValue($key));
+            if ($rel === '' || $rel === $newP12Rel || $rel === $newPemRel) {
+                continue;
+            }
+            $full = $this->resolveSinCertificateFullPath($key);
+            if ($full !== null && is_file($full)) {
+                @unlink($full);
+            }
+        }
+    }
+
+    /**
      * Procesa y guarda la configuración desde datos POST
      */
     public function saveFromRequest(array $postData, ?UploadedFile $logoFile = null): array

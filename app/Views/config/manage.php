@@ -1293,7 +1293,7 @@
                 <h5 class="mb-0"><i class="fa-solid fa-receipt me-2"></i>Configuración de Facturación SIN</h5>
             </div>
             <div class="card-body">
-                <?= form_open(site_url('config/saveSin'), ['id' => 'sin_form']) ?>
+                <?= form_open_multipart(site_url('config/saveSin'), ['id' => 'sin_form']) ?>
                 
                 <!-- Enable/Disable Checkbox -->
                 <div class="mb-4">
@@ -1326,22 +1326,44 @@
                         <small class="text-muted">URL base para la integración con SIN</small>
                     </div>
 
-                    <!-- Certificado Digital SIN -->
+                    <!-- Certificado Digital SIN (DigiCert .p12) -->
+                    <?php
+                    $sinP12Rel = trim((string) ($config['sin_certificate_p12_path'] ?? ''));
+                    $sinPemRel = trim((string) ($config['sin_certificate_path'] ?? ''));
+                    $sinCertConfigured = $sinP12Rel !== '' || $sinPemRel !== '';
+                    ?>
                     <div class="mb-4">
-                        <label for="sin_certificate_path" class="form-label fw-bold">Ruta del Certificado Digital (PEM)</label>
-                        <input type="text" name="sin_certificate_path" id="sin_certificate_path" class="form-control" 
-                            value="<?= esc($config['sin_certificate_path'] ?? '') ?>" 
-                            placeholder="/path/to/certificado.pem" autocomplete="off" required>
-                        <small class="text-muted">Ruta del certificado digital requerido para firmar documentos. Debe ser accesible por el servidor.</small>
+                        <label for="sin_certificate_p12" class="form-label fw-bold">Certificado digital (.p12)</label>
+                        <input type="file" name="sin_certificate_p12" id="sin_certificate_p12" class="form-control"
+                            accept=".p12,application/x-pkcs12" autocomplete="off">
+                        <small class="text-muted d-block mt-1">
+                            Archivo <strong>.p12</strong> entregado por DigiCert. El nombre del archivo debe terminar en <code>.p12</code> (por ejemplo <code>certificado.p12</code>).
+                        </small>
+                        <?php if ($sinCertConfigured): ?>
+                        <div class="alert alert-success py-2 small mt-2 mb-0">
+                            <i class="fa-solid fa-certificate me-1"></i>
+                            <strong>Certificado cargado.</strong>
+                            <?php if ($sinP12Rel !== ''): ?>
+                            Archivo: <code><?= esc(basename($sinP12Rel)) ?></code>
+                            <?php endif; ?>
+                            <?php if ($sinPemRel !== ''): ?>
+                            <span class="text-muted">— PEM: <code><?= esc(basename($sinPemRel)) ?></code></span>
+                            <?php endif; ?>
+                        </div>
+                        <?php else: ?>
+                        <div class="alert alert-warning py-2 small mt-2 mb-0">
+                            <i class="fa-solid fa-triangle-exclamation me-1"></i>
+                            Aún no hay certificado cargado. Suba el archivo <strong>.p12</strong> y la contraseña para habilitar la firma digital.
+                        </div>
+                        <?php endif; ?>
                     </div>
 
-                    <!-- Certificado Password -->
                     <div class="mb-4">
-                        <label for="sin_certificate_password" class="form-label fw-bold">Contraseña del Certificado</label>
-                        <input type="password" name="sin_certificate_password" id="sin_certificate_password" class="form-control" 
-                            value="<?= esc($config['sin_certificate_password'] ?? '') ?>" 
-                            placeholder="••••••••" autocomplete="off" required>
-                        <small class="text-muted">Contraseña del certificado digital PEM</small>
+                        <label for="sin_certificate_password" class="form-label fw-bold">Contraseña del certificado</label>
+                        <input type="password" name="sin_certificate_password" id="sin_certificate_password" class="form-control"
+                            value="" placeholder="<?= $sinCertConfigured ? 'Dejar vacío para mantener la actual' : 'Contraseña del archivo .p12' ?>"
+                            autocomplete="new-password"<?= $sinCertConfigured ? '' : ' required' ?>>
+                        <small class="text-muted">Contraseña asignada al exportar o descargar el certificado desde DigiCert.</small>
                     </div>
 
                     <!-- Business ID / NIT -->
@@ -1508,12 +1530,32 @@ $(document).ready(function() {
     // SIN Billing Toggle
     var sinToggle = document.getElementById('sin_billing_enabled');
     if (sinToggle) {
-        sinToggle.addEventListener('change', function() {
+        function syncSinRequiredFields() {
+            var on = sinToggle.checked;
             var configBlock = document.getElementById('sin-config-block');
             if (configBlock) {
-                configBlock.style.display = this.checked ? 'block' : 'none';
+                configBlock.style.display = on ? 'block' : 'none';
+                configBlock.querySelectorAll('input, select, textarea').forEach(function(el) {
+                    if (el.id === 'sin_certificate_password' && el.getAttribute('data-sin-cert-configured') === '1') {
+                        el.required = false;
+                        return;
+                    }
+                    if (el.type === 'file') {
+                        el.required = false;
+                        return;
+                    }
+                    if (el.hasAttribute('required')) {
+                        el.required = on;
+                    }
+                });
             }
-        });
+        }
+        var sinPwd = document.getElementById('sin_certificate_password');
+        if (sinPwd) {
+            sinPwd.setAttribute('data-sin-cert-configured', <?= $sinCertConfigured ?? false ? '1' : '0' ?>);
+        }
+        sinToggle.addEventListener('change', syncSinRequiredFields);
+        syncSinRequiredFields();
     }
 
     // SIN Test Connection Button
@@ -1530,7 +1572,7 @@ $(document).ready(function() {
                 dataType: 'json',
                 success: function(response) {
                     if (response.success) {
-                        testResult.innerHTML = '<div class="alert alert-success py-2 mb-0"><i class="fa-solid fa-circle-check me-2"></i> Conexión exitosa</div>';
+                        testResult.innerHTML = '<div class="alert alert-success py-2 mb-0"><i class="fa-solid fa-circle-check me-2"></i> ' + (response.message || 'Conexión exitosa') + '</div>';
                     } else {
                         testResult.innerHTML = '<div class="alert alert-warning py-2 mb-0"><i class="fa-solid fa-triangle-exclamation me-2"></i> ' + (response.message || 'Error en la prueba') + '</div>';
                     }

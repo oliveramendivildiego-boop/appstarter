@@ -957,9 +957,16 @@ class Config extends SecureArea
 
     public function saveSin(): ResponseInterface
     {
-        $this->configService->saveSinConfig($this->request->getPost());
+        $result = $this->configService->saveSinConfig(
+            $this->request->getPost(),
+            $this->request->getFile('sin_certificate_p12')
+        );
+        if (! ($result['success'] ?? false)) {
+            return redirect()->to('config?tab=sin')->with('error', (string) ($result['message'] ?? 'No se pudo guardar la configuración SIN.'));
+        }
         \App\Models\AuditoriaModel::log('config', 'sin_billing_actualizar', null);
-        return redirect()->to('config?tab=sin')->with('success', 'Configuración de SIN guardada.');
+
+        return redirect()->to('config?tab=sin')->with('success', (string) ($result['message'] ?? 'Configuración de SIN guardada.'));
     }
 
     public function saveInstitucionDescuento(): ResponseInterface

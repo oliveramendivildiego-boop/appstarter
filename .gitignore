@@ -62,6 +62,10 @@ writable/session/*
 writable/uploads/*
 !writable/uploads/index.html
 
+# Certificados SIN (.p12 / PEM generados; no versionar)
+writable/uploads/sin_certificates/*
+!writable/uploads/sin_certificates/index.html
+
 writable/debugbar/*
 !writable/debugbar/index.html
 

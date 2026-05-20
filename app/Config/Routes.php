@@ -115,6 +115,7 @@ $routes->post('config/saveLabValidation', 'Config::saveLabValidation');
 $routes->post('config/saveUiStyle', 'Config::saveUiStyle');
 $routes->post('config/saveComprobanteStyle', 'Config::saveComprobanteStyle');
 $routes->post('config/saveWhatsapp', 'Config::saveWhatsapp');
+$routes->post('config/saveSin', 'Config::saveSin');
 $routes->post('config/saveInstitucionDescuento', 'Config::saveInstitucionDescuento');
 $routes->post('config/savepoblacion', 'Config::savePoblacion');
 $routes->post('config/saveopcion', 'Config::saveOpcion');
