@@ -1180,8 +1180,30 @@ class Config extends SecureArea
 
     public function testSin(): ResponseInterface
     {
-        $result = $this->configService->testSinConnection();
-        return $this->response->setJSON($result);
+        if (! $this->request->is('post')) {
+            return $this->response->setJSON([
+                'success' => false,
+                'message' => 'Método no permitido.',
+            ])->setStatusCode(405);
+        }
+
+        try {
+            $result = $this->configService->testSinConnection($this->request->getPost());
+        } catch (\Throwable $e) {
+            log_message('error', 'testSin: ' . $e->getMessage() . ' @ ' . $e->getFile() . ':' . $e->getLine());
+            $result = [
+                'success' => false,
+                'message' => 'Error interno al probar SIN: ' . $e->getMessage(),
+            ];
+        }
+
+        $result['csrf_token'] = csrf_hash();
+        $result['csrf_name']  = csrf_token();
+
+        return $this->response
+            ->setStatusCode(200)
+            ->setContentType('application/json')
+            ->setJSON($result);
     }
 
     /**

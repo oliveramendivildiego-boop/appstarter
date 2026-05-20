@@ -1294,7 +1294,8 @@
             </div>
             <div class="card-body">
                 <?= form_open_multipart(site_url('config/saveSin'), ['id' => 'sin_form']) ?>
-                
+                <?= csrf_field() ?>
+
                 <!-- Enable/Disable Checkbox -->
                 <div class="mb-4">
                     <div class="form-check form-switch">
@@ -1319,11 +1320,18 @@
 
                     <!-- API Endpoint -->
                     <div class="mb-4">
-                        <label for="sin_api_endpoint" class="form-label fw-bold">Endpoint de API</label>
+                        <label for="sin_api_endpoint" class="form-label fw-bold">Endpoint de API (SIAT)</label>
                         <input type="url" name="sin_api_endpoint" id="sin_api_endpoint" class="form-control" 
                             value="<?= esc($config['sin_api_endpoint'] ?? '') ?>" 
-                            placeholder="https://api.impuestos.gob.bo/v1" autocomplete="off" required>
-                        <small class="text-muted">URL base para la integración con SIN</small>
+                            placeholder="https://pilotosiatservicios.impuestos.gob.bo/v2" autocomplete="off" required>
+                        <small class="text-muted d-block">
+                            URL base del servicio REST de facturación electrónica (SIAT), <strong>no</strong> <code>api.impuestos.gob.bo/v1</code>.
+                        </small>
+                        <small class="text-muted d-block mt-1">
+                            <strong>Piloto/pruebas:</strong> <code>https://pilotosiatservicios.impuestos.gob.bo/v2</code><br>
+                            <strong>Producción:</strong> <code>https://siatrest.impuestos.gob.bo/v2</code>
+                            — Token delegado en <a href="https://siatinfo.impuestos.gob.bo/index.php/facturacion-en-linea/emision-y-envio-de-facturas/solicitud-token" target="_blank" rel="noopener">siatinfo.impuestos.gob.bo</a>.
+                        </small>
                     </div>
 
                     <!-- Certificado Digital SIN (DigiCert .p12) -->
@@ -1432,7 +1440,7 @@
                         <button type="button" id="sin_test_btn" class="btn btn-outline-primary me-2">
                             <i class="fa-solid fa-flask-vial me-1"></i> Probar Conexión
                         </button>
-                        <small class="text-muted ms-2">Verifica si la configuración es correcta</small>
+                        <small class="text-muted ms-2">Valida certificado y configuración guardada (guarde antes de probar)</small>
                         <div id="sin_test_result" class="mt-2" style="display: none;"></div>
                     </div>
 
@@ -1558,28 +1566,93 @@ $(document).ready(function() {
         syncSinRequiredFields();
     }
 
+    function sinTestShowResult(testResult, ok, message, details) {
+        var cls = ok ? 'alert-success' : 'alert-warning';
+        var icon = ok ? 'fa-circle-check' : 'fa-triangle-exclamation';
+        var html = '<div class="alert ' + cls + ' py-2 mb-0"><i class="fa-solid ' + icon + ' me-2"></i> ' + (message || '') + '</div>';
+        if (details && details.length) {
+            html += '<ul class="small text-muted mb-0 mt-1 ps-3">';
+            details.forEach(function(line) {
+                if (line) html += '<li>' + line + '</li>';
+            });
+            html += '</ul>';
+        }
+        testResult.innerHTML = html;
+        testResult.style.display = 'block';
+    }
+
     // SIN Test Connection Button
     var testBtn = document.getElementById('sin_test_btn');
     if (testBtn) {
         testBtn.addEventListener('click', function() {
             var testResult = document.getElementById('sin_test_result');
-            testResult.innerHTML = '<div class="spinner-border spinner-border-sm" role="status"><span class="visually-hidden">Probando...</span></div> Probando conexión...';
+            var sinForm = document.getElementById('sin_form');
+            testResult.innerHTML = '<div class="spinner-border spinner-border-sm" role="status"><span class="visually-hidden">Probando...</span></div> Probando certificado y servidor SIAT...';
             testResult.style.display = 'block';
-            
-            $.ajax({
-                url: '<?= site_url('config/testSin') ?>',
-                type: 'POST',
-                dataType: 'json',
-                success: function(response) {
-                    if (response.success) {
-                        testResult.innerHTML = '<div class="alert alert-success py-2 mb-0"><i class="fa-solid fa-circle-check me-2"></i> ' + (response.message || 'Conexión exitosa') + '</div>';
-                    } else {
-                        testResult.innerHTML = '<div class="alert alert-warning py-2 mb-0"><i class="fa-solid fa-triangle-exclamation me-2"></i> ' + (response.message || 'Error en la prueba') + '</div>';
-                    }
-                },
-                error: function() {
-                    testResult.innerHTML = '<div class="alert alert-danger py-2 mb-0"><i class="fa-solid fa-circle-xmark me-2"></i> Error al conectar con el servidor</div>';
+
+            var csrfName = (typeof window.CI_CSRF_TOKEN_NAME !== 'undefined' ? window.CI_CSRF_TOKEN_NAME : 'csrf_test_name');
+            var csrfVal = (typeof window.CI_CSRF_TOKEN !== 'undefined' ? window.CI_CSRF_TOKEN : '');
+            var csrfInput = document.querySelector('#sin_form input[name*="csrf"]');
+            if (csrfInput && csrfInput.value) {
+                csrfVal = csrfInput.value;
+                csrfName = csrfInput.name;
+            }
+            if (!csrfVal) {
+                sinTestShowResult(testResult, false, 'No se encontró el token de seguridad. Recargue la página (F5).', []);
+                return;
+            }
+
+            var fd = new FormData();
+            if (sinForm) {
+                var enabledEl = document.getElementById('sin_billing_enabled');
+                if (enabledEl && enabledEl.checked) {
+                    fd.append('sin_billing_enabled', '1');
                 }
+                ['sin_api_endpoint', 'sin_nit', 'sin_business_name', 'sin_branch_code', 'sin_system_type', 'sin_emission_mode', 'sin_activity_code'].forEach(function(name) {
+                    var el = sinForm.querySelector('[name="' + name + '"]');
+                    if (el && el.value !== undefined) {
+                        fd.append(name, el.value);
+                    }
+                });
+                var pwdEl = document.getElementById('sin_certificate_password');
+                if (pwdEl && pwdEl.value) {
+                    fd.append('sin_certificate_password', pwdEl.value);
+                }
+            }
+            fd.append(csrfName, csrfVal);
+
+            var headers = { 'X-Requested-With': 'XMLHttpRequest', 'X-CSRF-TOKEN': csrfVal };
+            fetch('<?= site_url('config/testSin') ?>', {
+                method: 'POST',
+                body: fd,
+                credentials: 'same-origin',
+                headers: headers
+            })
+            .then(function(res) {
+                return res.text().then(function(text) {
+                    return { ok: res.ok, status: res.status, text: text };
+                });
+            })
+            .then(function(bundle) {
+                var data = null;
+                try {
+                    data = bundle.text ? JSON.parse(bundle.text) : null;
+                } catch (parseErr) {
+                    var snippet = (bundle.text || '').replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 220);
+                    sinTestShowResult(testResult, false, 'El servidor no devolvió JSON (HTTP ' + bundle.status + '). ' + (snippet || 'Revise sesión o permisos.'), []);
+                    return;
+                }
+                if (data && data.csrf_token && data.csrf_name && typeof syncCsrfToken === 'function') {
+                    syncCsrfToken(data.csrf_name, data.csrf_token);
+                }
+                if (!data) {
+                    sinTestShowResult(testResult, false, 'Respuesta vacía del servidor.', []);
+                    return;
+                }
+                sinTestShowResult(testResult, !!data.success, data.message || 'Sin mensaje', data.details || []);
+            })
+            .catch(function(err) {
+                sinTestShowResult(testResult, false, 'No se pudo contactar al servidor: ' + (err && err.message ? err.message : 'error de red'), []);
             });
         });
     }

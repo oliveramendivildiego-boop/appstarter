@@ -291,51 +291,159 @@ class ConfigService
     }
 
     /**
-     * @return array{success:bool,message:string}
+     * Prueba configuración SIN (certificado local + alcance del endpoint SIAT).
+     *
+     * @param array<string, mixed>|null $context Valores del formulario (POST); si faltan, usa app_config guardada.
+     *
+     * @return array{success:bool,message:string,details?:list<string>}
      */
-    public function testSinConnection(): array
+    public function testSinConnection(?array $context = null): array
     {
-        if ($this->appConfigModel->getValue('sin_billing_enabled') !== '1') {
-            return ['success' => false, 'message' => 'La facturación SIN está deshabilitada.'];
+        $context = $context ?? [];
+        $details = [];
+
+        if (array_key_exists('sin_billing_enabled', $context)) {
+            $enabled = ! empty($context['sin_billing_enabled']);
+        } else {
+            $enabled = $this->appConfigModel->getValue('sin_billing_enabled') === '1';
+        }
+        if (! $enabled) {
+            return ['success' => false, 'message' => 'Active «Habilitar facturación con SIN» y guarde antes de probar.', 'details' => $details];
         }
 
-        $endpoint = trim((string) $this->appConfigModel->getValue('sin_api_endpoint'));
+        if (! extension_loaded('openssl')) {
+            return ['success' => false, 'message' => 'La extensión OpenSSL de PHP no está habilitada en el servidor.', 'details' => $details];
+        }
+
+        $endpoint = trim((string) ($context['sin_api_endpoint'] ?? $this->appConfigModel->getValue('sin_api_endpoint')));
         if ($endpoint === '' || filter_var($endpoint, FILTER_VALIDATE_URL) === false) {
-            return ['success' => false, 'message' => 'El endpoint de API no es una URL válida.'];
+            return ['success' => false, 'message' => 'Indique un endpoint SIAT válido (ej. https://pilotosiatservicios.impuestos.gob.bo/v2).', 'details' => $details];
+        }
+
+        $password = trim((string) ($context['sin_certificate_password'] ?? ''));
+        if ($password === '') {
+            $password = trim((string) $this->appConfigModel->getValue('sin_certificate_password'));
+        }
+        if ($password === '') {
+            return ['success' => false, 'message' => 'Indique la contraseña del certificado .p12 y pulse «Guardar» antes de probar.', 'details' => $details];
         }
 
         $p12Full = $this->resolveSinCertificateFullPath('sin_certificate_p12_path');
         if ($p12Full === null || ! is_readable($p12Full)) {
-            return ['success' => false, 'message' => 'No hay certificado .p12 cargado o no es accesible en el servidor.'];
-        }
-
-        $password = trim((string) $this->appConfigModel->getValue('sin_certificate_password'));
-        if ($password === '') {
-            return ['success' => false, 'message' => 'Falta la contraseña del certificado. Guarde la configuración con la contraseña correcta.'];
+            return ['success' => false, 'message' => 'No hay certificado .p12 guardado. Suba el archivo, ingrese la contraseña y pulse «Guardar configuración SIN».', 'details' => $details];
         }
 
         $parsed = $this->readPkcs12Bundle($p12Full, $password);
         if (! ($parsed['success'] ?? false)) {
-            return ['success' => false, 'message' => (string) ($parsed['message'] ?? 'No se pudo leer el certificado.')];
+            return ['success' => false, 'message' => (string) ($parsed['message'] ?? 'No se pudo leer el certificado.'), 'details' => $details];
         }
 
         $pemFull = $this->resolveSinCertificateFullPath('sin_certificate_path');
         if ($pemFull === null || ! is_readable($pemFull)) {
-            return ['success' => false, 'message' => 'El PEM derivado del certificado no está disponible. Vuelva a subir el archivo .p12.'];
+            return ['success' => false, 'message' => 'El PEM del certificado no está disponible. Vuelva a subir el .p12 y guarde.', 'details' => $details];
         }
 
-        $subject = (string) ($parsed['subject'] ?? '');
-        $msg     = 'Certificado válido';
-        if ($subject !== '') {
-            $msg .= ' (' . $subject . ')';
-        }
-        $msg .= '. Endpoint configurado.';
+        $subject = trim((string) ($parsed['subject'] ?? ''));
+        $details[] = 'Certificado .p12: OK' . ($subject !== '' ? ' (' . $subject . ')' : '');
+        $details[] = 'PEM de firma: OK';
 
-        if (! extension_loaded('openssl')) {
-            return ['success' => false, 'message' => 'La extensión OpenSSL de PHP no está habilitada en el servidor.'];
+        $reach = $this->probeSiatEndpointReachability($endpoint);
+        $details[] = (string) ($reach['message'] ?? '');
+
+        $endpointHint = $this->describeSinEndpoint($endpoint);
+        $allOk        = ($reach['reachable'] ?? false) === true;
+
+        $msg = $allOk
+            ? 'Configuración lista: certificado válido y servidor SIAT alcanzable. ' . $endpointHint
+            : 'Certificado válido. ' . (string) ($reach['message'] ?? '') . ' ' . $endpointHint;
+
+        return [
+            'success' => true,
+            'message' => trim($msg),
+            'details' => $details,
+        ];
+    }
+
+    /**
+     * @return array{reachable:bool,message:string}
+     */
+    private function probeSiatEndpointReachability(string $endpoint): array
+    {
+        $url = rtrim($endpoint, '/');
+        if (! function_exists('curl_init')) {
+            return ['reachable' => false, 'message' => 'cURL no está habilitado en PHP; no se pudo comprobar el API SIAT remoto.'];
         }
 
-        return ['success' => true, 'message' => $msg];
+        $attempts = [
+            ['verify' => true, 'label' => 'con verificación SSL'],
+            ['verify' => false, 'label' => 'sin verificación SSL (solo diagnóstico local)'],
+        ];
+
+        $lastErr = '';
+        foreach ($attempts as $attempt) {
+            $ch = curl_init($url);
+            if ($ch === false) {
+                continue;
+            }
+            curl_setopt_array($ch, [
+                CURLOPT_RETURNTRANSFER => true,
+                CURLOPT_TIMEOUT        => 20,
+                CURLOPT_CONNECTTIMEOUT => 12,
+                CURLOPT_FOLLOWLOCATION => true,
+                CURLOPT_NOBODY         => true,
+                CURLOPT_SSL_VERIFYPEER => $attempt['verify'],
+                CURLOPT_SSL_VERIFYHOST => $attempt['verify'] ? 2 : 0,
+                CURLOPT_USERAGENT      => 'Laboratorio-SIN-Test/1.0',
+            ]);
+            curl_exec($ch);
+            $httpCode = (int) curl_getinfo($ch, CURLINFO_HTTP_CODE);
+            $curlErr  = (string) curl_error($ch);
+            curl_close($ch);
+
+            if ($curlErr !== '') {
+                $lastErr = $curlErr;
+                continue;
+            }
+
+            if ($httpCode >= 200 && $httpCode < 500) {
+                $sslNote = $attempt['verify'] ? '' : ' En WAMP puede faltar el bundle CA; en producción configure cacert.pem.';
+
+                return [
+                    'reachable' => true,
+                    'message'   => 'Servidor SIAT (' . $url . '): responde HTTP ' . $httpCode . ' (' . $attempt['label'] . ').' . $sslNote,
+                ];
+            }
+
+            $lastErr = 'HTTP ' . $httpCode;
+        }
+
+        if (str_contains(strtolower($lastErr), 'ssl certificate')) {
+            return [
+                'reachable' => false,
+                'message'   => 'Servidor SIAT: error SSL en este equipo (' . $lastErr . '). El certificado .p12 local sí es válido; configure CA/cacert en PHP o use el servidor de producción.',
+            ];
+        }
+
+        return [
+            'reachable' => false,
+            'message'   => 'Servidor SIAT: no alcanzable desde este servidor (' . ($lastErr !== '' ? $lastErr : 'sin respuesta') . '). Revise firewall o URL.',
+        ];
+    }
+
+    private function describeSinEndpoint(string $endpoint): string
+    {
+        $host = strtolower((string) parse_url($endpoint, PHP_URL_HOST));
+        if (str_contains($host, 'pilotosiatservicios.impuestos.gob.bo')) {
+            return 'Endpoint piloto SIAT configurado. Falta integrar token delegado y envío de facturas.';
+        }
+        if (str_contains($host, 'siatrest.impuestos.gob.bo')) {
+            return 'Endpoint producción SIAT configurado. Falta integrar token delegado y envío de facturas.';
+        }
+        if (str_contains($host, 'api.impuestos.gob.bo')) {
+            return 'Ese host no es el API SIAT habitual; use pilotosiatservicios o siatrest (.impuestos.gob.bo/v2).';
+        }
+
+        return 'Endpoint guardado (verifique que sea el SIAT REST oficial /v2). La prueba no llama aún al API remoto.';
     }
 
     /**
@@ -466,12 +574,20 @@ class ConfigService
         }
 
         $subject = '';
-        $x509 = @openssl_x509_read($cert);
-        if ($x509 !== false) {
-            $info = @openssl_x509_parse($x509);
-            if (is_array($info)) {
-                $subject = trim((string) ($info['name'] ?? ($info['subject']['CN'] ?? '')));
+        try {
+            $x509 = @openssl_x509_read($cert);
+            if ($x509 !== false) {
+                $info = @openssl_x509_parse($x509, false);
+                if (is_array($info)) {
+                    if (! empty($info['name'])) {
+                        $subject = trim((string) $info['name']);
+                    } elseif (! empty($info['subject']['CN'])) {
+                        $subject = trim((string) $info['subject']['CN']);
+                    }
+                }
             }
+        } catch (\Throwable) {
+            $subject = '';
         }
 
         $extra = '';
