@@ -213,25 +213,6 @@ function escapeHtml(str) {
     return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#039;');
 }
 document.addEventListener('DOMContentLoaded', function() {
-    // Menú «Más»: abrir hacia arriba si no hay espacio abajo (evita que se vaya fuera de pantalla)
-    document.querySelectorAll('.registros-dropdown-mas').forEach(function(dropdownEl) {
-        var toggle = dropdownEl.querySelector('.btn-accion-mas');
-        if (!toggle) return;
-        toggle.addEventListener('click', function() {
-            var menu = dropdownEl.querySelector('.registros-acciones-menu');
-            var items = menu ? menu.querySelectorAll('li').length : 10;
-            var menuH = Math.min(Math.max(items * 34 + 12, 160), 420);
-            var rect = toggle.getBoundingClientRect();
-            var espacioArriba = rect.top;
-            var espacioAbajo = window.innerHeight - rect.bottom;
-            if (espacioArriba < menuH + 12 && espacioAbajo >= menuH + 12) {
-                dropdownEl.classList.remove('dropup');
-            } else {
-                dropdownEl.classList.add('dropup');
-            }
-        }, true);
-    });
-
     // Modal mensaje general (reemplaza alert() para confirmaciones/mensajes)
     var modalMensajeAccion = document.getElementById('modalMensajeAccion');
     var modalMensajeAccionTitulo = document.getElementById('modalMensajeAccionTitulo');
