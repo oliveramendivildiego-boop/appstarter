@@ -64,7 +64,11 @@
                             <tbody>
                                 <?php foreach (($egresos ?? []) as $e): ?>
                                     <tr>
-                                        <td><?= esc(date('d/m/Y H:i', strtotime((string) ($e['fecha'] ?? 'now')))) ?></td>
+                                        <td><?= esc(
+                                            !empty($e['fecha'])
+                                                ? \App\Services\RegisterService::formatStoredReporteFechaHora((string) $e['fecha'])
+                                                : '—'
+                                        ) ?></td>
                                         <td>
                                             <?php $tm = (string) ($e['tipo_movimiento'] ?? 'egreso'); ?>
                                             <span class="badge <?= $tm === 'ingreso' ? 'bg-success' : 'bg-danger' ?>">
@@ -134,7 +138,9 @@
                 <div class="mb-3">
                     <label class="form-label">Fecha</label>
                     <input type="text" id="egreso_fecha" name="fecha" class="form-control flatpickr-input"
-                           value="<?= !empty($egreso_editar['fecha']) ? esc(date('Y-m-d H:i', strtotime((string) $egreso_editar['fecha']))) : esc(date('Y-m-d H:i')) ?>">
+                           value="<?= !empty($egreso_editar['fecha'])
+                               ? esc(substr((string) $egreso_editar['fecha'], 0, 16))
+                               : esc(substr(\App\Services\RegisterService::mysqlNowForReport(), 0, 16)) ?>">
                 </div>
                 <div class="mb-3">
                     <label class="form-label">Monto</label>

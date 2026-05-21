@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Services\RegisterService;
 use CodeIgniter\Model;
 
 class EgresoModel extends Model
@@ -52,13 +53,21 @@ class EgresoModel extends Model
 
     public function saveEgreso(array $data, ?int $id = null): bool
     {
-        $now = date('Y-m-d H:i:s');
+        $now = RegisterService::mysqlNowForReport();
+        $fechaInput = trim((string) ($data['fecha'] ?? ''));
+        if ($fechaInput !== '') {
+            if (preg_match('/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}$/', $fechaInput)) {
+                $fechaInput .= ':00';
+            }
+        } else {
+            $fechaInput = $now;
+        }
         $save = [
             'monto'      => number_format((float) ($data['monto'] ?? 0), 2, '.', ''),
             'tipopago'   => trim((string) ($data['tipopago'] ?? '1')),
             'tipo_movimiento' => trim((string) ($data['tipo_movimiento'] ?? 'egreso')),
             'desglose'   => trim((string) ($data['desglose'] ?? '')),
-            'fecha'      => trim((string) ($data['fecha'] ?? '')) !== '' ? (string) $data['fecha'] : $now,
+            'fecha'      => $fechaInput,
             'updated_at' => $now,
             'deleted'    => 0,
         ];
@@ -82,7 +91,7 @@ class EgresoModel extends Model
             ->where('egreso_id', $id)
             ->update([
                 'deleted' => 1,
-                'updated_at' => date('Y-m-d H:i:s'),
+                'updated_at' => RegisterService::mysqlNowForReport(),
             ]) !== false;
     }
 
