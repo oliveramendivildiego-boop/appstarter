@@ -57,8 +57,7 @@
 
 .registros-table .registros-acciones-menu {
     min-width: 235px;
-    max-height: min(70vh, 420px);
-    overflow-y: auto;
+    overflow: visible;
     z-index: 1055;
 }
 
@@ -66,11 +65,9 @@
     position: relative;
 }
 
-/* Scroll horizontal en móvil sin recortar el menú debajo del botón */
+/* Sin scroll en el contenedor: el menú debe verse debajo del botón sin barra de desplazamiento */
 .registros-table-responsive {
-    overflow-x: auto;
-    overflow-y: visible;
-    -webkit-overflow-scrolling: touch;
+    overflow: visible !important;
 }
 
 .registros-table-responsive .registros-acciones-col {
