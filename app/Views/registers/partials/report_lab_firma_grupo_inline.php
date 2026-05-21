@@ -12,7 +12,8 @@ if ($firma === []) {
     return;
 }
 $variant = (string) ($analisis_variant ?? 'pdf');
-$isScreen = $variant === 'screen_pdf' || $variant === 'screen';
+/** Vista web del reporte (screen_pdf) usa la misma cuadrícula que PDF; solo «screen» legacy usa tarjeta Bootstrap. */
+$isLegacyScreen = ($variant === 'screen');
 $areaLabel = trim((string) ($area_label ?? ($firma['prueba_nombre'] ?? '')));
 
 $layout = is_array($pdf_layout ?? null) ? $pdf_layout : [];
@@ -41,7 +42,7 @@ $imgNone = 'border: none; outline: none; box-shadow: none; background: transpare
 
 $wrapStyle = 'margin-top:' . esc((string) $marginTop, 'attr') . 'pt;margin-bottom:' . esc((string) $marginBottom, 'attr') . 'pt;';
 
-if ($isScreen):
+if ($isLegacyScreen):
 ?>
 <div class="report-lab-firma-grupo-inline card border-light shadow-sm" style="<?= $wrapStyle ?>">
     <div class="card-body py-3">
