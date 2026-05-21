@@ -79,6 +79,8 @@ $routes->get('reports/insumosVencimiento', 'Reports::insumosVencimiento');
 $routes->get('reports/insumosVencimientoPdf', 'Reports::insumosVencimientoPdf');
 $routes->get('reports/inventarioKardex', 'Reports::inventarioKardex');
 $routes->get('reports/costosPruebas', 'Reports::costosPruebas');
+$routes->get('reports/editarCostosPruebas', 'Reports::editarCostosPruebas');
+$routes->post('reports/saveCostosPruebas', 'Reports::saveCostosPruebas');
 $routes->get('reports/costosPruebasPdf', 'Reports::costosPruebasPdf');
 $routes->get('reports/exportCostosPruebas', 'Reports::exportCostosPruebas');
 $routes->get('reports/valoresReferencia', 'Reports::valoresReferencia');

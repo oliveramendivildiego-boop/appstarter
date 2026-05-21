@@ -1378,6 +1378,83 @@ class Reports extends SecureArea
     }
 
     /**
+     * Lista editable de precios (mismo catálogo que costosPruebas).
+     */
+    public function editarCostosPruebas()
+    {
+        $busqueda = $this->request->getGet('busqueda') ?? '';
+        $data     = $this->reportModel->getCostosPruebas($busqueda);
+
+        return view('reports/editar_costos_pruebas', [
+            'title'           => 'Editar costos de pruebas',
+            'current_module'  => 'reports',
+            'subtitle'        => 'Actualice precio y precio derivado manual o masivamente',
+            'data'            => $data,
+            'busqueda'        => $busqueda,
+            'allowed_modules' => $this->allowed_modules,
+            'user_info'       => $this->user_info,
+        ]);
+    }
+
+    /**
+     * Guardar cambios masivos de precios desde la lista editable.
+     */
+    public function saveCostosPruebas()
+    {
+        $busqueda = trim((string) ($this->request->getPost('busqueda') ?? ''));
+        $precios  = $this->request->getPost('precio');
+        $deriv    = $this->request->getPost('precio_derivado');
+
+        if (! is_array($precios) || $precios === []) {
+            return redirect()->to('reports/editarCostosPruebas' . ($busqueda !== '' ? '?busqueda=' . urlencode($busqueda) : ''))
+                ->with('error', 'No se recibieron precios para guardar.');
+        }
+
+        $items = [];
+        foreach ($precios as $id => $valor) {
+            $id = (int) $id;
+            if ($id < 1) {
+                continue;
+            }
+            $items[$id] = [
+                'cost'       => max(0, (int) $valor),
+                'cost_deriv' => max(0, (int) (is_array($deriv) ? ($deriv[$id] ?? $valor) : $valor)),
+            ];
+        }
+
+        if ($items === []) {
+            return redirect()->to('reports/editarCostosPruebas' . ($busqueda !== '' ? '?busqueda=' . urlencode($busqueda) : ''))
+                ->with('error', 'No hay pruebas válidas para actualizar.');
+        }
+
+        $result = $this->labotestModel->updateCostsBulk($items);
+
+        \App\Models\AuditoriaModel::log(
+            'reports',
+            'actualizar_costos_pruebas',
+            'bulk',
+            \App\Models\AuditoriaModel::detail([
+                'actualizadas' => $result['updated'],
+                'omitidas'     => $result['skipped'],
+                'busqueda'     => $busqueda,
+            ])
+        );
+
+        $redirect = 'reports/editarCostosPruebas' . ($busqueda !== '' ? '?busqueda=' . urlencode($busqueda) : '');
+
+        if ($result['updated'] < 1) {
+            return redirect()->to($redirect)->with('error', 'No se pudo guardar ningún precio.');
+        }
+
+        $msg = 'Se actualizaron ' . $result['updated'] . ' prueba(s).';
+        if ($result['skipped'] > 0) {
+            $msg .= ' (' . $result['skipped'] . ' omitida(s)).';
+        }
+
+        return redirect()->to($redirect)->with('success', $msg);
+    }
+
+    /**
      * Kardex de inventario.
      * Reutiliza el módulo de inventario para evitar duplicar lógica.
      */

@@ -216,7 +216,7 @@ class Registers extends SecureArea
     {
         $labelSinDoctor = $this->getLabelSinDoctorConfig();
 
-        $html = '<div class="table-responsive"><table class="table table-bordered table-striped registros-table"><thead><tr>';
+        $html = '<div class="table-responsive registros-table-responsive"><table class="table table-bordered table-striped registros-table"><thead><tr>';
         $html .= '<th>Código</th><th>Paciente</th><th>Doctor</th><th>Total</th><th>Saldo</th><th class="text-end">Acciones</th>';
         $html .= '</tr></thead><tbody>';
 
@@ -266,8 +266,8 @@ class Registers extends SecureArea
                 $editOrderTitle = $hasRegvalues ? 'Agregar más pruebas a la orden' : 'Editar prueba (orden)';
                 $html .= '<a href="' . site_url('registers/edit/' . $rid) . '" class="btn btn-sm btn-outline-success btn-icono-accion" title="' . esc($editOrderTitle) . '"><i class="fa-solid fa-flask"></i></a>';
                 $btnMasClass = ($saldoNum > 0) ? 'btn-warning' : 'btn-outline-secondary';
-                $html .= '<div class="dropdown">';
-                $html .= '<button class="btn btn-sm ' . $btnMasClass . ' dropdown-toggle btn-accion-mas" type="button" data-bs-toggle="dropdown" aria-expanded="false" title="Más acciones"><i class="fa-solid fa-ellipsis"></i><span class="ms-1 d-none d-md-inline">Más</span></button>';
+                $html .= '<div class="dropup dropdown position-static registros-dropdown-mas">';
+                $html .= '<button class="btn btn-sm ' . $btnMasClass . ' dropdown-toggle btn-accion-mas" type="button" data-bs-toggle="dropdown" data-bs-popper-config=\'{"strategy":"fixed","placement":"bottom-end","fallbackPlacements":["top-end","bottom-end"]}\' aria-expanded="false" title="Más acciones"><i class="fa-solid fa-ellipsis"></i><span class="ms-1 d-none d-md-inline">Más</span></button>';
                 $html .= '<ul class="dropdown-menu dropdown-menu-end shadow-sm registros-acciones-menu">';
                 $pacientePhone = trim($r->paciente_phone ?? '');
                 $doctorPhone   = trim($r->doctor_phone ?? '');

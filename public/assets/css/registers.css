@@ -57,6 +57,23 @@
 
 .registros-table .registros-acciones-menu {
     min-width: 235px;
+    max-height: min(70vh, 420px);
+    overflow-y: auto;
+}
+
+.registros-table .registros-dropdown-mas.dropup .registros-acciones-menu {
+    margin-bottom: 0.25rem;
+}
+
+/* Evitar que el menú «Más» quede recortado por el scroll del contenedor de la tabla */
+.registros-table-responsive {
+    overflow-x: auto;
+    overflow-y: visible;
+    -webkit-overflow-scrolling: touch;
+}
+
+.registros-table-responsive .registros-acciones-col {
+    overflow: visible;
 }
 
 @media (max-width: 767.98px) {

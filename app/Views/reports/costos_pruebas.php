@@ -17,6 +17,10 @@ $currencyIsRight = strtolower(trim($currencySide)) === 'right';
             <p class="text-muted"><?= esc($subtitle) ?></p>
         </div>
         <div class="d-print-none d-flex flex-wrap gap-2 align-items-center">
+            <a href="<?= site_url('reports/editarCostosPruebas') ?><?= ! empty($busqueda) ? '?busqueda=' . urlencode($busqueda) : '' ?>"
+               class="btn btn-warning btn-sm">
+                <i class="fas fa-edit me-1"></i> Editar precios
+            </a>
             <?= view('reports/partials/report_actions', [
                 'pdf_url' => site_url('reports/costosPruebasPdf?' . http_build_query(['busqueda' => $busqueda ?? ''])),
             ]) ?>

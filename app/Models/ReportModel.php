@@ -198,11 +198,13 @@ class ReportModel extends Model
         $pri = $this->db->prefixTable('prianacategoria');
 
         $builder = $this->db->table('anacategoria')
-            ->select("{$ana}.name as categoria, {$pri}.name as prueba, 
+            ->select("{$ana}.name as categoria, {$pri}.name as prueba,
+                      {$pri}.prianacategoria_id,
                       {$pri}.cost as precio, {$pri}.cost_deriv as precio_derivado,
                       {$pri}.order as orden_prueba, {$ana}.order as orden_categoria")
             ->join('prianacategoria', "{$ana}.anacategoria_id = {$pri}.anacategoria_id AND ({$pri}.deleted = 0 OR {$pri}.deleted IS NULL)", 'left')
-            ->where("({$ana}.deleted = 0 OR {$ana}.deleted IS NULL)");
+            ->where("({$ana}.deleted = 0 OR {$ana}.deleted IS NULL)")
+            ->where("{$pri}.prianacategoria_id IS NOT NULL");
 
         if (!empty($busqueda)) {
             $builder->groupStart()

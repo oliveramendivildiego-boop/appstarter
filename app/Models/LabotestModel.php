@@ -860,6 +860,54 @@ class LabotestModel extends Model
     }
 
     /**
+     * Actualiza cost y cost_deriv de varias pruebas (prianacategoria_id => valores).
+     *
+     * @param array<int, array{cost?: int, cost_deriv?: int}> $items
+     * @return array{updated: int, skipped: int}
+     */
+    public function updateCostsBulk(array $items): array
+    {
+        $updated = 0;
+        $skipped = 0;
+
+        if ($items === []) {
+            return ['updated' => 0, 'skipped' => 0];
+        }
+
+        $this->db->transStart();
+
+        foreach ($items as $id => $row) {
+            $id = (int) $id;
+            if ($id < 1 || ! is_array($row)) {
+                $skipped++;
+                continue;
+            }
+
+            $ok = $this->db->table('prianacategoria')
+                ->where('prianacategoria_id', $id)
+                ->where('(deleted = 0 OR deleted IS NULL)')
+                ->update([
+                    'cost'       => max(0, (int) ($row['cost'] ?? 0)),
+                    'cost_deriv' => max(0, (int) ($row['cost_deriv'] ?? 0)),
+                ]);
+
+            if ($ok) {
+                $updated++;
+            } else {
+                $skipped++;
+            }
+        }
+
+        $this->db->transComplete();
+
+        if (! $this->db->transStatus()) {
+            return ['updated' => 0, 'skipped' => count($items)];
+        }
+
+        return ['updated' => $updated, 'skipped' => $skipped];
+    }
+
+    /**
      * Guardar subgrupo (prianacategoria) - sin cost en esta ventana, se usa 0 por defecto
      */
     public function saveSubCategory(array $data, $id = null): bool

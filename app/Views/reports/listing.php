@@ -62,6 +62,10 @@
                     <i class="fas fa-dollar-sign me-2"></i> Costos de todas las pruebas
                 </a>
                 <p class="list-group-item small text-muted mb-0">Precio y precio derivado de todas las pruebas del sistema.</p>
+                <a href="<?= site_url('reports/editarCostosPruebas') ?>" class="list-group-item list-group-item-action">
+                    <i class="fas fa-edit me-2"></i> Editar costos de pruebas
+                </a>
+                <p class="list-group-item small text-muted mb-0">Lista editable para actualizar precios manual o masivamente.</p>
                 <a href="<?= site_url('reports/valoresReferencia') ?>" class="list-group-item list-group-item-action">
                     <i class="fas fa-chart-line me-2"></i> Valores de referencia
                 </a>
