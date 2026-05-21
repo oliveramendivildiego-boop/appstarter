@@ -304,6 +304,14 @@ class RegisterModel extends Model
     }
 
     /**
+     * Nombre del paciente para listados: apellido paterno, materno, nombres.
+     */
+    private function sqlPacienteNombreLista(string $peopleAlias): string
+    {
+        return "TRIM(CONCAT_WS(' ', NULLIF(TRIM({$peopleAlias}.last_name_fa), ''), NULLIF(TRIM({$peopleAlias}.last_name_mom), ''), NULLIF(TRIM({$peopleAlias}.first_name), '')))";
+    }
+
+    /**
      * Obtiene todos los registros de análisis con paciente, doctor y pago
      */
     public function getAllAnalisis(int $limit = 10000, int $offset = 0, string $estado = ''): array
@@ -313,9 +321,10 @@ class RegisterModel extends Model
         $d  = $this->db->prefixTable('doctors');
         $pa = $this->db->prefixTable('pago');
         $rv = $this->db->prefixTable('regvalues');
+        $pacienteSql = $this->sqlPacienteNombreLista($p);
 
         $builder = $this->db->table('registro')
-            ->select("{$r}.*, CONCAT({$p}.first_name, ' ', {$p}.last_name_fa, ' ', {$p}.last_name_mom) AS paciente,
+            ->select("{$r}.*, {$pacienteSql} AS paciente,
                 {$p}.phone_number as paciente_phone,
                 {$d}.name as doctor, {$d}.phone_number as doctor_phone,
                 {$pa}.total as total, {$pa}.monto_pagar as monto_pagar, {$pa}.tipopago as tipopago, {$pa}.saldo as saldo,
@@ -386,9 +395,10 @@ class RegisterModel extends Model
         $d  = $this->db->prefixTable('doctors');
         $pa = $this->db->prefixTable('pago');
         $rv = $this->db->prefixTable('regvalues');
+        $pacienteSql = $this->sqlPacienteNombreLista($p);
 
         $builder = $this->db->table('registro')
-            ->select("{$r}.*, CONCAT({$p}.first_name, ' ', {$p}.last_name_fa, ' ', {$p}.last_name_mom) AS paciente,
+            ->select("{$r}.*, {$pacienteSql} AS paciente,
                 {$p}.first_name, {$p}.last_name_fa, {$p}.last_name_mom, {$p}.ci, {$p}.phone_number as paciente_phone,
                 {$d}.name as doctor, {$d}.phone_number as doctor_phone,
                 {$pa}.total as total, {$pa}.monto_pagar as monto_pagar, {$pa}.tipopago as tipopago, {$pa}.saldo as saldo,
@@ -2290,8 +2300,9 @@ class RegisterModel extends Model
         $pt = $this->db->prefixTable('prianacategoria');
         $a = $this->db->prefixTable('anacategoria');
 
+        $pacienteSql = $this->sqlPacienteNombreLista($p);
         $reg = $this->db->table('registro')
-            ->select("{$r}.*, CONCAT({$p}.first_name, ' ', {$p}.last_name_fa, ' ', {$p}.last_name_mom) AS paciente, {$d}.name as doctor")
+            ->select("{$r}.*, {$pacienteSql} AS paciente, {$d}.name as doctor")
             ->join('people', "{$p}.person_id = {$r}.person_id")
             ->join('doctors', "{$d}.doctor_id = {$r}.doctor_id", 'left')
             ->where("{$r}.registro_id", $registroId)

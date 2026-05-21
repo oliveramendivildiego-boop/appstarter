@@ -88,6 +88,26 @@ if (! function_exists('registro_tiene_rango_referencial')) {
     }
 }
 
+if (! function_exists('paciente_nombre_display')) {
+    /**
+     * Nombre del paciente: apellido paterno, apellido materno, nombres.
+     */
+    function paciente_nombre_display(object|array|null $person): string
+    {
+        if ($person === null) {
+            return '';
+        }
+        $lastFa = trim(is_object($person) ? (string) ($person->last_name_fa ?? '') : (string) ($person['last_name_fa'] ?? ''));
+        $lastMom = trim(is_object($person) ? (string) ($person->last_name_mom ?? '') : (string) ($person['last_name_mom'] ?? ''));
+        $first = trim(is_object($person) ? (string) ($person->first_name ?? '') : (string) ($person['first_name'] ?? ''));
+        if ($lastFa !== '' || $lastMom !== '' || $first !== '') {
+            return trim(implode(' ', array_filter([$lastFa, $lastMom, $first], static fn (string $p): bool => $p !== '')));
+        }
+
+        return trim(is_object($person) ? (string) ($person->paciente ?? '') : (string) ($person['paciente'] ?? ''));
+    }
+}
+
 if (! function_exists('paciente_genero_texto')) {
     /**
      * Texto de género según people.gender (1=Masculino, 2=Femenino).

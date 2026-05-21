@@ -248,7 +248,7 @@ class Registers extends SecureArea
                 $html .= ' <span class="badge bg-danger ms-1"><i class="fa-solid fa-triangle-exclamation me-1"></i>Urgente</span>';
             }
             $html .= '</td>';
-            $html .= '<td>' . esc($r->paciente ?? '') . '</td>';
+            $html .= '<td>' . esc(paciente_nombre_display($r)) . '</td>';
             $html .= '<td>' . ($hasDoctor ? esc($r->doctor ?? '') : '<span class="text-muted">' . esc($labelSinDoctor) . '</span>') . '</td>';
             $html .= '<td>' . esc($r->total ?? '') . '</td>';
             $html .= '<td>' . esc($r->saldo ?? '') . '</td>';
@@ -295,7 +295,7 @@ class Registers extends SecureArea
                 if ($whatsappConfigured) {
                     if ($hasRegvalues) {
                         $docWa = $hasDoctor ? ($r->doctor ?? '') : $labelSinDoctor;
-                        $html .= '<li><button type="button" class="dropdown-item btn-whatsapp-pdf" data-id="' . $rid . '" data-paciente="' . esc($r->paciente ?? '') . '" data-doctor="' . esc($docWa) . '" data-paciente-phone="' . esc($pacientePhone) . '" data-doctor-phone="' . esc($doctorPhone) . '" data-ingreso="' . esc($r->ingreso ?? '') . '"><i class="fa-brands fa-whatsapp me-2 text-success"></i>Enviar por WhatsApp</button></li>';
+                        $html .= '<li><button type="button" class="dropdown-item btn-whatsapp-pdf" data-id="' . $rid . '" data-paciente="' . esc(paciente_nombre_display($r)) . '" data-doctor="' . esc($docWa) . '" data-paciente-phone="' . esc($pacientePhone) . '" data-doctor-phone="' . esc($doctorPhone) . '" data-ingreso="' . esc($r->ingreso ?? '') . '"><i class="fa-brands fa-whatsapp me-2 text-success"></i>Enviar por WhatsApp</button></li>';
                     } else {
                         $html .= '<li><span class="dropdown-item text-muted disabled"><i class="fa-brands fa-whatsapp me-2"></i>Enviar por WhatsApp (sin resultados)</span></li>';
                     }
