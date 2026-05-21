@@ -980,7 +980,7 @@ class RegisterService
         $grupos = $this->applyReferenceVisibility($grupos, $eligiblePriaIds);
         $grupos = $this->dropGruposSinValorIngresado($grupos);
 
-        $reportLabFirmas = $this->buildLabFirmasParaReporte($analisis, (string) ($registerInfo->pruebas ?? ''));
+        $reportLabFirmas = $this->buildLabFirmasParaReporte($analisis, (string) ($registerInfo->pruebas ?? ''), array_keys($grupos));
         $reportPriaRefsConsolidada = $this->buildReportPriaRefsConsolidada($eligiblePriaConfig);
 
         return [
@@ -997,11 +997,25 @@ class RegisterService
     }
 
     /**
-     * Validación y aprobación por prueba (regvalues lab_val_pri_*, lab_app_pri_* + config).
+     * Clave estable para validación por área (nombre del grupo / padre).
+     */
+    public static function labGrupoFirmaKey(string $padre): string
+    {
+        $p = trim($padre);
+        if ($p === '') {
+            return '';
+        }
+
+        return substr(hash('sha256', 'lab_grp|' . mb_strtolower($p, 'UTF-8')), 0, 16);
+    }
+
+    /**
+     * Validación y aprobación por área (lab_val_grp_*, lab_app_grp_*) o por prueba (legacy lab_val_pri_*).
      *
+     * @param list<string> $gruposPadreOrden Nombres de área en orden de reporte
      * @return list<array{prianacategoria_id:int, prueba_nombre:string, validator_name:string, approver_name:string, approver_cargo:string, approver_matricula:string, approver_seal:string, approver_signature:string}>
      */
-    public function buildLabFirmasParaReporte(array $analisisRows, string $pruebasCsv): array
+    public function buildLabFirmasParaReporte(array $analisisRows, string $pruebasCsv, array $gruposPadreOrden = []): array
     {
         $byName = [];
         foreach ($analisisRows as $r) {
@@ -1027,6 +1041,97 @@ class RegisterService
             if ($id !== '') {
                 $appById[$id] = $a;
             }
+        }
+
+        $resolveFirmaRow = static function (string $valId, string $appId) use ($valById, $appById): array {
+            $vName = '';
+            if ($valId !== '') {
+                $vName = (string) ($valById[$valId]['name'] ?? '');
+                if ($vName === '') {
+                    $vName = $valId;
+                }
+            }
+            $approver = ($appId !== '' && isset($appById[$appId])) ? $appById[$appId] : null;
+            $aName      = '';
+            $aCargo     = '';
+            $aMatricula = '';
+            $aSeal      = '';
+            $aSig       = '';
+            if ($appId !== '') {
+                if (is_array($approver)) {
+                    $aName      = trim((string) ($approver['name'] ?? ''));
+                    $aCargo     = trim((string) ($approver['cargo'] ?? ''));
+                    $aMatricula = trim((string) ($approver['matricula'] ?? ''));
+                    $aSeal      = trim((string) ($approver['seal'] ?? ''));
+                    $aSig       = trim((string) ($approver['signature'] ?? ''));
+                }
+                if ($aName === '') {
+                    $aName = $appId;
+                }
+            }
+
+            return [
+                'validator_name'     => $vName,
+                'approver_name'      => $aName,
+                'approver_cargo'     => $aCargo,
+                'approver_matricula' => $aMatricula,
+                'approver_seal'      => $aSeal,
+                'approver_signature' => $aSig,
+            ];
+        };
+
+        $grpCandidates = [];
+        foreach (array_keys($byName) as $k) {
+            if (preg_match('/^lab_val_grp_([a-f0-9]{16})$/', $k, $m) === 1) {
+                $grpCandidates[$m[1]] = true;
+            }
+            if (preg_match('/^lab_app_grp_([a-f0-9]{16})$/', $k, $m) === 1) {
+                $grpCandidates[$m[1]] = true;
+            }
+        }
+
+        if ($grpCandidates !== []) {
+            $grpKeyToPadre = [];
+            foreach ($gruposPadreOrden as $padre) {
+                $padre = trim((string) $padre);
+                $key   = self::labGrupoFirmaKey($padre);
+                if ($key !== '') {
+                    $grpKeyToPadre[$key] = $padre;
+                }
+            }
+            foreach (array_keys($grpCandidates) as $key) {
+                if (! isset($grpKeyToPadre[$key])) {
+                    $grpKeyToPadre[$key] = 'Área';
+                }
+            }
+
+            $orderedGrpKeys = [];
+            foreach ($gruposPadreOrden as $padre) {
+                $key = self::labGrupoFirmaKey(trim((string) $padre));
+                if ($key !== '' && isset($grpCandidates[$key]) && ! in_array($key, $orderedGrpKeys, true)) {
+                    $orderedGrpKeys[] = $key;
+                }
+            }
+            foreach (array_keys($grpCandidates) as $key) {
+                if (! in_array($key, $orderedGrpKeys, true)) {
+                    $orderedGrpKeys[] = $key;
+                }
+            }
+
+            $out = [];
+            foreach ($orderedGrpKeys as $grpKey) {
+                $valId = trim($byName['lab_val_grp_' . $grpKey] ?? '');
+                $appId = trim($byName['lab_app_grp_' . $grpKey] ?? '');
+                if ($valId === '' && $appId === '') {
+                    continue;
+                }
+                $out[] = array_merge([
+                    'prianacategoria_id' => 0,
+                    'prueba_nombre'      => $grpKeyToPadre[$grpKey] ?? 'Área',
+                ], $resolveFirmaRow($valId, $appId));
+            }
+
+            return $this->consolidarLabFirmasSiIguales($out);
         }
 
         $candidateIds = [];
@@ -1065,68 +1170,48 @@ class RegisterService
             if ($pName === '') {
                 $pName = 'Prueba #' . $pid;
             }
-            $vName = '';
-            if ($valId !== '') {
-                $vName = (string) ($valById[$valId]['name'] ?? '');
-                if ($vName === '') {
-                    $vName = $valId;
-                }
-            }
-            $approver = ($appId !== '' && isset($appById[$appId])) ? $appById[$appId] : null;
-            $aName      = '';
-            $aCargo     = '';
-            $aMatricula = '';
-            $aSeal      = '';
-            $aSig       = '';
-            if ($appId !== '') {
-                if (is_array($approver)) {
-                    $aName      = trim((string) ($approver['name'] ?? ''));
-                    $aCargo     = trim((string) ($approver['cargo'] ?? ''));
-                    $aMatricula = trim((string) ($approver['matricula'] ?? ''));
-                    $aSeal      = trim((string) ($approver['seal'] ?? ''));
-                    $aSig       = trim((string) ($approver['signature'] ?? ''));
-                }
-                if ($aName === '') {
-                    $aName = $appId;
-                }
-            }
-            $out[] = [
-                'prianacategoria_id'   => $pid,
-                'prueba_nombre'        => $pName,
-                'validator_name'       => $vName,
-                'approver_name'        => $aName,
-                'approver_cargo'       => $aCargo,
-                'approver_matricula'   => $aMatricula,
-                'approver_seal'        => $aSeal,
-                'approver_signature'   => $aSig,
-            ];
+            $out[] = array_merge([
+                'prianacategoria_id' => $pid,
+                'prueba_nombre'      => $pName,
+            ], $resolveFirmaRow($valId, $appId));
         }
 
-        if (count($out) > 1) {
-            $firmaKey = static function (array $row): string {
-                return implode("\0", [
-                    (string) ($row['validator_name'] ?? ''),
-                    (string) ($row['approver_name'] ?? ''),
-                    (string) ($row['approver_cargo'] ?? ''),
-                    (string) ($row['approver_matricula'] ?? ''),
-                    (string) ($row['approver_seal'] ?? ''),
-                    (string) ($row['approver_signature'] ?? ''),
-                ]);
-            };
-            $ref = $firmaKey($out[0]);
-            $allSame = true;
-            foreach ($out as $row) {
-                if ($firmaKey($row) !== $ref) {
-                    $allSame = false;
-                    break;
-                }
-            }
-            if ($allSame) {
-                $first = $out[0];
-                $first['prueba_nombre'] = '';
+        return $this->consolidarLabFirmasSiIguales($out);
+    }
 
-                return [$first];
+    /**
+     * @param list<array<string, mixed>> $out
+     * @return list<array<string, mixed>>
+     */
+    protected function consolidarLabFirmasSiIguales(array $out): array
+    {
+        if (count($out) <= 1) {
+            return $out;
+        }
+
+        $firmaKey = static function (array $row): string {
+            return implode("\0", [
+                (string) ($row['validator_name'] ?? ''),
+                (string) ($row['approver_name'] ?? ''),
+                (string) ($row['approver_cargo'] ?? ''),
+                (string) ($row['approver_matricula'] ?? ''),
+                (string) ($row['approver_seal'] ?? ''),
+                (string) ($row['approver_signature'] ?? ''),
+            ]);
+        };
+        $ref     = $firmaKey($out[0]);
+        $allSame = true;
+        foreach ($out as $row) {
+            if ($firmaKey($row) !== $ref) {
+                $allSame = false;
+                break;
             }
+        }
+        if ($allSame) {
+            $first = $out[0];
+            $first['prueba_nombre'] = '';
+
+            return [$first];
         }
 
         return $out;

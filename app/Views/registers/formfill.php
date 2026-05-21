@@ -57,7 +57,9 @@ if (empty($pruebas_info)):
 <div class="alert alert-warning">No hay pruebas para completar en este registro. <a href="<?= site_url('registers') ?>">Volver a registros</a></div>
 <?php
 else:
-$labFirmaPriaIds = [];
+$labGruposFirma = [];
+$labFirmaLvList = $lab_validators ?? [];
+$labFirmaLaList = $lab_approvers ?? [];
 foreach ($pruebas_info ?? [] as $pruebaFirmaScan):
     $mostrarFirma = true;
     if (($pruebaFirmaScan['compleja'] ?? 0) == 1) {
@@ -76,14 +78,43 @@ foreach ($pruebas_info ?? [] as $pruebaFirmaScan):
     if (! $mostrarFirma) {
         continue;
     }
+    $padreFirma = trim((string) ($pruebaFirmaScan['padre'] ?? ''));
+    $grpKeyFirma = \App\Services\RegisterService::labGrupoFirmaKey($padreFirma);
+    if ($grpKeyFirma === '') {
+        continue;
+    }
+    if (! isset($labGruposFirma[$grpKeyFirma])) {
+        $labGruposFirma[$grpKeyFirma] = ['padre' => $padreFirma, 'pria_ids' => []];
+    }
     $pidF = (int) ($pruebaFirmaScan['prianacategoria_id'] ?? 0);
-    if ($pidF > 0 && ! in_array($pidF, $labFirmaPriaIds, true)) {
-        $labFirmaPriaIds[] = $pidF;
+    if ($pidF > 0 && ! in_array($pidF, $labGruposFirma[$grpKeyFirma]['pria_ids'], true)) {
+        $labGruposFirma[$grpKeyFirma]['pria_ids'][] = $pidF;
     }
 endforeach;
+$renderLabFirmaGrupoCerrado = static function (string $padreCerrado) use ($labGruposFirma, $existentes, $labFirmaLvList, $labFirmaLaList): void {
+    $padreCerrado = trim($padreCerrado);
+    if ($padreCerrado === '') {
+        return;
+    }
+    $grpKey = \App\Services\RegisterService::labGrupoFirmaKey($padreCerrado);
+    if ($grpKey === '' || ! isset($labGruposFirma[$grpKey])) {
+        return;
+    }
+    echo view('registers/partials/lab_firma_grupo', [
+        'padre_label'      => $labGruposFirma[$grpKey]['padre'],
+        'grp_key'          => $grpKey,
+        'existentes'       => $existentes,
+        'lv_list'          => $labFirmaLvList,
+        'la_list'          => $labFirmaLaList,
+        'pria_ids_legacy'  => $labGruposFirma[$grpKey]['pria_ids'],
+    ]);
+};
 foreach ($pruebas_info ?? [] as $prueba):
     if (($prueba['padre'] ?? '') != $last_padre):
-        if ($last_padre !== '') echo '</div>';
+        if ($last_padre !== '') {
+            $renderLabFirmaGrupoCerrado($last_padre);
+            echo '</div>';
+        }
         echo '<div class="row mb-3"><div class="col-12"><strong class="text-uppercase">' . esc($prueba['padre'] ?? '') . '</strong></div>';
         $last_padre = $prueba['padre'] ?? '';
     endif;
@@ -323,58 +354,10 @@ foreach ($pruebas_info ?? [] as $prueba):
         endforeach;
     endif;
 endforeach;
-if ($last_padre !== '') echo '</div>';
-if ($labFirmaPriaIds !== []):
-    $lvList = $lab_validators ?? [];
-    $laList = $lab_approvers ?? [];
-    $curV = '';
-    $curA = '';
-    foreach ($labFirmaPriaIds as $pidFirma) {
-        if ($curV === '') {
-            $tV = trim((string) ($existentes['lab_val_pri_' . $pidFirma] ?? ''));
-            if ($tV !== '') {
-                $curV = $tV;
-            }
-        }
-        if ($curA === '') {
-            $tA = trim((string) ($existentes['lab_app_pri_' . $pidFirma] ?? ''));
-            if ($tA !== '') {
-                $curA = $tA;
-            }
-        }
-    }
-?>
-<div class="row mb-3 mt-2">
-    <div class="col-12">
-        <div id="lab-registro-firmas-wrap" class="p-3 border rounded bg-light" data-pria-ids="<?= esc(json_encode($labFirmaPriaIds), 'attr') ?>">
-            <div class="fw-semibold small text-uppercase text-muted mb-2">Validación del laboratorio (todas las pruebas)</div>
-            <div class="row g-2 align-items-end">
-                <div class="col-md-6">
-                    <label class="form-label small text-muted mb-0" for="lab-registro-val-validator">Verificado por:</label>
-                    <select id="lab-registro-val-validator" class="form-select form-select-sm">
-                        <option value="">—</option>
-                        <?php foreach ($lvList as $lv): ?>
-                            <?php $lid = (string) ($lv['id'] ?? ''); ?>
-                            <option value="<?= esc($lid) ?>" <?= ($curV !== '' && $curV === $lid) ? 'selected' : '' ?>><?= esc($lv['name'] ?? '') ?></option>
-                        <?php endforeach; ?>
-                    </select>
-                </div>
-                <div class="col-md-6">
-                    <label class="form-label small text-muted mb-0" for="lab-registro-val-approver">ATENTAMENTE</label>
-                    <select id="lab-registro-val-approver" class="form-select form-select-sm">
-                        <option value="">—</option>
-                        <?php foreach ($laList as $la): ?>
-                            <?php $aid = (string) ($la['id'] ?? ''); ?>
-                            <option value="<?= esc($aid) ?>" <?= ($curA !== '' && $curA === $aid) ? 'selected' : '' ?>><?= esc($la['name'] ?? '') ?></option>
-                        <?php endforeach; ?>
-                    </select>
-                </div>
-            </div>
-        </div>
-    </div>
-</div>
-<?php
-endif;
+if ($last_padre !== '') {
+    $renderLabFirmaGrupoCerrado($last_padre);
+    echo '</div>';
+}
 endif;
 ?>
 <?php if (!empty($pruebas_info)): ?>
@@ -643,25 +626,19 @@ document.addEventListener('DOMContentLoaded', function() {
             if (!id) return;
             datos.push({ id: id, valor: valor, registro_id: registroId });
         });
-        var firmaWrap = document.getElementById('lab-registro-firmas-wrap');
-        if (firmaWrap) {
-            try {
-                var priaIds = JSON.parse(firmaWrap.getAttribute('data-pria-ids') || '[]');
-                if (Array.isArray(priaIds) && priaIds.length) {
-                    var vSel = document.getElementById('lab-registro-val-validator');
-                    var aSel = document.getElementById('lab-registro-val-approver');
-                    var registroIdF = document.getElementById('registro_id').value;
-                    if (registroIdF && vSel && aSel) {
-                        var vVal = (vSel.value || '').trim();
-                        var aVal = (aSel.value || '').trim();
-                        priaIds.forEach(function(pid) {
-                            datos.push({ id: 'lab_val_pri_' + pid, valor: vVal, registro_id: registroIdF });
-                            datos.push({ id: 'lab_app_pri_' + pid, valor: aVal, registro_id: registroIdF });
-                        });
-                    }
-                }
-            } catch (e) { /* ignore */ }
-        }
+        var registroIdF = document.getElementById('registro_id').value;
+        document.querySelectorAll('.lab-registro-firmas-grupo').forEach(function(wrap) {
+            var grpKey = (wrap.getAttribute('data-grp-key') || '').trim();
+            if (!grpKey || !registroIdF) return;
+            var vSel = wrap.querySelector('.lab-grp-val-validator');
+            var aSel = wrap.querySelector('.lab-grp-val-approver');
+            if (!vSel || !aSel) return;
+            var vVal = (vSel.value || '').trim();
+            var aVal = (aSel.value || '').trim();
+            if (vVal === '' && aVal === '') return;
+            datos.push({ id: 'lab_val_grp_' + grpKey, valor: vVal, registro_id: registroIdF });
+            datos.push({ id: 'lab_app_grp_' + grpKey, valor: aVal, registro_id: registroIdF });
+        });
         var csrfName = (typeof window.CI_CSRF_TOKEN_NAME !== 'undefined' ? window.CI_CSRF_TOKEN_NAME : null) || (document.querySelector('meta[name="csrf-token-name"]') && document.querySelector('meta[name="csrf-token-name"]').getAttribute('content'));
         var csrfVal = (typeof window.CI_CSRF_TOKEN !== 'undefined' ? window.CI_CSRF_TOKEN : null) || (document.querySelector('meta[name="csrf-token"]') && document.querySelector('meta[name="csrf-token"]').getAttribute('content'));
         var body = 'data=' + encodeURIComponent(JSON.stringify(datos));

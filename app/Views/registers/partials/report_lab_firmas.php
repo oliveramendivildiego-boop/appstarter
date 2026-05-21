@@ -10,7 +10,7 @@ $imgNone = 'border: none; outline: none; box-shadow: none; background: transpare
     <div class="card-header"><strong>Validación y aprobación</strong></div>
     <div class="card-body">
         <?php foreach ($report_lab_firmas as $idx => $firma): ?>
-            <?php if ($multi): ?>
+            <?php if ($multi && trim((string) ($firma['prueba_nombre'] ?? '')) !== ''): ?>
                 <div class="fw-semibold text-uppercase small text-muted border-bottom pb-1 mb-3"><?= esc($firma['prueba_nombre'] ?? '') ?></div>
             <?php endif; ?>
             <?php
