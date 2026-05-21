@@ -138,6 +138,7 @@ class Customers extends PersonController
             'phone_number' => $this->request->getPost('phone_number'),
             'birthday'     => $this->request->getPost('birthday'),
             'gender'       => $this->request->getPost('gender'),
+            'address_1'    => trim((string) ($this->request->getPost('address_1') ?? '')) ?: null,
             'comments'     => $this->request->getPost('comments'),
             'person_id'    => $this->request->getPost('person_id'),
         ];

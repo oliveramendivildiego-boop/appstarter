@@ -74,6 +74,10 @@ class Validation extends BaseConfig
             'rules'  => 'required|in_list[1,2]',
             'errors' => ['required' => 'Seleccione el género.'],
         ],
+        'address_1' => [
+            'rules'  => 'permit_empty|max_length[255]',
+            'errors' => ['max_length' => 'La dirección no puede superar 255 caracteres.'],
+        ],
     ];
 
     /**

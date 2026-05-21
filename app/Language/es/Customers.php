@@ -16,4 +16,5 @@ return [
     'customers_account_number'        => 'Cuenta #',
     'customers_taxable'               => 'Gravable',
     'customers_gender'                => 'Género',
+    'customers_address'               => 'Dirección',
 ];

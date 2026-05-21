@@ -20,6 +20,19 @@
 <fieldset id="customer_basic_info">
     <?= view('people/form_basic_info', ['person_info' => $person_info]) ?>
     <div class="row">
+        <div class="col-md-12 mb-3">
+            <?= form_label(lang('Customers.customers_address') . ':', 'address_1', ['class' => 'form-label']) ?>
+            <?= form_input([
+                'name' => 'address_1',
+                'id' => 'address_1',
+                'class' => 'form-control',
+                'value' => esc($person_info->address_1 ?? ''),
+                'autocomplete' => 'street-address',
+                'placeholder' => 'Ej: Av. Principal #123, Zona Centro',
+            ]) ?>
+        </div>
+    </div>
+    <div class="row">
         <div class="col-md-6 mb-3">
             <?= form_label('Seguro / aseguradora', 'seguro', ['class' => 'form-label']) ?>
             <?= form_input(['name' => 'seguro', 'id' => 'seguro', 'class' => 'form-control', 'value' => esc($person_info->seguro ?? '')]) ?>
@@ -81,14 +94,16 @@ $(document).ready(function() {
             last_name_fa: { required: true, minlength: 2 },
             email: { email: true },
             birthday: { required: true, date: true },
-            gender: { required: true }
+            gender: { required: true },
+            address_1: { maxlength: 255 }
         },
         messages: {
             first_name: { required: "Por favor ingrese su nombre(s)", minlength: "El nombre debe tener al menos 2 caracteres" },
             last_name_fa: { required: "Por favor ingrese su apellido(s)", minlength: "Debe tener al menos 2 caracteres" },
             email: { email: "Ingrese un correo válido" },
             birthday: { required: "Seleccione su fecha de nacimiento", date: "Ingrese una fecha válida" },
-            gender: { required: "Seleccione su género" }
+            gender: { required: "Seleccione su género" },
+            address_1: { maxlength: "La dirección no puede superar 255 caracteres" }
         }
     }));
     <?php if (!empty($validationErrors) && is_array($validationErrors)): ?>

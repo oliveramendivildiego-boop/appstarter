@@ -1,6 +1,18 @@
 <?= $this->extend('layouts/main') ?>
-<?= $this->section('title') ?>Orden de trabajo<?= $this->endSection() ?>
+<?= $this->section('title') ?>Hoja de trabajo<?= $this->endSection() ?>
 <?php
+helper('registro');
+$labCfg = is_array($lab_config ?? null) ? $lab_config : [];
+$labCompany = trim((string) ($labCfg['company'] ?? ''));
+if ($labCompany === '') {
+    $layoutCfg = layout_config();
+    $labCompany = trim((string) ($layoutCfg['company'] ?? 'Laboratorio'));
+}
+$labAddress = trim((string) ($labCfg['address'] ?? ''));
+$labPhone = trim((string) ($labCfg['phone'] ?? ''));
+$codigoOrden = registro_orden_display($register_info);
+$telefonoPaciente = trim((string) ($register_info->phone_number ?? ''));
+$direccionPaciente = trim((string) ($register_info->address_1 ?? ''));
 $nombrePacienteOrden = trim(implode(' ', array_filter([
     $register_info->first_name ?? '',
     $register_info->last_name_fa ?? '',
@@ -42,8 +54,15 @@ if ($doctorOrdenDisplay === '') {
         display: none !important;
     }
 
-    body:not(.print-barcode-labels) #print-area svg,
-    body.print-barcode-labels #barcode-labels-root svg {
+    body:not(.print-barcode-labels) #print-area #orden-barcode {
+        width: 236px !important;
+        height: 86px !important;
+        max-width: 236px !important;
+        max-height: 86px !important;
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+    }
+    body.print-barcode-labels #barcode-labels-root .orden-barcode-label-svg {
         -webkit-print-color-adjust: exact;
         print-color-adjust: exact;
     }
@@ -82,10 +101,79 @@ if ($doctorOrdenDisplay === '') {
         padding: 0.2rem 0.35rem !important;
         margin-bottom: 0.5rem !important;
     }
-    body.print-barcode-labels #barcode-labels-root.barcode-layout-horizontal .barcode-label-item svg {
+    body.print-barcode-labels #barcode-labels-root.barcode-layout-horizontal .barcode-label-item .orden-barcode-label-svg {
+        width: 100% !important;
         max-width: 100% !important;
         height: auto !important;
     }
+
+    #print-area .orden-print-header {
+        display: grid !important;
+        grid-template-columns: 1fr auto 1fr;
+        align-items: start;
+        gap: 0.5rem;
+        margin-bottom: 1rem;
+    }
+    #print-area .orden-print-title {
+        text-align: center;
+        align-self: center;
+    }
+    #print-area .orden-print-title h2 {
+        font-size: 1.35rem;
+        font-weight: 700;
+        margin: 0;
+        text-transform: uppercase;
+        letter-spacing: 0.02em;
+    }
+}
+
+.orden-print-header {
+    display: grid;
+    grid-template-columns: 1fr auto 1fr;
+    align-items: start;
+    gap: 0.75rem;
+    margin-bottom: 1rem;
+}
+.orden-lab-info {
+    font-size: 0.9rem;
+    line-height: 1.35;
+}
+.orden-lab-name {
+    font-weight: 700;
+    font-size: 1rem;
+}
+.orden-print-title {
+    text-align: center;
+    align-self: center;
+}
+.orden-print-title h2 {
+    font-size: 1.25rem;
+    font-weight: 700;
+    margin: 0;
+    text-transform: uppercase;
+    letter-spacing: 0.02em;
+}
+.orden-print-header-spacer {
+    min-height: 1px;
+}
+
+.orden-barcode-box {
+    display: inline-block;
+    line-height: 0;
+    width: 236px;
+    height: 86px;
+}
+#orden-barcode {
+    display: block;
+    box-sizing: border-box;
+    width: 236px !important;
+    height: 86px !important;
+    max-width: 236px !important;
+    max-height: 86px !important;
+}
+.orden-barcode-label-svg {
+    display: block;
+    box-sizing: border-box;
 }
 
 #barcode-labels-root {
@@ -132,14 +220,34 @@ if ($doctorOrdenDisplay === '') {
 
 <div class="card" id="print-area">
     <div class="card-body">
+        <div class="orden-print-header">
+            <div class="orden-lab-info">
+                <div class="orden-lab-name"><?= esc($labCompany) ?></div>
+                <?php if ($labAddress !== ''): ?>
+                    <div><?= esc($labAddress) ?></div>
+                <?php endif; ?>
+                <?php if ($labPhone !== ''): ?>
+                    <div><strong>Tel.</strong> <?= esc($labPhone) ?></div>
+                <?php endif; ?>
+            </div>
+            <div class="orden-print-title">
+                <h2>Hoja de trabajo</h2>
+            </div>
+            <div class="orden-print-header-spacer" aria-hidden="true"></div>
+        </div>
+
         <div class="row mb-2 print-meta-row">
             <div class="col-md-6 print-meta-col">
-                <div><strong>Orden:</strong> #<?= esc($register_info->registro_id ?? '') ?></div>
+                <div><strong>Orden:</strong> <?= esc($codigoOrden) ?></div>
                 <div><strong>Fecha:</strong> <?= esc($fecha ?? '') ?></div>
+                <div><strong>Dirección:</strong> <?= esc($direccionPaciente !== '' ? $direccionPaciente : '-') ?></div>
             </div>
             <div class="col-md-6 print-meta-col">
                 <div><strong>Paciente:</strong> <?= esc($nombrePacienteOrden) ?></div>
                 <div><strong>Edad:</strong> <?= esc($edad_paciente_orden ?? '-') ?></div>
+                <?php if ($telefonoPaciente !== ''): ?>
+                    <div><strong>Tel. paciente:</strong> <?= esc($telefonoPaciente) ?></div>
+                <?php endif; ?>
                 <div><strong>Doctor:</strong> <?= esc($doctorOrdenDisplay) ?></div>
             </div>
         </div>
@@ -171,8 +279,10 @@ if ($doctorOrdenDisplay === '') {
                 <?php if ($nombrePacienteOrden !== ''): ?>
                     <div class="fw-semibold small mb-0"><?= esc($nombrePacienteOrden) ?></div>
                 <?php endif; ?>
-                <svg id="orden-barcode"></svg>
-                <div class="small text-muted mt-1">Orden <?= esc(registro_orden_display($register_info)) ?></div>
+                <div class="orden-barcode-box">
+                    <svg id="orden-barcode"></svg>
+                </div>
+                <div class="small text-muted mt-1">Orden <?= esc($codigoOrden) ?></div>
             </div>
         <?php endif; ?>
     </div>
@@ -183,13 +293,35 @@ if ($doctorOrdenDisplay === '') {
     <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.6/dist/JsBarcode.all.min.js"></script>
     <script>
     document.addEventListener('DOMContentLoaded', function() {
-        var orderId = <?= json_encode(registro_orden_display($register_info), JSON_UNESCAPED_UNICODE) ?>;
+        var orderId = <?= json_encode($codigoOrden, JSON_UNESCAPED_UNICODE) ?>;
         var patientName = <?= json_encode($nombrePacienteOrden, JSON_UNESCAPED_UNICODE) ?>;
         var printLayout = <?= json_encode(($order_barcode_print_layout ?? 'vertical') === 'horizontal' ? 'horizontal' : 'vertical', JSON_UNESCAPED_UNICODE) ?>;
         var sizePct = <?= (int) ($order_barcode_print_size_percent ?? 100) ?>;
         if (sizePct < 30) sizePct = 100;
         if (sizePct > 250) sizePct = 100;
         var sz = sizePct / 100;
+        var ordenBarcodeW = 236;
+        var ordenBarcodeH = 86;
+        var labelBarcodeW = Math.round(236 * sz);
+        var labelBarcodeH = Math.round(86 * sz);
+        function applyBarcodeDimensions(svgEl, w, h, fitCell) {
+            if (!svgEl || !svgEl.getBBox) return;
+            var box = svgEl.getBBox();
+            if (!box.width || !box.height) return;
+            svgEl.setAttribute('viewBox', box.x + ' ' + box.y + ' ' + box.width + ' ' + box.height);
+            svgEl.setAttribute('preserveAspectRatio', 'xMidYMid meet');
+            if (fitCell) {
+                svgEl.removeAttribute('width');
+                svgEl.removeAttribute('height');
+                svgEl.style.width = '';
+                svgEl.style.height = '';
+                return;
+            }
+            svgEl.setAttribute('width', String(w));
+            svgEl.setAttribute('height', String(h));
+            svgEl.style.width = w + 'px';
+            svgEl.style.height = h + 'px';
+        }
         function scaleBarcodeOpts(base) {
             var o = {
                 format: base.format,
@@ -203,13 +335,13 @@ if ($doctorOrdenDisplay === '') {
             }
             return o;
         }
-        var barcodeOptsMain = scaleBarcodeOpts({
+        var barcodeOptsMain = {
             format: 'CODE128',
             displayValue: true,
             fontSize: 14,
             height: 55,
             margin: 6
-        });
+        };
         var barcodeOptsLabelsVertical = scaleBarcodeOpts({
             format: 'CODE128',
             displayValue: true,
@@ -232,6 +364,7 @@ if ($doctorOrdenDisplay === '') {
             return;
         }
         JsBarcode(svg, orderId, barcodeOptsMain);
+        applyBarcodeDimensions(svg, ordenBarcodeW, ordenBarcodeH, false);
 
         var labelsRoot = document.getElementById('barcode-labels-root');
         var copiesInput = document.getElementById('barcode-copies-input');
@@ -258,9 +391,16 @@ if ($doctorOrdenDisplay === '') {
                         wrap.appendChild(nameEl);
                     }
                     var el = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+                    el.setAttribute('class', 'orden-barcode-label-svg');
                     wrap.appendChild(el);
                     labelsRoot.appendChild(wrap);
                     JsBarcode(el, orderId, optsLabels);
+                    applyBarcodeDimensions(
+                        el,
+                        labelBarcodeW,
+                        labelBarcodeH,
+                        printLayout === 'horizontal'
+                    );
                 }
                 document.body.classList.add('print-barcode-labels');
                 window.print();

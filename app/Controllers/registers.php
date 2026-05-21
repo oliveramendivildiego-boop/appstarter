@@ -573,6 +573,7 @@ class Registers extends SecureArea
             'current_module'    => 'registers',
             'controller_name'   => 'registers',
             'register_info'     => $registerInfo,
+            'lab_config'        => $this->registerService->getLabConfig(),
             'fecha'             => $fecha,
             'edad_paciente_orden' => $edadPacienteOrden,
             'labotests_namecate' => $id,
@@ -631,6 +632,7 @@ class Registers extends SecureArea
 
         $html = view('registers/orden_pdf', [
             'register_info'    => $registerInfo,
+            'lab_config'       => $this->registerService->getLabConfig(),
             'fecha'            => $fecha,
             'edad_paciente_orden' => $edadPacienteOrden,
             'grupos_pruebas'   => $gruposPruebas,
