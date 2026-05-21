@@ -1294,7 +1294,6 @@
             </div>
             <div class="card-body">
                 <?= form_open_multipart(site_url('config/saveSin'), ['id' => 'sin_form']) ?>
-                <?= csrf_field() ?>
 
                 <!-- Enable/Disable Checkbox -->
                 <div class="mb-4">
@@ -1332,6 +1331,46 @@
                             <strong>Producción:</strong> <code>https://siatrest.impuestos.gob.bo/v2</code>
                             — Token delegado en <a href="https://siatinfo.impuestos.gob.bo/index.php/facturacion-en-linea/emision-y-envio-de-facturas/solicitud-token" target="_blank" rel="noopener">siatinfo.impuestos.gob.bo</a>.
                         </small>
+                    </div>
+
+                    <?php
+                    $sinTokenConfigured = trim((string) ($config['sin_delegated_token'] ?? '')) !== '';
+                    $sinCodigoSistema = trim((string) ($config['sin_codigo_sistema'] ?? ''));
+                    $sinAmbiente = trim((string) ($config['sin_codigo_ambiente'] ?? '2'));
+                    if (! in_array($sinAmbiente, ['1', '2'], true)) {
+                        $sinAmbiente = '2';
+                    }
+                    ?>
+                    <div class="mb-4">
+                        <label for="sin_delegated_token" class="form-label fw-bold">Token delegado SIAT (piloto / producción)</label>
+                        <textarea name="sin_delegated_token" id="sin_delegated_token" class="form-control font-monospace small" rows="3"
+                            placeholder="Pegue el JWT completo (TokenApi …) generado en el portal SIAT"
+                            autocomplete="off"><?= esc($config['sin_delegated_token'] ?? '') ?></textarea>
+                        <small class="text-muted d-block mt-1">
+                            Se envía al SIAT en el encabezado <code>apikey: TokenApi &lt;su_token&gt;</code>. Si lo deja vacío al guardar, se mantiene el token actual.
+                        </small>
+                        <?php if ($sinTokenConfigured): ?>
+                        <div class="alert alert-success py-2 small mt-2 mb-0">
+                            <i class="fa-solid fa-key me-1"></i> Token delegado guardado.
+                        </div>
+                        <?php endif; ?>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6 mb-4">
+                            <label for="sin_codigo_sistema" class="form-label fw-bold">Código de sistema SIAT</label>
+                            <input type="text" name="sin_codigo_sistema" id="sin_codigo_sistema" class="form-control font-monospace"
+                                value="<?= esc($sinCodigoSistema) ?>" placeholder="Ej: 227AC476DC07E8E9D5E11F" autocomplete="off">
+                            <small class="text-muted">Se obtiene del token o del registro de su sistema en el SIN.</small>
+                        </div>
+                        <div class="col-md-6 mb-4">
+                            <label for="sin_codigo_ambiente" class="form-label fw-bold">Ambiente SIAT</label>
+                            <select name="sin_codigo_ambiente" id="sin_codigo_ambiente" class="form-select">
+                                <option value="2" <?= $sinAmbiente === '2' ? 'selected' : '' ?>>2 — Piloto / pruebas</option>
+                                <option value="1" <?= $sinAmbiente === '1' ? 'selected' : '' ?>>1 — Producción</option>
+                            </select>
+                            <small class="text-muted">Use <strong>2</strong> con <code>pilotosiatservicios</code>.</small>
+                        </div>
                     </div>
 
                     <!-- Certificado Digital SIN (DigiCert .p12) -->
@@ -1440,7 +1479,7 @@
                         <button type="button" id="sin_test_btn" class="btn btn-outline-primary me-2">
                             <i class="fa-solid fa-flask-vial me-1"></i> Probar Conexión
                         </button>
-                        <small class="text-muted ms-2">Valida certificado y configuración guardada (guarde antes de probar)</small>
+                        <small class="text-muted ms-2">Valida certificado, token delegado y API SIAT (guarde antes de probar)</small>
                         <div id="sin_test_result" class="mt-2" style="display: none;"></div>
                     </div>
 
@@ -1566,20 +1605,57 @@ $(document).ready(function() {
         syncSinRequiredFields();
     }
 
+    function sinTestResolveUrl(configuredUrl) {
+        try {
+            var parsed = new URL(configuredUrl, window.location.href);
+            return window.location.origin + parsed.pathname + parsed.search;
+        } catch (e) {
+            var base = (typeof BASE_URL !== 'undefined' ? String(BASE_URL) : '/');
+            return base.replace(/\/?$/, '/') + 'config/testSin';
+        }
+    }
+
+    function sinEscapeHtml(s) {
+        return String(s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+    }
+
     function sinTestShowResult(testResult, ok, message, details) {
-        var cls = ok ? 'alert-success' : 'alert-warning';
-        var icon = ok ? 'fa-circle-check' : 'fa-triangle-exclamation';
-        var html = '<div class="alert ' + cls + ' py-2 mb-0"><i class="fa-solid ' + icon + ' me-2"></i> ' + (message || '') + '</div>';
+        var cls = ok ? 'alert-success' : 'alert-danger';
+        var icon = ok ? 'fa-circle-check' : 'fa-circle-xmark';
+        var html = '<div class="alert ' + cls + ' py-2 mb-0"><i class="fa-solid ' + icon + ' me-2"></i> ' + sinEscapeHtml(message || '') + '</div>';
         if (details && details.length) {
             html += '<ul class="small text-muted mb-0 mt-1 ps-3">';
             details.forEach(function(line) {
-                if (line) html += '<li>' + line + '</li>';
+                if (line) html += '<li>' + sinEscapeHtml(line) + '</li>';
             });
             html += '</ul>';
         }
         testResult.innerHTML = html;
         testResult.style.display = 'block';
     }
+
+    (function sinTokenAutofillCodigoSistema() {
+        var ta = document.getElementById('sin_delegated_token');
+        var cod = document.getElementById('sin_codigo_sistema');
+        if (!ta || !cod) return;
+        function tryFill() {
+            if (cod.value.trim() !== '') return;
+            var raw = ta.value.trim();
+            if (!raw) return;
+            if (raw.toLowerCase().indexOf('tokenapi ') === 0) raw = raw.slice(9).trim();
+            var parts = raw.split('.');
+            if (parts.length < 2) return;
+            try {
+                var b64 = parts[1].replace(/-/g, '+').replace(/_/g, '/');
+                while (b64.length % 4) b64 += '=';
+                var payload = JSON.parse(atob(b64));
+                if (payload && payload.codigoSistema) {
+                    cod.value = String(payload.codigoSistema);
+                }
+            } catch (e) { /* ignore */ }
+        }
+        ta.addEventListener('blur', tryFill);
+    })();
 
     // SIN Test Connection Button
     var testBtn = document.getElementById('sin_test_btn');
@@ -1608,7 +1684,7 @@ $(document).ready(function() {
                 if (enabledEl && enabledEl.checked) {
                     fd.append('sin_billing_enabled', '1');
                 }
-                ['sin_api_endpoint', 'sin_nit', 'sin_business_name', 'sin_branch_code', 'sin_system_type', 'sin_emission_mode', 'sin_activity_code'].forEach(function(name) {
+                ['sin_api_endpoint', 'sin_delegated_token', 'sin_codigo_sistema', 'sin_codigo_ambiente', 'sin_nit', 'sin_business_name', 'sin_branch_code', 'sin_system_type', 'sin_emission_mode', 'sin_activity_code'].forEach(function(name) {
                     var el = sinForm.querySelector('[name="' + name + '"]');
                     if (el && el.value !== undefined) {
                         fd.append(name, el.value);
@@ -1622,7 +1698,8 @@ $(document).ready(function() {
             fd.append(csrfName, csrfVal);
 
             var headers = { 'X-Requested-With': 'XMLHttpRequest', 'X-CSRF-TOKEN': csrfVal };
-            fetch('<?= site_url('config/testSin') ?>', {
+            var testSinUrl = sinTestResolveUrl('<?= site_url('config/testSin') ?>');
+            fetch(testSinUrl, {
                 method: 'POST',
                 body: fd,
                 credentials: 'same-origin',
@@ -1649,10 +1726,14 @@ $(document).ready(function() {
                     sinTestShowResult(testResult, false, 'Respuesta vacía del servidor.', []);
                     return;
                 }
-                sinTestShowResult(testResult, !!data.success, data.message || 'Sin mensaje', data.details || []);
+                if (data.success === false) {
+                    sinTestShowResult(testResult, false, data.message || 'Error en la prueba', data.details || []);
+                } else {
+                    sinTestShowResult(testResult, true, data.message || 'Prueba correcta', data.details || []);
+                }
             })
             .catch(function(err) {
-                sinTestShowResult(testResult, false, 'No se pudo contactar al servidor: ' + (err && err.message ? err.message : 'error de red'), []);
+                sinTestShowResult(testResult, false, 'No se pudo contactar al servidor local (' + testSinUrl + '): ' + (err && err.message ? err.message : 'error de red'), []);
             });
         });
     }

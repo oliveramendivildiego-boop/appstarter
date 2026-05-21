@@ -219,12 +219,28 @@ class ConfigService
                 'sin_system_type',
                 'sin_emission_mode',
                 'sin_activity_code',
+                'sin_codigo_sistema',
+                'sin_codigo_ambiente',
             ];
             foreach ($keys as $k) {
                 $batch[$k] = trim((string) ($postData[$k] ?? ''));
             }
             if ($batch['sin_branch_code'] === '') {
                 $batch['sin_branch_code'] = '1';
+            }
+            if ($batch['sin_codigo_ambiente'] === '') {
+                $batch['sin_codigo_ambiente'] = '2';
+            }
+
+            $newDelegatedToken = $this->normalizeSinDelegatedToken((string) ($postData['sin_delegated_token'] ?? ''));
+            if ($newDelegatedToken !== '') {
+                $batch['sin_delegated_token'] = $newDelegatedToken;
+                if ($batch['sin_codigo_sistema'] === '') {
+                    $fromJwt = $this->extractSinCodigoSistemaFromToken($newDelegatedToken);
+                    if ($fromJwt !== '') {
+                        $batch['sin_codigo_sistema'] = $fromJwt;
+                    }
+                }
             }
 
             $newPassword = trim((string) ($postData['sin_certificate_password'] ?? ''));
@@ -350,18 +366,270 @@ class ConfigService
         $reach = $this->probeSiatEndpointReachability($endpoint);
         $details[] = (string) ($reach['message'] ?? '');
 
-        $endpointHint = $this->describeSinEndpoint($endpoint);
-        $allOk        = ($reach['reachable'] ?? false) === true;
+        $delegatedToken = $this->normalizeSinDelegatedToken((string) ($context['sin_delegated_token'] ?? ''));
+        if ($delegatedToken === '') {
+            $delegatedToken = $this->normalizeSinDelegatedToken((string) $this->appConfigModel->getValue('sin_delegated_token'));
+        }
+        if ($delegatedToken === '') {
+            return [
+                'success' => false,
+                'message' => 'Falta el token delegado SIAT (piloto/producción). Péguelo, guarde y vuelva a probar.',
+                'details' => $details,
+            ];
+        }
 
-        $msg = $allOk
-            ? 'Configuración lista: certificado válido y servidor SIAT alcanzable. ' . $endpointHint
-            : 'Certificado válido. ' . (string) ($reach['message'] ?? '') . ' ' . $endpointHint;
+        $codigoSistema = trim((string) ($context['sin_codigo_sistema'] ?? $this->appConfigModel->getValue('sin_codigo_sistema')));
+        if ($codigoSistema === '') {
+            $codigoSistema = $this->extractSinCodigoSistemaFromToken($delegatedToken);
+        }
+        if ($codigoSistema === '') {
+            return [
+                'success' => false,
+                'message' => 'Indique el código de sistema SIAT (o use un token delegado que lo incluya).',
+                'details' => $details,
+            ];
+        }
+
+        $nitRaw = trim((string) ($context['sin_nit'] ?? $this->appConfigModel->getValue('sin_nit')));
+        $nit    = (int) preg_replace('/\D+/', '', $nitRaw);
+        if ($nit <= 0) {
+            $claims = $this->parseSinJwtClaims($delegatedToken);
+            $nit    = (int) ($claims['nitDelegado'] ?? 0);
+        }
+        if ($nit <= 0) {
+            return [
+                'success' => false,
+                'message' => 'El NIT de la empresa es obligatorio para probar el token ante el SIAT.',
+                'details' => $details,
+            ];
+        }
+
+        $ambiente = (int) ($context['sin_codigo_ambiente'] ?? $this->appConfigModel->getValue('sin_codigo_ambiente'));
+        if ($ambiente !== 1 && $ambiente !== 2) {
+            $ambiente = str_contains(strtolower((string) parse_url($endpoint, PHP_URL_HOST)), 'piloto') ? 2 : 1;
+        }
+
+        $tokenProbe = $this->probeSiatDelegatedToken($endpoint, $delegatedToken, $codigoSistema, $nit, $ambiente);
+        $details[]  = (string) ($tokenProbe['message'] ?? '');
+
+        $endpointHint = $this->describeSinEndpoint($endpoint);
+        if (! ($tokenProbe['ok'] ?? false)) {
+            return [
+                'success' => false,
+                'message' => trim(((string) ($tokenProbe['message'] ?? 'Token SIAT no validado.')) . ' ' . $endpointHint),
+                'details' => $details,
+            ];
+        }
 
         return [
             'success' => true,
-            'message' => trim($msg),
+            'message' => trim('Configuración SIAT lista: certificado, token delegado y comunicación con el API verificados. ' . $endpointHint),
             'details' => $details,
         ];
+    }
+
+    /**
+     * Token JWT sin prefijo "TokenApi".
+     */
+    public function normalizeSinDelegatedToken(string $token): string
+    {
+        $token = trim($token);
+        if ($token === '') {
+            return '';
+        }
+        if (stripos($token, 'TokenApi ') === 0) {
+            $token = trim(substr($token, 9));
+        }
+
+        return $token;
+    }
+
+    /**
+     * @return array<string, mixed>|null
+     */
+    public function parseSinJwtClaims(string $jwt): ?array
+    {
+        $jwt = $this->normalizeSinDelegatedToken($jwt);
+        $parts = explode('.', $jwt);
+        if (count($parts) < 2) {
+            return null;
+        }
+        $payload = $parts[1];
+        $payload .= str_repeat('=', (4 - strlen($payload) % 4) % 4);
+        $json = base64_decode(strtr($payload, '-_', '+/'), true);
+        if ($json === false) {
+            return null;
+        }
+        $data = json_decode($json, true);
+
+        return is_array($data) ? $data : null;
+    }
+
+    public function extractSinCodigoSistemaFromToken(string $jwt): string
+    {
+        $claims = $this->parseSinJwtClaims($jwt);
+
+        return trim((string) ($claims['codigoSistema'] ?? ''));
+    }
+
+    /**
+     * @return array{ok:bool,message:string,http_code?:int}
+     */
+    private function probeSiatDelegatedToken(string $endpoint, string $delegatedToken, string $codigoSistema, int $nit, int $ambiente): array
+    {
+        if (! function_exists('curl_init')) {
+            return ['ok' => false, 'message' => 'cURL no disponible: no se pudo validar el token delegado ante el SIAT.'];
+        }
+
+        $url = rtrim($endpoint, '/') . '/ServicioFacturacionCodigos/verificarComunicacion';
+        $apiKey = 'TokenApi ' . $this->normalizeSinDelegatedToken($delegatedToken);
+
+        $payload = [
+            'codigoAmbiente'     => $ambiente,
+            'codigoSistema'      => $codigoSistema,
+            'nit'                => $nit,
+            'codigoModalidad'    => 1,
+            'codigoPuntoVenta'   => 0,
+            'codigoSucursal'     => (int) ($this->appConfigModel->getValue('sin_branch_code') ?: 0),
+        ];
+        if ($payload['codigoSucursal'] <= 0) {
+            $payload['codigoSucursal'] = 0;
+        }
+
+        $bodyVariants = [
+            json_encode($payload, JSON_UNESCAPED_UNICODE),
+            json_encode(['solicitud' => $payload], JSON_UNESCAPED_UNICODE),
+        ];
+
+        $sslAttempts = [
+            ['verify' => false, 'label' => 'diagnóstico local'],
+            ['verify' => true, 'label' => 'SSL verificado'],
+        ];
+
+        $lastMsg = '';
+        foreach ($sslAttempts as $ssl) {
+            foreach ($bodyVariants as $body) {
+                if ($body === false || $body === '') {
+                    continue;
+                }
+                $ch = curl_init($url);
+                if ($ch === false) {
+                    continue;
+                }
+                curl_setopt_array($ch, [
+                    CURLOPT_POST           => true,
+                    CURLOPT_POSTFIELDS     => $body,
+                    CURLOPT_RETURNTRANSFER => true,
+                    CURLOPT_TIMEOUT        => 25,
+                    CURLOPT_CONNECTTIMEOUT => 15,
+                    CURLOPT_HTTPHEADER     => [
+                        'Content-Type: application/json',
+                        'Accept: application/json',
+                        'apikey: ' . $apiKey,
+                    ],
+                    CURLOPT_SSL_VERIFYPEER => $ssl['verify'],
+                    CURLOPT_SSL_VERIFYHOST => $ssl['verify'] ? 2 : 0,
+                    CURLOPT_USERAGENT      => 'Laboratorio-SIN-Test/1.0',
+                ]);
+                $raw      = curl_exec($ch);
+                $httpCode = (int) curl_getinfo($ch, CURLINFO_HTTP_CODE);
+                $curlErr  = (string) curl_error($ch);
+                curl_close($ch);
+
+                if ($curlErr !== '') {
+                    $lastMsg = 'Error de red hacia SIAT: ' . $curlErr;
+                    continue;
+                }
+
+                if ($httpCode === 503) {
+                    return [
+                        'ok'        => true,
+                        'message'   => 'Token configurado. SIAT piloto respondió HTTP 503 (servicio temporalmente no disponible); reintente más tarde.',
+                        'http_code' => 503,
+                    ];
+                }
+
+                if ($httpCode >= 500) {
+                    $lastMsg = 'SIAT respondió HTTP ' . $httpCode . ' (' . $ssl['label'] . ').';
+                    continue;
+                }
+
+                if ($httpCode === 401 || $httpCode === 403) {
+                    return [
+                        'ok'        => false,
+                        'message'   => 'Token delegado rechazado por SIAT (HTTP ' . $httpCode . '). Genere uno nuevo en el portal SIAT.',
+                        'http_code' => $httpCode,
+                    ];
+                }
+
+                $transaccion = $this->siatResponseIndicatesSuccess((string) $raw);
+                if ($transaccion === true) {
+                    return [
+                        'ok'        => true,
+                        'message'   => 'Token delegado aceptado por SIAT (verificarComunicacion OK, HTTP ' . $httpCode . ').',
+                        'http_code' => $httpCode,
+                    ];
+                }
+                if ($transaccion === false) {
+                    $apiMsg = $this->extractSiatApiMessage((string) $raw);
+
+                    return [
+                        'ok'        => false,
+                        'message'   => 'SIAT respondió pero rechazó la solicitud' . ($apiMsg !== '' ? ': ' . $apiMsg : '.') . ' Revise NIT, código de sistema y ambiente.',
+                        'http_code' => $httpCode,
+                    ];
+                }
+
+                if ($httpCode >= 200 && $httpCode < 300) {
+                    return [
+                        'ok'        => true,
+                        'message'   => 'SIAT respondió HTTP ' . $httpCode . ' al verificar comunicación (revise detalle en portal SIAT).',
+                        'http_code' => $httpCode,
+                    ];
+                }
+
+                $lastMsg = 'SIAT HTTP ' . $httpCode . ' sin confirmar transacción.';
+            }
+        }
+
+        return ['ok' => false, 'message' => $lastMsg !== '' ? $lastMsg : 'No se pudo validar el token delegado ante el SIAT.'];
+    }
+
+    private function siatResponseIndicatesSuccess(string $raw): ?bool
+    {
+        if ($raw === '') {
+            return null;
+        }
+        if (preg_match('/"transaccion"\s*:\s*true/i', $raw)) {
+            return true;
+        }
+        if (preg_match('/"transaccion"\s*:\s*false/i', $raw)) {
+            return false;
+        }
+
+        return null;
+    }
+
+    private function extractSiatApiMessage(string $raw): string
+    {
+        $data = json_decode($raw, true);
+        if (! is_array($data)) {
+            return '';
+        }
+        $messages = [];
+        $walk = static function (array $node) use (&$walk, &$messages): void {
+            foreach ($node as $k => $v) {
+                if (is_string($k) && in_array(strtolower($k), ['descripcion', 'mensaje', 'mensajes', 'mensajeerror'], true) && is_string($v) && $v !== '') {
+                    $messages[] = $v;
+                } elseif (is_array($v)) {
+                    $walk($v);
+                }
+            }
+        };
+        $walk($data);
+        $messages = array_values(array_unique($messages));
+
+        return $messages !== [] ? mb_substr(implode('; ', $messages), 0, 300) : '';
     }
 
     /**
