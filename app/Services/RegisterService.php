@@ -1189,6 +1189,12 @@ class RegisterService
             return $out;
         }
 
+        foreach ($out as $row) {
+            if (trim((string) ($row['prueba_nombre'] ?? '')) !== '') {
+                return $out;
+            }
+        }
+
         $firmaKey = static function (array $row): string {
             return implode("\0", [
                 (string) ($row['validator_name'] ?? ''),

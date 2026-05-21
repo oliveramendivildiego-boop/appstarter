@@ -1,70 +1,45 @@
 <?php
 declare(strict_types=1);
 
-$report_lab_firmas = $report_lab_firmas ?? [];
-if ($report_lab_firmas === []) {
-    return;
-}
 $layout = is_array($pdf_layout ?? null) ? $pdf_layout : [];
 if (empty($layout['instances']) || ! is_array($layout['instances'])) {
     $layout = (new \App\Services\ReportPdfLayoutService())->getDefaultLayout();
 }
-
-[$n, $allGridItems] = \App\Services\ReportPdfLayoutService::gridItemsForSection($layout, 'lab_firmas');
-$n                = max(1, $n);
-$secLayouts       = is_array($layout['section_layouts'] ?? null) ? $layout['section_layouts'] : [];
-$sectionLayout    = is_array($secLayouts['lab_firmas'] ?? null) ? $secLayouts['lab_firmas'] : [];
-
-$titleItems = [];
-$bodyItems  = [];
-foreach ($allGridItems as $it) {
-    if (($it['element_type'] ?? '') === 'lab_firmas_title') {
-        $titleItems[] = $it;
-    } else {
-        $bodyItems[] = $it;
-    }
+if (! \App\Services\ReportPdfLayoutService::isLabFirmasBlockEnabled($layout)) {
+    return;
+}
+$lfPlacementStyle = \App\Services\ReportPdfLayoutService::normalizeLabFirmasStyle(
+    is_array($layout['page_style']['lab_firmas'] ?? null) ? $layout['page_style']['lab_firmas'] : []
+);
+if (! \App\Services\ReportPdfLayoutService::labFirmasPlacementShowsBlockEnd($lfPlacementStyle)) {
+    return;
 }
 
-$ps    = is_array($layout['page_style'] ?? null) ? $layout['page_style'] : [];
-$lfTxt = \App\Services\ReportPdfLayoutService::normalizeLabFirmasStyle($ps['lab_firmas'] ?? []);
-$multi = count($report_lab_firmas) > 1;
+$report_lab_firmas = $report_lab_firmas ?? [];
+$placementMode = (string) ($lfPlacementStyle['placement'] ?? 'per_group');
+if ($placementMode === 'block_end') {
+    $report_lab_firmas = array_values(array_filter($report_lab_firmas, static function ($firma): bool {
+        return is_array($firma);
+    }));
+} else {
+    $report_lab_firmas = array_values(array_filter($report_lab_firmas, static function ($firma): bool {
+        return is_array($firma) && trim((string) ($firma['prueba_nombre'] ?? '')) === '';
+    }));
+}
+if ($report_lab_firmas === []) {
+    return;
+}
 ?>
-<div class="lab-firmas-pdf-block">
-<?php if ($titleItems !== []): ?>
-    <?= view('registers/pdf/section_layout_grid', [
-        'section_wrapper_class' => 'lab-firmas-title-grid',
-        'n_columns'             => $n,
-        'grid_items'            => $titleItems,
-        'element_ctx'           => [
-            'lab_config'         => $lab_config ?? [],
-            'lab_firmas_style'   => $lfTxt,
-            'pdf_firma_row'      => [],
-        ],
-        'section_layout'        => $sectionLayout,
-    ]) ?>
-<?php endif; ?>
-
-<?php if ($bodyItems !== []): ?>
+<div class="lab-firmas-pdf-block lab-firmas-pdf-block-global">
     <?php foreach ($report_lab_firmas as $idx => $firma): ?>
-        <?php if ($multi): ?>
-            <div class="pdf-lab-f-prueba-name" style="border-bottom:1px solid #dee2e6;font-weight:600;margin-top:8px;padding-bottom:4px;">
-                <?= esc(strtoupper((string) ($firma['prueba_nombre'] ?? ''))) ?>
-            </div>
-        <?php endif; ?>
-        <?= view('registers/pdf/section_layout_grid', [
-            'section_wrapper_class' => 'lab-firmas-body-grid',
-            'n_columns'             => $n,
-            'grid_items'            => $bodyItems,
-            'element_ctx'           => [
-                'lab_config'       => $lab_config ?? [],
-                'lab_firmas_style' => $lfTxt,
-                'pdf_firma_row'    => $firma,
-            ],
-            'section_layout'      => $sectionLayout,
+        <?= view('registers/partials/report_lab_firma_grupo_inline', [
+            'firma'            => $firma,
+            'analisis_variant' => $analisis_variant ?? 'pdf',
+            'pdf_layout'       => $layout,
+            'lab_config'       => $lab_config ?? [],
         ]) ?>
-        <?php if ($multi && $idx < count($report_lab_firmas) - 1): ?>
+        <?php if ($idx < count($report_lab_firmas) - 1): ?>
             <div style="height:12px;" aria-hidden="true"></div>
         <?php endif; ?>
     <?php endforeach; ?>
-<?php endif; ?>
 </div>

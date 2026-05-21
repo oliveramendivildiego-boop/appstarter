@@ -699,11 +699,66 @@ $labelsShort = [
 <div class="card shadow-sm mb-4 border border-warning border-opacity-50 pdf-config-panel" data-config-panels="lab_firmas">
     <div class="card-header bg-warning-subtle border-bottom">
         <h5 class="mb-1">Bloque «Validación y aprobación (firmas)» — estilo y textos en PDF / impresión</h5>
-        <p class="small text-muted mb-0">Colores, tipografía, fondo transparente opcional, bordes entre columnas y etiquetas del cuadro de firmas. Active o desactive el bloque en la lista de arriba.</p>
+        <p class="small text-muted mb-0">Configure la validación <strong>por área</strong> (debajo de cada grupo de pruebas, como en el registro) o al final del documento. La cuadrícula y columnas de abajo aplican a cada bloque de firmas. Active el bloque en la lista superior.</p>
     </div>
     <div class="card-body">
-        <div class="row g-3">
-            <div class="col-12"><span class="small fw-semibold text-secondary">Apariencia</span></div>
+        <div class="row g-3 mb-2">
+            <div class="col-12"><span class="small fw-semibold text-secondary">Ubicación en el reporte</span></div>
+            <div class="col-12 col-md-6">
+                <label class="form-label small" for="lf_placement">¿Dónde mostrar las firmas?</label>
+                <?php $lfPlacement = (string) ($lf['placement'] ?? 'per_group'); ?>
+                <select class="form-select" id="lf_placement">
+                    <option value="per_group" <?= $lfPlacement === 'per_group' ? 'selected' : '' ?>>Debajo de cada área (grupo de pruebas)</option>
+                    <option value="block_end" <?= $lfPlacement === 'block_end' ? 'selected' : '' ?>>Solo al final del documento</option>
+                    <option value="both" <?= $lfPlacement === 'both' ? 'selected' : '' ?>>En cada área y también al final</option>
+                </select>
+            </div>
+            <div class="col-6 col-md-3">
+                <label class="form-label small" for="lf_inline_margin_top">Margen superior (pt)</label>
+                <input type="number" class="form-control" id="lf_inline_margin_top" min="0" max="24" step="0.5" value="<?= esc((string) ($lf['inline_margin_top_pt'] ?? 8), 'attr') ?>">
+            </div>
+            <div class="col-6 col-md-3">
+                <label class="form-label small" for="lf_inline_margin_bottom">Margen inferior (pt)</label>
+                <input type="number" class="form-control" id="lf_inline_margin_bottom" min="0" max="24" step="0.5" value="<?= esc((string) ($lf['inline_margin_bottom_pt'] ?? 6), 'attr') ?>">
+            </div>
+            <div class="col-12"><span class="small fw-semibold text-secondary">Título del área (opcional, solo si va por partes)</span></div>
+            <div class="col-12 col-md-4 d-flex align-items-end">
+                <div class="form-check mb-0">
+                    <input class="form-check-input" type="checkbox" id="lf_show_area_heading" value="1" <?= ! empty($lf['show_area_heading']) ? 'checked' : '' ?>>
+                    <label class="form-check-label small" for="lf_show_area_heading">Mostrar nombre del área encima de cada firma</label>
+                </div>
+            </div>
+            <div class="col-6 col-md-2">
+                <label class="form-label small" for="lf_area_heading_color">Color título área</label>
+                <input type="color" class="form-control form-control-color" id="lf_area_heading_color" value="<?= esc((string) ($lf['area_heading_color'] ?? '#664D03'), 'attr') ?>">
+            </div>
+            <div class="col-6 col-md-2">
+                <label class="form-label small" for="lf_area_heading_font_size">Tamaño (pt)</label>
+                <input type="number" class="form-control" id="lf_area_heading_font_size" min="7" max="16" step="0.5" value="<?= esc((string) ($lf['area_heading_font_size_pt'] ?? 9), 'attr') ?>">
+            </div>
+            <div class="col-6 col-md-2">
+                <label class="form-label small" for="lf_area_heading_font_weight">Grosor</label>
+                <select class="form-select" id="lf_area_heading_font_weight"><?php foreach (['normal', 'bold', '500', '600', '700', '800'] as $w): ?><option value="<?= esc($w, 'attr') ?>" <?= ($lf['area_heading_font_weight'] ?? '600') === $w ? 'selected' : '' ?>><?= esc($w) ?></option><?php endforeach; ?></select>
+            </div>
+            <div class="col-6 col-md-2">
+                <label class="form-label small" for="lf_area_heading_text_transform">Transformación</label>
+                <select class="form-select" id="lf_area_heading_text_transform"><?php foreach (['none' => 'Normal', 'uppercase' => 'MAYÚSCULAS', 'lowercase' => 'minúsculas', 'capitalize' => 'Tipo Título'] as $k => $v): ?><option value="<?= esc($k, 'attr') ?>" <?= ($lf['area_heading_text_transform'] ?? 'uppercase') === $k ? 'selected' : '' ?>><?= esc($v) ?></option><?php endforeach; ?></select>
+            </div>
+            <div class="col-12"><span class="small fw-semibold text-secondary">Tamaño de imágenes (sello y firma)</span></div>
+            <div class="col-6 col-md-3">
+                <label class="form-label small" for="lf_seal_max_height">Alto máx. sello (px)</label>
+                <input type="number" class="form-control" id="lf_seal_max_height" min="40" max="200" step="1" value="<?= esc((string) (int) ($lf['seal_max_height_px'] ?? 110), 'attr') ?>">
+            </div>
+            <div class="col-6 col-md-3">
+                <label class="form-label small" for="lf_signature_max_height">Alto máx. firma (px)</label>
+                <input type="number" class="form-control" id="lf_signature_max_height" min="30" max="160" step="1" value="<?= esc((string) (int) ($lf['signature_max_height_px'] ?? 72), 'attr') ?>">
+            </div>
+            <div class="col-6 col-md-3">
+                <label class="form-label small" for="lf_signature_max_width">Ancho máx. firma (px)</label>
+                <input type="number" class="form-control" id="lf_signature_max_width" min="80" max="400" step="1" value="<?= esc((string) (int) ($lf['signature_max_width_px'] ?? 220), 'attr') ?>">
+            </div>
+            <div class="col-12"><hr class="my-1"></div>
+            <div class="col-12"><span class="small fw-semibold text-secondary">Apariencia del cuadro de firmas</span></div>
             <div class="col-6 col-md-3"><label class="form-label small" for="lf_title_bg">Fondo título</label><input type="color" class="form-control form-control-color" id="lf_title_bg" value="<?= esc($lf['title_bg_color'], 'attr') ?>"></div>
             <div class="col-6 col-md-3"><label class="form-label small" for="lf_title_text">Texto título</label><input type="color" class="form-control form-control-color" id="lf_title_text" value="<?= esc($lf['title_text_color'], 'attr') ?>"></div>
             <div class="col-6 col-md-3"><label class="form-label small" for="lf_body_bg">Fondo contenido</label><input type="color" class="form-control form-control-color" id="lf_body_bg" value="<?= esc($lf['body_bg_color'], 'attr') ?>"></div>
@@ -1050,7 +1105,7 @@ $labelsShort = [
                 </div>
             </div>
             <div class="card-body">
-                <p class="small text-muted">Solo se imprime si el bloque «Validación y aprobación» está activo. El <strong>título</strong> se muestra una vez; cada ítem del bloque (validador, sello, <strong>firma</strong> del aprobador, <strong>nombre</strong>, <strong>cargo</strong>, <strong>matrícula</strong>) es un elemento propio en la lista: ordénelos, asigne columna, estilo de texto y «No mostrar» como el resto. Se repiten por cada firma en el reporte. Las plantillas antiguas con «Aprobado por (todo junto)» se convierten al guardar en firma + nombre + cargo.</p>
+                <p class="small text-muted">Con ubicación <strong>por área</strong>, este diseño se repite debajo de cada grupo (Química, Hematología, etc.) según lo registrado. Ordene validador, sello, firma, nombre, cargo y matrícula en columnas. Si elige «al final», esta cuadrícula solo aparece al cierre del PDF.</p>
                 <?= view('config/partials/pdf_section_style_controls', [
                     'section_key' => 'lab_firmas',
                     'col_count'   => $lCols,
@@ -3575,7 +3630,22 @@ document.addEventListener('DOMContentLoaded', function() {
                 label_cargo_line_mode: pickLineModeSelect('lf_label_cargo_line_mode'),
                 label_matricula: pickLfText('lf_label_matricula', 'Matrícula:', true),
                 show_label_matricula: pickChk('lf_show_label_matricula', true),
-                label_matricula_line_mode: pickLineModeSelect('lf_label_matricula_line_mode')
+                label_matricula_line_mode: pickLineModeSelect('lf_label_matricula_line_mode'),
+                placement: (function() {
+                    var el = document.getElementById('lf_placement');
+                    var v = el ? el.value : 'per_group';
+                    return (v === 'block_end' || v === 'both') ? v : 'per_group';
+                })(),
+                show_area_heading: pickChk('lf_show_area_heading', false),
+                area_heading_color: pickHex('lf_area_heading_color', '#664D03'),
+                area_heading_font_size_pt: pickNum('lf_area_heading_font_size', 7, 16, 9),
+                area_heading_font_weight: pickAllowedDomId('lf_area_heading_font_weight', 'font_weights', '600'),
+                area_heading_text_transform: pickAllowedDomId('lf_area_heading_text_transform', 'text_transforms', 'uppercase'),
+                inline_margin_top_pt: pickNum('lf_inline_margin_top', 0, 24, 8),
+                inline_margin_bottom_pt: pickNum('lf_inline_margin_bottom', 0, 24, 6),
+                seal_max_height_px: Math.round(pickNum('lf_seal_max_height', 40, 200, 110)),
+                signature_max_height_px: Math.round(pickNum('lf_signature_max_height', 30, 160, 72)),
+                signature_max_width_px: Math.round(pickNum('lf_signature_max_width', 80, 400, 220))
             },
             results_table: {
                 header_bg_color: pickHex('rs_header_bg', '#0066CC'),
@@ -3750,6 +3820,15 @@ document.addEventListener('DOMContentLoaded', function() {
         pushIfBadSelect('lf_text_transform', tt, 'Transformación no permitida en firmas.');
         pushIfBadNum('lf_line_height', 1, 3, 'Interlineado en firmas: entre 1 y 3.');
         pushIfBadNum('lf_column_border_width', 0, 4, 'Borde entre columnas en firmas: entre 0 y 4 px.');
+        pushIfBadHex('lf_area_heading_color', 'Color inválido en título de área.');
+        pushIfBadNum('lf_area_heading_font_size', 7, 16, 'Tamaño del título de área: entre 7 y 16 pt.');
+        pushIfBadSelect('lf_area_heading_font_weight', fw, 'Grosor no permitido en título de área.');
+        pushIfBadSelect('lf_area_heading_text_transform', tt, 'Transformación no permitida en título de área.');
+        pushIfBadNum('lf_inline_margin_top', 0, 24, 'Margen superior de firmas por área: entre 0 y 24 pt.');
+        pushIfBadNum('lf_inline_margin_bottom', 0, 24, 'Margen inferior de firmas por área: entre 0 y 24 pt.');
+        pushIfBadNum('lf_seal_max_height', 40, 200, 'Alto del sello: entre 40 y 200 px.');
+        pushIfBadNum('lf_signature_max_height', 30, 160, 'Alto de la firma: entre 30 y 160 px.');
+        pushIfBadNum('lf_signature_max_width', 80, 400, 'Ancho de la firma: entre 80 y 400 px.');
         ['lf_section_title', 'lf_label_validator', 'lf_label_seal', 'lf_label_firma', 'lf_label_approver', 'lf_label_cargo', 'lf_label_matricula'].forEach(function(id) {
             var el = document.getElementById(id);
             if (!el) return;

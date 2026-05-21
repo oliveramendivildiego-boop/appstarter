@@ -55,6 +55,16 @@ if (empty($grupos)): ?>
     <i class="fa-solid fa-info-circle me-2"></i>No hay resultados cargados para esta orden.
 </div>
 <?php else:
+$firmasPorPadre = [];
+foreach ($report_lab_firmas ?? [] as $firmaRow) {
+    if (! is_array($firmaRow)) {
+        continue;
+    }
+    $areaNombre = trim((string) ($firmaRow['prueba_nombre'] ?? ''));
+    if ($areaNombre !== '') {
+        $firmasPorPadre[$areaNombre] = $firmaRow;
+    }
+}
 foreach ($grupos as $padre => $items):
     $nombreVista = strtolower($padre);
     $viewName = 'registers/analisis/default';
@@ -71,6 +81,13 @@ foreach ($grupos as $padre => $items):
         'report_pria_metodo_nombre'       => $report_pria_metodo_nombre ?? [],
         'report_pria_refs_consolidada'    => $report_pria_refs_consolidada ?? [],
     ]);
+    $padreKey = trim((string) $padre);
+    if ($padreKey !== '' && isset($firmasPorPadre[$padreKey])) {
+        echo view('registers/partials/report_lab_firma_grupo_inline', [
+            'firma'            => $firmasPorPadre[$padreKey],
+            'analisis_variant' => 'screen',
+        ]);
+    }
 endforeach;
 endif;
 ?>

@@ -194,6 +194,15 @@ body { margin: <?= esc((string) $mt) ?>mm <?= esc((string) $mr) ?>mm <?= esc((st
     --pdf-lf-font-style: <?= esc($lf['font_style']) ?>;
     --pdf-lf-transform: <?= esc($lf['text_transform']) ?>;
     --pdf-lf-line-height: <?= esc((string) $lf['line_height']) ?>;
+    --pdf-lf-inline-margin-top: <?= esc((string) ($lf['inline_margin_top_pt'] ?? 8)) ?>pt;
+    --pdf-lf-inline-margin-bottom: <?= esc((string) ($lf['inline_margin_bottom_pt'] ?? 6)) ?>pt;
+    --pdf-lf-seal-max-height: <?= (int) ($lf['seal_max_height_px'] ?? 110) ?>px;
+    --pdf-lf-signature-max-height: <?= (int) ($lf['signature_max_height_px'] ?? 72) ?>px;
+    --pdf-lf-signature-max-width: <?= (int) ($lf['signature_max_width_px'] ?? 220) ?>px;
+    --pdf-lf-area-heading-color: <?= esc((string) ($lf['area_heading_color'] ?? '#664D03')) ?>;
+    --pdf-lf-area-heading-font-size: <?= esc((string) ($lf['area_heading_font_size_pt'] ?? 9)) ?>pt;
+    --pdf-lf-area-heading-font-weight: <?= esc((string) ($lf['area_heading_font_weight'] ?? '600')) ?>;
+    --pdf-lf-area-heading-transform: <?= esc((string) ($lf['area_heading_text_transform'] ?? 'uppercase')) ?>;
     --pdf-results-header-bg: <?= esc($rs['header_bg_color']) ?>;
     --pdf-results-header-color: <?= esc($rs['header_text_color']) ?>;
     --pdf-results-body-bg: <?= esc($rsBodyBg) ?>;

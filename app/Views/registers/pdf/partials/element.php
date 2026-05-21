@@ -471,6 +471,7 @@ switch ($type) {
     case 'lab_firmas_seal':
         $lfS    = is_array($lab_firmas_style ?? null) ? $lab_firmas_style : [];
         $fr     = is_array($pdf_firma_row ?? null) ? $pdf_firma_row : [];
+        $sealMaxH = max(40, min(200, (int) ($lfS['seal_max_height_px'] ?? 110)));
         $seal   = trim((string) ($fr['approver_seal'] ?? ''));
         $sealUri = ($seal !== '') ? report_image_data_uri($seal) : '';
         $showL = \App\Services\ReportPdfLayoutService::labFirmasBool($lfS, 'show_label_seal', true);
@@ -484,7 +485,7 @@ switch ($type) {
                     <span class="pdf-lab-f-sublabel" style="opacity:0.75;font-size:0.92em;"><?= esc($lblSeal) ?></span>
                     <?php endif; ?>
                     <?php if ($sealUri !== ''): ?>
-                    <img src="<?= esc($sealUri, 'attr') ?>" alt="" class="pdf-lab-f-img" style="max-height:110px;max-width:100%;">
+                    <img src="<?= esc($sealUri, 'attr') ?>" alt="" class="pdf-lab-f-img" style="max-height:<?= (int) $sealMaxH ?>px;max-width:100%;">
                     <?php else: ?>
                     <div style="opacity:0.6;">—</div>
                     <?php endif; ?>
@@ -494,7 +495,7 @@ switch ($type) {
                 <div class="pdf-lab-f-sublabel" style="opacity:0.75;font-size:0.92em;margin-bottom:6px;"><?= esc($lblSeal) ?></div>
                 <?php endif; ?>
                 <?php if ($sealUri !== ''): ?>
-                    <img src="<?= esc($sealUri, 'attr') ?>" alt="" class="pdf-lab-f-img" style="max-height:110px;max-width:100%;">
+                    <img src="<?= esc($sealUri, 'attr') ?>" alt="" class="pdf-lab-f-img" style="max-height:<?= (int) $sealMaxH ?>px;max-width:100%;">
                 <?php else: ?>
                     <div style="opacity:0.6;">—</div>
                 <?php endif; ?>
@@ -505,6 +506,8 @@ switch ($type) {
     case 'lab_firmas_approver_signature':
         $lfS    = is_array($lab_firmas_style ?? null) ? $lab_firmas_style : [];
         $fr     = is_array($pdf_firma_row ?? null) ? $pdf_firma_row : [];
+        $sigMaxH = max(30, min(160, (int) ($lfS['signature_max_height_px'] ?? 72)));
+        $sigMaxW = max(80, min(400, (int) ($lfS['signature_max_width_px'] ?? 220)));
         $sig    = trim((string) ($fr['approver_signature'] ?? ''));
         $sigUri = ($sig !== '') ? report_image_data_uri($sig) : '';
         $showL = \App\Services\ReportPdfLayoutService::labFirmasBool($lfS, 'show_label_firma', true);
@@ -518,7 +521,7 @@ switch ($type) {
                     <span class="pdf-lab-f-sublabel" style="opacity:0.75;font-size:0.92em;"><?= esc($lblFirma) ?></span>
                     <?php endif; ?>
                     <?php if ($sigUri !== ''): ?>
-                    <img src="<?= esc($sigUri, 'attr') ?>" alt="" class="pdf-lab-f-img" style="max-height:72px;max-width:220px;">
+                    <img src="<?= esc($sigUri, 'attr') ?>" alt="" class="pdf-lab-f-img" style="max-height:<?= (int) $sigMaxH ?>px;max-width:<?= (int) $sigMaxW ?>px;">
                     <?php else: ?>
                     <div style="opacity:0.6;">—</div>
                     <?php endif; ?>
@@ -529,7 +532,7 @@ switch ($type) {
                 <?php endif; ?>
                 <?php if ($sigUri !== ''): ?>
                     <div style="margin-bottom:4px;">
-                        <img src="<?= esc($sigUri, 'attr') ?>" alt="" class="pdf-lab-f-img" style="max-height:72px;max-width:220px;">
+                        <img src="<?= esc($sigUri, 'attr') ?>" alt="" class="pdf-lab-f-img" style="max-height:<?= (int) $sigMaxH ?>px;max-width:<?= (int) $sigMaxW ?>px;">
                     </div>
                 <?php else: ?>
                     <div style="opacity:0.6;">—</div>

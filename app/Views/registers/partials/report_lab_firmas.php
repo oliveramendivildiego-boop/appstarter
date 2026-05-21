@@ -1,5 +1,8 @@
 <?php
 $report_lab_firmas = $report_lab_firmas ?? [];
+$report_lab_firmas = array_values(array_filter($report_lab_firmas, static function ($firma): bool {
+    return is_array($firma) && trim((string) ($firma['prueba_nombre'] ?? '')) === '';
+}));
 if ($report_lab_firmas === []) {
     return;
 }

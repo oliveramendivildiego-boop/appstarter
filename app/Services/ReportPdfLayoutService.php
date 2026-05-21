@@ -76,7 +76,21 @@ class ReportPdfLayoutService
         'body_transparent'    => false,
         'column_border_width_px' => 1,
         'column_border_color' => '#DDDDDD',
+        /** per_group | block_end | both */
+        'placement'           => 'per_group',
+        'show_area_heading'   => false,
+        'area_heading_color'  => '#664D03',
+        'area_heading_font_size_pt' => 9.0,
+        'area_heading_font_weight'  => '600',
+        'area_heading_text_transform' => 'uppercase',
+        'inline_margin_top_pt'    => 8.0,
+        'inline_margin_bottom_pt' => 6.0,
+        'seal_max_height_px'      => 110,
+        'signature_max_height_px' => 72,
+        'signature_max_width_px'  => 220,
     ];
+
+    public const LAB_FIRMAS_PLACEMENTS = ['per_group', 'block_end', 'both'];
 
     /**
      * Solo estos tipos se reinyectan si faltan (migración); no se fuerza título/validador/sello eliminados por el usuario.
@@ -2045,6 +2059,10 @@ class ReportPdfLayoutService
             if ($err !== null) {
                 return $err;
             }
+            $err = self::validateRawLabFirmasPlacementStyle($ps['lab_firmas']);
+            if ($err !== null) {
+                return $err;
+            }
         }
         if (isset($ps['results_table'])) {
             $err = self::validateRawResultsTableStyleBlock($ps['results_table']);
@@ -2333,6 +2351,15 @@ class ReportPdfLayoutService
         $labelSeal = self::clipLabFirmasLabel(isset($s['label_seal']) ? (string) $s['label_seal'] : null, $def['label_seal']);
         $labelSeal = self::mapLegacySealLabel($labelSeal, $def['label_seal']);
 
+        $areaWeight = strtolower(trim((string) ($s['area_heading_font_weight'] ?? $def['area_heading_font_weight'])));
+        if (! in_array($areaWeight, self::ALLOWED_PDF_FONT_WEIGHTS, true)) {
+            $areaWeight = (string) $def['area_heading_font_weight'];
+        }
+        $areaTransform = strtolower(trim((string) ($s['area_heading_text_transform'] ?? $def['area_heading_text_transform'])));
+        if (! in_array($areaTransform, self::ALLOWED_PDF_TEXT_TRANSFORMS, true)) {
+            $areaTransform = (string) $def['area_heading_text_transform'];
+        }
+
         return array_merge($n, [
             'section_title'       => self::clipLabFirmasLabel(isset($s['section_title']) ? (string) $s['section_title'] : null, $def['section_title']),
             'show_section_title'  => self::labFirmasBool($s, 'show_section_title', (bool) $def['show_section_title']),
@@ -2359,7 +2386,93 @@ class ReportPdfLayoutService
             'body_transparent'    => self::labFirmasBool($s, 'body_transparent', (bool) $def['body_transparent']),
             'column_border_width_px' => self::normalizeLabFirmasColumnBorderWidthPx($s['column_border_width_px'] ?? null, (int) $def['column_border_width_px']),
             'column_border_color' => self::normalizeLabFirmasBorderColor($s['column_border_color'] ?? null, (string) $def['column_border_color']),
+            'placement'           => self::normalizeLabFirmasPlacement($s['placement'] ?? null, (string) $def['placement']),
+            'show_area_heading'   => self::labFirmasBool($s, 'show_area_heading', (bool) $def['show_area_heading']),
+            'area_heading_color'  => self::normalizeLabFirmasBorderColor($s['area_heading_color'] ?? null, (string) $def['area_heading_color']),
+            'area_heading_font_size_pt' => self::normalizeLabFirmasAreaHeadingFontSize($s['area_heading_font_size_pt'] ?? null, (float) $def['area_heading_font_size_pt']),
+            'area_heading_font_weight'  => $areaWeight,
+            'area_heading_text_transform' => $areaTransform,
+            'inline_margin_top_pt'    => self::normalizeLabFirmasMarginPt($s['inline_margin_top_pt'] ?? null, (float) $def['inline_margin_top_pt']),
+            'inline_margin_bottom_pt' => self::normalizeLabFirmasMarginPt($s['inline_margin_bottom_pt'] ?? null, (float) $def['inline_margin_bottom_pt']),
+            'seal_max_height_px'      => self::normalizeLabFirmasImagePx($s['seal_max_height_px'] ?? null, (int) $def['seal_max_height_px'], 40, 200),
+            'signature_max_height_px' => self::normalizeLabFirmasImagePx($s['signature_max_height_px'] ?? null, (int) $def['signature_max_height_px'], 30, 160),
+            'signature_max_width_px'  => self::normalizeLabFirmasImagePx($s['signature_max_width_px'] ?? null, (int) $def['signature_max_width_px'], 80, 400),
         ]);
+    }
+
+    public static function normalizeLabFirmasPlacement($raw, string $fallback = 'per_group'): string
+    {
+        $v = strtolower(trim((string) ($raw ?? $fallback)));
+        if (! in_array($v, self::LAB_FIRMAS_PLACEMENTS, true)) {
+            $fb = strtolower(trim($fallback));
+
+            return in_array($fb, self::LAB_FIRMAS_PLACEMENTS, true) ? $fb : 'per_group';
+        }
+
+        return $v;
+    }
+
+    /**
+     * @param array<string, mixed> $lf normalizeLabFirmasStyle()
+     */
+    public static function labFirmasPlacementShowsPerGroup(array $lf): bool
+    {
+        $p = self::normalizeLabFirmasPlacement($lf['placement'] ?? 'per_group');
+
+        return $p === 'per_group' || $p === 'both';
+    }
+
+    /**
+     * @param array<string, mixed> $lf
+     */
+    public static function labFirmasPlacementShowsBlockEnd(array $lf): bool
+    {
+        $p = self::normalizeLabFirmasPlacement($lf['placement'] ?? 'per_group');
+
+        return $p === 'block_end' || $p === 'both';
+    }
+
+    public static function normalizeLabFirmasAreaHeadingFontSize($raw, float $fallback): float
+    {
+        if (! is_numeric($raw)) {
+            return max(7.0, min(16.0, $fallback));
+        }
+
+        return max(7.0, min(16.0, (float) $raw));
+    }
+
+    public static function normalizeLabFirmasMarginPt($raw, float $fallback): float
+    {
+        if (! is_numeric($raw)) {
+            return max(0.0, min(24.0, $fallback));
+        }
+
+        return max(0.0, min(24.0, (float) $raw));
+    }
+
+    public static function normalizeLabFirmasImagePx($raw, int $fallback, int $min, int $max): int
+    {
+        if (! is_numeric($raw)) {
+            return max($min, min($max, $fallback));
+        }
+
+        return max($min, min($max, (int) $raw));
+    }
+
+    /**
+     * Bloque «Validación / firmas» activo en la plantilla.
+     *
+     * @param array<string, mixed> $layout
+     */
+    public static function isLabFirmasBlockEnabled(array $layout): bool
+    {
+        foreach (is_array($layout['blocks'] ?? null) ? $layout['blocks'] : [] as $block) {
+            if (! empty($block['enabled']) && (string) ($block['id'] ?? '') === 'lab_firmas') {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     /**
@@ -2837,6 +2950,57 @@ class ReportPdfLayoutService
             if ($len > self::LAB_FIRMAS_TEXT_MAX_LEN) {
                 return 'Un texto del bloque de firmas supera los ' . self::LAB_FIRMAS_TEXT_MAX_LEN . ' caracteres.';
             }
+        }
+
+        return null;
+    }
+
+    /**
+     * @param mixed $raw
+     */
+    protected static function validateRawLabFirmasPlacementStyle($raw): ?string
+    {
+        if (! is_array($raw)) {
+            return null;
+        }
+        if (array_key_exists('placement', $raw)) {
+            $p = strtolower(trim((string) $raw['placement']));
+            if (! in_array($p, self::LAB_FIRMAS_PLACEMENTS, true)) {
+                return 'Ubicación de firmas inválida (use: debajo de cada área, al final, o ambas).';
+            }
+        }
+        foreach (['inline_margin_top_pt', 'inline_margin_bottom_pt'] as $k) {
+            if (! array_key_exists($k, $raw) || ! is_numeric($raw[$k])) {
+                continue;
+            }
+            $v = (float) $raw[$k];
+            if ($v < 0 || $v > 24) {
+                return 'Los márgenes de firmas por área deben estar entre 0 y 24 pt.';
+            }
+        }
+        if (array_key_exists('area_heading_font_size_pt', $raw) && is_numeric($raw['area_heading_font_size_pt'])) {
+            $fs = (float) $raw['area_heading_font_size_pt'];
+            if ($fs < 7.0 || $fs > 16.0) {
+                return 'El tamaño del título de área debe estar entre 7 y 16 pt.';
+            }
+        }
+        if (isset($raw['area_heading_font_weight']) && ! in_array(strtolower(trim((string) $raw['area_heading_font_weight'])), self::ALLOWED_PDF_FONT_WEIGHTS, true)) {
+            return 'Grosor de fuente no permitido en título de área.';
+        }
+        if (isset($raw['area_heading_text_transform']) && ! in_array(strtolower(trim((string) $raw['area_heading_text_transform'])), self::ALLOWED_PDF_TEXT_TRANSFORMS, true)) {
+            return 'Transformación de texto no permitida en título de área.';
+        }
+        foreach (['seal_max_height_px', 'signature_max_height_px', 'signature_max_width_px'] as $ik) {
+            if (! array_key_exists($ik, $raw) || ! is_numeric($raw[$ik])) {
+                continue;
+            }
+            $px = (int) $raw[$ik];
+            if ($px < 20 || $px > 400) {
+                return 'Tamaño de imagen de sello/firma fuera de rango (20–400 px).';
+            }
+        }
+        if (isset($raw['area_heading_color']) && ! self::isValidPdfHexColor((string) $raw['area_heading_color'])) {
+            return 'Color del título de área inválido (#RRGGBB).';
         }
 
         return null;

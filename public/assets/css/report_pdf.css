@@ -532,6 +532,25 @@ table.results td {
     letter-spacing: inherit;
     color: inherit;
 }
+.report-lab-firma-grupo-inline {
+    margin-top: var(--pdf-lf-inline-margin-top, 8pt);
+    margin-bottom: var(--pdf-lf-inline-margin-bottom, 6pt);
+}
+.report-lab-firma-grupo-inline .pdf-lab-f-img {
+    max-height: var(--pdf-lf-seal-max-height, 110px);
+}
+.lab-firmas-pdf-block-inline .pdf-lab-f-area-heading {
+    color: var(--pdf-lf-area-heading-color, #664d03);
+    font-size: var(--pdf-lf-area-heading-font-size, 9pt);
+    font-weight: var(--pdf-lf-area-heading-font-weight, 600);
+    text-transform: var(--pdf-lf-area-heading-transform, uppercase);
+}
+.report-lab-firma-area-heading {
+    color: var(--pdf-lf-area-heading-color, #664d03);
+    font-size: var(--pdf-lf-area-heading-font-size, 9pt);
+    font-weight: var(--pdf-lf-area-heading-font-weight, 600);
+    text-transform: var(--pdf-lf-area-heading-transform, uppercase);
+}
 .pdf-hg-block .pdf-section-table td.pdf-cell {
     background: var(--pdf-hg-body-bg, #ffffff);
     background-color: var(--pdf-hg-body-bg, #ffffff);
