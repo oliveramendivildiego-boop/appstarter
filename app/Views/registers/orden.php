@@ -188,20 +188,9 @@ if ($doctorOrdenDisplay === '') {
 
 .orden-barcode-patient-name {
     font-weight: 600;
-    font-size: 1.05rem;
-    line-height: 1.2;
-    margin-bottom: 0.15rem;
-}
-@media print {
-    body:not(.print-barcode-labels) #print-area .orden-barcode-patient-name {
-        font-size: 1.2rem;
-    }
-    body.print-barcode-labels .orden-barcode-patient-name {
-        font-size: 1.15rem;
-    }
-    body.print-barcode-labels #barcode-labels-root.barcode-layout-horizontal .orden-barcode-patient-name {
-        font-size: 1rem;
-    }
+    font-size: 0.8rem;
+    line-height: 0.7;
+    margin-bottom: 0;
 }
 </style>
 
