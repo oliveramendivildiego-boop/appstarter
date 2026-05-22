@@ -22,6 +22,9 @@ No existe aún un sistema unificado de migraciones CI4.
 | 11 | `migration_tipopago_pendiente.sql` | Tipo de pago |
 | 12 | `migrations_modulos_2025.sql` | Módulos y permisos |
 | 13 | `add_modulos_nuevos.sql` | Módulos adicionales |
+| 14 | `migration_address_1_people.sql` | Dirección del paciente (`dom_people.address_1`) |
+
+**Equivalente CI4:** `php spark migrate` → `2026-05-21-120000_AddAddress1ToPeople.php`
 
 ### Otros scripts (datos/fixes)
 
