@@ -14,9 +14,9 @@ $codigoOrden = registro_orden_display($register_info);
 $telefonoPaciente = trim((string) ($register_info->phone_number ?? ''));
 $direccionPaciente = trim((string) ($register_info->address_1 ?? ''));
 $nombrePacienteOrden = trim(implode(' ', array_filter([
-    $register_info->first_name ?? '',
     $register_info->last_name_fa ?? '',
     $register_info->last_name_mom ?? '',
+    $register_info->first_name ?? '',
 ])));
 $doctorOrdenDisplay = trim((string) ($register_info->doctor_name ?? $register_info->doctor ?? ''));
 if ($doctorOrdenDisplay === '') {
@@ -185,6 +185,24 @@ if ($doctorOrdenDisplay === '') {
     overflow: hidden;
     pointer-events: none;
 }
+
+.orden-barcode-patient-name {
+    font-weight: 600;
+    font-size: 1.05rem;
+    line-height: 1.2;
+    margin-bottom: 0.15rem;
+}
+@media print {
+    body:not(.print-barcode-labels) #print-area .orden-barcode-patient-name {
+        font-size: 1.2rem;
+    }
+    body.print-barcode-labels .orden-barcode-patient-name {
+        font-size: 1.15rem;
+    }
+    body.print-barcode-labels #barcode-labels-root.barcode-layout-horizontal .orden-barcode-patient-name {
+        font-size: 1rem;
+    }
+}
 </style>
 
 <div class="d-print-none">
@@ -277,7 +295,7 @@ if ($doctorOrdenDisplay === '') {
             <hr class="my-3" />
             <div class="text-center mt-2">
                 <?php if ($nombrePacienteOrden !== ''): ?>
-                    <div class="fw-semibold small mb-0"><?= esc($nombrePacienteOrden) ?></div>
+                    <div class="orden-barcode-patient-name"><?= esc($nombrePacienteOrden) ?></div>
                 <?php endif; ?>
                 <div class="orden-barcode-box">
                     <svg id="orden-barcode"></svg>
@@ -386,7 +404,7 @@ if ($doctorOrdenDisplay === '') {
                     wrap.className = 'text-center barcode-label-item' + (printLayout === 'horizontal' ? '' : ' mb-3');
                     if (patientName) {
                         var nameEl = document.createElement('div');
-                        nameEl.className = 'fw-semibold small mb-0';
+                        nameEl.className = 'orden-barcode-patient-name';
                         nameEl.textContent = patientName;
                         wrap.appendChild(nameEl);
                     }

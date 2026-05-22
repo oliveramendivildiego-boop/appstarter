@@ -37,7 +37,7 @@ class RegistroFolioService
             $at = $at->setTimezone(new \DateTimeZone($tz));
         }
 
-        $seqKey = $this->sequenceKey($format, $at);
+        $seqKey = $this->sequenceKey($format, $at, $this->counterResetMode());
         $db = Database::connect();
 
         $maxAttempts = 15;
@@ -62,7 +62,7 @@ class RegistroFolioService
             }
             $db->transCommit();
 
-            $candidate = $this->applyFormat($format, $at, $i);
+            $candidate = $this->applyFormat($format, $at, $i, $this->counterPadWidth());
             if ($candidate === '' || strlen($candidate) > 64) {
                 return null;
             }
@@ -77,9 +77,28 @@ class RegistroFolioService
     }
 
     /**
-     * Clave de secuencia según la granularidad de fecha usada en la plantilla.
+     * Clave de secuencia según reinicio configurado o, en modo automático, según la plantilla.
      */
-    public function sequenceKey(string $format, \DateTimeInterface $at): string
+    public function sequenceKey(string $format, \DateTimeInterface $at, ?string $resetMode = null): string
+    {
+        $mode = $resetMode ?? $this->counterResetMode();
+        if ($mode !== 'auto') {
+            return match ($mode) {
+                'day'    => $at->format('Y-m-d'),
+                'month'  => $at->format('Y-m'),
+                'year'   => $at->format('Y'),
+                'global' => 'global',
+                default  => $this->sequenceKeyFromFormat($format, $at),
+            };
+        }
+
+        return $this->sequenceKeyFromFormat($format, $at);
+    }
+
+    /**
+     * Reinicio automático: día si la plantilla incluye día; si no, mes; si no, año; si no, global.
+     */
+    protected function sequenceKeyFromFormat(string $format, \DateTimeInterface $at): string
     {
         $hasDay = str_contains($format, '%dd') || str_contains($format, '%d');
         $hasMonth = str_contains($format, '%mm') || str_contains($format, '%m');
@@ -98,7 +117,7 @@ class RegistroFolioService
         return 'global';
     }
 
-    public function applyFormat(string $format, \DateTimeInterface $at, int $incremento): string
+    public function applyFormat(string $format, \DateTimeInterface $at, int $incremento, ?int $padWidth = null): string
     {
         $s = str_replace('%%', "\x00PERCT\x00", $format);
 
@@ -114,9 +133,38 @@ class RegistroFolioService
             $s = str_replace($tok, $val, $s);
         }
 
-        $s = str_replace('%i', (string) $incremento, $s);
+        $width = $padWidth ?? $this->counterPadWidth();
+        $iStr = $width > 0
+            ? str_pad((string) max(0, $incremento), $width, '0', STR_PAD_LEFT)
+            : (string) $incremento;
+        $s = str_replace('%i', $iStr, $s);
         $s = str_replace("\x00PERCT\x00", '%', $s);
 
         return $s;
+    }
+
+    /** @return 'auto'|'day'|'month'|'year'|'global' */
+    public function counterResetMode(): string
+    {
+        $v = strtolower(trim((string) $this->appConfigModel->getValue('registro_folio_counter_reset')));
+        if (in_array($v, ['day', 'month', 'year', 'global'], true)) {
+            return $v;
+        }
+
+        return 'auto';
+    }
+
+    /** Ancho mínimo del contador %i (0 = sin ceros a la izquierda). */
+    public function counterPadWidth(): int
+    {
+        $w = (int) $this->appConfigModel->getValue('registro_folio_counter_pad');
+        if ($w < 0) {
+            return 0;
+        }
+        if ($w > 6) {
+            return 6;
+        }
+
+        return $w;
     }
 }

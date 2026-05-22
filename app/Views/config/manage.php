@@ -367,6 +367,40 @@
         <div class="mb-3">
             <label for="registro_folio_format" class="form-label fw-bold">Formato del número de orden (recepción)</label>
             <textarea name="registro_folio_format" id="registro_folio_format" class="form-control font-monospace" rows="2" maxlength="128" placeholder="Ej: LAB-%yyyy-%mm-%dd-%i"><?= esc($config['registro_folio_format'] ?? '') ?></textarea>
+            <?php
+            $folioPad = (int) ($config['registro_folio_counter_pad'] ?? 0);
+            if ($folioPad < 0) {
+                $folioPad = 0;
+            }
+            if ($folioPad > 6) {
+                $folioPad = 6;
+            }
+            $folioReset = strtolower((string) ($config['registro_folio_counter_reset'] ?? 'auto'));
+            if (! in_array($folioReset, ['auto', 'day', 'month', 'year', 'global'], true)) {
+                $folioReset = 'auto';
+            }
+            ?>
+            <div class="row g-3 mt-1">
+                <div class="col-md-6">
+                    <label for="registro_folio_counter_pad" class="form-label"><?= lang('Config.config_registro_folio_counter_pad') ?></label>
+                    <?= form_dropdown('registro_folio_counter_pad', [
+                        '0' => lang('Config.config_registro_folio_counter_pad_none'),
+                        '2' => lang('Config.config_registro_folio_counter_pad_2'),
+                    ], (string) ($folioPad === 2 ? 2 : 0), 'id="registro_folio_counter_pad" class="form-select" autocomplete="off"') ?>
+                    <small class="text-muted d-block mt-1"><?= lang('Config.config_registro_folio_counter_pad_help') ?></small>
+                </div>
+                <div class="col-md-6">
+                    <label for="registro_folio_counter_reset" class="form-label"><?= lang('Config.config_registro_folio_counter_reset') ?></label>
+                    <?= form_dropdown('registro_folio_counter_reset', [
+                        'auto'   => lang('Config.config_registro_folio_counter_reset_auto'),
+                        'day'    => lang('Config.config_registro_folio_counter_reset_day'),
+                        'month'  => lang('Config.config_registro_folio_counter_reset_month'),
+                        'year'   => lang('Config.config_registro_folio_counter_reset_year'),
+                        'global' => lang('Config.config_registro_folio_counter_reset_global'),
+                    ], $folioReset, 'id="registro_folio_counter_reset" class="form-select" autocomplete="off"') ?>
+                    <small class="text-muted d-block mt-1"><?= lang('Config.config_registro_folio_counter_reset_help') ?></small>
+                </div>
+            </div>
             <div class="small text-muted mt-2">
                 <p class="mb-1">Deje vacío para usar solo el ID numérico interno del sistema (comportamiento anterior).</p>
                 <p class="mb-1"><strong>Variables</strong> (respete mayúsculas):</p>
@@ -377,7 +411,7 @@
                     <li><code>%m</code> — mes sin cero (1–12)</li>
                     <li><code>%dd</code> — día con cero (01–31)</li>
                     <li><code>%d</code> — día sin cero (1–31)</li>
-                    <li><code>%i</code> — <strong>obligatorio</strong> si usa formato: contador que aumenta (1, 2, 3…). Se reinicia según lo que incluya la plantilla: si hay día (<code>%d</code> o <code>%dd</code>) cada día; si solo mes, cada mes; si solo año, cada año; si no hay fecha, un solo contador global.</li>
+                    <li><code>%i</code> — <strong>obligatorio</strong> si usa formato: contador incremental. El formato (1, 2, 3 o 01, 02, 03) y cuándo se reinicia se configuran en las opciones de arriba.</li>
                     <li><code>%%</code> — un símbolo <code>%</code> literal</li>
                 </ul>
                 <p class="mb-0">Puede mezclar <strong>texto fijo</strong> (letras, guiones, etc.) con las variables. Ejemplo: <code>ORD-%yyyy-%mm-%dd-%i</code> o <code>%m%dd%yyyy-%i</code>. Máximo 128 caracteres en la plantilla; el número generado no puede superar 64 caracteres.</p>

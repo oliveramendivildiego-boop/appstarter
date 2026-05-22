@@ -74,6 +74,8 @@ class ConfigService
         $data['ui_pagination_active_color'] ??= '';
         $data['order_barcode_print_layout'] ??= 'vertical';
         $data['order_barcode_print_size_percent'] ??= '100';
+        $data['registro_folio_counter_pad'] ??= '0';
+        $data['registro_folio_counter_reset'] ??= 'auto';
         $data['print_paper_size'] ??= 'letter';
         $data['print_paper_width_mm'] ??= '210';
         $data['print_paper_height_mm'] ??= '297';
@@ -994,6 +996,16 @@ class ConfigService
                 $fmt = mb_substr($fmt, 0, 128);
             }
             $batch['registro_folio_format'] = $fmt;
+        }
+        if (array_key_exists('registro_folio_counter_pad', $postData)) {
+            $pad = (int) $postData['registro_folio_counter_pad'];
+            $batch['registro_folio_counter_pad'] = (string) max(0, min(6, $pad));
+        }
+        if (array_key_exists('registro_folio_counter_reset', $postData)) {
+            $r = strtolower(trim((string) $postData['registro_folio_counter_reset']));
+            $batch['registro_folio_counter_reset'] = in_array($r, ['auto', 'day', 'month', 'year', 'global'], true)
+                ? $r
+                : 'auto';
         }
 
         if (array_key_exists('pdf_result_template_id', $postData)) {
