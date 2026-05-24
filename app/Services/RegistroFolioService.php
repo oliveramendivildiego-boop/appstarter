@@ -49,11 +49,13 @@ class RegistroFolioService
                     [$seqKey]
                 )->getRowArray();
 
+                $seqLast = $row ? (int) $row['last_num'] : 0;
+                $dbMax = $this->maxIncrementFromExisting($db, $format, $at, $seqKey);
+                $i = max($seqLast, $dbMax) + 1;
+
                 if (!$row) {
-                    $db->table('registro_folio_secuencia')->insert(['seq_key' => $seqKey, 'last_num' => 1]);
-                    $i = 1;
+                    $db->table('registro_folio_secuencia')->insert(['seq_key' => $seqKey, 'last_num' => $i]);
                 } else {
-                    $i = (int) $row['last_num'] + 1;
                     $db->table('registro_folio_secuencia')->where('seq_key', $seqKey)->update(['last_num' => $i]);
                 }
             } catch (\Throwable $e) {
@@ -117,9 +119,13 @@ class RegistroFolioService
         return 'global';
     }
 
-    public function applyFormat(string $format, \DateTimeInterface $at, int $incremento, ?int $padWidth = null): string
+    /**
+     * Parte fija del folio (sin el contador %i) para la fecha indicada.
+     */
+    public function folioStaticPart(string $format, \DateTimeInterface $at): string
     {
         $s = str_replace('%%', "\x00PERCT\x00", $format);
+        $s = str_replace('%i', '', $s);
 
         $repl = [
             '%yyyy' => $at->format('Y'),
@@ -133,14 +139,89 @@ class RegistroFolioService
             $s = str_replace($tok, $val, $s);
         }
 
+        return str_replace("\x00PERCT\x00", '%', $s);
+    }
+
+    public function applyFormat(string $format, \DateTimeInterface $at, int $incremento, ?int $padWidth = null): string
+    {
         $width = $padWidth ?? $this->counterPadWidth();
         $iStr = $width > 0
             ? str_pad((string) max(0, $incremento), $width, '0', STR_PAD_LEFT)
             : (string) $incremento;
-        $s = str_replace('%i', $iStr, $s);
-        $s = str_replace("\x00PERCT\x00", '%', $s);
 
-        return $s;
+        $s = str_replace('%%', "\x00PERCT\x00", $format);
+        $repl = [
+            '%yyyy' => $at->format('Y'),
+            '%yy'   => $at->format('y'),
+            '%mm'   => $at->format('m'),
+            '%dd'   => $at->format('d'),
+            '%m'    => (string) (int) $at->format('n'),
+            '%d'    => (string) (int) $at->format('j'),
+        ];
+        foreach ($repl as $tok => $val) {
+            $s = str_replace($tok, $val, $s);
+        }
+        $s = str_replace('%i', $iStr, $s);
+
+        return str_replace("\x00PERCT\x00", '%', $s);
+    }
+
+    /**
+     * Mayor %i ya usado en numero_orden para el mismo prefijo y periodo de reinicio.
+     */
+    protected function maxIncrementFromExisting($db, string $format, \DateTimeInterface $at, string $seqKey): int
+    {
+        $prefix = $this->folioStaticPart($format, $at);
+        if ($prefix === '') {
+            return 0;
+        }
+
+        $builder = $db->table('registro')
+            ->select('numero_orden')
+            ->like('numero_orden', $prefix, 'after');
+        $this->applyIngresoFilterForSeqKey($builder, $seqKey, $at);
+
+        $max = 0;
+        $prefixLen = strlen($prefix);
+        foreach ($builder->get()->getResultArray() as $row) {
+            $num = trim((string) ($row['numero_orden'] ?? ''));
+            if ($num === '' || ! str_starts_with($num, $prefix)) {
+                continue;
+            }
+            $suffix = substr($num, $prefixLen);
+            if ($suffix !== '' && ctype_digit($suffix)) {
+                $max = max($max, (int) $suffix);
+            }
+        }
+
+        return $max;
+    }
+
+    /**
+     * Limita la búsqueda al periodo de reinicio cuando el prefijo no incluye toda la fecha.
+     */
+    protected function applyIngresoFilterForSeqKey($builder, string $seqKey, \DateTimeInterface $at): void
+    {
+        if ($seqKey === 'global') {
+            return;
+        }
+
+        $tz = $at->getTimezone();
+        if (preg_match('/^\d{4}-\d{2}-\d{2}$/', $seqKey)) {
+            $start = \DateTimeImmutable::createFromFormat('Y-m-d', $seqKey, $tz)->setTime(0, 0, 0);
+            $end = $start->modify('+1 day');
+        } elseif (preg_match('/^\d{4}-\d{2}$/', $seqKey)) {
+            $start = \DateTimeImmutable::createFromFormat('Y-m-d', $seqKey . '-01', $tz)->setTime(0, 0, 0);
+            $end = $start->modify('+1 month');
+        } elseif (preg_match('/^\d{4}$/', $seqKey)) {
+            $start = \DateTimeImmutable::createFromFormat('Y-m-d', $seqKey . '-01-01', $tz)->setTime(0, 0, 0);
+            $end = $start->modify('+1 year');
+        } else {
+            return;
+        }
+
+        $builder->where('ingreso >=', $start->format('Y-m-d H:i:s'))
+            ->where('ingreso <', $end->format('Y-m-d H:i:s'));
     }
 
     /** @return 'auto'|'day'|'month'|'year'|'global' */
