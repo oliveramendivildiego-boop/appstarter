@@ -21,7 +21,7 @@ $totalesAnulados = $totalesAnulados ?? null;
             $nAnul = (int) ($row['cantidad_anuladas'] ?? 0);
             ?>
             <tr>
-                <td><?= esc(date('d/m/Y', strtotime($row['fecha'] ?? ''))) ?></td>
+                <td><?= esc(\App\Services\RegisterService::formatReportDate($row['fecha'] ?? '')) ?></td>
                 <td class="text-end"><?= (int) ($row['cantidad'] ?? 0) ?></td>
                 <td class="text-end"><?= number_format((float) ($row['total'] ?? 0), 2) ?></td>
                 <td class="text-end"><?= number_format((float) ($row['cobrado'] ?? 0), 2) ?></td>
@@ -38,8 +38,8 @@ $totalesAnulados = $totalesAnulados ?? null;
 <?php if ($data !== []): ?>
     <div class="alert-box">
         Registros facturables: <?= (int) ($totales->total_registros ?? 0) ?> |
-        Total facturado: <?= number_format((float) ($totales->total_facturado ?? 0), 2) ?> Bs |
-        Total cobrado: <?= number_format((float) ($totales->total_cobrado ?? 0), 2) ?> Bs
+        Total facturado: <?= format_currency((float) ($totales->total_facturado ?? 0)) ?> |
+        Total cobrado: <?= format_currency((float) ($totales->total_cobrado ?? 0)) ?>
     </div>
 <?php endif; ?>
 <?php
@@ -47,5 +47,5 @@ $ta       = $totalesAnulados;
 $nAnulTot = $ta ? (int) ($ta->total_registros ?? 0) : 0;
 ?>
 <?php if ($nAnulTot > 0): ?>
-    <div class="small">Órdenes anuladas en el período: <?= $nAnulTot ?> · Total hist. fact.: <?= number_format((float) ($ta->total_facturado ?? 0), 2) ?> Bs · Cobrado hist.: <?= number_format((float) ($ta->total_cobrado ?? 0), 2) ?> Bs</div>
+    <div class="small">Órdenes anuladas en el período: <?= $nAnulTot ?> · Total hist. fact.: <?= format_currency((float) ($ta->total_facturado ?? 0)) ?> · Cobrado hist.: <?= format_currency((float) ($ta->total_cobrado ?? 0)) ?></div>
 <?php endif; ?>

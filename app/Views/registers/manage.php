@@ -400,7 +400,7 @@ document.addEventListener('DOMContentLoaded', function() {
         var totalVal = parseFloat((document.getElementById('total') || {}).value || 0);
         var ahorro = (!isNaN(totalVal)) ? Math.max(0, totalBruto - totalVal) : 0;
         if (ahorro > 0) {
-            infoEl.textContent = 'Institución: ' + inst + ' — descuento aplicado: ' + pct.toFixed(2) + '% (ahorro: ' + ahorro.toFixed(2) + ' Bs)';
+            infoEl.textContent = 'Institución: ' + inst + ' — descuento aplicado: ' + pct.toFixed(2) + '% (ahorro: ' + formatCurrencyAmount(ahorro, 2) + ')';
         } else {
             infoEl.textContent = 'Institución: ' + inst + ' — descuento configurado: ' + pct.toFixed(2) + '% (sin ahorro aplicado)';
         }
@@ -422,7 +422,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     ? '<button type="button" class="btn btn-outline-secondary btn-sm" disabled title="Esta prueba ya tiene resultados"><i class="fa-solid fa-lock"></i></button>'
                     : '<button type="button" class="btn btn-outline-danger btn-sm quitar-prueba" data-idx="' + idx + '" title="Eliminar"><i class="fa-solid fa-times"></i></button>';
                 row.innerHTML = '<span class="flex-grow-1">' + displayName + '</span>' +
-                    '<span class="badge bg-secondary me-2">' + (p.cost || 0) + ' Bs</span>' +
+                    '<span class="badge bg-secondary me-2">' + formatCurrencyAmount(p.cost || 0, 0) + '</span>' +
                     removeButton;
                 pruebaListaContainer.appendChild(row);
             });
@@ -534,7 +534,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 label.textContent = item.name || ('Prueba #' + itemId);
                 var badge = document.createElement('span');
                 badge.className = 'badge bg-secondary';
-                badge.textContent = (item.cost || 0) + ' Bs';
+                badge.textContent = formatCurrencyAmount(item.cost || 0, 0);
                 row.appendChild(chk);
                 row.appendChild(label);
                 row.appendChild(badge);
@@ -1018,7 +1018,7 @@ document.addEventListener('DOMContentLoaded', function() {
                         li.style.cursor = 'pointer';
                         var label = item.value;
                         if (item.padre) label += ' <span class="text-muted small">(' + item.padre + ')</span>';
-                        li.innerHTML = label + ' <span class="badge bg-secondary float-end">' + (item.cost || 0) + ' Bs</span>';
+                        li.innerHTML = label + ' <span class="badge bg-secondary float-end">' + formatCurrencyAmount(item.cost || 0, 0) + '</span>';
                         li.addEventListener('click', function() {
                             agregarPrueba(item);
                             searchInput.value = '';

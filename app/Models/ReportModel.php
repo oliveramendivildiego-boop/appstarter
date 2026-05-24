@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Libraries\LabNaiveDateRange;
 use App\Libraries\RegistroIngresoDateRange;
 use CodeIgniter\Model;
 
@@ -450,6 +451,7 @@ class ReportModel extends Model
         $p  = $this->db->prefixTable('people');
         $d  = $this->db->prefixTable('doctors');
         $pa = $this->db->prefixTable('pago');
+        $saldoPendiente = "GREATEST(CAST({$pa}.saldo AS DECIMAL(12,2)), CAST({$pa}.total AS DECIMAL(12,2)) - CAST({$pa}.monto_pagar AS DECIMAL(12,2)))";
 
         $b = $this->db->table('registro')
             ->select("{$r}.registro_id, {$r}.ingreso,
@@ -457,14 +459,14 @@ class ReportModel extends Model
                 {$d}.name as doctor,
                 CAST({$pa}.total AS DECIMAL(12,2)) as total,
                 CAST({$pa}.monto_pagar AS DECIMAL(12,2)) as monto_pagado,
-                CAST({$pa}.saldo AS DECIMAL(12,2)) as saldo")
+                {$saldoPendiente} as saldo", false)
             ->join('people', "{$p}.person_id = {$r}.person_id")
             ->join('doctors', "{$d}.doctor_id = {$r}.doctor_id")
             ->join('pago', "{$r}.registro_id = {$pa}.registro_id");
         $b = $this->applySinRegistrosAnulados($b, $r);
 
         return RegistroIngresoDateRange::apply($b, $r, $startDate, $endDate)
-            ->where("CAST({$pa}.saldo AS DECIMAL(12,2)) >", 0)
+            ->where("{$saldoPendiente} >", 0.02, false)
             ->orderBy('saldo', 'DESC')
             ->get()
             ->getResultArray();
@@ -693,11 +695,10 @@ class ReportModel extends Model
             return [];
         }
 
-        if ($startDate !== '') {
-            $b->where("DATE({$e}.fecha) >=", $startDate);
-        }
-        if ($endDate !== '') {
-            $b->where("DATE({$e}.fecha) <=", $endDate);
+        if ($startDate !== '' && $endDate !== '') {
+            LabNaiveDateRange::apply($b, $e, 'fecha', $startDate, $endDate);
+        } elseif ($startDate !== '' || $endDate !== '') {
+            LabNaiveDateRange::applyPartial($b, $e, 'fecha', $startDate !== '' ? $startDate : null, $endDate !== '' ? $endDate : null);
         }
 
         return $b->orderBy("{$e}.fecha", 'DESC')
@@ -722,11 +723,10 @@ class ReportModel extends Model
             return (object) [$cantidadAlias => 0, $totalAlias => 0.0];
         }
 
-        if ($startDate !== '') {
-            $b->where("DATE({$e}.fecha) >=", $startDate);
-        }
-        if ($endDate !== '') {
-            $b->where("DATE({$e}.fecha) <=", $endDate);
+        if ($startDate !== '' && $endDate !== '') {
+            LabNaiveDateRange::apply($b, $e, 'fecha', $startDate, $endDate);
+        } elseif ($startDate !== '' || $endDate !== '') {
+            LabNaiveDateRange::applyPartial($b, $e, 'fecha', $startDate !== '' ? $startDate : null, $endDate !== '' ? $endDate : null);
         }
 
         $row = $b->get()->getRow();
@@ -755,11 +755,10 @@ class ReportModel extends Model
             return [];
         }
 
-        if ($startDate !== '') {
-            $b->where("DATE({$e}.fecha) >=", $startDate);
-        }
-        if ($endDate !== '') {
-            $b->where("DATE({$e}.fecha) <=", $endDate);
+        if ($startDate !== '' && $endDate !== '') {
+            LabNaiveDateRange::apply($b, $e, 'fecha', $startDate, $endDate);
+        } elseif ($startDate !== '' || $endDate !== '') {
+            LabNaiveDateRange::applyPartial($b, $e, 'fecha', $startDate !== '' ? $startDate : null, $endDate !== '' ? $endDate : null);
         }
 
         return $b->groupBy("{$e}.tipopago")

@@ -60,9 +60,9 @@ $rid = (int) ($reg->registro_id ?? 0);
             <div class="card-header"><strong>Pagos (referencia)</strong></div>
             <div class="card-body">
                 <?php if ($pago): ?>
-                    <p class="mb-1"><span class="text-muted">Total orden:</span> <?= esc($pago->total ?? '0') ?> Bs</p>
-                    <p class="mb-1"><span class="text-muted">Pagado:</span> <?= esc($pago->monto_pagar ?? '0') ?> Bs</p>
-                    <p class="mb-2"><span class="text-muted">Saldo:</span> <?= esc($pago->saldo ?? '0') ?> Bs</p>
+                    <p class="mb-1"><span class="text-muted">Total orden:</span> <?= esc($pago->total ?? '0') ?> <?= esc(currency_symbol()) ?></p>
+                    <p class="mb-1"><span class="text-muted">Pagado:</span> <?= esc($pago->monto_pagar ?? '0') ?> <?= esc(currency_symbol()) ?></p>
+                    <p class="mb-2"><span class="text-muted">Saldo:</span> <?= esc($pago->saldo ?? '0') ?> <?= esc(currency_symbol()) ?></p>
                 <?php else: ?>
                     <p class="text-muted mb-2">Sin registro de pago.</p>
                 <?php endif; ?>
@@ -72,7 +72,7 @@ $rid = (int) ($reg->registro_id ?? 0);
                         <?php foreach ($abonos as $a): ?>
                             <li class="list-group-item px-0 d-flex justify-content-between">
                                 <span><?= esc($a['fecha_abono'] ?? '') ?></span>
-                                <span><?= esc($a['monto'] ?? '0') ?> Bs — <?= esc($a['tipo_nombre'] ?? '') ?></span>
+                                <span><?= esc($a['monto'] ?? '0') ?> <?= esc(currency_symbol()) ?> — <?= esc($a['tipo_nombre'] ?? '') ?></span>
                             </li>
                         <?php endforeach; ?>
                     </ul>

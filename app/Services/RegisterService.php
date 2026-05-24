@@ -731,16 +731,103 @@ class RegisterService
         }
     }
 
+    private static function reportTimezoneObject(): \DateTimeZone
+    {
+        try {
+            return new \DateTimeZone(self::reportDisplayTimezone());
+        } catch (\Throwable $e) {
+            return new \DateTimeZone('UTC');
+        }
+    }
+
+    private static function nowInReportTimezone(): \DateTimeImmutable
+    {
+        return new \DateTimeImmutable('now', self::reportTimezoneObject());
+    }
+
+    /**
+     * Instante actual en la zona del laboratorio.
+     */
+    public static function reportNow(): \DateTimeImmutable
+    {
+        return self::nowInReportTimezone();
+    }
+
+    /**
+     * Fecha de hoy (Y-m-d) en la zona del laboratorio.
+     */
+    public static function todayForReport(): string
+    {
+        return self::nowInReportTimezone()->format('Y-m-d');
+    }
+
+    /**
+     * Fecha relativa (p. ej. "-2 years", "monday this week") en Y-m-d según la zona del laboratorio.
+     */
+    public static function reportDateFromModifier(string $modifier): string
+    {
+        try {
+            return self::nowInReportTimezone()->modify($modifier)->format('Y-m-d');
+        } catch (\Throwable $e) {
+            return date('Y-m-d', strtotime($modifier));
+        }
+    }
+
+    /**
+     * Primer día del mes actual en Y-m-d según la zona del laboratorio.
+     */
+    public static function monthStartForReport(): string
+    {
+        return self::nowInReportTimezone()->modify('first day of this month')->format('Y-m-d');
+    }
+
+    /**
+     * Formatea Y-m-d a d/m/Y en la zona del laboratorio.
+     */
+    public static function formatReportDate(?string $ymdDate): string
+    {
+        if ($ymdDate === null || trim($ymdDate) === '') {
+            return '—';
+        }
+        $day = substr(trim($ymdDate), 0, 10);
+        try {
+            $dt = new \DateTimeImmutable($day, self::reportTimezoneObject());
+
+            return $dt->format('d/m/Y');
+        } catch (\Throwable $e) {
+            return $day;
+        }
+    }
+
+    /**
+     * Subtítulo de rango para reportes: dd/mm/yyyy - dd/mm/yyyy.
+     */
+    public static function formatReportDateRangeSubtitle(string $startYmd, string $endYmd): string
+    {
+        return self::formatReportDate($startYmd) . ' - ' . self::formatReportDate($endYmd);
+    }
+
     /**
      * Fecha/hora “ahora” para el reporte (vista, impresión, PDF) en {@see reportDisplayTimezone()}.
      */
     public static function formatNowForReport(): string
     {
-        $tz = self::reportDisplayTimezone();
         try {
-            return Time::now($tz)->format('d/m/Y H:i:s');
+            return self::nowInReportTimezone()->format('d/m/Y H:i:s');
         } catch (\Throwable $e) {
-            return Time::now('UTC')->format('d/m/Y H:i:s');
+            return (new \DateTimeImmutable('now', new \DateTimeZone('UTC')))->format('d/m/Y H:i:s');
+        }
+    }
+
+    /**
+     * Fecha/hora actual corta (sin segundos) en la zona del laboratorio.
+     */
+    public static function formatNowForReportShort(): string
+    {
+        try {
+            return self::nowInReportTimezone()->format('d/m/Y H:i');
+        } catch (\Throwable $e) {
+            return (new \DateTimeImmutable('now', new \DateTimeZone('UTC')))->format('d/m/Y H:i');
         }
     }
 
@@ -749,10 +836,8 @@ class RegisterService
      */
     public static function formatStoredReporteFechaHora(string $mysqlDatetime): string
     {
-        $tz = self::reportDisplayTimezone();
         try {
-            $tzObj = new \DateTimeZone($tz);
-            $dt    = new \DateTimeImmutable($mysqlDatetime, $tzObj);
+            $dt = new \DateTimeImmutable($mysqlDatetime, self::reportTimezoneObject());
         } catch (\Throwable $e) {
             return $mysqlDatetime;
         }
@@ -761,18 +846,28 @@ class RegisterService
     }
 
     /**
+     * Formatea un DATETIME guardado en BD a d/m/Y H:i (sin segundos).
+     */
+    public static function formatStoredReporteFechaCorta(?string $mysqlDatetime): string
+    {
+        if ($mysqlDatetime === null || trim($mysqlDatetime) === '') {
+            return '—';
+        }
+        try {
+            $dt = new \DateTimeImmutable(trim($mysqlDatetime), self::reportTimezoneObject());
+
+            return $dt->format('d/m/Y H:i');
+        } catch (\Throwable $e) {
+            return trim($mysqlDatetime);
+        }
+    }
+
+    /**
      * DATETIME actual en la zona del laboratorio (para guardar en BD sin offset).
      */
     public static function mysqlNowForReport(): string
     {
-        $tz = self::reportDisplayTimezone();
-        try {
-            $tzObj = new \DateTimeZone($tz);
-        } catch (\Throwable $e) {
-            $tzObj = new \DateTimeZone('UTC');
-        }
-
-        return (new \DateTimeImmutable('now', $tzObj))->format('Y-m-d H:i:s');
+        return self::nowInReportTimezone()->format('Y-m-d H:i:s');
     }
 
     private function mysqlNowForReportTimezone(): string
@@ -815,11 +910,8 @@ class RegisterService
         if ($dateTimeRaw === null || trim($dateTimeRaw) === '') {
             return '—';
         }
-        try {
-            return (new \DateTime($dateTimeRaw))->format('d/m/Y H:i:s');
-        } catch (\Throwable $e) {
-            return '—';
-        }
+
+        return self::formatStoredReporteFechaHora(trim($dateTimeRaw));
     }
 
     /**

@@ -51,7 +51,7 @@
             <tr>
                 <td><?= esc($row['doctor'] ?? '') ?></td>
                 <td class="text-end"><?= (int)($row['cantidad'] ?? 0) ?></td>
-                <td class="text-end"><?= number_format((float)($row['total'] ?? 0), 2) ?> Bs</td>
+                <td class="text-end"><?= format_currency((float)($row['total'] ?? 0)) ?></td>
             </tr>
             <?php endforeach; ?>
         </tbody>
@@ -63,7 +63,7 @@
 <?php else: ?>
 <div class="alert alert-secondary">
     <strong>Registros facturables:</strong> <?= (int)($totales->total_registros ?? 0) ?> |
-    <strong>Total facturado:</strong> <?= number_format((float)($totales->total_facturado ?? 0), 2) ?> Bs
+    <strong>Total facturado:</strong> <?= format_currency((float)($totales->total_facturado ?? 0)) ?>
 </div>
 <?php endif; ?>
 <?= $this->endSection() ?>

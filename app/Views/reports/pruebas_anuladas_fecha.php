@@ -68,7 +68,7 @@
                     echo $mot !== '' ? nl2br(esc($mot)) : '<span class="text-muted">—</span>';
                     ?>
                 </td>
-                <td class="text-end text-muted"><?= number_format((float)($row['total'] ?? 0), 2) ?> Bs</td>
+                <td class="text-end text-muted"><?= format_currency((float)($row['total'] ?? 0)) ?></td>
             </tr>
             <?php endforeach; ?>
         </tbody>

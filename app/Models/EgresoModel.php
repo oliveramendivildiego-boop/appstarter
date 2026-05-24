@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Libraries\LabNaiveDateRange;
 use App\Services\RegisterService;
 use CodeIgniter\Model;
 
@@ -109,11 +110,16 @@ class EgresoModel extends Model
                 ->groupEnd();
         }
 
-        if ($startDate !== null && $startDate !== '') {
-            $builder->where('DATE(fecha) >=', $startDate);
-        }
-        if ($endDate !== null && $endDate !== '') {
-            $builder->where('DATE(fecha) <=', $endDate);
+        if ($startDate !== null && $startDate !== '' && $endDate !== null && $endDate !== '') {
+            LabNaiveDateRange::apply($builder, $this->db->prefixTable($this->table), 'fecha', $startDate, $endDate);
+        } elseif (($startDate !== null && $startDate !== '') || ($endDate !== null && $endDate !== '')) {
+            LabNaiveDateRange::applyPartial(
+                $builder,
+                $this->db->prefixTable($this->table),
+                'fecha',
+                ($startDate !== null && $startDate !== '') ? $startDate : null,
+                ($endDate !== null && $endDate !== '') ? $endDate : null
+            );
         }
     }
 }

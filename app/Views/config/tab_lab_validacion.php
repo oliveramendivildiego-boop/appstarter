@@ -68,19 +68,25 @@ $labels = [
                                 </div>
                                 <div class="col-md-6">
                                     <label class="form-label small mb-0"><?= lang('Config.config_lab_seal_image') ?></label>
-                                    <?php $sp = $a['seal'] ?? ''; ?>
-                                    <?php if ($sp !== '' && file_exists(FCPATH . $sp)): ?>
+                                    <?php
+                                    $sp = trim((string) ($a['seal'] ?? ''));
+                                    $spFs = $sp !== '' ? (FCPATH . str_replace('/', DIRECTORY_SEPARATOR, $sp)) : '';
+                                    ?>
+                                    <?php if ($sp !== '' && is_file($spFs)): ?>
                                         <div class="mb-2"><img src="<?= base_url($sp) ?>?v=<?= time() ?>" alt="" class="border rounded p-1" style="max-height: 100px;"></div>
                                     <?php endif; ?>
-                                    <input type="file" name="approver_seal_<?= (int) $idx ?>" class="form-control form-control-sm" accept="image/*" autocomplete="off">
+                                    <input type="file" name="approver_seal[<?= (int) $idx ?>]" class="form-control form-control-sm" accept="image/jpeg,image/png,image/gif,image/webp" autocomplete="off">
                                 </div>
                                 <div class="col-md-6">
                                     <label class="form-label small mb-0"><?= lang('Config.config_lab_signature_image') ?></label>
-                                    <?php $gp = $a['signature'] ?? ''; ?>
-                                    <?php if ($gp !== '' && file_exists(FCPATH . $gp)): ?>
+                                    <?php
+                                    $gp = trim((string) ($a['signature'] ?? ''));
+                                    $gpFs = $gp !== '' ? (FCPATH . str_replace('/', DIRECTORY_SEPARATOR, $gp)) : '';
+                                    ?>
+                                    <?php if ($gp !== '' && is_file($gpFs)): ?>
                                         <div class="mb-2"><img src="<?= base_url($gp) ?>?v=<?= time() ?>" alt="" class="border rounded p-1" style="max-height: 64px;"></div>
                                     <?php endif; ?>
-                                    <input type="file" name="approver_signature_<?= (int) $idx ?>" class="form-control form-control-sm" accept="image/*" autocomplete="off">
+                                    <input type="file" name="approver_signature[<?= (int) $idx ?>]" class="form-control form-control-sm" accept="image/jpeg,image/png,image/gif,image/webp" autocomplete="off">
                                 </div>
                             </div>
                         </div>
@@ -154,11 +160,11 @@ $labels = [
             '</div>' +
             '<div class="col-md-6">' +
             '<label class="form-label small mb-0">' + escapeHtml(L.seal) + '</label>' +
-            '<input type="file" name="approver_seal_' + i + '" class="form-control form-control-sm" accept="image/*" autocomplete="off">' +
+            '<input type="file" name="approver_seal[' + i + ']" class="form-control form-control-sm" accept="image/jpeg,image/png,image/gif,image/webp" autocomplete="off">' +
             '</div>' +
             '<div class="col-md-6">' +
             '<label class="form-label small mb-0">' + escapeHtml(L.sig) + '</label>' +
-            '<input type="file" name="approver_signature_' + i + '" class="form-control form-control-sm" accept="image/*" autocomplete="off">' +
+            '<input type="file" name="approver_signature[' + i + ']" class="form-control form-control-sm" accept="image/jpeg,image/png,image/gif,image/webp" autocomplete="off">' +
             '</div>' +
             '</div></div>';
         wrap.appendChild(card);

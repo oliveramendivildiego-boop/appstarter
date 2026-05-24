@@ -28,7 +28,7 @@ class RegistroFolioService
             return null;
         }
 
-        $tz = date_default_timezone_get() ?: 'UTC';
+        $tz = RegisterService::reportDisplayTimezone();
         if ($at === null) {
             $at = new \DateTimeImmutable('now', new \DateTimeZone($tz));
         } elseif ($at instanceof \DateTime) {

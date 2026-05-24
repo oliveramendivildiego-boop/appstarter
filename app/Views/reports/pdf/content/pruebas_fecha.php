@@ -18,7 +18,7 @@
                 <td><?= esc($row['paciente'] ?? '') ?></td>
                 <td><?= esc($row['doctor'] ?? '') ?></td>
                 <td class="small"><?= esc($row['pruebas_nombres'] ?? '-') ?></td>
-                <td class="text-end"><?= number_format((float) ($row['total'] ?? 0), 2) ?> Bs</td>
+                <td class="text-end"><?= format_currency((float) ($row['total'] ?? 0)) ?></td>
             </tr>
         <?php endforeach; ?>
         <?php if ($data === []): ?>

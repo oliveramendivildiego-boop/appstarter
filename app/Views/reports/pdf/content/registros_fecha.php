@@ -38,8 +38,8 @@ $totales = $totales ?? (object) [];
                 <td><?= esc(date('d/m/Y H:i', strtotime($row['ingreso'] ?? ''))) ?></td>
                 <td><?= esc($row['paciente'] ?? '') ?></td>
                 <td><?= esc($row['doctor'] ?? '') ?></td>
-                <td class="text-end"><?= number_format($montoTotal, 2) ?> Bs</td>
-                <td class="text-end"><?= number_format($montoCobrado, 2) ?> Bs</td>
+                <td class="text-end"><?= format_currency($montoTotal) ?></td>
+                <td class="text-end"><?= format_currency($montoCobrado) ?></td>
             </tr>
         <?php endforeach; ?>
         <?php if ($data === []): ?>
@@ -50,7 +50,7 @@ $totales = $totales ?? (object) [];
 <?php if ($data !== []): ?>
     <div class="alert-box">
         Registros facturables: <?= (int) ($totales->total_registros ?? 0) ?> |
-        Total facturado: <?= number_format((float) ($totales->total_facturado ?? 0), 2) ?> Bs |
-        Total cobrado: <?= number_format((float) ($totales->total_cobrado ?? 0), 2) ?> Bs
+        Total facturado: <?= format_currency((float) ($totales->total_facturado ?? 0)) ?> |
+        Total cobrado: <?= format_currency((float) ($totales->total_cobrado ?? 0)) ?>
     </div>
 <?php endif; ?>

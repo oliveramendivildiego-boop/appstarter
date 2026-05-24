@@ -73,20 +73,20 @@ $cierreEnd   = $endDate ?? date('Y-m-d');
 
 <div class="alert alert-info mb-4">
     <strong>Resumen del período:</strong><br>
-    Total facturado: <?= number_format((float)($totales->total_facturado ?? 0), 2) ?> Bs |
-    Total cobrado: <?= number_format((float)($totales->total_cobrado ?? 0), 2) ?> Bs |
-    <span class="text-danger">Total pendiente: <?= number_format((float)($totales->total_pendiente ?? 0), 2) ?> Bs</span> |
+    Total facturado: <?= format_currency((float)($totales->total_facturado ?? 0)) ?> |
+    Total cobrado: <?= format_currency((float)($totales->total_cobrado ?? 0)) ?> |
+    <span class="text-danger">Total pendiente: <?= format_currency((float)($totales->total_pendiente ?? 0)) ?></span> |
     Cantidad órdenes: <?= (int)($totales->total_registros ?? 0) ?>
     <span class="d-block small mt-1">No se incluyen órdenes anuladas en montos ni cantidades (devolución).</span>
 </div>
 
 <div class="alert <?= ($cajaResumen['estado'] ?? 'positivo') === 'negativo' ? 'alert-danger' : 'alert-success' ?> mb-4">
     <strong>Cuadre de caja del período:</strong><br>
-    Ingresos por ventas (cobrado): <?= number_format((float) ($cajaResumen['ingresos_ventas'] ?? 0), 2) ?> Bs |
-    Ingresos de caja (módulo): <?= number_format((float) ($cajaResumen['ingresos_movimientos'] ?? 0), 2) ?> Bs |
-    <strong>Total ingresos: <?= number_format((float) ($cajaResumen['ingresos'] ?? 0), 2) ?> Bs</strong> |
-    Egresos: <?= number_format((float) ($cajaResumen['egresos'] ?? 0), 2) ?> Bs |
-    <strong>Saldo neto caja: <?= number_format((float) ($cajaResumen['saldo_neto'] ?? 0), 2) ?> Bs</strong>
+    Ingresos por ventas (cobrado): <?= format_currency((float) ($cajaResumen['ingresos_ventas'] ?? 0)) ?> |
+    Ingresos de caja (módulo): <?= format_currency((float) ($cajaResumen['ingresos_movimientos'] ?? 0)) ?> |
+    <strong>Total ingresos: <?= format_currency((float) ($cajaResumen['ingresos'] ?? 0)) ?></strong> |
+    Egresos: <?= format_currency((float) ($cajaResumen['egresos'] ?? 0)) ?> |
+    <strong>Saldo neto caja: <?= format_currency((float) ($cajaResumen['saldo_neto'] ?? 0)) ?></strong>
     <span class="d-block small mt-1">Cálculo: (total cobrado + ingresos de caja) - egresos.</span>
 </div>
 
@@ -106,10 +106,10 @@ $cierreEnd   = $endDate ?? date('Y-m-d');
                 <?php foreach ($cajaPorTipo as $row): ?>
                     <tr>
                         <td><?= esc($tipoPagoMap[$row['tipopago'] ?? ''] ?? $row['tipopago'] ?? '-') ?></td>
-                        <td class="text-end"><?= number_format((float) ($row['ingresos'] ?? 0), 2) ?> Bs</td>
-                        <td class="text-end"><?= number_format((float) ($row['egresos'] ?? 0), 2) ?> Bs</td>
+                        <td class="text-end"><?= format_currency((float) ($row['ingresos'] ?? 0)) ?></td>
+                        <td class="text-end"><?= format_currency((float) ($row['egresos'] ?? 0)) ?></td>
                         <td class="text-end <?= ((float) ($row['saldo_neto'] ?? 0)) < 0 ? 'text-danger fw-bold' : 'text-success fw-bold' ?>">
-                            <?= number_format((float) ($row['saldo_neto'] ?? 0), 2) ?> Bs
+                            <?= format_currency((float) ($row['saldo_neto'] ?? 0)) ?>
                         </td>
                     </tr>
                 <?php endforeach; ?>
@@ -120,10 +120,10 @@ $cierreEnd   = $endDate ?? date('Y-m-d');
         <tfoot>
             <tr>
                 <th class="text-end">Total general</th>
-                <th class="text-end"><?= number_format((float) ($cajaPorTipoTotales['ingresos'] ?? 0), 2) ?> Bs</th>
-                <th class="text-end"><?= number_format((float) ($cajaPorTipoTotales['egresos'] ?? 0), 2) ?> Bs</th>
+                <th class="text-end"><?= format_currency((float) ($cajaPorTipoTotales['ingresos'] ?? 0)) ?></th>
+                <th class="text-end"><?= format_currency((float) ($cajaPorTipoTotales['egresos'] ?? 0)) ?></th>
                 <th class="text-end <?= ((float) ($cajaPorTipoTotales['saldo_neto'] ?? 0)) < 0 ? 'text-danger fw-bold' : 'text-success fw-bold' ?>">
-                    <?= number_format((float) ($cajaPorTipoTotales['saldo_neto'] ?? 0), 2) ?> Bs
+                    <?= format_currency((float) ($cajaPorTipoTotales['saldo_neto'] ?? 0)) ?>
                 </th>
             </tr>
         </tfoot>
@@ -148,10 +148,10 @@ $cierreEnd   = $endDate ?? date('Y-m-d');
                     <tr>
                         <td><?= esc($tipoPagoMap[$row['tipopago'] ?? ''] ?? $row['tipopago'] ?? '-') ?></td>
                         <td class="text-end"><?= (int)($row['cantidad'] ?? 0) ?></td>
-                        <td class="text-end"><?= number_format((float)($row['total_facturado'] ?? 0), 2) ?> Bs</td>
-                        <td class="text-end"><?= number_format((float)($row['total_cobrado'] ?? 0), 2) ?> Bs</td>
+                        <td class="text-end"><?= format_currency((float)($row['total_facturado'] ?? 0)) ?></td>
+                        <td class="text-end"><?= format_currency((float)($row['total_cobrado'] ?? 0)) ?></td>
                         <td class="text-end <?= ((float)($row['total_pendiente'] ?? 0)) > 0 ? 'text-danger fw-bold' : '' ?>">
-                            <?= number_format((float)($row['total_pendiente'] ?? 0), 2) ?> Bs
+                            <?= format_currency((float)($row['total_pendiente'] ?? 0)) ?>
                         </td>
                     </tr>
                 <?php endforeach; ?>
@@ -178,7 +178,7 @@ $cierreEnd   = $endDate ?? date('Y-m-d');
                     <tr>
                         <td><?= esc($tipoPagoMap[$row['tipopago'] ?? ''] ?? $row['tipopago'] ?? '-') ?></td>
                         <td class="text-end"><?= (int) ($row['cantidad'] ?? 0) ?></td>
-                        <td class="text-end"><?= number_format((float) ($row['total_ingresos'] ?? 0), 2) ?> Bs</td>
+                        <td class="text-end"><?= format_currency((float) ($row['total_ingresos'] ?? 0)) ?></td>
                     </tr>
                 <?php endforeach; ?>
             <?php else: ?>
@@ -188,7 +188,7 @@ $cierreEnd   = $endDate ?? date('Y-m-d');
         <tfoot>
             <tr>
                 <th colspan="2" class="text-end">Total ingresos de caja</th>
-                <th class="text-end"><?= number_format((float) ($totalesIngresosCaja->total_ingresos ?? 0), 2) ?> Bs</th>
+                <th class="text-end"><?= format_currency((float) ($totalesIngresosCaja->total_ingresos ?? 0)) ?></th>
             </tr>
         </tfoot>
     </table>
@@ -211,10 +211,10 @@ $cierreEnd   = $endDate ?? date('Y-m-d');
                 <?php foreach ($ingresosCajaMov as $row): ?>
                     <tr>
                         <td><?= (int) ($row['egreso_id'] ?? 0) ?></td>
-                        <td><?= esc(date('d/m/Y H:i', strtotime((string) ($row['fecha'] ?? '')))) ?></td>
+                        <td><?= esc(\App\Services\RegisterService::formatStoredReporteFechaCorta((string) ($row['fecha'] ?? ''))) ?></td>
                         <td><?= esc($tipoPagoMap[$row['tipopago'] ?? ''] ?? $row['tipopago'] ?? '-') ?></td>
                         <td><?= esc((string) ($row['desglose'] ?? '')) ?></td>
-                        <td class="text-end"><?= number_format((float) ($row['monto'] ?? 0), 2) ?> Bs</td>
+                        <td class="text-end"><?= format_currency((float) ($row['monto'] ?? 0)) ?></td>
                     </tr>
                 <?php endforeach; ?>
             <?php else: ?>
@@ -240,7 +240,7 @@ $cierreEnd   = $endDate ?? date('Y-m-d');
                     <tr>
                         <td><?= esc($tipoPagoMap[$row['tipopago'] ?? ''] ?? $row['tipopago'] ?? '-') ?></td>
                         <td class="text-end"><?= (int) ($row['cantidad'] ?? 0) ?></td>
-                        <td class="text-end"><?= number_format((float) ($row['total_egresos'] ?? 0), 2) ?> Bs</td>
+                        <td class="text-end"><?= format_currency((float) ($row['total_egresos'] ?? 0)) ?></td>
                     </tr>
                 <?php endforeach; ?>
             <?php else: ?>
@@ -250,7 +250,7 @@ $cierreEnd   = $endDate ?? date('Y-m-d');
         <tfoot>
             <tr>
                 <th colspan="2" class="text-end">Total egresos</th>
-                <th class="text-end"><?= number_format((float) ($totalesEgresos->total_egresos ?? 0), 2) ?> Bs</th>
+                <th class="text-end"><?= format_currency((float) ($totalesEgresos->total_egresos ?? 0)) ?></th>
             </tr>
         </tfoot>
     </table>
@@ -273,10 +273,10 @@ $cierreEnd   = $endDate ?? date('Y-m-d');
                 <?php foreach ($egresos as $row): ?>
                     <tr>
                         <td><?= (int) ($row['egreso_id'] ?? 0) ?></td>
-                        <td><?= esc(date('d/m/Y H:i', strtotime((string) ($row['fecha'] ?? '')))) ?></td>
+                        <td><?= esc(\App\Services\RegisterService::formatStoredReporteFechaCorta((string) ($row['fecha'] ?? ''))) ?></td>
                         <td><?= esc($tipoPagoMap[$row['tipopago'] ?? ''] ?? $row['tipopago'] ?? '-') ?></td>
                         <td><?= esc((string) ($row['desglose'] ?? '')) ?></td>
-                        <td class="text-end"><?= number_format((float) ($row['monto'] ?? 0), 2) ?> Bs</td>
+                        <td class="text-end"><?= format_currency((float) ($row['monto'] ?? 0)) ?></td>
                     </tr>
                 <?php endforeach; ?>
             <?php else: ?>
@@ -304,12 +304,12 @@ $cierreEnd   = $endDate ?? date('Y-m-d');
             <?php foreach ($pagosPagados ?? [] as $row): ?>
                 <tr>
                     <td><?= esc($row['registro_id'] ?? '') ?></td>
-                    <td><?= esc(date('d/m/Y H:i', strtotime($row['ingreso'] ?? ''))) ?></td>
+                    <td><?= esc(\App\Services\RegisterService::formatStoredReporteFechaCorta($row['ingreso'] ?? '')) ?></td>
                     <td><?= esc($row['paciente'] ?? '') ?></td>
                     <td><?= esc($row['doctor'] ?? '') ?></td>
-                    <td class="text-end"><?= number_format((float)($row['total'] ?? 0), 2) ?> Bs</td>
-                    <td class="text-end"><?= number_format((float)($row['monto_pagado'] ?? 0), 2) ?> Bs</td>
-                    <td class="text-end"><?= number_format((float)($row['saldo'] ?? 0), 2) ?> Bs</td>
+                    <td class="text-end"><?= format_currency((float)($row['total'] ?? 0)) ?></td>
+                    <td class="text-end"><?= format_currency((float)($row['monto_pagado'] ?? 0)) ?></td>
+                    <td class="text-end"><?= format_currency((float)($row['saldo'] ?? 0)) ?></td>
                 </tr>
             <?php endforeach; ?>
         </tbody>
@@ -337,12 +337,12 @@ $cierreEnd   = $endDate ?? date('Y-m-d');
             <?php foreach ($pendientes ?? [] as $row): ?>
             <tr>
                 <td><?= esc($row['registro_id'] ?? '') ?></td>
-                <td><?= esc(date('d/m/Y H:i', strtotime($row['ingreso'] ?? ''))) ?></td>
+                <td><?= esc(\App\Services\RegisterService::formatStoredReporteFechaCorta($row['ingreso'] ?? '')) ?></td>
                 <td><?= esc($row['paciente'] ?? '') ?></td>
                 <td><?= esc($row['doctor'] ?? '') ?></td>
-                <td class="text-end"><?= number_format((float)($row['total'] ?? 0), 2) ?> Bs</td>
-                <td class="text-end"><?= number_format((float)($row['monto_pagado'] ?? 0), 2) ?> Bs</td>
-                <td class="text-end text-danger fw-bold"><?= number_format((float)($row['saldo'] ?? 0), 2) ?> Bs</td>
+                <td class="text-end"><?= format_currency((float)($row['total'] ?? 0)) ?></td>
+                <td class="text-end"><?= format_currency((float)($row['monto_pagado'] ?? 0)) ?></td>
+                <td class="text-end text-danger fw-bold"><?= format_currency((float)($row['saldo'] ?? 0)) ?></td>
             </tr>
             <?php endforeach; ?>
         </tbody>
@@ -368,12 +368,12 @@ $cierreEnd   = $endDate ?? date('Y-m-d');
             <?php if (!empty($resumenPagosPorDia ?? [])): ?>
                 <?php foreach ($resumenPagosPorDia as $row): ?>
                     <tr>
-                        <td><?= esc(date('d/m/Y', strtotime($row['fecha'] ?? ''))) ?></td>
+                        <td><?= esc(\App\Services\RegisterService::formatReportDate($row['fecha'] ?? '')) ?></td>
                         <td class="text-end"><?= (int)($row['cantidad'] ?? 0) ?></td>
-                        <td class="text-end"><?= number_format((float)($row['total_facturado'] ?? 0), 2) ?> Bs</td>
-                        <td class="text-end"><?= number_format((float)($row['total_cobrado'] ?? 0), 2) ?> Bs</td>
+                        <td class="text-end"><?= format_currency((float)($row['total_facturado'] ?? 0)) ?></td>
+                        <td class="text-end"><?= format_currency((float)($row['total_cobrado'] ?? 0)) ?></td>
                         <td class="text-end <?= ((float)($row['total_pendiente'] ?? 0)) > 0 ? 'text-danger fw-bold' : '' ?>">
-                            <?= number_format((float)($row['total_pendiente'] ?? 0), 2) ?> Bs
+                            <?= format_currency((float)($row['total_pendiente'] ?? 0)) ?>
                         </td>
                     </tr>
                 <?php endforeach; ?>
@@ -402,10 +402,10 @@ $cierreEnd   = $endDate ?? date('Y-m-d');
                     <tr>
                         <td><?= esc($row['doctor'] ?? '') ?></td>
                         <td class="text-end"><?= (int)($row['cantidad'] ?? 0) ?></td>
-                        <td class="text-end"><?= number_format((float)($row['total_facturado'] ?? 0), 2) ?> Bs</td>
-                        <td class="text-end"><?= number_format((float)($row['total_cobrado'] ?? 0), 2) ?> Bs</td>
+                        <td class="text-end"><?= format_currency((float)($row['total_facturado'] ?? 0)) ?></td>
+                        <td class="text-end"><?= format_currency((float)($row['total_cobrado'] ?? 0)) ?></td>
                         <td class="text-end <?= ((float)($row['total_pendiente'] ?? 0)) > 0 ? 'text-danger fw-bold' : '' ?>">
-                            <?= number_format((float)($row['total_pendiente'] ?? 0), 2) ?> Bs
+                            <?= format_currency((float)($row['total_pendiente'] ?? 0)) ?>
                         </td>
                     </tr>
                 <?php endforeach; ?>
@@ -435,12 +435,12 @@ $cierreEnd   = $endDate ?? date('Y-m-d');
             <?php foreach ($todos ?? [] as $row): ?>
             <tr class="<?= (float)($row['saldo'] ?? 0) > 0 ? 'table-warning' : '' ?>">
                 <td><?= esc($row['registro_id'] ?? '') ?></td>
-                <td><?= esc(date('d/m/Y H:i', strtotime($row['ingreso'] ?? ''))) ?></td>
+                <td><?= esc(\App\Services\RegisterService::formatStoredReporteFechaCorta($row['ingreso'] ?? '')) ?></td>
                 <td><?= esc($row['paciente'] ?? '') ?></td>
                 <td><?= esc($row['doctor'] ?? '') ?></td>
-                <td class="text-end"><?= number_format((float)($row['total'] ?? 0), 2) ?> Bs</td>
-                <td class="text-end"><?= number_format((float)($row['monto_pagado'] ?? 0), 2) ?> Bs</td>
-                <td class="text-end"><?= number_format((float)($row['saldo'] ?? 0), 2) ?> Bs</td>
+                <td class="text-end"><?= format_currency((float)($row['total'] ?? 0)) ?></td>
+                <td class="text-end"><?= format_currency((float)($row['monto_pagado'] ?? 0)) ?></td>
+                <td class="text-end"><?= format_currency((float)($row['saldo'] ?? 0)) ?></td>
                 <td><?= esc($tipoPagoMap[$row['tipopago'] ?? ''] ?? $row['tipopago'] ?? '-') ?></td>
             </tr>
             <?php endforeach; ?>

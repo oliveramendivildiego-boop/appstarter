@@ -320,7 +320,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     html += '<p class="mb-1"><strong>Doctor:</strong> ' + escapeHtml(reg.doctor || '-') + '</p>';
                     html += '<p class="mb-0"><strong>Fecha ingreso:</strong> ' + escapeHtml(reg.ingreso ? new Date(reg.ingreso).toLocaleString('es') : '-') + '</p></div>';
                     html += '<div class="mb-3"><h6 class="border-bottom pb-2">Historial de pagos</h6>';
-                    html += '<p class="mb-2"><strong>Total orden:</strong> ' + escapeHtml(pago.total || '0') + ' Bs &nbsp;|&nbsp; <strong>Pagado:</strong> ' + escapeHtml(pago.monto_pagar || '0') + ' Bs &nbsp;|&nbsp; <strong>Saldo:</strong> ' + escapeHtml(pago.saldo || '0') + ' Bs</p>';
+                    html += '<p class="mb-2"><strong>Total orden:</strong> ' + escapeHtml(pago.total || '0') + ' ' + (window.APP_CURRENCY_SYMBOL || '$') + ' &nbsp;|&nbsp; <strong>Pagado:</strong> ' + escapeHtml(pago.monto_pagar || '0') + ' ' + (window.APP_CURRENCY_SYMBOL || '$') + ' &nbsp;|&nbsp; <strong>Saldo:</strong> ' + escapeHtml(pago.saldo || '0') + ' ' + (window.APP_CURRENCY_SYMBOL || '$') + '</p>';
                     var urlComp = '<?= site_url('registers/comprobantePdf') ?>/' + encodeURIComponent(rid);
                     var lblComp = d.sin_billing_enabled ? 'Descargar factura (PDF)' : 'Descargar recibo (PDF)';
                     html += '<p class="mb-2"><a href="' + urlComp + '" class="btn btn-sm btn-outline-secondary" target="_blank" rel="noopener"><i class="fa-solid fa-file-invoice-dollar me-1"></i>' + escapeHtml(lblComp) + '</a></p>';
@@ -331,7 +331,7 @@ document.addEventListener('DOMContentLoaded', function() {
                         html += '<div class="table-responsive"><table class="table table-sm table-bordered"><thead><tr><th>Fecha</th><th>Monto</th><th>Método</th></tr></thead><tbody>';
                         d.abonos.forEach(function(a) {
                             var fecha = a.fecha_abono ? new Date(a.fecha_abono).toLocaleString('es') : '-';
-                            html += '<tr><td>' + escapeHtml(fecha) + '</td><td>' + escapeHtml(a.monto || '0') + ' Bs</td><td>' + escapeHtml(a.tipo_nombre || a.tipopago || '-') + '</td></tr>';
+                            html += '<tr><td>' + escapeHtml(fecha) + '</td><td>' + escapeHtml(a.monto || '0') + ' ' + (window.APP_CURRENCY_SYMBOL || '$') + '</td><td>' + escapeHtml(a.tipo_nombre || a.tipopago || '-') + '</td></tr>';
                         });
                         html += '</tbody></table></div>';
                     } else {

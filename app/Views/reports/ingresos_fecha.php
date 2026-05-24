@@ -60,13 +60,13 @@
                 $nAnul = (int) ($row['cantidad_anuladas'] ?? 0);
             ?>
             <tr>
-                <td><?= esc(date('d/m/Y', strtotime($row['fecha'] ?? ''))) ?></td>
+                <td><?= esc(\App\Services\RegisterService::formatReportDate($row['fecha'] ?? '')) ?></td>
                 <td class="text-end"><?= (int)($row['cantidad'] ?? 0) ?></td>
-                <td class="text-end"><?= number_format((float)($row['total'] ?? 0), 2) ?> Bs</td>
-                <td class="text-end"><?= number_format((float)($row['cobrado'] ?? 0), 2) ?> Bs</td>
+                <td class="text-end"><?= format_currency((float)($row['total'] ?? 0)) ?></td>
+                <td class="text-end"><?= format_currency((float)($row['cobrado'] ?? 0)) ?></td>
                 <td class="text-end text-muted"><?= $nAnul > 0 ? $nAnul : '—' ?></td>
-                <td class="text-end text-muted"><?= $nAnul > 0 ? number_format((float)($row['total_anulado_ref'] ?? 0), 2) . ' Bs' : '—' ?></td>
-                <td class="text-end text-muted"><?= $nAnul > 0 ? number_format((float)($row['cobrado_anulado_ref'] ?? 0), 2) . ' Bs' : '—' ?></td>
+                <td class="text-end text-muted"><?= $nAnul > 0 ? format_currency((float)($row['total_anulado_ref'] ?? 0)) : '—' ?></td>
+                <td class="text-end text-muted"><?= $nAnul > 0 ? format_currency((float)($row['cobrado_anulado_ref'] ?? 0)) : '—' ?></td>
             </tr>
             <?php endforeach; ?>
         </tbody>
@@ -78,8 +78,8 @@
 <?php else: ?>
 <div class="alert alert-secondary">
     <strong>Registros facturables:</strong> <?= (int)($totales->total_registros ?? 0) ?> |
-    <strong>Total facturado:</strong> <?= number_format((float)($totales->total_facturado ?? 0), 2) ?> Bs |
-    <strong>Total cobrado:</strong> <?= number_format((float)($totales->total_cobrado ?? 0), 2) ?> Bs
+    <strong>Total facturado:</strong> <?= format_currency((float)($totales->total_facturado ?? 0)) ?> |
+    <strong>Total cobrado:</strong> <?= format_currency((float)($totales->total_cobrado ?? 0)) ?>
 </div>
 <?php
     $ta = $totalesAnulados ?? null;
@@ -88,8 +88,8 @@
 <?php if ($nAnulTot > 0): ?>
 <div class="alert alert-light border text-muted">
     <strong>Órdenes anuladas en el período (no facturables):</strong> <?= $nAnulTot ?> |
-    <span title="Valores guardados en pago al momento del reporte; no incluidos en totales facturables">Total histórico facturado:</span> <?= number_format((float) ($ta->total_facturado ?? 0), 2) ?> Bs |
-    Cobrado histórico: <?= number_format((float) ($ta->total_cobrado ?? 0), 2) ?> Bs
+    <span title="Valores guardados en pago al momento del reporte; no incluidos en totales facturables">Total histórico facturado:</span> <?= format_currency((float) ($ta->total_facturado ?? 0)) ?> |
+    Cobrado histórico: <?= format_currency((float) ($ta->total_cobrado ?? 0)) ?>
 </div>
 <?php endif; ?>
 <?php endif; ?>

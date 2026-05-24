@@ -74,11 +74,11 @@
             <tr>
                 <td><?= esc($row['registro_id'] ?? '') ?></td>
                 <td><span class="badge <?= esc($estClass) ?>"><?= esc($estLabel) ?></span></td>
-                <td><?= esc(date('d/m/Y H:i', strtotime($row['ingreso'] ?? ''))) ?></td>
+                <td><?= esc(\App\Services\RegisterService::formatStoredReporteFechaCorta($row['ingreso'] ?? '')) ?></td>
                 <td><?= esc($row['paciente'] ?? '') ?></td>
                 <td><?= esc($row['doctor'] ?? '') ?></td>
-                <td class="text-end"><?= number_format($montoTotal, 2) ?> Bs<?= !$facturable ? ' <span class="text-muted small">(—)</span>' : '' ?></td>
-                <td class="text-end"><?= number_format($montoCobrado, 2) ?> Bs<?= !$facturable ? ' <span class="text-muted small">(—)</span>' : '' ?></td>
+                <td class="text-end"><?= format_currency($montoTotal) ?><?= !$facturable ? ' <span class="text-muted small">(—)</span>' : '' ?></td>
+                <td class="text-end"><?= format_currency($montoCobrado) ?><?= !$facturable ? ' <span class="text-muted small">(—)</span>' : '' ?></td>
             </tr>
             <?php endforeach; ?>
         </tbody>
@@ -90,9 +90,9 @@
 <?php else: ?>
 <div class="alert alert-secondary">
     <strong>Registros facturables (sin anuladas):</strong> <?= (int)($totales->total_registros ?? 0) ?> |
-    <strong>Total facturado:</strong> <?= number_format((float)($totales->total_facturado ?? 0), 2) ?> Bs |
-    <strong>Total cobrado:</strong> <?= number_format((float)($totales->total_cobrado ?? 0), 2) ?> Bs
-    <span class="d-block small text-muted mt-1">Las órdenes anuladas aparecen en la tabla para consulta; no suman en totales ni en montos (devolución). En columnas Total/Cobrado se muestra 0 Bs (—). Completa = con resultados guardados.</span>
+    <strong>Total facturado:</strong> <?= format_currency((float)($totales->total_facturado ?? 0)) ?> |
+    <strong>Total cobrado:</strong> <?= format_currency((float)($totales->total_cobrado ?? 0)) ?>
+    <span class="d-block small text-muted mt-1">Las órdenes anuladas aparecen en la tabla para consulta; no suman en totales ni en montos (devolución). En columnas Total/Cobrado se muestra 0 <?= esc(currency_symbol()) ?> (—). Completa = con resultados guardados.</span>
 </div>
 <?php endif; ?>
 <?= $this->endSection() ?>

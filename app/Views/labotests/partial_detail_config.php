@@ -17,11 +17,11 @@
                 <input type="number" name="order" id="order" class="form-control" value="<?= esc($labotests_info->order ?? 0) ?>" min="0">
             </div>
             <div class="col-md-6 mb-3">
-                <label for="cost" class="form-label"><?= lang('Labotests.labotests_cost_sub') ?> (Bs)</label>
+                <label for="cost" class="form-label"><?= lang('Labotests.labotests_cost_sub') ?> (<?= esc(currency_symbol()) ?>)</label>
                 <input type="number" name="cost" id="cost" class="form-control" value="<?= esc($labotests_info->cost ?? 0) ?>" min="0">
             </div>
             <div class="col-md-6 mb-3">
-                <label for="cost_deriv" class="form-label"><?= lang('Labotests.labotests_costderiv_sub') ?> (Bs)</label>
+                <label for="cost_deriv" class="form-label"><?= lang('Labotests.labotests_costderiv_sub') ?> (<?= esc(currency_symbol()) ?>)</label>
                 <input type="number" name="cost_deriv" id="cost_deriv" class="form-control" value="<?= esc($labotests_info->cost_deriv ?? 0) ?>" min="0">
             </div>
             <div class="col-md-6 mb-3">

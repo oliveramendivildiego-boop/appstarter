@@ -1083,12 +1083,17 @@ class ConfigService
      */
     protected function processConfigImageUpload(UploadedFile $file, string $basenamePrefix): ?string
     {
-        if ($file->getSize() > 2 * 1024 * 1024) { // 2MB
+        if ($file->getError() !== UPLOAD_ERR_OK) {
             return null;
         }
 
         $tmp = $file->getTempName();
         if ($tmp === '' || !is_readable($tmp)) {
+            return null;
+        }
+
+        $bytes = @filesize($tmp);
+        if ($bytes === false || $bytes > 2 * 1024 * 1024) { // 2MB
             return null;
         }
 
@@ -1166,6 +1171,45 @@ class ConfigService
         if (is_file($full)) {
             @unlink($full);
         }
+    }
+
+    /**
+     * ID estable para validador/aprobador: reutiliza el de la fila previa si el hidden llegó vacío.
+     */
+    private function normalizeLabPersonId(string $rawId, ?array $previousRow): string
+    {
+        $id = strtolower(preg_replace('/[^a-f0-9]/i', '', $rawId));
+        if (strlen($id) >= 8 && strlen($id) <= 32) {
+            return $id;
+        }
+        if (is_array($previousRow)) {
+            $prevId = strtolower(preg_replace('/[^a-f0-9]/i', '', (string) ($previousRow['id'] ?? '')));
+            if (strlen($prevId) >= 8 && strlen($prevId) <= 32) {
+                return $prevId;
+            }
+        }
+
+        return bin2hex(random_bytes(8));
+    }
+
+    /**
+     * Localiza el archivo subido del aprobador (notación array approver_seal.0 o legacy approver_seal_0).
+     */
+    private function resolveLabApproverUpload(IncomingRequest $request, string $baseName, int $slot): ?UploadedFile
+    {
+        foreach ([$baseName . '.' . $slot, $baseName . '_' . $slot] as $key) {
+            $file = $request->getFile($key);
+            if ($file instanceof UploadedFile) {
+                return $file;
+            }
+        }
+
+        return null;
+    }
+
+    private function labApproverUploadWasAttempted(?UploadedFile $file): bool
+    {
+        return $file instanceof UploadedFile && $file->getError() !== UPLOAD_ERR_NO_FILE;
     }
 
     /**
@@ -1251,7 +1295,7 @@ class ConfigService
         if (!is_array($fileSlots)) {
             $fileSlots = [];
         }
-        $nApp = max(count($ids), count($names), count($cargos), count($matriculas));
+        $nApp = max(count($ids), count($names), count($cargos), count($matriculas), count($fileSlots));
         $newApprovers = [];
         $sealFailed = false;
         $sigFailed = false;
@@ -1261,13 +1305,11 @@ class ConfigService
             if ($aname === '') {
                 continue;
             }
-            $id = strtolower(preg_replace('/[^a-f0-9]/i', '', (string) ($ids[$i] ?? '')));
-            if (strlen($id) < 8 || strlen($id) > 32) {
-                $id = bin2hex(random_bytes(8));
-            }
+            $prevAtIndex = $oldApprovers[$i] ?? null;
+            $id = $this->normalizeLabPersonId((string) ($ids[$i] ?? ''), is_array($prevAtIndex) ? $prevAtIndex : null);
             $cargo = mb_substr(trim((string) ($cargos[$i] ?? '')), 0, 255);
             $matricula = mb_substr(trim((string) ($matriculas[$i] ?? '')), 0, 255);
-            $prev = $oldById[$id] ?? null;
+            $prev = $oldById[$id] ?? (is_array($prevAtIndex) ? $prevAtIndex : null);
             $seal = is_array($prev) ? trim((string) ($prev['seal'] ?? '')) : '';
             $signature = is_array($prev) ? trim((string) ($prev['signature'] ?? '')) : '';
 
@@ -1276,27 +1318,35 @@ class ConfigService
                 $slot = $i;
             }
 
-            $fSeal = $request->getFile('approver_seal_' . $slot);
-            if ($fSeal && $fSeal->isValid() && !$fSeal->hasMoved()) {
-                $np = $this->processConfigImageUpload($fSeal, 'lab-approver-seal-');
-                if ($np) {
-                    if ($seal !== '') {
-                        $this->removeManagedConfigImage($seal, $np, '#^images/lab-approver-seal-#');
+            $fSeal = $this->resolveLabApproverUpload($request, 'approver_seal', $slot);
+            if ($this->labApproverUploadWasAttempted($fSeal)) {
+                if ($fSeal->isValid() && !$fSeal->hasMoved()) {
+                    $np = $this->processConfigImageUpload($fSeal, 'lab-approver-seal-');
+                    if ($np) {
+                        if ($seal !== '') {
+                            $this->removeManagedConfigImage($seal, $np, '#^images/lab-approver-seal-#');
+                        }
+                        $seal = $np;
+                    } else {
+                        $sealFailed = true;
                     }
-                    $seal = $np;
                 } else {
                     $sealFailed = true;
                 }
             }
 
-            $fSig = $request->getFile('approver_signature_' . $slot);
-            if ($fSig && $fSig->isValid() && !$fSig->hasMoved()) {
-                $np = $this->processConfigImageUpload($fSig, 'lab-approver-sig-');
-                if ($np) {
-                    if ($signature !== '') {
-                        $this->removeManagedConfigImage($signature, $np, '#^images/lab-approver-sig-#');
+            $fSig = $this->resolveLabApproverUpload($request, 'approver_signature', $slot);
+            if ($this->labApproverUploadWasAttempted($fSig)) {
+                if ($fSig->isValid() && !$fSig->hasMoved()) {
+                    $np = $this->processConfigImageUpload($fSig, 'lab-approver-sig-');
+                    if ($np) {
+                        if ($signature !== '') {
+                            $this->removeManagedConfigImage($signature, $np, '#^images/lab-approver-sig-#');
+                        }
+                        $signature = $np;
+                    } else {
+                        $sigFailed = true;
                     }
-                    $signature = $np;
                 } else {
                     $sigFailed = true;
                 }

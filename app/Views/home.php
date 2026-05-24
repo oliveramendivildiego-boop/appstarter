@@ -403,7 +403,7 @@ $subsTenants = $alertas_suscripcion_tenants ?? ['total' => 0, 'items' => [], 'di
                                 <td><?= esc(registro_orden_display($reg)) ?></td>
                                 <td><?= esc($reg->paciente ?? '-') ?></td>
                                 <td><?= esc($reg->doctor ?? '-') ?></td>
-                                <td><?= !empty($reg->ingreso) ? date('d/m/Y H:i', strtotime($reg->ingreso)) : '-' ?></td>
+                                <td><?= !empty($reg->ingreso) ? esc(\App\Services\RegisterService::formatStoredReporteFechaCorta((string) $reg->ingreso)) : '-' ?></td>
                                 <td>
                                     <a href="<?= site_url('registers/viewreport/' . ($reg->registro_id ?? 0)) ?>" class="btn btn-sm btn-outline-primary">Ver</a>
                                 </td>

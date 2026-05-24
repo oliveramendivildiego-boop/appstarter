@@ -1,4 +1,24 @@
 /**
+ * Formatea un monto con el símbolo de moneda configurado en el sistema.
+ */
+function formatCurrencyAmount(amount, decimals) {
+    var sym = (typeof window.APP_CURRENCY_SYMBOL === 'string' && window.APP_CURRENCY_SYMBOL !== '')
+        ? window.APP_CURRENCY_SYMBOL
+        : '$';
+    var isRight = !!window.APP_CURRENCY_IS_RIGHT;
+    var dec = (typeof decimals === 'number') ? decimals : 2;
+    var n = Number(amount);
+    if (!isFinite(n)) {
+        n = 0;
+    }
+    var formatted = n.toLocaleString('es-BO', {
+        minimumFractionDigits: dec,
+        maximumFractionDigits: dec
+    });
+    return isRight ? (formatted + ' ' + sym) : (sym + ' ' + formatted);
+}
+
+/**
  * Posiciona el calendario flatpickr con arrowTop arrowLeft (clases consistentes en toda la web)
  */
 function flatpickrPositionArrowTopLeft(instance) {

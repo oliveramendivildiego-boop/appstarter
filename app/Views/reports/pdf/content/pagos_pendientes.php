@@ -3,7 +3,7 @@ $pendientes   = $pendientes ?? [];
 $total_saldo  = (float) ($total_saldo ?? 0);
 ?>
 <div class="alert-box">
-    <?= count($pendientes) ?> orden(es) con saldo pendiente · Total pendiente: <?= number_format($total_saldo, 2) ?> Bs
+    <?= count($pendientes) ?> orden(es) con saldo pendiente · Total pendiente: <?= format_currency($total_saldo) ?>
 </div>
 <table class="pdf-t">
     <thead>

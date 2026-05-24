@@ -24,7 +24,7 @@
                 <?php $tituloMedico = ((int)($doctor->gender ?? 0) === 1) ? 'Dr.' : 'Dra.'; ?>
                 <p class="mb-1"><strong>Médico:</strong> <?= $tituloMedico ?> <?= esc($doctor->name ?? '-') ?></p>
                 <?php endif; ?>
-                <p class="mb-1"><strong>Total orden:</strong> <?= number_format((float)(($pago ?? null)?->total ?? 0), 2) ?> Bs</p>
+                <p class="mb-1"><strong>Total orden:</strong> <?= format_currency((float)(($pago ?? null)?->total ?? 0)) ?></p>
                 <p class="mb-0"><strong>Pruebas:</strong> <?= esc($register_info->pruebas ?? '-') ?></p>
             </div>
         </div>

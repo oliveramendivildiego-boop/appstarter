@@ -72,8 +72,8 @@ class Reports extends SecureArea
 
     public function registrosFecha()
     {
-        $startDate = $this->request->getGet('start') ?? date('Y-m-d');
-        $endDate   = $this->request->getGet('end') ?? date('Y-m-d');
+        $startDate = $this->request->getGet('start') ?? RegisterService::todayForReport();
+        $endDate   = $this->request->getGet('end') ?? RegisterService::todayForReport();
 
         $data     = $this->reportModel->getRegistrosByDateRange($startDate, $endDate);
         $totales  = $this->reportModel->getTotalesByDateRange($startDate, $endDate);
@@ -81,7 +81,7 @@ class Reports extends SecureArea
         return view('reports/registros_fecha', [
             'title'           => 'Reporte de registros por fecha',
             'current_module'  => 'reports',
-            'subtitle'        => date('d/m/Y', strtotime($startDate)) . ' - ' . date('d/m/Y', strtotime($endDate)),
+            'subtitle'        => RegisterService::formatReportDateRangeSubtitle($startDate, $endDate),
             'data'            => $data,
             'totales'         => $totales,
             'startDate'       => $startDate,
@@ -93,8 +93,8 @@ class Reports extends SecureArea
 
     public function ingresosFecha()
     {
-        $startDate = $this->request->getGet('start') ?? date('Y-m-d');
-        $endDate   = $this->request->getGet('end') ?? date('Y-m-d');
+        $startDate = $this->request->getGet('start') ?? RegisterService::todayForReport();
+        $endDate   = $this->request->getGet('end') ?? RegisterService::todayForReport();
 
         $facturables = $this->reportModel->getIngresosByDateRange($startDate, $endDate);
         $anulPorDia  = $this->reportModel->getIngresosAnuladosPorDia($startDate, $endDate);
@@ -137,7 +137,7 @@ class Reports extends SecureArea
         return view('reports/ingresos_fecha', [
             'title'           => 'Reporte de ingresos por fecha',
             'current_module'  => 'reports',
-            'subtitle'        => date('d/m/Y', strtotime($startDate)) . ' - ' . date('d/m/Y', strtotime($endDate)),
+            'subtitle'        => RegisterService::formatReportDateRangeSubtitle($startDate, $endDate),
             'data'            => $data,
             'totales'         => $totales,
             'totalesAnulados' => $totalesAnul,
@@ -150,8 +150,8 @@ class Reports extends SecureArea
 
     public function porDoctor()
     {
-        $startDate = $this->request->getGet('start') ?? date('Y-m-d');
-        $endDate   = $this->request->getGet('end') ?? date('Y-m-d');
+        $startDate = $this->request->getGet('start') ?? RegisterService::todayForReport();
+        $endDate   = $this->request->getGet('end') ?? RegisterService::todayForReport();
 
         $data    = $this->reportModel->getRegistrosByDoctor($startDate, $endDate);
         $totales = $this->reportModel->getTotalesByDateRange($startDate, $endDate);
@@ -159,7 +159,7 @@ class Reports extends SecureArea
         return view('reports/por_doctor', [
             'title'           => 'Reporte de registros por doctor',
             'current_module'  => 'reports',
-            'subtitle'        => date('d/m/Y', strtotime($startDate)) . ' - ' . date('d/m/Y', strtotime($endDate)),
+            'subtitle'        => RegisterService::formatReportDateRangeSubtitle($startDate, $endDate),
             'data'            => $data,
             'totales'         => $totales,
             'startDate'       => $startDate,
@@ -171,8 +171,8 @@ class Reports extends SecureArea
 
     public function pagos()
     {
-        $startDate = $this->request->getGet('start') ?? date('Y-m-d');
-        $endDate   = $this->request->getGet('end') ?? date('Y-m-d');
+        $startDate = $this->request->getGet('start') ?? RegisterService::todayForReport();
+        $endDate   = $this->request->getGet('end') ?? RegisterService::todayForReport();
 
         $todos     = $this->reportModel->getReportePagos($startDate, $endDate);
         $pendientes = $this->reportModel->getPendientesPago($startDate, $endDate);
@@ -266,7 +266,7 @@ class Reports extends SecureArea
         return view('reports/pagos', [
             'title'           => 'Reporte de pagos',
             'current_module'  => 'reports',
-            'subtitle'        => date('d/m/Y', strtotime($startDate)) . ' - ' . date('d/m/Y', strtotime($endDate)),
+            'subtitle'        => RegisterService::formatReportDateRangeSubtitle($startDate, $endDate),
             'todos'           => $todos,
             'pendientes'      => $pendientes,
             'pagosPagados'   => $pagosPagados,
@@ -296,8 +296,8 @@ class Reports extends SecureArea
      */
     public function pagosPendientes()
     {
-        $startDate  = $this->request->getGet('start') ?? date('Y-m-d');
-        $endDate    = $this->request->getGet('end') ?? date('Y-m-d');
+        $startDate  = $this->request->getGet('start') ?? RegisterService::reportDateFromModifier('-2 years');
+        $endDate    = $this->request->getGet('end') ?? RegisterService::todayForReport();
         $pendientes = $this->reportModel->getPendientesPago($startDate, $endDate);
         $totalSaldo = 0.0;
         foreach ($pendientes as $row) {
@@ -307,7 +307,7 @@ class Reports extends SecureArea
         return view('reports/pagos_pendientes', [
             'title'             => 'Pendientes de pago',
             'current_module'    => 'reports',
-            'subtitle'          => date('d/m/Y', strtotime($startDate)) . ' - ' . date('d/m/Y', strtotime($endDate)),
+            'subtitle'          => RegisterService::formatReportDateRangeSubtitle($startDate, $endDate),
             'pendientes'        => $pendientes,
             'total_saldo'       => $totalSaldo,
             'startDate'         => $startDate,
@@ -348,8 +348,8 @@ class Reports extends SecureArea
             return 'reports/pagos?' . http_build_query(['start' => $s, 'end' => $e]);
         };
         if (!$validation->withRequest($this->request)->run()) {
-            $s = (string) ($this->request->getPost('start') ?? date('Y-m-d'));
-            $e = (string) ($this->request->getPost('end') ?? date('Y-m-d'));
+            $s = (string) ($this->request->getPost('start') ?? RegisterService::todayForReport());
+            $e = (string) ($this->request->getPost('end') ?? RegisterService::todayForReport());
 
             return redirect()->to($backQs($s, $e))->with('error', implode(' ', $validation->getErrors()));
         }
@@ -560,8 +560,8 @@ class Reports extends SecureArea
             'company_name'            => $layoutConfig['company'] ?? 'Laboratorio',
             'startDate'               => $startDate,
             'endDate'                 => $endDate,
-            'periodo_texto'           => date('d/m/Y', strtotime($startDate)) . ' — ' . date('d/m/Y', strtotime($endDate)),
-            'generado_en'             => date('d/m/Y H:i'),
+            'periodo_texto'           => RegisterService::formatReportDate($startDate) . ' — ' . RegisterService::formatReportDate($endDate),
+            'generado_en'             => RegisterService::formatNowForReportShort(),
             'elaborado_por'           => $elaboradoPor,
             'totales'                 => $totales,
             'totalesIngresosCaja'     => $totalesIngresosCaja,
@@ -812,15 +812,15 @@ class Reports extends SecureArea
 
     public function pruebasFecha()
     {
-        $startDate = $this->request->getGet('start') ?? date('Y-m-d');
-        $endDate   = $this->request->getGet('end') ?? date('Y-m-d');
+        $startDate = $this->request->getGet('start') ?? RegisterService::todayForReport();
+        $endDate   = $this->request->getGet('end') ?? RegisterService::todayForReport();
 
         $data = $this->reportModel->getPruebasPorFecha($startDate, $endDate);
 
         return view('reports/pruebas_fecha', [
             'title'           => 'Reporte de pruebas realizadas por fecha',
             'current_module'  => 'reports',
-            'subtitle'        => date('d/m/Y', strtotime($startDate)) . ' - ' . date('d/m/Y', strtotime($endDate)),
+            'subtitle'        => RegisterService::formatReportDateRangeSubtitle($startDate, $endDate),
             'data'            => $data,
             'startDate'       => $startDate,
             'endDate'         => $endDate,
@@ -941,7 +941,7 @@ class Reports extends SecureArea
             'startDate'           => $startDate,
             'endDate'             => $endDate,
             'anacategoria_id'     => $anacategoriaId,
-            'subtitle'            => date('d/m/Y', strtotime($startDate)) . ' - ' . date('d/m/Y', strtotime($endDate)),
+            'subtitle'            => RegisterService::formatReportDateRangeSubtitle($startDate, $endDate),
         ];
     }
 
@@ -950,8 +950,8 @@ class Reports extends SecureArea
      */
     public function pruebasPorGrupoAnalisis()
     {
-        $startDate      = $this->request->getGet('start') ?? date('Y-m-d');
-        $endDate        = $this->request->getGet('end') ?? date('Y-m-d');
+        $startDate      = $this->request->getGet('start') ?? RegisterService::todayForReport();
+        $endDate        = $this->request->getGet('end') ?? RegisterService::todayForReport();
         $anacategoriaId = (int) ($this->request->getGet('anacategoria_id') ?? 0);
         $payload        = $this->collectPruebasPorGrupoAnalisisPayload($startDate, $endDate, $anacategoriaId);
 
@@ -965,8 +965,8 @@ class Reports extends SecureArea
 
     public function pruebasPorGrupoAnalisisPdf()
     {
-        $startDate      = $this->request->getGet('start') ?? date('Y-m-d');
-        $endDate        = $this->request->getGet('end') ?? date('Y-m-d');
+        $startDate      = $this->request->getGet('start') ?? RegisterService::todayForReport();
+        $endDate        = $this->request->getGet('end') ?? RegisterService::todayForReport();
         $anacategoriaId = (int) ($this->request->getGet('anacategoria_id') ?? 0);
         $payload        = $this->collectPruebasPorGrupoAnalisisPayload($startDate, $endDate, $anacategoriaId);
         ReportPdfDocument::download(
@@ -983,15 +983,15 @@ class Reports extends SecureArea
 
     public function pruebasIncompletasFecha()
     {
-        $startDate = $this->request->getGet('start') ?? date('Y-m-d');
-        $endDate   = $this->request->getGet('end') ?? date('Y-m-d');
+        $startDate = $this->request->getGet('start') ?? RegisterService::todayForReport();
+        $endDate   = $this->request->getGet('end') ?? RegisterService::todayForReport();
 
         $data = $this->reportModel->getPruebasIncompletasPorFecha($startDate, $endDate);
 
         return view('reports/pruebas_incompletas_fecha', [
             'title'           => 'Pruebas incompletas por fecha',
             'current_module'  => 'reports',
-            'subtitle'        => date('d/m/Y', strtotime($startDate)) . ' - ' . date('d/m/Y', strtotime($endDate)),
+            'subtitle'        => RegisterService::formatReportDateRangeSubtitle($startDate, $endDate),
             'data'            => $data,
             'startDate'       => $startDate,
             'endDate'         => $endDate,
@@ -1002,15 +1002,15 @@ class Reports extends SecureArea
 
     public function pruebasAnuladasFecha()
     {
-        $startDate = $this->request->getGet('start') ?? date('Y-m-d');
-        $endDate   = $this->request->getGet('end') ?? date('Y-m-d');
+        $startDate = $this->request->getGet('start') ?? RegisterService::todayForReport();
+        $endDate   = $this->request->getGet('end') ?? RegisterService::todayForReport();
 
         $data = $this->reportModel->getPruebasAnuladasPorFecha($startDate, $endDate);
 
         return view('reports/pruebas_anuladas_fecha', [
             'title'              => 'Pruebas anuladas por fecha',
             'current_module'     => 'reports',
-            'subtitle'           => date('d/m/Y', strtotime($startDate)) . ' - ' . date('d/m/Y', strtotime($endDate)),
+            'subtitle'           => RegisterService::formatReportDateRangeSubtitle($startDate, $endDate),
             'data'               => $data,
             'startDate'          => $startDate,
             'endDate'            => $endDate,
@@ -1159,14 +1159,14 @@ class Reports extends SecureArea
      */
     public function estadisticasLaboratorio()
     {
-        $startDate = $this->request->getGet('start') ?? date('Y-m-d');
-        $endDate   = $this->request->getGet('end') ?? date('Y-m-d');
+        $startDate = $this->request->getGet('start') ?? RegisterService::todayForReport();
+        $endDate   = $this->request->getGet('end') ?? RegisterService::todayForReport();
         $payload   = $this->collectEstadisticasLaboratorioPayload($startDate, $endDate);
 
         return view('reports/estadisticas_laboratorio', array_merge($payload, [
             'title'           => 'Estadísticas de laboratorio por período',
             'current_module'  => 'reports',
-            'subtitle'        => date('d/m/Y', strtotime($startDate)) . ' - ' . date('d/m/Y', strtotime($endDate)),
+            'subtitle'        => RegisterService::formatReportDateRangeSubtitle($startDate, $endDate),
             'startDate'       => $startDate,
             'endDate'         => $endDate,
             'allowed_modules' => $this->allowed_modules,
@@ -1176,10 +1176,10 @@ class Reports extends SecureArea
 
     public function estadisticasLaboratorioPdf()
     {
-        $startDate = $this->request->getGet('start') ?? date('Y-m-d');
-        $endDate   = $this->request->getGet('end') ?? date('Y-m-d');
+        $startDate = $this->request->getGet('start') ?? RegisterService::todayForReport();
+        $endDate   = $this->request->getGet('end') ?? RegisterService::todayForReport();
         $payload   = $this->collectEstadisticasLaboratorioPayload($startDate, $endDate);
-        $sub       = date('d/m/Y', strtotime($startDate)) . ' - ' . date('d/m/Y', strtotime($endDate));
+        $sub       = RegisterService::formatReportDateRangeSubtitle($startDate, $endDate);
         ReportPdfDocument::download(
             $this->safeReportPdfFilename('estadisticas_laboratorio'),
             'Estadísticas de laboratorio',
@@ -1237,8 +1237,8 @@ class Reports extends SecureArea
         $diasAlerta    = max(1, (int) ($appConfig->getValue('dias_alerta_vencimiento') ?: 40));
 
         $lotes = $reactivoModel->getTodosLotesParaReporte();
-        $hoy   = date('Y-m-d');
-        $enX   = date('Y-m-d', strtotime("+{$diasAlerta} days"));
+        $hoy   = RegisterService::todayForReport();
+        $enX   = RegisterService::reportDateFromModifier("+{$diasAlerta} days");
 
         foreach ($lotes as &$l) {
             $venc = $l['fecha_vencimiento'] ?? null;
@@ -1285,7 +1285,7 @@ class Reports extends SecureArea
 
         return view('reports/catalogo_pruebas_document', [
             'company_name' => $layoutConfig['company'] ?? 'Laboratorio',
-            'generado_en'  => date('d/m/Y H:i'),
+            'generado_en'  => RegisterService::formatNowForReportShort(),
             'categories'   => $categories,
             'show_toolbar' => true,
         ]);
@@ -1302,7 +1302,7 @@ class Reports extends SecureArea
 
         $data = [
             'company_name' => $layoutConfig['company'] ?? 'Laboratorio',
-            'generado_en'  => date('d/m/Y H:i'),
+            'generado_en'  => RegisterService::formatNowForReportShort(),
             'categories'   => $categories,
             'show_toolbar' => false,
         ];
@@ -1593,11 +1593,11 @@ class Reports extends SecureArea
 
     public function registrosFechaPdf()
     {
-        $startDate = $this->request->getGet('start') ?? date('Y-m-d');
-        $endDate   = $this->request->getGet('end') ?? date('Y-m-d');
+        $startDate = $this->request->getGet('start') ?? RegisterService::todayForReport();
+        $endDate   = $this->request->getGet('end') ?? RegisterService::todayForReport();
         $data      = $this->reportModel->getRegistrosByDateRange($startDate, $endDate);
         $totales   = $this->reportModel->getTotalesByDateRange($startDate, $endDate);
-        $sub       = date('d/m/Y', strtotime($startDate)) . ' - ' . date('d/m/Y', strtotime($endDate));
+        $sub       = RegisterService::formatReportDateRangeSubtitle($startDate, $endDate);
         ReportPdfDocument::download(
             $this->safeReportPdfFilename('registros_fecha'),
             'Registros por fecha',
@@ -1609,8 +1609,8 @@ class Reports extends SecureArea
 
     public function ingresosFechaPdf()
     {
-        $startDate     = $this->request->getGet('start') ?? date('Y-m-d');
-        $endDate       = $this->request->getGet('end') ?? date('Y-m-d');
+        $startDate     = $this->request->getGet('start') ?? RegisterService::todayForReport();
+        $endDate       = $this->request->getGet('end') ?? RegisterService::todayForReport();
         $facturables   = $this->reportModel->getIngresosByDateRange($startDate, $endDate);
         $anulPorDia    = $this->reportModel->getIngresosAnuladosPorDia($startDate, $endDate);
         $totales       = $this->reportModel->getTotalesByDateRange($startDate, $endDate);
@@ -1647,7 +1647,7 @@ class Reports extends SecureArea
         }
         ksort($byFecha);
         $data = array_values($byFecha);
-        $sub  = date('d/m/Y', strtotime($startDate)) . ' - ' . date('d/m/Y', strtotime($endDate));
+        $sub  = RegisterService::formatReportDateRangeSubtitle($startDate, $endDate);
         ReportPdfDocument::download(
             $this->safeReportPdfFilename('ingresos_fecha'),
             'Ingresos por fecha',
@@ -1659,11 +1659,11 @@ class Reports extends SecureArea
 
     public function porDoctorPdf()
     {
-        $startDate = $this->request->getGet('start') ?? date('Y-m-d');
-        $endDate   = $this->request->getGet('end') ?? date('Y-m-d');
+        $startDate = $this->request->getGet('start') ?? RegisterService::todayForReport();
+        $endDate   = $this->request->getGet('end') ?? RegisterService::todayForReport();
         $data      = $this->reportModel->getRegistrosByDoctor($startDate, $endDate);
         $totales   = $this->reportModel->getTotalesByDateRange($startDate, $endDate);
-        $sub       = date('d/m/Y', strtotime($startDate)) . ' - ' . date('d/m/Y', strtotime($endDate));
+        $sub       = RegisterService::formatReportDateRangeSubtitle($startDate, $endDate);
         ReportPdfDocument::download(
             $this->safeReportPdfFilename('por_doctor'),
             'Registros por doctor',
@@ -1675,8 +1675,8 @@ class Reports extends SecureArea
 
     public function pagosPdf()
     {
-        $startDate = $this->request->getGet('start') ?? date('Y-m-d');
-        $endDate   = $this->request->getGet('end') ?? date('Y-m-d');
+        $startDate = $this->request->getGet('start') ?? RegisterService::todayForReport();
+        $endDate   = $this->request->getGet('end') ?? RegisterService::todayForReport();
 
         $todos                 = $this->reportModel->getReportePagos($startDate, $endDate);
         $pendientes            = $this->reportModel->getPendientesPago($startDate, $endDate);
@@ -1692,7 +1692,7 @@ class Reports extends SecureArea
         $totalesIngresosCaja   = $this->reportModel->getTotalesIngresosCajaByDateRange($startDate, $endDate);
         $resumenIngresosCajaPorTipo = $this->reportModel->getResumenIngresosCajaPorTipo($startDate, $endDate);
         $tipoPagoMap           = ['1' => 'Efectivo', '2' => 'QR', '3' => 'Transferencia', '4' => 'Pendiente'];
-        $sub                   = date('d/m/Y', strtotime($startDate)) . ' - ' . date('d/m/Y', strtotime($endDate));
+        $sub                   = RegisterService::formatReportDateRangeSubtitle($startDate, $endDate);
         $ingresosVentas        = (float) ($totales->total_cobrado ?? 0);
         $ingresosMovimientos   = (float) ($totalesIngresosCaja->total_ingresos ?? 0);
         $ingresosCaja          = $ingresosVentas + $ingresosMovimientos;
@@ -1796,14 +1796,14 @@ class Reports extends SecureArea
 
     public function pagosPendientesPdf()
     {
-        $startDate  = $this->request->getGet('start') ?? date('Y-m-d');
-        $endDate    = $this->request->getGet('end') ?? date('Y-m-d');
+        $startDate  = $this->request->getGet('start') ?? RegisterService::reportDateFromModifier('-2 years');
+        $endDate    = $this->request->getGet('end') ?? RegisterService::todayForReport();
         $pendientes = $this->reportModel->getPendientesPago($startDate, $endDate);
         $totalSaldo = 0.0;
         foreach ($pendientes as $row) {
             $totalSaldo += (float) ($row['saldo'] ?? 0);
         }
-        $sub = date('d/m/Y', strtotime($startDate)) . ' - ' . date('d/m/Y', strtotime($endDate));
+        $sub = RegisterService::formatReportDateRangeSubtitle($startDate, $endDate);
         ReportPdfDocument::download(
             $this->safeReportPdfFilename('pagos_pendientes'),
             'Pendientes de pago',
@@ -1843,10 +1843,10 @@ class Reports extends SecureArea
 
     public function pruebasFechaPdf()
     {
-        $startDate = $this->request->getGet('start') ?? date('Y-m-d');
-        $endDate   = $this->request->getGet('end') ?? date('Y-m-d');
+        $startDate = $this->request->getGet('start') ?? RegisterService::todayForReport();
+        $endDate   = $this->request->getGet('end') ?? RegisterService::todayForReport();
         $data      = $this->reportModel->getPruebasPorFecha($startDate, $endDate);
-        $sub       = date('d/m/Y', strtotime($startDate)) . ' - ' . date('d/m/Y', strtotime($endDate));
+        $sub       = RegisterService::formatReportDateRangeSubtitle($startDate, $endDate);
         ReportPdfDocument::download(
             $this->safeReportPdfFilename('pruebas_fecha'),
             'Pruebas realizadas por fecha',
@@ -1858,10 +1858,10 @@ class Reports extends SecureArea
 
     public function pruebasIncompletasFechaPdf()
     {
-        $startDate = $this->request->getGet('start') ?? date('Y-m-d');
-        $endDate   = $this->request->getGet('end') ?? date('Y-m-d');
+        $startDate = $this->request->getGet('start') ?? RegisterService::todayForReport();
+        $endDate   = $this->request->getGet('end') ?? RegisterService::todayForReport();
         $data      = $this->reportModel->getPruebasIncompletasPorFecha($startDate, $endDate);
-        $sub       = date('d/m/Y', strtotime($startDate)) . ' - ' . date('d/m/Y', strtotime($endDate));
+        $sub       = RegisterService::formatReportDateRangeSubtitle($startDate, $endDate);
         ReportPdfDocument::download(
             $this->safeReportPdfFilename('pruebas_incompletas'),
             'Pruebas incompletas por fecha',
@@ -1873,10 +1873,10 @@ class Reports extends SecureArea
 
     public function pruebasAnuladasFechaPdf()
     {
-        $startDate = $this->request->getGet('start') ?? date('Y-m-d');
-        $endDate   = $this->request->getGet('end') ?? date('Y-m-d');
+        $startDate = $this->request->getGet('start') ?? RegisterService::todayForReport();
+        $endDate   = $this->request->getGet('end') ?? RegisterService::todayForReport();
         $data      = $this->reportModel->getPruebasAnuladasPorFecha($startDate, $endDate);
-        $sub       = date('d/m/Y', strtotime($startDate)) . ' - ' . date('d/m/Y', strtotime($endDate));
+        $sub       = RegisterService::formatReportDateRangeSubtitle($startDate, $endDate);
         ReportPdfDocument::download(
             $this->safeReportPdfFilename('pruebas_anuladas'),
             'Pruebas anuladas por fecha',
@@ -1895,8 +1895,8 @@ class Reports extends SecureArea
         $appConfig     = model(AppConfigModel::class);
         $diasAlerta    = max(1, (int) ($appConfig->getValue('dias_alerta_vencimiento') ?: 40));
         $lotes         = $reactivoModel->getTodosLotesParaReporte();
-        $hoy           = date('Y-m-d');
-        $enX           = date('Y-m-d', strtotime("+{$diasAlerta} days"));
+        $hoy           = RegisterService::todayForReport();
+        $enX           = RegisterService::reportDateFromModifier("+{$diasAlerta} days");
         foreach ($lotes as &$l) {
             $venc = $l['fecha_vencimiento'] ?? null;
             if (! $venc) {

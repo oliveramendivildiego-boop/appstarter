@@ -3,7 +3,7 @@
 <?= $this->section('title') ?><?= esc($title) ?><?= $this->endSection() ?>
 
 <?= $this->section('content') ?>
-<?php helper('layout'); ?>
+<?php helper('layout'); $currencySym = currency_symbol(); ?>
 <div class="mb-4">
     <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
         <div>
@@ -65,11 +65,11 @@
             <span class="small text-muted text-nowrap"><i class="fas fa-bolt me-1"></i>Masivo:</span>
             <div class="d-flex align-items-center gap-1">
                 <label class="small text-muted mb-0 text-nowrap" for="mass_precio">Precio</label>
-                <input type="number" id="mass_precio" class="form-control form-control-sm costos-mass-input" min="0" step="1" placeholder="Bs">
+                <input type="number" id="mass_precio" class="form-control form-control-sm costos-mass-input" min="0" step="1" placeholder="<?= esc($currencySym) ?>">
             </div>
             <div class="d-flex align-items-center gap-1">
                 <label class="small text-muted mb-0 text-nowrap" for="mass_derivado">Deriv.</label>
-                <input type="number" id="mass_derivado" class="form-control form-control-sm costos-mass-input" min="0" step="1" placeholder="Bs">
+                <input type="number" id="mass_derivado" class="form-control form-control-sm costos-mass-input" min="0" step="1" placeholder="<?= esc($currencySym) ?>">
             </div>
             <div class="btn-group btn-group-sm" role="group">
                 <button type="button" class="btn btn-outline-primary" id="btn_mass_both" title="Aplicar a todas las filas">Todas</button>
@@ -110,8 +110,8 @@
                         </th>
                         <th>Categoría</th>
                         <th>Prueba</th>
-                        <th style="width: 8rem;" class="text-end">Precio (Bs)</th>
-                        <th style="width: 8rem;" class="text-end">Precio derivado (Bs)</th>
+                        <th style="width: 8rem;" class="text-end">Precio (<?= esc($currencySym) ?>)</th>
+                        <th style="width: 8rem;" class="text-end">Precio derivado (<?= esc($currencySym) ?>)</th>
                     </tr>
                 </thead>
                 <tbody>

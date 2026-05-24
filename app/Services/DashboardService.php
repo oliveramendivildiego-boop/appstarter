@@ -25,9 +25,9 @@ class DashboardService
         $employeeModel = model(EmployeeModel::class);
 
         $r = $registerModel->getRegistroTable();
-        $today = date('Y-m-d');
-        $weekStart = date('Y-m-d', strtotime('monday this week'));
-        $monthStart = date('Y-m-01');
+        $today = RegisterService::todayForReport();
+        $weekStart = RegisterService::reportDateFromModifier('monday this week');
+        $monthStart = RegisterService::monthStartForReport();
 
         $registersToday = $registerModel->countByDate($today, $today);
         $registersWeek  = $registerModel->countByDate($weekStart, $today);
@@ -60,8 +60,8 @@ class DashboardService
     public function getChartDataLast7Days(): array
     {
         $reportModel = model(\App\Models\ReportModel::class);
-        $endDate = date('Y-m-d');
-        $startDate = date('Y-m-d', strtotime('-6 days'));
+        $endDate = RegisterService::todayForReport();
+        $startDate = RegisterService::reportDateFromModifier('-6 days');
         try {
             return $reportModel->getIngresosByDateRange($startDate, $endDate);
         } catch (\Throwable $e) {
@@ -75,9 +75,9 @@ class DashboardService
     public function getRegistrosByPeriodo(): array
     {
         $registerModel = model(RegisterModel::class);
-        $today = date('Y-m-d');
-        $weekStart = date('Y-m-d', strtotime('monday this week'));
-        $monthStart = date('Y-m-01');
+        $today = RegisterService::todayForReport();
+        $weekStart = RegisterService::reportDateFromModifier('monday this week');
+        $monthStart = RegisterService::monthStartForReport();
         try {
             $hoy = $registerModel->countByDate($today, $today);
             $semana = $registerModel->countByDate($weekStart, $today);
@@ -98,8 +98,8 @@ class DashboardService
     public function getIngresosDelMes(): float
     {
         $reportModel = model(ReportModel::class);
-        $monthStart = date('Y-m-01');
-        $today = date('Y-m-d');
+        $monthStart = RegisterService::monthStartForReport();
+        $today = RegisterService::todayForReport();
         try {
             $row = $reportModel->getTotalesByDateRange($monthStart, $today);
             return (float) ($row->total_cobrado ?? 0);
@@ -117,10 +117,11 @@ class DashboardService
         $reportModel = model(ReportModel::class);
         $result = [];
         $meses = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
+        $now = RegisterService::reportNow();
         for ($i = $numMeses - 1; $i >= 0; $i--) {
-            $fecha = strtotime("-{$i} months");
-            $inicio = date('Y-m-01', $fecha);
-            $fin = date('Y-m-t', $fecha);
+            $monthAnchor = $now->modify("-{$i} months");
+            $inicio = $monthAnchor->modify('first day of this month')->format('Y-m-d');
+            $fin = $monthAnchor->modify('last day of this month')->format('Y-m-d');
             try {
                 $row = $reportModel->getTotalesByDateRange($inicio, $fin);
                 $cobrado = (float) ($row->total_cobrado ?? 0);
@@ -128,8 +129,8 @@ class DashboardService
                 $cobrado = 0.0;
             }
             $result[] = [
-                'mes'     => date('Y-m', $fecha),
-                'label'   => $meses[(int) date('n', $fecha) - 1] . ' ' . date('Y', $fecha),
+                'mes'     => $monthAnchor->format('Y-m'),
+                'label'   => $meses[(int) $monthAnchor->format('n') - 1] . ' ' . $monthAnchor->format('Y'),
                 'cobrado' => $cobrado,
             ];
         }
@@ -142,8 +143,8 @@ class DashboardService
     public function getPendientesCobro(): array
     {
         $reportModel = model(ReportModel::class);
-        $startDate = date('Y-m-d', strtotime('-2 years'));
-        $endDate = date('Y-m-d');
+        $startDate = RegisterService::reportDateFromModifier('-2 years');
+        $endDate = RegisterService::todayForReport();
         try {
             $row = $reportModel->getTotalesPagos($startDate, $endDate);
             $pendientes = $reportModel->getPendientesPago($startDate, $endDate);
@@ -167,8 +168,8 @@ class DashboardService
         $diasAlerta   = max(1, (int) ($appConfig->getValue('dias_alerta_vencimiento') ?: 40));
 
         $lotes = $reactivoModel->getTodosLotesParaReporte();
-        $hoy   = date('Y-m-d');
-        $enX   = date('Y-m-d', strtotime("+{$diasAlerta} days"));
+        $hoy   = RegisterService::todayForReport();
+        $enX   = RegisterService::reportDateFromModifier("+{$diasAlerta} days");
 
         $vencidos = 0;
         $porVencer = 0;
@@ -279,8 +280,8 @@ class DashboardService
     public function getTopDoctores(int $limit = 5): array
     {
         $reportModel = model(ReportModel::class);
-        $monthStart = date('Y-m-01');
-        $today = date('Y-m-d');
+        $monthStart = RegisterService::monthStartForReport();
+        $today = RegisterService::todayForReport();
         try {
             return array_slice(
                 $reportModel->getRegistrosByDoctor($monthStart, $today),
@@ -301,9 +302,8 @@ class DashboardService
     public function getCierresPagosSeriesUltimosDias(int $dias = 30): array
     {
         $dias = max(7, min(90, $dias));
-        $tzName = config(AppConfig::class)->appTimezone ?? date_default_timezone_get();
         try {
-            $tz = new \DateTimeZone($tzName);
+            $tz = new \DateTimeZone(RegisterService::reportDisplayTimezone());
         } catch (\Throwable $e) {
             $tz = new \DateTimeZone('UTC');
         }

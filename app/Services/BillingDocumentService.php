@@ -54,7 +54,10 @@ class BillingDocumentService
         helper('registro');
 
         $layout = $this->layoutService->getConfig();
-        $moneda = $layout['currency_symbol'] ?? 'Bs';
+        $moneda = trim((string) ($layout['currency_symbol'] ?? '$'));
+        if ($moneda === '') {
+            $moneda = '$';
+        }
 
         try {
             $dt = new \DateTime($reg->ingreso ?? 'now');

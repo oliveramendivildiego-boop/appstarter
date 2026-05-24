@@ -38,11 +38,11 @@
 
 <h4><?= esc($title ?? '') ?></h4>
 <p class="text-muted"><?= esc($subtitle ?? '') ?></p>
-<p class="small text-muted">Solo órdenes con <strong>saldo pendiente (mayor a cero)</strong> según la fecha de ingreso. No se incluyen anuladas.</p>
+<p class="small text-muted">Solo órdenes con <strong>saldo pendiente (mayor a cero)</strong> según la fecha de ingreso. No se incluyen anuladas. Por defecto se muestran los últimos 2 años; ajuste el rango si necesita otro período.</p>
 
 <div class="alert alert-warning mb-4">
     <strong><?= count($pendientes ?? []) ?></strong> orden(es) con saldo pendiente en el período.
-    <span class="d-block mt-1"><strong>Saldo total pendiente:</strong> <span class="text-danger"><?= number_format((float) ($total_saldo ?? 0), 2) ?> Bs</span></span>
+    <span class="d-block mt-1"><strong>Saldo total pendiente:</strong> <span class="text-danger"><?= format_currency((float) ($total_saldo ?? 0)) ?></span></span>
 </div>
 
 <div class="table-responsive">
@@ -62,12 +62,12 @@
             <?php foreach ($pendientes ?? [] as $row): ?>
                 <tr>
                     <td><?= esc($row['registro_id'] ?? '') ?></td>
-                    <td><?= esc(date('d/m/Y H:i', strtotime($row['ingreso'] ?? ''))) ?></td>
+                    <td><?= esc(\App\Services\RegisterService::formatStoredReporteFechaCorta($row['ingreso'] ?? '')) ?></td>
                     <td><?= esc($row['paciente'] ?? '') ?></td>
                     <td><?= esc($row['doctor'] ?? '') ?></td>
-                    <td class="text-end"><?= number_format((float) ($row['total'] ?? 0), 2) ?> Bs</td>
-                    <td class="text-end"><?= number_format((float) ($row['monto_pagado'] ?? 0), 2) ?> Bs</td>
-                    <td class="text-end text-danger fw-bold"><?= number_format((float) ($row['saldo'] ?? 0), 2) ?> Bs</td>
+                    <td class="text-end"><?= format_currency((float) ($row['total'] ?? 0)) ?></td>
+                    <td class="text-end"><?= format_currency((float) ($row['monto_pagado'] ?? 0)) ?></td>
+                    <td class="text-end text-danger fw-bold"><?= format_currency((float) ($row['saldo'] ?? 0)) ?></td>
                 </tr>
             <?php endforeach; ?>
         </tbody>

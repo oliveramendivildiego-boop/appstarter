@@ -78,6 +78,8 @@ $pageTitle = $this->renderSection('title');
       window.CI_CSRF_TOKEN = '<?= csrf_hash() ?>';
       window.CI_CSRF_TOKEN_NAME = '<?= csrf_token() ?>';
       window.SESSION_MONITOR_DISABLED = <?= filter_var((string) env('session.monitorDisabled', 'false'), FILTER_VALIDATE_BOOLEAN) ? 'true' : 'false' ?>;
+      window.APP_CURRENCY_SYMBOL = <?= json_encode($layoutConfig['currency_symbol'] ?? '$', JSON_UNESCAPED_UNICODE) ?>;
+      window.APP_CURRENCY_IS_RIGHT = <?= json_encode(strtolower(trim((string) ($layoutConfig['currency_side'] ?? 'left'))) === 'right') ?>;
     </script>
     <script src="<?= base_url('js/jquery-3.7.1.min.js') ?>"></script>
     <script src="<?= base_url('js/jquery.autocomplete.js') ?>"></script>

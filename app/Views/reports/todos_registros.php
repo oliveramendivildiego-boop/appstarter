@@ -34,8 +34,8 @@ $hasta = min($page * $perPage, $total);
                 <td><?= esc(date('d/m/Y H:i', strtotime($row['ingreso'] ?? ''))) ?></td>
                 <td><?= esc($row['paciente'] ?? '') ?></td>
                 <td><?= esc($row['doctor'] ?? '') ?></td>
-                <td class="text-end"><?= number_format((float)($row['total'] ?? 0), 2) ?> Bs</td>
-                <td class="text-end"><?= number_format((float)($row['monto_pagar'] ?? 0), 2) ?> Bs</td>
+                <td class="text-end"><?= format_currency((float)($row['total'] ?? 0)) ?></td>
+                <td class="text-end"><?= format_currency((float)($row['monto_pagar'] ?? 0)) ?></td>
             </tr>
             <?php endforeach; ?>
         </tbody>
@@ -48,8 +48,8 @@ $hasta = min($page * $perPage, $total);
 <div class="d-flex flex-wrap align-items-center gap-3 mt-3">
     <div class="alert alert-secondary mb-0 py-2">
         <strong>Total registros:</strong> <?= (int)($totales->total_registros ?? 0) ?> |
-        <strong>Total facturado:</strong> <?= number_format((float)($totales->total_facturado ?? 0), 2) ?> Bs |
-        <strong>Total cobrado:</strong> <?= number_format((float)($totales->total_cobrado ?? 0), 2) ?> Bs
+        <strong>Total facturado:</strong> <?= format_currency((float)($totales->total_facturado ?? 0)) ?> |
+        <strong>Total cobrado:</strong> <?= format_currency((float)($totales->total_cobrado ?? 0)) ?>
     </div>
     <?php if ($totalPages > 1): ?>
     <nav aria-label="Paginación">
