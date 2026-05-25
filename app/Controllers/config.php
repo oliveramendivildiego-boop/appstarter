@@ -370,7 +370,7 @@ class Config extends SecureArea
         }
 
         if ($result['success'] ?? false) {
-            return redirect()->to('config?tab=lab_validacion')->with('success', $result['message']);
+            return redirect()->to('config?tab=lab_validacion&saved=' . time())->with('success', $result['message']);
         }
 
         return redirect()->to('config?tab=lab_validacion')->with('error', $result['message']);

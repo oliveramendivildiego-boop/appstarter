@@ -57,10 +57,10 @@ class Filters extends BaseFilters
     public array $required = [
         'before' => [
             'forcehttps', // Force Global Secure Requests
-            'pagecache',  // Web Page Caching
+            // pagecache deshabilitado: cacheaba /config sin distinguir pestañas ni
+            // cambios recientes (p. ej. sello de responsable tras guardar).
         ],
         'after' => [
-            'pagecache',   // Web Page Caching
             'performance', // Performance Metrics
             // 'toolbar',  // Debug Toolbar — deshabilitado: evita 500 (intl/fórmulas)
             'kintformfix', // Corrige inputs kint-search sin id/name (accesibilidad)

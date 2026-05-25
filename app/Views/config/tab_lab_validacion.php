@@ -2,7 +2,6 @@
 $activeTab = $activeTab ?? 'sistema';
 $validators = $lab_validators ?? [];
 $approvers = $lab_approvers ?? [];
-$nextApproverIdx = count($approvers);
 $labels = [
     'name'        => lang('Config.config_lab_validator_name'),
     'approverNm'  => lang('Config.config_lab_approver_name'),
@@ -46,12 +45,12 @@ $labels = [
 
             <h6 class="border-bottom pb-2"><?= lang('Config.config_lab_approvers_heading') ?></h6>
             <p class="small text-muted mb-3"><?= lang('Config.config_lab_approvers_intro') ?></p>
-            <div id="approver-rows" data-next-idx="<?= (int) $nextApproverIdx ?>">
-                <?php foreach ($approvers as $idx => $a): ?>
-                    <div class="approver-row card mb-3 border">
+            <div id="approver-rows">
+                <?php foreach ($approvers as $a): ?>
+                    <?php $aid = preg_replace('/[^a-f0-9]/i', '', (string) ($a['id'] ?? '')); ?>
+                    <div class="approver-row card mb-3 border" data-approver-id="<?= esc($aid) ?>">
                         <div class="card-body py-3">
                             <div class="row g-2 align-items-start">
-                                <input type="hidden" name="approver_file_slot[]" value="<?= (int) $idx ?>">
                                 <input type="hidden" name="approver_id[]" value="<?= esc($a['id']) ?>">
                                 <div class="col-md-4">
                                     <label class="form-label small mb-0"><?= lang('Config.config_lab_approver_name') ?></label>
@@ -72,10 +71,12 @@ $labels = [
                                     $sp = trim((string) ($a['seal'] ?? ''));
                                     $spFs = $sp !== '' ? (FCPATH . str_replace('/', DIRECTORY_SEPARATOR, $sp)) : '';
                                     ?>
+                                    <div class="mb-2 lab-seal-preview">
                                     <?php if ($sp !== '' && is_file($spFs)): ?>
-                                        <div class="mb-2"><img src="<?= base_url($sp) ?>?v=<?= time() ?>" alt="" class="border rounded p-1" style="max-height: 100px;"></div>
+                                        <img src="<?= base_url($sp) ?>?v=<?= time() ?>" alt="" class="border rounded p-1 lab-seal-preview-img" style="max-height: 100px;">
                                     <?php endif; ?>
-                                    <input type="file" name="approver_seal[<?= (int) $idx ?>]" class="form-control form-control-sm" accept="image/jpeg,image/png,image/gif,image/webp" autocomplete="off">
+                                    </div>
+                                    <input type="file" name="approver_seal_<?= esc($aid) ?>" class="form-control form-control-sm lab-seal-input" accept="image/jpeg,image/png,image/gif,image/webp,.jpg,.jpeg,.png,.gif,.webp" autocomplete="off">
                                 </div>
                                 <div class="col-md-6">
                                     <label class="form-label small mb-0"><?= lang('Config.config_lab_signature_image') ?></label>
@@ -83,10 +84,12 @@ $labels = [
                                     $gp = trim((string) ($a['signature'] ?? ''));
                                     $gpFs = $gp !== '' ? (FCPATH . str_replace('/', DIRECTORY_SEPARATOR, $gp)) : '';
                                     ?>
+                                    <div class="mb-2 lab-sig-preview">
                                     <?php if ($gp !== '' && is_file($gpFs)): ?>
-                                        <div class="mb-2"><img src="<?= base_url($gp) ?>?v=<?= time() ?>" alt="" class="border rounded p-1" style="max-height: 64px;"></div>
+                                        <img src="<?= base_url($gp) ?>?v=<?= time() ?>" alt="" class="border rounded p-1 lab-sig-preview-img" style="max-height: 64px;">
                                     <?php endif; ?>
-                                    <input type="file" name="approver_signature[<?= (int) $idx ?>]" class="form-control form-control-sm" accept="image/jpeg,image/png,image/gif,image/webp" autocomplete="off">
+                                    </div>
+                                    <input type="file" name="approver_signature_<?= esc($aid) ?>" class="form-control form-control-sm lab-sig-input" accept="image/jpeg,image/png,image/gif,image/webp,.jpg,.jpeg,.png,.gif,.webp" autocomplete="off">
                                 </div>
                             </div>
                         </div>
@@ -133,18 +136,49 @@ $labels = [
         if (row) row.remove();
     });
 
+    function newApproverHexId() {
+        var s = '';
+        for (var i = 0; i < 16; i++) {
+            s += Math.floor(Math.random() * 16).toString(16);
+        }
+        return s;
+    }
+
+    function bindLabImagePreview(input, previewWrap, imgClass) {
+        if (!input || !previewWrap) return;
+        input.addEventListener('change', function () {
+            var file = input.files && input.files[0];
+            var old = previewWrap.querySelector('.' + imgClass);
+            if (old) old.remove();
+            if (!file) return;
+            if (!/^image\//i.test(file.type || '')) return;
+            var img = document.createElement('img');
+            img.className = 'border rounded p-1 ' + imgClass;
+            img.style.maxHeight = imgClass.indexOf('seal') >= 0 ? '100px' : '64px';
+            img.alt = '';
+            img.src = URL.createObjectURL(file);
+            previewWrap.appendChild(img);
+        });
+    }
+
+    document.querySelectorAll('.lab-seal-input').forEach(function (el) {
+        bindLabImagePreview(el, el.closest('.col-md-6')?.querySelector('.lab-seal-preview'), 'lab-seal-preview-img');
+    });
+    document.querySelectorAll('.lab-sig-input').forEach(function (el) {
+        bindLabImagePreview(el, el.closest('.col-md-6')?.querySelector('.lab-sig-preview'), 'lab-sig-preview-img');
+    });
+
     document.getElementById('btn-add-approver')?.addEventListener('click', function () {
         var wrap = document.getElementById('approver-rows');
         if (!wrap) return;
-        var i = parseInt(wrap.getAttribute('data-next-idx') || '0', 10) || 0;
-        wrap.setAttribute('data-next-idx', String(i + 1));
+        var newId = newApproverHexId();
         var card = document.createElement('div');
         card.className = 'approver-row card mb-3 border';
+        card.setAttribute('data-approver-id', newId);
         card.innerHTML =
             '<div class="card-body py-3">' +
             '<div class="row g-2 align-items-start">' +
-            '<input type="hidden" name="approver_file_slot[]" value="' + i + '">' +
-            '<input type="hidden" name="approver_id[]" value="">' +
+            '<input type="hidden" name="approver_id[]" value="' + escapeHtml(newId) + '">' +
             '<div class="col-md-4">' +
             '<label class="form-label small mb-0">' + escapeHtml(L.approverNm) + '</label>' +
             '<input type="text" name="approver_name[]" class="form-control" value="" maxlength="500" autocomplete="off">' +
@@ -160,14 +194,18 @@ $labels = [
             '</div>' +
             '<div class="col-md-6">' +
             '<label class="form-label small mb-0">' + escapeHtml(L.seal) + '</label>' +
-            '<input type="file" name="approver_seal[' + i + ']" class="form-control form-control-sm" accept="image/jpeg,image/png,image/gif,image/webp" autocomplete="off">' +
+            '<div class="mb-2 lab-seal-preview"></div>' +
+            '<input type="file" name="approver_seal_' + escapeHtml(newId) + '" class="form-control form-control-sm lab-seal-input" accept="image/jpeg,image/png,image/gif,image/webp,.jpg,.jpeg,.png,.gif,.webp" autocomplete="off">' +
             '</div>' +
             '<div class="col-md-6">' +
             '<label class="form-label small mb-0">' + escapeHtml(L.sig) + '</label>' +
-            '<input type="file" name="approver_signature[' + i + ']" class="form-control form-control-sm" accept="image/jpeg,image/png,image/gif,image/webp" autocomplete="off">' +
+            '<div class="mb-2 lab-sig-preview"></div>' +
+            '<input type="file" name="approver_signature_' + escapeHtml(newId) + '" class="form-control form-control-sm lab-sig-input" accept="image/jpeg,image/png,image/gif,image/webp,.jpg,.jpeg,.png,.gif,.webp" autocomplete="off">' +
             '</div>' +
             '</div></div>';
         wrap.appendChild(card);
+        bindLabImagePreview(card.querySelector('.lab-seal-input'), card.querySelector('.lab-seal-preview'), 'lab-seal-preview-img');
+        bindLabImagePreview(card.querySelector('.lab-sig-input'), card.querySelector('.lab-sig-preview'), 'lab-sig-preview-img');
     });
 
     document.getElementById('approver-rows')?.addEventListener('click', function (e) {

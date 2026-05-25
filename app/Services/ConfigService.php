@@ -1123,11 +1123,33 @@ class ConfigService
         }
 
         $newName = $basenamePrefix . bin2hex(random_bytes(8)) . '.' . $ext;
-        if (!$file->move($uploadPath, $newName)) {
+        $destination = $uploadPath . $newName;
+
+        // move() exige isValid() estricto; en algunos entornos Windows/WAMP falla aunque el archivo sea correcto.
+        if (!@move_uploaded_file($tmp, $destination)) {
             return null;
         }
 
         return 'images/' . $newName;
+    }
+
+    /**
+     * Archivo listo para procesar (sin depender de UploadedFile::isValid()).
+     */
+    private function isLabUploadReady(UploadedFile $file): bool
+    {
+        if ($file->hasMoved()) {
+            return false;
+        }
+
+        $err = $file->getError();
+        if ($err !== UPLOAD_ERR_OK) {
+            return false;
+        }
+
+        $tmp = $file->getTempName();
+
+        return $tmp !== '' && is_readable($tmp);
     }
 
     /**
@@ -1193,23 +1215,78 @@ class ConfigService
     }
 
     /**
-     * Localiza el archivo subido del aprobador (notación array approver_seal.0 o legacy approver_seal_0).
+     * Archivo de sello/firma ligado al id del responsable (approver_seal_{id}).
+     *
+     * @return array{file: ?UploadedFile, error: int}
      */
-    private function resolveLabApproverUpload(IncomingRequest $request, string $baseName, int $slot): ?UploadedFile
+    private function resolveLabApproverUploadById(IncomingRequest $request, string $baseName, string $approverId): array
     {
-        foreach ([$baseName . '.' . $slot, $baseName . '_' . $slot] as $key) {
-            $file = $request->getFile($key);
-            if ($file instanceof UploadedFile) {
-                return $file;
-            }
+        $approverId = strtolower(preg_replace('/[^a-f0-9]/i', '', $approverId));
+        if (strlen($approverId) < 8 || strlen($approverId) > 32) {
+            return ['file' => null, 'error' => UPLOAD_ERR_NO_FILE];
         }
 
-        return null;
+        $fieldKey = $baseName . '_' . $approverId;
+        $file = $request->getFile($fieldKey);
+        if ($file instanceof UploadedFile) {
+            return ['file' => $file, 'error' => $file->getError()];
+        }
+
+        $raw = $_FILES[$fieldKey] ?? null;
+        if (is_array($raw) && isset($raw['tmp_name']) && (string) $raw['tmp_name'] !== '') {
+            $err = (int) ($raw['error'] ?? UPLOAD_ERR_OK);
+
+            return [
+                'file'  => new UploadedFile(
+                    (string) $raw['tmp_name'],
+                    (string) ($raw['name'] ?? ''),
+                    isset($raw['type']) ? (string) $raw['type'] : null,
+                    isset($raw['size']) ? (int) $raw['size'] : null,
+                    $err,
+                ),
+                'error' => $err,
+            ];
+        }
+
+        return ['file' => null, 'error' => UPLOAD_ERR_NO_FILE];
+    }
+
+    /**
+     * Respaldo: archivos en approver_seal[] por orden de fila.
+     *
+     * @return array{file: ?UploadedFile, error: int}
+     */
+    private function resolveLabApproverUploadByRow(IncomingRequest $request, string $baseName, int $rowIndex): array
+    {
+        $multiple = $request->getFileMultiple($baseName);
+        if (is_array($multiple) && isset($multiple[$rowIndex]) && $multiple[$rowIndex] instanceof UploadedFile) {
+            $f = $multiple[$rowIndex];
+
+            return ['file' => $f, 'error' => $f->getError()];
+        }
+
+        $raw = $_FILES[$baseName] ?? null;
+        if (is_array($raw) && isset($raw['tmp_name'][$rowIndex]) && (string) $raw['tmp_name'][$rowIndex] !== '') {
+            $err = (int) ($raw['error'][$rowIndex] ?? UPLOAD_ERR_OK);
+
+            return [
+                'file'  => new UploadedFile(
+                    (string) $raw['tmp_name'][$rowIndex],
+                    (string) ($raw['name'][$rowIndex] ?? ''),
+                    isset($raw['type'][$rowIndex]) ? (string) $raw['type'][$rowIndex] : null,
+                    isset($raw['size'][$rowIndex]) ? (int) $raw['size'][$rowIndex] : null,
+                    $err,
+                ),
+                'error' => $err,
+            ];
+        }
+
+        return ['file' => null, 'error' => UPLOAD_ERR_NO_FILE];
     }
 
     private function labApproverUploadWasAttempted(?UploadedFile $file): bool
     {
-        return $file instanceof UploadedFile && $file->getError() !== UPLOAD_ERR_NO_FILE;
+        return $file instanceof UploadedFile && (int) $file->getError() !== UPLOAD_ERR_NO_FILE;
     }
 
     /**
@@ -1279,7 +1356,6 @@ class ConfigService
         $names = $post['approver_name'] ?? [];
         $cargos = $post['approver_cargo'] ?? [];
         $matriculas = $post['approver_matricula'] ?? [];
-        $fileSlots = $post['approver_file_slot'] ?? [];
         if (!is_array($ids)) {
             $ids = [];
         }
@@ -1292,20 +1368,18 @@ class ConfigService
         if (!is_array($matriculas)) {
             $matriculas = [];
         }
-        if (!is_array($fileSlots)) {
-            $fileSlots = [];
-        }
-        $nApp = max(count($ids), count($names), count($cargos), count($matriculas), count($fileSlots));
+        $nApp = max(count($ids), count($names), count($cargos), count($matriculas));
         $newApprovers = [];
         $sealFailed = false;
         $sigFailed = false;
+        $approverFileRow = 0;
 
         for ($i = 0; $i < $nApp; $i++) {
             $aname = mb_substr(trim((string) ($names[$i] ?? '')), 0, 500);
             if ($aname === '') {
                 continue;
             }
-            $prevAtIndex = $oldApprovers[$i] ?? null;
+            $prevAtIndex = $oldApprovers[$approverFileRow] ?? ($oldApprovers[$i] ?? null);
             $id = $this->normalizeLabPersonId((string) ($ids[$i] ?? ''), is_array($prevAtIndex) ? $prevAtIndex : null);
             $cargo = mb_substr(trim((string) ($cargos[$i] ?? '')), 0, 255);
             $matricula = mb_substr(trim((string) ($matriculas[$i] ?? '')), 0, 255);
@@ -1313,14 +1387,13 @@ class ConfigService
             $seal = is_array($prev) ? trim((string) ($prev['seal'] ?? '')) : '';
             $signature = is_array($prev) ? trim((string) ($prev['signature'] ?? '')) : '';
 
-            $slot = isset($fileSlots[$i]) ? (int) $fileSlots[$i] : $i;
-            if ($slot < 0 || $slot > 500) {
-                $slot = $i;
+            $sealUpload = $this->resolveLabApproverUploadById($request, 'approver_seal', $id);
+            if (!$this->labApproverUploadWasAttempted($sealUpload['file'])) {
+                $sealUpload = $this->resolveLabApproverUploadByRow($request, 'approver_seal', $approverFileRow);
             }
-
-            $fSeal = $this->resolveLabApproverUpload($request, 'approver_seal', $slot);
-            if ($this->labApproverUploadWasAttempted($fSeal)) {
-                if ($fSeal->isValid() && !$fSeal->hasMoved()) {
+            if ($this->labApproverUploadWasAttempted($sealUpload['file'])) {
+                $fSeal = $sealUpload['file'];
+                if ($this->isLabUploadReady($fSeal)) {
                     $np = $this->processConfigImageUpload($fSeal, 'lab-approver-seal-');
                     if ($np) {
                         if ($seal !== '') {
@@ -1335,9 +1408,13 @@ class ConfigService
                 }
             }
 
-            $fSig = $this->resolveLabApproverUpload($request, 'approver_signature', $slot);
-            if ($this->labApproverUploadWasAttempted($fSig)) {
-                if ($fSig->isValid() && !$fSig->hasMoved()) {
+            $sigUpload = $this->resolveLabApproverUploadById($request, 'approver_signature', $id);
+            if (!$this->labApproverUploadWasAttempted($sigUpload['file'])) {
+                $sigUpload = $this->resolveLabApproverUploadByRow($request, 'approver_signature', $approverFileRow);
+            }
+            if ($this->labApproverUploadWasAttempted($sigUpload['file'])) {
+                $fSig = $sigUpload['file'];
+                if ($this->isLabUploadReady($fSig)) {
                     $np = $this->processConfigImageUpload($fSig, 'lab-approver-sig-');
                     if ($np) {
                         if ($signature !== '') {
@@ -1352,6 +1429,7 @@ class ConfigService
                 }
             }
 
+            $approverFileRow++;
             $newApprovers[] = [
                 'id'          => $id,
                 'name'        => $aname,
@@ -1389,12 +1467,20 @@ class ConfigService
         if ($ok && ($sealFailed || $sigFailed)) {
             $parts = [lang('Config.config_saved')];
             if ($sealFailed) {
-                $parts[] = lang('Config.config_lab_seal_error');
+                $parts[] = lang('Config.config_lab_seal_error')
+                    . ' Use JPG, PNG, GIF o WebP (máx. 2 MB).';
             }
             if ($sigFailed) {
-                $parts[] = lang('Config.config_lab_signature_error');
+                $parts[] = lang('Config.config_lab_signature_error')
+                    . ' Use JPG, PNG, GIF o WebP (máx. 2 MB).';
             }
             $message = implode(' ', $parts);
+        }
+
+        if (ENVIRONMENT === 'development' && ($sealFailed || $sigFailed)) {
+            log_message('debug', 'saveLabValidation uploads: sealFailed=' . ($sealFailed ? '1' : '0')
+                . ' sigFailed=' . ($sigFailed ? '1' : '0')
+                . ' files=' . json_encode(array_keys($_FILES)));
         }
 
         return ['success' => $ok, 'message' => $message];
