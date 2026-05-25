@@ -77,6 +77,7 @@ $labels = [
                                     <?php endif; ?>
                                     </div>
                                     <input type="file" name="approver_seal_<?= esc($aid) ?>" class="form-control form-control-sm lab-seal-input" accept="image/jpeg,image/png,image/gif,image/webp,.jpg,.jpeg,.png,.gif,.webp" autocomplete="off">
+                                    <div class="small text-muted lab-seal-upload-status mt-1">Al elegir imagen se guarda automáticamente.</div>
                                 </div>
                                 <div class="col-md-6">
                                     <label class="form-label small mb-0"><?= lang('Config.config_lab_signature_image') ?></label>
@@ -111,6 +112,8 @@ $labels = [
 <script>
 (function () {
     var L = <?= json_encode($labels, JSON_UNESCAPED_UNICODE) ?>;
+    var sealUploadUrl = <?= json_encode(site_url('config/uploadLabApproverSeal')) ?>;
+    var sigUploadUrl = <?= json_encode(site_url('config/uploadLabApproverSignature')) ?>;
 
     document.getElementById('btn-add-validator')?.addEventListener('click', function () {
         var wrap = document.getElementById('validator-rows');
@@ -144,28 +147,82 @@ $labels = [
         return s;
     }
 
-    function bindLabImagePreview(input, previewWrap, imgClass) {
-        if (!input || !previewWrap) return;
+    function uploadLabApproverImage(input, kind, uploadUrl) {
+        var card = input.closest('.approver-row');
+        if (!card) return;
+        var approverId = card.getAttribute('data-approver-id') || '';
+        var file = input.files && input.files[0];
+        var statusEl = card.querySelector(kind === 'seal' ? '.lab-seal-upload-status' : '.lab-sig-upload-status');
+        if (!file) return;
+        if (!approverId) {
+            if (statusEl) {
+                statusEl.textContent = 'Error: falta identificador del responsable. Recargue la página.';
+                statusEl.className = 'small text-danger ' + (kind === 'seal' ? 'lab-seal-upload-status' : 'lab-sig-upload-status') + ' mt-1';
+            }
+            return;
+        }
+        if (statusEl) {
+            statusEl.textContent = 'Guardando imagen…';
+            statusEl.className = 'small text-muted ' + (kind === 'seal' ? 'lab-seal-upload-status' : 'lab-sig-upload-status') + ' mt-1';
+        }
+        var fd = new FormData();
+        fd.append('approver_id', approverId);
+        fd.append('approver_name', card.querySelector('[name="approver_name[]"]')?.value || '');
+        fd.append('approver_cargo', card.querySelector('[name="approver_cargo[]"]')?.value || '');
+        fd.append('approver_matricula', card.querySelector('[name="approver_matricula[]"]')?.value || '');
+        fd.append(kind, file);
+        var csrfName = window.CI_CSRF_TOKEN_NAME || 'csrf_test_name';
+        fd.append(csrfName, window.CI_CSRF_TOKEN || '');
+        fetch(uploadUrl, {
+            method: 'POST',
+            body: fd,
+            credentials: 'same-origin',
+            headers: { 'X-Requested-With': 'XMLHttpRequest' }
+        })
+            .then(function (r) { return r.json(); })
+            .then(function (data) {
+                if (data.csrf_token) window.CI_CSRF_TOKEN = data.csrf_token;
+                if (data.success && data.url) {
+                    var wrap = card.querySelector(kind === 'seal' ? '.lab-seal-preview' : '.lab-sig-preview');
+                    var imgClass = kind === 'seal' ? 'lab-seal-preview-img' : 'lab-sig-preview-img';
+                    if (wrap) {
+                        wrap.innerHTML = '<img src="' + data.url + '" class="border rounded p-1 ' + imgClass + '" style="max-height:' + (kind === 'seal' ? '100' : '64') + 'px" alt="">';
+                    }
+                    if (statusEl) {
+                        statusEl.textContent = data.message || 'Imagen guardada.';
+                        statusEl.className = 'small text-success ' + (kind === 'seal' ? 'lab-seal-upload-status' : 'lab-sig-upload-status') + ' mt-1';
+                    }
+                    input.value = '';
+                    return;
+                }
+                if (statusEl) {
+                    statusEl.textContent = data.message || 'No se pudo guardar la imagen.';
+                    statusEl.className = 'small text-danger ' + (kind === 'seal' ? 'lab-seal-upload-status' : 'lab-sig-upload-status') + ' mt-1';
+                }
+            })
+            .catch(function () {
+                if (statusEl) {
+                    statusEl.textContent = 'Error de conexión al guardar la imagen.';
+                    statusEl.className = 'small text-danger ' + (kind === 'seal' ? 'lab-seal-upload-status' : 'lab-sig-upload-status') + ' mt-1';
+                }
+            });
+    }
+
+    function bindLabImagePreview(input, previewWrap, imgClass, kind, uploadUrl) {
+        if (!input) return;
         input.addEventListener('change', function () {
             var file = input.files && input.files[0];
-            var old = previewWrap.querySelector('.' + imgClass);
-            if (old) old.remove();
             if (!file) return;
             if (!/^image\//i.test(file.type || '')) return;
-            var img = document.createElement('img');
-            img.className = 'border rounded p-1 ' + imgClass;
-            img.style.maxHeight = imgClass.indexOf('seal') >= 0 ? '100px' : '64px';
-            img.alt = '';
-            img.src = URL.createObjectURL(file);
-            previewWrap.appendChild(img);
+            uploadLabApproverImage(input, kind, uploadUrl);
         });
     }
 
     document.querySelectorAll('.lab-seal-input').forEach(function (el) {
-        bindLabImagePreview(el, el.closest('.col-md-6')?.querySelector('.lab-seal-preview'), 'lab-seal-preview-img');
+        bindLabImagePreview(el, el.closest('.col-md-6')?.querySelector('.lab-seal-preview'), 'lab-seal-preview-img', 'seal', sealUploadUrl);
     });
     document.querySelectorAll('.lab-sig-input').forEach(function (el) {
-        bindLabImagePreview(el, el.closest('.col-md-6')?.querySelector('.lab-sig-preview'), 'lab-sig-preview-img');
+        bindLabImagePreview(el, el.closest('.col-md-6')?.querySelector('.lab-sig-preview'), 'lab-sig-preview-img', 'signature', sigUploadUrl);
     });
 
     document.getElementById('btn-add-approver')?.addEventListener('click', function () {
@@ -196,16 +253,18 @@ $labels = [
             '<label class="form-label small mb-0">' + escapeHtml(L.seal) + '</label>' +
             '<div class="mb-2 lab-seal-preview"></div>' +
             '<input type="file" name="approver_seal_' + escapeHtml(newId) + '" class="form-control form-control-sm lab-seal-input" accept="image/jpeg,image/png,image/gif,image/webp,.jpg,.jpeg,.png,.gif,.webp" autocomplete="off">' +
+            '<div class="small text-muted lab-seal-upload-status mt-1">Al elegir imagen se guarda automáticamente.</div>' +
             '</div>' +
             '<div class="col-md-6">' +
             '<label class="form-label small mb-0">' + escapeHtml(L.sig) + '</label>' +
             '<div class="mb-2 lab-sig-preview"></div>' +
             '<input type="file" name="approver_signature_' + escapeHtml(newId) + '" class="form-control form-control-sm lab-sig-input" accept="image/jpeg,image/png,image/gif,image/webp,.jpg,.jpeg,.png,.gif,.webp" autocomplete="off">' +
+            '<div class="small text-muted lab-sig-upload-status mt-1">Al elegir imagen se guarda automáticamente.</div>' +
             '</div>' +
             '</div></div>';
         wrap.appendChild(card);
-        bindLabImagePreview(card.querySelector('.lab-seal-input'), card.querySelector('.lab-seal-preview'), 'lab-seal-preview-img');
-        bindLabImagePreview(card.querySelector('.lab-sig-input'), card.querySelector('.lab-sig-preview'), 'lab-sig-preview-img');
+        bindLabImagePreview(card.querySelector('.lab-seal-input'), card.querySelector('.lab-seal-preview'), 'lab-seal-preview-img', 'seal', sealUploadUrl);
+        bindLabImagePreview(card.querySelector('.lab-sig-input'), card.querySelector('.lab-sig-preview'), 'lab-sig-preview-img', 'signature', sigUploadUrl);
     });
 
     document.getElementById('approver-rows')?.addEventListener('click', function (e) {

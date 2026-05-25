@@ -114,6 +114,8 @@ $routes->get('config/opciones', 'Config::opciones');
 $routes->get('config/exportOpciones', 'Config::exportOpciones');
 $routes->post('config/save', 'Config::save');
 $routes->post('config/saveLabValidation', 'Config::saveLabValidation');
+$routes->post('config/uploadLabApproverSeal', 'Config::uploadLabApproverSeal');
+$routes->post('config/uploadLabApproverSignature', 'Config::uploadLabApproverSignature');
 $routes->post('config/saveUiStyle', 'Config::saveUiStyle');
 $routes->post('config/saveComprobanteStyle', 'Config::saveComprobanteStyle');
 $routes->post('config/saveWhatsapp', 'Config::saveWhatsapp');

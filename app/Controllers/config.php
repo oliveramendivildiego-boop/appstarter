@@ -377,6 +377,48 @@ class Config extends SecureArea
     }
 
     /**
+     * Sube sello de un responsable al instante (AJAX).
+     */
+    public function uploadLabApproverSeal(): ResponseInterface
+    {
+        if (!$this->request->is('post')) {
+            return $this->response->setJSON(['success' => false, 'message' => 'Método no permitido.'])
+                ->setStatusCode(405);
+        }
+
+        $result = $this->configService->uploadLabApproverImageFromRequest(
+            $this->request->getPost(),
+            $this->request,
+            'seal'
+        );
+        $result['csrf_token'] = csrf_hash();
+        $result['csrf_name']  = csrf_token();
+
+        return $this->response->setJSON($result)->setStatusCode(($result['success'] ?? false) ? 200 : 400);
+    }
+
+    /**
+     * Sube firma de un responsable al instante (AJAX).
+     */
+    public function uploadLabApproverSignature(): ResponseInterface
+    {
+        if (!$this->request->is('post')) {
+            return $this->response->setJSON(['success' => false, 'message' => 'Método no permitido.'])
+                ->setStatusCode(405);
+        }
+
+        $result = $this->configService->uploadLabApproverImageFromRequest(
+            $this->request->getPost(),
+            $this->request,
+            'signature'
+        );
+        $result['csrf_token'] = csrf_hash();
+        $result['csrf_name']  = csrf_token();
+
+        return $this->response->setJSON($result)->setStatusCode(($result['success'] ?? false) ? 200 : 400);
+    }
+
+    /**
      * Guarda apariencia del sistema (colores, fuente, menú).
      */
     public function saveUiStyle(): ResponseInterface

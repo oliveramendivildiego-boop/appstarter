@@ -1125,8 +1125,23 @@ class ConfigService
         $newName = $basenamePrefix . bin2hex(random_bytes(8)) . '.' . $ext;
         $destination = $uploadPath . $newName;
 
-        // move() exige isValid() estricto; en algunos entornos Windows/WAMP falla aunque el archivo sea correcto.
-        if (!@move_uploaded_file($tmp, $destination)) {
+        // WAMP/Windows: move_uploaded_file a veces falla; file_put_contents es más fiable.
+        if (is_uploaded_file($tmp)) {
+            if (@move_uploaded_file($tmp, $destination)) {
+                return 'images/' . $newName;
+            }
+        }
+
+        $contents = @file_get_contents($tmp);
+        if ($contents === false || $contents === '') {
+            log_message('error', 'Config image upload: no se pudo leer temporal ' . $basenamePrefix);
+
+            return null;
+        }
+
+        if (@file_put_contents($destination, $contents) === false) {
+            log_message('error', 'Config image upload: no se pudo escribir en ' . $destination);
+
             return null;
         }
 
@@ -1228,8 +1243,16 @@ class ConfigService
 
         $fieldKey = $baseName . '_' . $approverId;
         $file = $request->getFile($fieldKey);
-        if ($file instanceof UploadedFile) {
+        if ($file instanceof UploadedFile && (int) $file->getError() !== UPLOAD_ERR_NO_FILE) {
             return ['file' => $file, 'error' => $file->getError()];
+        }
+
+        $ajaxKey = $baseName === 'approver_seal' ? 'seal' : ($baseName === 'approver_signature' ? 'signature' : '');
+        if ($ajaxKey !== '') {
+            $ajaxFile = $request->getFile($ajaxKey);
+            if ($ajaxFile instanceof UploadedFile && (int) $ajaxFile->getError() !== UPLOAD_ERR_NO_FILE) {
+                return ['file' => $ajaxFile, 'error' => $ajaxFile->getError()];
+            }
         }
 
         $raw = $_FILES[$fieldKey] ?? null;
@@ -1287,6 +1310,103 @@ class ConfigService
     private function labApproverUploadWasAttempted(?UploadedFile $file): bool
     {
         return $file instanceof UploadedFile && (int) $file->getError() !== UPLOAD_ERR_NO_FILE;
+    }
+
+    /**
+     * Sube sello o firma de un responsable y lo guarda de inmediato en lab_approvers_json.
+     *
+     * @param 'seal'|'signature' $kind
+     *
+     * @return array{success: bool, message: string, path?: string, url?: string}
+     */
+    public function uploadLabApproverImageFromRequest(array $post, IncomingRequest $request, string $kind): array
+    {
+        if (!in_array($kind, ['seal', 'signature'], true)) {
+            return ['success' => false, 'message' => 'Tipo de imagen no válido.'];
+        }
+
+        $approverId = $this->normalizeLabPersonId((string) ($post['approver_id'] ?? ''), null);
+        $baseName   = $kind === 'seal' ? 'approver_seal' : 'approver_signature';
+        $prefix     = $kind === 'seal' ? 'lab-approver-seal-' : 'lab-approver-sig-';
+        $regex      = $kind === 'seal' ? '#^images/lab-approver-seal-#' : '#^images/lab-approver-sig-#';
+
+        $upload = $this->resolveLabApproverUploadById($request, $baseName, $approverId);
+        if (!$this->labApproverUploadWasAttempted($upload['file'])) {
+            $upload = ['file' => $request->getFile($kind), 'error' => UPLOAD_ERR_NO_FILE];
+        }
+
+        if (!$this->labApproverUploadWasAttempted($upload['file'])) {
+            return ['success' => false, 'message' => 'No se recibió ninguna imagen.'];
+        }
+
+        $file = $upload['file'];
+        if (!$this->isLabUploadReady($file)) {
+            return ['success' => false, 'message' => 'La imagen no se subió correctamente. Use JPG, PNG, GIF o WebP (máx. 2 MB).'];
+        }
+
+        $newPath = $this->processConfigImageUpload($file, $prefix);
+        if ($newPath === null) {
+            return ['success' => false, 'message' => 'No se pudo guardar la imagen. Verifique formato y tamaño (máx. 2 MB).'];
+        }
+
+        $this->invalidateCache();
+        $state     = $this->getLabValidationStateForView();
+        $approvers = $state['approvers'];
+        $found     = false;
+        $aname     = mb_substr(trim((string) ($post['approver_name'] ?? '')), 0, 500);
+
+        foreach ($approvers as &$row) {
+            if (($row['id'] ?? '') !== $approverId) {
+                continue;
+            }
+            $found = true;
+            $old   = trim((string) ($row[$kind] ?? ''));
+            if ($old !== '') {
+                $this->removeManagedConfigImage($old, $newPath, $regex);
+            }
+            $row[$kind] = $newPath;
+            if ($aname !== '') {
+                $row['name'] = $aname;
+            }
+            break;
+        }
+        unset($row);
+
+        if (!$found) {
+            if ($aname === '') {
+                @unlink(FCPATH . str_replace('/', DIRECTORY_SEPARATOR, $newPath));
+
+                return ['success' => false, 'message' => 'Indique el nombre del responsable antes de subir el sello.'];
+            }
+            $approvers[] = [
+                'id'        => $approverId,
+                'name'      => $aname,
+                'cargo'     => mb_substr(trim((string) ($post['approver_cargo'] ?? '')), 0, 255),
+                'matricula' => mb_substr(trim((string) ($post['approver_matricula'] ?? '')), 0, 255),
+                'seal'      => $kind === 'seal' ? $newPath : '',
+                'signature' => $kind === 'signature' ? $newPath : '',
+            ];
+        }
+
+        $ok = $this->appConfigModel->batchSave([
+            'lab_approvers_json' => json_encode($approvers, JSON_UNESCAPED_UNICODE),
+        ]);
+        if ($ok) {
+            $this->invalidateCache();
+        }
+
+        if (!$ok) {
+            @unlink(FCPATH . str_replace('/', DIRECTORY_SEPARATOR, $newPath));
+
+            return ['success' => false, 'message' => lang('Config.config_error')];
+        }
+
+        return [
+            'success' => true,
+            'message' => $kind === 'seal' ? 'Sello guardado.' : 'Firma guardada.',
+            'path'    => $newPath,
+            'url'     => base_url($newPath) . '?v=' . time(),
+        ];
     }
 
     /**
