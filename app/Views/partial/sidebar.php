@@ -27,8 +27,11 @@ foreach ($allowed_modules ?? [] as $m) {
     if (($m->module_id ?? '') === 'registers') { $has_registers = true; break; }
 }
 $has_config = false;
+$can_view_home = false;
 foreach ($allowed_modules ?? [] as $m) {
-    if (($m->module_id ?? '') === 'config') { $has_config = true; break; }
+    $mid = $m->module_id ?? '';
+    if ($mid === 'config') { $has_config = true; }
+    if ($mid === 'home') { $can_view_home = true; }
 }
 ?>
 <div class="sidebar border <?= esc($sbBorderClass) ?> col-md-3 col-lg-2 p-0">
@@ -39,14 +42,16 @@ foreach ($allowed_modules ?? [] as $m) {
     </div>
     <div class="offcanvas-body d-md-flex flex-column p-0 pt-lg-3">
       <ul class="nav flex-column">
+        <?php if ($can_view_home): ?>
         <li class="nav-item">
           <a class="nav-link d-flex align-items-center gap-2 <?= $current === 'home' ? 'active' : '' ?>" href="<?= site_url('home') ?>"<?= $current === 'home' ? ' aria-current="page"' : '' ?>>
             <i class="fa-solid fa-house"></i>
             <?= lang('Module.module_home') ?>
           </a>
         </li>
+        <?php endif; ?>
         <?php foreach ($allowed_modules ?? [] as $module): ?>
-        <?php if (in_array(($module->module_id ?? ''), ['config', 'interpretacion_clinica', 'interpretacion-clinica'], true)) continue; ?>
+        <?php if (in_array(($module->module_id ?? ''), ['home', 'config', 'interpretacion_clinica', 'interpretacion-clinica'], true)) continue; ?>
         <?php $icon = $icons[$module->module_id] ?? 'fa-circle'; ?>
         <?php if (($module->module_id ?? '') === 'registers'): ?>
         <?php $uri = trim(uri_string(), '/'); $isRegistersNuevo = ($uri === 'registers'); ?>

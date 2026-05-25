@@ -12,8 +12,12 @@ class TenantHandoffService
 
     private const DIR = 'tenant_handoff';
 
-    public function create(int $personId, string $username, string $tenantKey): string
-    {
+    public function create(
+        int $personId,
+        string $username,
+        string $tenantKey,
+        int $centralPersonId = 0
+    ): string {
         $dir = rtrim(WRITEPATH, DIRECTORY_SEPARATOR) . DIRECTORY_SEPARATOR . self::DIR;
         if (! is_dir($dir) && ! @mkdir($dir, 0750, true) && ! is_dir($dir)) {
             throw new \RuntimeException('No se pudo crear el directorio de handoff.');
@@ -27,6 +31,9 @@ class TenantHandoffService
             'suppress_tenant_audit'   => true,
             'exp'                     => time() + self::TTL,
         ];
+        if ($centralPersonId > 0 && $centralPersonId !== $personId) {
+            $payload['ghost_central_person_id'] = $centralPersonId;
+        }
         ksort($payload);
         $json = json_encode($payload, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
         if ($json === false) {

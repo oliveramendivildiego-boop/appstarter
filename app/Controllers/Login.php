@@ -4,6 +4,7 @@ namespace App\Controllers;
 
 use App\Models\DoctorModel;
 use App\Models\EmployeeModel;
+use App\Services\GhostTenantAccessService;
 use App\Services\TenantHandoffService;
 use CodeIgniter\HTTP\ResponseInterface;
 
@@ -14,7 +15,8 @@ class Login extends BaseController
         $employeeModel = model(EmployeeModel::class);
 
         if ($employeeModel->isLoggedIn()) {
-            return redirect()->to(site_url('home'));
+            $personId = (int) session()->get('person_id');
+            return redirect()->to($employeeModel->getDefaultLandingUrl($personId));
         }
 
         if (strtolower($this->request->getMethod()) === 'post') {
@@ -22,13 +24,14 @@ class Login extends BaseController
             $password = $this->request->getPost('password');
 
             if ($employeeModel->login($username ?? '', $password ?? '')) {
+                $landing = $employeeModel->getDefaultLandingUrl((int) session()->get('person_id'));
                 if ($this->request->isAJAX()) {
                     return $this->response->setJSON([
                         'success'  => true,
-                        'redirect' => site_url('home'),
+                        'redirect' => $landing,
                     ]);
                 }
-                return redirect()->to(site_url('home'));
+                return redirect()->to($landing);
             }
 
             $doctorModel = model(\App\Models\DoctorModel::class);
@@ -108,7 +111,7 @@ class Login extends BaseController
             if ($employeeModel->loginByEmail($email)) {
                 return $this->response->setJSON([
                     'success'  => true,
-                    'redirect' => site_url('home'),
+                    'redirect' => $employeeModel->getDefaultLandingUrl((int) session()->get('person_id')),
                 ]);
             }
 
@@ -138,7 +141,8 @@ class Login extends BaseController
         }
         $personId = (int) ($payload['person_id'] ?? 0);
         $expectUser = strtolower(trim((string) ($payload['username'] ?? '')));
-        if ($personId < 1 || $expectUser === '') {
+        $tenantKey = trim((string) ($payload['ghost_target_tenant_key'] ?? ''));
+        if ($personId < 1 || $expectUser === '' || $tenantKey === '') {
             return redirect()->to(site_url('login'))->with('error', 'Token de acceso no válido.');
         }
         $employeeModel = model(EmployeeModel::class);
@@ -150,19 +154,22 @@ class Login extends BaseController
             ->get()
             ->getRow();
         if (! $row) {
-            return redirect()->to(site_url('login'))->with('error', 'Su usuario no existe o está inactivo en este laboratorio (mismo person_id y usuario que en el panel central).');
+            return redirect()->to(site_url('login'))->with('error', 'No hay un usuario activo en este laboratorio para el acceso de soporte. Verifique que el tenant esté aprovisionado.');
         }
         if (strtolower(trim((string) ($row->username ?? ''))) !== $expectUser) {
-            return redirect()->to(site_url('login'))->with('error', 'El usuario no coincide con este laboratorio.');
+            return redirect()->to(site_url('login'))->with('error', 'El usuario de soporte no coincide con este laboratorio.');
         }
-        session()->set('person_id', $personId);
-        session()->set('user_type', 'employee');
-        session()->remove('doctor_id');
+
+        $centralPersonId = (int) ($payload['ghost_central_person_id'] ?? 0);
+        (new GhostTenantAccessService())->applyGhostSession(
+            $centralPersonId,
+            $tenantKey,
+            ['person_id' => $personId, 'username' => $expectUser],
+            $centralPersonId > 0 && $centralPersonId !== $personId
+        );
         $agent = service('request')->getUserAgent();
         session()->set('login_user_agent', $agent ? $agent->getAgentString() : '');
-        session()->set('suppress_tenant_audit', true);
-        session()->set('ghost_target_tenant_key', (string) ($payload['ghost_target_tenant_key'] ?? ''));
 
-        return redirect()->to(site_url('home'));
+        return redirect()->to(site_url('home?tenant=' . rawurlencode($tenantKey)));
     }
 }

@@ -150,6 +150,8 @@ $routes->post('config/saveTenantSubscriptionPayment', 'Config::saveTenantSubscri
 $routes->post('config/uploadTenantSubscriptionVoucher/(:num)', 'Config::uploadTenantSubscriptionVoucher/$1');
 $routes->get('config/tenantSubscriptionVoucher/(:num)', 'Config::downloadTenantSubscriptionVoucher/$1');
 $routes->post('config/provisiontenant/(:num)', 'Config::provisionTenant/$1');
+$routes->post('config/migrateCurrentDatabase', 'Config::migrateCurrentDatabase');
+$routes->post('config/migrateAllTenants', 'Config::migrateAllTenants');
 $routes->match(['get', 'post'], 'config/ghostEnterTenant/(:num)', 'Config::ghostEnterTenant/$1');
 $routes->get('config/ghostExitTenant', 'Config::ghostExitTenant');
 $routes->get('seguridad', 'ModulePlaceholder::index');

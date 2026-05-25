@@ -8,11 +8,20 @@ use App\Services\DashboardService;
 
 class Home extends SecureArea
 {
-    protected ?string $moduleId = null;
+    protected ?string $moduleId = 'home';
 
     public function __construct()
     {
         parent::__construct();
+    }
+
+    public function initController(\CodeIgniter\HTTP\RequestInterface $request, \CodeIgniter\HTTP\ResponseInterface $response, \Psr\Log\LoggerInterface $logger)
+    {
+        $method = service('router')->methodName();
+        if (in_array($method, ['logout', 'subscriptionBlocked'], true)) {
+            $this->moduleId = null;
+        }
+        parent::initController($request, $response, $logger);
     }
 
     public function index()

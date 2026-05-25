@@ -14,6 +14,7 @@ use App\Services\ConfigService;
 use App\Services\TenantBackupScheduleService;
 use App\Services\TenantBackupService;
 use App\Services\TenantConfigService;
+use App\Services\GhostTenantAccessService;
 use App\Services\TenantHandoffService;
 use App\Services\TenantSubscriptionService;
 use CodeIgniter\HTTP\ResponseInterface;
@@ -1120,6 +1121,45 @@ class Config extends SecureArea
     }
 
     /**
+     * Aplica migraciones pendientes (p. ej. módulo home/dashboard) en la BD del laboratorio actual.
+     */
+    public function migrateCurrentDatabase(): ResponseInterface
+    {
+        if (!$this->canManageTenants()) {
+            return redirect()->to('config')->with('error', 'No tiene permiso para gestionar tenants.');
+        }
+
+        $result = $this->tenantConfigService->runMigrationsOnDefaultDatabase();
+        if ($result['success']) {
+            \App\Models\AuditoriaModel::log('config', 'migrate_current_db', null, $result['message'] ?? '');
+            return redirect()->to('config?tab=tenants')->with('success', $result['message']);
+        }
+
+        return redirect()->to('config?tab=tenants')->with('error', $result['message']);
+    }
+
+    /**
+     * Aplica migraciones pendientes en cada tenant activo (sin recrear bases).
+     */
+    public function migrateAllTenants(): ResponseInterface
+    {
+        if (!$this->canManageTenants()) {
+            return redirect()->to('config')->with('error', 'No tiene permiso para gestionar tenants.');
+        }
+
+        $result = $this->tenantConfigService->runMigrationsOnAllActiveTenants();
+        $details = $result['details'] ?? [];
+        $detailText = $details !== [] ? "\n" . implode("\n", $details) : '';
+
+        if ($result['success']) {
+            \App\Models\AuditoriaModel::log('config', 'migrate_all_tenants', null, ($result['message'] ?? '') . $detailText);
+            return redirect()->to('config?tab=tenants')->with('success', ($result['message'] ?? '') . $detailText);
+        }
+
+        return redirect()->to('config?tab=tenants')->with('error', ($result['message'] ?? '') . $detailText);
+    }
+
+    /**
      * Acceso al tenant como superusuario: mantiene su usuario actual pero no escribe filas en auditoría del tenant.
      * El ID va en la URL (POST) para que el envío con target="_blank" sea fiable.
      */
@@ -1158,35 +1198,60 @@ class Config extends SecureArea
         $currentHost = strtolower(explode(':', (string) service('request')->getServer('HTTP_HOST'), 2)[0]);
         $targetHost = $publicBase !== '' ? strtolower((string) parse_url($publicBase, PHP_URL_HOST)) : '';
 
+        $centralPersonId = (int) session()->get('person_id');
+        $emp = \Config\Database::connect('management')->table('employees')
+            ->select('username')
+            ->where('person_id', $centralPersonId)
+            ->where('deleted', 0)
+            ->get()
+            ->getRow();
+        $centralUsername = trim((string) ($emp->username ?? ''));
+        if ($centralUsername === '') {
+            return redirect()->to('config?tab=tenants')->with('error', 'No se pudo obtener su usuario del panel central.');
+        }
+
+        $ghostAccess = new GhostTenantAccessService();
+        $tenantEmployee = $ghostAccess->resolveEmployeeForGhost($centralPersonId, $centralUsername, $tenantKey);
+        if ($tenantEmployee === null) {
+            return redirect()->to('config?tab=tenants')->with(
+                'error',
+                'No hay ningún empleado activo en la base de datos de este tenant. Aprovisione el laboratorio o cree al menos un usuario activo.'
+            );
+        }
+
         if ($publicBase !== '' && $targetHost !== '' && $targetHost !== $currentHost) {
-            $personId = (int) session()->get('person_id');
-            $emp = model(EmployeeModel::class)->db->table('employees')
-                ->select('username')
-                ->where('person_id', $personId)
-                ->where('deleted', 0)
-                ->get()
-                ->getRow();
-            $username = trim((string) ($emp->username ?? ''));
-            if ($username === '') {
-                return redirect()->to('config?tab=tenants')->with('error', 'No se pudo obtener su usuario para el acceso al otro dominio.');
-            }
             try {
-                $token = (new TenantHandoffService())->create($personId, $username, $tenantKey);
+                $token = (new TenantHandoffService())->create(
+                    (int) $tenantEmployee['person_id'],
+                    (string) $tenantEmployee['username'],
+                    $tenantKey,
+                    $centralPersonId
+                );
             } catch (\Throwable $e) {
                 log_message('error', 'TenantHandoff: ' . $e->getMessage());
 
                 return redirect()->to('config?tab=tenants')->with('error', 'No se pudo generar el enlace de acceso. Revise permisos de writable/tenant_handoff.');
             }
-            $handoffUrl = $publicBase . '/login/tenantHandoff/' . $token;
+            $handoffUrl = $publicBase . '/login/tenantHandoff/' . $token
+                . '?tenant=' . rawurlencode($tenantKey);
 
             return redirect()->to($handoffUrl);
         }
 
-        session()->set('suppress_tenant_audit', true);
-        session()->set('ghost_target_tenant_key', $tenantKey);
+        $ghostAccess->applyGhostSession(
+            $centralPersonId,
+            $tenantKey,
+            $tenantEmployee,
+            ($tenantEmployee['matched'] ?? '') === 'fallback'
+        );
+
+        $successMsg = 'Acceso al tenant sin registro de auditoría. Use «Salir» en la barra superior cuando termine.';
+        if (($tenantEmployee['matched'] ?? '') === 'fallback') {
+            $successMsg = 'Acceso al tenant como usuario «' . ($tenantEmployee['username'] ?? 'admin') . '» (soporte; no requiere su contraseña en este laboratorio). ' . $successMsg;
+        }
 
         return redirect()->to(site_url('home?tenant=' . rawurlencode($tenantKey)))
-            ->with('success', 'Acceso al tenant sin registro de auditoría. Use «Salir» en la barra superior cuando termine.');
+            ->with('success', $successMsg);
     }
 
     /**
@@ -1215,9 +1280,10 @@ class Config extends SecureArea
      */
     public function ghostExitTenant(): ResponseInterface
     {
-        session()->remove(['suppress_tenant_audit', 'ghost_target_tenant_key']);
+        (new GhostTenantAccessService())->restoreCentralSessionAfterGhost();
+        session()->remove('tenant_key');
 
-        return redirect()->to(site_url('home'));
+        return redirect()->to(model(EmployeeModel::class)->getDefaultLandingUrl((int) session()->get('person_id')));
     }
 
     public function testSin(): ResponseInterface

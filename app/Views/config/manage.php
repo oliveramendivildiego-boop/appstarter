@@ -489,18 +489,34 @@
                     Cada tenant representa un cliente con su propia base de datos. Al guardar, se publica el mapa de conexiones para uso inmediato del runtime.
                 </p>
                 <p class="small text-secondary mb-3 border-start border-3 border-secondary ps-2">
-                    <strong>Superusuario sin auditoría:</strong> en cada fila puede abrir el laboratorio de ese tenant con su usuario actual;
-                    las acciones <em>no</em> generan registros en la tabla de auditoría del tenant (sí puede haber huella en sesiones del servidor). Use solo para soporte.
-                    Si el laboratorio usa otro dominio (ej. <code>http://quantum.local</code>), indique la <strong>URL pública del tenant</strong> en el formulario de abajo o configure en <code>.env</code> <code>tenancy.publicUrlTemplate=http://{tenant_key}.local</code>: se generará un enlace de un solo uso para iniciar sesión en ese host (mismo <code>person_id</code> y usuario en la BD del tenant).
+                    <strong>Superusuario sin auditoría:</strong> en cada fila puede abrir el laboratorio de ese tenant;
+                    las acciones <em>no</em> generan registros en la tabla de auditoría del tenant. No necesita la contraseña del administrador del cliente: si su usuario no está en esa base de datos, entrará con el usuario <code>admin</code> u otro empleado activo de soporte.
+                    Si el laboratorio usa otro dominio (ej. <code>http://quantum.local</code>), indique la <strong>URL pública del tenant</strong> en el formulario de abajo o configure en <code>.env</code> <code>tenancy.publicUrlTemplate=http://{tenant_key}.local</code>: se generará un enlace de un solo uso (válido 2 minutos).
                 </p>
-                <div class="d-flex flex-wrap gap-2 mb-3">
+                <div class="d-flex flex-wrap gap-2 mb-3 align-items-center">
                     <a href="<?= site_url('config/backupTenants') ?>"
                        class="btn btn-outline-primary"
                        onclick="return uiConfirmLink(this, 'Se descargará un ZIP con respaldos SQL de todos los tenants activos (incluido el default). ¿Continuar?');">
                         <i class="fa-solid fa-download me-1"></i>Respaldar todos los tenants
                     </a>
-                    <small class="text-muted align-self-center">Genera un ZIP con un archivo <code>.sql</code> por cada tenant activo, incluido el marcado como default.</small>
+                    <?= form_open(site_url('config/migrateCurrentDatabase'), ['class' => 'd-inline']) ?>
+                    <button type="submit" class="btn btn-outline-success" title="Migraciones pendientes en la BD del laboratorio en uso (sin recrear la base)">
+                        <i class="fa-solid fa-database me-1"></i>Migrar BD actual
+                    </button>
+                    <?= form_close() ?>
+                    <?= form_open(site_url('config/migrateAllTenants'), ['class' => 'd-inline']) ?>
+                    <button type="submit" class="btn btn-outline-success"
+                            onclick="return confirm('¿Aplicar migraciones pendientes en todos los tenants activos?');"
+                            title="Migraciones pendientes en cada tenant activo">
+                        <i class="fa-solid fa-layer-group me-1"></i>Migrar todos los tenants
+                    </button>
+                    <?= form_close() ?>
                 </div>
+                <p class="text-muted small mb-3">
+                    El botón <i class="fa-solid fa-server"></i> de cada fila <strong>aprovisiona</strong> (crea la BD si falta) y ejecuta <strong>todas las migraciones pendientes</strong>
+                    (incluida <code>AddHomeModule</code>: permiso de dashboard <code>/home</code>).
+                    Use <strong>Migrar BD actual</strong> para el laboratorio que está usando ahora, o <strong>Migrar todos los tenants</strong> tras desplegar cambios en el código.
+                </p>
 
                 <?php
                 $tbs = $tenant_backup_schedule ?? [];
@@ -645,7 +661,7 @@
                                 </td>
                                 <td class="text-center">
                                     <?= form_open(site_url('config/provisiontenant/' . (int) ($t['id'] ?? 0)), ['class' => 'd-inline']) ?>
-                                    <button type="submit" class="btn btn-sm btn-outline-success" title="Aprovisionar DB + migraciones"><i class="fa-solid fa-server"></i></button>
+                                    <button type="submit" class="btn btn-sm btn-outline-success" title="Crear BD (si no existe) + migraciones pendientes (módulos, dashboard home, etc.)"><i class="fa-solid fa-server"></i></button>
                                     <?= form_close() ?>
                                     <?php if ((int) ($t['is_active'] ?? 0) === 1): ?>
                                     <a href="<?= site_url('config/ghostEnterTenant/' . (int) ($t['id'] ?? 0)) ?>"

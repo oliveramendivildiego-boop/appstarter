@@ -62,7 +62,7 @@
                 </div>
                 <div class="d-flex gap-2">
                     <?= form_submit(['name' => 'submit', 'value' => 'Actualizar contraseña', 'class' => 'btn btn-primary']) ?>
-                    <a href="<?= site_url('home') ?>" class="btn btn-secondary">Cancelar</a>
+                    <a href="<?= employee_landing_url() ?>" class="btn btn-secondary">Cancelar</a>
                 </div>
                 <?= form_close() ?>
             </div>

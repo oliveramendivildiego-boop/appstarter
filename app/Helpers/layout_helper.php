@@ -65,3 +65,25 @@ if (!function_exists('format_currency')) {
             : ($symbol . ' ' . $formatted);
     }
 }
+
+if (!function_exists('employee_landing_url')) {
+    /**
+     * Página de inicio del empleado logueado (dashboard o primer módulo permitido).
+     */
+    function employee_landing_url(): string
+    {
+        static $cached = null;
+        if ($cached !== null) {
+            return $cached;
+        }
+
+        $personId = (int) (session()->get('person_id') ?? 0);
+        if ($personId < 1) {
+            $cached = site_url('login');
+            return $cached;
+        }
+
+        $cached = model(\App\Models\EmployeeModel::class)->getDefaultLandingUrl($personId);
+        return $cached;
+    }
+}

@@ -66,6 +66,7 @@ class Employees extends PersonController
 
     /** Módulos disponibles (con controlador funcional). Los que no están aquí no se muestran en permisos. */
     private const MODULOS_DISPONIBLES = [
+        'home'           => 'Dashboard (Inicio)',
         'customers'      => 'Pacientes',
         'doctors'        => 'Doctores',
         'doctor_commissions' => 'Comisiones',
@@ -89,7 +90,28 @@ class Employees extends PersonController
         $employeeInfo = $this->employeeModel->getInfo($employee_id);
 
         $allFromDb = \Config\Database::connect()->table('modules')->orderBy('sort', 'ASC')->get()->getResult();
-        $allModules = array_filter($allFromDb, fn($m) => isset(self::MODULOS_DISPONIBLES[$m->module_id ?? '']));
+        $byId = [];
+        foreach ($allFromDb as $m) {
+            $id = $m->module_id ?? '';
+            if ($id !== '') {
+                $byId[$id] = $m;
+            }
+        }
+        $allModules = [];
+        $sort = 0;
+        foreach (self::MODULOS_DISPONIBLES as $moduleId => $label) {
+            if (isset($byId[$moduleId])) {
+                $allModules[] = $byId[$moduleId];
+            } else {
+                $allModules[] = (object) [
+                    'module_id'     => $moduleId,
+                    'name_lang_key' => 'module_' . $moduleId,
+                    'desc_lang_key' => 'module_' . $moduleId . '_desc',
+                    'sort'          => $moduleId === 'home' ? 1 : (100 + $sort),
+                ];
+            }
+            $sort++;
+        }
         usort($allModules, fn($a, $b) => (($a->sort ?? 0) <=> ($b->sort ?? 0)));
 
         $roles = \Config\Database::connect()->table('rol')->orderBy('rol_id')->get()->getResultArray();

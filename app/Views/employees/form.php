@@ -64,7 +64,7 @@
         <?php if ($rolActual): ?>
         <p class="text-muted small mb-2">Rol asignado: <strong><?= esc($rolActual) ?></strong></p>
         <?php endif; ?>
-        <p class="text-muted small">Marque los módulos a los que este empleado tendrá acceso.</p>
+        <p class="text-muted small">Marque los módulos a los que este empleado tendrá acceso. <strong>Dashboard (Inicio)</strong> controla si puede ver el panel principal en <code>/home</code>.</p>
         <div class="row">
             <?php foreach ($all_modules ?? [] as $mod):
                 $modId = $mod->module_id ?? '';

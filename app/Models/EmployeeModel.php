@@ -319,6 +319,30 @@ class EmployeeModel extends Model
         return $count === 1;
     }
 
+    /**
+     * URL de destino tras login o al pulsar el logo (primer módulo permitido si no hay dashboard).
+     */
+    public function getDefaultLandingUrl(int $person_id): string
+    {
+        if ($this->hasPermission('home', $person_id)) {
+            return site_url('home');
+        }
+
+        foreach ($this->getAllowedModules($person_id) as $module) {
+            $id = $module->module_id ?? '';
+            if ($id === '' || $id === 'home') {
+                continue;
+            }
+            if ($id === 'registers') {
+                return site_url('registers/lista');
+            }
+
+            return site_url($id);
+        }
+
+        return site_url('account/password');
+    }
+
     public function countAll(): int
     {
         return $this->db->table($this->employeesTable())->where('deleted', 0)->countAllResults();

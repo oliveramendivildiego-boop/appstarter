@@ -208,6 +208,8 @@ class TenantConfigService
 
     public function provisionTenant(int $id): array
     {
+        @set_time_limit(300);
+
         $tenant = $this->tenantModel->find($id);
         if (!$tenant) {
             return ['success' => false, 'message' => 'Tenant no encontrado.'];
@@ -247,7 +249,97 @@ class TenantConfigService
             return $pub;
         }
 
-        return ['success' => true, 'message' => 'Tenant aprovisionado correctamente (DB + migraciones). Mapa de tenants actualizado.'];
+        return ['success' => true, 'message' => 'Tenant aprovisionado correctamente (DB + migraciones pendientes). Mapa de tenants actualizado.'];
+    }
+
+    /**
+     * Ejecuta migraciones pendientes en la BD del laboratorio actual (.env / tenant activo).
+     */
+    public function runMigrationsOnDefaultDatabase(): array
+    {
+        @set_time_limit(300);
+
+        try {
+            $db = \Config\Database::connect();
+            $db->initialize();
+
+            return $this->executeMigrationsOnConnection($db, 'la base de datos actual');
+        } catch (\Throwable $e) {
+            return [
+                'success' => false,
+                'message' => 'Error al migrar la BD actual: ' . $e->getMessage(),
+            ];
+        }
+    }
+
+    /**
+     * Ejecuta migraciones pendientes en cada tenant activo (sin recrear bases).
+     *
+     * @return array{success: bool, message: string, details?: list<string>}
+     */
+    public function runMigrationsOnAllActiveTenants(): array
+    {
+        @set_time_limit(600);
+
+        if (!$this->tenantModel->db->tableExists('tenant_configs')) {
+            return ['success' => false, 'message' => 'Falta ejecutar migraciones de tenants.'];
+        }
+
+        $rows = $this->tenantModel->where('is_active', 1)->findAll();
+        if ($rows === []) {
+            return ['success' => false, 'message' => 'No hay tenants activos para migrar.'];
+        }
+
+        $details = [];
+        $failed = 0;
+
+        foreach ($rows as $tenant) {
+            $key = (string) ($tenant['tenant_key'] ?? '');
+            $dbName = (string) ($tenant['db_name'] ?? '');
+            $dbUser = (string) ($tenant['db_user'] ?? '');
+            if ($dbName === '' || $dbUser === '') {
+                $details[] = "{$key}: omitido (sin datos de conexión)";
+                $failed++;
+                continue;
+            }
+
+            $dbPass = $this->decryptSecret((string) ($tenant['db_pass'] ?? ''));
+            if ($dbPass === null) {
+                $details[] = "{$key}: error al descifrar contraseña";
+                $failed++;
+                continue;
+            }
+
+            $result = $this->runMigrationsForTenant([
+                'hostname' => (string) ($tenant['db_host'] ?? 'localhost'),
+                'port'     => (int) ($tenant['db_port'] ?? 3306),
+                'database' => $dbName,
+                'username' => $dbUser,
+                'password' => $dbPass,
+                'DBPrefix' => (string) ($tenant['db_prefix'] ?? 'dom_'),
+            ]);
+
+            if ($result['success']) {
+                $details[] = "{$key} ({$dbName}): OK";
+            } else {
+                $details[] = "{$key} ({$dbName}): " . ($result['message'] ?? 'error');
+                $failed++;
+            }
+        }
+
+        if ($failed > 0) {
+            return [
+                'success' => false,
+                'message' => "Migraciones con errores en {$failed} tenant(s).",
+                'details' => $details,
+            ];
+        }
+
+        return [
+            'success' => true,
+            'message' => 'Migraciones pendientes aplicadas en todos los tenants activos.',
+            'details' => $details,
+        ];
     }
 
     /**
@@ -368,7 +460,7 @@ class TenantConfigService
      * esas variables suelen no aplicarse y las migraciones corrían contra database.default del .env,
      * mezclando o dañando datos (p. ej. app_config del laboratorio principal).
      */
-    private function runMigrationsForTenant(array $cfg): array
+    public function runMigrationsForTenant(array $cfg): array
     {
         $prefix = (string) ($cfg['DBPrefix'] ?? 'dom_');
 
@@ -404,21 +496,7 @@ class TenantConfigService
             $db = \Config\Database::connect($params, false);
             $db->initialize();
 
-            $runner = new MigrationRunner(config(MigrationsConfig::class), $db);
-            $runner->setNamespace(null);
-            $runner->clearCliMessages();
-
-            if (! $runner->latest()) {
-                $msgs = $runner->getCliMessages();
-
-                return [
-                    'success' => false,
-                    'message' => 'Error al ejecutar migraciones en la BD del tenant: '
-                        . (implode(' | ', $msgs) !== '' ? implode(' | ', $msgs) : 'revise el registro del servidor'),
-                ];
-            }
-
-            return ['success' => true, 'message' => 'Migraciones ejecutadas.'];
+            return $this->executeMigrationsOnConnection($db, 'la BD del tenant');
         } catch (\Throwable $e) {
             return [
                 'success' => false,
@@ -432,6 +510,65 @@ class TenantConfigService
                     // ignorar cierre
                 }
             }
+        }
+    }
+
+    /**
+     * @param \CodeIgniter\Database\BaseConnection $db
+     */
+    /**
+     * La caché de FileLocator no incluye archivos de migración creados después del último optimize/cache.
+     */
+    private function clearFileLocatorCache(): void
+    {
+        $cacheFile = WRITEPATH . 'cache' . DIRECTORY_SEPARATOR . 'FileLocatorCache';
+        if (is_file($cacheFile)) {
+            @unlink($cacheFile);
+        }
+    }
+
+    private function executeMigrationsOnConnection($db, string $targetLabel): array
+    {
+        try {
+            $this->clearFileLocatorCache();
+
+            $runner = new MigrationRunner(config(MigrationsConfig::class), $db);
+            $runner->setNamespace(null);
+            $runner->clearCliMessages();
+
+            if (! $runner->latest()) {
+                $msgs = array_filter(
+                    $runner->getCliMessages(),
+                    static fn ($m) => is_string($m) && trim($m) !== ''
+                );
+
+                return [
+                    'success' => false,
+                    'message' => 'Error al ejecutar migraciones en ' . $targetLabel . ': '
+                        . ($msgs !== [] ? implode(' | ', $msgs) : 'revise writable/logs'),
+                ];
+            }
+
+            $msgs = array_filter(
+                $runner->getCliMessages(),
+                static fn ($m) => is_string($m) && trim($m) !== ''
+            );
+            $suffix = $msgs !== [] ? ' (' . implode('; ', $msgs) . ')' : '';
+
+            return [
+                'success' => true,
+                'message' => 'Migraciones pendientes ejecutadas en ' . $targetLabel . $suffix,
+            ];
+        } catch (\Throwable $e) {
+            log_message('error', 'Migraciones en {label}: {err}', [
+                'label' => $targetLabel,
+                'err'   => $e->getMessage(),
+            ]);
+
+            return [
+                'success' => false,
+                'message' => 'Error al ejecutar migraciones en ' . $targetLabel . ': ' . $e->getMessage(),
+            ];
         }
     }
 }

@@ -2,6 +2,7 @@
 
 return [
     'module_home'            => 'Inicio',
+    'module_home_desc'       => 'Ver el panel principal (dashboard)',
     'module_customers'       => 'Pacientes',
     'module_customers_desc'  => 'Agregar, Actualizar, Borrar y Buscar pacientes',
     'module_doctors'         => 'Doctores',

@@ -3,6 +3,7 @@
 namespace App\Controllers;
 
 use App\Models\EmployeeModel;
+use App\Services\GhostTenantAccessService;
 use App\Services\TenantSubscriptionService;
 use CodeIgniter\HTTP\Exceptions\RedirectException;
 
@@ -32,12 +33,13 @@ abstract class SecureArea extends BaseController
 
         $personId = (int) session()->get('person_id');
         $this->user_info = $this->getCachedUserInfo($employeeModel, $personId);
-        if (!$employeeModel->hasPermission($this->moduleId, $personId)) {
+        $ghostSupport = GhostTenantAccessService::isGhostSupportSession();
+        if (! $ghostSupport && ! $employeeModel->hasPermission($this->moduleId, $personId)) {
             throw new RedirectException(redirect()->to(site_url('no_access/' . $this->moduleId)));
         }
 
         $subSvc = new TenantSubscriptionService();
-        if ($subSvc->isChildTenantSubscriptionExpired()) {
+        if (! $ghostSupport && $subSvc->isChildTenantSubscriptionExpired()) {
             helper('url');
             $uri = trim((string) uri_string(), '/');
             $allowed = [

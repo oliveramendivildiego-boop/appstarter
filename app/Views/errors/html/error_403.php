@@ -8,7 +8,7 @@
     <div class="container">
         <h1>Acceso denegado</h1>
         <p><?= esc($message ?? 'No tienes permiso para acceder.') ?></p>
-        <a href="<?= site_url('home') ?>" class="btn btn-primary">Volver al inicio</a>
+        <a href="<?= function_exists('employee_landing_url') ? employee_landing_url() : site_url('home') ?>" class="btn btn-primary">Volver al inicio</a>
     </div>
 </body>
 </html>

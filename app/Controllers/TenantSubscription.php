@@ -2,6 +2,7 @@
 
 namespace App\Controllers;
 
+use App\Models\EmployeeModel;
 use App\Services\TenantSubscriptionService;
 use CodeIgniter\HTTP\ResponseInterface;
 
@@ -16,7 +17,7 @@ class TenantSubscription extends SecureArea
     {
         $svc = new TenantSubscriptionService();
         if (! $svc->isNonDefaultTenantSession()) {
-            return redirect()->to(site_url('home'))->with('error', 'Esta sección solo está disponible para laboratorios cliente.');
+            return redirect()->to(model(EmployeeModel::class)->getDefaultLandingUrl((int) session()->get('person_id')))->with('error', 'Esta sección solo está disponible para laboratorios cliente.');
         }
         $key      = (string) $svc->sessionTenantKey();
         $payments = $svc->listPaymentsForTenantKey($key);
@@ -33,7 +34,7 @@ class TenantSubscription extends SecureArea
     {
         $svc = new TenantSubscriptionService();
         if (! $svc->isNonDefaultTenantSession()) {
-            return redirect()->to(site_url('home'))->with('error', 'Acceso no permitido.');
+            return redirect()->to(model(EmployeeModel::class)->getDefaultLandingUrl((int) session()->get('person_id')))->with('error', 'Acceso no permitido.');
         }
         $key   = (string) $svc->sessionTenantKey();
         $payId = (int) $id;
