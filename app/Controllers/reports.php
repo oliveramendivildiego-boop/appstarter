@@ -175,8 +175,9 @@ class Reports extends SecureArea
         $endDate   = $this->request->getGet('end') ?? RegisterService::todayForReport();
 
         $todos     = $this->reportModel->getReportePagos($startDate, $endDate);
-        $pendientes = $this->reportModel->getPendientesPago($startDate, $endDate);
+        $pendientes = $this->reportModel->getCobrosParcialesEnPeriodo($startDate, $endDate);
         $pagosPagados = $this->reportModel->getPagosPagadosDetalle($startDate, $endDate);
+        $tipoPagoMap = ['1' => 'Efectivo', '2' => 'QR', '3' => 'Transferencia', '4' => 'Pendiente'];
         $totales   = $this->reportModel->getTotalesPagos($startDate, $endDate);
         $resumenPagosPorTipo = $this->reportModel->getResumenPagosPorTipo($startDate, $endDate);
         $resumenPagosPorDia = $this->reportModel->getResumenPagosPorDia($startDate, $endDate);
@@ -188,80 +189,15 @@ class Reports extends SecureArea
         $totalesIngresosCaja = $this->reportModel->getTotalesIngresosCajaByDateRange($startDate, $endDate);
         $resumenIngresosCajaPorTipo = $this->reportModel->getResumenIngresosCajaPorTipo($startDate, $endDate);
 
-        $tipoPagoMap = ['1' => 'Efectivo', '2' => 'QR', '3' => 'Transferencia', '4' => 'Pendiente'];
-        $ingresosVentas = (float) ($totales->total_cobrado ?? 0);
-        $ingresosMovimientos = (float) ($totalesIngresosCaja->total_ingresos ?? 0);
-        $ingresosCaja = $ingresosVentas + $ingresosMovimientos;
-        $egresosCaja = (float) ($totalesEgresos->total_egresos ?? 0);
-        $saldoNetoCaja = round($ingresosCaja - $egresosCaja, 2);
-        $cajaResumen = [
-            'ingresos_ventas' => $ingresosVentas,
-            'ingresos_movimientos' => $ingresosMovimientos,
-            'ingresos' => $ingresosCaja,
-            'egresos' => $egresosCaja,
-            'saldo_neto' => $saldoNetoCaja,
-            'estado' => $saldoNetoCaja >= 0 ? 'positivo' : 'negativo',
-        ];
-        $cajaPorTipo = [];
-        foreach ($resumenPagosPorTipo as $row) {
-            $tipo = (string) ($row['tipopago'] ?? '');
-            if ($tipo === '') {
-                continue;
-            }
-            $cajaPorTipo[$tipo] = [
-                'tipopago' => $tipo,
-                'ingresos' => (float) ($row['total_cobrado'] ?? 0),
-                'egresos' => 0.0,
-                'saldo_neto' => 0.0,
-            ];
-        }
-        foreach ($resumenIngresosCajaPorTipo as $row) {
-            $tipo = (string) ($row['tipopago'] ?? '');
-            if ($tipo === '') {
-                continue;
-            }
-            if (!isset($cajaPorTipo[$tipo])) {
-                $cajaPorTipo[$tipo] = [
-                    'tipopago' => $tipo,
-                    'ingresos' => 0.0,
-                    'egresos' => 0.0,
-                    'saldo_neto' => 0.0,
-                ];
-            }
-            $cajaPorTipo[$tipo]['ingresos'] += (float) ($row['total_ingresos'] ?? 0);
-        }
-        foreach ($resumenEgresosPorTipo as $row) {
-            $tipo = (string) ($row['tipopago'] ?? '');
-            if ($tipo === '') {
-                continue;
-            }
-            if (!isset($cajaPorTipo[$tipo])) {
-                $cajaPorTipo[$tipo] = [
-                    'tipopago' => $tipo,
-                    'ingresos' => 0.0,
-                    'egresos' => 0.0,
-                    'saldo_neto' => 0.0,
-                ];
-            }
-            $cajaPorTipo[$tipo]['egresos'] = (float) ($row['total_egresos'] ?? 0);
-        }
-        $cajaPorTipoTotales = [
-            'ingresos' => 0.0,
-            'egresos' => 0.0,
-            'saldo_neto' => 0.0,
-        ];
-        foreach ($cajaPorTipo as &$row) {
-            $row['saldo_neto'] = round(((float) $row['ingresos']) - ((float) $row['egresos']), 2);
-            $cajaPorTipoTotales['ingresos'] += (float) $row['ingresos'];
-            $cajaPorTipoTotales['egresos'] += (float) $row['egresos'];
-            $cajaPorTipoTotales['saldo_neto'] += (float) $row['saldo_neto'];
-        }
-        unset($row);
-        ksort($cajaPorTipo, SORT_NATURAL);
-        $cajaPorTipo = array_values($cajaPorTipo);
-        $cajaPorTipoTotales['ingresos'] = round($cajaPorTipoTotales['ingresos'], 2);
-        $cajaPorTipoTotales['egresos'] = round($cajaPorTipoTotales['egresos'], 2);
-        $cajaPorTipoTotales['saldo_neto'] = round($cajaPorTipoTotales['saldo_neto'], 2);
+        $cajaCuadre = $this->buildCuadreCajaPagos(
+            $startDate,
+            $endDate,
+            $resumenPagosPorTipo,
+            $resumenIngresosCajaPorTipo,
+            $resumenEgresosPorTipo,
+            $totalesIngresosCaja,
+            $totalesEgresos
+        );
 
         return view('reports/pagos', [
             'title'           => 'Reporte de pagos',
@@ -281,9 +217,9 @@ class Reports extends SecureArea
             'totalesIngresosCaja' => $totalesIngresosCaja,
             'resumenEgresosPorTipo' => $resumenEgresosPorTipo,
             'resumenIngresosCajaPorTipo' => $resumenIngresosCajaPorTipo,
-            'cajaResumen'     => $cajaResumen,
-            'cajaPorTipo'     => $cajaPorTipo,
-            'cajaPorTipoTotales' => $cajaPorTipoTotales,
+            'cajaResumen'     => $cajaCuadre['cajaResumen'],
+            'cajaPorTipo'     => $cajaCuadre['cajaPorTipo'],
+            'cajaPorTipoTotales' => $cajaCuadre['cajaPorTipoTotales'],
             'startDate'       => $startDate,
             'endDate'         => $endDate,
             'allowed_modules' => $this->allowed_modules,
@@ -454,28 +390,25 @@ class Reports extends SecureArea
     }
 
     /**
-     * @return array<string, mixed>
+     * Cuadre de caja: cobros por fecha real del abono, no por fecha de ingreso de la orden.
+     *
+     * @param array<int, array<string, mixed>> $resumenPagosPorTipo
+     * @param array<int, array<string, mixed>> $resumenIngresosCajaPorTipo
+     * @param array<int, array<string, mixed>> $resumenEgresosPorTipo
+     *
+     * @return array{cajaResumen: array<string, mixed>, cajaPorTipo: list<array<string, mixed>>, cajaPorTipoTotales: array<string, float>}
      */
-    private function buildPagosCierreData(string $startDate, string $endDate): array
-    {
-        helper('layout');
-        $layoutConfig = layout_config();
-
-        $pendientes            = $this->reportModel->getPendientesPago($startDate, $endDate);
-        $pagosPagados          = $this->reportModel->getPagosPagadosDetalle($startDate, $endDate);
-        $totales               = $this->reportModel->getTotalesPagos($startDate, $endDate);
-        $resumenPagosPorTipo   = $this->reportModel->getResumenPagosPorTipo($startDate, $endDate);
-        $resumenPagosPorDia    = $this->reportModel->getResumenPagosPorDia($startDate, $endDate);
-        $resumenPagosPorDoctor = $this->reportModel->getResumenPagosPorDoctor($startDate, $endDate);
-        $egresos               = $this->reportModel->getEgresosByDateRange($startDate, $endDate);
-        $totalesEgresos        = $this->reportModel->getTotalesEgresosByDateRange($startDate, $endDate);
-        $resumenEgresosPorTipo = $this->reportModel->getResumenEgresosPorTipo($startDate, $endDate);
-        $ingresosCajaMov       = $this->reportModel->getIngresosCajaByDateRange($startDate, $endDate);
-        $totalesIngresosCaja   = $this->reportModel->getTotalesIngresosCajaByDateRange($startDate, $endDate);
-        $resumenIngresosCajaPorTipo = $this->reportModel->getResumenIngresosCajaPorTipo($startDate, $endDate);
-
-        $tipoPagoMap = ['1' => 'Efectivo', '2' => 'QR', '3' => 'Transferencia', '4' => 'Pendiente'];
-        $ingresosVentas = (float) ($totales->total_cobrado ?? 0);
+    private function buildCuadreCajaPagos(
+        string $startDate,
+        string $endDate,
+        array $resumenPagosPorTipo,
+        array $resumenIngresosCajaPorTipo,
+        array $resumenEgresosPorTipo,
+        object $totalesIngresosCaja,
+        object $totalesEgresos
+    ): array {
+        $totalesCobrosCaja = $this->reportModel->getTotalesCobrosCaja($startDate, $endDate);
+        $ingresosVentas = (float) ($totalesCobrosCaja->total_cobrado ?? 0);
         $ingresosMovimientos = (float) ($totalesIngresosCaja->total_ingresos ?? 0);
         $ingresosCaja = $ingresosVentas + $ingresosMovimientos;
         $egresosCaja = (float) ($totalesEgresos->total_egresos ?? 0);
@@ -491,7 +424,7 @@ class Reports extends SecureArea
         $cajaPorTipo = [];
         foreach ($resumenPagosPorTipo as $row) {
             $tipo = (string) ($row['tipopago'] ?? '');
-            if ($tipo === '') {
+            if ($tipo === '' || $tipo === '4') {
                 continue;
             }
             $cajaPorTipo[$tipo] = [
@@ -548,6 +481,48 @@ class Reports extends SecureArea
         $cajaPorTipoTotales['ingresos'] = round($cajaPorTipoTotales['ingresos'], 2);
         $cajaPorTipoTotales['egresos'] = round($cajaPorTipoTotales['egresos'], 2);
         $cajaPorTipoTotales['saldo_neto'] = round($cajaPorTipoTotales['saldo_neto'], 2);
+
+        return [
+            'cajaResumen' => $cajaResumen,
+            'cajaPorTipo' => $cajaPorTipo,
+            'cajaPorTipoTotales' => $cajaPorTipoTotales,
+        ];
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function buildPagosCierreData(string $startDate, string $endDate): array
+    {
+        helper('layout');
+        $layoutConfig = layout_config();
+
+        $pendientes            = $this->reportModel->getCobrosParcialesEnPeriodo($startDate, $endDate);
+        $pagosPagados          = $this->reportModel->getPagosPagadosDetalle($startDate, $endDate);
+        $totales               = $this->reportModel->getTotalesPagos($startDate, $endDate);
+        $tipoPagoMap           = ['1' => 'Efectivo', '2' => 'QR', '3' => 'Transferencia', '4' => 'Pendiente'];
+        $resumenPagosPorTipo   = $this->reportModel->getResumenPagosPorTipo($startDate, $endDate);
+        $resumenPagosPorDia    = $this->reportModel->getResumenPagosPorDia($startDate, $endDate);
+        $resumenPagosPorDoctor = $this->reportModel->getResumenPagosPorDoctor($startDate, $endDate);
+        $egresos               = $this->reportModel->getEgresosByDateRange($startDate, $endDate);
+        $totalesEgresos        = $this->reportModel->getTotalesEgresosByDateRange($startDate, $endDate);
+        $resumenEgresosPorTipo = $this->reportModel->getResumenEgresosPorTipo($startDate, $endDate);
+        $ingresosCajaMov       = $this->reportModel->getIngresosCajaByDateRange($startDate, $endDate);
+        $totalesIngresosCaja   = $this->reportModel->getTotalesIngresosCajaByDateRange($startDate, $endDate);
+        $resumenIngresosCajaPorTipo = $this->reportModel->getResumenIngresosCajaPorTipo($startDate, $endDate);
+
+        $cajaCuadre = $this->buildCuadreCajaPagos(
+            $startDate,
+            $endDate,
+            $resumenPagosPorTipo,
+            $resumenIngresosCajaPorTipo,
+            $resumenEgresosPorTipo,
+            $totalesIngresosCaja,
+            $totalesEgresos
+        );
+        $cajaResumen = $cajaCuadre['cajaResumen'];
+        $cajaPorTipo = $cajaCuadre['cajaPorTipo'];
+        $cajaPorTipoTotales = $cajaCuadre['cajaPorTipoTotales'];
 
         $elaboradoPor = '';
         if ($this->user_info !== null) {
@@ -1679,7 +1654,7 @@ class Reports extends SecureArea
         $endDate   = $this->request->getGet('end') ?? RegisterService::todayForReport();
 
         $todos                 = $this->reportModel->getReportePagos($startDate, $endDate);
-        $pendientes            = $this->reportModel->getPendientesPago($startDate, $endDate);
+        $pendientes            = $this->reportModel->getCobrosParcialesEnPeriodo($startDate, $endDate);
         $pagosPagados          = $this->reportModel->getPagosPagadosDetalle($startDate, $endDate);
         $totales               = $this->reportModel->getTotalesPagos($startDate, $endDate);
         $resumenPagosPorTipo   = $this->reportModel->getResumenPagosPorTipo($startDate, $endDate);
@@ -1693,79 +1668,15 @@ class Reports extends SecureArea
         $resumenIngresosCajaPorTipo = $this->reportModel->getResumenIngresosCajaPorTipo($startDate, $endDate);
         $tipoPagoMap           = ['1' => 'Efectivo', '2' => 'QR', '3' => 'Transferencia', '4' => 'Pendiente'];
         $sub                   = RegisterService::formatReportDateRangeSubtitle($startDate, $endDate);
-        $ingresosVentas        = (float) ($totales->total_cobrado ?? 0);
-        $ingresosMovimientos   = (float) ($totalesIngresosCaja->total_ingresos ?? 0);
-        $ingresosCaja          = $ingresosVentas + $ingresosMovimientos;
-        $egresosCaja           = (float) ($totalesEgresos->total_egresos ?? 0);
-        $saldoNetoCaja         = round($ingresosCaja - $egresosCaja, 2);
-        $cajaResumen           = [
-            'ingresos_ventas' => $ingresosVentas,
-            'ingresos_movimientos' => $ingresosMovimientos,
-            'ingresos' => $ingresosCaja,
-            'egresos' => $egresosCaja,
-            'saldo_neto' => $saldoNetoCaja,
-            'estado' => $saldoNetoCaja >= 0 ? 'positivo' : 'negativo',
-        ];
-        $cajaPorTipo = [];
-        foreach ($resumenPagosPorTipo as $row) {
-            $tipo = (string) ($row['tipopago'] ?? '');
-            if ($tipo === '') {
-                continue;
-            }
-            $cajaPorTipo[$tipo] = [
-                'tipopago' => $tipo,
-                'ingresos' => (float) ($row['total_cobrado'] ?? 0),
-                'egresos' => 0.0,
-                'saldo_neto' => 0.0,
-            ];
-        }
-        foreach ($resumenIngresosCajaPorTipo as $row) {
-            $tipo = (string) ($row['tipopago'] ?? '');
-            if ($tipo === '') {
-                continue;
-            }
-            if (!isset($cajaPorTipo[$tipo])) {
-                $cajaPorTipo[$tipo] = [
-                    'tipopago' => $tipo,
-                    'ingresos' => 0.0,
-                    'egresos' => 0.0,
-                    'saldo_neto' => 0.0,
-                ];
-            }
-            $cajaPorTipo[$tipo]['ingresos'] += (float) ($row['total_ingresos'] ?? 0);
-        }
-        foreach ($resumenEgresosPorTipo as $row) {
-            $tipo = (string) ($row['tipopago'] ?? '');
-            if ($tipo === '') {
-                continue;
-            }
-            if (!isset($cajaPorTipo[$tipo])) {
-                $cajaPorTipo[$tipo] = [
-                    'tipopago' => $tipo,
-                    'ingresos' => 0.0,
-                    'egresos' => 0.0,
-                    'saldo_neto' => 0.0,
-                ];
-            }
-            $cajaPorTipo[$tipo]['egresos'] = (float) ($row['total_egresos'] ?? 0);
-        }
-        $cajaPorTipoTotales = [
-            'ingresos' => 0.0,
-            'egresos' => 0.0,
-            'saldo_neto' => 0.0,
-        ];
-        foreach ($cajaPorTipo as &$row) {
-            $row['saldo_neto'] = round(((float) $row['ingresos']) - ((float) $row['egresos']), 2);
-            $cajaPorTipoTotales['ingresos'] += (float) $row['ingresos'];
-            $cajaPorTipoTotales['egresos'] += (float) $row['egresos'];
-            $cajaPorTipoTotales['saldo_neto'] += (float) $row['saldo_neto'];
-        }
-        unset($row);
-        ksort($cajaPorTipo, SORT_NATURAL);
-        $cajaPorTipo = array_values($cajaPorTipo);
-        $cajaPorTipoTotales['ingresos'] = round($cajaPorTipoTotales['ingresos'], 2);
-        $cajaPorTipoTotales['egresos'] = round($cajaPorTipoTotales['egresos'], 2);
-        $cajaPorTipoTotales['saldo_neto'] = round($cajaPorTipoTotales['saldo_neto'], 2);
+        $cajaCuadre            = $this->buildCuadreCajaPagos(
+            $startDate,
+            $endDate,
+            $resumenPagosPorTipo,
+            $resumenIngresosCajaPorTipo,
+            $resumenEgresosPorTipo,
+            $totalesIngresosCaja,
+            $totalesEgresos
+        );
 
         ReportPdfDocument::download(
             $this->safeReportPdfFilename('pagos'),
@@ -1787,9 +1698,9 @@ class Reports extends SecureArea
                 'totalesEgresos'          => $totalesEgresos,
                 'resumenIngresosCajaPorTipo' => $resumenIngresosCajaPorTipo,
                 'resumenEgresosPorTipo'   => $resumenEgresosPorTipo,
-                'cajaResumen'             => $cajaResumen,
-                'cajaPorTipo'             => $cajaPorTipo,
-                'cajaPorTipoTotales'      => $cajaPorTipoTotales,
+                'cajaResumen'             => $cajaCuadre['cajaResumen'],
+                'cajaPorTipo'             => $cajaCuadre['cajaPorTipo'],
+                'cajaPorTipoTotales'      => $cajaCuadre['cajaPorTipoTotales'],
             ]
         );
     }

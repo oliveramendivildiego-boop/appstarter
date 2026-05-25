@@ -18,10 +18,11 @@ $cajaPorTipo             = $cajaPorTipo ?? [];
 $cajaPorTipoTotales      = $cajaPorTipoTotales ?? ['ingresos' => 0, 'egresos' => 0, 'saldo_neto' => 0];
 ?>
 <div class="alert-box">
-    Total facturado: <?= format_currency((float) ($totales->total_facturado ?? 0)) ?> |
-    Total cobrado: <?= format_currency((float) ($totales->total_cobrado ?? 0)) ?> |
-    Pendiente: <?= format_currency((float) ($totales->total_pendiente ?? 0)) ?> |
-    Órdenes: <?= (int) ($totales->total_registros ?? 0) ?>
+    Cobrado (período): <?= format_currency((float) ($totales->total_cobrado ?? 0)) ?> |
+    Cobros: <?= (int) ($totales->total_registros ?? 0) ?> |
+    Órdenes: <?= (int) ($totales->cantidad_ordenes ?? 0) ?> |
+    Facturado órdenes: <?= format_currency((float) ($totales->total_facturado ?? 0)) ?> |
+    Saldo pendiente: <?= format_currency((float) ($totales->total_pendiente ?? 0)) ?>
 </div>
 <div class="alert-box">
     Cuadre de caja | Ingresos ventas: <?= format_currency((float) ($cajaResumen['ingresos_ventas'] ?? 0)) ?> |
@@ -197,16 +198,15 @@ $cajaPorTipoTotales      = $cajaPorTipoTotales ?? ['ingresos' => 0, 'egresos' =>
     </tbody>
 </table>
 
-<h2>Pagos pagados</h2>
+<h2>Cobros en órdenes saldadas</h2>
 <table class="pdf-t">
     <thead>
         <tr>
-            <th>No.</th>
-            <th>Fecha</th>
+            <th>Orden</th>
+            <th>Fecha cobro</th>
+            <th class="text-end">Cobrado</th>
             <th>Paciente</th>
-            <th>Doctor</th>
             <th class="text-end">Total</th>
-            <th class="text-end">Pagado</th>
             <th class="text-end">Saldo</th>
         </tr>
     </thead>
@@ -214,30 +214,28 @@ $cajaPorTipoTotales      = $cajaPorTipoTotales ?? ['ingresos' => 0, 'egresos' =>
         <?php foreach ($pagosPagados as $row): ?>
             <tr>
                 <td><?= esc($row['registro_id'] ?? '') ?></td>
-                <td><?= esc(\App\Services\RegisterService::formatStoredReporteFechaCorta($row['ingreso'] ?? '')) ?></td>
+                <td><?= esc(\App\Services\RegisterService::formatStoredReporteFechaCorta($row['fecha_cobro'] ?? $row['ingreso'] ?? '')) ?></td>
+                <td class="text-end"><?= number_format((float) ($row['monto_cobro'] ?? $row['monto_pagado'] ?? 0), 2) ?></td>
                 <td class="small"><?= esc($row['paciente'] ?? '') ?></td>
-                <td class="small"><?= esc($row['doctor'] ?? '') ?></td>
                 <td class="text-end"><?= number_format((float) ($row['total'] ?? 0), 2) ?></td>
-                <td class="text-end"><?= number_format((float) ($row['monto_pagado'] ?? 0), 2) ?></td>
                 <td class="text-end"><?= number_format((float) ($row['saldo'] ?? 0), 2) ?></td>
             </tr>
         <?php endforeach; ?>
         <?php if ($pagosPagados === []): ?>
-            <tr><td colspan="7" class="small">Sin datos.</td></tr>
+            <tr><td colspan="6" class="small">Sin datos.</td></tr>
         <?php endif; ?>
     </tbody>
 </table>
 
-<h2>Pendientes de pago</h2>
+<h2>Cobros parciales (con saldo)</h2>
 <table class="pdf-t">
     <thead>
         <tr>
-            <th>No.</th>
-            <th>Fecha</th>
+            <th>Orden</th>
+            <th>Fecha cobro</th>
+            <th class="text-end">Cobrado</th>
             <th>Paciente</th>
-            <th>Doctor</th>
             <th class="text-end">Total</th>
-            <th class="text-end">Pagado</th>
             <th class="text-end">Saldo</th>
         </tr>
     </thead>
@@ -245,16 +243,15 @@ $cajaPorTipoTotales      = $cajaPorTipoTotales ?? ['ingresos' => 0, 'egresos' =>
         <?php foreach ($pendientes as $row): ?>
             <tr>
                 <td><?= esc($row['registro_id'] ?? '') ?></td>
-                <td><?= esc(\App\Services\RegisterService::formatStoredReporteFechaCorta($row['ingreso'] ?? '')) ?></td>
+                <td><?= esc(\App\Services\RegisterService::formatStoredReporteFechaCorta($row['fecha_cobro'] ?? $row['ingreso'] ?? '')) ?></td>
+                <td class="text-end"><?= number_format((float) ($row['monto_cobro'] ?? 0), 2) ?></td>
                 <td class="small"><?= esc($row['paciente'] ?? '') ?></td>
-                <td class="small"><?= esc($row['doctor'] ?? '') ?></td>
                 <td class="text-end"><?= number_format((float) ($row['total'] ?? 0), 2) ?></td>
-                <td class="text-end"><?= number_format((float) ($row['monto_pagado'] ?? 0), 2) ?></td>
                 <td class="text-end"><?= number_format((float) ($row['saldo'] ?? 0), 2) ?></td>
             </tr>
         <?php endforeach; ?>
         <?php if ($pendientes === []): ?>
-            <tr><td colspan="7" class="small">Sin pendientes.</td></tr>
+            <tr><td colspan="6" class="small">Sin cobros parciales.</td></tr>
         <?php endif; ?>
     </tbody>
 </table>
@@ -313,31 +310,31 @@ $cajaPorTipoTotales      = $cajaPorTipoTotales ?? ['ingresos' => 0, 'egresos' =>
     </tbody>
 </table>
 
-<h2>Todos los pagos</h2>
+<h2>Todos los cobros del período</h2>
 <table class="pdf-t">
     <thead>
         <tr>
-            <th>No.</th>
-            <th>Fecha</th>
-            <th>Paciente</th>
-            <th class="text-end">Total</th>
-            <th class="text-end">Saldo</th>
+            <th>Orden</th>
+            <th>Fecha cobro</th>
+            <th class="text-end">Cobrado</th>
             <th>Tipo</th>
+            <th>Paciente</th>
+            <th class="text-end">Saldo orden</th>
         </tr>
     </thead>
     <tbody>
         <?php foreach ($todos as $row): ?>
             <tr>
                 <td><?= esc($row['registro_id'] ?? '') ?></td>
-                <td><?= esc(\App\Services\RegisterService::formatStoredReporteFechaCorta($row['ingreso'] ?? '')) ?></td>
-                <td class="small"><?= esc($row['paciente'] ?? '') ?></td>
-                <td class="text-end"><?= number_format((float) ($row['total'] ?? 0), 2) ?></td>
-                <td class="text-end"><?= number_format((float) ($row['saldo'] ?? 0), 2) ?></td>
+                <td><?= esc(\App\Services\RegisterService::formatStoredReporteFechaCorta($row['fecha_cobro'] ?? $row['ingreso'] ?? '')) ?></td>
+                <td class="text-end"><?= number_format((float) ($row['monto_cobro'] ?? $row['monto_pagado'] ?? 0), 2) ?></td>
                 <td class="small"><?= esc($tipoPagoMap[$row['tipopago'] ?? ''] ?? $row['tipopago'] ?? '-') ?></td>
+                <td class="small"><?= esc($row['paciente'] ?? '') ?></td>
+                <td class="text-end"><?= number_format((float) ($row['saldo'] ?? 0), 2) ?></td>
             </tr>
         <?php endforeach; ?>
         <?php if ($todos === []): ?>
-            <tr><td colspan="6" class="small">Sin registros.</td></tr>
+            <tr><td colspan="6" class="small">Sin cobros en el período.</td></tr>
         <?php endif; ?>
     </tbody>
 </table>

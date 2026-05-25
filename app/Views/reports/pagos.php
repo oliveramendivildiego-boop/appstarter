@@ -59,6 +59,7 @@ $cierreEnd   = $endDate ?? date('Y-m-d');
 
 <h4><?= esc($title ?? '') ?></h4>
 <p class="text-muted"><?= esc($subtitle ?? '') ?></p>
+<p class="small text-muted">El reporte lista cada <strong>cobro</strong> según la fecha en que se registró el pago (historial de abonos), no la fecha de ingreso de la orden.</p>
 
 <?php $tipoPagoMap = $tipoPagoMap ?? []; ?>
 <?php $totalesEgresos = $totalesEgresos ?? (object) []; ?>
@@ -72,12 +73,13 @@ $cierreEnd   = $endDate ?? date('Y-m-d');
 <?php $cajaPorTipoTotales = $cajaPorTipoTotales ?? ['ingresos' => 0, 'egresos' => 0, 'saldo_neto' => 0]; ?>
 
 <div class="alert alert-info mb-4">
-    <strong>Resumen del período:</strong><br>
-    Total facturado: <?= format_currency((float)($totales->total_facturado ?? 0)) ?> |
+    <strong>Resumen del período (por fecha de cobro):</strong><br>
     Total cobrado: <?= format_currency((float)($totales->total_cobrado ?? 0)) ?> |
-    <span class="text-danger">Total pendiente: <?= format_currency((float)($totales->total_pendiente ?? 0)) ?></span> |
-    Cantidad órdenes: <?= (int)($totales->total_registros ?? 0) ?>
-    <span class="d-block small mt-1">No se incluyen órdenes anuladas en montos ni cantidades (devolución).</span>
+    Cantidad de cobros: <?= (int)($totales->total_registros ?? 0) ?> |
+    Órdenes involucradas: <?= (int)($totales->cantidad_ordenes ?? 0) ?> |
+    Total facturado (órdenes con cobro en período): <?= format_currency((float)($totales->total_facturado ?? 0)) ?> |
+    <span class="text-danger">Saldo pendiente (esas órdenes): <?= format_currency((float)($totales->total_pendiente ?? 0)) ?></span>
+    <span class="d-block small mt-1">Cada fila del detalle es un cobro registrado en el rango de fechas. No se incluyen órdenes anuladas.</span>
 </div>
 
 <div class="alert <?= ($cajaResumen['estado'] ?? 'positivo') === 'negativo' ? 'alert-danger' : 'alert-success' ?> mb-4">
@@ -87,7 +89,7 @@ $cierreEnd   = $endDate ?? date('Y-m-d');
     <strong>Total ingresos: <?= format_currency((float) ($cajaResumen['ingresos'] ?? 0)) ?></strong> |
     Egresos: <?= format_currency((float) ($cajaResumen['egresos'] ?? 0)) ?> |
     <strong>Saldo neto caja: <?= format_currency((float) ($cajaResumen['saldo_neto'] ?? 0)) ?></strong>
-    <span class="d-block small mt-1">Cálculo: (total cobrado + ingresos de caja) - egresos.</span>
+    <span class="d-block small mt-1">Los ingresos por ventas usan la <strong>fecha de cada cobro</strong> (historial de abonos), no la fecha de ingreso de la orden. Cálculo: (cobros del período + ingresos de caja) − egresos.</span>
 </div>
 
 <h5 class="mt-4">Cuadre de caja por tipo de pago</h5>
@@ -130,7 +132,7 @@ $cierreEnd   = $endDate ?? date('Y-m-d');
     </table>
 </div>
 
-<h5 class="mt-4">Resumen por tipo de pago</h5>
+<h5 class="mt-4">Resumen por tipo de pago (cobros del período)</h5>
 <div class="table-responsive mb-4">
     <table class="table table-bordered table-striped">
         <thead class="table-primary">
@@ -286,17 +288,19 @@ $cierreEnd   = $endDate ?? date('Y-m-d');
     </table>
 </div>
 
-<h5 class="mt-4">Pagos pagados (saldo = 0 o menor)</h5>
+<h5 class="mt-4">Cobros en órdenes ya saldadas (<?= count($pagosPagados ?? []) ?>)</h5>
 <div class="table-responsive mb-4">
     <table class="table table-bordered table-striped">
         <thead class="table-success">
             <tr>
-                <th>No.</th>
-                <th>Fecha</th>
+                <th>Orden</th>
+                <th>Fecha cobro</th>
+                <th class="text-end">Monto cobrado</th>
+                <th>Tipo pago</th>
                 <th>Paciente</th>
                 <th>Doctor</th>
-                <th class="text-end">Total</th>
-                <th class="text-end">Pagado</th>
+                <th class="text-end">Total orden</th>
+                <th class="text-end">Pagado acum.</th>
                 <th class="text-end">Saldo</th>
             </tr>
         </thead>
@@ -304,7 +308,9 @@ $cierreEnd   = $endDate ?? date('Y-m-d');
             <?php foreach ($pagosPagados ?? [] as $row): ?>
                 <tr>
                     <td><?= esc($row['registro_id'] ?? '') ?></td>
-                    <td><?= esc(\App\Services\RegisterService::formatStoredReporteFechaCorta($row['ingreso'] ?? '')) ?></td>
+                    <td><?= esc(\App\Services\RegisterService::formatStoredReporteFechaCorta($row['fecha_cobro'] ?? $row['ingreso'] ?? '')) ?></td>
+                    <td class="text-end fw-bold"><?= format_currency((float)($row['monto_cobro'] ?? $row['monto_pagado'] ?? 0)) ?></td>
+                    <td><?= esc($tipoPagoMap[$row['tipopago'] ?? ''] ?? $row['tipopago'] ?? '-') ?></td>
                     <td><?= esc($row['paciente'] ?? '') ?></td>
                     <td><?= esc($row['doctor'] ?? '') ?></td>
                     <td class="text-end"><?= format_currency((float)($row['total'] ?? 0)) ?></td>
@@ -316,20 +322,22 @@ $cierreEnd   = $endDate ?? date('Y-m-d');
     </table>
 </div>
 <?php if (empty($pagosPagados)): ?>
-    <p class="text-muted">No hay pagos pagados en el período.</p>
+    <p class="text-muted">No hay cobros en órdenes saldadas en el período.</p>
 <?php endif; ?>
 
-<h5 class="mt-4">Pendientes de pago (<?= count($pendientes ?? []) ?>)</h5>
+<h5 class="mt-4">Cobros parciales (aún con saldo) (<?= count($pendientes ?? []) ?>)</h5>
 <div class="table-responsive mb-4">
     <table class="table table-bordered table-striped">
         <thead class="table-warning">
             <tr>
-                <th>No.</th>
-                <th>Fecha</th>
+                <th>Orden</th>
+                <th>Fecha cobro</th>
+                <th class="text-end">Monto cobrado</th>
+                <th>Tipo pago</th>
                 <th>Paciente</th>
                 <th>Doctor</th>
-                <th class="text-end">Total</th>
-                <th class="text-end">Pagado</th>
+                <th class="text-end">Total orden</th>
+                <th class="text-end">Pagado acum.</th>
                 <th class="text-end">Saldo</th>
             </tr>
         </thead>
@@ -337,7 +345,9 @@ $cierreEnd   = $endDate ?? date('Y-m-d');
             <?php foreach ($pendientes ?? [] as $row): ?>
             <tr>
                 <td><?= esc($row['registro_id'] ?? '') ?></td>
-                <td><?= esc(\App\Services\RegisterService::formatStoredReporteFechaCorta($row['ingreso'] ?? '')) ?></td>
+                <td><?= esc(\App\Services\RegisterService::formatStoredReporteFechaCorta($row['fecha_cobro'] ?? $row['ingreso'] ?? '')) ?></td>
+                <td class="text-end fw-bold"><?= format_currency((float)($row['monto_cobro'] ?? 0)) ?></td>
+                <td><?= esc($tipoPagoMap[$row['tipopago'] ?? ''] ?? $row['tipopago'] ?? '-') ?></td>
                 <td><?= esc($row['paciente'] ?? '') ?></td>
                 <td><?= esc($row['doctor'] ?? '') ?></td>
                 <td class="text-end"><?= format_currency((float)($row['total'] ?? 0)) ?></td>
@@ -349,10 +359,10 @@ $cierreEnd   = $endDate ?? date('Y-m-d');
     </table>
 </div>
 <?php if (empty($pendientes)): ?>
-<p class="text-muted">No hay pendientes de pago en el período.</p>
+<p class="text-muted">No hay cobros parciales en el período.</p>
 <?php endif; ?>
 
-<h5 class="mt-4">Resumen diario</h5>
+<h5 class="mt-4">Resumen diario de cobros</h5>
 <div class="table-responsive mb-4">
     <table class="table table-bordered table-striped">
         <thead class="table-secondary">
@@ -416,39 +426,41 @@ $cierreEnd   = $endDate ?? date('Y-m-d');
     </table>
 </div>
 
-<h5 class="mt-4">Todos los pagos (<?= count($todos ?? []) ?>)</h5>
+<h5 class="mt-4">Todos los cobros del período (<?= count($todos ?? []) ?>)</h5>
 <div class="table-responsive">
     <table class="table table-bordered table-striped">
         <thead class="table-dark">
             <tr>
-                <th>No.</th>
-                <th>Fecha</th>
+                <th>Orden</th>
+                <th>Fecha cobro</th>
+                <th class="text-end">Monto cobrado</th>
+                <th>Tipo pago</th>
                 <th>Paciente</th>
                 <th>Doctor</th>
-                <th class="text-end">Total</th>
-                <th class="text-end">Pagado</th>
-                <th class="text-end">Saldo</th>
-                <th>Tipo pago</th>
+                <th class="text-end">Total orden</th>
+                <th class="text-end">Pagado acum.</th>
+                <th class="text-end">Saldo orden</th>
             </tr>
         </thead>
         <tbody>
             <?php foreach ($todos ?? [] as $row): ?>
-            <tr class="<?= (float)($row['saldo'] ?? 0) > 0 ? 'table-warning' : '' ?>">
+            <tr class="<?= (float)($row['saldo'] ?? 0) > 0.02 ? 'table-warning' : '' ?>">
                 <td><?= esc($row['registro_id'] ?? '') ?></td>
-                <td><?= esc(\App\Services\RegisterService::formatStoredReporteFechaCorta($row['ingreso'] ?? '')) ?></td>
+                <td><?= esc(\App\Services\RegisterService::formatStoredReporteFechaCorta($row['fecha_cobro'] ?? $row['ingreso'] ?? '')) ?></td>
+                <td class="text-end fw-bold"><?= format_currency((float)($row['monto_cobro'] ?? $row['monto_pagado'] ?? 0)) ?></td>
+                <td><?= esc($tipoPagoMap[$row['tipopago'] ?? ''] ?? $row['tipopago'] ?? '-') ?></td>
                 <td><?= esc($row['paciente'] ?? '') ?></td>
                 <td><?= esc($row['doctor'] ?? '') ?></td>
                 <td class="text-end"><?= format_currency((float)($row['total'] ?? 0)) ?></td>
                 <td class="text-end"><?= format_currency((float)($row['monto_pagado'] ?? 0)) ?></td>
                 <td class="text-end"><?= format_currency((float)($row['saldo'] ?? 0)) ?></td>
-                <td><?= esc($tipoPagoMap[$row['tipopago'] ?? ''] ?? $row['tipopago'] ?? '-') ?></td>
             </tr>
             <?php endforeach; ?>
         </tbody>
     </table>
 </div>
 <?php if (empty($todos)): ?>
-<p class="text-muted">No hay registros en el período seleccionado.</p>
+<p class="text-muted">No hay cobros en el período seleccionado.</p>
 <?php endif; ?>
 <?= $this->endSection() ?>
 

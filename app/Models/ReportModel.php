@@ -414,32 +414,127 @@ class ReportModel extends Model
     }
 
     /**
-     * Reporte de pagos: todos los registros con datos de pago en rango de fechas
+     * Detalle de cada cobro en el período (fecha_abono). Incluye contexto de la orden.
+     *
+     * @param 'pendiente'|'pagado'|null $saldoFiltro Filtra por saldo actual de la orden tras el cobro.
+     *
+     * @return list<array<string, mixed>>
      */
-    public function getReportePagos(string $startDate, string $endDate): array
+    public function getCobrosDetallePorFecha(string $startDate, string $endDate, ?string $saldoFiltro = null): array
+    {
+        if ($this->db->tableExists('pago_abono')) {
+            $rows = $this->fetchCobrosAbonoPorFecha($startDate, $endDate, $saldoFiltro);
+            $legacy = $this->fetchCobrosLegacySinAbono($startDate, $endDate, $saldoFiltro);
+            if ($legacy !== []) {
+                $rows = array_merge($rows, $legacy);
+                usort($rows, static function (array $a, array $b): int {
+                    return strcmp((string) ($b['fecha_cobro'] ?? ''), (string) ($a['fecha_cobro'] ?? ''));
+                });
+            }
+
+            return $rows;
+        }
+
+        return $this->fetchCobrosLegacySinAbono($startDate, $endDate, $saldoFiltro);
+    }
+
+    /**
+     * @param 'pendiente'|'pagado'|null $saldoFiltro
+     *
+     * @return list<array<string, mixed>>
+     */
+    protected function fetchCobrosAbonoPorFecha(string $startDate, string $endDate, ?string $saldoFiltro = null): array
     {
         $r  = $this->db->prefixTable('registro');
         $p  = $this->db->prefixTable('people');
         $d  = $this->db->prefixTable('doctors');
         $pa = $this->db->prefixTable('pago');
+        $ab = $this->db->prefixTable('pago_abono');
+        $saldoPendiente = "GREATEST(CAST({$pa}.saldo AS DECIMAL(12,2)), CAST({$pa}.total AS DECIMAL(12,2)) - CAST({$pa}.monto_pagar AS DECIMAL(12,2)))";
 
-        $b = $this->db->table('registro')
-            ->select("{$r}.registro_id, {$r}.ingreso,
+        $b = $this->db->table('pago_abono')
+            ->select("{$ab}.pago_abono_id, {$ab}.fecha_abono as fecha_cobro,
+                CAST({$ab}.monto AS DECIMAL(12,2)) as monto_cobro,
+                {$ab}.tipopago,
+                {$r}.registro_id, {$r}.ingreso,
                 CONCAT({$p}.first_name, ' ', {$p}.last_name_fa, ' ', {$p}.last_name_mom) AS paciente,
                 {$d}.name as doctor,
                 CAST({$pa}.total AS DECIMAL(12,2)) as total,
                 CAST({$pa}.monto_pagar AS DECIMAL(12,2)) as monto_pagado,
-                CAST({$pa}.saldo AS DECIMAL(12,2)) as saldo,
-                {$pa}.tipopago")
+                {$saldoPendiente} as saldo", false)
+            ->join('registro', "{$r}.registro_id = {$ab}.registro_id")
+            ->join('people', "{$p}.person_id = {$r}.person_id")
+            ->join('doctors', "{$d}.doctor_id = {$r}.doctor_id")
+            ->join('pago', "{$r}.registro_id = {$pa}.registro_id")
+            ->where("{$ab}.tipopago !=", '4');
+        $b = $this->applySinRegistrosAnulados($b, $r);
+        $b = LabNaiveDateRange::apply($b, $ab, 'fecha_abono', $startDate, $endDate);
+
+        if ($saldoFiltro === 'pendiente') {
+            $b->where("{$saldoPendiente} >", 0.02, false);
+        } elseif ($saldoFiltro === 'pagado') {
+            $b->where("{$saldoPendiente} <=", 0.02, false);
+        }
+
+        return $b->orderBy("{$ab}.fecha_abono", 'DESC')
+            ->get()
+            ->getResultArray();
+    }
+
+    /**
+     * @param 'pendiente'|'pagado'|null $saldoFiltro
+     *
+     * @return list<array<string, mixed>>
+     */
+    protected function fetchCobrosLegacySinAbono(string $startDate, string $endDate, ?string $saldoFiltro = null): array
+    {
+        $r  = $this->db->prefixTable('registro');
+        $p  = $this->db->prefixTable('people');
+        $d  = $this->db->prefixTable('doctors');
+        $pa = $this->db->prefixTable('pago');
+        $ab = $this->db->prefixTable('pago_abono');
+        $saldoPendiente = "GREATEST(CAST({$pa}.saldo AS DECIMAL(12,2)), CAST({$pa}.total AS DECIMAL(12,2)) - CAST({$pa}.monto_pagar AS DECIMAL(12,2)))";
+
+        $b = $this->db->table('registro')
+            ->select("NULL as pago_abono_id, {$r}.ingreso as fecha_cobro,
+                CAST({$pa}.monto_pagar AS DECIMAL(12,2)) as monto_cobro,
+                {$pa}.tipopago,
+                {$r}.registro_id, {$r}.ingreso,
+                CONCAT({$p}.first_name, ' ', {$p}.last_name_fa, ' ', {$p}.last_name_mom) AS paciente,
+                {$d}.name as doctor,
+                CAST({$pa}.total AS DECIMAL(12,2)) as total,
+                CAST({$pa}.monto_pagar AS DECIMAL(12,2)) as monto_pagado,
+                {$saldoPendiente} as saldo", false)
             ->join('people', "{$p}.person_id = {$r}.person_id")
             ->join('doctors', "{$d}.doctor_id = {$r}.doctor_id")
             ->join('pago', "{$r}.registro_id = {$pa}.registro_id");
-        $b = $this->applySinRegistrosAnulados($b, $r);
 
-        return RegistroIngresoDateRange::apply($b, $r, $startDate, $endDate)
-            ->orderBy("{$r}.ingreso", 'DESC')
+        if ($this->db->tableExists('pago_abono')) {
+            $b->join('pago_abono', "{$ab}.registro_id = {$r}.registro_id", 'left')
+                ->where("{$ab}.registro_id IS NULL", null, false);
+        }
+
+        $b = $this->applySinRegistrosAnulados($b, $r);
+        $b = RegistroIngresoDateRange::apply($b, $r, $startDate, $endDate)
+            ->where("{$pa}.tipopago !=", '4');
+
+        if ($saldoFiltro === 'pendiente') {
+            $b->where("{$saldoPendiente} >", 0.02, false);
+        } elseif ($saldoFiltro === 'pagado') {
+            $b->where("{$saldoPendiente} <=", 0.02, false);
+        }
+
+        return $b->orderBy("{$r}.ingreso", 'DESC')
             ->get()
             ->getResultArray();
+    }
+
+    /**
+     * Reporte de pagos: todos los cobros realizados en el rango (fecha de cancelación).
+     */
+    public function getReportePagos(string $startDate, string $endDate): array
+    {
+        return $this->getCobrosDetallePorFecha($startDate, $endDate);
     }
 
     /**
@@ -473,15 +568,86 @@ class ReportModel extends Model
     }
 
     /**
-     * Totales para reporte de pagos
+     * Totales para reporte de pagos (por fecha de cobro cuando existe pago_abono).
      */
     public function getTotalesPagos(string $startDate, string $endDate): object
     {
         $r  = $this->db->prefixTable('registro');
         $pa = $this->db->prefixTable('pago');
+        $ab = $this->db->prefixTable('pago_abono');
+
+        if ($this->db->tableExists('pago_abono')) {
+            $saldoPendiente = "GREATEST(CAST({$pa}.saldo AS DECIMAL(12,2)), CAST({$pa}.total AS DECIMAL(12,2)) - CAST({$pa}.monto_pagar AS DECIMAL(12,2)))";
+
+            $bCobros = $this->db->table('pago_abono')
+                ->select("COUNT(*) as total_registros,
+                    COUNT(DISTINCT {$ab}.registro_id) as cantidad_ordenes,
+                    SUM(CAST({$ab}.monto AS DECIMAL(12,2))) as total_cobrado", false)
+                ->join('registro', "{$r}.registro_id = {$ab}.registro_id")
+                ->where("{$ab}.tipopago !=", '4');
+            $bCobros = $this->applySinRegistrosAnulados($bCobros, $r);
+            $rowCobros = LabNaiveDateRange::apply($bCobros, $ab, 'fecha_abono', $startDate, $endDate)
+                ->get()
+                ->getRow();
+
+            $idsBuilder = $this->db->table('pago_abono')
+                ->select("DISTINCT {$ab}.registro_id", false)
+                ->join('registro', "{$r}.registro_id = {$ab}.registro_id")
+                ->where("{$ab}.tipopago !=", '4');
+            $idsBuilder = $this->applySinRegistrosAnulados($idsBuilder, $r);
+            $idsBuilder = LabNaiveDateRange::apply($idsBuilder, $ab, 'fecha_abono', $startDate, $endDate);
+            $idsRows = $idsBuilder->get()->getResultArray();
+            $registroIds = array_values(array_filter(array_map(static fn (array $row): int => (int) ($row['registro_id'] ?? 0), $idsRows)));
+
+            $totalFacturado = 0.0;
+            $totalPendiente = 0.0;
+            if ($registroIds !== []) {
+                $bFact = $this->db->table('pago')
+                    ->select("SUM(CAST({$pa}.total AS DECIMAL(12,2))) as total_facturado", false)
+                    ->whereIn('registro_id', $registroIds);
+                $totalFacturado = (float) ($bFact->get()->getRow()->total_facturado ?? 0);
+
+                $bPend = $this->db->table('pago')
+                    ->select("SUM({$saldoPendiente}) as total_pendiente", false)
+                    ->whereIn('registro_id', $registroIds)
+                    ->where("{$saldoPendiente} >", 0.02, false);
+                $totalPendiente = (float) ($bPend->get()->getRow()->total_pendiente ?? 0);
+            }
+
+            $totalCobrado = (float) ($rowCobros->total_cobrado ?? 0);
+
+            $bLegacy = $this->db->table('registro')
+                ->select("COUNT(*) as total_registros,
+                    SUM(CAST({$pa}.total AS DECIMAL(12,2))) as total_facturado,
+                    SUM(CAST({$pa}.monto_pagar AS DECIMAL(12,2))) as total_cobrado,
+                    SUM({$saldoPendiente}) as total_pendiente", false)
+                ->join('pago', "{$r}.registro_id = {$pa}.registro_id")
+                ->join('pago_abono', "{$ab}.registro_id = {$r}.registro_id", 'left')
+                ->where("{$ab}.registro_id IS NULL", null, false)
+                ->where("{$pa}.tipopago !=", '4');
+            $bLegacy = $this->applySinRegistrosAnulados($bLegacy, $r);
+            $rowLegacy = RegistroIngresoDateRange::apply($bLegacy, $r, $startDate, $endDate)
+                ->get()
+                ->getRow();
+
+            if ($rowLegacy && (int) ($rowLegacy->total_registros ?? 0) > 0) {
+                $totalCobrado += (float) ($rowLegacy->total_cobrado ?? 0);
+                $totalFacturado += (float) ($rowLegacy->total_facturado ?? 0);
+                $totalPendiente += (float) ($rowLegacy->total_pendiente ?? 0);
+            }
+
+            return (object) [
+                'total_registros' => (int) ($rowCobros->total_registros ?? 0) + (int) ($rowLegacy->total_registros ?? 0),
+                'cantidad_ordenes' => (int) ($rowCobros->cantidad_ordenes ?? 0) + (int) ($rowLegacy->total_registros ?? 0),
+                'total_facturado' => round($totalFacturado, 2),
+                'total_cobrado' => round($totalCobrado, 2),
+                'total_pendiente' => round($totalPendiente, 2),
+            ];
+        }
 
         $b = $this->db->table('registro')
             ->select("COUNT(*) as total_registros,
+                COUNT(*) as cantidad_ordenes,
                 SUM(CAST({$pa}.total AS DECIMAL(12,2))) as total_facturado,
                 SUM(CAST({$pa}.monto_pagar AS DECIMAL(12,2))) as total_cobrado,
                 SUM(CAST({$pa}.saldo AS DECIMAL(12,2))) as total_pendiente")
@@ -494,7 +660,49 @@ class ReportModel extends Model
     }
 
     /**
+     * Total cobrado en caja según fecha real del cobro (pago_abono.fecha_abono).
+     * Registros legacy sin filas en pago_abono usan fecha de ingreso de la orden.
+     */
+    public function getTotalesCobrosCaja(string $startDate, string $endDate): object
+    {
+        $r  = $this->db->prefixTable('registro');
+        $pa = $this->db->prefixTable('pago');
+        $ab = $this->db->prefixTable('pago_abono');
+
+        if (!$this->db->tableExists('pago_abono')) {
+            $t = $this->getTotalesPagos($startDate, $endDate);
+
+            return (object) ['total_cobrado' => (float) ($t->total_cobrado ?? 0)];
+        }
+
+        $bAbonos = $this->db->table('pago_abono')
+            ->select("SUM(CAST({$ab}.monto AS DECIMAL(12,2))) as total_cobrado", false)
+            ->join('registro', "{$r}.registro_id = {$ab}.registro_id")
+            ->where("{$ab}.tipopago !=", '4');
+        $bAbonos = $this->applySinRegistrosAnulados($bAbonos, $r);
+        $rowAbonos = LabNaiveDateRange::apply($bAbonos, $ab, 'fecha_abono', $startDate, $endDate)
+            ->get()
+            ->getRow();
+        $total = (float) ($rowAbonos->total_cobrado ?? 0);
+
+        $bLegacy = $this->db->table('registro')
+            ->select("SUM(CAST({$pa}.monto_pagar AS DECIMAL(12,2))) as total_cobrado", false)
+            ->join('pago', "{$r}.registro_id = {$pa}.registro_id")
+            ->join('pago_abono', "{$ab}.registro_id = {$r}.registro_id", 'left')
+            ->where("{$ab}.registro_id IS NULL", null, false)
+            ->where("{$pa}.tipopago !=", '4');
+        $bLegacy = $this->applySinRegistrosAnulados($bLegacy, $r);
+        $rowLegacy = RegistroIngresoDateRange::apply($bLegacy, $r, $startDate, $endDate)
+            ->get()
+            ->getRow();
+        $total += (float) ($rowLegacy->total_cobrado ?? 0);
+
+        return (object) ['total_cobrado' => round($total, 2)];
+    }
+
+    /**
      * Resumen de pagos por tipo (Efectivo/QR/Transferencia/Pendiente).
+     * Con pago_abono: cobros por fecha_abono (dinero que entró en el período).
      */
     public function getResumenPagosPorTipo(string $startDate, string $endDate): array
     {
@@ -505,16 +713,17 @@ class ReportModel extends Model
         if ($this->db->tableExists('pago_abono')) {
             $resumen = [];
 
-            // Fuente principal: historial real de abonos por tipo.
+            // Fuente principal: historial real de abonos por tipo y fecha de cobro.
             $bAbonos = $this->db->table('pago_abono')
                 ->select("{$ab}.tipopago,
                     COUNT(DISTINCT {$ab}.registro_id) as cantidad,
                     0.00 as total_facturado,
                     SUM(CAST({$ab}.monto AS DECIMAL(12,2))) as total_cobrado,
                     0.00 as total_pendiente", false)
-                ->join('registro', "{$r}.registro_id = {$ab}.registro_id");
+                ->join('registro', "{$r}.registro_id = {$ab}.registro_id")
+                ->where("{$ab}.tipopago !=", '4');
             $bAbonos = $this->applySinRegistrosAnulados($bAbonos, $r);
-            $rowsAbonos = RegistroIngresoDateRange::apply($bAbonos, $r, $startDate, $endDate)
+            $rowsAbonos = LabNaiveDateRange::apply($bAbonos, $ab, 'fecha_abono', $startDate, $endDate)
                 ->groupBy("{$ab}.tipopago")
                 ->orderBy("{$ab}.tipopago", 'ASC')
                 ->get()
@@ -592,42 +801,93 @@ class ReportModel extends Model
     }
 
     /**
-     * Detalle de pagos ya cobrados (saldo <= 0).
+     * Cobros del período en órdenes ya saldadas (saldo actual <= 0).
      */
     public function getPagosPagadosDetalle(string $startDate, string $endDate): array
     {
-        $r  = $this->db->prefixTable('registro');
-        $p  = $this->db->prefixTable('people');
-        $d  = $this->db->prefixTable('doctors');
-        $pa = $this->db->prefixTable('pago');
-
-        $b = $this->db->table('registro')
-            ->select("{$r}.registro_id, {$r}.ingreso,
-                CONCAT({$p}.first_name, ' ', {$p}.last_name_fa, ' ', {$p}.last_name_mom) AS paciente,
-                {$d}.name as doctor,
-                CAST({$pa}.total AS DECIMAL(12,2)) as total,
-                CAST({$pa}.monto_pagar AS DECIMAL(12,2)) as monto_pagado,
-                CAST({$pa}.saldo AS DECIMAL(12,2)) as saldo,
-                {$pa}.tipopago")
-            ->join('people', "{$p}.person_id = {$r}.person_id")
-            ->join('doctors', "{$d}.doctor_id = {$r}.doctor_id")
-            ->join('pago', "{$r}.registro_id = {$pa}.registro_id");
-        $b = $this->applySinRegistrosAnulados($b, $r);
-
-        return RegistroIngresoDateRange::apply($b, $r, $startDate, $endDate)
-            ->where("CAST({$pa}.saldo AS DECIMAL(12,2)) <= 0")
-            ->orderBy("{$r}.ingreso", 'DESC')
-            ->get()
-            ->getResultArray();
+        return $this->getCobrosDetallePorFecha($startDate, $endDate, 'pagado');
     }
 
     /**
-     * Resumen diario de pagos.
+     * Cobros del período en órdenes que aún tienen saldo pendiente.
+     */
+    public function getCobrosParcialesEnPeriodo(string $startDate, string $endDate): array
+    {
+        return $this->getCobrosDetallePorFecha($startDate, $endDate, 'pendiente');
+    }
+
+    /**
+     * Resumen diario de cobros (por fecha_abono).
      */
     public function getResumenPagosPorDia(string $startDate, string $endDate): array
     {
         $r  = $this->db->prefixTable('registro');
         $pa = $this->db->prefixTable('pago');
+        $ab = $this->db->prefixTable('pago_abono');
+
+        if ($this->db->tableExists('pago_abono')) {
+            $resumen = [];
+
+            $b = $this->db->table('pago_abono')
+                ->select("DATE({$ab}.fecha_abono) as fecha,
+                    COUNT(*) as cantidad,
+                    0.00 as total_facturado,
+                    SUM(CAST({$ab}.monto AS DECIMAL(12,2))) as total_cobrado,
+                    0.00 as total_pendiente", false)
+                ->join('registro', "{$r}.registro_id = {$ab}.registro_id")
+                ->where("{$ab}.tipopago !=", '4');
+            $b = $this->applySinRegistrosAnulados($b, $r);
+            $rows = LabNaiveDateRange::apply($b, $ab, 'fecha_abono', $startDate, $endDate)
+                ->groupBy("DATE({$ab}.fecha_abono)")
+                ->orderBy('fecha', 'ASC')
+                ->get()
+                ->getResultArray();
+
+            foreach ($rows as $row) {
+                $fecha = (string) ($row['fecha'] ?? '');
+                if ($fecha === '') {
+                    continue;
+                }
+                $resumen[$fecha] = $row;
+            }
+
+            $bLegacy = $this->db->table('registro')
+                ->select("DATE({$r}.ingreso) as fecha,
+                    COUNT(*) as cantidad,
+                    SUM(CAST({$pa}.total AS DECIMAL(12,2))) as total_facturado,
+                    SUM(CAST({$pa}.monto_pagar AS DECIMAL(12,2))) as total_cobrado,
+                    SUM(CAST({$pa}.saldo AS DECIMAL(12,2))) as total_pendiente")
+                ->join('pago', "{$r}.registro_id = {$pa}.registro_id")
+                ->join('pago_abono', "{$ab}.registro_id = {$r}.registro_id", 'left')
+                ->where("{$ab}.registro_id IS NULL", null, false)
+                ->where("{$pa}.tipopago !=", '4');
+            $bLegacy = $this->applySinRegistrosAnulados($bLegacy, $r);
+            $rowsLegacy = RegistroIngresoDateRange::apply($bLegacy, $r, $startDate, $endDate)
+                ->groupBy("DATE({$r}.ingreso)")
+                ->orderBy('fecha', 'ASC')
+                ->get()
+                ->getResultArray();
+
+            foreach ($rowsLegacy as $row) {
+                $fecha = (string) ($row['fecha'] ?? '');
+                if ($fecha === '') {
+                    continue;
+                }
+                if (!isset($resumen[$fecha])) {
+                    $resumen[$fecha] = $row;
+                    continue;
+                }
+                $resumen[$fecha]['cantidad'] += (int) ($row['cantidad'] ?? 0);
+                $resumen[$fecha]['total_facturado'] = (float) ($resumen[$fecha]['total_facturado'] ?? 0) + (float) ($row['total_facturado'] ?? 0);
+                $resumen[$fecha]['total_cobrado'] = (float) ($resumen[$fecha]['total_cobrado'] ?? 0) + (float) ($row['total_cobrado'] ?? 0);
+                $resumen[$fecha]['total_pendiente'] = (float) ($resumen[$fecha]['total_pendiente'] ?? 0) + (float) ($row['total_pendiente'] ?? 0);
+            }
+
+            if ($resumen !== []) {
+                ksort($resumen, SORT_NATURAL);
+                return array_values($resumen);
+            }
+        }
 
         $b = $this->db->table('registro')
             ->select("DATE({$r}.ingreso) as fecha,
@@ -646,13 +906,75 @@ class ReportModel extends Model
     }
 
     /**
-     * Resumen por doctor (facturado/cobrado/pendiente) en rango de fechas.
+     * Resumen por doctor según cobros del período (fecha_abono).
      */
     public function getResumenPagosPorDoctor(string $startDate, string $endDate): array
     {
         $r  = $this->db->prefixTable('registro');
         $d  = $this->db->prefixTable('doctors');
         $pa = $this->db->prefixTable('pago');
+        $ab = $this->db->prefixTable('pago_abono');
+
+        if ($this->db->tableExists('pago_abono')) {
+            $resumen = [];
+
+            $b = $this->db->table('pago_abono')
+                ->select("{$d}.doctor_id,
+                    {$d}.name as doctor,
+                    COUNT(*) as cantidad,
+                    0.00 as total_facturado,
+                    SUM(CAST({$ab}.monto AS DECIMAL(12,2))) as total_cobrado,
+                    0.00 as total_pendiente", false)
+                ->join('registro', "{$r}.registro_id = {$ab}.registro_id")
+                ->join('doctors', "{$d}.doctor_id = {$r}.doctor_id")
+                ->where("{$ab}.tipopago !=", '4');
+            $b = $this->applySinRegistrosAnulados($b, $r);
+            $rows = LabNaiveDateRange::apply($b, $ab, 'fecha_abono', $startDate, $endDate)
+                ->groupBy("{$d}.doctor_id, {$d}.name")
+                ->orderBy('total_cobrado', 'DESC')
+                ->get()
+                ->getResultArray();
+
+            foreach ($rows as $row) {
+                $doctorId = (int) ($row['doctor_id'] ?? 0);
+                $resumen[$doctorId] = $row;
+            }
+
+            $bLegacy = $this->db->table('registro')
+                ->select("{$d}.doctor_id,
+                    {$d}.name as doctor,
+                    COUNT(*) as cantidad,
+                    SUM(CAST({$pa}.total AS DECIMAL(12,2))) as total_facturado,
+                    SUM(CAST({$pa}.monto_pagar AS DECIMAL(12,2))) as total_cobrado,
+                    SUM(CAST({$pa}.saldo AS DECIMAL(12,2))) as total_pendiente")
+                ->join('doctors', "{$d}.doctor_id = {$r}.doctor_id")
+                ->join('pago', "{$r}.registro_id = {$pa}.registro_id")
+                ->join('pago_abono', "{$ab}.registro_id = {$r}.registro_id", 'left')
+                ->where("{$ab}.registro_id IS NULL", null, false);
+            $bLegacy = $this->applySinRegistrosAnulados($bLegacy, $r);
+            $rowsLegacy = RegistroIngresoDateRange::apply($bLegacy, $r, $startDate, $endDate)
+                ->groupBy("{$d}.doctor_id, {$d}.name")
+                ->orderBy('total_facturado', 'DESC')
+                ->get()
+                ->getResultArray();
+
+            foreach ($rowsLegacy as $row) {
+                $doctorId = (int) ($row['doctor_id'] ?? 0);
+                if (!isset($resumen[$doctorId])) {
+                    $resumen[$doctorId] = $row;
+                    continue;
+                }
+                $resumen[$doctorId]['cantidad'] += (int) ($row['cantidad'] ?? 0);
+                $resumen[$doctorId]['total_facturado'] = (float) ($resumen[$doctorId]['total_facturado'] ?? 0) + (float) ($row['total_facturado'] ?? 0);
+                $resumen[$doctorId]['total_cobrado'] = (float) ($resumen[$doctorId]['total_cobrado'] ?? 0) + (float) ($row['total_cobrado'] ?? 0);
+                $resumen[$doctorId]['total_pendiente'] = (float) ($resumen[$doctorId]['total_pendiente'] ?? 0) + (float) ($row['total_pendiente'] ?? 0);
+            }
+
+            if ($resumen !== []) {
+                usort($resumen, static fn (array $a, array $b): int => ((float) ($b['total_cobrado'] ?? 0)) <=> ((float) ($a['total_cobrado'] ?? 0)));
+                return array_values($resumen);
+            }
+        }
 
         $b = $this->db->table('registro')
             ->select("{$d}.doctor_id,
