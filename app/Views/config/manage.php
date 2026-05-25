@@ -1026,6 +1026,14 @@
             <div class="card-body">
                 <?= form_open(site_url('config/saveWhatsapp'), ['id' => 'whatsapp_form']) ?>
                 <div class="mb-4">
+                    <label for="whatsapp_country_code" class="form-label fw-bold">Prefijo telefónico del país</label>
+                    <div class="input-group" style="max-width: 14rem;">
+                        <span class="input-group-text">+</span>
+                        <input type="text" name="whatsapp_country_code" id="whatsapp_country_code" class="form-control" value="<?= esc($config['whatsapp_country_code'] ?? '591') ?>" placeholder="591" inputmode="numeric" pattern="[0-9]{1,4}" maxlength="4" autocomplete="off" required>
+                    </div>
+                    <small class="text-muted d-block mt-1">Solo dígitos, sin el signo +. Se aplica al botón de WhatsApp en <strong>Clientes</strong> y <strong>Médicos</strong> cuando el teléfono es local (≤9 dígitos), y al enviar resultados por API. Ejemplos: Bolivia <code>591</code>, Honduras <code>504</code>, México <code>52</code>.</small>
+                </div>
+                <div class="mb-4">
                     <label for="whatsapp_provider" class="form-label fw-bold">Proveedor</label>
                     <select name="whatsapp_provider" id="whatsapp_provider" class="form-select">
                         <option value="meta" <?= ($config['whatsapp_provider'] ?? 'meta') === 'meta' ? 'selected' : '' ?>>Meta Cloud API (recomendado)</option>

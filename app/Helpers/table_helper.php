@@ -110,9 +110,9 @@ if (!function_exists('get_doctor_data_row')) {
         $editIcon = '<i class="fa-solid fa-pen" aria-hidden="true"></i>';
         $actions = anchor('doctors/view/' . $doctor->doctor_id . '/', $editIcon, ['class' => 'update', 'title' => lang('Doctors.doctors_update')]);
         $phone = trim($doctor->phone_number ?? '');
-        $phoneClean = preg_replace('/\D/', '', $phone);
-        if ($phoneClean !== '') {
-            $waNum = (strlen($phoneClean) <= 9) ? '591' . ltrim($phoneClean, '0') : $phoneClean;
+        helper('config');
+        $waNum = whatsapp_format_phone_number($phone);
+        if ($waNum !== '') {
             $waUrl = 'https://wa.me/' . $waNum;
             $actions .= ' <a href="' . esc($waUrl) . '" target="_blank" rel="noopener" class="text-success" title="WhatsApp"><i class="fa-brands fa-whatsapp"></i></a>';
         } else {
@@ -158,9 +158,9 @@ if (!function_exists('get_person_data_row')) {
             $actions .= ' <button type="button" class="btn btn-lg btn-toggle-employee-status" data-person-id="' . $person->person_id . '" data-enabled="' . ($isActive ? '1' : '0') . '" title="' . $statusTitle . '" style="padding: 0.5rem 0.75rem;"><i class="fa-solid ' . $statusIcon . '" style="font-size: 1.5rem;"></i></button>';
         } else if ($isCustomers) {
             $phone = trim($person->phone_number ?? '');
-            $phoneClean = preg_replace('/\D/', '', $phone);
-            if ($phoneClean !== '') {
-                $waNum = (strlen($phoneClean) <= 9) ? '591' . ltrim($phoneClean, '0') : $phoneClean;
+            helper('config');
+            $waNum = whatsapp_format_phone_number($phone);
+            if ($waNum !== '') {
                 $waUrl = 'https://wa.me/' . $waNum;
                 $actions .= ' <a href="' . esc($waUrl) . '" target="_blank" rel="noopener" class="text-success" title="WhatsApp"><i class="fa-brands fa-whatsapp"></i></a>';
             } else {

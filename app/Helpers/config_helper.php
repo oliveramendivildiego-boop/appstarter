@@ -176,3 +176,32 @@ if (!function_exists('get_theme_color_palette')) {
         ];
     }
 }
+
+if (!function_exists('whatsapp_country_code')) {
+    /**
+     * Código de país para WhatsApp (solo dígitos). Configurable en Configuración > WhatsApp.
+     */
+    function whatsapp_country_code(): string
+    {
+        static $cached = null;
+        if ($cached !== null) {
+            return $cached;
+        }
+
+        $raw   = model(\App\Models\AppConfigModel::class)->getValue('whatsapp_country_code');
+        $clean = preg_replace('/\D/', '', $raw ?: '591');
+        $cached = $clean !== '' ? $clean : '591';
+
+        return $cached;
+    }
+}
+
+if (!function_exists('whatsapp_format_phone_number')) {
+    /**
+     * Formatea teléfono para enlaces wa.me y envío por API (sin + ni espacios).
+     */
+    function whatsapp_format_phone_number(string $phone): string
+    {
+        return \App\Services\WhatsAppService::formatPhoneWithCountryCode($phone, whatsapp_country_code());
+    }
+}

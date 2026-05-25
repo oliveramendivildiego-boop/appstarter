@@ -46,17 +46,46 @@ class WhatsAppService
     }
 
     /**
-     * Formatea número para WhatsApp (código país sin +, sin espacios)
+     * Código de país configurado (solo dígitos, sin +). Por defecto Bolivia (591).
      */
-    public static function formatPhoneForWhatsApp(string $phone): string
+    public function getCountryCode(): string
     {
+        $code = preg_replace('/\D/', '', $this->configModel->getValue('whatsapp_country_code') ?: '591');
+
+        return $code !== '' ? $code : '591';
+    }
+
+    /**
+     * Formatea número para WhatsApp (código país sin +, sin espacios).
+     */
+    public function formatPhoneForWhatsApp(string $phone): string
+    {
+        return self::formatPhoneWithCountryCode($phone, $this->getCountryCode());
+    }
+
+    /**
+     * Formatea un teléfono local o internacional para wa.me / API de WhatsApp.
+     */
+    public static function formatPhoneWithCountryCode(string $phone, string $countryCode): string
+    {
+        $countryCode = preg_replace('/\D/', '', $countryCode);
+        if ($countryCode === '') {
+            $countryCode = '591';
+        }
+
         $clean = preg_replace('/\D/', '', $phone);
         if ($clean === '') {
             return '';
         }
-        if (strlen($clean) <= 9) {
-            $clean = '591' . ltrim($clean, '0');
+
+        if (str_starts_with($clean, $countryCode) && strlen($clean) > strlen($countryCode)) {
+            return $clean;
         }
+
+        if (strlen($clean) <= 9) {
+            return $countryCode . ltrim($clean, '0');
+        }
+
         return $clean;
     }
 
@@ -69,7 +98,7 @@ class WhatsAppService
             return ['success' => false, 'message' => 'WhatsApp no está configurado. Configure en Configuración > WhatsApp.'];
         }
 
-        $toFormatted = self::formatPhoneForWhatsApp($toPhone);
+        $toFormatted = $this->formatPhoneForWhatsApp($toPhone);
         if ($toFormatted === '') {
             return ['success' => false, 'message' => 'Número de teléfono inválido.'];
         }

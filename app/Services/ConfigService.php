@@ -172,6 +172,7 @@ class ConfigService
     {
         $keys = [
             'whatsapp_provider',
+            'whatsapp_country_code',
             'whatsapp_base_url',
             'whatsapp_meta_phone_id',
             'whatsapp_meta_token',
@@ -187,6 +188,8 @@ class ConfigService
         foreach ($keys as $k) {
             $batch[$k] = trim($postData[$k] ?? '');
         }
+        $countryCode = preg_replace('/\D/', '', $batch['whatsapp_country_code'] ?? '');
+        $batch['whatsapp_country_code'] = $countryCode !== '' ? $countryCode : '591';
         $ok = $this->appConfigModel->batchSave($batch);
         if ($ok) {
             $this->invalidateCache();
