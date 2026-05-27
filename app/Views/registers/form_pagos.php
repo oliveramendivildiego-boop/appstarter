@@ -21,10 +21,18 @@ document.addEventListener('DOMContentLoaded', function() {
         var esPendiente = (tipopago?.value || '') === '4';
         if (monto) {
             monto.required = !esPendiente;
-            monto.placeholder = esPendiente ? 'Vacío = pagará después' : '';
+            if (esPendiente) {
+                monto.value = '';
+                monto.disabled = true;
+                monto.placeholder = '';
+            } else {
+                monto.disabled = false;
+                monto.placeholder = '';
+            }
         }
         var ast = document.querySelector('.monto-req-ast');
         if (ast) ast.style.display = esPendiente ? 'none' : '';
+        calcularSaldo();
     }
     if (total) {
         total.addEventListener('focus', function() { this.select(); });
@@ -34,7 +42,7 @@ document.addEventListener('DOMContentLoaded', function() {
         total.addEventListener('input', calcularSaldo);
         monto.addEventListener('input', calcularSaldo);
         if (tipopago) {
-            tipopago.addEventListener('change', function() { toggleMontoRequerido(); calcularSaldo(); });
+            tipopago.addEventListener('change', toggleMontoRequerido);
             toggleMontoRequerido();
         }
     }

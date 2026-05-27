@@ -639,16 +639,15 @@ document.addEventListener('DOMContentLoaded', function() {
             };
             var tipopagoVal = (document.getElementById('tipopago') || {}).value || '';
             var esPendiente = tipopagoVal === '4';
-            var montoPagarRaw = ((document.getElementById('monto_pagar') || {}).value || '').trim();
             var totalNum = parseFloat((document.getElementById('total') || {}).value || 0);
             var saldoEl = document.getElementById('saldo');
-            if (esPendiente && montoPagarRaw === '') {
+            if (esPendiente) {
                 if (saldoEl) saldoEl.value = (!isNaN(totalNum) ? (totalNum - 0).toFixed(2) : '');
             }
             var pagosData = {
                 total_reco: (document.getElementById('total_reco') || {}).value || '',
                 total: (document.getElementById('total') || {}).value || '',
-                monto_pagar: esPendiente && montoPagarRaw === '' ? '0' : (document.getElementById('monto_pagar') || {}).value || '',
+                monto_pagar: esPendiente ? '' : ((document.getElementById('monto_pagar') || {}).value || ''),
                 tipopago: tipopagoVal,
                 saldo: (document.getElementById('saldo') || {}).value || '',
                 comentarios: (document.getElementById('comentarios') || {}).value || ''
@@ -920,6 +919,7 @@ document.addEventListener('DOMContentLoaded', function() {
             if (comentariosEl) comentariosEl.value = String(p.comentarios ?? '');
             if (totalEl) totalEl.value = String(p.total ?? '');
             if (saldoEl) saldoEl.value = String(p.saldo ?? '');
+            if (tipopagoEl) tipopagoEl.dispatchEvent(new Event('change'));
 
             // Pruebas
             var pruebasStr = String(editInfo.pruebas || '').trim();
