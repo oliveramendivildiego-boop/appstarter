@@ -1,0 +1,110 @@
+-- dom_prianacategoria: cost y cost_deriv por prianacategoria_id (lote 134-224)
+-- Ejecutar el archivo completo en phpMyAdmin o:
+-- "C:\wamp64\bin\mysql\mysql8.4.7\bin\mysql.exe" -u root laboratorio < "c:\wamp64\www\laboratorio\database\actualizar_precios_por_id_lista_134_224.sql"
+--
+-- Nota: ID 154 viene sin precio en la lista, por eso no se actualiza.
+
+SET NAMES utf8mb4;
+
+UPDATE dom_prianacategoria
+SET
+  cost = CASE prianacategoria_id
+    WHEN 134 THEN 220
+    WHEN 223 THEN 308
+    WHEN 224 THEN 330
+    WHEN 135 THEN 0
+    WHEN 136 THEN 0
+    WHEN 137 THEN 0
+    WHEN 138 THEN 0
+    WHEN 139 THEN 0
+    WHEN 140 THEN 146
+    WHEN 141 THEN 146
+    WHEN 142 THEN 207
+    WHEN 143 THEN 207
+    WHEN 144 THEN 207
+    WHEN 145 THEN 0
+    WHEN 146 THEN 400
+    WHEN 147 THEN 400
+    WHEN 148 THEN 400
+    WHEN 149 THEN 400
+    WHEN 150 THEN 400
+    WHEN 151 THEN 200
+    WHEN 152 THEN 0
+    WHEN 153 THEN 590
+    WHEN 155 THEN 375
+    WHEN 156 THEN 380
+    WHEN 157 THEN 375
+    WHEN 158 THEN 55
+    WHEN 159 THEN 50
+    WHEN 160 THEN 15
+    WHEN 161 THEN 0
+    WHEN 162 THEN 200
+    WHEN 163 THEN 260
+    WHEN 164 THEN 714
+    WHEN 165 THEN 140
+    WHEN 166 THEN 110
+    WHEN 167 THEN 160
+    WHEN 168 THEN 45
+    WHEN 169 THEN 270
+    WHEN 204 THEN 100
+    WHEN 205 THEN 150
+    WHEN 206 THEN 300
+    ELSE cost
+  END,
+  cost_deriv = CASE prianacategoria_id
+    WHEN 134 THEN 220
+    WHEN 223 THEN 308
+    WHEN 224 THEN 330
+    WHEN 135 THEN 0
+    WHEN 136 THEN 0
+    WHEN 137 THEN 0
+    WHEN 138 THEN 0
+    WHEN 139 THEN 0
+    WHEN 140 THEN 146
+    WHEN 141 THEN 146
+    WHEN 142 THEN 207
+    WHEN 143 THEN 207
+    WHEN 144 THEN 207
+    WHEN 145 THEN 0
+    WHEN 146 THEN 400
+    WHEN 147 THEN 400
+    WHEN 148 THEN 400
+    WHEN 149 THEN 400
+    WHEN 150 THEN 400
+    WHEN 151 THEN 200
+    WHEN 152 THEN 0
+    WHEN 153 THEN 590
+    WHEN 155 THEN 375
+    WHEN 156 THEN 380
+    WHEN 157 THEN 375
+    WHEN 158 THEN 55
+    WHEN 159 THEN 50
+    WHEN 160 THEN 15
+    WHEN 161 THEN 0
+    WHEN 162 THEN 200
+    WHEN 163 THEN 260
+    WHEN 164 THEN 714
+    WHEN 165 THEN 140
+    WHEN 166 THEN 110
+    WHEN 167 THEN 160
+    WHEN 168 THEN 45
+    WHEN 169 THEN 270
+    WHEN 204 THEN 100
+    WHEN 205 THEN 150
+    WHEN 206 THEN 300
+    ELSE cost_deriv
+  END
+WHERE prianacategoria_id IN (
+  134, 223, 224, 135, 136, 137, 138, 139, 140, 141, 142, 143, 144, 145,
+  146, 147, 148, 149, 150, 151, 152, 153, 155, 156, 157, 158, 159, 160,
+  161, 162, 163, 164, 165, 166, 167, 168, 169, 204, 205, 206
+);
+
+SELECT prianacategoria_id, name, cost, cost_deriv
+FROM dom_prianacategoria
+WHERE prianacategoria_id IN (
+  134, 223, 224, 135, 136, 137, 138, 139, 140, 141, 142, 143, 144, 145,
+  146, 147, 148, 149, 150, 151, 152, 153, 155, 156, 157, 158, 159, 160,
+  161, 162, 163, 164, 165, 166, 167, 168, 169, 204, 205, 206
+)
+ORDER BY prianacategoria_id;
