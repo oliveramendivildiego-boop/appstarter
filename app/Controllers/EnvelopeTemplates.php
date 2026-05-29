@@ -53,6 +53,38 @@ class EnvelopeTemplates extends SecureArea
         ]);
     }
 
+    public function previewMarkup(): ResponseInterface
+    {
+        $id = (int) $this->request->getPost('template_id');
+        if ($id < 1) {
+            return $this->response->setStatusCode(400)->setJSON(['ok' => false, 'error' => 'Plantilla no válida.']);
+        }
+
+        $layoutJson = $this->request->getPost('layout_json');
+        if (is_array($layoutJson)) {
+            $layoutJson = json_encode($layoutJson, JSON_UNESCAPED_UNICODE);
+        }
+        $layoutJson = trim((string) $layoutJson);
+        if ($layoutJson === '') {
+            return $this->response->setStatusCode(400)->setJSON(['ok' => false, 'error' => 'Diseño vacío.']);
+        }
+
+        $decoded = json_decode($layoutJson, true);
+        if (! is_array($decoded)) {
+            return $this->response->setStatusCode(400)->setJSON(['ok' => false, 'error' => 'JSON inválido.']);
+        }
+
+        $model = model(EnvelopeTemplateModel::class);
+        if (! $model->find($id)) {
+            return $this->response->setStatusCode(404)->setJSON(['ok' => false, 'error' => 'Plantilla no encontrada.']);
+        }
+
+        $layout = (new EnvelopeLayoutService())->normalizeLayout($decoded);
+        $html   = (new EnvelopeRenderService())->renderCellsGridHtml($layout, $id);
+
+        return $this->response->setJSON(['ok' => true, 'html' => $html]);
+    }
+
     public function save(): ResponseInterface
     {
         $id         = (int) $this->request->getPost('id');

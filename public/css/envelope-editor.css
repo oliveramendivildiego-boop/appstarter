@@ -6,6 +6,17 @@
     width: 100%;
     max-width: 100%;
 }
+.envelope-preview-scaler {
+    display: inline-block;
+    transform-origin: top center;
+    vertical-align: top;
+}
+.envelope-preview-card-body .envelope-preview-cell {
+    overflow: visible;
+}
+.envelope-preview-card-body .envelope-preview-stack-item {
+    overflow: visible;
+}
 .envelope-preview-card-body {
     padding: 2rem 1.5rem 2.75rem;
     overflow-x: auto;
@@ -301,8 +312,9 @@
     flex-shrink: 0;
 }
 .envelope-barcode-block {
-    width: 100%;
+    width: auto;
     max-width: 100%;
+    box-sizing: border-box;
 }
 .envelope-barcode-box,
 .envelope-barcode-block .orden-barcode-box {
@@ -331,6 +343,8 @@
     max-width: 100%;
     height: auto;
     margin: 0 auto;
+    image-rendering: pixelated;
+    image-rendering: crisp-edges;
 }
 .envelope-grid-chip.sortable-ghost {
     opacity: 0.45;

@@ -171,6 +171,66 @@ class EnvelopeRenderService
     }
 
     /**
+     * Contexto de ejemplo para la vista previa del editor (misma lógica de render que impresión).
+     *
+     * @return array<string, mixed>
+     */
+    public function buildSampleContext(): array
+    {
+        $samples = EnvelopeLayoutService::elementPreviewSamples();
+
+        $reg = (object) [
+            'numero_orden'  => (string) ($samples['numero_orden'] ?? 'ORD-001'),
+            'registro_id'   => 1,
+            'first_name'    => 'Juan',
+            'last_name_fa'  => 'Pérez',
+            'last_name_mom' => 'García',
+        ];
+        $paciente = (object) [
+            'first_name'    => 'Juan',
+            'last_name_fa'  => 'Pérez',
+            'last_name_mom' => 'García',
+            'gender'        => 'M',
+        ];
+        $qrSvg = '<svg xmlns="http://www.w3.org/2000/svg" width="120" height="120">'
+            . '<rect width="120" height="120" fill="#dee2e6"/>'
+            . '<text x="60" y="64" text-anchor="middle" font-family="Arial" font-size="14" fill="#495057">QR</text></svg>';
+
+        return [
+            'registro_id'          => 1,
+            'register_info'      => $reg,
+            'paciente'           => $paciente,
+            'doctor'             => null,
+            'lab_config'         => [
+                'company' => (string) ($samples['lab_company'] ?? 'Laboratorio'),
+                'logo'    => 'images/logo-john.png',
+            ],
+            'report_url'         => 'https://example.local/resultados/1',
+            'qr_data_uri'        => 'data:image/svg+xml;base64,' . base64_encode($qrSvg),
+            'report_emitido_en'  => (string) ($samples['fecha_reporte'] ?? date('d/m/Y')),
+            'barcode_size_percent' => $this->resolveBarcodeSizePercent(),
+        ];
+    }
+
+    /**
+     * HTML de celdas de la matriz (idéntico al de impresión).
+     *
+     * @param array<string, mixed>      $layout
+     * @param array<string, mixed>|null $ctx
+     */
+    public function renderCellsGridHtml(array $layout, int $templateId, ?array $ctx = null): string
+    {
+        $ctx   = $ctx ?? $this->buildSampleContext();
+        $cells = $this->buildCellsForRender($layout, $templateId, $ctx);
+        $html  = '';
+        foreach ($cells as $cell) {
+            $html .= $this->renderCellMarkup($cell);
+        }
+
+        return $html;
+    }
+
+    /**
      * @param array<string, mixed> $layout
      * @param array<string, mixed> $ctx
      *
@@ -289,13 +349,24 @@ class EnvelopeRenderService
     public function buildCellContainerClass(array $cell): string
     {
         $itemCount = 0;
+        $refItem   = [];
         foreach ($cell['items'] ?? [] as $ri) {
             if (is_array($ri) && (string) ($ri['html'] ?? '') !== '') {
                 $itemCount++;
+                if ($itemCount === 1) {
+                    $refItem = is_array($ri['item'] ?? null) ? $ri['item'] : [];
+                }
             }
         }
 
-        return 'envelope-preview-cell' . ($itemCount > 1 ? ' envelope-preview-cell-multi' : '');
+        $classes = 'envelope-preview-cell';
+        if ($itemCount > 1) {
+            $classes .= ' envelope-preview-cell-multi';
+        } elseif ($itemCount === 1 && $this->isVerticalTextFlow($refItem)) {
+            $classes .= ' envelope-preview-cell-vertical';
+        }
+
+        return $classes;
     }
 
     /**
@@ -545,13 +616,15 @@ class EnvelopeRenderService
             $barW     = max(25, min(120, (int) ($item['barcode_width_mm'] ?? 60)));
             $sizePct  = max(30, min(250, (int) ($ctx['barcode_size_percent'] ?? 100)));
 
-            $html = '<div class="envelope-barcode-block text-center">';
+            $taCss = $this->barcodeTextAlignCss($item);
+            $html  = '<div class="envelope-barcode-block" style="width:auto;max-width:100%;text-align:' . esc($taCss, 'attr') . ';">';
             if ($showName && $nombre !== '') {
                 $html .= '<div class="orden-barcode-patient-name">' . esc($nombre) . '</div>';
             }
-            $barcodeHtml = (new EnvelopeBarcodeImageService())->renderPrintHtml($orden, $barW, $barH, $sizePct);
-            $html .= '<div class="orden-barcode-box envelope-barcode-box" style="width:' . $barW . 'mm;max-width:100%;margin:0 auto;">';
-            $html .= $barcodeHtml !== '' ? $barcodeHtml : '<div class="envelope-barcode-fallback" style="font-family:Arial,Helvetica,sans-serif;font-size:11pt;font-weight:600;letter-spacing:0.05em;padding:2mm 0;text-align:center;">'
+            $barcodeHtml = (new EnvelopeBarcodeImageService())->renderPrintHtml($orden, $barW, $barH, $sizePct, $taCss);
+            $html .= '<div class="orden-barcode-box envelope-barcode-box" style="width:' . $barW . 'mm;max-width:100%;display:inline-block;">';
+            $fallbackAlign = 'text-align:' . esc($taCss, 'attr') . ';';
+            $html .= $barcodeHtml !== '' ? $barcodeHtml : '<div class="envelope-barcode-fallback" style="font-family:Arial,Helvetica,sans-serif;font-size:11pt;font-weight:600;letter-spacing:0.05em;padding:2mm 0;' . $fallbackAlign . '">'
                 . esc($orden) . '</div>';
             $html .= '</div></div>';
 
@@ -610,8 +683,14 @@ class EnvelopeRenderService
         }
         $fontPt = max(6, min(24, (int) ($item['font_size_pt'] ?? 10)));
         $weight = ($item['font_weight'] ?? '') === 'bold' ? 'bold' : 'normal';
+        $extra  = '';
+        if ($flow === 'vertical_down' || $flow === 'vertical_up') {
+            $extra = 'width:auto;max-width:100%;white-space:nowrap;';
+        } else {
+            $extra = 'width:100%;';
+        }
 
-        return '<div class="' . esc($class, 'attr') . '" style="text-align:' . esc($align, 'attr')
+        return '<div class="' . esc($class, 'attr') . '" style="' . $extra . 'text-align:' . esc($align, 'attr')
             . ';font-size:' . $fontPt . 'pt;font-weight:' . esc($weight, 'attr') . ';">' . $inner . '</div>';
     }
 
@@ -635,6 +714,7 @@ class EnvelopeRenderService
      */
     public function itemInlineStyle(array $item, string $stackDir): string
     {
+        $type   = (string) ($item['element_type'] ?? '');
         $m      = EnvelopeLayoutService::normalizeMarginMm($item['margin_mm'] ?? null);
         $align  = (string) ($item['text_align'] ?? 'left');
         $valign = (string) ($item['vertical_align'] ?? 'top');
@@ -646,6 +726,28 @@ class EnvelopeRenderService
             'padding:0',
             'overflow:visible',
         ];
+
+        if ($type === 'codigo_barras') {
+            $parts[] = 'width:auto';
+            $parts[] = 'max-width:100%';
+            $parts[] = 'flex-direction:column';
+            $parts[] = 'justify-content:' . $this->mapVerticalAlignToFlex($valign);
+            $parts[] = 'align-items:' . $this->mapTextAlignToFlex($align);
+            $parts[] = 'align-self:' . $this->mapTextAlignToAlignSelf($align);
+
+            return implode(';', $parts);
+        }
+
+        if (in_array($type, ['custom_image', 'qr'], true)) {
+            $parts[] = 'width:100%';
+            $parts[] = 'max-width:100%';
+            $parts[] = 'flex-direction:column';
+            $parts[] = 'justify-content:' . $this->mapVerticalAlignToFlex($valign);
+            $parts[] = 'align-items:' . $this->mapTextAlignToFlex($align);
+            $parts[] = 'align-self:stretch';
+
+            return implode(';', $parts);
+        }
 
         if ($this->isVerticalTextFlow($item)) {
             if ($stackDir === 'row') {
@@ -730,6 +832,25 @@ class EnvelopeRenderService
             'bottom' => 'flex-end',
             default  => 'flex-start',
         };
+    }
+
+    private function mapTextAlignToAlignSelf(string $align): string
+    {
+        return match ($align) {
+            'center' => 'center',
+            'right'  => 'flex-end',
+            default  => 'flex-start',
+        };
+    }
+
+    /**
+     * @param array<string, mixed> $item
+     */
+    private function barcodeTextAlignCss(array $item): string
+    {
+        $align = strtolower(trim((string) ($item['text_align'] ?? 'left')));
+
+        return in_array($align, ['left', 'center', 'right'], true) ? $align : 'left';
     }
 
     /**

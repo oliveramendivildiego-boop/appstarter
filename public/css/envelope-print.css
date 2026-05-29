@@ -185,25 +185,23 @@ body.envelope-print-body {
 
     .envelope-barcode-block {
         display: block !important;
-        width: 100% !important;
-        text-align: center !important;
+        width: auto !important;
+        max-width: 100% !important;
+        box-sizing: border-box !important;
     }
 
     .envelope-barcode-box {
         display: inline-block !important;
         line-height: 0 !important;
         max-width: 100% !important;
-        margin-left: auto !important;
-        margin-right: auto !important;
     }
 
     .envelope-barcode-raster,
+    .envelope-barcode-svg,
     .envelope-barcode-value-text {
         display: block !important;
         visibility: visible !important;
         max-width: 100% !important;
-        margin-left: auto !important;
-        margin-right: auto !important;
         -webkit-print-color-adjust: exact;
         print-color-adjust: exact;
     }

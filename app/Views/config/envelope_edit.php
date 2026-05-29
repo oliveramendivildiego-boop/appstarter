@@ -1,6 +1,6 @@
 <?= $this->extend('layouts/main') ?>
 <?= $this->section('head_extra') ?>
-<link rel="stylesheet" href="<?= base_url('css/envelope-editor.css') ?>?v=15">
+<link rel="stylesheet" href="<?= base_url('css/envelope-editor.css') ?>?v=19">
 <?= $this->endSection() ?>
 <?= $this->section('content') ?>
 <?php
@@ -223,9 +223,11 @@ $layoutJsonInitial = is_string($layoutJsonInitial)
             </div>
             <div class="card-body text-center envelope-preview-card-body">
                 <div class="envelope-editor-wrap d-inline-block">
-                    <div id="envelope-preview-outer" class="envelope-size-preview mx-auto" style="width: <?= $previewPxW ?>px; height: <?= $previewPxH ?>px;">
-                        <span class="envelope-size-preview-label" id="envelope-preview-dims"><?= esc($widthMm) ?> × <?= esc($heightMm) ?> mm</span>
-                        <div id="envelope-preview-inner" class="envelope-preview-inner"></div>
+                    <div id="envelope-preview-scaler" class="envelope-preview-scaler mx-auto">
+                        <div id="envelope-preview-outer" class="envelope-size-preview mx-auto" style="width: <?= esc((string) $widthMm) ?>mm; height: <?= esc((string) $heightMm) ?>mm;">
+                            <span class="envelope-size-preview-label" id="envelope-preview-dims"><?= esc($widthMm) ?> × <?= esc($heightMm) ?> mm</span>
+                            <div id="envelope-preview-inner" class="envelope-preview-inner"></div>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -400,12 +402,13 @@ $layoutJsonInitial = is_string($layoutJsonInitial)
 <?= $this->section('scripts') ?>
 <?php
 $envelopeBootJson = json_encode([
-    'templateId'     => $tid,
-    'layout'         => $layout,
-    'elementLabels'  => $elLabels,
-    'elementSamples' => $elSamples,
-    'envelopeSizes'  => $sizes,
-    'imageBaseUrl'   => $imageBaseUrl,
+    'templateId'        => $tid,
+    'layout'            => $layout,
+    'elementLabels'     => $elLabels,
+    'elementSamples'    => $elSamples,
+    'envelopeSizes'     => $sizes,
+    'imageBaseUrl'      => $imageBaseUrl,
+    'previewMarkupUrl'  => site_url('config/sobres/preview-markup'),
 ], JSON_UNESCAPED_UNICODE | JSON_INVALID_UTF8_SUBSTITUTE);
 if ($envelopeBootJson === false) {
     $envelopeBootJson = '{}';
@@ -426,5 +429,5 @@ if ($envelopeBootJson === false) {
 <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.2/Sortable.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.6/dist/JsBarcode.all.min.js"></script>
 <script src="<?= base_url('js/envelope-barcode.js') ?>?v=4"></script>
-<script src="<?= base_url('js/envelope-editor.js') ?>?v=21"></script>
+<script src="<?= base_url('js/envelope-editor.js') ?>?v=25"></script>
 <?= $this->endSection() ?>

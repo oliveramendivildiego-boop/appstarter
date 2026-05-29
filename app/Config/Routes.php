@@ -112,6 +112,7 @@ $routes->post('config/pdf-templates/create', 'PdfResultTemplates::create');
 $routes->get('config/pdf-templates/delete/(:num)', 'PdfResultTemplates::delete/$1');
 $routes->get('config/sobres/edit/(:num)', 'EnvelopeTemplates::edit/$1');
 $routes->post('config/sobres/save', 'EnvelopeTemplates::save');
+$routes->post('config/sobres/preview-markup', 'EnvelopeTemplates::previewMarkup');
 $routes->post('config/sobres/create', 'EnvelopeTemplates::create');
 $routes->get('config/sobres/delete/(:num)', 'EnvelopeTemplates::delete/$1');
 $routes->get('config/sobres/set-active/(:num)', 'EnvelopeTemplates::setActive/$1');
