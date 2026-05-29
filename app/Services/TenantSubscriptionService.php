@@ -128,20 +128,52 @@ class TenantSubscriptionService
     }
 
     /**
-     * Laboratorio cliente (sesión no default) con vigencia del último pago ya vencida.
+     * Rutas permitidas cuando la suscripción del laboratorio cliente está vencida.
+     *
+     * @return list<string>
      */
-    public function isChildTenantSubscriptionExpired(): bool
+    public static function subscriptionBlockedAllowedUriPrefixes(): array
     {
-        if (! $this->isNonDefaultTenantSession()) {
-            return false;
+        return [
+            'subscription-blocked',
+            'home/logout',
+            'tenant-subscription',
+            'status/checkEmployeeActive',
+        ];
+    }
+
+    public static function isUriAllowedWhenSubscriptionBlocked(string $uri): bool
+    {
+        $uri = trim($uri, '/');
+        foreach (self::subscriptionBlockedAllowedUriPrefixes() as $prefix) {
+            if ($uri === $prefix || str_starts_with($uri, $prefix . '/')) {
+                return true;
+            }
         }
+
+        return false;
+    }
+
+    /**
+     * Bloquear acceso al sistema (misma regla que la alerta roja de vigencia vencida).
+     */
+    public function isSubscriptionAccessBlocked(): bool
+    {
         $key = $this->sessionTenantKey();
         if ($key === null) {
             return false;
         }
-        $info = $this->getLatestSubscriptionExpiryInfo($key);
+        $alert = $this->getExpiryAlertForTenantKey($key);
 
-        return $info !== null && ($info['days_left'] ?? 0) < 0;
+        return $alert !== null && ($alert['type'] ?? '') === 'danger';
+    }
+
+    /**
+     * Laboratorio cliente (sesión no default) con vigencia del último pago ya vencida.
+     */
+    public function isChildTenantSubscriptionExpired(): bool
+    {
+        return $this->isSubscriptionAccessBlocked();
     }
 
     /**

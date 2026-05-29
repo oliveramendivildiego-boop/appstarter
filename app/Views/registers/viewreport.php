@@ -70,6 +70,14 @@ $qr_data_uri = qr_base64($reportUrl, $qrPx);
 <div class="text-center mt-3">
     <button id="guardaranalisis" name="guardaranalisis" class="btn btn-primary">Guardar</button>
     <a href="<?= site_url('registers/printreport/' . (int) ($labotests_namecate ?? 0)) ?>" class="btn btn-outline-primary" id="btn_print_report">Imprimir</a>
+    <?php if (! empty($envelope_print_available)): ?>
+    <a href="<?= site_url('registers/printEnvelope/' . (int) ($labotests_namecate ?? 0)) ?>"
+       class="btn btn-outline-secondary"
+       id="btn_print_envelope"
+       title="Imprimir sobre con la plantilla de impresión en Configuración → Sobres">
+        <i class="fa-solid fa-envelope me-1"></i> Imprimir sobre
+    </a>
+    <?php endif; ?>
     <a href="<?= site_url('registers/pdf/' . ($labotests_namecate ?? 0)) ?>" class="btn btn-success" target="_blank">
         <i class="fa-solid fa-file-pdf me-1"></i> Descargar PDF
     </a>
@@ -102,17 +110,25 @@ $qr_data_uri = qr_base64($reportUrl, $qrPx);
 <?= $this->section('scripts') ?>
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-    var printBtn = document.getElementById('btn_print_report');
-    if (printBtn) {
-        printBtn.addEventListener('click', function(e) {
+    function bindPrintWindow(btnId, windowName) {
+        var btn = document.getElementById(btnId);
+        if (!btn) {
+            return;
+        }
+        btn.addEventListener('click', function (e) {
             e.preventDefault();
-            var url = printBtn.getAttribute('href');
-            var w = window.open(url, 'reportPrint', 'width=960,height=900');
+            var url = btn.getAttribute('href');
+            if (url.indexOf('auto=1') === -1) {
+                url += (url.indexOf('?') >= 0 ? '&' : '?') + 'auto=1';
+            }
+            var w = window.open(url, windowName, 'width=960,height=900');
             if (!w) {
                 window.location.href = url;
             }
         });
     }
+    bindPrintWindow('btn_print_report', 'reportPrint');
+    bindPrintWindow('btn_print_envelope', 'envelopePrint');
     var btn = document.getElementById('guardaranalisis');
     if (btn) {
         btn.addEventListener('click', function() {

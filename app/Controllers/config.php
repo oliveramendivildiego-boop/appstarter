@@ -6,6 +6,7 @@ use App\Models\EmployeeModel;
 use App\Models\OpcionModel;
 use App\Models\PoblacionModel;
 use App\Models\ReportPdfTemplateModel;
+use App\Models\EnvelopeTemplateModel;
 use App\Models\MetodoModel;
 use App\Models\TipoMuestraModel;
 use App\Models\CustomerModel;
@@ -170,6 +171,15 @@ class Config extends SecureArea
         if (($this->request->getGet('tab') ?: '') === 'institucion_descuentos') {
             $tab = 'institucion_descuentos';
         }
+        if (($this->request->getGet('tab') ?: '') === 'tenant_home_broadcast') {
+            $tab = 'tenant_home_broadcast';
+        }
+        if (! $canManageTenants && $tab === 'tenant_home_broadcast') {
+            $tab = 'sistema';
+        }
+        if (($this->request->getGet('tab') ?: '') === 'sobres') {
+            $tab = 'sobres';
+        }
 
         $subSvc                 = new TenantSubscriptionService();
         $subscription_payments  = $canManageTenants
@@ -187,6 +197,20 @@ class Config extends SecureArea
             $pdf_templates = [];
         }
 
+        $envelope_templates = [];
+        $activeEnvelopeTemplateId = 0;
+        $printEnvelopeTemplateId  = 0;
+        $envelope_db_error = null;
+        try {
+            $envelope_templates = model(EnvelopeTemplateModel::class)->orderBy('name', 'ASC')->findAll();
+            $envelopeRenderSvc          = new \App\Services\EnvelopeRenderService();
+            $activeEnvelopeTemplateId   = (int) model(\App\Models\AppConfigModel::class)->getValue('active_envelope_template_id');
+            $printEnvelopeTemplateId    = $envelopeRenderSvc->resolvePrintTemplateId();
+        } catch (\Throwable $e) {
+            $envelope_templates = [];
+            $envelope_db_error = $e->getMessage();
+        }
+
         $labValidation = $this->configService->getLabValidationStateForView();
 
         $tenantBackupSchedule     = [];
@@ -197,11 +221,19 @@ class Config extends SecureArea
             $tenantBackupTimezoneId = $tbsSvc->getResolvedTimezoneIdentifier();
         }
 
+        $tenantHomeBroadcastForm = $canManageTenants
+            ? (new \App\Services\TenantHomeBroadcastService())->getFormState()
+            : [];
+
         return view('config/manage', [
             'config'               => $config,
             'lab_validators'       => $labValidation['validators'],
             'lab_approvers'        => $labValidation['approvers'],
             'pdf_templates'        => $pdf_templates,
+            'envelope_templates'           => $envelope_templates,
+            'active_envelope_template_id'  => $activeEnvelopeTemplateId,
+            'print_envelope_template_id'   => $printEnvelopeTemplateId,
+            'envelope_db_error'            => $envelope_db_error,
             'poblaciones'          => $poblaciones,
             'editar_poblacion'     => $editarPoblacion,
             'editar_poblacion_data'=> $editarPoblacionData,
@@ -226,6 +258,7 @@ class Config extends SecureArea
             'tenant_backup_timezone_id' => $tenantBackupTimezoneId,
             'tenant_backup_cron_url'    => $canManageTenants ? site_url('cron/tenant-backup-schedule') : '',
             'tenant_backup_cron_ready'  => $canManageTenants && trim((string) env('tenantBackup.cronKey', '')) !== '',
+            'tenant_home_broadcast_form' => $tenantHomeBroadcastForm,
             'active_tab'           => $tab,
             'timezone_options'     => get_timezone_options(),
             'theme_palette'        => get_theme_color_palette(),
@@ -1590,6 +1623,29 @@ class Config extends SecureArea
 
         sort($tokens, SORT_STRING);
         return sha1(implode('|', $tokens));
+    }
+
+    public function saveTenantHomeBroadcast(): ResponseInterface
+    {
+        if (! $this->canManageTenants()) {
+            return redirect()->to('config')->with('error', 'No tiene permiso para configurar el aviso del dashboard.');
+        }
+
+        $file   = $this->request->getFile('tenant_home_broadcast_image');
+        $upload = null;
+        if ($file !== null && $file->getError() !== UPLOAD_ERR_NO_FILE) {
+            $upload = $file;
+        }
+
+        $svc    = new \App\Services\TenantHomeBroadcastService();
+        $result = $svc->saveFromRequest($this->request->getPost(), $upload);
+        if ($result['success']) {
+            \App\Models\AuditoriaModel::log('config', 'tenant_home_broadcast', '1');
+
+            return redirect()->to('config?tab=tenant_home_broadcast')->with('success', $result['message']);
+        }
+
+        return redirect()->to('config?tab=tenant_home_broadcast')->with('error', $result['message']);
     }
 
     public function saveTenantSubscriptionAlertDays(): ResponseInterface

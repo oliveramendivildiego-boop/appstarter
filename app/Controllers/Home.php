@@ -5,6 +5,7 @@ namespace App\Controllers;
 use App\Models\AppConfigModel;
 use App\Models\EmployeeModel;
 use App\Services\DashboardService;
+use App\Services\TenantHomeBroadcastService;
 
 class Home extends SecureArea
 {
@@ -18,7 +19,7 @@ class Home extends SecureArea
     public function initController(\CodeIgniter\HTTP\RequestInterface $request, \CodeIgniter\HTTP\ResponseInterface $response, \Psr\Log\LoggerInterface $logger)
     {
         $method = service('router')->methodName();
-        if (in_array($method, ['logout', 'subscriptionBlocked'], true)) {
+        if (in_array($method, ['logout', 'subscriptionBlocked', 'tenantBroadcastImage'], true)) {
             $this->moduleId = null;
         }
         parent::initController($request, $response, $logger);
@@ -40,6 +41,7 @@ class Home extends SecureArea
         $cierresPagosSeries = $dashboardService->getCierresPagosSeriesUltimosDias(30);
         $currencySym = model(AppConfigModel::class)->getValue('currency_symbol') ?: '$';
         $alertasSuscripcionTenants = $dashboardService->getTenantsSuscripcionAlerta();
+        $tenantHomeBroadcast       = (new TenantHomeBroadcastService())->getForDashboard();
 
         return view('home', [
             'allowed_modules'   => $this->allowed_modules,
@@ -58,12 +60,35 @@ class Home extends SecureArea
             'cierres_pagos_series'  => $cierresPagosSeries,
             'currency_symbol'       => $currencySym,
             'alertas_suscripcion_tenants' => $alertasSuscripcionTenants,
+            'tenant_home_broadcast'       => $tenantHomeBroadcast,
         ]);
     }
 
     /**
      * Pantalla de acceso suspendido por suscripción vencida (laboratorio cliente).
      */
+    /**
+     * Imagen del aviso global (tenant default), servida por PHP para cualquier host de laboratorio cliente.
+     */
+    public function tenantBroadcastImage()
+    {
+        $svc  = new TenantHomeBroadcastService();
+        $path = $svc->resolveImageFileOnDisk($svc->getStoredImageRelativePath());
+        if ($path === null) {
+            return $this->response->setStatusCode(404)->setBody('Not found');
+        }
+
+        $mime = (string) (@mime_content_type($path) ?: 'image/jpeg');
+        if (! str_starts_with($mime, 'image/')) {
+            return $this->response->setStatusCode(404)->setBody('Not found');
+        }
+
+        return $this->response
+            ->setHeader('Content-Type', $mime)
+            ->setHeader('Cache-Control', 'public, max-age=3600')
+            ->setBody((string) file_get_contents($path));
+    }
+
     public function subscriptionBlocked()
     {
         return view('subscription_blocked', [

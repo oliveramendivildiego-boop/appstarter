@@ -7,6 +7,7 @@ use App\Services\BillingDocumentService;
 use App\Services\AutoReactivoConsumptionService;
 use App\Services\ConfigService;
 use App\Services\RegisterService;
+use App\Services\EnvelopeRenderService;
 use App\Services\ReportPdfLayoutService;
 use App\Services\WhatsAppService;
 use App\Models\LabotestModel;
@@ -462,6 +463,7 @@ class Registers extends SecureArea
         $publicToken    = $this->registerModel->ensurePublicAccessToken($id);
         $pdfLayout      = (new ReportPdfLayoutService())->getActiveLayoutForRender();
         $labConfig      = $this->registerService->getLabConfig();
+        $envelopeRender = new EnvelopeRenderService();
 
         return view('registers/viewreport', [
             'current_module'    => 'registers',
@@ -487,7 +489,48 @@ class Registers extends SecureArea
             'comprobante_pdf_sin_registro_pago' => $pago === null,
             'pdf_layout'        => $pdfLayout,
             'lab_config'        => $labConfig,
+            'envelope_print_available' => $envelopeRender->getPrintTemplate() !== null,
         ]);
+    }
+
+    /**
+     * Imprime el sobre con la plantilla activa y los datos del registro/reporte.
+     */
+    public function printEnvelope($id = -1)
+    {
+        $id = (int) $id;
+        if ($id < 1) {
+            return redirect()->to('registers')->with('error', 'Registro no válido');
+        }
+        if ($this->registerModel->isRegistroAnulado($id)) {
+            return redirect()->to('registers/lista')->with('error', 'La orden está anulada.');
+        }
+
+        $data = $this->registerService->prepareReportData($id);
+        if (! $data) {
+            return redirect()->to('registers')->with('error', 'Registro no encontrado');
+        }
+
+        helper('qr');
+        $reportUrl = $this->publicReportViewerUrlForQr($id);
+        $qrLayout  = (new ReportPdfLayoutService())->getPrintLayoutForRender();
+        $qrPx      = ReportPdfLayoutService::qrImagePixelSizeFromLayout($qrLayout);
+        $qrDataUri = qr_base64($reportUrl, $qrPx);
+        $emitidoEn = $this->registerService->lockReportEmitidoEnForPrintOrPdf($id);
+        $data['lab_config'] = $this->registerService->getLabConfig();
+
+        try {
+            $html = (new EnvelopeRenderService())->renderForRegistro($id, $data, $reportUrl, $qrDataUri, $emitidoEn);
+        } catch (\Throwable $e) {
+            log_message('error', 'printEnvelope {id}: {msg}', ['id' => $id, 'msg' => $e->getMessage()]);
+
+            return redirect()->to('registers/viewreport/' . $id)->with(
+                'error',
+                $e->getMessage() !== '' ? $e->getMessage() : 'No se pudo generar el sobre.'
+            );
+        }
+
+        return $this->response->setBody($html)->setContentType('text/html', 'UTF-8');
     }
 
     /**

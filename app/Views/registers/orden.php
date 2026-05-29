@@ -86,6 +86,48 @@ if ($doctorOrdenDisplay === '') {
         break-inside: avoid;
     }
 
+    /* Vertical: una etiqueta por fila, código y nombre centrados */
+    body.print-barcode-labels #barcode-labels-root:not(.barcode-layout-horizontal) {
+        text-align: center !important;
+    }
+    body.print-barcode-labels #barcode-labels-root:not(.barcode-layout-horizontal) .barcode-label-item {
+        display: flex !important;
+        flex-direction: column !important;
+        align-items: center !important;
+        justify-content: center !important;
+        width: 100% !important;
+        max-width: 100% !important;
+        text-align: center !important;
+    }
+    body.print-barcode-labels #barcode-labels-root:not(.barcode-layout-horizontal) .orden-barcode-label-svg {
+        width: 33.333% !important;
+        max-width: 33.333% !important;
+        height: auto !important;
+        margin-left: auto !important;
+        margin-right: auto !important;
+    }
+    body.print-barcode-labels #barcode-labels-root:not(.barcode-layout-horizontal) .orden-barcode-patient-name {
+        width: 33.333% !important;
+        max-width: 33.333% !important;
+        margin-left: auto !important;
+        margin-right: auto !important;
+    }
+    body.print-barcode-labels .orden-barcode-patient-name {
+        font-size: var(--barcode-label-name-size, 1.25rem) !important;
+        line-height: 1.25 !important;
+        margin-bottom: 0.2rem !important;
+    }
+    body:not(.print-barcode-labels) #print-area .orden-barcode-patient-name {
+        font-size: 1.25rem !important;
+        line-height: 1.25 !important;
+        margin-bottom: 0.25rem !important;
+    }
+    body:not(.print-barcode-labels) #print-area .orden-barcode-box {
+        display: block !important;
+        margin-left: auto !important;
+        margin-right: auto !important;
+    }
+
     /* Config: horizontal = 3 etiquetas por fila al imprimir solo códigos */
     body.print-barcode-labels #barcode-labels-root.barcode-layout-horizontal {
         display: flex !important;
@@ -188,9 +230,9 @@ if ($doctorOrdenDisplay === '') {
 
 .orden-barcode-patient-name {
     font-weight: 600;
-    font-size: 0.8rem;
-    line-height: 0.7;
-    margin-bottom: 0;
+    font-size: 1.1rem;
+    line-height: 1.2;
+    margin-bottom: 0.15rem;
 }
 </style>
 
@@ -309,8 +351,6 @@ if ($doctorOrdenDisplay === '') {
         var sz = sizePct / 100;
         var ordenBarcodeW = 236;
         var ordenBarcodeH = 86;
-        var labelBarcodeW = Math.round(236 * sz);
-        var labelBarcodeH = Math.round(86 * sz);
         function applyBarcodeDimensions(svgEl, w, h, fitCell) {
             if (!svgEl || !svgEl.getBBox) return;
             var box = svgEl.getBBox();
@@ -349,14 +389,7 @@ if ($doctorOrdenDisplay === '') {
             height: 55,
             margin: 6
         };
-        var barcodeOptsLabelsVertical = scaleBarcodeOpts({
-            format: 'CODE128',
-            displayValue: true,
-            fontSize: 14,
-            height: 55,
-            margin: 6
-        });
-        var barcodeOptsLabelsHorizontal = scaleBarcodeOpts({
+        var barcodeOptsLabels = scaleBarcodeOpts({
             format: 'CODE128',
             displayValue: true,
             fontSize: 10,
@@ -384,10 +417,13 @@ if ($doctorOrdenDisplay === '') {
                 copiesInput.value = String(n);
                 labelsRoot.innerHTML = '';
                 labelsRoot.classList.remove('barcode-layout-horizontal');
+                labelsRoot.style.setProperty(
+                    '--barcode-label-name-size',
+                    Math.max(14, Math.round(14 * sz)) + 'px'
+                );
                 if (printLayout === 'horizontal') {
                     labelsRoot.classList.add('barcode-layout-horizontal');
                 }
-                var optsLabels = printLayout === 'horizontal' ? barcodeOptsLabelsHorizontal : barcodeOptsLabelsVertical;
                 for (var i = 0; i < n; i++) {
                     var wrap = document.createElement('div');
                     wrap.className = 'text-center barcode-label-item' + (printLayout === 'horizontal' ? '' : ' mb-3');
@@ -401,13 +437,8 @@ if ($doctorOrdenDisplay === '') {
                     el.setAttribute('class', 'orden-barcode-label-svg');
                     wrap.appendChild(el);
                     labelsRoot.appendChild(wrap);
-                    JsBarcode(el, orderId, optsLabels);
-                    applyBarcodeDimensions(
-                        el,
-                        labelBarcodeW,
-                        labelBarcodeH,
-                        printLayout === 'horizontal'
-                    );
+                    JsBarcode(el, orderId, barcodeOptsLabels);
+                    applyBarcodeDimensions(el, 0, 0, true);
                 }
                 document.body.classList.add('print-barcode-labels');
                 window.print();

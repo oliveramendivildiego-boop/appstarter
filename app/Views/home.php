@@ -37,6 +37,25 @@ $alertasStock = $alertas_stock_bajo ?? ['total' => 0, 'items' => [], 'factor' =>
     </div>
 </div>
 
+<?php $tenantBroadcast = $tenant_home_broadcast ?? null; ?>
+<?php if (is_array($tenantBroadcast) && ! empty($tenantBroadcast['show'])): ?>
+<div class="card border-0 shadow-sm mb-4 overflow-hidden tenant-home-broadcast w-100">
+    <?php if (! empty($tenantBroadcast['image_url'])): ?>
+    <img src="<?= esc($tenantBroadcast['image_url'], 'attr') ?>" alt="" class="w-100 d-block tenant-home-broadcast-img" style="max-height: 420px; object-fit: contain; background: #f8f9fa;">
+    <?php endif; ?>
+    <?php if (! empty($tenantBroadcast['title']) || ! empty($tenantBroadcast['message'])): ?>
+    <div class="card-body">
+        <?php if (! empty($tenantBroadcast['title'])): ?>
+        <h5 class="fw-semibold mb-2"><?= esc($tenantBroadcast['title']) ?></h5>
+        <?php endif; ?>
+        <?php if (! empty($tenantBroadcast['message'])): ?>
+        <p class="mb-0 text-secondary"><?= nl2br(esc($tenantBroadcast['message'])) ?></p>
+        <?php endif; ?>
+    </div>
+    <?php endif; ?>
+</div>
+<?php endif; ?>
+
 <?php
 $subsTenants = $alertas_suscripcion_tenants ?? ['total' => 0, 'items' => [], 'dias_alerta' => 4];
 ?>

@@ -860,9 +860,9 @@ class LabotestModel extends Model
     }
 
     /**
-     * Actualiza cost y cost_deriv de varias pruebas (prianacategoria_id => valores).
+     * Actualiza cost, cost_deriv y/o name de varias pruebas (prianacategoria_id => valores).
      *
-     * @param array<int, array{cost?: int, cost_deriv?: int}> $items
+     * @param array<int, array{cost?: int, cost_deriv?: int, name?: string}> $items
      * @return array{updated: int, skipped: int}
      */
     public function updateCostsBulk(array $items): array
@@ -883,15 +883,47 @@ class LabotestModel extends Model
                 continue;
             }
 
+            $update = [];
+            if (array_key_exists('cost', $row)) {
+                $update['cost'] = max(0, (int) $row['cost']);
+            }
+            if (array_key_exists('cost_deriv', $row)) {
+                $update['cost_deriv'] = max(0, (int) $row['cost_deriv']);
+            }
+            if (array_key_exists('name', $row)) {
+                $name = trim((string) $row['name']);
+                if ($name === '') {
+                    $skipped++;
+                    continue;
+                }
+                $update['name'] = $name;
+            }
+            if ($update === []) {
+                $skipped++;
+                continue;
+            }
+
             $ok = $this->db->table('prianacategoria')
                 ->where('prianacategoria_id', $id)
-                ->where('(deleted = 0 OR deleted IS NULL)')
-                ->update([
-                    'cost'       => max(0, (int) ($row['cost'] ?? 0)),
-                    'cost_deriv' => max(0, (int) ($row['cost_deriv'] ?? 0)),
-                ]);
+                ->where('(deleted = 0 OR deleted IS NULL)', null, false)
+                ->update($update);
 
-            if ($ok) {
+            if (! $ok) {
+                $skipped++;
+                continue;
+            }
+
+            if ($this->db->affectedRows() > 0) {
+                $updated++;
+                continue;
+            }
+
+            $exists = $this->db->table('prianacategoria')
+                ->where('prianacategoria_id', $id)
+                ->where('(deleted = 0 OR deleted IS NULL)', null, false)
+                ->countAllResults();
+
+            if ($exists > 0) {
                 $updated++;
             } else {
                 $skipped++;
@@ -905,6 +937,34 @@ class LabotestModel extends Model
         }
 
         return ['updated' => $updated, 'skipped' => $skipped];
+    }
+
+    /**
+     * IDs de prianacategoria existentes y activos en la BD actual (tenant).
+     *
+     * @param list<int|string> $ids
+     * @return list<int>
+     */
+    public function existingPrianacategoriaIds(array $ids): array
+    {
+        $ids = array_values(array_unique(array_filter(array_map(static fn ($id) => (int) $id, $ids), static fn (int $id) => $id > 0)));
+        if ($ids === []) {
+            return [];
+        }
+
+        $rows = $this->db->table('prianacategoria')
+            ->select('prianacategoria_id')
+            ->whereIn('prianacategoria_id', $ids)
+            ->where('(deleted = 0 OR deleted IS NULL)', null, false)
+            ->get()
+            ->getResultArray();
+
+        $found = [];
+        foreach ($rows as $row) {
+            $found[] = (int) ($row['prianacategoria_id'] ?? 0);
+        }
+
+        return array_values(array_filter($found, static fn (int $id) => $id > 0));
     }
 
     /**

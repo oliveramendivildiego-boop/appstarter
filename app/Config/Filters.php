@@ -39,6 +39,7 @@ class Filters extends BaseFilters
         'pagecache'     => PageCache::class,
         'performance'   => PerformanceMetrics::class,
         'tenant_backup_web_tick' => \App\Filters\TenantBackupWebTickFilter::class,
+        'subscription_blocked'   => \App\Filters\SubscriptionBlockedFilter::class,
     ];
 
     /**
@@ -79,6 +80,7 @@ class Filters extends BaseFilters
     public array $globals = [
         'before' => [
             'tenant',
+            'subscription_blocked' => ['except' => ['login', 'login/*', 'qr/*', 'resultados', 'resultados/*', 'cron', 'cron/*']],
             'csrf' => ['except' => ['login', 'login/*', 'login/google_login', 'qr/*', 'customers/search', 'customers/suggest', 'employees/search', 'employees/suggest', 'doctors/search', 'doctors/suggest', 'doctor/search', 'registers/search_paciente', 'registers/search_doctor', 'registers/search_prueba', 'toquotes/exportPdf', 'toquotes/exportPdfById/*']],
         ],
         'after' => [
@@ -114,7 +116,7 @@ class Filters extends BaseFilters
      */
     public array $filters = [
         'auth' => [
-            'before' => ['home*', 'subscription-blocked', 'account*', 'no_access*', 'config*', 'customers*', 'doctors*', 'employees*', 'registers*', 'labotests*', 'toquotes*', 'expediente*', 'reports*', 'controlcalidad*', 'reactivos*', 'inventario*', 'equipos*', 'auditoria*', 'item_kits', 'items*', 'sales*', 'suppliers*', 'receivings*', 'giftcards*', 'seguridad*', 'doctor*'],
+            'before' => ['home*', 'subscription-blocked', 'tenant-subscription', 'tenant-subscription/*', 'account*', 'no_access*', 'config*', 'customers*', 'doctors*', 'employees*', 'registers*', 'labotests*', 'toquotes*', 'expediente*', 'reports*', 'controlcalidad*', 'reactivos*', 'inventario*', 'equipos*', 'auditoria*', 'item_kits', 'items*', 'sales*', 'suppliers*', 'receivings*', 'giftcards*', 'seguridad*', 'doctor*', 'egresos', 'egresos/*', 'leyendas', 'leyendas/*'],
             'except' => ['registers/servePdfFile/*', 'resultados', 'resultados/*', 'cron/*'],
         ],
     ];

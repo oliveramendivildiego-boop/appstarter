@@ -11,8 +11,10 @@ use App\Models\PoblacionModel;
 use App\Models\ReportePagosCierreModel;
 use App\Models\LabotestModel;
 use App\Services\RegisterService;
+use App\Services\TenantScopedDatabaseService;
 use App\Libraries\PdfService;
 use App\Libraries\ReportPdfDocument;
+use CodeIgniter\HTTP\ResponseInterface;
 
 class Reports extends SecureArea
 {
@@ -1358,7 +1360,12 @@ class Reports extends SecureArea
     public function editarCostosPruebas()
     {
         $busqueda = $this->request->getGet('busqueda') ?? '';
-        $data     = $this->reportModel->getCostosPruebas($busqueda);
+        $scope    = $this->ensureTenantCostosScope();
+        if ($scope === null) {
+            return $this->redirectTenantCostosError($busqueda);
+        }
+
+        $data = $this->reportModel->getCostosPruebas($busqueda);
 
         return view('reports/editar_costos_pruebas', [
             'title'           => 'Editar costos de pruebas',
@@ -1366,6 +1373,7 @@ class Reports extends SecureArea
             'subtitle'        => 'Actualice precio y precio derivado manual o masivamente',
             'data'            => $data,
             'busqueda'        => $busqueda,
+            'tenant_scope'    => $scope,
             'allowed_modules' => $this->allowed_modules,
             'user_info'       => $this->user_info,
         ]);
@@ -1377,8 +1385,13 @@ class Reports extends SecureArea
     public function saveCostosPruebas()
     {
         $busqueda = trim((string) ($this->request->getPost('busqueda') ?? ''));
-        $precios  = $this->request->getPost('precio');
-        $deriv    = $this->request->getPost('precio_derivado');
+        $scope    = $this->ensureTenantCostosScope();
+        if ($scope === null) {
+            return $this->redirectTenantCostosError($busqueda);
+        }
+
+        $precios = $this->request->getPost('precio');
+        $deriv   = $this->request->getPost('precio_derivado');
 
         if (! is_array($precios) || $precios === []) {
             return redirect()->to('reports/editarCostosPruebas' . ($busqueda !== '' ? '?busqueda=' . urlencode($busqueda) : ''))
@@ -1402,6 +1415,12 @@ class Reports extends SecureArea
                 ->with('error', 'No hay pruebas válidas para actualizar.');
         }
 
+        $items = $this->filterCostosItemsToTenantCatalog($items);
+        if ($items === []) {
+            return redirect()->to('reports/editarCostosPruebas' . ($busqueda !== '' ? '?busqueda=' . urlencode($busqueda) : ''))
+                ->with('error', 'Ninguna prueba pertenece al catálogo de este laboratorio.');
+        }
+
         $result = $this->labotestModel->updateCostsBulk($items);
 
         \App\Models\AuditoriaModel::log(
@@ -1412,6 +1431,8 @@ class Reports extends SecureArea
                 'actualizadas' => $result['updated'],
                 'omitidas'     => $result['skipped'],
                 'busqueda'     => $busqueda,
+                'tenant_key'   => $scope['tenant_key'],
+                'database'     => $scope['database'],
             ])
         );
 
@@ -1427,6 +1448,357 @@ class Reports extends SecureArea
         }
 
         return redirect()->to($redirect)->with('success', $msg);
+    }
+
+    /**
+     * Exportar todos los precios en CSV (GRUPO, PRUEBA, ID, PRECIO) para importación masiva.
+     */
+    public function exportCostosPruebasImport()
+    {
+        while (ob_get_level() > 0) {
+            ob_end_clean();
+        }
+
+        $scope = $this->ensureTenantCostosScope();
+        if ($scope === null) {
+            return $this->response->setStatusCode(403)->setBody('No se pudo determinar el laboratorio (tenant) activo.');
+        }
+
+        $data = $this->reportModel->getCostosPruebas('');
+
+        $filename = 'costos_' . $scope['tenant_key'] . '_' . date('Y-m-d_His') . '.csv';
+
+        $this->response->setHeader('Content-Type', 'text/csv; charset=UTF-8');
+        $this->response->setHeader('Content-Disposition', 'attachment; filename="' . $filename . '"');
+        $this->response->setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, max-age=0');
+        $this->response->setHeader('Pragma', 'no-cache');
+        $this->response->setHeader('Expires', '0');
+        $this->response->sendHeaders();
+
+        $output = fopen('php://output', 'w');
+        fwrite($output, "\xEF\xBB\xBF");
+        fputcsv($output, ['GRUPO', 'PRUEBA', 'ID', 'PRECIO', 'PRECIO_DERIVADO']);
+
+        foreach ($data as $item) {
+            $id = (int) ($item['prianacategoria_id'] ?? 0);
+            if ($id < 1) {
+                continue;
+            }
+
+            fputcsv($output, [
+                $item['categoria'] ?? '',
+                $item['prueba'] ?? '',
+                $id,
+                (int) ($item['precio'] ?? 0),
+                (int) ($item['precio_derivado'] ?? 0),
+            ]);
+        }
+
+        fclose($output);
+        exit;
+    }
+
+    /**
+     * Importar desde CSV (GRUPO, PRUEBA, ID, PRECIO). Actualiza nombre y precio por ID.
+     */
+    public function importCostosPruebas()
+    {
+        $busqueda = trim((string) ($this->request->getPost('busqueda') ?? ''));
+        $redirect = 'reports/editarCostosPruebas' . ($busqueda !== '' ? '?busqueda=' . urlencode($busqueda) : '');
+
+        $scope = $this->ensureTenantCostosScope();
+        if ($scope === null) {
+            return $this->redirectTenantCostosError($busqueda);
+        }
+
+        $postedTenant = trim((string) ($this->request->getPost('tenant_key') ?? ''));
+        if ($postedTenant !== '' && $postedTenant !== $scope['tenant_key']) {
+            return redirect()->to($redirect)->with('error', 'El archivo no corresponde a este laboratorio. Exporte e importe dentro del mismo tenant.');
+        }
+
+        $file = $this->request->getFile('costos_csv');
+        if (! $file || ! $file->isValid()) {
+            return redirect()->to($redirect)->with('error', 'Seleccione un archivo CSV válido.');
+        }
+
+        $ext = strtolower((string) $file->getExtension());
+        if (! in_array($ext, ['csv', 'txt'], true)) {
+            return redirect()->to($redirect)->with('error', 'El archivo debe ser .csv o .txt');
+        }
+
+        $tmpPath = $file->getTempName();
+        $content = is_string($tmpPath) && $tmpPath !== '' ? @file_get_contents($tmpPath) : false;
+        if (! is_string($content) || trim($content) === '') {
+            return redirect()->to($redirect)->with('error', 'El archivo está vacío.');
+        }
+
+        $content = preg_replace('/^\xEF\xBB\xBF/', '', $content) ?? $content;
+        $handle  = fopen('php://memory', 'r+');
+        if ($handle === false) {
+            return redirect()->to($redirect)->with('error', 'No se pudo leer el archivo.');
+        }
+        fwrite($handle, $content);
+        rewind($handle);
+
+        $header = fgetcsv($handle, 0, ',');
+        if (! is_array($header) || $header === []) {
+            fclose($handle);
+
+            return redirect()->to($redirect)->with('error', 'El CSV no tiene encabezados.');
+        }
+
+        $colGrupo       = null;
+        $colPrueba      = null;
+        $colId          = null;
+        $colPrecio      = null;
+        $colPrecioDeriv = null;
+        foreach ($header as $i => $label) {
+            $key = $this->normalizeCostosCsvHeader((string) $label);
+            if (in_array($key, ['GRUPO', 'CATEGORIA'], true)) {
+                $colGrupo = (int) $i;
+            } elseif (in_array($key, ['PRUEBA', 'NOMBRE', 'ANALISIS'], true)) {
+                $colPrueba = (int) $i;
+            } elseif ($key === 'ID') {
+                $colId = (int) $i;
+            } elseif ($this->isCostosCsvPrecioDerivadoHeader($key)) {
+                $colPrecioDeriv = (int) $i;
+            } elseif ($this->isCostosCsvPrecioHeader($key)) {
+                $colPrecio = (int) $i;
+            }
+        }
+
+        if ($colId === null || $colPrueba === null || $colPrecio === null) {
+            fclose($handle);
+
+            return redirect()->to($redirect)->with('error', 'El CSV debe incluir columnas PRUEBA, ID y PRECIO (PRECIO_DERIVADO y GRUPO son opcionales).');
+        }
+
+        $items      = [];
+        $errores    = [];
+        $linea      = 1;
+        while (($row = fgetcsv($handle, 0, ',')) !== false) {
+            $linea++;
+            if (! is_array($row) || $this->csvRowIsEmpty($row)) {
+                continue;
+            }
+
+            $id = (int) trim((string) ($row[$colId] ?? ''));
+            if ($id < 1) {
+                $errores[] = "Línea {$linea}: ID inválido o vacío.";
+                continue;
+            }
+
+            $nombre = trim((string) ($row[$colPrueba] ?? ''));
+            if ($nombre === '') {
+                $errores[] = "Línea {$linea}: nombre de prueba vacío.";
+                continue;
+            }
+
+            $precio = $this->parsePrecioFromCsvCell((string) ($row[$colPrecio] ?? ''));
+            if ($precio < 0) {
+                $errores[] = "Línea {$linea}: precio inválido.";
+                continue;
+            }
+
+            $rowUpdate = [
+                'name' => $nombre,
+                'cost' => $precio,
+            ];
+
+            if ($colPrecioDeriv !== null) {
+                $rawDeriv = trim((string) ($row[$colPrecioDeriv] ?? ''));
+                if ($rawDeriv === '') {
+                    $rowUpdate['cost_deriv'] = 0;
+                } else {
+                    $derivado = $this->parsePrecioFromCsvCell($rawDeriv);
+                    if ($derivado < 0) {
+                        $errores[] = "Línea {$linea}: precio derivado inválido.";
+                        continue;
+                    }
+                    $rowUpdate['cost_deriv'] = $derivado;
+                }
+            }
+
+            $items[$id] = $rowUpdate;
+        }
+        fclose($handle);
+
+        if ($items === []) {
+            $msg = 'No se encontraron filas válidas para importar.';
+            if ($errores !== []) {
+                $msg .= ' ' . implode(' ', array_slice($errores, 0, 5));
+            }
+
+            return redirect()->to($redirect)->with('error', $msg);
+        }
+
+        $antesImport = count($items);
+        $items       = $this->filterCostosItemsToTenantCatalog($items, $errores);
+        if ($items === []) {
+            $msg = 'Ningún ID del CSV existe en el catálogo de este laboratorio (' . $scope['tenant_key'] . ').';
+            if ($errores !== []) {
+                $msg .= ' ' . implode(' ', array_slice($errores, 0, 5));
+            }
+
+            return redirect()->to($redirect)->with('error', $msg);
+        }
+
+        if (count($items) < $antesImport) {
+            $errores[] = 'Se omitieron ' . ($antesImport - count($items)) . ' fila(s) con ID de otro laboratorio o inexistentes.';
+        }
+
+        $result = $this->labotestModel->updateCostsBulk($items);
+
+        \App\Models\AuditoriaModel::log(
+            'reports',
+            'importar_costos_pruebas_csv',
+            'bulk',
+            \App\Models\AuditoriaModel::detail([
+                'actualizadas' => $result['updated'],
+                'omitidas'     => $result['skipped'],
+                'filas_csv'    => count($items),
+                'errores_csv'  => count($errores),
+                'tenant_key'   => $scope['tenant_key'],
+                'database'     => $scope['database'],
+            ])
+        );
+
+        if ($result['updated'] < 1) {
+            $msg = 'No se pudo actualizar ninguna prueba.';
+            if ($errores !== []) {
+                $msg .= ' ' . implode(' ', array_slice($errores, 0, 5));
+            }
+
+            return redirect()->to($redirect)->with('error', $msg);
+        }
+
+        $msg = 'Importación completada: ' . $result['updated'] . ' prueba(s) actualizada(s).';
+        if ($result['skipped'] > 0) {
+            $msg .= ' (' . $result['skipped'] . ' omitida(s) en base de datos).';
+        }
+        if ($errores !== []) {
+            $msg .= ' Advertencias: ' . implode(' ', array_slice($errores, 0, 8));
+            if (count($errores) > 8) {
+                $msg .= ' …';
+            }
+        }
+
+        return redirect()->to($redirect)->with('success', $msg);
+    }
+
+    /**
+     * Conecta a la BD del tenant activo y recarga modelos de catálogo.
+     *
+     * @return array{tenant_key: string, database: string}|null
+     */
+    private function ensureTenantCostosScope(): ?array
+    {
+        try {
+            $scope = (new TenantScopedDatabaseService())->ensureActiveTenantConnection($this->request);
+            $this->reportModel  = model(ReportModel::class);
+            $this->labotestModel = model(LabotestModel::class);
+
+            return $scope;
+        } catch (\Throwable $e) {
+            log_message('error', 'ensureTenantCostosScope: ' . $e->getMessage());
+
+            return null;
+        }
+    }
+
+    private function redirectTenantCostosError(string $busqueda = ''): ResponseInterface
+    {
+        $redirect = 'reports/editarCostosPruebas' . ($busqueda !== '' ? '?busqueda=' . urlencode($busqueda) : '');
+
+        return redirect()->to($redirect)->with(
+            'error',
+            'No se pudo usar la base de datos de su laboratorio. Acceda desde la URL de su tenant (ej. quantum.local) o con el tenant correcto en sesión.'
+        );
+    }
+
+    /**
+     * Solo IDs del catálogo del tenant actual (evita mezclar datos entre laboratorios).
+     *
+     * @param array<int, array<string, mixed>> $items
+     * @param list<string>                   $errores
+     * @return array<int, array<string, mixed>>
+     */
+    private function filterCostosItemsToTenantCatalog(array $items, array &$errores = []): array
+    {
+        if ($items === []) {
+            return [];
+        }
+
+        $allowed = array_flip($this->labotestModel->existingPrianacategoriaIds(array_keys($items)));
+        $filtered = [];
+
+        foreach ($items as $id => $row) {
+            $id = (int) $id;
+            if (isset($allowed[$id])) {
+                $filtered[$id] = $row;
+                continue;
+            }
+            $errores[] = "ID {$id} no pertenece al catálogo de este laboratorio.";
+        }
+
+        return $filtered;
+    }
+
+    /**
+     * Normaliza nombre de columna CSV de costos.
+     */
+    private function normalizeCostosCsvHeader(string $label): string
+    {
+        $label = strtoupper(trim($label));
+        $label = str_replace(['Á', 'É', 'Í', 'Ó', 'Ú', 'Ü', 'Ñ'], ['A', 'E', 'I', 'O', 'U', 'U', 'N'], $label);
+        // Sin guiones ni espacios: PRECIO_DERIVADO y "Precio derivado" → PRECIODERIVADO
+        $label = preg_replace('/[^A-Z0-9]/', '', $label) ?? $label;
+
+        return $label;
+    }
+
+    private function isCostosCsvPrecioHeader(string $key): bool
+    {
+        return in_array($key, ['PRECIO', 'COSTO', 'COST'], true);
+    }
+
+    private function isCostosCsvPrecioDerivadoHeader(string $key): bool
+    {
+        return in_array($key, ['PRECIODERIVADO', 'PRECODERIVADO', 'COSTDERIV', 'COSTODERIV', 'DERIVADO', 'REFERENCIA'], true)
+            || str_contains($key, 'DERIVADO')
+            || str_contains($key, 'DERIV');
+    }
+
+    /**
+     * @param list<string|null> $row
+     */
+    private function csvRowIsEmpty(array $row): bool
+    {
+        foreach ($row as $cell) {
+            if (trim((string) $cell) !== '') {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    /**
+     * Extrae entero de celda de precio (ej. "60 Bs", "$ 120", "200").
+     */
+    private function parsePrecioFromCsvCell(string $raw): int
+    {
+        $raw = trim($raw);
+        if ($raw === '') {
+            return -1;
+        }
+        if (preg_match('/(\d+(?:[.,]\d+)?)/', $raw, $m) !== 1) {
+            return -1;
+        }
+
+        $num = str_replace(',', '.', $m[1]);
+
+        return max(0, (int) round((float) $num));
     }
 
     /**

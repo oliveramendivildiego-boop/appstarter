@@ -89,6 +89,8 @@ class Employees extends PersonController
         $employee_id = ($employee_id === -1 || $employee_id === '-1') ? -1 : (int) $employee_id;
         $employeeInfo = $this->employeeModel->getInfo($employee_id);
 
+        $this->ensureModulesExist(array_keys(self::MODULOS_DISPONIBLES));
+
         $allFromDb = \Config\Database::connect()->table('modules')->orderBy('sort', 'ASC')->get()->getResult();
         $byId = [];
         foreach ($allFromDb as $m) {
@@ -208,11 +210,12 @@ class Employees extends PersonController
             $personId = (int) $result;
             $permIds = $this->request->getPost('permissions') ?? [];
             $permIds = is_array($permIds) ? $permIds : [];
+            $this->ensureModulesExist($permIds);
             $db = \Config\Database::connect();
             $db->table('permissions')->where('person_id', $personId)->delete();
             foreach ($permIds as $modId) {
                 $modId = trim($modId);
-                if ($modId !== '') {
+                if ($modId !== '' && array_key_exists($modId, self::MODULOS_DISPONIBLES)) {
                     $db->table('permissions')->insert(['module_id' => $modId, 'person_id' => $personId]);
                 }
             }
@@ -266,6 +269,38 @@ class Employees extends PersonController
             'success' => true,
             'message' => lang('Employees.employees_confirm_delete'),
         ]);
+    }
+
+    /**
+     * Registra en dom_modules los módulos que faltan antes de asignar permisos (FK dom_permissions_ibfk_2).
+     *
+     * @param list<string> $moduleIds
+     */
+    private function ensureModulesExist(array $moduleIds): void
+    {
+        $moduleIds = array_values(array_filter(array_map('trim', $moduleIds)));
+        if ($moduleIds === []) {
+            return;
+        }
+
+        $db = \Config\Database::connect();
+        $sort = 0;
+        foreach (self::MODULOS_DISPONIBLES as $moduleId => $label) {
+            if (! in_array($moduleId, $moduleIds, true)) {
+                $sort++;
+                continue;
+            }
+            $exists = $db->table('modules')->where('module_id', $moduleId)->countAllResults();
+            if ($exists === 0) {
+                $db->table('modules')->insert([
+                    'module_id'     => $moduleId,
+                    'name_lang_key' => 'module_' . $moduleId,
+                    'desc_lang_key' => 'module_' . $moduleId . '_desc',
+                    'sort'          => $moduleId === 'home' ? 1 : (100 + $sort),
+                ]);
+            }
+            $sort++;
+        }
     }
 
     /**

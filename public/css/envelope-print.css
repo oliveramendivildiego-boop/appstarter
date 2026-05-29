@@ -1,0 +1,215 @@
+/* Página de impresión de sobres (misma matriz que envelope-editor.css) */
+
+body.envelope-print-body {
+    margin: 0;
+    padding: 12px;
+    font-family: Arial, Helvetica, sans-serif;
+    font-size: 10pt;
+    background: #e9ecef;
+}
+
+.envelope-print-toolbar {
+    max-width: 900px;
+    margin: 0 auto 12px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    align-items: center;
+    justify-content: center;
+}
+
+.envelope-print-btn {
+    display: inline-block;
+    padding: 0.45rem 0.9rem;
+    border-radius: 6px;
+    font-size: 0.9rem;
+    text-decoration: none;
+    cursor: pointer;
+    border: 1px solid transparent;
+}
+
+.envelope-print-btn-primary {
+    background: #0d6efd;
+    color: #fff;
+    border-color: #0d6efd;
+}
+
+.envelope-print-btn-secondary {
+    background: #fff;
+    color: #495057;
+    border-color: #ced4da;
+}
+
+.envelope-print-stage {
+    display: flex;
+    justify-content: center;
+    align-items: flex-start;
+    min-height: 60vh;
+}
+
+.envelope-print-wrap {
+    width: auto;
+    max-width: 100%;
+}
+
+.envelope-print-stage .envelope-size-preview {
+    margin: 0 auto;
+    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.12);
+}
+
+.envelope-print-empty {
+    max-width: 520px;
+    margin: 2rem auto;
+}
+
+/* Vista en pantalla antes de imprimir: igual que el editor */
+.envelope-print-stage .envelope-preview-inner {
+    display: grid;
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    box-sizing: border-box;
+}
+
+.envelope-print-stage .envelope-preview-cell {
+    display: flex;
+    box-sizing: border-box;
+    width: 100%;
+    height: 100%;
+    min-height: 0;
+    min-width: 0;
+    position: relative;
+}
+
+.envelope-print-stage .envelope-preview-stack {
+    display: flex;
+    width: 100%;
+    flex: 0 0 auto;
+}
+
+.envelope-print-stage .envelope-preview-stack-item {
+    display: flex;
+    flex: 0 0 auto;
+    box-sizing: border-box;
+}
+
+@media print {
+    html,
+    body.envelope-print-body {
+        margin: 0 !important;
+        padding: 0 !important;
+        background: #fff !important;
+        width: 100%;
+        height: 100%;
+    }
+
+    .no-print,
+    .envelope-print-toolbar {
+        display: none !important;
+    }
+
+    .envelope-print-stage {
+        min-height: 0;
+        display: block;
+        margin: 0;
+        padding: 0;
+    }
+
+    .envelope-print-wrap,
+    .envelope-editor-wrap.envelope-print-wrap {
+        width: auto;
+        max-width: none;
+        margin: 0;
+        padding: 0;
+    }
+
+    .envelope-print-stage .envelope-size-preview {
+        margin: 0 auto !important;
+        border: none !important;
+        box-shadow: none !important;
+        page-break-inside: avoid;
+        break-inside: avoid;
+        position: relative !important;
+        overflow: hidden;
+        /* dimensiones mm definidas en <style> del documento */
+    }
+
+    .envelope-print-stage .envelope-preview-inner {
+        display: grid !important;
+        position: absolute !important;
+        inset: 0 !important;
+        width: 100% !important;
+        height: 100% !important;
+        box-sizing: border-box !important;
+        padding: 2% !important;
+        align-content: stretch !important;
+    }
+
+    .envelope-print-stage .envelope-preview-cell {
+        display: flex !important;
+        box-sizing: border-box !important;
+        width: 100% !important;
+        height: 100% !important;
+        min-height: 0 !important;
+        min-width: 0 !important;
+        position: relative !important;
+        overflow: hidden !important;
+    }
+
+    .envelope-print-stage .envelope-preview-stack {
+        display: flex !important;
+        width: 100% !important;
+        flex: 0 0 auto !important;
+        min-height: 0 !important;
+    }
+
+    .envelope-print-stage .envelope-preview-stack-column {
+        flex-direction: column !important;
+    }
+
+    .envelope-print-stage .envelope-preview-stack-row {
+        flex-direction: row !important;
+    }
+
+    .envelope-print-stage .envelope-preview-stack-item {
+        display: flex !important;
+        flex: 0 0 auto !important;
+        box-sizing: border-box !important;
+        overflow: visible !important;
+    }
+
+    .envelope-preview-content {
+        max-width: 100%;
+    }
+
+    .envelope-barcode-block {
+        display: block !important;
+        width: 100% !important;
+        text-align: center !important;
+    }
+
+    .envelope-barcode-box {
+        display: inline-block !important;
+        line-height: 0 !important;
+        max-width: 100% !important;
+        margin-left: auto !important;
+        margin-right: auto !important;
+    }
+
+    .envelope-barcode-raster,
+    .envelope-barcode-value-text {
+        display: block !important;
+        visibility: visible !important;
+        max-width: 100% !important;
+        margin-left: auto !important;
+        margin-right: auto !important;
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+    }
+
+    .envelope-barcode-fallback {
+        display: block !important;
+        visibility: visible !important;
+    }
+}

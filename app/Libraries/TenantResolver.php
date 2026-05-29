@@ -193,6 +193,14 @@ class TenantResolver
         $this->resetSharedDefaultDatabaseConnection();
     }
 
+    /**
+     * Fuerza un nuevo conector `default` (p. ej. export/import CSV del tenant activo).
+     */
+    public function forceReconnectDefaultDatabase(): void
+    {
+        $this->resetSharedDefaultDatabaseConnection();
+    }
+
     private function resetSharedDefaultDatabaseConnection(): void
     {
         $connections = DbConfig::getConnections();

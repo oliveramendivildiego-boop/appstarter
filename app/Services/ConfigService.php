@@ -1082,6 +1082,14 @@ class ConfigService
     }
 
     /**
+     * Sube imagen a public/images/ (uso desde servicios que no persisten en app_config del tenant activo).
+     */
+    public function uploadPublicConfigImage(UploadedFile $file, string $basenamePrefix): ?string
+    {
+        return $this->processConfigImageUpload($file, $basenamePrefix);
+    }
+
+    /**
      * Sube imagen validada a public/images/ con prefijo de nombre conocido (logo, sello, firma).
      */
     protected function processConfigImageUpload(UploadedFile $file, string $basenamePrefix): ?string

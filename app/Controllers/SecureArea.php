@@ -39,23 +39,10 @@ abstract class SecureArea extends BaseController
         }
 
         $subSvc = new TenantSubscriptionService();
-        if (! $ghostSupport && $subSvc->isChildTenantSubscriptionExpired()) {
+        if (! $ghostSupport && $subSvc->isSubscriptionAccessBlocked()) {
             helper('url');
             $uri = trim((string) uri_string(), '/');
-            $allowed = [
-                'subscription-blocked',
-                'home/logout',
-                'tenant-subscription',
-                'status/checkEmployeeActive',
-            ];
-            $ok = false;
-            foreach ($allowed as $prefix) {
-                if ($uri === $prefix || str_starts_with($uri, $prefix . '/')) {
-                    $ok = true;
-                    break;
-                }
-            }
-            if (! $ok) {
+            if (! TenantSubscriptionService::isUriAllowedWhenSubscriptionBlocked($uri)) {
                 throw new RedirectException(redirect()->to(site_url('subscription-blocked')));
             }
         }

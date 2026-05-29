@@ -80,7 +80,13 @@
     <li class="nav-item" role="presentation">
         <a class="nav-link" href="<?= site_url('config/pdf-templates') ?>"><i class="fa-solid fa-file-pdf me-1"></i><?= lang('Config.config_pdf_templates_tab') ?></a>
     </li>
+    <li class="nav-item" role="presentation">
+        <button class="nav-link <?= $activeTab === 'sobres' ? 'active' : '' ?>" id="tab-sobres-btn" data-bs-toggle="tab" data-bs-target="#tab-sobres" type="button" role="tab"><i class="fa-solid fa-envelope me-1"></i>Sobres</button>
+    </li>
     <?php if (($can_manage_tenants ?? false)): ?>
+    <li class="nav-item" role="presentation">
+        <button class="nav-link <?= $activeTab === 'tenant_home_broadcast' ? 'active' : '' ?>" id="tab-tenant-home-broadcast-btn" data-bs-toggle="tab" data-bs-target="#tab-tenant-home-broadcast" type="button" role="tab">Aviso en dashboard</button>
+    </li>
     <li class="nav-item" role="presentation">
         <button class="nav-link <?= $activeTab === 'tenant_subscriptions' ? 'active' : '' ?>" id="tab-tenant-subscriptions-btn" data-bs-toggle="tab" data-bs-target="#tab-tenant-subscriptions" type="button" role="tab">Pagos / suscripciones</button>
     </li>
@@ -757,6 +763,78 @@
     <?php endif; ?>
 
     <?php if (($can_manage_tenants ?? false)): ?>
+    <?php $thb = $tenant_home_broadcast_form ?? []; ?>
+    <div class="tab-pane fade <?= $activeTab === 'tenant_home_broadcast' ? 'show active' : '' ?>" id="tab-tenant-home-broadcast" role="tabpanel">
+        <div class="card shadow-sm">
+            <div class="card-header bg-primary text-white">
+                <h5 class="mb-0"><i class="fa-solid fa-bullhorn me-2"></i>Aviso en el dashboard de laboratorios cliente</h5>
+            </div>
+            <div class="card-body">
+                <p class="text-muted small mb-3">
+                    Solo el tenant principal puede configurar este aviso. Los laboratorios cliente lo verán en la parte superior de <strong>/home</strong> (dashboard).
+                    Puede incluir imagen, título, mensaje o los tres. Use <strong>Desactivar aviso</strong> para ocultarlo sin borrar el contenido.
+                </p>
+                <?= form_open_multipart(site_url('config/saveTenantHomeBroadcast'), ['class' => 'row g-3', 'id' => 'form-tenant-home-broadcast']) ?>
+                <div class="col-12">
+                    <div class="form-check">
+                        <input type="checkbox" class="form-check-input" id="tenant_home_broadcast_enabled"
+                            name="<?= esc(\App\Services\TenantHomeBroadcastService::KEY_ENABLED) ?>" value="1"
+                            <?= (($thb['enabled'] ?? '0') === '1') ? 'checked' : '' ?>>
+                        <label class="form-check-label" for="tenant_home_broadcast_enabled">Mostrar aviso en el dashboard de los laboratorios cliente</label>
+                    </div>
+                    <div class="form-check mt-2">
+                        <input type="checkbox" class="form-check-input" id="tenant_home_broadcast_disable"
+                            name="tenant_home_broadcast_disable" value="1"
+                            <?= ! empty($thb['is_inactive']) ? 'checked' : '' ?>>
+                        <label class="form-check-label text-muted" for="tenant_home_broadcast_disable">Desactivar aviso (ocultar en todos los laboratorios cliente)</label>
+                    </div>
+                </div>
+                <script>
+                (function () {
+                    var show = document.getElementById('tenant_home_broadcast_enabled');
+                    var hide = document.getElementById('tenant_home_broadcast_disable');
+                    if (!show || !hide) return;
+                    show.addEventListener('change', function () { if (show.checked) hide.checked = false; });
+                    hide.addEventListener('change', function () { if (hide.checked) show.checked = false; });
+                })();
+                </script>
+                <div class="col-md-6">
+                    <label class="form-label" for="tenant_home_broadcast_title">Título (opcional)</label>
+                    <input type="text" class="form-control" id="tenant_home_broadcast_title"
+                        name="<?= esc(\App\Services\TenantHomeBroadcastService::KEY_TITLE) ?>"
+                        maxlength="200" value="<?= esc($thb['title'] ?? '') ?>" placeholder="Ej. Mantenimiento programado">
+                </div>
+                <div class="col-12">
+                    <label class="form-label" for="tenant_home_broadcast_message">Mensaje (opcional)</label>
+                    <textarea class="form-control" id="tenant_home_broadcast_message" rows="4" maxlength="4000"
+                        name="<?= esc(\App\Services\TenantHomeBroadcastService::KEY_MESSAGE) ?>"
+                        placeholder="Texto visible para todos los usuarios del laboratorio en su inicio."><?= esc($thb['message'] ?? '') ?></textarea>
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label" for="tenant_home_broadcast_image_file">Imagen (opcional)</label>
+                    <input type="file" class="form-control" id="tenant_home_broadcast_image_file"
+                        name="tenant_home_broadcast_image" accept="image/jpeg,image/png,image/gif,image/webp">
+                    <div class="form-text">JPG, PNG, GIF o WebP. Máximo 2 MB.</div>
+                </div>
+                <?php if (! empty($thb['image_url'])): ?>
+                <div class="col-12">
+                    <p class="small text-muted mb-1">Imagen actual:</p>
+                    <img src="<?= esc($thb['image_url'], 'attr') ?>" alt="" class="img-thumbnail mb-2" style="max-height: 160px;">
+                    <div class="form-check">
+                        <input type="checkbox" class="form-check-input" id="tenant_home_broadcast_remove_image"
+                            name="tenant_home_broadcast_remove_image" value="1">
+                        <label class="form-check-label" for="tenant_home_broadcast_remove_image">Quitar imagen actual</label>
+                    </div>
+                </div>
+                <?php endif; ?>
+                <div class="col-12">
+                    <button type="submit" class="btn btn-primary"><i class="fa-solid fa-save me-1"></i>Guardar aviso</button>
+                </div>
+                <?= form_close() ?>
+            </div>
+        </div>
+    </div>
+
     <div class="tab-pane fade <?= $activeTab === 'tenant_subscriptions' ? 'show active' : '' ?>" id="tab-tenant-subscriptions" role="tabpanel">
         <div class="card shadow-sm">
             <div class="card-header bg-success text-white">
@@ -1015,6 +1093,16 @@
         <?= form_close() ?>
             </div>
         </div>
+    </div>
+
+    <!-- Pestaña: Sobres -->
+    <div class="tab-pane fade <?= $activeTab === 'sobres' ? 'show active' : '' ?>" id="tab-sobres" role="tabpanel">
+        <?= view('config/tab_sobres', [
+            'envelope_templates'          => $envelope_templates ?? [],
+            'active_envelope_template_id' => $active_envelope_template_id ?? 0,
+            'print_envelope_template_id'  => $print_envelope_template_id ?? 0,
+            'envelope_db_error'           => $envelope_db_error ?? null,
+        ]) ?>
     </div>
 
     <!-- Pestaña: WhatsApp -->

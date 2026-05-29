@@ -107,8 +107,12 @@ $pageTitle = $this->renderSection('title');
 <body class="ynex-theme">
 <?= view('partial/ghost_tenant_banner') ?>
 <?php
+helper('url');
 $subAlert = \App\Services\TenantSubscriptionService::alertForCurrentSession();
-if ($subAlert !== null):
+$subBlockedUri = trim((string) uri_string(), '/');
+$hideSubAlertOnBlockedPage = $subBlockedUri === 'subscription-blocked'
+    || str_starts_with($subBlockedUri, 'subscription-blocked/');
+if ($subAlert !== null && ! $hideSubAlertOnBlockedPage):
     $subAlertClass = ($subAlert['type'] ?? '') === 'danger' ? 'danger' : 'warning';
 ?>
 <div class="alert alert-<?= esc($subAlertClass) ?> <?= ($subAlertClass === 'danger') ? '' : 'alert-dismissible' ?> fade show rounded-0 mb-0 border-0 text-center small" role="alert">
