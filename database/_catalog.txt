@@ -1,0 +1,211 @@
+Bactereologia|169|ADA|c=0|pri=7|sec=0
+Bactereologia|168|Baciloscopia|c=0|pri=1|sec=0
+Bactereologia|170|BK Seriado|c=0|pri=1|sec=0
+Bactereologia|158|Citologia Nasal|c=0|pri=1|sec=0
+Bactereologia|163|Coprocultivo|c=0|pri=0|sec=0
+Bactereologia|204|Cultivo de hongos|c=0|pri=1|sec=0
+Bactereologia|205|Cultivo p/TB|c=0|pri=1|sec=0
+Bactereologia|206|Cultivos de liquidos|c=0|pri=1|sec=0
+Bactereologia|165|Espermocultivo|c=0|pri=1|sec=0
+Bactereologia|161|Ex. Directo|c=0|pri=1|sec=0
+Bactereologia|166|H. Faringeo cultivo|c=0|pri=1|sec=0
+Bactereologia|164|Hemocultivo X3|c=0|pri=1|sec=0
+Bactereologia|167|S. Faringea cultivo|c=0|pri=1|sec=0
+Bactereologia|160|T. de Zielh Nielsen|c=0|pri=1|sec=0
+Bactereologia|159|T. Gram|c=0|pri=1|sec=0
+Bactereologia|162|Urocultivo|c=0|pri=1|sec=0
+Coagulograma|24|APTT|c=0|pri=7|sec=0
+Coagulograma|231|Coagulograma|c=1|pri=0|sec=7
+Coagulograma|7|Fibrinogeno|c=0|pri=7|sec=0
+Coagulograma|22|Tiempo de Coagulacion|c=0|pri=7|sec=0
+Coagulograma|23|Tiempo de Protrombina -INR|c=0|pri=7|sec=0
+Coagulograma|4|Tiempo de Sangria|c=0|pri=7|sec=0
+Electrolitos|57|Calcio|c=0|pri=7|sec=0
+Electrolitos|53|Cloro|c=0|pri=7|sec=0
+Electrolitos|56|Fosforo|c=0|pri=7|sec=0
+Electrolitos|55|Magnesio|c=0|pri=7|sec=0
+Electrolitos|52|Potasio|c=0|pri=7|sec=0
+Electrolitos|54|Sodio|c=0|pri=7|sec=0
+Elisa Hepatitis|127|AgsHB|c=0|pri=1|sec=0
+Elisa Hepatitis|218|HAV IgG|c=0|pri=1|sec=0
+Elisa Hepatitis|125|HAV IgM|c=0|pri=1|sec=0
+Elisa Hepatitis|219|HbcAg|c=0|pri=1|sec=0
+Elisa Hepatitis|220|HbsAg imunocromatografia|c=0|pri=1|sec=0
+Elisa Hepatitis|126|HVC Hepatitis C|c=0|pri=1|sec=0
+Elisas|112|CHAGAS|c=0|pri=1|sec=0
+Elisas|115|Cisticercosis|c=0|pri=1|sec=0
+Elisas|213|Citomegalovirus IgG Elisa|c=0|pri=1|sec=0
+Elisas|214|Citomegalovirus IgM Elisa|c=0|pri=1|sec=0
+Elisas|116|Clamidya Ig G|c=0|pri=1|sec=0
+Elisas|117|Clamidya Ig M|c=0|pri=1|sec=0
+Elisas|122|H. Pilory IgA|c=0|pri=1|sec=0
+Elisas|121|H. Pilory IgG|c=0|pri=1|sec=0
+Elisas|123|H. Pilory IgM|c=0|pri=1|sec=0
+Elisas|118|Herpes 1 Ig G|c=0|pri=1|sec=0
+Elisas|119|Herpes 1 Ig M|c=0|pri=1|sec=0
+Elisas|215|Herpes ll (2) IgM|c=0|pri=1|sec=0
+Elisas|216|Herpes ll(2) IgG|c=0|pri=1|sec=0
+Elisas|120|HIV 1 y 2|c=0|pri=1|sec=0
+Elisas|124|IgE|c=0|pri=7|sec=0
+Elisas|207|Rotavirus Inmunocromatografia|c=0|pri=1|sec=0
+Elisas|113|Toxos. Ig G|c=0|pri=1|sec=0
+Elisas|114|Toxos. Ig M|c=0|pri=1|sec=0
+Elisas Inmunologia|128|ANA|c=0|pri=1|sec=0
+Elisas Inmunologia|133|ANA PROFILE|c=0|pri=1|sec=0
+Elisas Inmunologia|132|ANCA C|c=0|pri=1|sec=0
+Elisas Inmunologia|131|ANCA P|c=0|pri=1|sec=0
+Elisas Inmunologia|130|ANTI CCP|c=0|pri=1|sec=0
+Elisas Inmunologia|129|ANTI-DNA|c=0|pri=1|sec=0
+Elisas Inmunologia|223|Rubeola IgG|c=0|pri=1|sec=0
+Elisas Inmunologia|224|Rubeola IgM|c=0|pri=1|sec=0
+Elisas Inmunologia|134|Vitamina D|c=0|pri=7|sec=0
+Heces|187|Adenovirus|c=0|pri=1|sec=0
+Heces|181|Ag. H. Pylori|c=0|pri=1|sec=0
+Heces|208|Amebas/Giardia/Criptoscopidium|c=0|pri=1|sec=0
+Heces|178|Coproparasitologico|c=1|pri=0|sec=5
+Heces|186|Elisa Amebas|c=0|pri=1|sec=0
+Heces|185|Elisa Giardia|c=0|pri=1|sec=0
+Heces|179|Lienteria|c=0|pri=1|sec=0
+Heces|183|Moco Fecal|c=0|pri=1|sec=0
+Heces|182|PH y azucares reductores|c=0|pri=1|sec=0
+Heces|5|Rotavirus|c=0|pri=1|sec=0
+Heces|180|Sangre Oculta|c=0|pri=1|sec=0
+Heces|6|Seriado x 3|c=0|pri=1|sec=0
+Heces|184|Test. de Graham/Oixurus|c=0|pri=1|sec=0
+Hematologia|202|Celulas LE|c=0|pri=1|sec=0
+Hematologia|20|Coombs Directo|c=0|pri=1|sec=0
+Hematologia|19|Coombs Indirecto|c=0|pri=1|sec=0
+Hematologia|14|Dimero D|c=0|pri=1|sec=0
+Hematologia|15|Eritrosedimentacion|c=0|pri=10|sec=0
+Hematologia|13|Gota Gruesa|c=0|pri=1|sec=0
+Hematologia|21|Grupo Sanguineo|c=0|pri=1|sec=0
+Hematologia|17|Hematocrito|c=0|pri=10|sec=0
+Hematologia|3|Hemoglobina|c=0|pri=10|sec=0
+Hematologia|2|Hemograma|c=1|pri=0|sec=122
+Hematologia|16|Indices Hematimetricos|c=0|pri=7|sec=0
+Hematologia|1|Plaquetas|c=0|pri=7|sec=0
+Hematologia|18|Recuento de Reticulocitos|c=0|pri=7|sec=0
+Hematologia|203|Troponina|c=0|pri=7|sec=0
+Hormonas|95|ACTH|c=0|pri=7|sec=0
+Hormonas|222|Alfa Feto Proteína AFP|c=0|pri=7|sec=0
+Hormonas|96|Cortisol AM.|c=0|pri=7|sec=0
+Hormonas|217|Cortisol PM|c=0|pri=7|sec=0
+Hormonas|97|Estradiol|c=0|pri=14|sec=0
+Hormonas|98|FSH|c=0|pri=7|sec=0
+Hormonas|106|H. de Crecimiento|c=0|pri=7|sec=0
+Hormonas|100|hCG Cuantitativa|c=0|pri=7|sec=0
+Hormonas|101|Insulina Basal am|c=0|pri=7|sec=0
+Hormonas|102|Insulina Post. Estimulo pm|c=0|pri=1|sec=0
+Hormonas|99|LH|c=0|pri=7|sec=0
+Hormonas|103|Progesterona|c=0|pri=7|sec=0
+Hormonas|104|Prolactina|c=0|pri=7|sec=0
+Hormonas|221|Testosterona Libre|c=0|pri=14|sec=0
+Hormonas|105|Testosterona Total|c=0|pri=14|sec=0
+Inmunohematologia|236|Analisis de Prueba|c=1|pri=0|sec=0
+Inmunohematologia|232|Tipificación 345 sanguínea|c=1|pri=0|sec=2
+Liquidos Biologicos|146|Citoquimicos LCR|c=0|pri=1|sec=0
+Liquidos Biologicos|151|Espermograma|c=0|pri=1|sec=0
+Liquidos Biologicos|149|Liq. Ascitico|c=0|pri=1|sec=0
+Liquidos Biologicos|150|Liq. Pericardico|c=0|pri=1|sec=0
+Liquidos Biologicos|147|Liq. Pleural|c=0|pri=1|sec=0
+Liquidos Biologicos|148|Liq. Sinovial|c=0|pri=1|sec=0
+Marcadores Tumorales|84|Alfa Feto Proteina|c=0|pri=7|sec=0
+Marcadores Tumorales|85|Beta 2-Microglobulina|c=0|pri=7|sec=0
+Marcadores Tumorales|89|CA 125|c=0|pri=7|sec=0
+Marcadores Tumorales|87|CA 15-3|c=0|pri=7|sec=0
+Marcadores Tumorales|88|CA 19-9|c=0|pri=7|sec=0
+Marcadores Tumorales|90|CEA|c=0|pri=7|sec=0
+Marcadores Tumorales|94|GGT|c=0|pri=7|sec=0
+Marcadores Tumorales|93|hCG Cuantitativa|c=0|pri=7|sec=0
+Marcadores Tumorales|86|LDH|c=0|pri=7|sec=0
+Marcadores Tumorales|92|PSA Libre|c=0|pri=7|sec=0
+Marcadores Tumorales|91|PSA Total|c=0|pri=14|sec=0
+Nefelometria|140|C3|c=0|pri=7|sec=0
+Nefelometria|141|C4|c=0|pri=7|sec=0
+Nefelometria|145|CI Inactivador|c=0|pri=7|sec=0
+Nefelometria|144|IgA|c=0|pri=7|sec=0
+Nefelometria|142|IgG|c=0|pri=7|sec=0
+Nefelometria|143|IgM|c=0|pri=7|sec=0
+Nuevo Perfil|237|Nuevo analisis|c=0|pri=1|sec=0
+Orina|175|Amilasuria|c=0|pri=7|sec=0
+Orina|176|Clearence de Creatinina|c=0|pri=7|sec=0
+Orina|173|Creatinuria 24Hr|c=0|pri=7|sec=0
+Orina|174|hCG|c=0|pri=7|sec=0
+Orina|171|Parcial de Orina|c=0|pri=1|sec=0
+Orina|172|Proteinuria 24Hr|c=0|pri=7|sec=0
+Otros|227|17 OH-Progesterona|c=0|pri=1|sec=0
+Otros|212|Amonio|c=0|pri=7|sec=0
+Otros|193|De Granulacion de Basofilos (Orina)|c=0|pri=1|sec=0
+Otros|192|De Granulacion de Basofilos (Sangre)|c=0|pri=1|sec=0
+Otros|211|Gasometria|c=0|pri=7|sec=0
+Panel de Alergias|190|Alimenticio|c=0|pri=1|sec=0
+Panel de Alergias|191|Pediatrico|c=0|pri=1|sec=0
+Panel de Alergias|189|Respiratorio|c=0|pri=1|sec=0
+Panel de Alergias|188|Respiratorio / Alimenticio|c=0|pri=1|sec=0
+Perfil Cardiaco|68|CK|c=0|pri=10|sec=0
+Perfil Cardiaco|69|CK-MB|c=0|pri=7|sec=0
+Perfil Cardiaco|73|Fibrinogeno|c=0|pri=7|sec=0
+Perfil Cardiaco|71|GOT|c=0|pri=7|sec=0
+Perfil Cardiaco|70|LDH|c=0|pri=7|sec=0
+Perfil Cardiaco|74|Perfil Lipidico|c=0|pri=1|sec=0
+Perfil Cardiaco|72|Troponina|c=0|pri=7|sec=0
+Perfil de hierro|27|% de Saturacion|c=0|pri=7|sec=0
+Perfil de hierro|28|Ferritina|c=0|pri=10|sec=0
+Perfil de hierro|25|Hierro Serico|c=0|pri=10|sec=0
+Perfil de hierro|210|Perfil de Hierro|c=0|pri=1|sec=0
+Perfil de hierro|26|Transferrina - TIBC|c=0|pri=7|sec=0
+Perfil Hepatico|65|F. Alcalina|c=0|pri=7|sec=0
+Perfil Hepatico|66|GGT|c=0|pri=7|sec=0
+Perfil Hepatico|64|GOT/AST|c=0|pri=7|sec=0
+Perfil Hepatico|63|GPT/ALT|c=0|pri=7|sec=0
+Perfil Hepatico|67|T. de Protrombina - INR|c=0|pri=7|sec=0
+Perfil Lipidico|60|C-HDL|c=0|pri=10|sec=0
+Perfil Lipidico|61|C-LDL|c=0|pri=7|sec=0
+Perfil Lipidico|59|Colesterol|c=0|pri=7|sec=0
+Perfil Lipidico|58|Trigliceridos|c=0|pri=7|sec=0
+Perfil Lipidico|62|VLDL|c=0|pri=7|sec=0
+Perfil Tiroideo|107|T3|c=0|pri=7|sec=0
+Perfil Tiroideo|108|T4|c=0|pri=7|sec=0
+Perfil Tiroideo|111|T4 Libre|c=0|pri=7|sec=0
+Perfil Tiroideo|109|TSH|c=0|pri=7|sec=0
+Perfil Tiroideo|110|TSH Neonatal|c=0|pri=7|sec=0
+Pruebas Gastricas|154|Antiendomisio IgA|c=0|pri=1|sec=0
+Pruebas Gastricas|155|Antiendomisio IgM|c=0|pri=1|sec=0
+Pruebas Gastricas|153|Antigliadina IgA|c=0|pri=1|sec=0
+Pruebas Gastricas|152|Antigliadina IgM|c=0|pri=1|sec=0
+Pruebas Gastricas|156|Antitransglutaminasa IgA|c=0|pri=1|sec=0
+Pruebas Gastricas|157|Antitransglutaminasa IgM|c=0|pri=1|sec=0
+Quimica Sanguinea|30|Acido Urico|c=0|pri=10|sec=0
+Quimica Sanguinea|31|Albumina|c=0|pri=7|sec=0
+Quimica Sanguinea|29|Amilasa|c=0|pri=7|sec=0
+Quimica Sanguinea|35|Bilirrubina (D,I,T)|c=0|pri=7|sec=0
+Quimica Sanguinea|226|BUN|c=0|pri=7|sec=0
+Quimica Sanguinea|37|Colinesterasa|c=0|pri=7|sec=0
+Quimica Sanguinea|36|Creatinina|c=0|pri=9|sec=0
+Quimica Sanguinea|40|Fosfatasa Acida|c=0|pri=7|sec=0
+Quimica Sanguinea|44|Glicemia|c=0|pri=7|sec=0
+Quimica Sanguinea|33|Globulina|c=0|pri=7|sec=0
+Quimica Sanguinea|45|Gluc. Post. Prandial|c=0|pri=7|sec=0
+Quimica Sanguinea|47|Hb. Glicosilada|c=0|pri=7|sec=0
+Quimica Sanguinea|48|LDH|c=0|pri=7|sec=0
+Quimica Sanguinea|209|Lipasa|c=0|pri=7|sec=0
+Quimica Sanguinea|51|Nitrogeno Ureico|c=0|pri=7|sec=0
+Quimica Sanguinea|32|Proteinas|c=0|pri=7|sec=0
+Quimica Sanguinea|34|R A/G|c=0|pri=7|sec=0
+Quimica Sanguinea|46|Tolerancia de Glucosa|c=0|pri=7|sec=0
+Quimica Sanguinea|50|Urea|c=0|pri=7|sec=0
+Radioinmunoensayo|135|C3|c=0|pri=7|sec=0
+Radioinmunoensayo|136|C4|c=0|pri=7|sec=0
+Radioinmunoensayo|139|IgA|c=0|pri=7|sec=0
+Radioinmunoensayo|137|IgG|c=0|pri=7|sec=0
+Radioinmunoensayo|138|IgM|c=0|pri=7|sec=0
+Serologia|75|ASTO|c=0|pri=7|sec=0
+Serologia|78|Brucella Abortus (Latex)|c=0|pri=1|sec=0
+Serologia|77|Celulas LE (Latex)|c=0|pri=1|sec=0
+Serologia|225|hCG|c=0|pri=14|sec=0
+Serologia|81|Latex RA (Latex)|c=0|pri=7|sec=0
+Serologia|76|Mononucelosis (Latex)|c=0|pri=1|sec=0
+Serologia|80|PCR (Latex)|c=0|pri=7|sec=0
+Serologia|79|Proteus (Latex)|c=0|pri=1|sec=0
+Serologia|83|Reaccion de Widal|c=0|pri=1|sec=0
+Serologia|82|VDRL-RPR|c=0|pri=1|sec=0

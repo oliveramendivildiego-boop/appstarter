@@ -89,6 +89,8 @@ $routes->get('reports/exportCostosPruebas', 'Reports::exportCostosPruebas');
 $routes->get('reports/valoresReferencia', 'Reports::valoresReferencia');
 $routes->get('reports/valoresReferenciaPdf', 'Reports::valoresReferenciaPdf');
 $routes->get('reports/exportValoresReferencia', 'Reports::exportValoresReferencia');
+$routes->get('reports/exportValoresReferenciaImport', 'Reports::exportValoresReferenciaImport');
+$routes->post('reports/importValoresReferencia', 'Reports::importValoresReferencia');
 $routes->get('reports/catalogoPruebas', 'Reports::catalogoPruebas');
 $routes->get('reports/catalogoPruebasPdf', 'Reports::catalogoPruebasPdf');
 $routes->get('reports/catalogoPruebasExcel', 'Reports::catalogoPruebasExcel');

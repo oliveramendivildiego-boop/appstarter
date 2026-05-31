@@ -1,0 +1,1521 @@
+﻿TIPO,ID_PRUEBA,GRUPO,PRUEBA,ANALISIS,ID_REFERENCIA,POBLACION_ID,SEXO,VALOR_MIN,VALOR_MAX,UNIDAD,ID_TIPO_RESULTADO
+compuesto,2,Hematologia,Hemograma,Eritrocitos,34,6,ambos,3000,6300,10?/mm³,3
+compuesto,2,Hematologia,Hemograma,Eritrocitos,42,7,ambos,2700,5300,"x 10³/ml³",3
+compuesto,2,Hematologia,Hemograma,Eritrocitos,50,8,ambos,3900,5300,"x 10³/ml³",3
+compuesto,2,Hematologia,Hemograma,Eritrocitos,58,9,ambos,4000,5200,"x 10³/ml³",3
+compuesto,2,Hematologia,Hemograma,Eritrocitos,159,10,femenino,4144,5264,"x 10³/ml³",3
+compuesto,2,Hematologia,Hemograma,Eritrocitos,66,10,masculino,4480,6048,"x 10³/ml³",3
+compuesto,2,Hematologia,Hemograma,Eritrocitos,89,11,femenino,4144,5264,"x 10³/ml³",3
+compuesto,2,Hematologia,Hemograma,Eritrocitos,74,11,masculino,4480,6048,"x 10³/ml³",3
+compuesto,2,Hematologia,Hemograma,Eritrocitos,104,12,masculino,4144,5264,"x 10³/ml³",3
+compuesto,2,Hematologia,Hemograma,Eritrocitos,158,12,femenino,4144,6048,"x 10³/ml³",3
+compuesto,2,Hematologia,Hemograma,Eritrocitos,34,6,ambos,5500,8500,"x 10³/ml³",3
+compuesto,2,Hematologia,Hemograma,Eritrocitos,42,7,ambos,5500,8500,"x 10³/ml³",3
+compuesto,2,Hematologia,Hemograma,Eritrocitos,50,8,ambos,5500,8500,"x 10³/ml³",3
+compuesto,2,Hematologia,Hemograma,Eritrocitos,58,9,ambos,5500,8500,"x 10³/ml³",3
+compuesto,2,Hematologia,Hemograma,Eritrocitos,66,10,ambos,5500,8500,"x 10³/ml³",3
+compuesto,2,Hematologia,Hemograma,Eritrocitos,74,11,ambos,5500,8500,"x 10³/ml³",3
+compuesto,2,Hematologia,Hemograma,Eritrocitos,89,11,ambos,5500,8500,"x 10³/ml³",3
+compuesto,2,Hematologia,Hemograma,Eritrocitos,104,12,ambos,5500,8500,"x 10³/ml³",3
+compuesto,2,Hematologia,Hemograma,Eritrocitos,158,12,ambos,5500,8500,"x 10³/ml³",3
+compuesto,2,Hematologia,Hemograma,Eritrocitos,159,10,ambos,5500,8500,"x 10³/ml³",3
+compuesto,2,Hematologia,Hemograma,Eritrocitos,34,6,ambos,5000,10000,"x 10³/ml³",3
+compuesto,2,Hematologia,Hemograma,Eritrocitos,42,7,ambos,5000,10000,"x 10³/ml³",3
+compuesto,2,Hematologia,Hemograma,Eritrocitos,50,8,ambos,5000,10000,"x 10³/ml³",3
+compuesto,2,Hematologia,Hemograma,Eritrocitos,58,9,ambos,5000,10000,"x 10³/ml³",3
+compuesto,2,Hematologia,Hemograma,Eritrocitos,66,10,ambos,5000,10000,"x 10³/ml³",3
+compuesto,2,Hematologia,Hemograma,Eritrocitos,74,11,ambos,5000,10000,"x 10³/ml³",3
+compuesto,2,Hematologia,Hemograma,Eritrocitos,89,11,ambos,5000,10000,"x 10³/ml³",3
+compuesto,2,Hematologia,Hemograma,Eritrocitos,104,12,ambos,5000,10000,"x 10³/ml³",3
+compuesto,2,Hematologia,Hemograma,Eritrocitos,158,12,ambos,5000,10000,"x 10³/ml³",3
+compuesto,2,Hematologia,Hemograma,Eritrocitos,159,10,ambos,5000,10000,"x 10³/ml³",3
+compuesto,2,Hematologia,Hemograma,Hematocrito,36,6,ambos,31,66,%,3
+compuesto,2,Hematologia,Hemograma,Hematocrito,44,7,ambos,28,39,%,3
+compuesto,2,Hematologia,Hemograma,Hematocrito,52,8,ambos,34,40,%,3
+compuesto,2,Hematologia,Hemograma,Hematocrito,60,9,ambos,35,45,%,3
+compuesto,2,Hematologia,Hemograma,Hematocrito,154,10,femenino,36,47,%,3
+compuesto,2,Hematologia,Hemograma,Hematocrito,68,10,masculino,37,50,%,3
+compuesto,2,Hematologia,Hemograma,Hematocrito,91,11,femenino,36,47,%,3
+compuesto,2,Hematologia,Hemograma,Hematocrito,76,11,masculino,37,50,%,3
+compuesto,2,Hematologia,Hemograma,Hematocrito,155,12,femenino,36,47,%,3
+compuesto,2,Hematologia,Hemograma,Hematocrito,106,12,masculino,37,50,%,3
+compuesto,2,Hematologia,Hemograma,Hematocrito,36,6,ambos,37,55,%,3
+compuesto,2,Hematologia,Hemograma,Hematocrito,44,7,ambos,37,55,%,3
+compuesto,2,Hematologia,Hemograma,Hematocrito,52,8,ambos,37,55,%,3
+compuesto,2,Hematologia,Hemograma,Hematocrito,60,9,ambos,37,55,%,3
+compuesto,2,Hematologia,Hemograma,Hematocrito,68,10,ambos,37,55,%,3
+compuesto,2,Hematologia,Hemograma,Hematocrito,76,11,ambos,37,55,%,3
+compuesto,2,Hematologia,Hemograma,Hematocrito,91,11,ambos,37,55,%,3
+compuesto,2,Hematologia,Hemograma,Hematocrito,106,12,ambos,37,55,%,3
+compuesto,2,Hematologia,Hemograma,Hematocrito,154,10,ambos,37,55,%,3
+compuesto,2,Hematologia,Hemograma,Hematocrito,155,12,ambos,37,55,%,3
+simple,17,Hematologia,Hematocrito,Hematocrito,132,6,ambos,37,55,%,3
+simple,17,Hematologia,Hematocrito,Hematocrito,133,7,ambos,37,55,%,3
+simple,17,Hematologia,Hematocrito,Hematocrito,134,8,ambos,37,55,%,3
+simple,17,Hematologia,Hematocrito,Hematocrito,135,9,ambos,37,55,%,3
+simple,17,Hematologia,Hematocrito,Hematocrito,136,10,ambos,37,55,%,3
+simple,17,Hematologia,Hematocrito,Hematocrito,137,10,ambos,37,55,%,3
+simple,17,Hematologia,Hematocrito,Hematocrito,138,11,ambos,37,55,%,3
+simple,17,Hematologia,Hematocrito,Hematocrito,139,11,ambos,37,55,%,3
+simple,17,Hematologia,Hematocrito,Hematocrito,140,12,ambos,37,55,%,3
+simple,17,Hematologia,Hematocrito,Hematocrito,141,12,ambos,37,55,%,3
+compuesto,2,Hematologia,Hemograma,Hematocrito,36,6,ambos,30,45,%,3
+compuesto,2,Hematologia,Hemograma,Hematocrito,44,7,ambos,30,45,%,3
+compuesto,2,Hematologia,Hemograma,Hematocrito,52,8,ambos,30,45,%,3
+compuesto,2,Hematologia,Hemograma,Hematocrito,60,9,ambos,30,45,%,3
+compuesto,2,Hematologia,Hemograma,Hematocrito,68,10,ambos,30,45,%,3
+compuesto,2,Hematologia,Hemograma,Hematocrito,76,11,ambos,30,45,%,3
+compuesto,2,Hematologia,Hemograma,Hematocrito,91,11,ambos,30,45,%,3
+compuesto,2,Hematologia,Hemograma,Hematocrito,106,12,ambos,30,45,%,3
+compuesto,2,Hematologia,Hemograma,Hematocrito,154,10,ambos,30,45,%,3
+compuesto,2,Hematologia,Hemograma,Hematocrito,155,12,ambos,30,45,%,3
+simple,17,Hematologia,Hematocrito,Hematocrito,132,6,ambos,30,45,%,3
+simple,17,Hematologia,Hematocrito,Hematocrito,133,7,ambos,30,45,%,3
+simple,17,Hematologia,Hematocrito,Hematocrito,134,8,ambos,30,45,%,3
+simple,17,Hematologia,Hematocrito,Hematocrito,135,9,ambos,30,45,%,3
+simple,17,Hematologia,Hematocrito,Hematocrito,136,10,ambos,30,45,%,3
+simple,17,Hematologia,Hematocrito,Hematocrito,137,10,ambos,30,45,%,3
+simple,17,Hematologia,Hematocrito,Hematocrito,138,11,ambos,30,45,%,3
+simple,17,Hematologia,Hematocrito,Hematocrito,139,11,ambos,30,45,%,3
+simple,17,Hematologia,Hematocrito,Hematocrito,140,12,ambos,30,45,%,3
+simple,17,Hematologia,Hematocrito,Hematocrito,141,12,ambos,30,45,%,3
+compuesto,2,Hematologia,Hemograma,Hemoglobina,35,6,ambos,10,19.5,Gr%,3
+compuesto,2,Hematologia,Hemograma,Hemoglobina,43,7,ambos,9,13.5,Gr%,3
+compuesto,2,Hematologia,Hemograma,Hemoglobina,51,8,ambos,11.5,13.5,Gr%,3
+compuesto,2,Hematologia,Hemograma,Hemoglobina,59,9,ambos,11.5,15.5,Gr%,3
+compuesto,2,Hematologia,Hemograma,Hemoglobina,157,10,femenino,11,16,Gr%,3
+compuesto,2,Hematologia,Hemograma,Hemoglobina,67,10,masculino,13,18,Gr%,3
+compuesto,2,Hematologia,Hemograma,Hemoglobina,90,11,femenino,11,16,Gr%,3
+compuesto,2,Hematologia,Hemograma,Hemoglobina,75,11,masculino,13,18,Gr%,3
+compuesto,2,Hematologia,Hemograma,Hemoglobina,156,12,femenino,11,16,Gr%,3
+compuesto,2,Hematologia,Hemograma,Hemoglobina,105,12,masculino,13,18,Gr%,3
+compuesto,2,Hematologia,Hemograma,Hemoglobina,35,6,ambos,12,18,Gr%,3
+compuesto,2,Hematologia,Hemograma,Hemoglobina,43,7,ambos,12,18,Gr%,3
+compuesto,2,Hematologia,Hemograma,Hemoglobina,51,8,ambos,12,18,Gr%,3
+compuesto,2,Hematologia,Hemograma,Hemoglobina,59,9,ambos,12,18,Gr%,3
+compuesto,2,Hematologia,Hemograma,Hemoglobina,67,10,ambos,12,18,Gr%,3
+compuesto,2,Hematologia,Hemograma,Hemoglobina,75,11,ambos,12,18,Gr%,3
+simple,3,Hematologia,Hemoglobina,Hemoglobina,90,9,ambos,12,18,Gr%,3
+compuesto,2,Hematologia,Hemograma,Hemoglobina,105,12,ambos,12,18,Gr%,3
+compuesto,2,Hematologia,Hemograma,Hemoglobina,156,12,ambos,12,18,Gr%,3
+compuesto,2,Hematologia,Hemograma,Hemoglobina,157,10,ambos,12,18,Gr%,3
+simple,3,Hematologia,Hemoglobina,Hemoglobina,87,6,ambos,12,18,Gr%,3
+simple,3,Hematologia,Hemoglobina,Hemoglobina,88,7,ambos,12,18,Gr%,3
+simple,3,Hematologia,Hemoglobina,Hemoglobina,89,8,ambos,12,18,Gr%,3
+simple,3,Hematologia,Hemoglobina,Hemoglobina,91,10,ambos,12,18,Gr%,3
+simple,3,Hematologia,Hemoglobina,Hemoglobina,92,10,ambos,12,18,Gr%,3
+simple,3,Hematologia,Hemoglobina,Hemoglobina,93,11,ambos,12,18,Gr%,3
+simple,3,Hematologia,Hemoglobina,Hemoglobina,94,11,ambos,12,18,Gr%,3
+simple,3,Hematologia,Hemoglobina,Hemoglobina,95,12,ambos,12,18,Gr%,3
+simple,3,Hematologia,Hemoglobina,Hemoglobina,96,12,ambos,12,18,Gr%,3
+compuesto,2,Hematologia,Hemograma,Hemoglobina,35,6,ambos,8,15,Gr%,3
+compuesto,2,Hematologia,Hemograma,Hemoglobina,43,7,ambos,8,15,Gr%,3
+compuesto,2,Hematologia,Hemograma,Hemoglobina,51,8,ambos,8,15,Gr%,3
+compuesto,2,Hematologia,Hemograma,Hemoglobina,59,9,ambos,8,15,Gr%,3
+compuesto,2,Hematologia,Hemograma,Hemoglobina,67,10,ambos,8,15,Gr%,3
+compuesto,2,Hematologia,Hemograma,Hemoglobina,75,11,ambos,8,15,Gr%,3
+simple,3,Hematologia,Hemoglobina,Hemoglobina,90,9,ambos,8,15,Gr%,3
+compuesto,2,Hematologia,Hemograma,Hemoglobina,105,12,ambos,8,15,Gr%,3
+compuesto,2,Hematologia,Hemograma,Hemoglobina,156,12,ambos,8,15,Gr%,3
+compuesto,2,Hematologia,Hemograma,Hemoglobina,157,10,ambos,8,15,Gr%,3
+simple,3,Hematologia,Hemoglobina,Hemoglobina,87,6,ambos,8,15,Gr%,3
+simple,3,Hematologia,Hemoglobina,Hemoglobina,88,7,ambos,8,15,Gr%,3
+simple,3,Hematologia,Hemoglobina,Hemoglobina,89,8,ambos,8,15,Gr%,3
+simple,3,Hematologia,Hemoglobina,Hemoglobina,91,10,ambos,8,15,Gr%,3
+simple,3,Hematologia,Hemoglobina,Hemoglobina,92,10,ambos,8,15,Gr%,3
+simple,3,Hematologia,Hemoglobina,Hemoglobina,93,11,ambos,8,15,Gr%,3
+simple,3,Hematologia,Hemoglobina,Hemoglobina,94,11,ambos,8,15,Gr%,3
+simple,3,Hematologia,Hemoglobina,Hemoglobina,95,12,ambos,8,15,Gr%,3
+simple,3,Hematologia,Hemoglobina,Hemoglobina,96,12,ambos,8,15,Gr%,3
+compuesto,2,Hematologia,Hemograma,Leucocitos,38,6,ambos,5000,21000,10³/mm³,3
+compuesto,2,Hematologia,Hemograma,Leucocitos,46,7,ambos,6000,17000,10³/mm³,3
+compuesto,2,Hematologia,Hemograma,Leucocitos,54,8,ambos,5000,14500,10³/mm³,3
+compuesto,2,Hematologia,Hemograma,Leucocitos,62,9,ambos,4500,13500,10³/mm³,3
+compuesto,2,Hematologia,Hemograma,Leucocitos,70,10,ambos,5000,10000,10³/mm³,3
+compuesto,2,Hematologia,Hemograma,Leucocitos,81,11,ambos,5000,10000,10³/mm³,3
+compuesto,2,Hematologia,Hemograma,Leucocitos,96,12,ambos,5000,10000,10³/mm³,3
+compuesto,2,Hematologia,Hemograma,Leucocitos,38,6,ambos,6000,16000,10³/mm³,3
+compuesto,2,Hematologia,Hemograma,Leucocitos,46,7,ambos,6000,16000,10³/mm³,3
+compuesto,2,Hematologia,Hemograma,Leucocitos,54,8,ambos,6000,16000,10³/mm³,3
+compuesto,2,Hematologia,Hemograma,Leucocitos,62,9,ambos,6000,16000,10³/mm³,3
+compuesto,2,Hematologia,Hemograma,Leucocitos,70,10,ambos,6000,16000,10³/mm³,3
+compuesto,2,Hematologia,Hemograma,Leucocitos,81,11,ambos,6000,16000,10³/mm³,3
+compuesto,2,Hematologia,Hemograma,Leucocitos,96,12,ambos,6000,16000,10³/mm³,3
+compuesto,2,Hematologia,Hemograma,Leucocitos,38,6,ambos,5500,19000,10³/mm³,3
+compuesto,2,Hematologia,Hemograma,Leucocitos,46,7,ambos,5500,19000,10³/mm³,3
+compuesto,2,Hematologia,Hemograma,Leucocitos,54,8,ambos,5500,19000,10³/mm³,3
+compuesto,2,Hematologia,Hemograma,Leucocitos,62,9,ambos,5500,19000,10³/mm³,3
+compuesto,2,Hematologia,Hemograma,Leucocitos,70,10,ambos,5500,19000,10³/mm³,3
+compuesto,2,Hematologia,Hemograma,Leucocitos,81,11,ambos,5500,19000,10³/mm³,3
+compuesto,2,Hematologia,Hemograma,Leucocitos,96,12,ambos,5500,19000,10³/mm³,3
+compuesto,2,Hematologia,Hemograma,Cayados,23,6,ambos,0,2,%,3
+compuesto,2,Hematologia,Hemograma,Cayados,130,7,ambos,0,2,%,3
+compuesto,2,Hematologia,Hemograma,Cayados,131,9,ambos,0,2,%,3
+compuesto,2,Hematologia,Hemograma,Cayados,132,10,ambos,0,2,%,3
+compuesto,2,Hematologia,Hemograma,Cayados,133,11,ambos,0,2,%,3
+compuesto,2,Hematologia,Hemograma,Cayados,134,8,ambos,0,2,%,3
+compuesto,2,Hematologia,Hemograma,Cayados,135,12,ambos,0,2,%,3
+compuesto,2,Hematologia,Hemograma,Cayados,23,6,ambos,0,2,%,3
+compuesto,2,Hematologia,Hemograma,Cayados,130,7,ambos,0,2,%,3
+compuesto,2,Hematologia,Hemograma,Cayados,131,9,ambos,0,2,%,3
+compuesto,2,Hematologia,Hemograma,Cayados,132,10,ambos,0,2,%,3
+compuesto,2,Hematologia,Hemograma,Cayados,133,11,ambos,0,2,%,3
+compuesto,2,Hematologia,Hemograma,Cayados,134,8,ambos,0,2,%,3
+compuesto,2,Hematologia,Hemograma,Cayados,135,12,ambos,0,2,%,3
+compuesto,2,Hematologia,Hemograma,Cayados,23,6,ambos,0,2,%,3
+compuesto,2,Hematologia,Hemograma,Cayados,130,7,ambos,0,2,%,3
+compuesto,2,Hematologia,Hemograma,Cayados,131,9,ambos,0,2,%,3
+compuesto,2,Hematologia,Hemograma,Cayados,132,10,ambos,0,2,%,3
+compuesto,2,Hematologia,Hemograma,Cayados,133,11,ambos,0,2,%,3
+compuesto,2,Hematologia,Hemograma,Cayados,134,8,ambos,0,2,%,3
+compuesto,2,Hematologia,Hemograma,Cayados,135,12,ambos,0,2,%,3
+compuesto,2,Hematologia,Hemograma,Neutrófilos,39,6,ambos,36,55,%,3
+compuesto,2,Hematologia,Hemograma,Neutrófilos,48,7,ambos,39,55,%,3
+compuesto,2,Hematologia,Hemograma,Neutrófilos,55,8,ambos,39,55,%,3
+compuesto,2,Hematologia,Hemograma,Neutrófilos,63,9,ambos,55,60,%,3
+compuesto,2,Hematologia,Hemograma,Neutrófilos,71,10,ambos,57,65,%,3
+compuesto,2,Hematologia,Hemograma,Neutrófilos,82,11,ambos,57,65,%,3
+compuesto,2,Hematologia,Hemograma,Neutrófilos,97,12,ambos,57,65,%,3
+compuesto,2,Hematologia,Hemograma,Neutrófilos,39,6,ambos,50,71,%,3
+compuesto,2,Hematologia,Hemograma,Neutrófilos,48,7,ambos,50,71,%,3
+compuesto,2,Hematologia,Hemograma,Neutrófilos,55,8,ambos,50,71,%,3
+compuesto,2,Hematologia,Hemograma,Neutrófilos,63,9,ambos,50,71,%,3
+compuesto,2,Hematologia,Hemograma,Neutrófilos,71,10,ambos,50,71,%,3
+compuesto,2,Hematologia,Hemograma,Neutrófilos,82,11,ambos,50,71,%,3
+compuesto,2,Hematologia,Hemograma,Neutrófilos,97,12,ambos,50,71,%,3
+compuesto,2,Hematologia,Hemograma,Neutrófilos,39,6,ambos,45,63,%,3
+compuesto,2,Hematologia,Hemograma,Neutrófilos,48,7,ambos,45,63,%,3
+compuesto,2,Hematologia,Hemograma,Neutrófilos,55,8,ambos,45,63,%,3
+compuesto,2,Hematologia,Hemograma,Neutrófilos,63,9,ambos,45,63,%,3
+compuesto,2,Hematologia,Hemograma,Neutrófilos,71,10,ambos,45,63,%,3
+compuesto,2,Hematologia,Hemograma,Neutrófilos,82,11,ambos,45,63,%,3
+compuesto,2,Hematologia,Hemograma,Neutrófilos,97,12,ambos,45,63,%,3
+compuesto,2,Hematologia,Hemograma,Eosinófilos,85,6,ambos,0,3,%,3
+compuesto,2,Hematologia,Hemograma,Eosinófilos,136,7,ambos,0,3,%,3
+compuesto,2,Hematologia,Hemograma,Eosinófilos,138,8,ambos,0,3,%,3
+compuesto,2,Hematologia,Hemograma,Eosinófilos,139,9,ambos,0,3,%,3
+compuesto,2,Hematologia,Hemograma,Eosinófilos,100,10,ambos,0,3,%,3
+compuesto,2,Hematologia,Hemograma,Eosinofilos,137,11,ambos,0,3,%,3
+compuesto,2,Hematologia,Hemograma,Eosinofilos,13,12,ambos,0,3,%,3
+compuesto,2,Hematologia,Hemograma,Eosinofilos,13,12,ambos,1,9,%,3
+compuesto,2,Hematologia,Hemograma,Eosinófilos,85,6,ambos,1,9,%,3
+compuesto,2,Hematologia,Hemograma,Eosinófilos,100,10,ambos,1,9,%,3
+compuesto,2,Hematologia,Hemograma,Eosinófilos,136,7,ambos,1,9,%,3
+compuesto,2,Hematologia,Hemograma,Eosinofilos,137,11,ambos,1,9,%,3
+compuesto,2,Hematologia,Hemograma,Eosinófilos,138,8,ambos,1,9,%,3
+compuesto,2,Hematologia,Hemograma,Eosinófilos,139,9,ambos,1,9,%,3
+compuesto,2,Hematologia,Hemograma,Eosinofilos,13,12,ambos,2,8,%,3
+compuesto,2,Hematologia,Hemograma,Eosinófilos,85,6,ambos,2,8,%,3
+compuesto,2,Hematologia,Hemograma,Eosinófilos,100,10,ambos,2,8,%,3
+compuesto,2,Hematologia,Hemograma,Eosinófilos,136,7,ambos,2,8,%,3
+compuesto,2,Hematologia,Hemograma,Eosinofilos,137,11,ambos,2,8,%,3
+compuesto,2,Hematologia,Hemograma,Eosinófilos,138,8,ambos,2,8,%,3
+compuesto,2,Hematologia,Hemograma,Eosinófilos,139,9,ambos,2,8,%,3
+compuesto,2,Hematologia,Hemograma,Basófilos,86,15,ambos,0,1,%,3
+compuesto,2,Hematologia,Hemograma,Linfocitos,40,6,ambos,50,55,%,3
+compuesto,2,Hematologia,Hemograma,Linfocitos,47,7,ambos,45,52,%,3
+compuesto,2,Hematologia,Hemograma,Linfocitos,56,8,ambos,30,45,%,3
+compuesto,2,Hematologia,Hemograma,Linfocitos,64,9,ambos,30,45,%,3
+compuesto,2,Hematologia,Hemograma,Linfocitos,72,10,ambos,25,35,%,3
+compuesto,2,Hematologia,Hemograma,Linfocitos,83,11,ambos,25,35,%,3
+compuesto,2,Hematologia,Hemograma,Linfocitos,98,12,ambos,35,25,%,3
+compuesto,2,Hematologia,Hemograma,Linfocitos,40,6,ambos,17,31,%,3
+compuesto,2,Hematologia,Hemograma,Linfocitos,47,7,ambos,17,31,%,3
+compuesto,2,Hematologia,Hemograma,Linfocitos,56,8,ambos,17,31,%,3
+compuesto,2,Hematologia,Hemograma,Linfocitos,64,9,ambos,17,31,%,3
+compuesto,2,Hematologia,Hemograma,Linfocitos,72,10,ambos,17,31,%,3
+compuesto,2,Hematologia,Hemograma,Linfocitos,83,11,ambos,17,31,%,3
+compuesto,2,Hematologia,Hemograma,Linfocitos,98,12,ambos,17,31,%,3
+compuesto,2,Hematologia,Hemograma,Linfocitos,40,6,ambos,27,37,%,3
+compuesto,2,Hematologia,Hemograma,Linfocitos,47,7,ambos,27,37,%,3
+compuesto,2,Hematologia,Hemograma,Linfocitos,56,8,ambos,27,37,%,3
+compuesto,2,Hematologia,Hemograma,Linfocitos,64,9,ambos,27,37,%,3
+compuesto,2,Hematologia,Hemograma,Linfocitos,72,10,ambos,27,37,%,3
+compuesto,2,Hematologia,Hemograma,Linfocitos,83,11,ambos,27,37,%,3
+compuesto,2,Hematologia,Hemograma,Linfocitos,98,12,ambos,27,37,%,3
+compuesto,2,Hematologia,Hemograma,Monocitos,84,6,ambos,5,10,%,3
+compuesto,2,Hematologia,Hemograma,Monocitos,99,7,ambos,5,10,%,3
+compuesto,2,Hematologia,Hemograma,Monocitos,140,8,ambos,1,7,%,3
+compuesto,2,Hematologia,Hemograma,Monocitos,141,9,ambos,1,7,%,3
+compuesto,2,Hematologia,Hemograma,Monocitos,142,10,ambos,1,7,%,3
+compuesto,2,Hematologia,Hemograma,Monocitos,12,11,ambos,1,7,%,3
+compuesto,2,Hematologia,Hemograma,Monocitos,143,12,ambos,1,7,%,3
+compuesto,2,Hematologia,Hemograma,Monocitos,12,11,ambos,1,9,%,3
+compuesto,2,Hematologia,Hemograma,Monocitos,84,6,ambos,1,9,%,3
+compuesto,2,Hematologia,Hemograma,Monocitos,99,7,ambos,1,9,%,3
+compuesto,2,Hematologia,Hemograma,Monocitos,140,8,ambos,1,9,%,3
+compuesto,2,Hematologia,Hemograma,Monocitos,141,9,ambos,1,9,%,3
+compuesto,2,Hematologia,Hemograma,Monocitos,142,10,ambos,1,9,%,3
+compuesto,2,Hematologia,Hemograma,Monocitos,143,12,ambos,1,9,%,3
+compuesto,2,Hematologia,Hemograma,Monocitos,12,11,ambos,0,5,%,3
+compuesto,2,Hematologia,Hemograma,Monocitos,84,6,ambos,0,5,%,3
+compuesto,2,Hematologia,Hemograma,Monocitos,99,7,ambos,0,5,%,3
+compuesto,2,Hematologia,Hemograma,Monocitos,140,8,ambos,0,5,%,3
+compuesto,2,Hematologia,Hemograma,Monocitos,141,9,ambos,0,5,%,3
+compuesto,2,Hematologia,Hemograma,Monocitos,142,10,ambos,0,5,%,3
+compuesto,2,Hematologia,Hemograma,Monocitos,143,12,ambos,0,5,%,3
+compuesto,2,Hematologia,Hemograma,VCM,17,6,ambos,88,126,fL,3
+compuesto,2,Hematologia,Hemograma,VCM,45,7,ambos,70,86,fL,3
+compuesto,2,Hematologia,Hemograma,VCM,53,8,ambos,75,87,fL,3
+compuesto,2,Hematologia,Hemograma,VCM,61,9,ambos,77,95,fL,3
+compuesto,2,Hematologia,Hemograma,VCM,69,10,ambos,82,92,fL,3
+compuesto,2,Hematologia,Hemograma,VCM,77,11,ambos,82,92,fL,3
+compuesto,2,Hematologia,Hemograma,VCM,92,12,ambos,82,92,fL,3
+compuesto,2,Hematologia,Hemograma,VCM,17,6,ambos,60,77,fL,3
+compuesto,2,Hematologia,Hemograma,VCM,45,7,ambos,60,77,fL,3
+compuesto,2,Hematologia,Hemograma,VCM,53,8,ambos,60,77,fL,3
+compuesto,2,Hematologia,Hemograma,VCM,61,9,ambos,60,77,fL,3
+compuesto,2,Hematologia,Hemograma,VCM,69,10,ambos,60,77,fL,3
+compuesto,2,Hematologia,Hemograma,VCM,77,11,ambos,60,77,fL,3
+compuesto,2,Hematologia,Hemograma,VCM,92,12,ambos,60,77,fL,3
+compuesto,2,Hematologia,Hemograma,VCM,17,6,ambos,39,55,fL,3
+compuesto,2,Hematologia,Hemograma,VCM,45,7,ambos,39,55,fL,3
+compuesto,2,Hematologia,Hemograma,VCM,53,8,ambos,39,55,fL,3
+compuesto,2,Hematologia,Hemograma,VCM,61,9,ambos,39,55,fL,3
+compuesto,2,Hematologia,Hemograma,VCM,69,10,ambos,39,55,fL,3
+compuesto,2,Hematologia,Hemograma,VCM,77,11,ambos,39,55,fL,3
+compuesto,2,Hematologia,Hemograma,VCM,92,12,ambos,39,55,fL,3
+compuesto,2,Hematologia,Hemograma,HCM,14,6,ambos,28,40,pg,3
+compuesto,2,Hematologia,Hemograma,HCM,15,7,ambos,23,31,pg,3
+compuesto,2,Hematologia,Hemograma,HCM,150,8,ambos,24,30,pg,3
+compuesto,2,Hematologia,Hemograma,HCM,151,9,ambos,25,33,pg,3
+compuesto,2,Hematologia,Hemograma,HCM,153,10,ambos,27,31,pg,3
+compuesto,2,Hematologia,Hemograma,HCM,149,11,ambos,27,31,pg,3
+compuesto,2,Hematologia,Hemograma,HCM,152,12,ambos,27,31,pg,3
+compuesto,2,Hematologia,Hemograma,CHCM,79,15,ambos,19.5,24.5,pg,3
+compuesto,2,Hematologia,Hemograma,CHCM,79,15,ambos,12.5,17.5,pg,3
+simple,16,Hematologia,"Indices Hematimetricos","Indices Hematimetricos",125,6,ambos,28,38,g/dL,3
+simple,16,Hematologia,"Indices Hematimetricos","Indices Hematimetricos",126,7,ambos,28,38,g/dL,3
+simple,16,Hematologia,"Indices Hematimetricos","Indices Hematimetricos",127,8,ambos,31,37,g/dL,3
+simple,16,Hematologia,"Indices Hematimetricos","Indices Hematimetricos",128,9,ambos,31,37,g/dL,3
+simple,16,Hematologia,"Indices Hematimetricos","Indices Hematimetricos",129,10,ambos,31,36,g/dL,3
+simple,16,Hematologia,"Indices Hematimetricos","Indices Hematimetricos",130,11,ambos,31,36,g/dL,3
+simple,16,Hematologia,"Indices Hematimetricos","Indices Hematimetricos",131,12,ambos,31,36,g/dL,3
+compuesto,2,Hematologia,Hemograma,CHCM,79,15,ambos,32,36,g/dL,3
+compuesto,2,Hematologia,Hemograma,CHCM,79,15,ambos,30,36,g/dL,3
+compuesto,2,Hematologia,Hemograma,Plaquetas,41,6,ambos,150,350,"x 10³/ml³",3
+compuesto,2,Hematologia,Hemograma,Plaquetas,49,7,ambos,150,350,"x 10³/ml³",3
+compuesto,2,Hematologia,Hemograma,Plaquetas,57,8,ambos,150,450,"x 10³/ml³",3
+compuesto,2,Hematologia,Hemograma,Plaquetas,65,9,ambos,150,450,"x 10³/ml³",3
+compuesto,2,Hematologia,Hemograma,Plaquetas,73,10,ambos,150,450,"x 10³/ml³",3
+simple,1,Hematologia,Plaquetas,Plaquetas,85,11,ambos,150,450,"x 10³/ml³",3
+compuesto,2,Hematologia,Hemograma,Plaquetas,108,12,ambos,150,450,"x 10³/ml³",3
+compuesto,2,Hematologia,Hemograma,Plaquetas,41,6,ambos,150,500,"x 10³/ml³",3
+compuesto,2,Hematologia,Hemograma,Plaquetas,49,7,ambos,150,500,"x 10³/ml³",3
+compuesto,2,Hematologia,Hemograma,Plaquetas,57,8,ambos,150,500,"x 10³/ml³",3
+compuesto,2,Hematologia,Hemograma,Plaquetas,65,9,ambos,150,500,"x 10³/ml³",3
+compuesto,2,Hematologia,Hemograma,Plaquetas,73,10,ambos,150,500,"x 10³/ml³",3
+compuesto,2,Hematologia,Hemograma,Plaquetas,87,11,ambos,150,500,"x 10³/ml³",3
+compuesto,2,Hematologia,Hemograma,Plaquetas,102,11,ambos,150,500,"x 10³/ml³",3
+compuesto,2,Hematologia,Hemograma,Plaquetas,108,12,ambos,150,500,"x 10³/ml³",3
+simple,1,Hematologia,Plaquetas,Plaquetas,80,6,ambos,150,500,"x 10³/ml³",3
+simple,1,Hematologia,Plaquetas,Plaquetas,81,7,ambos,150,500,"x 10³/ml³",3
+simple,1,Hematologia,Plaquetas,Plaquetas,82,8,ambos,150,500,"x 10³/ml³",3
+simple,1,Hematologia,Plaquetas,Plaquetas,83,9,ambos,150,500,"x 10³/ml³",3
+simple,1,Hematologia,Plaquetas,Plaquetas,84,10,ambos,150,500,"x 10³/ml³",3
+simple,1,Hematologia,Plaquetas,Plaquetas,85,11,ambos,150,500,"x 10³/ml³",3
+simple,1,Hematologia,Plaquetas,Plaquetas,86,12,ambos,150,500,"x 10³/ml³",3
+compuesto,2,Hematologia,Hemograma,Plaquetas,41,6,ambos,150,700,"x 10³/ml³",3
+compuesto,2,Hematologia,Hemograma,Plaquetas,49,7,ambos,150,700,"x 10³/ml³",3
+compuesto,2,Hematologia,Hemograma,Plaquetas,57,8,ambos,150,700,"x 10³/ml³",3
+compuesto,2,Hematologia,Hemograma,Plaquetas,65,9,ambos,150,700,"x 10³/ml³",3
+compuesto,2,Hematologia,Hemograma,Plaquetas,73,10,ambos,150,700,"x 10³/ml³",3
+compuesto,2,Hematologia,Hemograma,Plaquetas,87,11,ambos,150,700,"x 10³/ml³",3
+compuesto,2,Hematologia,Hemograma,Plaquetas,102,11,ambos,150,700,"x 10³/ml³",3
+compuesto,2,Hematologia,Hemograma,Plaquetas,108,12,ambos,150,700,"x 10³/ml³",3
+simple,1,Hematologia,Plaquetas,Plaquetas,80,6,ambos,150,700,"x 10³/ml³",3
+simple,1,Hematologia,Plaquetas,Plaquetas,81,7,ambos,150,700,"x 10³/ml³",3
+simple,1,Hematologia,Plaquetas,Plaquetas,82,8,ambos,150,700,"x 10³/ml³",3
+simple,1,Hematologia,Plaquetas,Plaquetas,83,9,ambos,150,700,"x 10³/ml³",3
+simple,1,Hematologia,Plaquetas,Plaquetas,84,10,ambos,150,700,"x 10³/ml³",3
+simple,1,Hematologia,Plaquetas,Plaquetas,85,11,ambos,150,700,"x 10³/ml³",3
+simple,1,Hematologia,Plaquetas,Plaquetas,86,12,ambos,150,700,"x 10³/ml³",3
+compuesto,2,Hematologia,Hemograma,"VSG 1° Hora",115,15,femenino,0,20,mm/1hrs,3
+compuesto,2,Hematologia,Hemograma,"VSG 1° Hora",115,15,masculino,0,15,mm/1hrs,3
+compuesto,2,Hematologia,Hemograma,"VSG 1° Hora",115,15,femenino,0,20,mm/1hrs,3
+compuesto,2,Hematologia,Hemograma,"VSG 1° Hora",115,15,masculino,0,15,mm/1hrs,3
+compuesto,2,Hematologia,Hemograma,Plaquetas,41,6,ambos,150,450,"x 10³/ml³",3
+compuesto,2,Hematologia,Hemograma,Plaquetas,49,7,ambos,150,450,"x 10³/ml³",3
+compuesto,2,Hematologia,Hemograma,Plaquetas,57,8,ambos,150,450,"x 10³/ml³",3
+compuesto,2,Hematologia,Hemograma,Plaquetas,65,9,ambos,150,450,"x 10³/ml³",3
+compuesto,2,Hematologia,Hemograma,Plaquetas,73,10,ambos,150,450,"x 10³/ml³",3
+compuesto,2,Hematologia,Hemograma,Plaquetas,87,11,ambos,150,450,"x 10³/ml³",3
+compuesto,2,Hematologia,Hemograma,Plaquetas,102,11,ambos,150,450,"x 10³/ml³",3
+compuesto,2,Hematologia,Hemograma,Plaquetas,108,12,ambos,150,450,"x 10³/ml³",3
+simple,1,Hematologia,Plaquetas,Plaquetas,80,6,ambos,150,450,"x 10³/ml³",3
+simple,1,Hematologia,Plaquetas,Plaquetas,81,7,ambos,150,450,"x 10³/ml³",3
+simple,1,Hematologia,Plaquetas,Plaquetas,82,8,ambos,150,450,"x 10³/ml³",3
+simple,1,Hematologia,Plaquetas,Plaquetas,83,9,ambos,150,450,"x 10³/ml³",3
+simple,1,Hematologia,Plaquetas,Plaquetas,84,10,ambos,150,450,"x 10³/ml³",3
+simple,1,Hematologia,Plaquetas,Plaquetas,85,11,ambos,150,450,"x 10³/ml³",3
+simple,1,Hematologia,Plaquetas,Plaquetas,86,12,ambos,150,450,"x 10³/ml³",3
+simple,18,Hematologia,"Recuento de Reticulocitos","Recuento de Reticulocitos",142,6,ambos,2,6,%,3
+simple,18,Hematologia,"Recuento de Reticulocitos","Recuento de Reticulocitos",143,7,ambos,2,6,%,3
+simple,18,Hematologia,"Recuento de Reticulocitos","Recuento de Reticulocitos",144,8,ambos,0.5,1.5,%,3
+simple,18,Hematologia,"Recuento de Reticulocitos","Recuento de Reticulocitos",145,9,ambos,0.5,1.5,%,3
+simple,18,Hematologia,"Recuento de Reticulocitos","Recuento de Reticulocitos",146,10,ambos,0.5,1.5,%,3
+simple,18,Hematologia,"Recuento de Reticulocitos","Recuento de Reticulocitos",147,11,ambos,0.5,1.5,%,3
+simple,18,Hematologia,"Recuento de Reticulocitos","Recuento de Reticulocitos",148,12,ambos,0.5,1.5,%,3
+simple,18,Hematologia,"Recuento de Reticulocitos","Recuento de Reticulocitos",142,6,ambos,0,1,%,3
+simple,18,Hematologia,"Recuento de Reticulocitos","Recuento de Reticulocitos",143,7,ambos,0,1,%,3
+simple,18,Hematologia,"Recuento de Reticulocitos","Recuento de Reticulocitos",144,8,ambos,0,1,%,3
+simple,18,Hematologia,"Recuento de Reticulocitos","Recuento de Reticulocitos",145,9,ambos,0,1,%,3
+simple,18,Hematologia,"Recuento de Reticulocitos","Recuento de Reticulocitos",146,10,ambos,0,1,%,3
+simple,18,Hematologia,"Recuento de Reticulocitos","Recuento de Reticulocitos",147,11,ambos,0,1,%,3
+simple,18,Hematologia,"Recuento de Reticulocitos","Recuento de Reticulocitos",148,12,ambos,0,1,%,3
+simple,18,Hematologia,"Recuento de Reticulocitos","Recuento de Reticulocitos",142,6,ambos,0,1.5,%,3
+simple,18,Hematologia,"Recuento de Reticulocitos","Recuento de Reticulocitos",143,7,ambos,0,1.5,%,3
+simple,18,Hematologia,"Recuento de Reticulocitos","Recuento de Reticulocitos",144,8,ambos,0,1.5,%,3
+simple,18,Hematologia,"Recuento de Reticulocitos","Recuento de Reticulocitos",145,9,ambos,0,1.5,%,3
+simple,18,Hematologia,"Recuento de Reticulocitos","Recuento de Reticulocitos",146,10,ambos,0,1.5,%,3
+simple,18,Hematologia,"Recuento de Reticulocitos","Recuento de Reticulocitos",147,11,ambos,0,1.5,%,3
+simple,18,Hematologia,"Recuento de Reticulocitos","Recuento de Reticulocitos",148,12,ambos,0,1.5,%,3
+compuesto,231,Coagulograma,Coagulograma,"Tiempo de protrombina (TP)",163,15,ambos,12,14,Seg.,3
+compuesto,231,Coagulograma,Coagulograma,IRN,165,15,ambos,1,1.2,,3
+compuesto,231,Coagulograma,Coagulograma,"Tiempo de tromboplastina",166,15,ambos,25,43.5,Seg.,3
+simple,14,Hematologia,"Dimero D","Dimero D",114,15,ambos,0,630,ng/ml,3
+simple,7,Coagulograma,Fibrinogeno,Fibrinogeno,106,6,ambos,180,350,mg/dl,3
+simple,73,"Perfil Cardiaco",Fibrinogeno,Fibrinogeno,526,6,ambos,180,350,mg/dl,3
+simple,7,Coagulograma,Fibrinogeno,Fibrinogeno,107,7,ambos,180,350,mg/dl,3
+simple,73,"Perfil Cardiaco",Fibrinogeno,Fibrinogeno,527,7,ambos,180,350,mg/dl,3
+simple,7,Coagulograma,Fibrinogeno,Fibrinogeno,108,8,ambos,180,350,mg/dl,3
+simple,73,"Perfil Cardiaco",Fibrinogeno,Fibrinogeno,528,8,ambos,180,350,mg/dl,3
+simple,7,Coagulograma,Fibrinogeno,Fibrinogeno,109,9,ambos,180,350,mg/dl,3
+simple,73,"Perfil Cardiaco",Fibrinogeno,Fibrinogeno,529,9,ambos,180,350,mg/dl,3
+simple,7,Coagulograma,Fibrinogeno,Fibrinogeno,110,10,ambos,180,350,mg/dl,3
+simple,73,"Perfil Cardiaco",Fibrinogeno,Fibrinogeno,530,10,ambos,180,350,mg/dl,3
+simple,7,Coagulograma,Fibrinogeno,Fibrinogeno,111,11,ambos,180,350,mg/dl,3
+simple,73,"Perfil Cardiaco",Fibrinogeno,Fibrinogeno,531,11,ambos,180,350,mg/dl,3
+simple,7,Coagulograma,Fibrinogeno,Fibrinogeno,112,12,ambos,180,350,mg/dl,3
+simple,73,"Perfil Cardiaco",Fibrinogeno,Fibrinogeno,532,12,ambos,180,350,mg/dl,3
+compuesto,231,Coagulograma,Coagulograma,"Tiempo de tromboplastina",166,15,ambos,13,20,Seg,3
+compuesto,231,Coagulograma,Coagulograma,"Tiempo de sangria",162,15,ambos,1,3,Min.,3
+compuesto,231,Coagulograma,Coagulograma,"Tiempo de coagulación",161,15,ambos,6,12,Min.,3
+simple,13,Hematologia,"Gota Gruesa","Gota Gruesa",113,15,ambos,"NEGATIVO                                                                                                        POSITIVO",,,3
+compuesto,2,Hematologia,Hemograma,Hematocrito,36,6,ambos,31,66,%,3
+compuesto,2,Hematologia,Hemograma,Hematocrito,44,7,ambos,28,39,%,3
+compuesto,2,Hematologia,Hemograma,Hematocrito,52,8,ambos,34,40,%,3
+compuesto,2,Hematologia,Hemograma,Hematocrito,60,9,ambos,35,45,%,3
+compuesto,2,Hematologia,Hemograma,Hematocrito,154,10,femenino,36,47,%,3
+compuesto,2,Hematologia,Hemograma,Hematocrito,68,10,masculino,37,50,%,3
+compuesto,2,Hematologia,Hemograma,Hematocrito,91,11,femenino,36,47,%,3
+compuesto,2,Hematologia,Hemograma,Hematocrito,76,11,masculino,37,50,%,3
+compuesto,2,Hematologia,Hemograma,Hematocrito,155,12,femenino,36,47,%,3
+compuesto,2,Hematologia,Hemograma,Hematocrito,106,12,masculino,37,50,%,3
+compuesto,2,Hematologia,Hemograma,Hematocrito,36,6,ambos,37,55,%,3
+compuesto,2,Hematologia,Hemograma,Hematocrito,44,7,ambos,37,55,%,3
+compuesto,2,Hematologia,Hemograma,Hematocrito,52,8,ambos,37,55,%,3
+compuesto,2,Hematologia,Hemograma,Hematocrito,60,9,ambos,37,55,%,3
+compuesto,2,Hematologia,Hemograma,Hematocrito,68,10,ambos,37,55,%,3
+compuesto,2,Hematologia,Hemograma,Hematocrito,76,11,ambos,37,55,%,3
+compuesto,2,Hematologia,Hemograma,Hematocrito,91,11,ambos,37,55,%,3
+compuesto,2,Hematologia,Hemograma,Hematocrito,106,12,ambos,37,55,%,3
+compuesto,2,Hematologia,Hemograma,Hematocrito,154,10,ambos,37,55,%,3
+compuesto,2,Hematologia,Hemograma,Hematocrito,155,12,ambos,37,55,%,3
+simple,17,Hematologia,Hematocrito,Hematocrito,132,6,ambos,37,55,%,3
+simple,17,Hematologia,Hematocrito,Hematocrito,133,7,ambos,37,55,%,3
+simple,17,Hematologia,Hematocrito,Hematocrito,134,8,ambos,37,55,%,3
+simple,17,Hematologia,Hematocrito,Hematocrito,135,9,ambos,37,55,%,3
+simple,17,Hematologia,Hematocrito,Hematocrito,136,10,ambos,37,55,%,3
+simple,17,Hematologia,Hematocrito,Hematocrito,137,10,ambos,37,55,%,3
+simple,17,Hematologia,Hematocrito,Hematocrito,138,11,ambos,37,55,%,3
+simple,17,Hematologia,Hematocrito,Hematocrito,139,11,ambos,37,55,%,3
+simple,17,Hematologia,Hematocrito,Hematocrito,140,12,ambos,37,55,%,3
+simple,17,Hematologia,Hematocrito,Hematocrito,141,12,ambos,37,55,%,3
+compuesto,2,Hematologia,Hemograma,Hematocrito,36,6,ambos,30,45,%,3
+compuesto,2,Hematologia,Hemograma,Hematocrito,44,7,ambos,30,45,%,3
+compuesto,2,Hematologia,Hemograma,Hematocrito,52,8,ambos,30,45,%,3
+compuesto,2,Hematologia,Hemograma,Hematocrito,60,9,ambos,30,45,%,3
+compuesto,2,Hematologia,Hemograma,Hematocrito,68,10,ambos,30,45,%,3
+compuesto,2,Hematologia,Hemograma,Hematocrito,76,11,ambos,30,45,%,3
+compuesto,2,Hematologia,Hemograma,Hematocrito,91,11,ambos,30,45,%,3
+compuesto,2,Hematologia,Hemograma,Hematocrito,106,12,ambos,30,45,%,3
+compuesto,2,Hematologia,Hemograma,Hematocrito,154,10,ambos,30,45,%,3
+compuesto,2,Hematologia,Hemograma,Hematocrito,155,12,ambos,30,45,%,3
+simple,17,Hematologia,Hematocrito,Hematocrito,132,6,ambos,30,45,%,3
+simple,17,Hematologia,Hematocrito,Hematocrito,133,7,ambos,30,45,%,3
+simple,17,Hematologia,Hematocrito,Hematocrito,134,8,ambos,30,45,%,3
+simple,17,Hematologia,Hematocrito,Hematocrito,135,9,ambos,30,45,%,3
+simple,17,Hematologia,Hematocrito,Hematocrito,136,10,ambos,30,45,%,3
+simple,17,Hematologia,Hematocrito,Hematocrito,137,10,ambos,30,45,%,3
+simple,17,Hematologia,Hematocrito,Hematocrito,138,11,ambos,30,45,%,3
+simple,17,Hematologia,Hematocrito,Hematocrito,139,11,ambos,30,45,%,3
+simple,17,Hematologia,Hematocrito,Hematocrito,140,12,ambos,30,45,%,3
+simple,17,Hematologia,Hematocrito,Hematocrito,141,12,ambos,30,45,%,3
+compuesto,2,Hematologia,Hemograma,Hemoglobina,35,6,ambos,10,19.5,Gr%,3
+compuesto,2,Hematologia,Hemograma,Hemoglobina,43,7,ambos,9,13.5,Gr%,3
+compuesto,2,Hematologia,Hemograma,Hemoglobina,51,8,ambos,11.5,13.5,Gr%,3
+compuesto,2,Hematologia,Hemograma,Hemoglobina,59,9,ambos,11.5,15.5,Gr%,3
+compuesto,2,Hematologia,Hemograma,Hemoglobina,157,10,femenino,11,16,Gr%,3
+compuesto,2,Hematologia,Hemograma,Hemoglobina,67,10,masculino,13,18,Gr%,3
+compuesto,2,Hematologia,Hemograma,Hemoglobina,90,11,femenino,11,16,Gr%,3
+compuesto,2,Hematologia,Hemograma,Hemoglobina,75,11,masculino,13,18,Gr%,3
+compuesto,2,Hematologia,Hemograma,Hemoglobina,156,12,femenino,11,16,Gr%,3
+compuesto,2,Hematologia,Hemograma,Hemoglobina,105,12,masculino,13,18,Gr%,3
+compuesto,2,Hematologia,Hemograma,Hemoglobina,35,6,ambos,12,18,Gr%,3
+compuesto,2,Hematologia,Hemograma,Hemoglobina,43,7,ambos,12,18,Gr%,3
+compuesto,2,Hematologia,Hemograma,Hemoglobina,51,8,ambos,12,18,Gr%,3
+compuesto,2,Hematologia,Hemograma,Hemoglobina,59,9,ambos,12,18,Gr%,3
+compuesto,2,Hematologia,Hemograma,Hemoglobina,67,10,ambos,12,18,Gr%,3
+compuesto,2,Hematologia,Hemograma,Hemoglobina,75,11,ambos,12,18,Gr%,3
+simple,3,Hematologia,Hemoglobina,Hemoglobina,90,9,ambos,12,18,Gr%,3
+compuesto,2,Hematologia,Hemograma,Hemoglobina,105,12,ambos,12,18,Gr%,3
+compuesto,2,Hematologia,Hemograma,Hemoglobina,156,12,ambos,12,18,Gr%,3
+compuesto,2,Hematologia,Hemograma,Hemoglobina,157,10,ambos,12,18,Gr%,3
+simple,3,Hematologia,Hemoglobina,Hemoglobina,87,6,ambos,12,18,Gr%,3
+simple,3,Hematologia,Hemoglobina,Hemoglobina,88,7,ambos,12,18,Gr%,3
+simple,3,Hematologia,Hemoglobina,Hemoglobina,89,8,ambos,12,18,Gr%,3
+simple,3,Hematologia,Hemoglobina,Hemoglobina,91,10,ambos,12,18,Gr%,3
+simple,3,Hematologia,Hemoglobina,Hemoglobina,92,10,ambos,12,18,Gr%,3
+simple,3,Hematologia,Hemoglobina,Hemoglobina,93,11,ambos,12,18,Gr%,3
+simple,3,Hematologia,Hemoglobina,Hemoglobina,94,11,ambos,12,18,Gr%,3
+simple,3,Hematologia,Hemoglobina,Hemoglobina,95,12,ambos,12,18,Gr%,3
+simple,3,Hematologia,Hemoglobina,Hemoglobina,96,12,ambos,12,18,Gr%,3
+compuesto,2,Hematologia,Hemograma,Hemoglobina,35,6,ambos,8,15,Gr%,3
+compuesto,2,Hematologia,Hemograma,Hemoglobina,43,7,ambos,8,15,Gr%,3
+compuesto,2,Hematologia,Hemograma,Hemoglobina,51,8,ambos,8,15,Gr%,3
+compuesto,2,Hematologia,Hemograma,Hemoglobina,59,9,ambos,8,15,Gr%,3
+compuesto,2,Hematologia,Hemograma,Hemoglobina,67,10,ambos,8,15,Gr%,3
+compuesto,2,Hematologia,Hemograma,Hemoglobina,75,11,ambos,8,15,Gr%,3
+simple,3,Hematologia,Hemoglobina,Hemoglobina,90,9,ambos,8,15,Gr%,3
+compuesto,2,Hematologia,Hemograma,Hemoglobina,105,12,ambos,8,15,Gr%,3
+compuesto,2,Hematologia,Hemograma,Hemoglobina,156,12,ambos,8,15,Gr%,3
+compuesto,2,Hematologia,Hemograma,Hemoglobina,157,10,ambos,8,15,Gr%,3
+simple,3,Hematologia,Hemoglobina,Hemoglobina,87,6,ambos,8,15,Gr%,3
+simple,3,Hematologia,Hemoglobina,Hemoglobina,88,7,ambos,8,15,Gr%,3
+simple,3,Hematologia,Hemoglobina,Hemoglobina,89,8,ambos,8,15,Gr%,3
+simple,3,Hematologia,Hemoglobina,Hemoglobina,91,10,ambos,8,15,Gr%,3
+simple,3,Hematologia,Hemoglobina,Hemoglobina,92,10,ambos,8,15,Gr%,3
+simple,3,Hematologia,Hemoglobina,Hemoglobina,93,11,ambos,8,15,Gr%,3
+simple,3,Hematologia,Hemoglobina,Hemoglobina,94,11,ambos,8,15,Gr%,3
+simple,3,Hematologia,Hemoglobina,Hemoglobina,95,12,ambos,8,15,Gr%,3
+simple,3,Hematologia,Hemoglobina,Hemoglobina,96,12,ambos,8,15,Gr%,3
+simple,21,Hematologia,"Grupo Sanguineo","Grupo Sanguineo",151,15,ambos,"¨O¨ POSITIVO                                                                                                         ¨A¨ POSITIVO                                                                                                     ¨B¨ POSITIVO                                                                                               ¨AB¨ POSITIVO                                                                                                 ¨O¨ NEGATIVO                                                                                                ¨A¨ NEGATIVO                                                                                                      ¨B¨ NEGATIVO                                                                                                     ¨O¨ NEGATIVO                                                                                                       ""AB"" NEGATIVO",,,3
+simple,21,Hematologia,"Grupo Sanguineo","Grupo Sanguineo",151,15,ambos,"¨O¨ POSITIVO                                                                                                         ¨A¨ POSITIVO                                                                                                     ¨B¨ POSITIVO                                                                                               ¨AB¨ POSITIVO                                                                                                 ¨O¨ NEGATIVO                                                                                                ¨A¨ NEGATIVO                                                                                                      ¨B¨ NEGATIVO                                                                                                     ¨O¨ NEGATIVO                                                                                                       ""AB"" NEGATIVO",,,3
+simple,21,Hematologia,"Grupo Sanguineo","Grupo Sanguineo",151,15,ambos,"¨O¨ POSITIVO                                                                                                         ¨A¨ POSITIVO                                                                                                     ¨B¨ POSITIVO                                                                                               ¨AB¨ POSITIVO                                                                                                 ¨O¨ NEGATIVO                                                                                                ¨A¨ NEGATIVO                                                                                                      ¨B¨ NEGATIVO                                                                                                     ¨O¨ NEGATIVO                                                                                                       ""AB"" NEGATIVO",,,3
+simple,20,Hematologia,"Coombs Directo","Coombs Directo",150,15,ambos,"NEGATIVO                                                                                                   POSITIVO",,,3
+simple,19,Hematologia,"Coombs Indirecto","Coombs Indirecto",149,15,ambos,"NEGATIVO                                                                                                  POSITIVO",,,3
+simple,202,Hematologia,"Celulas LE","Celulas LE",965,15,ambos,,,,1
+simple,44,"Quimica Sanguinea",Glicemia,Glicemia,317,6,ambos,70,100,mg/dl,3
+simple,44,"Quimica Sanguinea",Glicemia,Glicemia,323,12,ambos,60,100,mg/dl,3
+simple,44,"Quimica Sanguinea",Glicemia,Glicemia,317,6,ambos,60,120,mg/dl,3
+simple,44,"Quimica Sanguinea",Glicemia,Glicemia,318,7,ambos,60,120,mg/dl,3
+simple,44,"Quimica Sanguinea",Glicemia,Glicemia,319,8,ambos,60,120,mg/dl,3
+simple,44,"Quimica Sanguinea",Glicemia,Glicemia,320,9,ambos,60,120,mg/dl,3
+simple,44,"Quimica Sanguinea",Glicemia,Glicemia,321,10,ambos,60,120,mg/dl,3
+simple,44,"Quimica Sanguinea",Glicemia,Glicemia,322,11,ambos,60,120,mg/dl,3
+simple,44,"Quimica Sanguinea",Glicemia,Glicemia,323,12,ambos,60,120,mg/dl,3
+simple,44,"Quimica Sanguinea",Glicemia,Glicemia,317,6,ambos,75,160,mg/dl,3
+simple,44,"Quimica Sanguinea",Glicemia,Glicemia,318,7,ambos,75,160,mg/dl,3
+simple,44,"Quimica Sanguinea",Glicemia,Glicemia,319,8,ambos,75,160,mg/dl,3
+simple,44,"Quimica Sanguinea",Glicemia,Glicemia,320,9,ambos,75,160,mg/dl,3
+simple,44,"Quimica Sanguinea",Glicemia,Glicemia,321,10,ambos,75,160,mg/dl,3
+simple,44,"Quimica Sanguinea",Glicemia,Glicemia,322,11,ambos,75,160,mg/dl,3
+simple,44,"Quimica Sanguinea",Glicemia,Glicemia,323,12,ambos,75,160,mg/dl,3
+simple,45,"Quimica Sanguinea","Gluc. Post. Prandial","Gluc. Post. Prandial",324,6,ambos,70,105,mg/dl,3
+simple,47,"Quimica Sanguinea","Hb. Glicosilada","Hb. Glicosilada",338,6,ambos,2,7,%,3
+simple,169,Bactereologia,ADA,ADA,906,6,ambos,2,7,%,3
+simple,47,"Quimica Sanguinea","Hb. Glicosilada","Hb. Glicosilada",339,7,ambos,2,7,%,3
+simple,169,Bactereologia,ADA,ADA,907,7,ambos,2,7,%,3
+simple,47,"Quimica Sanguinea","Hb. Glicosilada","Hb. Glicosilada",340,8,ambos,2,7,%,3
+simple,169,Bactereologia,ADA,ADA,908,8,ambos,2,7,%,3
+simple,47,"Quimica Sanguinea","Hb. Glicosilada","Hb. Glicosilada",341,9,ambos,2,7,%,3
+simple,169,Bactereologia,ADA,ADA,909,9,ambos,2,7,%,3
+simple,47,"Quimica Sanguinea","Hb. Glicosilada","Hb. Glicosilada",342,10,ambos,2,7,%,3
+simple,169,Bactereologia,ADA,ADA,910,10,ambos,2,7,%,3
+simple,47,"Quimica Sanguinea","Hb. Glicosilada","Hb. Glicosilada",343,11,ambos,2,7,%,3
+simple,169,Bactereologia,ADA,ADA,911,11,ambos,2,7,%,3
+simple,47,"Quimica Sanguinea","Hb. Glicosilada","Hb. Glicosilada",344,12,ambos,2,7,%,3
+simple,169,Bactereologia,ADA,ADA,912,12,ambos,2,7,%,3
+simple,46,"Quimica Sanguinea","Tolerancia de Glucosa","Tolerancia de Glucosa",331,6,ambos,70,105,mg/dl,3
+simple,46,"Quimica Sanguinea","Tolerancia de Glucosa","Tolerancia de Glucosa",337,12,ambos,70,100,mg/dl,3
+simple,46,"Quimica Sanguinea","Tolerancia de Glucosa","Tolerancia de Glucosa",331,6,ambos,70,180,mg/dL,3
+simple,46,"Quimica Sanguinea","Tolerancia de Glucosa","Tolerancia de Glucosa",332,7,ambos,70,180,mg/dL,3
+simple,46,"Quimica Sanguinea","Tolerancia de Glucosa","Tolerancia de Glucosa",333,8,ambos,70,180,mg/dL,3
+simple,46,"Quimica Sanguinea","Tolerancia de Glucosa","Tolerancia de Glucosa",334,9,ambos,70,180,mg/dL,3
+simple,46,"Quimica Sanguinea","Tolerancia de Glucosa","Tolerancia de Glucosa",335,10,ambos,70,180,mg/dL,3
+simple,46,"Quimica Sanguinea","Tolerancia de Glucosa","Tolerancia de Glucosa",336,11,ambos,70,180,mg/dL,3
+simple,46,"Quimica Sanguinea","Tolerancia de Glucosa","Tolerancia de Glucosa",337,12,ambos,70,180,mg/dL,3
+simple,46,"Quimica Sanguinea","Tolerancia de Glucosa","Tolerancia de Glucosa",331,6,ambos,70,155,mg/dL,3
+simple,46,"Quimica Sanguinea","Tolerancia de Glucosa","Tolerancia de Glucosa",332,7,ambos,70,155,mg/dL,3
+simple,46,"Quimica Sanguinea","Tolerancia de Glucosa","Tolerancia de Glucosa",333,8,ambos,70,155,mg/dL,3
+simple,46,"Quimica Sanguinea","Tolerancia de Glucosa","Tolerancia de Glucosa",334,9,ambos,70,155,mg/dL,3
+simple,46,"Quimica Sanguinea","Tolerancia de Glucosa","Tolerancia de Glucosa",335,10,ambos,70,155,mg/dL,3
+simple,46,"Quimica Sanguinea","Tolerancia de Glucosa","Tolerancia de Glucosa",336,11,ambos,70,155,mg/dL,3
+simple,46,"Quimica Sanguinea","Tolerancia de Glucosa","Tolerancia de Glucosa",337,12,ambos,70,155,mg/dL,3
+simple,46,"Quimica Sanguinea","Tolerancia de Glucosa","Tolerancia de Glucosa",331,6,ambos,70,140,mg/dL,3
+simple,46,"Quimica Sanguinea","Tolerancia de Glucosa","Tolerancia de Glucosa",332,7,ambos,70,140,mg/dL,3
+simple,46,"Quimica Sanguinea","Tolerancia de Glucosa","Tolerancia de Glucosa",333,8,ambos,70,140,mg/dL,3
+simple,46,"Quimica Sanguinea","Tolerancia de Glucosa","Tolerancia de Glucosa",334,9,ambos,70,140,mg/dL,3
+simple,46,"Quimica Sanguinea","Tolerancia de Glucosa","Tolerancia de Glucosa",335,10,ambos,70,140,mg/dL,3
+simple,46,"Quimica Sanguinea","Tolerancia de Glucosa","Tolerancia de Glucosa",336,11,ambos,70,140,mg/dL,3
+simple,46,"Quimica Sanguinea","Tolerancia de Glucosa","Tolerancia de Glucosa",337,12,ambos,70,140,mg/dL,3
+simple,29,"Quimica Sanguinea",Amilasa,Amilasa,207,6,ambos,0,120,UA/dl,3
+simple,29,"Quimica Sanguinea",Amilasa,Amilasa,208,7,ambos,0,120,UA/dl,3
+simple,29,"Quimica Sanguinea",Amilasa,Amilasa,209,8,ambos,0,120,UA/dl,3
+simple,29,"Quimica Sanguinea",Amilasa,Amilasa,210,9,ambos,0,120,UA/dl,3
+simple,29,"Quimica Sanguinea",Amilasa,Amilasa,211,10,ambos,0,120,UA/dl,3
+simple,29,"Quimica Sanguinea",Amilasa,Amilasa,212,11,ambos,0,120,UA/dl,3
+simple,29,"Quimica Sanguinea",Amilasa,Amilasa,213,12,ambos,0,120,UA/dl,3
+simple,29,"Quimica Sanguinea",Amilasa,Amilasa,207,6,ambos,269,1462,UA/dl,3
+simple,29,"Quimica Sanguinea",Amilasa,Amilasa,208,7,ambos,269,1462,UA/dl,3
+simple,29,"Quimica Sanguinea",Amilasa,Amilasa,209,8,ambos,269,1462,UA/dl,3
+simple,29,"Quimica Sanguinea",Amilasa,Amilasa,210,9,ambos,269,1462,UA/dl,3
+simple,29,"Quimica Sanguinea",Amilasa,Amilasa,211,10,ambos,269,1462,UA/dl,3
+simple,29,"Quimica Sanguinea",Amilasa,Amilasa,212,11,ambos,269,1462,UA/dl,3
+simple,29,"Quimica Sanguinea",Amilasa,Amilasa,213,12,ambos,269,1462,UA/dl,3
+simple,29,"Quimica Sanguinea",Amilasa,Amilasa,207,6,ambos,269,1462,UA/dl,3
+simple,29,"Quimica Sanguinea",Amilasa,Amilasa,208,7,ambos,269,1462,UA/dl,3
+simple,29,"Quimica Sanguinea",Amilasa,Amilasa,209,8,ambos,269,1462,UA/dl,3
+simple,29,"Quimica Sanguinea",Amilasa,Amilasa,210,9,ambos,269,1462,UA/dl,3
+simple,29,"Quimica Sanguinea",Amilasa,Amilasa,211,10,ambos,269,1462,UA/dl,3
+simple,29,"Quimica Sanguinea",Amilasa,Amilasa,212,11,ambos,269,1462,UA/dl,3
+simple,29,"Quimica Sanguinea",Amilasa,Amilasa,213,12,ambos,269,1462,UA/dl,3
+simple,209,"Quimica Sanguinea",Lipasa,Lipasa,978,6,ambos,10,150,U/L,3
+simple,209,"Quimica Sanguinea",Lipasa,Lipasa,979,7,ambos,10,150,U/L,3
+simple,209,"Quimica Sanguinea",Lipasa,Lipasa,980,8,ambos,10,150,U/L,3
+simple,209,"Quimica Sanguinea",Lipasa,Lipasa,981,9,ambos,10,150,U/L,3
+simple,209,"Quimica Sanguinea",Lipasa,Lipasa,982,10,ambos,10,150,U/L,3
+simple,209,"Quimica Sanguinea",Lipasa,Lipasa,983,11,ambos,10,150,U/L,3
+simple,209,"Quimica Sanguinea",Lipasa,Lipasa,984,12,ambos,10,150,U/L,3
+simple,50,"Quimica Sanguinea",Urea,Urea,359,6,ambos,10,46,mg/dL,3
+simple,50,"Quimica Sanguinea",Urea,Urea,365,12,ambos,10,50,mg/dL,3
+simple,50,"Quimica Sanguinea",Urea,Urea,359,6,ambos,10,60,mg/dL,3
+simple,50,"Quimica Sanguinea",Urea,Urea,360,7,ambos,10,60,mg/dL,3
+simple,50,"Quimica Sanguinea",Urea,Urea,361,8,ambos,10,60,mg/dL,3
+simple,50,"Quimica Sanguinea",Urea,Urea,362,9,ambos,10,60,mg/dL,3
+simple,50,"Quimica Sanguinea",Urea,Urea,363,10,ambos,10,60,mg/dL,3
+simple,50,"Quimica Sanguinea",Urea,Urea,364,11,ambos,10,60,mg/dL,3
+simple,50,"Quimica Sanguinea",Urea,Urea,365,12,ambos,10,60,mg/dL,3
+simple,50,"Quimica Sanguinea",Urea,Urea,359,6,ambos,20,65,mg/dL,3
+simple,50,"Quimica Sanguinea",Urea,Urea,360,7,ambos,20,65,mg/dL,3
+simple,50,"Quimica Sanguinea",Urea,Urea,361,8,ambos,20,65,mg/dL,3
+simple,50,"Quimica Sanguinea",Urea,Urea,362,9,ambos,20,65,mg/dL,3
+simple,50,"Quimica Sanguinea",Urea,Urea,363,10,ambos,20,65,mg/dL,3
+simple,50,"Quimica Sanguinea",Urea,Urea,364,11,ambos,20,65,mg/dL,3
+simple,50,"Quimica Sanguinea",Urea,Urea,365,12,ambos,20,65,mg/dL,3
+simple,51,"Quimica Sanguinea","Nitrogeno Ureico","Nitrogeno Ureico",366,6,ambos,9.4,28,mg/dL,3
+simple,226,"Quimica Sanguinea",BUN,BUN,1051,6,ambos,9.4,28,mg/dL,3
+simple,51,"Quimica Sanguinea","Nitrogeno Ureico","Nitrogeno Ureico",367,7,ambos,9.4,28,mg/dL,3
+simple,226,"Quimica Sanguinea",BUN,BUN,1052,7,ambos,9.4,28,mg/dL,3
+simple,51,"Quimica Sanguinea","Nitrogeno Ureico","Nitrogeno Ureico",368,8,ambos,9.4,28,mg/dL,3
+simple,226,"Quimica Sanguinea",BUN,BUN,1053,8,ambos,9.4,28,mg/dL,3
+simple,51,"Quimica Sanguinea","Nitrogeno Ureico","Nitrogeno Ureico",369,9,ambos,9.4,28,mg/dL,3
+simple,226,"Quimica Sanguinea",BUN,BUN,1054,9,ambos,9.4,28,mg/dL,3
+simple,51,"Quimica Sanguinea","Nitrogeno Ureico","Nitrogeno Ureico",370,10,ambos,9.4,28,mg/dL,3
+simple,226,"Quimica Sanguinea",BUN,BUN,1055,10,ambos,9.4,28,mg/dL,3
+simple,51,"Quimica Sanguinea","Nitrogeno Ureico","Nitrogeno Ureico",371,11,ambos,9.4,28,mg/dL,3
+simple,226,"Quimica Sanguinea",BUN,BUN,1056,11,ambos,9.4,28,mg/dL,3
+simple,51,"Quimica Sanguinea","Nitrogeno Ureico","Nitrogeno Ureico",372,12,ambos,9.4,28,mg/dL,3
+simple,226,"Quimica Sanguinea",BUN,BUN,1057,12,ambos,9.4,28,mg/dL,3
+simple,51,"Quimica Sanguinea","Nitrogeno Ureico","Nitrogeno Ureico",366,6,ambos,10,25,mg/dL,3
+simple,226,"Quimica Sanguinea",BUN,BUN,1051,6,ambos,10,25,mg/dL,3
+simple,51,"Quimica Sanguinea","Nitrogeno Ureico","Nitrogeno Ureico",367,7,ambos,10,25,mg/dL,3
+simple,226,"Quimica Sanguinea",BUN,BUN,1052,7,ambos,10,25,mg/dL,3
+simple,51,"Quimica Sanguinea","Nitrogeno Ureico","Nitrogeno Ureico",368,8,ambos,10,25,mg/dL,3
+simple,226,"Quimica Sanguinea",BUN,BUN,1053,8,ambos,10,25,mg/dL,3
+simple,51,"Quimica Sanguinea","Nitrogeno Ureico","Nitrogeno Ureico",369,9,ambos,10,25,mg/dL,3
+simple,226,"Quimica Sanguinea",BUN,BUN,1054,9,ambos,10,25,mg/dL,3
+simple,51,"Quimica Sanguinea","Nitrogeno Ureico","Nitrogeno Ureico",370,10,ambos,10,25,mg/dL,3
+simple,226,"Quimica Sanguinea",BUN,BUN,1055,10,ambos,10,25,mg/dL,3
+simple,51,"Quimica Sanguinea","Nitrogeno Ureico","Nitrogeno Ureico",371,11,ambos,10,25,mg/dL,3
+simple,226,"Quimica Sanguinea",BUN,BUN,1056,11,ambos,10,25,mg/dL,3
+simple,51,"Quimica Sanguinea","Nitrogeno Ureico","Nitrogeno Ureico",372,12,ambos,10,25,mg/dL,3
+simple,226,"Quimica Sanguinea",BUN,BUN,1057,12,ambos,10,25,mg/dL,3
+simple,51,"Quimica Sanguinea","Nitrogeno Ureico","Nitrogeno Ureico",366,6,ambos,10,30,mg/dL,3
+simple,226,"Quimica Sanguinea",BUN,BUN,1051,6,ambos,10,30,mg/dL,3
+simple,51,"Quimica Sanguinea","Nitrogeno Ureico","Nitrogeno Ureico",367,7,ambos,10,30,mg/dL,3
+simple,226,"Quimica Sanguinea",BUN,BUN,1052,7,ambos,10,30,mg/dL,3
+simple,51,"Quimica Sanguinea","Nitrogeno Ureico","Nitrogeno Ureico",368,8,ambos,10,30,mg/dL,3
+simple,226,"Quimica Sanguinea",BUN,BUN,1053,8,ambos,10,30,mg/dL,3
+simple,51,"Quimica Sanguinea","Nitrogeno Ureico","Nitrogeno Ureico",369,9,ambos,10,30,mg/dL,3
+simple,226,"Quimica Sanguinea",BUN,BUN,1054,9,ambos,10,30,mg/dL,3
+simple,51,"Quimica Sanguinea","Nitrogeno Ureico","Nitrogeno Ureico",370,10,ambos,10,30,mg/dL,3
+simple,226,"Quimica Sanguinea",BUN,BUN,1055,10,ambos,10,30,mg/dL,3
+simple,51,"Quimica Sanguinea","Nitrogeno Ureico","Nitrogeno Ureico",371,11,ambos,10,30,mg/dL,3
+simple,226,"Quimica Sanguinea",BUN,BUN,1056,11,ambos,10,30,mg/dL,3
+simple,51,"Quimica Sanguinea","Nitrogeno Ureico","Nitrogeno Ureico",372,12,ambos,10,30,mg/dL,3
+simple,226,"Quimica Sanguinea",BUN,BUN,1057,12,ambos,10,30,mg/dL,3
+simple,36,"Quimica Sanguinea",Creatinina,Creatinina,259,6,masculino,0.2,0.4,mg/dL,3
+simple,36,"Quimica Sanguinea",Creatinina,Creatinina,259,6,femenino,0.2,0.4,mg/dL,3
+simple,36,"Quimica Sanguinea",Creatinina,Creatinina,260,7,masculino,0.2,0.4,mg/dL,3
+simple,36,"Quimica Sanguinea",Creatinina,Creatinina,260,7,femenino,0.2,0.4,mg/dL,3
+simple,36,"Quimica Sanguinea",Creatinina,Creatinina,261,8,masculino,0.3,0.7,mg/dL,3
+simple,36,"Quimica Sanguinea",Creatinina,Creatinina,261,8,femenino,0.3,0.7,mg/dL,3
+simple,36,"Quimica Sanguinea",Creatinina,Creatinina,262,9,masculino,0.3,0.7,mg/dL,3
+simple,36,"Quimica Sanguinea",Creatinina,Creatinina,262,9,femenino,0.3,0.7,mg/dL,3
+simple,36,"Quimica Sanguinea",Creatinina,Creatinina,263,10,masculino,0.5,1,mg/dL,3
+simple,36,"Quimica Sanguinea",Creatinina,Creatinina,263,10,femenino,0.5,1,mg/dL,3
+simple,36,"Quimica Sanguinea",Creatinina,Creatinina,264,11,masculino,0.9,1.3,mg/dL,3
+simple,36,"Quimica Sanguinea",Creatinina,Creatinina,265,11,femenino,0.9,1.3,mg/dL,3
+simple,36,"Quimica Sanguinea",Creatinina,Creatinina,266,12,masculino,0.8,1.3,mg/dL,3
+simple,36,"Quimica Sanguinea",Creatinina,Creatinina,267,12,femenino,0.6,1.2,mg/dL,3
+simple,36,"Quimica Sanguinea",Creatinina,Creatinina,267,12,femenino,0.6,1.3,mg/dL,3
+simple,36,"Quimica Sanguinea",Creatinina,Creatinina,259,6,ambos,1,2,mg/dL,3
+simple,176,Orina,"Clearence de Creatinina","Clearence de Creatinina",943,6,ambos,1,2,mg/dL,3
+simple,36,"Quimica Sanguinea",Creatinina,Creatinina,260,7,ambos,1,2,mg/dL,3
+simple,176,Orina,"Clearence de Creatinina","Clearence de Creatinina",944,7,ambos,1,2,mg/dL,3
+simple,36,"Quimica Sanguinea",Creatinina,Creatinina,261,8,ambos,1,2,mg/dL,3
+simple,176,Orina,"Clearence de Creatinina","Clearence de Creatinina",945,8,ambos,1,2,mg/dL,3
+simple,36,"Quimica Sanguinea",Creatinina,Creatinina,262,9,ambos,1,2,mg/dL,3
+simple,176,Orina,"Clearence de Creatinina","Clearence de Creatinina",946,9,ambos,1,2,mg/dL,3
+simple,36,"Quimica Sanguinea",Creatinina,Creatinina,263,10,ambos,1,2,mg/dL,3
+simple,176,Orina,"Clearence de Creatinina","Clearence de Creatinina",947,10,ambos,1,2,mg/dL,3
+simple,36,"Quimica Sanguinea",Creatinina,Creatinina,264,11,ambos,1,2,mg/dL,3
+simple,36,"Quimica Sanguinea",Creatinina,Creatinina,265,11,ambos,1,2,mg/dL,3
+simple,176,Orina,"Clearence de Creatinina","Clearence de Creatinina",948,11,ambos,1,2,mg/dL,3
+simple,36,"Quimica Sanguinea",Creatinina,Creatinina,266,12,ambos,1,2,mg/dL,3
+simple,36,"Quimica Sanguinea",Creatinina,Creatinina,267,12,ambos,1,2,mg/dL,3
+simple,176,Orina,"Clearence de Creatinina","Clearence de Creatinina",949,12,ambos,1,2,mg/dL,3
+simple,36,"Quimica Sanguinea",Creatinina,Creatinina,259,6,ambos,0.8,2,mg/dL,3
+simple,176,Orina,"Clearence de Creatinina","Clearence de Creatinina",943,6,ambos,0.8,2,mg/dL,3
+simple,36,"Quimica Sanguinea",Creatinina,Creatinina,260,7,ambos,0.8,2,mg/dL,3
+simple,176,Orina,"Clearence de Creatinina","Clearence de Creatinina",944,7,ambos,0.8,2,mg/dL,3
+simple,36,"Quimica Sanguinea",Creatinina,Creatinina,261,8,ambos,0.8,2,mg/dL,3
+simple,176,Orina,"Clearence de Creatinina","Clearence de Creatinina",945,8,ambos,0.8,2,mg/dL,3
+simple,36,"Quimica Sanguinea",Creatinina,Creatinina,262,9,ambos,0.8,2,mg/dL,3
+simple,176,Orina,"Clearence de Creatinina","Clearence de Creatinina",946,9,ambos,0.8,2,mg/dL,3
+simple,36,"Quimica Sanguinea",Creatinina,Creatinina,263,10,ambos,0.8,2,mg/dL,3
+simple,176,Orina,"Clearence de Creatinina","Clearence de Creatinina",947,10,ambos,0.8,2,mg/dL,3
+simple,36,"Quimica Sanguinea",Creatinina,Creatinina,264,11,ambos,0.8,2,mg/dL,3
+simple,36,"Quimica Sanguinea",Creatinina,Creatinina,265,11,ambos,0.8,2,mg/dL,3
+simple,176,Orina,"Clearence de Creatinina","Clearence de Creatinina",948,11,ambos,0.8,2,mg/dL,3
+simple,36,"Quimica Sanguinea",Creatinina,Creatinina,266,12,ambos,0.8,2,mg/dL,3
+simple,36,"Quimica Sanguinea",Creatinina,Creatinina,267,12,ambos,0.8,2,mg/dL,3
+simple,176,Orina,"Clearence de Creatinina","Clearence de Creatinina",949,12,ambos,0.8,2,mg/dL,3
+simple,30,"Quimica Sanguinea","Acido Urico","Acido Urico",214,6,masculino,3.4,7,mg/dL,3
+simple,30,"Quimica Sanguinea","Acido Urico","Acido Urico",215,7,masculino,3.4,7,mg/dL,3
+simple,30,"Quimica Sanguinea","Acido Urico","Acido Urico",216,8,masculino,3.4,7,mg/dL,3
+simple,30,"Quimica Sanguinea","Acido Urico","Acido Urico",217,9,masculino,3.4,7,mg/dL,3
+simple,30,"Quimica Sanguinea","Acido Urico","Acido Urico",218,10,masculino,3.4,7,mg/dL,3
+simple,30,"Quimica Sanguinea","Acido Urico","Acido Urico",219,10,masculino,3.4,7,mg/dL,3
+simple,30,"Quimica Sanguinea","Acido Urico","Acido Urico",220,11,masculino,3.4,7,mg/dL,3
+simple,30,"Quimica Sanguinea","Acido Urico","Acido Urico",221,11,masculino,3.4,7,mg/dL,3
+simple,30,"Quimica Sanguinea","Acido Urico","Acido Urico",222,12,masculino,3.4,7,mg/dL,3
+simple,30,"Quimica Sanguinea","Acido Urico","Acido Urico",223,12,masculino,3.4,7,mg/dL,3
+simple,30,"Quimica Sanguinea","Acido Urico","Acido Urico",214,6,femenino,2.4,5.7,mg/dL,3
+simple,30,"Quimica Sanguinea","Acido Urico","Acido Urico",215,7,femenino,2.4,5.7,mg/dL,3
+simple,30,"Quimica Sanguinea","Acido Urico","Acido Urico",216,8,femenino,2.4,5.7,mg/dL,3
+simple,30,"Quimica Sanguinea","Acido Urico","Acido Urico",217,9,femenino,2.4,5.7,mg/dL,3
+simple,30,"Quimica Sanguinea","Acido Urico","Acido Urico",218,10,femenino,2.4,5.7,mg/dL,3
+simple,30,"Quimica Sanguinea","Acido Urico","Acido Urico",219,10,femenino,2.4,5.7,mg/dL,3
+simple,30,"Quimica Sanguinea","Acido Urico","Acido Urico",220,11,femenino,2.4,5.7,mg/dL,3
+simple,30,"Quimica Sanguinea","Acido Urico","Acido Urico",221,11,femenino,2.4,5.7,mg/dL,3
+simple,30,"Quimica Sanguinea","Acido Urico","Acido Urico",222,12,femenino,2.4,5.7,mg/dL,3
+simple,30,"Quimica Sanguinea","Acido Urico","Acido Urico",223,12,femenino,2.4,5.7,mg/dL,3
+simple,59,"Perfil Lipidico",Colesterol,Colesterol,422,6,ambos,120,200,mg/dL,3
+simple,59,"Perfil Lipidico",Colesterol,Colesterol,423,7,ambos,120,200,mg/dL,3
+simple,59,"Perfil Lipidico",Colesterol,Colesterol,424,8,ambos,120,200,mg/dL,3
+simple,59,"Perfil Lipidico",Colesterol,Colesterol,425,9,ambos,120,200,mg/dL,3
+simple,59,"Perfil Lipidico",Colesterol,Colesterol,426,10,ambos,120,200,mg/dL,3
+simple,59,"Perfil Lipidico",Colesterol,Colesterol,427,11,ambos,120,200,mg/dL,3
+simple,59,"Perfil Lipidico",Colesterol,Colesterol,428,12,ambos,120,200,mg/dL,3
+simple,59,"Perfil Lipidico",Colesterol,Colesterol,422,6,ambos,100,190,mg/dL,3
+simple,59,"Perfil Lipidico",Colesterol,Colesterol,423,7,ambos,100,190,mg/dL,3
+simple,59,"Perfil Lipidico",Colesterol,Colesterol,424,8,ambos,100,190,mg/dL,3
+simple,59,"Perfil Lipidico",Colesterol,Colesterol,425,9,ambos,100,190,mg/dL,3
+simple,59,"Perfil Lipidico",Colesterol,Colesterol,426,10,ambos,100,190,mg/dL,3
+simple,59,"Perfil Lipidico",Colesterol,Colesterol,427,11,ambos,100,190,mg/dL,3
+simple,59,"Perfil Lipidico",Colesterol,Colesterol,428,12,ambos,100,190,mg/dL,3
+simple,59,"Perfil Lipidico",Colesterol,Colesterol,422,6,ambos,135,260,mg/dL,3
+simple,59,"Perfil Lipidico",Colesterol,Colesterol,423,7,ambos,135,260,mg/dL,3
+simple,59,"Perfil Lipidico",Colesterol,Colesterol,424,8,ambos,135,260,mg/dL,3
+simple,59,"Perfil Lipidico",Colesterol,Colesterol,425,9,ambos,135,260,mg/dL,3
+simple,59,"Perfil Lipidico",Colesterol,Colesterol,426,10,ambos,135,260,mg/dL,3
+simple,59,"Perfil Lipidico",Colesterol,Colesterol,427,11,ambos,135,260,mg/dL,3
+simple,59,"Perfil Lipidico",Colesterol,Colesterol,428,12,ambos,135,260,mg/dL,3
+simple,59,"Perfil Lipidico",Colesterol,Colesterol,422,6,ambos,80,180,mg/dL,3
+simple,59,"Perfil Lipidico",Colesterol,Colesterol,423,7,ambos,80,180,mg/dL,3
+simple,59,"Perfil Lipidico",Colesterol,Colesterol,424,8,ambos,80,180,mg/dL,3
+simple,59,"Perfil Lipidico",Colesterol,Colesterol,425,9,ambos,80,180,mg/dL,3
+simple,59,"Perfil Lipidico",Colesterol,Colesterol,426,10,ambos,80,180,mg/dL,3
+simple,59,"Perfil Lipidico",Colesterol,Colesterol,427,11,ambos,80,180,mg/dL,3
+simple,59,"Perfil Lipidico",Colesterol,Colesterol,428,12,ambos,80,180,mg/dL,3
+simple,60,"Perfil Lipidico",C-HDL,C-HDL,429,6,ambos,35,80,mg/dL,3
+simple,60,"Perfil Lipidico",C-HDL,C-HDL,430,7,ambos,35,80,mg/dL,3
+simple,60,"Perfil Lipidico",C-HDL,C-HDL,431,8,ambos,35,80,mg/dL,3
+simple,60,"Perfil Lipidico",C-HDL,C-HDL,432,9,ambos,35,80,mg/dL,3
+simple,60,"Perfil Lipidico",C-HDL,C-HDL,433,10,ambos,35,80,mg/dL,3
+simple,60,"Perfil Lipidico",C-HDL,C-HDL,434,10,ambos,35,80,mg/dL,3
+simple,60,"Perfil Lipidico",C-HDL,C-HDL,435,11,ambos,35,80,mg/dL,3
+simple,60,"Perfil Lipidico",C-HDL,C-HDL,436,11,ambos,35,80,mg/dL,3
+simple,60,"Perfil Lipidico",C-HDL,C-HDL,437,12,ambos,35,80,mg/dL,3
+simple,60,"Perfil Lipidico",C-HDL,C-HDL,438,12,ambos,35,80,mg/dL,3
+simple,60,"Perfil Lipidico",C-HDL,C-HDL,429,6,femenino,45,85,mg/dL,3
+simple,60,"Perfil Lipidico",C-HDL,C-HDL,430,7,femenino,45,85,mg/dL,3
+simple,60,"Perfil Lipidico",C-HDL,C-HDL,431,8,femenino,45,85,mg/dL,3
+simple,60,"Perfil Lipidico",C-HDL,C-HDL,432,9,femenino,45,85,mg/dL,3
+simple,60,"Perfil Lipidico",C-HDL,C-HDL,433,10,femenino,45,85,mg/dL,3
+simple,60,"Perfil Lipidico",C-HDL,C-HDL,434,10,femenino,45,85,mg/dL,3
+simple,60,"Perfil Lipidico",C-HDL,C-HDL,435,11,femenino,45,85,mg/dL,3
+simple,60,"Perfil Lipidico",C-HDL,C-HDL,436,11,femenino,45,85,mg/dL,3
+simple,60,"Perfil Lipidico",C-HDL,C-HDL,437,12,femenino,45,85,mg/dL,3
+simple,60,"Perfil Lipidico",C-HDL,C-HDL,438,12,femenino,45,85,mg/dL,3
+simple,61,"Perfil Lipidico",C-LDL,C-LDL,439,6,ambos,50,150,mg/dL,3
+simple,61,"Perfil Lipidico",C-LDL,C-LDL,440,7,ambos,50,150,mg/dL,3
+simple,61,"Perfil Lipidico",C-LDL,C-LDL,441,8,ambos,50,150,mg/dL,3
+simple,61,"Perfil Lipidico",C-LDL,C-LDL,442,9,ambos,50,150,mg/dL,3
+simple,61,"Perfil Lipidico",C-LDL,C-LDL,443,10,ambos,50,150,mg/dL,3
+simple,61,"Perfil Lipidico",C-LDL,C-LDL,444,11,ambos,50,150,mg/dL,3
+simple,61,"Perfil Lipidico",C-LDL,C-LDL,445,12,ambos,50,150,mg/dL,3
+simple,61,"Perfil Lipidico",C-LDL,C-LDL,439,6,ambos,0,50,mg/dL,3
+simple,61,"Perfil Lipidico",C-LDL,C-LDL,440,7,ambos,0,50,mg/dL,3
+simple,61,"Perfil Lipidico",C-LDL,C-LDL,441,8,ambos,0,50,mg/dL,3
+simple,61,"Perfil Lipidico",C-LDL,C-LDL,442,9,ambos,0,50,mg/dL,3
+simple,61,"Perfil Lipidico",C-LDL,C-LDL,443,10,ambos,0,50,mg/dL,3
+simple,61,"Perfil Lipidico",C-LDL,C-LDL,444,11,ambos,0,50,mg/dL,3
+simple,61,"Perfil Lipidico",C-LDL,C-LDL,445,12,ambos,0,50,mg/dL,3
+simple,61,"Perfil Lipidico",C-LDL,C-LDL,439,6,ambos,0,60,mg/dL,3
+simple,61,"Perfil Lipidico",C-LDL,C-LDL,440,7,ambos,0,60,mg/dL,3
+simple,61,"Perfil Lipidico",C-LDL,C-LDL,441,8,ambos,0,60,mg/dL,3
+simple,61,"Perfil Lipidico",C-LDL,C-LDL,442,9,ambos,0,60,mg/dL,3
+simple,61,"Perfil Lipidico",C-LDL,C-LDL,443,10,ambos,0,60,mg/dL,3
+simple,61,"Perfil Lipidico",C-LDL,C-LDL,444,11,ambos,0,60,mg/dL,3
+simple,61,"Perfil Lipidico",C-LDL,C-LDL,445,12,ambos,0,60,mg/dL,3
+simple,62,"Perfil Lipidico",VLDL,VLDL,446,6,ambos,5,40,mg/dl,3
+simple,62,"Perfil Lipidico",VLDL,VLDL,447,7,ambos,5,40,mg/dl,3
+simple,62,"Perfil Lipidico",VLDL,VLDL,448,8,ambos,5,40,mg/dl,3
+simple,62,"Perfil Lipidico",VLDL,VLDL,449,9,ambos,5,40,mg/dl,3
+simple,62,"Perfil Lipidico",VLDL,VLDL,450,10,ambos,5,40,mg/dl,3
+simple,62,"Perfil Lipidico",VLDL,VLDL,451,11,ambos,5,40,mg/dl,3
+simple,62,"Perfil Lipidico",VLDL,VLDL,452,12,ambos,5,40,mg/dl,3
+simple,58,"Perfil Lipidico",Trigliceridos,Trigliceridos,415,6,ambos,31,108,mg/dL,3
+simple,58,"Perfil Lipidico",Trigliceridos,Trigliceridos,416,7,ambos,31,108,mg/dL,3
+simple,58,"Perfil Lipidico",Trigliceridos,Trigliceridos,417,8,ambos,31,108,mg/dL,3
+simple,58,"Perfil Lipidico",Trigliceridos,Trigliceridos,418,9,ambos,31,108,mg/dL,3
+simple,58,"Perfil Lipidico",Trigliceridos,Trigliceridos,419,10,ambos,31,108,mg/dL,3
+simple,58,"Perfil Lipidico",Trigliceridos,Trigliceridos,420,11,ambos,31,108,mg/dL,3
+simple,58,"Perfil Lipidico",Trigliceridos,Trigliceridos,421,12,ambos,31,108,mg/dL,3
+simple,58,"Perfil Lipidico",Trigliceridos,Trigliceridos,415,6,ambos,30,150,mg/dL,3
+simple,58,"Perfil Lipidico",Trigliceridos,Trigliceridos,416,7,ambos,30,150,mg/dL,3
+simple,58,"Perfil Lipidico",Trigliceridos,Trigliceridos,417,8,ambos,30,150,mg/dL,3
+simple,58,"Perfil Lipidico",Trigliceridos,Trigliceridos,418,9,ambos,30,150,mg/dL,3
+simple,58,"Perfil Lipidico",Trigliceridos,Trigliceridos,419,10,ambos,30,150,mg/dL,3
+simple,58,"Perfil Lipidico",Trigliceridos,Trigliceridos,420,11,ambos,30,150,mg/dL,3
+simple,58,"Perfil Lipidico",Trigliceridos,Trigliceridos,421,12,ambos,30,150,mg/dL,3
+simple,58,"Perfil Lipidico",Trigliceridos,Trigliceridos,415,6,ambos,0,150,mg/dL,3
+simple,58,"Perfil Lipidico",Trigliceridos,Trigliceridos,416,7,ambos,0,150,mg/dL,3
+simple,58,"Perfil Lipidico",Trigliceridos,Trigliceridos,417,8,ambos,0,150,mg/dL,3
+simple,58,"Perfil Lipidico",Trigliceridos,Trigliceridos,418,9,ambos,0,150,mg/dL,3
+simple,58,"Perfil Lipidico",Trigliceridos,Trigliceridos,419,10,ambos,0,150,mg/dL,3
+simple,58,"Perfil Lipidico",Trigliceridos,Trigliceridos,420,11,ambos,0,150,mg/dL,3
+simple,58,"Perfil Lipidico",Trigliceridos,Trigliceridos,421,12,ambos,0,150,mg/dL,3
+simple,58,"Perfil Lipidico",Trigliceridos,Trigliceridos,415,6,ambos,0,60,mg/dL,3
+simple,58,"Perfil Lipidico",Trigliceridos,Trigliceridos,416,7,ambos,0,60,mg/dL,3
+simple,58,"Perfil Lipidico",Trigliceridos,Trigliceridos,417,8,ambos,0,60,mg/dL,3
+simple,58,"Perfil Lipidico",Trigliceridos,Trigliceridos,418,9,ambos,0,60,mg/dL,3
+simple,58,"Perfil Lipidico",Trigliceridos,Trigliceridos,419,10,ambos,0,60,mg/dL,3
+simple,58,"Perfil Lipidico",Trigliceridos,Trigliceridos,420,11,ambos,0,60,mg/dL,3
+simple,58,"Perfil Lipidico",Trigliceridos,Trigliceridos,421,12,ambos,0,60,mg/dL,3
+simple,32,"Quimica Sanguinea",Proteinas,Proteinas,231,6,ambos,6.6,8.7,g/dL,3
+simple,32,"Quimica Sanguinea",Proteinas,Proteinas,232,7,ambos,6.6,8.7,g/dL,3
+simple,32,"Quimica Sanguinea",Proteinas,Proteinas,233,8,ambos,6.6,8.7,g/dL,3
+simple,32,"Quimica Sanguinea",Proteinas,Proteinas,234,9,ambos,6.6,8.7,g/dL,3
+simple,32,"Quimica Sanguinea",Proteinas,Proteinas,235,10,ambos,6.6,8.7,g/dL,3
+simple,32,"Quimica Sanguinea",Proteinas,Proteinas,236,11,ambos,6.6,8.7,g/dL,3
+simple,32,"Quimica Sanguinea",Proteinas,Proteinas,237,12,ambos,6.6,8.7,g/dL,3
+simple,32,"Quimica Sanguinea",Proteinas,Proteinas,231,6,ambos,5.5,8,g/dL,3
+simple,32,"Quimica Sanguinea",Proteinas,Proteinas,232,7,ambos,5.5,8,g/dL,3
+simple,32,"Quimica Sanguinea",Proteinas,Proteinas,233,8,ambos,5.5,8,g/dL,3
+simple,32,"Quimica Sanguinea",Proteinas,Proteinas,234,9,ambos,5.5,8,g/dL,3
+simple,32,"Quimica Sanguinea",Proteinas,Proteinas,235,10,ambos,5.5,8,g/dL,3
+simple,32,"Quimica Sanguinea",Proteinas,Proteinas,236,11,ambos,5.5,8,g/dL,3
+simple,32,"Quimica Sanguinea",Proteinas,Proteinas,237,12,ambos,5.5,8,g/dL,3
+simple,32,"Quimica Sanguinea",Proteinas,Proteinas,231,6,ambos,5.5,8,g/dL,3
+simple,32,"Quimica Sanguinea",Proteinas,Proteinas,232,7,ambos,5.5,8,g/dL,3
+simple,32,"Quimica Sanguinea",Proteinas,Proteinas,233,8,ambos,5.5,8,g/dL,3
+simple,32,"Quimica Sanguinea",Proteinas,Proteinas,234,9,ambos,5.5,8,g/dL,3
+simple,32,"Quimica Sanguinea",Proteinas,Proteinas,235,10,ambos,5.5,8,g/dL,3
+simple,32,"Quimica Sanguinea",Proteinas,Proteinas,236,11,ambos,5.5,8,g/dL,3
+simple,32,"Quimica Sanguinea",Proteinas,Proteinas,237,12,ambos,5.5,8,g/dL,3
+simple,31,"Quimica Sanguinea",Albumina,Albumina,224,6,ambos,3.8,5.1,g/dL,3
+simple,31,"Quimica Sanguinea",Albumina,Albumina,225,7,ambos,3.8,5.1,g/dL,3
+simple,31,"Quimica Sanguinea",Albumina,Albumina,226,8,ambos,3.8,5.1,g/dL,3
+simple,31,"Quimica Sanguinea",Albumina,Albumina,227,9,ambos,3.8,5.1,g/dL,3
+simple,31,"Quimica Sanguinea",Albumina,Albumina,228,10,ambos,3.8,5.1,g/dL,3
+simple,31,"Quimica Sanguinea",Albumina,Albumina,229,11,ambos,3.8,5.1,g/dL,3
+simple,31,"Quimica Sanguinea",Albumina,Albumina,230,12,ambos,3.8,5.1,g/dL,3
+simple,31,"Quimica Sanguinea",Albumina,Albumina,224,6,ambos,2.5,3.5,g/dL,3
+simple,31,"Quimica Sanguinea",Albumina,Albumina,225,7,ambos,2.5,3.5,g/dL,3
+simple,31,"Quimica Sanguinea",Albumina,Albumina,226,8,ambos,2.5,3.5,g/dL,3
+simple,31,"Quimica Sanguinea",Albumina,Albumina,227,9,ambos,2.5,3.5,g/dL,3
+simple,31,"Quimica Sanguinea",Albumina,Albumina,228,10,ambos,2.5,3.5,g/dL,3
+simple,31,"Quimica Sanguinea",Albumina,Albumina,229,11,ambos,2.5,3.5,g/dL,3
+simple,31,"Quimica Sanguinea",Albumina,Albumina,230,12,ambos,2.5,3.5,g/dL,3
+simple,31,"Quimica Sanguinea",Albumina,Albumina,224,6,ambos,2.1,3.4,g/dL,3
+simple,31,"Quimica Sanguinea",Albumina,Albumina,225,7,ambos,2.1,3.4,g/dL,3
+simple,31,"Quimica Sanguinea",Albumina,Albumina,226,8,ambos,2.1,3.4,g/dL,3
+simple,31,"Quimica Sanguinea",Albumina,Albumina,227,9,ambos,2.1,3.4,g/dL,3
+simple,31,"Quimica Sanguinea",Albumina,Albumina,228,10,ambos,2.1,3.4,g/dL,3
+simple,31,"Quimica Sanguinea",Albumina,Albumina,229,11,ambos,2.1,3.4,g/dL,3
+simple,31,"Quimica Sanguinea",Albumina,Albumina,230,12,ambos,2.1,3.4,g/dL,3
+simple,33,"Quimica Sanguinea",Globulina,Globulina,238,6,ambos,2,3.5,g/dL,3
+simple,85,"Marcadores Tumorales","Beta 2-Microglobulina","Beta 2-Microglobulina",568,6,ambos,2,3.5,g/dL,3
+simple,33,"Quimica Sanguinea",Globulina,Globulina,239,7,ambos,2,3.5,g/dL,3
+simple,85,"Marcadores Tumorales","Beta 2-Microglobulina","Beta 2-Microglobulina",569,7,ambos,2,3.5,g/dL,3
+simple,33,"Quimica Sanguinea",Globulina,Globulina,240,8,ambos,2,3.5,g/dL,3
+simple,85,"Marcadores Tumorales","Beta 2-Microglobulina","Beta 2-Microglobulina",570,8,ambos,2,3.5,g/dL,3
+simple,33,"Quimica Sanguinea",Globulina,Globulina,241,9,ambos,2,3.5,g/dL,3
+simple,85,"Marcadores Tumorales","Beta 2-Microglobulina","Beta 2-Microglobulina",571,9,ambos,2,3.5,g/dL,3
+simple,33,"Quimica Sanguinea",Globulina,Globulina,242,10,ambos,2,3.5,g/dL,3
+simple,85,"Marcadores Tumorales","Beta 2-Microglobulina","Beta 2-Microglobulina",572,10,ambos,2,3.5,g/dL,3
+simple,33,"Quimica Sanguinea",Globulina,Globulina,243,11,ambos,2,3.5,g/dL,3
+simple,85,"Marcadores Tumorales","Beta 2-Microglobulina","Beta 2-Microglobulina",573,11,ambos,2,3.5,g/dL,3
+simple,33,"Quimica Sanguinea",Globulina,Globulina,244,12,ambos,2,3.5,g/dL,3
+simple,85,"Marcadores Tumorales","Beta 2-Microglobulina","Beta 2-Microglobulina",574,12,ambos,2,3.5,g/dL,3
+simple,33,"Quimica Sanguinea",Globulina,Globulina,238,6,ambos,2,4,g/dL,3
+simple,85,"Marcadores Tumorales","Beta 2-Microglobulina","Beta 2-Microglobulina",568,6,ambos,2,4,g/dL,3
+simple,33,"Quimica Sanguinea",Globulina,Globulina,239,7,ambos,2,4,g/dL,3
+simple,85,"Marcadores Tumorales","Beta 2-Microglobulina","Beta 2-Microglobulina",569,7,ambos,2,4,g/dL,3
+simple,33,"Quimica Sanguinea",Globulina,Globulina,240,8,ambos,2,4,g/dL,3
+simple,85,"Marcadores Tumorales","Beta 2-Microglobulina","Beta 2-Microglobulina",570,8,ambos,2,4,g/dL,3
+simple,33,"Quimica Sanguinea",Globulina,Globulina,241,9,ambos,2,4,g/dL,3
+simple,85,"Marcadores Tumorales","Beta 2-Microglobulina","Beta 2-Microglobulina",571,9,ambos,2,4,g/dL,3
+simple,33,"Quimica Sanguinea",Globulina,Globulina,242,10,ambos,2,4,g/dL,3
+simple,85,"Marcadores Tumorales","Beta 2-Microglobulina","Beta 2-Microglobulina",572,10,ambos,2,4,g/dL,3
+simple,33,"Quimica Sanguinea",Globulina,Globulina,243,11,ambos,2,4,g/dL,3
+simple,85,"Marcadores Tumorales","Beta 2-Microglobulina","Beta 2-Microglobulina",573,11,ambos,2,4,g/dL,3
+simple,33,"Quimica Sanguinea",Globulina,Globulina,244,12,ambos,2,4,g/dL,3
+simple,85,"Marcadores Tumorales","Beta 2-Microglobulina","Beta 2-Microglobulina",574,12,ambos,2,4,g/dL,3
+simple,33,"Quimica Sanguinea",Globulina,Globulina,238,6,ambos,2,5,g/dL,3
+simple,85,"Marcadores Tumorales","Beta 2-Microglobulina","Beta 2-Microglobulina",568,6,ambos,2,5,g/dL,3
+simple,33,"Quimica Sanguinea",Globulina,Globulina,239,7,ambos,2,5,g/dL,3
+simple,85,"Marcadores Tumorales","Beta 2-Microglobulina","Beta 2-Microglobulina",569,7,ambos,2,5,g/dL,3
+simple,33,"Quimica Sanguinea",Globulina,Globulina,240,8,ambos,2,5,g/dL,3
+simple,85,"Marcadores Tumorales","Beta 2-Microglobulina","Beta 2-Microglobulina",570,8,ambos,2,5,g/dL,3
+simple,33,"Quimica Sanguinea",Globulina,Globulina,241,9,ambos,2,5,g/dL,3
+simple,85,"Marcadores Tumorales","Beta 2-Microglobulina","Beta 2-Microglobulina",571,9,ambos,2,5,g/dL,3
+simple,33,"Quimica Sanguinea",Globulina,Globulina,242,10,ambos,2,5,g/dL,3
+simple,85,"Marcadores Tumorales","Beta 2-Microglobulina","Beta 2-Microglobulina",572,10,ambos,2,5,g/dL,3
+simple,33,"Quimica Sanguinea",Globulina,Globulina,243,11,ambos,2,5,g/dL,3
+simple,85,"Marcadores Tumorales","Beta 2-Microglobulina","Beta 2-Microglobulina",573,11,ambos,2,5,g/dL,3
+simple,33,"Quimica Sanguinea",Globulina,Globulina,244,12,ambos,2,5,g/dL,3
+simple,85,"Marcadores Tumorales","Beta 2-Microglobulina","Beta 2-Microglobulina",574,12,ambos,2,5,g/dL,3
+simple,34,"Quimica Sanguinea","R A/G","R A/G",245,6,ambos,1.2,2.2,,3
+simple,34,"Quimica Sanguinea","R A/G","R A/G",246,7,ambos,1.2,2.2,,3
+simple,34,"Quimica Sanguinea","R A/G","R A/G",247,8,ambos,1.2,2.2,,3
+simple,34,"Quimica Sanguinea","R A/G","R A/G",248,9,ambos,1.2,2.2,,3
+simple,34,"Quimica Sanguinea","R A/G","R A/G",249,10,ambos,1.2,2.2,,3
+simple,34,"Quimica Sanguinea","R A/G","R A/G",250,11,ambos,1.2,2.2,,3
+simple,34,"Quimica Sanguinea","R A/G","R A/G",251,12,ambos,1.2,2.2,,3
+simple,34,"Quimica Sanguinea","R A/G","R A/G",245,6,ambos,1.2,2.2,,3
+simple,34,"Quimica Sanguinea","R A/G","R A/G",246,7,ambos,1.2,2.2,,3
+simple,34,"Quimica Sanguinea","R A/G","R A/G",247,8,ambos,1.2,2.2,,3
+simple,34,"Quimica Sanguinea","R A/G","R A/G",248,9,ambos,1.2,2.2,,3
+simple,34,"Quimica Sanguinea","R A/G","R A/G",249,10,ambos,1.2,2.2,,3
+simple,34,"Quimica Sanguinea","R A/G","R A/G",250,11,ambos,1.2,2.2,,3
+simple,34,"Quimica Sanguinea","R A/G","R A/G",251,12,ambos,1.2,2.2,,3
+simple,34,"Quimica Sanguinea","R A/G","R A/G",245,6,ambos,1.2,2.2,,3
+simple,34,"Quimica Sanguinea","R A/G","R A/G",246,7,ambos,1.2,2.2,,3
+simple,34,"Quimica Sanguinea","R A/G","R A/G",247,8,ambos,1.2,2.2,,3
+simple,34,"Quimica Sanguinea","R A/G","R A/G",248,9,ambos,1.2,2.2,,3
+simple,34,"Quimica Sanguinea","R A/G","R A/G",249,10,ambos,1.2,2.2,,3
+simple,34,"Quimica Sanguinea","R A/G","R A/G",250,11,ambos,1.2,2.2,,3
+simple,34,"Quimica Sanguinea","R A/G","R A/G",251,12,ambos,1.2,2.2,,3
+simple,35,"Quimica Sanguinea","Bilirrubina (D,I,T)","Bilirrubina (D,I,T)",252,6,ambos,0,12,mg/dL,3
+simple,35,"Quimica Sanguinea","Bilirrubina (D,I,T)","Bilirrubina (D,I,T)",253,7,ambos,0,1.5,mg/dL,3
+simple,35,"Quimica Sanguinea","Bilirrubina (D,I,T)","Bilirrubina (D,I,T)",258,12,ambos,0,1.1,mg/dL,3
+simple,35,"Quimica Sanguinea","Bilirrubina (D,I,T)","Bilirrubina (D,I,T)",252,6,ambos,0,0.8,mg/dL,3
+simple,35,"Quimica Sanguinea","Bilirrubina (D,I,T)","Bilirrubina (D,I,T)",253,7,ambos,0,0.8,mg/dL,3
+simple,35,"Quimica Sanguinea","Bilirrubina (D,I,T)","Bilirrubina (D,I,T)",254,8,ambos,0,0.8,mg/dL,3
+simple,35,"Quimica Sanguinea","Bilirrubina (D,I,T)","Bilirrubina (D,I,T)",255,9,ambos,0,0.8,mg/dL,3
+simple,35,"Quimica Sanguinea","Bilirrubina (D,I,T)","Bilirrubina (D,I,T)",256,10,ambos,0,0.8,mg/dL,3
+simple,35,"Quimica Sanguinea","Bilirrubina (D,I,T)","Bilirrubina (D,I,T)",257,11,ambos,0,0.8,mg/dL,3
+simple,35,"Quimica Sanguinea","Bilirrubina (D,I,T)","Bilirrubina (D,I,T)",258,12,ambos,0,0.8,mg/dL,3
+simple,35,"Quimica Sanguinea","Bilirrubina (D,I,T)","Bilirrubina (D,I,T)",252,6,ambos,0,1,mg/dL,3
+simple,35,"Quimica Sanguinea","Bilirrubina (D,I,T)","Bilirrubina (D,I,T)",253,7,ambos,0,1,mg/dL,3
+simple,35,"Quimica Sanguinea","Bilirrubina (D,I,T)","Bilirrubina (D,I,T)",254,8,ambos,0,1,mg/dL,3
+simple,35,"Quimica Sanguinea","Bilirrubina (D,I,T)","Bilirrubina (D,I,T)",255,9,ambos,0,1,mg/dL,3
+simple,35,"Quimica Sanguinea","Bilirrubina (D,I,T)","Bilirrubina (D,I,T)",256,10,ambos,0,1,mg/dL,3
+simple,35,"Quimica Sanguinea","Bilirrubina (D,I,T)","Bilirrubina (D,I,T)",257,11,ambos,0,1,mg/dL,3
+simple,35,"Quimica Sanguinea","Bilirrubina (D,I,T)","Bilirrubina (D,I,T)",258,12,ambos,0,1,mg/dL,3
+simple,35,"Quimica Sanguinea","Bilirrubina (D,I,T)","Bilirrubina (D,I,T)",252,6,ambos,0.1,0.5,mg/dL,3
+simple,35,"Quimica Sanguinea","Bilirrubina (D,I,T)","Bilirrubina (D,I,T)",253,7,ambos,0,0.6,mg/dL,3
+simple,35,"Quimica Sanguinea","Bilirrubina (D,I,T)","Bilirrubina (D,I,T)",258,12,ambos,0,0.25,mg/dL,3
+simple,35,"Quimica Sanguinea","Bilirrubina (D,I,T)","Bilirrubina (D,I,T)",252,6,ambos,0,0.4,mg/dL,3
+simple,35,"Quimica Sanguinea","Bilirrubina (D,I,T)","Bilirrubina (D,I,T)",253,7,ambos,0,0.4,mg/dL,3
+simple,35,"Quimica Sanguinea","Bilirrubina (D,I,T)","Bilirrubina (D,I,T)",254,8,ambos,0,0.4,mg/dL,3
+simple,35,"Quimica Sanguinea","Bilirrubina (D,I,T)","Bilirrubina (D,I,T)",255,9,ambos,0,0.4,mg/dL,3
+simple,35,"Quimica Sanguinea","Bilirrubina (D,I,T)","Bilirrubina (D,I,T)",256,10,ambos,0,0.4,mg/dL,3
+simple,35,"Quimica Sanguinea","Bilirrubina (D,I,T)","Bilirrubina (D,I,T)",257,11,ambos,0,0.4,mg/dL,3
+simple,35,"Quimica Sanguinea","Bilirrubina (D,I,T)","Bilirrubina (D,I,T)",258,12,ambos,0,0.4,mg/dL,3
+simple,35,"Quimica Sanguinea","Bilirrubina (D,I,T)","Bilirrubina (D,I,T)",252,6,ambos,0,0.3,mg/dL,3
+simple,35,"Quimica Sanguinea","Bilirrubina (D,I,T)","Bilirrubina (D,I,T)",253,7,ambos,0,0.3,mg/dL,3
+simple,35,"Quimica Sanguinea","Bilirrubina (D,I,T)","Bilirrubina (D,I,T)",254,8,ambos,0,0.3,mg/dL,3
+simple,35,"Quimica Sanguinea","Bilirrubina (D,I,T)","Bilirrubina (D,I,T)",255,9,ambos,0,0.3,mg/dL,3
+simple,35,"Quimica Sanguinea","Bilirrubina (D,I,T)","Bilirrubina (D,I,T)",256,10,ambos,0,0.3,mg/dL,3
+simple,35,"Quimica Sanguinea","Bilirrubina (D,I,T)","Bilirrubina (D,I,T)",257,11,ambos,0,0.3,mg/dL,3
+simple,35,"Quimica Sanguinea","Bilirrubina (D,I,T)","Bilirrubina (D,I,T)",258,12,ambos,0,0.3,mg/dL,3
+simple,35,"Quimica Sanguinea","Bilirrubina (D,I,T)","Bilirrubina (D,I,T)",252,6,ambos,0,0,mg/dL,3
+simple,35,"Quimica Sanguinea","Bilirrubina (D,I,T)","Bilirrubina (D,I,T)",253,7,ambos,0,12,mg/dL,3
+simple,35,"Quimica Sanguinea","Bilirrubina (D,I,T)","Bilirrubina (D,I,T)",258,12,ambos,0,0.8,mg/dL,3
+simple,35,"Quimica Sanguinea","Bilirrubina (D,I,T)","Bilirrubina (D,I,T)",252,6,ambos,0,0.4,mg/dL,3
+simple,35,"Quimica Sanguinea","Bilirrubina (D,I,T)","Bilirrubina (D,I,T)",253,7,ambos,0,0.4,mg/dL,3
+simple,35,"Quimica Sanguinea","Bilirrubina (D,I,T)","Bilirrubina (D,I,T)",254,8,ambos,0,0.4,mg/dL,3
+simple,35,"Quimica Sanguinea","Bilirrubina (D,I,T)","Bilirrubina (D,I,T)",255,9,ambos,0,0.4,mg/dL,3
+simple,35,"Quimica Sanguinea","Bilirrubina (D,I,T)","Bilirrubina (D,I,T)",256,10,ambos,0,0.4,mg/dL,3
+simple,35,"Quimica Sanguinea","Bilirrubina (D,I,T)","Bilirrubina (D,I,T)",257,11,ambos,0,0.4,mg/dL,3
+simple,35,"Quimica Sanguinea","Bilirrubina (D,I,T)","Bilirrubina (D,I,T)",258,12,ambos,0,0.4,mg/dL,3
+simple,35,"Quimica Sanguinea","Bilirrubina (D,I,T)","Bilirrubina (D,I,T)",252,6,ambos,0,0.6,mg/dL,3
+simple,35,"Quimica Sanguinea","Bilirrubina (D,I,T)","Bilirrubina (D,I,T)",253,7,ambos,0,0.6,mg/dL,3
+simple,35,"Quimica Sanguinea","Bilirrubina (D,I,T)","Bilirrubina (D,I,T)",254,8,ambos,0,0.6,mg/dL,3
+simple,35,"Quimica Sanguinea","Bilirrubina (D,I,T)","Bilirrubina (D,I,T)",255,9,ambos,0,0.6,mg/dL,3
+simple,35,"Quimica Sanguinea","Bilirrubina (D,I,T)","Bilirrubina (D,I,T)",256,10,ambos,0,0.6,mg/dL,3
+simple,35,"Quimica Sanguinea","Bilirrubina (D,I,T)","Bilirrubina (D,I,T)",257,11,ambos,0,0.6,mg/dL,3
+simple,35,"Quimica Sanguinea","Bilirrubina (D,I,T)","Bilirrubina (D,I,T)",258,12,ambos,0,0.6,mg/dL,3
+simple,71,"Perfil Cardiaco",GOT,GOT,512,6,femenino,0,31,U/L,3
+simple,71,"Perfil Cardiaco",GOT,GOT,513,7,femenino,0,31,U/L,3
+simple,71,"Perfil Cardiaco",GOT,GOT,514,8,femenino,0,31,U/L,3
+simple,71,"Perfil Cardiaco",GOT,GOT,515,9,femenino,0,31,U/L,3
+simple,71,"Perfil Cardiaco",GOT,GOT,516,10,femenino,0,31,U/L,3
+simple,71,"Perfil Cardiaco",GOT,GOT,517,11,femenino,0,31,U/L,3
+simple,71,"Perfil Cardiaco",GOT,GOT,518,12,femenino,0,31,U/L,3
+simple,71,"Perfil Cardiaco",GOT,GOT,512,6,masculino,0,37,U/L,3
+simple,71,"Perfil Cardiaco",GOT,GOT,513,7,masculino,0,37,U/L,3
+simple,71,"Perfil Cardiaco",GOT,GOT,514,8,masculino,0,37,U/L,3
+simple,71,"Perfil Cardiaco",GOT,GOT,515,9,masculino,0,37,U/L,3
+simple,71,"Perfil Cardiaco",GOT,GOT,516,10,masculino,0,37,U/L,3
+simple,71,"Perfil Cardiaco",GOT,GOT,517,11,masculino,0,37,U/L,3
+simple,71,"Perfil Cardiaco",GOT,GOT,518,12,masculino,0,37,U/L,3
+simple,71,"Perfil Cardiaco",GOT,GOT,512,6,ambos,10,70,U/L,3
+simple,71,"Perfil Cardiaco",GOT,GOT,513,7,ambos,10,70,U/L,3
+simple,71,"Perfil Cardiaco",GOT,GOT,514,8,ambos,10,70,U/L,3
+simple,71,"Perfil Cardiaco",GOT,GOT,515,9,ambos,10,70,U/L,3
+simple,71,"Perfil Cardiaco",GOT,GOT,516,10,ambos,10,70,U/L,3
+simple,71,"Perfil Cardiaco",GOT,GOT,517,11,ambos,10,70,U/L,3
+simple,71,"Perfil Cardiaco",GOT,GOT,518,12,ambos,10,70,U/L,3
+simple,71,"Perfil Cardiaco",GOT,GOT,512,6,ambos,10,80,U/L,3
+simple,71,"Perfil Cardiaco",GOT,GOT,513,7,ambos,10,80,U/L,3
+simple,71,"Perfil Cardiaco",GOT,GOT,514,8,ambos,10,80,U/L,3
+simple,71,"Perfil Cardiaco",GOT,GOT,515,9,ambos,10,80,U/L,3
+simple,71,"Perfil Cardiaco",GOT,GOT,516,10,ambos,10,80,U/L,3
+simple,71,"Perfil Cardiaco",GOT,GOT,517,11,ambos,10,80,U/L,3
+simple,71,"Perfil Cardiaco",GOT,GOT,518,12,ambos,10,80,U/L,3
+simple,63,"Perfil Hepatico",GPT/ALT,GPT/ALT,453,6,masculino,0,42,U/L,3
+simple,63,"Perfil Hepatico",GPT/ALT,GPT/ALT,454,7,masculino,0,42,U/L,3
+simple,63,"Perfil Hepatico",GPT/ALT,GPT/ALT,455,8,masculino,0,42,U/L,3
+simple,63,"Perfil Hepatico",GPT/ALT,GPT/ALT,456,9,masculino,0,42,U/L,3
+simple,63,"Perfil Hepatico",GPT/ALT,GPT/ALT,457,10,masculino,0,42,U/L,3
+simple,63,"Perfil Hepatico",GPT/ALT,GPT/ALT,458,11,masculino,0,42,U/L,3
+simple,63,"Perfil Hepatico",GPT/ALT,GPT/ALT,459,12,masculino,0,42,U/L,3
+simple,63,"Perfil Hepatico",GPT/ALT,GPT/ALT,453,6,femenino,0,32,U/L,3
+simple,63,"Perfil Hepatico",GPT/ALT,GPT/ALT,454,7,femenino,0,32,U/L,3
+simple,63,"Perfil Hepatico",GPT/ALT,GPT/ALT,455,8,femenino,0,32,U/L,3
+simple,63,"Perfil Hepatico",GPT/ALT,GPT/ALT,456,9,femenino,0,32,U/L,3
+simple,63,"Perfil Hepatico",GPT/ALT,GPT/ALT,457,10,femenino,0,32,U/L,3
+simple,63,"Perfil Hepatico",GPT/ALT,GPT/ALT,458,11,femenino,0,32,U/L,3
+simple,63,"Perfil Hepatico",GPT/ALT,GPT/ALT,459,12,femenino,0,32,U/L,3
+simple,63,"Perfil Hepatico",GPT/ALT,GPT/ALT,453,6,ambos,17,78,U/L,3
+simple,63,"Perfil Hepatico",GPT/ALT,GPT/ALT,454,7,ambos,17,78,U/L,3
+simple,63,"Perfil Hepatico",GPT/ALT,GPT/ALT,455,8,ambos,17,78,U/L,3
+simple,63,"Perfil Hepatico",GPT/ALT,GPT/ALT,456,9,ambos,17,78,U/L,3
+simple,63,"Perfil Hepatico",GPT/ALT,GPT/ALT,457,10,ambos,17,78,U/L,3
+simple,63,"Perfil Hepatico",GPT/ALT,GPT/ALT,458,11,ambos,17,78,U/L,3
+simple,63,"Perfil Hepatico",GPT/ALT,GPT/ALT,459,12,ambos,17,78,U/L,3
+simple,63,"Perfil Hepatico",GPT/ALT,GPT/ALT,453,6,ambos,10,80,U/L,3
+simple,63,"Perfil Hepatico",GPT/ALT,GPT/ALT,454,7,ambos,10,80,U/L,3
+simple,63,"Perfil Hepatico",GPT/ALT,GPT/ALT,455,8,ambos,10,80,U/L,3
+simple,63,"Perfil Hepatico",GPT/ALT,GPT/ALT,456,9,ambos,10,80,U/L,3
+simple,63,"Perfil Hepatico",GPT/ALT,GPT/ALT,457,10,ambos,10,80,U/L,3
+simple,63,"Perfil Hepatico",GPT/ALT,GPT/ALT,458,11,ambos,10,80,U/L,3
+simple,63,"Perfil Hepatico",GPT/ALT,GPT/ALT,459,12,ambos,10,80,U/L,3
+simple,66,"Perfil Hepatico",GGT,GGT,474,6,masculino,11,61,U/L,3
+simple,66,"Perfil Hepatico",GGT,GGT,474,6,femenino,9,39,U/L,3
+simple,66,"Perfil Hepatico",GGT,GGT,475,7,masculino,11,61,U/L,3
+simple,66,"Perfil Hepatico",GGT,GGT,475,7,femenino,9,39,U/L,3
+simple,66,"Perfil Hepatico",GGT,GGT,476,8,masculino,11,61,U/L,3
+simple,66,"Perfil Hepatico",GGT,GGT,476,8,femenino,9,39,U/L,3
+simple,66,"Perfil Hepatico",GGT,GGT,477,9,masculino,11,61,U/L,3
+simple,66,"Perfil Hepatico",GGT,GGT,477,9,femenino,9,39,U/L,3
+simple,66,"Perfil Hepatico",GGT,GGT,478,10,masculino,11,61,U/L,3
+simple,66,"Perfil Hepatico",GGT,GGT,478,10,femenino,9,39,U/L,3
+simple,66,"Perfil Hepatico",GGT,GGT,479,11,masculino,11,61,U/L,3
+simple,66,"Perfil Hepatico",GGT,GGT,479,11,femenino,9,39,U/L,3
+simple,66,"Perfil Hepatico",GGT,GGT,479,11,masculino,11,61,U/L,3
+simple,66,"Perfil Hepatico",GGT,GGT,479,11,femenino,9,39,U/L,3
+simple,66,"Perfil Hepatico",GGT,GGT,480,12,ambos,11,61,U/L,3
+simple,66,"Perfil Hepatico",GGT,GGT,480,12,femenino,9,39,U/L,3
+simple,66,"Perfil Hepatico",GGT,GGT,474,6,ambos,0,12,U/L,3
+simple,94,"Marcadores Tumorales",GGT,GGT,638,6,ambos,0,12,U/L,3
+simple,66,"Perfil Hepatico",GGT,GGT,475,7,ambos,0,12,U/L,3
+simple,94,"Marcadores Tumorales",GGT,GGT,639,7,ambos,0,12,U/L,3
+simple,66,"Perfil Hepatico",GGT,GGT,476,8,ambos,0,12,U/L,3
+simple,94,"Marcadores Tumorales",GGT,GGT,640,8,ambos,0,12,U/L,3
+simple,66,"Perfil Hepatico",GGT,GGT,477,9,ambos,0,12,U/L,3
+simple,94,"Marcadores Tumorales",GGT,GGT,641,9,ambos,0,12,U/L,3
+simple,66,"Perfil Hepatico",GGT,GGT,478,10,ambos,0,12,U/L,3
+simple,94,"Marcadores Tumorales",GGT,GGT,642,10,ambos,0,12,U/L,3
+simple,66,"Perfil Hepatico",GGT,GGT,479,11,ambos,0,12,U/L,3
+simple,94,"Marcadores Tumorales",GGT,GGT,643,11,ambos,0,12,U/L,3
+simple,66,"Perfil Hepatico",GGT,GGT,480,12,ambos,0,12,U/L,3
+simple,94,"Marcadores Tumorales",GGT,GGT,644,12,ambos,0,12,U/L,3
+simple,66,"Perfil Hepatico",GGT,GGT,474,6,ambos,0,10,U/L,3
+simple,94,"Marcadores Tumorales",GGT,GGT,638,6,ambos,0,10,U/L,3
+simple,66,"Perfil Hepatico",GGT,GGT,475,7,ambos,0,10,U/L,3
+simple,94,"Marcadores Tumorales",GGT,GGT,639,7,ambos,0,10,U/L,3
+simple,66,"Perfil Hepatico",GGT,GGT,476,8,ambos,0,10,U/L,3
+simple,94,"Marcadores Tumorales",GGT,GGT,640,8,ambos,0,10,U/L,3
+simple,66,"Perfil Hepatico",GGT,GGT,477,9,ambos,0,10,U/L,3
+simple,94,"Marcadores Tumorales",GGT,GGT,641,9,ambos,0,10,U/L,3
+simple,66,"Perfil Hepatico",GGT,GGT,478,10,ambos,0,10,U/L,3
+simple,94,"Marcadores Tumorales",GGT,GGT,642,10,ambos,0,10,U/L,3
+simple,66,"Perfil Hepatico",GGT,GGT,479,11,ambos,0,10,U/L,3
+simple,94,"Marcadores Tumorales",GGT,GGT,643,11,ambos,0,10,U/L,3
+simple,66,"Perfil Hepatico",GGT,GGT,480,12,ambos,0,10,U/L,3
+simple,94,"Marcadores Tumorales",GGT,GGT,644,12,ambos,0,10,U/L,3
+simple,212,Otros,Amonio,Amonio,993,6,ambos,10,47,umol/L,3
+simple,212,Otros,Amonio,Amonio,994,7,ambos,10,47,umol/L,3
+simple,212,Otros,Amonio,Amonio,995,8,ambos,10,47,umol/L,3
+simple,212,Otros,Amonio,Amonio,996,9,ambos,10,47,umol/L,3
+simple,212,Otros,Amonio,Amonio,997,10,ambos,10,47,umol/L,3
+simple,212,Otros,Amonio,Amonio,998,11,ambos,10,47,umol/L,3
+simple,212,Otros,Amonio,Amonio,999,12,ambos,10,47,umol/L,3
+simple,169,Bactereologia,ADA,ADA,906,6,ambos,0,45,U/L,3
+simple,169,Bactereologia,ADA,ADA,907,7,ambos,0,45,U/L,3
+simple,169,Bactereologia,ADA,ADA,908,8,ambos,0,45,U/L,3
+simple,169,Bactereologia,ADA,ADA,909,9,ambos,0,45,U/L,3
+simple,169,Bactereologia,ADA,ADA,910,10,ambos,0,45,U/L,3
+simple,169,Bactereologia,ADA,ADA,911,11,ambos,0,45,U/L,3
+simple,169,Bactereologia,ADA,ADA,912,12,ambos,0,45,U/L,3
+simple,169,Bactereologia,ADA,ADA,906,6,ambos,0,40,U/L,3
+simple,169,Bactereologia,ADA,ADA,907,7,ambos,0,40,U/L,3
+simple,169,Bactereologia,ADA,ADA,908,8,ambos,0,40,U/L,3
+simple,169,Bactereologia,ADA,ADA,909,9,ambos,0,40,U/L,3
+simple,169,Bactereologia,ADA,ADA,910,10,ambos,0,40,U/L,3
+simple,169,Bactereologia,ADA,ADA,911,11,ambos,0,40,U/L,3
+simple,169,Bactereologia,ADA,ADA,912,12,ambos,0,40,U/L,3
+simple,169,Bactereologia,ADA,ADA,906,6,ambos,0,45,U/L,3
+simple,169,Bactereologia,ADA,ADA,907,7,ambos,0,45,U/L,3
+simple,169,Bactereologia,ADA,ADA,908,8,ambos,0,45,U/L,3
+simple,169,Bactereologia,ADA,ADA,909,9,ambos,0,45,U/L,3
+simple,169,Bactereologia,ADA,ADA,910,10,ambos,0,45,U/L,3
+simple,169,Bactereologia,ADA,ADA,911,11,ambos,0,45,U/L,3
+simple,169,Bactereologia,ADA,ADA,912,12,ambos,0,45,U/L,3
+simple,169,Bactereologia,ADA,ADA,906,6,ambos,0,8,U/L,3
+simple,169,Bactereologia,ADA,ADA,907,7,ambos,0,8,U/L,3
+simple,169,Bactereologia,ADA,ADA,908,8,ambos,0,8,U/L,3
+simple,169,Bactereologia,ADA,ADA,909,9,ambos,0,8,U/L,3
+simple,169,Bactereologia,ADA,ADA,910,10,ambos,0,8,U/L,3
+simple,169,Bactereologia,ADA,ADA,911,11,ambos,0,8,U/L,3
+simple,169,Bactereologia,ADA,ADA,912,12,ambos,0,8,U/L,3
+simple,169,Bactereologia,ADA,ADA,906,6,ambos,,,,3
+simple,169,Bactereologia,ADA,ADA,907,7,ambos,,,,3
+simple,169,Bactereologia,ADA,ADA,908,8,ambos,,,,3
+simple,169,Bactereologia,ADA,ADA,909,9,ambos,,,,3
+simple,169,Bactereologia,ADA,ADA,910,10,ambos,,,,3
+simple,169,Bactereologia,ADA,ADA,911,11,ambos,,,,3
+simple,169,Bactereologia,ADA,ADA,912,12,ambos,,,,3
+simple,54,Electrolitos,Sodio,Sodio,387,6,ambos,135,145,mEq/L,3
+simple,54,Electrolitos,Sodio,Sodio,388,7,ambos,135,145,mEq/L,3
+simple,54,Electrolitos,Sodio,Sodio,389,8,ambos,135,145,mEq/L,3
+simple,54,Electrolitos,Sodio,Sodio,390,9,ambos,135,145,mEq/L,3
+simple,54,Electrolitos,Sodio,Sodio,391,10,ambos,135,145,mEq/L,3
+simple,54,Electrolitos,Sodio,Sodio,392,11,ambos,135,145,mEq/L,3
+simple,54,Electrolitos,Sodio,Sodio,393,12,ambos,135,145,mEq/L,3
+simple,52,Electrolitos,Potasio,Potasio,373,6,ambos,3.5,5.1,mEq/L,3
+simple,52,Electrolitos,Potasio,Potasio,374,7,ambos,3.5,5.1,mEq/L,3
+simple,52,Electrolitos,Potasio,Potasio,375,8,ambos,3.5,5.1,mEq/L,3
+simple,52,Electrolitos,Potasio,Potasio,376,9,ambos,3.5,5.1,mEq/L,3
+simple,52,Electrolitos,Potasio,Potasio,377,10,ambos,3.5,5.1,mEq/L,3
+simple,52,Electrolitos,Potasio,Potasio,378,11,ambos,3.5,5.1,mEq/L,3
+simple,52,Electrolitos,Potasio,Potasio,379,12,ambos,3.5,5.1,mEq/L,3
+simple,53,Electrolitos,Cloro,Cloro,380,6,ambos,98,106,mEq/L,3
+simple,53,Electrolitos,Cloro,Cloro,381,7,ambos,98,106,mEq/L,3
+simple,53,Electrolitos,Cloro,Cloro,382,8,ambos,98,106,mEq/L,3
+simple,53,Electrolitos,Cloro,Cloro,383,9,ambos,98,106,mEq/L,3
+simple,53,Electrolitos,Cloro,Cloro,384,10,ambos,98,106,mEq/L,3
+simple,53,Electrolitos,Cloro,Cloro,385,11,ambos,98,106,mEq/L,3
+simple,53,Electrolitos,Cloro,Cloro,386,12,ambos,98,106,mEq/L,3
+simple,57,Electrolitos,Calcio,Calcio,408,6,ambos,8.8,10.8,mg/dl,3
+simple,57,Electrolitos,Calcio,Calcio,409,7,ambos,8.8,10.8,mg/dl,3
+simple,57,Electrolitos,Calcio,Calcio,410,8,ambos,8.8,10.8,mg/dl,3
+simple,57,Electrolitos,Calcio,Calcio,411,9,ambos,8.8,10.8,mg/dl,3
+simple,57,Electrolitos,Calcio,Calcio,412,10,ambos,8.8,10.8,mg/dl,3
+simple,57,Electrolitos,Calcio,Calcio,413,11,ambos,8.8,10.8,mg/dl,3
+simple,57,Electrolitos,Calcio,Calcio,414,12,ambos,8.8,10.8,mg/dl,3
+simple,57,Electrolitos,Calcio,Calcio,414,12,ambos,8.8,11,mg/dl,3
+simple,57,Electrolitos,Calcio,Calcio,408,6,ambos,4.8,5.52,mg/dl,3
+simple,57,Electrolitos,Calcio,Calcio,409,7,ambos,4.8,5.52,mg/dl,3
+simple,57,Electrolitos,Calcio,Calcio,410,8,ambos,4.8,5.52,mg/dl,3
+simple,57,Electrolitos,Calcio,Calcio,411,9,ambos,4.8,5.52,mg/dl,3
+simple,57,Electrolitos,Calcio,Calcio,412,10,ambos,4.8,5.52,mg/dl,3
+simple,57,Electrolitos,Calcio,Calcio,413,11,ambos,4.8,5.52,mg/dl,3
+simple,57,Electrolitos,Calcio,Calcio,414,12,ambos,4.8,5.52,mg/dl,3
+simple,57,Electrolitos,Calcio,Calcio,414,12,ambos,4,5.4,mg/dl,3
+simple,55,Electrolitos,Magnesio,Magnesio,394,6,ambos,1.6,2.4,mg/dl,3
+simple,55,Electrolitos,Magnesio,Magnesio,395,7,ambos,1.6,2.4,mg/dl,3
+simple,55,Electrolitos,Magnesio,Magnesio,396,8,ambos,1.6,2.4,mg/dl,3
+simple,55,Electrolitos,Magnesio,Magnesio,397,9,ambos,1.6,2.4,mg/dl,3
+simple,55,Electrolitos,Magnesio,Magnesio,398,10,ambos,1.6,2.4,mg/dl,3
+simple,55,Electrolitos,Magnesio,Magnesio,399,11,ambos,1.6,2.4,mg/dl,3
+simple,55,Electrolitos,Magnesio,Magnesio,400,12,ambos,1.6,2.4,mg/dl,3
+simple,56,Electrolitos,Fosforo,Fosforo,401,6,ambos,2.5,4.8,mg/dl,3
+simple,56,Electrolitos,Fosforo,Fosforo,402,7,ambos,2.5,4.8,mg/dl,3
+simple,56,Electrolitos,Fosforo,Fosforo,403,8,ambos,2.5,4.8,mg/dl,3
+simple,56,Electrolitos,Fosforo,Fosforo,404,9,ambos,2.5,4.8,mg/dl,3
+simple,56,Electrolitos,Fosforo,Fosforo,405,10,ambos,2.5,4.8,mg/dl,3
+simple,56,Electrolitos,Fosforo,Fosforo,406,11,ambos,2.5,4.8,mg/dl,3
+simple,56,Electrolitos,Fosforo,Fosforo,407,12,ambos,2.5,4.8,mg/dl,3
+simple,72,"Perfil Cardiaco",Troponina,Troponina,519,6,ambos,0,14,pg/ml,3
+simple,203,Hematologia,Troponina,Troponina,966,6,ambos,0,14,pg/ml,3
+simple,72,"Perfil Cardiaco",Troponina,Troponina,520,7,ambos,0,14,pg/ml,3
+simple,203,Hematologia,Troponina,Troponina,967,7,ambos,0,14,pg/ml,3
+simple,72,"Perfil Cardiaco",Troponina,Troponina,521,8,ambos,0,14,pg/ml,3
+simple,203,Hematologia,Troponina,Troponina,968,8,ambos,0,14,pg/ml,3
+simple,72,"Perfil Cardiaco",Troponina,Troponina,522,9,ambos,0,14,pg/ml,3
+simple,203,Hematologia,Troponina,Troponina,969,9,ambos,0,14,pg/ml,3
+simple,72,"Perfil Cardiaco",Troponina,Troponina,523,10,ambos,0,14,pg/ml,3
+simple,203,Hematologia,Troponina,Troponina,970,10,ambos,0,14,pg/ml,3
+simple,72,"Perfil Cardiaco",Troponina,Troponina,524,11,ambos,0,14,pg/ml,3
+simple,203,Hematologia,Troponina,Troponina,971,11,ambos,0,14,pg/ml,3
+simple,72,"Perfil Cardiaco",Troponina,Troponina,525,12,ambos,0,14,pg/ml,3
+simple,203,Hematologia,Troponina,Troponina,972,12,ambos,0,14,pg/ml,3
+simple,48,"Quimica Sanguinea",LDH,LDH,345,6,ambos,150,500,U/L,3
+simple,48,"Quimica Sanguinea",LDH,LDH,346,7,ambos,150,500,U/L,3
+simple,48,"Quimica Sanguinea",LDH,LDH,347,8,ambos,150,500,U/L,3
+simple,48,"Quimica Sanguinea",LDH,LDH,348,9,ambos,150,500,U/L,3
+simple,48,"Quimica Sanguinea",LDH,LDH,349,10,ambos,207,414,U/L,3
+simple,48,"Quimica Sanguinea",LDH,LDH,350,11,ambos,207,414,U/L,3
+simple,48,"Quimica Sanguinea",LDH,LDH,351,12,ambos,207,414,U/L,3
+simple,69,"Perfil Cardiaco",CK-MB,CK-MB,498,6,ambos,0,24,UI/L,3
+simple,69,"Perfil Cardiaco",CK-MB,CK-MB,499,7,ambos,0,24,UI/L,3
+simple,69,"Perfil Cardiaco",CK-MB,CK-MB,500,8,ambos,0,24,UI/L,3
+simple,69,"Perfil Cardiaco",CK-MB,CK-MB,501,9,ambos,0,24,UI/L,3
+simple,69,"Perfil Cardiaco",CK-MB,CK-MB,502,10,ambos,0,24,UI/L,3
+simple,69,"Perfil Cardiaco",CK-MB,CK-MB,503,11,ambos,0,24,UI/L,3
+simple,69,"Perfil Cardiaco",CK-MB,CK-MB,504,12,ambos,0,24,UI/L,3
+simple,72,"Perfil Cardiaco",Troponina,Troponina,519,6,ambos,0,0.4,ng/ml,3
+simple,203,Hematologia,Troponina,Troponina,966,6,ambos,0,0.4,ng/ml,3
+simple,72,"Perfil Cardiaco",Troponina,Troponina,520,7,ambos,0,0.4,ng/ml,3
+simple,203,Hematologia,Troponina,Troponina,967,7,ambos,0,0.4,ng/ml,3
+simple,72,"Perfil Cardiaco",Troponina,Troponina,521,8,ambos,0,0.4,ng/ml,3
+simple,203,Hematologia,Troponina,Troponina,968,8,ambos,0,0.4,ng/ml,3
+simple,72,"Perfil Cardiaco",Troponina,Troponina,522,9,ambos,0,0.4,ng/ml,3
+simple,203,Hematologia,Troponina,Troponina,969,9,ambos,0,0.4,ng/ml,3
+simple,72,"Perfil Cardiaco",Troponina,Troponina,523,10,ambos,0,0.4,ng/ml,3
+simple,203,Hematologia,Troponina,Troponina,970,10,ambos,0,0.4,ng/ml,3
+simple,72,"Perfil Cardiaco",Troponina,Troponina,524,11,ambos,0,0.4,ng/ml,3
+simple,203,Hematologia,Troponina,Troponina,971,11,ambos,0,0.4,ng/ml,3
+simple,72,"Perfil Cardiaco",Troponina,Troponina,525,12,ambos,0,0.4,ng/ml,3
+simple,203,Hematologia,Troponina,Troponina,972,12,ambos,0,0.4,ng/ml,3
+simple,210,"Perfil de hierro","Perfil de Hierro","Perfil de Hierro",985,15,masculino,65,175,ug/dl,3
+simple,210,"Perfil de hierro","Perfil de Hierro","Perfil de Hierro",985,15,femenino,50,170,ug/dl,3
+simple,26,"Perfil de hierro","Transferrina - TIBC","Transferrina - TIBC",183,6,ambos,100,400,ng/ml,3
+simple,26,"Perfil de hierro","Transferrina - TIBC","Transferrina - TIBC",184,7,ambos,100,400,ng/ml,3
+simple,26,"Perfil de hierro","Transferrina - TIBC","Transferrina - TIBC",185,8,ambos,100,400,ng/ml,3
+simple,26,"Perfil de hierro","Transferrina - TIBC","Transferrina - TIBC",186,9,ambos,100,400,ng/ml,3
+simple,26,"Perfil de hierro","Transferrina - TIBC","Transferrina - TIBC",187,10,ambos,250,425,ng/ml,3
+simple,26,"Perfil de hierro","Transferrina - TIBC","Transferrina - TIBC",188,11,ambos,250,425,ng/ml,3
+simple,26,"Perfil de hierro","Transferrina - TIBC","Transferrina - TIBC",189,12,ambos,250,425,ng/ml,3
+simple,210,"Perfil de hierro","Perfil de Hierro","Perfil de Hierro",985,15,ambos,20,50,%,3
+simple,210,"Perfil de hierro","Perfil de Hierro","Perfil de Hierro",985,15,ambos,15,50,%,3
+simple,210,"Perfil de hierro","Perfil de Hierro","Perfil de Hierro",985,15,masculino,16,220,ng/ml,3
+simple,210,"Perfil de hierro","Perfil de Hierro","Perfil de Hierro",985,15,femenino,10,124,ng/mL,3
+simple,210,"Perfil de hierro","Perfil de Hierro","Perfil de Hierro",985,15,ambos,20,200,ug/l,3
+simple,91,"Marcadores Tumorales","PSA Total","PSA Total",620,11,masculino,0,1.4,ng/mL,3
+simple,91,"Marcadores Tumorales","PSA Total","PSA Total",620,11,masculino,0,2,ng/mL,3
+simple,91,"Marcadores Tumorales","PSA Total","PSA Total",620,11,masculino,0,3.1,ng/mL,3
+simple,91,"Marcadores Tumorales","PSA Total","PSA Total",622,12,masculino,0,4.1,ng/mL,3
+simple,91,"Marcadores Tumorales","PSA Total","PSA Total",622,12,masculino,0,4.4,ng/mL,3
+simple,92,"Marcadores Tumorales","PSA Libre","PSA Libre",624,6,ambos,0,1.3,ng/ml,3
+simple,92,"Marcadores Tumorales","PSA Libre","PSA Libre",625,7,ambos,0,1.3,ng/ml,3
+simple,92,"Marcadores Tumorales","PSA Libre","PSA Libre",626,8,ambos,0,1.3,ng/ml,3
+simple,92,"Marcadores Tumorales","PSA Libre","PSA Libre",627,9,ambos,0,1.3,ng/ml,3
+simple,92,"Marcadores Tumorales","PSA Libre","PSA Libre",628,10,ambos,0,1.3,ng/ml,3
+simple,92,"Marcadores Tumorales","PSA Libre","PSA Libre",629,11,ambos,0,1.3,ng/ml,3
+simple,92,"Marcadores Tumorales","PSA Libre","PSA Libre",630,12,ambos,0,1.3,ng/ml,3
+simple,90,"Marcadores Tumorales",CEA,CEA,603,6,ambos,0,5,ng/ml,3
+simple,90,"Marcadores Tumorales",CEA,CEA,604,7,ambos,0,5,ng/ml,3
+simple,90,"Marcadores Tumorales",CEA,CEA,605,8,ambos,0,5,ng/ml,3
+simple,90,"Marcadores Tumorales",CEA,CEA,606,9,ambos,0,5,ng/ml,3
+simple,90,"Marcadores Tumorales",CEA,CEA,607,10,ambos,0,5,ng/ml,3
+simple,90,"Marcadores Tumorales",CEA,CEA,608,11,ambos,0,5,ng/ml,3
+simple,90,"Marcadores Tumorales",CEA,CEA,609,12,ambos,0,5,ng/ml,3
+simple,89,"Marcadores Tumorales","CA 125","CA 125",596,6,ambos,0,35,U/mL,3
+simple,89,"Marcadores Tumorales","CA 125","CA 125",597,7,ambos,0,35,U/mL,3
+simple,89,"Marcadores Tumorales","CA 125","CA 125",598,8,ambos,0,35,U/mL,3
+simple,89,"Marcadores Tumorales","CA 125","CA 125",599,9,ambos,0,35,U/mL,3
+simple,89,"Marcadores Tumorales","CA 125","CA 125",600,10,ambos,0,35,U/mL,3
+simple,89,"Marcadores Tumorales","CA 125","CA 125",601,11,ambos,0,35,U/mL,3
+simple,89,"Marcadores Tumorales","CA 125","CA 125",602,12,ambos,0,35,U/mL,3
+simple,88,"Marcadores Tumorales","CA 19-9","CA 19-9",589,6,ambos,0,40,U/mL,3
+simple,88,"Marcadores Tumorales","CA 19-9","CA 19-9",590,7,ambos,0,40,U/mL,3
+simple,88,"Marcadores Tumorales","CA 19-9","CA 19-9",591,8,ambos,0,40,U/mL,3
+simple,88,"Marcadores Tumorales","CA 19-9","CA 19-9",592,9,ambos,0,40,U/mL,3
+simple,88,"Marcadores Tumorales","CA 19-9","CA 19-9",593,10,ambos,0,40,U/mL,3
+simple,88,"Marcadores Tumorales","CA 19-9","CA 19-9",594,11,ambos,0,40,U/mL,3
+simple,88,"Marcadores Tumorales","CA 19-9","CA 19-9",595,12,ambos,0,40,U/mL,3
+simple,87,"Marcadores Tumorales","CA 15-3","CA 15-3",582,6,ambos,0,37,U/ml,3
+simple,87,"Marcadores Tumorales","CA 15-3","CA 15-3",583,7,ambos,0,37,U/ml,3
+simple,87,"Marcadores Tumorales","CA 15-3","CA 15-3",584,8,ambos,0,37,U/ml,3
+simple,87,"Marcadores Tumorales","CA 15-3","CA 15-3",585,9,ambos,0,37,U/ml,3
+simple,87,"Marcadores Tumorales","CA 15-3","CA 15-3",586,10,ambos,0,37,U/ml,3
+simple,87,"Marcadores Tumorales","CA 15-3","CA 15-3",587,11,ambos,0,37,U/ml,3
+simple,87,"Marcadores Tumorales","CA 15-3","CA 15-3",588,12,ambos,0,37,U/ml,3
+simple,84,"Marcadores Tumorales","Alfa Feto Proteina","Alfa Feto Proteina",561,6,ambos,0,8.5,ng/ml,3
+simple,222,Hormonas,"Alfa Feto Proteína AFP","Alfa Feto Proteína AFP",1028,6,ambos,0,8.5,ng/ml,3
+simple,84,"Marcadores Tumorales","Alfa Feto Proteina","Alfa Feto Proteina",562,7,ambos,0,8.5,ng/ml,3
+simple,222,Hormonas,"Alfa Feto Proteína AFP","Alfa Feto Proteína AFP",1029,7,ambos,0,8.5,ng/ml,3
+simple,84,"Marcadores Tumorales","Alfa Feto Proteina","Alfa Feto Proteina",563,8,ambos,0,8.5,ng/ml,3
+simple,222,Hormonas,"Alfa Feto Proteína AFP","Alfa Feto Proteína AFP",1030,8,ambos,0,8.5,ng/ml,3
+simple,84,"Marcadores Tumorales","Alfa Feto Proteina","Alfa Feto Proteina",564,9,ambos,0,8.5,ng/ml,3
+simple,222,Hormonas,"Alfa Feto Proteína AFP","Alfa Feto Proteína AFP",1031,9,ambos,0,8.5,ng/ml,3
+simple,84,"Marcadores Tumorales","Alfa Feto Proteina","Alfa Feto Proteina",565,10,ambos,0,8.5,ng/ml,3
+simple,222,Hormonas,"Alfa Feto Proteína AFP","Alfa Feto Proteína AFP",1032,10,ambos,0,8.5,ng/ml,3
+simple,84,"Marcadores Tumorales","Alfa Feto Proteina","Alfa Feto Proteina",566,11,ambos,0,8.5,ng/ml,3
+simple,222,Hormonas,"Alfa Feto Proteína AFP","Alfa Feto Proteína AFP",1033,11,ambos,0,8.5,ng/ml,3
+simple,84,"Marcadores Tumorales","Alfa Feto Proteina","Alfa Feto Proteina",567,12,ambos,0,8.5,ng/ml,3
+simple,222,Hormonas,"Alfa Feto Proteína AFP","Alfa Feto Proteína AFP",1034,12,ambos,0,8.5,ng/ml,3
+simple,84,"Marcadores Tumorales","Alfa Feto Proteina","Alfa Feto Proteina",561,6,femenino,"VALOR DEL PACIENTE:              ng/ml                                                  VALORES NORMALES                                                                          MUJER EMBARAZAO               RANGO                                                12 SEMANAS                                   5 A 26                                                             14 SEMANAS                                   10 A 48                                                                16 SEMANAS                                   19 A 93                                                                              18 SEMANAS                                   27 A 137                                                     20 SEMANAS                                  34 A 171                                                          24 SEMANAS                                  58 A 288                                                         28 SEMANAS                                  88 A 32                                                  36 SEMANAS                                  86 A 426                                                          40 SEMANAS                                  40 A 201",,,3
+simple,222,Hormonas,"Alfa Feto Proteína AFP","Alfa Feto Proteína AFP",1028,6,femenino,"VALOR DEL PACIENTE:              ng/ml                                                  VALORES NORMALES                                                                          MUJER EMBARAZAO               RANGO                                                12 SEMANAS                                   5 A 26                                                             14 SEMANAS                                   10 A 48                                                                16 SEMANAS                                   19 A 93                                                                              18 SEMANAS                                   27 A 137                                                     20 SEMANAS                                  34 A 171                                                          24 SEMANAS                                  58 A 288                                                         28 SEMANAS                                  88 A 32                                                  36 SEMANAS                                  86 A 426                                                          40 SEMANAS                                  40 A 201",,,3
+simple,84,"Marcadores Tumorales","Alfa Feto Proteina","Alfa Feto Proteina",562,7,femenino,"VALOR DEL PACIENTE:              ng/ml                                                  VALORES NORMALES                                                                          MUJER EMBARAZAO               RANGO                                                12 SEMANAS                                   5 A 26                                                             14 SEMANAS                                   10 A 48                                                                16 SEMANAS                                   19 A 93                                                                              18 SEMANAS                                   27 A 137                                                     20 SEMANAS                                  34 A 171                                                          24 SEMANAS                                  58 A 288                                                         28 SEMANAS                                  88 A 32                                                  36 SEMANAS                                  86 A 426                                                          40 SEMANAS                                  40 A 201",,,3
+simple,222,Hormonas,"Alfa Feto Proteína AFP","Alfa Feto Proteína AFP",1029,7,femenino,"VALOR DEL PACIENTE:              ng/ml                                                  VALORES NORMALES                                                                          MUJER EMBARAZAO               RANGO                                                12 SEMANAS                                   5 A 26                                                             14 SEMANAS                                   10 A 48                                                                16 SEMANAS                                   19 A 93                                                                              18 SEMANAS                                   27 A 137                                                     20 SEMANAS                                  34 A 171                                                          24 SEMANAS                                  58 A 288                                                         28 SEMANAS                                  88 A 32                                                  36 SEMANAS                                  86 A 426                                                          40 SEMANAS                                  40 A 201",,,3
+simple,84,"Marcadores Tumorales","Alfa Feto Proteina","Alfa Feto Proteina",563,8,femenino,"VALOR DEL PACIENTE:              ng/ml                                                  VALORES NORMALES                                                                          MUJER EMBARAZAO               RANGO                                                12 SEMANAS                                   5 A 26                                                             14 SEMANAS                                   10 A 48                                                                16 SEMANAS                                   19 A 93                                                                              18 SEMANAS                                   27 A 137                                                     20 SEMANAS                                  34 A 171                                                          24 SEMANAS                                  58 A 288                                                         28 SEMANAS                                  88 A 32                                                  36 SEMANAS                                  86 A 426                                                          40 SEMANAS                                  40 A 201",,,3
+simple,222,Hormonas,"Alfa Feto Proteína AFP","Alfa Feto Proteína AFP",1030,8,femenino,"VALOR DEL PACIENTE:              ng/ml                                                  VALORES NORMALES                                                                          MUJER EMBARAZAO               RANGO                                                12 SEMANAS                                   5 A 26                                                             14 SEMANAS                                   10 A 48                                                                16 SEMANAS                                   19 A 93                                                                              18 SEMANAS                                   27 A 137                                                     20 SEMANAS                                  34 A 171                                                          24 SEMANAS                                  58 A 288                                                         28 SEMANAS                                  88 A 32                                                  36 SEMANAS                                  86 A 426                                                          40 SEMANAS                                  40 A 201",,,3
+simple,84,"Marcadores Tumorales","Alfa Feto Proteina","Alfa Feto Proteina",564,9,femenino,"VALOR DEL PACIENTE:              ng/ml                                                  VALORES NORMALES                                                                          MUJER EMBARAZAO               RANGO                                                12 SEMANAS                                   5 A 26                                                             14 SEMANAS                                   10 A 48                                                                16 SEMANAS                                   19 A 93                                                                              18 SEMANAS                                   27 A 137                                                     20 SEMANAS                                  34 A 171                                                          24 SEMANAS                                  58 A 288                                                         28 SEMANAS                                  88 A 32                                                  36 SEMANAS                                  86 A 426                                                          40 SEMANAS                                  40 A 201",,,3
+simple,222,Hormonas,"Alfa Feto Proteína AFP","Alfa Feto Proteína AFP",1031,9,femenino,"VALOR DEL PACIENTE:              ng/ml                                                  VALORES NORMALES                                                                          MUJER EMBARAZAO               RANGO                                                12 SEMANAS                                   5 A 26                                                             14 SEMANAS                                   10 A 48                                                                16 SEMANAS                                   19 A 93                                                                              18 SEMANAS                                   27 A 137                                                     20 SEMANAS                                  34 A 171                                                          24 SEMANAS                                  58 A 288                                                         28 SEMANAS                                  88 A 32                                                  36 SEMANAS                                  86 A 426                                                          40 SEMANAS                                  40 A 201",,,3
+simple,84,"Marcadores Tumorales","Alfa Feto Proteina","Alfa Feto Proteina",565,10,femenino,"VALOR DEL PACIENTE:              ng/ml                                                  VALORES NORMALES                                                                          MUJER EMBARAZAO               RANGO                                                12 SEMANAS                                   5 A 26                                                             14 SEMANAS                                   10 A 48                                                                16 SEMANAS                                   19 A 93                                                                              18 SEMANAS                                   27 A 137                                                     20 SEMANAS                                  34 A 171                                                          24 SEMANAS                                  58 A 288                                                         28 SEMANAS                                  88 A 32                                                  36 SEMANAS                                  86 A 426                                                          40 SEMANAS                                  40 A 201",,,3
+simple,222,Hormonas,"Alfa Feto Proteína AFP","Alfa Feto Proteína AFP",1032,10,femenino,"VALOR DEL PACIENTE:              ng/ml                                                  VALORES NORMALES                                                                          MUJER EMBARAZAO               RANGO                                                12 SEMANAS                                   5 A 26                                                             14 SEMANAS                                   10 A 48                                                                16 SEMANAS                                   19 A 93                                                                              18 SEMANAS                                   27 A 137                                                     20 SEMANAS                                  34 A 171                                                          24 SEMANAS                                  58 A 288                                                         28 SEMANAS                                  88 A 32                                                  36 SEMANAS                                  86 A 426                                                          40 SEMANAS                                  40 A 201",,,3
+simple,84,"Marcadores Tumorales","Alfa Feto Proteina","Alfa Feto Proteina",566,11,femenino,"VALOR DEL PACIENTE:              ng/ml                                                  VALORES NORMALES                                                                          MUJER EMBARAZAO               RANGO                                                12 SEMANAS                                   5 A 26                                                             14 SEMANAS                                   10 A 48                                                                16 SEMANAS                                   19 A 93                                                                              18 SEMANAS                                   27 A 137                                                     20 SEMANAS                                  34 A 171                                                          24 SEMANAS                                  58 A 288                                                         28 SEMANAS                                  88 A 32                                                  36 SEMANAS                                  86 A 426                                                          40 SEMANAS                                  40 A 201",,,3
+simple,222,Hormonas,"Alfa Feto Proteína AFP","Alfa Feto Proteína AFP",1033,11,femenino,"VALOR DEL PACIENTE:              ng/ml                                                  VALORES NORMALES                                                                          MUJER EMBARAZAO               RANGO                                                12 SEMANAS                                   5 A 26                                                             14 SEMANAS                                   10 A 48                                                                16 SEMANAS                                   19 A 93                                                                              18 SEMANAS                                   27 A 137                                                     20 SEMANAS                                  34 A 171                                                          24 SEMANAS                                  58 A 288                                                         28 SEMANAS                                  88 A 32                                                  36 SEMANAS                                  86 A 426                                                          40 SEMANAS                                  40 A 201",,,3
+simple,84,"Marcadores Tumorales","Alfa Feto Proteina","Alfa Feto Proteina",567,12,femenino,"VALOR DEL PACIENTE:              ng/ml                                                  VALORES NORMALES                                                                          MUJER EMBARAZAO               RANGO                                                12 SEMANAS                                   5 A 26                                                             14 SEMANAS                                   10 A 48                                                                16 SEMANAS                                   19 A 93                                                                              18 SEMANAS                                   27 A 137                                                     20 SEMANAS                                  34 A 171                                                          24 SEMANAS                                  58 A 288                                                         28 SEMANAS                                  88 A 32                                                  36 SEMANAS                                  86 A 426                                                          40 SEMANAS                                  40 A 201",,,3
+simple,222,Hormonas,"Alfa Feto Proteína AFP","Alfa Feto Proteína AFP",1034,12,femenino,"VALOR DEL PACIENTE:              ng/ml                                                  VALORES NORMALES                                                                          MUJER EMBARAZAO               RANGO                                                12 SEMANAS                                   5 A 26                                                             14 SEMANAS                                   10 A 48                                                                16 SEMANAS                                   19 A 93                                                                              18 SEMANAS                                   27 A 137                                                     20 SEMANAS                                  34 A 171                                                          24 SEMANAS                                  58 A 288                                                         28 SEMANAS                                  88 A 32                                                  36 SEMANAS                                  86 A 426                                                          40 SEMANAS                                  40 A 201",,,3
+simple,104,Hormonas,Prolactina,Prolactina,709,6,masculino,2.52,13.23,ng/mL,3
+simple,104,Hormonas,Prolactina,Prolactina,710,7,masculino,2.52,13.23,ng/mL,3
+simple,104,Hormonas,Prolactina,Prolactina,711,8,masculino,2.52,13.23,ng/mL,3
+simple,104,Hormonas,Prolactina,Prolactina,712,9,masculino,2.52,13.23,ng/mL,3
+simple,104,Hormonas,Prolactina,Prolactina,713,10,masculino,2.52,13.23,ng/mL,3
+simple,104,Hormonas,Prolactina,Prolactina,714,11,masculino,2.52,13.23,ng/mL,3
+simple,104,Hormonas,Prolactina,Prolactina,715,12,masculino,2.52,13.23,ng/mL,3
+simple,104,Hormonas,Prolactina,Prolactina,709,6,femenino,3.27,26.81,ng/mL,3
+simple,104,Hormonas,Prolactina,Prolactina,710,7,femenino,3.27,26.81,ng/mL,3
+simple,104,Hormonas,Prolactina,Prolactina,711,8,femenino,3.27,26.81,ng/mL,3
+simple,104,Hormonas,Prolactina,Prolactina,712,9,femenino,3.27,26.81,ng/mL,3
+simple,104,Hormonas,Prolactina,Prolactina,713,10,femenino,3.27,26.81,ng/mL,3
+simple,104,Hormonas,Prolactina,Prolactina,714,11,femenino,3.27,26.81,ng/mL,3
+simple,104,Hormonas,Prolactina,Prolactina,715,12,femenino,3.27,26.81,ng/mL,3
+simple,217,Hormonas,"Cortisol PM","Cortisol PM",1004,6,ambos,3,13,ug/dl,3
+simple,217,Hormonas,"Cortisol PM","Cortisol PM",1005,7,ambos,3,13,ug/dl,3
+simple,217,Hormonas,"Cortisol PM","Cortisol PM",1006,8,ambos,3,13,ug/dl,3
+simple,217,Hormonas,"Cortisol PM","Cortisol PM",1007,9,ambos,3,13,ug/dl,3
+simple,217,Hormonas,"Cortisol PM","Cortisol PM",1008,10,ambos,3,13,ug/dl,3
+simple,217,Hormonas,"Cortisol PM","Cortisol PM",1009,11,ambos,3,13,ug/dl,3
+simple,217,Hormonas,"Cortisol PM","Cortisol PM",1010,12,ambos,3,13,ug/dl,3
+simple,96,Hormonas,"Cortisol AM.","Cortisol AM.",652,6,ambos,3,21,ug/dl,3
+simple,96,Hormonas,"Cortisol AM.","Cortisol AM.",658,12,ambos,5,23,ug/dl,3
+simple,105,Hormonas,"Testosterona Total","Testosterona Total",716,6,masculino,0,0.2,ng/dL,3
+simple,105,Hormonas,"Testosterona Total","Testosterona Total",717,6,femenino,0,0.95,ng/dL,3
+simple,105,Hormonas,"Testosterona Total","Testosterona Total",718,7,masculino,0,0.2,ng/dL,3
+simple,105,Hormonas,"Testosterona Total","Testosterona Total",719,7,femenino,0,0.95,ng/dL,3
+simple,105,Hormonas,"Testosterona Total","Testosterona Total",720,8,masculino,0,0.2,ng/dL,3
+simple,105,Hormonas,"Testosterona Total","Testosterona Total",721,8,femenino,0,0.95,ng/dL,3
+simple,105,Hormonas,"Testosterona Total","Testosterona Total",722,9,masculino,0,0.2,ng/dL,3
+simple,105,Hormonas,"Testosterona Total","Testosterona Total",723,9,femenino,0,0.95,ng/dL,3
+simple,105,Hormonas,"Testosterona Total","Testosterona Total",724,10,masculino,2.5,10,ng/dL,3
+simple,105,Hormonas,"Testosterona Total","Testosterona Total",725,10,femenino,0,0.95,ng/dL,3
+simple,105,Hormonas,"Testosterona Total","Testosterona Total",726,11,masculino,2.5,10,ng/dL,3
+simple,105,Hormonas,"Testosterona Total","Testosterona Total",727,11,femenino,0,0.95,ng/dL,3
+simple,105,Hormonas,"Testosterona Total","Testosterona Total",728,12,masculino,2.5,10,ng/dL,3
+simple,105,Hormonas,"Testosterona Total","Testosterona Total",729,12,femenino,0,0.95,ng/dL,3
+simple,221,Hormonas,"Testosterona Libre","Testosterona Libre",1014,6,masculino,0,1,pg/ml,3
+simple,221,Hormonas,"Testosterona Libre","Testosterona Libre",1015,6,femenino,0,1,pg/ml,3
+simple,221,Hormonas,"Testosterona Libre","Testosterona Libre",1016,7,masculino,0,1,pg/ml,3
+simple,221,Hormonas,"Testosterona Libre","Testosterona Libre",1017,7,femenino,0,1,pg/ml,3
+simple,221,Hormonas,"Testosterona Libre","Testosterona Libre",1018,8,masculino,0,1,pg/ml,3
+simple,221,Hormonas,"Testosterona Libre","Testosterona Libre",1019,8,femenino,0,1,pg/ml,3
+simple,221,Hormonas,"Testosterona Libre","Testosterona Libre",1020,9,masculino,0,1,pg/ml,3
+simple,221,Hormonas,"Testosterona Libre","Testosterona Libre",1021,9,femenino,0,1,pg/ml,3
+simple,221,Hormonas,"Testosterona Libre","Testosterona Libre",1024,11,masculino,9.2,34.6,pg/ml,3
+simple,221,Hormonas,"Testosterona Libre","Testosterona Libre",1025,11,femenino,0.2,6.1,pg/ml,3
+simple,221,Hormonas,"Testosterona Libre","Testosterona Libre",1024,11,masculino,6.1,30.3,pg/ml,3
+simple,221,Hormonas,"Testosterona Libre","Testosterona Libre",1025,11,femenino,0.3,4.4,pg/ml,3
+simple,221,Hormonas,"Testosterona Libre","Testosterona Libre",1026,12,masculino,6.1,27.9,pg/ml,3
+simple,97,Hormonas,Estradiol,Estradiol,659,6,masculino,4,94,pg/ml,3
+simple,97,Hormonas,Estradiol,Estradiol,660,6,masculino,4,94,pg/ml,3
+simple,97,Hormonas,Estradiol,Estradiol,661,7,masculino,4,94,pg/ml,3
+simple,97,Hormonas,Estradiol,Estradiol,662,7,masculino,4,94,pg/ml,3
+simple,97,Hormonas,Estradiol,Estradiol,663,8,masculino,4,94,pg/ml,3
+simple,97,Hormonas,Estradiol,Estradiol,664,8,masculino,4,94,pg/ml,3
+simple,97,Hormonas,Estradiol,Estradiol,665,9,masculino,4,94,pg/ml,3
+simple,97,Hormonas,Estradiol,Estradiol,666,9,masculino,4,94,pg/ml,3
+simple,97,Hormonas,Estradiol,Estradiol,667,10,masculino,4,94,pg/ml,3
+simple,97,Hormonas,Estradiol,Estradiol,668,10,masculino,4,94,pg/ml,3
+simple,97,Hormonas,Estradiol,Estradiol,669,11,masculino,4,94,pg/ml,3
+simple,97,Hormonas,Estradiol,Estradiol,670,11,masculino,4,94,pg/ml,3
+simple,97,Hormonas,Estradiol,Estradiol,671,12,masculino,4,94,pg/ml,3
+simple,97,Hormonas,Estradiol,Estradiol,672,12,masculino,4,94,pg/ml,3
+simple,97,Hormonas,Estradiol,Estradiol,659,6,femenino,0,290,pg/ml,3
+simple,97,Hormonas,Estradiol,Estradiol,660,6,femenino,0,290,pg/ml,3
+simple,97,Hormonas,Estradiol,Estradiol,661,7,femenino,0,290,pg/ml,3
+simple,97,Hormonas,Estradiol,Estradiol,662,7,femenino,0,290,pg/ml,3
+simple,97,Hormonas,Estradiol,Estradiol,663,8,femenino,0,290,pg/ml,3
+simple,97,Hormonas,Estradiol,Estradiol,664,8,femenino,0,290,pg/ml,3
+simple,97,Hormonas,Estradiol,Estradiol,665,9,femenino,0,290,pg/ml,3
+simple,97,Hormonas,Estradiol,Estradiol,666,9,femenino,0,290,pg/ml,3
+simple,97,Hormonas,Estradiol,Estradiol,667,10,femenino,0,290,pg/ml,3
+simple,97,Hormonas,Estradiol,Estradiol,668,10,femenino,0,290,pg/ml,3
+simple,97,Hormonas,Estradiol,Estradiol,669,11,femenino,0,290,pg/ml,3
+simple,97,Hormonas,Estradiol,Estradiol,670,11,femenino,0,290,pg/ml,3
+simple,97,Hormonas,Estradiol,Estradiol,671,12,femenino,0,290,pg/ml,3
+simple,97,Hormonas,Estradiol,Estradiol,672,12,femenino,0,290,pg/ml,3
+simple,98,Hormonas,FSH,FSH,673,6,femenino,1,10,mUI/ml,3
+simple,98,Hormonas,FSH,FSH,674,7,femenino,1,10,mUI/ml,3
+simple,98,Hormonas,FSH,FSH,675,8,femenino,1,10,mUI/ml,3
+simple,98,Hormonas,FSH,FSH,676,9,femenino,1,10,mUI/ml,3
+simple,98,Hormonas,FSH,FSH,677,10,femenino,1,10,mUI/ml,3
+simple,98,Hormonas,FSH,FSH,678,11,femenino,1,10,mUI/ml,3
+simple,98,Hormonas,FSH,FSH,679,12,femenino,1,10,mUI/ml,3
+simple,98,Hormonas,FSH,FSH,679,12,femenino,1.4,135.6,mUI/ml,3
+simple,98,Hormonas,FSH,FSH,678,11,masculino,1.4,12.6,mUI/ml,3
+simple,99,Hormonas,LH,LH,680,6,femenino,0,92.53,mUI/ml,3
+simple,99,Hormonas,LH,LH,681,7,femenino,0,92.53,mUI/ml,3
+simple,99,Hormonas,LH,LH,682,8,femenino,0,92.53,mUI/ml,3
+simple,99,Hormonas,LH,LH,683,9,femenino,0,92.53,mUI/ml,3
+simple,99,Hormonas,LH,LH,684,10,femenino,0,92.53,mUI/ml,3
+simple,99,Hormonas,LH,LH,685,11,femenino,0,92.53,mUI/ml,3
+simple,99,Hormonas,LH,LH,686,12,femenino,0,92.53,mUI/ml,3
+simple,99,Hormonas,LH,LH,686,12,femenino,0.4,82,mUI/ml,3
+simple,99,Hormonas,LH,LH,680,6,masculino,0.7,7.4,mUI/ml,3
+simple,99,Hormonas,LH,LH,681,7,masculino,0.7,7.4,mUI/ml,3
+simple,99,Hormonas,LH,LH,682,8,masculino,0.7,7.4,mUI/ml,3
+simple,99,Hormonas,LH,LH,683,9,masculino,0.7,7.4,mUI/ml,3
+simple,99,Hormonas,LH,LH,684,10,masculino,0.7,7.4,mUI/ml,3
+simple,99,Hormonas,LH,LH,685,11,masculino,0.7,7.4,mUI/ml,3
+simple,99,Hormonas,LH,LH,686,12,masculino,0.7,7.4,mUI/ml,3
+simple,227,Otros,"17 OH-Progesterona","17 OH-Progesterona",1058,15,masculino,0.13,1.22,ng/ml,3
+simple,227,Otros,"17 OH-Progesterona","17 OH-Progesterona",1058,15,femenino,0.15,25,ng/ml,3
+simple,108,"Perfil Tiroideo",T4,T4,744,6,ambos,5,13,ug/dl,3
+simple,111,"Perfil Tiroideo","T4 Libre","T4 Libre",765,6,ambos,5,13,ug/dl,3
+simple,108,"Perfil Tiroideo",T4,T4,745,7,ambos,5,13,ug/dl,3
+simple,111,"Perfil Tiroideo","T4 Libre","T4 Libre",766,7,ambos,5,13,ug/dl,3
+simple,108,"Perfil Tiroideo",T4,T4,746,8,ambos,5,13,ug/dl,3
+simple,111,"Perfil Tiroideo","T4 Libre","T4 Libre",767,8,ambos,5,13,ug/dl,3
+simple,108,"Perfil Tiroideo",T4,T4,747,9,ambos,5,13,ug/dl,3
+simple,111,"Perfil Tiroideo","T4 Libre","T4 Libre",768,9,ambos,5,13,ug/dl,3
+simple,108,"Perfil Tiroideo",T4,T4,748,10,ambos,5,13,ug/dl,3
+simple,111,"Perfil Tiroideo","T4 Libre","T4 Libre",769,10,ambos,5,13,ug/dl,3
+simple,108,"Perfil Tiroideo",T4,T4,749,11,ambos,5,13,ug/dl,3
+simple,111,"Perfil Tiroideo","T4 Libre","T4 Libre",770,11,ambos,5,13,ug/dl,3
+simple,108,"Perfil Tiroideo",T4,T4,750,12,ambos,5,13,ug/dl,3
+simple,111,"Perfil Tiroideo","T4 Libre","T4 Libre",771,12,ambos,5,13,ug/dl,3
+simple,107,"Perfil Tiroideo",T3,T3,737,6,ambos,0.75,2.1,ng/dL,3
+simple,107,"Perfil Tiroideo",T3,T3,738,7,ambos,0.75,2.1,ng/dL,3
+simple,107,"Perfil Tiroideo",T3,T3,739,8,ambos,0.75,2.1,ng/dL,3
+simple,107,"Perfil Tiroideo",T3,T3,740,9,ambos,0.75,2.1,ng/dL,3
+simple,107,"Perfil Tiroideo",T3,T3,741,10,ambos,0.75,2.1,ng/dL,3
+simple,107,"Perfil Tiroideo",T3,T3,742,11,ambos,0.75,2.1,ng/dL,3
+simple,107,"Perfil Tiroideo",T3,T3,743,12,ambos,0.75,2.1,ng/dL,3
+simple,108,"Perfil Tiroideo",T4,T4,744,6,ambos,0.9,1.75,ng/dL,3
+simple,111,"Perfil Tiroideo","T4 Libre","T4 Libre",765,6,ambos,0.9,1.75,ng/dL,3
+simple,108,"Perfil Tiroideo",T4,T4,745,7,ambos,0.9,1.75,ng/dL,3
+simple,111,"Perfil Tiroideo","T4 Libre","T4 Libre",766,7,ambos,0.9,1.75,ng/dL,3
+simple,108,"Perfil Tiroideo",T4,T4,746,8,ambos,0.9,1.75,ng/dL,3
+simple,111,"Perfil Tiroideo","T4 Libre","T4 Libre",767,8,ambos,0.9,1.75,ng/dL,3
+simple,108,"Perfil Tiroideo",T4,T4,747,9,ambos,0.9,1.75,ng/dL,3
+simple,111,"Perfil Tiroideo","T4 Libre","T4 Libre",768,9,ambos,0.9,1.75,ng/dL,3
+simple,108,"Perfil Tiroideo",T4,T4,748,10,ambos,0.9,1.75,ng/dL,3
+simple,111,"Perfil Tiroideo","T4 Libre","T4 Libre",769,10,ambos,0.9,1.75,ng/dL,3
+simple,108,"Perfil Tiroideo",T4,T4,749,11,ambos,0.9,1.75,ng/dL,3
+simple,111,"Perfil Tiroideo","T4 Libre","T4 Libre",770,11,ambos,0.9,1.75,ng/dL,3
+simple,108,"Perfil Tiroideo",T4,T4,750,12,ambos,0.9,1.75,ng/dL,3
+simple,111,"Perfil Tiroideo","T4 Libre","T4 Libre",771,12,ambos,0.9,1.75,ng/dL,3
+simple,109,"Perfil Tiroideo",TSH,TSH,751,6,ambos,0.3,4.5,uUI/ml,3
+simple,110,"Perfil Tiroideo","TSH Neonatal","TSH Neonatal",758,6,ambos,0.3,4.5,uUI/ml,3
+simple,109,"Perfil Tiroideo",TSH,TSH,752,7,ambos,0.3,4.5,uUI/ml,3
+simple,110,"Perfil Tiroideo","TSH Neonatal","TSH Neonatal",759,7,ambos,0.3,4.5,uUI/ml,3
+simple,109,"Perfil Tiroideo",TSH,TSH,753,8,ambos,0.3,4.5,uUI/ml,3
+simple,110,"Perfil Tiroideo","TSH Neonatal","TSH Neonatal",760,8,ambos,0.3,4.5,uUI/ml,3
+simple,109,"Perfil Tiroideo",TSH,TSH,754,9,ambos,0.3,4.5,uUI/ml,3
+simple,110,"Perfil Tiroideo","TSH Neonatal","TSH Neonatal",761,9,ambos,0.3,4.5,uUI/ml,3
+simple,109,"Perfil Tiroideo",TSH,TSH,755,10,ambos,0.3,4.5,uUI/ml,3
+simple,110,"Perfil Tiroideo","TSH Neonatal","TSH Neonatal",762,10,ambos,0.3,4.5,uUI/ml,3
+simple,109,"Perfil Tiroideo",TSH,TSH,756,11,ambos,0.3,4.5,uUI/ml,3
+simple,110,"Perfil Tiroideo","TSH Neonatal","TSH Neonatal",763,11,ambos,0.3,4.5,uUI/ml,3
+simple,109,"Perfil Tiroideo",TSH,TSH,757,12,ambos,0.3,4.5,uUI/ml,3
+simple,110,"Perfil Tiroideo","TSH Neonatal","TSH Neonatal",764,12,ambos,0.3,4.5,uUI/ml,3
+simple,110,"Perfil Tiroideo","TSH Neonatal","TSH Neonatal",758,6,ambos,0.6,17,mUI/ml,3
+simple,110,"Perfil Tiroideo","TSH Neonatal","TSH Neonatal",759,7,ambos,0.6,17,mUI/ml,3
+simple,110,"Perfil Tiroideo","TSH Neonatal","TSH Neonatal",760,8,ambos,0.6,17,mUI/ml,3
+simple,110,"Perfil Tiroideo","TSH Neonatal","TSH Neonatal",761,9,ambos,0.6,17,mUI/ml,3
+simple,110,"Perfil Tiroideo","TSH Neonatal","TSH Neonatal",762,10,ambos,0.6,17,mUI/ml,3
+simple,110,"Perfil Tiroideo","TSH Neonatal","TSH Neonatal",763,11,ambos,0.6,17,mUI/ml,3
+simple,110,"Perfil Tiroideo","TSH Neonatal","TSH Neonatal",764,12,ambos,0.6,17,mUI/ml,3
+simple,112,Elisas,CHAGAS,CHAGAS,772,15,ambos,0,1.1,,3
+simple,112,Elisas,CHAGAS,CHAGAS,772,15,ambos,"NEGATIVO (< Dil. 1:8)                              Dentro                                                NEGATIVO (Dil. 1:8)                                  Dentro                                                 NEGATIVO (Dil. 1:16)                                Dentro                                             POSITIVO (Dil. 1:32)                                  Fuera                                                                 POSITIVO (Dil. 1:64)                                  Fuera                                                                   POSITIVO (Dil. 1:128)                                 Fuera                                                      POSITIVO (Dil. 1:256)                                Fuera                                                                   POSITIVO (Dil. 1:512)                                 Fuera",,,3
+simple,112,Elisas,CHAGAS,CHAGAS,772,15,ambos,"NEGATIVO                                                          POSITIVO > 1/40",,,3
+simple,129,"Elisas Inmunologia",ANTI-DNA,ANTI-DNA,795,15,ambos,0,46.4,UI/ml,3
+simple,130,"Elisas Inmunologia","ANTI CCP","ANTI CCP",796,15,ambos,0,17,U/ml,3
+simple,128,"Elisas Inmunologia",ANA,ANA,794,15,ambos,0,40,AU/mL,3
+simple,128,"Elisas Inmunologia",ANA,ANA,794,15,ambos,"POSITIVO 1/40","POSITIVO  < 1/40",,3
+simple,135,Radioinmunoensayo,C3,C3,807,6,ambos,90,180,mg/dl,3
+simple,140,Nefelometria,C3,C3,842,6,ambos,90,180,mg/dl,3
+simple,135,Radioinmunoensayo,C3,C3,808,7,ambos,90,180,mg/dl,3
+simple,140,Nefelometria,C3,C3,843,7,ambos,90,180,mg/dl,3
+simple,135,Radioinmunoensayo,C3,C3,809,8,ambos,90,180,mg/dl,3
+simple,140,Nefelometria,C3,C3,844,8,ambos,90,180,mg/dl,3
+simple,135,Radioinmunoensayo,C3,C3,810,9,ambos,90,180,mg/dl,3
+simple,140,Nefelometria,C3,C3,845,9,ambos,90,180,mg/dl,3
+simple,135,Radioinmunoensayo,C3,C3,811,10,ambos,90,180,mg/dl,3
+simple,140,Nefelometria,C3,C3,846,10,ambos,90,180,mg/dl,3
+simple,135,Radioinmunoensayo,C3,C3,812,11,ambos,90,180,mg/dl,3
+simple,140,Nefelometria,C3,C3,847,11,ambos,90,180,mg/dl,3
+simple,135,Radioinmunoensayo,C3,C3,813,12,ambos,90,180,mg/dl,3
+simple,140,Nefelometria,C3,C3,848,12,ambos,90,180,mg/dl,3
+simple,136,Radioinmunoensayo,C4,C4,814,6,ambos,10,40,mg/dl,3
+simple,141,Nefelometria,C4,C4,849,6,ambos,10,40,mg/dl,3
+simple,136,Radioinmunoensayo,C4,C4,815,7,ambos,10,40,mg/dl,3
+simple,141,Nefelometria,C4,C4,850,7,ambos,10,40,mg/dl,3
+simple,136,Radioinmunoensayo,C4,C4,816,8,ambos,10,40,mg/dl,3
+simple,141,Nefelometria,C4,C4,851,8,ambos,10,40,mg/dl,3
+simple,136,Radioinmunoensayo,C4,C4,817,9,ambos,10,40,mg/dl,3
+simple,141,Nefelometria,C4,C4,852,9,ambos,10,40,mg/dl,3
+simple,136,Radioinmunoensayo,C4,C4,818,10,ambos,10,40,mg/dl,3
+simple,141,Nefelometria,C4,C4,853,10,ambos,10,40,mg/dl,3
+simple,136,Radioinmunoensayo,C4,C4,819,11,ambos,10,40,mg/dl,3
+simple,141,Nefelometria,C4,C4,854,11,ambos,10,40,mg/dl,3
+simple,136,Radioinmunoensayo,C4,C4,820,12,ambos,10,40,mg/dl,3
+simple,141,Nefelometria,C4,C4,855,12,ambos,10,40,mg/dl,3
+simple,132,"Elisas Inmunologia","ANCA C","ANCA C",798,15,ambos,0,0.9,,3
+simple,131,"Elisas Inmunologia","ANCA P","ANCA P",797,15,ambos,0,0.9,,3
+simple,124,Elisas,IgE,IgE,784,6,ambos,0,146,UI/ml,3
+simple,124,Elisas,IgE,IgE,785,7,ambos,0,146,UI/ml,3
+simple,124,Elisas,IgE,IgE,786,8,ambos,0,280,UI/ml,3
+simple,124,Elisas,IgE,IgE,787,9,ambos,0,280,UI/ml,3
+simple,124,Elisas,IgE,IgE,788,10,ambos,0,280,UI/ml,3
+simple,124,Elisas,IgE,IgE,789,11,ambos,0,200,UI/ml,3
+simple,154,"Pruebas Gastricas","Antiendomisio IgA","Antiendomisio IgA",892,15,ambos,"NEGATIVO                                                                                                    POSITIVO > 1/5",,,3
+simple,156,"Pruebas Gastricas","Antitransglutaminasa IgA","Antitransglutaminasa IgA",894,15,ambos,0,10,UI/ml,3
+simple,153,"Pruebas Gastricas","Antigliadina IgA","Antigliadina IgA",891,15,ambos,0,12,UI/ml,3
+simple,44,"Quimica Sanguinea",Glicemia,Glicemia,317,6,ambos,"NEGATIVO                                                                                                      TRAZAS                                                                                                       POSITIVO ( + )                                                                                      POSITIVO ( ++ )                                                                                          POSITIVO  ( +++ )",,,3
+simple,44,"Quimica Sanguinea",Glicemia,Glicemia,318,7,ambos,"NEGATIVO                                                                                                      TRAZAS                                                                                                       POSITIVO ( + )                                                                                      POSITIVO ( ++ )                                                                                          POSITIVO  ( +++ )",,,3
+simple,44,"Quimica Sanguinea",Glicemia,Glicemia,319,8,ambos,"NEGATIVO                                                                                                      TRAZAS                                                                                                       POSITIVO ( + )                                                                                      POSITIVO ( ++ )                                                                                          POSITIVO  ( +++ )",,,3
+simple,44,"Quimica Sanguinea",Glicemia,Glicemia,320,9,ambos,"NEGATIVO                                                                                                      TRAZAS                                                                                                       POSITIVO ( + )                                                                                      POSITIVO ( ++ )                                                                                          POSITIVO  ( +++ )",,,3
+simple,44,"Quimica Sanguinea",Glicemia,Glicemia,321,10,ambos,"NEGATIVO                                                                                                      TRAZAS                                                                                                       POSITIVO ( + )                                                                                      POSITIVO ( ++ )                                                                                          POSITIVO  ( +++ )",,,3
+simple,44,"Quimica Sanguinea",Glicemia,Glicemia,322,11,ambos,"NEGATIVO                                                                                                      TRAZAS                                                                                                       POSITIVO ( + )                                                                                      POSITIVO ( ++ )                                                                                          POSITIVO  ( +++ )",,,3
+simple,44,"Quimica Sanguinea",Glicemia,Glicemia,323,12,ambos,"NEGATIVO                                                                                                      TRAZAS                                                                                                       POSITIVO ( + )                                                                                      POSITIVO ( ++ )                                                                                          POSITIVO  ( +++ )",,,3
+simple,35,"Quimica Sanguinea","Bilirrubina (D,I,T)","Bilirrubina (D,I,T)",252,6,ambos,"NEGATIVO                                                                                                      TRAZAS                                                                                                       POSITIVO ( + )                                                                                      POSITIVO ( ++ )                                                                                          POSITIVO  ( +++ )",,,3
+simple,35,"Quimica Sanguinea","Bilirrubina (D,I,T)","Bilirrubina (D,I,T)",253,7,ambos,"NEGATIVO                                                                                                      TRAZAS                                                                                                       POSITIVO ( + )                                                                                      POSITIVO ( ++ )                                                                                          POSITIVO  ( +++ )",,,3
+simple,35,"Quimica Sanguinea","Bilirrubina (D,I,T)","Bilirrubina (D,I,T)",254,8,ambos,"NEGATIVO                                                                                                      TRAZAS                                                                                                       POSITIVO ( + )                                                                                      POSITIVO ( ++ )                                                                                          POSITIVO  ( +++ )",,,3
+simple,35,"Quimica Sanguinea","Bilirrubina (D,I,T)","Bilirrubina (D,I,T)",255,9,ambos,"NEGATIVO                                                                                                      TRAZAS                                                                                                       POSITIVO ( + )                                                                                      POSITIVO ( ++ )                                                                                          POSITIVO  ( +++ )",,,3
+simple,35,"Quimica Sanguinea","Bilirrubina (D,I,T)","Bilirrubina (D,I,T)",256,10,ambos,"NEGATIVO                                                                                                      TRAZAS                                                                                                       POSITIVO ( + )                                                                                      POSITIVO ( ++ )                                                                                          POSITIVO  ( +++ )",,,3
+simple,35,"Quimica Sanguinea","Bilirrubina (D,I,T)","Bilirrubina (D,I,T)",257,11,ambos,"NEGATIVO                                                                                                      TRAZAS                                                                                                       POSITIVO ( + )                                                                                      POSITIVO ( ++ )                                                                                          POSITIVO  ( +++ )",,,3
+simple,35,"Quimica Sanguinea","Bilirrubina (D,I,T)","Bilirrubina (D,I,T)",258,12,ambos,"NEGATIVO                                                                                                      TRAZAS                                                                                                       POSITIVO ( + )                                                                                      POSITIVO ( ++ )                                                                                          POSITIVO  ( +++ )",,,3
+simple,3,Hematologia,Hemoglobina,Hemoglobina,87,6,ambos,"NEGATIVO                                                                                                      TRAZAS                                                                                                       POSITIVO ( + )                                                                                      POSITIVO ( ++ )                                                                                          POSITIVO  ( +++ )",,,3
+simple,3,Hematologia,Hemoglobina,Hemoglobina,88,7,ambos,"NEGATIVO                                                                                                      TRAZAS                                                                                                       POSITIVO ( + )                                                                                      POSITIVO ( ++ )                                                                                          POSITIVO  ( +++ )",,,3
+simple,3,Hematologia,Hemoglobina,Hemoglobina,89,8,ambos,"NEGATIVO                                                                                                      TRAZAS                                                                                                       POSITIVO ( + )                                                                                      POSITIVO ( ++ )                                                                                          POSITIVO  ( +++ )",,,3
+simple,3,Hematologia,Hemoglobina,Hemoglobina,90,9,ambos,"NEGATIVO                                                                                                      TRAZAS                                                                                                       POSITIVO ( + )                                                                                      POSITIVO ( ++ )                                                                                          POSITIVO  ( +++ )",,,3
+simple,3,Hematologia,Hemoglobina,Hemoglobina,91,10,ambos,"NEGATIVO                                                                                                      TRAZAS                                                                                                       POSITIVO ( + )                                                                                      POSITIVO ( ++ )                                                                                          POSITIVO  ( +++ )",,,3
+simple,3,Hematologia,Hemoglobina,Hemoglobina,92,10,ambos,"NEGATIVO                                                                                                      TRAZAS                                                                                                       POSITIVO ( + )                                                                                      POSITIVO ( ++ )                                                                                          POSITIVO  ( +++ )",,,3
+simple,3,Hematologia,Hemoglobina,Hemoglobina,93,11,ambos,"NEGATIVO                                                                                                      TRAZAS                                                                                                       POSITIVO ( + )                                                                                      POSITIVO ( ++ )                                                                                          POSITIVO  ( +++ )",,,3
+simple,3,Hematologia,Hemoglobina,Hemoglobina,94,11,ambos,"NEGATIVO                                                                                                      TRAZAS                                                                                                       POSITIVO ( + )                                                                                      POSITIVO ( ++ )                                                                                          POSITIVO  ( +++ )",,,3
+simple,3,Hematologia,Hemoglobina,Hemoglobina,95,12,ambos,"NEGATIVO                                                                                                      TRAZAS                                                                                                       POSITIVO ( + )                                                                                      POSITIVO ( ++ )                                                                                          POSITIVO  ( +++ )",,,3
+simple,3,Hematologia,Hemoglobina,Hemoglobina,96,12,ambos,"NEGATIVO                                                                                                      TRAZAS                                                                                                       POSITIVO ( + )                                                                                      POSITIVO ( ++ )                                                                                          POSITIVO  ( +++ )",,,3
+simple,179,Heces,Lienteria,Lienteria,950,15,ambos,"NEGATIVO                                                                                            POSITIVO",,,3
+simple,179,Heces,Lienteria,Lienteria,950,15,ambos,"NEGATIVO                                                                                            POSITIVO",,,3
+simple,179,Heces,Lienteria,Lienteria,950,15,ambos,"NEGATIVO                                                                                            POSITIVO",,,3
+simple,179,Heces,Lienteria,Lienteria,950,15,ambos,"NEGATIVO                                                                                            POSITIVO",,,3
+simple,5,Heces,Rotavirus,Rotavirus,104,15,ambos,"NEGATIVO                                                                                         POSITIVO",,,3
+simple,180,Heces,"Sangre Oculta","Sangre Oculta",951,15,ambos,"NEGATIVO                                                                                         POSITIVO",,,3
+simple,183,Heces,"Moco Fecal","Moco Fecal",954,15,ambos,"POSITIVO                                                                                 Polimorfonucleares    80 %                                                      Mononucleares         20 %",,,3
+simple,21,Hematologia,"Grupo Sanguineo","Grupo Sanguineo",151,15,femenino,"SECRECION VAGINAL",,,3
+simple,21,Hematologia,"Grupo Sanguineo","Grupo Sanguineo",151,15,ambos,"HISOPADO FARINGEO                                                                                             SECRECION VAGINAL                                                                                LIQUIDO SINOVIAL                                                                                          Cultivo De Secreciones                                                             SECRECION OTICA                                                                                       ESPUTO                                                                                                           SECRECION PURULENTA                                                                         Secreción de Glandula de Bartolino                                                       Hilo de sutura                                                                                                  SECRECION DE HERIDA DE TERCER FALANGE                    HILOS DE SUTURA                                                                                       EXUDADO FARINGEO                                                                              ABSCESO MUSLO IZQUIERSO                                                            Quiste vartoline                                                                                                  SECRECIÓN DE ABCESO MAMARIO                                                 SECRECION DE HERIDA                                                                           RASPADO DE LENGUA                                                                               RASPADO DE PIEL                                                                                      EXUDADO DE PIEL                                                                                       LIQUIDO PLEURAL                                                                                       SECRECION DE OIDO DERECHO                                                        SECRECION DE OIDO IZQUIERDO                                                     SEC. HERIDA DE CATETER DE HEMODIALISIS                         SEC. HERIDA DE CATETER DE HEMODIALISIS                           SEMEN                                                                                                              SECRECION URETRAL                                                                            SECRECION DE ULCERA VARICOSA                                                SECRECIÓN BRONQUIAL                                                                            SECRECION DE VIAS FARINGEAS                                                     SECRECION PURULENTA  DE ULCERA VARICOSA                SECRECION DE HERIDA PIE DERECHO                                         SECRECION DE HERIDA RODILLA IZQUIERDA                           SECRECION DE HERIDA RODILLA DERECHA                               HERIDA DE ESPALDA                                                                               SECRECION DE AMIGDALA DERECHA                                             SECRECION PERIANAL                                                                             SECRECION DE PUSTULA                                                                     SEC. DE LESION AL REDEDOR DEL ANO                                        SECRECIÓN OROFARINGEA                                                                          SECRECION DE PIERNA                                                                           SEC. OTICA IZQUIERDA Y DERECHA                                                SECRECION DORSO DE LA LENGUA                                                SECRECION DE PLACA DENTAL                                                         SECRECION PUSTULOSA DE FARINGE                                           SECRECIÓN PURULENTA VAGINAL                                                  SECRECION BUCAL.                                                                                 SECRECIÓN DE COXIS                                                                                  HISOPADO FARINGEO DE AMIGDALA DERECHA                       ABSCESO DE MAMA DERECHA                                                       SECRECIÓN PURULENTA DE MAMA DERECHA                     SEC. DE PREPUCIO                                                                                      SECRECION PURULENTA DE NARIZ                                               SECRECION DE QUISTE DE BARTOLINO                                      ECRECION DE QUISTE DE BARTOLINO",,,3

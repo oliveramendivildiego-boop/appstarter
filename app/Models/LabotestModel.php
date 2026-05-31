@@ -968,6 +968,243 @@ class LabotestModel extends Model
     }
 
     /**
+     * IDs de secanacategoria existentes y activos.
+     *
+     * @param list<int|string> $ids
+     * @return array<int, int> id => prianacategoria_id padre
+     */
+    public function existingSecanacategoriaMap(array $ids): array
+    {
+        $ids = array_values(array_unique(array_filter(array_map(static fn ($id) => (int) $id, $ids), static fn (int $id) => $id > 0)));
+        if ($ids === []) {
+            return [];
+        }
+
+        $rows = $this->db->table('secanacategoria')
+            ->select('secanacategoria_id, prianacategoria_id')
+            ->whereIn('secanacategoria_id', $ids)
+            ->where('(deleted = 0 OR deleted IS NULL)', null, false)
+            ->get()
+            ->getResultArray();
+
+        $map = [];
+        foreach ($rows as $row) {
+            $secId = (int) ($row['secanacategoria_id'] ?? 0);
+            $priId = (int) ($row['prianacategoria_id'] ?? 0);
+            if ($secId > 0 && $priId > 0) {
+                $map[$secId] = $priId;
+            }
+        }
+
+        return $map;
+    }
+
+    /**
+     * IDs de priresultados existentes y activos.
+     *
+     * @param list<int|string> $ids
+     * @return array<int, int> id => prianacategoria_id padre
+     */
+    public function existingPriresultadosMap(array $ids): array
+    {
+        $ids = array_values(array_unique(array_filter(array_map(static fn ($id) => (int) $id, $ids), static fn (int $id) => $id > 0)));
+        if ($ids === []) {
+            return [];
+        }
+
+        $rows = $this->db->table('priresultados')
+            ->select('priresultados_id, prianacategoria_id')
+            ->whereIn('priresultados_id', $ids)
+            ->where('(deleted = 0 OR deleted IS NULL)', null, false)
+            ->get()
+            ->getResultArray();
+
+        $map = [];
+        foreach ($rows as $row) {
+            $prId = (int) ($row['priresultados_id'] ?? 0);
+            $priId = (int) ($row['prianacategoria_id'] ?? 0);
+            if ($prId > 0 && $priId > 0) {
+                $map[$prId] = $priId;
+            }
+        }
+
+        return $map;
+    }
+
+    /**
+     * IDs de tipos de resultado (tabla opciones) existentes.
+     *
+     * @param list<int|string> $ids
+     * @return list<int>
+     */
+    public function existingOpcionesIds(array $ids): array
+    {
+        $ids = array_values(array_unique(array_filter(array_map(static fn ($id) => (int) $id, $ids), static fn (int $id) => $id > 0)));
+        if ($ids === []) {
+            return [];
+        }
+
+        $rows = $this->db->table('opciones')
+            ->select('opciones_id')
+            ->whereIn('opciones_id', $ids)
+            ->get()
+            ->getResultArray();
+
+        $found = [];
+        foreach ($rows as $row) {
+            $found[] = (int) ($row['opciones_id'] ?? 0);
+        }
+
+        return array_values(array_filter($found, static fn (int $id) => $id > 0));
+    }
+
+    /**
+     * Actualiza valores de referencia de sub-análisis (prueba compuesta).
+     *
+     * @param array<int, array<string, mixed>> $items secanacategoria_id => campos
+     * @return array{updated: int, skipped: int}
+     */
+    public function updateValoresReferenciaSecBulk(array $items): array
+    {
+        $updated = 0;
+        $skipped = 0;
+
+        if ($items === []) {
+            return ['updated' => 0, 'skipped' => 0];
+        }
+
+        $this->db->transStart();
+
+        foreach ($items as $id => $row) {
+            $id = (int) $id;
+            if ($id < 1 || ! is_array($row)) {
+                $skipped++;
+                continue;
+            }
+
+            $update = [];
+            if (array_key_exists('valor_min', $row)) {
+                $update['valor_min'] = (string) $row['valor_min'];
+            }
+            if (array_key_exists('valor_max', $row)) {
+                $update['valor_max'] = (string) $row['valor_max'];
+            }
+            if (array_key_exists('umedida', $row)) {
+                $update['umedida'] = (string) $row['umedida'];
+            }
+            if (array_key_exists('paciente_id', $row)) {
+                $update['paciente_id'] = max(0, (int) $row['paciente_id']);
+            }
+            if (array_key_exists('sexo', $row) && $this->hasColumn('secanacategoria', 'sexo')) {
+                $sexo = (string) $row['sexo'];
+                $update['sexo'] = in_array($sexo, ['masculino', 'femenino'], true) ? $sexo : 'ambos';
+            }
+            if (array_key_exists('opcion_id', $row)) {
+                $update['opcion_id'] = max(1, (int) $row['opcion_id']);
+            }
+
+            if ($update === []) {
+                $skipped++;
+                continue;
+            }
+
+            $ok = $this->db->table('secanacategoria')
+                ->where('secanacategoria_id', $id)
+                ->where('(deleted = 0 OR deleted IS NULL)', null, false)
+                ->update($update);
+
+            if ($ok && $this->db->affectedRows() > 0) {
+                $updated++;
+            } elseif ($this->db->table('secanacategoria')->where('secanacategoria_id', $id)->where('(deleted = 0 OR deleted IS NULL)', null, false)->countAllResults() > 0) {
+                $updated++;
+            } else {
+                $skipped++;
+            }
+        }
+
+        $this->db->transComplete();
+
+        if (! $this->db->transStatus()) {
+            return ['updated' => 0, 'skipped' => count($items)];
+        }
+
+        return ['updated' => $updated, 'skipped' => $skipped];
+    }
+
+    /**
+     * Actualiza valores de referencia de pruebas simples (priresultados).
+     *
+     * @param array<int, array<string, mixed>> $items priresultados_id => campos
+     * @return array{updated: int, skipped: int}
+     */
+    public function updateValoresReferenciaPriBulk(array $items): array
+    {
+        $updated = 0;
+        $skipped = 0;
+
+        if ($items === []) {
+            return ['updated' => 0, 'skipped' => 0];
+        }
+
+        $this->db->transStart();
+
+        foreach ($items as $id => $row) {
+            $id = (int) $id;
+            if ($id < 1 || ! is_array($row)) {
+                $skipped++;
+                continue;
+            }
+
+            $update = [];
+            if (array_key_exists('valor_min', $row)) {
+                $update['valor_min'] = (string) $row['valor_min'];
+            }
+            if (array_key_exists('valor_max', $row)) {
+                $update['valor_max'] = (string) $row['valor_max'];
+            }
+            if (array_key_exists('umedida', $row)) {
+                $update['umedida'] = (string) $row['umedida'];
+            }
+            if (array_key_exists('id_poblacion', $row)) {
+                $update['id_poblacion'] = max(0, (int) $row['id_poblacion']);
+            }
+            if (array_key_exists('sexo', $row) && $this->hasColumn('priresultados', 'sexo')) {
+                $sexo = (string) $row['sexo'];
+                $update['sexo'] = in_array($sexo, ['masculino', 'femenino'], true) ? $sexo : 'ambos';
+            }
+            if (array_key_exists('opcion_id', $row)) {
+                $update['opcion_id'] = max(1, (int) $row['opcion_id']);
+            }
+
+            if ($update === []) {
+                $skipped++;
+                continue;
+            }
+
+            $ok = $this->db->table('priresultados')
+                ->where('priresultados_id', $id)
+                ->where('(deleted = 0 OR deleted IS NULL)', null, false)
+                ->update($update);
+
+            if ($ok && $this->db->affectedRows() > 0) {
+                $updated++;
+            } elseif ($this->db->table('priresultados')->where('priresultados_id', $id)->where('(deleted = 0 OR deleted IS NULL)', null, false)->countAllResults() > 0) {
+                $updated++;
+            } else {
+                $skipped++;
+            }
+        }
+
+        $this->db->transComplete();
+
+        if (! $this->db->transStatus()) {
+            return ['updated' => 0, 'skipped' => count($items)];
+        }
+
+        return ['updated' => $updated, 'skipped' => $skipped];
+    }
+
+    /**
      * Guardar subgrupo (prianacategoria) - sin cost en esta ventana, se usa 0 por defecto
      */
     public function saveSubCategory(array $data, $id = null): bool

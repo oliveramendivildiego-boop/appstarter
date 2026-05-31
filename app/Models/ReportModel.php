@@ -231,31 +231,37 @@ class ReportModel extends Model
         $sec = $this->db->prefixTable('secanacategoria');
         $prires = $this->db->prefixTable('priresultados');
 
-        // Obtener pruebas compuestas (secanacategoria) - más inclusivo
+        // Pruebas compuestas (sub-análisis en secanacategoria)
         $builder1 = $this->db->table('anacategoria')
             ->select("{$ana}.name as categoria, {$pri}.name as prueba,
+                      {$pri}.prianacategoria_id, {$sec}.secanacategoria_id,
                       {$sec}.nombre as analisis, {$sec}.valor_min, {$sec}.valor_max,
                       {$sec}.umedida, {$sec}.paciente_id as poblacion, {$sec}.sexo,
+                      {$sec}.opcion_id,
                       'compuesto' as tipo_prueba")
             ->join('prianacategoria', "{$ana}.anacategoria_id = {$pri}.anacategoria_id", 'left')
             ->join('secanacategoria', "{$pri}.prianacategoria_id = {$sec}.prianacategoria_id", 'left')
             ->where("({$ana}.deleted = 0 OR {$ana}.deleted IS NULL)")
             ->where("({$pri}.deleted = 0 OR {$pri}.deleted IS NULL)")
             ->where("({$sec}.deleted = 0 OR {$sec}.deleted IS NULL)")
-            ->where("{$sec}.nombre IS NOT NULL");
+            ->where("{$sec}.nombre IS NOT NULL")
+            ->where("{$pri}.compleja", 1);
 
-        // Obtener pruebas no compuestas (priresultados) - más inclusivo
+        // Pruebas no compuestas (valores en priresultados)
         $builder2 = $this->db->table('anacategoria')
             ->select("{$ana}.name as categoria, {$pri}.name as prueba,
+                      {$pri}.prianacategoria_id, {$prires}.priresultados_id,
                       {$pri}.name as analisis, {$prires}.valor_min, {$prires}.valor_max,
                       {$prires}.umedida, {$prires}.id_poblacion as poblacion, {$prires}.sexo,
+                      {$prires}.opcion_id,
                       'simple' as tipo_prueba")
             ->join('prianacategoria', "{$ana}.anacategoria_id = {$pri}.anacategoria_id", 'left')
             ->join('priresultados', "{$pri}.prianacategoria_id = {$prires}.prianacategoria_id", 'left')
             ->where("({$ana}.deleted = 0 OR {$ana}.deleted IS NULL)")
             ->where("({$pri}.deleted = 0 OR {$pri}.deleted IS NULL)")
             ->where("({$prires}.deleted = 0 OR {$prires}.deleted IS NULL)")
-            ->where("{$pri}.name IS NOT NULL");
+            ->where("{$pri}.name IS NOT NULL")
+            ->where("({$pri}.compleja = 0 OR {$pri}.compleja IS NULL)");
 
         // Aplicar búsqueda a ambas consultas
         if (!empty($busqueda)) {

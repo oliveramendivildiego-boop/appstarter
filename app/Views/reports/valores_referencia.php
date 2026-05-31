@@ -1,4 +1,6 @@
 <?php
+$tenantKey = (string) (($tenant_scope ?? [])['tenant_key'] ?? '');
+$tenantDb  = (string) (($tenant_scope ?? [])['database'] ?? '');
 $poblacionLabels = $poblacion_labels ?? [];
 $pobLabel       = static function ($id) use ($poblacionLabels): string {
     if ($id === null || $id === '') {
@@ -52,6 +54,84 @@ function hasConfiguredValue($value): bool {
                     <i class="fas fa-file-export me-1"></i> Exportar sin valores
                 </a>
             <?php endif; ?>
+        </div>
+    </div>
+</div>
+
+<?php if (session()->getFlashdata('success')): ?>
+<div class="alert alert-success"><?= esc(session()->getFlashdata('success')) ?></div>
+<?php endif; ?>
+<?php if (session()->getFlashdata('error')): ?>
+<div class="alert alert-danger"><?= esc(session()->getFlashdata('error')) ?></div>
+<?php endif; ?>
+
+<div class="card shadow-sm mb-4 border-success">
+    <div class="card-header bg-success text-white d-flex justify-content-between align-items-center flex-wrap gap-2">
+        <h5 class="mb-0"><i class="fas fa-exchange-alt me-2"></i>Importar / Exportar valores de referencia (CSV)</h5>
+        <?php if ($tenantKey !== ''): ?>
+        <span class="badge bg-light text-dark" title="Base de datos: <?= esc($tenantDb) ?>">
+            Tenant: <strong><?= esc($tenantKey) ?></strong>
+        </span>
+        <?php endif; ?>
+    </div>
+    <div class="card-body">
+        <p class="text-muted small mb-3">
+            Formato del archivo (separado por comas):
+            <code>TIPO,ID_PRUEBA,GRUPO,PRUEBA,ANALISIS,ID_REFERENCIA,POBLACION_ID,SEXO,VALOR_MIN,VALOR_MAX,UNIDAD,ID_TIPO_RESULTADO</code>.
+            <strong>TIPO</strong>: <code>compuesto</code> (sub-análisis; ID_REFERENCIA = secanacategoria_id) o
+            <code>simple</code> (ID_REFERENCIA = priresultados_id).
+            <strong>ID_PRUEBA</strong> es el prianacategoria_id de la prueba padre.
+            <strong>ID_TIPO_RESULTADO</strong> es el <code>opciones_id</code> del tipo de resultado (Config → Tipos de resultado / Análisis → Tipos resultado).
+            GRUPO, PRUEBA y ANÁLISIS son informativos; la importación actualiza por <strong>ID_REFERENCIA</strong>.
+        </p>
+        <div class="row g-3 align-items-end">
+            <div class="col-md-6">
+                <a href="<?= site_url('reports/exportValoresReferenciaImport') ?><?= ! empty($busqueda) ? '?' . http_build_query(['busqueda' => $busqueda]) : '' ?>"
+                   class="btn btn-success w-100">
+                    <i class="fas fa-file-download me-1"></i> Exportar CSV con IDs
+                </a>
+            </div>
+            <div class="col-md-6">
+                <?= form_open_multipart('reports/importValoresReferencia', ['id' => 'form_import_valores_referencia_csv', 'class' => 'd-flex flex-wrap gap-2 align-items-end']) ?>
+                <input type="hidden" name="busqueda" value="<?= esc($busqueda ?? '') ?>">
+                <input type="hidden" name="tenant_key" value="<?= esc($tenantKey) ?>">
+                <div class="flex-grow-1">
+                    <label for="valores_referencia_csv" class="form-label small mb-1">Archivo CSV</label>
+                    <input type="file" name="valores_referencia_csv" id="valores_referencia_csv" class="form-control form-control-sm" accept=".csv,.txt,text/csv" required>
+                </div>
+                <button type="button" class="btn btn-primary" id="btn_open_import_valores_modal">
+                    <i class="fas fa-file-upload me-1"></i> Importar
+                </button>
+                <?= form_close() ?>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="modalImportValoresReferenciaCsv" tabindex="-1" aria-labelledby="modalImportValoresReferenciaCsvLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="modalImportValoresReferenciaCsvLabel">
+                    <i class="fas fa-file-upload text-primary me-2"></i>Confirmar importación
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+            </div>
+            <div class="modal-body">
+                <p class="mb-2">¿Importar valores de referencia desde el archivo CSV seleccionado?</p>
+                <p class="text-muted small mb-0">
+                    Se actualizarán valor mínimo, valor máximo, unidad, población, sexo y tipo de resultado
+                    (<strong>ID_TIPO_RESULTADO</strong>) de cada fila según su <strong>ID_REFERENCIA</strong>
+                    (compuesto o simple), solo en el laboratorio actual
+                    <?php if ($tenantKey !== ''): ?>(<strong><?= esc($tenantKey) ?></strong>)<?php endif; ?>.
+                </p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-primary" id="btn_confirm_import_valores_csv">
+                    <i class="fas fa-file-upload me-1"></i> Importar
+                </button>
+            </div>
         </div>
     </div>
 </div>
@@ -228,6 +308,32 @@ function hasConfiguredValue($value): bool {
 
 <script>
 document.addEventListener('DOMContentLoaded', function() {
+    const formImport = document.getElementById('form_import_valores_referencia_csv');
+    const btnOpenImport = document.getElementById('btn_open_import_valores_modal');
+    const btnConfirmImport = document.getElementById('btn_confirm_import_valores_csv');
+    const modalImportEl = document.getElementById('modalImportValoresReferenciaCsv');
+    const fileInput = document.getElementById('valores_referencia_csv');
+
+    if (btnOpenImport && formImport && modalImportEl) {
+        const modalImport = typeof bootstrap !== 'undefined' ? new bootstrap.Modal(modalImportEl) : null;
+        btnOpenImport.addEventListener('click', function() {
+            if (!fileInput || !fileInput.files || fileInput.files.length < 1) {
+                alert('Seleccione un archivo CSV primero.');
+                return;
+            }
+            if (modalImport) {
+                modalImport.show();
+            } else if (confirm('¿Importar valores de referencia desde el CSV seleccionado?')) {
+                formImport.submit();
+            }
+        });
+        if (btnConfirmImport) {
+            btnConfirmImport.addEventListener('click', function() {
+                formImport.submit();
+            });
+        }
+    }
+
     // Convertir pruebas (subcategoria-header) en acordeones
     const pruebas = document.querySelectorAll('.subcategoria-header');
     

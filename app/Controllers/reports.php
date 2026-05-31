@@ -1868,6 +1868,13 @@ class Reports extends SecureArea
         $busqueda = $this->request->getGet('busqueda') ?? '';
         $data = $this->reportModel->getValoresReferencia($busqueda);
         $poblacionLabels = $this->poblacionLabelMap();
+        $scope = null;
+        try {
+            $scope = (new TenantScopedDatabaseService())->ensureActiveTenantConnection($this->request);
+            $this->reportModel = model(ReportModel::class);
+        } catch (\Throwable $e) {
+            log_message('debug', 'valoresReferencia tenant scope: ' . $e->getMessage());
+        }
 
         return view('reports/valores_referencia', [
             'title'             => 'Reporte de valores de referencia',
@@ -1876,6 +1883,7 @@ class Reports extends SecureArea
             'data'              => $data,
             'busqueda'          => $busqueda,
             'poblacion_labels'  => $poblacionLabels,
+            'tenant_scope'      => $scope,
             'allowed_modules'   => $this->allowed_modules,
             'user_info'         => $this->user_info,
         ]);
@@ -1931,6 +1939,300 @@ class Reports extends SecureArea
 
         fclose($output);
         exit;
+    }
+
+    /**
+     * Exportar valores de referencia en CSV con IDs (importación masiva).
+     */
+    public function exportValoresReferenciaImport()
+    {
+        while (ob_get_level() > 0) {
+            ob_end_clean();
+        }
+
+        $scope = $this->ensureTenantCostosScope();
+        if ($scope === null) {
+            return $this->response->setStatusCode(403)->setBody('No se pudo determinar el laboratorio (tenant) activo.');
+        }
+
+        $busqueda = $this->request->getGet('busqueda') ?? '';
+        $data     = $this->reportModel->getValoresReferencia($busqueda);
+
+        $filename = 'valores_referencia_' . $scope['tenant_key'] . '_' . date('Y-m-d_His') . '.csv';
+
+        $this->response->setHeader('Content-Type', 'text/csv; charset=UTF-8');
+        $this->response->setHeader('Content-Disposition', 'attachment; filename="' . $filename . '"');
+        $this->response->setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, max-age=0');
+        $this->response->setHeader('Pragma', 'no-cache');
+        $this->response->setHeader('Expires', '0');
+        $this->response->sendHeaders();
+
+        $output = fopen('php://output', 'w');
+        fwrite($output, "\xEF\xBB\xBF");
+        fputcsv($output, [
+            'TIPO',
+            'ID_PRUEBA',
+            'GRUPO',
+            'PRUEBA',
+            'ANALISIS',
+            'ID_REFERENCIA',
+            'POBLACION_ID',
+            'SEXO',
+            'VALOR_MIN',
+            'VALOR_MAX',
+            'UNIDAD',
+            'ID_TIPO_RESULTADO',
+        ]);
+
+        foreach ($data as $item) {
+            $tipo = (string) ($item['tipo_prueba'] ?? '');
+            $idPrueba = (int) ($item['prianacategoria_id'] ?? 0);
+            if ($idPrueba < 1) {
+                continue;
+            }
+
+            if ($tipo === 'compuesto') {
+                $idRef = (int) ($item['secanacategoria_id'] ?? 0);
+            } else {
+                $idRef = (int) ($item['priresultados_id'] ?? 0);
+            }
+            if ($idRef < 1) {
+                continue;
+            }
+
+            fputcsv($output, [
+                $tipo === 'compuesto' ? 'compuesto' : 'simple',
+                $idPrueba,
+                $item['categoria'] ?? '',
+                $item['prueba'] ?? '',
+                $item['analisis'] ?? '',
+                $idRef,
+                $this->csvValue($item['poblacion'] ?? null) !== '' ? (int) $item['poblacion'] : '',
+                $this->normalizeSexoForCsv($item['sexo'] ?? 'ambos'),
+                $this->csvValue($item['valor_min'] ?? null),
+                $this->csvValue($item['valor_max'] ?? null),
+                $item['umedida'] ?? '',
+                (int) ($item['opcion_id'] ?? 3),
+            ]);
+        }
+
+        fclose($output);
+        exit;
+    }
+
+    /**
+     * Importar valores de referencia desde CSV (TIPO, ID_PRUEBA, ID_REFERENCIA, …).
+     */
+    public function importValoresReferencia()
+    {
+        $busqueda = trim((string) ($this->request->getPost('busqueda') ?? ''));
+        $redirect = 'reports/valoresReferencia' . ($busqueda !== '' ? '?busqueda=' . urlencode($busqueda) : '');
+
+        $scope = $this->ensureTenantCostosScope();
+        if ($scope === null) {
+            return redirect()->to($redirect)->with(
+                'error',
+                'No se pudo usar la base de datos de su laboratorio. Acceda desde la URL de su tenant o con el tenant correcto en sesión.'
+            );
+        }
+
+        $postedTenant = trim((string) ($this->request->getPost('tenant_key') ?? ''));
+        if ($postedTenant !== '' && $postedTenant !== $scope['tenant_key']) {
+            return redirect()->to($redirect)->with('error', 'El archivo no corresponde a este laboratorio. Exporte e importe dentro del mismo tenant.');
+        }
+
+        $file = $this->request->getFile('valores_referencia_csv');
+        if (! $file || ! $file->isValid()) {
+            return redirect()->to($redirect)->with('error', 'Seleccione un archivo CSV válido.');
+        }
+
+        $ext = strtolower((string) $file->getExtension());
+        if (! in_array($ext, ['csv', 'txt'], true)) {
+            return redirect()->to($redirect)->with('error', 'El archivo debe ser .csv o .txt');
+        }
+
+        $tmpPath = $file->getTempName();
+        $content = is_string($tmpPath) && $tmpPath !== '' ? @file_get_contents($tmpPath) : false;
+        if (! is_string($content) || trim($content) === '') {
+            return redirect()->to($redirect)->with('error', 'El archivo está vacío.');
+        }
+
+        $content = preg_replace('/^\xEF\xBB\xBF/', '', $content) ?? $content;
+        $handle  = fopen('php://memory', 'r+');
+        if ($handle === false) {
+            return redirect()->to($redirect)->with('error', 'No se pudo leer el archivo.');
+        }
+        fwrite($handle, $content);
+        rewind($handle);
+
+        $header = fgetcsv($handle, 0, ',');
+        if (! is_array($header) || $header === []) {
+            fclose($handle);
+
+            return redirect()->to($redirect)->with('error', 'El CSV no tiene encabezados.');
+        }
+
+        $cols = $this->mapValoresReferenciaCsvColumns($header);
+        if ($cols['tipo'] === null || $cols['id_referencia'] === null) {
+            fclose($handle);
+
+            return redirect()->to($redirect)->with('error', 'El CSV debe incluir columnas TIPO e ID_REFERENCIA (o ID).');
+        }
+
+        $secItems = [];
+        $priItems = [];
+        $errores  = [];
+        $linea    = 1;
+
+        while (($row = fgetcsv($handle, 0, ',')) !== false) {
+            $linea++;
+            if (! is_array($row) || $this->csvRowIsEmpty($row)) {
+                continue;
+            }
+
+            $tipoRaw = trim((string) ($row[$cols['tipo']] ?? ''));
+            $tipo    = $this->normalizeTipoPruebaCsv($tipoRaw);
+            if ($tipo === null) {
+                $errores[] = "Línea {$linea}: TIPO inválido (use compuesto o simple).";
+                continue;
+            }
+
+            $idRef = (int) trim((string) ($row[$cols['id_referencia']] ?? ''));
+            if ($idRef < 1) {
+                $errores[] = "Línea {$linea}: ID_REFERENCIA inválido o vacío.";
+                continue;
+            }
+
+            $idPrueba = $cols['id_prueba'] !== null
+                ? (int) trim((string) ($row[$cols['id_prueba']] ?? ''))
+                : 0;
+
+            $poblacion = 0;
+            if ($cols['poblacion'] !== null) {
+                $rawPob = trim((string) ($row[$cols['poblacion']] ?? ''));
+                if ($rawPob !== '') {
+                    $poblacion = (int) $rawPob;
+                }
+            }
+
+            $sexo = 'ambos';
+            if ($cols['sexo'] !== null) {
+                $sexo = $this->normalizeSexoForCsv((string) ($row[$cols['sexo']] ?? 'ambos'));
+            }
+
+            $valorMin = $cols['valor_min'] !== null
+                ? trim((string) ($row[$cols['valor_min']] ?? ''))
+                : '';
+            $valorMax = $cols['valor_max'] !== null
+                ? trim((string) ($row[$cols['valor_max']] ?? ''))
+                : '';
+            $unidad   = $cols['unidad'] !== null
+                ? trim((string) ($row[$cols['unidad']] ?? ''))
+                : '';
+
+            $opcionId = null;
+            if ($cols['tipo_resultado'] !== null) {
+                $rawOpcion = trim((string) ($row[$cols['tipo_resultado']] ?? ''));
+                if ($rawOpcion !== '') {
+                    $opcionId = (int) $rawOpcion;
+                    if ($opcionId < 1) {
+                        $errores[] = "Línea {$linea}: ID_TIPO_RESULTADO inválido.";
+                        continue;
+                    }
+                }
+            }
+
+            $payload = [
+                'valor_min' => $valorMin,
+                'valor_max' => $valorMax,
+                'umedida'   => $unidad,
+                '_pri_id'   => $idPrueba,
+            ];
+            if ($opcionId !== null) {
+                $payload['opcion_id'] = $opcionId;
+                $payload['_opcion_id'] = $opcionId;
+            }
+
+            if ($tipo === 'compuesto') {
+                $payload['paciente_id'] = $poblacion > 0 ? $poblacion : 15;
+                if ($cols['sexo'] !== null) {
+                    $payload['sexo'] = $sexo;
+                }
+                $secItems[$idRef] = $payload;
+            } else {
+                $payload['id_poblacion'] = $poblacion > 0 ? $poblacion : 15;
+                if ($cols['sexo'] !== null) {
+                    $payload['sexo'] = $sexo;
+                }
+                $priItems[$idRef] = $payload;
+            }
+        }
+        fclose($handle);
+
+        if ($secItems === [] && $priItems === []) {
+            $msg = 'No se encontraron filas válidas para importar.';
+            if ($errores !== []) {
+                $msg .= ' ' . implode(' ', array_slice($errores, 0, 5));
+            }
+
+            return redirect()->to($redirect)->with('error', $msg);
+        }
+
+        $secItems = $this->filterValoresReferenciaSecToTenant($secItems, $errores);
+        $priItems = $this->filterValoresReferenciaPriToTenant($priItems, $errores);
+        $secItems = $this->filterValoresReferenciaOpcionIds($secItems, $errores);
+        $priItems = $this->filterValoresReferenciaOpcionIds($priItems, $errores);
+
+        if ($secItems === [] && $priItems === []) {
+            $msg = 'Ningún ID_REFERENCIA del CSV existe en el catálogo de este laboratorio (' . $scope['tenant_key'] . ').';
+            if ($errores !== []) {
+                $msg .= ' ' . implode(' ', array_slice($errores, 0, 5));
+            }
+
+            return redirect()->to($redirect)->with('error', $msg);
+        }
+
+        $resultSec = $secItems !== [] ? $this->labotestModel->updateValoresReferenciaSecBulk($secItems) : ['updated' => 0, 'skipped' => 0];
+        $resultPri = $priItems !== [] ? $this->labotestModel->updateValoresReferenciaPriBulk($priItems) : ['updated' => 0, 'skipped' => 0];
+        $updated   = $resultSec['updated'] + $resultPri['updated'];
+        $skipped   = $resultSec['skipped'] + $resultPri['skipped'];
+
+        \App\Models\AuditoriaModel::log(
+            'reports',
+            'importar_valores_referencia_csv',
+            'bulk',
+            \App\Models\AuditoriaModel::detail([
+                'actualizadas' => $updated,
+                'omitidas'     => $skipped,
+                'filas_sec'    => count($secItems),
+                'filas_pri'    => count($priItems),
+                'errores_csv'  => count($errores),
+                'tenant_key'   => $scope['tenant_key'],
+                'database'     => $scope['database'],
+            ])
+        );
+
+        if ($updated < 1) {
+            $msg = 'No se pudo actualizar ningún valor de referencia.';
+            if ($errores !== []) {
+                $msg .= ' ' . implode(' ', array_slice($errores, 0, 5));
+            }
+
+            return redirect()->to($redirect)->with('error', $msg);
+        }
+
+        $msg = 'Importación completada: ' . $updated . ' fila(s) actualizada(s).';
+        if ($skipped > 0) {
+            $msg .= ' (' . $skipped . ' omitida(s)).';
+        }
+        if ($errores !== []) {
+            $msg .= ' Advertencias: ' . implode(' ', array_slice($errores, 0, 8));
+            if (count($errores) > 8) {
+                $msg .= ' …';
+            }
+        }
+
+        return redirect()->to($redirect)->with('success', $msg);
     }
 
     private function safeReportPdfFilename(string $base): string
@@ -2308,5 +2610,195 @@ class Reports extends SecureArea
         if ($sexo === 'masculino') return 'Masculino';
         if ($sexo === 'femenino') return 'Femenino';
         return 'Ambos';
+    }
+
+    private function normalizeSexoForCsv($sexo): string
+    {
+        $s = strtolower(trim((string) $sexo));
+        if (in_array($s, ['m', 'masculino', 'hombre', 'varon'], true)) {
+            return 'masculino';
+        }
+        if (in_array($s, ['f', 'femenino', 'mujer'], true)) {
+            return 'femenino';
+        }
+
+        return 'ambos';
+    }
+
+    private function normalizeTipoPruebaCsv(string $raw): ?string
+    {
+        $key = $this->normalizeCostosCsvHeader($raw);
+        if (in_array($key, ['COMPUESTO', 'COMPUESTA', 'COMPLEJA', 'COMPLEJO'], true)) {
+            return 'compuesto';
+        }
+        if (in_array($key, ['SIMPLE', 'NO_COMPUESTA', 'NOCOMPUESTA'], true)) {
+            return 'simple';
+        }
+
+        return null;
+    }
+
+    /**
+     * @param list<string|null> $header
+     * @return array{tipo: ?int, id_prueba: ?int, id_referencia: ?int, poblacion: ?int, sexo: ?int, valor_min: ?int, valor_max: ?int, unidad: ?int, tipo_resultado: ?int}
+     */
+    private function mapValoresReferenciaCsvColumns(array $header): array
+    {
+        $cols = [
+            'tipo'           => null,
+            'id_prueba'      => null,
+            'id_referencia'  => null,
+            'poblacion'      => null,
+            'sexo'           => null,
+            'valor_min'      => null,
+            'valor_max'      => null,
+            'unidad'         => null,
+            'tipo_resultado' => null,
+        ];
+
+        foreach ($header as $i => $label) {
+            $key = $this->normalizeCostosCsvHeader((string) $label);
+            if (in_array($key, ['TIPO', 'TIPOPRUEBA'], true)) {
+                $cols['tipo'] = (int) $i;
+            } elseif (in_array($key, ['IDPRUEBA', 'IDPRIANACATEGORIA', 'IDPRUEBAPADRE'], true)) {
+                $cols['id_prueba'] = (int) $i;
+            } elseif (in_array($key, ['IDREFERENCIA', 'IDREF', 'IDSEC', 'IDPRIRESULTADOS', 'SECANACATEGORIAID', 'PRIRESULTADOSID'], true)) {
+                $cols['id_referencia'] = (int) $i;
+            } elseif (in_array($key, ['POBLACIONID', 'IDPOBLACION', 'PACIENTEID'], true)) {
+                $cols['poblacion'] = (int) $i;
+            } elseif ($key === 'POBLACION' && $cols['poblacion'] === null) {
+                $cols['poblacion'] = (int) $i;
+            } elseif ($key === 'SEXO') {
+                $cols['sexo'] = (int) $i;
+            } elseif (in_array($key, ['VALORMIN', 'MINIMO', 'MIN'], true)) {
+                $cols['valor_min'] = (int) $i;
+            } elseif (in_array($key, ['VALORMAX', 'MAXIMO', 'MAX'], true)) {
+                $cols['valor_max'] = (int) $i;
+            } elseif (in_array($key, ['UNIDAD', 'UMEDIDA', 'UM'], true)) {
+                $cols['unidad'] = (int) $i;
+            } elseif (in_array($key, ['IDTIPORESULTADO', 'TIPORESULTADOID', 'OPCIONID', 'IDOPCION'], true)) {
+                $cols['tipo_resultado'] = (int) $i;
+            } elseif ($key === 'ID' && $cols['id_referencia'] === null && $cols['id_prueba'] === null) {
+                $cols['id_referencia'] = (int) $i;
+            }
+        }
+
+        return $cols;
+    }
+
+    /**
+     * Valida opcion_id (tipo de resultado) contra la tabla opciones del tenant.
+     *
+     * @param array<int, array<string, mixed>> $items
+     * @param list<string>                     $errores
+     * @return array<int, array<string, mixed>>
+     */
+    private function filterValoresReferenciaOpcionIds(array $items, array &$errores = []): array
+    {
+        if ($items === []) {
+            return [];
+        }
+
+        $opcionIds = [];
+        foreach ($items as $row) {
+            if (array_key_exists('opcion_id', $row)) {
+                $opcionIds[] = (int) $row['opcion_id'];
+            }
+        }
+
+        if ($opcionIds === []) {
+            $out = [];
+            foreach ($items as $id => $row) {
+                unset($row['_opcion_id']);
+                $out[$id] = $row;
+            }
+
+            return $out;
+        }
+
+        $allowed = array_flip($this->labotestModel->existingOpcionesIds($opcionIds));
+        $filtered = [];
+
+        foreach ($items as $id => $row) {
+            unset($row['_opcion_id']);
+            if (array_key_exists('opcion_id', $row)) {
+                $opcionId = (int) $row['opcion_id'];
+                if (! isset($allowed[$opcionId])) {
+                    $errores[] = "ID_TIPO_RESULTADO {$opcionId} no existe (fila ID_REFERENCIA {$id}).";
+                    continue;
+                }
+            }
+            $filtered[$id] = $row;
+        }
+
+        return $filtered;
+    }
+
+    /**
+     * @param array<int, array<string, mixed>> $items
+     * @param list<string>                     $errores
+     * @return array<int, array<string, mixed>>
+     */
+    private function filterValoresReferenciaSecToTenant(array $items, array &$errores = []): array
+    {
+        if ($items === []) {
+            return [];
+        }
+
+        $parentMap = $this->labotestModel->existingSecanacategoriaMap(array_keys($items));
+        $filtered  = [];
+
+        foreach ($items as $id => $row) {
+            $id = (int) $id;
+            if (! isset($parentMap[$id])) {
+                $errores[] = "ID_REFERENCIA {$id} (compuesto) no existe en este laboratorio.";
+                continue;
+            }
+
+            $expectedPri = (int) ($row['_pri_id'] ?? 0);
+            if ($expectedPri > 0 && $expectedPri !== $parentMap[$id]) {
+                $errores[] = "ID_REFERENCIA {$id}: no coincide con ID_PRUEBA {$expectedPri}.";
+                continue;
+            }
+
+            unset($row['_pri_id']);
+            $filtered[$id] = $row;
+        }
+
+        return $filtered;
+    }
+
+    /**
+     * @param array<int, array<string, mixed>> $items
+     * @param list<string>                     $errores
+     * @return array<int, array<string, mixed>>
+     */
+    private function filterValoresReferenciaPriToTenant(array $items, array &$errores = []): array
+    {
+        if ($items === []) {
+            return [];
+        }
+
+        $parentMap = $this->labotestModel->existingPriresultadosMap(array_keys($items));
+        $filtered  = [];
+
+        foreach ($items as $id => $row) {
+            $id = (int) $id;
+            if (! isset($parentMap[$id])) {
+                $errores[] = "ID_REFERENCIA {$id} (simple) no existe en este laboratorio.";
+                continue;
+            }
+
+            $expectedPri = (int) ($row['_pri_id'] ?? 0);
+            if ($expectedPri > 0 && $expectedPri !== $parentMap[$id]) {
+                $errores[] = "ID_REFERENCIA {$id}: no coincide con ID_PRUEBA {$expectedPri}.";
+                continue;
+            }
+
+            unset($row['_pri_id']);
+            $filtered[$id] = $row;
+        }
+
+        return $filtered;
     }
 }

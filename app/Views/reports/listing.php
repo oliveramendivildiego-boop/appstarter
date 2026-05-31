@@ -69,7 +69,7 @@
                 <a href="<?= site_url('reports/valoresReferencia') ?>" class="list-group-item list-group-item-action">
                     <i class="fas fa-chart-line me-2"></i> Valores de referencia
                 </a>
-                <p class="list-group-item small text-muted mb-0">Valores de referencia de todas las pruebas con buscador.</p>
+                <p class="list-group-item small text-muted mb-0">Valores de referencia con buscador; exportar e importar CSV con IDs (pruebas compuestas y simples).</p>
                 <a href="<?= site_url('reports/catalogoPruebas') ?>" class="list-group-item list-group-item-action">
                     <i class="fas fa-sitemap me-2"></i> Catálogo de pruebas (imprimir)
                 </a>
