@@ -89,6 +89,7 @@ class ConfigService
         $data['comprobante_tagline'] ??= 'Constancia de pago';
         $data['comprobante_footer_note'] ??= 'Documento interno de constancia de pago emitido por el laboratorio. No reemplaza un comprobante fiscal electrónico ni factura validada ante el SIN.';
         $data['comprobante_show_doctor'] ??= '1';
+        $data['comprobante_layout_json'] ??= '';
         $data['label_sin_doctor'] ??= 'Sin doctor';
         $cache->save($cacheKey, $data, self::CACHE_TTL);
         return $data;
@@ -1920,14 +1921,28 @@ class ConfigService
 
         $showDoctor = ((string) ($post['comprobante_show_doctor'] ?? '1')) === '0' ? '0' : '1';
 
-        $ok = $this->appConfigModel->batchSave([
+        $layoutJson = trim((string) ($post['comprobante_layout_json'] ?? ''));
+        if ($layoutJson !== '') {
+            $layoutSvc = new \App\Services\ComprobanteLayoutService();
+            $layoutJson = json_encode($layoutSvc->normalizeLayout($layoutJson), JSON_UNESCAPED_UNICODE);
+            if ($layoutJson === false) {
+                $layoutJson = '';
+            }
+        }
+
+        $batch = [
             'comprobante_primary_color' => $primary,
             'comprobante_secondary_color' => $secondary,
             'comprobante_text_color' => $text,
             'comprobante_tagline' => $tagline,
             'comprobante_footer_note' => $footer,
             'comprobante_show_doctor' => $showDoctor,
-        ]);
+        ];
+        if ($layoutJson !== '') {
+            $batch['comprobante_layout_json'] = $layoutJson;
+        }
+
+        $ok = $this->appConfigModel->batchSave($batch);
         if ($ok) {
             $this->invalidateCache();
         }

@@ -1,9 +1,18 @@
 <?php
 /**
  * Bloque «Cliente y atención» en 2 columnas (recibo / factura PDF).
+ * Si se pasa $comprobante_layout, usa la matriz configurada; si no, el diseño fijo legacy.
  *
- * @var \App\Models\ReciboComprobanteModel $doc
+ * @var \App\Models\ReciboComprobanteModel|\App\Models\FacturaComprobanteModel $doc
  */
+$showDoctor = isset($show_doctor) ? (bool) $show_doctor : true;
+$layout = isset($comprobante_layout) && is_array($comprobante_layout) ? $comprobante_layout : null;
+
+if ($layout !== null) {
+    echo (new \App\Services\ComprobanteLayoutService())->renderClientGridHtml($layout, $doc, $showDoctor);
+    return;
+}
+
 $g = (int) ($doc->doctorGender ?? 0);
 $tituloMedico = $g === 1 ? 'Dr. ' : ($g === 2 ? 'Dra. ' : '');
 $doctorTxt    = trim($doc->doctorNombre ?? '') !== '' ? $tituloMedico . $doc->doctorNombre : '—';
@@ -11,7 +20,6 @@ $ciTxt        = trim($doc->pacienteCi ?? '') !== '' ? $doc->pacienteCi : '—';
 $telTxt       = trim($doc->pacienteTelefono ?? '') !== '' ? $doc->pacienteTelefono : '—';
 $instTxt      = trim((string) ($doc->institucionNombre ?? ''));
 $instDctoPct  = (float) ($doc->institucionDescuentoPct ?? 0);
-$showDoctor   = isset($show_doctor) ? (bool) $show_doctor : true;
 ?>
 <table class="pair-table">
     <tr>

@@ -16,199 +16,20 @@ $textColor = $comprobante_style['text'] ?? '#1e293b';
 $tagline = trim((string) ($comprobante_style['tagline'] ?? 'Constancia de pago'));
 $footerNote = trim((string) ($comprobante_style['footer_note'] ?? 'Documento interno de constancia de pago emitido por el laboratorio. No reemplaza un comprobante fiscal electrónico ni factura validada ante el SIN.'));
 $showDoctor = (bool) ($comprobante_style['show_doctor'] ?? true);
+$layout = is_array($comprobante_style['layout'] ?? null) ? $comprobante_style['layout'] : (new \App\Services\ComprobanteLayoutService())->getDefaultLayout();
+$layoutSvc = new \App\Services\ComprobanteLayoutService();
+$pdfCss = $layoutSvc->buildPdfCss($layout, [
+    'primary'   => $primaryColor,
+    'secondary' => $secondaryColor,
+    'text'      => $textColor,
+]);
 ?>
 <!DOCTYPE html>
 <html lang="es">
 <head>
     <meta charset="UTF-8">
     <title>Recibo — Orden <?= esc($doc->ordenNumero) ?></title>
-    <style>
-        @page { margin: 14mm 16mm; }
-        * { box-sizing: border-box; }
-        body {
-            font-family: DejaVu Sans, Arial, Helvetica, sans-serif;
-            font-size: 10.5pt;
-            line-height: 1.45;
-            color: <?= esc($textColor) ?>;
-            margin: 0;
-            padding: 0;
-        }
-        .accent-bar {
-            height: 5px;
-            background: <?= esc($primaryColor) ?>;
-            margin: 0 0 16px 0;
-        }
-        .doc-header {
-            width: 100%;
-            border-collapse: collapse;
-            margin-bottom: 18px;
-        }
-        .doc-header td { vertical-align: top; padding: 0; }
-        .brand-name {
-            font-size: 16pt;
-            font-weight: bold;
-            color: <?= esc($textColor) ?>;
-            letter-spacing: -0.02em;
-            margin: 0 0 4px 0;
-        }
-        .brand-tagline {
-            font-size: 8.5pt;
-            color: #64748b;
-            text-transform: uppercase;
-            letter-spacing: 0.12em;
-            margin: 0;
-        }
-        .receipt-badge {
-            text-align: right;
-        }
-        .receipt-badge-inner {
-            display: inline-block;
-            text-align: right;
-            border: 2px solid <?= esc($primaryColor) ?>;
-            border-radius: 6px;
-            padding: 10px 14px;
-            background: #f0fdfa;
-        }
-        .receipt-badge-title {
-            font-size: 8pt;
-            font-weight: bold;
-            color: <?= esc($primaryColor) ?>;
-            letter-spacing: 0.18em;
-            margin: 0 0 6px 0;
-        }
-        .receipt-badge-orden {
-            font-size: 14pt;
-            font-weight: bold;
-            color: <?= esc($secondaryColor) ?>;
-            margin: 0;
-        }
-        .receipt-badge-fecha {
-            font-size: 8.5pt;
-            color: #475569;
-            margin: 6px 0 0 0;
-        }
-        .section-title {
-            font-size: 7.5pt;
-            font-weight: bold;
-            color: <?= esc($primaryColor) ?>;
-            text-transform: uppercase;
-            letter-spacing: 0.14em;
-            margin: 0 0 8px 0;
-            padding-bottom: 4px;
-            border-bottom: 1px solid #cbd5e1;
-        }
-        .panel {
-            background: #f8fafc;
-            border: 1px solid #e2e8f0;
-            border-radius: 6px;
-            padding: 12px 14px;
-            margin-bottom: 16px;
-        }
-        table.pair-table {
-            width: 100%;
-            border-collapse: collapse;
-            font-size: 10pt;
-        }
-        table.pair-table td {
-            width: 50%;
-            vertical-align: top;
-            padding: 10px 16px 10px 0;
-            line-height: 1.5;
-        }
-        table.pair-table td:nth-child(2) { padding-right: 0; padding-left: 8px; }
-        table.pair-table tr:first-child td { padding-top: 4px; }
-        .pair-k {
-            color: #475569;
-            font-weight: 600;
-        }
-        .pair-v {
-            color: <?= esc($textColor) ?>;
-            font-weight: normal;
-        }
-        table.tbl-items {
-            width: 100%;
-            border-collapse: collapse;
-            margin: 0 0 14px 0;
-            font-size: 9.5pt;
-        }
-        table.tbl-items thead th {
-            background: <?= esc($secondaryColor) ?>;
-            color: #fff;
-            font-size: 7.5pt;
-            font-weight: bold;
-            text-transform: uppercase;
-            letter-spacing: 0.08em;
-            padding: 9px 10px;
-            text-align: left;
-        }
-        table.tbl-items thead th:last-child { text-align: right; }
-        table.tbl-items tbody td {
-            padding: 8px 10px;
-            border-bottom: 1px solid #e2e8f0;
-            vertical-align: top;
-        }
-        table.tbl-items tbody tr:nth-child(even) td { background: #fafafa; }
-        table.tbl-items tbody td.num {
-            text-align: right;
-            white-space: nowrap;
-            font-variant-numeric: tabular-nums;
-            color: <?= esc($textColor) ?>;
-            font-weight: 600;
-        }
-        .totals-wrap {
-            width: 100%;
-            margin-top: 4px;
-        }
-        .totals-wrap td { vertical-align: top; }
-        .totals-box {
-            width: 280px;
-            margin-left: auto;
-            border: 1px solid #cbd5e1;
-            border-radius: 6px;
-            overflow: hidden;
-        }
-        .totals-box table { width: 100%; border-collapse: collapse; font-size: 9.5pt; }
-        .totals-box tr td {
-            padding: 6px 12px;
-            border-bottom: 1px solid #e2e8f0;
-        }
-        .totals-box tr:last-child td { border-bottom: none; }
-        .totals-box .t-lbl { color: #64748b; text-align: left; }
-        .totals-box .t-val {
-            text-align: right;
-            font-variant-numeric: tabular-nums;
-            color: #334155;
-            font-weight: 600;
-            white-space: nowrap;
-        }
-        .totals-box tr.total-final td {
-            background: <?= esc($primaryColor) ?>;
-            color: #fff;
-            font-size: 10.5pt;
-            font-weight: bold;
-            padding: 10px 12px;
-        }
-        .totals-box tr.total-final .t-lbl { color: #ecfdf5; }
-        .totals-box tr.total-final .t-val { color: #fff; }
-        .pay-method {
-            margin-top: 12px;
-            padding: 10px 14px;
-            background: #fffbeb;
-            border: 1px solid #fde68a;
-            border-radius: 6px;
-            font-size: 9.5pt;
-        }
-        .pay-method strong { color: #92400e; }
-        .foot {
-            margin-top: 22px;
-            padding-top: 14px;
-            border-top: 1px solid #e2e8f0;
-            font-size: 8pt;
-            color: #64748b;
-            text-align: center;
-            line-height: 1.5;
-        }
-    </style>
+    <style><?= $pdfCss ?></style>
 </head>
 <body>
     <div class="accent-bar"></div>
@@ -231,7 +52,7 @@ $showDoctor = (bool) ($comprobante_style['show_doctor'] ?? true);
 
     <p class="section-title">Cliente y atención</p>
     <div class="panel">
-        <?= view('registers/billing/_datos_cliente_atencion_pdf', ['doc' => $doc, 'show_doctor' => $showDoctor]) ?>
+        <?= $layoutSvc->renderClientGridHtml($layout, $doc, $showDoctor) ?>
     </div>
 
     <p class="section-title">Detalle de conceptos</p>

@@ -188,11 +188,12 @@ class BillingDocumentService
     }
 
     /**
-     * @return array{primary:string,secondary:string,text:string,tagline:string,footer_note:string,show_doctor:bool}
+     * @return array{primary:string,secondary:string,text:string,tagline:string,footer_note:string,show_doctor:bool,layout:array<string,mixed>}
      */
     private function buildComprobanteStyleConfig(): array
     {
         $cfg = $this->configService->getAllAsArray();
+        $layoutSvc = new ComprobanteLayoutService();
 
         return [
             'primary' => trim((string) ($cfg['comprobante_primary_color'] ?? '#0f766e')) ?: '#0f766e',
@@ -201,6 +202,7 @@ class BillingDocumentService
             'tagline' => trim((string) ($cfg['comprobante_tagline'] ?? 'Constancia de pago')) ?: 'Constancia de pago',
             'footer_note' => trim((string) ($cfg['comprobante_footer_note'] ?? 'Documento interno de constancia de pago emitido por el laboratorio. No reemplaza un comprobante fiscal electrónico ni factura validada ante el SIN.')) ?: 'Documento interno de constancia de pago emitido por el laboratorio. No reemplaza un comprobante fiscal electrónico ni factura validada ante el SIN.',
             'show_doctor' => ((string) ($cfg['comprobante_show_doctor'] ?? '1')) !== '0',
+            'layout' => $layoutSvc->layoutFromConfig($cfg),
         ];
     }
 

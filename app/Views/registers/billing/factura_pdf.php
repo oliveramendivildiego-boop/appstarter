@@ -41,7 +41,11 @@ $showDoctor = (bool) ($comprobante_style['show_doctor'] ?? true);
         <div class="box-row"><strong>N.º documento (orden):</strong> <?= esc($doc->ordenNumero) ?></div>
         <div class="box-row"><strong>Fecha de emisión:</strong> <?= esc($doc->fechaEmision) ?></div>
         <p class="muted" style="margin:10px 0 6px 0;font-weight:bold;">Cliente y atención</p>
-        <?= view('registers/billing/_datos_cliente_atencion_pdf', ['doc' => $doc, 'show_doctor' => $showDoctor]) ?>
+        <?= view('registers/billing/_datos_cliente_atencion_pdf', [
+            'doc'                 => $doc,
+            'show_doctor'         => $showDoctor,
+            'comprobante_layout'  => is_array($comprobante_style['layout'] ?? null) ? $comprobante_style['layout'] : null,
+        ]) ?>
     </div>
 
     <table class="items">
