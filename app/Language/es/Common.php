@@ -3,6 +3,7 @@
 return [
     'common_submit'              => 'Enviar',
     'common_first_name'          => 'Nombre (s)',
+    'common_full_name'           => 'Apellidos y nombre',
     'common_last_name_fa'        => 'Apellido Paterno',
     'common_last_name_mom'       => 'Apellido Materno',
     'common_email'               => 'E-Mail',

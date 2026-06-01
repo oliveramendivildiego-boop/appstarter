@@ -99,7 +99,7 @@ $accionBadges = [
                     $badgeClass = $accionBadges[$accion] ?? 'bg-secondary';
                     ?>
                     <tr>
-                        <td><small><?= esc($r['fecha'] ?? '') ?></small></td>
+                        <td><small><?= esc(lab_dt_short(isset($r['fecha']) ? (string) $r['fecha'] : null)) ?></small></td>
                         <td><?= esc(trim(($r['first_name'] ?? '') . ' ' . ($r['last_name_fa'] ?? '')) ?: '<em class="text-muted">Sistema</em>') ?></td>
                         <td><span class="badge bg-dark"><?= esc($r['modulo'] ?? '') ?></span></td>
                         <td><span class="badge <?= esc($badgeClass) ?>"><?= esc(ucfirst(str_replace('_', ' ', $accion))) ?></span></td>

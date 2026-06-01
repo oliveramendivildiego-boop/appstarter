@@ -21,7 +21,7 @@ $total_saldo  = (float) ($total_saldo ?? 0);
         <?php foreach ($pendientes as $row): ?>
             <tr>
                 <td><?= esc($row['registro_id'] ?? '') ?></td>
-                <td><?= esc(date('d/m/Y H:i', strtotime($row['ingreso'] ?? ''))) ?></td>
+                <td><?= esc(lab_dt_short($row['ingreso'] ?? null)) ?></td>
                 <td class="small"><?= esc($row['paciente'] ?? '') ?></td>
                 <td class="small"><?= esc($row['doctor'] ?? '') ?></td>
                 <td class="text-end"><?= number_format((float) ($row['total'] ?? 0), 2) ?></td>

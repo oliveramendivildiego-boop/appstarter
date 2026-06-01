@@ -58,7 +58,7 @@ $subtitle                 = $subtitle ?? '';
                         <td><?= esc($lt['codigo_lote'] ?? '') ?></td>
                         <td class="text-end"><?= (int) ($lt['ingreso'] ?? 0) ?></td>
                         <td class="text-end"><?= (int) ($lt['queda'] ?? 0) ?></td>
-                        <td><?= ! empty($lt['fecha_vencimiento']) ? esc(date('d/m/Y', strtotime($lt['fecha_vencimiento']))) : '—' ?></td>
+                        <td><?= ! empty($lt['fecha_vencimiento']) ? esc(lab_date((string) $lt['fecha_vencimiento'])) : '—' ?></td>
                     </tr>
                 <?php endforeach; ?>
                 <?php if (empty($bloque['lotes'])): ?>

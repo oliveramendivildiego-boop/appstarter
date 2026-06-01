@@ -57,9 +57,7 @@ class EgresoModel extends Model
         $now = RegisterService::mysqlNowForReport();
         $fechaInput = trim((string) ($data['fecha'] ?? ''));
         if ($fechaInput !== '') {
-            if (preg_match('/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}$/', $fechaInput)) {
-                $fechaInput .= ':00';
-            }
+            $fechaInput = RegisterService::parseUserLabDatetimeToStorage($fechaInput);
         } else {
             $fechaInput = $now;
         }

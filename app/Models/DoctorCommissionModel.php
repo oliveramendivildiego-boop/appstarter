@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Services\RegisterService;
 use CodeIgniter\Model;
 
 class DoctorCommissionModel extends Model
@@ -37,7 +38,7 @@ class DoctorCommissionModel extends Model
             'total_amount'      => $totalAmount,
             'commission_percent'=> $commissionPercent,
             'commission_amount' => $commissionAmount,
-            'created_date'      => date('Y-m-d H:i:s'),
+            'created_date'      => RegisterService::mysqlNowForReport(),
             'status'            => 0, // pendiente
         ];
 
@@ -92,7 +93,7 @@ class DoctorCommissionModel extends Model
             return true;
         }
 
-        $data['created_date'] = date('Y-m-d H:i:s');
+        $data['created_date'] = RegisterService::mysqlNowForReport();
         $data['status']       = 0;
 
         return $this->insert($data) !== false;
@@ -324,7 +325,7 @@ class DoctorCommissionModel extends Model
 
         return $this->update($commissionId, [
             'status' => 1,
-            'paid_date' => date('Y-m-d H:i:s'),
+            'paid_date' => RegisterService::mysqlNowForReport(),
             'notes' => $notes
         ]) !== false;
     }

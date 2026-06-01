@@ -315,7 +315,7 @@ $summaryStatusClass = $doctorSummary['status_class'] ?? 'success';
                                             </td>
                                             <td>
                                                 <i class="fa-solid fa-calendar-check text-success"></i>
-                                                <?= !empty($com->paid_date) ? date('d/m/Y', strtotime($com->paid_date)) : '-' ?>
+                                                <?= !empty($com->paid_date) ? lab_date((string) $com->paid_date) : '-' ?>
                                             </td>
                                         </tr>
                                         <?php endforeach; ?>
@@ -357,7 +357,7 @@ $summaryStatusClass = $doctorSummary['status_class'] ?? 'success';
                                         <tr>
                                             <td><?= (int)($reg->registro_id ?? 0) ?></td>
                                             <td><?= esc($reg->paciente ?? '-') ?></td>
-                                            <td><?= !empty($reg->ingreso) ? date('d/m/Y H:i', strtotime($reg->ingreso)) : '-' ?></td>
+                                            <td><?= !empty($reg->ingreso) ? lab_dt_short($reg->ingreso ?? null) : '-' ?></td>
                                             <td>
                                                 <?php
                                                 $rid = (int) ($reg->registro_id ?? 0);

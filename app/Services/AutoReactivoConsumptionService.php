@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\LabotestReactivoConfigModel;
+use App\Services\RegisterService;
 use App\Models\ReactivoModel;
 use App\Models\RegisterModel;
 use CodeIgniter\Database\BaseConnection;
@@ -148,7 +149,7 @@ class AutoReactivoConsumptionService
             'lote_id'           => $loteId,
             'estado'            => $estado,
             'mensaje'           => $mensaje,
-            'updated_at'        => date('Y-m-d H:i:s'),
+            'updated_at'        => RegisterService::mysqlNowForReport(),
         ];
 
         $existing = $this->db->table('reactivo_consumo_auto')

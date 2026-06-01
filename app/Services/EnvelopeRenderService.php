@@ -207,7 +207,7 @@ class EnvelopeRenderService
             ],
             'report_url'         => 'https://example.local/resultados/1',
             'qr_data_uri'        => 'data:image/svg+xml;base64,' . base64_encode($qrSvg),
-            'report_emitido_en'  => (string) ($samples['fecha_reporte'] ?? date('d/m/Y')),
+            'report_emitido_en'  => (string) ($samples['fecha_reporte'] ?? \App\Services\RegisterService::formatNowForReportShort()),
             'barcode_size_percent' => $this->resolveBarcodeSizePercent(),
         ];
     }

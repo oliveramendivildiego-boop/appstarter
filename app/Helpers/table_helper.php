@@ -20,18 +20,44 @@ if (!function_exists('build_select')) {
     }
 }
 
+if (!function_exists('format_customer_list_name')) {
+    function format_customer_list_name(object $person): string
+    {
+        $parts = array_filter([
+            trim((string) ($person->last_name_fa ?? '')),
+            trim((string) ($person->last_name_mom ?? '')),
+            trim((string) ($person->first_name ?? '')),
+        ], static fn (string $p): bool => $p !== '');
+        if ($parts !== []) {
+            return implode(' ', $parts);
+        }
+
+        return trim(trim((string) ($person->last_name ?? '')) . ' ' . trim((string) ($person->first_name ?? '')));
+    }
+}
+
 if (!function_exists('get_people_manage_table')) {
     function get_people_manage_table(array $people, object $controller): string
     {
+        $isCustomers = strtolower($controller->getControllerName()) === 'customers';
         $table = '<div class="table-responsive"><table class="table table-bordered" id="sortable_table">';
-        $headers = [
-            '<input type="checkbox" id="select_all" name="select_all" />',
-            lang('Common.common_last_name_fa'),
-            lang('Common.common_first_name'),
-            lang('Common.common_email'),
-            lang('Common.common_phone_number'),
-            '&nbsp',
-        ];
+        if ($isCustomers) {
+            $headers = [
+                '<input type="checkbox" id="select_all" name="select_all" />',
+                lang('Common.common_full_name'),
+                lang('Common.common_phone_number'),
+                '&nbsp',
+            ];
+        } else {
+            $headers = [
+                '<input type="checkbox" id="select_all" name="select_all" />',
+                lang('Common.common_last_name_fa'),
+                lang('Common.common_first_name'),
+                lang('Common.common_email'),
+                lang('Common.common_phone_number'),
+                '&nbsp',
+            ];
+        }
         $table .= '<thead><tr class="well">';
         foreach ($headers as $header) {
             $table .= "<th>$header</th>";
@@ -54,7 +80,8 @@ if (!function_exists('get_people_manage_table_data_rows')) {
         }
 
         if (empty($people)) {
-            $table_data_rows .= "<tr><td colspan='6'><div class='warning_message' style='padding:7px;'>" . lang('Common.common_no_persons_to_display') . "</div></td></tr>";
+            $colspan = ($controller_name === 'customers') ? 4 : 6;
+            $table_data_rows .= "<tr><td colspan='{$colspan}'><div class='warning_message' style='padding:7px;'>" . lang('Common.common_no_persons_to_display') . "</div></td></tr>";
         }
         return $table_data_rows;
     }
@@ -140,10 +167,17 @@ if (!function_exists('get_person_data_row')) {
         
         $table_data_row = '<tr' . $rowStyle . '>';
         $table_data_row .= "<td width='5%'><input type='checkbox' id='person_{$person->person_id}' name='person_{$person->person_id}' value='{$person->person_id}'/></td>";
-        $table_data_row .= '<td width="' . ($isCustomers ? '18%' : ($isEmployees ? '20%' : '20%')) . '">' . (function_exists('character_limiter') ? character_limiter($person->last_name ?? '', 13) : substr($person->last_name ?? '', 0, 13)) . '</td>';
-        $table_data_row .= '<td width="' . ($isCustomers ? '18%' : ($isEmployees ? '20%' : '20%')) . '">' . (function_exists('character_limiter') ? character_limiter($person->first_name ?? '', 13) : substr($person->first_name ?? '', 0, 13)) . '</td>';
-        $table_data_row .= '<td width="' . ($isCustomers ? '27%' : ($isEmployees ? '25%' : '30%')) . '">' . ($person->email ?? '') . '</td>';
-        $table_data_row .= '<td width="' . ($isCustomers ? '20%' : ($isEmployees ? '15%' : '20%')) . '">' . (function_exists('character_limiter') ? character_limiter($person->phone_number ?? '', 13) : substr($person->phone_number ?? '', 0, 13)) . '</td>';
+        if ($isCustomers) {
+            $fullName = esc(format_customer_list_name($person));
+            $phoneDisplay = esc($person->phone_number ?? '');
+            $table_data_row .= '<td width="55%">' . $fullName . '</td>';
+            $table_data_row .= '<td width="28%">' . $phoneDisplay . '</td>';
+        } else {
+            $table_data_row .= '<td width="' . ($isEmployees ? '20%' : '20%') . '">' . (function_exists('character_limiter') ? character_limiter($person->last_name ?? '', 13) : substr($person->last_name ?? '', 0, 13)) . '</td>';
+            $table_data_row .= '<td width="' . ($isEmployees ? '20%' : '20%') . '">' . (function_exists('character_limiter') ? character_limiter($person->first_name ?? '', 13) : substr($person->first_name ?? '', 0, 13)) . '</td>';
+            $table_data_row .= '<td width="' . ($isEmployees ? '25%' : '30%') . '">' . esc($person->email ?? '') . '</td>';
+            $table_data_row .= '<td width="' . ($isEmployees ? '15%' : '20%') . '">' . (function_exists('character_limiter') ? character_limiter($person->phone_number ?? '', 13) : substr($person->phone_number ?? '', 0, 13)) . '</td>';
+        }
         
         $title = lang(\ucfirst($controller_name) . '.' . $controller_name . '_update');
         $editIcon = '<i class="fa-solid fa-pen" aria-hidden="true"></i>';

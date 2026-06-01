@@ -8,7 +8,7 @@ use App\Services\RegisterService;
 use CodeIgniter\Database\BaseBuilder;
 
 /**
- * Filtro por rango de días (inclusive) sobre columnas DATETIME guardadas en la zona del laboratorio,
+ * Filtro por rango de días (inclusive) sobre columnas DATETIME (UTC o local según /config),
  * sin DATE(columna) en el WHERE para permitir uso de índices.
  */
 final class LabNaiveDateRange
@@ -23,16 +23,14 @@ final class LabNaiveDateRange
             if ($fromDay === '' || $toDay === '') {
                 throw new \InvalidArgumentException('empty date');
             }
-            $tz      = new \DateTimeZone(RegisterService::reportDisplayTimezone());
-            $start   = (new \DateTimeImmutable($fromDay, $tz))->setTime(0, 0, 0);
-            $endOpen = (new \DateTimeImmutable($toDay, $tz))->modify('+1 day')->setTime(0, 0, 0);
+            [$startStr, $endOpenStr] = RegisterService::labDateRangeToStorageBounds($fromDay, $toDay);
         } catch (\Throwable) {
             return $builder->where("DATE({$col}) >=", $fromDay !== '' ? $fromDay : $dateFrom)
                 ->where("DATE({$col}) <=", $toDay !== '' ? $toDay : $dateTo);
         }
 
-        return $builder->where("{$col} >=", $start->format('Y-m-d H:i:s'))
-            ->where("{$col} <", $endOpen->format('Y-m-d H:i:s'));
+        return $builder->where("{$col} >=", $startStr)
+            ->where("{$col} <", $endOpenStr);
     }
 
     /**
@@ -50,14 +48,13 @@ final class LabNaiveDateRange
         $col = "{$prefixedTable}.{$column}";
 
         try {
-            $tz = new \DateTimeZone(RegisterService::reportDisplayTimezone());
             if ($fromDay !== '') {
-                $start = (new \DateTimeImmutable($fromDay, $tz))->setTime(0, 0, 0);
-                $builder->where("{$col} >=", $start->format('Y-m-d H:i:s'));
+                [$startStr] = RegisterService::labDateRangeToStorageBounds($fromDay, $fromDay);
+                $builder->where("{$col} >=", $startStr);
             }
             if ($toDay !== '') {
-                $endOpen = (new \DateTimeImmutable($toDay, $tz))->modify('+1 day')->setTime(0, 0, 0);
-                $builder->where("{$col} <", $endOpen->format('Y-m-d H:i:s'));
+                [, $endOpenStr] = RegisterService::labDateRangeToStorageBounds($toDay, $toDay);
+                $builder->where("{$col} <", $endOpenStr);
             }
         } catch (\Throwable) {
             if ($fromDay !== '') {

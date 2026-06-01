@@ -77,10 +77,10 @@ class MuestraModel extends Model
     {
         $upd = ['estado' => $estado];
         if ($estado === 1) {
-            $upd['fecha_recibida'] = date('Y-m-d H:i:s');
+            $upd['fecha_recibida'] = \App\Services\RegisterService::mysqlNowForReport();
             $upd['usuario_recibio'] = $usuario;
         } elseif ($estado === 2) {
-            $upd['fecha_procesada'] = date('Y-m-d H:i:s');
+            $upd['fecha_procesada'] = \App\Services\RegisterService::mysqlNowForReport();
         }
         return $this->db->table('muestra')->where('muestra_id', $id)->update($upd);
     }

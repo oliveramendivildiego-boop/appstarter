@@ -2,6 +2,21 @@
 
 <?= $this->section('title') ?>Lista de registros<?= $this->endSection() ?>
 
+<?= $this->section('head_extra') ?>
+<link rel="stylesheet" href="<?= base_url('css/vendor/flatpickr.min.css') ?>">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/themes/material_green.css">
+<script src="<?= base_url('js/vendor/flatpickr.min.js') ?>"></script>
+<script src="https://cdn.jsdelivr.net/npm/flatpickr@4.6.13/dist/l10n/es.js"></script>
+<style>
+.lista-filtros-form .lista-btn-filtrar {
+    border: 2px solid var(--bs-primary, #0d6efd) !important;
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.15);
+    font-weight: 600;
+    white-space: nowrap;
+}
+</style>
+<?= $this->endSection() ?>
+
 <?= $this->section('content') ?>
 <?= view('partial/breadcrumb_nav', [
     'items' => [
@@ -12,22 +27,120 @@
         '<a href="' . site_url('expediente') . '" class="btn btn-outline-info btn-sm"><i class="fa-solid fa-folder-open me-1"></i> Historial paciente</a>',
 ]) ?>
 
+<?php
+$listaQueryBase = static function (array $extra = []) use ($search, $estado, $fecha_desde, $fecha_hasta, $fecha_todos): string {
+    $params = [];
+    if (! empty($search)) {
+        $params['q'] = $search;
+    }
+    if (! empty($estado ?? '')) {
+        $params['estado'] = $estado;
+    }
+    if (! empty($fecha_todos)) {
+        $params['fecha_todos'] = '1';
+    } else {
+        if (! empty($fecha_desde ?? '')) {
+            $params['fecha_desde'] = $fecha_desde;
+        }
+        if (! empty($fecha_hasta ?? '')) {
+            $params['fecha_hasta'] = $fecha_hasta;
+        }
+    }
+    foreach ($extra as $k => $v) {
+        if ($v === null || $v === '') {
+            unset($params[$k]);
+        } else {
+            $params[$k] = $v;
+        }
+    }
+    $qs = http_build_query($params);
+
+    return site_url('registers/lista') . ($qs !== '' ? '?' . $qs : '');
+};
+$esHoy = ! ($fecha_todos ?? false)
+    && ($fecha_desde ?? '') === ($fecha_hoy ?? '')
+    && ($fecha_hasta ?? '') === ($fecha_hoy ?? '');
+$esSemana = ! ($fecha_todos ?? false)
+    && ($fecha_desde ?? '') === ($fecha_semana_desde ?? '')
+    && ($fecha_hasta ?? '') === ($fecha_hoy ?? '');
+$esMes = ! ($fecha_todos ?? false)
+    && ($fecha_desde ?? '') === ($fecha_mes_desde ?? '')
+    && ($fecha_hasta ?? '') === ($fecha_hoy ?? '');
+$esPresetFecha = $esHoy || $esSemana || $esMes;
+$listaBtnClass = static fn (bool $active): string => 'btn btn-sm ' . ($active ? 'btn-secondary' : 'btn-outline-secondary');
+?>
 <div class="row mb-3">
     <div class="col-md-12">
-        <form method="get" action="<?= site_url('registers/lista') ?>" class="d-flex flex-wrap gap-2 align-items-center">
-            <input type="text" name="q" class="form-control" style="max-width:280px;" placeholder="Buscar por código de prueba, nombre, apellidos o CI del paciente..." value="<?= esc($search ?? '') ?>">
-            <select name="estado" class="form-select" style="max-width:220px;">
-                <option value="">Todos</option>
-                <option value="activo" <?= ($estado ?? '') === 'activo' ? 'selected' : '' ?>>Solo activas (no anuladas)</option>
-                <option value="completo" <?= ($estado ?? '') === 'completo' ? 'selected' : '' ?>>Completos (con resultados)</option>
-                <option value="incompleto" <?= ($estado ?? '') === 'incompleto' ? 'selected' : '' ?>>Incompletos (sin resultados)</option>
-                <option value="anulado" <?= ($estado ?? '') === 'anulado' ? 'selected' : '' ?>>Solo anuladas</option>
-            </select>
-            <button type="submit" class="btn btn-outline-primary"><i class="fa-solid fa-search"></i> Buscar</button>
-            <?php if (!empty($search) || !empty($estado ?? '')): ?>
-            <a href="<?= site_url('registers/lista') ?>" class="btn btn-outline-secondary">Limpiar</a>
+        <form method="get" action="<?= site_url('registers/lista') ?>" class="lista-filtros-form">
+            <?php if (! empty($fecha_todos)): ?>
+            <input type="hidden" name="fecha_todos" value="1">
             <?php endif; ?>
+            <div class="row g-2 align-items-end">
+                <div class="col-xl-4 col-lg-5 col-md-6">
+                    <label for="lista_q" class="form-label small mb-0">Buscar</label>
+                    <input type="text" id="lista_q" name="q" class="form-control form-control-sm" placeholder="Código, nombre, apellidos o CI..." value="<?= esc($search ?? '') ?>">
+                </div>
+                <div class="col-xl-3 col-lg-4 col-md-6">
+                    <label for="lista_estado" class="form-label small mb-0">Estado</label>
+                    <select id="lista_estado" name="estado" class="form-select form-select-sm">
+                        <option value="">Todos</option>
+                        <option value="activo" <?= ($estado ?? '') === 'activo' ? 'selected' : '' ?>>Solo activas (no anuladas)</option>
+                        <option value="completo" <?= ($estado ?? '') === 'completo' ? 'selected' : '' ?>>Completos (con resultados)</option>
+                        <option value="incompleto" <?= ($estado ?? '') === 'incompleto' ? 'selected' : '' ?>>Incompletos (sin resultados)</option>
+                        <option value="anulado" <?= ($estado ?? '') === 'anulado' ? 'selected' : '' ?>>Solo anuladas</option>
+                    </select>
+                </div>
+                <div class="col-xl-2 col-lg-3 col-md-4">
+                    <label for="lista_fecha_desde" class="form-label small mb-0">Desde</label>
+                    <input type="text" id="lista_fecha_desde" name="fecha_desde" class="form-control form-control-sm flatpickr-input" autocomplete="off"
+                           value="<?= esc($fecha_desde ?? '') ?>" <?= ! empty($fecha_todos) ? 'disabled' : '' ?>>
+                </div>
+                <div class="col-xl-2 col-lg-3 col-md-4">
+                    <label for="lista_fecha_hasta" class="form-label small mb-0">Hasta</label>
+                    <input type="text" id="lista_fecha_hasta" name="fecha_hasta" class="form-control form-control-sm flatpickr-input" autocomplete="off"
+                           value="<?= esc($fecha_hasta ?? '') ?>" <?= ! empty($fecha_todos) ? 'disabled' : '' ?>>
+                </div>
+                <div class="col-auto">
+                    <button type="submit" class="btn btn-primary btn-sm lista-btn-filtrar"><i class="fa-solid fa-search"></i> Filtrar</button>
+                </div>
+            </div>
+            <div class="d-flex flex-wrap gap-2 align-items-center pt-2 pb-1">
+                <div class="btn-group btn-group-sm" role="group" aria-label="Período rápido">
+                    <a href="<?= esc($listaQueryBase(['fecha_desde' => $fecha_hoy ?? '', 'fecha_hasta' => $fecha_hoy ?? '', 'fecha_todos' => null, 'page' => null]), 'attr') ?>"
+                       class="<?= $listaBtnClass($esHoy) ?>" title="Solo registros de hoy">Hoy</a>
+                    <a href="<?= esc($listaQueryBase(['fecha_desde' => $fecha_semana_desde ?? '', 'fecha_hasta' => $fecha_hoy ?? '', 'fecha_todos' => null, 'page' => null]), 'attr') ?>"
+                       class="<?= $listaBtnClass($esSemana) ?>" title="Desde el lunes de esta semana hasta hoy">Esta semana</a>
+                    <a href="<?= esc($listaQueryBase(['fecha_desde' => $fecha_mes_desde ?? '', 'fecha_hasta' => $fecha_hoy ?? '', 'fecha_todos' => null, 'page' => null]), 'attr') ?>"
+                       class="<?= $listaBtnClass($esMes) ?>" title="Desde el primer día del mes hasta hoy">Este mes</a>
+                </div>
+                <?php if (! $esPresetFecha && empty($fecha_todos)): ?>
+                <a href="<?= esc($listaQueryBase(['fecha_todos' => '1', 'fecha_desde' => null, 'fecha_hasta' => null, 'page' => null]), 'attr') ?>" class="btn btn-outline-secondary btn-sm">Todas las fechas</a>
+                <?php endif; ?>
+                <?php if (! empty($search) || ! empty($estado ?? '') || ! $esHoy || ! empty($fecha_todos)): ?>
+                <a href="<?= site_url('registers/lista') ?>" class="btn btn-outline-secondary btn-sm">Limpiar</a>
+                <?php endif; ?>
+            </div>
         </form>
+        <p class="text-muted small mb-0 mt-2">
+            <?php if (! empty($fecha_todos)): ?>
+                Mostrando registros de <strong>todas las fechas</strong>.
+            <?php elseif ($esHoy): ?>
+                Mostrando registros de <strong>hoy</strong> (<?= esc(\App\Services\RegisterService::formatReportDate($fecha_hoy ?? '')) ?>).
+            <?php elseif ($esSemana): ?>
+                Mostrando registros de <strong>esta semana</strong>
+                (<?= esc(\App\Services\RegisterService::formatReportDate($fecha_semana_desde ?? '')) ?>
+                – <?= esc(\App\Services\RegisterService::formatReportDate($fecha_hoy ?? '')) ?>).
+            <?php elseif ($esMes): ?>
+                Mostrando registros de <strong>este mes</strong>
+                (<?= esc(\App\Services\RegisterService::formatReportDate($fecha_mes_desde ?? '')) ?>
+                – <?= esc(\App\Services\RegisterService::formatReportDate($fecha_hoy ?? '')) ?>).
+            <?php elseif (($fecha_desde ?? '') === ($fecha_hasta ?? '')): ?>
+                Mostrando registros del <strong><?= esc(\App\Services\RegisterService::formatReportDate($fecha_desde ?? '')) ?></strong>.
+            <?php else: ?>
+                Mostrando registros del <strong><?= esc(\App\Services\RegisterService::formatReportDate($fecha_desde ?? '')) ?></strong>
+                al <strong><?= esc(\App\Services\RegisterService::formatReportDate($fecha_hasta ?? '')) ?></strong>.
+            <?php endif; ?>
+        </p>
     </div>
 </div>
 
@@ -177,12 +290,10 @@
     <ul class="pagination justify-content-center">
         <?php
         $pageNum = (int)($page ?? 1);
-        $searchParam = !empty($search) ? 'q=' . urlencode($search) . '&' : '';
-        if (!empty($estado ?? '')) $searchParam .= 'estado=' . urlencode($estado) . '&';
         for ($i = 1; $i <= ($totalPages ?? 1); $i++):
         ?>
         <li class="page-item <?= ($i === $pageNum) ? 'active' : '' ?>">
-            <a class="page-link" href="<?= site_url('registers/lista') . '?' . $searchParam . 'page=' . $i ?>"><?= $i ?></a>
+            <a class="page-link" href="<?= esc($listaQueryBase(['page' => (string) $i]), 'attr') ?>"><?= $i ?></a>
         </li>
         <?php endfor; ?>
     </ul>
@@ -207,6 +318,23 @@
 
 <?= $this->section('scripts') ?>
 <script>
+document.addEventListener('DOMContentLoaded', function () {
+    if (typeof flatpickr === 'undefined') {
+        return;
+    }
+    var fpOpts = {
+        dateFormat: 'Y-m-d',
+        locale: 'es',
+        allowInput: true,
+        onOpen: function (s, d, i) {
+            if (typeof flatpickrPositionArrowTopLeft === 'function') {
+                flatpickrPositionArrowTopLeft(i);
+            }
+        }
+    };
+    flatpickr('#lista_fecha_desde', fpOpts);
+    flatpickr('#lista_fecha_hasta', fpOpts);
+});
 function escapeHtml(str) {
     if (str == null) return '';
     var s = String(str);
@@ -318,7 +446,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     html += '<p class="mb-1"><strong>Orden:</strong> ' + escapeHtml((reg.numero_orden && String(reg.numero_orden).trim() !== '') ? reg.numero_orden : (reg.registro_id || '-')) + '</p>';
                     html += '<p class="mb-1"><strong>Paciente:</strong> ' + escapeHtml(reg.paciente || '-') + '</p>';
                     html += '<p class="mb-1"><strong>Doctor:</strong> ' + escapeHtml(reg.doctor || '-') + '</p>';
-                    html += '<p class="mb-0"><strong>Fecha ingreso:</strong> ' + escapeHtml(reg.ingreso ? new Date(reg.ingreso).toLocaleString('es') : '-') + '</p></div>';
+                    html += '<p class="mb-0"><strong>Fecha ingreso:</strong> ' + escapeHtml(reg.ingreso_display || reg.ingreso || '-') + '</p></div>';
                     html += '<div class="mb-3"><h6 class="border-bottom pb-2">Historial de pagos</h6>';
                     html += '<p class="mb-2"><strong>Total orden:</strong> ' + escapeHtml(pago.total || '0') + ' ' + (window.APP_CURRENCY_SYMBOL || '$') + ' &nbsp;|&nbsp; <strong>Pagado:</strong> ' + escapeHtml(pago.monto_pagar || '0') + ' ' + (window.APP_CURRENCY_SYMBOL || '$') + ' &nbsp;|&nbsp; <strong>Saldo:</strong> ' + escapeHtml(pago.saldo || '0') + ' ' + (window.APP_CURRENCY_SYMBOL || '$') + '</p>';
                     var urlComp = '<?= site_url('registers/comprobantePdf') ?>/' + encodeURIComponent(rid);
@@ -330,7 +458,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     if (d.abonos && d.abonos.length > 0) {
                         html += '<div class="table-responsive"><table class="table table-sm table-bordered"><thead><tr><th>Fecha</th><th>Monto</th><th>Método</th></tr></thead><tbody>';
                         d.abonos.forEach(function(a) {
-                            var fecha = a.fecha_abono ? new Date(a.fecha_abono).toLocaleString('es') : '-';
+                            var fecha = a.fecha_abono_display || a.fecha_abono || '-';
                             html += '<tr><td>' + escapeHtml(fecha) + '</td><td>' + escapeHtml(a.monto || '0') + ' ' + (window.APP_CURRENCY_SYMBOL || '$') + '</td><td>' + escapeHtml(a.tipo_nombre || a.tipopago || '-') + '</td></tr>';
                         });
                         html += '</tbody></table></div>';

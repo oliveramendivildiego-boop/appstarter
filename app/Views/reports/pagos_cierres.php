@@ -45,7 +45,7 @@
                 $fd = $c['fecha_desde'] ?? '';
                 $fh = $c['fecha_hasta'] ?? '';
                 $periodo = $fd && $fh
-                    ? (date('d/m/Y', strtotime($fd)) . ' — ' . date('d/m/Y', strtotime($fh)))
+                    ? (lab_date($fd) . ' — ' . lab_date($fh))
                     : '-';
                 $creado = !empty($c['created_at'])
                     ? \App\Services\RegisterService::formatStoredReporteFechaHora((string) $c['created_at'])

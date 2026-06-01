@@ -78,11 +78,9 @@ $numPrueba = 0;
         foreach ($abonosList as $ab) {
             $fechaAb = $ab['fecha_abono'] ?? '';
             if ($fechaAb !== '') {
-                try {
-                    $fechaAb = (new \DateTime($fechaAb))->format($forPdf ? 'd/m/Y' : 'd/m/Y H:i');
-                } catch (\Throwable $e) {
-                    // mantener valor original
-                }
+                $fechaAb = $forPdf
+                    ? \App\Services\RegisterService::formatReportDate(substr($fechaAb, 0, 10))
+                    : \App\Services\RegisterService::formatStoredReporteFechaCorta($fechaAb);
             }
             $partesAbonos[] = esc($fechaAb !== '' ? $fechaAb : '-')
                 . ' ' . esc($ab['tipo_nombre'] ?? '-')

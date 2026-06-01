@@ -36,7 +36,7 @@
                             $venc = $lt['fecha_vencimiento'] ?? '';
                             $vencClass = '';
                             if ($venc !== '' && $venc !== null) {
-                                if ($venc <= date('Y-m-d')) {
+                                if ($venc <= lab_today_ymd()) {
                                     $vencClass = 'table-danger';
                                 }
                             }
@@ -45,8 +45,8 @@
                                 <td><?= esc($lt['codigo_lote'] ?? '') ?></td>
                                 <td class="text-end"><?= (int) ($lt['ingreso'] ?? 0) ?></td>
                                 <td class="text-end fw-semibold"><?= (int) ($lt['queda'] ?? 0) ?></td>
-                                <td><?= !empty($lt['fecha_vencimiento']) ? esc(date('d/m/Y', strtotime($lt['fecha_vencimiento']))) : '—' ?></td>
-                                <td><?= !empty($lt['fecha_ingreso']) ? esc(date('d/m/Y', strtotime($lt['fecha_ingreso']))) : '—' ?></td>
+                                <td><?= !empty($lt['fecha_vencimiento']) ? esc(lab_date((string) $lt['fecha_vencimiento'])) : '—' ?></td>
+                                <td><?= !empty($lt['fecha_ingreso']) ? esc(lab_date((string) $lt['fecha_ingreso'])) : '—' ?></td>
                             </tr>
                         <?php endforeach; ?>
                     </tbody>

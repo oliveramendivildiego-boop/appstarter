@@ -36,11 +36,11 @@
                     <thead><tr><th>Lote</th><th>Stock (unidad base)</th><th>Vencimiento</th><th>Ingreso</th></tr></thead>
                     <tbody>
                         <?php foreach ($lotes ?? [] as $l): ?>
-                        <tr class="<?= (!empty($l['fecha_vencimiento']) && $l['fecha_vencimiento'] <= date('Y-m-d') ? 'table-danger' : '') ?>">
+                        <tr class="<?= (!empty($l['fecha_vencimiento']) && $l['fecha_vencimiento'] <= lab_today_ymd() ? 'table-danger' : '') ?>">
                             <td><?= esc($l['codigo_lote'] ?? '') ?></td>
                             <td><?= (int)($l['cantidad'] ?? 0) ?></td>
-                            <td><?= !empty($l['fecha_vencimiento']) ? date('d/m/Y', strtotime($l['fecha_vencimiento'])) : '-' ?></td>
-                            <td><?= !empty($l['fecha_ingreso']) ? date('d/m/Y', strtotime($l['fecha_ingreso'])) : '-' ?></td>
+                            <td><?= !empty($l['fecha_vencimiento']) ? lab_date((string) $l['fecha_vencimiento']) : '-' ?></td>
+                            <td><?= !empty($l['fecha_ingreso']) ? lab_date((string) $l['fecha_ingreso']) : '-' ?></td>
                         </tr>
                         <?php endforeach; ?>
                     </tbody>
@@ -54,7 +54,7 @@
                     <div class="col-md-2"><label class="form-label small mb-0">Código lote</label><input type="text" name="codigo_lote" id="codigo_lote" class="form-control form-control-sm" placeholder="Ej. L2026001"></div>
                     <div class="col-md-2"><label class="form-label small mb-0">Cantidad</label><input type="number" name="cantidad" id="cantidad_lote" class="form-control form-control-sm" placeholder="Unidad base" min="1"></div>
                     <div class="col-md-2"><label class="form-label small mb-0">Vencimiento</label><input type="text" id="fecha_vencimiento" name="fecha_vencimiento" class="form-control form-control-sm" placeholder="Seleccionar"></div>
-                    <div class="col-md-2"><label class="form-label small mb-0">Fecha ingreso</label><input type="text" id="fecha_ingreso" name="fecha_ingreso" class="form-control form-control-sm" placeholder="Seleccionar" value="<?= date('Y-m-d') ?>"></div>
+                    <div class="col-md-2"><label class="form-label small mb-0">Fecha ingreso</label><input type="text" id="fecha_ingreso" name="fecha_ingreso" class="form-control form-control-sm" placeholder="Seleccionar" value="<?= esc(lab_today_ymd()) ?>"></div>
                     <div class="col-md-2"><button type="submit" class="btn btn-primary btn-sm">Agregar lote</button></div>
                 </div>
                 <?= form_close() ?>
@@ -191,7 +191,7 @@ document.addEventListener('DOMContentLoaded', function() {
         dateFormat: 'Y-m-d',
         altInput: true,
         altFormat: 'd/m/Y',
-        defaultDate: '<?= date('Y-m-d') ?>',
+        defaultDate: '<?= esc(lab_today_ymd()) ?>',
         allowInput: false,
         disableMobile: true,
         onOpen: function(s,d,i){ flatpickrPositionArrowTopLeft(i); }

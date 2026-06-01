@@ -3,6 +3,7 @@
 namespace App\Filters;
 
 use App\Libraries\TenantResolver;
+use App\Services\RegisterService;
 use CodeIgniter\Filters\FilterInterface;
 use CodeIgniter\HTTP\RequestInterface;
 use CodeIgniter\HTTP\ResponseInterface;
@@ -48,6 +49,8 @@ class TenantFilter implements FilterInterface
         if (function_exists('session') && session_status() === PHP_SESSION_ACTIVE) {
             $resolver->clearGhostSessionIfTenantInvalid();
         }
+
+        RegisterService::applyRequestTimezone();
 
         return null;
     }

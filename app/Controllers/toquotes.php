@@ -147,7 +147,7 @@ class Toquotes extends SecureArea
                 'totalCost'   => $totalCost,
                 'totalRefe'   => $totalRefe,
                 'lab_config'  => $labConfig,
-                'fecha'       => date('d/m/Y H:i'),
+                'fecha'       => \App\Services\RegisterService::formatNowForReportShort(),
                 'precioTipo'  => in_array($precioTipo, ['refe', 'total'], true) ? $precioTipo : null,
             ]);
 
@@ -157,7 +157,7 @@ class Toquotes extends SecureArea
 
             return $this->response
                 ->setHeader('Content-Type', 'application/pdf')
-                ->setHeader('Content-Disposition', 'attachment; filename="cotizacion_' . $slug . '_' . date('Y-m-d_His') . '.pdf"')
+                ->setHeader('Content-Disposition', 'attachment; filename="cotizacion_' . $slug . '_' . lab_filename_datetime() . '.pdf"')
                 ->setBody($pdfContent);
         } catch (\Throwable $e) {
             log_message('error', 'Toquotes::generatePdfResponse: ' . $e->getMessage());

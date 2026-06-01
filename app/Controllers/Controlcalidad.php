@@ -33,8 +33,8 @@ class Controlcalidad extends SecureArea
         $control = $this->model->getById($controlId);
         if (!$control) return redirect()->to('controlcalidad')->with('error', 'Control no encontrado');
 
-        $fechaIni = $this->request->getGet('fecha_ini') ?? date('Y-m-d', strtotime('-30 days'));
-        $fechaFin = $this->request->getGet('fecha_fin') ?? date('Y-m-d');
+        $fechaIni = $this->request->getGet('fecha_ini') ?? lab_date_ymd('-30 days');
+        $fechaFin = $this->request->getGet('fecha_fin') ?? lab_today_ymd();
         $valores = $this->model->getValores($controlId, $fechaIni, $fechaFin);
 
         $numeric = array_map(static fn ($v) => (float) ($v['valor'] ?? 0), $valores);
@@ -91,7 +91,7 @@ class Controlcalidad extends SecureArea
         $controlId = (int) ($this->request->getPost('control_id') ?? 0);
         $this->model->saveValor([
             'control_id'     => $controlId,
-            'fecha'          => $this->request->getPost('fecha') ?? date('Y-m-d'),
+            'fecha'          => $this->request->getPost('fecha') ?? lab_today_ymd(),
             'valor'          => $this->request->getPost('valor') ?? 0,
             'esperado'       => $this->request->getPost('esperado') ?: null,
             'observaciones'  => $this->request->getPost('observaciones') ?? '',

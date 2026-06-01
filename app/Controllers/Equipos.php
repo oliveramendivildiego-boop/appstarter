@@ -65,7 +65,7 @@ class Equipos extends SecureArea
         $this->model->saveMantenimiento([
             'equipo_id' => $equipoId,
             'tipo' => (int) ($this->request->getPost('tipo') ?? 1),
-            'fecha' => $this->request->getPost('fecha') ?? date('Y-m-d'),
+            'fecha' => $this->request->getPost('fecha') ?? lab_today_ymd(),
             'descripcion' => $this->request->getPost('descripcion') ?? '',
             'realizado_por' => session()->get('person_id'),
         ]);

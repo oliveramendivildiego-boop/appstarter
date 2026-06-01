@@ -18,7 +18,7 @@ final class ReportPdfDocument
             'pdf_title'     => $title,
             'pdf_subtitle'  => $subtitle,
             'pdf_company'   => (string) ($layout['company'] ?? 'Laboratorio'),
-            'pdf_generated' => date('d/m/Y H:i'),
+            'pdf_generated' => \App\Services\RegisterService::formatNowForReportShort(),
             'pdf_content'   => view($contentView, $viewData),
         ]);
         (new PdfService())->download($html, $filename);

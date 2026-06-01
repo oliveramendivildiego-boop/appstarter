@@ -30,7 +30,7 @@ $data            = $data ?? [];
             ?>
             <tr>
                 <td><?= (int) ($row['toquotelogs_id'] ?? 0) ?></td>
-                <td><?= esc(date('d/m/Y H:i', strtotime($row['fecha'] ?? ''))) ?></td>
+                <td><?= esc(lab_dt_short($row['fecha'] ?? null)) ?></td>
                 <td class="small"><?= esc($row['usuario_cotizo'] ?? '-') ?></td>
                 <td class="small"><?= esc($examenes) ?></td>
                 <td class="text-end"><?= $currencyIsRight

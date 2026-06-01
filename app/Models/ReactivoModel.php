@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Services\RegisterService;
 use CodeIgniter\Model;
 
 class ReactivoModel extends Model
@@ -299,8 +300,8 @@ class ReactivoModel extends Model
 
     public function getAlertas(): array
     {
-        $hoy = date('Y-m-d');
-        $en30 = date('Y-m-d', strtotime('+30 days'));
+        $hoy  = RegisterService::todayForReport();
+        $en30 = RegisterService::reportDateFromModifier('+30 days');
         $alertas = [];
 
         $reactivos = $this->getAll();
@@ -469,7 +470,7 @@ class ReactivoModel extends Model
             'codigo_lote'        => trim($data['codigo_lote'] ?? ''),
             'cantidad'           => (int) ($data['cantidad'] ?? 0),
             'fecha_vencimiento'  => $data['fecha_vencimiento'] ?? null,
-            'fecha_ingreso'      => $data['fecha_ingreso'] ?? date('Y-m-d'),
+            'fecha_ingreso'      => $data['fecha_ingreso'] ?? RegisterService::todayForReport(),
             'deleted'            => 0,
         ];
         if ($id) {
@@ -501,7 +502,7 @@ class ReactivoModel extends Model
     public function registrarEntrada(int $reactivoId, string $codigoLote, int $cantidad, ?string $vencimiento, ?int $personId = null, ?string $fechaIngreso = null): bool
     {
         $db = $this->db;
-        $fechaIngreso = self::normalizarFecha($fechaIngreso) ?: date('Y-m-d');
+        $fechaIngreso = self::normalizarFecha($fechaIngreso) ?: RegisterService::todayForReport();
         $vencimiento = self::normalizarFecha($vencimiento);
         $db->transStart();
         try {

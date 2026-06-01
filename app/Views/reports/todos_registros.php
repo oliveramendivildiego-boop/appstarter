@@ -31,7 +31,7 @@ $hasta = min($page * $perPage, $total);
             <?php foreach ($data ?? [] as $row): ?>
             <tr>
                 <td><?= esc($row['registro_id'] ?? '') ?></td>
-                <td><?= esc(date('d/m/Y H:i', strtotime($row['ingreso'] ?? ''))) ?></td>
+                <td><?= esc(lab_dt_short($row['ingreso'] ?? null)) ?></td>
                 <td><?= esc($row['paciente'] ?? '') ?></td>
                 <td><?= esc($row['doctor'] ?? '') ?></td>
                 <td class="text-end"><?= format_currency((float)($row['total'] ?? 0)) ?></td>

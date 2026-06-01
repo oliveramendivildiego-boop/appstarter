@@ -71,6 +71,19 @@ $footerBgRaw     = $footerBgTransparent ? '#e9ecef' : $footerBgStored;
 $bodyTextRaw     = trim((string) ($config['ui_body_text_color'] ?? '#212529'));
 $footerTextRaw   = trim((string) ($config['ui_footer_text_color'] ?? '#6c757d'));
 $headerTextRaw   = trim((string) ($config['ui_header_text_color'] ?? '#ffffff'));
+$headerDatetimeRaw = trim((string) ($config['ui_header_datetime_color'] ?? ''));
+$headerDatetimeUseDefault = $headerDatetimeRaw === '';
+$headerDatetimePick = $headerDatetimeUseDefault ? $headerTextRaw : $headerDatetimeRaw;
+$headerDatetimePick = LayoutService::htmlColorPickerValue($headerDatetimePick, '#ffffff');
+$headerDtFormatKey = LayoutService::normalizeHeaderDatetimeFormat((string) ($config['ui_header_datetime_format'] ?? ''));
+$headerDtFormatOpts = LayoutService::headerDatetimeFormatOptionsForView();
+$headerDtFormatPresets = LayoutService::headerDatetimeFormatPresets();
+try {
+    $headerDtPreviewNow = new \DateTimeImmutable('now', new \DateTimeZone(\App\Services\RegisterService::reportDisplayTimezone()));
+} catch (\Throwable $e) {
+    $headerDtPreviewNow = new \DateTimeImmutable('now', new \DateTimeZone('UTC'));
+}
+$headerDtPreviewText = LayoutService::formatHeaderDatetime($headerDtPreviewNow, $headerDtFormatKey);
 $labotestsCardTitleColor = trim((string) ($config['ui_labotests_card_header_title_color'] ?? '#ffffff'));
 if (!preg_match('/^#([0-9A-Fa-f]{3}|[0-9A-Fa-f]{6})$/', $labotestsCardTitleColor)) {
     $labotestsCardTitleColor = '#ffffff';
@@ -82,6 +95,7 @@ $barBgApprox = match ($headerMode) {
     default       => (string) ($config['theme_gradient_end'] ?? '#4f46e5'),
 };
 $pvBarFgWire = LayoutService::readableForegroundOnBackground($barBgApprox, $headerTextRaw);
+$pvBarClockFg = LayoutService::readableForegroundOnBackground($barBgApprox, $headerDatetimePick);
 $pvBarStyle  = match ($headerMode) {
     'transparent' => 'background:transparent;border:1px dashed #adb5bd;color:' . esc($pvBarFgWire, 'attr') . ';',
     'custom'      => 'background-color:' . esc($headerPick, 'attr') . ';color:' . esc($pvBarFgWire, 'attr') . ';',
@@ -177,8 +191,11 @@ $pgActiveColor = LayoutService::htmlColorPickerValue($pgActiveColor, '#ffffff');
             </div>
             <div class="card-body">
                 <div class="config-layout-map__frame rounded border border-2 overflow-hidden bg-white shadow-sm">
-                    <div class="config-layout-map__bar px-3 py-2 small fw-semibold" style="<?= $pvBarStyle ?>">
-                        <span class="me-2 opacity-75">☰</span><?= lang('Config.config_style_section_bar') ?> · <?= lang('Config.config_company') ?>
+                    <div class="config-layout-map__bar px-3 py-2 small fw-semibold d-flex justify-content-between align-items-center gap-2" style="<?= $pvBarStyle ?>">
+                        <span><span class="me-2 opacity-75">☰</span><?= lang('Config.config_style_section_bar') ?> · <?= lang('Config.config_company') ?></span>
+                        <span class="config-header-datetime-preview text-nowrap" style="color: <?= esc($pvBarClockFg, 'attr') ?>; font-weight: normal;">
+                            <i class="fa-regular fa-clock me-1" aria-hidden="true"></i><span class="config-header-datetime-preview-text"><?= esc($headerDtPreviewText) ?></span>
+                        </span>
                     </div>
                     <div class="d-flex config-layout-map__mid" style="min-height: 9rem;">
                         <div class="config-layout-map__side border-end p-2 small" style="width: 32%; min-width: 7.5rem; background: <?= $pvSidebarBg ?>; color: <?= esc($pvSidebarFgWire, 'attr') ?>;">
@@ -498,13 +515,16 @@ $pgActiveColor = LayoutService::htmlColorPickerValue($pgActiveColor, '#ffffff');
             <div class="card-body">
                 <div class="config-section-preview mb-4 p-3 rounded-3 border bg-light">
                     <div class="small fw-semibold text-secondary text-uppercase config-style-preview-title mb-2"><?= lang('Config.config_style_preview_caption') ?></div>
-                    <div class="rounded-3 py-3 px-3 text-center shadow-sm mb-2" style="<?= $pvBarStyle ?>">
-                        <?= lang('Config.config_style_section_bar') ?> · <?= lang('Config.config_company') ?>
+                    <div class="rounded-3 py-3 px-3 shadow-sm mb-2 d-flex justify-content-between align-items-center gap-2 flex-wrap" style="<?= $pvBarStyle ?>">
+                        <span><?= lang('Config.config_style_section_bar') ?> · <?= lang('Config.config_company') ?></span>
+                        <span class="config-header-datetime-preview text-nowrap small" style="color: <?= esc($pvBarClockFg, 'attr') ?>;">
+                            <i class="fa-regular fa-clock me-1" aria-hidden="true"></i><span class="config-header-datetime-preview-text"><?= esc($headerDtPreviewText) ?></span>
+                        </span>
                     </div>
                     <p class="small text-muted mb-0"><?= lang('Config.config_style_preview_bar_hint') ?></p>
                 </div>
                 <div class="row align-items-end">
-                    <div class="col-md-6 mb-3">
+                    <div class="col-lg-4 mb-3">
                         <label class="form-label"><?= lang('Config.config_style_header_bg') ?></label>
                         <div class="form-check mb-2">
                             <input class="form-check-input" type="radio" name="ui_header_mode" id="ui_hdr_theme" value="theme" <?= $headerMode === 'theme' ? 'checked' : '' ?> autocomplete="off">
@@ -521,7 +541,7 @@ $pgActiveColor = LayoutService::htmlColorPickerValue($pgActiveColor, '#ffffff');
                         <input type="color" name="ui_header_bg_custom" id="ui_header_bg_custom" value="<?= esc($headerPick) ?>" class="form-control form-control-color" title="<?= lang('Config.config_style_header_bg') ?>">
                         <small class="text-muted d-block mt-1"><?= lang('Config.config_style_header_transparent_help') ?></small>
                     </div>
-                    <div class="col-md-6 mb-3">
+                    <div class="col-lg-4 mb-3">
                         <label class="form-label" for="ui_header_text_color"><?= lang('Config.config_style_header_text') ?></label>
                         <input type="color" name="ui_header_text_color" id="ui_header_text_color" value="<?= esc(LayoutService::htmlColorPickerValue($config['ui_header_text_color'] ?? '', '#ffffff')) ?>" class="form-control form-control-color">
                         <small class="text-muted d-block mt-1"><?= lang('Config.config_style_header_text_breadcrumb_hint') ?></small>
@@ -533,6 +553,31 @@ $pgActiveColor = LayoutService::htmlColorPickerValue($pgActiveColor, '#ffffff');
                             'weightVal'   => $fwHeader,
                             'styleVal'    => $fsHeader,
                         ]) ?>
+                    </div>
+                    <div class="col-lg-4 mb-3">
+                        <label class="form-label" for="ui_header_datetime_color"><?= lang('Config.config_style_header_datetime_color') ?></label>
+                        <input type="hidden" name="ui_header_datetime_default" value="0">
+                        <div class="form-check mb-2">
+                            <input class="form-check-input" type="checkbox" name="ui_header_datetime_default" id="ui_header_datetime_default" value="1" autocomplete="off" <?= $headerDatetimeUseDefault ? 'checked' : '' ?>>
+                            <label class="form-check-label" for="ui_header_datetime_default"><?= lang('Config.config_style_header_datetime_same_as_bar') ?></label>
+                        </div>
+                        <input type="color" name="ui_header_datetime_color" id="ui_header_datetime_color" value="<?= esc($headerDatetimePick) ?>" class="form-control form-control-color" title="<?= lang('Config.config_style_header_datetime_color') ?>">
+                        <small class="text-muted d-block mt-1"><?= lang('Config.config_style_header_datetime_color_help') ?></small>
+                    </div>
+                    <div class="col-12 mb-0">
+                        <hr class="text-muted my-3">
+                        <label class="form-label fw-semibold" for="ui_header_datetime_format"><?= lang('Config.config_style_header_datetime_format') ?></label>
+                        <select name="ui_header_datetime_format" id="ui_header_datetime_format" class="form-select" autocomplete="off">
+                            <?php foreach ($headerDtFormatOpts as $fmtVal => $fmtLabel): ?>
+                                <?php $fmtSample = $headerDtFormatPresets[$fmtVal]['preview'] ?? ''; ?>
+                                <option value="<?= esc($fmtVal, 'attr') ?>" data-sample="<?= esc($fmtSample, 'attr') ?>" <?= $fmtVal === $headerDtFormatKey ? 'selected' : '' ?>><?= esc($fmtLabel) ?></option>
+                            <?php endforeach; ?>
+                        </select>
+                        <small class="text-muted d-block mt-1"><?= lang('Config.config_style_header_datetime_format_help') ?></small>
+                        <div class="small mt-2">
+                            <?= lang('Config.config_style_header_datetime_format_example') ?>:
+                            <strong id="ui_header_datetime_format_live" class="font-monospace"><?= esc($headerDtPreviewText) ?></strong>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -1028,10 +1073,93 @@ $pgActiveColor = LayoutService::htmlColorPickerValue($pgActiveColor, '#ffffff');
     var hdrTextTheme = document.getElementById('ui_header_text_color_theme');
     if (hdrTextMain && hdrTextTheme) {
         hdrTextTheme.value = hdrTextMain.value || hdrTextTheme.value;
-        var syncHdrMain = function() { hdrTextMain.value = hdrTextTheme.value; };
-        var syncHdrTheme = function() { hdrTextTheme.value = hdrTextMain.value; };
+        var syncHdrMain = function() { hdrTextMain.value = hdrTextTheme.value; syncHeaderDatetimePreview(); };
+        var syncHdrTheme = function() { hdrTextTheme.value = hdrTextMain.value; syncHeaderDatetimePreview(); };
         hdrTextTheme.addEventListener('input', syncHdrMain);
         hdrTextMain.addEventListener('input', syncHdrTheme);
+    }
+
+    function toggleHeaderDatetimeColor() {
+        var useDefault = document.getElementById('ui_header_datetime_default');
+        var picker = document.getElementById('ui_header_datetime_color');
+        if (picker && useDefault) {
+            picker.disabled = useDefault.checked;
+        }
+        syncHeaderDatetimePreview();
+    }
+
+    function syncHeaderDatetimePreview() {
+        var useDefault = document.getElementById('ui_header_datetime_default');
+        var picker = document.getElementById('ui_header_datetime_color');
+        var hdrText = document.getElementById('ui_header_text_color');
+        var color = (useDefault && useDefault.checked && hdrText)
+            ? hdrText.value
+            : (picker ? picker.value : '');
+        document.querySelectorAll('.config-header-datetime-preview').forEach(function(el) {
+            el.style.color = color;
+        });
+    }
+
+    var hdrDtDefault = document.getElementById('ui_header_datetime_default');
+    var hdrDtColor = document.getElementById('ui_header_datetime_color');
+    if (hdrDtDefault) hdrDtDefault.addEventListener('change', toggleHeaderDatetimeColor);
+    if (hdrDtColor) hdrDtColor.addEventListener('input', syncHeaderDatetimePreview);
+    toggleHeaderDatetimeColor();
+
+    var hdrDtFormatSel = document.getElementById('ui_header_datetime_format');
+    var hdrDtFormatLive = document.getElementById('ui_header_datetime_format_live');
+    var hdrDtTz = <?= json_encode(\App\Services\RegisterService::reportDisplayTimezone(), JSON_UNESCAPED_UNICODE) ?>;
+
+    function formatHeaderDatetimePreview(date, tz, formatKey) {
+        try {
+            var p;
+            switch (formatKey) {
+                case 'dmY_his':
+                    p = {};
+                    new Intl.DateTimeFormat('es', { timeZone: tz, year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false }).formatToParts(date).forEach(function (x) { if (x.type !== 'literal') p[x.type] = x.value; });
+                    return p.day + '/' + p.month + '/' + p.year + ' ' + p.hour + ':' + p.minute + ':' + (p.second || '00');
+                case 'dm_hi':
+                    p = {};
+                    new Intl.DateTimeFormat('es', { timeZone: tz, month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hour12: false }).formatToParts(date).forEach(function (x) { if (x.type !== 'literal') p[x.type] = x.value; });
+                    return p.day + '/' + p.month + ' ' + p.hour + ':' + p.minute;
+                case 'ymd_hi':
+                    p = {};
+                    new Intl.DateTimeFormat('es', { timeZone: tz, year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hour12: false }).formatToParts(date).forEach(function (x) { if (x.type !== 'literal') p[x.type] = x.value; });
+                    return p.year + '-' + p.month + '-' + p.day + ' ' + p.hour + ':' + p.minute;
+                case 'dmY_hi_12':
+                    p = {};
+                    new Intl.DateTimeFormat('es', { timeZone: tz, year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hour12: true }).formatToParts(date).forEach(function (x) { if (x.type !== 'literal') p[x.type] = x.value; });
+                    return p.day + '/' + p.month + '/' + p.year + ' ' + p.hour + ':' + p.minute + ' ' + (p.dayPeriod || '');
+                case 'long_es':
+                    return new Intl.DateTimeFormat('es', { timeZone: tz, day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit', hour12: false }).format(date);
+                case 'dmY_hi':
+                default:
+                    p = {};
+                    new Intl.DateTimeFormat('es', { timeZone: tz, year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hour12: false }).formatToParts(date).forEach(function (x) { if (x.type !== 'literal') p[x.type] = x.value; });
+                    return p.day + '/' + p.month + '/' + p.year + ' ' + p.hour + ':' + p.minute;
+            }
+        } catch (e) {
+            return '';
+        }
+    }
+
+    function syncHeaderDatetimeFormatPreview() {
+        if (!hdrDtFormatSel) return;
+        var key = hdrDtFormatSel.value || 'dmY_hi';
+        var text = formatHeaderDatetimePreview(new Date(), hdrDtTz, key);
+        if (!text && hdrDtFormatSel.options[hdrDtFormatSel.selectedIndex]) {
+            text = hdrDtFormatSel.options[hdrDtFormatSel.selectedIndex].getAttribute('data-sample') || '';
+        }
+        if (hdrDtFormatLive && text) hdrDtFormatLive.textContent = text;
+        document.querySelectorAll('.config-header-datetime-preview-text').forEach(function (el) {
+            if (text) el.textContent = text;
+        });
+    }
+
+    if (hdrDtFormatSel) {
+        hdrDtFormatSel.addEventListener('change', syncHeaderDatetimeFormatPreview);
+        syncHeaderDatetimeFormatPreview();
+        window.setInterval(syncHeaderDatetimeFormatPreview, 30000);
     }
 })();
 </script>

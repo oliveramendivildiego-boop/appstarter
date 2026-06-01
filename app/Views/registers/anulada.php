@@ -34,7 +34,7 @@ $rid = (int) ($reg->registro_id ?? 0);
         <p class="mb-2"><?= nl2br(esc($info->motivo_anulacion ?? '—')) ?></p>
         <p class="text-muted small mb-0">
             <?php if (!empty($info->fecha_anulacion)): ?>
-                Fecha: <?= esc(date('d/m/Y H:i', strtotime((string) $info->fecha_anulacion))) ?>
+                Fecha: <?= esc(\App\Services\RegisterService::formatStoredReporteFechaCorta((string) ($info->fecha_anulacion ?? ''))) ?>
             <?php endif; ?>
             <?php if (!empty($nombre_anulo)): ?>
                 &nbsp;·&nbsp; Registró: <?= esc($nombre_anulo) ?>
@@ -51,7 +51,7 @@ $rid = (int) ($reg->registro_id ?? 0);
                 <p class="mb-1"><span class="text-muted">N.º orden:</span> <?= esc(registro_orden_display($reg)) ?></p>
                 <p class="mb-1"><span class="text-muted">Paciente:</span> <?= esc($reg->paciente ?? '—') ?></p>
                 <p class="mb-1"><span class="text-muted">Médico:</span> <?= esc($reg->doctor ?? '—') ?></p>
-                <p class="mb-0"><span class="text-muted">Ingreso:</span> <?= esc($reg->ingreso ? date('d/m/Y H:i', strtotime((string) $reg->ingreso)) : '—') ?></p>
+                <p class="mb-0"><span class="text-muted">Ingreso:</span> <?= esc($reg->ingreso ? \App\Services\RegisterService::formatStoredReporteFechaCorta((string) $reg->ingreso) : '—') ?></p>
             </div>
         </div>
     </div>

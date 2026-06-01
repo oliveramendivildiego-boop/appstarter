@@ -30,8 +30,13 @@ class Customers extends PersonController
         helper('table');
 
         $perPage = 20;
-        $page = (int) ($this->request->getGet('page') ?? 1);
-        $offset = max(0, ($page - 1) * $perPage);
+        $total   = $this->customerModel->countAll();
+        $totalPages = $total > 0 ? (int) ceil($total / $perPage) : 1;
+        $page    = max(1, (int) ($this->request->getGet('page') ?? 1));
+        if ($page > $totalPages) {
+            $page = $totalPages;
+        }
+        $offset  = ($page - 1) * $perPage;
 
         $people = $this->customerModel->getAll($perPage, $offset);
 
@@ -42,6 +47,10 @@ class Customers extends PersonController
             'manage_table'    => get_people_manage_table($people, $this),
             'allowed_modules' => $this->allowed_modules,
             'user_info'       => $this->user_info,
+            'page'            => $page,
+            'perPage'         => $perPage,
+            'total'           => $total,
+            'totalPages'      => $totalPages,
         ]);
     }
 

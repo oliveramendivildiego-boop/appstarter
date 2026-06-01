@@ -172,7 +172,29 @@
             </div>
             <div class="col-md-6 mb-3">
                 <?= form_label(lang('Config.config_timezone'), 'timezone', ['class' => 'form-label']) ?>
-                <?= form_dropdown('timezone', $timezone_options ?? [], $config['timezone'] ?? 'America/Bogota', 'id="timezone" class="form-select" autocomplete="off"') ?>
+                <?php
+                $labTzOffsetNow = \App\Services\RegisterService::reportNow()->format('P');
+                $tzMisconfiguredGmt6 = ($labTzOffsetNow === '-05:00');
+                ?>
+                <?php if ($tzMisconfiguredGmt6): ?>
+                <div class="alert alert-warning py-2 small mb-2">
+                    <?= lang('Config.config_timezone_wrong_offset_warning') ?>
+                </div>
+                <?php endif; ?>
+                <?= form_dropdown('timezone', $timezone_options ?? [], $config['timezone'] ?? 'America/Mexico_City', 'id="timezone" class="form-select" autocomplete="off"') ?>
+                <p class="form-text small mb-1"><?= lang('Config.config_timezone_gmt6_hint') ?></p>
+                <p class="form-text small mb-2">
+                    <strong><?= lang('Config.config_timezone_lab_clock') ?>:</strong>
+                    <?= esc(\App\Services\RegisterService::formatNowForReport()) ?>
+                    <span class="text-muted">(<?= esc(\App\Services\RegisterService::labTimezoneSummary()) ?>)</span>
+                </p>
+                <div class="form-check">
+                    <input type="hidden" name="lab_datetime_storage" value="0">
+                    <input class="form-check-input" type="checkbox" name="lab_datetime_storage" id="lab_datetime_storage" value="1"
+                        <?= ($config['lab_datetime_storage'] ?? '1') === '1' ? 'checked' : '' ?>>
+                    <label class="form-check-label small" for="lab_datetime_storage"><?= lang('Config.config_lab_datetime_storage') ?></label>
+                </div>
+                <p class="form-text small mb-0"><?= lang('Config.config_lab_datetime_storage_help') ?></p>
             </div>
         </div>
         <div class="row">
@@ -840,7 +862,7 @@
                                     <?php foreach ($subRes as $sr): ?>
                                     <tr class="<?= (($sr['estado'] ?? '') === 'vencido') ? 'table-danger' : '' ?>">
                                         <td><?= esc($sr['tenant_name'] ?? '') ?></td>
-                                        <td><?= ! empty($sr['period_end']) ? date('d/m/Y', strtotime((string) $sr['period_end'])) : '-' ?></td>
+                                        <td><?= ! empty($sr['period_end']) ? lab_date((string) $sr['period_end']) : '-' ?></td>
                                         <td><?= ($sr['estado'] ?? '') === 'vencido' ? '<span class="badge bg-danger">Vencido</span>' : '<span class="badge bg-warning text-dark">' . (int) ($sr['days_left'] ?? 0) . ' día(s)</span>' ?></td>
                                     </tr>
                                     <?php endforeach; ?>

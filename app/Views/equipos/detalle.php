@@ -39,7 +39,7 @@
         <?= form_open('equipos/savemantenimiento') ?>
         <input type="hidden" name="equipo_id" value="<?= (int)($equipo['equipo_id'] ?? 0) ?>">
         <div class="row g-2 mb-2">
-            <div class="col-md-2"><input type="text" id="fecha_mantenimiento" name="fecha" class="form-control form-control-sm flatpickr-input" value="<?= date('Y-m-d') ?>" required></div>
+            <div class="col-md-2"><input type="text" id="fecha_mantenimiento" name="fecha" class="form-control form-control-sm flatpickr-input" value="<?= esc(lab_today_ymd()) ?>" required></div>
             <div class="col-md-2"><select name="tipo" class="form-select form-select-sm"><option value="1">Preventivo</option><option value="2">Correctivo</option></select></div>
             <div class="col-md-4"><input type="text" name="descripcion" class="form-control form-control-sm" placeholder="Descripción"></div>
             <div class="col-md-2"><button type="submit" class="btn btn-primary btn-sm">Registrar</button></div>

@@ -23,8 +23,8 @@ $dias_alerta = (int) ($dias_alerta ?? 40);
             <tr>
                 <td class="small"><?= esc($row['reactivo_nombre'] ?? '-') ?></td>
                 <td><?= esc($row['codigo_lote'] ?? '-') ?></td>
-                <td><?= ! empty($row['fecha_ingreso']) ? esc(date('d/m/Y', strtotime($row['fecha_ingreso']))) : '-' ?></td>
-                <td><?= ! empty($row['fecha_vencimiento']) ? esc(date('d/m/Y', strtotime($row['fecha_vencimiento']))) : '-' ?></td>
+                <td><?= ! empty($row['fecha_ingreso']) ? esc(lab_date((string) $row['fecha_ingreso'])) : '-' ?></td>
+                <td><?= ! empty($row['fecha_vencimiento']) ? esc(lab_date((string) $row['fecha_vencimiento'])) : '-' ?></td>
                 <td class="text-end"><?= (int) ($row['cantidad'] ?? 0) ?></td>
                 <td><?= esc($row['unidad_base'] ?? $row['unidad'] ?? '-') ?></td>
                 <td class="small"><?= esc($lbl !== '' ? $lbl : $estado) ?></td>

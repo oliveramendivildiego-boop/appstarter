@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Services\RegisterService;
 use CodeIgniter\Model;
 
 class ToquoteModel extends Model
@@ -84,6 +85,8 @@ class ToquoteModel extends Model
         } catch (\Throwable $e) {
             // Si las columnas no existen, usar solo campos básicos
         }
+        $data['fecha'] = RegisterService::mysqlNowForReport();
+
         return $this->db->table('toquotelogs')->insert($data);
     }
 

@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Libraries\RegistroIngresoDateRange;
+use App\Services\RegisterService;
 use App\Services\RegistroFolioService;
 use CodeIgniter\Model;
 
@@ -241,7 +242,7 @@ class RegisterModel extends Model
         return $this->db->table('registro')->where('registro_id', $registroId)->update([
             'anulado'            => 1,
             'motivo_anulacion'   => $motivo,
-            'fecha_anulacion'    => date('Y-m-d H:i:s'),
+            'fecha_anulacion'    => RegisterService::mysqlNowForReport(),
             'person_id_anulo'    => $personIdAnulo,
         ]) !== false;
     }
@@ -314,7 +315,7 @@ class RegisterModel extends Model
     /**
      * Obtiene todos los registros de análisis con paciente, doctor y pago
      */
-    public function getAllAnalisis(int $limit = 10000, int $offset = 0, string $estado = ''): array
+    public function getAllAnalisis(int $limit = 10000, int $offset = 0, string $estado = '', ?string $dateFrom = null, ?string $dateTo = null): array
     {
         $r  = $this->getRegistroTable();
         $p  = $this->db->prefixTable('people');
@@ -333,6 +334,7 @@ class RegisterModel extends Model
             ->join('doctors', "{$d}.doctor_id = {$r}.doctor_id", 'left')
             ->join('pago', "{$r}.registro_id = {$pa}.registro_id")
             ->orderBy("{$r}.registro_id", 'DESC');
+        $builder = $this->applyIngresoDateRange($builder, $dateFrom, $dateTo);
         $builder = $this->applyEstadoFilter($builder, $estado, $r, $rv);
         return $builder->limit($limit, $offset)->get()->getResult();
     }
@@ -356,11 +358,12 @@ class RegisterModel extends Model
             ->getResult();
     }
 
-    public function countAll(string $estado = ''): int
+    public function countAll(string $estado = '', ?string $dateFrom = null, ?string $dateTo = null): int
     {
         $r  = $this->getRegistroTable();
         $rv = $this->db->prefixTable('regvalues');
         $builder = $this->db->table('registro');
+        $builder = $this->applyIngresoDateRange($builder, $dateFrom, $dateTo);
         $builder = $this->applyEstadoFilter($builder, $estado, $r, $rv);
         return $builder->countAllResults();
     }
@@ -368,7 +371,7 @@ class RegisterModel extends Model
     /**
      * Cuenta registros con filtro de búsqueda (código prueba, nombre, apellidos, CI)
      */
-    public function countWithSearch(string $q, string $estado = ''): int
+    public function countWithSearch(string $q, string $estado = '', ?string $dateFrom = null, ?string $dateTo = null): int
     {
         $q = trim($q);
         $r  = $this->getRegistroTable();
@@ -381,6 +384,7 @@ class RegisterModel extends Model
             ->join('doctors', "{$d}.doctor_id = {$r}.doctor_id", 'left')
             ->join('pago', "{$r}.registro_id = {$pa}.registro_id");
         $builder = $this->applySearchBuilder($builder, $q);
+        $builder = $this->applyIngresoDateRange($builder, $dateFrom, $dateTo);
         $builder = $this->applyEstadoFilter($builder, $estado, $r, $rv);
         return $builder->countAllResults();
     }
@@ -388,7 +392,7 @@ class RegisterModel extends Model
     /**
      * Obtiene registros con búsqueda (código prueba, nombre, apellidos, CI) y paginación
      */
-    public function getAllAnalisisWithSearch(string $q, int $limit = 50, int $offset = 0, string $estado = ''): array
+    public function getAllAnalisisWithSearch(string $q, int $limit = 50, int $offset = 0, string $estado = '', ?string $dateFrom = null, ?string $dateTo = null): array
     {
         $r  = $this->getRegistroTable();
         $p  = $this->db->prefixTable('people');
@@ -409,6 +413,7 @@ class RegisterModel extends Model
             ->orderBy("{$r}.registro_id", 'DESC');
 
         $builder = $this->applySearchBuilder($builder, $q);
+        $builder = $this->applyIngresoDateRange($builder, $dateFrom, $dateTo);
         $builder = $this->applyEstadoFilter($builder, $estado, $r, $rv);
         return $builder->limit($limit, $offset)->get()->getResult();
     }
@@ -437,6 +442,26 @@ class RegisterModel extends Model
         $builder->groupEnd();
 
         return $builder;
+    }
+
+    /**
+     * Filtra por registro.ingreso (rango de días inclusive en zona del laboratorio).
+     *
+     * @param string|null $dateFrom Y-m-d; null = sin filtro
+     * @param string|null $dateTo   Y-m-d; null = sin filtro
+     */
+    private function applyIngresoDateRange($builder, ?string $dateFrom, ?string $dateTo)
+    {
+        if ($dateFrom === null || $dateTo === null) {
+            return $builder;
+        }
+        $from = substr(trim($dateFrom), 0, 10);
+        $to   = substr(trim($dateTo), 0, 10);
+        if ($from === '' || $to === '') {
+            return $builder;
+        }
+
+        return RegistroIngresoDateRange::apply($builder, $this->getRegistroTable(), $from, $to);
     }
 
     /**
@@ -2149,6 +2174,10 @@ class RegisterModel extends Model
                     log_message('error', 'RegisterModel::saveRegistro folio: ' . $e->getMessage());
                 }
             }
+            if (! array_key_exists('ingreso', $data) || $data['ingreso'] === null || trim((string) $data['ingreso']) === '') {
+                RegisterService::applyRequestTimezone();
+                $data['ingreso'] = RegisterService::mysqlNowForReport();
+            }
             $this->db->table('registro')->insert($data);
             return (int) $this->db->insertID();
         }
@@ -2252,10 +2281,12 @@ class RegisterModel extends Model
         $pago = $this->getPagoByRegistroId($registroId);
         if (!$pago) return false;
 
+        RegisterService::applyRequestTimezone();
         $this->db->table('pago_abono')->insert([
-            'registro_id' => $registroId,
-            'monto'       => $monto,
-            'tipopago'    => $tipopago ?: '1',
+            'registro_id'   => $registroId,
+            'monto'         => $monto,
+            'tipopago'      => $tipopago ?: '1',
+            'fecha_abono'   => RegisterService::mysqlNowForReport(),
         ]);
         $montoActual = (float) ($pago->monto_pagar ?? 0);
         $nuevoMontoPagado = $montoActual + $monto;
@@ -2277,10 +2308,12 @@ class RegisterModel extends Model
         if ($monto <= 0 || !$this->db->tableExists('pago_abono')) {
             return;
         }
+        RegisterService::applyRequestTimezone();
         $this->db->table('pago_abono')->insert([
-            'registro_id' => $registroId,
-            'monto'       => $monto,
-            'tipopago'    => $tipopago ?: '1',
+            'registro_id'   => $registroId,
+            'monto'         => $monto,
+            'tipopago'      => $tipopago ?: '1',
+            'fecha_abono'   => RegisterService::mysqlNowForReport(),
         ]);
     }
 
@@ -2342,7 +2375,7 @@ class RegisterModel extends Model
             $abonos = [[
                 'monto' => $pago->monto_pagar,
                 'tipopago' => $pago->tipopago ?? '1',
-                'fecha_abono' => $reg->ingreso ?? date('Y-m-d H:i:s'),
+                'fecha_abono' => $reg->ingreso ?? RegisterService::mysqlNowForReport(),
             ]];
         }
         foreach ($abonos as $i => $a) {
@@ -2391,7 +2424,7 @@ class RegisterModel extends Model
      */
     public function validarResultados(int $registroId, string $tipo, ?string $observaciones = null): bool
     {
-        $upd = ['fecha_validacion' => date('Y-m-d H:i:s')];
+        $upd = ['fecha_validacion' => RegisterService::mysqlNowForReport()];
         if ($tipo === 'tecnico') {
             $upd['validado_tecnico'] = 1;
         } elseif ($tipo === 'medico') {

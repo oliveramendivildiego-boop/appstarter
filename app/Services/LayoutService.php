@@ -152,7 +152,7 @@ class LayoutService
             'ui_font_family', 'ui_font_size_base', 'ui_font_size_main', 'ui_font_size_header', 'ui_font_size_sidebar',
             'ui_font_size_footer', 'ui_font_size_heading',
             'ui_sidebar_position', 'ui_body_text_color', 'ui_sidebar_bg', 'ui_sidebar_link_color',
-            'ui_sidebar_hover_bg', 'ui_sidebar_active_bg', 'ui_header_bg', 'ui_header_text_color', 'ui_main_bg',
+            'ui_sidebar_hover_bg', 'ui_sidebar_active_bg', 'ui_header_bg', 'ui_header_text_color', 'ui_header_datetime_color', 'ui_header_datetime_format', 'ui_main_bg',
             'ui_footer_bg', 'ui_footer_text_color', 'ui_footer_text_align', 'ui_card_radius', 'ui_link_color',
             'ui_header_text_weight', 'ui_header_text_style',
             'ui_sidebar_link_weight', 'ui_sidebar_link_style',
@@ -217,6 +217,10 @@ class LayoutService
             $headerBg = $this->normalizeHex($headerBgRaw) ?? $themeColor;
         }
         $headerText = $this->normalizeHex($keys['ui_header_text_color'] ?? '') ?? '#ffffff';
+        $headerDatetimeStored = $this->normalizeHex($keys['ui_header_datetime_color'] ?? '');
+        $headerDatetimeColor = ($headerDatetimeStored !== null && $headerDatetimeStored !== '')
+            ? $headerDatetimeStored
+            : $headerText;
 
         $mainBg = $this->resolveUiBackground($keys['ui_main_bg'] ?? null, '#ffffff');
         $footerBg = $this->resolveUiBackground($keys['ui_footer_bg'] ?? null, '#f8f9fa');
@@ -339,7 +343,7 @@ class LayoutService
         $uiInlineStyle = '--theme-gradient-end:' . $gradientEnd . ';--ui-font-family:' . $fontPreset['family'] . ';' . $fontSizeCss
             . '--ui-footer-justify:' . $footerJustify . ';'
             . sprintf(
-                '--ui-body-color:%s;--ui-sidebar-bg:%s;--ui-sidebar-link:%s;--ui-sidebar-hover-bg:%s;--ui-sidebar-active-bg:%s;--ui-header-bg:%s;--ui-header-text:%s;--ui-main-bg:%s;--ui-footer-bg:%s;--ui-footer-text:%s;--ui-card-radius:%dpx;%s%s%s%s--ui-labotests-card-header-title:%s;',
+                '--ui-body-color:%s;--ui-sidebar-bg:%s;--ui-sidebar-link:%s;--ui-sidebar-hover-bg:%s;--ui-sidebar-active-bg:%s;--ui-header-bg:%s;--ui-header-text:%s;--ui-header-datetime-color:%s;--ui-main-bg:%s;--ui-footer-bg:%s;--ui-footer-text:%s;--ui-card-radius:%dpx;%s%s%s%s--ui-labotests-card-header-title:%s;',
                 $bodyColor,
                 $sidebarBg,
                 $sidebarLinkCss,
@@ -347,6 +351,7 @@ class LayoutService
                 $sidebarActiveCss,
                 $headerBg,
                 $headerText,
+                $headerDatetimeColor,
                 $mainBg,
                 $footerBg,
                 $footerText,
@@ -387,8 +392,9 @@ class LayoutService
             'ui_font_family'       => $fontPreset['family'],
             'ui_google_font_href'  => $fontPreset['href'],
             'ui_use_inter_css'     => $fontPreset['use_inter_css'],
-            'sidebar_right'        => $sidebarRight,
-            'ui_inline_style'      => $uiInlineStyle,
+            'sidebar_right'          => $sidebarRight,
+            'ui_inline_style'        => $uiInlineStyle,
+            'header_datetime_format' => self::normalizeHeaderDatetimeFormat((string) ($keys['ui_header_datetime_format'] ?? '')),
         ];
     }
 
@@ -650,5 +656,114 @@ class LayoutService
         }
 
         return $darkBg ? '#F8F9FA' : '#212529';
+    }
+
+    /**
+     * Formatos de fecha/hora del reloj del header (clave => definición).
+     *
+     * @return array<string, array{php: string, has_seconds: bool, label_key: string, preview: string, js: string}>
+     */
+    public static function headerDatetimeFormatPresets(): array
+    {
+        return [
+            'dmY_hi' => [
+                'php'         => 'd/m/Y H:i',
+                'has_seconds' => false,
+                'label_key'   => 'Config.config_style_header_datetime_fmt_dmY_hi',
+                'preview'     => '01/06/2026 14:30',
+                'js'          => 'dmY_hi',
+            ],
+            'dmY_his' => [
+                'php'         => 'd/m/Y H:i:s',
+                'has_seconds' => true,
+                'label_key'   => 'Config.config_style_header_datetime_fmt_dmY_his',
+                'preview'     => '01/06/2026 14:30:45',
+                'js'          => 'dmY_his',
+            ],
+            'dm_hi' => [
+                'php'         => 'd/m H:i',
+                'has_seconds' => false,
+                'label_key'   => 'Config.config_style_header_datetime_fmt_dm_hi',
+                'preview'     => '01/06 14:30',
+                'js'          => 'dm_hi',
+            ],
+            'ymd_hi' => [
+                'php'         => 'Y-m-d H:i',
+                'has_seconds' => false,
+                'label_key'   => 'Config.config_style_header_datetime_fmt_ymd_hi',
+                'preview'     => '2026-06-01 14:30',
+                'js'          => 'ymd_hi',
+            ],
+            'dmY_hi_12' => [
+                'php'         => 'd/m/Y h:i A',
+                'has_seconds' => false,
+                'label_key'   => 'Config.config_style_header_datetime_fmt_dmY_hi_12',
+                'preview'     => '01/06/2026 02:30 PM',
+                'js'          => 'dmY_hi_12',
+            ],
+            'long_es' => [
+                'php'         => 'd/m/Y H:i',
+                'has_seconds' => false,
+                'label_key'   => 'Config.config_style_header_datetime_fmt_long_es',
+                'preview'     => '1 jun 2026, 14:30',
+                'js'          => 'long_es',
+            ],
+        ];
+    }
+
+    public static function normalizeHeaderDatetimeFormat(string $value): string
+    {
+        $key = strtolower(trim($value));
+        $presets = self::headerDatetimeFormatPresets();
+
+        return isset($presets[$key]) ? $key : 'dmY_hi';
+    }
+
+    /**
+     * @return array<string, string> clave => etiqueta traducida
+     */
+    public static function headerDatetimeFormatOptionsForView(): array
+    {
+        $out = [];
+        foreach (self::headerDatetimeFormatPresets() as $key => $preset) {
+            $out[$key] = lang($preset['label_key']);
+        }
+
+        return $out;
+    }
+
+    public static function headerDatetimeFormatHasSeconds(string $formatKey): bool
+    {
+        $key = self::normalizeHeaderDatetimeFormat($formatKey);
+        $presets = self::headerDatetimeFormatPresets();
+
+        return ! empty($presets[$key]['has_seconds']);
+    }
+
+    public static function formatHeaderDatetime(\DateTimeInterface $dt, string $formatKey): string
+    {
+        $key = self::normalizeHeaderDatetimeFormat($formatKey);
+        $presets = self::headerDatetimeFormatPresets();
+
+        if ($key === 'long_es' && class_exists(\IntlDateFormatter::class)) {
+            try {
+                $tz = $dt->getTimezone()->getName();
+                $fmt = new \IntlDateFormatter(
+                    'es_ES',
+                    \IntlDateFormatter::NONE,
+                    \IntlDateFormatter::SHORT,
+                    $tz,
+                    \IntlDateFormatter::GREGORIAN,
+                    'd MMM y, HH:mm'
+                );
+                $formatted = $fmt->format($dt);
+
+                return $formatted !== false ? $formatted : $dt->format($presets[$key]['php']);
+            } catch (\Throwable $e) {
+                return $dt->format($presets[$key]['php']);
+            }
+        }
+
+        return $dt->format($presets[$key]['php']);
     }
 }

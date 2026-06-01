@@ -56,7 +56,7 @@
                         <?php foreach ($registros as $r): ?>
                         <tr>
                             <td><?= esc($r->registro_id ?? '') ?></td>
-                            <td><?= esc($r->ingreso ? date('d/m/Y H:i', strtotime($r->ingreso)) : '-') ?></td>
+                            <td><?= esc($r->ingreso ? lab_dt_short($r->ingreso ?? null) : '-') ?></td>
                             <td><?= esc($r->total ?? '-') ?></td>
                             <td class="text-center">
                                 <a href="<?= site_url('doctor/viewreport/' . ($r->registro_id ?? '')) ?>" class="btn btn-sm btn-primary" target="_blank" title="Ver reporte">

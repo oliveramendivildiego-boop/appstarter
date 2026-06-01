@@ -104,7 +104,7 @@ class Registers extends SecureArea
             $abonos = [[
                 'monto'       => $pago->monto_pagar,
                 'tipopago'    => $pago->tipopago ?? '1',
-                'fecha_abono' => $registerInfo->ingreso ?? date('Y-m-d H:i:s'),
+                'fecha_abono' => $registerInfo->ingreso ?? RegisterService::mysqlNowForReport(),
             ]];
         }
         foreach ($abonos as $i => $abono) {
@@ -182,6 +182,8 @@ class Registers extends SecureArea
 
     public function lista()
     {
+        RegisterService::applyRequestTimezone();
+
         $perPage    = 15;
         $page       = max(1, (int) ($this->request->getGet('page') ?? 1));
         $offset     = ($page - 1) * $perPage;
@@ -191,12 +193,35 @@ class Registers extends SecureArea
             $estado = '';
         }
 
+        $fechaTodos = $this->request->getGet('fecha_todos') === '1';
+        $fechaDesde = $this->normalizeListaFechaYmd($this->request->getGet('fecha_desde'));
+        $fechaHasta = $this->normalizeListaFechaYmd($this->request->getGet('fecha_hasta'));
+
+        $filterFrom = null;
+        $filterTo   = null;
+        $today      = RegisterService::todayForReport();
+        $weekStart  = RegisterService::reportDateFromModifier('monday this week');
+        $monthStart = RegisterService::monthStartForReport();
+
+        if (! $fechaTodos) {
+            if ($fechaDesde === '' && $fechaHasta === '') {
+                $fechaDesde = $today;
+                $fechaHasta = $today;
+            } elseif ($fechaDesde === '') {
+                $fechaDesde = $fechaHasta;
+            } elseif ($fechaHasta === '') {
+                $fechaHasta = $fechaDesde;
+            }
+            $filterFrom = $fechaDesde;
+            $filterTo   = $fechaHasta;
+        }
+
         if ($search !== '') {
-            $registros  = $this->registerModel->getAllAnalisisWithSearch($search, $perPage, $offset, $estado);
-            $total      = $this->registerModel->countWithSearch($search, $estado);
+            $registros  = $this->registerModel->getAllAnalisisWithSearch($search, $perPage, $offset, $estado, $filterFrom, $filterTo);
+            $total      = $this->registerModel->countWithSearch($search, $estado, $filterFrom, $filterTo);
         } else {
-            $registros  = $this->registerModel->getAllAnalisis($perPage, $offset, $estado);
-            $total      = $this->registerModel->countAll($estado);
+            $registros  = $this->registerModel->getAllAnalisis($perPage, $offset, $estado, $filterFrom, $filterTo);
+            $total      = $this->registerModel->countAll($estado, $filterFrom, $filterTo);
         }
 
         $whatsappOk  = (new WhatsAppService())->isConfigured();
@@ -215,7 +240,28 @@ class Registers extends SecureArea
             'perPage'         => $perPage,
             'search'          => $search,
             'estado'          => $estado,
+            'fecha_desde'     => $fechaDesde,
+            'fecha_hasta'     => $fechaHasta,
+            'fecha_todos'         => $fechaTodos,
+            'fecha_hoy'           => $today,
+            'fecha_semana_desde'  => $weekStart,
+            'fecha_mes_desde'     => $monthStart,
         ]);
+    }
+
+    /**
+     * Normaliza fecha de filtro de lista (Y-m-d) o cadena vacía si no es válida.
+     */
+    private function normalizeListaFechaYmd($raw): string
+    {
+        $s = trim((string) ($raw ?? ''));
+        if ($s === '') {
+            return '';
+        }
+        $day = substr($s, 0, 10);
+        $dt  = \DateTimeImmutable::createFromFormat('Y-m-d', $day);
+
+        return ($dt !== false && $dt->format('Y-m-d') === $day) ? $day : '';
     }
 
     /**
@@ -652,12 +698,11 @@ class Registers extends SecureArea
         }
 
         // Formato fecha similar al reporte
-        try {
-            $dt = new \DateTime($registerInfo->ingreso ?? 'now');
-            $fecha = $dt->format('d/m/Y H:i');
-        } catch (\Throwable $e) {
-            $fecha = (string)($registerInfo->ingreso ?? '');
-        }
+        $fecha = RegisterService::formatStoredReporteFechaCorta(
+            $registerInfo->ingreso !== null && (string) $registerInfo->ingreso !== ''
+                ? (string) $registerInfo->ingreso
+                : RegisterService::mysqlNowForReport()
+        );
 
         $bcSizePct = (int) $this->configModel->getValue('order_barcode_print_size_percent');
         if ($bcSizePct < 1) {
@@ -720,12 +765,11 @@ class Registers extends SecureArea
             $gruposPruebas[$padre][] = $p;
         }
 
-        try {
-            $dt = new \DateTime($registerInfo->ingreso ?? 'now');
-            $fecha = $dt->format('d/m/Y H:i');
-        } catch (\Throwable $e) {
-            $fecha = (string)($registerInfo->ingreso ?? '');
-        }
+        $fecha = RegisterService::formatStoredReporteFechaCorta(
+            $registerInfo->ingreso !== null && (string) $registerInfo->ingreso !== ''
+                ? (string) $registerInfo->ingreso
+                : RegisterService::mysqlNowForReport()
+        );
 
         $edadPacienteOrden = $this->registerService->formatEdadAlMomento($registerInfo->birthday ?? null, $refIngreso);
         $ordenExtras = $this->buildOrdenTrabajoExtras($id, $registerInfo, $gruposPruebas);
@@ -742,7 +786,7 @@ class Registers extends SecureArea
 
         $pdfService = new PdfService();
         $pacienteNombre = trim(($registerInfo->first_name ?? '') . '_' . ($registerInfo->last_name_fa ?? ''));
-        $filename = 'Orden_' . ($pacienteNombre ?: 'paciente') . '_' . $id . '_' . date('Y-m-d') . '.pdf';
+        $filename = 'Orden_' . ($pacienteNombre ?: 'paciente') . '_' . $id . '_' . lab_filename_date() . '.pdf';
 
         return $this->response
             ->setHeader('Content-Type', 'application/pdf')
@@ -812,7 +856,7 @@ class Registers extends SecureArea
 
         $pdfService    = new PdfService();
         $pacienteNombre = trim(($data['paciente']->first_name ?? '') . '_' . ($data['paciente']->last_name_fa ?? ''));
-        $filename      = 'Resultados_' . ($pacienteNombre ?: 'paciente') . '_' . $id . '_' . date('Y-m-d') . '.pdf';
+        $filename      = 'Resultados_' . ($pacienteNombre ?: 'paciente') . '_' . $id . '_' . lab_filename_date() . '.pdf';
 
         return $this->response
             ->setHeader('Content-Type', 'application/pdf')
@@ -927,7 +971,7 @@ class Registers extends SecureArea
         $html       = $billing->renderComprobanteHtml($doc, $factura);
         $pdfService = new PdfService();
         $tipo       = $factura ? 'Factura' : 'Recibo';
-        $filename   = $tipo . '_orden_' . preg_replace('/[^A-Za-z0-9._-]+/', '_', $doc->ordenNumero) . '_' . date('Y-m-d') . '.pdf';
+        $filename   = $tipo . '_orden_' . preg_replace('/[^A-Za-z0-9._-]+/', '_', $doc->ordenNumero) . '_' . lab_filename_date() . '.pdf';
 
         return $this->response
             ->setHeader('Content-Type', 'application/pdf')
@@ -1115,6 +1159,8 @@ class Registers extends SecureArea
 
     public function save(): ResponseInterface
     {
+        RegisterService::applyRequestTimezone();
+
         try {
             $validation = \Config\Services::validation();
             $validation->setRules(config('Validation')->registro ?? []);
@@ -1339,11 +1385,21 @@ class Registers extends SecureArea
             return $this->response->setJSON(['success' => false, 'message' => 'Registro no encontrado'])->setStatusCode(404);
         }
         $billing = new BillingDocumentService();
+        $registroArr = $data['registro'] ? (array) $data['registro'] : [];
+        if (! empty($registroArr['ingreso'])) {
+            $registroArr['ingreso_display'] = RegisterService::formatStoredReporteFechaHora((string) $registroArr['ingreso']);
+        }
+        $abonosOut = $data['abonos'] ?? [];
+        foreach ($abonosOut as $i => $ab) {
+            if (! empty($ab['fecha_abono'])) {
+                $abonosOut[$i]['fecha_abono_display'] = RegisterService::formatStoredReporteFechaHora((string) $ab['fecha_abono']);
+            }
+        }
         $out     = [
-            'registro' => $data['registro'] ? (array) $data['registro'] : (object) [],
+            'registro' => $registroArr !== [] ? $registroArr : (object) [],
             'pago' => $data['pago'] ? (array) $data['pago'] : (object) [],
             'tipo_pago_nombre' => $data['tipo_pago_nombre'] ?? '',
-            'abonos' => $data['abonos'] ?? [],
+            'abonos' => $abonosOut,
             'pruebas' => $data['pruebas'] ?? [],
             'tiene_resultados' => $data['tiene_resultados'] ?? false,
             'regvalues_count' => $data['regvalues_count'] ?? 0,
@@ -1401,7 +1457,7 @@ class Registers extends SecureArea
             'registro_id' => $registroId,
             'tipo_muestra_id' => $tipoMuestraId,
             'estado' => 0,
-            'fecha_tomada' => date('Y-m-d H:i:s'),
+            'fecha_tomada' => RegisterService::mysqlNowForReport(),
             'usuario_tomo' => session()->get('person_id'),
         ]);
         \App\Models\AuditoriaModel::log('registers', 'crear_muestra', (string) $registroId, \App\Models\AuditoriaModel::detail([
@@ -1601,7 +1657,7 @@ class Registers extends SecureArea
         $labConfig = $this->configModel->getValue('company') ?? 'Laboratorio';
         $pacienteNombre = trim(($paciente->first_name ?? '') . ' ' . ($paciente->last_name_fa ?? '') . ' ' . ($paciente->last_name_mom ?? ''));
         $doctorNombre   = trim($doctor->name ?? '');
-        $ingreso        = $registerInfo->ingreso ?? date('Y-m-d');
+        $ingreso        = $registerInfo->ingreso ?? RegisterService::mysqlNowForReport();
         helper('registro');
         $orden          = registro_orden_display($registerInfo);
 
@@ -1612,7 +1668,7 @@ class Registers extends SecureArea
             'paciente'   => $pacienteNombre,
             'doctor'     => $doctorNombre,
             'orden'      => $orden,
-            'fecha'      => date('d/m/Y', strtotime($ingreso)),
+            'fecha'      => RegisterService::formatStoredReporteFechaCorta((string) $ingreso),
             'laboratorio'=> $labConfig,
         ];
 

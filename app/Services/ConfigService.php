@@ -72,6 +72,7 @@ class ConfigService
         $data['ui_pagination_link_style'] ??= 'normal';
         $data['ui_pagination_active_bg'] ??= '';
         $data['ui_pagination_active_color'] ??= '';
+        $data['ui_header_datetime_format'] ??= 'dmY_hi';
         $data['order_barcode_print_layout'] ??= 'vertical';
         $data['order_barcode_print_size_percent'] ??= '100';
         $data['show_order_costs'] ??= '0';
@@ -82,6 +83,8 @@ class ConfigService
         $data['print_paper_height_mm'] ??= '297';
         $data['print_pagination_enabled'] ??= '0';
         $data['print_pagination_position'] ??= 'bottom-right';
+        $data['lab_datetime_storage'] ??= '1';
+        $data['timezone'] ??= 'America/Mexico_City';
         $data['lab_validators_json'] ??= '[]';
         $data['lab_approvers_json'] ??= '[]';
         $data['comprobante_primary_color'] ??= '#0f766e';
@@ -921,7 +924,7 @@ class ConfigService
     {
         $keys = [
             'company', 'address', 'phone', 'email', 'fax', 'website',
-            'language', 'timezone', 'currency_symbol', 'currency_side',
+            'language', 'timezone', 'lab_datetime_storage', 'currency_symbol', 'currency_side',
             'default_tax_rate', 'default_tax_1_name', 'default_tax_1_rate',
             'default_tax_2_name', 'default_tax_2_rate', 'return_policy',
             'print_after_sale', 'logo', 'theme_color', 'header_brand',
@@ -990,6 +993,9 @@ class ConfigService
         }
         if (array_key_exists('leyendas_enabled', $postData)) {
             $batch['leyendas_enabled'] = ($postData['leyendas_enabled'] === '1') ? '1' : '0';
+        }
+        if (array_key_exists('lab_datetime_storage', $postData)) {
+            $batch['lab_datetime_storage'] = ($postData['lab_datetime_storage'] === '1') ? '1' : '0';
         }
         if (array_key_exists('label_sin_doctor', $postData)) {
             $t = trim((string) ($postData['label_sin_doctor'] ?? ''));
@@ -1841,6 +1847,12 @@ class ConfigService
             'ui_header_text_color' => $this->normalizeUiHex((string) ($post['ui_header_text_color'] ?? ''), '#ffffff'),
             'ui_header_text_weight' => \App\Services\LayoutService::normalizeUiFontWeight((string) ($post['ui_header_text_weight'] ?? ''), '500'),
             'ui_header_text_style'  => \App\Services\LayoutService::normalizeUiFontStyle((string) ($post['ui_header_text_style'] ?? ''), 'normal'),
+            'ui_header_datetime_color' => ! empty($post['ui_header_datetime_default'])
+                ? ''
+                : $this->normalizeUiHex((string) ($post['ui_header_datetime_color'] ?? ''), '#ffffff'),
+            'ui_header_datetime_format' => \App\Services\LayoutService::normalizeHeaderDatetimeFormat(
+                (string) ($post['ui_header_datetime_format'] ?? '')
+            ),
             'ui_labotests_card_header_title_color' => $this->normalizeUiHex((string) ($post['ui_labotests_card_header_title_color'] ?? ''), '#ffffff'),
             'ui_labotests_card_header_title_weight' => \App\Services\LayoutService::normalizeUiFontWeight((string) ($post['ui_labotests_card_header_title_weight'] ?? ''), '600'),
             'ui_labotests_card_header_title_style' => \App\Services\LayoutService::normalizeUiFontStyle((string) ($post['ui_labotests_card_header_title_style'] ?? ''), 'normal'),

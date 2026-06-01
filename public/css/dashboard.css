@@ -268,6 +268,58 @@ html body.ynex-theme main #configTabs.nav-tabs .nav-item.show .nav-link {
   font-style: var(--ui-header-font-style, normal);
 }
 
+.header-datetime,
+.header-datetime__icon {
+  color: var(--ui-header-datetime-color, var(--ui-header-text, #fff)) !important;
+}
+
+/* Reloj del header (derecha, zona del sistema) */
+header.navbar-theme {
+  flex-wrap: nowrap;
+}
+
+.header-datetime-wrap {
+  min-width: 0;
+  line-height: 1.2;
+}
+
+.header-datetime {
+  font-size: clamp(0.7rem, 2.2vw, 0.875rem);
+  letter-spacing: 0.01em;
+}
+
+.header-datetime__icon {
+  opacity: 0.85;
+  font-size: 0.9em;
+  flex-shrink: 0;
+}
+
+.header-datetime.navbar-theme-meta {
+  opacity: 0.92;
+}
+
+@media (max-width: 767.98px) {
+  header.navbar-theme .navbar-brand {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    flex: 1 1 auto;
+    max-width: calc(100% - 10.5rem);
+  }
+
+  .header-datetime-wrap {
+    padding-left: 0.25rem !important;
+    padding-right: 0.5rem !important;
+  }
+}
+
+@media (min-width: 768px) {
+  .header-datetime {
+    font-size: var(--ui-font-size-header, 0.875rem);
+  }
+}
+
 #footer.ynex-footer {
   background-color: var(--ui-footer-bg, #f8f9fa) !important;
   color: var(--ui-footer-text, #6c757d) !important;

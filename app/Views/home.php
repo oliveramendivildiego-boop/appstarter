@@ -77,7 +77,7 @@ $subsTenants = $alertas_suscripcion_tenants ?? ['total' => 0, 'items' => [], 'di
                     <?php foreach (($subsTenants['items'] ?? []) as $st): ?>
                     <tr class="<?= (($st['estado'] ?? '') === 'vencido') ? 'table-danger' : 'table-warning' ?>">
                         <td><?= esc($st['tenant_name'] ?? '') ?> <span class="text-muted">(<?= esc($st['tenant_key'] ?? '') ?>)</span></td>
-                        <td><?= !empty($st['period_end']) ? date('d/m/Y', strtotime((string) $st['period_end'])) : '-' ?></td>
+                        <td><?= !empty($st['period_end']) ? lab_date((string) $st['period_end']) : '-' ?></td>
                         <td>
                             <?php if (($st['estado'] ?? '') === 'vencido'): ?>
                                 <span class="badge bg-danger">Vencido</span>
@@ -220,7 +220,7 @@ $subsTenants = $alertas_suscripcion_tenants ?? ['total' => 0, 'items' => [], 'di
                     <tr class="<?= ($it['estado'] ?? '') === 'vencido' ? 'table-danger' : 'table-warning' ?>">
                         <td><?= esc($it['reactivo_nombre'] ?? '-') ?></td>
                         <td><?= esc($it['codigo_lote'] ?? '-') ?></td>
-                        <td><?= !empty($it['fecha_vencimiento']) ? date('d/m/Y', strtotime($it['fecha_vencimiento'])) : '-' ?></td>
+                        <td><?= !empty($it['fecha_vencimiento']) ? lab_date((string) $it['fecha_vencimiento']) : '-' ?></td>
                         <td><?= (int)($it['cantidad'] ?? 0) ?> <?= esc($it['unidad_base'] ?? $it['unidad'] ?? '') ?></td>
                         <td>
                             <?php if (($it['estado'] ?? '') === 'vencido'): ?>

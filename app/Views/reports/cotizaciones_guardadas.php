@@ -65,7 +65,7 @@ $hasta = min($page * $perPage, $total);
             ?>
             <tr>
                 <td><?= $id ?></td>
-                <td><?= esc(date('d/m/Y H:i', strtotime(isset($row['fecha']) ? $row['fecha'] : ''))) ?></td>
+                <td><?= esc(lab_dt_short(isset($row['fecha']) ? (string) $row['fecha'] : null)) ?></td>
                 <td><?= esc(isset($row['usuario_cotizo']) ? $row['usuario_cotizo'] : '-') ?></td>
                 <td>
                     <span class="cotizo-resumen" title="<?= esc($examenes) ?>"><?= esc($examenesResumen) ?></span>

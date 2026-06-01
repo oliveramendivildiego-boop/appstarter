@@ -59,7 +59,7 @@ class ControlCalidadModel extends Model
     {
         $save = [
             'control_id'  => (int) ($data['control_id'] ?? 0),
-            'fecha'       => $data['fecha'] ?? date('Y-m-d'),
+            'fecha'       => $data['fecha'] ?? \App\Services\RegisterService::todayForReport(),
             'valor'       => (float) ($data['valor'] ?? 0),
             'esperado'    => isset($data['esperado']) ? (float) $data['esperado'] : null,
             'observaciones' => trim($data['observaciones'] ?? '') ?: null,

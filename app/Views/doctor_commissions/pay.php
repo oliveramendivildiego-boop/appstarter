@@ -35,7 +35,7 @@ $currencyIsRight = strtolower(trim($currencySide)) === 'right';
                         </div>
                         <div class="col-md-6">
                             <label class="form-label">Fecha Creación:</label>
-                            <p class="form-control-plaintext"><?= date('d/m/Y H:i', strtotime($commission->created_date)) ?></p>
+                            <p class="form-control-plaintext"><?= lab_dt_short($commission->created_date ?? null) ?></p>
                         </div>
                     </div>
                     

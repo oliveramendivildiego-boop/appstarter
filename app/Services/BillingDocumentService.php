@@ -7,6 +7,7 @@ use App\Models\FacturaComprobanteModel;
 use App\Models\ReciboComprobanteModel;
 use App\Models\RegisterModel;
 use App\Services\ConfigService;
+use App\Services\RegisterService;
 
 /**
  * Arma los datos y el HTML para recibo o factura en PDF según configuración SIN.
@@ -59,12 +60,10 @@ class BillingDocumentService
             $moneda = '$';
         }
 
-        try {
-            $dt = new \DateTime($reg->ingreso ?? 'now');
-            $fechaEmision = $dt->format('d/m/Y H:i');
-        } catch (\Throwable) {
-            $fechaEmision = (string) ($reg->ingreso ?? '');
-        }
+        $ingresoRaw = (string) ($reg->ingreso ?? '');
+        $fechaEmision = $ingresoRaw !== ''
+            ? RegisterService::formatStoredReporteFechaCorta($ingresoRaw)
+            : RegisterService::formatNowForReportShort();
 
         $pacienteNombre = trim(
             ($reg->first_name ?? '') . ' ' . ($reg->last_name_fa ?? '') . ' ' . ($reg->last_name_mom ?? '')

@@ -56,8 +56,8 @@ class Reactivos extends SecureArea
      */
     private function buildKardexPageData(): array
     {
-        $startDate  = $this->request->getGet('start') ?? date('Y-m-01');
-        $endDate    = $this->request->getGet('end') ?? date('Y-m-d');
+        $startDate  = $this->request->getGet('start') ?? \App\Services\RegisterService::monthStartForReport();
+        $endDate    = $this->request->getGet('end') ?? lab_today_ymd();
         $personId   = (int) ($this->request->getGet('person_id') ?? 0);
         $reactivoId = (int) ($this->request->getGet('reactivo_id') ?? 0);
         $tipoGet    = $this->request->getGet('tipo');
@@ -108,7 +108,7 @@ class Reactivos extends SecureArea
         }
 
         return [
-            'subtitle'                 => date('d/m/Y', strtotime($startDate)) . ' – ' . date('d/m/Y', strtotime($endDate)),
+            'subtitle'                 => \App\Services\RegisterService::formatReportDateRangeSubtitle($startDate, $endDate),
             'rows'                     => $rows,
             'resumen'                  => $resumen,
             'startDate'                => $startDate,
@@ -148,7 +148,7 @@ class Reactivos extends SecureArea
     {
         $d = $this->buildKardexPageData();
         ReportPdfDocument::download(
-            'kardex_' . date('Y-m-d') . '.pdf',
+            'kardex_' . lab_filename_date() . '.pdf',
             'Kardex de inventario',
             (string) $d['subtitle'],
             'reactivos/pdf/kardex_body',
@@ -221,7 +221,7 @@ class Reactivos extends SecureArea
         $codigo = trim($this->request->getPost('codigo_lote') ?? '');
         $cantidad = (int) ($this->request->getPost('cantidad') ?? 0);
         $vencimiento = \App\Models\ReactivoModel::normalizarFecha($this->request->getPost('fecha_vencimiento'));
-        $fechaIngreso = \App\Models\ReactivoModel::normalizarFecha($this->request->getPost('fecha_ingreso')) ?: date('Y-m-d');
+        $fechaIngreso = \App\Models\ReactivoModel::normalizarFecha($this->request->getPost('fecha_ingreso')) ?: lab_today_ymd();
         $personId = session()->get('person_id') ? (int) session()->get('person_id') : null;
         if ($codigo && $cantidad > 0) {
             try {

@@ -79,7 +79,7 @@ class PublicResultados extends BaseController
 
         $pdfService     = new PdfService();
         $pacienteNombre = trim(($data['paciente']->first_name ?? '') . '_' . ($data['paciente']->last_name_fa ?? ''));
-        $filename       = 'Resultados_' . ($pacienteNombre ?: 'paciente') . '_' . $id . '_' . date('Y-m-d') . '.pdf';
+        $filename       = 'Resultados_' . ($pacienteNombre ?: 'paciente') . '_' . $id . '_' . lab_filename_date() . '.pdf';
 
         return $this->response
             ->setHeader('Content-Type', 'application/pdf')

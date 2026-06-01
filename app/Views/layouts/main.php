@@ -88,6 +88,7 @@ $pageTitle = $this->renderSection('title');
     <script src="<?= base_url('js/validation-common.js') ?>"></script>
     <script src="<?= base_url('js/manage_tables.js') ?>"></script>
     <script src="<?= base_url('js/session-monitor.js') ?>"></script>
+    <script src="<?= base_url('js/header-datetime.js') ?>"></script>
     <script>
       document.addEventListener('DOMContentLoaded', function() {
         var sb = document.getElementById('sidebarMenu');
@@ -175,11 +176,7 @@ if ($subAlert !== null && ! $hideSubAlertOnBlockedPage):
             <?= esc($companyName) ?>
         <?php endif; ?>
     </a>
-    <div class="navbar-nav d-md-none">
-        <div class="nav-item text-nowrap px-3 py-2">
-            <span class="small navbar-theme-meta"><?= date('d/m/Y H:i') ?></span>
-        </div>
-    </div>
+    <?= view('partial/header_datetime') ?>
 </header>
 
 <div class="container-fluid">

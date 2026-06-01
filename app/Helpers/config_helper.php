@@ -46,32 +46,54 @@ if (!function_exists('darken_hex_color')) {
     }
 }
 
+if (!function_exists('timezone_option_label')) {
+    /**
+     * Etiqueta con offset UTC real en este momento (evita confusión con horario de verano).
+     */
+    function timezone_option_label(string $tzId, string $name): string
+    {
+        try {
+            $p = (new \DateTimeImmutable('now', new \DateTimeZone($tzId)))->format('P');
+
+            return $name . ' — ahora UTC' . $p;
+        } catch (\Throwable $e) {
+            return $name;
+        }
+    }
+}
+
 if (!function_exists('get_timezone_options')) {
     /**
-     * Opciones de zona horaria para el select de configuración
+     * Opciones de zona horaria para el select de configuración (offset calculado al cargar la página).
      */
     function get_timezone_options(): array
     {
-        return [
-            'Pacific/Midway'       => '(GMT-11:00) Midway Island, Samoa',
-            'America/Adak'         => '(GMT-10:00) Hawaii-Aleutian',
-            'Etc/GMT+10'           => '(GMT-10:00) Hawaii',
-            'Pacific/Marquesas'     => '(GMT-09:30) Marquesas Islands',
-            'Pacific/Gambier'      => '(GMT-09:00) Gambier Islands',
-            'America/Anchorage'     => '(GMT-09:00) Alaska',
-            'America/Ensenada'     => '(GMT-08:00) Tijuana, Baja California',
-            'Etc/GMT+8'            => '(GMT-08:00) Pitcairn Islands',
-            'America/Los_Angeles'  => '(GMT-08:00) Pacific Time (US & Canada)',
-            'America/Denver'        => '(GMT-07:00) Mountain Time (US & Canada)',
-            'America/Chihuahua'    => '(GMT-07:00) Chihuahua, La Paz, Mazatlan',
-            'America/Dawson_Creek' => '(GMT-07:00) Arizona',
-            'America/Belize'       => '(GMT-06:00) Saskatchewan, Central America',
-            'America/Cancun'       => '(GMT-06:00) Guadalajara, Mexico City, Monterrey',
-            'Chile/EasterIsland'   => '(GMT-06:00) Easter Island',
-            'America/Chicago'      => '(GMT-06:00) Central Time (US & Canada)',
-            'America/New_York'     => '(GMT-05:00) Eastern Time (US & Canada)',
-            'America/Havana'       => '(GMT-05:00) Cuba',
-            'America/Bogota'       => '(GMT-05:00) Bogota, Lima, Quito, Rio Branco',
+        $base = [
+            'Pacific/Midway'       => 'Midway Island, Samoa',
+            'America/Adak'         => 'Hawaii-Aleutian',
+            'Etc/GMT+10'           => 'Hawaii',
+            'Pacific/Marquesas'     => 'Marquesas Islands',
+            'Pacific/Gambier'      => 'Gambier Islands',
+            'America/Anchorage'     => 'Alaska',
+            'America/Ensenada'     => 'Tijuana, Baja California',
+            'Etc/GMT+8'            => 'Pitcairn Islands',
+            'America/Los_Angeles'  => 'Pacific Time (US & Canada)',
+            'America/Denver'        => 'Mountain Time (US & Canada)',
+            'America/Chihuahua'    => 'Chihuahua, La Paz, Mazatlan',
+            'America/Dawson_Creek' => 'Arizona',
+            'America/Mexico_City'  => '★ Ciudad de México, Guadalajara, Monterrey (GMT-6 fijo)',
+            'America/Guatemala'    => '★ Guatemala (GMT-6 fijo)',
+            'America/El_Salvador'  => '★ El Salvador (GMT-6 fijo)',
+            'America/Tegucigalpa'  => '★ Honduras (GMT-6 fijo)',
+            'America/Managua'      => '★ Nicaragua (GMT-6 fijo)',
+            'America/Costa_Rica'   => '★ Costa Rica (GMT-6 fijo)',
+            'America/Belize'       => 'Belice (GMT-6 fijo)',
+            'Chile/EasterIsland'   => 'Easter Island',
+            'America/Chicago'      => 'EE.UU. hora central (cambia entre -5 y -6)',
+            'America/Cancun'       => 'Cancún / Quintana Roo (GMT-5 fijo, no es CDMX)',
+            'America/New_York'     => 'Eastern Time (US & Canada)',
+            'America/Havana'       => 'Cuba',
+            'America/Bogota'       => 'Bogotá, Lima, Quito (GMT-5 fijo)',
             'America/Caracas'      => '(GMT-04:30) Caracas',
             'America/Santiago'     => '(GMT-04:00) Santiago',
             'America/La_Paz'       => '(GMT-04:00) La Paz',
@@ -143,8 +165,15 @@ if (!function_exists('get_timezone_options')) {
             'Etc/GMT-12'           => '(GMT+12:00) Fiji, Kamchatka, Marshall Is.',
             'Pacific/Chatham'      => '(GMT+12:45) Chatham Islands',
             'Pacific/Tongatapu'    => '(GMT+13:00) Nuku\'alofa',
-            'Pacific/Kiritimati'   => '(GMT+14:00) Kiritimati',
+            'Pacific/Kiritimati'   => 'Kiritimati',
         ];
+
+        $out = [];
+        foreach ($base as $tzId => $name) {
+            $out[$tzId] = timezone_option_label($tzId, $name);
+        }
+
+        return $out;
     }
 }
 

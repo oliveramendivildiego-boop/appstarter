@@ -6,7 +6,6 @@ use App\Models\AppConfigModel;
 use App\Models\PoblacionModel;
 use App\Models\RegisterModel;
 use App\Services\ConfigService;
-use CodeIgniter\I18n\Time;
 use Config\App as AppConfig;
 
 /**
@@ -720,6 +719,72 @@ class RegisterService
         return self::timezoneIdIsValid($fromApp) ? $fromApp : 'UTC';
     }
 
+    /**
+     * Si es true, los DATETIME en BD se guardan en UTC y se muestran en la zona de /config
+     * (independiente del reloj del PC). Si es false, se guardan como hora local del laboratorio (legado).
+     */
+    public static function usesUtcDatetimeStorage(): bool
+    {
+        try {
+            $cfg = (new ConfigService())->getAllAsArray();
+
+            return ($cfg['lab_datetime_storage'] ?? '1') === '1';
+        } catch (\Throwable $e) {
+            return true;
+        }
+    }
+
+    /**
+     * Resumen legible de la zona configurada (nombre + offset actual).
+     */
+    public static function labTimezoneSummary(): string
+    {
+        $tzId = self::reportDisplayTimezone();
+        try {
+            $now = self::nowInReportTimezone();
+            $offset = $now->format('P');
+
+            return $tzId . ' (UTC' . $offset . ')';
+        } catch (\Throwable $e) {
+            return $tzId;
+        }
+    }
+
+    /**
+     * Alinea PHP y MySQL con la política de fechas del laboratorio.
+     * Idempotente: se ejecuta una vez por petición HTTP.
+     */
+    public static function applyRequestTimezone(): void
+    {
+        static $applied = false;
+        if ($applied) {
+            return;
+        }
+        $applied = true;
+
+        $tzId = self::reportDisplayTimezone();
+        try {
+            date_default_timezone_set($tzId);
+        } catch (\Throwable $e) {
+            // ignorar TZ inválida en PHP
+        }
+
+        try {
+            $db = \Config\Database::connect();
+            if (! $db->connID) {
+                return;
+            }
+            if (self::usesUtcDatetimeStorage()) {
+                $db->simpleQuery("SET time_zone = '+00:00'");
+            } else {
+                $offset = (new \DateTimeImmutable('now', new \DateTimeZone($tzId)))->format('P');
+                $db->simpleQuery('SET time_zone = ' . $db->escape($offset));
+            }
+        } catch (\Throwable $e) {
+            log_message('debug', 'RegisterService::applyRequestTimezone MySQL: ' . $e->getMessage());
+        }
+    }
+
     private static function timezoneIdIsValid(string $tz): bool
     {
         try {
@@ -769,8 +834,27 @@ class RegisterService
         try {
             return self::nowInReportTimezone()->modify($modifier)->format('Y-m-d');
         } catch (\Throwable $e) {
-            return date('Y-m-d', strtotime($modifier));
+            return self::todayForReport();
         }
+    }
+
+    /**
+     * Límites de rango de fechas (día inclusive) para consultas SQL sobre columnas DATETIME.
+     *
+     * @return array{0: string, 1: string} [inicio inclusive, fin exclusive) en formato Y-m-d H:i:s
+     */
+    public static function labDateRangeToStorageBounds(string $dateFromYmd, string $dateToYmd): array
+    {
+        $tz    = self::reportTimezoneObject();
+        $start = (new \DateTimeImmutable(substr(trim($dateFromYmd), 0, 10), $tz))->setTime(0, 0, 0);
+        $end   = (new \DateTimeImmutable(substr(trim($dateToYmd), 0, 10), $tz))->modify('+1 day')->setTime(0, 0, 0);
+        if (self::usesUtcDatetimeStorage()) {
+            $utc   = new \DateTimeZone('UTC');
+            $start = $start->setTimezone($utc);
+            $end   = $end->setTimezone($utc);
+        }
+
+        return [$start->format('Y-m-d H:i:s'), $end->format('Y-m-d H:i:s')];
     }
 
     /**
@@ -832,17 +916,26 @@ class RegisterService
     }
 
     /**
-     * Formatea un DATETIME guardado en BD (interpretado en la zona del laboratorio) a texto del reporte.
+     * Formatea un DATETIME de BD a texto en la zona del laboratorio (/config).
      */
     public static function formatStoredReporteFechaHora(string $mysqlDatetime): string
     {
-        try {
-            $dt = new \DateTimeImmutable($mysqlDatetime, self::reportTimezoneObject());
-        } catch (\Throwable $e) {
-            return $mysqlDatetime;
+        $raw = trim($mysqlDatetime);
+        if ($raw === '') {
+            return '—';
         }
+        try {
+            if (self::usesUtcDatetimeStorage()) {
+                $dt = new \DateTimeImmutable($raw, new \DateTimeZone('UTC'));
 
-        return $dt->format('d/m/Y H:i:s');
+                return $dt->setTimezone(self::reportTimezoneObject())->format('d/m/Y H:i:s');
+            }
+            $dt = new \DateTimeImmutable($raw, self::reportTimezoneObject());
+
+            return $dt->format('d/m/Y H:i:s');
+        } catch (\Throwable $e) {
+            return $raw;
+        }
     }
 
     /**
@@ -853,21 +946,49 @@ class RegisterService
         if ($mysqlDatetime === null || trim($mysqlDatetime) === '') {
             return '—';
         }
-        try {
-            $dt = new \DateTimeImmutable(trim($mysqlDatetime), self::reportTimezoneObject());
-
-            return $dt->format('d/m/Y H:i');
-        } catch (\Throwable $e) {
-            return trim($mysqlDatetime);
+        $formatted = self::formatStoredReporteFechaHora(trim($mysqlDatetime));
+        if ($formatted === '—') {
+            return '—';
         }
+
+        return strlen($formatted) >= 16 ? substr($formatted, 0, 16) : $formatted;
     }
 
     /**
-     * DATETIME actual en la zona del laboratorio (para guardar en BD sin offset).
+     * DATETIME actual para guardar en BD (UTC o hora local del laboratorio según configuración).
      */
     public static function mysqlNowForReport(): string
     {
-        return self::nowInReportTimezone()->format('Y-m-d H:i:s');
+        $now = self::nowInReportTimezone();
+        if (self::usesUtcDatetimeStorage()) {
+            return $now->setTimezone(new \DateTimeZone('UTC'))->format('Y-m-d H:i:s');
+        }
+
+        return $now->format('Y-m-d H:i:s');
+    }
+
+    /**
+     * Convierte fecha/hora capturada en formulario (reloj del laboratorio) al formato de guardado en BD.
+     */
+    public static function parseUserLabDatetimeToStorage(string $input): string
+    {
+        $input = trim($input);
+        if ($input === '') {
+            return self::mysqlNowForReport();
+        }
+        if (preg_match('/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}$/', $input)) {
+            $input .= ':00';
+        }
+        try {
+            $dt = new \DateTimeImmutable($input, self::reportTimezoneObject());
+            if (self::usesUtcDatetimeStorage()) {
+                return $dt->setTimezone(new \DateTimeZone('UTC'))->format('Y-m-d H:i:s');
+            }
+
+            return $dt->format('Y-m-d H:i:s');
+        } catch (\Throwable $e) {
+            return self::mysqlNowForReport();
+        }
     }
 
     private function mysqlNowForReportTimezone(): string
@@ -972,20 +1093,14 @@ class RegisterService
             return null;
         }
 
+        self::applyRequestTimezone();
+
         $ingresoRaw = $registerInfo->ingreso ?? null;
-        $tzReport   = self::reportDisplayTimezone();
-        try {
-            $tzObj = new \DateTimeZone($tzReport);
-        } catch (\Throwable $e) {
-            $tzObj = new \DateTimeZone('UTC');
+        if ($ingresoRaw !== null && trim((string) $ingresoRaw) !== '') {
+            $registerInfo->recepcion_fecha_hora = self::formatStoredReporteFechaHora((string) $ingresoRaw);
+        } else {
+            $registerInfo->recepcion_fecha_hora = self::formatNowForReport();
         }
-        $src = ($ingresoRaw !== null && trim((string) $ingresoRaw) !== '') ? (string) $ingresoRaw : 'now';
-        try {
-            $dtIngreso = new \DateTimeImmutable($src, $tzObj);
-        } catch (\Throwable $e) {
-            $dtIngreso = new \DateTimeImmutable('now', $tzObj);
-        }
-        $registerInfo->recepcion_fecha_hora = $dtIngreso->format('d/m/Y H:i:s');
 
         $master = $this->registerModel->getInforeport($registroId);
         $paciente = $master ? $this->registerModel->getInfoPaciente($master->person_id) : null;

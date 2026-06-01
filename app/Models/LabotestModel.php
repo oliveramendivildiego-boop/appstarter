@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Services\RegisterService;
 use CodeIgniter\Model;
 
 class LabotestModel extends Model
@@ -1276,7 +1277,7 @@ class LabotestModel extends Model
         $newAnalysis['order'] = 1 + (int) ($maxOrder['max_order'] ?? 0);
         $newAnalysis['deleted'] = 0;
 
-        $now = date('Y-m-d H:i:s');
+        $now = RegisterService::mysqlNowForReport();
         if (array_key_exists('created_at', $newAnalysis)) {
             $newAnalysis['created_at'] = $now;
         }
@@ -1316,7 +1317,7 @@ class LabotestModel extends Model
             return;
         }
 
-        $now = date('Y-m-d H:i:s');
+        $now = RegisterService::mysqlNowForReport();
         foreach ($rows as $row) {
             unset($row[$primaryKey]);
             $row['prianacategoria_id'] = $newAnalysisId;

@@ -2,6 +2,8 @@
 
 namespace App\Models;
 
+use App\Libraries\LabNaiveDateRange;
+use App\Services\RegisterService;
 use CodeIgniter\Model;
 
 class AuditoriaModel extends Model
@@ -28,6 +30,7 @@ class AuditoriaModel extends Model
                 'modulo'      => $modulo,
                 'accion'      => $accion,
                 'registro_id' => $registroId,
+                'fecha'       => RegisterService::mysqlNowForReport(),
                 'ip'          => $request->getIPAddress(),
                 'user_agent'  => mb_substr((string)($request->getUserAgent()->getAgentString() ?? ''), 0, 500),
                 'datos'       => $datos,
@@ -132,11 +135,18 @@ class AuditoriaModel extends Model
         if (!empty($filters['accion'])) {
             $builder->where('auditoria.accion', $filters['accion']);
         }
-        if (!empty($filters['fecha_desde'])) {
-            $builder->where('auditoria.fecha >=', $filters['fecha_desde'] . ' 00:00:00');
-        }
-        if (!empty($filters['fecha_hasta'])) {
-            $builder->where('auditoria.fecha <=', $filters['fecha_hasta'] . ' 23:59:59');
+        $fd = trim((string) ($filters['fecha_desde'] ?? ''));
+        $fh = trim((string) ($filters['fecha_hasta'] ?? ''));
+        if ($fd !== '' && $fh !== '') {
+            LabNaiveDateRange::apply($builder, $this->db->prefixTable('auditoria'), 'fecha', $fd, $fh);
+        } else {
+            LabNaiveDateRange::applyPartial(
+                $builder,
+                $this->db->prefixTable('auditoria'),
+                'fecha',
+                $fd !== '' ? $fd : null,
+                $fh !== '' ? $fh : null
+            );
         }
         if (!empty($filters['usuario'])) {
             $q = '%' . $filters['usuario'] . '%';

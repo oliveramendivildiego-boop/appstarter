@@ -2,6 +2,7 @@
 
 namespace App\Controllers;
 
+use App\Services\RegisterService;
 use CodeIgniter\Controller;
 use CodeIgniter\HTTP\RequestInterface;
 use CodeIgniter\HTTP\ResponseInterface;
@@ -38,6 +39,8 @@ abstract class BaseController extends Controller
 
         // Caution: Do not edit this line.
         parent::initController($request, $response, $logger);
+
+        RegisterService::applyRequestTimezone();
 
         // Preload any models, libraries, etc, here.
         // $this->session = service('session');

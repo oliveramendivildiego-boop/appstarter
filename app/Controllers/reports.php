@@ -1285,7 +1285,7 @@ class Reports extends SecureArea
         ];
 
         $html     = view('reports/catalogo_pruebas_document', $data);
-        $filename = 'catalogo_pruebas_' . date('Y-m-d') . '.pdf';
+        $filename = 'catalogo_pruebas_' . lab_filename_date() . '.pdf';
 
         (new PdfService())->download($html, $filename);
     }
@@ -1296,7 +1296,7 @@ class Reports extends SecureArea
     public function catalogoPruebasExcel()
     {
         $categories = $this->labotestModel->getGroupedByCategory(null);
-        $filename   = 'catalogo_pruebas_' . date('Y-m-d_H-i-s') . '.csv';
+        $filename   = 'catalogo_pruebas_' . lab_filename_datetime() . '.csv';
 
         header('Content-Type: text/csv; charset=UTF-8');
         header('Content-Disposition: attachment; filename="' . $filename . '"');
@@ -1466,7 +1466,7 @@ class Reports extends SecureArea
 
         $data = $this->reportModel->getCostosPruebas('');
 
-        $filename = 'costos_' . $scope['tenant_key'] . '_' . date('Y-m-d_His') . '.csv';
+        $filename = 'costos_' . $scope['tenant_key'] . '_' . lab_filename_datetime() . '.csv';
 
         $this->response->setHeader('Content-Type', 'text/csv; charset=UTF-8');
         $this->response->setHeader('Content-Disposition', 'attachment; filename="' . $filename . '"');
@@ -1821,7 +1821,7 @@ class Reports extends SecureArea
         $busqueda = $this->request->getGet('busqueda') ?? '';
         $data = $this->reportModel->getCostosPruebas($busqueda);
 
-        $filename = 'costos_pruebas_' . date('Y-m-d_H-i-s') . '.csv';
+        $filename = 'costos_pruebas_' . lab_filename_datetime() . '.csv';
         
         header('Content-Type: text/csv');
         header('Content-Disposition: attachment; filename="' . $filename . '"');
@@ -1899,7 +1899,7 @@ class Reports extends SecureArea
         $data = $this->reportModel->getValoresReferencia($busqueda);
         $poblacionLabels = $this->poblacionLabelMap();
 
-        $filename = ($soloSinValores ? 'valores_referencia_sin_valores_' : 'valores_referencia_') . date('Y-m-d_H-i-s') . '.csv';
+        $filename = ($soloSinValores ? 'valores_referencia_sin_valores_' : 'valores_referencia_') . lab_filename_datetime() . '.csv';
         
         header('Content-Type: text/csv');
         header('Content-Disposition: attachment; filename="' . $filename . '"');
@@ -1958,7 +1958,7 @@ class Reports extends SecureArea
         $busqueda = $this->request->getGet('busqueda') ?? '';
         $data     = $this->reportModel->getValoresReferencia($busqueda);
 
-        $filename = 'valores_referencia_' . $scope['tenant_key'] . '_' . date('Y-m-d_His') . '.csv';
+        $filename = 'valores_referencia_' . $scope['tenant_key'] . '_' . lab_filename_datetime() . '.csv';
 
         $this->response->setHeader('Content-Type', 'text/csv; charset=UTF-8');
         $this->response->setHeader('Content-Disposition', 'attachment; filename="' . $filename . '"');
@@ -2237,7 +2237,7 @@ class Reports extends SecureArea
 
     private function safeReportPdfFilename(string $base): string
     {
-        return preg_replace('/[^A-Za-z0-9._-]+/', '_', $base) . '_' . date('Y-m-d') . '.pdf';
+        return preg_replace('/[^A-Za-z0-9._-]+/', '_', $base) . '_' . lab_filename_date() . '.pdf';
     }
 
     public function registrosFechaPdf()

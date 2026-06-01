@@ -47,6 +47,7 @@ $extraCss = isset($moduleCss[$currentMod]) ? $moduleCss[$currentMod] : null;
     <script src="<?= base_url('js/vendor/bootstrap.bundle.min.js') ?>"></script>
     <script src="<?= base_url('js/common.js') ?>"></script>
     <script src="<?= base_url('js/manage_tables.js') ?>"></script>
+    <script src="<?= base_url('js/header-datetime.js') ?>"></script>
     <script>
       document.addEventListener('DOMContentLoaded', function() {
         var sb = document.getElementById('sidebarMenu');
@@ -81,11 +82,7 @@ $extraCss = isset($moduleCss[$currentMod]) ? $moduleCss[$currentMod] : null;
             <?= esc($companyName) ?>
         <?php endif; ?>
     </a>
-    <div class="navbar-nav d-md-none">
-        <div class="nav-item text-nowrap px-3 py-2">
-            <span class="text-white-50 small"><?= date('d/m/Y H:i') ?></span>
-        </div>
-    </div>
+    <?= view('partial/header_datetime') ?>
 </header>
 
 <div class="container-fluid">

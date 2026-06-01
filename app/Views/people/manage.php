@@ -10,6 +10,48 @@
         anchor($controller_name . '/delete', lang('Common.common_delete'), ['id' => 'delete', 'class' => 'btn btn-primary btn-sm']),
 ]) ?>
 <div id="table_holder"><?= $manage_table ?? '' ?></div>
+<?php if (($controller_name ?? '') === 'customers'): ?>
+<?php
+$totalReg   = (int) ($total ?? 0);
+$pageNum    = (int) ($page ?? 1);
+$perPage    = (int) ($perPage ?? 20);
+$totalPages = (int) ($totalPages ?? 1);
+$desde      = $totalReg > 0 ? (($pageNum - 1) * $perPage) + 1 : 0;
+$hasta      = min($pageNum * $perPage, $totalReg);
+?>
+<?php if ($totalReg > 0): ?>
+<p class="text-muted small mb-2">Mostrando <?= $desde ?>–<?= $hasta ?> de <?= $totalReg ?> pacientes</p>
+<?php endif; ?>
+<?php if ($totalPages > 1): ?>
+<nav class="mt-2 mb-3">
+    <ul class="pagination justify-content-center flex-wrap mb-0">
+        <?php if ($pageNum > 1): ?>
+        <li class="page-item"><a class="page-link" href="<?= site_url('customers?page=' . ($pageNum - 1)) ?>">&laquo; Anterior</a></li>
+        <?php endif; ?>
+        <?php
+        $start = max(1, $pageNum - 3);
+        $end   = min($totalPages, $pageNum + 3);
+        ?>
+        <?php if ($start > 1): ?>
+        <li class="page-item"><a class="page-link" href="<?= site_url('customers?page=1') ?>">1</a></li>
+        <?php if ($start > 2): ?><li class="page-item disabled"><span class="page-link">...</span></li><?php endif; ?>
+        <?php endif; ?>
+        <?php for ($i = $start; $i <= $end; $i++): ?>
+        <li class="page-item <?= ($i === $pageNum) ? 'active' : '' ?>">
+            <a class="page-link" href="<?= site_url('customers?page=' . $i) ?>"><?= $i ?></a>
+        </li>
+        <?php endfor; ?>
+        <?php if ($end < $totalPages): ?>
+        <?php if ($end < $totalPages - 1): ?><li class="page-item disabled"><span class="page-link">...</span></li><?php endif; ?>
+        <li class="page-item"><a class="page-link" href="<?= site_url('customers?page=' . $totalPages) ?>"><?= $totalPages ?></a></li>
+        <?php endif; ?>
+        <?php if ($pageNum < $totalPages): ?>
+        <li class="page-item"><a class="page-link" href="<?= site_url('customers?page=' . ($pageNum + 1)) ?>">Siguiente &raquo;</a></li>
+        <?php endif; ?>
+    </ul>
+</nav>
+<?php endif; ?>
+<?php endif; ?>
 <div id="feedback_bar"></div>
 <?= $this->endSection() ?>
 

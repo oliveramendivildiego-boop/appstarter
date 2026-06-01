@@ -22,8 +22,8 @@
 <?php endif; ?>
 
 <?php
-$cierreStart = $startDate ?? date('Y-m-d');
-$cierreEnd   = $endDate ?? date('Y-m-d');
+$cierreStart = $startDate ?? lab_today_ymd();
+$cierreEnd   = $endDate ?? lab_today_ymd();
 ?>
 <div class="row g-3 mb-2 align-items-end flex-wrap">
     <div class="col-auto">

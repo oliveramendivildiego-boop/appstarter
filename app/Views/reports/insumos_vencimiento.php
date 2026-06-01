@@ -44,8 +44,8 @@
             <tr class="<?= $rowClass ?>">
                 <td><?= esc($row['reactivo_nombre'] ?? '-') ?></td>
                 <td><?= esc($row['codigo_lote'] ?? '-') ?></td>
-                <td><?= !empty($row['fecha_ingreso']) ? date('d/m/Y', strtotime($row['fecha_ingreso'])) : '-' ?></td>
-                <td><?= !empty($row['fecha_vencimiento']) ? date('d/m/Y', strtotime($row['fecha_vencimiento'])) : '-' ?></td>
+                <td><?= !empty($row['fecha_ingreso']) ? lab_date((string) $row['fecha_ingreso']) : '-' ?></td>
+                <td><?= !empty($row['fecha_vencimiento']) ? lab_date((string) $row['fecha_vencimiento']) : '-' ?></td>
                 <td class="text-end"><?= (int)($row['cantidad'] ?? 0) ?></td>
                 <td><?= esc($row['unidad_base'] ?? $row['unidad'] ?? '-') ?></td>
                 <td>

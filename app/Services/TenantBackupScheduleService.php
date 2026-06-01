@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\AppConfigModel;
+use App\Services\RegisterService;
 use DateTimeImmutable;
 use DateTimeZone;
 
@@ -149,7 +150,7 @@ class TenantBackupScheduleService
     {
         $tz   = $this->resolveTimezone();
         $now  = new DateTimeImmutable('now', $tz);
-        $this->appConfig->saveValue(self::$keyLastRun, $now->format('Y-m-d H:i:s'));
+        $this->appConfig->saveValue(self::$keyLastRun, RegisterService::mysqlNowForReport());
     }
 
     public function isAutomationEnabled(): bool

@@ -122,7 +122,7 @@ $fmt = static function ($x, int $dec = 4) {
         <?= form_open('controlcalidad/savevalor') ?>
         <input type="hidden" name="control_id" value="<?= (int)($control['control_id'] ?? 0) ?>">
         <div class="row g-2">
-            <div class="col-md-2"><label class="form-label mb-0">Fecha</label><input type="text" id="fecha_control" name="fecha" class="form-control form-control-sm flatpickr-input" value="<?= date('Y-m-d') ?>" required></div>
+            <div class="col-md-2"><label class="form-label mb-0">Fecha</label><input type="text" id="fecha_control" name="fecha" class="form-control form-control-sm flatpickr-input" value="<?= esc(lab_today_ymd()) ?>" required></div>
             <div class="col-md-2"><label class="form-label mb-0">Valor</label><input type="number" step="any" name="valor" class="form-control form-control-sm" required></div>
             <div class="col-md-2"><label class="form-label mb-0">Esperado</label><input type="number" step="any" name="esperado" class="form-control form-control-sm" placeholder="Opcional"></div>
             <div class="col-md-3"><label class="form-label mb-0">Observaciones</label><input type="text" name="observaciones" class="form-control form-control-sm"></div>

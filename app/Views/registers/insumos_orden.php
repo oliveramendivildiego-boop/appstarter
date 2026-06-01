@@ -15,7 +15,7 @@
             <div class="col-md-6">
                 <p class="mb-1"><strong>No. Orden:</strong> <?= esc(registro_orden_display($register_info)) ?></p>
                 <p class="mb-1"><strong>Paciente:</strong> <?= esc(trim(($paciente->first_name ?? '') . ' ' . ($paciente->last_name_fa ?? '') . ' ' . ($paciente->last_name_mom ?? '')) ?: '-') ?></p>
-                <p class="mb-1"><strong>Fecha ingreso:</strong> <?= esc($register_info->ingreso ? date('d/m/Y H:i', strtotime($register_info->ingreso)) : '-') ?></p>
+                <p class="mb-1"><strong>Fecha ingreso:</strong> <?= esc($register_info->ingreso ? \App\Services\RegisterService::formatStoredReporteFechaCorta((string) $register_info->ingreso) : '-') ?></p>
             </div>
             <div class="col-md-6">
                 <?php if (!empty($doctor->report_sin_prefijo_medico ?? false)) : ?>
@@ -63,7 +63,7 @@
                     <td><?= esc($i['reactivo_nombre'] ?? '-') ?></td>
                     <td class="text-end"><?= number_format((float)($i['cantidad'] ?? 0), 4) ?></td>
                     <td><?= esc($i['unidad_base'] ?? $i['unidad'] ?? '-') ?></td>
-                    <td><?= esc($i['fecha'] ? date('d/m/Y H:i', strtotime($i['fecha'])) : '-') ?></td>
+                    <td><?= esc($i['fecha'] ? \App\Services\RegisterService::formatStoredReporteFechaCorta((string) $i['fecha']) : '-') ?></td>
                     <td><?= esc(trim($i['responsable'] ?? '') ?: '-') ?></td>
                     <td><?= esc($i['observaciones'] ?? '-') ?></td>
                 </tr>

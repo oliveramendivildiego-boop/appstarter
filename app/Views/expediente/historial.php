@@ -169,7 +169,7 @@ $showAntecedentes = $totalAntecedentesCount > 0;
                         <?php foreach ($registros as $r): ?>
                             <tr>
                                 <td><?= esc(isset($r->registro_id) ? $r->registro_id : '') ?></td>
-                                <td><?= esc($r->ingreso ? date('d/m/Y H:i', strtotime($r->ingreso)) : '-') ?></td>
+                                <td><?= esc($r->ingreso ? lab_dt_short($r->ingreso ?? null) : '-') ?></td>
                                 <td><?= esc(isset($r->doctor) ? $r->doctor : '-') ?></td>
                                 <td><?= esc(isset($r->total) ? $r->total : '-') ?></td>
                                 <td class="text-center">
@@ -217,7 +217,7 @@ $showAntecedentes = $totalAntecedentesCount > 0;
             <?php foreach ($antecedentes as $ant): ?>
                 <li class="list-group-item d-flex justify-content-between align-items-center">
                     <span>
-                        Orden #<?= esc($ant->registro_id) ?> - <?= esc(date('d/m/Y', strtotime(isset($ant->ingreso) ? $ant->ingreso : 'now'))) ?>
+                        Orden #<?= esc($ant->registro_id) ?> - <?= esc(lab_dt_short(isset($ant->ingreso) ? (string) $ant->ingreso : null)) ?>
                     </span>
                     <span>
                         <a href="<?= $reportUrlBase . (isset($ant->registro_id) ? $ant->registro_id : '') ?>" class="btn btn-sm btn-outline-primary" target="_blank">Ver</a>

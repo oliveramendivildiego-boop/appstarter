@@ -77,7 +77,7 @@ $currencyIsRight = strtolower(trim($currencySide)) === 'right';
                                             <?= esc($currencySym) ?> <strong><?= number_format($comm->commission_amount, 2) ?></strong>
                                         <?php endif; ?>
                                     </td>
-                                    <td><?= date('d/m/Y H:i', strtotime($comm->created_date)) ?></td>
+                                    <td><?= lab_dt_short($comm->created_date ?? null) ?></td>
                                 </tr>
                                 <?php endforeach; ?>
                             </tbody>

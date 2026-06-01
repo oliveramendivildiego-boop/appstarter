@@ -55,7 +55,7 @@ class EquipoModel extends Model
         $save = [
             'equipo_id' => (int) ($data['equipo_id'] ?? 0),
             'tipo' => (int) ($data['tipo'] ?? 1),
-            'fecha' => $data['fecha'] ?? date('Y-m-d'),
+            'fecha' => $data['fecha'] ?? \App\Services\RegisterService::todayForReport(),
             'descripcion' => trim($data['descripcion'] ?? '') ?: null,
             'realizado_por' => (int) ($data['realizado_por'] ?? 0) ?: null,
             'deleted' => 0,

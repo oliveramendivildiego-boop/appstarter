@@ -79,14 +79,14 @@ $currencyIsRight = strtolower(trim($currencySide)) === 'right';
                                 <td><strong><?= $currencyIsRight
                                     ? (number_format($comm->commission_amount, 2) . ' ' . esc($currencySym))
                                     : (esc($currencySym) . ' ' . number_format($comm->commission_amount, 2)) ?></strong></td>
-                                <td><?= date('d/m/Y H:i', strtotime($comm->created_date)) ?></td>
+                                <td><?= lab_dt_short($comm->created_date ?? null) ?></td>
                                 <td>
                                     <?php if ($comm->status == 0): ?>
                                         <span class="badge bg-warning">Pendiente</span>
                                     <?php else: ?>
                                         <span class="badge bg-success">Pagada</span>
                                         <?php if ($comm->paid_date): ?>
-                                            <br><small class="text-muted"><?= date('d/m/Y', strtotime($comm->paid_date)) ?></small>
+                                            <br><small class="text-muted"><?= lab_date($comm->paid_date ?? null) ?></small>
                                         <?php endif; ?>
                                     <?php endif; ?>
                                 </td>

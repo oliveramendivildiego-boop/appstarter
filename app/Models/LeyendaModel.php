@@ -38,7 +38,7 @@ class LeyendaModel extends Model
             'titulo'     => trim((string)($data['titulo'] ?? '')),
             'mensaje'    => (string)($data['mensaje'] ?? ''),
             'activo'     => (int)($data['activo'] ?? 1) ? 1 : 0,
-            'updated_at' => date('Y-m-d H:i:s'),
+            'updated_at' => \App\Services\RegisterService::mysqlNowForReport(),
             'deleted'    => 0,
         ];
         if ($id && $id > 0) {
@@ -46,7 +46,7 @@ class LeyendaModel extends Model
                 ->where('leyenda_id', $id)
                 ->update($save);
         }
-        $save['created_at'] = date('Y-m-d H:i:s');
+        $save['created_at'] = \App\Services\RegisterService::mysqlNowForReport();
         return $this->db->table($this->table)->insert($save) !== false;
     }
 
@@ -57,7 +57,7 @@ class LeyendaModel extends Model
             ->where('leyenda_id', $id)
             ->update([
                 'deleted' => 1,
-                'updated_at' => date('Y-m-d H:i:s'),
+                'updated_at' => \App\Services\RegisterService::mysqlNowForReport(),
             ]) !== false;
     }
 }
