@@ -272,7 +272,7 @@ foreach ($pruebas_info ?? [] as $prueba):
         $cidToNombre = array_flip($nombreToCid);
         foreach ($valores as $v):
             if (! empty($v['es_separador'])) {
-                echo '<div class="col-12 mb-2"><div class="p-2 bg-light border rounded"><strong class="text-uppercase text-muted small">' . esc($v['nombre'] ?? '') . '</strong></div></div>';
+                echo '<div class="col-12"><div class="register-form-seccion-separador">' . esc($v['nombre'] ?? '') . '</div></div>';
                 continue;
             }
             $vMin = trim($v['valor_min'] ?? '');

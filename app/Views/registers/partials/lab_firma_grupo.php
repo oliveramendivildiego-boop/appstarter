@@ -43,11 +43,14 @@ if ($curV === '' || $curA === '') {
 }
 ?>
 <div class="col-12 mb-3 lab-registro-firmas-grupo" data-grp-key="<?= esc($grp_key, 'attr') ?>">
-    <div class="p-3 border rounded bg-light">
-        <div class="fw-semibold small text-uppercase text-muted mb-2">Validación del laboratorio — <?= esc($padre_label) ?></div>
+    <div class="register-form-validacion-panel">
+        <div class="register-form-validacion-titulo">
+            <i class="fa-solid fa-user-check me-2" aria-hidden="true"></i>Validación del laboratorio — <?= esc($padre_label) ?>
+        </div>
+        <div class="register-form-validacion-cuerpo">
         <div class="row g-2 align-items-end">
             <div class="col-md-6">
-                <label class="form-label small text-muted mb-0">Verificado por:</label>
+                <label class="form-label small mb-0">Verificado por:</label>
                 <select class="form-select form-select-sm lab-grp-val-validator">
                     <option value="">—</option>
                     <?php foreach ($lv_list as $lv): ?>
@@ -57,7 +60,7 @@ if ($curV === '' || $curA === '') {
                 </select>
             </div>
             <div class="col-md-6">
-                <label class="form-label small text-muted mb-0">ATENTAMENTE</label>
+                <label class="form-label small mb-0">ATENTAMENTE</label>
                 <select class="form-select form-select-sm lab-grp-val-approver">
                     <option value="">—</option>
                     <?php foreach ($la_list as $la): ?>
@@ -66,6 +69,7 @@ if ($curV === '' || $curA === '') {
                     <?php endforeach; ?>
                 </select>
             </div>
+        </div>
         </div>
     </div>
 </div>
