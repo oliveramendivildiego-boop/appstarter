@@ -224,6 +224,10 @@ class Registers extends SecureArea
             $total      = $this->registerModel->countAll($estado, $filterFrom, $filterTo);
         }
 
+        foreach ($registros as $i => $row) {
+            $registros[$i] = $this->repairPagoTotalsIfZero($row);
+        }
+
         $whatsappOk  = (new WhatsAppService())->isConfigured();
         $manageTable = $this->buildRegistrosTable($registros, $whatsappOk);
         $totalPages  = $total > 0 ? (int) ceil($total / $perPage) : 1;
@@ -1075,13 +1079,23 @@ class Registers extends SecureArea
         }
         $discountInfo = $this->resolveInstitutionDiscountByPersonId((int) ($registro['person_id'] ?? 0));
         $pct = (float) ($discountInfo['descuento'] ?? 0.0);
+        $totalRecoRaw = trim((string) ($pagos['total_reco'] ?? ''));
         $totalReco = $totalBruto > 0
             ? $totalBruto
-            : $this->parseMoneyInput($pagos['total_reco'] ?? 0);
+            : ($totalRecoRaw !== '' ? $this->parseMoneyInput($totalRecoRaw) : 0.0);
+        if ($totalReco <= 0 && $totalBruto > 0) {
+            $totalReco = $totalBruto;
+        }
         $totalDefault = round($totalReco * (1 - ($pct / 100)), 2);
-        $total = array_key_exists('total', $pagos)
-            ? $this->parseMoneyInput($pagos['total'])
-            : $totalDefault;
+        $totalRaw = trim((string) ($pagos['total'] ?? ''));
+        if ($totalRaw === '') {
+            $total = $totalDefault;
+        } else {
+            $total = $this->parseMoneyInput($totalRaw);
+            if ($total <= 0 && $totalDefault > 0) {
+                $total = $totalDefault;
+            }
+        }
         if ($total < 0) {
             $total = 0.0;
         }
@@ -1109,6 +1123,49 @@ class Registers extends SecureArea
             'comentarios' => $pagos['comentarios'] ?? null,
             'descuento_institucion' => $discountInfo,
         ];
+    }
+
+    /**
+     * Corrige en BD totales en cero cuando la orden sí tiene pruebas con costo (p. ej. pago pendiente mal guardado).
+     */
+    private function repairPagoTotalsIfZero(object $registroRow): object
+    {
+        $rid = (int) ($registroRow->registro_id ?? 0);
+        if ($rid < 1) {
+            return $registroRow;
+        }
+        $totalActual = (float) ($registroRow->total ?? 0);
+        if ($totalActual > 0.02 || trim((string) ($registroRow->pruebas ?? '')) === '') {
+            return $registroRow;
+        }
+
+        $pagos = [
+            'total'       => '',
+            'total_reco'  => '',
+            'monto_pagar' => (string) ($registroRow->monto_pagar ?? ''),
+            'tipopago'    => (string) ($registroRow->tipopago ?? ''),
+        ];
+        $normalized = $this->buildNormalizedPagoData([
+            'pruebas'   => $registroRow->pruebas ?? '',
+            'person_id' => $registroRow->person_id ?? 0,
+        ], $pagos);
+        $nuevoTotal = (float) ($normalized['total'] ?? 0);
+        if ($nuevoTotal <= 0.02) {
+            return $registroRow;
+        }
+
+        $this->registerModel->updatePagoByRegistroId($rid, [
+            'total_reco'  => $normalized['total_reco'],
+            'total'       => $normalized['total'],
+            'monto_pagar' => $normalized['monto_pagar'],
+            'tipopago'    => $normalized['tipopago'],
+            'saldo'       => $normalized['saldo'],
+        ]);
+        $registroRow->total       = $normalized['total'];
+        $registroRow->saldo       = $normalized['saldo'];
+        $registroRow->monto_pagar = $normalized['monto_pagar'];
+
+        return $registroRow;
     }
 
     private function syncDoctorCommissionForRegistro(int $registroId, int $doctorId, float $totalAmount): void

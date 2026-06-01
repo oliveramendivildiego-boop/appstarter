@@ -32,6 +32,12 @@ document.addEventListener('DOMContentLoaded', function() {
         }
         var ast = document.querySelector('.monto-req-ast');
         if (ast) ast.style.display = esPendiente ? 'none' : '';
+        if (esPendiente && total && saldo) {
+            var t = parseFloat(total.value || 0);
+            if (!isNaN(t) && t > 0) {
+                saldo.value = t.toFixed(2);
+            }
+        }
         calcularSaldo();
     }
     if (total) {

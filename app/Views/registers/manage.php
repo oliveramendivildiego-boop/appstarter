@@ -668,6 +668,9 @@ document.addEventListener('DOMContentLoaded', function() {
             if (!pagosData.total || isNaN(parseFloat(pagosData.total))) {
                 var tot = document.getElementById('total');
                 mostrarError(tot, 'Total es obligatorio.'); primero = primero || tot;
+            } else if (parseFloat(pagosData.total) <= 0 && parseFloat(pagosData.total_reco) > 0) {
+                var totZero = document.getElementById('total');
+                mostrarError(totZero, 'El total debe ser mayor a 0 cuando hay pruebas con costo.'); primero = primero || totZero;
             }
             if (!esPendiente) {
                 if (!pagosData.monto_pagar || isNaN(parseFloat(pagosData.monto_pagar))) {
@@ -919,7 +922,6 @@ document.addEventListener('DOMContentLoaded', function() {
             if (comentariosEl) comentariosEl.value = String(p.comentarios ?? '');
             if (totalEl) totalEl.value = String(p.total ?? '');
             if (saldoEl) saldoEl.value = String(p.saldo ?? '');
-            if (tipopagoEl) tipopagoEl.dispatchEvent(new Event('change'));
 
             // Pruebas
             var pruebasStr = String(editInfo.pruebas || '').trim();
@@ -956,6 +958,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 totalRecoEl.value = String(p.total_reco ?? totalRecoEl.value);
             }
             renderPruebasLista();
+            if (tipopagoEl) tipopagoEl.dispatchEvent(new Event('change'));
             if (typeof window.updateInstitutionDiscountInfo === 'function') {
                 window.updateInstitutionDiscountInfo();
             }
