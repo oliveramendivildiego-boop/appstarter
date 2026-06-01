@@ -14,6 +14,11 @@
         .section-title { font-weight: 700; text-transform: uppercase; border-bottom: 1px solid #ddd; padding-bottom: 4px; margin-bottom: 6px; }
         ul { margin: 0; padding-left: 18px; }
         li { margin: 2px 0; }
+        .orden-pruebas-items { list-style: none; padding: 0; margin: 0; text-align: left; }
+        .orden-prueba-item { display: flex; align-items: baseline; margin: 0 0 2px; padding: 0; text-align: left; line-height: 1.35; }
+        .orden-prueba-num { flex: 0 0 auto; margin-right: 0.2em; }
+        .orden-prueba-nombre { flex: 1 1 auto; min-width: 0; }
+        .orden-prueba-costo { flex: 0 0 auto; margin-left: auto; white-space: nowrap; text-align: right; }
         .orden-header { width: 100%; margin-bottom: 14px; border-collapse: collapse; }
         .orden-header td { vertical-align: top; padding: 0; }
         .orden-header .lab-info { width: 38%; font-size: 11px; line-height: 1.4; }

@@ -33,11 +33,41 @@ if ($doctorOrdenDisplay === '') {
      * No usar visibility:hidden en body *: en Chrome/Edge los SVG del código de barras
      * dejan de pintarse al imprimir. Se oculta el chrome vía dom_print.css + d-print-none.
      */
-    body:not(.print-barcode-labels) #print-area {
-        position: absolute;
-        left: 0;
-        top: 0;
-        width: 100%;
+    body:not(.print-barcode-labels) #print-area,
+    body:not(.print-barcode-labels) #print-area.card {
+        position: static !important;
+        left: auto !important;
+        top: auto !important;
+        width: 100% !important;
+        overflow: visible !important;
+        border: none !important;
+        border-radius: 0 !important;
+        box-shadow: none !important;
+        outline: none !important;
+        background: transparent !important;
+        --ui-card-shadow: none;
+        --ui-card-bt: none;
+        --ui-card-br: none;
+        --ui-card-bb: none;
+        --ui-card-bl: none;
+    }
+    body:not(.print-barcode-labels) #print-area .card-body {
+        overflow: visible !important;
+        border: none !important;
+        box-shadow: none !important;
+        background: transparent !important;
+        padding-left: 0 !important;
+        padding-right: 0 !important;
+    }
+    body:not(.print-barcode-labels) #print-area .bg-light,
+    body:not(.print-barcode-labels) #print-area .border,
+    body:not(.print-barcode-labels) #print-area .rounded {
+        background: transparent !important;
+        border: none !important;
+        box-shadow: none !important;
+    }
+    body:not(.print-barcode-labels) #print-area .border-bottom {
+        border-bottom-color: #ccc !important;
     }
 
     body:not(.print-barcode-labels) #print-area .print-meta-row {
@@ -113,19 +143,32 @@ if ($doctorOrdenDisplay === '') {
         margin-right: auto !important;
     }
     body.print-barcode-labels .orden-barcode-patient-name {
-        font-size: var(--barcode-label-name-size, 1.25rem) !important;
-        line-height: 1.25 !important;
-        margin-bottom: 0.2rem !important;
+        font-size: 0.8rem !important;
+        line-height: 0 !important;
+        margin-bottom: 0.15rem !important;
     }
     body:not(.print-barcode-labels) #print-area .orden-barcode-patient-name {
-        font-size: 1.25rem !important;
-        line-height: 1.25 !important;
-        margin-bottom: 0.25rem !important;
+        font-size: 0.8rem !important;
+        line-height: 0 !important;
+        margin-bottom: 0.15rem !important;
+    }
+    body:not(.print-barcode-labels) .orden-barcode-section {
+        display: block !important;
+        overflow: visible !important;
+        page-break-inside: avoid;
+        break-inside: avoid;
+        text-align: center !important;
     }
     body:not(.print-barcode-labels) #print-area .orden-barcode-box {
-        display: block !important;
+        display: inline-block !important;
         margin-left: auto !important;
         margin-right: auto !important;
+        overflow: visible !important;
+    }
+    body:not(.print-barcode-labels) #print-area #orden-barcode {
+        overflow: visible !important;
+        visibility: visible !important;
+        opacity: 1 !important;
     }
 
     /* Config: horizontal = 3 etiquetas por fila al imprimir solo códigos */
@@ -230,9 +273,53 @@ if ($doctorOrdenDisplay === '') {
 
 .orden-barcode-patient-name {
     font-weight: 600;
-    font-size: 1.1rem;
-    line-height: 1.2;
+    font-size: 0.8rem;
+    line-height: 0;
     margin-bottom: 0.15rem;
+}
+
+.orden-pruebas-items {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    text-align: left;
+}
+.orden-prueba-item {
+    display: flex;
+    align-items: baseline;
+    gap: 0.25rem;
+    margin: 0 0 0.2rem;
+    padding: 0;
+    line-height: 1.35;
+    text-align: left;
+}
+.orden-prueba-num {
+    flex: 0 0 auto;
+    white-space: nowrap;
+}
+.orden-prueba-nombre {
+    flex: 1 1 auto;
+    min-width: 0;
+}
+.orden-prueba-costo {
+    flex: 0 0 auto;
+    margin-left: auto;
+    padding-left: 0.5rem;
+    white-space: nowrap;
+    text-align: right;
+}
+.orden-barcode-section {
+    text-align: center;
+}
+.orden-barcode-section .orden-barcode-box {
+    margin-left: auto;
+    margin-right: auto;
+}
+@media print {
+    body:not(.print-barcode-labels) .orden-pruebas-items,
+    body:not(.print-barcode-labels) .orden-prueba-item {
+        text-align: left !important;
+    }
 }
 </style>
 
@@ -316,7 +403,7 @@ if ($doctorOrdenDisplay === '') {
 
         <?php if (($show_order_barcode ?? true)): ?>
             <hr class="my-3" />
-            <div class="text-center mt-2">
+            <div class="orden-barcode-section mt-2">
                 <?php if ($nombrePacienteOrden !== ''): ?>
                     <div class="orden-barcode-patient-name"><?= esc($nombrePacienteOrden) ?></div>
                 <?php endif; ?>

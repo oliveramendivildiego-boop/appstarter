@@ -27,40 +27,22 @@ $numPrueba = 0;
     <?php foreach (($grupos_pruebas ?? []) as $padre => $items): ?>
         <div class="<?= $forPdf ? 'section' : 'mb-3' ?>">
             <div class="<?= $forPdf ? 'section-title' : 'fw-bold text-uppercase border-bottom pb-1 mb-2' ?>"><?= esc($padre) ?></div>
-            <?php if ($showCosts): ?>
-                <table class="<?= $forPdf ? '' : 'table table-sm table-borderless mb-0' ?>" style="<?= $forPdf ? 'width:100%;border-collapse:collapse;' : '' ?>">
-                    <?php if (!$forPdf): ?>
-                    <thead>
-                        <tr class="small text-muted">
-                            <th style="width:2.5rem;">#</th>
-                            <th>Prueba</th>
-                            <th class="text-end" style="width:7rem;">Costo</th>
-                        </tr>
-                    </thead>
-                    <?php endif; ?>
-                    <tbody>
-                        <?php foreach (($items ?? []) as $it): ?>
-                            <?php
-                            $numPrueba++;
-                            $pid = (int) ($it['prianacategoria_id'] ?? 0);
-                            $costo = (float) ($costosMap[$pid] ?? 0);
-                            ?>
-                            <tr>
-                                <td class="<?= $forPdf ? '' : 'text-muted' ?>" style="<?= $forPdf ? 'width:1.5rem;vertical-align:top;' : '' ?>"><?= $numPrueba ?>.</td>
-                                <td style="<?= $forPdf ? 'padding:2px 4px;' : '' ?>"><?= esc($it['hijo'] ?? '') ?></td>
-                                <td class="text-end" style="<?= $forPdf ? 'width:5rem;text-align:right;white-space:nowrap;' : '' ?>"><?= format_currency($costo) ?></td>
-                            </tr>
-                        <?php endforeach; ?>
-                    </tbody>
-                </table>
-            <?php else: ?>
-                <ol class="mb-0" start="<?= (int) $numPrueba + 1 ?>">
-                    <?php foreach (($items ?? []) as $it): ?>
-                        <?php $numPrueba++; ?>
-                        <li><?= esc($it['hijo'] ?? '') ?></li>
-                    <?php endforeach; ?>
-                </ol>
-            <?php endif; ?>
+            <ul class="orden-pruebas-items<?= $forPdf ? '' : ' mb-0' ?>"<?= $forPdf ? ' style="list-style:none;padding:0;margin:0;text-align:left;"' : '' ?>>
+                <?php foreach (($items ?? []) as $it): ?>
+                    <?php
+                    $numPrueba++;
+                    $pid = (int) ($it['prianacategoria_id'] ?? 0);
+                    $costo = $showCosts ? (float) ($costosMap[$pid] ?? 0) : 0.0;
+                    ?>
+                    <li class="orden-prueba-item"<?= $forPdf ? ' style="display:flex;align-items:baseline;margin:0 0 2px;padding:0;text-align:left;"' : '' ?>>
+                        <span class="orden-prueba-num<?= !$forPdf && !$showCosts ? ' text-muted' : '' ?>"><?= $numPrueba ?>.</span>
+                        <span class="orden-prueba-nombre"><?= esc($it['hijo'] ?? '') ?></span>
+                        <?php if ($showCosts): ?>
+                            <span class="orden-prueba-costo"<?= $forPdf ? ' style="margin-left:auto;text-align:right;white-space:nowrap;"' : '' ?>><?= format_currency($costo) ?></span>
+                        <?php endif; ?>
+                    </li>
+                <?php endforeach; ?>
+            </ul>
         </div>
     <?php endforeach; ?>
 
@@ -81,74 +63,41 @@ $numPrueba = 0;
         }
         $abonosList = is_array($abonos ?? null) ? $abonos : [];
         ?>
-        <div class="<?= $forPdf ? 'section' : 'mt-4' ?>">
-            <div class="<?= $forPdf ? 'section-title' : 'fw-bold border-bottom pb-1 mb-2' ?>">Costos y pagos</div>
-            <table class="<?= $forPdf ? '' : 'table table-sm w-auto mb-3' ?>" style="<?= $forPdf ? 'width:100%;max-width:20rem;' : '' ?>">
-                <tbody>
-                    <?php if ($totalReco > 0 && abs($totalReco - $totalOrden) > 0.02): ?>
-                        <tr>
-                            <td>Total recomendado (catálogo)</td>
-                            <td class="text-end"><?= format_currency($totalReco) ?></td>
-                        </tr>
-                    <?php endif; ?>
-                    <tr>
-                        <td><strong>Total de la orden</strong></td>
-                        <td class="text-end"><strong><?= format_currency($totalOrden) ?></strong></td>
-                    </tr>
-                    <tr>
-                        <td>Monto cancelado</td>
-                        <td class="text-end"><?= format_currency($montoPagado) ?></td>
-                    </tr>
-                    <tr>
-                        <td>Saldo pendiente</td>
-                        <td class="text-end <?= $saldo > 0.02 ? ($forPdf ? '' : 'text-danger fw-semibold') : '' ?>"><?= format_currency($saldo) ?></td>
-                    </tr>
-                    <tr>
-                        <td>Forma de pago</td>
-                        <td class="text-end"><?= esc($tipo_pago_nombre ?? '-') ?></td>
-                    </tr>
-                </tbody>
-            </table>
+        <?php
+        $saldoClass = $saldo > 0.02 && !$forPdf ? 'text-danger fw-semibold' : '';
+        $partesResumen = [];
+        if ($totalReco > 0 && abs($totalReco - $totalOrden) > 0.02) {
+            $partesResumen[] = '<span class="text-muted">Reco.</span> ' . format_currency($totalReco);
+        }
+        $partesResumen[] = '<strong>Total</strong> ' . format_currency($totalOrden);
+        $partesResumen[] = '<span class="text-muted">Cancelado</span> ' . format_currency($montoPagado);
+        $partesResumen[] = '<span class="text-muted">Saldo</span> <span class="' . esc($saldoClass, 'attr') . '">' . format_currency($saldo) . '</span>';
+        $partesResumen[] = '<span class="text-muted">Pago</span> ' . esc($tipo_pago_nombre ?? '-');
 
-            <?php if ($abonosList !== []): ?>
-                <div class="<?= $forPdf ? '' : 'small' ?>">
-                    <strong>Detalle de pagos</strong>
-                    <table class="<?= $forPdf ? '' : 'table table-sm table-striped mt-1 mb-0' ?>" style="<?= $forPdf ? 'width:100%;margin-top:6px;border-collapse:collapse;' : '' ?>">
-                        <thead>
-                            <tr>
-                                <th>Fecha</th>
-                                <th>Tipo</th>
-                                <th class="text-end">Monto</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <?php foreach ($abonosList as $ab): ?>
-                                <?php
-                                $fechaAb = $ab['fecha_abono'] ?? '';
-                                if ($fechaAb !== '' && !$forPdf) {
-                                    try {
-                                        $fechaAb = (new \DateTime($fechaAb))->format('d/m/Y H:i');
-                                    } catch (\Throwable $e) {
-                                        // mantener valor original
-                                    }
-                                } elseif ($fechaAb !== '' && $forPdf) {
-                                    try {
-                                        $fechaAb = (new \DateTime($fechaAb))->format('d/m/Y');
-                                    } catch (\Throwable $e) {
-                                        // mantener valor original
-                                    }
-                                }
-                                ?>
-                                <tr>
-                                    <td><?= esc($fechaAb !== '' ? $fechaAb : '-') ?></td>
-                                    <td><?= esc($ab['tipo_nombre'] ?? '-') ?></td>
-                                    <td class="text-end"><?= format_currency((float) ($ab['monto'] ?? 0)) ?></td>
-                                </tr>
-                            <?php endforeach; ?>
-                        </tbody>
-                    </table>
-                </div>
-            <?php endif; ?>
+        $partesAbonos = [];
+        foreach ($abonosList as $ab) {
+            $fechaAb = $ab['fecha_abono'] ?? '';
+            if ($fechaAb !== '') {
+                try {
+                    $fechaAb = (new \DateTime($fechaAb))->format($forPdf ? 'd/m/Y' : 'd/m/Y H:i');
+                } catch (\Throwable $e) {
+                    // mantener valor original
+                }
+            }
+            $partesAbonos[] = esc($fechaAb !== '' ? $fechaAb : '-')
+                . ' ' . esc($ab['tipo_nombre'] ?? '-')
+                . ' ' . format_currency((float) ($ab['monto'] ?? 0));
+        }
+        ?>
+        <div class="<?= $forPdf ? 'section' : 'mt-3' ?>" style="<?= $forPdf ? 'font-size:11px;line-height:1.4;' : '' ?>">
+            <div class="<?= $forPdf ? '' : 'small' ?>" style="<?= $forPdf ? '' : 'line-height:1.45;' ?>">
+                <strong>Costos y pagos:</strong>
+                <?= implode(' <span class="text-muted">·</span> ', $partesResumen) ?>
+                <?php if ($partesAbonos !== []): ?>
+                    <span class="text-muted"> · </span>
+                    <span class="text-muted">Pagos:</span> <?= implode('<span class="text-muted">; </span>', $partesAbonos) ?>
+                <?php endif; ?>
+            </div>
         </div>
     <?php endif; ?>
 <?php endif; ?>
