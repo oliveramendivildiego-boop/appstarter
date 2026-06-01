@@ -1,6 +1,8 @@
 <?php
 /**
  * Prueba compuesta: bloques consecutivos. Orden: título separador → cabecera de tabla → filas.
+ * Si hay varias pruebas (prianacategoria) bajo el mismo área (padre), cada una lleva su propio
+ * título, tipo de muestra, método y tablas de resultados.
  *
  * @var string $padre
  * @var list<object|array<string,mixed>> $items
@@ -11,60 +13,98 @@
  */
 $variant = $variant ?? 'web';
 $usePdfChrome = ($variant === 'pdf' || $variant === 'screen_pdf');
-
-$hijo = '';
-$priaIdTitulo = 0;
-if (! empty($items[0])) {
-    $first = $items[0];
-    $firstObj = is_array($first) ? (object) $first : $first;
-    $hijo = $firstObj->hijo ?? '';
-}
-foreach ($items as $rawPria) {
-    $op = is_array($rawPria) ? (object) $rawPria : $rawPria;
-    $pid = (int) ($op->prianacategoria_id ?? 0);
-    if ($pid > 0) {
-        $priaIdTitulo = $pid;
-        break;
-    }
-}
 $nombresTipoPorPria = $report_pria_tipo_muestra_nombre ?? [];
-$tipoMuestraLinea = trim((string) ($nombresTipoPorPria[$priaIdTitulo] ?? ''));
-$mostrarTipoMuestra = $tipoMuestraLinea !== '';
 $nombresMetodoPorPria = $report_pria_metodo_nombre ?? [];
-$metodoLinea = trim((string) ($nombresMetodoPorPria[$priaIdTitulo] ?? ''));
-$mostrarMetodo = $metodoLinea !== '';
+$refsMatrixAll = $report_pria_refs_consolidada ?? [];
 
-$segments = [];
-$cur = ['title' => null, 'items' => []];
+$subgruposPorPria = [];
+$ordenPriaKeys = [];
 foreach ($items as $raw) {
     $it = is_array($raw) ? (object) $raw : $raw;
-    if ((int) ($it->es_separador ?? 0) === 1) {
-        $segments[] = $cur;
-        $cur = ['title' => $it, 'items' => []];
-
-        continue;
+    $pid = (int) ($it->prianacategoria_id ?? 0);
+    if (! isset($subgruposPorPria[$pid])) {
+        $subgruposPorPria[$pid] = [];
+        $ordenPriaKeys[] = $pid;
     }
-    $cur['items'][] = $it;
+    $subgruposPorPria[$pid][] = $raw;
 }
-$segments[] = $cur;
-$segments = array_values(array_filter($segments, static function ($s) {
-    return $s['title'] !== null || $s['items'] !== [];
-}));
 
-$groupTieneAlgunResultado = false;
-foreach ($segments as $segTmp) {
-    foreach ($segTmp['items'] as $rawIt) {
-        $itTmp = is_array($rawIt) ? (object) $rawIt : $rawIt;
-        $vTmp = trim((string) ($itTmp->regvalues ?? ''));
-        if (($vTmp !== '' && $vTmp !== '-') || !empty($itTmp->show_reference)) {
-            $groupTieneAlgunResultado = true;
-            break 2;
+foreach ($ordenPriaKeys as $subIdx => $priaKey) :
+    $subItems = $subgruposPorPria[$priaKey];
+
+    $hijo = '';
+    foreach ($subItems as $rawHijo) {
+        $itHijo = is_array($rawHijo) ? (object) $rawHijo : $rawHijo;
+        if ((int) ($itHijo->es_separador ?? 0) === 1) {
+            continue;
+        }
+        $h = trim((string) ($itHijo->hijo ?? ''));
+        if ($h !== '') {
+            $hijo = $h;
+            break;
         }
     }
-}
+    if ($hijo === '' && ! empty($subItems[0])) {
+        $first = $subItems[0];
+        $firstObj = is_array($first) ? (object) $first : $first;
+        $hijo = trim((string) ($firstObj->hijo ?? ''));
+    }
+
+    $priaIdTitulo = $priaKey > 0 ? $priaKey : 0;
+    if ($priaIdTitulo < 1) {
+        foreach ($subItems as $rawPria) {
+            $op = is_array($rawPria) ? (object) $rawPria : $rawPria;
+            $pid = (int) ($op->prianacategoria_id ?? 0);
+            if ($pid > 0) {
+                $priaIdTitulo = $pid;
+                break;
+            }
+        }
+    }
+
+    $tipoMuestraLinea = trim((string) ($nombresTipoPorPria[$priaIdTitulo] ?? ''));
+    $mostrarTipoMuestra = $tipoMuestraLinea !== '';
+    $metodoLinea = trim((string) ($nombresMetodoPorPria[$priaIdTitulo] ?? ''));
+    $mostrarMetodo = $metodoLinea !== '';
+
+    $segments = [];
+    $cur = ['title' => null, 'items' => []];
+    foreach ($subItems as $raw) {
+        $it = is_array($raw) ? (object) $raw : $raw;
+        if ((int) ($it->es_separador ?? 0) === 1) {
+            $segments[] = $cur;
+            $cur = ['title' => $it, 'items' => []];
+
+            continue;
+        }
+        $cur['items'][] = $it;
+    }
+    $segments[] = $cur;
+    $segments = array_values(array_filter($segments, static function ($s) {
+        return $s['title'] !== null || $s['items'] !== [];
+    }));
+
+    $groupTieneAlgunResultado = false;
+    foreach ($segments as $segTmp) {
+        foreach ($segTmp['items'] as $rawIt) {
+            $itTmp = is_array($rawIt) ? (object) $rawIt : $rawIt;
+            $vTmp = trim((string) ($itTmp->regvalues ?? ''));
+            if (($vTmp !== '' && $vTmp !== '-') || ! empty($itTmp->show_reference)) {
+                $groupTieneAlgunResultado = true;
+                break 2;
+            }
+        }
+    }
+
+    if (! $groupTieneAlgunResultado) {
+        continue;
+    }
+
+    $subgrupoWrapClass = $subIdx > 0 ? ' report-pdf-subgrupo-prueba' : '';
+    $webTitleMt = $subIdx > 0 ? 'mt-5' : 'mt-4';
 ?>
-<?php if ($groupTieneAlgunResultado): ?>
 <?php if ($usePdfChrome): ?>
+<div class="report-pdf-subgrupo-block<?= esc($subgrupoWrapClass, 'attr') ?>"<?= $subIdx > 0 ? ' style="margin-top:18px;"' : '' ?>>
 <div class="report-pdf-grupo-cabecera">
 <div class="group-title"><?= esc($padre) ?> - <?= esc($hijo) ?></div>
 <?php if ($mostrarTipoMuestra): ?>
@@ -75,7 +115,7 @@ foreach ($segments as $segTmp) {
 <?php endif; ?>
 </div>
 <?php else: ?>
-<h4 class="mt-4 mb-1"><?= esc($padre) ?> - <?= esc($hijo) ?></h4>
+<h4 class="<?= esc($webTitleMt, 'attr') ?> mb-1"><?= esc($padre) ?> - <?= esc($hijo) ?></h4>
 <?php if ($mostrarTipoMuestra || $mostrarMetodo): ?>
 <div class="small text-muted mb-3">
     <?php if ($mostrarTipoMuestra): ?>
@@ -95,7 +135,7 @@ foreach ($segments as $segTmp) {
     foreach ($segItems as $it) {
         $it = is_array($it) ? (object) $it : $it;
         $valTmp = trim((string) ($it->regvalues ?? ''));
-        $mustShowRef = !empty($it->show_reference);
+        $mustShowRef = ! empty($it->show_reference);
         if ((($valTmp !== '' && $valTmp !== '-') || $mustShowRef) && registro_tiene_rango_referencial($it->valor_min ?? '', $it->valor_max ?? '')) {
             $conRefEnSeg = true;
             break;
@@ -108,7 +148,7 @@ foreach ($segments as $segTmp) {
     foreach ($segItems as $itChk) {
         $itChk = is_array($itChk) ? (object) $itChk : $itChk;
         $vChk = trim((string) ($itChk->regvalues ?? ''));
-        if (($vChk !== '' && $vChk !== '-') || !empty($itChk->show_reference)) {
+        if (($vChk !== '' && $vChk !== '-') || ! empty($itChk->show_reference)) {
             $tieneConResultado = true;
             break;
         }
@@ -138,8 +178,8 @@ foreach ($segments as $segTmp) {
                     <?php
                     $item = is_array($item) ? (object) $item : $item;
                     $valTmp = trim((string) ($item->regvalues ?? ''));
-                    $mustShowRef = !empty($item->show_reference);
-                    if (($valTmp === '' || $valTmp === '-') && !$mustShowRef) {
+                    $mustShowRef = ! empty($item->show_reference);
+                    if (($valTmp === '' || $valTmp === '-') && ! $mustShowRef) {
                         continue;
                     }
                     $aid = $item->secanacategoria_id ?? uniqid();
@@ -189,8 +229,7 @@ foreach ($segments as $segTmp) {
     <?php endif; ?>
 <?php endforeach; ?>
 <?php
-$refsMatrixAll = $report_pria_refs_consolidada ?? [];
-if ($priaIdTitulo > 0 && ! empty($refsMatrixAll[$priaIdTitulo]) && $groupTieneAlgunResultado) :
+if ($priaIdTitulo > 0 && ! empty($refsMatrixAll[$priaIdTitulo])) :
     $matrixRows = $refsMatrixAll[$priaIdTitulo];
     $showSexoCol = false;
     foreach ($matrixRows as $mr) {
@@ -249,4 +288,7 @@ if ($priaIdTitulo > 0 && ! empty($refsMatrixAll[$priaIdTitulo]) && $groupTieneAl
     </table>
 </div>
 <?php endif; ?>
+<?php if ($usePdfChrome): ?>
+</div>
 <?php endif; ?>
+<?php endforeach; ?>
