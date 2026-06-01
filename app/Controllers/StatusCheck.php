@@ -29,12 +29,12 @@ class StatusCheck extends BaseController
         // Verificar si el empleado sigue siendo activo en la BD
         $isActive = $employeeModel->getEmployeeStatus($personId);
         
-        // Si getEmployeeStatus retorna null o false, no está activo
+        // Solo consulta: no destruir la sesión aquí (evita cortar formularios en curso).
+        // El cierre de sesión lo hace toggleStatus / logoutAllSessions al desactivar al empleado.
         if ($isActive !== true) {
-            $employeeModel->logout();
             return $this->response->setJSON(['active' => false, 'reason' => 'disabled_or_not_found']);
         }
-        
+
         return $this->response->setJSON(['active' => true]);
     }
 }

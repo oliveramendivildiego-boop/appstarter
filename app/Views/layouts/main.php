@@ -78,6 +78,8 @@ $pageTitle = $this->renderSection('title');
       window.CI_CSRF_TOKEN = '<?= csrf_hash() ?>';
       window.CI_CSRF_TOKEN_NAME = '<?= csrf_token() ?>';
       window.SESSION_MONITOR_DISABLED = <?= filter_var((string) env('session.monitorDisabled', 'false'), FILTER_VALIDATE_BOOLEAN) ? 'true' : 'false' ?>;
+      window.SESSION_MONITOR_POLL = <?= filter_var((string) env('session.monitorPoll', 'false'), FILTER_VALIDATE_BOOLEAN) ? 'true' : 'false' ?>;
+      window.SESSION_MONITOR_INTERVAL_MS = <?= max(60000, (int) env('session.monitorIntervalMs', 300000)) ?>;
       window.APP_CURRENCY_SYMBOL = <?= json_encode($layoutConfig['currency_symbol'] ?? '$', JSON_UNESCAPED_UNICODE) ?>;
       window.APP_CURRENCY_IS_RIGHT = <?= json_encode(strtolower(trim((string) ($layoutConfig['currency_side'] ?? 'left'))) === 'right') ?>;
     </script>

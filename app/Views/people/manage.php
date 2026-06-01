@@ -119,6 +119,9 @@ $(document).ready(function() {
                 // Si llegamos aquí, el cambio fue en otro usuario
                 btn.disabled = false;
                 if (response.success) {
+                    if (typeof window.notifyEmployeeStatusChanged === 'function') {
+                        window.notifyEmployeeStatusChanged();
+                    }
                     var statusIcon = newStatus ? 'fa-toggle-on text-success' : 'fa-toggle-off text-danger';
                     var statusTitle = newStatus ? 'Desactivar empleado' : 'Activar empleado';
                     btn.innerHTML = '<i class="fa-solid ' + statusIcon + '"></i>';

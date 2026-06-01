@@ -1,15 +1,15 @@
 /**
- * Session Activity Monitor
- * Verifica periódicamente si el usuario sigue siendo activo
- * Si fue deshabilitado, lo saca de la sesión automáticamente
+ * Comprueba en segundo plano si el empleado sigue activo.
+ * Sin polling agresivo: solo reacciona cuando el estado pasa de activo → inactivo.
+ * Otras pestañas se enteran vía localStorage al cambiar un empleado en Configuración.
  */
-
-(function() {
+(function () {
     'use strict';
 
-    // Interruptor temporal para diagnóstico:
-    // - variable global: window.SESSION_MONITOR_DISABLED = true
-    // - o localStorage: localStorage.setItem('disableSessionMonitor', '1')
+    if (window.__sessionMonitorStarted) {
+        return;
+    }
+
     var monitorDisabled = false;
     try {
         monitorDisabled = window.SESSION_MONITOR_DISABLED === true
@@ -20,113 +20,149 @@
             || window.SESSION_MONITOR_DISABLED === 'true';
     }
     if (monitorDisabled) {
-        console.warn('Session monitor desactivado temporalmente para diagnóstico');
         return;
     }
-    
-    // Solo ejecutar en páginas que requieren login (no en login.php)
-    if (window.location.pathname.includes('/login') || 
-        window.location.pathname.includes('/google_login') ||
-        window.location.pathname.includes('/qr')) {
+
+    var path = window.location.pathname || '';
+    if (path.includes('/login') || path.includes('/google_login') || path.includes('/qr')) {
         return;
     }
-    
-    var lastCheckTime = Date.now();
-    var checkIntervalMs = 5000; // Verificar cada 5 segundos
+
+    window.__sessionMonitorStarted = true;
+
+    var STATUS_REV_KEY = 'lab_employee_status_rev';
+    var checkUrl = (typeof BASE_URL === 'string' && BASE_URL)
+        ? (BASE_URL.replace(/\/?$/, '') + '/status/checkEmployeeActive')
+        : (window.location.origin + '/status/checkEmployeeActive');
+
+    var pollEnabled = window.SESSION_MONITOR_POLL === true || window.SESSION_MONITOR_POLL === 'true';
+    var minIntervalMs = 60000;
+    var configured = parseInt(window.SESSION_MONITOR_INTERVAL_MS, 10);
+    var pollIntervalMs = (!isNaN(configured) && configured >= minIntervalMs) ? configured : 300000;
+
+    var knownActive = null;
     var isChecking = false;
-    
-    /**
-     * Cierra la sesión del usuario en el cliente y redirige a login
-     */
-    function logoutUser(message) {
-        console.log('🔴 CERRANDO SESIÓN:', message);
-        
-        // Mostrar notificación
+    var logoutPending = false;
+    var pollTimer = null;
+    var hiddenSince = null;
+
+    function redirectToLogin(message) {
+        if (logoutPending) {
+            return;
+        }
+        logoutPending = true;
         if (typeof showToast === 'function') {
-            showToast(message || 'Tu sesión ha sido terminada', 'error');
+            showToast(message || 'Tu sesión ha sido cerrada', 'error');
         }
-        
-        // Limpiar localStorage/sessionStorage de cualquier cache
-        try {
-            localStorage.clear();
-            sessionStorage.clear();
-        } catch(e) {
-            console.warn('No se pudo limpiar storage');
-        }
-        
-        // Redirigir a login
-        setTimeout(function() {
-            window.location.href = window.location.origin + '/login';
-        }, 800);
+        setTimeout(function () {
+            window.location.href = (typeof BASE_URL === 'string' && BASE_URL)
+                ? BASE_URL.replace(/\/?$/, '') + '/login'
+                : window.location.origin + '/login';
+        }, 600);
     }
-    
-    /**
-     * Verifica si el usuario sigue siendo activo en el servidor
-     */
-    function checkUserActive() {
-        if (isChecking) return; // Evitar múltiples requests simultáneos
-        isChecking = true;
-        lastCheckTime = Date.now();
-        
-        fetch(window.location.origin + '/status/checkEmployeeActive', {
-            method: 'GET',
-            headers: {
-                'X-Requested-With': 'XMLHttpRequest'
+
+    function applyStatus(data) {
+        var active = !!(data && data.active === true);
+
+        if (knownActive === null) {
+            knownActive = active;
+            if (!active) {
+                redirectToLogin('Tu sesión ya no es válida');
             }
+            return;
+        }
+
+        if (knownActive === true && !active) {
+            knownActive = false;
+            var reason = (data && data.reason) ? String(data.reason) : 'deshabilitación';
+            redirectToLogin('Tu sesión ha sido cerrada (' + reason + ')');
+            return;
+        }
+
+        knownActive = active;
+    }
+
+    function checkUserActive() {
+        if (isChecking || logoutPending || document.hidden) {
+            return;
+        }
+        isChecking = true;
+
+        fetch(checkUrl, {
+            method: 'GET',
+            headers: { 'X-Requested-With': 'XMLHttpRequest' },
+            credentials: 'same-origin',
         })
-        .then(function(response) { return response.json(); })
-        .then(function(data) {
-            isChecking = false;
-            
-            // Si el usuario NO está activo, sacar de sesión
-            if (data.active !== true) {
-                console.log('⚠️ Usuario deshabilitado o sesión expirada. Razón:', data.reason);
-                logoutUser('Tu sesión ha sido cerrada por: ' + (data.reason || 'deshabilitación'));
+            .then(function (response) {
+                if (!response.ok) {
+                    throw new Error('status_' + response.status);
+                }
+                return response.json();
+            })
+            .then(function (data) {
+                isChecking = false;
+                applyStatus(data);
+            })
+            .catch(function () {
+                isChecking = false;
+            });
+    }
+
+    function startPollTimer() {
+        if (!pollEnabled || pollTimer !== null) {
+            return;
+        }
+        pollTimer = setInterval(function () {
+            if (!document.hidden) {
+                checkUserActive();
+            }
+        }, pollIntervalMs);
+    }
+
+    function stopPollTimer() {
+        if (pollTimer !== null) {
+            clearInterval(pollTimer);
+            pollTimer = null;
+        }
+    }
+
+    window.checkEmployeeStatusNow = checkUserActive;
+    window.notifyEmployeeStatusChanged = function () {
+        try {
+            localStorage.setItem(STATUS_REV_KEY, String(Date.now()));
+        } catch (e) {
+            checkUserActive();
+        }
+    };
+
+    function init() {
+        checkUserActive();
+        startPollTimer();
+
+        window.addEventListener('storage', function (e) {
+            if (e.key === STATUS_REV_KEY) {
+                checkUserActive();
+            }
+        });
+
+        document.addEventListener('visibilitychange', function () {
+            if (document.hidden) {
+                hiddenSince = Date.now();
+                stopPollTimer();
                 return;
             }
-            
-        })
-        .catch(function(err) {
-            isChecking = false;
-            console.error('Error checking user activity:', err);
-            // En caso de error, no hacer nada (podría ser un problema de conectividad)
+            var awayMs = hiddenSince ? (Date.now() - hiddenSince) : 0;
+            hiddenSince = null;
+            startPollTimer();
+            if (awayMs >= 30000) {
+                checkUserActive();
+            }
         });
     }
-    
-    // Iniciar monitoreo solo cuando la página está lista
+
     if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', function() {
-            startMonitoring();
-        });
+        document.addEventListener('DOMContentLoaded', init);
     } else {
-        startMonitoring();
-    }
-    
-    function startMonitoring() {
-        // Hacer check inicial
-        checkUserActive();
-        
-        // Hacer check periódico
-        setInterval(function() {
-            checkUserActive();
-        }, checkIntervalMs);
-        
-        // También verificar cuando el usuario hace clic (retorna del idle)
-        document.addEventListener('click', function() {
-            var now = Date.now();
-            if (now - lastCheckTime > checkIntervalMs) {
-                checkUserActive();
-                lastCheckTime = now;
-            }
-        }, true);
-        
-        // Y cuando se enfoca la ventana
-        window.addEventListener('focus', function() {
-            var now = Date.now();
-            if (now - lastCheckTime > checkIntervalMs) {
-                checkUserActive();
-                lastCheckTime = now;
-            }
-        });
+        init();
     }
 })();
