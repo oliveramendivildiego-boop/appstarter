@@ -303,24 +303,16 @@ if ($doctorOrdenDisplay === '') {
 
         <hr class="my-3" />
 
-        <?php if (empty($grupos_pruebas ?? [])): ?>
-            <div class="alert alert-warning mb-0">
-                No hay pruebas para esta orden.
-            </div>
-        <?php else: ?>
-            <?php foreach (($grupos_pruebas ?? []) as $padre => $items): ?>
-                <div class="mb-3">
-                    <div class="fw-bold text-uppercase border-bottom pb-1 mb-2"><?= esc($padre) ?></div>
-                    <ul class="mb-0">
-                        <?php foreach (($items ?? []) as $it): ?>
-                            <li>
-                                <?= esc($it['hijo'] ?? '') ?>
-                            </li>
-                        <?php endforeach; ?>
-                    </ul>
-                </div>
-            <?php endforeach; ?>
-        <?php endif; ?>
+        <?= view('registers/orden_pruebas_block', [
+            'grupos_pruebas'     => $grupos_pruebas ?? [],
+            'total_pruebas'      => (int) ($total_pruebas ?? 0),
+            'show_order_costs'   => !empty($show_order_costs),
+            'costos_por_id'      => $costos_por_id ?? [],
+            'pago'               => $pago ?? null,
+            'abonos'             => $abonos ?? [],
+            'tipo_pago_nombre'   => $tipo_pago_nombre ?? '-',
+            'for_pdf'            => false,
+        ]) ?>
 
         <?php if (($show_order_barcode ?? true)): ?>
             <hr class="my-3" />

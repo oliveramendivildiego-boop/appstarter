@@ -74,6 +74,7 @@ class ConfigService
         $data['ui_pagination_active_color'] ??= '';
         $data['order_barcode_print_layout'] ??= 'vertical';
         $data['order_barcode_print_size_percent'] ??= '100';
+        $data['show_order_costs'] ??= '0';
         $data['registro_folio_counter_pad'] ??= '0';
         $data['registro_folio_counter_reset'] ??= 'auto';
         $data['print_paper_size'] ??= 'letter';
@@ -924,7 +925,7 @@ class ConfigService
             'default_tax_rate', 'default_tax_1_name', 'default_tax_1_rate',
             'default_tax_2_name', 'default_tax_2_rate', 'return_policy',
             'print_after_sale', 'logo', 'theme_color', 'header_brand',
-            'decimales_sugerencia', 'dias_alerta_vencimiento', 'stock_alerta_factor', 'show_order_barcode', 'order_barcode_print_layout', 'order_barcode_print_size_percent',
+            'decimales_sugerencia', 'dias_alerta_vencimiento', 'stock_alerta_factor', 'show_order_barcode', 'show_order_costs', 'order_barcode_print_layout', 'order_barcode_print_size_percent',
             'print_paper_size', 'print_pagination_enabled', 'print_pagination_position', 'leyendas_enabled',
             'custom1_name', 'custom2_name', 'custom3_name', 'custom4_name', 'custom5_name',
             'custom6_name', 'custom7_name', 'custom8_name', 'custom9_name', 'custom10_name',
@@ -948,6 +949,9 @@ class ConfigService
         }
         if (array_key_exists('show_order_barcode', $postData)) {
             $batch['show_order_barcode'] = ($postData['show_order_barcode'] === '1') ? '1' : '0';
+        }
+        if (array_key_exists('show_order_costs', $postData)) {
+            $batch['show_order_costs'] = ($postData['show_order_costs'] === '1') ? '1' : '0';
         }
         if (array_key_exists('order_barcode_print_layout', $postData)) {
             $v = strtolower(trim((string) $postData['order_barcode_print_layout']));

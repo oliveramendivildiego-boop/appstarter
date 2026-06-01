@@ -2052,7 +2052,18 @@ class RegisterModel extends Model
         if ($csv === '') {
             return [];
         }
-        $ids = array_values(array_filter(array_map('intval', explode(',', $csv)), static fn (int $id): bool => $id > 0));
+        $ids = [];
+        foreach (explode(',', $csv) as $part) {
+            $part = trim($part);
+            if ($part === '') {
+                continue;
+            }
+            $id = preg_match('/contador_(\d+)/', $part, $m) ? (int) $m[1] : (int) $part;
+            if ($id > 0) {
+                $ids[] = $id;
+            }
+        }
+        $ids = array_values(array_unique($ids));
         if ($ids === []) {
             return [];
         }
@@ -2071,8 +2082,9 @@ class RegisterModel extends Model
             }
             $nombre = trim((string) ($r->name ?? ''));
             $byId[$pid] = [
-                'descripcion' => $nombre !== '' ? $nombre : ('Prueba #' . $pid),
-                'importe'     => (float) ($r->cost ?? 0),
+                'prianacategoria_id' => $pid,
+                'descripcion'        => $nombre !== '' ? $nombre : ('Prueba #' . $pid),
+                'importe'            => (float) ($r->cost ?? 0),
             ];
         }
         $ordered = [];

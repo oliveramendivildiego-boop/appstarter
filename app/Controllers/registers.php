@@ -67,6 +67,61 @@ class Registers extends SecureArea
         return $label !== '' ? $label : 'Sin doctor';
     }
 
+    /**
+     * Datos extra para hoja de trabajo / PDF: conteo de pruebas y costos/pagos si está habilitado en config.
+     *
+     * @param array<string, list<array<string, mixed>>> $gruposPruebas
+     * @return array<string, mixed>
+     */
+    private function buildOrdenTrabajoExtras(int $registroId, object $registerInfo, array $gruposPruebas): array
+    {
+        $totalPruebas = 0;
+        foreach ($gruposPruebas as $items) {
+            $totalPruebas += count($items);
+        }
+
+        $extras = [
+            'total_pruebas'    => $totalPruebas,
+            'show_order_costs' => ($this->configModel->getValue('show_order_costs') === '1'),
+        ];
+
+        if (!$extras['show_order_costs']) {
+            return $extras;
+        }
+
+        $costosPorId = [];
+        foreach ($this->registerModel->getPruebasLineasComerciales((string) ($registerInfo->pruebas ?? '')) as $linea) {
+            $pid = (int) ($linea['prianacategoria_id'] ?? 0);
+            if ($pid > 0) {
+                $costosPorId[$pid] = (float) ($linea['importe'] ?? 0);
+            }
+        }
+
+        $pago = $this->registerModel->getPagoByRegistroId($registroId);
+        $tipoPagoMap = ['1' => 'Efectivo', '2' => 'QR', '3' => 'Transferencia', '4' => 'Pendiente'];
+        $abonos = $this->registerModel->getAbonosByRegistroId($registroId);
+        if ($abonos === [] && $pago && (float) ($pago->monto_pagar ?? 0) > 0) {
+            $abonos = [[
+                'monto'       => $pago->monto_pagar,
+                'tipopago'    => $pago->tipopago ?? '1',
+                'fecha_abono' => $registerInfo->ingreso ?? date('Y-m-d H:i:s'),
+            ]];
+        }
+        foreach ($abonos as $i => $abono) {
+            $abonos[$i]['tipo_nombre'] = $tipoPagoMap[$abono['tipopago'] ?? ''] ?? ($abono['tipopago'] ?? '-');
+        }
+
+        $extras['costos_por_id'] = $costosPorId;
+        $extras['pago'] = $pago;
+        $extras['abonos'] = $abonos;
+        $extras['tipo_pago_nombre'] = $pago
+            ? ($tipoPagoMap[$pago->tipopago ?? ''] ?? ($pago->tipopago ?? '-'))
+            : '-';
+        $extras['suma_costos_catalogo'] = array_sum($costosPorId);
+
+        return $extras;
+    }
+
     public function index()
     {
         $categories = $this->labotestModel->getGroupedByCategory();
@@ -611,8 +666,9 @@ class Registers extends SecureArea
         $bcSizePct = max(30, min(250, $bcSizePct));
 
         $edadPacienteOrden = $this->registerService->formatEdadAlMomento($registerInfo->birthday ?? null, $refIngreso);
+        $ordenExtras = $this->buildOrdenTrabajoExtras($id, $registerInfo, $gruposPruebas);
 
-        return view('registers/orden', [
+        return view('registers/orden', array_merge([
             'current_module'    => 'registers',
             'controller_name'   => 'registers',
             'register_info'     => $registerInfo,
@@ -629,7 +685,7 @@ class Registers extends SecureArea
             'order_barcode_print_size_percent' => $bcSizePct,
             'allowed_modules'   => $this->allowed_modules,
             'user_info'         => $this->user_info,
-        ]);
+        ], $ordenExtras));
     }
 
     /**
@@ -672,8 +728,9 @@ class Registers extends SecureArea
         }
 
         $edadPacienteOrden = $this->registerService->formatEdadAlMomento($registerInfo->birthday ?? null, $refIngreso);
+        $ordenExtras = $this->buildOrdenTrabajoExtras($id, $registerInfo, $gruposPruebas);
 
-        $html = view('registers/orden_pdf', [
+        $html = view('registers/orden_pdf', array_merge([
             'register_info'    => $registerInfo,
             'lab_config'       => $this->registerService->getLabConfig(),
             'fecha'            => $fecha,
@@ -681,7 +738,7 @@ class Registers extends SecureArea
             'grupos_pruebas'   => $gruposPruebas,
             'registro_id'      => $id,
             'label_sin_doctor' => $this->getLabelSinDoctorConfig(),
-        ]);
+        ], $ordenExtras));
 
         $pdfService = new PdfService();
         $pacienteNombre = trim(($registerInfo->first_name ?? '') . '_' . ($registerInfo->last_name_fa ?? ''));

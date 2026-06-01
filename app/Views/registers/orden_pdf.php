@@ -79,19 +79,15 @@
         <div><strong>Doctor:</strong> <?= esc($doctorOrdenPdf) ?></div>
     </div>
 
-    <?php if (!empty($grupos_pruebas ?? [])): ?>
-        <?php foreach (($grupos_pruebas ?? []) as $padre => $items): ?>
-            <div class="section">
-                <div class="section-title"><?= esc($padre) ?></div>
-                <ul>
-                    <?php foreach (($items ?? []) as $it): ?>
-                        <li><?= esc($it['hijo'] ?? '') ?></li>
-                    <?php endforeach; ?>
-                </ul>
-            </div>
-        <?php endforeach; ?>
-    <?php else: ?>
-        <p class="muted">No hay pruebas para esta orden.</p>
-    <?php endif; ?>
+    <?= view('registers/orden_pruebas_block', [
+        'grupos_pruebas'     => $grupos_pruebas ?? [],
+        'total_pruebas'      => (int) ($total_pruebas ?? 0),
+        'show_order_costs'   => !empty($show_order_costs),
+        'costos_por_id'      => $costos_por_id ?? [],
+        'pago'               => $pago ?? null,
+        'abonos'             => $abonos ?? [],
+        'tipo_pago_nombre'   => $tipo_pago_nombre ?? '-',
+        'for_pdf'            => true,
+    ]) ?>
 </body>
 </html>

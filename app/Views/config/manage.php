@@ -274,6 +274,14 @@
             <small class="text-muted">Si se desactiva, la orden se imprimirá sin código de barras.</small>
         </div>
         <div class="mb-3">
+            <input type="hidden" name="show_order_costs" value="0">
+            <div class="form-check">
+                <?= form_checkbox('show_order_costs', '1', (($config['show_order_costs'] ?? '0') === '1'), 'id="show_order_costs" class="form-check-input" autocomplete="off"') ?>
+                <?= form_label(lang('Config.config_show_order_costs'), 'show_order_costs', ['class' => 'form-check-label']) ?>
+            </div>
+            <small class="text-muted d-block mt-1"><?= lang('Config.config_show_order_costs_help') ?></small>
+        </div>
+        <div class="mb-3">
             <label for="order_barcode_print_layout" class="form-label"><?= lang('Config.config_order_barcode_print_layout') ?></label>
             <?php
             $barcodeLayout = strtolower((string) ($config['order_barcode_print_layout'] ?? 'vertical'));

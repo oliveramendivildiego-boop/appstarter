@@ -158,6 +158,8 @@ return [
     'config_order_barcode_layout_horizontal'=> 'Horizontal (3 por línea)',
     'config_order_barcode_size_percent'     => 'Tamaño del código de barras al imprimir (%)',
     'config_order_barcode_size_percent_help' => 'Escala el dibujo del código en la orden de trabajo y en «Imprimir solo código de barras». 100 % = tamaño base; rango 30–250 %.',
+    'config_show_order_costs'              => 'Mostrar costos y pagos en hoja de trabajo',
+    'config_show_order_costs_help'         => 'Si está activo, la hoja de trabajo (registers/orden) muestra el costo de cada prueba, totales, pagos realizados y saldo pendiente.',
     'config_registro_folio_counter_pad'       => 'Formato del contador (%i)',
     'config_registro_folio_counter_pad_none'  => 'Sin ceros (1, 2, 3…)',
     'config_registro_folio_counter_pad_2'     => 'Dos dígitos (01, 02, 03…)',
