@@ -304,6 +304,27 @@
             <small class="text-muted d-block mt-1"><?= lang('Config.config_show_order_costs_help') ?></small>
         </div>
         <div class="mb-3">
+            <label for="registers_lista_fecha_default" class="form-label"><?= lang('Config.config_registers_lista_fecha_default') ?></label>
+            <?php
+            $listaFechaDefault = \App\Services\ConfigService::normalizeRegistersListaFechaDefault(
+                (string) ($config['registers_lista_fecha_default'] ?? 'hoy')
+            );
+            $listaFechaOpts = [
+                'hoy'    => lang('Config.config_registers_lista_fecha_hoy'),
+                'semana' => lang('Config.config_registers_lista_fecha_semana'),
+                'mes'    => lang('Config.config_registers_lista_fecha_mes'),
+                'todos'  => lang('Config.config_registers_lista_fecha_todos'),
+            ];
+            ?>
+            <?= form_dropdown(
+                'registers_lista_fecha_default',
+                $listaFechaOpts,
+                $listaFechaDefault,
+                'id="registers_lista_fecha_default" class="form-select" style="max-width: 28rem;" autocomplete="off"'
+            ) ?>
+            <small class="text-muted d-block mt-1"><?= lang('Config.config_registers_lista_fecha_default_help') ?></small>
+        </div>
+        <div class="mb-3">
             <label for="order_barcode_print_layout" class="form-label"><?= lang('Config.config_order_barcode_print_layout') ?></label>
             <?php
             $barcodeLayout = strtolower((string) ($config['order_barcode_print_layout'] ?? 'vertical'));

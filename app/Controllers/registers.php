@@ -193,9 +193,23 @@ class Registers extends SecureArea
             $estado = '';
         }
 
-        $fechaTodos = $this->request->getGet('fecha_todos') === '1';
-        $fechaDesde = $this->normalizeListaFechaYmd($this->request->getGet('fecha_desde'));
-        $fechaHasta = $this->normalizeListaFechaYmd($this->request->getGet('fecha_hasta'));
+        $hasExplicitFechaFilter = $this->request->getGet('fecha_todos') !== null
+            || $this->request->getGet('fecha_desde') !== null
+            || $this->request->getGet('fecha_hasta') !== null;
+
+        $configService       = new ConfigService();
+        $listaFechaDefault   = $configService->getRegistersListaFechaDefault();
+        $defaultFechaFilter  = $configService->resolveRegistersListaFechaFilter($listaFechaDefault);
+
+        if ($hasExplicitFechaFilter) {
+            $fechaTodos = $this->request->getGet('fecha_todos') === '1';
+            $fechaDesde = $this->normalizeListaFechaYmd($this->request->getGet('fecha_desde'));
+            $fechaHasta = $this->normalizeListaFechaYmd($this->request->getGet('fecha_hasta'));
+        } else {
+            $fechaTodos = $defaultFechaFilter['fecha_todos'];
+            $fechaDesde = $defaultFechaFilter['fecha_desde'];
+            $fechaHasta = $defaultFechaFilter['fecha_hasta'];
+        }
 
         $filterFrom = null;
         $filterTo   = null;
@@ -232,6 +246,16 @@ class Registers extends SecureArea
         $manageTable = $this->buildRegistrosTable($registros, $whatsappOk);
         $totalPages  = $total > 0 ? (int) ceil($total / $perPage) : 1;
 
+        $esListaDefault = $search === '' && $estado === ''
+            && $fechaTodos === $defaultFechaFilter['fecha_todos']
+            && (
+                $fechaTodos
+                || (
+                    $fechaDesde === $defaultFechaFilter['fecha_desde']
+                    && $fechaHasta === $defaultFechaFilter['fecha_hasta']
+                )
+            );
+
         return view('registers/lista', [
             'manage_table'     => $manageTable,
             'allowed_modules'  => $this->allowed_modules,
@@ -250,6 +274,8 @@ class Registers extends SecureArea
             'fecha_hoy'           => $today,
             'fecha_semana_desde'  => $weekStart,
             'fecha_mes_desde'     => $monthStart,
+            'lista_fecha_default' => $listaFechaDefault,
+            'es_lista_default'    => $esListaDefault,
         ]);
     }
 

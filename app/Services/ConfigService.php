@@ -15,6 +15,9 @@ class ConfigService
 {
     public const CUSTOMER_INSTITUCION_DISCOUNTS_KEY = 'customer_institucion_discounts_json';
 
+    /** Filtro de fechas por defecto en registers/lista: hoy | semana | mes | todos */
+    public const REGISTERS_LISTA_FECHA_DEFAULT_KEY = 'registers_lista_fecha_default';
+
     protected AppConfigModel $appConfigModel;
 
     public function __construct(?AppConfigModel $appConfigModel = null)
@@ -95,8 +98,52 @@ class ConfigService
         $data['comprobante_show_doctor'] ??= '1';
         $data['comprobante_layout_json'] ??= '';
         $data['label_sin_doctor'] ??= 'Sin doctor';
+        $data[self::REGISTERS_LISTA_FECHA_DEFAULT_KEY] ??= 'hoy';
         $cache->save($cacheKey, $data, self::CACHE_TTL);
         return $data;
+    }
+
+    public function getRegistersListaFechaDefault(): string
+    {
+        return self::normalizeRegistersListaFechaDefault(
+            (string) ($this->getAllAsArray()[self::REGISTERS_LISTA_FECHA_DEFAULT_KEY] ?? 'hoy')
+        );
+    }
+
+    public static function normalizeRegistersListaFechaDefault(string $raw): string
+    {
+        $v = strtolower(trim($raw));
+
+        return in_array($v, ['hoy', 'semana', 'mes', 'todos'], true) ? $v : 'hoy';
+    }
+
+    /**
+     * @return array{fecha_todos:bool,fecha_desde:string,fecha_hasta:string}
+     */
+    public function resolveRegistersListaFechaFilter(?string $preset = null): array
+    {
+        $preset = self::normalizeRegistersListaFechaDefault($preset ?? $this->getRegistersListaFechaDefault());
+        $today  = RegisterService::todayForReport();
+
+        if ($preset === 'todos') {
+            return ['fecha_todos' => true, 'fecha_desde' => '', 'fecha_hasta' => ''];
+        }
+        if ($preset === 'semana') {
+            return [
+                'fecha_todos' => false,
+                'fecha_desde' => RegisterService::reportDateFromModifier('monday this week'),
+                'fecha_hasta' => $today,
+            ];
+        }
+        if ($preset === 'mes') {
+            return [
+                'fecha_todos' => false,
+                'fecha_desde' => RegisterService::monthStartForReport(),
+                'fecha_hasta' => $today,
+            ];
+        }
+
+        return ['fecha_todos' => false, 'fecha_desde' => $today, 'fecha_hasta' => $today];
     }
 
     public function invalidateCache(): void
@@ -929,6 +976,7 @@ class ConfigService
             'default_tax_2_name', 'default_tax_2_rate', 'return_policy',
             'print_after_sale', 'logo', 'theme_color', 'header_brand',
             'decimales_sugerencia', 'dias_alerta_vencimiento', 'stock_alerta_factor', 'show_order_barcode', 'show_order_costs', 'order_barcode_print_layout', 'order_barcode_print_size_percent',
+            self::REGISTERS_LISTA_FECHA_DEFAULT_KEY,
             'print_paper_size', 'print_pagination_enabled', 'print_pagination_position', 'leyendas_enabled',
             'custom1_name', 'custom2_name', 'custom3_name', 'custom4_name', 'custom5_name',
             'custom6_name', 'custom7_name', 'custom8_name', 'custom9_name', 'custom10_name',
@@ -955,6 +1003,11 @@ class ConfigService
         }
         if (array_key_exists('show_order_costs', $postData)) {
             $batch['show_order_costs'] = ($postData['show_order_costs'] === '1') ? '1' : '0';
+        }
+        if (array_key_exists(self::REGISTERS_LISTA_FECHA_DEFAULT_KEY, $postData)) {
+            $batch[self::REGISTERS_LISTA_FECHA_DEFAULT_KEY] = self::normalizeRegistersListaFechaDefault(
+                (string) $postData[self::REGISTERS_LISTA_FECHA_DEFAULT_KEY]
+            );
         }
         if (array_key_exists('order_barcode_print_layout', $postData)) {
             $v = strtolower(trim((string) $postData['order_barcode_print_layout']));

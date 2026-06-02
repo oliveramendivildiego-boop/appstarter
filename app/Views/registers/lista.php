@@ -116,7 +116,7 @@ $listaBtnClass = static fn (bool $active): string => 'btn btn-sm ' . ($active ? 
                 <?php if (! $esPresetFecha && empty($fecha_todos)): ?>
                 <a href="<?= esc($listaQueryBase(['fecha_todos' => '1', 'fecha_desde' => null, 'fecha_hasta' => null, 'page' => null]), 'attr') ?>" class="btn btn-outline-secondary btn-sm">Todas las fechas</a>
                 <?php endif; ?>
-                <?php if (! empty($search) || ! empty($estado ?? '') || ! $esHoy || ! empty($fecha_todos)): ?>
+                <?php if (! empty($search) || ! empty($estado ?? '') || ! ($es_lista_default ?? false)): ?>
                 <a href="<?= site_url('registers/lista') ?>" class="btn btn-outline-secondary btn-sm">Limpiar</a>
                 <?php endif; ?>
             </div>
