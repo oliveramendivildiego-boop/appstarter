@@ -97,6 +97,10 @@ class ConfigService
         $data['comprobante_footer_note'] ??= 'Documento interno de constancia de pago emitido por el laboratorio. No reemplaza un comprobante fiscal electrónico ni factura validada ante el SIN.';
         $data['comprobante_show_doctor'] ??= '1';
         $data['comprobante_layout_json'] ??= '';
+        $data['comprobante_recibo_num_rango_activo'] ??= '0';
+        $data['comprobante_recibo_num_inicio'] ??= '';
+        $data['comprobante_recibo_num_fin'] ??= '';
+        $data['comprobante_recibo_ultimo_num'] ??= '';
         $data['label_sin_doctor'] ??= 'Sin doctor';
         $data[self::REGISTERS_LISTA_FECHA_DEFAULT_KEY] ??= 'hoy';
         $cache->save($cacheKey, $data, self::CACHE_TTL);
@@ -1990,6 +1994,15 @@ class ConfigService
 
         $showDoctor = ((string) ($post['comprobante_show_doctor'] ?? '1')) === '0' ? '0' : '1';
 
+        $reciboRangoActivo = ((string) ($post['comprobante_recibo_num_rango_activo'] ?? '0')) === '1' ? '1' : '0';
+        $reciboInicio      = max(0, (int) ($post['comprobante_recibo_num_inicio'] ?? 0));
+        $reciboFin         = max(0, (int) ($post['comprobante_recibo_num_fin'] ?? 0));
+        if ($reciboRangoActivo === '1' && ($reciboInicio < 1 || $reciboFin < 1 || $reciboInicio > $reciboFin)) {
+            $reciboRangoActivo = '0';
+            $reciboInicio      = 0;
+            $reciboFin         = 0;
+        }
+
         $layoutJson = trim((string) ($post['comprobante_layout_json'] ?? ''));
         if ($layoutJson !== '') {
             $layoutSvc = new \App\Services\ComprobanteLayoutService();
@@ -2006,6 +2019,9 @@ class ConfigService
             'comprobante_tagline' => $tagline,
             'comprobante_footer_note' => $footer,
             'comprobante_show_doctor' => $showDoctor,
+            'comprobante_recibo_num_rango_activo' => $reciboRangoActivo,
+            'comprobante_recibo_num_inicio' => $reciboRangoActivo === '1' ? (string) $reciboInicio : '',
+            'comprobante_recibo_num_fin' => $reciboRangoActivo === '1' ? (string) $reciboFin : '',
         ];
         if ($layoutJson !== '') {
             $batch['comprobante_layout_json'] = $layoutJson;

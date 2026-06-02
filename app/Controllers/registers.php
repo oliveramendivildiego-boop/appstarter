@@ -1001,7 +1001,10 @@ class Registers extends SecureArea
         $html       = $billing->renderComprobanteHtml($doc, $factura);
         $pdfService = new PdfService();
         $tipo       = $factura ? 'Factura' : 'Recibo';
-        $filename   = $tipo . '_orden_' . preg_replace('/[^A-Za-z0-9._-]+/', '_', $doc->ordenNumero) . '_' . lab_filename_date() . '.pdf';
+        $numArchivo = $factura
+            ? $doc->ordenNumero
+            : ($doc instanceof \App\Models\ReciboComprobanteModel ? $doc->numeroRecibo : $doc->ordenNumero);
+        $filename   = $tipo . '_orden_' . preg_replace('/[^A-Za-z0-9._-]+/', '_', $numArchivo) . '_' . lab_filename_date() . '.pdf';
 
         return $this->response
             ->setHeader('Content-Type', 'application/pdf')

@@ -1,6 +1,6 @@
 <?= $this->extend('layouts/main') ?>
 <?= $this->section('head_extra') ?>
-<link rel="stylesheet" href="<?= base_url('css/comprobante-editor.css') ?>?v=1">
+<link rel="stylesheet" href="<?= base_url('css/comprobante-editor.css') ?>?v=20">
 <script src="<?= base_url('js/vendor/jquery.validate.min.js') ?>"></script>
 <?php if (($can_manage_tenants ?? false)): ?>
 <link rel="stylesheet" href="<?= base_url('css/vendor/flatpickr.min.css') ?>">
@@ -1661,7 +1661,7 @@
 <?= $this->endSection() ?>
 
 <?= $this->section('scripts') ?>
-<script src="<?= base_url('js/comprobante-editor.js') ?>?v=1" defer></script>
+<script src="<?= base_url('js/comprobante-editor.js') ?>?v=20" defer></script>
 <script src="<?= base_url('js/config.js') ?>" defer></script>
 <script>
 $(document).ready(function() {

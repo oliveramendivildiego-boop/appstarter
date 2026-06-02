@@ -13,6 +13,8 @@ class ReciboComprobanteModel
     public function __construct(
         public string $empresaNombre,
         public string $ordenNumero,
+        /** Número impreso en el recuadro «N.º» del recibo (puede ser secuencia propia o el de orden). */
+        public string $numeroRecibo,
         public string $fechaEmision,
         public string $pacienteNombre,
         public string $pacienteCi,

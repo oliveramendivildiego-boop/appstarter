@@ -2220,6 +2220,21 @@ class RegisterModel extends Model
         return $this->db->table('pago')->where('registro_id', $registroId)->get()->getRow();
     }
 
+    public function setNumeroRecibo(int $registroId, string $numeroRecibo): bool
+    {
+        if (! $this->db->fieldExists('numero_recibo', 'pago')) {
+            return false;
+        }
+        $numeroRecibo = mb_substr(trim($numeroRecibo), 0, 32);
+        if ($numeroRecibo === '') {
+            return false;
+        }
+
+        return $this->db->table('pago')->where('registro_id', $registroId)->update([
+            'numero_recibo' => $numeroRecibo,
+        ]);
+    }
+
     /**
      * Convierte montos guardados en BD o formulario (punto/coma, espacios) a float.
      */
