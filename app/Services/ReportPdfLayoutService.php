@@ -92,6 +92,16 @@ class ReportPdfLayoutService
 
     public const LAB_FIRMAS_PLACEMENTS = ['per_group', 'block_end', 'both'];
 
+    /** @var list<string> */
+    public const GRUPO_PRUEBA_PAGE_BREAK_MODES = ['flow', 'keep_segment', 'keep_together', 'keep_together_compact'];
+
+    /** @var array{mode: string, repeat_header_on_split: bool, compact_min_scale_percent: int} */
+    public const DEFAULT_GRUPO_PRUEBA_PAGE_BREAK = [
+        'mode'                      => 'keep_together_compact',
+        'repeat_header_on_split'    => true,
+        'compact_min_scale_percent' => 92,
+    ];
+
     /**
      * Solo estos tipos se reinyectan si faltan (migración); no se fuerza título/validador/sello eliminados por el usuario.
      *
@@ -173,6 +183,7 @@ class ReportPdfLayoutService
         'text_transform'    => 'none',
         'line_height'       => 1.35,
         'cell_padding_v_px' => 6,
+        'grupo_prueba_gap_px' => 10,
         'matrix_text_align' => 'center',
         'matrix_vertical_align' => 'middle',
         'matrix_text_color' => '#333333',
@@ -343,7 +354,8 @@ class ReportPdfLayoutService
             'header_grid'         => self::normalizeHeaderGridStyle([]),
             'patient_doctor_grid' => self::normalizePatientDoctorGridStyle([]),
             'footer_grid'         => self::normalizeFooterGridStyle([]),
-            'print_pagination'    => self::normalizePrintPaginationStyle([]),
+            'print_pagination'        => self::normalizePrintPaginationStyle([]),
+            'grupo_prueba_page_break' => self::normalizeGrupoPruebaPageBreakStyle([]),
         ];
     }
 
@@ -1672,6 +1684,15 @@ class ReportPdfLayoutService
                 return 'El relleno vertical de filas en la tabla de resultados debe estar entre 0 y 20 px.';
             }
         }
+        if (array_key_exists('grupo_prueba_gap_px', $raw)) {
+            if (! is_numeric($raw['grupo_prueba_gap_px'])) {
+                return 'Espacio entre grupos de prueba inválido.';
+            }
+            $gg = (int) $raw['grupo_prueba_gap_px'];
+            if ($gg < 0 || $gg > 80) {
+                return 'El espacio entre grupos de prueba debe estar entre 0 y 80 px.';
+            }
+        }
         if (array_key_exists('segment_border_width_px', $raw)) {
             if (! is_numeric($raw['segment_border_width_px'])) {
                 return 'El grosor del borde de segmento debe ser numérico.';
@@ -2089,6 +2110,18 @@ class ReportPdfLayoutService
             }
             if (isset($pp['label_text']) && ! is_scalar($pp['label_text'])) {
                 return 'Texto de etiqueta de paginación inválido.';
+            }
+        }
+        if (isset($ps['grupo_prueba_page_break'])) {
+            if (! is_array($ps['grupo_prueba_page_break'])) {
+                return 'La configuración de saltos de página en grupos de prueba es inválida.';
+            }
+            $gpb = $ps['grupo_prueba_page_break'];
+            if (isset($gpb['mode']) && ! in_array(strtolower(trim((string) $gpb['mode'])), self::GRUPO_PRUEBA_PAGE_BREAK_MODES, true)) {
+                return 'Modo de salto de página en grupos de prueba no válido.';
+            }
+            if (isset($gpb['compact_min_scale_percent']) && ! is_numeric($gpb['compact_min_scale_percent'])) {
+                return 'Escala de compactación en grupos de prueba inválida.';
             }
         }
 
@@ -2798,6 +2831,50 @@ class ReportPdfLayoutService
     }
 
     /**
+     * @param mixed $raw
+     *
+     * @return array{mode: string, repeat_header_on_split: bool, compact_min_scale_percent: int}
+     */
+    public static function normalizeGrupoPruebaPageBreakStyle($raw): array
+    {
+        $def = self::DEFAULT_GRUPO_PRUEBA_PAGE_BREAK;
+        $s   = is_array($raw) ? $raw : [];
+        $mode = strtolower(trim((string) ($s['mode'] ?? $def['mode'])));
+        if (! in_array($mode, self::GRUPO_PRUEBA_PAGE_BREAK_MODES, true)) {
+            $mode = $def['mode'];
+        }
+        $scale = isset($s['compact_min_scale_percent']) ? (int) $s['compact_min_scale_percent'] : $def['compact_min_scale_percent'];
+        $scale = max(85, min(100, $scale));
+        $repeatDefault = $mode !== 'flow' && ! empty($def['repeat_header_on_split']);
+
+        return [
+            'mode'                      => $mode,
+            'repeat_header_on_split'    => self::labFirmasBool($s, 'repeat_header_on_split', $repeatDefault),
+            'compact_min_scale_percent' => $scale,
+        ];
+    }
+
+    /**
+     * Clases CSS para body según la configuración de saltos en .report-pdf-grupo-prueba.
+     *
+     * @param array<string, mixed> $layout
+     */
+    public static function grupoPruebaPageBreakBodyClass(array $layout): string
+    {
+        $ps  = is_array($layout['page_style'] ?? null) ? $layout['page_style'] : [];
+        $gpb = self::normalizeGrupoPruebaPageBreakStyle($ps['grupo_prueba_page_break'] ?? []);
+        if ($gpb['mode'] === 'flow') {
+            return '';
+        }
+        $classes = ['pdf-gpb-' . str_replace('_', '-', $gpb['mode'])];
+        if (! empty($gpb['repeat_header_on_split'])) {
+            $classes[] = 'pdf-gpb-repeat-header';
+        }
+
+        return implode(' ', $classes);
+    }
+
+    /**
      * CSS inline para textos del pie (color/tipo) — evita que td.pdf-cell o estilos globales tapen variables en vista/PDF.
      *
      * @param array<string, mixed> $ft footer_grid normalizado o bruto
@@ -3065,6 +3142,8 @@ class ReportPdfLayoutService
         $lh = round(max(1.0, min(3.0, $lh)), 2);
         $cellPadV = isset($s['cell_padding_v_px']) ? (int) $s['cell_padding_v_px'] : (int) ($def['cell_padding_v_px'] ?? 6);
         $cellPadV = max(0, min(20, $cellPadV));
+        $grupoGap = isset($s['grupo_prueba_gap_px']) ? (int) $s['grupo_prueba_gap_px'] : (int) ($def['grupo_prueba_gap_px'] ?? 10);
+        $grupoGap = max(0, min(80, $grupoGap));
         $segBw = isset($s['segment_border_width_px']) ? (int) $s['segment_border_width_px'] : (int) $def['segment_border_width_px'];
         $segBw = max(0, min(4, $segBw));
         $segShadow = strtolower(trim((string) ($s['segment_shadow'] ?? $def['segment_shadow'])));
@@ -3135,6 +3214,7 @@ class ReportPdfLayoutService
             'text_transform'    => $transform,
             'line_height'       => $lh,
             'cell_padding_v_px' => $cellPadV,
+            'grupo_prueba_gap_px' => $grupoGap,
             'matrix_text_align' => $matrixAlign,
             'matrix_vertical_align' => $matrixVAlign,
             'matrix_text_color' => $pickColor('matrix_text_color', $def['matrix_text_color']),
@@ -3467,7 +3547,8 @@ class ReportPdfLayoutService
             'header_grid'         => self::normalizeHeaderGridStyle($pageStyleRaw['header_grid'] ?? []),
             'patient_doctor_grid' => self::normalizePatientDoctorGridStyle($pageStyleRaw['patient_doctor_grid'] ?? []),
             'footer_grid'         => self::normalizeFooterGridStyle($pageStyleRaw['footer_grid'] ?? []),
-            'print_pagination'    => self::normalizePrintPaginationStyle($pageStyleRaw['print_pagination'] ?? []),
+            'print_pagination'        => self::normalizePrintPaginationStyle($pageStyleRaw['print_pagination'] ?? []),
+            'grupo_prueba_page_break' => self::normalizeGrupoPruebaPageBreakStyle($pageStyleRaw['grupo_prueba_page_break'] ?? []),
         ];
 
         return [

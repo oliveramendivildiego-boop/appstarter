@@ -1,3 +1,8 @@
+<?php
+$pdfGrupoPageBreakBodyClass = \App\Services\ReportPdfLayoutService::grupoPruebaPageBreakBodyClass(
+    is_array($pdf_layout ?? null) ? $pdf_layout : []
+);
+?>
 <!DOCTYPE html>
 <html lang="es">
 <head>
@@ -9,7 +14,7 @@
         'use_sheet_padding_for_margins' => false,
     ]) ?>
 </head>
-<body>
+<body class="<?= esc(trim($pdfGrupoPageBreakBodyClass), 'attr') ?>">
 <?= view('registers/pdf/report_document', [
     'pdf_layout'          => $pdf_layout ?? [],
     'register_info'       => $register_info,

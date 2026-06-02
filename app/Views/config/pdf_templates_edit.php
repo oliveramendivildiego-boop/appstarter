@@ -43,6 +43,7 @@ $hg = \App\Services\ReportPdfLayoutService::normalizeHeaderGridStyle($ps['header
 $pd = \App\Services\ReportPdfLayoutService::normalizePatientDoctorGridStyle($ps['patient_doctor_grid'] ?? []);
 $ft = \App\Services\ReportPdfLayoutService::normalizeFooterGridStyle($ps['footer_grid'] ?? []);
 $pp = \App\Services\ReportPdfLayoutService::normalizePrintPaginationStyle($ps['print_pagination'] ?? []);
+$gpb = \App\Services\ReportPdfLayoutService::normalizeGrupoPruebaPageBreakStyle($ps['grupo_prueba_page_break'] ?? []);
 $pdfGridChk = static function (array $a, string $k): string {
     $v = $a[$k] ?? true;
 
@@ -471,7 +472,7 @@ $labelsShort = [
 <div class="card shadow-sm mb-4 pdf-config-panel" data-config-panels="results">
     <div class="card-header bg-info-subtle border">
         <h5 class="mb-1">Resultados en el PDF</h5>
-        <p class="small text-muted mb-0">Tabla por prueba, filas separadoras entre análisis y matriz de referencia. Use las secciones siguientes en orden: colores → tipografía → espacio entre filas del PDF → títulos de sección → matriz poblacional.</p>
+        <p class="small text-muted mb-0">Tabla por prueba, espacio entre áreas/grupos, filas separadoras entre análisis y matriz de referencia. Use las secciones siguientes en orden: colores → tipografía → espacio entre filas y grupos → títulos de sección → matriz poblacional.</p>
     </div>
     <div class="card-body">
         <div class="accordion accordion-flush pdf-results-accordion" id="accordion_pdf_results">
@@ -525,8 +526,8 @@ $labelsShort = [
             <div class="accordion-item border rounded mb-2 overflow-hidden">
                 <h2 class="accordion-header m-0">
                     <button class="accordion-button collapsed py-2" type="button" data-bs-toggle="collapse" data-bs-target="#pdf_rs_panel_density" aria-expanded="false" aria-controls="pdf_rs_panel_density">
-                        <span class="fw-semibold">3. Espacio entre filas en el PDF</span>
-                        <span class="small text-muted ms-2 d-none d-md-inline">Altura de cada fila de resultado</span>
+                        <span class="fw-semibold">3. Espacio entre filas y grupos en el PDF</span>
+                        <span class="small text-muted ms-2 d-none d-md-inline">Altura de fila y separación entre áreas</span>
                     </button>
                 </h2>
                 <div id="pdf_rs_panel_density" class="accordion-collapse collapse" data-bs-parent="#accordion_pdf_results">
@@ -536,6 +537,11 @@ $labelsShort = [
             <div class="col-12 col-md-4 col-lg-3">
                 <label class="form-label small" for="rs_cell_padding_v" title="Espacio arriba y abajo en cada celda; controla el alto de la fila">Relleno vertical por fila (px)</label>
                 <input type="number" class="form-control" id="rs_cell_padding_v" min="0" max="20" step="1" value="<?= esc((string) (int) ($rs['cell_padding_v_px'] ?? 6), 'attr') ?>">
+            </div>
+            <div class="col-12 col-md-4 col-lg-3">
+                <label class="form-label small" for="rs_grupo_prueba_gap" title="Separación vertical entre cada área o grupo de pruebas en el PDF (clase report-pdf-grupo-prueba)">Espacio entre grupos de prueba (px)</label>
+                <input type="number" class="form-control" id="rs_grupo_prueba_gap" min="0" max="80" step="1" value="<?= esc((string) (int) ($rs['grupo_prueba_gap_px'] ?? 10), 'attr') ?>">
+                <div class="form-text">Aplica solo a esta plantilla en PDF e impresión.</div>
             </div>
                         </div>
                     </div>
@@ -911,6 +917,43 @@ $labelsShort = [
                 <input type="number" class="form-control" id="margin_left" min="0" max="50" step="0.5" value="<?= esc((string) ($mm['left'] ?? 15)) ?>">
             </div>
         </div>
+    </div>
+</div>
+
+<div class="card shadow-sm mb-4 pdf-config-panel" data-config-panels="general">
+    <div class="card-header bg-info text-white">
+        <h5 class="mb-0">Saltos de página en grupos de prueba</h5>
+    </div>
+    <div class="card-body">
+        <p class="small text-muted mb-3">Controla los saltos de página al generar PDF o imprimir. Puede aplicarse al área completa (<code>.report-pdf-grupo-prueba</code>) o a cada segmento de resultados (<code>.report-segment-table-wrap</code>).</p>
+        <div class="row g-3">
+            <div class="col-12 col-lg-6">
+                <label class="form-label small" for="gpb_mode">Comportamiento de salto de página</label>
+                <select class="form-select" id="gpb_mode">
+                    <option value="flow" <?= ($gpb['mode'] ?? 'flow') === 'flow' ? 'selected' : '' ?>>Flujo libre — sin reglas extra; el contenido puede partirse en cualquier punto</option>
+                    <option value="keep_segment" <?= ($gpb['mode'] ?? '') === 'keep_segment' ? 'selected' : '' ?>>Flujo por segmentos — cada segmento de tabla va entero a la página siguiente si no cabe</option>
+                    <option value="keep_together" <?= ($gpb['mode'] ?? '') === 'keep_together' ? 'selected' : '' ?>>Grupo íntegro — todo el área de prueba se mueve junta a la página siguiente</option>
+                    <option value="keep_together_compact" <?= ($gpb['mode'] ?? '') === 'keep_together_compact' ? 'selected' : '' ?>>Grupo íntegro con compactación — reduce fuentes/espaciado antes de mover el área completa</option>
+                </select>
+            </div>
+            <div class="col-6 col-md-3">
+                <label class="form-label small" for="gpb_compact_min_scale" title="Porcentaje mínimo al compactar ligeramente el grupo para que quepa en el espacio restante de la página">Escala mínima de compactación (%)</label>
+                <input type="number" class="form-control" id="gpb_compact_min_scale" min="85" max="100" step="1" value="<?= esc((string) (int) ($gpb['compact_min_scale_percent'] ?? 92), 'attr') ?>">
+                <span class="form-text small text-muted">85–100 % (solo modo compactación)</span>
+            </div>
+            <div class="col-12 col-md-3 d-flex align-items-end">
+                <div class="form-check mb-2">
+                    <input class="form-check-input" type="checkbox" id="gpb_repeat_header" <?= ! empty($gpb['repeat_header_on_split']) ? 'checked' : '' ?>>
+                    <label class="form-check-label small" for="gpb_repeat_header">Repetir encabezado del examen al continuar en otra página</label>
+                </div>
+            </div>
+        </div>
+        <ul class="small text-muted mb-0 mt-2 ps-3">
+            <li><strong>Grupo íntegro:</strong> evita que un área de prueba quede cortada; si no cabe en el espacio restante de la hoja, pasa entera a la siguiente.</li>
+            <li><strong>Con compactación:</strong> igual que grupo íntegro, pero primero reduce ligeramente fuentes, relleno de filas y márgenes (según «Escala mínima») para intentar que quepa en la hoja actual.</li>
+            <li><strong>Flujo por segmentos:</strong> el área puede ocupar varias páginas, pero cada <code>report-segment-table-wrap</code> (título + tabla de un segmento) no se parte; si no cabe, va completo a la página siguiente.</li>
+            <li>Si un bloque supera la altura de una hoja, se permite el salto interno por filas de tabla.</li>
+        </ul>
     </div>
 </div>
 
@@ -3579,6 +3622,15 @@ document.addEventListener('DOMContentLoaded', function() {
                 label_position: pickPaginationPos('pp_label_position', 'bottom-left'),
                 value_position: pickPaginationPos('pp_value_position', 'bottom-right')
             },
+            grupo_prueba_page_break: {
+                mode: (function() {
+                    var el = document.getElementById('gpb_mode');
+                    var v = el ? el.value : 'keep_together_compact';
+                    return (v === 'flow' || v === 'keep_segment' || v === 'keep_together' || v === 'keep_together_compact') ? v : 'keep_together_compact';
+                })(),
+                repeat_header_on_split: pickChk('gpb_repeat_header', true),
+                compact_min_scale_percent: Math.round(pickNum('gpb_compact_min_scale', 85, 100, 92))
+            },
             notes: {
                 title_bg_color: pickHex('ns_title_bg', '#FFF3CD'),
                 title_text_color: pickHex('ns_title_text', '#664D03'),
@@ -3666,6 +3718,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 text_transform: pickAllowedDomId('rs_text_transform', 'text_transforms', 'none'),
                 line_height: pickNum('rs_line_height', 1, 3, 1.35),
                 cell_padding_v_px: Math.round(pickNum('rs_cell_padding_v', 0, 20, 6)),
+                grupo_prueba_gap_px: Math.round(pickNum('rs_grupo_prueba_gap', 0, 80, 10)),
                 matrix_text_align: pickAllowedDomId('rs_matrix_align', 'text_aligns', 'center'),
                 matrix_vertical_align: pickAllowedDomId('rs_matrix_valign', 'vertical_aligns', 'middle'),
                 matrix_text_color: pickHex('rs_matrix_text_color', '#333333'),
@@ -3795,6 +3848,14 @@ document.addEventListener('DOMContentLoaded', function() {
                 errs.push('Posición inválida en paginación (' + id + ').');
             }
         });
+        var gpbModeEl = document.getElementById('gpb_mode');
+        if (gpbModeEl) {
+            var gpbMode = String(gpbModeEl.value || '').trim();
+            if (['flow', 'keep_segment', 'keep_together', 'keep_together_compact'].indexOf(gpbMode) < 0) {
+                errs.push('Modo de salto de página en grupos de prueba no válido.');
+            }
+        }
+        pushIfBadNum('gpb_compact_min_scale', 85, 100, 'Escala mínima de compactación: entre 85 y 100 %.');
         (window._headerLabelFieldIds || []).forEach(function(fid) {
             var el = document.getElementById('hg_label_' + fid);
             if (el && String(el.value || '').length > 120) errs.push('Etiqueta demasiado larga en encabezado: ' + fid + '.');
@@ -3844,6 +3905,7 @@ document.addEventListener('DOMContentLoaded', function() {
         pushIfBadSelect('rs_text_transform', tt, 'Transformación no permitida en tabla de resultados.');
         pushIfBadNum('rs_line_height', 1, 3, 'Interlineado en tabla de resultados: entre 1 y 3.');
         pushIfBadNum('rs_cell_padding_v', 0, 20, 'Relleno vertical de filas (tabla de resultados): entre 0 y 20 px.');
+        pushIfBadNum('rs_grupo_prueba_gap', 0, 80, 'Espacio entre grupos de prueba: entre 0 y 80 px.');
         pushIfBadNum('rs_segment_border_width', 0, 4, 'Grosor de borde de segmento: entre 0 y 4 px.');
         pushIfBadSelect('rs_segment_shadow', pdfAllow('segment_shadows'), 'Sombra de segmento no permitida.');
         pushIfBadSelect('rs_matrix_align', ta, 'Alineación horizontal no permitida en matriz de referencia.');

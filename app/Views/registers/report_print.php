@@ -97,6 +97,10 @@
         $printPageCssSize = ($printPaper === 'a4') ? 'A4 portrait' : (($printPaper === 'legal') ? 'legal portrait' : 'letter portrait');
     }
     $printPageHeightMm = $printPaper === 'a4' ? 297.0 : ($printPaper === 'legal' ? 355.6 : ($printPaper === 'custom' ? $printPaperCustomH : 279.4));
+    $gpbCfg = \App\Services\ReportPdfLayoutService::normalizeGrupoPruebaPageBreakStyle($ps['grupo_prueba_page_break'] ?? []);
+    $gpbMode = (string) ($gpbCfg['mode'] ?? 'flow');
+    $gpbBodyClass = \App\Services\ReportPdfLayoutService::grupoPruebaPageBreakBodyClass($pl);
+    $printSegmentBreakInside = ($gpbMode === 'keep_segment') ? 'avoid' : 'auto';
     $pp = \App\Services\ReportPdfLayoutService::normalizePrintPaginationStyle($ps['print_pagination'] ?? []);
     $printPaginationEnabled = ! empty($pp['enabled']);
     // Si la plantilla ya define pie de página, no superponer paginación fija del navegador.
@@ -232,6 +236,8 @@
             --pdf-results-transform: <?= esc($rs['text_transform']) ?>;
             --pdf-results-line-height: <?= esc((string) $rs['line_height']) ?>;
             --pdf-results-cell-padding-v: <?= (int) ($rs['cell_padding_v_px'] ?? 6) ?>px;
+            --pdf-results-grupo-gap: <?= (int) ($rs['grupo_prueba_gap_px'] ?? 10) ?>px;
+            --pdf-gpb-compact-scale: <?= esc((string) round(max(85, min(100, (int) (\App\Services\ReportPdfLayoutService::normalizeGrupoPruebaPageBreakStyle($ps['grupo_prueba_page_break'] ?? [])['compact_min_scale_percent'] ?? 92))) / 100, 3), 'attr') ?>;
             --pdf-results-matrix-align: <?= esc((string) ($rs['matrix_text_align'] ?? 'center')) ?>;
             --pdf-results-matrix-vertical-align: <?= esc((string) ($rs['matrix_vertical_align'] ?? 'middle')) ?>;
             --pdf-results-matrix-color: <?= esc((string) ($rs['matrix_text_color'] ?? $rs['body_text_color'])) ?>;
@@ -380,11 +386,21 @@
                 break-before: avoid !important;
                 page-break-before: avoid !important;
             }
-            /* Las tablas largas deben poder partirse entre filas; evitar avoid en el wrap evita recortes con el pie fijo. */
+            /* Las tablas largas deben poder partirse entre filas salvo modo «flujo por segmentos». */
             body.report-browser-print .report-segment-table-wrap,
             body.report-browser-print .report-refs-matrix-wrap {
+                break-inside: <?= esc($printSegmentBreakInside, 'css') ?> !important;
+                page-break-inside: <?= esc($printSegmentBreakInside, 'css') ?> !important;
+            }
+            body.report-browser-print.pdf-gpb-keep-segment .report-segment-table-wrap.report-segment-allow-split,
+            body.report-browser-print.pdf-gpb-keep-segment .report-refs-matrix-wrap.report-segment-allow-split {
                 break-inside: auto !important;
                 page-break-inside: auto !important;
+            }
+            body.report-browser-print.pdf-gpb-keep-segment .report-segment-table-wrap.report-segment-force-break-before,
+            body.report-browser-print.pdf-gpb-keep-segment .report-refs-matrix-wrap.report-segment-force-break-before {
+                break-before: page !important;
+                page-break-before: always !important;
             }
             body.report-browser-print table.results tbody tr {
                 break-inside: avoid !important;
@@ -443,7 +459,7 @@
         }
     </style>
 </head>
-<body class="report-browser-print">
+<body class="report-browser-print<?= $gpbBodyClass !== '' ? ' ' . esc($gpbBodyClass, 'attr') : '' ?>">
 <div class="report-print-toolbar">
     <button type="button" class="report-print-btn-primary" onclick="window.print()">Imprimir de nuevo</button>
     <?php if ($rid > 0): ?>
@@ -475,6 +491,12 @@
     'report_lab_firmas'               => $report_lab_firmas ?? [],
     'report_pria_refs_consolidada'    => $report_pria_refs_consolidada ?? [],
 ]) ?>
+<?= view('registers/partials/report_pdf_grupo_page_break_script', [
+    'pdf_layout'        => $pdf_layout ?? [],
+    'page_height_mm'    => $printPageHeightMm,
+    'margin_top_mm'     => (float) $mt,
+    'margin_bottom_mm'  => (float) $printBottomMarginMm,
+]) ?>
 <script>
 (function() {
     var MM_TO_PX = 96 / 25.4;
@@ -505,10 +527,16 @@
     }
 
     function openPrintDialog() {
+        if (typeof window.applyReportPdfGrupoPageBreaks === 'function') {
+            window.applyReportPdfGrupoPageBreaks();
+        }
         applyBrowserTotalPages();
         window.print();
     }
     window.addEventListener('beforeprint', function() {
+        if (typeof window.applyReportPdfGrupoPageBreaks === 'function') {
+            window.applyReportPdfGrupoPageBreaks();
+        }
         applyBrowserTotalPages();
     });
     window.addEventListener('afterprint', function() {

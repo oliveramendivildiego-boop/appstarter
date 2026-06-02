@@ -47,6 +47,8 @@ $nsColW = max(0, min(4, (int) ($ns['column_border_width_px'] ?? 1)));
 $nsColColor = (string) ($ns['column_border_color'] ?? '#DDDDDD');
 $chCardBg = ! empty($ch['bg_transparent']) ? 'transparent' : (string) $ch['bg_color'];
 $rs = \App\Services\ReportPdfLayoutService::normalizeResultsTableStyle($ps['results_table'] ?? []);
+$gpb = \App\Services\ReportPdfLayoutService::normalizeGrupoPruebaPageBreakStyle($ps['grupo_prueba_page_break'] ?? []);
+$gpbCompactScale = round(max(85, min(100, (int) ($gpb['compact_min_scale_percent'] ?? 92))) / 100, 3);
 $rsBodyBg = ! empty($rs['body_transparent']) ? 'transparent' : (string) $rs['body_bg_color'];
 $rsSegBg  = ! empty($rs['segment_transparent']) ? 'transparent' : (string) $rs['segment_bg_color'];
 $segShadowMap = [
@@ -219,6 +221,8 @@ body { margin: <?= esc((string) $mt) ?>mm <?= esc((string) $mr) ?>mm <?= esc((st
     --pdf-results-transform: <?= esc($rs['text_transform']) ?>;
     --pdf-results-line-height: <?= esc((string) $rs['line_height']) ?>;
     --pdf-results-cell-padding-v: <?= (int) ($rs['cell_padding_v_px'] ?? 6) ?>px;
+    --pdf-results-grupo-gap: <?= (int) ($rs['grupo_prueba_gap_px'] ?? 10) ?>px;
+    --pdf-gpb-compact-scale: <?= esc((string) $gpbCompactScale, 'attr') ?>;
     --pdf-results-matrix-align: <?= esc((string) ($rs['matrix_text_align'] ?? 'center')) ?>;
     --pdf-results-matrix-vertical-align: <?= esc((string) ($rs['matrix_vertical_align'] ?? 'middle')) ?>;
     --pdf-results-matrix-color: <?= esc((string) ($rs['matrix_text_color'] ?? $rs['body_text_color'])) ?>;
@@ -323,5 +327,8 @@ table.results.pdf-notes-table td.pdf-notes-cell {
     font-weight: <?= esc($ch['font_weight']) ?> !important;
     font-style: <?= esc($ch['font_style']) ?> !important;
     text-transform: <?= esc($ch['text_transform']) ?> !important;
+}
+.report-pdf-grupo-prueba:not(.report-pdf-grupo-prueba-first) {
+    margin-top: <?= (int) ($rs['grupo_prueba_gap_px'] ?? 10) ?>px !important;
 }
 </style>
