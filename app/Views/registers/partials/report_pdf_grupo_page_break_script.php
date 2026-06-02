@@ -19,7 +19,10 @@ $marginBottomMm = isset($margin_bottom_mm) ? (float) $margin_bottom_mm : 15.0;
     var cfg = {
         mode: <?= json_encode($gpb['mode'], JSON_UNESCAPED_UNICODE) ?>,
         repeatHeader: <?= ! empty($gpb['repeat_header_on_split']) ? 'true' : 'false' ?>,
-        compactMinScale: <?= json_encode(max(85, min(100, (int) ($gpb['compact_min_scale_percent'] ?? 92)))) ?>,
+        compactMinScale: <?= json_encode(max(75, min(100, (int) ($gpb['compact_min_scale_percent'] ?? 85)))) ?>,
+        compactCellPaddingPx: <?= json_encode(max(0, min(20, (int) ($gpb['compact_cell_padding_px'] ?? 0)))) ?>,
+        compactAggressive: <?= ! empty($gpb['compact_aggressive']) ? 'true' : 'false' ?>,
+        minRemainingMmToForceBreak: <?= json_encode((float) ($gpb['min_remaining_mm_to_force_break'] ?? 40.0)) ?>,
         pageHeightMm: <?= json_encode($pageHeightMm) ?>,
         marginTopMm: <?= json_encode($marginTopMm) ?>,
         marginBottomMm: <?= json_encode($marginBottomMm) ?>
@@ -38,6 +41,10 @@ $marginBottomMm = isset($margin_bottom_mm) ? (float) $margin_bottom_mm : 15.0;
             printableMm = 240;
         }
         return printableMm * MM_TO_PX;
+    }
+
+    function pxToMm(px) {
+        return px / MM_TO_PX;
     }
 
     function topWithinContainer(el, container) {
@@ -61,14 +68,43 @@ $marginBottomMm = isset($margin_bottom_mm) ? (float) $margin_bottom_mm : 15.0;
         return remaining;
     }
 
+    function shouldForceBreakBefore(remainingPx) {
+        if (cfg.mode === 'keep_together_if_fits') {
+            return false;
+        }
+        var minMm = cfg.minRemainingMmToForceBreak;
+        if (!isFinite(minMm) || minMm <= 0) {
+            return true;
+        }
+        return pxToMm(remainingPx) >= minMm;
+    }
+
+    function clearGrupoCompact(grupo) {
+        grupo.classList.remove('report-pdf-grupo-prueba-compact', 'report-pdf-grupo-prueba-compact-aggressive');
+        grupo.style.removeProperty('--pdf-gpb-compact-scale');
+        grupo.style.removeProperty('--pdf-gpb-compact-cell-padding-v');
+    }
+
+    function applyCompactToGrupo(grupo) {
+        var scale = cfg.compactMinScale / 100;
+        grupo.classList.add('report-pdf-grupo-prueba-compact');
+        grupo.style.setProperty('--pdf-gpb-compact-scale', String(scale));
+        if (cfg.compactCellPaddingPx > 0) {
+            grupo.style.setProperty('--pdf-gpb-compact-cell-padding-v', cfg.compactCellPaddingPx + 'px');
+        }
+        if (cfg.compactAggressive) {
+            grupo.classList.add('report-pdf-grupo-prueba-compact-aggressive');
+        }
+    }
+
     function clearPageBreakAdjustments() {
         document.querySelectorAll('.report-pdf-grupo-prueba').forEach(function(grupo) {
             grupo.classList.remove(
-                'report-pdf-grupo-prueba-compact',
                 'report-pdf-grupo-prueba-force-break-before',
-                'report-pdf-grupo-prueba-allow-split'
+                'report-pdf-grupo-prueba-allow-split',
+                'report-pdf-grupo-prueba-keep-on-page'
             );
-            grupo.style.removeProperty('--pdf-gpb-compact-scale');
+            clearGrupoCompact(grupo);
             grupo.querySelectorAll('.report-pdf-grupo-cabecera-continuacion-injected').forEach(function(node) {
                 node.remove();
             });
@@ -108,8 +144,9 @@ $marginBottomMm = isset($margin_bottom_mm) ? (float) $margin_bottom_mm : 15.0;
         });
     }
 
-    function applySegmentPageBreaks(container, pagePx) {
-        container.querySelectorAll(SEGMENT_SELECTOR).forEach(function(seg) {
+    function applySegmentPageBreaks(container, pagePx, root) {
+        var scope = root || container;
+        scope.querySelectorAll(SEGMENT_SELECTOR).forEach(function(seg) {
             var top = topWithinContainer(seg, container);
             var remaining = remainingOnPage(top, pagePx);
             var height = seg.offsetHeight;
@@ -127,6 +164,14 @@ $marginBottomMm = isset($margin_bottom_mm) ? (float) $margin_bottom_mm : 15.0;
         });
     }
 
+    function fallbackFillGrupo(grupo, container, pagePx) {
+        grupo.classList.remove('report-pdf-grupo-prueba-force-break-before', 'report-pdf-grupo-prueba-keep-on-page');
+        clearGrupoCompact(grupo);
+        grupo.classList.add('report-pdf-grupo-prueba-allow-split');
+        applySegmentPageBreaks(container, pagePx, grupo);
+        injectContinuationHeaders(grupo, container, pagePx);
+    }
+
     function applyGrupoPageBreaks(container, pagePx) {
         container.querySelectorAll('.report-pdf-grupo-prueba').forEach(function(grupo) {
             var top = topWithinContainer(grupo, container);
@@ -136,25 +181,36 @@ $marginBottomMm = isset($margin_bottom_mm) ? (float) $margin_bottom_mm : 15.0;
             if (height > pagePx) {
                 grupo.classList.add('report-pdf-grupo-prueba-allow-split');
                 injectContinuationHeaders(grupo, container, pagePx);
+                applySegmentPageBreaks(container, pagePx, grupo);
                 return;
             }
 
             if (height <= remaining) {
+                if (cfg.mode === 'keep_together_if_fits') {
+                    grupo.classList.add('report-pdf-grupo-prueba-keep-on-page');
+                }
+                return;
+            }
+
+            if (cfg.mode === 'keep_together_if_fits') {
+                fallbackFillGrupo(grupo, container, pagePx);
                 return;
             }
 
             if (cfg.mode === 'keep_together_compact') {
-                var scale = cfg.compactMinScale / 100;
-                grupo.classList.add('report-pdf-grupo-prueba-compact');
-                grupo.style.setProperty('--pdf-gpb-compact-scale', String(scale));
+                applyCompactToGrupo(grupo);
                 height = grupo.offsetHeight;
                 if (height <= remaining) {
                     return;
                 }
+                clearGrupoCompact(grupo);
             }
 
-            grupo.classList.remove('report-pdf-grupo-prueba-compact');
-            grupo.style.removeProperty('--pdf-gpb-compact-scale');
+            if (!shouldForceBreakBefore(remaining)) {
+                fallbackFillGrupo(grupo, container, pagePx);
+                return;
+            }
+
             grupo.classList.add('report-pdf-grupo-prueba-force-break-before');
         });
     }

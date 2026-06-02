@@ -932,14 +932,31 @@ $labelsShort = [
                 <select class="form-select" id="gpb_mode">
                     <option value="flow" <?= ($gpb['mode'] ?? 'flow') === 'flow' ? 'selected' : '' ?>>Flujo libre — sin reglas extra; el contenido puede partirse en cualquier punto</option>
                     <option value="keep_segment" <?= ($gpb['mode'] ?? '') === 'keep_segment' ? 'selected' : '' ?>>Flujo por segmentos — cada segmento de tabla va entero a la página siguiente si no cabe</option>
-                    <option value="keep_together" <?= ($gpb['mode'] ?? '') === 'keep_together' ? 'selected' : '' ?>>Grupo íntegro — todo el área de prueba se mueve junta a la página siguiente</option>
+                    <option value="keep_together_if_fits" <?= ($gpb['mode'] ?? '') === 'keep_together_if_fits' ? 'selected' : '' ?>>Grupo íntegro solo si cabe — mantiene el área junta solo si entra en el espacio restante; si no, rellena la hoja actual</option>
+                    <option value="keep_together" <?= ($gpb['mode'] ?? '') === 'keep_together' ? 'selected' : '' ?>>Grupo íntegro — todo el área se mueve junta a la página siguiente</option>
                     <option value="keep_together_compact" <?= ($gpb['mode'] ?? '') === 'keep_together_compact' ? 'selected' : '' ?>>Grupo íntegro con compactación — reduce fuentes/espaciado antes de mover el área completa</option>
                 </select>
             </div>
             <div class="col-6 col-md-3">
-                <label class="form-label small" for="gpb_compact_min_scale" title="Porcentaje mínimo al compactar ligeramente el grupo para que quepa en el espacio restante de la página">Escala mínima de compactación (%)</label>
-                <input type="number" class="form-control" id="gpb_compact_min_scale" min="85" max="100" step="1" value="<?= esc((string) (int) ($gpb['compact_min_scale_percent'] ?? 92), 'attr') ?>">
-                <span class="form-text small text-muted">85–100 % (solo modo compactación)</span>
+                <label class="form-label small" for="gpb_min_remaining_mm" title="Solo aplica a «Grupo íntegro» y «Grupo íntegro con compactación». Si el espacio libre en la hoja es menor que este valor (mm), no se mueve todo el bloque: se rellena la hoja actual por segmentos.">Umbral espacio restante (mm)</label>
+                <input type="number" class="form-control" id="gpb_min_remaining_mm" min="0" max="120" step="1" value="<?= esc((string) (float) ($gpb['min_remaining_mm_to_force_break'] ?? 40), 'attr') ?>">
+                <span class="form-text small text-muted">0 = siempre mover bloque entero; recomendado 30–50 mm</span>
+            </div>
+            <div class="col-6 col-md-3">
+                <label class="form-label small" for="gpb_compact_min_scale" title="Porcentaje mínimo al compactar el grupo para que quepa en el espacio restante">Escala mínima compactación (%)</label>
+                <input type="number" class="form-control" id="gpb_compact_min_scale" min="75" max="100" step="1" value="<?= esc((string) (int) ($gpb['compact_min_scale_percent'] ?? 85), 'attr') ?>">
+                <span class="form-text small text-muted">75–100 % (modo compactación)</span>
+            </div>
+            <div class="col-6 col-md-3">
+                <label class="form-label small" for="gpb_compact_cell_padding" title="Relleno vertical de filas al compactar. 0 = automático según escala">Relleno filas al compactar (px)</label>
+                <input type="number" class="form-control" id="gpb_compact_cell_padding" min="0" max="20" step="1" value="<?= esc((string) (int) ($gpb['compact_cell_padding_px'] ?? 0), 'attr') ?>">
+                <span class="form-text small text-muted">0 = auto; 1–20 = fijo al compactar</span>
+            </div>
+            <div class="col-6 col-md-3 d-flex align-items-end">
+                <div class="form-check mb-2">
+                    <input class="form-check-input" type="checkbox" id="gpb_compact_aggressive" <?= ! empty($gpb['compact_aggressive']) ? 'checked' : '' ?>>
+                    <label class="form-check-label small" for="gpb_compact_aggressive">Compactación agresiva (menos interlineado y márgenes)</label>
+                </div>
             </div>
             <div class="col-12 col-md-3 d-flex align-items-end">
                 <div class="form-check mb-2">
@@ -949,10 +966,10 @@ $labelsShort = [
             </div>
         </div>
         <ul class="small text-muted mb-0 mt-2 ps-3">
-            <li><strong>Grupo íntegro:</strong> evita que un área de prueba quede cortada; si no cabe en el espacio restante de la hoja, pasa entera a la siguiente.</li>
-            <li><strong>Con compactación:</strong> igual que grupo íntegro, pero primero reduce ligeramente fuentes, relleno de filas y márgenes (según «Escala mínima») para intentar que quepa en la hoja actual.</li>
-            <li><strong>Flujo por segmentos:</strong> el área puede ocupar varias páginas, pero cada <code>report-segment-table-wrap</code> (título + tabla de un segmento) no se parte; si no cabe, va completo a la página siguiente.</li>
-            <li>Si un bloque supera la altura de una hoja, se permite el salto interno por filas de tabla.</li>
+            <li><strong>Grupo íntegro solo si cabe:</strong> ideal para hemogramas; si el área no cabe tras la cabecera, empieza en la hoja 1 y continúa en la 2 (por segmentos), sin dejar la primera hoja vacía.</li>
+            <li><strong>Grupo íntegro:</strong> mueve todo el área a la siguiente hoja si no cabe entera. Use el <strong>umbral (mm)</strong> para evitar hojas en blanco: si queda poco espacio libre, rellena la hoja actual.</li>
+            <li><strong>Con compactación:</strong> reduce fuentes, relleno e interlineado (escala, relleno fijo y/o compactación agresiva) antes de mover el bloque.</li>
+            <li><strong>Flujo por segmentos:</strong> cada <code>report-segment-table-wrap</code> no se parte; si no cabe, va entero a la página siguiente.</li>
         </ul>
     </div>
 </div>
@@ -3626,10 +3643,13 @@ document.addEventListener('DOMContentLoaded', function() {
                 mode: (function() {
                     var el = document.getElementById('gpb_mode');
                     var v = el ? el.value : 'keep_together_compact';
-                    return (v === 'flow' || v === 'keep_segment' || v === 'keep_together' || v === 'keep_together_compact') ? v : 'keep_together_compact';
+                    return (v === 'flow' || v === 'keep_segment' || v === 'keep_together_if_fits' || v === 'keep_together' || v === 'keep_together_compact') ? v : 'keep_together_if_fits';
                 })(),
                 repeat_header_on_split: pickChk('gpb_repeat_header', true),
-                compact_min_scale_percent: Math.round(pickNum('gpb_compact_min_scale', 85, 100, 92))
+                compact_min_scale_percent: Math.round(pickNum('gpb_compact_min_scale', 75, 100, 85)),
+                compact_cell_padding_px: Math.round(pickNum('gpb_compact_cell_padding', 0, 20, 0)),
+                compact_aggressive: pickChk('gpb_compact_aggressive', false),
+                min_remaining_mm_to_force_break: Math.round(pickNum('gpb_min_remaining_mm', 0, 120, 40) * 10) / 10
             },
             notes: {
                 title_bg_color: pickHex('ns_title_bg', '#FFF3CD'),
@@ -3851,11 +3871,13 @@ document.addEventListener('DOMContentLoaded', function() {
         var gpbModeEl = document.getElementById('gpb_mode');
         if (gpbModeEl) {
             var gpbMode = String(gpbModeEl.value || '').trim();
-            if (['flow', 'keep_segment', 'keep_together', 'keep_together_compact'].indexOf(gpbMode) < 0) {
+            if (['flow', 'keep_segment', 'keep_together_if_fits', 'keep_together', 'keep_together_compact'].indexOf(gpbMode) < 0) {
                 errs.push('Modo de salto de página en grupos de prueba no válido.');
             }
         }
-        pushIfBadNum('gpb_compact_min_scale', 85, 100, 'Escala mínima de compactación: entre 85 y 100 %.');
+        pushIfBadNum('gpb_min_remaining_mm', 0, 120, 'Umbral de espacio restante: entre 0 y 120 mm.');
+        pushIfBadNum('gpb_compact_min_scale', 75, 100, 'Escala mínima de compactación: entre 75 y 100 %.');
+        pushIfBadNum('gpb_compact_cell_padding', 0, 20, 'Relleno de filas al compactar: entre 0 y 20 px.');
         (window._headerLabelFieldIds || []).forEach(function(fid) {
             var el = document.getElementById('hg_label_' + fid);
             if (el && String(el.value || '').length > 120) errs.push('Etiqueta demasiado larga en encabezado: ' + fid + '.');

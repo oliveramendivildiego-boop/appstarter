@@ -290,25 +290,40 @@ body {
 .report-pdf-grupo-prueba:not(.report-pdf-grupo-prueba-first) {
     margin-top: var(--pdf-results-grupo-gap, 10px);
 }
-/* Flujo por segmentos: cada report-segment-table-wrap (título + tabla) sin partirse. */
+/* Flujo por segmentos / fallback inteligente: cada report-segment-table-wrap sin partirse. */
+.pdf-gpb-segment-rules .report-segment-table-wrap,
+.pdf-gpb-segment-rules .report-refs-matrix-wrap,
 .pdf-gpb-keep-segment .report-segment-table-wrap,
 .pdf-gpb-keep-segment .report-refs-matrix-wrap {
     page-break-inside: avoid;
     break-inside: avoid-page;
 }
+.pdf-gpb-segment-rules .report-segment-table-wrap.report-segment-force-break-before,
+.pdf-gpb-segment-rules .report-refs-matrix-wrap.report-segment-force-break-before,
 .pdf-gpb-keep-segment .report-segment-table-wrap.report-segment-force-break-before,
 .pdf-gpb-keep-segment .report-refs-matrix-wrap.report-segment-force-break-before {
     page-break-before: always;
     break-before: page;
 }
+.pdf-gpb-segment-rules .report-segment-table-wrap.report-segment-allow-split,
+.pdf-gpb-segment-rules .report-refs-matrix-wrap.report-segment-allow-split,
 .pdf-gpb-keep-segment .report-segment-table-wrap.report-segment-allow-split,
 .pdf-gpb-keep-segment .report-refs-matrix-wrap.report-segment-allow-split {
     page-break-inside: auto;
     break-inside: auto;
 }
+/* Grupo íntegro solo si cabe en el espacio restante (Dompdf: segmentos; JS añade keep-on-page). */
+.pdf-gpb-keep-together-if-fits .report-pdf-grupo-prueba {
+    page-break-inside: auto;
+    break-inside: auto;
+}
+.pdf-gpb-keep-together-if-fits .report-pdf-grupo-prueba.report-pdf-grupo-prueba-keep-on-page {
+    page-break-inside: avoid;
+    break-inside: avoid-page;
+}
 /* Mantener grupos íntegros cuando la plantilla lo indica (config. General → Saltos de página). */
-.pdf-gpb-keep-together .report-pdf-grupo-prueba,
-.pdf-gpb-keep-together-compact .report-pdf-grupo-prueba {
+.pdf-gpb-keep-together:not(.pdf-gpb-segment-rules) .report-pdf-grupo-prueba,
+.pdf-gpb-keep-together-compact:not(.pdf-gpb-segment-rules) .report-pdf-grupo-prueba {
     page-break-inside: avoid;
     break-inside: avoid-page;
 }
@@ -329,10 +344,21 @@ body {
 }
 .pdf-gpb-keep-together-compact .report-pdf-grupo-prueba.report-pdf-grupo-prueba-compact table.results th,
 .pdf-gpb-keep-together-compact .report-pdf-grupo-prueba.report-pdf-grupo-prueba-compact table.results td {
-    padding-top: calc(var(--pdf-results-cell-padding-v, 6px) * var(--pdf-gpb-compact-scale, 0.92)) !important;
-    padding-bottom: calc(var(--pdf-results-cell-padding-v, 6px) * var(--pdf-gpb-compact-scale, 0.92)) !important;
+    padding-top: var(--pdf-gpb-compact-cell-padding-v, calc(var(--pdf-results-cell-padding-v, 6px) * var(--pdf-gpb-compact-scale, 0.92))) !important;
+    padding-bottom: var(--pdf-gpb-compact-cell-padding-v, calc(var(--pdf-results-cell-padding-v, 6px) * var(--pdf-gpb-compact-scale, 0.92))) !important;
     font-size: calc(var(--pdf-results-font-size, 9pt) * var(--pdf-gpb-compact-scale, 0.92)) !important;
-    line-height: calc(var(--pdf-results-line-height, 1.35) * 0.98) !important;
+    line-height: calc(var(--pdf-results-line-height, 1.35) * var(--pdf-gpb-compact-line-height-scale, 0.98)) !important;
+}
+.pdf-gpb-compact-aggressive .report-pdf-grupo-prueba.report-pdf-grupo-prueba-compact {
+    --pdf-gpb-compact-line-height-scale: 0.92;
+    --pdf-gpb-compact-segment-margin-scale: 0.82;
+    --pdf-gpb-compact-grupo-gap-scale: 0.82;
+}
+.pdf-gpb-compact-aggressive .report-pdf-grupo-prueba.report-pdf-grupo-prueba-compact .report-segment-table-wrap {
+    margin-bottom: calc(12px * var(--pdf-gpb-compact-scale, 0.92) * var(--pdf-gpb-compact-segment-margin-scale, 1)) !important;
+}
+.pdf-gpb-compact-aggressive .report-pdf-grupo-prueba.report-pdf-grupo-prueba-compact:not(.report-pdf-grupo-prueba-first) {
+    margin-top: calc(var(--pdf-results-grupo-gap, 10px) * var(--pdf-gpb-compact-scale, 0.92) * var(--pdf-gpb-compact-grupo-gap-scale, 1)) !important;
 }
 .pdf-gpb-keep-together-compact .report-pdf-grupo-prueba.report-pdf-grupo-prueba-compact .report-segment-table-wrap {
     margin-bottom: calc(12px * var(--pdf-gpb-compact-scale, 0.92));

@@ -100,7 +100,7 @@
     $gpbCfg = \App\Services\ReportPdfLayoutService::normalizeGrupoPruebaPageBreakStyle($ps['grupo_prueba_page_break'] ?? []);
     $gpbMode = (string) ($gpbCfg['mode'] ?? 'flow');
     $gpbBodyClass = \App\Services\ReportPdfLayoutService::grupoPruebaPageBreakBodyClass($pl);
-    $printSegmentBreakInside = ($gpbMode === 'keep_segment') ? 'avoid' : 'auto';
+    $printSegmentBreakInside = \App\Services\ReportPdfLayoutService::grupoPruebaPageBreakUsesSegmentCss($gpbCfg) ? 'avoid' : 'auto';
     $pp = \App\Services\ReportPdfLayoutService::normalizePrintPaginationStyle($ps['print_pagination'] ?? []);
     $printPaginationEnabled = ! empty($pp['enabled']);
     // Si la plantilla ya define pie de página, no superponer paginación fija del navegador.
@@ -237,7 +237,8 @@
             --pdf-results-line-height: <?= esc((string) $rs['line_height']) ?>;
             --pdf-results-cell-padding-v: <?= (int) ($rs['cell_padding_v_px'] ?? 6) ?>px;
             --pdf-results-grupo-gap: <?= (int) ($rs['grupo_prueba_gap_px'] ?? 10) ?>px;
-            --pdf-gpb-compact-scale: <?= esc((string) round(max(85, min(100, (int) (\App\Services\ReportPdfLayoutService::normalizeGrupoPruebaPageBreakStyle($ps['grupo_prueba_page_break'] ?? [])['compact_min_scale_percent'] ?? 92))) / 100, 3), 'attr') ?>;
+            --pdf-gpb-compact-scale: <?= esc((string) round(max(75, min(100, (int) ($gpbCfg['compact_min_scale_percent'] ?? 85))) / 100, 3), 'attr') ?>;
+            --pdf-gpb-compact-cell-padding-v: <?= (int) ($gpbCfg['compact_cell_padding_px'] ?? 0) ?>px;
             --pdf-results-matrix-align: <?= esc((string) ($rs['matrix_text_align'] ?? 'center')) ?>;
             --pdf-results-matrix-vertical-align: <?= esc((string) ($rs['matrix_vertical_align'] ?? 'middle')) ?>;
             --pdf-results-matrix-color: <?= esc((string) ($rs['matrix_text_color'] ?? $rs['body_text_color'])) ?>;
@@ -393,12 +394,16 @@
                 page-break-inside: <?= esc($printSegmentBreakInside, 'css') ?> !important;
             }
             body.report-browser-print.pdf-gpb-keep-segment .report-segment-table-wrap.report-segment-allow-split,
-            body.report-browser-print.pdf-gpb-keep-segment .report-refs-matrix-wrap.report-segment-allow-split {
+            body.report-browser-print.pdf-gpb-keep-segment .report-refs-matrix-wrap.report-segment-allow-split,
+            body.report-browser-print.pdf-gpb-segment-rules .report-segment-table-wrap.report-segment-allow-split,
+            body.report-browser-print.pdf-gpb-segment-rules .report-refs-matrix-wrap.report-segment-allow-split {
                 break-inside: auto !important;
                 page-break-inside: auto !important;
             }
             body.report-browser-print.pdf-gpb-keep-segment .report-segment-table-wrap.report-segment-force-break-before,
-            body.report-browser-print.pdf-gpb-keep-segment .report-refs-matrix-wrap.report-segment-force-break-before {
+            body.report-browser-print.pdf-gpb-keep-segment .report-refs-matrix-wrap.report-segment-force-break-before,
+            body.report-browser-print.pdf-gpb-segment-rules .report-segment-table-wrap.report-segment-force-break-before,
+            body.report-browser-print.pdf-gpb-segment-rules .report-refs-matrix-wrap.report-segment-force-break-before {
                 break-before: page !important;
                 page-break-before: always !important;
             }

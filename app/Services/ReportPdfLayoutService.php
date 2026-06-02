@@ -93,13 +93,22 @@ class ReportPdfLayoutService
     public const LAB_FIRMAS_PLACEMENTS = ['per_group', 'block_end', 'both'];
 
     /** @var list<string> */
-    public const GRUPO_PRUEBA_PAGE_BREAK_MODES = ['flow', 'keep_segment', 'keep_together', 'keep_together_compact'];
+    public const GRUPO_PRUEBA_PAGE_BREAK_MODES = [
+        'flow',
+        'keep_segment',
+        'keep_together_if_fits',
+        'keep_together',
+        'keep_together_compact',
+    ];
 
-    /** @var array{mode: string, repeat_header_on_split: bool, compact_min_scale_percent: int} */
+    /** @var array{mode: string, repeat_header_on_split: bool, compact_min_scale_percent: int, compact_cell_padding_px: int, compact_aggressive: bool, min_remaining_mm_to_force_break: float} */
     public const DEFAULT_GRUPO_PRUEBA_PAGE_BREAK = [
-        'mode'                      => 'keep_together_compact',
-        'repeat_header_on_split'    => true,
-        'compact_min_scale_percent' => 92,
+        'mode'                              => 'keep_together_if_fits',
+        'repeat_header_on_split'            => true,
+        'compact_min_scale_percent'         => 85,
+        'compact_cell_padding_px'           => 0,
+        'compact_aggressive'                => false,
+        'min_remaining_mm_to_force_break'   => 40.0,
     ];
 
     /**
@@ -2123,6 +2132,12 @@ class ReportPdfLayoutService
             if (isset($gpb['compact_min_scale_percent']) && ! is_numeric($gpb['compact_min_scale_percent'])) {
                 return 'Escala de compactación en grupos de prueba inválida.';
             }
+            if (isset($gpb['compact_cell_padding_px']) && ! is_numeric($gpb['compact_cell_padding_px'])) {
+                return 'Relleno de filas en compactación inválido.';
+            }
+            if (isset($gpb['min_remaining_mm_to_force_break']) && ! is_numeric($gpb['min_remaining_mm_to_force_break'])) {
+                return 'Umbral de espacio restante para salto de página inválido.';
+            }
         }
 
         return null;
@@ -2833,7 +2848,7 @@ class ReportPdfLayoutService
     /**
      * @param mixed $raw
      *
-     * @return array{mode: string, repeat_header_on_split: bool, compact_min_scale_percent: int}
+     * @return array{mode: string, repeat_header_on_split: bool, compact_min_scale_percent: int, compact_cell_padding_px: int, compact_aggressive: bool, min_remaining_mm_to_force_break: float}
      */
     public static function normalizeGrupoPruebaPageBreakStyle($raw): array
     {
@@ -2844,14 +2859,39 @@ class ReportPdfLayoutService
             $mode = $def['mode'];
         }
         $scale = isset($s['compact_min_scale_percent']) ? (int) $s['compact_min_scale_percent'] : $def['compact_min_scale_percent'];
-        $scale = max(85, min(100, $scale));
+        $scale = max(75, min(100, $scale));
+        $cellPad = isset($s['compact_cell_padding_px']) ? (int) $s['compact_cell_padding_px'] : (int) $def['compact_cell_padding_px'];
+        $cellPad = max(0, min(20, $cellPad));
+        $minRemMm = isset($s['min_remaining_mm_to_force_break']) ? (float) $s['min_remaining_mm_to_force_break'] : (float) $def['min_remaining_mm_to_force_break'];
+        $minRemMm = round(max(0.0, min(120.0, $minRemMm)), 1);
         $repeatDefault = $mode !== 'flow' && ! empty($def['repeat_header_on_split']);
 
         return [
-            'mode'                      => $mode,
-            'repeat_header_on_split'    => self::labFirmasBool($s, 'repeat_header_on_split', $repeatDefault),
-            'compact_min_scale_percent' => $scale,
+            'mode'                            => $mode,
+            'repeat_header_on_split'          => self::labFirmasBool($s, 'repeat_header_on_split', $repeatDefault),
+            'compact_min_scale_percent'       => $scale,
+            'compact_cell_padding_px'         => $cellPad,
+            'compact_aggressive'              => self::labFirmasBool($s, 'compact_aggressive', ! empty($def['compact_aggressive'])),
+            'min_remaining_mm_to_force_break' => $minRemMm,
         ];
+    }
+
+    /**
+     * Modos que aplican reglas de segmento (PDF sin JS y fallback al rellenar la hoja).
+     *
+     * @param array{mode?: string, min_remaining_mm_to_force_break?: float} $gpb
+     */
+    public static function grupoPruebaPageBreakUsesSegmentCss(array $gpb): bool
+    {
+        $mode = (string) ($gpb['mode'] ?? 'flow');
+        if ($mode === 'keep_segment' || $mode === 'keep_together_if_fits') {
+            return true;
+        }
+        if ($mode === 'keep_together' || $mode === 'keep_together_compact') {
+            return ((float) ($gpb['min_remaining_mm_to_force_break'] ?? 0.0)) > 0.0;
+        }
+
+        return false;
     }
 
     /**
@@ -2867,6 +2907,12 @@ class ReportPdfLayoutService
             return '';
         }
         $classes = ['pdf-gpb-' . str_replace('_', '-', $gpb['mode'])];
+        if (self::grupoPruebaPageBreakUsesSegmentCss($gpb)) {
+            $classes[] = 'pdf-gpb-segment-rules';
+        }
+        if ($gpb['mode'] === 'keep_together_compact' && ! empty($gpb['compact_aggressive'])) {
+            $classes[] = 'pdf-gpb-compact-aggressive';
+        }
         if (! empty($gpb['repeat_header_on_split'])) {
             $classes[] = 'pdf-gpb-repeat-header';
         }
