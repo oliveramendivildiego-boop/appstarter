@@ -85,7 +85,7 @@
     </div>
 
     <?= view('registers/orden_pruebas_block', [
-        'grupos_pruebas'     => $grupos_pruebas ?? [],
+        'pruebas_en_orden'   => $pruebas_en_orden ?? [],
         'total_pruebas'      => (int) ($total_pruebas ?? 0),
         'show_order_costs'   => !empty($show_order_costs),
         'costos_por_id'      => $costos_por_id ?? [],

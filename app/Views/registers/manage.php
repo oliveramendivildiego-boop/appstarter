@@ -75,7 +75,28 @@
         font-size: .7rem;
         white-space: nowrap;
     }
+    #pruebas_lista .pruebaitem {
+        gap: .5rem;
+    }
+    #pruebas_lista .prueba-drag-handle {
+        color: #6c757d;
+        cursor: grab;
+        flex: 0 0 auto;
+        padding: 0 .15rem;
+        user-select: none;
+    }
+    #pruebas_lista .prueba-drag-handle:active {
+        cursor: grabbing;
+    }
+    #pruebas_lista .pruebaitem.prueba-sortable-chosen {
+        background: #e7f1ff;
+    }
+    #pruebas_lista .prueba-sortable-ghost {
+        opacity: 0.45;
+        background: #cfe2ff;
+    }
 </style>
+<script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.2/Sortable.min.js"></script>
 <?= $this->endSection() ?>
 <?= $this->section('content') ?>
 <?php
@@ -136,7 +157,7 @@ if (!empty($edit_registro)) {
         <div id="pruebas_error" class="text-danger small mb-2" style="display:none;"></div>
         <div class="mb-3">
             <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-2">
-                <label class="form-label mb-0">Pruebas seleccionadas:</label>
+                <label class="form-label mb-0">Pruebas seleccionadas <span class="text-muted fw-normal small">(arrastre para ordenar)</span>:</label>
                 <button type="button" id="btn_open_modal_pruebas" class="btn btn-outline-primary btn-sm" data-bs-toggle="modal" data-bs-target="#modalSeleccionPruebas">
                     <i class="fa-solid fa-list-check me-1"></i>Seleccionar pruebas
                 </button>
@@ -322,6 +343,7 @@ document.addEventListener('DOMContentLoaded', function() {
     var pacienteModal = (typeof bootstrap !== 'undefined' && pacienteModalEl) ? bootstrap.Modal.getOrCreateInstance(pacienteModalEl, { focus: false }) : null;
     var doctorModal = (typeof bootstrap !== 'undefined' && doctorModalEl) ? bootstrap.Modal.getOrCreateInstance(doctorModalEl) : null;
     var pruebasSeleccionadas = []; // {id, name, padre, cost}
+    var pruebasSortable = null;
     var editInfo = (typeof window.EDIT_REGISTRO !== 'undefined') ? window.EDIT_REGISTRO : null;
 
     function getCsrfPair() {
@@ -406,26 +428,64 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     };
 
+    function syncPruebasSeleccionadasFromDom() {
+        if (!pruebaListaContainer) return;
+        var byId = {};
+        pruebasSeleccionadas.forEach(function(p) { byId[String(p.id)] = p; });
+        var next = [];
+        pruebaListaContainer.querySelectorAll('.pruebaitem').forEach(function(row) {
+            var id = row.dataset.id;
+            if (id && byId[id]) next.push(byId[id]);
+        });
+        if (next.length === pruebasSeleccionadas.length) {
+            pruebasSeleccionadas = next;
+        }
+    }
+
+    function initPruebasSortable() {
+        if (!pruebaListaContainer || typeof Sortable === 'undefined') return;
+        if (pruebasSortable) {
+            pruebasSortable.destroy();
+            pruebasSortable = null;
+        }
+        if (pruebasSeleccionadas.length < 2) return;
+        pruebasSortable = new Sortable(pruebaListaContainer, {
+            animation: 150,
+            handle: '.prueba-drag-handle',
+            ghostClass: 'prueba-sortable-ghost',
+            chosenClass: 'prueba-sortable-chosen',
+            onEnd: function() {
+                syncPruebasSeleccionadasFromDom();
+            }
+        });
+    }
+
     function renderPruebasLista() {
         if (!pruebaListaContainer) return;
+        if (pruebasSortable) {
+            pruebasSortable.destroy();
+            pruebasSortable = null;
+        }
         pruebaListaContainer.innerHTML = '';
         if (pruebasSeleccionadas.length === 0) {
             pruebaListaContainer.innerHTML = '<p class="text-muted small mb-0">Use el buscador para agregar pruebas. La lista aparecerá aquí.</p>';
         } else {
-            pruebasSeleccionadas.forEach(function(p, idx) {
+            pruebasSeleccionadas.forEach(function(p) {
                 var row = document.createElement('div');
                 row.className = 'd-flex align-items-center justify-content-between py-2 border-bottom pruebaitem';
-                row.dataset.id = p.id;
+                row.dataset.id = String(p.id);
                 var displayName = (p.name || '');
                 if (p.padre) displayName += ' <span class="text-muted small">(' + p.padre + ')</span>';
                 var removeButton = p.locked
                     ? '<button type="button" class="btn btn-outline-secondary btn-sm" disabled title="Esta prueba ya tiene resultados"><i class="fa-solid fa-lock"></i></button>'
-                    : '<button type="button" class="btn btn-outline-danger btn-sm quitar-prueba" data-idx="' + idx + '" title="Eliminar"><i class="fa-solid fa-times"></i></button>';
-                row.innerHTML = '<span class="flex-grow-1">' + displayName + '</span>' +
+                    : '<button type="button" class="btn btn-outline-danger btn-sm quitar-prueba" data-id="' + String(p.id) + '" title="Eliminar"><i class="fa-solid fa-times"></i></button>';
+                row.innerHTML = '<span class="prueba-drag-handle" title="Arrastrar para reordenar"><i class="fa-solid fa-grip-vertical"></i></span>' +
+                    '<span class="flex-grow-1">' + displayName + '</span>' +
                     '<span class="badge bg-secondary me-2">' + formatCurrencyAmount(p.cost || 0, 0) + '</span>' +
                     removeButton;
                 pruebaListaContainer.appendChild(row);
             });
+            initPruebasSortable();
         }
         recalcular();
     }
@@ -983,7 +1043,10 @@ document.addEventListener('DOMContentLoaded', function() {
     if (pruebaListaContainer) {
         pruebaListaContainer.addEventListener('click', function(e) {
             var btn = e.target.closest('.quitar-prueba');
-            if (btn) quitarPrueba(parseInt(btn.dataset.idx, 10));
+            if (!btn) return;
+            var id = btn.getAttribute('data-id');
+            var idx = pruebasSeleccionadas.findIndex(function(p) { return String(p.id) === String(id); });
+            if (idx >= 0) quitarPrueba(idx);
         });
     }
 

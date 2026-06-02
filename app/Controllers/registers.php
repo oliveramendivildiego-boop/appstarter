@@ -70,15 +70,12 @@ class Registers extends SecureArea
     /**
      * Datos extra para hoja de trabajo / PDF: conteo de pruebas y costos/pagos si está habilitado en config.
      *
-     * @param array<string, list<array<string, mixed>>> $gruposPruebas
+     * @param list<array<string, mixed>> $pruebasInfo Pruebas en el orden guardado en la orden
      * @return array<string, mixed>
      */
-    private function buildOrdenTrabajoExtras(int $registroId, object $registerInfo, array $gruposPruebas): array
+    private function buildOrdenTrabajoExtras(int $registroId, object $registerInfo, array $pruebasInfo): array
     {
-        $totalPruebas = 0;
-        foreach ($gruposPruebas as $items) {
-            $totalPruebas += count($items);
-        }
+        $totalPruebas = count($pruebasInfo);
 
         $extras = [
             'total_pruebas'    => $totalPruebas,
@@ -719,14 +716,6 @@ class Registers extends SecureArea
         $matchingPoblacionIds = $this->registerService->getMatchingPoblacionIds($registerInfo->birthday ?? null, $patientGender, $refIngreso);
         $pruebasInfo = $this->registerModel->getPruebasInput($registerInfo->pruebas ?? '', $matchingPoblacionIds, $patientGender);
 
-        // Agrupar por "padre" para mostrar solo listado de pruebas
-        $gruposPruebas = [];
-        foreach ($pruebasInfo as $p) {
-            $padre = trim((string)($p['padre'] ?? ''));
-            if ($padre === '') $padre = 'Pruebas';
-            $gruposPruebas[$padre][] = $p;
-        }
-
         // Formato fecha similar al reporte
         $fecha = RegisterService::formatStoredReporteFechaCorta(
             $registerInfo->ingreso !== null && (string) $registerInfo->ingreso !== ''
@@ -741,7 +730,7 @@ class Registers extends SecureArea
         $bcSizePct = max(30, min(250, $bcSizePct));
 
         $edadPacienteOrden = $this->registerService->formatEdadAlMomento($registerInfo->birthday ?? null, $refIngreso);
-        $ordenExtras = $this->buildOrdenTrabajoExtras($id, $registerInfo, $gruposPruebas);
+        $ordenExtras = $this->buildOrdenTrabajoExtras($id, $registerInfo, $pruebasInfo);
 
         return view('registers/orden', array_merge([
             'current_module'    => 'registers',
@@ -751,7 +740,7 @@ class Registers extends SecureArea
             'fecha'             => $fecha,
             'edad_paciente_orden' => $edadPacienteOrden,
             'labotests_namecate' => $id,
-            'grupos_pruebas'    => $gruposPruebas,
+            'pruebas_en_orden'  => $pruebasInfo,
             'label_sin_doctor'  => $this->getLabelSinDoctorConfig(),
             'show_order_barcode' => ($this->configModel->getValue('show_order_barcode') !== '0'),
             'order_barcode_print_layout' => (strtolower($this->configModel->getValue('order_barcode_print_layout')) === 'horizontal')
@@ -788,13 +777,6 @@ class Registers extends SecureArea
         $matchingPoblacionIds = $this->registerService->getMatchingPoblacionIds($registerInfo->birthday ?? null, $patientGender, $refIngreso);
         $pruebasInfo = $this->registerModel->getPruebasInput($registerInfo->pruebas ?? '', $matchingPoblacionIds, $patientGender);
 
-        $gruposPruebas = [];
-        foreach ($pruebasInfo as $p) {
-            $padre = trim((string)($p['padre'] ?? ''));
-            if ($padre === '') $padre = 'Pruebas';
-            $gruposPruebas[$padre][] = $p;
-        }
-
         $fecha = RegisterService::formatStoredReporteFechaCorta(
             $registerInfo->ingreso !== null && (string) $registerInfo->ingreso !== ''
                 ? (string) $registerInfo->ingreso
@@ -802,14 +784,14 @@ class Registers extends SecureArea
         );
 
         $edadPacienteOrden = $this->registerService->formatEdadAlMomento($registerInfo->birthday ?? null, $refIngreso);
-        $ordenExtras = $this->buildOrdenTrabajoExtras($id, $registerInfo, $gruposPruebas);
+        $ordenExtras = $this->buildOrdenTrabajoExtras($id, $registerInfo, $pruebasInfo);
 
         $html = view('registers/orden_pdf', array_merge([
             'register_info'    => $registerInfo,
             'lab_config'       => $this->registerService->getLabConfig(),
             'fecha'            => $fecha,
             'edad_paciente_orden' => $edadPacienteOrden,
-            'grupos_pruebas'   => $gruposPruebas,
+            'pruebas_en_orden' => $pruebasInfo,
             'registro_id'      => $id,
             'label_sin_doctor' => $this->getLabelSinDoctorConfig(),
         ], $ordenExtras));

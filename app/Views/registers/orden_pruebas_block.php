@@ -2,6 +2,7 @@
 /**
  * Listado numerado de pruebas, resumen de cantidad y bloque de costos/pagos (hoja de trabajo).
  *
+ * @var list<array<string, mixed>> $pruebas_en_orden
  * @var array<string, list<array<string, mixed>>> $grupos_pruebas
  * @var int $total_pruebas
  * @var bool $show_order_costs
@@ -16,35 +17,48 @@ $forPdf = !empty($for_pdf);
 $showCosts = !empty($show_order_costs);
 $costosMap = is_array($costos_por_id ?? null) ? $costos_por_id : [];
 $numPrueba = 0;
+
+$filasOrden = [];
+if (! empty($pruebas_en_orden) && is_array($pruebas_en_orden)) {
+    $filasOrden = $pruebas_en_orden;
+} elseif (! empty($grupos_pruebas) && is_array($grupos_pruebas)) {
+    foreach ($grupos_pruebas as $items) {
+        foreach ($items ?? [] as $it) {
+            $filasOrden[] = $it;
+        }
+    }
+}
 ?>
-<?php if (empty($grupos_pruebas ?? [])): ?>
+<?php if ($filasOrden === []): ?>
     <?php if ($forPdf): ?>
         <p class="muted">No hay pruebas para esta orden.</p>
     <?php else: ?>
         <div class="alert alert-warning mb-0">No hay pruebas para esta orden.</div>
     <?php endif; ?>
 <?php else: ?>
-    <?php foreach (($grupos_pruebas ?? []) as $padre => $items): ?>
-        <div class="<?= $forPdf ? 'section' : 'mb-3' ?>">
-            <div class="<?= $forPdf ? 'section-title' : 'fw-bold text-uppercase border-bottom pb-1 mb-2' ?>"><?= esc($padre) ?></div>
-            <ul class="orden-pruebas-items<?= $forPdf ? '' : ' mb-0' ?>"<?= $forPdf ? ' style="list-style:none;padding:0;margin:0;text-align:left;"' : '' ?>>
-                <?php foreach (($items ?? []) as $it): ?>
-                    <?php
-                    $numPrueba++;
-                    $pid = (int) ($it['prianacategoria_id'] ?? 0);
-                    $costo = $showCosts ? (float) ($costosMap[$pid] ?? 0) : 0.0;
-                    ?>
-                    <li class="orden-prueba-item"<?= $forPdf ? ' style="display:flex;align-items:baseline;margin:0 0 2px;padding:0;text-align:left;"' : '' ?>>
-                        <span class="orden-prueba-num<?= !$forPdf && !$showCosts ? ' text-muted' : '' ?>"><?= $numPrueba ?>.</span>
-                        <span class="orden-prueba-nombre"><?= esc($it['hijo'] ?? '') ?></span>
-                        <?php if ($showCosts): ?>
-                            <span class="orden-prueba-costo"<?= $forPdf ? ' style="margin-left:auto;text-align:right;white-space:nowrap;"' : '' ?>><?= format_currency($costo) ?></span>
-                        <?php endif; ?>
-                    </li>
-                <?php endforeach; ?>
-            </ul>
-        </div>
-    <?php endforeach; ?>
+    <div class="<?= $forPdf ? 'section' : 'mb-3' ?>">
+        <ul class="orden-pruebas-items<?= $forPdf ? '' : ' mb-0' ?>"<?= $forPdf ? ' style="list-style:none;padding:0;margin:0;text-align:left;"' : '' ?>>
+            <?php foreach ($filasOrden as $it): ?>
+                <?php
+                $numPrueba++;
+                $pid = (int) ($it['prianacategoria_id'] ?? 0);
+                $costo = $showCosts ? (float) ($costosMap[$pid] ?? 0) : 0.0;
+                $padreLabel = trim((string) ($it['padre'] ?? ''));
+                $nombrePrueba = (string) ($it['hijo'] ?? '');
+                if ($padreLabel !== '' && stripos($nombrePrueba, $padreLabel) === false) {
+                    $nombrePrueba .= ' (' . $padreLabel . ')';
+                }
+                ?>
+                <li class="orden-prueba-item"<?= $forPdf ? ' style="display:flex;align-items:baseline;margin:0 0 2px;padding:0;text-align:left;"' : '' ?>>
+                    <span class="orden-prueba-num<?= !$forPdf && !$showCosts ? ' text-muted' : '' ?>"><?= $numPrueba ?>.</span>
+                    <span class="orden-prueba-nombre"><?= esc($nombrePrueba) ?></span>
+                    <?php if ($showCosts): ?>
+                        <span class="orden-prueba-costo"<?= $forPdf ? ' style="margin-left:auto;text-align:right;white-space:nowrap;"' : '' ?>><?= format_currency($costo) ?></span>
+                    <?php endif; ?>
+                </li>
+            <?php endforeach; ?>
+        </ul>
+    </div>
 
     <div class="<?= $forPdf ? 'section' : 'mt-3 p-2 bg-light rounded border' ?>">
         <strong>Resumen:</strong>

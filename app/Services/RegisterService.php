@@ -1186,6 +1186,7 @@ class RegisterService
         $grupos = $this->appendMissingReferenceRows($grupos, $registerInfo, $eligiblePriaConfig, $matchingPoblacionIds, $patientGender);
         $grupos = $this->applyReferenceVisibility($grupos, $eligiblePriaIds);
         $grupos = $this->dropGruposSinValorIngresado($grupos);
+        $grupos = $this->sortGruposByRegistroPruebasOrder($grupos, (string) ($registerInfo->pruebas ?? ''));
 
         $reportLabFirmas = $this->buildLabFirmasParaReporte($analisis, (string) ($registerInfo->pruebas ?? ''), array_keys($grupos));
         $reportPriaRefsConsolidada = $this->buildReportPriaRefsConsolidada($eligiblePriaConfig);
@@ -1201,6 +1202,72 @@ class RegisterService
             'report_lab_firmas'               => $reportLabFirmas,
             'report_pria_refs_consolidada'    => $reportPriaRefsConsolidada,
         ];
+    }
+
+    /**
+     * Ordena secciones y filas del reporte según el CSV de pruebas del registro.
+     *
+     * @param array<string, list<object|array<string, mixed>>> $grupos
+     * @return array<string, list<object|array<string, mixed>>>
+     */
+    public function sortGruposByRegistroPruebasOrder(array $grupos, string $pruebasCsv): array
+    {
+        $orderedIds = $this->extractPrianacategoriaIdsFromRegistroPruebas($pruebasCsv);
+        if ($orderedIds === [] || $grupos === []) {
+            return $grupos;
+        }
+
+        $position = [];
+        foreach ($orderedIds as $i => $id) {
+            $position[$id] = $i;
+        }
+
+        $padreMinPos = [];
+        foreach ($grupos as $padre => $items) {
+            $min = PHP_INT_MAX;
+            foreach ($items as $it) {
+                $raw = is_array($it) ? $it : (array) $it;
+                $pid = (int) ($raw['prianacategoria_id'] ?? 0);
+                if ($pid > 0 && isset($position[$pid])) {
+                    $min = min($min, $position[$pid]);
+                }
+            }
+            $padreMinPos[$padre] = $min;
+        }
+
+        uksort($grupos, static function (string $a, string $b) use ($padreMinPos): int {
+            $pa = $padreMinPos[$a] ?? PHP_INT_MAX;
+            $pb = $padreMinPos[$b] ?? PHP_INT_MAX;
+            if ($pa !== $pb) {
+                return $pa <=> $pb;
+            }
+
+            return strcasecmp($a, $b);
+        });
+
+        foreach ($grupos as $padre => $items) {
+            usort($items, static function ($a, $b) use ($position): int {
+                $rawA = is_array($a) ? $a : (array) $a;
+                $rawB = is_array($b) ? $b : (array) $b;
+                $pa = (int) ($rawA['prianacategoria_id'] ?? 0);
+                $pb = (int) ($rawB['prianacategoria_id'] ?? 0);
+                $oa = $position[$pa] ?? PHP_INT_MAX;
+                $ob = $position[$pb] ?? PHP_INT_MAX;
+                if ($oa !== $ob) {
+                    return $oa <=> $ob;
+                }
+                $aOrd = (int) ($rawA['orden'] ?? 0);
+                $bOrd = (int) ($rawB['orden'] ?? 0);
+                if ($aOrd !== $bOrd) {
+                    return $aOrd <=> $bOrd;
+                }
+
+                return ((int) ($rawA['secanacategoria_id'] ?? 0)) <=> ((int) ($rawB['secanacategoria_id'] ?? 0));
+            });
+            $grupos[$padre] = $items;
+        }
+
+        return $grupos;
     }
 
     /**

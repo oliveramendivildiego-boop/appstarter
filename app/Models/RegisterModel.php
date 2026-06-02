@@ -749,12 +749,27 @@ class RegisterModel extends Model
         } else {
             $select .= ", NULL as metodo_id";
         }
-        return $this->db->table('prianacategoria')
+        $rows = $this->db->table('prianacategoria')
             ->select($select)
             ->whereIn("{$pt}.prianacategoria_id", $ids)
             ->where("({$pt}.deleted = 0 OR {$pt}.deleted IS NULL)")
             ->get()
             ->getResultArray();
+        $byId = [];
+        foreach ($rows as $row) {
+            $pid = (int) ($row['prianacategoria_id'] ?? 0);
+            if ($pid > 0) {
+                $byId[$pid] = $row;
+            }
+        }
+        $ordered = [];
+        foreach ($ids as $pid) {
+            if (isset($byId[$pid])) {
+                $ordered[] = $byId[$pid];
+            }
+        }
+
+        return $ordered;
     }
 
     /**
@@ -1259,12 +1274,15 @@ class RegisterModel extends Model
     {
         $parts = explode(',', $valores);
         $ids = [];
+        $seenIds = [];
         foreach ($parts as $p) {
             $p = trim($p);
             $id = preg_match('/contador_(\d+)/', $p, $m) ? (int) $m[1] : (int) $p;
-            if ($id > 0) $ids[] = $id;
+            if ($id > 0 && ! isset($seenIds[$id])) {
+                $seenIds[$id] = true;
+                $ids[] = $id;
+            }
         }
-        $ids = array_unique($ids);
         if (empty($ids)) {
             return [];
         }
@@ -1403,7 +1421,14 @@ class RegisterModel extends Model
             }
         }
 
-        return array_values($byPria);
+        $ordered = [];
+        foreach ($ids as $pid) {
+            if (isset($byPria[$pid])) {
+                $ordered[] = $byPria[$pid];
+            }
+        }
+
+        return $ordered;
     }
 
     public function getOpciones(int $id): array
