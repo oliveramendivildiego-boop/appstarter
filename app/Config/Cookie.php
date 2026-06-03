@@ -7,6 +7,26 @@ use DateTimeInterface;
 
 class Cookie extends BaseConfig
 {
+    public function __construct()
+    {
+        parent::__construct();
+
+        $secureEnv = env('cookie.secure');
+        if ($secureEnv !== null && $secureEnv !== '') {
+            $this->secure = filter_var($secureEnv, FILTER_VALIDATE_BOOLEAN);
+
+            return;
+        }
+
+        $isHttps = (! empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off')
+            || (isset($_SERVER['SERVER_PORT']) && (int) $_SERVER['SERVER_PORT'] === 443)
+            || (isset($_SERVER['HTTP_X_FORWARDED_PROTO']) && strtolower((string) $_SERVER['HTTP_X_FORWARDED_PROTO']) === 'https');
+
+        if ($isHttps) {
+            $this->secure = true;
+        }
+    }
+
     /**
      * --------------------------------------------------------------------------
      * Cookie Prefix

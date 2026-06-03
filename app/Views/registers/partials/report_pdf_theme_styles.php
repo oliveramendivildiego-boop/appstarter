@@ -332,4 +332,39 @@ table.results.pdf-notes-table td.pdf-notes-cell {
 .report-pdf-grupo-prueba:not(.report-pdf-grupo-prueba-first) {
     margin-top: <?= (int) ($rs['grupo_prueba_gap_px'] ?? 10) ?>px !important;
 }
+<?php if (\App\Services\ReportPdfLayoutService::grupoPruebaPageBreakUsesPureGrupoIntact($gpb)): ?>
+.pdf-gpb-grupo-intact .report-pdf-grupo-prueba:not(.report-pdf-grupo-prueba-allow-split),
+.pdf-gpb-grupo-intact .report-pdf-grupo-prueba:not(.report-pdf-grupo-prueba-allow-split) .report-segment-table-wrap,
+.pdf-gpb-grupo-intact .report-pdf-grupo-prueba:not(.report-pdf-grupo-prueba-allow-split) .report-refs-matrix-wrap,
+.pdf-gpb-grupo-intact .report-pdf-grupo-prueba:not(.report-pdf-grupo-prueba-allow-split) table.results {
+    page-break-inside: avoid !important;
+    break-inside: avoid-page !important;
+}
+.pdf-gpb-grupo-intact .report-pdf-grupo-prueba.report-pdf-grupo-prueba-force-break-before {
+    page-break-before: always !important;
+    break-before: page !important;
+}
+<?php endif; ?>
+<?php if (\App\Services\ReportPdfLayoutService::grupoPruebaPageBreakUsesSegmentIntactCss($gpb)): ?>
+.pdf-gpb-segment-rules .report-segment-table-wrap:not(.report-segment-allow-split),
+.pdf-gpb-segment-rules .report-refs-matrix-wrap:not(.report-segment-allow-split),
+.pdf-gpb-keep-segment .report-segment-table-wrap:not(.report-segment-allow-split),
+.pdf-gpb-keep-segment .report-refs-matrix-wrap:not(.report-segment-allow-split) {
+    page-break-inside: avoid !important;
+    break-inside: avoid-page !important;
+}
+.pdf-gpb-segment-rules .report-segment-table-wrap:not(.report-segment-allow-split) table.results,
+.pdf-gpb-segment-rules .report-refs-matrix-wrap:not(.report-segment-allow-split) table.results,
+.pdf-gpb-keep-segment .report-segment-table-wrap:not(.report-segment-allow-split) table.results {
+    page-break-inside: avoid !important;
+    break-inside: avoid-page !important;
+}
+.pdf-gpb-segment-rules .report-segment-table-wrap.report-segment-force-break-before,
+.pdf-gpb-segment-rules .report-refs-matrix-wrap.report-segment-force-break-before,
+.pdf-gpb-keep-segment .report-segment-table-wrap.report-segment-force-break-before,
+.pdf-gpb-keep-segment .report-refs-matrix-wrap.report-segment-force-break-before {
+    page-break-before: always !important;
+    break-before: page !important;
+}
+<?php endif; ?>
 </style>

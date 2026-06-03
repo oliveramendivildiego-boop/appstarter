@@ -290,6 +290,19 @@ body {
 .report-pdf-grupo-prueba:not(.report-pdf-grupo-prueba-first) {
     margin-top: var(--pdf-results-grupo-gap, 10px);
 }
+.pdf-gpb-segment-rules .report-segment-table-wrap:not(.report-segment-allow-split),
+.pdf-gpb-segment-rules .report-refs-matrix-wrap:not(.report-segment-allow-split),
+.pdf-gpb-keep-segment .report-segment-table-wrap:not(.report-segment-allow-split),
+.pdf-gpb-keep-segment .report-refs-matrix-wrap:not(.report-segment-allow-split) {
+    page-break-inside: avoid !important;
+    break-inside: avoid-page !important;
+}
+.pdf-gpb-segment-rules .report-segment-table-wrap:not(.report-segment-allow-split) table.results,
+.pdf-gpb-segment-rules .report-refs-matrix-wrap:not(.report-segment-allow-split) table.results,
+.pdf-gpb-keep-segment .report-segment-table-wrap:not(.report-segment-allow-split) table.results {
+    page-break-inside: avoid !important;
+    break-inside: avoid-page !important;
+}
 /* Flujo por segmentos / fallback inteligente: cada report-segment-table-wrap sin partirse. */
 .pdf-gpb-segment-rules .report-segment-table-wrap,
 .pdf-gpb-segment-rules .report-refs-matrix-wrap,
@@ -312,6 +325,27 @@ body {
     page-break-inside: auto;
     break-inside: auto;
 }
+/* Grupo íntegro (área completa): evitar corte; mover bloque con force-break-before o motor PDF. */
+.pdf-gpb-grupo-intact .report-pdf-grupo-prueba:not(.report-pdf-grupo-prueba-allow-split) {
+    page-break-inside: avoid !important;
+    break-inside: avoid-page !important;
+}
+.pdf-gpb-grupo-intact .report-pdf-grupo-prueba:not(.report-pdf-grupo-prueba-allow-split) .report-segment-table-wrap,
+.pdf-gpb-grupo-intact .report-pdf-grupo-prueba:not(.report-pdf-grupo-prueba-allow-split) .report-refs-matrix-wrap,
+.pdf-gpb-grupo-intact .report-pdf-grupo-prueba:not(.report-pdf-grupo-prueba-allow-split) table.results {
+    page-break-inside: avoid !important;
+    break-inside: avoid-page !important;
+}
+.pdf-gpb-grupo-intact .report-pdf-grupo-prueba.report-pdf-grupo-prueba-force-break-before {
+    page-break-before: always !important;
+    break-before: page !important;
+}
+.pdf-gpb-grupo-intact .report-pdf-grupo-prueba.report-pdf-grupo-prueba-allow-split,
+.pdf-gpb-grupo-intact .report-pdf-grupo-prueba.report-pdf-grupo-prueba-allow-split .report-segment-table-wrap,
+.pdf-gpb-grupo-intact .report-pdf-grupo-prueba.report-pdf-grupo-prueba-allow-split table.results {
+    page-break-inside: auto !important;
+    break-inside: auto !important;
+}
 /* Grupo íntegro solo si cabe en el espacio restante (Dompdf: segmentos; JS añade keep-on-page). */
 .pdf-gpb-keep-together-if-fits .report-pdf-grupo-prueba {
     page-break-inside: auto;
@@ -320,23 +354,6 @@ body {
 .pdf-gpb-keep-together-if-fits .report-pdf-grupo-prueba.report-pdf-grupo-prueba-keep-on-page {
     page-break-inside: avoid;
     break-inside: avoid-page;
-}
-/* Mantener grupos íntegros cuando la plantilla lo indica (config. General → Saltos de página). */
-.pdf-gpb-keep-together:not(.pdf-gpb-segment-rules) .report-pdf-grupo-prueba,
-.pdf-gpb-keep-together-compact:not(.pdf-gpb-segment-rules) .report-pdf-grupo-prueba {
-    page-break-inside: avoid;
-    break-inside: avoid-page;
-}
-.pdf-gpb-keep-together .report-pdf-grupo-prueba.report-pdf-grupo-prueba-force-break-before,
-.pdf-gpb-keep-together-compact .report-pdf-grupo-prueba.report-pdf-grupo-prueba-force-break-before {
-    page-break-before: always;
-    break-before: page;
-}
-/* Grupos más altos que una hoja: permitir salto interno. */
-.pdf-gpb-keep-together .report-pdf-grupo-prueba.report-pdf-grupo-prueba-allow-split,
-.pdf-gpb-keep-together-compact .report-pdf-grupo-prueba.report-pdf-grupo-prueba-allow-split {
-    page-break-inside: auto;
-    break-inside: auto;
 }
 /* Compactación ligera antes de mover el bloque (impresión navegador + PDF). */
 .pdf-gpb-keep-together-compact .report-pdf-grupo-prueba.report-pdf-grupo-prueba-compact {

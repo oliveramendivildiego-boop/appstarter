@@ -13,6 +13,13 @@
  */
 $variant = $variant ?? 'web';
 $usePdfChrome = ($variant === 'pdf' || $variant === 'screen_pdf');
+$segmentWrapStyle = '';
+if ($usePdfChrome) {
+    $segmentWrapStyle = \App\Services\ReportPdfLayoutService::grupoPruebaSegmentIntactStyleAttr(
+        is_array($pdf_layout ?? null) ? $pdf_layout : []
+    );
+}
+$segmentWrapStyleAttr = $segmentWrapStyle !== '' ? ' style="' . esc($segmentWrapStyle, 'attr') . '"' : '';
 $nombresTipoPorPria = $report_pria_tipo_muestra_nombre ?? [];
 $nombresMetodoPorPria = $report_pria_metodo_nombre ?? [];
 $refsMatrixAll = $report_pria_refs_consolidada ?? [];
@@ -142,7 +149,7 @@ foreach ($ordenPriaKeys as $subIdx => $priaKey) :
         }
     }
     $mainTableClass = $usePdfChrome ? 'results' : 'table mb-0';
-    $wrapOpen = ! $usePdfChrome ? '<div class="table-responsive mb-3">' : '<div class="report-segment-table-wrap">';
+    $wrapOpen = ! $usePdfChrome ? '<div class="table-responsive mb-3">' : '<div class="report-segment-table-wrap"' . $segmentWrapStyleAttr . '>';
     $wrapClose = '</div>';
     $tieneConResultado = false;
     foreach ($segItems as $itChk) {
@@ -239,7 +246,7 @@ if ($priaIdTitulo > 0 && ! empty($refsMatrixAll[$priaIdTitulo])) :
             break;
         }
     }
-    $matrixWrapOpen = ! $usePdfChrome ? '<div class="table-responsive mb-3">' : '<div class="report-segment-table-wrap report-refs-matrix-wrap">';
+    $matrixWrapOpen = ! $usePdfChrome ? '<div class="table-responsive mb-3">' : '<div class="report-segment-table-wrap report-refs-matrix-wrap"' . $segmentWrapStyleAttr . '>';
     $matrixTableClass = $usePdfChrome ? 'results report-refs-matrix' : 'table table-sm table-bordered mb-0';
     ?>
 <?= $matrixWrapOpen ?>

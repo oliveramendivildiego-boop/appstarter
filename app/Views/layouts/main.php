@@ -51,6 +51,8 @@ $pageTitle = $this->renderSection('title');
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="csrf-token" content="<?= esc(csrf_hash(), 'attr') ?>" />
+    <meta name="csrf-token-name" content="<?= esc(csrf_token(), 'attr') ?>" />
     <base href="<?= base_url() ?>" />
     <title><?= trim($pageTitle ?? '') !== '' ? esc($pageTitle) . ' - ' : '' ?><?= esc($companyName) ?> - <?= lang('Common.common_powered_by') ?> Olivera Solutions</title>
     <link rel="stylesheet" href="<?= base_url('css/dom_print.css') ?>" media="print"/>

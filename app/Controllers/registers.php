@@ -1624,6 +1624,8 @@ class Registers extends SecureArea
             'success' => true,
             'message' => 'Guardado exitoso',
             'consumo_auto' => $autoStats,
+            'csrf_token' => csrf_hash(),
+            'csrf_name' => csrf_token(),
         ]);
     }
 

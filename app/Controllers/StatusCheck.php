@@ -35,6 +35,10 @@ class StatusCheck extends BaseController
             return $this->response->setJSON(['active' => false, 'reason' => 'disabled_or_not_found']);
         }
 
-        return $this->response->setJSON(['active' => true]);
+        return $this->response->setJSON([
+            'active'      => true,
+            'csrf_token'  => csrf_hash(),
+            'csrf_name'   => csrf_token(),
+        ]);
     }
 }

@@ -108,7 +108,7 @@ class ReportPdfLayoutService
         'compact_min_scale_percent'         => 85,
         'compact_cell_padding_px'           => 0,
         'compact_aggressive'                => false,
-        'min_remaining_mm_to_force_break'   => 40.0,
+        'min_remaining_mm_to_force_break'   => 0.0,
     ];
 
     /**
@@ -2877,6 +2877,92 @@ class ReportPdfLayoutService
     }
 
     /**
+     * Modos «grupo íntegro» puros: evitar corte del área completa (sin fallback por segmentos).
+     *
+     * @param array{mode?: string, min_remaining_mm_to_force_break?: float} $gpb
+     */
+    public static function grupoPruebaPageBreakUsesGrupoIntactCss(array $gpb): bool
+    {
+        $mode = (string) ($gpb['mode'] ?? 'flow');
+
+        return $mode === 'keep_together' || $mode === 'keep_together_compact';
+    }
+
+    /**
+     * «Grupo íntegro» puro: mover bloque entero (umbral 0). Si umbral &gt; 0, el JS usa fallback por segmentos.
+     *
+     * @param array{mode?: string, min_remaining_mm_to_force_break?: float} $gpb
+     */
+    public static function grupoPruebaPageBreakUsesPureGrupoIntact(array $gpb): bool
+    {
+        if (! self::grupoPruebaPageBreakUsesGrupoIntactCss($gpb)) {
+            return false;
+        }
+
+        return ((float) ($gpb['min_remaining_mm_to_force_break'] ?? 0.0)) <= 0.0;
+    }
+
+    /**
+     * Estilo inline en el contenedor .report-pdf-grupo-prueba (Dompdf no ejecuta JS).
+     *
+     * @param array<string, mixed> $layout
+     */
+    public static function grupoPruebaGrupoIntactStyleAttr(array $layout): string
+    {
+        $ps  = is_array($layout['page_style'] ?? null) ? $layout['page_style'] : [];
+        $gpb = self::normalizeGrupoPruebaPageBreakStyle($ps['grupo_prueba_page_break'] ?? []);
+        if (! self::grupoPruebaPageBreakUsesPureGrupoIntact($gpb)) {
+            return '';
+        }
+
+        return 'page-break-inside:avoid;break-inside:avoid-page;';
+    }
+
+    /**
+     * Estilo inline en .report-segment-table-wrap (Dompdf no ejecuta JS).
+     *
+     * @param array<string, mixed> $layout
+     */
+    public static function grupoPruebaSegmentIntactStyleAttr(array $layout): string
+    {
+        $ps  = is_array($layout['page_style'] ?? null) ? $layout['page_style'] : [];
+        $gpb = self::normalizeGrupoPruebaPageBreakStyle($ps['grupo_prueba_page_break'] ?? []);
+        $mode = (string) ($gpb['mode'] ?? 'flow');
+        if ($mode !== 'keep_segment' && $mode !== 'keep_together_if_fits') {
+            return '';
+        }
+
+        return 'page-break-inside:avoid;break-inside:avoid-page;';
+    }
+
+    /**
+     * @param array{mode?: string} $gpb
+     */
+    public static function grupoPruebaPageBreakUsesSegmentIntactCss(array $gpb): bool
+    {
+        $mode = (string) ($gpb['mode'] ?? 'flow');
+
+        return $mode === 'keep_segment' || $mode === 'keep_together_if_fits';
+    }
+
+    /**
+     * break-inside para segmentos en @media print del navegador.
+     *
+     * @param array{mode?: string, min_remaining_mm_to_force_break?: float} $gpb
+     */
+    public static function grupoPruebaPrintSegmentBreakInside(array $gpb): string
+    {
+        if (self::grupoPruebaPageBreakUsesSegmentCss($gpb)) {
+            return 'avoid';
+        }
+        if (self::grupoPruebaPageBreakUsesPureGrupoIntact($gpb)) {
+            return 'avoid';
+        }
+
+        return 'auto';
+    }
+
+    /**
      * Modos que aplican reglas de segmento (PDF sin JS y fallback al rellenar la hoja).
      *
      * @param array{mode?: string, min_remaining_mm_to_force_break?: float} $gpb
@@ -2907,6 +2993,9 @@ class ReportPdfLayoutService
             return '';
         }
         $classes = ['pdf-gpb-' . str_replace('_', '-', $gpb['mode'])];
+        if (self::grupoPruebaPageBreakUsesGrupoIntactCss($gpb)) {
+            $classes[] = 'pdf-gpb-grupo-intact';
+        }
         if (self::grupoPruebaPageBreakUsesSegmentCss($gpb)) {
             $classes[] = 'pdf-gpb-segment-rules';
         }

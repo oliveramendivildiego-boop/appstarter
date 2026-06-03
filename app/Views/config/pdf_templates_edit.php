@@ -939,8 +939,8 @@ $labelsShort = [
             </div>
             <div class="col-6 col-md-3">
                 <label class="form-label small" for="gpb_min_remaining_mm" title="Solo aplica a «Grupo íntegro» y «Grupo íntegro con compactación». Si el espacio libre en la hoja es menor que este valor (mm), no se mueve todo el bloque: se rellena la hoja actual por segmentos.">Umbral espacio restante (mm)</label>
-                <input type="number" class="form-control" id="gpb_min_remaining_mm" min="0" max="120" step="1" value="<?= esc((string) (float) ($gpb['min_remaining_mm_to_force_break'] ?? 40), 'attr') ?>">
-                <span class="form-text small text-muted">0 = siempre mover bloque entero; recomendado 30–50 mm</span>
+                <input type="number" class="form-control" id="gpb_min_remaining_mm" min="0" max="120" step="1" value="<?= esc((string) (float) ($gpb['min_remaining_mm_to_force_break'] ?? 0), 'attr') ?>">
+                <span class="form-text small text-muted">0 = mover siempre el bloque entero; 30–50 = rellenar hoja si queda poco espacio</span>
             </div>
             <div class="col-6 col-md-3">
                 <label class="form-label small" for="gpb_compact_min_scale" title="Porcentaje mínimo al compactar el grupo para que quepa en el espacio restante">Escala mínima compactación (%)</label>
@@ -967,7 +967,8 @@ $labelsShort = [
         </div>
         <ul class="small text-muted mb-0 mt-2 ps-3">
             <li><strong>Grupo íntegro solo si cabe:</strong> ideal para hemogramas; si el área no cabe tras la cabecera, empieza en la hoja 1 y continúa en la 2 (por segmentos), sin dejar la primera hoja vacía.</li>
-            <li><strong>Grupo íntegro:</strong> mueve todo el área a la siguiente hoja si no cabe entera. Use el <strong>umbral (mm)</strong> para evitar hojas en blanco: si queda poco espacio libre, rellena la hoja actual.</li>
+            <li><strong>Grupo íntegro:</strong> mueve todo el área a la siguiente hoja si no cabe entera. Deje el <strong>umbral en 0 mm</strong> para este comportamiento puro.</li>
+            <li><strong>Umbral &gt; 0 mm:</strong> solo en «Grupo íntegro» / «con compactación»; si queda poco espacio libre, rellena la hoja actual por segmentos en lugar de mover el bloque.</li>
             <li><strong>Con compactación:</strong> reduce fuentes, relleno e interlineado (escala, relleno fijo y/o compactación agresiva) antes de mover el bloque.</li>
             <li><strong>Flujo por segmentos:</strong> cada <code>report-segment-table-wrap</code> no se parte; si no cabe, va entero a la página siguiente.</li>
         </ul>
@@ -3649,7 +3650,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 compact_min_scale_percent: Math.round(pickNum('gpb_compact_min_scale', 75, 100, 85)),
                 compact_cell_padding_px: Math.round(pickNum('gpb_compact_cell_padding', 0, 20, 0)),
                 compact_aggressive: pickChk('gpb_compact_aggressive', false),
-                min_remaining_mm_to_force_break: Math.round(pickNum('gpb_min_remaining_mm', 0, 120, 40) * 10) / 10
+                min_remaining_mm_to_force_break: Math.round(pickNum('gpb_min_remaining_mm', 0, 120, 0) * 10) / 10
             },
             notes: {
                 title_bg_color: pickHex('ns_title_bg', '#FFF3CD'),

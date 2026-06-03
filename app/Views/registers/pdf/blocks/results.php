@@ -24,16 +24,20 @@ if ($showFirmaPerGroup) {
 }
 
 $grupoPruebaIdx = 0;
+$grupoIntactStyle = \App\Services\ReportPdfLayoutService::grupoPruebaGrupoIntactStyleAttr($layoutForLf);
 foreach ($grupos ?? [] as $padre => $items) {
     $grupoClass = 'report-pdf-grupo-prueba';
     if ($grupoPruebaIdx === 0) {
         $grupoClass .= ' report-pdf-grupo-prueba-first';
     }
-    echo '<div class="' . esc($grupoClass, 'attr') . '">';
+    echo '<div class="' . esc($grupoClass, 'attr') . '"'
+        . ($grupoIntactStyle !== '' ? ' style="' . esc($grupoIntactStyle, 'attr') . '"' : '')
+        . '>';
     echo view('registers/analisis/partials/compleja_tabla_reporte_grupo', [
         'padre'   => $padre,
         'items'   => $items,
         'variant' => $av,
+        'pdf_layout' => $layoutForLf,
         'report_pria_tipo_muestra_nombre' => $report_pria_tipo_muestra_nombre ?? [],
         'report_pria_metodo_nombre'       => $report_pria_metodo_nombre ?? [],
         'report_pria_refs_consolidada'    => $report_pria_refs_consolidada ?? [],

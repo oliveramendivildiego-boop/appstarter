@@ -22,7 +22,7 @@ $marginBottomMm = isset($margin_bottom_mm) ? (float) $margin_bottom_mm : 15.0;
         compactMinScale: <?= json_encode(max(75, min(100, (int) ($gpb['compact_min_scale_percent'] ?? 85)))) ?>,
         compactCellPaddingPx: <?= json_encode(max(0, min(20, (int) ($gpb['compact_cell_padding_px'] ?? 0)))) ?>,
         compactAggressive: <?= ! empty($gpb['compact_aggressive']) ? 'true' : 'false' ?>,
-        minRemainingMmToForceBreak: <?= json_encode((float) ($gpb['min_remaining_mm_to_force_break'] ?? 40.0)) ?>,
+        minRemainingMmToForceBreak: <?= json_encode((float) ($gpb['min_remaining_mm_to_force_break'] ?? 0.0)) ?>,
         pageHeightMm: <?= json_encode($pageHeightMm) ?>,
         marginTopMm: <?= json_encode($marginTopMm) ?>,
         marginBottomMm: <?= json_encode($marginBottomMm) ?>
@@ -48,28 +48,38 @@ $marginBottomMm = isset($margin_bottom_mm) ? (float) $margin_bottom_mm : 15.0;
     }
 
     function topWithinContainer(el, container) {
+        if (!el || !container) {
+            return 0;
+        }
         var top = 0;
         var node = el;
         while (node && node !== container) {
-            top += node.offsetTop;
+            top += node.offsetTop || 0;
             node = node.offsetParent;
             if (node && !container.contains(node)) {
-                break;
+                var elRect = el.getBoundingClientRect();
+                var contRect = container.getBoundingClientRect();
+                return elRect.top - contRect.top + (container.scrollTop || 0);
             }
         }
         return top;
     }
 
     function remainingOnPage(top, pagePx) {
-        var remaining = pagePx - (top % pagePx);
-        if (remaining >= pagePx) {
+        var posOnPage = ((top % pagePx) + pagePx) % pagePx;
+        var remaining = pagePx - posOnPage;
+        if (remaining <= 0 || remaining > pagePx) {
             remaining = pagePx;
         }
         return remaining;
     }
 
+    function usesGrupoIntactMode() {
+        return cfg.mode === 'keep_together' || cfg.mode === 'keep_together_compact';
+    }
+
     function shouldForceBreakBefore(remainingPx) {
-        if (cfg.mode === 'keep_together_if_fits') {
+        if (!usesGrupoIntactMode()) {
             return false;
         }
         var minMm = cfg.minRemainingMmToForceBreak;
@@ -77,6 +87,14 @@ $marginBottomMm = isset($margin_bottom_mm) ? (float) $margin_bottom_mm : 15.0;
             return true;
         }
         return pxToMm(remainingPx) >= minMm;
+    }
+
+    function usesPureGrupoIntact() {
+        if (!usesGrupoIntactMode()) {
+            return false;
+        }
+        var minMm = cfg.minRemainingMmToForceBreak;
+        return !isFinite(minMm) || minMm <= 0;
     }
 
     function clearGrupoCompact(grupo) {
@@ -114,36 +132,6 @@ $marginBottomMm = isset($margin_bottom_mm) ? (float) $margin_bottom_mm : 15.0;
         });
     }
 
-    function cloneContinuationHeader(sourceHeader) {
-        var clone = sourceHeader.cloneNode(true);
-        clone.classList.add('report-pdf-grupo-cabecera-continuacion', 'report-pdf-grupo-cabecera-continuacion-injected');
-        clone.setAttribute('aria-hidden', 'true');
-        return clone;
-    }
-
-    function injectContinuationHeaders(grupo, container, pagePx) {
-        if (!cfg.repeatHeader) {
-            return;
-        }
-        var headers = grupo.querySelectorAll(':scope > .report-pdf-subgrupo-block > .report-pdf-grupo-cabecera, :scope > .report-pdf-grupo-cabecera');
-        if (!headers.length) {
-            return;
-        }
-        var refHeader = headers[0];
-        var blocks = grupo.querySelectorAll(':scope > .report-pdf-subgrupo-block, :scope > .report-segment-table-wrap');
-        blocks.forEach(function(block) {
-            var top = topWithinContainer(block, container);
-            var pageStart = Math.floor(top / pagePx) * pagePx;
-            if (pageStart > 0 && Math.abs(top - pageStart) < 2) {
-                var prev = block.previousElementSibling;
-                if (prev && prev.classList && prev.classList.contains('report-pdf-grupo-cabecera-continuacion-injected')) {
-                    return;
-                }
-                block.parentNode.insertBefore(cloneContinuationHeader(refHeader), block);
-            }
-        });
-    }
-
     function applySegmentPageBreaks(container, pagePx, root) {
         var scope = root || container;
         scope.querySelectorAll(SEGMENT_SELECTOR).forEach(function(seg) {
@@ -164,12 +152,43 @@ $marginBottomMm = isset($margin_bottom_mm) ? (float) $margin_bottom_mm : 15.0;
         });
     }
 
+    /**
+     * Grupo íntegro solo si cabe: si el área entera cabe, mantenerla junta;
+     * si no, aplicar saltos por segmento (como flujo por segmentos).
+     */
+    function applyIfFitsMode(container, pagePx) {
+        var keepOnPageGrupos = [];
+
+        container.querySelectorAll('.report-pdf-grupo-prueba').forEach(function(grupo) {
+            var top = topWithinContainer(grupo, container);
+            var remaining = remainingOnPage(top, pagePx);
+            var height = grupo.offsetHeight;
+
+            if (height > pagePx) {
+                grupo.classList.add('report-pdf-grupo-prueba-allow-split');
+                return;
+            }
+
+            if (height <= remaining) {
+                grupo.classList.add('report-pdf-grupo-prueba-keep-on-page');
+                keepOnPageGrupos.push(grupo);
+            }
+        });
+
+        applySegmentPageBreaks(container, pagePx);
+
+        keepOnPageGrupos.forEach(function(grupo) {
+            grupo.querySelectorAll(SEGMENT_SELECTOR).forEach(function(seg) {
+                seg.classList.remove('report-segment-force-break-before', 'report-segment-allow-split');
+            });
+        });
+    }
+
     function fallbackFillGrupo(grupo, container, pagePx) {
         grupo.classList.remove('report-pdf-grupo-prueba-force-break-before', 'report-pdf-grupo-prueba-keep-on-page');
         clearGrupoCompact(grupo);
         grupo.classList.add('report-pdf-grupo-prueba-allow-split');
         applySegmentPageBreaks(container, pagePx, grupo);
-        injectContinuationHeaders(grupo, container, pagePx);
     }
 
     function applyGrupoPageBreaks(container, pagePx) {
@@ -180,20 +199,14 @@ $marginBottomMm = isset($margin_bottom_mm) ? (float) $margin_bottom_mm : 15.0;
 
             if (height > pagePx) {
                 grupo.classList.add('report-pdf-grupo-prueba-allow-split');
-                injectContinuationHeaders(grupo, container, pagePx);
                 applySegmentPageBreaks(container, pagePx, grupo);
                 return;
             }
 
             if (height <= remaining) {
-                if (cfg.mode === 'keep_together_if_fits') {
+                if (usesPureGrupoIntact()) {
                     grupo.classList.add('report-pdf-grupo-prueba-keep-on-page');
                 }
-                return;
-            }
-
-            if (cfg.mode === 'keep_together_if_fits') {
-                fallbackFillGrupo(grupo, container, pagePx);
                 return;
             }
 
@@ -201,17 +214,17 @@ $marginBottomMm = isset($margin_bottom_mm) ? (float) $margin_bottom_mm : 15.0;
                 applyCompactToGrupo(grupo);
                 height = grupo.offsetHeight;
                 if (height <= remaining) {
+                    grupo.classList.add('report-pdf-grupo-prueba-keep-on-page');
                     return;
                 }
                 clearGrupoCompact(grupo);
             }
 
-            if (!shouldForceBreakBefore(remaining)) {
+            if (shouldForceBreakBefore(remaining)) {
+                grupo.classList.add('report-pdf-grupo-prueba-force-break-before');
+            } else {
                 fallbackFillGrupo(grupo, container, pagePx);
-                return;
             }
-
-            grupo.classList.add('report-pdf-grupo-prueba-force-break-before');
         });
     }
 
@@ -225,6 +238,11 @@ $marginBottomMm = isset($margin_bottom_mm) ? (float) $margin_bottom_mm : 15.0;
 
         if (cfg.mode === 'keep_segment') {
             applySegmentPageBreaks(container, pagePx);
+            return;
+        }
+
+        if (cfg.mode === 'keep_together_if_fits') {
+            applyIfFitsMode(container, pagePx);
             return;
         }
 

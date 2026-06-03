@@ -34,6 +34,7 @@ if (!empty($muestra)): ?>
 <?php endif; ?>
 
 <fieldset id="customer_basic_info">
+<?= csrf_field() ?>
 <input type="hidden" name="registro_id" id="registro_id" value="<?= (int)($labotests_namecate ?? 0) ?>">
 <?php
 $registerModel = $registerModel ?? null;
@@ -605,6 +606,33 @@ document.addEventListener('DOMContentLoaded', function() {
             txt.focus();
         });
     }
+    function syncCsrfToken(csrfName, csrfToken) {
+        if (!csrfName || !csrfToken) return;
+        window.CI_CSRF_TOKEN_NAME = csrfName;
+        window.CI_CSRF_TOKEN = csrfToken;
+        document.querySelectorAll('input[name="' + csrfName + '"], input[name*="csrf"]').forEach(function(inp) {
+            inp.name = csrfName;
+            inp.value = csrfToken;
+        });
+    }
+    function getCsrfPair() {
+        var inp = document.querySelector('#customer_basic_info input[name*="csrf"]')
+            || document.querySelector('input[name*="csrf"]');
+        if (inp && inp.name && inp.value) {
+            return { name: inp.name, value: inp.value };
+        }
+        if (typeof window.CI_CSRF_TOKEN_NAME !== 'undefined' && window.CI_CSRF_TOKEN) {
+            return { name: window.CI_CSRF_TOKEN_NAME, value: window.CI_CSRF_TOKEN };
+        }
+        var metaName = document.querySelector('meta[name="csrf-token-name"]');
+        var metaTok = document.querySelector('meta[name="csrf-token"]');
+        if (metaName && metaTok) {
+            var n = metaName.getAttribute('content');
+            var v = metaTok.getAttribute('content');
+            if (n && v) return { name: n, value: v };
+        }
+        return null;
+    }
     function ejecutarEnvio() {
         if (submitBtn) submitBtn.disabled = true;
         var datos = [];
@@ -639,21 +667,43 @@ document.addEventListener('DOMContentLoaded', function() {
             datos.push({ id: 'lab_val_grp_' + grpKey, valor: vVal, registro_id: registroIdF });
             datos.push({ id: 'lab_app_grp_' + grpKey, valor: aVal, registro_id: registroIdF });
         });
-        var csrfName = (typeof window.CI_CSRF_TOKEN_NAME !== 'undefined' ? window.CI_CSRF_TOKEN_NAME : null) || (document.querySelector('meta[name="csrf-token-name"]') && document.querySelector('meta[name="csrf-token-name"]').getAttribute('content'));
-        var csrfVal = (typeof window.CI_CSRF_TOKEN !== 'undefined' ? window.CI_CSRF_TOKEN : null) || (document.querySelector('meta[name="csrf-token"]') && document.querySelector('meta[name="csrf-token"]').getAttribute('content'));
+        var csrf = getCsrfPair();
+        if (!csrf) {
+            uiAlert('Sesión de seguridad no disponible. Recargue la página (F5) e intente de nuevo.', 'Error');
+            if (submitBtn) submitBtn.disabled = false;
+            return;
+        }
         var body = 'data=' + encodeURIComponent(JSON.stringify(datos));
         body += '&registro_id=' + encodeURIComponent(document.getElementById('registro_id').value || '');
         body += '&comentario_resultado=' + encodeURIComponent((document.getElementById('comentario_resultado') || {}).value || '');
-        if (csrfName && csrfVal) body += '&' + encodeURIComponent(csrfName) + '=' + encodeURIComponent(csrfVal);
-        var headers = { 'Content-Type': 'application/x-www-form-urlencoded', 'X-Requested-With': 'XMLHttpRequest' };
-        if (csrfVal) headers['X-CSRF-TOKEN'] = csrfVal;
+        body += '&' + encodeURIComponent(csrf.name) + '=' + encodeURIComponent(csrf.value);
+        var headers = {
+            'Content-Type': 'application/x-www-form-urlencoded',
+            'X-Requested-With': 'XMLHttpRequest',
+            'X-CSRF-TOKEN': csrf.value
+        };
         fetch('<?= site_url('registers/saveregvalues') ?>', {
             method: 'POST',
             headers: headers,
+            credentials: 'same-origin',
             body: body
         })
-        .then(function(r) { return r.json(); })
+        .then(function(r) {
+            if (r.status === 403) {
+                return r.text().then(function(t) {
+                    var msg = 'La sesión de seguridad expiró o no es válida. Recargue la página (F5) e intente de nuevo.';
+                    if (t && t.indexOf('anulada') !== -1) {
+                        msg = 'Esta orden fue anulada y no puede modificarse.';
+                    }
+                    throw new Error(msg);
+                });
+            }
+            return r.json();
+        })
         .then(function(res) {
+            if (res && res.csrf_name && res.csrf_token) {
+                syncCsrfToken(res.csrf_name, res.csrf_token);
+            }
             if (res && res.success) {
                 var rid = document.getElementById('registro_id').value;
                 window.location.href = '<?= site_url('registers/viewreport') ?>/' + rid;
@@ -662,8 +712,8 @@ document.addEventListener('DOMContentLoaded', function() {
                 if (submitBtn) submitBtn.disabled = false;
             }
         })
-        .catch(function() {
-            uiAlert('Error al guardar', 'Error');
+        .catch(function(err) {
+            uiAlert(err && err.message ? err.message : 'Error al guardar', 'Error');
             if (submitBtn) submitBtn.disabled = false;
         });
     }

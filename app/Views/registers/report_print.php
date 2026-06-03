@@ -100,7 +100,7 @@
     $gpbCfg = \App\Services\ReportPdfLayoutService::normalizeGrupoPruebaPageBreakStyle($ps['grupo_prueba_page_break'] ?? []);
     $gpbMode = (string) ($gpbCfg['mode'] ?? 'flow');
     $gpbBodyClass = \App\Services\ReportPdfLayoutService::grupoPruebaPageBreakBodyClass($pl);
-    $printSegmentBreakInside = \App\Services\ReportPdfLayoutService::grupoPruebaPageBreakUsesSegmentCss($gpbCfg) ? 'avoid' : 'auto';
+    $printSegmentBreakInside = \App\Services\ReportPdfLayoutService::grupoPruebaPrintSegmentBreakInside($gpbCfg);
     $pp = \App\Services\ReportPdfLayoutService::normalizePrintPaginationStyle($ps['print_pagination'] ?? []);
     $printPaginationEnabled = ! empty($pp['enabled']);
     // Si la plantilla ya define pie de página, no superponer paginación fija del navegador.
@@ -393,6 +393,19 @@
                 break-inside: <?= esc($printSegmentBreakInside, 'css') ?> !important;
                 page-break-inside: <?= esc($printSegmentBreakInside, 'css') ?> !important;
             }
+            body.report-browser-print.pdf-gpb-segment-rules .report-segment-table-wrap:not(.report-segment-allow-split),
+            body.report-browser-print.pdf-gpb-segment-rules .report-refs-matrix-wrap:not(.report-segment-allow-split),
+            body.report-browser-print.pdf-gpb-keep-segment .report-segment-table-wrap:not(.report-segment-allow-split),
+            body.report-browser-print.pdf-gpb-keep-segment .report-refs-matrix-wrap:not(.report-segment-allow-split) {
+                break-inside: avoid-page !important;
+                page-break-inside: avoid !important;
+            }
+            body.report-browser-print.pdf-gpb-segment-rules .report-segment-table-wrap:not(.report-segment-allow-split) table.results,
+            body.report-browser-print.pdf-gpb-segment-rules .report-refs-matrix-wrap:not(.report-segment-allow-split) table.results,
+            body.report-browser-print.pdf-gpb-keep-segment .report-segment-table-wrap:not(.report-segment-allow-split) table.results {
+                break-inside: avoid-page !important;
+                page-break-inside: avoid !important;
+            }
             body.report-browser-print.pdf-gpb-keep-segment .report-segment-table-wrap.report-segment-allow-split,
             body.report-browser-print.pdf-gpb-keep-segment .report-refs-matrix-wrap.report-segment-allow-split,
             body.report-browser-print.pdf-gpb-segment-rules .report-segment-table-wrap.report-segment-allow-split,
@@ -423,6 +436,29 @@
             body.report-browser-print .report-pdf-grupo-cabecera + .report-segment-table-wrap {
                 break-before: auto !important;
                 page-break-before: auto !important;
+            }
+            /* Grupo íntegro: mantener área completa y forzar salto cuando el JS lo indica. */
+            body.report-browser-print.pdf-gpb-grupo-intact .report-pdf-grupo-prueba:not(.report-pdf-grupo-prueba-allow-split) {
+                break-inside: avoid-page !important;
+                page-break-inside: avoid !important;
+            }
+            body.report-browser-print.pdf-gpb-grupo-intact .report-pdf-grupo-prueba:not(.report-pdf-grupo-prueba-allow-split) .report-segment-table-wrap,
+            body.report-browser-print.pdf-gpb-grupo-intact .report-pdf-grupo-prueba:not(.report-pdf-grupo-prueba-allow-split) .report-refs-matrix-wrap,
+            body.report-browser-print.pdf-gpb-grupo-intact .report-pdf-grupo-prueba:not(.report-pdf-grupo-prueba-allow-split) table.results {
+                break-inside: avoid-page !important;
+                page-break-inside: avoid !important;
+            }
+            body.report-browser-print.pdf-gpb-grupo-intact .report-pdf-grupo-prueba.report-pdf-grupo-prueba-force-break-before {
+                break-before: page !important;
+                page-break-before: always !important;
+            }
+            body.report-browser-print.pdf-gpb-grupo-intact .report-pdf-grupo-prueba.report-pdf-grupo-prueba-allow-split {
+                break-inside: auto !important;
+                page-break-inside: auto !important;
+            }
+            body.report-browser-print.pdf-gpb-keep-together-if-fits .report-pdf-grupo-prueba.report-pdf-grupo-prueba-keep-on-page {
+                break-inside: avoid-page !important;
+                page-break-inside: avoid !important;
             }
             .report-print-toolbar { display: none !important; }
             /* Fuerza a los navegadores a conservar colores de fondo en impresión. */

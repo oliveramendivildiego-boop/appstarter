@@ -101,6 +101,14 @@
             })
             .then(function (data) {
                 isChecking = false;
+                if (data && data.csrf_name && data.csrf_token) {
+                    window.CI_CSRF_TOKEN_NAME = data.csrf_name;
+                    window.CI_CSRF_TOKEN = data.csrf_token;
+                    document.querySelectorAll('input[name="' + data.csrf_name + '"], input[name*="csrf"]').forEach(function (inp) {
+                        inp.name = data.csrf_name;
+                        inp.value = data.csrf_token;
+                    });
+                }
                 applyStatus(data);
             })
             .catch(function () {
