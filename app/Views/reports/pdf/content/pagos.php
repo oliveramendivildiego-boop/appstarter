@@ -213,7 +213,7 @@ $cajaPorTipoTotales      = $cajaPorTipoTotales ?? ['ingresos' => 0, 'egresos' =>
     <tbody>
         <?php foreach ($pagosPagados as $row): ?>
             <tr>
-                <td><?= esc($row['registro_id'] ?? '') ?></td>
+                <td><?= esc(registro_orden_display($row)) ?></td>
                 <td><?= esc(\App\Services\RegisterService::formatStoredReporteFechaCorta($row['fecha_cobro'] ?? $row['ingreso'] ?? '')) ?></td>
                 <td class="text-end"><?= number_format((float) ($row['monto_cobro'] ?? $row['monto_pagado'] ?? 0), 2) ?></td>
                 <td class="small"><?= esc($row['paciente'] ?? '') ?></td>
@@ -242,7 +242,7 @@ $cajaPorTipoTotales      = $cajaPorTipoTotales ?? ['ingresos' => 0, 'egresos' =>
     <tbody>
         <?php foreach ($pendientes as $row): ?>
             <tr>
-                <td><?= esc($row['registro_id'] ?? '') ?></td>
+                <td><?= esc(registro_orden_display($row)) ?></td>
                 <td><?= esc(\App\Services\RegisterService::formatStoredReporteFechaCorta($row['fecha_cobro'] ?? $row['ingreso'] ?? '')) ?></td>
                 <td class="text-end"><?= number_format((float) ($row['monto_cobro'] ?? 0), 2) ?></td>
                 <td class="small"><?= esc($row['paciente'] ?? '') ?></td>
@@ -325,7 +325,7 @@ $cajaPorTipoTotales      = $cajaPorTipoTotales ?? ['ingresos' => 0, 'egresos' =>
     <tbody>
         <?php foreach ($todos as $row): ?>
             <tr>
-                <td><?= esc($row['registro_id'] ?? '') ?></td>
+                <td><?= esc(registro_orden_display($row)) ?></td>
                 <td><?= esc(\App\Services\RegisterService::formatStoredReporteFechaCorta($row['fecha_cobro'] ?? $row['ingreso'] ?? '')) ?></td>
                 <td class="text-end"><?= number_format((float) ($row['monto_cobro'] ?? $row['monto_pagado'] ?? 0), 2) ?></td>
                 <td class="small"><?= esc($tipoPagoMap[$row['tipopago'] ?? ''] ?? $row['tipopago'] ?? '-') ?></td>

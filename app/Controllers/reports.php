@@ -256,7 +256,7 @@ class Reports extends SecureArea
             $monto = (float) ($row['monto_cobro'] ?? $row['monto_pagado'] ?? 0);
             $total += $monto;
             $items[] = [
-                'registro_id'     => $row['registro_id'] ?? '',
+                'orden'           => registro_orden_display($row),
                 'paciente'        => trim((string) ($row['paciente'] ?? '')),
                 'doctor'          => trim((string) ($row['doctor'] ?? '')),
                 'monto_cobro'     => round($monto, 2),

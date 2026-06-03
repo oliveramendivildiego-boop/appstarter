@@ -154,14 +154,15 @@ $cierreEnd   = $endDate ?? lab_today_ymd();
                     $cantidadTipo = (int) ($row['cantidad'] ?? 0);
                     $puedeDetalle = $tipoKey !== '' && $cantidadTipo > 0;
                     ?>
-                    <tr class="<?= $puedeDetalle ? 'pagos-tipo-row-clickable' : '' ?>"
-                        <?= $puedeDetalle ? 'role="button" tabindex="0"' : '' ?>
-                        <?= $puedeDetalle ? 'data-tipopago="' . esc($tipoKey, 'attr') . '"' : '' ?>
-                        <?= $puedeDetalle ? 'data-tipo-label="' . esc($tipoLabel, 'attr') . '"' : '' ?>
-                        <?= $puedeDetalle ? 'title="Ver detalle de cobros"' : '' ?>>
+                    <tr>
                         <td>
                             <?php if ($puedeDetalle): ?>
-                                <span class="text-primary text-decoration-underline"><?= esc($tipoLabel) ?></span>
+                                <a href="#"
+                                   class="pagos-tipo-enlace"
+                                   role="button"
+                                   data-tipopago="<?= esc($tipoKey, 'attr') ?>"
+                                   data-tipo-label="<?= esc($tipoLabel, 'attr') ?>"
+                                   title="Ver detalle de cobros"><?= esc($tipoLabel) ?></a>
                             <?php else: ?>
                                 <?= esc($tipoLabel) ?>
                             <?php endif; ?>
@@ -366,7 +367,7 @@ $cierreEnd   = $endDate ?? lab_today_ymd();
         <tbody>
             <?php foreach ($pagosPagados ?? [] as $row): ?>
                 <tr>
-                    <td><?= esc($row['registro_id'] ?? '') ?></td>
+                    <td><?= esc(registro_orden_display($row)) ?></td>
                     <td><?= esc(\App\Services\RegisterService::formatStoredReporteFechaCorta($row['fecha_cobro'] ?? $row['ingreso'] ?? '')) ?></td>
                     <td class="text-end fw-bold"><?= format_currency((float)($row['monto_cobro'] ?? $row['monto_pagado'] ?? 0)) ?></td>
                     <td><?= esc($tipoPagoMap[$row['tipopago'] ?? ''] ?? $row['tipopago'] ?? '-') ?></td>
@@ -403,7 +404,7 @@ $cierreEnd   = $endDate ?? lab_today_ymd();
         <tbody>
             <?php foreach ($pendientes ?? [] as $row): ?>
             <tr>
-                <td><?= esc($row['registro_id'] ?? '') ?></td>
+                <td><?= esc(registro_orden_display($row)) ?></td>
                 <td><?= esc(\App\Services\RegisterService::formatStoredReporteFechaCorta($row['fecha_cobro'] ?? $row['ingreso'] ?? '')) ?></td>
                 <td class="text-end fw-bold"><?= format_currency((float)($row['monto_cobro'] ?? 0)) ?></td>
                 <td><?= esc($tipoPagoMap[$row['tipopago'] ?? ''] ?? $row['tipopago'] ?? '-') ?></td>
@@ -504,7 +505,7 @@ $cierreEnd   = $endDate ?? lab_today_ymd();
         <tbody>
             <?php foreach ($todos ?? [] as $row): ?>
             <tr class="<?= (float)($row['saldo'] ?? 0) > 0.02 ? 'table-warning' : '' ?>">
-                <td><?= esc($row['registro_id'] ?? '') ?></td>
+                <td><?= esc(registro_orden_display($row)) ?></td>
                 <td><?= esc(\App\Services\RegisterService::formatStoredReporteFechaCorta($row['fecha_cobro'] ?? $row['ingreso'] ?? '')) ?></td>
                 <td class="text-end fw-bold"><?= format_currency((float)($row['monto_cobro'] ?? $row['monto_pagado'] ?? 0)) ?></td>
                 <td><?= esc($tipoPagoMap[$row['tipopago'] ?? ''] ?? $row['tipopago'] ?? '-') ?></td>
@@ -525,8 +526,18 @@ $cierreEnd   = $endDate ?? lab_today_ymd();
 
 <?= $this->section('scripts') ?>
 <style>
-#tabla_resumen_pagos_tipo .pagos-tipo-row-clickable { cursor: pointer; }
-#tabla_resumen_pagos_tipo .pagos-tipo-row-clickable:hover { background-color: rgba(13, 110, 253, 0.08); }
+/* Mismo aspecto que «Enlaces en contenido y pie» (body.ynex-theme main a + --ui-link-color) */
+#tabla_resumen_pagos_tipo .pagos-tipo-enlace {
+    color: var(--ui-link-color, #0d6efd);
+    font-weight: var(--ui-link-font-weight, 400);
+    font-style: var(--ui-link-font-style, normal);
+    text-decoration: underline;
+    text-underline-offset: 0.15em;
+    cursor: pointer;
+}
+#tabla_resumen_pagos_tipo tr:has(.pagos-tipo-enlace:hover) {
+    background-color: color-mix(in srgb, var(--ui-link-color, #0d6efd) 8%, transparent);
+}
 </style>
 <script>
 document.addEventListener('DOMContentLoaded', function() {
@@ -589,7 +600,7 @@ document.addEventListener('DOMContentLoaded', function() {
             const tbody = document.getElementById('modalPagosPorTipoBody');
             tbody.innerHTML = items.map(function(row) {
                 return '<tr>'
-                    + '<td>' + escHtml(row.registro_id) + '</td>'
+                    + '<td>' + escHtml(row.orden) + '</td>'
                     + '<td>' + escHtml(row.fecha_cobro) + '</td>'
                     + '<td>' + escHtml(row.paciente || '—') + '</td>'
                     + '<td>' + escHtml(row.doctor || '—') + '</td>'
@@ -607,16 +618,10 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
 
-    document.querySelectorAll('#tabla_resumen_pagos_tipo .pagos-tipo-row-clickable').forEach(function(row) {
-        function activar() {
-            abrirDetalleTipo(row.getAttribute('data-tipopago'), row.getAttribute('data-tipo-label') || '');
-        }
-        row.addEventListener('click', activar);
-        row.addEventListener('keydown', function(ev) {
-            if (ev.key === 'Enter' || ev.key === ' ') {
-                ev.preventDefault();
-                activar();
-            }
+    document.querySelectorAll('#tabla_resumen_pagos_tipo .pagos-tipo-enlace').forEach(function(link) {
+        link.addEventListener('click', function(ev) {
+            ev.preventDefault();
+            abrirDetalleTipo(link.getAttribute('data-tipopago'), link.getAttribute('data-tipo-label') || '');
         });
     });
 });
