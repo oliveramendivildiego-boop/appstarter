@@ -486,7 +486,25 @@ $cierreEnd   = $endDate ?? lab_today_ymd();
     </table>
 </div>
 
-<h5 class="mt-4">Todos los cobros del período (<?= count($todos ?? []) ?>)</h5>
+<?php
+$todosLista = $todos ?? [];
+$totTodosTotalOrden = 0.0;
+$totTodosPagadoAcum = 0.0;
+$totTodosSaldoOrden = 0.0;
+$totTodosOrdenesVistas = [];
+foreach ($todosLista as $rowTodos) {
+    $ridTodos = (string) ($rowTodos['registro_id'] ?? '');
+    if ($ridTodos === '' || isset($totTodosOrdenesVistas[$ridTodos])) {
+        continue;
+    }
+    $totTodosOrdenesVistas[$ridTodos] = true;
+    $totTodosTotalOrden += (float) ($rowTodos['total'] ?? 0);
+    $totTodosPagadoAcum += (float) ($rowTodos['monto_pagado'] ?? 0);
+    $totTodosSaldoOrden += (float) ($rowTodos['saldo'] ?? 0);
+}
+$totTodosTieneSaldo = $totTodosSaldoOrden > 0.02;
+?>
+<h5 class="mt-4">Todos los cobros del período (<?= count($todosLista) ?>)</h5>
 <div class="table-responsive">
     <table class="table table-bordered table-striped">
         <thead class="table-dark">
@@ -503,8 +521,9 @@ $cierreEnd   = $endDate ?? lab_today_ymd();
             </tr>
         </thead>
         <tbody>
-            <?php foreach ($todos ?? [] as $row): ?>
-            <tr class="<?= (float)($row['saldo'] ?? 0) > 0.02 ? 'table-warning' : '' ?>">
+            <?php foreach ($todosLista as $row): ?>
+            <?php $saldoFila = (float) ($row['saldo'] ?? 0); ?>
+            <tr class="<?= $saldoFila > 0.02 ? 'table-warning' : '' ?>">
                 <td><?= esc(registro_orden_display($row)) ?></td>
                 <td><?= esc(\App\Services\RegisterService::formatStoredReporteFechaCorta($row['fecha_cobro'] ?? $row['ingreso'] ?? '')) ?></td>
                 <td class="text-end fw-bold"><?= format_currency((float)($row['monto_cobro'] ?? $row['monto_pagado'] ?? 0)) ?></td>
@@ -513,13 +532,23 @@ $cierreEnd   = $endDate ?? lab_today_ymd();
                 <td><?= esc($row['doctor'] ?? '') ?></td>
                 <td class="text-end"><?= format_currency((float)($row['total'] ?? 0)) ?></td>
                 <td class="text-end"><?= format_currency((float)($row['monto_pagado'] ?? 0)) ?></td>
-                <td class="text-end"><?= format_currency((float)($row['saldo'] ?? 0)) ?></td>
+                <td class="text-end <?= $saldoFila > 0.02 ? 'text-danger fw-bold' : '' ?>"><?= format_currency($saldoFila) ?></td>
             </tr>
             <?php endforeach; ?>
         </tbody>
+        <?php if ($todosLista !== []): ?>
+        <tfoot class="table-secondary">
+            <tr>
+                <th colspan="6" class="text-end">Totales</th>
+                <th class="text-end"><?= format_currency($totTodosTotalOrden) ?></th>
+                <th class="text-end"><?= format_currency($totTodosPagadoAcum) ?></th>
+                <th class="text-end <?= $totTodosTieneSaldo ? 'text-danger fw-bold' : '' ?>"><?= format_currency($totTodosSaldoOrden) ?></th>
+            </tr>
+        </tfoot>
+        <?php endif; ?>
     </table>
 </div>
-<?php if (empty($todos)): ?>
+<?php if ($todosLista === []): ?>
 <p class="text-muted">No hay cobros en el período seleccionado.</p>
 <?php endif; ?>
 <?= $this->endSection() ?>
