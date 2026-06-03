@@ -13,8 +13,7 @@
     <div class="card-body">
         <div class="mb-3">
             <label for="name" class="form-label"><?= lang('Labotests.labotests_name') ?> <span class="text-danger">*</span></label>
-            <input type="text" name="name" id="name" class="form-control" value="<?= esc($labotests_info->name ?? '') ?>" required
-                <?= ($labotests_info->anacategoria_id ?? null) ? 'readonly' : '' ?>>
+            <input type="text" name="name" id="name" class="form-control" value="<?= esc($labotests_info->name ?? '') ?>" required>
         </div>
         <div class="mb-3">
             <label for="order" class="form-label"><?= lang('Labotests.labotests_order') ?> <span class="text-danger">*</span></label>
