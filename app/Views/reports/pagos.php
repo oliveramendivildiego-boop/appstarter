@@ -133,8 +133,9 @@ $cierreEnd   = $endDate ?? lab_today_ymd();
 </div>
 
 <h5 class="mt-4">Resumen por tipo de pago (cobros del período)</h5>
+<p class="small text-muted">Haga clic en un tipo de pago para ver el detalle de pacientes y montos cobrados.</p>
 <div class="table-responsive mb-4">
-    <table class="table table-bordered table-striped">
+    <table class="table table-bordered table-striped" id="tabla_resumen_pagos_tipo">
         <thead class="table-primary">
             <tr>
                 <th>Tipo</th>
@@ -147,9 +148,25 @@ $cierreEnd   = $endDate ?? lab_today_ymd();
         <tbody>
             <?php if (!empty($resumenPagosPorTipo ?? [])): ?>
                 <?php foreach ($resumenPagosPorTipo as $row): ?>
-                    <tr>
-                        <td><?= esc($tipoPagoMap[$row['tipopago'] ?? ''] ?? $row['tipopago'] ?? '-') ?></td>
-                        <td class="text-end"><?= (int)($row['cantidad'] ?? 0) ?></td>
+                    <?php
+                    $tipoKey = (string) ($row['tipopago'] ?? '');
+                    $tipoLabel = $tipoPagoMap[$tipoKey] ?? $tipoKey ?: '-';
+                    $cantidadTipo = (int) ($row['cantidad'] ?? 0);
+                    $puedeDetalle = $tipoKey !== '' && $cantidadTipo > 0;
+                    ?>
+                    <tr class="<?= $puedeDetalle ? 'pagos-tipo-row-clickable' : '' ?>"
+                        <?= $puedeDetalle ? 'role="button" tabindex="0"' : '' ?>
+                        <?= $puedeDetalle ? 'data-tipopago="' . esc($tipoKey, 'attr') . '"' : '' ?>
+                        <?= $puedeDetalle ? 'data-tipo-label="' . esc($tipoLabel, 'attr') . '"' : '' ?>
+                        <?= $puedeDetalle ? 'title="Ver detalle de cobros"' : '' ?>>
+                        <td>
+                            <?php if ($puedeDetalle): ?>
+                                <span class="text-primary text-decoration-underline"><?= esc($tipoLabel) ?></span>
+                            <?php else: ?>
+                                <?= esc($tipoLabel) ?>
+                            <?php endif; ?>
+                        </td>
+                        <td class="text-end"><?= $cantidadTipo ?></td>
                         <td class="text-end"><?= format_currency((float)($row['total_facturado'] ?? 0)) ?></td>
                         <td class="text-end"><?= format_currency((float)($row['total_cobrado'] ?? 0)) ?></td>
                         <td class="text-end <?= ((float)($row['total_pendiente'] ?? 0)) > 0 ? 'text-danger fw-bold' : '' ?>">
@@ -162,6 +179,48 @@ $cierreEnd   = $endDate ?? lab_today_ymd();
             <?php endif; ?>
         </tbody>
     </table>
+</div>
+
+<div class="modal fade" id="modalPagosPorTipo" tabindex="-1" aria-labelledby="modalPagosPorTipoLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="modalPagosPorTipoLabel">Detalle de cobros</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+            </div>
+            <div class="modal-body">
+                <p class="text-muted small mb-3" id="modalPagosPorTipoSubtitulo"></p>
+                <div id="modalPagosPorTipoCargando" class="text-center py-4 d-none">
+                    <div class="spinner-border text-primary" role="status"><span class="visually-hidden">Cargando…</span></div>
+                </div>
+                <div id="modalPagosPorTipoError" class="alert alert-danger d-none" role="alert"></div>
+                <div class="table-responsive d-none" id="modalPagosPorTipoTablaWrap">
+                    <table class="table table-sm table-bordered table-striped mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Orden</th>
+                                <th>Fecha cobro</th>
+                                <th>Paciente</th>
+                                <th>Doctor</th>
+                                <th class="text-end">Monto cobrado</th>
+                            </tr>
+                        </thead>
+                        <tbody id="modalPagosPorTipoBody"></tbody>
+                        <tfoot>
+                            <tr class="table-primary">
+                                <th colspan="4" class="text-end">Total</th>
+                                <th class="text-end" id="modalPagosPorTipoTotal"></th>
+                            </tr>
+                        </tfoot>
+                    </table>
+                </div>
+                <p id="modalPagosPorTipoVacio" class="text-muted text-center mb-0 d-none">No hay cobros de este tipo en el período.</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
+            </div>
+        </div>
+    </div>
 </div>
 
 <h5 class="mt-4">Resumen de ingresos de caja por tipo de pago</h5>
@@ -465,10 +524,101 @@ $cierreEnd   = $endDate ?? lab_today_ymd();
 <?= $this->endSection() ?>
 
 <?= $this->section('scripts') ?>
+<style>
+#tabla_resumen_pagos_tipo .pagos-tipo-row-clickable { cursor: pointer; }
+#tabla_resumen_pagos_tipo .pagos-tipo-row-clickable:hover { background-color: rgba(13, 110, 253, 0.08); }
+</style>
 <script>
 document.addEventListener('DOMContentLoaded', function() {
     flatpickr("#report_start", { dateFormat: "Y-m-d", locale: "es", onOpen: function(s,d,i){ flatpickrPositionArrowTopLeft(i); } });
     flatpickr("#report_end", { dateFormat: "Y-m-d", locale: "es", onOpen: function(s,d,i){ flatpickrPositionArrowTopLeft(i); } });
+
+    const reportStart = <?= json_encode($startDate ?? '') ?>;
+    const reportEnd = <?= json_encode($endDate ?? '') ?>;
+    const detalleUrl = <?= json_encode(site_url('reports/pagosDetallePorTipo')) ?>;
+    const modalEl = document.getElementById('modalPagosPorTipo');
+
+    function escHtml(s) {
+        const d = document.createElement('div');
+        d.textContent = s == null ? '' : String(s);
+        return d.innerHTML;
+    }
+
+    function resetModalEstado() {
+        document.getElementById('modalPagosPorTipoCargando').classList.add('d-none');
+        document.getElementById('modalPagosPorTipoError').classList.add('d-none');
+        document.getElementById('modalPagosPorTipoTablaWrap').classList.add('d-none');
+        document.getElementById('modalPagosPorTipoVacio').classList.add('d-none');
+        document.getElementById('modalPagosPorTipoBody').innerHTML = '';
+        document.getElementById('modalPagosPorTipoTotal').textContent = '';
+    }
+
+    async function abrirDetalleTipo(tipopago, tipoLabel) {
+        if (!modalEl || typeof bootstrap === 'undefined') return;
+
+        resetModalEstado();
+        document.getElementById('modalPagosPorTipoLabel').textContent = 'Cobros: ' + tipoLabel;
+        document.getElementById('modalPagosPorTipoSubtitulo').textContent = 'Período del reporte · cargando…';
+        document.getElementById('modalPagosPorTipoCargando').classList.remove('d-none');
+        bootstrap.Modal.getOrCreateInstance(modalEl).show();
+
+        const params = new URLSearchParams({ start: reportStart, end: reportEnd, tipopago: tipopago });
+        try {
+            const res = await fetch(detalleUrl + '?' + params.toString(), {
+                headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' }
+            });
+            const data = await res.json();
+            document.getElementById('modalPagosPorTipoCargando').classList.add('d-none');
+
+            if (!res.ok || !data.success) {
+                const err = document.getElementById('modalPagosPorTipoError');
+                err.textContent = data.message || 'No se pudo cargar el detalle.';
+                err.classList.remove('d-none');
+                return;
+            }
+
+            document.getElementById('modalPagosPorTipoSubtitulo').textContent =
+                (data.periodo || '') + ' · ' + (data.count || 0) + ' cobro(s)';
+
+            const items = data.items || [];
+            if (items.length === 0) {
+                document.getElementById('modalPagosPorTipoVacio').classList.remove('d-none');
+                return;
+            }
+
+            const tbody = document.getElementById('modalPagosPorTipoBody');
+            tbody.innerHTML = items.map(function(row) {
+                return '<tr>'
+                    + '<td>' + escHtml(row.registro_id) + '</td>'
+                    + '<td>' + escHtml(row.fecha_cobro) + '</td>'
+                    + '<td>' + escHtml(row.paciente || '—') + '</td>'
+                    + '<td>' + escHtml(row.doctor || '—') + '</td>'
+                    + '<td class="text-end fw-semibold">' + escHtml(row.monto_cobro_fmt) + '</td>'
+                    + '</tr>';
+            }).join('');
+
+            document.getElementById('modalPagosPorTipoTotal').textContent = data.total_fmt || '';
+            document.getElementById('modalPagosPorTipoTablaWrap').classList.remove('d-none');
+        } catch (e) {
+            document.getElementById('modalPagosPorTipoCargando').classList.add('d-none');
+            const err = document.getElementById('modalPagosPorTipoError');
+            err.textContent = 'Error de conexión al cargar el detalle.';
+            err.classList.remove('d-none');
+        }
+    }
+
+    document.querySelectorAll('#tabla_resumen_pagos_tipo .pagos-tipo-row-clickable').forEach(function(row) {
+        function activar() {
+            abrirDetalleTipo(row.getAttribute('data-tipopago'), row.getAttribute('data-tipo-label') || '');
+        }
+        row.addEventListener('click', activar);
+        row.addEventListener('keydown', function(ev) {
+            if (ev.key === 'Enter' || ev.key === ' ') {
+                ev.preventDefault();
+                activar();
+            }
+        });
+    });
 });
 </script>
 <?= $this->endSection() ?>

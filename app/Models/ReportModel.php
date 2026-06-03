@@ -420,17 +420,54 @@ class ReportModel extends Model
     }
 
     /**
+     * SQL: orden con monto cubierto (misma regla que RegisterModel::isPagoCompletoPorRegistroId).
+     */
+    private function sqlOrdenPagoSaldada(string $pa): string
+    {
+        return "(CAST({$pa}.saldo AS DECIMAL(12,2)) <= 0.02"
+            . " OR (CAST({$pa}.total AS DECIMAL(12,2)) > 0"
+            . " AND CAST({$pa}.monto_pagar AS DECIMAL(12,2)) + 0.02 >= CAST({$pa}.total AS DECIMAL(12,2))))";
+    }
+
+    /**
+     * Saldo pendiente calculado (máximo entre saldo en BD y total − pagado).
+     */
+    private function sqlSaldoPendienteCalculado(string $pa): string
+    {
+        return "GREATEST(CAST({$pa}.saldo AS DECIMAL(12,2)), CAST({$pa}.total AS DECIMAL(12,2)) - CAST({$pa}.monto_pagar AS DECIMAL(12,2)))";
+    }
+
+    /**
+     * Saldo a mostrar en reportes de cobros (0 si la orden ya está cubierta).
+     */
+    private function sqlSaldoPendienteEfectivo(string $pa): string
+    {
+        $saldada = $this->sqlOrdenPagoSaldada($pa);
+        $calc    = $this->sqlSaldoPendienteCalculado($pa);
+
+        return "CASE WHEN {$saldada} THEN 0 ELSE {$calc} END";
+    }
+
+    /**
+     * Nombre de paciente para tablas de cobros (misma convención que lista de órdenes).
+     */
+    private function sqlPacienteNombreReporte(string $p): string
+    {
+        return "TRIM(CONCAT_WS(' ', NULLIF(TRIM({$p}.last_name_fa), ''), NULLIF(TRIM({$p}.last_name_mom), ''), NULLIF(TRIM({$p}.first_name), '')))";
+    }
+
+    /**
      * Detalle de cada cobro en el período (fecha_abono). Incluye contexto de la orden.
      *
      * @param 'pendiente'|'pagado'|null $saldoFiltro Filtra por saldo actual de la orden tras el cobro.
      *
      * @return list<array<string, mixed>>
      */
-    public function getCobrosDetallePorFecha(string $startDate, string $endDate, ?string $saldoFiltro = null): array
+    public function getCobrosDetallePorFecha(string $startDate, string $endDate, ?string $saldoFiltro = null, ?string $tipopago = null): array
     {
         if ($this->db->tableExists('pago_abono')) {
-            $rows = $this->fetchCobrosAbonoPorFecha($startDate, $endDate, $saldoFiltro);
-            $legacy = $this->fetchCobrosLegacySinAbono($startDate, $endDate, $saldoFiltro);
+            $rows = $this->fetchCobrosAbonoPorFecha($startDate, $endDate, $saldoFiltro, $tipopago);
+            $legacy = $this->fetchCobrosLegacySinAbono($startDate, $endDate, $saldoFiltro, $tipopago);
             if ($legacy !== []) {
                 $rows = array_merge($rows, $legacy);
                 usort($rows, static function (array $a, array $b): int {
@@ -441,7 +478,7 @@ class ReportModel extends Model
             return $rows;
         }
 
-        return $this->fetchCobrosLegacySinAbono($startDate, $endDate, $saldoFiltro);
+        return $this->fetchCobrosLegacySinAbono($startDate, $endDate, $saldoFiltro, $tipopago);
     }
 
     /**
@@ -449,37 +486,43 @@ class ReportModel extends Model
      *
      * @return list<array<string, mixed>>
      */
-    protected function fetchCobrosAbonoPorFecha(string $startDate, string $endDate, ?string $saldoFiltro = null): array
+    protected function fetchCobrosAbonoPorFecha(string $startDate, string $endDate, ?string $saldoFiltro = null, ?string $tipopago = null): array
     {
         $r  = $this->db->prefixTable('registro');
         $p  = $this->db->prefixTable('people');
         $d  = $this->db->prefixTable('doctors');
         $pa = $this->db->prefixTable('pago');
         $ab = $this->db->prefixTable('pago_abono');
-        $saldoPendiente = "GREATEST(CAST({$pa}.saldo AS DECIMAL(12,2)), CAST({$pa}.total AS DECIMAL(12,2)) - CAST({$pa}.monto_pagar AS DECIMAL(12,2)))";
+        $ordenSaldada       = $this->sqlOrdenPagoSaldada($pa);
+        $saldoPendiente     = $this->sqlSaldoPendienteEfectivo($pa);
+        $pacienteSql        = $this->sqlPacienteNombreReporte($p);
 
         $b = $this->db->table('pago_abono')
             ->select("{$ab}.pago_abono_id, {$ab}.fecha_abono as fecha_cobro,
                 CAST({$ab}.monto AS DECIMAL(12,2)) as monto_cobro,
                 {$ab}.tipopago,
                 {$r}.registro_id, {$r}.ingreso,
-                CONCAT({$p}.first_name, ' ', {$p}.last_name_fa, ' ', {$p}.last_name_mom) AS paciente,
-                {$d}.name as doctor,
+                {$pacienteSql} AS paciente,
+                COALESCE({$d}.name, '') as doctor,
                 CAST({$pa}.total AS DECIMAL(12,2)) as total,
                 CAST({$pa}.monto_pagar AS DECIMAL(12,2)) as monto_pagado,
                 {$saldoPendiente} as saldo", false)
             ->join('registro', "{$r}.registro_id = {$ab}.registro_id")
-            ->join('people', "{$p}.person_id = {$r}.person_id")
-            ->join('doctors', "{$d}.doctor_id = {$r}.doctor_id")
+            ->join('people', "{$p}.person_id = {$r}.person_id", 'left')
+            ->join('doctors', "{$d}.doctor_id = {$r}.doctor_id", 'left')
             ->join('pago', "{$r}.registro_id = {$pa}.registro_id")
             ->where("{$ab}.tipopago !=", '4');
         $b = $this->applySinRegistrosAnulados($b, $r);
         $b = LabNaiveDateRange::apply($b, $ab, 'fecha_abono', $startDate, $endDate);
 
+        if ($tipopago !== null && $tipopago !== '') {
+            $b->where("{$ab}.tipopago", $tipopago);
+        }
+
         if ($saldoFiltro === 'pendiente') {
-            $b->where("{$saldoPendiente} >", 0.02, false);
+            $b->where("NOT {$ordenSaldada}", null, false);
         } elseif ($saldoFiltro === 'pagado') {
-            $b->where("{$saldoPendiente} <=", 0.02, false);
+            $b->where($ordenSaldada, null, false);
         }
 
         return $b->orderBy("{$ab}.fecha_abono", 'DESC')
@@ -492,27 +535,29 @@ class ReportModel extends Model
      *
      * @return list<array<string, mixed>>
      */
-    protected function fetchCobrosLegacySinAbono(string $startDate, string $endDate, ?string $saldoFiltro = null): array
+    protected function fetchCobrosLegacySinAbono(string $startDate, string $endDate, ?string $saldoFiltro = null, ?string $tipopago = null): array
     {
         $r  = $this->db->prefixTable('registro');
         $p  = $this->db->prefixTable('people');
         $d  = $this->db->prefixTable('doctors');
         $pa = $this->db->prefixTable('pago');
         $ab = $this->db->prefixTable('pago_abono');
-        $saldoPendiente = "GREATEST(CAST({$pa}.saldo AS DECIMAL(12,2)), CAST({$pa}.total AS DECIMAL(12,2)) - CAST({$pa}.monto_pagar AS DECIMAL(12,2)))";
+        $ordenSaldada   = $this->sqlOrdenPagoSaldada($pa);
+        $saldoPendiente = $this->sqlSaldoPendienteEfectivo($pa);
+        $pacienteSql    = $this->sqlPacienteNombreReporte($p);
 
         $b = $this->db->table('registro')
             ->select("NULL as pago_abono_id, {$r}.ingreso as fecha_cobro,
                 CAST({$pa}.monto_pagar AS DECIMAL(12,2)) as monto_cobro,
                 {$pa}.tipopago,
                 {$r}.registro_id, {$r}.ingreso,
-                CONCAT({$p}.first_name, ' ', {$p}.last_name_fa, ' ', {$p}.last_name_mom) AS paciente,
-                {$d}.name as doctor,
+                {$pacienteSql} AS paciente,
+                COALESCE({$d}.name, '') as doctor,
                 CAST({$pa}.total AS DECIMAL(12,2)) as total,
                 CAST({$pa}.monto_pagar AS DECIMAL(12,2)) as monto_pagado,
                 {$saldoPendiente} as saldo", false)
-            ->join('people', "{$p}.person_id = {$r}.person_id")
-            ->join('doctors', "{$d}.doctor_id = {$r}.doctor_id")
+            ->join('people', "{$p}.person_id = {$r}.person_id", 'left')
+            ->join('doctors', "{$d}.doctor_id = {$r}.doctor_id", 'left')
             ->join('pago', "{$r}.registro_id = {$pa}.registro_id");
 
         if ($this->db->tableExists('pago_abono')) {
@@ -524,10 +569,14 @@ class ReportModel extends Model
         $b = RegistroIngresoDateRange::apply($b, $r, $startDate, $endDate)
             ->where("{$pa}.tipopago !=", '4');
 
+        if ($tipopago !== null && $tipopago !== '') {
+            $b->where("{$pa}.tipopago", $tipopago);
+        }
+
         if ($saldoFiltro === 'pendiente') {
-            $b->where("{$saldoPendiente} >", 0.02, false);
+            $b->where("NOT {$ordenSaldada}", null, false);
         } elseif ($saldoFiltro === 'pagado') {
-            $b->where("{$saldoPendiente} <=", 0.02, false);
+            $b->where($ordenSaldada, null, false);
         }
 
         return $b->orderBy("{$r}.ingreso", 'DESC')
@@ -807,7 +856,7 @@ class ReportModel extends Model
     }
 
     /**
-     * Cobros del período en órdenes ya saldadas (saldo actual <= 0).
+     * Cobros del período en órdenes ya saldadas (monto cubierto o saldo <= 0).
      */
     public function getPagosPagadosDetalle(string $startDate, string $endDate): array
     {

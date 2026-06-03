@@ -230,6 +230,53 @@ class Reports extends SecureArea
     }
 
     /**
+     * Detalle JSON de cobros del período filtrados por tipo de pago (modal en reporte de pagos).
+     */
+    public function pagosDetallePorTipo(): ResponseInterface
+    {
+        helper('layout');
+
+        $startDate = $this->request->getGet('start') ?? RegisterService::todayForReport();
+        $endDate   = $this->request->getGet('end') ?? RegisterService::todayForReport();
+        $tipopago  = trim((string) $this->request->getGet('tipopago'));
+
+        if ($tipopago === '') {
+            return $this->response->setJSON([
+                'success' => false,
+                'message' => 'Tipo de pago no indicado.',
+            ])->setStatusCode(400);
+        }
+
+        $tipoPagoMap = ['1' => 'Efectivo', '2' => 'QR', '3' => 'Transferencia', '4' => 'Pendiente'];
+        $rows        = $this->reportModel->getCobrosDetallePorFecha($startDate, $endDate, null, $tipopago);
+
+        $items = [];
+        $total = 0.0;
+        foreach ($rows as $row) {
+            $monto = (float) ($row['monto_cobro'] ?? $row['monto_pagado'] ?? 0);
+            $total += $monto;
+            $items[] = [
+                'registro_id'     => $row['registro_id'] ?? '',
+                'paciente'        => trim((string) ($row['paciente'] ?? '')),
+                'doctor'          => trim((string) ($row['doctor'] ?? '')),
+                'monto_cobro'     => round($monto, 2),
+                'monto_cobro_fmt' => format_currency($monto),
+                'fecha_cobro'     => RegisterService::formatStoredReporteFechaCorta($row['fecha_cobro'] ?? $row['ingreso'] ?? ''),
+            ];
+        }
+
+        return $this->response->setJSON([
+            'success'    => true,
+            'tipo_label' => $tipoPagoMap[$tipopago] ?? $tipopago,
+            'periodo'    => RegisterService::formatReportDateRangeSubtitle($startDate, $endDate),
+            'items'      => $items,
+            'count'      => count($items),
+            'total'      => round($total, 2),
+            'total_fmt'  => format_currency($total),
+        ]);
+    }
+
+    /**
      * Solo órdenes con saldo pendiente de pago en el rango de fechas.
      */
     public function pagosPendientes()

@@ -57,6 +57,7 @@ $routes->get('reports/ingresosFechaPdf', 'Reports::ingresosFechaPdf');
 $routes->get('reports/porDoctor', 'Reports::porDoctor');
 $routes->get('reports/porDoctorPdf', 'Reports::porDoctorPdf');
 $routes->get('reports/pagos', 'Reports::pagos');
+$routes->get('reports/pagosDetallePorTipo', 'Reports::pagosDetallePorTipo');
 $routes->get('reports/pagosPdf', 'Reports::pagosPdf');
 $routes->get('reports/pagosPendientes', 'Reports::pagosPendientes');
 $routes->get('reports/pagosPendientesPdf', 'Reports::pagosPendientesPdf');
