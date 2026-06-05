@@ -40,7 +40,9 @@ $groupTitleStyle = $usePdfChrome
     : '';
 ?>
 <?php if ($usePdfChrome): ?>
+<?php if ($tituloGrupo !== ''): ?>
 <div class="group-title"<?= $groupTitleStyle !== '' ? ' style="' . esc($groupTitleStyle, 'attr') . '"' : '' ?>><?= esc($tituloGrupo) ?></div>
+<?php endif; ?>
 <?php if ($mostrarTipoMuestra): ?>
 <div class="report-tipo-muestra" style="font-size:9pt;color:#555;margin:0 0 10px 0;line-height:1.3;">Tipo de Muestra: <?= esc($tipoMuestraLinea) ?></div>
 <?php endif; ?>
@@ -48,7 +50,9 @@ $groupTitleStyle = $usePdfChrome
 <div class="report-metodo-prueba" style="font-size:9pt;color:#555;margin:0 0 10px 0;line-height:1.3;">Método: <?= esc($metodoLinea) ?></div>
 <?php endif; ?>
 <?php else: ?>
+<?php if ($tituloGrupo !== ''): ?>
 <h4 class="<?= esc($webTitleMt, 'attr') ?> mb-1"><?= esc($tituloGrupo) ?></h4>
+<?php endif; ?>
 <?php if ($mostrarTipoMuestra || $mostrarMetodo): ?>
 <div class="small text-muted mb-3">
     <?php if ($mostrarTipoMuestra): ?>

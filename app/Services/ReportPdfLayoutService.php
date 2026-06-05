@@ -220,6 +220,12 @@ class ReportPdfLayoutService
         'grupo_cabecera_title_mode'        => 'grupo_analisis',
         'grupo_cabecera_show_tipo_muestra' => true,
         'grupo_cabecera_show_metodo'       => true,
+        'grupo_area_separator_enabled'     => false,
+        'grupo_area_separator_color'       => '#DDDDDD',
+        'grupo_area_separator_width_px'    => 1,
+        'grupo_area_separator_font_size_pt' => 11.0,
+        'grupo_area_separator_font_weight' => 'bold',
+        'grupo_area_separator_margin_bottom_px' => 10,
     ];
 
     /** @var list<string> */
@@ -1832,6 +1838,39 @@ class ReportPdfLayoutService
         )) {
             return 'Modo de título de cabecera de grupo no permitido.';
         }
+        if (isset($raw['grupo_area_separator_color']) && ! self::isValidPdfHexColor((string) $raw['grupo_area_separator_color'])) {
+            return 'Color inválido en separador de área (#RRGGBB).';
+        }
+        if (array_key_exists('grupo_area_separator_width_px', $raw)) {
+            if (! is_numeric($raw['grupo_area_separator_width_px'])) {
+                return 'Grosor de línea del separador de área inválido.';
+            }
+            $sw = (int) $raw['grupo_area_separator_width_px'];
+            if ($sw < 0 || $sw > 4) {
+                return 'El grosor de línea del separador de área debe estar entre 0 y 4 px.';
+            }
+        }
+        if (array_key_exists('grupo_area_separator_font_size_pt', $raw)) {
+            if (! is_numeric($raw['grupo_area_separator_font_size_pt'])) {
+                return 'Tamaño de fuente del separador de área inválido.';
+            }
+            $sfs = (float) $raw['grupo_area_separator_font_size_pt'];
+            if ($sfs < 7.0 || $sfs > 20.0) {
+                return 'El tamaño del separador de área debe estar entre 7 y 20 pt.';
+            }
+        }
+        if (isset($raw['grupo_area_separator_font_weight']) && ! in_array(strtolower(trim((string) $raw['grupo_area_separator_font_weight'])), self::ALLOWED_PDF_FONT_WEIGHTS, true)) {
+            return 'Grosor de fuente no permitido en separador de área.';
+        }
+        if (array_key_exists('grupo_area_separator_margin_bottom_px', $raw)) {
+            if (! is_numeric($raw['grupo_area_separator_margin_bottom_px'])) {
+                return 'Margen inferior del separador de área inválido.';
+            }
+            $sm = (int) $raw['grupo_area_separator_margin_bottom_px'];
+            if ($sm < 0 || $sm > 40) {
+                return 'El margen inferior del separador de área debe estar entre 0 y 40 px.';
+            }
+        }
 
         return null;
     }
@@ -3029,7 +3068,7 @@ class ReportPdfLayoutService
         $rs = self::normalizeResultsTableStyle($ps['results_table'] ?? []);
         $marginBottom = max(0, min(20, (int) ($rs['cell_padding_v_px'] ?? 6)));
         $marginTop    = 0;
-        if ($isFirstSubgrupoInArea && $isFirstGrupoInReport) {
+        if ($isFirstSubgrupoInArea && $isFirstGrupoInReport && ! self::grupoAreaSeparatorEnabled($layout)) {
             $marginTop = max(0, min(80, (int) ($rs['grupo_prueba_gap_px'] ?? 10)));
         }
 
@@ -3037,8 +3076,60 @@ class ReportPdfLayoutService
     }
 
     /**
-     * Pie fijo en cada página al generar PDF con Dompdf (fuera de .pdf-main-stack).
+     * Separador horizontal con nombre del área (.report-pdf-grupo-area-separator).
      *
+     * @param array<string, mixed> $layout
+     */
+    public static function grupoAreaSeparatorEnabled(array $layout): bool
+    {
+        $ps = is_array($layout['page_style'] ?? null) ? $layout['page_style'] : [];
+        $rs = self::normalizeResultsTableStyle($ps['results_table'] ?? []);
+
+        return ! empty($rs['grupo_area_separator_enabled']);
+    }
+
+    /**
+     * @param array<string, mixed> $layout
+     */
+    public static function grupoAreaSeparatorMarginStyleAttr(array $layout, bool $isFirstGrupoInReport): string
+    {
+        $ps = is_array($layout['page_style'] ?? null) ? $layout['page_style'] : [];
+        $rs = self::normalizeResultsTableStyle($ps['results_table'] ?? []);
+        $marginTop = 0;
+        if ($isFirstGrupoInReport) {
+            $marginTop = max(0, min(80, (int) ($rs['grupo_prueba_gap_px'] ?? 10)));
+        }
+        $marginBottom = max(0, min(40, (int) ($rs['grupo_area_separator_margin_bottom_px'] ?? 10)));
+
+        return sprintf('margin-top:%dpx;margin-bottom:%dpx;', $marginTop, $marginBottom);
+    }
+
+    /**
+     * @param array<string, mixed> $layout
+     */
+    public static function grupoAreaSeparatorInlineStyleAttr(array $layout): string
+    {
+        $ps = is_array($layout['page_style'] ?? null) ? $layout['page_style'] : [];
+        $rs = self::normalizeResultsTableStyle($ps['results_table'] ?? []);
+        $color = (string) ($rs['grupo_area_separator_color'] ?? '#DDDDDD');
+        $width = max(0, min(4, (int) ($rs['grupo_area_separator_width_px'] ?? 1)));
+        $fs    = (float) ($rs['grupo_area_separator_font_size_pt'] ?? 11.0);
+        $fw    = (string) ($rs['grupo_area_separator_font_weight'] ?? 'bold');
+
+        return 'color:#333333;font-size:' . $fs . 'pt;font-weight:' . $fw
+            . ';--pdf-grupo-area-separator-color:' . $color
+            . ';--pdf-grupo-area-separator-width:' . $width . 'px;';
+    }
+
+    /**
+     * @param array<string, mixed> $layout
+     */
+    public static function buildGrupoAreaSeparatorTitle(string $padre, array $layout): string
+    {
+        return trim($padre);
+    }
+
+    /**
      * @param array<string, mixed> $layout
      */
     public static function footerDompdfFixedStyleAttr(array $layout): string
@@ -3551,6 +3642,17 @@ class ReportPdfLayoutService
             'grupo_cabecera_show_metodo'       => array_key_exists('grupo_cabecera_show_metodo', $s)
                 ? ! empty($s['grupo_cabecera_show_metodo'])
                 : (bool) $def['grupo_cabecera_show_metodo'],
+            'grupo_area_separator_enabled'     => array_key_exists('grupo_area_separator_enabled', $s)
+                ? ! empty($s['grupo_area_separator_enabled'])
+                : (bool) ($def['grupo_area_separator_enabled'] ?? false),
+            'grupo_area_separator_color'       => $pickColor('grupo_area_separator_color', (string) ($def['grupo_area_separator_color'] ?? '#DDDDDD')),
+            'grupo_area_separator_width_px'    => max(0, min(4, isset($s['grupo_area_separator_width_px']) ? (int) $s['grupo_area_separator_width_px'] : (int) ($def['grupo_area_separator_width_px'] ?? 1))),
+            'grupo_area_separator_font_size_pt' => round(max(7.0, min(20.0, isset($s['grupo_area_separator_font_size_pt']) ? (float) $s['grupo_area_separator_font_size_pt'] : (float) ($def['grupo_area_separator_font_size_pt'] ?? 11.0))), 2),
+            'grupo_area_separator_font_weight' => (static function () use ($s, $def): string {
+                $w = strtolower(trim((string) ($s['grupo_area_separator_font_weight'] ?? ($def['grupo_area_separator_font_weight'] ?? 'bold'))));
+                return in_array($w, self::ALLOWED_PDF_FONT_WEIGHTS, true) ? $w : 'bold';
+            })(),
+            'grupo_area_separator_margin_bottom_px' => max(0, min(40, isset($s['grupo_area_separator_margin_bottom_px']) ? (int) $s['grupo_area_separator_margin_bottom_px'] : (int) ($def['grupo_area_separator_margin_bottom_px'] ?? 10))),
         ];
     }
 
@@ -3569,7 +3671,7 @@ class ReportPdfLayoutService
     /**
      * @param array<string, mixed> $layout
      *
-     * @return array{title_mode: string, show_tipo_muestra: bool, show_metodo: bool}
+     * @return array{title_mode: string, show_tipo_muestra: bool, show_metodo: bool, area_separator_enabled: bool}
      */
     public static function grupoCabeceraDisplayFromLayout(array $layout): array
     {
@@ -3577,9 +3679,10 @@ class ReportPdfLayoutService
         $rs = self::normalizeResultsTableStyle($ps['results_table'] ?? []);
 
         return [
-            'title_mode'        => (string) ($rs['grupo_cabecera_title_mode'] ?? 'grupo_analisis'),
-            'show_tipo_muestra' => ! empty($rs['grupo_cabecera_show_tipo_muestra']),
-            'show_metodo'       => ! empty($rs['grupo_cabecera_show_metodo']),
+            'title_mode'             => (string) ($rs['grupo_cabecera_title_mode'] ?? 'grupo_analisis'),
+            'show_tipo_muestra'      => ! empty($rs['grupo_cabecera_show_tipo_muestra']),
+            'show_metodo'            => ! empty($rs['grupo_cabecera_show_metodo']),
+            'area_separator_enabled' => ! empty($rs['grupo_area_separator_enabled']),
         ];
     }
 
@@ -3591,6 +3694,14 @@ class ReportPdfLayoutService
         $padre = trim($padre);
         $hijo  = trim($hijo);
         $cfg   = self::grupoCabeceraDisplayFromLayout($layout);
+
+        if (! empty($cfg['area_separator_enabled'])) {
+            if ($hijo !== '') {
+                return $hijo;
+            }
+
+            return '';
+        }
 
         if (($cfg['title_mode'] ?? 'grupo_analisis') === 'solo_analisis') {
             if ($hijo !== '') {

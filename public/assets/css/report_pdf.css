@@ -412,6 +412,42 @@ body {
     page-break-inside: avoid;
     break-inside: avoid-page;
 }
+.report-pdf-grupo-area-separator {
+    page-break-inside: avoid;
+    break-inside: avoid-page;
+    page-break-after: avoid;
+    break-after: avoid;
+}
+.report-pdf-grupo-area-separator-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+.report-pdf-grupo-area-separator-line-cell {
+    width: 50%;
+    vertical-align: middle;
+    padding: 0;
+}
+.report-pdf-grupo-area-separator-line-cell-left {
+    padding-right: 10px;
+}
+.report-pdf-grupo-area-separator-line-cell-right {
+    padding-left: 10px;
+}
+.report-pdf-grupo-area-separator-line {
+    border-top: var(--pdf-grupo-area-separator-width, 1px) solid var(--pdf-grupo-area-separator-color, #dddddd);
+    font-size: 0;
+    line-height: 0;
+    height: 0;
+}
+.report-pdf-grupo-area-separator-label {
+    white-space: nowrap;
+    text-align: center;
+    vertical-align: middle;
+    padding: 0 4px;
+    color: #333333;
+    font-size: var(--pdf-grupo-area-separator-font-size, 11pt);
+    font-weight: var(--pdf-grupo-area-separator-font-weight, bold);
+}
 .report-pdf-grupo-cabecera .group-title {
     page-break-after: avoid;
     break-after: avoid;

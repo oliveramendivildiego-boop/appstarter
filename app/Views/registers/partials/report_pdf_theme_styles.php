@@ -266,6 +266,11 @@ body { margin: <?= esc((string) $mt) ?>mm <?= esc((string) $mr) ?>mm <?= esc((st
     --pdf-results-table-margin-top: <?= (int) ($rs['table_margin_top_px'] ?? 15) ?>px;
     --pdf-results-table-margin-bottom: <?= (int) ($rs['table_margin_bottom_px'] ?? 15) ?>px;
     --pdf-results-grupo-gap: <?= (int) ($rs['grupo_prueba_gap_px'] ?? 10) ?>px;
+    --pdf-grupo-area-separator-color: <?= esc((string) ($rs['grupo_area_separator_color'] ?? '#DDDDDD')) ?>;
+    --pdf-grupo-area-separator-width: <?= (int) ($rs['grupo_area_separator_width_px'] ?? 1) ?>px;
+    --pdf-grupo-area-separator-font-size: <?= esc((string) ($rs['grupo_area_separator_font_size_pt'] ?? 11)) ?>pt;
+    --pdf-grupo-area-separator-font-weight: <?= esc((string) ($rs['grupo_area_separator_font_weight'] ?? 'bold')) ?>;
+    --pdf-grupo-area-separator-margin-bottom: <?= (int) ($rs['grupo_area_separator_margin_bottom_px'] ?? 10) ?>px;
             --pdf-gpb-compact-scale: <?= esc((string) $gpbCompactScale, 'attr') ?>;
             --pdf-gpb-compact-cell-padding-v: <?= (int) ($gpb['compact_cell_padding_px'] ?? 0) ?>px;
     --pdf-results-matrix-align: <?= esc((string) ($rs['matrix_text_align'] ?? 'center')) ?>;

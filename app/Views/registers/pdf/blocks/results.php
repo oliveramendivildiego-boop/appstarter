@@ -37,6 +37,12 @@ foreach ($grupos ?? [] as $padre => $items) {
     echo '<div class="' . esc($grupoClass, 'attr') . '"'
         . ($grupoStyle !== '' ? ' style="' . esc($grupoStyle, 'attr') . '"' : '')
         . '>';
+    echo view('registers/analisis/partials/report_grupo_area_separator', [
+        'padre'            => $padre,
+        'pdf_layout'       => $layoutForLf,
+        'grupo_es_primero' => $isFirstGrupo,
+        'variant'          => $av,
+    ]);
     echo view('registers/analisis/partials/compleja_tabla_reporte_grupo', [
         'padre'   => $padre,
         'items'   => $items,
