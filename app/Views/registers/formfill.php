@@ -768,7 +768,7 @@ document.addEventListener('DOMContentLoaded', function() {
             }
             if (res && res.success) {
                 var rid = document.getElementById('registro_id').value;
-                window.location.href = '<?= site_url('registers/view') ?>/' + rid;
+                window.location.href = '<?= site_url('registers/viewreport') ?>/' + rid;
             } else {
                 uiAlert(res && res.message ? res.message : 'Error al guardar', 'Error');
                 if (submitBtn) submitBtn.disabled = false;
