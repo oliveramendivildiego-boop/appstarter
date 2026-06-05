@@ -37,7 +37,10 @@ $printPagValueCssPos = (string) ($printPagValueCssPos ?? '');
 }
 @page {
     size: <?= esc($printPageCssSize) ?>;
-    margin: <?= esc((string) $mt) ?>mm <?= esc((string) $mr) ?>mm <?= esc((string) $mb) ?>mm <?= esc((string) $ml) ?>mm;
+    margin-top: <?= esc((string) $mt) ?>mm;
+    margin-right: <?= esc((string) $mr) ?>mm;
+    margin-bottom: <?= esc((string) $mb) ?>mm;
+    margin-left: <?= esc((string) $ml) ?>mm;
 }
 /* Solo @page define márgenes de hoja; body sin margen extra (evita doble margen en vista previa). */
 html,

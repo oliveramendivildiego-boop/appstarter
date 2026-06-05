@@ -86,6 +86,7 @@
     <?= view('registers/partials/report_pdf_theme_styles', [
         'pdf_layout'                     => $pdf_layout ?? [],
         'use_sheet_padding_for_margins' => false,
+        'browser_print_mode'            => true,
     ]) ?>
     <?= view('registers/partials/report_browser_print_styles', [
         'mt'                      => $mt,
@@ -208,11 +209,18 @@
             styleEl.media = 'print';
             document.head.appendChild(styleEl);
         }
-        styleEl.textContent = '@page { size: ' + PAGE_CSS_SIZE + '; margin: '
-            + marginTopMm + 'mm '
-            + marginRightMm + 'mm '
-            + marginBottomMm + 'mm '
-            + marginLeftMm + 'mm; }';
+        styleEl.textContent = '@page { size: ' + PAGE_CSS_SIZE + '; '
+            + 'margin-top: ' + marginTopMm + 'mm; '
+            + 'margin-right: ' + marginRightMm + 'mm; '
+            + 'margin-bottom: ' + marginBottomMm + 'mm; '
+            + 'margin-left: ' + marginLeftMm + 'mm; }';
+        console.log('[report-print-margins]', {
+            marginTopMM: marginTopMm,
+            marginRightMM: marginRightMm,
+            marginBottomMM: marginBottomMm,
+            marginLeftMM: marginLeftMm,
+            source: 'plantilla margins_mm + #report-print-page-margins'
+        });
     }
 
     function syncReportPrintLayoutMetrics() {

@@ -4,10 +4,12 @@
  *
  * @var array<string,mixed> $pdf_layout
  * @var bool                $use_sheet_padding Si true, márgenes en .viewreport-pdf-sheet (vista embebida); si no, en body (PDF/impresión).
+ * @var bool                $browser_print_mode Si true, impresión directa navegador: sin margin/padding en body (solo @page).
  */
 
 $pdf_layout = is_array($pdf_layout ?? null) ? $pdf_layout : [];
 $useSheetPadding = ! empty($use_sheet_padding_for_margins);
+$browserPrintMode = ! empty($browser_print_mode);
 
 $reportPdfCssRel = 'assets/css/report_pdf.css';
 $reportPdfCssFs  = FCPATH . str_replace('/', DIRECTORY_SEPARATOR, $reportPdfCssRel);
@@ -98,6 +100,27 @@ $ftTopWpx           = ($ftTopOn && $ftTopW > 0) ? $ftTopW : 0;
     left: 0;
     right: 0;
     bottom: 0;
+    z-index: 2;
+    margin-top: 0 !important;
+    padding-top: 6px;
+    background: <?= esc($pdfFooterStripBg) ?>;
+    box-sizing: border-box;
+}
+<?php endif; ?>
+<?php elseif ($browserPrintMode): ?>
+body.report-browser-print {
+    margin: 0 !important;
+    padding: 0 !important;
+    position: relative;
+}
+body.report-browser-print .pdf-main-stack {
+    padding-top: 0 !important;
+    padding-bottom: 0 !important;
+    box-sizing: border-box;
+}
+<?php if ($pdfFooterEnabled): ?>
+body.report-browser-print .pdf-ft-block.footer-grid {
+    position: fixed;
     z-index: 2;
     margin-top: 0 !important;
     padding-top: 6px;
