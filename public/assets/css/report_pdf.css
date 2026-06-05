@@ -387,13 +387,13 @@ body {
     --pdf-gpb-compact-grupo-gap-scale: 0.82;
 }
 .pdf-gpb-compact-aggressive .report-pdf-grupo-prueba.report-pdf-grupo-prueba-compact .report-segment-table-wrap {
-    margin-bottom: calc(12px * var(--pdf-gpb-compact-scale, 0.92) * var(--pdf-gpb-compact-segment-margin-scale, 1)) !important;
+    margin: 0 !important;
 }
 .pdf-gpb-compact-aggressive .report-pdf-grupo-prueba.report-pdf-grupo-prueba-compact:not(.report-pdf-grupo-prueba-first) {
     margin-top: calc(var(--pdf-results-grupo-gap, 10px) * var(--pdf-gpb-compact-scale, 0.92) * var(--pdf-gpb-compact-grupo-gap-scale, 1)) !important;
 }
 .pdf-gpb-keep-together-compact .report-pdf-grupo-prueba.report-pdf-grupo-prueba-compact .report-segment-table-wrap {
-    margin-bottom: calc(12px * var(--pdf-gpb-compact-scale, 0.92));
+    margin: 0 !important;
 }
 .pdf-gpb-keep-together-compact .report-pdf-grupo-prueba.report-pdf-grupo-prueba-compact:not(.report-pdf-grupo-prueba-first) {
     margin-top: calc(var(--pdf-results-grupo-gap, 10px) * var(--pdf-gpb-compact-scale, 0.92)) !important;
@@ -428,7 +428,8 @@ body {
 table.results {
     width: 100%;
     border-collapse: collapse;
-    margin: 15px 0;
+    margin-top: var(--pdf-results-table-margin-top, 15px);
+    margin-bottom: var(--pdf-results-table-margin-bottom, 15px);
     page-break-inside: auto;
     break-inside: auto;
 }
@@ -736,7 +737,7 @@ table.results td {
     color: var(--pdf-ft-policy-color, var(--pdf-ft-body-color, #666666));
 }
 .report-segment-table-wrap {
-    margin: 0 0 12px 0;
+    margin: 0;
     page-break-inside: auto;
     break-inside: auto;
 }

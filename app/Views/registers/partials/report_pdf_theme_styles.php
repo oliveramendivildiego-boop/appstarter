@@ -263,6 +263,8 @@ body { margin: <?= esc((string) $mt) ?>mm <?= esc((string) $mr) ?>mm <?= esc((st
     --pdf-results-transform: <?= esc($rs['text_transform']) ?>;
     --pdf-results-line-height: <?= esc((string) $rs['line_height']) ?>;
     --pdf-results-cell-padding-v: <?= (int) ($rs['cell_padding_v_px'] ?? 6) ?>px;
+    --pdf-results-table-margin-top: <?= (int) ($rs['table_margin_top_px'] ?? 15) ?>px;
+    --pdf-results-table-margin-bottom: <?= (int) ($rs['table_margin_bottom_px'] ?? 15) ?>px;
     --pdf-results-grupo-gap: <?= (int) ($rs['grupo_prueba_gap_px'] ?? 10) ?>px;
             --pdf-gpb-compact-scale: <?= esc((string) $gpbCompactScale, 'attr') ?>;
             --pdf-gpb-compact-cell-padding-v: <?= (int) ($gpb['compact_cell_padding_px'] ?? 0) ?>px;
@@ -287,6 +289,10 @@ body { margin: <?= esc((string) $mt) ?>mm <?= esc((string) $mr) ?>mm <?= esc((st
     --pdf-results-matrix-hdr-parameter-align: <?= esc((string) ($rs['matrix_hdr_parameter_align'] ?? 'left')) ?>;
     --pdf-results-matrix-hdr-sex-align: <?= esc((string) ($rs['matrix_hdr_sex_align'] ?? 'center')) ?>;
     --pdf-results-matrix-hdr-reference-align: <?= esc((string) ($rs['matrix_hdr_reference_align'] ?? 'center')) ?>;
+}
+table.results {
+    margin-top: var(--pdf-results-table-margin-top, 15px) !important;
+    margin-bottom: var(--pdf-results-table-margin-bottom, 15px) !important;
 }
 table.results th {
     background: <?= esc($rs['header_bg_color']) ?> !important;

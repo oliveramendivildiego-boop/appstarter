@@ -539,6 +539,15 @@ $labelsShort = [
                 <input type="number" class="form-control" id="rs_cell_padding_v" min="0" max="20" step="1" value="<?= esc((string) (int) ($rs['cell_padding_v_px'] ?? 6), 'attr') ?>">
             </div>
             <div class="col-12 col-md-4 col-lg-3">
+                <label class="form-label small" for="rs_table_margin_top" title="Margen superior de cada table.results en el PDF">Margen superior table.results (px)</label>
+                <input type="number" class="form-control" id="rs_table_margin_top" min="0" max="80" step="1" value="<?= esc((string) (int) ($rs['table_margin_top_px'] ?? 15), 'attr') ?>">
+            </div>
+            <div class="col-12 col-md-4 col-lg-3">
+                <label class="form-label small" for="rs_table_margin_bottom" title="Margen inferior de cada table.results en el PDF">Margen inferior table.results (px)</label>
+                <input type="number" class="form-control" id="rs_table_margin_bottom" min="0" max="80" step="1" value="<?= esc((string) (int) ($rs['table_margin_bottom_px'] ?? 15), 'attr') ?>">
+                <div class="form-text">Separación vertical arriba/abajo de cada tabla de resultados.</div>
+            </div>
+            <div class="col-12 col-md-4 col-lg-3">
                 <label class="form-label small" for="rs_grupo_prueba_gap" title="Separación vertical entre cada área o grupo de pruebas en el PDF (clase report-pdf-grupo-prueba)">Espacio entre grupos de prueba (px)</label>
                 <input type="number" class="form-control" id="rs_grupo_prueba_gap" min="0" max="80" step="1" value="<?= esc((string) (int) ($rs['grupo_prueba_gap_px'] ?? 10), 'attr') ?>">
                 <div class="form-text">Entre áreas distintas (<code>report-pdf-grupo-prueba</code>).</div>
@@ -3805,6 +3814,8 @@ document.addEventListener('DOMContentLoaded', function() {
                 text_transform: pickAllowedDomId('rs_text_transform', 'text_transforms', 'none'),
                 line_height: pickNum('rs_line_height', 1, 3, 1.35),
                 cell_padding_v_px: Math.round(pickNum('rs_cell_padding_v', 0, 20, 6)),
+                table_margin_top_px: Math.round(pickNum('rs_table_margin_top', 0, 80, 15)),
+                table_margin_bottom_px: Math.round(pickNum('rs_table_margin_bottom', 0, 80, 15)),
                 grupo_prueba_gap_px: Math.round(pickNum('rs_grupo_prueba_gap', 0, 80, 10)),
                 subgrupo_prueba_gap_px: Math.round(pickNum('rs_subgrupo_prueba_gap', 0, 80, 18)),
                 matrix_text_align: pickAllowedDomId('rs_matrix_align', 'text_aligns', 'center'),
@@ -4001,6 +4012,8 @@ document.addEventListener('DOMContentLoaded', function() {
         pushIfBadSelect('rs_text_transform', tt, 'Transformación no permitida en tabla de resultados.');
         pushIfBadNum('rs_line_height', 1, 3, 'Interlineado en tabla de resultados: entre 1 y 3.');
         pushIfBadNum('rs_cell_padding_v', 0, 20, 'Relleno vertical de filas (tabla de resultados): entre 0 y 20 px.');
+        pushIfBadNum('rs_table_margin_top', 0, 80, 'Margen superior de table.results: entre 0 y 80 px.');
+        pushIfBadNum('rs_table_margin_bottom', 0, 80, 'Margen inferior de table.results: entre 0 y 80 px.');
         pushIfBadNum('rs_grupo_prueba_gap', 0, 80, 'Espacio entre grupos de prueba: entre 0 y 80 px.');
         pushIfBadNum('rs_subgrupo_prueba_gap', 0, 80, 'Espacio entre pruebas del mismo área: entre 0 y 80 px.');
         pushIfBadNum('rs_segment_border_width', 0, 4, 'Grosor de borde de segmento: entre 0 y 4 px.');

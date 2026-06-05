@@ -192,6 +192,8 @@ class ReportPdfLayoutService
         'text_transform'    => 'none',
         'line_height'       => 1.35,
         'cell_padding_v_px' => 6,
+        'table_margin_top_px' => 15,
+        'table_margin_bottom_px' => 15,
         'grupo_prueba_gap_px' => 10,
         'subgrupo_prueba_gap_px' => 18,
         'matrix_text_align' => 'center',
@@ -1714,6 +1716,18 @@ class ReportPdfLayoutService
             $cp = (int) $raw['cell_padding_v_px'];
             if ($cp < 0 || $cp > 20) {
                 return 'El relleno vertical de filas en la tabla de resultados debe estar entre 0 y 20 px.';
+            }
+        }
+        foreach (['table_margin_top_px' => 'superior', 'table_margin_bottom_px' => 'inferior'] as $mk => $mlbl) {
+            if (! array_key_exists($mk, $raw)) {
+                continue;
+            }
+            if (! is_numeric($raw[$mk])) {
+                return 'Margen ' . $mlbl . ' de table.results inválido.';
+            }
+            $mv = (int) $raw[$mk];
+            if ($mv < 0 || $mv > 80) {
+                return 'El margen ' . $mlbl . ' de table.results debe estar entre 0 y 80 px.';
             }
         }
         if (array_key_exists('grupo_prueba_gap_px', $raw)) {
@@ -3427,6 +3441,10 @@ class ReportPdfLayoutService
         $lh = round(max(1.0, min(3.0, $lh)), 2);
         $cellPadV = isset($s['cell_padding_v_px']) ? (int) $s['cell_padding_v_px'] : (int) ($def['cell_padding_v_px'] ?? 6);
         $cellPadV = max(0, min(20, $cellPadV));
+        $tableMt = isset($s['table_margin_top_px']) ? (int) $s['table_margin_top_px'] : (int) ($def['table_margin_top_px'] ?? 15);
+        $tableMt = max(0, min(80, $tableMt));
+        $tableMb = isset($s['table_margin_bottom_px']) ? (int) $s['table_margin_bottom_px'] : (int) ($def['table_margin_bottom_px'] ?? 15);
+        $tableMb = max(0, min(80, $tableMb));
         $grupoGap = isset($s['grupo_prueba_gap_px']) ? (int) $s['grupo_prueba_gap_px'] : (int) ($def['grupo_prueba_gap_px'] ?? 10);
         $grupoGap = max(0, min(80, $grupoGap));
         $subgrupoGap = isset($s['subgrupo_prueba_gap_px']) ? (int) $s['subgrupo_prueba_gap_px'] : (int) ($def['subgrupo_prueba_gap_px'] ?? 18);
@@ -3501,6 +3519,8 @@ class ReportPdfLayoutService
             'text_transform'    => $transform,
             'line_height'       => $lh,
             'cell_padding_v_px' => $cellPadV,
+            'table_margin_top_px' => $tableMt,
+            'table_margin_bottom_px' => $tableMb,
             'grupo_prueba_gap_px' => $grupoGap,
             'subgrupo_prueba_gap_px' => $subgrupoGap,
             'matrix_text_align' => $matrixAlign,
