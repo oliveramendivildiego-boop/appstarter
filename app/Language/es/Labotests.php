@@ -15,7 +15,7 @@ return [
     'labotests_costderiv_sub' => 'Precio derivado',
     'labotests_tipo_analisis' => 'Tipo de análisis',
     'labotests_tipo_analisis_simple' => 'Simple',
-    'labotests_tipo_analisis_tabla' => 'Tabla',
+    'labotests_tipo_analisis_tabla' => 'Compuesta',
     'labotests_tipo_analisis_cultivo' => 'Cultivo',
     'labotests_no'            => 'No',
     'labotests_yes'           => 'Sí',
