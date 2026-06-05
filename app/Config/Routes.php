@@ -112,6 +112,7 @@ $routes->get('config/pdf-templates', 'PdfResultTemplates::index');
 $routes->get('config/pdf-templates/edit/(:num)', 'PdfResultTemplates::edit/$1');
 $routes->post('config/pdf-templates/save', 'PdfResultTemplates::save');
 $routes->post('config/pdf-templates/create', 'PdfResultTemplates::create');
+$routes->post('config/pdf-templates/duplicate/(:num)', 'PdfResultTemplates::duplicate/$1');
 $routes->get('config/pdf-templates/delete/(:num)', 'PdfResultTemplates::delete/$1');
 $routes->get('config/sobres/edit/(:num)', 'EnvelopeTemplates::edit/$1');
 $routes->post('config/sobres/save', 'EnvelopeTemplates::save');

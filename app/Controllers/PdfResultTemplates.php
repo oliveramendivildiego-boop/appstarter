@@ -184,6 +184,66 @@ class PdfResultTemplates extends SecureArea
         return redirect()->to('config/pdf-templates/edit/' . $newId)->with('success', 'Plantilla creada. Arrastre los bloques y guarde.');
     }
 
+    public function duplicate(int $id = 0): ResponseInterface
+    {
+        $id   = max(0, $id);
+        $name = trim((string) $this->request->getPost('name'));
+        if ($name === '') {
+            return redirect()->to('config/pdf-templates')->with('error', 'Indique un nombre para la copia.');
+        }
+
+        $model  = model(ReportPdfTemplateModel::class);
+        $source = $model->find($id);
+        if (! $source) {
+            return redirect()->to('config/pdf-templates')->with('error', 'Plantilla no encontrada.');
+        }
+
+        $layoutJson = (string) ($source->layout_json ?? '');
+        $model->insert([
+            'name'        => $name,
+            'layout_json' => $layoutJson,
+        ]);
+        $newId = (int) $model->getInsertID();
+        if ($newId < 1) {
+            return redirect()->to('config/pdf-templates')->with('error', 'No se pudo duplicar la plantilla.');
+        }
+
+        $decoded = json_decode($layoutJson, true);
+        if (is_array($decoded)) {
+            $wm = is_array($decoded['watermark'] ?? null) ? $decoded['watermark'] : [];
+            $wmFile = isset($wm['file']) ? (string) $wm['file'] : '';
+            $safe   = ReportPdfLayoutService::sanitizeWatermarkRelativePath($wmFile);
+            if ($safe !== null) {
+                $srcFull = WRITEPATH . str_replace('/', DIRECTORY_SEPARATOR, $safe);
+                if (is_file($srcFull)) {
+                    $ext = strtolower((string) pathinfo($srcFull, PATHINFO_EXTENSION));
+                    $dir = WRITEPATH . 'uploads' . DIRECTORY_SEPARATOR . 'report_pdf_templates' . DIRECTORY_SEPARATOR . $newId;
+                    if (! is_dir($dir)) {
+                        mkdir($dir, 0755, true);
+                    }
+                    $newFileName = 'wm_' . bin2hex(random_bytes(8)) . ($ext !== '' ? '.' . $ext : '');
+                    $destFull    = $dir . DIRECTORY_SEPARATOR . $newFileName;
+                    if (copy($srcFull, $destFull)) {
+                        $decoded['watermark'] = array_merge(
+                            ReportPdfLayoutService::defaultWatermarkStatic(),
+                            $wm,
+                            ['file' => 'uploads/report_pdf_templates/' . $newId . '/' . $newFileName]
+                        );
+                        $layoutService = new ReportPdfLayoutService();
+                        $normalized    = $layoutService->normalizeLayout(json_encode($decoded, JSON_UNESCAPED_UNICODE));
+                        $model->update($newId, [
+                            'layout_json' => json_encode($normalized, JSON_UNESCAPED_UNICODE),
+                        ]);
+                    }
+                }
+            }
+        }
+
+        (new ConfigService())->invalidateCache();
+
+        return redirect()->to('config/pdf-templates/edit/' . $newId)->with('success', 'Plantilla duplicada con toda su configuración.');
+    }
+
     public function delete(int $id = 0)
     {
         $id = max(0, $id);

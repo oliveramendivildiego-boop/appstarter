@@ -86,6 +86,13 @@
                         </td>
                         <td class="text-end text-nowrap">
                             <a href="<?= site_url('config/pdf-templates/edit/' . (int)($t->id ?? 0)) ?>" class="btn btn-sm btn-primary">Editar diseño</a>
+                            <button type="button"
+                                    class="btn btn-sm btn-outline-secondary btn-pdf-tpl-duplicate"
+                                    data-id="<?= (int)($t->id ?? 0) ?>"
+                                    data-name="<?= esc($t->name ?? '', 'attr') ?>"
+                                    title="Duplicar plantilla">
+                                <i class="fa-solid fa-copy"></i> Duplicar
+                            </button>
                             <?php if (count($templates) > 1): ?>
                             <a href="<?= site_url('config/pdf-templates/delete/' . (int)($t->id ?? 0)) ?>"
                                class="btn btn-sm btn-outline-danger"
@@ -99,5 +106,70 @@
         </div>
     </div>
 </div>
+
+<div class="modal fade" id="modalDuplicatePdfTemplate" tabindex="-1" aria-labelledby="modalDuplicatePdfTemplateTitle" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <?= form_open('', ['id' => 'form_duplicate_pdf_template']) ?>
+                <?= csrf_field() ?>
+                <div class="modal-header">
+                    <h5 class="modal-title" id="modalDuplicatePdfTemplateTitle">Duplicar plantilla</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+                </div>
+                <div class="modal-body">
+                    <p class="text-muted mb-3">
+                        Se copiará el diseño completo de <strong id="duplicate_pdf_tpl_source_name"></strong>
+                        (bloques, estilos, márgenes y marca de agua).
+                    </p>
+                    <label class="form-label" for="duplicate_pdf_tpl_name">Nombre de la nueva plantilla</label>
+                    <input type="text" class="form-control" id="duplicate_pdf_tpl_name" name="name" required maxlength="120">
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-primary">Duplicar</button>
+                </div>
+            <?= form_close() ?>
+        </div>
+    </div>
+</div>
+
+<script>
+(function () {
+    var modalEl = document.getElementById('modalDuplicatePdfTemplate');
+    var formEl = document.getElementById('form_duplicate_pdf_template');
+    var nameInput = document.getElementById('duplicate_pdf_tpl_name');
+    var sourceNameEl = document.getElementById('duplicate_pdf_tpl_source_name');
+    var modal = (modalEl && typeof bootstrap !== 'undefined')
+        ? (bootstrap.Modal.getInstance(modalEl) || new bootstrap.Modal(modalEl))
+        : null;
+
+    document.querySelectorAll('.btn-pdf-tpl-duplicate').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+            var id = btn.getAttribute('data-id') || '0';
+            var sourceName = btn.getAttribute('data-name') || '';
+            if (formEl) {
+                formEl.action = <?= json_encode(site_url('config/pdf-templates/duplicate/')) ?> + id;
+            }
+            if (sourceNameEl) {
+                sourceNameEl.textContent = sourceName;
+            }
+            if (nameInput) {
+                nameInput.value = sourceName ? ('Copia de ' + sourceName) : '';
+            }
+            if (modal) {
+                modal.show();
+                setTimeout(function () {
+                    if (nameInput) {
+                        nameInput.focus();
+                        nameInput.select();
+                    }
+                }, 200);
+            } else if (formEl) {
+                formEl.submit();
+            }
+        });
+    });
+})();
+</script>
 <?php endif; ?>
 <?= $this->endSection() ?>
