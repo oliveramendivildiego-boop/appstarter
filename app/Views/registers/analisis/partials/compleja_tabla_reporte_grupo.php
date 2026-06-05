@@ -130,9 +130,15 @@ foreach ($ordenPriaKeys as $subIdx => $priaKey) :
 
     $subgrupoWrapClass = $subIdx > 0 ? ' report-pdf-subgrupo-prueba' : '';
     $webTitleMt = $subIdx > 0 ? 'mt-5' : 'mt-4';
+    $subgrupoGapStyle = $subIdx > 0
+        ? \App\Services\ReportPdfLayoutService::subgrupoPruebaGapStyleAttr(
+            is_array($pdf_layout ?? null) ? $pdf_layout : [],
+            true
+        )
+        : '';
 ?>
 <?php if ($usePdfChrome): ?>
-<div class="report-pdf-subgrupo-block<?= esc($subgrupoWrapClass, 'attr') ?>"<?= $subIdx > 0 ? ' style="margin-top:18px;"' : '' ?>>
+<div class="report-pdf-subgrupo-block<?= esc($subgrupoWrapClass, 'attr') ?>"<?= $subgrupoGapStyle !== '' ? ' style="' . esc($subgrupoGapStyle, 'attr') . '"' : '' ?>>
 <div class="report-pdf-grupo-cabecera">
 <?= view('registers/analisis/partials/report_grupo_cabecera_content', [
     'padre'              => $padre,

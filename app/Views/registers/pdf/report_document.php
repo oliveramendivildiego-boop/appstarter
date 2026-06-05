@@ -34,6 +34,14 @@ $pdfBlockViews = [
     'footer'         => 'registers/pdf/blocks/footer',
 ];
 
+$footerBlockEnabled = false;
+foreach (is_array($pl['blocks'] ?? null) ? $pl['blocks'] : [] as $fb) {
+    if (! empty($fb['enabled']) && (string) ($fb['id'] ?? '') === 'footer') {
+        $footerBlockEnabled = true;
+        break;
+    }
+}
+
 $ctx = [
     'register_info'     => $register_info,
     'paciente'          => $paciente,
@@ -76,9 +84,16 @@ $opacityCss = number_format(max(0.05, min(0.9, $opacityW)), 2, '.', '');
         continue;
     }
     $bid = (string) ($block['id'] ?? '');
-    if ($bid === '' || ! isset($pdfBlockViews[$bid])) {
+    if ($bid === 'footer' || $bid === '' || ! isset($pdfBlockViews[$bid])) {
         continue;
     }
     echo view($pdfBlockViews[$bid], $ctx);
 endforeach; ?>
 </div>
+<?php if ($footerBlockEnabled): ?>
+<?php
+echo view($pdfBlockViews['footer'], array_merge($ctx, [
+    'footer_dompdf_fixed' => ($ctx['analisis_variant'] ?? 'pdf') === 'pdf',
+]));
+?>
+<?php endif; ?>

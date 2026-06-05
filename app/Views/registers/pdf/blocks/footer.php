@@ -25,8 +25,13 @@ $elementCtx = [
     'pdf_header_grid_style' => \App\Services\ReportPdfLayoutService::normalizeHeaderGridStyle($ps['header_grid'] ?? []),
 ];
 
+$footerWrapperStyle = ! empty($footer_dompdf_fixed)
+    ? \App\Services\ReportPdfLayoutService::footerDompdfFixedStyleAttr($layout)
+    : '';
+
 echo view('registers/pdf/section_layout_grid', [
     'section_wrapper_class' => 'footer footer-grid pdf-ft-block',
+    'section_wrapper_style'   => $footerWrapperStyle,
     'n_columns'             => $n,
     'grid_items'            => $gridItems,
     'element_ctx'           => $elementCtx,

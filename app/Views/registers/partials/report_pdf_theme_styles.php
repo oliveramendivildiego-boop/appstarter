@@ -364,6 +364,9 @@ table.results.pdf-notes-table td.pdf-notes-cell {
 .report-pdf-grupo-prueba:not(.report-pdf-grupo-prueba-first) {
     margin-top: <?= (int) ($rs['grupo_prueba_gap_px'] ?? 10) ?>px !important;
 }
+.report-pdf-subgrupo-block.report-pdf-subgrupo-prueba {
+    padding-top: 18px !important;
+}
 <?php if (\App\Services\ReportPdfLayoutService::grupoPruebaPageBreakUsesPureGrupoIntact($gpb)): ?>
 .pdf-gpb-grupo-intact .report-pdf-grupo-prueba:not(.report-pdf-grupo-prueba-allow-split),
 .pdf-gpb-grupo-intact .report-pdf-grupo-prueba:not(.report-pdf-grupo-prueba-allow-split) .report-segment-table-wrap,

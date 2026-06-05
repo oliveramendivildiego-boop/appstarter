@@ -107,7 +107,17 @@ $renderCultivoCelda = static function (string $cellHtml, string $tdClass = 'text
 </style>
 <?php endif; ?>
 <?php if ($usePdfChrome): ?>
-<div class="report-pdf-subgrupo-block">
+<?php
+$subIdxCultivo = (int) ($sub_idx ?? 0);
+$subgrupoCultivoClass = 'report-pdf-subgrupo-block' . ($subIdxCultivo > 0 ? ' report-pdf-subgrupo-prueba' : '');
+$subgrupoCultivoStyle = $subIdxCultivo > 0
+    ? \App\Services\ReportPdfLayoutService::subgrupoPruebaGapStyleAttr(
+        is_array($pdf_layout ?? null) ? $pdf_layout : [],
+        true
+    )
+    : '';
+?>
+<div class="<?= esc($subgrupoCultivoClass, 'attr') ?>"<?= $subgrupoCultivoStyle !== '' ? ' style="' . esc($subgrupoCultivoStyle, 'attr') . '"' : '' ?>>
 <div class="report-pdf-grupo-cabecera">
 <?= view('registers/analisis/partials/report_grupo_cabecera_content', [
     'padre'              => $padreTitulo,

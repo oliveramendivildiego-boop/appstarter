@@ -2951,6 +2951,47 @@ class ReportPdfLayoutService
     }
 
     /**
+     * Separación entre pruebas dentro del mismo área (.report-pdf-subgrupo-block).
+     * Dompdf suele ignorar margin-top; padding-top en inline es fiable.
+     *
+     * @param array<string, mixed> $layout
+     */
+    public static function subgrupoPruebaGapStyleAttr(array $layout, bool $needsGap): string
+    {
+        if (! $needsGap) {
+            return '';
+        }
+
+        return 'padding-top:18px;';
+    }
+
+    /**
+     * Pie fijo en cada página al generar PDF con Dompdf (fuera de .pdf-main-stack).
+     *
+     * @param array<string, mixed> $layout
+     */
+    public static function footerDompdfFixedStyleAttr(array $layout): string
+    {
+        $mm = is_array($layout['margins_mm'] ?? null)
+            ? $layout['margins_mm']
+            : self::defaultMarginsMmStatic();
+        $ml = (float) ($mm['left'] ?? 15);
+        $mr = (float) ($mm['right'] ?? 15);
+        $mb = (float) ($mm['bottom'] ?? 15);
+        $ps = is_array($layout['page_style'] ?? null) ? $layout['page_style'] : [];
+        $ft = self::normalizeFooterGridStyle($ps['footer_grid'] ?? []);
+        $bg = ! empty($ft['body_transparent']) ? '#ffffff' : (string) $ft['body_bg_color'];
+
+        return sprintf(
+            'position:fixed;left:%smm;right:%smm;bottom:%smm;z-index:2;margin-top:0;padding-top:6px;background:%s;box-sizing:border-box;',
+            rtrim(rtrim(number_format($ml, 2, '.', ''), '0'), '.'),
+            rtrim(rtrim(number_format($mr, 2, '.', ''), '0'), '.'),
+            rtrim(rtrim(number_format($mb, 2, '.', ''), '0'), '.'),
+            $bg
+        );
+    }
+
+    /**
      * Combina fragmentos de style="" para contenedores PDF (Dompdf).
      */
     public static function mergePdfInlineStyleAttrs(string ...$parts): string

@@ -279,7 +279,10 @@ $pdfEmptyTdStyle = static function (int $colIdx, float $pctUnit) use ($n, $colAl
     return 'width:' . $pctUnit . '%;vertical-align:' . $v . ' !important;padding:0 4px;line-height:' . $lineHeight . ';';
 };
 ?>
-<div class="<?= esc($section_wrapper_class) ?>">
+<div class="<?= esc($section_wrapper_class) ?>"<?php
+$sectionWrapperStyle = trim((string) ($section_wrapper_style ?? ''));
+echo $sectionWrapperStyle !== '' ? ' style="' . esc($sectionWrapperStyle, 'attr') . '"' : '';
+?>>
 <?php foreach ($rows as $row): ?>
 <table class="pdf-section-table" width="100%" data-pdf-lh="1" style="table-layout:fixed;border-collapse:collapse;margin-bottom:6px;line-height:<?= esc((string) $lineHeight, 'attr') ?>;">
     <tr>
