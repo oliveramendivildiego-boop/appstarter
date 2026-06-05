@@ -117,9 +117,36 @@ $footerEnabled = ! empty($footer_enabled);
         return null;
     }
 
-    function hasMeaningfulContentAbove(container, topPx, metrics) {
+    /**
+     * ¿Hay contenido de resultados ya colocado en la misma hoja, encima de este bloque?
+     * El encabezado del informe (logo/paciente) no cuenta: solo importa si ya hay segmentos/grupos
+     * en la franja de resultados de la hoja actual.
+     */
+    function hasResultContentAboveOnCurrentPage(topPx, boundarySet, metrics) {
+        if (!isFinite(topPx) || topPx < 0) {
+            return false;
+        }
+        var boundaries = boundarySet && boundarySet.boundaries ? boundarySet.boundaries : [];
         var headerPx = metrics && metrics.headerHeightPx ? metrics.headerHeightPx : 0;
-        return isFinite(topPx) && topPx > Math.max(12, headerPx + 1);
+        var minGapPx = 10;
+
+        for (var i = 0; i < boundaries.length; i++) {
+            var pageStart = i === 0 ? 0 : boundaries[i - 1];
+            var pageEnd = boundaries[i];
+            if (topPx < pageStart || topPx >= pageEnd) {
+                continue;
+            }
+            if (i === 0) {
+                return topPx > (headerPx + minGapPx);
+            }
+            return topPx > (pageStart + minGapPx);
+        }
+
+        var lastEnd = boundaries.length > 0 ? boundaries[boundaries.length - 1] : 0;
+        if (topPx >= lastEnd) {
+            return topPx > (lastEnd + minGapPx);
+        }
+        return false;
     }
 
     function markForceBreakBeforeCabecera(cabecera) {
@@ -147,7 +174,7 @@ $footerEnabled = ! empty($footer_enabled);
             return;
         }
 
-        if (!hasMeaningfulContentAbove(container, unit.top, layoutCtx.metrics)) {
+        if (!hasResultContentAboveOnCurrentPage(unit.top, boundarySet, layoutCtx.metrics)) {
             seg.classList.add('report-segment-allow-split');
             return;
         }
@@ -157,6 +184,60 @@ $footerEnabled = ! empty($footer_enabled);
         } else {
             seg.classList.add('report-segment-force-break-before');
         }
+    }
+
+    function pageEndPx(pageIndex, boundarySet, metrics) {
+        var boundaries = boundarySet.boundaries || [];
+        if (pageIndex < boundaries.length) {
+            return boundaries[pageIndex];
+        }
+        var last = boundaries.length ? boundaries[boundaries.length - 1] : 0;
+        return last + (metrics.nextPageContentPx || 0);
+    }
+
+    function pageStartPx(pageIndex, boundarySet) {
+        if (pageIndex <= 0) {
+            return 0;
+        }
+        var boundaries = boundarySet.boundaries || [];
+        return boundaries[pageIndex - 1] || 0;
+    }
+
+    function atPageResultsStart(cursorPage, cursorY, boundarySet, metrics) {
+        var epsilon = 12;
+        if (cursorPage === 0) {
+            return cursorY <= ((metrics && metrics.headerHeightPx) ? metrics.headerHeightPx : 0) + epsilon;
+        }
+        return cursorY <= pageStartPx(cursorPage, boundarySet) + epsilon;
+    }
+
+    function bumpCursorAfterPlace(cursorPage, cursorY, placedHeight, boundarySet, metrics) {
+        var page = cursorPage;
+        var y = cursorY;
+        var left = Math.max(0, placedHeight || 0);
+        var guard = 0;
+
+        while (left > 0 && guard < 500) {
+            var pageEnd = pageEndPx(page, boundarySet, metrics);
+            var remaining = pageEnd - y;
+            if (remaining <= 0) {
+                page++;
+                y = pageStartPx(page, boundarySet);
+                guard++;
+                continue;
+            }
+            if (left <= remaining) {
+                y += left;
+                left = 0;
+            } else {
+                left -= remaining;
+                page++;
+                y = pageStartPx(page, boundarySet);
+            }
+            guard++;
+        }
+
+        return { page: page, y: y };
     }
 
     function segmentUnitMetrics(seg, container) {
@@ -250,43 +331,104 @@ $footerEnabled = ! empty($footer_enabled);
         });
     }
 
-    function applyIfFitsMode(container, layoutCtx) {
-        var keepOnPageGrupos = [];
-        var maxSlicePx = layoutCtx.maxSlicePx;
+    function placeGrupoBySegments(grupo, cursorPage, cursorY, layoutCtx) {
+        var metrics = layoutCtx.metrics;
         var boundarySet = layoutCtx.boundarySet;
+        var maxSlicePx = layoutCtx.maxSlicePx;
+        var lastSubgrupo = null;
+        var cabeceraCounted = false;
+        var page = cursorPage;
+        var y = cursorY;
+
+        grupo.querySelectorAll(SEGMENT_SELECTOR).forEach(function(seg) {
+            var cabecera = cabeceraForSegment(seg);
+            var subgrupo = subgrupoBlockForNode(seg);
+            if (subgrupo !== lastSubgrupo) {
+                lastSubgrupo = subgrupo;
+                cabeceraCounted = false;
+            }
+
+            var cabeceraH = (cabecera && !cabeceraCounted) ? (cabecera.offsetHeight || 0) : 0;
+            if (cabecera && !cabeceraCounted) {
+                cabeceraCounted = true;
+            }
+            var unitH = cabeceraH + (seg.offsetHeight || 0);
+            var remaining = pageEndPx(page, boundarySet, metrics) - y;
+
+            seg.classList.remove('report-segment-force-break-before', 'report-segment-allow-split');
+            if (cabecera) {
+                cabecera.classList.remove('report-cabecera-force-break-before');
+                if (subgrupo) {
+                    subgrupo.classList.remove('report-subgrupo-force-break-before');
+                }
+            }
+
+            if (unitH > maxSlicePx) {
+                seg.classList.add('report-segment-allow-split');
+            } else if (unitH <= remaining) {
+                // Cabe en el espacio restante simulado de la hoja actual.
+            } else if (atPageResultsStart(page, y, boundarySet, metrics)) {
+                seg.classList.add('report-segment-allow-split');
+            } else {
+                if (cabecera) {
+                    markForceBreakBeforeCabecera(cabecera);
+                } else {
+                    seg.classList.add('report-segment-force-break-before');
+                }
+                page++;
+                y = pageStartPx(page, boundarySet);
+                remaining = pageEndPx(page, boundarySet, metrics) - y;
+                if (unitH > remaining || unitH > maxSlicePx) {
+                    seg.classList.add('report-segment-allow-split');
+                }
+            }
+
+            var bumped = bumpCursorAfterPlace(page, y, unitH, boundarySet, metrics);
+            page = bumped.page;
+            y = bumped.y;
+        });
+
+        return { page: page, y: y };
+    }
+
+    function applyIfFitsMode(container, layoutCtx) {
+        var metrics = layoutCtx.metrics;
+        var boundarySet = layoutCtx.boundarySet;
+        var maxSlicePx = layoutCtx.maxSlicePx;
+        var headerPx = metrics.headerHeightPx || 0;
+        var cursorPage = 0;
+        var cursorY = headerPx;
 
         container.querySelectorAll('.report-pdf-grupo-prueba').forEach(function(grupo) {
-            var top = topWithinContainer(grupo, container);
-            var remaining = remainingOnPage(top, boundarySet);
-            var height = grupo.offsetHeight;
+            var grupoHeight = grupo.offsetHeight || 0;
+            var remaining = pageEndPx(cursorPage, boundarySet, metrics) - cursorY;
 
-            if (height > maxSlicePx) {
+            grupo.classList.remove(
+                'report-pdf-grupo-prueba-allow-split',
+                'report-pdf-grupo-prueba-keep-on-page',
+                'report-pdf-grupo-prueba-force-break-before'
+            );
+
+            if (grupoHeight > maxSlicePx) {
                 grupo.classList.add('report-pdf-grupo-prueba-allow-split');
+                var placedHuge = placeGrupoBySegments(grupo, cursorPage, cursorY, layoutCtx);
+                cursorPage = placedHuge.page;
+                cursorY = placedHuge.y;
                 return;
             }
 
-            if (height <= remaining) {
+            if (grupoHeight <= remaining) {
                 grupo.classList.add('report-pdf-grupo-prueba-keep-on-page');
-                keepOnPageGrupos.push(grupo);
+                var bumpedFit = bumpCursorAfterPlace(cursorPage, cursorY, grupoHeight, boundarySet, metrics);
+                cursorPage = bumpedFit.page;
+                cursorY = bumpedFit.y;
                 return;
             }
 
             grupo.classList.add('report-pdf-grupo-prueba-allow-split');
-            applySegmentPageBreaks(container, layoutCtx, grupo);
-        });
-
-        applySegmentPageBreaks(container, layoutCtx);
-
-        keepOnPageGrupos.forEach(function(grupo) {
-            grupo.querySelectorAll(SEGMENT_SELECTOR).forEach(function(seg) {
-                seg.classList.remove('report-segment-force-break-before', 'report-segment-allow-split');
-            });
-            grupo.querySelectorAll('.report-pdf-grupo-cabecera').forEach(function(cabecera) {
-                cabecera.classList.remove('report-cabecera-force-break-before');
-            });
-            grupo.querySelectorAll('.report-pdf-subgrupo-block').forEach(function(subgrupo) {
-                subgrupo.classList.remove('report-subgrupo-force-break-before');
-            });
+            var placedSplit = placeGrupoBySegments(grupo, cursorPage, cursorY, layoutCtx);
+            cursorPage = placedSplit.page;
+            cursorY = placedSplit.y;
         });
     }
 
@@ -330,7 +472,7 @@ $footerEnabled = ! empty($footer_enabled);
                 clearGrupoCompact(grupo);
             }
 
-            if (shouldForceBreakBefore(remaining) && hasMeaningfulContentAbove(container, top, metrics)) {
+            if (shouldForceBreakBefore(remaining) && hasResultContentAboveOnCurrentPage(top, boundarySet, metrics)) {
                 grupo.classList.add('report-pdf-grupo-prueba-force-break-before');
             } else {
                 fallbackFillGrupo(grupo, container, layoutCtx);

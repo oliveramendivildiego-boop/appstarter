@@ -57,7 +57,9 @@
 
     $gpbCfg = \App\Services\ReportPdfLayoutService::normalizeGrupoPruebaPageBreakStyle($ps['grupo_prueba_page_break'] ?? []);
     $gpbBodyClass = \App\Services\ReportPdfLayoutService::grupoPruebaPageBreakBodyClass($pl);
-    $printSegmentBreakInside = \App\Services\ReportPdfLayoutService::grupoPruebaPrintSegmentBreakInside($gpbCfg);
+    $printSegmentBreakInside = ($gpbCfg['mode'] ?? '') === 'keep_together_if_fits'
+        ? 'auto'
+        : \App\Services\ReportPdfLayoutService::grupoPruebaPrintSegmentBreakInside($gpbCfg);
     $pp = \App\Services\ReportPdfLayoutService::normalizePrintPaginationStyle($ps['print_pagination'] ?? []);
     $printPaginationEnabled = ! empty($pp['enabled']);
     $renderFixedPrintPagination = $printPaginationEnabled && ! $pdfFooterEnabled;
@@ -170,7 +172,7 @@
     }
     window.reportPrintPxToMm = pxToMm;
 
-    function measureFooterReserveMm() {
+    function measureFooterHeightMm() {
         if (!footerEnabled) {
             return 0;
         }
@@ -182,11 +184,23 @@
         if (!isFinite(heightMm) || heightMm <= 0) {
             return defaultFooterReserveMm;
         }
+        return Math.max(8, Math.min(80, Math.round(heightMm * 100) / 100));
+    }
+    window.measureReportPrintFooterHeightMm = measureFooterHeightMm;
+
+    function measureFooterReserveMm() {
+        if (!footerEnabled) {
+            return 0;
+        }
+        var heightMm = measureFooterHeightMm();
+        if (!isFinite(heightMm) || heightMm <= 0) {
+            return defaultFooterReserveMm;
+        }
         return Math.max(10, Math.min(90, Math.ceil((heightMm + 4) * 10) / 10));
     }
     window.measureReportPrintFooterReserveMm = measureFooterReserveMm;
 
-    function applyPageMarginsStyle(footerReserveMm) {
+    function applyPageMarginsStyle(footerHeightMm) {
         var styleEl = document.getElementById('report-print-page-margins');
         if (!styleEl) {
             styleEl = document.createElement('style');
@@ -194,18 +208,19 @@
             styleEl.media = 'print';
             document.head.appendChild(styleEl);
         }
-        var bottomMm = marginBottomMm + (footerEnabled ? footerReserveMm : 0);
         styleEl.textContent = '@page { size: ' + PAGE_CSS_SIZE + '; margin: '
             + marginTopMm + 'mm '
             + marginRightMm + 'mm '
-            + bottomMm + 'mm '
+            + marginBottomMm + 'mm '
             + marginLeftMm + 'mm; }';
     }
 
     function syncReportPrintLayoutMetrics() {
+        var footerHeightMm = measureFooterHeightMm();
         var footerReserveMm = measureFooterReserveMm();
+        document.documentElement.style.setProperty('--print-footer-height-mm', String(footerHeightMm));
         document.documentElement.style.setProperty('--print-footer-reserve-mm', String(footerReserveMm));
-        applyPageMarginsStyle(footerReserveMm);
+        applyPageMarginsStyle(footerHeightMm);
         if (typeof window.updateReportPrintPageBreakMetrics === 'function') {
             window.updateReportPrintPageBreakMetrics({
                 footerReserveMm: footerReserveMm

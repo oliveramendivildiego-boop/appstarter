@@ -78,6 +78,9 @@
 
         var footerReserveMm = metrics ? metrics.footerReserveMM : 0;
         var footerHeightMm = metrics ? metrics.footerHeightMM : 0;
+        if (cfg.footerEnabled && typeof window.measureReportPrintFooterHeightMm === 'function') {
+            footerHeightMm = window.measureReportPrintFooterHeightMm();
+        }
         var headerHeightMm = metrics ? metrics.headerHeightMM : 0;
         var headerHeightPx = metrics ? metrics.headerHeightPx : 0;
         var firstPageContentMm = metrics ? metrics.firstPageContentMM : 0;
@@ -89,7 +92,7 @@
         var resultsHeightPx = measureResultsHeightPx(container);
         var resultsHeightMm = pxToMm(resultsHeightPx);
 
-        var pageMarginBottomMm = cfg.marginBottomMm + (cfg.footerEnabled ? footerReserveMm : 0);
+        var pageMarginBottomMm = cfg.marginBottomMm;
         var sheetSizeText = cfg.paperLabel + ' (' + cfg.pageWidthMm + ' × ' + cfg.pageHeightMm + ' mm)';
         var now = new Date();
 

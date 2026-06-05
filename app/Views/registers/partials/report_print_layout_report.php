@@ -92,7 +92,7 @@ $layoutReportMode = ! empty($layout_report_mode);
             <tr>
                 <td>Margen @page inferior efectivo</td>
                 <td id="lr_page_margin_bottom">—</td>
-                <td>Margen inferior plantilla + reserva de pie</td>
+                <td>Igual a margen inferior de plantilla (<code>margins_mm.bottom</code>)</td>
             </tr>
             <tr>
                 <td>Reserva de pie (calculada)</td>

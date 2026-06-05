@@ -37,14 +37,19 @@ $printPagValueCssPos = (string) ($printPagValueCssPos ?? '');
 }
 @page {
     size: <?= esc($printPageCssSize) ?>;
-    margin: <?= esc((string) $mt) ?>mm <?= esc((string) $mr) ?>mm <?= esc((string) ($mb + $pdfFooterReserveMm)) ?>mm <?= esc((string) $ml) ?>mm;
+    margin: <?= esc((string) $mt) ?>mm <?= esc((string) $mr) ?>mm <?= esc((string) $mb) ?>mm <?= esc((string) $ml) ?>mm;
 }
-<?php if ($pdfFooterEnabled): ?>
+/* Solo @page define márgenes de hoja; body sin margen extra (evita doble margen en vista previa). */
+html,
+body.report-browser-print {
+    margin: 0 !important;
+    padding: 0 !important;
+}
 body.report-browser-print .pdf-main-stack {
-    padding-bottom: calc(var(--print-footer-reserve-mm) * 1mm);
+    padding-top: 0 !important;
+    padding-bottom: 0 !important;
     box-sizing: border-box;
 }
-<?php endif; ?>
 .report-print-toolbar {
     padding: 10px 12px;
     margin: -8px -8px 16px -8px;
@@ -96,22 +101,22 @@ body.js-total-pages-ready .pdf-counter-pages::before {
     <?= esc($printPagValueCssPos, 'css') ?>
 }
 @media print {
-    body.report-browser-print {
-        margin: 0 !important;
-        padding: 0 !important;
-    }
     /*
-     * El pie (position:fixed) se ancla al borde inferior del área de página (@page content box).
-     * Con margin-bottom = mb + reserva pie, bottom:0 deja el pie ~reserva mm por encima del borde físico.
-     * Desplazarlo hacia la zona de margen inferior alinea el borde del pie con el borde útil de plantilla (mb).
+     * Pie fijo dentro del área imprimible; el margen inferior de @page es solo el de plantilla (config).
+     * La reserva de pie para paginación se calcula en JS, no se suma a @page.
      */
     body.report-browser-print .pdf-ft-block.footer-grid {
-        bottom: calc(-1 * var(--print-footer-reserve-mm, <?= esc((string) $pdfFooterReserveMm) ?>) * 1mm) !important;
+        position: fixed !important;
+        bottom: calc(var(--print-margin-bottom-mm, <?= esc((string) $mb) ?>) * 1mm) !important;
+        left: calc(var(--print-margin-left-mm, <?= esc((string) $ml) ?>) * 1mm) !important;
+        right: calc(var(--print-margin-right-mm, <?= esc((string) $mr) ?>) * 1mm) !important;
     }
     html,
     body.report-browser-print,
     body.report-browser-print .pdf-main-stack {
         overflow: visible !important;
+        margin: 0 !important;
+        padding: 0 !important;
     }
     body.report-browser-print .pdf-main-stack {
         isolation: auto !important;
@@ -203,6 +208,25 @@ body.js-total-pages-ready .pdf-counter-pages::before {
     body.report-browser-print.pdf-gpb-keep-together-if-fits .report-pdf-grupo-prueba.report-pdf-grupo-prueba-keep-on-page {
         break-inside: avoid-page !important;
         page-break-inside: avoid !important;
+    }
+    body.report-browser-print.pdf-gpb-keep-together-if-fits .report-pdf-grupo-prueba.report-pdf-grupo-prueba-allow-split {
+        break-inside: auto !important;
+        page-break-inside: auto !important;
+    }
+    body.report-browser-print.pdf-gpb-keep-together-if-fits .report-pdf-grupo-prueba.report-pdf-grupo-prueba-allow-split .report-segment-table-wrap,
+    body.report-browser-print.pdf-gpb-keep-together-if-fits .report-pdf-grupo-prueba.report-pdf-grupo-prueba-allow-split .report-refs-matrix-wrap {
+        break-inside: auto !important;
+        page-break-inside: auto !important;
+    }
+    body.report-browser-print.pdf-gpb-keep-together-if-fits .report-pdf-grupo-prueba.report-pdf-grupo-prueba-allow-split .report-segment-table-wrap.report-segment-allow-split,
+    body.report-browser-print.pdf-gpb-keep-together-if-fits .report-pdf-grupo-prueba.report-pdf-grupo-prueba-allow-split .report-refs-matrix-wrap.report-segment-allow-split {
+        break-inside: auto !important;
+        page-break-inside: auto !important;
+    }
+    body.report-browser-print.pdf-gpb-keep-together-if-fits .report-pdf-grupo-prueba-first .report-cabecera-force-break-before,
+    body.report-browser-print.pdf-gpb-keep-together-if-fits .report-pdf-grupo-prueba-first .report-subgrupo-force-break-before {
+        break-before: auto !important;
+        page-break-before: auto !important;
     }
     .report-print-toolbar {
         display: none !important;
