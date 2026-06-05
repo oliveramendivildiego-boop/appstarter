@@ -661,31 +661,11 @@ $labelsShort = [
                             <div class="col-12">
                                 <div class="form-check mb-1">
                                     <input class="form-check-input" type="checkbox" id="rs_grupo_area_separator_enabled" <?= ! empty($rs['grupo_area_separator_enabled']) ? 'checked' : '' ?>>
-                                    <label class="form-check-label small" for="rs_grupo_area_separator_enabled">Separador con nombre del área (centrado)</label>
+                                    <label class="form-check-label small" for="rs_grupo_area_separator_enabled">Separador con nombre del área</label>
                                 </div>
-                                <div class="form-text mb-2">Muestra el nombre del área entre líneas horizontales al inicio de cada <code>report-pdf-grupo-prueba</code>. Debajo van las pruebas con su cabecera habitual (solo análisis clínico, tipo de muestra y método).</div>
+                                <div class="form-text mb-2">Muestra el nombre del área con el mismo estilo que los títulos de sección (<code>report-segment-title pdf-card-header</code>) al inicio de cada <code>report-pdf-grupo-prueba</code>. Debajo van las pruebas con su cabecera habitual.</div>
                             </div>
-                            <div class="col-6 col-md-3 rs-grupo-area-sep-field">
-                                <label class="form-label small" for="rs_grupo_area_separator_color">Color de líneas</label>
-                                <input type="color" class="form-control form-control-color" id="rs_grupo_area_separator_color" value="<?= esc($rs['grupo_area_separator_color'] ?? '#DDDDDD', 'attr') ?>">
-                            </div>
-                            <div class="col-6 col-md-3 rs-grupo-area-sep-field">
-                                <label class="form-label small" for="rs_grupo_area_separator_width_px">Grosor de línea (px)</label>
-                                <input type="number" class="form-control" id="rs_grupo_area_separator_width_px" min="0" max="4" step="1" value="<?= esc((string) (int) ($rs['grupo_area_separator_width_px'] ?? 1), 'attr') ?>">
-                            </div>
-                            <div class="col-6 col-md-3 rs-grupo-area-sep-field">
-                                <label class="form-label small" for="rs_grupo_area_separator_font_size_pt">Tamaño del nombre (pt)</label>
-                                <input type="number" class="form-control" id="rs_grupo_area_separator_font_size_pt" min="7" max="20" step="0.5" value="<?= esc((string) ($rs['grupo_area_separator_font_size_pt'] ?? 11), 'attr') ?>">
-                            </div>
-                            <div class="col-6 col-md-3 rs-grupo-area-sep-field">
-                                <label class="form-label small" for="rs_grupo_area_separator_font_weight">Grosor del nombre</label>
-                                <select class="form-select" id="rs_grupo_area_separator_font_weight">
-                                    <?php foreach (['normal' => 'Normal', 'bold' => 'Negrita'] as $k => $v): ?>
-                                    <option value="<?= esc($k, 'attr') ?>" <?= ($rs['grupo_area_separator_font_weight'] ?? 'bold') === $k ? 'selected' : '' ?>><?= esc($v) ?></option>
-                                    <?php endforeach; ?>
-                                </select>
-                            </div>
-                            <div class="col-6 col-md-3 rs-grupo-area-sep-field">
+                            <div class="col-6 col-md-3">
                                 <label class="form-label small" for="rs_grupo_area_separator_margin_bottom_px">Espacio debajo del separador (px)</label>
                                 <input type="number" class="form-control" id="rs_grupo_area_separator_margin_bottom_px" min="0" max="40" step="1" value="<?= esc((string) (int) ($rs['grupo_area_separator_margin_bottom_px'] ?? 10), 'attr') ?>">
                             </div>
@@ -3874,10 +3854,6 @@ document.addEventListener('DOMContentLoaded', function() {
                 grupo_cabecera_show_tipo_muestra: !!(document.getElementById('rs_grupo_cabecera_show_tipo_muestra') && document.getElementById('rs_grupo_cabecera_show_tipo_muestra').checked),
                 grupo_cabecera_show_metodo: !!(document.getElementById('rs_grupo_cabecera_show_metodo') && document.getElementById('rs_grupo_cabecera_show_metodo').checked),
                 grupo_area_separator_enabled: !!(document.getElementById('rs_grupo_area_separator_enabled') && document.getElementById('rs_grupo_area_separator_enabled').checked),
-                grupo_area_separator_color: pickHex('rs_grupo_area_separator_color', '#DDDDDD'),
-                grupo_area_separator_width_px: Math.round(pickNum('rs_grupo_area_separator_width_px', 0, 4, 1)),
-                grupo_area_separator_font_size_pt: pickNum('rs_grupo_area_separator_font_size_pt', 7, 20, 11),
-                grupo_area_separator_font_weight: pickAllowedDomId('rs_grupo_area_separator_font_weight', 'font_weights', 'bold'),
                 grupo_area_separator_margin_bottom_px: Math.round(pickNum('rs_grupo_area_separator_margin_bottom_px', 0, 40, 10))
             }
         };
@@ -4081,10 +4057,6 @@ document.addEventListener('DOMContentLoaded', function() {
             pushIfBadSelect(id, ta, 'Alineación no permitida en columnas de matriz de referencia (' + id + ').');
         });
         pushIfBadSelect('rs_grupo_cabecera_title_mode', pdfAllow('grupo_cabecera_title_modes'), 'Formato de título de cabecera de grupo no permitido.');
-        pushIfBadHex('rs_grupo_area_separator_color', 'Color del separador de área: use #RRGGBB.');
-        pushIfBadNum('rs_grupo_area_separator_width_px', 0, 4, 'Grosor del separador de área: entre 0 y 4 px.');
-        pushIfBadNum('rs_grupo_area_separator_font_size_pt', 7, 20, 'Tamaño del nombre en separador de área: entre 7 y 20 pt.');
-        pushIfBadSelect('rs_grupo_area_separator_font_weight', pdfAllow('font_weights'), 'Grosor del nombre en separador de área no permitido.');
         pushIfBadNum('rs_grupo_area_separator_margin_bottom_px', 0, 40, 'Espacio debajo del separador de área: entre 0 y 40 px.');
 
         function pushCtScopeErrors(scope, pfx, partLabel, itemLabel, errs) {

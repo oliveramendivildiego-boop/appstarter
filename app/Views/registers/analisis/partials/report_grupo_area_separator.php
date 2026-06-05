@@ -1,6 +1,6 @@
 <?php
 /**
- * Separador horizontal con nombre del área (.report-pdf-grupo-area-separator).
+ * Separador con nombre del área (mismo estilo que .report-segment-title.pdf-card-header).
  *
  * @var string $padre Nombre del área (grupo)
  * @var array<string,mixed>|null $pdf_layout
@@ -27,21 +27,9 @@ if ($titulo === '') {
 }
 
 $isFirstGrupoInReport = ! empty($grupo_es_primero);
-$wrapStyle = \App\Services\ReportPdfLayoutService::mergePdfInlineStyleAttrs(
-    \App\Services\ReportPdfLayoutService::grupoAreaSeparatorMarginStyleAttr($pdfLayout, $isFirstGrupoInReport),
-    \App\Services\ReportPdfLayoutService::grupoAreaSeparatorInlineStyleAttr($pdfLayout)
+$wrapStyle = \App\Services\ReportPdfLayoutService::grupoAreaSeparatorMarginStyleAttr(
+    $pdfLayout,
+    $isFirstGrupoInReport
 );
 ?>
-<div class="report-pdf-grupo-area-separator"<?= $wrapStyle !== '' ? ' style="' . esc($wrapStyle, 'attr') . '"' : '' ?>>
-    <table class="report-pdf-grupo-area-separator-table" width="100%" cellpadding="0" cellspacing="0">
-        <tr>
-            <td class="report-pdf-grupo-area-separator-line-cell report-pdf-grupo-area-separator-line-cell-left">
-                <div class="report-pdf-grupo-area-separator-line"></div>
-            </td>
-            <td class="report-pdf-grupo-area-separator-label"><?= esc($titulo) ?></td>
-            <td class="report-pdf-grupo-area-separator-line-cell report-pdf-grupo-area-separator-line-cell-right">
-                <div class="report-pdf-grupo-area-separator-line"></div>
-            </td>
-        </tr>
-    </table>
-</div>
+<div class="report-segment-title pdf-card-header report-pdf-grupo-area-separator"<?= $wrapStyle !== '' ? ' style="' . esc($wrapStyle, 'attr') . '"' : '' ?>><?= esc($titulo) ?></div>
