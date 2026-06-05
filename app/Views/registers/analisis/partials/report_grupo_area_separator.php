@@ -26,10 +26,6 @@ if ($titulo === '') {
     return;
 }
 
-$isFirstGrupoInReport = ! empty($grupo_es_primero);
-$wrapStyle = \App\Services\ReportPdfLayoutService::grupoAreaSeparatorMarginStyleAttr(
-    $pdfLayout,
-    $isFirstGrupoInReport
-);
+$wrapStyle = \App\Services\ReportPdfLayoutService::grupoAreaSeparatorMarginStyleAttr($pdfLayout);
 ?>
 <div class="report-segment-title pdf-card-header report-pdf-grupo-area-separator"<?= $wrapStyle !== '' ? ' style="' . esc($wrapStyle, 'attr') . '"' : '' ?>><?= esc($titulo) ?></div>

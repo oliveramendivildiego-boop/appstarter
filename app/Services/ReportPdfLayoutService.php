@@ -225,6 +225,7 @@ class ReportPdfLayoutService
         'grupo_area_separator_width_px'    => 1,
         'grupo_area_separator_font_size_pt' => 11.0,
         'grupo_area_separator_font_weight' => 'bold',
+        'grupo_area_separator_margin_top_px'    => 10,
         'grupo_area_separator_margin_bottom_px' => 10,
     ];
 
@@ -1862,13 +1863,22 @@ class ReportPdfLayoutService
         if (isset($raw['grupo_area_separator_font_weight']) && ! in_array(strtolower(trim((string) $raw['grupo_area_separator_font_weight'])), self::ALLOWED_PDF_FONT_WEIGHTS, true)) {
             return 'Grosor de fuente no permitido en separador de área.';
         }
+        if (array_key_exists('grupo_area_separator_margin_top_px', $raw)) {
+            if (! is_numeric($raw['grupo_area_separator_margin_top_px'])) {
+                return 'Margen superior del separador de área inválido.';
+            }
+            $stm = (int) $raw['grupo_area_separator_margin_top_px'];
+            if ($stm < 0 || $stm > 80) {
+                return 'El margen superior del separador de área debe estar entre 0 y 80 px.';
+            }
+        }
         if (array_key_exists('grupo_area_separator_margin_bottom_px', $raw)) {
             if (! is_numeric($raw['grupo_area_separator_margin_bottom_px'])) {
                 return 'Margen inferior del separador de área inválido.';
             }
             $sm = (int) $raw['grupo_area_separator_margin_bottom_px'];
-            if ($sm < 0 || $sm > 40) {
-                return 'El margen inferior del separador de área debe estar entre 0 y 40 px.';
+            if ($sm < 0 || $sm > 80) {
+                return 'El margen inferior del separador de área debe estar entre 0 y 80 px.';
             }
         }
 
@@ -3091,15 +3101,12 @@ class ReportPdfLayoutService
     /**
      * @param array<string, mixed> $layout
      */
-    public static function grupoAreaSeparatorMarginStyleAttr(array $layout, bool $isFirstGrupoInReport): string
+    public static function grupoAreaSeparatorMarginStyleAttr(array $layout): string
     {
         $ps = is_array($layout['page_style'] ?? null) ? $layout['page_style'] : [];
         $rs = self::normalizeResultsTableStyle($ps['results_table'] ?? []);
-        $marginTop = 0;
-        if ($isFirstGrupoInReport) {
-            $marginTop = max(0, min(80, (int) ($rs['grupo_prueba_gap_px'] ?? 10)));
-        }
-        $marginBottom = max(0, min(40, (int) ($rs['grupo_area_separator_margin_bottom_px'] ?? 10)));
+        $marginTop    = max(0, min(80, (int) ($rs['grupo_area_separator_margin_top_px'] ?? 10)));
+        $marginBottom = max(0, min(80, (int) ($rs['grupo_area_separator_margin_bottom_px'] ?? 10)));
 
         return sprintf('margin-top:%dpx;margin-bottom:%dpx;', $marginTop, $marginBottom);
     }
@@ -3652,7 +3659,8 @@ class ReportPdfLayoutService
                 $w = strtolower(trim((string) ($s['grupo_area_separator_font_weight'] ?? ($def['grupo_area_separator_font_weight'] ?? 'bold'))));
                 return in_array($w, self::ALLOWED_PDF_FONT_WEIGHTS, true) ? $w : 'bold';
             })(),
-            'grupo_area_separator_margin_bottom_px' => max(0, min(40, isset($s['grupo_area_separator_margin_bottom_px']) ? (int) $s['grupo_area_separator_margin_bottom_px'] : (int) ($def['grupo_area_separator_margin_bottom_px'] ?? 10))),
+            'grupo_area_separator_margin_top_px'    => max(0, min(80, isset($s['grupo_area_separator_margin_top_px']) ? (int) $s['grupo_area_separator_margin_top_px'] : (int) ($def['grupo_area_separator_margin_top_px'] ?? 10))),
+            'grupo_area_separator_margin_bottom_px' => max(0, min(80, isset($s['grupo_area_separator_margin_bottom_px']) ? (int) $s['grupo_area_separator_margin_bottom_px'] : (int) ($def['grupo_area_separator_margin_bottom_px'] ?? 10))),
         ];
     }
 

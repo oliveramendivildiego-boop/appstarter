@@ -666,8 +666,12 @@ $labelsShort = [
                                 <div class="form-text mb-2">Muestra el nombre del área con el mismo estilo que los títulos de sección (<code>report-segment-title pdf-card-header</code>) al inicio de cada <code>report-pdf-grupo-prueba</code>. Debajo van las pruebas con su cabecera habitual.</div>
                             </div>
                             <div class="col-6 col-md-3">
-                                <label class="form-label small" for="rs_grupo_area_separator_margin_bottom_px">Espacio debajo del separador (px)</label>
-                                <input type="number" class="form-control" id="rs_grupo_area_separator_margin_bottom_px" min="0" max="40" step="1" value="<?= esc((string) (int) ($rs['grupo_area_separator_margin_bottom_px'] ?? 10), 'attr') ?>">
+                                <label class="form-label small" for="rs_grupo_area_separator_margin_top_px">Margen superior del separador (px)</label>
+                                <input type="number" class="form-control" id="rs_grupo_area_separator_margin_top_px" min="0" max="80" step="1" value="<?= esc((string) (int) ($rs['grupo_area_separator_margin_top_px'] ?? 10), 'attr') ?>">
+                            </div>
+                            <div class="col-6 col-md-3">
+                                <label class="form-label small" for="rs_grupo_area_separator_margin_bottom_px">Margen inferior del separador (px)</label>
+                                <input type="number" class="form-control" id="rs_grupo_area_separator_margin_bottom_px" min="0" max="80" step="1" value="<?= esc((string) (int) ($rs['grupo_area_separator_margin_bottom_px'] ?? 10), 'attr') ?>">
                             </div>
                             <div class="col-12 col-lg-6">
                                 <label class="form-label small" for="rs_grupo_cabecera_title_mode">Formato del título</label>
@@ -3854,7 +3858,8 @@ document.addEventListener('DOMContentLoaded', function() {
                 grupo_cabecera_show_tipo_muestra: !!(document.getElementById('rs_grupo_cabecera_show_tipo_muestra') && document.getElementById('rs_grupo_cabecera_show_tipo_muestra').checked),
                 grupo_cabecera_show_metodo: !!(document.getElementById('rs_grupo_cabecera_show_metodo') && document.getElementById('rs_grupo_cabecera_show_metodo').checked),
                 grupo_area_separator_enabled: !!(document.getElementById('rs_grupo_area_separator_enabled') && document.getElementById('rs_grupo_area_separator_enabled').checked),
-                grupo_area_separator_margin_bottom_px: Math.round(pickNum('rs_grupo_area_separator_margin_bottom_px', 0, 40, 10))
+                grupo_area_separator_margin_top_px: Math.round(pickNum('rs_grupo_area_separator_margin_top_px', 0, 80, 10)),
+                grupo_area_separator_margin_bottom_px: Math.round(pickNum('rs_grupo_area_separator_margin_bottom_px', 0, 80, 10))
             }
         };
     }
@@ -4057,7 +4062,8 @@ document.addEventListener('DOMContentLoaded', function() {
             pushIfBadSelect(id, ta, 'Alineación no permitida en columnas de matriz de referencia (' + id + ').');
         });
         pushIfBadSelect('rs_grupo_cabecera_title_mode', pdfAllow('grupo_cabecera_title_modes'), 'Formato de título de cabecera de grupo no permitido.');
-        pushIfBadNum('rs_grupo_area_separator_margin_bottom_px', 0, 40, 'Espacio debajo del separador de área: entre 0 y 40 px.');
+        pushIfBadNum('rs_grupo_area_separator_margin_top_px', 0, 80, 'Margen superior del separador de área: entre 0 y 80 px.');
+        pushIfBadNum('rs_grupo_area_separator_margin_bottom_px', 0, 80, 'Margen inferior del separador de área: entre 0 y 80 px.');
 
         function pushCtScopeErrors(scope, pfx, partLabel, itemLabel, errs) {
             if (!scope) return;
