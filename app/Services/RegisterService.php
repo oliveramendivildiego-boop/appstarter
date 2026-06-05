@@ -1933,8 +1933,14 @@ class RegisterService
      * @param array<string, mixed> $reportData Retorno de prepareReportData()
      * @param string               $reportEmitidoEn Fecha/hora al abrir la vista de impresión (d/m/Y H:i:s)
      */
-    public function renderReportPrintHtml(array $reportData, string $reportUrl, string $qrDataUri, int $registroId, string $reportEmitidoEn = ''): string
-    {
+    public function renderReportPrintHtml(
+        array $reportData,
+        string $reportUrl,
+        string $qrDataUri,
+        int $registroId,
+        string $reportEmitidoEn = '',
+        bool $layoutReportMode = false
+    ): string {
         $layoutService = new ReportPdfLayoutService();
         $pdf_layout    = $layoutService->getPrintLayoutForRender();
         if ($reportEmitidoEn === '') {
@@ -1952,6 +1958,7 @@ class RegisterService
             'pdf_layout'    => $pdf_layout,
             'registro_id'   => $registroId,
             'report_emitido_en' => $reportEmitidoEn,
+            'layout_report_mode' => $layoutReportMode,
             'report_pria_tipo_muestra_nombre' => $reportData['report_pria_tipo_muestra_nombre'] ?? [],
             'report_pria_metodo_nombre'       => $reportData['report_pria_metodo_nombre'] ?? [],
             'report_lab_firmas'               => $reportData['report_lab_firmas'] ?? [],

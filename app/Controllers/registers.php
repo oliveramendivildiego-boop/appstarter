@@ -685,7 +685,15 @@ class Registers extends SecureArea
         $qrPx      = \App\Services\ReportPdfLayoutService::qrImagePixelSizeFromLayout($qrLayout);
         $qrDataUri = qr_base64($reportUrl, $qrPx);
         $emitidoEn = $this->registerService->lockReportEmitidoEnForPrintOrPdf($id);
-        $html      = $this->registerService->renderReportPrintHtml($data, $reportUrl, $qrDataUri, $id, $emitidoEn);
+        $layoutReportMode = $this->request->getGet('layout_report') === '1';
+        $html      = $this->registerService->renderReportPrintHtml(
+            $data,
+            $reportUrl,
+            $qrDataUri,
+            $id,
+            $emitidoEn,
+            $layoutReportMode
+        );
 
         return $this->response->setBody($html)->setContentType('text/html', 'UTF-8');
     }
