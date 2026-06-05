@@ -5,17 +5,23 @@
  * @var array<string,mixed> $pdf_layout
  * @var bool                $use_sheet_padding Si true, márgenes en .viewreport-pdf-sheet (vista embebida); si no, en body (PDF/impresión).
  * @var bool                $browser_print_mode Si true, impresión directa navegador: sin margin/padding en body (solo @page).
+ * @var bool                $embed_stylesheet_for_pdf Si true, incrusta report_pdf.css (Dompdf no siempre carga &lt;link&gt; remoto).
  */
 
 $pdf_layout = is_array($pdf_layout ?? null) ? $pdf_layout : [];
 $useSheetPadding = ! empty($use_sheet_padding_for_margins);
 $browserPrintMode = ! empty($browser_print_mode);
+$embedStylesheetForPdf = ! empty($embed_stylesheet_for_pdf);
 
 $reportPdfCssRel = 'assets/css/report_pdf.css';
 $reportPdfCssFs  = FCPATH . str_replace('/', DIRECTORY_SEPARATOR, $reportPdfCssRel);
 $reportPdfCssVer = is_file($reportPdfCssFs) ? (int) filemtime($reportPdfCssFs) : (int) time();
+if ($embedStylesheetForPdf && is_file($reportPdfCssFs)) {
+    echo '<style>' . "\n" . (string) file_get_contents($reportPdfCssFs) . "\n" . '</style>' . "\n";
+} else {
+    echo '<link rel="stylesheet" href="' . esc(base_url($reportPdfCssRel) . '?v=' . $reportPdfCssVer, 'attr') . '" />' . "\n";
+}
 ?>
-<link rel="stylesheet" href="<?= base_url($reportPdfCssRel) ?>?v=<?= $reportPdfCssVer ?>" />
 <?php
 $pl = $pdf_layout;
 $mm = is_array($pl['margins_mm'] ?? null)
@@ -289,7 +295,10 @@ table.results td {
 }
 table.results:not(.pdf-notes-table) th,
 table.results:not(.pdf-notes-table) td {
-    padding: <?= (int) ($rs['cell_padding_v_px'] ?? 6) ?>px 8px !important;
+    padding-top: <?= (int) ($rs['cell_padding_v_px'] ?? 6) ?>px !important;
+    padding-bottom: <?= (int) ($rs['cell_padding_v_px'] ?? 6) ?>px !important;
+    padding-left: 8px !important;
+    padding-right: 8px !important;
 }
 table.results td.out-range,
 table.results .out-range {

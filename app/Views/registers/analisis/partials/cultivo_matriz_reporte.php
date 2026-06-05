@@ -109,26 +109,26 @@ $renderCultivoCelda = static function (string $cellHtml, string $tdClass = 'text
 <?php if ($usePdfChrome): ?>
 <div class="report-pdf-subgrupo-block">
 <div class="report-pdf-grupo-cabecera">
-<div class="group-title"><?= esc($padreTitulo) ?><?= ($padreTitulo !== '' && $hijoTitulo !== '') ? ' - ' : '' ?><?= esc($hijoTitulo) ?></div>
-<?php if ($tipoMuestraLinea !== ''): ?>
-<div class="report-tipo-muestra" style="font-size:9pt;color:#555;margin:0 0 10px 0;line-height:1.3;">Tipo de Muestra: <?= esc($tipoMuestraLinea) ?></div>
-<?php endif; ?>
-<?php if ($metodoLinea !== ''): ?>
-<div class="report-metodo-prueba" style="font-size:9pt;color:#555;margin:0 0 10px 0;line-height:1.3;">Método: <?= esc($metodoLinea) ?></div>
-<?php endif; ?>
+<?= view('registers/analisis/partials/report_grupo_cabecera_content', [
+    'padre'              => $padreTitulo,
+    'hijo'               => $hijoTitulo,
+    'tipo_muestra_linea' => $tipoMuestraLinea,
+    'metodo_linea'       => $metodoLinea,
+    'variant'            => $variant ?? 'web',
+    'pdf_layout'         => $pdf_layout ?? [],
+    'web_title_mt'       => $webTitleMt,
+]) ?>
 </div>
 <?php else: ?>
-<h4 class="<?= esc($webTitleMt, 'attr') ?> mb-1"><?= esc($padreTitulo) ?><?= ($padreTitulo !== '' && $hijoTitulo !== '') ? ' - ' : '' ?><?= esc($hijoTitulo) ?></h4>
-<?php if ($tipoMuestraLinea !== '' || $metodoLinea !== ''): ?>
-<div class="small text-muted mb-3">
-    <?php if ($tipoMuestraLinea !== ''): ?>
-    <p class="mb-0">Tipo de Muestra: <?= esc($tipoMuestraLinea) ?></p>
-    <?php endif; ?>
-    <?php if ($metodoLinea !== ''): ?>
-    <p class="mb-0<?= $tipoMuestraLinea !== '' ? ' mt-1' : '' ?>">Método: <?= esc($metodoLinea) ?></p>
-    <?php endif; ?>
-</div>
-<?php endif; ?>
+<?= view('registers/analisis/partials/report_grupo_cabecera_content', [
+    'padre'              => $padreTitulo,
+    'hijo'               => $hijoTitulo,
+    'tipo_muestra_linea' => $tipoMuestraLinea,
+    'metodo_linea'       => $metodoLinea,
+    'variant'            => $variant ?? 'web',
+    'pdf_layout'         => $pdf_layout ?? [],
+    'web_title_mt'       => $webTitleMt,
+]) ?>
 <?php endif; ?>
 
 <?php foreach ($secciones as $sec):

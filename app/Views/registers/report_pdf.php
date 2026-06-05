@@ -12,6 +12,7 @@ $pdfGrupoPageBreakBodyClass = \App\Services\ReportPdfLayoutService::grupoPruebaP
     <?= view('registers/partials/report_pdf_theme_styles', [
         'pdf_layout'                     => $pdf_layout ?? [],
         'use_sheet_padding_for_margins' => false,
+        'embed_stylesheet_for_pdf'      => true,
     ]) ?>
 </head>
 <body class="<?= esc(trim($pdfGrupoPageBreakBodyClass), 'attr') ?>">

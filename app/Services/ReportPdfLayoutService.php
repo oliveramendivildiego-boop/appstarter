@@ -214,7 +214,14 @@ class ReportPdfLayoutService
         'matrix_hdr_parameter_align' => 'left',
         'matrix_hdr_sex_align' => 'center',
         'matrix_hdr_reference_align' => 'center',
+        'grupo_cabecera_title_mode'        => 'grupo_analisis',
+        'grupo_cabecera_show_tipo_muestra' => true,
+        'grupo_cabecera_show_metodo'       => true,
     ];
+
+    /** @var list<string> */
+    public const ALLOWED_GRUPO_CABECERA_TITLE_MODES = ['grupo_analisis', 'solo_analisis'];
+
     public const DEFAULT_HEADER_SECTION_STYLE = [
         'separator_color'   => '#0066CC',
     ];
@@ -1371,6 +1378,7 @@ class ReportPdfLayoutService
             'segment_shadows' => self::ALLOWED_PDF_TEXT_SHADOWS,
             'text_aligns'     => self::ALLOWED_PDF_TEXT_ALIGNS,
             'vertical_aligns' => self::ALLOWED_PDF_VERTICAL_ALIGNS,
+            'grupo_cabecera_title_modes' => self::ALLOWED_GRUPO_CABECERA_TITLE_MODES,
         ];
     }
 
@@ -1778,6 +1786,13 @@ class ReportPdfLayoutService
             if (isset($raw[$ak]) && ! in_array(strtolower(trim((string) $raw[$ak])), self::ALLOWED_PDF_TEXT_ALIGNS, true)) {
                 return 'Alineación no permitida en columnas de la matriz de referencia (' . $ak . ').';
             }
+        }
+        if (isset($raw['grupo_cabecera_title_mode']) && ! in_array(
+            self::normalizeGrupoCabeceraTitleMode($raw['grupo_cabecera_title_mode']),
+            self::ALLOWED_GRUPO_CABECERA_TITLE_MODES,
+            true
+        )) {
+            return 'Modo de título de cabecera de grupo no permitido.';
         }
 
         return null;
@@ -2919,6 +2934,43 @@ class ReportPdfLayoutService
     }
 
     /**
+     * margin-top entre áreas (.report-pdf-grupo-prueba). Dompdf aplica mal reglas de hoja externa y var().
+     *
+     * @param array<string, mixed> $layout
+     */
+    public static function grupoPruebaGapMarginStyleAttr(array $layout, bool $isFirstGrupo): string
+    {
+        if ($isFirstGrupo) {
+            return '';
+        }
+        $ps  = is_array($layout['page_style'] ?? null) ? $layout['page_style'] : [];
+        $rs  = self::normalizeResultsTableStyle($ps['results_table'] ?? []);
+        $gap = max(0, min(80, (int) ($rs['grupo_prueba_gap_px'] ?? 10)));
+
+        return 'margin-top:' . $gap . 'px;';
+    }
+
+    /**
+     * Combina fragmentos de style="" para contenedores PDF (Dompdf).
+     */
+    public static function mergePdfInlineStyleAttrs(string ...$parts): string
+    {
+        $out = '';
+        foreach ($parts as $part) {
+            $part = trim($part);
+            if ($part === '') {
+                continue;
+            }
+            if ($out !== '' && ! str_ends_with($out, ';')) {
+                $out .= ';';
+            }
+            $out .= $part;
+        }
+
+        return $out;
+    }
+
+    /**
      * Estilo inline en .report-segment-table-wrap (Dompdf no ejecuta JS).
      *
      * @param array<string, mixed> $layout
@@ -3371,7 +3423,87 @@ class ReportPdfLayoutService
             'matrix_hdr_parameter_align' => $pickColAlign('matrix_hdr_parameter_align'),
             'matrix_hdr_sex_align' => $pickColAlign('matrix_hdr_sex_align'),
             'matrix_hdr_reference_align' => $pickColAlign('matrix_hdr_reference_align'),
+            'grupo_cabecera_title_mode'        => self::normalizeGrupoCabeceraTitleMode($s['grupo_cabecera_title_mode'] ?? $def['grupo_cabecera_title_mode']),
+            'grupo_cabecera_show_tipo_muestra' => array_key_exists('grupo_cabecera_show_tipo_muestra', $s)
+                ? ! empty($s['grupo_cabecera_show_tipo_muestra'])
+                : (bool) $def['grupo_cabecera_show_tipo_muestra'],
+            'grupo_cabecera_show_metodo'       => array_key_exists('grupo_cabecera_show_metodo', $s)
+                ? ! empty($s['grupo_cabecera_show_metodo'])
+                : (bool) $def['grupo_cabecera_show_metodo'],
         ];
+    }
+
+    /**
+     * @param mixed $raw
+     */
+    public static function normalizeGrupoCabeceraTitleMode($raw): string
+    {
+        $mode = strtolower(trim((string) $raw));
+
+        return in_array($mode, self::ALLOWED_GRUPO_CABECERA_TITLE_MODES, true)
+            ? $mode
+            : self::DEFAULT_RESULTS_TABLE_STYLE['grupo_cabecera_title_mode'];
+    }
+
+    /**
+     * @param array<string, mixed> $layout
+     *
+     * @return array{title_mode: string, show_tipo_muestra: bool, show_metodo: bool}
+     */
+    public static function grupoCabeceraDisplayFromLayout(array $layout): array
+    {
+        $ps = is_array($layout['page_style'] ?? null) ? $layout['page_style'] : [];
+        $rs = self::normalizeResultsTableStyle($ps['results_table'] ?? []);
+
+        return [
+            'title_mode'        => (string) ($rs['grupo_cabecera_title_mode'] ?? 'grupo_analisis'),
+            'show_tipo_muestra' => ! empty($rs['grupo_cabecera_show_tipo_muestra']),
+            'show_metodo'       => ! empty($rs['grupo_cabecera_show_metodo']),
+        ];
+    }
+
+    /**
+     * @param array<string, mixed> $layout
+     */
+    public static function buildGrupoPruebaCabeceraTitle(string $padre, string $hijo, array $layout): string
+    {
+        $padre = trim($padre);
+        $hijo  = trim($hijo);
+        $cfg   = self::grupoCabeceraDisplayFromLayout($layout);
+
+        if (($cfg['title_mode'] ?? 'grupo_analisis') === 'solo_analisis') {
+            if ($hijo !== '') {
+                return $hijo;
+            }
+
+            return $padre;
+        }
+
+        if ($padre !== '' && $hijo !== '') {
+            return $padre . ' - ' . $hijo;
+        }
+
+        return $padre !== '' ? $padre : $hijo;
+    }
+
+    /**
+     * @param array<string, mixed> $layout
+     */
+    public static function grupoCabeceraMostrarTipoMuestra(array $layout, string $linea): bool
+    {
+        $cfg = self::grupoCabeceraDisplayFromLayout($layout);
+
+        return ! empty($cfg['show_tipo_muestra']) && trim($linea) !== '';
+    }
+
+    /**
+     * @param array<string, mixed> $layout
+     */
+    public static function grupoCabeceraMostrarMetodo(array $layout, string $linea): bool
+    {
+        $cfg = self::grupoCabeceraDisplayFromLayout($layout);
+
+        return ! empty($cfg['show_metodo']) && trim($linea) !== '';
     }
 
     /**

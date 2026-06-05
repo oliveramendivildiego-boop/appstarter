@@ -24,14 +24,18 @@ if ($showFirmaPerGroup) {
 }
 
 $grupoPruebaIdx = 0;
-$grupoIntactStyle = \App\Services\ReportPdfLayoutService::grupoPruebaGrupoIntactStyleAttr($layoutForLf);
 foreach ($grupos ?? [] as $padre => $items) {
+    $isFirstGrupo = ($grupoPruebaIdx === 0);
     $grupoClass = 'report-pdf-grupo-prueba';
-    if ($grupoPruebaIdx === 0) {
+    if ($isFirstGrupo) {
         $grupoClass .= ' report-pdf-grupo-prueba-first';
     }
+    $grupoStyle = \App\Services\ReportPdfLayoutService::mergePdfInlineStyleAttrs(
+        \App\Services\ReportPdfLayoutService::grupoPruebaGrupoIntactStyleAttr($layoutForLf),
+        \App\Services\ReportPdfLayoutService::grupoPruebaGapMarginStyleAttr($layoutForLf, $isFirstGrupo)
+    );
     echo '<div class="' . esc($grupoClass, 'attr') . '"'
-        . ($grupoIntactStyle !== '' ? ' style="' . esc($grupoIntactStyle, 'attr') . '"' : '')
+        . ($grupoStyle !== '' ? ' style="' . esc($grupoStyle, 'attr') . '"' : '')
         . '>';
     echo view('registers/analisis/partials/compleja_tabla_reporte_grupo', [
         'padre'   => $padre,

@@ -472,7 +472,7 @@ $labelsShort = [
 <div class="card shadow-sm mb-4 pdf-config-panel" data-config-panels="results">
     <div class="card-header bg-info-subtle border">
         <h5 class="mb-1">Resultados en el PDF</h5>
-        <p class="small text-muted mb-0">Tabla por prueba, espacio entre áreas/grupos, filas separadoras entre análisis y matriz de referencia. Use las secciones siguientes en orden: colores → tipografía → espacio entre filas y grupos → títulos de sección → matriz poblacional.</p>
+        <p class="small text-muted mb-0">Tabla por prueba, cabecera de grupo (área/análisis, tipo de muestra, método), espacio entre áreas/grupos, filas separadoras entre análisis y matriz de referencia. Use las secciones siguientes en orden: colores → tipografía → espacio entre filas y grupos → títulos de sección → matriz poblacional → cabecera de grupo.</p>
     </div>
     <div class="card-body">
         <div class="accordion accordion-flush pdf-results-accordion" id="accordion_pdf_results">
@@ -628,6 +628,41 @@ $labelsShort = [
                     </table>
                 </div>
             </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="accordion-item border rounded mb-2 overflow-hidden">
+                <h2 class="accordion-header m-0">
+                    <button class="accordion-button collapsed py-2" type="button" data-bs-toggle="collapse" data-bs-target="#pdf_rs_panel_grupo_cabecera" aria-expanded="false" aria-controls="pdf_rs_panel_grupo_cabecera">
+                        <span class="fw-semibold">6. Cabecera de grupo de prueba</span>
+                        <span class="small text-muted ms-2 d-none d-md-inline">Título, tipo de muestra y método</span>
+                    </button>
+                </h2>
+                <div id="pdf_rs_panel_grupo_cabecera" class="accordion-collapse collapse" data-bs-parent="#accordion_pdf_results">
+                    <div class="accordion-body pt-0">
+                        <p class="small text-muted mb-3">Aplica al bloque <code>.report-pdf-grupo-cabecera</code> en el reporte en pantalla, PDF e impresión. Si la opción está activa pero el valor no está configurado en el análisis clínico, no se muestra (comportamiento actual).</p>
+                        <div class="row g-3">
+                            <div class="col-12 col-lg-6">
+                                <label class="form-label small" for="rs_grupo_cabecera_title_mode">Formato del título</label>
+                                <select class="form-select" id="rs_grupo_cabecera_title_mode">
+                                    <option value="grupo_analisis" <?= ($rs['grupo_cabecera_title_mode'] ?? 'grupo_analisis') === 'grupo_analisis' ? 'selected' : '' ?>>Área (grupo) — Análisis clínico</option>
+                                    <option value="solo_analisis" <?= ($rs['grupo_cabecera_title_mode'] ?? '') === 'solo_analisis' ? 'selected' : '' ?>>Solo análisis clínico</option>
+                                </select>
+                            </div>
+                            <div class="col-12 col-md-6 d-flex align-items-end">
+                                <div class="form-check mb-2">
+                                    <input class="form-check-input" type="checkbox" id="rs_grupo_cabecera_show_tipo_muestra" <?= ! empty($rs['grupo_cabecera_show_tipo_muestra']) ? 'checked' : '' ?>>
+                                    <label class="form-check-label small" for="rs_grupo_cabecera_show_tipo_muestra">Mostrar tipo de muestra</label>
+                                </div>
+                            </div>
+                            <div class="col-12 col-md-6 d-flex align-items-end">
+                                <div class="form-check mb-2">
+                                    <input class="form-check-input" type="checkbox" id="rs_grupo_cabecera_show_metodo" <?= ! empty($rs['grupo_cabecera_show_metodo']) ? 'checked' : '' ?>>
+                                    <label class="form-check-label small" for="rs_grupo_cabecera_show_metodo">Mostrar método</label>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -3760,7 +3795,10 @@ document.addEventListener('DOMContentLoaded', function() {
                 matrix_hdr_population_align: pickAllowedDomId('rs_matrix_hdr_population_align', 'text_aligns', 'left'),
                 matrix_hdr_parameter_align: pickAllowedDomId('rs_matrix_hdr_parameter_align', 'text_aligns', 'left'),
                 matrix_hdr_sex_align: pickAllowedDomId('rs_matrix_hdr_sex_align', 'text_aligns', 'center'),
-                matrix_hdr_reference_align: pickAllowedDomId('rs_matrix_hdr_reference_align', 'text_aligns', 'center')
+                matrix_hdr_reference_align: pickAllowedDomId('rs_matrix_hdr_reference_align', 'text_aligns', 'center'),
+                grupo_cabecera_title_mode: pickAllowedDomId('rs_grupo_cabecera_title_mode', 'grupo_cabecera_title_modes', 'grupo_analisis'),
+                grupo_cabecera_show_tipo_muestra: !!(document.getElementById('rs_grupo_cabecera_show_tipo_muestra') && document.getElementById('rs_grupo_cabecera_show_tipo_muestra').checked),
+                grupo_cabecera_show_metodo: !!(document.getElementById('rs_grupo_cabecera_show_metodo') && document.getElementById('rs_grupo_cabecera_show_metodo').checked)
             }
         };
     }
@@ -3956,6 +3994,7 @@ document.addEventListener('DOMContentLoaded', function() {
         ].forEach(function(id) {
             pushIfBadSelect(id, ta, 'Alineación no permitida en columnas de matriz de referencia (' + id + ').');
         });
+        pushIfBadSelect('rs_grupo_cabecera_title_mode', pdfAllow('grupo_cabecera_title_modes'), 'Formato de título de cabecera de grupo no permitido.');
 
         function pushCtScopeErrors(scope, pfx, partLabel, itemLabel, errs) {
             if (!scope) return;

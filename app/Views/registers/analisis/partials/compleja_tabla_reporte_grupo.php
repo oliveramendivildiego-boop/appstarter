@@ -93,9 +93,7 @@ foreach ($ordenPriaKeys as $subIdx => $priaKey) :
     }
 
     $tipoMuestraLinea = trim((string) ($nombresTipoPorPria[$priaIdTitulo] ?? ''));
-    $mostrarTipoMuestra = $tipoMuestraLinea !== '';
     $metodoLinea = trim((string) ($nombresMetodoPorPria[$priaIdTitulo] ?? ''));
-    $mostrarMetodo = $metodoLinea !== '';
 
     $segments = [];
     $cur = ['title' => null, 'items' => []];
@@ -136,26 +134,26 @@ foreach ($ordenPriaKeys as $subIdx => $priaKey) :
 <?php if ($usePdfChrome): ?>
 <div class="report-pdf-subgrupo-block<?= esc($subgrupoWrapClass, 'attr') ?>"<?= $subIdx > 0 ? ' style="margin-top:18px;"' : '' ?>>
 <div class="report-pdf-grupo-cabecera">
-<div class="group-title"><?= esc($padre) ?> - <?= esc($hijo) ?></div>
-<?php if ($mostrarTipoMuestra): ?>
-<div class="report-tipo-muestra" style="font-size:9pt;color:#555;margin:0 0 10px 0;line-height:1.3;">Tipo de Muestra: <?= esc($tipoMuestraLinea) ?></div>
-<?php endif; ?>
-<?php if ($mostrarMetodo): ?>
-<div class="report-metodo-prueba" style="font-size:9pt;color:#555;margin:0 0 10px 0;line-height:1.3;">Método: <?= esc($metodoLinea) ?></div>
-<?php endif; ?>
+<?= view('registers/analisis/partials/report_grupo_cabecera_content', [
+    'padre'              => $padre,
+    'hijo'               => $hijo,
+    'tipo_muestra_linea' => $tipoMuestraLinea,
+    'metodo_linea'       => $metodoLinea,
+    'variant'            => $variant,
+    'pdf_layout'         => $pdf_layout ?? [],
+    'web_title_mt'       => $webTitleMt,
+]) ?>
 </div>
 <?php else: ?>
-<h4 class="<?= esc($webTitleMt, 'attr') ?> mb-1"><?= esc($padre) ?> - <?= esc($hijo) ?></h4>
-<?php if ($mostrarTipoMuestra || $mostrarMetodo): ?>
-<div class="small text-muted mb-3">
-    <?php if ($mostrarTipoMuestra): ?>
-    <p class="mb-0">Tipo de Muestra: <?= esc($tipoMuestraLinea) ?></p>
-    <?php endif; ?>
-    <?php if ($mostrarMetodo): ?>
-    <p class="mb-0<?= $mostrarTipoMuestra ? ' mt-1' : '' ?>">Método: <?= esc($metodoLinea) ?></p>
-    <?php endif; ?>
-</div>
-<?php endif; ?>
+<?= view('registers/analisis/partials/report_grupo_cabecera_content', [
+    'padre'              => $padre,
+    'hijo'               => $hijo,
+    'tipo_muestra_linea' => $tipoMuestraLinea,
+    'metodo_linea'       => $metodoLinea,
+    'variant'            => $variant,
+    'pdf_layout'         => $pdf_layout ?? [],
+    'web_title_mt'       => $webTitleMt,
+]) ?>
 <?php endif; ?>
 <?php foreach ($segments as $seg): ?>
     <?php

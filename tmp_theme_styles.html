@@ -1,0 +1,246 @@
+<link rel="stylesheet" href="http://laboratorio.local/assets/css/report_pdf.css?v=1780436225" />
+<style>
+body { margin: 0mm 0mm 0mm 0mm !important; position: relative; }
+.pdf-main-stack {
+    padding-bottom: 22mm;
+    box-sizing: border-box;
+}
+.pdf-ft-block.footer-grid {
+    position: fixed;
+    left: 0mm;
+    right: 0mm;
+    bottom: 0mm;
+    z-index: 2;
+    margin-top: 0 !important;
+    padding-top: 6px;
+    background: #FFFFFF;
+    box-sizing: border-box;
+}
+:root {
+    --pdf-card-header-bg: #E9ECEF;
+    --pdf-card-header-color: #212529;
+    --pdf-card-header-font-family: "DejaVu Sans";
+    --pdf-card-header-font-size: 10pt;
+    --pdf-card-header-font-weight: 700;
+    --pdf-card-header-font-style: normal;
+    --pdf-card-header-transform: uppercase;
+    --pdf-header-separator-color: #0066CC;
+    --pdf-notes-title-bg: #FFF3CD;
+    --pdf-notes-title-color: #664D03;
+    --pdf-notes-body-bg: #FFFFFF;
+    --pdf-notes-body-color: #333333;
+    --pdf-notes-column-border-width: 1px;
+    --pdf-notes-column-border-color: #DDDDDD;
+    --pdf-notes-font-family: "DejaVu Sans";
+    --pdf-notes-font-size: 9.5pt;
+    --pdf-notes-font-weight: normal;
+    --pdf-notes-font-style: normal;
+    --pdf-notes-transform: none;
+    --pdf-notes-line-height: 1.4;
+    --pdf-lf-title-bg: #FFF3CD;
+    --pdf-lf-title-color: #664D03;
+    --pdf-lf-body-bg: transparent;
+    --pdf-lf-body-color: #333333;
+    --pdf-lf-column-border-width: 0px;
+    --pdf-lf-column-border-color: #DDDDDD;
+    --pdf-hg-body-bg: transparent;
+    --pdf-hg-body-color: #333333;
+    --pdf-hg-font-family: "DejaVu Sans";
+    --pdf-hg-font-size: 9.5pt;
+    --pdf-hg-font-weight: normal;
+    --pdf-hg-font-style: normal;
+    --pdf-hg-transform: none;
+    --pdf-hg-line-height: 1.35;
+    --pdf-hg-column-border-width: 0px;
+    --pdf-hg-column-border-color: #DDDDDD;
+    --pdf-qr-size-percent: 100;
+    --pdf-pd-body-bg: transparent;
+    --pdf-pd-body-color: #333333;
+    --pdf-pd-font-family: "DejaVu Sans";
+    --pdf-pd-font-size: 9.5pt;
+    --pdf-pd-font-weight: normal;
+    --pdf-pd-font-style: normal;
+    --pdf-pd-transform: none;
+    --pdf-pd-line-height: 1.35;
+    --pdf-pd-column-border-width: 0px;
+    --pdf-pd-column-border-color: #DDDDDD;
+    --pdf-ft-body-bg: #FFFFFF;
+    --pdf-ft-body-color: #E71313;
+    --pdf-ft-font-family: "DejaVu Sans";
+    --pdf-ft-font-size: 9.5pt;
+    --pdf-ft-font-weight: normal;
+    --pdf-ft-font-style: normal;
+    --pdf-ft-transform: none;
+    --pdf-ft-line-height: 1.35;
+    --pdf-ft-column-border-width: 0px;
+    --pdf-ft-column-border-color: #DDDDDD;
+    --pdf-ft-company-color: #333333;
+    --pdf-ft-label-generated-color: #333333;
+    --pdf-ft-datetime-color: #333333;
+    --pdf-ft-policy-color: #333333;
+    --pdf-ft-section-top-border-width: 2px;
+    --pdf-ft-section-top-border-style: solid;
+    --pdf-ft-section-top-border-color: #2D69E1;
+    --pdf-lf-font-family: "DejaVu Sans";
+    --pdf-lf-font-size: 9.5pt;
+    --pdf-lf-font-weight: normal;
+    --pdf-lf-font-style: normal;
+    --pdf-lf-transform: none;
+    --pdf-lf-line-height: 1.4;
+    --pdf-lf-inline-margin-top: 8pt;
+    --pdf-lf-inline-margin-bottom: 6pt;
+    --pdf-lf-seal-max-height: 110px;
+    --pdf-lf-signature-max-height: 72px;
+    --pdf-lf-signature-max-width: 220px;
+    --pdf-lf-area-heading-color: #664D03;
+    --pdf-lf-area-heading-font-size: 9pt;
+    --pdf-lf-area-heading-font-weight: 600;
+    --pdf-lf-area-heading-transform: uppercase;
+    --pdf-results-header-bg: #0066CC;
+    --pdf-results-header-color: #FFFFFF;
+    --pdf-results-body-bg: #FFFFFF;
+    --pdf-results-body-color: #333333;
+    --pdf-results-border-color: #DDDDDD;
+    --pdf-results-segment-bg: #E9ECEF;
+    --pdf-results-segment-border: #DDDDDD;
+    --pdf-results-segment-border-width: 1px;
+    --pdf-results-segment-shadow: none;
+    --pdf-results-font-family: "DejaVu Sans";
+    --pdf-results-font-size: 9pt;
+    --pdf-results-font-weight: normal;
+    --pdf-results-font-style: normal;
+    --pdf-results-transform: none;
+    --pdf-results-line-height: 1.35;
+    --pdf-results-cell-padding-v: 3px;
+    --pdf-results-grupo-gap: 10px;
+            --pdf-gpb-compact-scale: 0.85;
+            --pdf-gpb-compact-cell-padding-v: 0px;
+    --pdf-results-matrix-align: center;
+    --pdf-results-matrix-vertical-align: middle;
+    --pdf-results-matrix-color: #333333;
+    --pdf-results-matrix-font-size: 8pt;
+    --pdf-results-matrix-font-weight: normal;
+    --pdf-results-matrix-font-style: normal;
+    --pdf-results-matrix-transform: none;
+    --pdf-results-matrix-header-color: #1F2937;
+    --pdf-results-matrix-header-font-family: "DejaVu Sans";
+    --pdf-results-matrix-header-font-size: 8pt;
+    --pdf-results-matrix-header-font-weight: bold;
+    --pdf-results-matrix-header-font-style: normal;
+    --pdf-results-matrix-header-transform: uppercase;
+    --pdf-results-matrix-col-population-align: left;
+    --pdf-results-matrix-col-parameter-align: left;
+    --pdf-results-matrix-col-sex-align: center;
+    --pdf-results-matrix-col-reference-align: center;
+    --pdf-results-matrix-hdr-population-align: left;
+    --pdf-results-matrix-hdr-parameter-align: left;
+    --pdf-results-matrix-hdr-sex-align: center;
+    --pdf-results-matrix-hdr-reference-align: center;
+}
+table.results th {
+    background: #0066CC !important;
+    color: #FFFFFF !important;
+}
+table.results td {
+    background: #FFFFFF !important;
+    color: #333333 !important;
+}
+table.results th,
+table.results td {
+    border-color: #DDDDDD !important;
+    font-family: "DejaVu Sans", sans-serif !important;
+    font-size: 9pt !important;
+    font-weight: normal !important;
+    font-style: normal !important;
+    text-transform: none !important;
+    line-height: 1.35 !important;
+}
+table.results:not(.pdf-notes-table) th,
+table.results:not(.pdf-notes-table) td {
+    padding: 3px 8px !important;
+}
+table.results td.out-range,
+table.results .out-range {
+    color: #c00 !important;
+    font-weight: 700 !important;
+}
+.report-refs-matrix th,
+.report-refs-matrix td {
+    vertical-align: var(--pdf-results-matrix-vertical-align) !important;
+    color: var(--pdf-results-matrix-color) !important;
+}
+.report-refs-matrix td {
+    font-size: var(--pdf-results-matrix-font-size) !important;
+    font-weight: var(--pdf-results-matrix-font-weight) !important;
+    font-style: var(--pdf-results-matrix-font-style) !important;
+    text-transform: var(--pdf-results-matrix-transform) !important;
+}
+.report-refs-matrix th {
+    color: var(--pdf-results-matrix-header-color) !important;
+    font-family: var(--pdf-results-matrix-header-font-family), sans-serif !important;
+    font-size: var(--pdf-results-matrix-header-font-size) !important;
+    font-weight: var(--pdf-results-matrix-header-font-weight) !important;
+    font-style: var(--pdf-results-matrix-header-font-style) !important;
+    text-transform: var(--pdf-results-matrix-header-transform) !important;
+}
+.report-refs-matrix th.matrix-col-population { text-align: var(--pdf-results-matrix-hdr-population-align) !important; }
+.report-refs-matrix th.matrix-col-parameter { text-align: var(--pdf-results-matrix-hdr-parameter-align) !important; }
+.report-refs-matrix th.matrix-col-sex { text-align: var(--pdf-results-matrix-hdr-sex-align) !important; }
+.report-refs-matrix th.matrix-col-reference { text-align: var(--pdf-results-matrix-hdr-reference-align) !important; }
+.report-refs-matrix td.matrix-col-population { text-align: var(--pdf-results-matrix-col-population-align) !important; }
+.report-refs-matrix td.matrix-col-parameter { text-align: var(--pdf-results-matrix-col-parameter-align) !important; }
+.report-refs-matrix td.matrix-col-sex { text-align: var(--pdf-results-matrix-col-sex-align) !important; }
+.report-refs-matrix td.matrix-col-reference { text-align: var(--pdf-results-matrix-col-reference-align) !important; }
+table.results.pdf-notes-table td.pdf-notes-cell {
+    background: #FFFFFF !important;
+    color: #333333 !important;
+    border-color: #DDDDDD !important;
+    font-family: "DejaVu Sans", sans-serif !important;
+    font-size: 9.5pt !important;
+    font-weight: normal !important;
+    font-style: normal !important;
+    text-transform: none !important;
+    line-height: 1.4 !important;
+}
+.header-grid {
+    border-bottom-color: #0066CC !important;
+}
+.report-segment-title {
+    background: #E9ECEF !important;
+    border-color: #DDDDDD !important;
+    border-width: 1px !important;
+    box-shadow: none !important;
+}
+.report-segment-title.pdf-card-header {
+    background: #E9ECEF !important;
+    color: #212529 !important;
+    font-family: "DejaVu Sans", sans-serif !important;
+    font-size: 10pt !important;
+    font-weight: 700 !important;
+    font-style: normal !important;
+    text-transform: uppercase !important;
+}
+.report-pdf-grupo-prueba:not(.report-pdf-grupo-prueba-first) {
+    margin-top: 10px !important;
+}
+.pdf-gpb-segment-rules .report-segment-table-wrap:not(.report-segment-allow-split),
+.pdf-gpb-segment-rules .report-refs-matrix-wrap:not(.report-segment-allow-split),
+.pdf-gpb-keep-segment .report-segment-table-wrap:not(.report-segment-allow-split),
+.pdf-gpb-keep-segment .report-refs-matrix-wrap:not(.report-segment-allow-split) {
+    page-break-inside: avoid !important;
+    break-inside: avoid-page !important;
+}
+.pdf-gpb-segment-rules .report-segment-table-wrap:not(.report-segment-allow-split) table.results,
+.pdf-gpb-segment-rules .report-refs-matrix-wrap:not(.report-segment-allow-split) table.results,
+.pdf-gpb-keep-segment .report-segment-table-wrap:not(.report-segment-allow-split) table.results {
+    page-break-inside: avoid !important;
+    break-inside: avoid-page !important;
+}
+.pdf-gpb-segment-rules .report-segment-table-wrap.report-segment-force-break-before,
+.pdf-gpb-segment-rules .report-refs-matrix-wrap.report-segment-force-break-before,
+.pdf-gpb-keep-segment .report-segment-table-wrap.report-segment-force-break-before,
+.pdf-gpb-keep-segment .report-refs-matrix-wrap.report-segment-force-break-before {
+    page-break-before: always !important;
+    break-before: page !important;
+}
+</style>
