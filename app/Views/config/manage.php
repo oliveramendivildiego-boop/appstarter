@@ -107,6 +107,9 @@
         <button class="nav-link <?= $activeTab === 'opciones' ? 'active' : '' ?>" id="tab-opciones-btn" data-bs-toggle="tab" data-bs-target="#tab-opciones" type="button" role="tab">Tipos de resultado</button>
     </li>
     <li class="nav-item" role="presentation">
+        <button class="nav-link <?= $activeTab === 'leyendas_cultivo' ? 'active' : '' ?>" id="tab-leyendas_cultivo-btn" data-bs-toggle="tab" data-bs-target="#tab-leyendas_cultivo" type="button" role="tab">Leyendas cultivo</button>
+    </li>
+    <li class="nav-item" role="presentation">
         <button class="nav-link <?= $activeTab === 'whatsapp' ? 'active' : '' ?>" id="tab-whatsapp-btn" data-bs-toggle="tab" data-bs-target="#tab-whatsapp" type="button" role="tab">WhatsApp</button>
     </li>
 </ul>
@@ -1656,11 +1659,23 @@
             </div>
         </div>
     </div>
+
+    <?= view('config/tab_leyendas_cultivo', [
+        'leyendas_cultivo'            => $leyendas_cultivo ?? [],
+        'leyendas_cultivo_categorias' => $leyendas_cultivo_categorias ?? [],
+        'editar_leyenda_cultivo'      => $editar_leyenda_cultivo ?? 0,
+        'editar_leyenda_cultivo_data' => $editar_leyenda_cultivo_data ?? [],
+        'editar_leyenda_cultivo_categoria' => $editar_leyenda_cultivo_categoria ?? 0,
+        'editar_leyenda_cultivo_categoria_data' => $editar_leyenda_cultivo_categoria_data ?? [],
+        'activeTab'                   => $activeTab,
+    ]) ?>
 </div>
 
 <?= $this->endSection() ?>
 
 <?= $this->section('scripts') ?>
+<link href="https://cdn.jsdelivr.net/npm/summernote@0.8.18/dist/summernote-lite.min.css" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/summernote@0.8.18/dist/summernote-lite.min.js"></script>
 <script src="<?= base_url('js/comprobante-editor.js') ?>?v=20" defer></script>
 <script src="<?= base_url('js/config.js') ?>" defer></script>
 <script>
@@ -2282,5 +2297,43 @@ $(document).ready(function() {
         });
     }
 });
+</script>
+<script>
+(function() {
+    function initLeyendaCultivoEditor() {
+        if (typeof jQuery === 'undefined' || !jQuery.fn.summernote) return;
+        var el = document.getElementById('leyenda_cultivo_mensaje');
+        if (!el || jQuery(el).data('summernote')) return;
+        jQuery(el).summernote({
+            height: 220,
+            toolbar: [
+                ['style', ['bold', 'italic', 'underline', 'clear']],
+                ['para', ['ul', 'ol', 'paragraph']],
+                ['insert', ['link']],
+                ['view', ['codeview', 'undo', 'redo']]
+            ]
+        });
+    }
+
+    var lcForm = document.getElementById('form_leyenda_cultivo');
+    if (lcForm) {
+        lcForm.addEventListener('submit', function() {
+            var el = document.getElementById('leyenda_cultivo_mensaje');
+            if (el && typeof jQuery !== 'undefined' && jQuery(el).data('summernote')) {
+                el.value = jQuery(el).summernote('code');
+            }
+        });
+    }
+
+    var lcTabBtn = document.getElementById('tab-leyendas_cultivo-btn');
+    if (lcTabBtn) {
+        lcTabBtn.addEventListener('shown.bs.tab', initLeyendaCultivoEditor);
+    }
+
+    var lcPane = document.getElementById('tab-leyendas_cultivo');
+    if (lcPane && lcPane.classList.contains('active')) {
+        initLeyendaCultivoEditor();
+    }
+})();
 </script>
 <?= $this->endSection() ?>

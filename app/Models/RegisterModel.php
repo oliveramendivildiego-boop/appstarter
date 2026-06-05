@@ -610,6 +610,51 @@ class RegisterModel extends Model
         return 0;
     }
 
+    /**
+     * Metadatos de prueba con área, tipo de muestra y método para reportes.
+     */
+    public function getPrianacategoriaWithArea(int $prianacategoriaId): ?object
+    {
+        if ($prianacategoriaId < 1) {
+            return null;
+        }
+
+        $p = $this->db->prefixTable('prianacategoria');
+        $a = $this->db->prefixTable('anacategoria');
+        $tm = $this->db->prefixTable('tipo_muestra');
+        $m = $this->db->prefixTable('metodo');
+
+        $select = "pt.prianacategoria_id, pt.name AS hijo, pt.compleja, ac.name AS padre";
+        if ($this->hasColumn('prianacategoria', 'tipo_muestra_id')) {
+            $select .= ", pt.tipo_muestra_id, tm.nombre AS tipo_muestra_nombre";
+        } else {
+            $select .= ", NULL AS tipo_muestra_id, '' AS tipo_muestra_nombre";
+        }
+        if ($this->hasColumn('prianacategoria', 'metodo_id')) {
+            $select .= ", pt.metodo_id, m.nombre AS metodo_nombre";
+        } else {
+            $select .= ", NULL AS metodo_id, '' AS metodo_nombre";
+        }
+
+        $builder = $this->db->table('prianacategoria pt')
+            ->select($select)
+            ->join("{$a} ac", 'ac.anacategoria_id = pt.anacategoria_id', 'left');
+        if ($this->hasColumn('prianacategoria', 'tipo_muestra_id')) {
+            $builder->join("{$tm} tm", 'tm.tipo_muestra_id = pt.tipo_muestra_id', 'left');
+        }
+        if ($this->hasColumn('prianacategoria', 'metodo_id')) {
+            $builder->join("{$m} m", 'm.metodo_id = pt.metodo_id', 'left');
+        }
+
+        $row = $builder
+            ->where('pt.prianacategoria_id', $prianacategoriaId)
+            ->where('(pt.deleted = 0 OR pt.deleted IS NULL)')
+            ->get()
+            ->getRow();
+
+        return $row ?: null;
+    }
+
     public function getFormula(int $id)
     {
         return $this->db->table('formulas')
@@ -1351,7 +1396,7 @@ class RegisterModel extends Model
             $r0 = $groupRows[0];
             $compleja = (int) ($r0['compleja'] ?? 0);
 
-            if ($compleja === 1) {
+            if ($compleja === 1 || $compleja === 2) {
                 $r = $r0;
                 if (((int) ($r['opcion_id'] ?? 0)) <= 0 && ((int) ($r['opcion_id_fallback'] ?? 0)) > 0) {
                     $r['opcion_id'] = $r['opcion_id_fallback'];

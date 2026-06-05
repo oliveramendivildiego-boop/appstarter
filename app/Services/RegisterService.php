@@ -3,6 +3,8 @@
 namespace App\Services;
 
 use App\Models\AppConfigModel;
+use App\Models\LabotestModel;
+use App\Models\LeyendaCultivoModel;
 use App\Models\PoblacionModel;
 use App\Models\RegisterModel;
 use App\Services\ConfigService;
@@ -14,7 +16,7 @@ use Config\App as AppConfig;
  */
 class RegisterService
 {
-    private const TOTAL_PAGES_TOKEN = '__PDF_TOTAL_PAGES__';
+    public const TOTAL_PAGES_TOKEN = '__PDF_TOTAL_PAGES__';
     protected RegisterModel $registerModel;
     protected AppConfigModel $appConfigModel;
 
@@ -203,12 +205,20 @@ class RegisterService
     public function buildGruposParaReporte(int $registroId, array $analisis, array $matchingPoblacionIds = [], ?int $gender = null): array
     {
         $grupos = [];
+        $cultivoExtracted = $this->extractCultivoCellValuesFromAnalisis($analisis);
+        $cultivoValoresPorPria = $cultivoExtracted['cv'];
+        $cultivoNumerosPorPria = $cultivoExtracted['cvn'];
+        $cultivoUnidadesGlobalPorPria = $cultivoExtracted['cvu_global'];
+
         foreach ($analisis as $prueba) {
             $name = $prueba['name'] ?? '';
             if (!is_string($name)) {
                 continue;
             }
             if (preg_match('/^lab_(val|app)_pri_\d+$/', $name) === 1) {
+                continue;
+            }
+            if (str_starts_with($name, 'cv_') || str_starts_with($name, 'cvn_') || str_starts_with($name, 'cvu_')) {
                 continue;
             }
             $regvalue = $prueba['regvalues'] ?? $prueba['value'] ?? '-';
@@ -271,6 +281,28 @@ class RegisterService
             }
         }
 
+        foreach ($cultivoValoresPorPria as $priaId => $cellValues) {
+            $cultivoItem = $this->buildCultivoMatrizReportItem(
+                (int) $priaId,
+                $cellValues,
+                $cultivoNumerosPorPria[$priaId] ?? [],
+                $cultivoUnidadesGlobalPorPria[$priaId] ?? null
+            );
+            if ($cultivoItem === null) {
+                continue;
+            }
+            $padre = trim((string) ($cultivoItem->padre ?? ''));
+            if ($padre === '') {
+                continue;
+            }
+            if (! isset($grupos[$padre])) {
+                $grupos[$padre] = [];
+            }
+            $grupos[$padre][] = $cultivoItem;
+        }
+
+        $grupos = $this->purgeLegacyRowsForCultivoGrupos($grupos);
+
         foreach ($grupos as $padre => $items) {
             usort($items, static function ($a, $b) {
                 $aOrd = (int) ($a->orden ?? 0);
@@ -284,6 +316,357 @@ class RegisterService
         }
 
         return $grupos;
+    }
+
+    /**
+     * @param list<array<string, mixed>> $analisis
+     * @return array{
+     *   cv: array<int, array<string, array<int, array<int, string>>>>,
+     *   cvn: array<int, array<string, array<int, array<int, string>>>>,
+     *   cvu: array<int, array<string, array<int, array<int, string>>>>,
+     *   cvu_global: array<int, string>
+     * }
+     */
+    protected function extractCultivoCellValuesFromAnalisis(array $analisis): array
+    {
+        $out = [];
+        $outNum = [];
+        $outUni = [];
+        $outUniGlobal = [];
+        foreach ($analisis as $row) {
+            $name = trim((string) ($row['name'] ?? ''));
+            if ($name === '') {
+                continue;
+            }
+            if (preg_match('/^cvu_(\d+)$/', $name, $mGlobal)) {
+                $priaGlobal = (int) $mGlobal[1];
+                if ($priaGlobal > 0) {
+                    $valGlobal = trim((string) ($row['regvalues'] ?? $row['value'] ?? ''));
+                    if ($valGlobal !== '') {
+                        $outUniGlobal[$priaGlobal] = $valGlobal;
+                    }
+                }
+                continue;
+            }
+            $prefix = null;
+            if (preg_match('/^cv_(\d+)_(encabezado|cuerpo|pie)_(\d+)_(\d+)$/', $name, $m)) {
+                $prefix = 'cv';
+            } elseif (preg_match('/^cvn_(\d+)_(encabezado|cuerpo|pie)_(\d+)_(\d+)$/', $name, $m)) {
+                $prefix = 'cvn';
+            } elseif (preg_match('/^cvu_(\d+)_(encabezado|cuerpo|pie)_(\d+)_(\d+)$/', $name, $m)) {
+                $prefix = 'cvu';
+            } else {
+                continue;
+            }
+            $priaId = (int) $m[1];
+            $sec = (string) $m[2];
+            $fila = (int) $m[3];
+            $col = (int) $m[4];
+            if ($priaId < 1) {
+                continue;
+            }
+            $val = trim((string) ($row['regvalues'] ?? $row['value'] ?? ''));
+            if ($val === '') {
+                continue;
+            }
+            if ($prefix === 'cvn') {
+                $outNum[$priaId][$sec][$fila][$col] = $val;
+            } elseif ($prefix === 'cvu') {
+                $outUni[$priaId][$sec][$fila][$col] = $val;
+            } else {
+                $out[$priaId][$sec][$fila][$col] = $val;
+            }
+        }
+
+        return ['cv' => $out, 'cvn' => $outNum, 'cvu' => $outUni, 'cvu_global' => $outUniGlobal];
+    }
+
+    /**
+     * @param array<string, array<int, array<int, string>>> $cellValues
+     * @param array<string, array<int, array<int, string>>> $cellNumeros
+     * @param string|null $unidadGlobalRegistro
+     */
+    protected function buildCultivoMatrizReportItem(
+        int $prianacategoriaId,
+        array $cellValues,
+        array $cellNumeros = [],
+        ?string $unidadGlobalRegistro = null
+    ): ?object {
+        if ($prianacategoriaId < 1 || $cellValues === []) {
+            return null;
+        }
+
+        $meta = $this->registerModel->getPrianacategoriaWithArea($prianacategoriaId);
+        if ($meta === null || (int) ($meta->compleja ?? 0) !== LabotestModel::COMPLEJA_CULTIVO) {
+            return null;
+        }
+
+        $labotestModel = model(LabotestModel::class);
+        $matriz = $labotestModel->getCultivoMatrizConfig($prianacategoriaId);
+        $display = $this->formatCultivoMatrizForReport($matriz, $cellValues, $cellNumeros, $unidadGlobalRegistro);
+
+        return (object) [
+            'es_cultivo_matriz'    => true,
+            'prianacategoria_id'   => $prianacategoriaId,
+            'padre'                => trim((string) ($meta->padre ?? '')),
+            'hijo'                 => trim((string) ($meta->hijo ?? '')),
+            'tipo_muestra_nombre'  => trim((string) ($meta->tipo_muestra_nombre ?? '')),
+            'metodo_nombre'        => trim((string) ($meta->metodo_nombre ?? '')),
+            'cultivo_matriz'       => $matriz,
+            'cultivo_valores'      => $cellValues,
+            'cultivo_valores_num'  => $cellNumeros,
+            'cultivo_unidad'       => $unidadGlobalRegistro,
+            'cultivo_display'      => $display,
+            'regvalues'            => '·',
+        ];
+    }
+
+    /**
+     * Elimina filas legadas (p. ej. cv_* mal interpretadas) cuando ya hay matriz cultivo.
+     *
+     * @param array<string, list<object>> $grupos
+     * @return array<string, list<object>>
+     */
+    protected function purgeLegacyRowsForCultivoGrupos(array $grupos): array
+    {
+        foreach ($grupos as $padre => $items) {
+            $cultivoPriaIds = [];
+            foreach ($items as $it) {
+                $obj = is_array($it) ? (object) $it : $it;
+                if (! empty($obj->es_cultivo_matriz)) {
+                    $pid = (int) ($obj->prianacategoria_id ?? 0);
+                    if ($pid > 0) {
+                        $cultivoPriaIds[$pid] = true;
+                    }
+                }
+            }
+            if ($cultivoPriaIds === []) {
+                continue;
+            }
+            $grupos[$padre] = array_values(array_filter($items, static function ($it) use ($cultivoPriaIds) {
+                $obj = is_array($it) ? (object) $it : $it;
+                if (! empty($obj->es_cultivo_matriz)) {
+                    return true;
+                }
+                $pid = (int) ($obj->prianacategoria_id ?? 0);
+
+                return $pid < 1 || ! isset($cultivoPriaIds[$pid]);
+            }));
+        }
+
+        return $grupos;
+    }
+
+    /**
+     * @param array<string, array{filas: int, columnas: int, titulos: list<list<string>>, celdas: list<list<array<string, mixed>>>}> $matriz
+     * @param array<string, array<int, array<int, string>>> $cellValues
+     * @return list<array{seccion: string, label: string, columnas: int, titulos_por_col: list<list<string>>, filas: list<list<string>>}>
+     */
+    public function formatCultivoMatrizForReport(
+        array $matriz,
+        array $cellValues,
+        array $cellNumeros = [],
+        ?string $unidadGlobalRegistro = null
+    ): array {
+        $labels = [
+            'encabezado' => 'Encabezado',
+            'cuerpo'     => 'Cuerpo',
+            'pie'        => 'Pie',
+        ];
+        $leyendaModel = model(LeyendaCultivoModel::class);
+        $leyendasCache = [];
+        $resolveLeyenda = static function (int $leyendaId) use ($leyendaModel, &$leyendasCache): string {
+            if ($leyendaId < 1) {
+                return '';
+            }
+            if (! isset($leyendasCache[$leyendaId])) {
+                $row = $leyendaModel->getById($leyendaId);
+                $leyendasCache[$leyendaId] = is_array($row) ? (string) ($row['mensaje'] ?? '') : '';
+            }
+
+            return $leyendasCache[$leyendaId];
+        };
+
+        $normalizeCeldaCfg = static function ($raw): array {
+            if (is_array($raw)) {
+                $modo = (string) ($raw['modo'] ?? 'texto');
+                if ($modo === 'opcion') {
+                    return ['modo' => 'opcion'];
+                }
+                if ($modo === 'leyenda') {
+                    return ['modo' => 'leyenda'];
+                }
+
+                return ['modo' => 'texto'];
+            }
+
+            return ['modo' => 'texto'];
+        };
+
+        $cuerpoCfg = is_array($matriz['cuerpo'] ?? null) ? $matriz['cuerpo'] : [];
+        $unidadConfig = trim((string) ($cuerpoCfg['unidad'] ?? ''));
+        $unidadMedida = trim((string) ($unidadGlobalRegistro ?? ''));
+        if ($unidadMedida === '') {
+            $unidadMedida = $unidadConfig;
+        }
+        $alineacionCuerpo = trim((string) ($cuerpoCfg['alineacion_filas'] ?? 'centro'));
+        if ($alineacionCuerpo === 'cuerpo') {
+            $alineacionCuerpo = 'centro';
+        }
+        if (! in_array($alineacionCuerpo, ['centro', 'bordes'], true)) {
+            $alineacionCuerpo = 'centro';
+        }
+
+        $esHtmlContenido = static function (string $texto): bool {
+            $texto = trim($texto);
+            if ($texto === '') {
+                return false;
+            }
+
+            return $texto !== strip_tags($texto);
+        };
+
+        $escHtml = static function (string $texto): string {
+            return htmlspecialchars($texto, ENT_QUOTES, 'UTF-8');
+        };
+
+        $resolvePrincipal = static function (array $celdaCfg, string $raw) use ($resolveLeyenda): string {
+            $raw = trim($raw);
+            if ($raw === '') {
+                return '';
+            }
+            if (($celdaCfg['modo'] ?? '') === 'leyenda' && ctype_digit($raw)) {
+                $html = $resolveLeyenda((int) $raw);
+
+                return $html !== '' ? $html : $raw;
+            }
+
+            return $raw;
+        };
+
+        $resolveMedida = static function (string $secId, int $r, int $c) use (
+            $matriz,
+            $cellNumeros,
+            $unidadMedida
+        ): string {
+            $cuerpoCfgInner = is_array($matriz['cuerpo'] ?? null) ? $matriz['cuerpo'] : [];
+            $valoresOn = ($secId === 'cuerpo') && ! empty($cuerpoCfgInner['valores_habilitado']);
+            $unidadesOn = ($secId === 'cuerpo') && ! empty($cuerpoCfgInner['unidades_habilitado']);
+            if (! $valoresOn) {
+                return '';
+            }
+            $num = trim((string) ($cellNumeros[$secId][$r][$c] ?? ''));
+            if ($num === '') {
+                return '';
+            }
+            if ($unidadesOn && $unidadMedida !== '') {
+                return $num . ' ' . $unidadMedida;
+            }
+
+            return $num;
+        };
+
+        $buildCeldaReporte = static function (
+            string $principal,
+            string $medida,
+            string $secId,
+            string $alineacion
+        ) use ($esHtmlContenido, $escHtml): string {
+            $principal = trim($principal);
+            $medida = trim($medida);
+            if ($principal === '' && $medida === '') {
+                return '';
+            }
+
+            if ($secId === 'cuerpo' && $alineacion === 'bordes') {
+                $html = '<div class="cultivo-celda-bordes" style="display:flex;justify-content:space-between;align-items:center;width:100%;gap:0.5rem;">';
+                if ($principal !== '') {
+                    $html .= '<span class="cultivo-celda-izq" style="flex:1 1 auto;min-width:0;text-align:left;">'
+                        . ($esHtmlContenido($principal) ? $principal : $escHtml($principal))
+                        . '</span>';
+                }
+                if ($medida !== '') {
+                    $html .= '<span class="cultivo-celda-der" style="flex:0 0 auto;text-align:right;white-space:nowrap;">'
+                        . $escHtml($medida) . '</span>';
+                }
+                $html .= '</div>';
+
+                return $html;
+            }
+
+            if ($principal === '') {
+                return $medida;
+            }
+            if ($medida === '') {
+                return $principal;
+            }
+
+            return $principal . ' ' . $medida;
+        };
+
+        $out = [];
+        foreach ($labels as $secId => $secLabel) {
+            $sec = $matriz[$secId] ?? ['filas' => 0, 'columnas' => 1, 'titulos' => [[]], 'celdas' => []];
+            $filas = max(0, (int) ($sec['filas'] ?? 0));
+            $columnas = max(1, (int) ($sec['columnas'] ?? 1));
+            $titulosRaw = is_array($sec['titulos'] ?? null) ? $sec['titulos'] : [];
+            $titulosPorCol = LabotestModel::parseCultivoTitulosPorColumna($titulosRaw, $columnas);
+            $celdasCfg = is_array($sec['celdas'] ?? null) ? $sec['celdas'] : [];
+            $alineacionSec = ($secId === 'cuerpo') ? $alineacionCuerpo : 'centro';
+            $filasRaw = [];
+            for ($r = 0; $r < $filas; $r++) {
+                $rowOut = [];
+                for ($c = 0; $c < $columnas; $c++) {
+                    $cfg = $normalizeCeldaCfg($celdasCfg[$r][$c] ?? ['modo' => 'texto']);
+                    $rawVal = (string) ($cellValues[$secId][$r][$c] ?? '');
+                    $principal = $resolvePrincipal($cfg, $rawVal);
+                    $medida = $resolveMedida($secId, $r, $c);
+                    $rowOut[] = $buildCeldaReporte($principal, $medida, $secId, $alineacionSec);
+                }
+                $filasRaw[] = $rowOut;
+            }
+
+            $compacto = LabotestModel::compactCultivoSectionDisplayForReport($titulosPorCol, $filasRaw, $columnas);
+            if ($compacto === null) {
+                continue;
+            }
+
+            $out[] = [
+                'seccion'           => $secId,
+                'label'             => $secLabel,
+                'columnas'          => $compacto['columnas'],
+                'titulos_por_col'   => $compacto['titulos_por_col'],
+                'titulos_filas'     => $compacto['titulos_filas'],
+                'titulos_banda'     => $compacto['titulos_banda'],
+                'columnas_detalle'  => $compacto['columnas_detalle'],
+                'max_titulo_filas'  => $compacto['max_titulo_filas'],
+                'filas'             => $compacto['filas'],
+                'alineacion_filas'  => $alineacionSec,
+            ];
+        }
+
+        return $out;
+    }
+
+    protected function cultivoMatrizTieneValores(array $cellValues): bool
+    {
+        foreach ($cellValues as $sec) {
+            if (! is_array($sec)) {
+                continue;
+            }
+            foreach ($sec as $fila) {
+                if (! is_array($fila)) {
+                    continue;
+                }
+                foreach ($fila as $val) {
+                    if (trim((string) $val) !== '') {
+                        return true;
+                    }
+                }
+            }
+        }
+
+        return false;
     }
 
     /**
@@ -452,6 +835,9 @@ class RegisterService
                 continue;
             }
             $isCompleja = (int)($cfg['compleja'] ?? 0) === 1;
+            if ((int) ($cfg['compleja'] ?? 0) === LabotestModel::COMPLEJA_CULTIVO) {
+                continue;
+            }
 
             if ($isCompleja) {
                 $refs = $this->registerModel->getAllSecItemsByPrianacategoriaForReport($priaId, $matchingPoblacionIds, $gender);
@@ -603,6 +989,12 @@ class RegisterService
         foreach ($items as $raw) {
             $it = is_array($raw) ? (object) $raw : $raw;
             if ((int) ($it->es_separador ?? 0) === 1) {
+                continue;
+            }
+            if (! empty($it->es_cultivo_matriz)) {
+                if ($this->cultivoMatrizTieneValores(is_array($it->cultivo_valores ?? null) ? $it->cultivo_valores : [])) {
+                    return true;
+                }
                 continue;
             }
             if ($considerarShowReference && !empty($it->show_reference)) {
@@ -1132,6 +1524,13 @@ class RegisterService
         $grupos = $this->buildGruposParaReporte($registroId, $analisis, $matchingPoblacionIds, $patientGender);
         $grupos = $this->mergeSeparadoresYOrdenCompuestoDesdePlantilla($grupos, $matchingPoblacionIds, $patientGender);
         $pruebasIds = $this->extractPrianacategoriaIdsFromRegistroPruebas((string)($registerInfo->pruebas ?? ''));
+        foreach ($analisis as $rvRow) {
+            $rvName = trim((string) ($rvRow['name'] ?? ''));
+            if ($rvName !== '' && preg_match('/^cv(n|u)?_(\d+)/', $rvName, $mCv)) {
+                $pruebasIds[] = (int) $mCv[2];
+            }
+        }
+        $pruebasIds = array_values(array_unique(array_filter(array_map('intval', $pruebasIds), static fn($x) => $x > 0)));
         $priasCfg = $this->registerModel->getPrianacategoriaConfigByIds($pruebasIds);
         $reportPriaTipoMuestraNombre = [];
         try {
@@ -1559,8 +1958,15 @@ class RegisterService
             'report_pria_refs_consolidada'    => $reportData['report_pria_refs_consolidada'] ?? [],
         ]);
 
-        // En impresión directa (HTML + window.print) no se usa PdfService, así que el token
-        // de total de páginas debe volver al contador CSS del navegador para no verse literal.
+        return self::replaceTotalPagesTokenForBrowser($html);
+    }
+
+    /**
+     * Sustituye el token de total de páginas por un marcador que el navegador puede rellenar con JS.
+     * Usado en viewreport e impresión HTML (no en PdfService, que inyecta el número real).
+     */
+    public static function replaceTotalPagesTokenForBrowser(string $html): string
+    {
         return str_replace(self::TOTAL_PAGES_TOKEN, '<span class="pdf-counter-pages"></span>', $html);
     }
 }

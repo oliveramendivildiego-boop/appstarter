@@ -39,6 +39,29 @@ foreach ($items as $raw) {
 foreach ($ordenPriaKeys as $subIdx => $priaKey) :
     $subItems = $subgruposPorPria[$priaKey];
 
+    $cultivoItem = null;
+    foreach ($subItems as $rawCultivo) {
+        $itCultivo = is_array($rawCultivo) ? (object) $rawCultivo : $rawCultivo;
+        if (! empty($itCultivo->es_cultivo_matriz)) {
+            $cultivoItem = $itCultivo;
+            break;
+        }
+    }
+    if ($cultivoItem !== null) {
+        echo view('registers/analisis/partials/cultivo_matriz_reporte', [
+            'padre'                           => trim((string) ($cultivoItem->padre ?? $padre)),
+            'hijo'                            => trim((string) ($cultivoItem->hijo ?? '')),
+            'pria_id_titulo'                  => (int) ($cultivoItem->prianacategoria_id ?? 0),
+            'cultivo_item'                    => $cultivoItem,
+            'variant'                         => $variant,
+            'pdf_layout'                      => $pdf_layout ?? [],
+            'report_pria_tipo_muestra_nombre' => $nombresTipoPorPria,
+            'report_pria_metodo_nombre'       => $nombresMetodoPorPria,
+            'sub_idx'                         => $subIdx,
+        ]);
+        continue;
+    }
+
     $hijo = '';
     foreach ($subItems as $rawHijo) {
         $itHijo = is_array($rawHijo) ? (object) $rawHijo : $rawHijo;

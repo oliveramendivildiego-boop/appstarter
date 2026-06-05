@@ -12,6 +12,10 @@ class LabotestModel extends Model
     protected $useAutoIncrement = true;
     protected $returnType       = 'object';
 
+    public const COMPLEJA_SIMPLE    = 0;
+    public const COMPLEJA_COMPOUESTA = 1;
+    public const COMPLEJA_CULTIVO   = 2;
+
     /**
      * Obtiene categorías con sus análisis (prianacategoria)
      * @param string|null $search Filtra por nombre de grupo o de examen
@@ -166,6 +170,702 @@ class LabotestModel extends Model
             ->get()
             ->getRow();
         return $row ?? (object) ['prianacategoria_id' => null, 'anacategoria_id' => $anacategoriaId, 'name' => '', 'order' => 0, 'compleja' => 0, 'mostrar_valores' => 0, 'tipo_muestra_id' => null, 'metodo_id' => null];
+    }
+
+    /**
+     * Configuración por defecto de la matriz de cultivo (encabezado, cuerpo, pie).
+     *
+     * @return array<string, array{filas: int, columnas: int, titulos: list<list<string>>, celdas: list<list<array{modo: string, opcion_id?: int}>>}>
+     */
+    public function getDefaultCultivoMatrizConfig(): array
+    {
+        return [
+            'encabezado' => [
+                'filas'     => 1,
+                'columnas'  => 1,
+                'titulos'   => [[]],
+                'celdas'    => [[['modo' => 'texto']]],
+            ],
+            'cuerpo' => [
+                'filas'                => 1,
+                'columnas'             => 1,
+                'titulos'              => [[]],
+                'celdas'               => [[['modo' => 'texto']]],
+                'valores_habilitado'   => false,
+                'unidades_habilitado'  => false,
+                'unidad'               => '',
+                'alineacion_filas'     => 'centro',
+            ],
+            'pie' => [
+                'filas'     => 1,
+                'columnas'  => 1,
+                'titulos'   => [[]],
+                'celdas'    => [[['modo' => 'texto']]],
+            ],
+        ];
+    }
+
+    /**
+     * @return array{modo: 'texto'|'opcion'|'leyenda', opcion_id?: int, leyenda_cultivo_categoria_id?: int}
+     */
+    private function normalizeCultivoCelda(mixed $raw): array
+    {
+        $valor = is_array($raw) ? trim((string) ($raw['valor'] ?? '')) : '';
+        $out = ['modo' => 'texto'];
+
+        if (is_array($raw)) {
+            $modoRaw = (string) ($raw['modo'] ?? 'texto');
+            if ($modoRaw === 'opcion') {
+                $out = [
+                    'modo'       => 'opcion',
+                    'opcion_id'  => max(0, (int) ($raw['opcion_id'] ?? 0)),
+                ];
+            } elseif ($modoRaw === 'leyenda') {
+                $out = [
+                    'modo'                         => 'leyenda',
+                    'leyenda_cultivo_categoria_id' => max(0, (int) ($raw['leyenda_cultivo_categoria_id'] ?? 0)),
+                ];
+            }
+        } elseif (is_numeric($raw)) {
+            $id = (int) $raw;
+            if ($id > 0) {
+                $out = ['modo' => 'opcion', 'opcion_id' => $id];
+            }
+        }
+
+        if ($valor !== '') {
+            $out['valor'] = $valor;
+        }
+
+        return $out;
+    }
+
+    /**
+     * Normaliza una celda de título de matriz cultivo.
+     *
+     * @return array{texto: string, colspan: int}
+     */
+    public static function normalizeCultivoTituloCelda(mixed $raw): array
+    {
+        if (is_array($raw)) {
+            $texto = trim((string) ($raw['texto'] ?? $raw['text'] ?? ''));
+            $colspan = max(1, min(20, (int) ($raw['colspan'] ?? 1)));
+
+            return ['texto' => $texto, 'colspan' => $colspan];
+        }
+
+        return ['texto' => trim((string) $raw), 'colspan' => 1];
+    }
+
+    /**
+     * @param list<mixed> $titulosRaw
+     * @return list<list<array{texto: string, colspan: int}>>
+     */
+    public static function parseCultivoTitulosPorColumna(array $titulosRaw, int $columnas): array
+    {
+        $columnas = max(1, $columnas);
+        $isFlat = $titulosRaw === [] || ! is_array($titulosRaw[0] ?? null);
+        $out = [];
+
+        for ($c = 0; $c < $columnas; $c++) {
+            if ($isFlat) {
+                $val = (string) ($titulosRaw[$c] ?? '');
+                $out[$c] = $val === '' ? [] : [self::normalizeCultivoTituloCelda($val)];
+            } else {
+                $colRaw = $titulosRaw[$c] ?? [];
+                if (! is_array($colRaw)) {
+                    $val = (string) $colRaw;
+                    $out[$c] = $val === '' ? [] : [self::normalizeCultivoTituloCelda($val)];
+                } else {
+                    $col = [];
+                    foreach ($colRaw as $t) {
+                        $col[] = self::normalizeCultivoTituloCelda($t);
+                    }
+                    $out[$c] = array_slice($col, 0, 20);
+                }
+            }
+        }
+
+        return $out;
+    }
+
+    /**
+     * Máximo de filas de título según índices (conserva huecos al omitir títulos cubiertos).
+     *
+     * @param list<list<array{texto: string, colspan: int}>> $titulosPorCol
+     */
+    public static function maxCultivoTituloFilasPorColumna(array $titulosPorCol, int $columnas): int
+    {
+        $columnas = max(1, $columnas);
+        $maxFilas = 0;
+        for ($c = 0; $c < $columnas; $c++) {
+            $col = $titulosPorCol[$c] ?? [];
+            if (! is_array($col) || $col === []) {
+                continue;
+            }
+            $maxFilas = max($maxFilas, max(array_keys($col)) + 1);
+        }
+
+        return $maxFilas;
+    }
+
+    /**
+     * Filas de thead con colspan para títulos de matriz cultivo.
+     *
+     * @param list<list<array{texto: string, colspan: int}>> $titulosPorCol
+     * @return list<list<array{texto: string, colspan: int}>>
+     */
+    public static function buildCultivoTituloFilasTabla(array $titulosPorCol, int $columnas): array
+    {
+        $columnas = max(1, $columnas);
+        $maxFilas = self::maxCultivoTituloFilasPorColumna($titulosPorCol, $columnas);
+        if ($maxFilas < 1) {
+            return [];
+        }
+
+        $filas = [];
+        for ($tr = 0; $tr < $maxFilas; $tr++) {
+            $fila = [];
+            $cubiertasHasta = 0;
+            for ($c = 0; $c < $columnas; $c++) {
+                if ($c < $cubiertasHasta) {
+                    continue;
+                }
+                $cell = self::normalizeCultivoTituloCelda($titulosPorCol[$c][$tr] ?? null);
+                $colspan = max(1, min($cell['colspan'], $columnas - $c));
+                $fila[] = [
+                    'texto'   => (string) $cell['texto'],
+                    'colspan' => $colspan,
+                ];
+                $cubiertasHasta = $c + $colspan;
+            }
+            $filas[] = $fila;
+        }
+
+        return $filas;
+    }
+
+    public static function cultivoCeldaTieneValor(mixed $val): bool
+    {
+        return trim(strip_tags((string) $val)) !== '';
+    }
+
+    /**
+     * Indica si el título en ($col, $tr) queda cubierto por colspan de otra columna.
+     *
+     * @param list<list<array{texto: string, colspan: int}>> $titulosPorCol
+     */
+    public static function cultivoTituloCeldaEstaCubierta(array $titulosPorCol, int $columnasTotal, int $col, int $tr): bool
+    {
+        $columnasTotal = max(1, $columnasTotal);
+        $cubiertasHasta = 0;
+        for ($c = 0; $c < $columnasTotal; $c++) {
+            if ($c < $cubiertasHasta) {
+                if ($c === $col) {
+                    return true;
+                }
+
+                continue;
+            }
+            $cell = self::normalizeCultivoTituloCelda($titulosPorCol[$c][$tr] ?? null);
+            $colspan = max(1, min((int) $cell['colspan'], $columnasTotal - $c));
+            if ($c !== $col && $c <= $col && $col < $c + $colspan) {
+                return true;
+            }
+            $cubiertasHasta = $c + $colspan;
+        }
+
+        return false;
+    }
+
+    /**
+     * @param list<int> $columnasActivas
+     * @param list<list<array{texto: string, colspan: int}>> $titulosPorCol
+     * @return list<list<array{texto: string, colspan: int}>>
+     */
+    public static function remapCultivoTitulosColumnasActivas(array $titulosPorCol, array $columnasActivas, int $columnasTotal): array
+    {
+        if ($columnasActivas === []) {
+            return [];
+        }
+
+        $activeSet = array_flip($columnasActivas);
+        $newPorCol = [];
+
+        foreach ($columnasActivas as $newC => $oldC) {
+            $stack = is_array($titulosPorCol[$oldC] ?? null) ? $titulosPorCol[$oldC] : [];
+            $newStack = [];
+            foreach ($stack as $tr => $titleCell) {
+                if (self::cultivoTituloCeldaEstaCubierta($titulosPorCol, $columnasTotal, $oldC, (int) $tr)) {
+                    continue;
+                }
+                $cell = self::normalizeCultivoTituloCelda($titleCell);
+                if ((string) $cell['texto'] === '') {
+                    continue;
+                }
+                $spanStart = $oldC;
+                $spanEnd = min($oldC + (int) $cell['colspan'] - 1, $columnasTotal - 1);
+                $firstActiveInSpan = null;
+                for ($oc = $spanStart; $oc <= $spanEnd; $oc++) {
+                    if (isset($activeSet[$oc])) {
+                        $firstActiveInSpan = $oc;
+                        break;
+                    }
+                }
+                if ($firstActiveInSpan !== $oldC) {
+                    continue;
+                }
+                $activeCount = 0;
+                for ($oc = $spanStart; $oc <= $spanEnd; $oc++) {
+                    if (isset($activeSet[$oc])) {
+                        $activeCount++;
+                    }
+                }
+                $cell['colspan'] = max(1, $activeCount);
+                $newStack[(int) $tr] = $cell;
+            }
+            $newPorCol[$newC] = $newStack;
+        }
+
+        for ($nc = 0, $n = count($columnasActivas); $nc < $n; $nc++) {
+            if (! isset($newPorCol[$nc])) {
+                $newPorCol[$nc] = [];
+            }
+        }
+        ksort($newPorCol);
+
+        return array_values($newPorCol);
+    }
+
+    /**
+     * @param list<list<array{texto: string, colspan: int}>> $titulosFilas
+     * @return list<list<array{texto: string, colspan: int}>>
+     */
+    public static function filterEmptyCultivoTituloFilas(array $titulosFilas): array
+    {
+        return array_values(array_filter($titulosFilas, static function (array $fila): bool {
+            foreach ($fila as $th) {
+                if (trim((string) ($th['texto'] ?? '')) !== '') {
+                    return true;
+                }
+            }
+
+            return false;
+        }));
+    }
+
+    /**
+     * Título con colspan que cubre la columna $col en la fila $tr.
+     *
+     * @param list<list<array{texto: string, colspan: int}>> $titulosPorCol
+     * @return array{texto: string, colspan: int}|null
+     */
+    public static function findCultivoTituloSpanSobreColumna(array $titulosPorCol, int $columnasTotal, int $col, int $tr): ?array
+    {
+        $columnasTotal = max(1, $columnasTotal);
+        $cubiertasHasta = 0;
+        for ($c = 0; $c < $columnasTotal; $c++) {
+            if ($c < $cubiertasHasta) {
+                continue;
+            }
+            $cell = self::normalizeCultivoTituloCelda($titulosPorCol[$c][$tr] ?? null);
+            if ((string) $cell['texto'] === '') {
+                $cubiertasHasta = $c + 1;
+
+                continue;
+            }
+            $colspan = max(1, min((int) $cell['colspan'], $columnasTotal - $c));
+            if ($c <= $col && $col < $c + $colspan) {
+                return $cell;
+            }
+            $cubiertasHasta = $c + $colspan;
+        }
+
+        return null;
+    }
+
+    /**
+     * Columna donde inicia el título que cubre ($col, $tr).
+     *
+     * @param list<list<array{texto: string, colspan: int}>> $titulosPorCol
+     */
+    public static function findCultivoTituloSpanColumnaInicio(array $titulosPorCol, int $columnasTotal, int $col, int $tr): ?int
+    {
+        $columnasTotal = max(1, $columnasTotal);
+        $cubiertasHasta = 0;
+        for ($c = 0; $c < $columnasTotal; $c++) {
+            if ($c < $cubiertasHasta) {
+                continue;
+            }
+            $cell = self::normalizeCultivoTituloCelda($titulosPorCol[$c][$tr] ?? null);
+            if ((string) $cell['texto'] === '') {
+                $cubiertasHasta = $c + 1;
+
+                continue;
+            }
+            $colspan = max(1, min((int) $cell['colspan'], $columnasTotal - $c));
+            if ($c <= $col && $col < $c + $colspan) {
+                return $c;
+            }
+            $cubiertasHasta = $c + $colspan;
+        }
+
+        return null;
+    }
+
+    /**
+     * @param list<int> $columnasActivas
+     */
+    public static function countCultivoTituloColumnasActivasEnSpan(
+        array $titulosPorCol,
+        int $columnasTotal,
+        int $colInicio,
+        int $tr,
+        array $columnasActivas
+    ): int {
+        $activeSet = array_flip($columnasActivas);
+        $cell = self::normalizeCultivoTituloCelda($titulosPorCol[$colInicio][$tr] ?? null);
+        if ((string) $cell['texto'] === '') {
+            return 0;
+        }
+        $colspan = max(1, min((int) $cell['colspan'], $columnasTotal - $colInicio));
+        $count = 0;
+        for ($oc = $colInicio; $oc < $colInicio + $colspan; $oc++) {
+            if (isset($activeSet[$oc])) {
+                $count++;
+            }
+        }
+
+        return $count;
+    }
+
+    /**
+     * @param list<list<array{texto: string, colspan: int}>> $titulosPorCol
+     * @param list<list<string>> $filas
+     * @param list<int> $columnasActivas
+     * @return array{
+     *   titulos_banda: list<list<array{texto: string, colspan: int}>>,
+     *   columnas_detalle: list<array{titulos_filas: list<list<array{texto: string, colspan: int}>>, valores: list<string>}>
+     * }
+     */
+    public static function buildCultivoColumnasDetalleParaReporte(
+        array $titulosPorCol,
+        array $filas,
+        array $columnasActivas,
+        int $columnasTotal
+    ): array {
+        if ($columnasActivas === []) {
+            return ['titulos_banda' => [], 'columnas_detalle' => []];
+        }
+
+        $maxTituloFilas = self::maxCultivoTituloFilasPorColumna($titulosPorCol, $columnasTotal);
+        $titulosBanda = [];
+        $trEnBanda = [];
+
+        for ($tr = 0; $tr < $maxTituloFilas; $tr++) {
+            $cubiertasHasta = 0;
+            for ($c = 0; $c < $columnasTotal; $c++) {
+                if ($c < $cubiertasHasta) {
+                    continue;
+                }
+                $cell = self::normalizeCultivoTituloCelda($titulosPorCol[$c][$tr] ?? null);
+                if ((string) $cell['texto'] === '') {
+                    $cubiertasHasta = $c + 1;
+
+                    continue;
+                }
+                $activeInSpan = self::countCultivoTituloColumnasActivasEnSpan(
+                    $titulosPorCol,
+                    $columnasTotal,
+                    $c,
+                    $tr,
+                    $columnasActivas
+                );
+                if ($activeInSpan > 1) {
+                    $titulosBanda[] = [[
+                        'texto'   => (string) $cell['texto'],
+                        'colspan' => $activeInSpan,
+                    ]];
+                    $trEnBanda[$tr] = true;
+                }
+                $colspan = max(1, min((int) $cell['colspan'], $columnasTotal - $c));
+                $cubiertasHasta = $c + $colspan;
+            }
+        }
+
+        $columnasDetalle = [];
+        foreach ($columnasActivas as $oldC) {
+            $valores = [];
+            foreach ($filas as $row) {
+                if (! is_array($row)) {
+                    continue;
+                }
+                $val = $row[$oldC] ?? '';
+                if (self::cultivoCeldaTieneValor($val)) {
+                    $valores[] = (string) $val;
+                }
+            }
+
+            $titulosFilasCol = [];
+            for ($tr = 0; $tr < $maxTituloFilas; $tr++) {
+                if (! empty($trEnBanda[$tr])) {
+                    continue;
+                }
+                if (self::cultivoTituloCeldaEstaCubierta($titulosPorCol, $columnasTotal, $oldC, $tr)) {
+                    $spanCell = self::findCultivoTituloSpanSobreColumna($titulosPorCol, $columnasTotal, $oldC, $tr);
+                    $colInicio = self::findCultivoTituloSpanColumnaInicio($titulosPorCol, $columnasTotal, $oldC, $tr);
+                    if ($spanCell !== null && $colInicio !== null) {
+                        $activeInSpan = self::countCultivoTituloColumnasActivasEnSpan(
+                            $titulosPorCol,
+                            $columnasTotal,
+                            $colInicio,
+                            $tr,
+                            $columnasActivas
+                        );
+                        if ($activeInSpan === 1 && (string) $spanCell['texto'] !== '') {
+                            $titulosFilasCol[] = [[
+                                'texto'   => (string) $spanCell['texto'],
+                                'colspan' => 1,
+                            ]];
+                        }
+                    }
+
+                    continue;
+                }
+                $cell = self::normalizeCultivoTituloCelda($titulosPorCol[$oldC][$tr] ?? null);
+                if ((string) $cell['texto'] !== '') {
+                    $titulosFilasCol[] = [[
+                        'texto'   => (string) $cell['texto'],
+                        'colspan' => 1,
+                    ]];
+                }
+            }
+            $titulosFilasCol = self::filterEmptyCultivoTituloFilas($titulosFilasCol);
+
+            if ($titulosFilasCol === [] && $valores === []) {
+                continue;
+            }
+
+            $columnasDetalle[] = [
+                'titulos_filas' => $titulosFilasCol,
+                'valores'       => $valores,
+            ];
+        }
+
+        return [
+            'titulos_banda'    => $titulosBanda,
+            'columnas_detalle' => $columnasDetalle,
+        ];
+    }
+
+    /**
+     * Compacta filas/columnas para reporte: sin filas vacías, sin columnas sin datos ni sus títulos.
+     *
+     * @param list<list<array{texto: string, colspan: int}>> $titulosPorCol
+     * @param list<list<string>> $filas
+     * @return array{
+     *   columnas: int,
+     *   titulos_por_col: list<list<array{texto: string, colspan: int}>>,
+     *   titulos_filas: list<list<array{texto: string, colspan: int}>>,
+     *   titulos_banda: list<list<array{texto: string, colspan: int}>>,
+     *   columnas_detalle: list<array{titulos_filas: list<list<array{texto: string, colspan: int}>>, valores: list<string>}>,
+     *   filas: list<list<string>>,
+     *   max_titulo_filas: int
+     * }|null
+     */
+    public static function compactCultivoSectionDisplayForReport(array $titulosPorCol, array $filas, int $columnasTotal): ?array
+    {
+        $columnasTotal = max(1, $columnasTotal);
+
+        $columnasActivas = [];
+        for ($c = 0; $c < $columnasTotal; $c++) {
+            foreach ($filas as $row) {
+                if (! is_array($row)) {
+                    continue;
+                }
+                if (self::cultivoCeldaTieneValor($row[$c] ?? '')) {
+                    $columnasActivas[] = $c;
+                    break;
+                }
+            }
+        }
+
+        if ($columnasActivas === []) {
+            return null;
+        }
+
+        $detalle = self::buildCultivoColumnasDetalleParaReporte(
+            $titulosPorCol,
+            $filas,
+            $columnasActivas,
+            $columnasTotal
+        );
+
+        if ($detalle['columnas_detalle'] === []) {
+            return null;
+        }
+
+        $titulosPorColActivos = self::remapCultivoTitulosColumnasActivas($titulosPorCol, $columnasActivas, $columnasTotal);
+        $columnasNuevas = count($columnasActivas);
+        $titulosFilas = self::filterEmptyCultivoTituloFilas(
+            self::buildCultivoTituloFilasTabla($titulosPorColActivos, $columnasNuevas)
+        );
+
+        return [
+            'columnas'         => $columnasNuevas,
+            'titulos_por_col'  => $titulosPorColActivos,
+            'titulos_filas'    => $titulosFilas,
+            'titulos_banda'    => $detalle['titulos_banda'],
+            'columnas_detalle' => $detalle['columnas_detalle'],
+            'filas'            => [],
+            'max_titulo_filas' => count($titulosFilas),
+        ];
+    }
+
+    /**
+     * Normaliza títulos por columna (varios títulos apilados en cada columna).
+     * Acepta formato legado: list<string> (un título por columna).
+     *
+     * @param list<mixed> $oldTitulos
+     * @return list<list<array{texto: string, colspan: int}>>
+     */
+    private function normalizeCultivoTitulosPorColumna(array $oldTitulos, int $columnas): array
+    {
+        return self::parseCultivoTitulosPorColumna($oldTitulos, $columnas);
+    }
+
+    /**
+     * @param array<string, mixed>|null $config
+     * @return array<string, array{filas: int, columnas: int, titulos: list<list<string>>, celdas: list<list<array{modo: string, opcion_id?: int, leyenda_cultivo_categoria_id?: int}>>}>
+     */
+    public function normalizeCultivoMatrizConfig(?array $config): array
+    {
+        $defaults = $this->getDefaultCultivoMatrizConfig();
+        $out = [];
+
+        foreach (['encabezado', 'cuerpo', 'pie'] as $section) {
+            $src = is_array($config[$section] ?? null) ? $config[$section] : [];
+            $filas = max(0, min(50, (int) ($src['filas'] ?? $defaults[$section]['filas'])));
+            $columnas = max(1, min(20, (int) ($src['columnas'] ?? $defaults[$section]['columnas'])));
+            $oldTitulos = is_array($src['titulos'] ?? null) ? $src['titulos'] : [];
+            $oldCeldas = is_array($src['celdas'] ?? null) ? $src['celdas'] : [];
+
+            $titulos = $this->normalizeCultivoTitulosPorColumna($oldTitulos, $columnas);
+
+            $celdas = [];
+            for ($r = 0; $r < $filas; $r++) {
+                $celdas[$r] = [];
+                for ($c = 0; $c < $columnas; $c++) {
+                    $celdas[$r][$c] = $this->normalizeCultivoCelda($oldCeldas[$r][$c] ?? ['modo' => 'texto']);
+                }
+            }
+
+            $out[$section] = [
+                'filas'    => $filas,
+                'columnas' => $columnas,
+                'titulos'  => $titulos,
+                'celdas'   => $celdas,
+            ];
+
+            if ($section === 'cuerpo') {
+                $out[$section]['valores_habilitado'] = (int) ($src['valores_habilitado'] ?? 0) === 1
+                    || ($src['valores_habilitado'] ?? false) === true;
+                $out[$section]['unidades_habilitado'] = (int) ($src['unidades_habilitado'] ?? 0) === 1
+                    || ($src['unidades_habilitado'] ?? false) === true;
+                $out[$section]['unidad'] = trim((string) ($src['unidad'] ?? ''));
+                $aliRaw = trim((string) ($src['alineacion_filas'] ?? 'centro'));
+                if ($aliRaw === 'cuerpo') {
+                    $aliRaw = 'centro';
+                }
+                $out[$section]['alineacion_filas'] = in_array($aliRaw, ['centro', 'bordes'], true)
+                    ? $aliRaw
+                    : 'centro';
+            }
+        }
+
+        return $out;
+    }
+
+    /**
+     * @return array<string, array{filas: int, columnas: int, titulos: list<list<string>>, celdas: list<list<array{modo: string, opcion_id?: int}>>}>
+     */
+    public function getCultivoMatrizConfig(int $prianacategoriaId): array
+    {
+        if (! $this->ensureCultivoMatrizConfigColumn()) {
+            return $this->getDefaultCultivoMatrizConfig();
+        }
+
+        $row = $this->db->table('prianacategoria')
+            ->select('cultivo_matriz_config')
+            ->where('prianacategoria_id', $prianacategoriaId)
+            ->where('(deleted = 0 OR deleted IS NULL)')
+            ->get()
+            ->getRow();
+
+        if (! $row || trim((string) ($row->cultivo_matriz_config ?? '')) === '') {
+            return $this->getDefaultCultivoMatrizConfig();
+        }
+
+        $decoded = json_decode((string) $row->cultivo_matriz_config, true);
+
+        return $this->normalizeCultivoMatrizConfig(is_array($decoded) ? $decoded : null);
+    }
+
+    /**
+     * @param array<string, mixed> $config
+     */
+    public function saveCultivoMatrizConfig(int $prianacategoriaId, array $config): bool
+    {
+        if ($prianacategoriaId < 1 || ! $this->ensureCultivoMatrizConfigColumn()) {
+            return false;
+        }
+
+        $normalized = $this->normalizeCultivoMatrizConfig($config);
+        $json = json_encode($normalized, JSON_UNESCAPED_UNICODE);
+        if ($json === false) {
+            return false;
+        }
+
+        return $this->db->table('prianacategoria')
+            ->where('prianacategoria_id', $prianacategoriaId)
+            ->update(['cultivo_matriz_config' => $json]) !== false;
+    }
+
+    /**
+     * Crea la columna cultivo_matriz_config si la migración aún no corrió en esta BD.
+     */
+    private function ensureCultivoMatrizConfigColumn(): bool
+    {
+        if ($this->hasColumn('prianacategoria', 'cultivo_matriz_config')) {
+            return true;
+        }
+
+        $fullTable = $this->db->prefixTable('prianacategoria');
+        if (! $this->db->tableExists($fullTable)) {
+            return false;
+        }
+
+        try {
+            $column = [
+                'type' => 'MEDIUMTEXT',
+                'null' => true,
+            ];
+            if ($this->hasColumn('prianacategoria', 'mostrar_valores')) {
+                $column['after'] = 'mostrar_valores';
+            } elseif ($this->hasColumn('prianacategoria', 'compleja')) {
+                $column['after'] = 'compleja';
+            }
+
+            \Config\Database::forge($this->db)->addColumn('prianacategoria', [
+                'cultivo_matriz_config' => $column,
+            ]);
+
+            return $this->hasColumn('prianacategoria', 'cultivo_matriz_config', true);
+        } catch (\Throwable $e) {
+            log_message('error', 'ensureCultivoMatrizConfigColumn: {err}', ['err' => $e->getMessage()]);
+
+            return false;
+        }
     }
 
     public function existsCategory(int $id): bool
@@ -453,19 +1153,20 @@ class LabotestModel extends Model
     /**
      * Comprueba si una columna existe en una tabla
      */
-    private function hasColumn(string $table, string $column): bool
+    private function hasColumn(string $table, string $column, bool $refresh = false): bool
     {
         static $cache = [];
         $key = $table . '.' . $column;
-        if (!isset($cache[$key])) {
-            try {
-                $fullTable = $this->db->prefixTable($table);
-                $cols = $this->db->getFieldNames($fullTable);
-                $cache[$key] = in_array($column, $cols, true);
-            } catch (\Throwable $e) {
-                $cache[$key] = false;
-            }
+        if (! $refresh && array_key_exists($key, $cache)) {
+            return $cache[$key];
         }
+        try {
+            $fullTable = $this->db->prefixTable($table);
+            $cache[$key] = $this->db->fieldExists($column, $fullTable);
+        } catch (\Throwable $e) {
+            $cache[$key] = false;
+        }
+
         return $cache[$key];
     }
 

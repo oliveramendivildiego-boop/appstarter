@@ -12,6 +12,13 @@
     'right' => '<a href="' . site_url('labotests/opciones') . '" class="btn btn-outline-primary btn-sm" title="Administrar tipos de resultado"><i class="fa-solid fa-list-check me-1"></i>Tipos resultado</a>'
 ]) ?>
 
+<?php if (session()->getFlashdata('success')): ?>
+<div class="alert alert-success"><?= esc(session()->getFlashdata('success')) ?></div>
+<?php endif; ?>
+<?php if (session()->getFlashdata('error')): ?>
+<div class="alert alert-danger"><?= esc(session()->getFlashdata('error')) ?></div>
+<?php endif; ?>
+
 <?= form_open('labotests/savesub', ['id' => 'detail_form']) ?>
 <input type="hidden" id="prianacategoria_id" name="prianacategoria_id" value="<?= (int)($labotests_info->prianacategoria_id ?? 0) ?>">
 <input type="hidden" id="anacategoria_id" name="anacategoria_id" value="<?= (int)($labotests_info->anacategoria_id ?? 0) ?>">
@@ -20,59 +27,16 @@
 
 <?= form_close() ?>
 
-<script>
-(function() {
-    var detailForm = document.getElementById('detail_form');
-    if (!detailForm) return;
-    detailForm.addEventListener('submit', function(e) {
-        e.preventDefault();
-        var submitBtn = detailForm.querySelector('button[type="submit"]');
-        var originalHtml = submitBtn ? submitBtn.innerHTML : '';
-        if (submitBtn) {
-            submitBtn.disabled = true;
-            submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span>Guardando...';
-        }
-
-        var fd = new FormData(detailForm);
-        fetch(detailForm.action, {
-            method: 'POST',
-            body: fd,
-            headers: { 'X-Requested-With': 'XMLHttpRequest' }
-        }).then(function(r) {
-            return r.json().then(function(d) {
-                return { ok: r.ok, data: d || {} };
-            });
-        }).then(function(result) {
-            var d = result.data || {};
-            if (d.csrf_token && d.csrf_name) {
-                if (typeof window.CI_CSRF_TOKEN !== 'undefined') window.CI_CSRF_TOKEN = d.csrf_token;
-                if (typeof window.CI_CSRF_TOKEN_NAME !== 'undefined') window.CI_CSRF_TOKEN_NAME = d.csrf_name;
-                document.querySelectorAll('input[name*="csrf"]').forEach(function(inp) {
-                    inp.name = d.csrf_name;
-                    inp.value = d.csrf_token;
-                });
-            }
-            if (typeof showToast === 'function') {
-                showToast(d.message || (result.ok ? 'Guardado correctamente' : 'No se pudo guardar'), result.ok ? 'success' : 'error');
-            }
-        }).catch(function() {
-            if (typeof showToast === 'function') {
-                showToast('Error al guardar', 'error');
-            }
-        }).finally(function() {
-            if (submitBtn) {
-                submitBtn.disabled = false;
-                submitBtn.innerHTML = originalHtml;
-            }
-        });
-    });
-})();
-</script>
-
 <div class="card mt-3">
     <div class="card-header d-flex justify-content-between align-items-center">
         <strong><i class="fa-solid fa-file-arrow-up me-1"></i>Exportar / Importar configuración</strong>
-        <span class="badge bg-secondary"><?= ($compleja ?? 0) ? 'Prueba compuesta' : 'Prueba no compuesta' ?></span>
+        <span class="badge bg-secondary"><?php
+            echo match ((int) ($compleja ?? 0)) {
+                1 => 'Prueba compuesta',
+                2 => 'Cultivo',
+                default => 'Prueba simple',
+            };
+        ?></span>
     </div>
     <div class="card-body">
         <p class="text-muted mb-3">
@@ -201,7 +165,7 @@
     </div>
 </div>
 
-<?php if ($compleja ?? 0): ?>
+<?php if (($compleja ?? 0) === 1): ?>
 <?php
 $refsPorNombre = [];   // nombre -> c_id o constante (para guardado)
 $refsCidToNombre = []; // c_id -> nombre (para carga)
@@ -1560,6 +1524,13 @@ if ($fe !== '') {
         </script>
     </div>
 </div>
+<?php elseif (($compleja ?? 0) === 2): ?>
+<?= view('labotests/partial_detail_cultivo_matriz', [
+    'labotests_info' => $labotests_info,
+    'cultivo_matriz' => $cultivo_matriz ?? [],
+    'opciones'       => $opciones ?? [],
+    'leyendas_cultivo' => $leyendas_cultivo ?? [],
+]) ?>
 <?php else: ?>
 <?= view('labotests/partial_detail_pri_resultados', get_defined_vars()) ?>
 <?php endif; ?>

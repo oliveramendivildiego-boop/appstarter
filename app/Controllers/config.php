@@ -7,6 +7,8 @@ use App\Models\OpcionModel;
 use App\Models\PoblacionModel;
 use App\Models\ReportPdfTemplateModel;
 use App\Models\EnvelopeTemplateModel;
+use App\Models\LeyendaCultivoModel;
+use App\Models\LeyendaCultivoCategoriaModel;
 use App\Models\MetodoModel;
 use App\Models\TipoMuestraModel;
 use App\Models\CustomerModel;
@@ -34,6 +36,8 @@ class Config extends SecureArea
     protected OpcionModel $opcionModel;
     protected TipoMuestraModel $tipoMuestraModel;
     protected MetodoModel $metodoModel;
+    protected LeyendaCultivoModel $leyendaCultivoModel;
+    protected LeyendaCultivoCategoriaModel $leyendaCultivoCategoriaModel;
     protected CustomerModel $customerModel;
     protected TenantResolver $tenantResolver;
 
@@ -47,6 +51,8 @@ class Config extends SecureArea
         $this->opcionModel        = model(OpcionModel::class);
         $this->tipoMuestraModel   = model(TipoMuestraModel::class);
         $this->metodoModel        = model(MetodoModel::class);
+        $this->leyendaCultivoModel = model(LeyendaCultivoModel::class);
+        $this->leyendaCultivoCategoriaModel = model(LeyendaCultivoCategoriaModel::class);
         $this->customerModel      = model(CustomerModel::class);
     }
 
@@ -125,6 +131,38 @@ class Config extends SecureArea
             }
         }
 
+        $editarLeyendaCultivoId = (int) ($this->request->getGet('editar_leyenda_cultivo') ?? 0);
+        $editarLeyendaCultivoData = [];
+        $leyendasCultivoLista = [];
+        $leyendasCultivoCategorias = [];
+        $editarLeyendaCultivoCategoriaId = (int) ($this->request->getGet('editar_leyenda_cultivo_categoria') ?? 0);
+        $editarLeyendaCultivoCategoriaData = [];
+        try {
+            $this->leyendaCultivoCategoriaModel->ensureTable();
+            $this->leyendaCultivoModel->ensureTable();
+            $leyendasCultivoCategorias = $this->leyendaCultivoCategoriaModel->getAll();
+            $leyendasCultivoLista = $this->leyendaCultivoModel->getAll();
+        } catch (\Throwable $e) {
+            $leyendasCultivoLista = [];
+            $leyendasCultivoCategorias = [];
+        }
+        if ($editarLeyendaCultivoId > 0) {
+            $rowLc = $this->leyendaCultivoModel->getById($editarLeyendaCultivoId);
+            if (is_array($rowLc)) {
+                $editarLeyendaCultivoData = $rowLc;
+            } else {
+                $editarLeyendaCultivoId = 0;
+            }
+        }
+        if ($editarLeyendaCultivoCategoriaId > 0) {
+            $rowCat = $this->leyendaCultivoCategoriaModel->getById($editarLeyendaCultivoCategoriaId);
+            if (is_array($rowCat)) {
+                $editarLeyendaCultivoCategoriaData = $rowCat;
+            } else {
+                $editarLeyendaCultivoCategoriaId = 0;
+            }
+        }
+
         $opcionesPageData = $this->loadOpcionesPageForView($this->resolveOpcionesPage(), 10);
         $opciones = $opcionesPageData['items'];
         $tenants = $this->tenantConfigService->getAll();
@@ -155,6 +193,15 @@ class Config extends SecureArea
         }
         if ($editarMetodoId > 0) {
             $tab = 'metodos_prueba';
+        }
+        if ($editarLeyendaCultivoId > 0) {
+            $tab = 'leyendas_cultivo';
+        }
+        if ($editarLeyendaCultivoCategoriaId > 0) {
+            $tab = 'leyendas_cultivo';
+        }
+        if (($this->request->getGet('tab') ?: '') === 'leyendas_cultivo') {
+            $tab = 'leyendas_cultivo';
         }
         if (($this->request->getGet('tab') ?: '') === 'tenant-subscriptions') {
             $tab = 'tenant_subscriptions';
@@ -243,6 +290,12 @@ class Config extends SecureArea
             'metodos_prueba'       => $metodosLista,
             'editar_metodo'        => $editarMetodoId,
             'editar_metodo_data'   => $editarMetodoData,
+            'leyendas_cultivo'     => $leyendasCultivoLista,
+            'leyendas_cultivo_categorias' => $leyendasCultivoCategorias,
+            'editar_leyenda_cultivo' => $editarLeyendaCultivoId,
+            'editar_leyenda_cultivo_data' => $editarLeyendaCultivoData,
+            'editar_leyenda_cultivo_categoria' => $editarLeyendaCultivoCategoriaId,
+            'editar_leyenda_cultivo_categoria_data' => $editarLeyendaCultivoCategoriaData,
             'opciones'             => $opciones,
             'opciones_pagination'  => $opcionesPageData['pagination'],
             'tenants'              => $tenants,
@@ -675,6 +728,134 @@ class Config extends SecureArea
         }
 
         return redirect()->to('config?tab=metodos_prueba')->with($result['success'] ? 'success' : 'error', $result['message']);
+    }
+
+    public function saveLeyendaCultivo()
+    {
+        $id = (int) ($this->request->getPost('leyenda_cultivo_id') ?? 0);
+        $titulo = trim((string) ($this->request->getPost('titulo') ?? ''));
+        $categoriaId = (int) ($this->request->getPost('leyenda_cultivo_categoria_id') ?? 0);
+        if ($titulo === '') {
+            return redirect()->to('config?tab=leyendas_cultivo')->with('error', 'El título es obligatorio.');
+        }
+        if ($categoriaId < 1) {
+            return redirect()->to('config?tab=leyendas_cultivo' . ($id > 0 ? '&editar_leyenda_cultivo=' . $id : ''))
+                ->with('error', 'Debe seleccionar una categoría.');
+        }
+
+        $data = [
+            'leyenda_cultivo_categoria_id' => $categoriaId,
+            'titulo'  => $titulo,
+            'mensaje' => (string) ($this->request->getPost('mensaje') ?? ''),
+            'activo'  => (int) ($this->request->getPost('activo') ?? 1),
+        ];
+
+        try {
+            if (! $this->leyendaCultivoModel->ensureTable()) {
+                return redirect()->to('config?tab=leyendas_cultivo' . ($id > 0 ? '&editar_leyenda_cultivo=' . $id : ''))
+                    ->with('error', 'No se pudo preparar la tabla leyendas_cultivo. Revise permisos de base de datos o ejecute php spark migrate.');
+            }
+            $ok = $this->leyendaCultivoModel->saveLeyenda($data, $id > 0 ? $id : null);
+        } catch (\Throwable $e) {
+            log_message('error', 'saveLeyendaCultivo: {err}', ['err' => $e->getMessage()]);
+
+            return redirect()->to('config?tab=leyendas_cultivo' . ($id > 0 ? '&editar_leyenda_cultivo=' . $id : ''))
+                ->with('error', 'Error al guardar: ' . $e->getMessage());
+        }
+
+        if (! $ok) {
+            return redirect()->to('config?tab=leyendas_cultivo' . ($id > 0 ? '&editar_leyenda_cultivo=' . $id : ''))
+                ->with('error', 'No se pudo guardar la leyenda de cultivo.');
+        }
+
+        \App\Models\AuditoriaModel::log('config', $id > 0 ? 'leyenda_cultivo_actualizar' : 'leyenda_cultivo_crear', $id > 0 ? (string) $id : null);
+
+        return redirect()->to('config?tab=leyendas_cultivo')->with('success', 'Leyenda de cultivo guardada correctamente.');
+    }
+
+    public function deleteLeyendaCultivo($id = 0)
+    {
+        $id = (int) $id;
+        if ($id < 1) {
+            return redirect()->to('config?tab=leyendas_cultivo')->with('error', 'ID inválido.');
+        }
+
+        try {
+            $ok = $this->leyendaCultivoModel->softDelete($id);
+        } catch (\Throwable $e) {
+            return redirect()->to('config?tab=leyendas_cultivo')->with('error', 'No se pudo eliminar.');
+        }
+
+        if ($ok) {
+            \App\Models\AuditoriaModel::log('config', 'leyenda_cultivo_eliminar', (string) $id);
+
+            return redirect()->to('config?tab=leyendas_cultivo')->with('success', 'Leyenda de cultivo eliminada.');
+        }
+
+        return redirect()->to('config?tab=leyendas_cultivo')->with('error', 'No se pudo eliminar.');
+    }
+
+    public function saveLeyendaCultivoCategoria()
+    {
+        $id = (int) ($this->request->getPost('leyenda_cultivo_categoria_id') ?? 0);
+        $nombre = trim((string) ($this->request->getPost('nombre') ?? ''));
+        if ($nombre === '') {
+            return redirect()->to('config?tab=leyendas_cultivo')->with('error', 'El nombre de la categoría es obligatorio.');
+        }
+
+        $data = [
+            'nombre' => $nombre,
+            'activo' => (int) ($this->request->getPost('activo') ?? 1),
+        ];
+
+        try {
+            if (! $this->leyendaCultivoCategoriaModel->ensureTable()) {
+                return redirect()->to('config?tab=leyendas_cultivo' . ($id > 0 ? '&editar_leyenda_cultivo_categoria=' . $id : ''))
+                    ->with('error', 'No se pudo preparar la tabla de categorías.');
+            }
+            $ok = $this->leyendaCultivoCategoriaModel->saveCategoria($data, $id > 0 ? $id : null);
+        } catch (\Throwable $e) {
+            log_message('error', 'saveLeyendaCultivoCategoria: {err}', ['err' => $e->getMessage()]);
+
+            return redirect()->to('config?tab=leyendas_cultivo' . ($id > 0 ? '&editar_leyenda_cultivo_categoria=' . $id : ''))
+                ->with('error', 'Error al guardar: ' . $e->getMessage());
+        }
+
+        if (! $ok) {
+            return redirect()->to('config?tab=leyendas_cultivo' . ($id > 0 ? '&editar_leyenda_cultivo_categoria=' . $id : ''))
+                ->with('error', 'No se pudo guardar la categoría.');
+        }
+
+        \App\Models\AuditoriaModel::log('config', $id > 0 ? 'leyenda_cultivo_categoria_actualizar' : 'leyenda_cultivo_categoria_crear', $id > 0 ? (string) $id : null);
+
+        return redirect()->to('config?tab=leyendas_cultivo')->with('success', 'Categoría guardada correctamente.');
+    }
+
+    public function deleteLeyendaCultivoCategoria($id = 0)
+    {
+        $id = (int) $id;
+        if ($id < 1) {
+            return redirect()->to('config?tab=leyendas_cultivo')->with('error', 'ID inválido.');
+        }
+
+        try {
+            $count = $this->leyendaCultivoCategoriaModel->countLeyendasEnCategoria($id);
+            if ($count > 0) {
+                return redirect()->to('config?tab=leyendas_cultivo')
+                    ->with('error', 'No se puede eliminar: la categoría tiene ' . $count . ' leyenda(s) asociada(s).');
+            }
+            $ok = $this->leyendaCultivoCategoriaModel->softDelete($id);
+        } catch (\Throwable $e) {
+            return redirect()->to('config?tab=leyendas_cultivo')->with('error', 'No se pudo eliminar.');
+        }
+
+        if ($ok) {
+            \App\Models\AuditoriaModel::log('config', 'leyenda_cultivo_categoria_eliminar', (string) $id);
+
+            return redirect()->to('config?tab=leyendas_cultivo')->with('success', 'Categoría eliminada.');
+        }
+
+        return redirect()->to('config?tab=leyendas_cultivo')->with('error', 'No se pudo eliminar.');
     }
 
     /**

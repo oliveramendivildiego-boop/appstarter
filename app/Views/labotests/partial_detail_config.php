@@ -27,8 +27,9 @@
             <div class="col-md-6 mb-3">
                 <label for="compleja" class="form-label"><?= lang('Labotests.labotests_compuesta') ?></label>
                 <select name="compleja" id="compleja" class="form-control">
-                    <option value="0" <?= (($labotests_info->compleja ?? 0) == 0 ? 'selected' : '') ?>><?= lang('Labotests.labotests_no') ?></option>
-                    <option value="1" <?= (($labotests_info->compleja ?? 0) == 1 ? 'selected' : '') ?>><?= lang('Labotests.labotests_yes') ?></option>
+                    <option value="0" <?= ((int) ($labotests_info->compleja ?? 0) === 0 ? 'selected' : '') ?>><?= lang('Labotests.labotests_no') ?></option>
+                    <option value="1" <?= ((int) ($labotests_info->compleja ?? 0) === 1 ? 'selected' : '') ?>><?= lang('Labotests.labotests_yes') ?></option>
+                    <option value="2" <?= ((int) ($labotests_info->compleja ?? 0) === 2 ? 'selected' : '') ?>>Cultivo</option>
                 </select>
             </div>
             <div class="col-md-6 mb-3">

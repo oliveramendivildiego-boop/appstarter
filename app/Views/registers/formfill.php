@@ -257,9 +257,26 @@ foreach ($pruebas_info ?? [] as $prueba):
             echo '<input type="text" ' . $attrs . '><span class="invalid-feedback d-block" data-msg-for="noc_' . esc($rid) . '"></span>';
             echo '</div></div>';
         endif;
+    elseif (($prueba['compleja'] ?? 0) == 2):
+        $prianacategoriaIdCultivo = (int) ($prueba['prianacategoria_id'] ?? 0);
+        echo view('registers/partial_cultivo_fill', [
+            'prianacategoria_id' => $prianacategoriaIdCultivo,
+            'titulo_prueba'      => (string) ($prueba['hijo'] ?? ''),
+            'existentes'         => $existentes,
+            'registerModel'      => $registerModel,
+        ]);
     else:
         $prianacategoriaId = (int)($prueba['prianacategoria_id'] ?? 0);
-        $valores = $valoresTmp;
+        $valores = $valoresTmp ?? [];
+        if ($valores === []) {
+            $valores = $registerModel
+                ? $registerModel->getValoresComplejaSiempre(
+                    $prianacategoriaId,
+                    $matching_poblacion_ids ?? [],
+                    isset($register_info->gender) ? (int) $register_info->gender : null
+                )
+                : [];
+        }
         $nombreToCid = [];
         foreach ($valores as $vv) {
             if (! empty($vv['es_separador'])) {
@@ -654,6 +671,51 @@ document.addEventListener('DOMContentLoaded', function() {
             if (!id) return;
             datos.push({ id: id, valor: valor, registro_id: registroId });
         });
+
+        var cultivoInputs = document.querySelectorAll('.cultivo-celda-input');
+        cultivoInputs.forEach(function(el) {
+            var priId = el.getAttribute('data-prianacategoria-id');
+            var sec = el.getAttribute('data-seccion');
+            var fila = parseInt(el.getAttribute('data-fila'), 10);
+            var col = parseInt(el.getAttribute('data-columna'), 10);
+            if (!priId || !sec || isNaN(fila) || isNaN(col)) return;
+            var valor = (el.value || '').trim();
+            if (valor === '') return;
+            var registroIdCv = document.getElementById('registro_id').value;
+            if (!registroIdCv) return;
+            datos.push({
+                id: 'cv_' + priId + '_' + sec + '_' + fila + '_' + col,
+                valor: valor,
+                registro_id: registroIdCv
+            });
+        });
+
+        function pushCultivoAux(selector, prefix) {
+            document.querySelectorAll(selector).forEach(function(el) {
+                var priId = el.getAttribute('data-prianacategoria-id');
+                var sec = el.getAttribute('data-seccion');
+                var fila = parseInt(el.getAttribute('data-fila'), 10);
+                var col = parseInt(el.getAttribute('data-columna'), 10);
+                if (!priId || !sec || isNaN(fila) || isNaN(col)) return;
+                var valor = (el.value || '').trim();
+                if (valor === '') return;
+                var registroIdAux = document.getElementById('registro_id').value;
+                if (!registroIdAux) return;
+                datos.push({
+                    id: prefix + priId + '_' + sec + '_' + fila + '_' + col,
+                    valor: valor,
+                    registro_id: registroIdAux
+                });
+            });
+        }
+        pushCultivoAux('.cultivo-celda-valor-fill', 'cvn_');
+
+        if (datos.length === 0) {
+            uiAlert('No hay datos para guardar. Complete al menos un campo de resultado.', 'Aviso');
+            if (submitBtn) submitBtn.disabled = false;
+            return;
+        }
+
         var registroIdF = document.getElementById('registro_id').value;
         document.querySelectorAll('.lab-registro-firmas-grupo').forEach(function(wrap) {
             var grpKey = (wrap.getAttribute('data-grp-key') || '').trim();
@@ -706,7 +768,7 @@ document.addEventListener('DOMContentLoaded', function() {
             }
             if (res && res.success) {
                 var rid = document.getElementById('registro_id').value;
-                window.location.href = '<?= site_url('registers/viewreport') ?>/' + rid;
+                window.location.href = '<?= site_url('registers/view') ?>/' + rid;
             } else {
                 uiAlert(res && res.message ? res.message : 'Error al guardar', 'Error');
                 if (submitBtn) submitBtn.disabled = false;

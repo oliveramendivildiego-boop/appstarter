@@ -7,6 +7,7 @@ use App\Models\LabotestReactivoConfigModel;
 use App\Models\OpcionModel;
 use App\Models\PerfilExamenModel;
 use App\Models\ReactivoModel;
+use App\Models\LeyendaCultivoModel;
 use App\Models\MetodoModel;
 use App\Models\TipoMuestraModel;
 use CodeIgniter\HTTP\ResponseInterface;
@@ -139,6 +140,7 @@ class Labotests extends SecureArea
         $compleja = (int) ($subInfo->compleja ?? 0);
         $subItems = [];
         $priresultados = [];
+        $cultivoMatriz = [];
         $poblaciones = $this->labotestModel->getPoblaciones();
         $formulas = $this->labotestModel->getFormulas();
         try {
@@ -162,18 +164,26 @@ class Labotests extends SecureArea
             $formulasIdCanonical[$fid] = $nombresVistos[$nombre];
         }
         $opciones = $this->labotestModel->getOpciones();
+        $leyendasCultivo = [];
+        try {
+            $leyendasCultivo = model(LeyendaCultivoModel::class)->getActivas();
+        } catch (\Throwable $e) {
+            $leyendasCultivo = [];
+        }
 
         $editarSec = (int) ($this->request->getGet('editar') ?? 0);
         $editarPri = (int) ($this->request->getGet('editarpri') ?? 0);
         $editarSecData = [];
         $editarPriData = [];
 
-        if ($compleja) {
+        if ($compleja === LabotestModel::COMPLEJA_COMPOUESTA) {
             $subItems = $this->labotestModel->getSubItems($prianacategoriaId);
             if ($editarSec > 0) {
                 $secRows = array_filter($subItems, fn($s) => (int)($s['secanacategoria_id'] ?? 0) === $editarSec);
                 $editarSecData = $secRows ? reset($secRows) : [];
             }
+        } elseif ($compleja === LabotestModel::COMPLEJA_CULTIVO) {
+            $cultivoMatriz = $this->labotestModel->getCultivoMatrizConfig($prianacategoriaId);
         } else {
             $priresultados = $this->labotestModel->getPriResultados($prianacategoriaId);
             if ($editarPri > 0) {
@@ -209,6 +219,7 @@ class Labotests extends SecureArea
             'compleja'          => $compleja,
             'sub_items'         => $subItems,
             'priresultados'     => $priresultados,
+            'cultivo_matriz'    => $cultivoMatriz,
             'poblaciones'       => $poblaciones,
             'formulas'               => $formulas,
             'formulas_creadas'       => $formulasCreadas,
@@ -216,6 +227,7 @@ class Labotests extends SecureArea
             'formulas_con_expresion' => $formulasConExpresion ?? [],
             'formulas_con_expresion_deduped' => $formulasConExpresionDeduped,
             'opciones'               => $opciones,
+            'leyendas_cultivo'       => $leyendasCultivo,
             'tipos_muestra'          => $this->loadTiposMuestraForForms(),
             'metodos_prueba'         => $this->loadMetodosForForms(),
             'editar_sec'        => $editarSec,
@@ -311,6 +323,8 @@ class Labotests extends SecureArea
         $name     = $this->request->getPost('name') ?? '';
         $order    = (int) ($this->request->getPost('order') ?? 0);
         $compleja = (int) ($this->request->getPost('compleja') ?? 0);
+        $cost     = (int) ($this->request->getPost('cost') ?? 0);
+        $costDeriv= (int) ($this->request->getPost('cost_deriv') ?? 0);
         $mostrarValores = (int) ($this->request->getPost('mostrar_valores') ?? 0);
         $prianacategoriaId = (int) ($this->request->getPost('prianacategoria_id') ?? 0);
 
@@ -321,6 +335,8 @@ class Labotests extends SecureArea
         $data = [
             'name'           => $name,
             'order'          => $order,
+            'cost'           => $cost,
+            'cost_deriv'     => $costDeriv,
             'compleja'       => $compleja,
             'mostrar_valores'=> $mostrarValores ? 1 : 0,
             'anacategoria_id'=> $anacategoriaId,
@@ -438,6 +454,63 @@ class Labotests extends SecureArea
             $this->labotestModel->updateFormulaExpresion($formulasId, $formulaExpresion);
         }
         return redirect()->to("labotests/detail/{$prianacategoriaId}")->with('success', 'Sub-clase guardada correctamente');
+    }
+
+    /**
+     * Guardar matriz de cultivo (encabezado, cuerpo, pie).
+     */
+    public function saveCultivoMatriz()
+    {
+        $prianacategoriaId = (int) ($this->request->getPost('prianacategoria_id') ?? 0);
+        $subInfo = $this->labotestModel->getSubInfo($prianacategoriaId);
+        $isAjax = $this->request->isAJAX();
+
+        $respond = static function (bool $success, string $message, int $status = 200) use ($isAjax, $prianacategoriaId) {
+            if ($isAjax) {
+                return service('response')->setJSON([
+                    'success'    => $success,
+                    'message'    => $message,
+                    'csrf_token' => csrf_hash(),
+                    'csrf_name'  => csrf_token(),
+                    'reload'     => $success,
+                ])->setStatusCode($status);
+            }
+
+            return redirect()->to("labotests/detail/{$prianacategoriaId}")
+                ->with($success ? 'success' : 'error', $message);
+        };
+
+        if ($prianacategoriaId < 1 || (int) ($subInfo->compleja ?? 0) !== LabotestModel::COMPLEJA_CULTIVO) {
+            return $respond(false, 'La prueba no es de tipo cultivo', 400);
+        }
+
+        $json = $this->request->getPost('cultivo_matriz_json');
+        if (! is_string($json) || trim($json) === '') {
+            $json = (string) ($_POST['cultivo_matriz_json'] ?? '');
+        }
+
+        $config = is_string($json) && trim($json) !== '' ? json_decode($json, true) : null;
+        if (! is_array($config)) {
+            $detail = json_last_error_msg();
+            $msg = 'Configuración de matriz inválida';
+            if ($detail !== '' && $detail !== 'No error') {
+                $msg .= ': ' . $detail;
+            }
+            return $respond(false, $msg, 400);
+        }
+
+        if (! $this->labotestModel->saveCultivoMatrizConfig($prianacategoriaId, $config)) {
+            return $respond(false, 'No se pudo guardar la matriz. Verifique migraciones (cultivo_matriz_config).', 500);
+        }
+
+        \App\Models\AuditoriaModel::log(
+            'labotests',
+            'guardar_matriz_cultivo',
+            (string) $prianacategoriaId,
+            \App\Models\AuditoriaModel::detail(['nombre' => $subInfo->name ?? ''])
+        );
+
+        return $respond(true, 'Matriz de cultivo guardada correctamente');
     }
 
     /**

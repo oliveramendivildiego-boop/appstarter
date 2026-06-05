@@ -10,6 +10,9 @@
 .viewreport-pdf-shell { width: 100%; overflow-x: auto; }
 .viewreport-pdf-shell .pdf-watermark-layer { z-index: 0; }
 .viewreport-pdf-shell .pdf-main-stack { position: relative; z-index: 1; }
+body.js-total-pages-ready .pdf-counter-pages::before {
+    content: '' !important;
+}
 </style>
 <?= $this->endSection() ?>
 
@@ -45,7 +48,9 @@ $qr_data_uri = qr_base64($reportUrl, $qrPx);
 ?>
 <div class="viewreport-pdf-shell">
     <div class="viewreport-pdf-sheet">
-        <?= view('registers/pdf/report_document', [
+        <?php
+        ob_start();
+        echo view('registers/pdf/report_document', [
             'pdf_layout'                      => $pdf_layout ?? [],
             'register_info'                   => $register_info,
             'paciente'                        => $paciente,
@@ -62,7 +67,9 @@ $qr_data_uri = qr_base64($reportUrl, $qrPx);
             'report_lab_firmas'               => $report_lab_firmas ?? [],
             'report_pria_refs_consolidada'    => $report_pria_refs_consolidada ?? [],
             'analisis_variant'                => 'screen_pdf',
-        ]) ?>
+        ]);
+        echo \App\Services\RegisterService::replaceTotalPagesTokenForBrowser(ob_get_clean());
+        ?>
     </div>
 </div>
 <?php endif; ?>
@@ -108,8 +115,54 @@ $qr_data_uri = qr_base64($reportUrl, $qrPx);
 <?= $this->endSection() ?>
 
 <?= $this->section('scripts') ?>
+<?php
+$plView = is_array($pdf_layout ?? null) ? $pdf_layout : [];
+$mmView = is_array($plView['margins_mm'] ?? null)
+    ? $plView['margins_mm']
+    : \App\Services\ReportPdfLayoutService::defaultMarginsMmStatic();
+$mtView = (float) ($mmView['top'] ?? 15);
+$mbView = (float) ($mmView['bottom'] ?? 15);
+$printPaperView = strtolower((string) (($lab_config ?? [])['print_paper_size'] ?? 'letter'));
+if (! in_array($printPaperView, ['letter', 'a4', 'legal', 'custom'], true)) {
+    $printPaperView = 'letter';
+}
+$printPaperCustomHView = max(50.0, min(999.0, (float) (($lab_config ?? [])['print_paper_height_mm'] ?? 297)));
+$printPageHeightMmView = $printPaperView === 'a4'
+    ? 297.0
+    : ($printPaperView === 'legal' ? 355.6 : ($printPaperView === 'custom' ? $printPaperCustomHView : 279.4));
+?>
 <script>
 document.addEventListener('DOMContentLoaded', function() {
+    var MM_TO_PX = 96 / 25.4;
+    var PAGE_HEIGHT_MM = <?= json_encode($printPageHeightMmView) ?>;
+    var marginTopMm = <?= json_encode($mtView) ?>;
+    var marginBottomMm = <?= json_encode($mbView) ?>;
+
+    function estimateTotalPagesForView() {
+        var content = document.querySelector('.viewreport-pdf-sheet .pdf-main-stack') || document.querySelector('.pdf-main-stack');
+        if (!content) {
+            return 1;
+        }
+        var printableHeightMm = PAGE_HEIGHT_MM - marginTopMm - marginBottomMm;
+        if (!isFinite(printableHeightMm) || printableHeightMm <= 0) printableHeightMm = 240;
+        var printablePx = printableHeightMm * MM_TO_PX;
+        if (!isFinite(printablePx) || printablePx <= 0) printablePx = 900;
+        var total = Math.ceil(content.scrollHeight / printablePx);
+        if (!isFinite(total) || total < 1) total = 1;
+        return total;
+    }
+
+    function applyBrowserTotalPages() {
+        var total = estimateTotalPagesForView();
+        document.querySelectorAll('.pdf-counter-pages').forEach(function(el) {
+            el.textContent = String(total);
+        });
+        document.body.classList.add('js-total-pages-ready');
+    }
+
+    applyBrowserTotalPages();
+    window.addEventListener('resize', applyBrowserTotalPages);
+
     function bindPrintWindow(btnId, windowName) {
         var btn = document.getElementById(btnId);
         if (!btn) {
