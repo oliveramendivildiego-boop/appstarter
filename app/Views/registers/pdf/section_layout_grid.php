@@ -284,7 +284,7 @@ $sectionWrapperStyle = trim((string) ($section_wrapper_style ?? ''));
 echo $sectionWrapperStyle !== '' ? ' style="' . esc($sectionWrapperStyle, 'attr') . '"' : '';
 ?>>
 <?php foreach ($rows as $row): ?>
-<table class="pdf-section-table" width="100%" data-pdf-lh="1" style="table-layout:fixed;border-collapse:collapse;margin-bottom:6px;line-height:<?= esc((string) $lineHeight, 'attr') ?>;">
+<table class="pdf-section-table" width="100%" data-pdf-lh="1" style="table-layout:fixed;border-collapse:collapse;line-height:<?= esc((string) $lineHeight, 'attr') ?>;">
     <tr>
 <?php
     $colspans = $row['colspans'];

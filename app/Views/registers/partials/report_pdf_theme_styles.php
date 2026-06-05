@@ -42,6 +42,15 @@ $lfColBorderW = max(0, min(4, $lfColBorderW));
 $lfColBorderColor = (string) ($lf['column_border_color'] ?? '#DDDDDD');
 $hg = \App\Services\ReportPdfLayoutService::normalizeHeaderGridStyle($ps['header_grid'] ?? []);
 $pd = \App\Services\ReportPdfLayoutService::normalizePatientDoctorGridStyle($ps['patient_doctor_grid'] ?? []);
+$secLayoutsTheme = is_array($pl['section_layouts'] ?? null) ? $pl['section_layouts'] : \App\Services\ReportPdfLayoutService::defaultSectionLayoutsStatic();
+$hgSecLayout = is_array($secLayoutsTheme['header'] ?? null) ? $secLayoutsTheme['header'] : [];
+$pdSecLayout = is_array($secLayoutsTheme['patient_doctor'] ?? null) ? $secLayoutsTheme['patient_doctor'] : [];
+$ftSecLayout = is_array($secLayoutsTheme['footer'] ?? null) ? $secLayoutsTheme['footer'] : [];
+$lfSecLayout = is_array($secLayoutsTheme['lab_firmas'] ?? null) ? $secLayoutsTheme['lab_firmas'] : [];
+$hgRowGapPx  = max(0, min(40, (int) ($hgSecLayout['row_gap_px'] ?? 6)));
+$pdRowGapPx  = max(0, min(40, (int) ($pdSecLayout['row_gap_px'] ?? 2)));
+$ftRowGapPx  = max(0, min(40, (int) ($ftSecLayout['row_gap_px'] ?? 6)));
+$lfRowGapPx  = max(0, min(40, (int) ($lfSecLayout['row_gap_px'] ?? 6)));
 $ft = \App\Services\ReportPdfLayoutService::normalizeFooterGridStyle($ps['footer_grid'] ?? []);
 $hgBodyBg = ! empty($hg['body_transparent']) ? 'transparent' : (string) $hg['body_bg_color'];
 $pdBodyBg = ! empty($pd['body_transparent']) ? 'transparent' : (string) $pd['body_bg_color'];
@@ -189,6 +198,7 @@ body { margin: <?= esc((string) $mt) ?>mm <?= esc((string) $mr) ?>mm <?= esc((st
     --pdf-hg-font-style: <?= esc($hg['font_style']) ?>;
     --pdf-hg-transform: <?= esc($hg['text_transform']) ?>;
     --pdf-hg-line-height: <?= esc((string) $hg['line_height']) ?>;
+    --pdf-hg-row-gap: <?= esc((string) $hgRowGapPx) ?>px;
     --pdf-hg-column-border-width: <?= esc((string) $hgColW) ?>px;
     --pdf-hg-column-border-color: <?= esc((string) ($hg['column_border_color'] ?? '#DDDDDD')) ?>;
     --pdf-qr-size-percent: <?= (int) ($hg['qr_size_percent'] ?? 100) ?>;
@@ -200,6 +210,7 @@ body { margin: <?= esc((string) $mt) ?>mm <?= esc((string) $mr) ?>mm <?= esc((st
     --pdf-pd-font-style: <?= esc($pd['font_style']) ?>;
     --pdf-pd-transform: <?= esc($pd['text_transform']) ?>;
     --pdf-pd-line-height: <?= esc((string) $pd['line_height']) ?>;
+    --pdf-pd-row-gap: <?= esc((string) $pdRowGapPx) ?>px;
     --pdf-pd-column-border-width: <?= esc((string) $pdColW) ?>px;
     --pdf-pd-column-border-color: <?= esc((string) ($pd['column_border_color'] ?? '#DDDDDD')) ?>;
     --pdf-ft-body-bg: <?= esc($ftBodyBg) ?>;
@@ -210,6 +221,7 @@ body { margin: <?= esc((string) $mt) ?>mm <?= esc((string) $mr) ?>mm <?= esc((st
     --pdf-ft-font-style: <?= esc($ft['font_style']) ?>;
     --pdf-ft-transform: <?= esc($ft['text_transform']) ?>;
     --pdf-ft-line-height: <?= esc((string) $ft['line_height']) ?>;
+    --pdf-ft-row-gap: <?= esc((string) $ftRowGapPx) ?>px;
     --pdf-ft-column-border-width: <?= esc((string) $ftColW) ?>px;
     --pdf-ft-column-border-color: <?= esc((string) ($ft['column_border_color'] ?? '#DDDDDD')) ?>;
     --pdf-ft-company-color: <?= esc((string) ($ft['footer_company_text_color'] ?? $ft['body_text_color'])) ?>;
@@ -225,6 +237,7 @@ body { margin: <?= esc((string) $mt) ?>mm <?= esc((string) $mr) ?>mm <?= esc((st
     --pdf-lf-font-style: <?= esc($lf['font_style']) ?>;
     --pdf-lf-transform: <?= esc($lf['text_transform']) ?>;
     --pdf-lf-line-height: <?= esc((string) $lf['line_height']) ?>;
+    --pdf-lf-row-gap: <?= esc((string) $lfRowGapPx) ?>px;
     --pdf-lf-inline-margin-top: <?= esc((string) ($lf['inline_margin_top_pt'] ?? 8)) ?>pt;
     --pdf-lf-inline-margin-bottom: <?= esc((string) ($lf['inline_margin_bottom_pt'] ?? 6)) ?>pt;
     --pdf-lf-seal-max-height: <?= (int) ($lf['seal_max_height_px'] ?? 110) ?>px;

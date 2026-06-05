@@ -7,6 +7,8 @@ declare(strict_types=1);
 $resolved = \App\Services\ReportPdfLayoutService::resolveSectionLayoutStyle($sec_layout, max(1, min(6, (int) $col_count)));
 $lh       = $resolved['line_height'];
 $rows     = max(1, min(50, (int) ($sec_layout['rows'] ?? 3)));
+$defRowGap = ($section_key === 'patient_doctor') ? 2 : 6;
+$rowGap    = max(0, min(40, (int) ($sec_layout['row_gap_px'] ?? $defRowGap)));
 $hArr     = $resolved['column_align_h'];
 $vArr     = $resolved['column_align_v'];
 $idSafe   = preg_replace('/[^a-z0-9_]/', '_', $section_key);
@@ -22,7 +24,11 @@ $idSafe   = preg_replace('/[^a-z0-9_]/', '_', $section_key);
             <label class="form-label small mb-0" for="sec_rows_<?= esc($idSafe, 'attr') ?>">Filas</label>
             <input type="number" class="form-control form-control-sm pdf-sec-rows" id="sec_rows_<?= esc($idSafe, 'attr') ?>" data-pdf-section="<?= esc($section_key, 'attr') ?>" min="1" max="50" step="1" value="<?= esc((string) $rows, 'attr') ?>" style="width:5.5rem;" title="Cantidad de filas para la matriz editable">
         </div>
-        <div class="col small text-muted">Aplica al texto dentro de cada celda. Valores entre 1 y 2,5.</div>
+        <div class="col-auto">
+            <label class="form-label small mb-0" for="sec_row_gap_<?= esc($idSafe, 'attr') ?>">Espacio entre filas (px)</label>
+            <input type="number" class="form-control form-control-sm pdf-sec-row-gap" id="sec_row_gap_<?= esc($idSafe, 'attr') ?>" data-pdf-section="<?= esc($section_key, 'attr') ?>" min="0" max="40" step="1" value="<?= esc((string) $rowGap, 'attr') ?>" style="width:5.5rem;" title="Separación vertical entre filas de la cuadrícula en el PDF">
+        </div>
+        <div class="col small text-muted">Interlineado: altura de línea en cada celda (1–2,5). Entre filas: separación de la matriz en el PDF.</div>
     </div>
     <p class="small text-muted mb-2">Alineación por columna (horizontal y vertical en la fila).</p>
     <div class="table-responsive">

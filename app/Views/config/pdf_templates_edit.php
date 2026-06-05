@@ -1296,7 +1296,11 @@ $labelsShort = [
 .pdf-drag-handle:active, .instance-drag-handle:active { cursor: grabbing; }
 .pdf-preview-sheet { max-width: 480px; min-height: 160px; }
 .pdf-preview-sheet-body { background: #f8f9fa; font-size: 0.85rem; }
-.pdf-preview-line { line-height: inherit; }
+.pdf-preview-scope .pdf-section-table { width: 100%; table-layout: fixed; border-collapse: collapse; }
+.pdf-preview-scope .pdf-section-table td p { margin: 0 !important; }
+.pdf-preview-scope .pdf-el-item:not(:last-child) { margin-bottom: 0.4em; }
+.pdf-preview-scope .patient-line { margin: 0 !important; }
+.pdf-preview-scope.pdf-hg-block { padding-bottom: 8px; border-bottom: 2px solid var(--pdf-header-separator-color, #0066cc); }
 .pdf-preview-lbl { font-weight: 700; color: #333; }
 .pdf-preview-grid-row { display: flex; gap: 8px; border-bottom: 1px solid #dee2e6; padding-bottom: 8px; }
 .pdf-preview-grid-cell { flex: 1; min-width: 0; font-size: 0.75rem; }
@@ -2485,6 +2489,15 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
 
+    function readSectionRowGapPx(sectionKey) {
+        var idS = sectionIdSafe(sectionKey);
+        var rgEl = document.getElementById('sec_row_gap_' + idS);
+        var defRg = sectionKey === 'patient_doctor' ? 2 : 6;
+        var rg = rgEl ? parseInt(rgEl.value, 10) : defRg;
+        if (isNaN(rg)) rg = defRg;
+        return Math.max(0, Math.min(40, rg));
+    }
+
     function buildSectionLayoutsForJson() {
         function pack(secKey, colsInput, rowsInput) {
             var n = clampCols(colsInput.value);
@@ -2493,6 +2506,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 columns: n,
                 rows: clampRows(rowsInput && rowsInput.value),
                 line_height: st.line_height,
+                row_gap_px: readSectionRowGapPx(secKey),
                 column_align_h: st.column_align_h,
                 column_align_v: st.column_align_v
             };
@@ -2713,16 +2727,16 @@ document.addEventListener('DOMContentLoaded', function() {
                     var lblEsc = escapeHtml(lblPd);
                     var showLblText = showLpd && lblPd !== '';
                     if (inlinePd) {
-                        rawLine = '<div class="patient-line" style="margin-top:' + mtPd + 'px;margin-bottom:' + mbPd + 'px;">'
+                        rawLine = '<div class="patient-line" style="padding-top:' + mtPd + 'px;padding-bottom:' + mbPd + 'px;">'
                             + (showLblText ? ('<span class="label" style="margin-right:' + gapPd + 'px;">' + lblEsc + '</span>') : '')
                             + (showLblText ? valPd : '<span style="margin-left:' + gapPd + 'px;display:inline-block;">' + valPd + '</span>')
                             + '</div>';
                     } else {
                         var valMtPd = showLblText ? 0 : (mtPd + gapPd);
                         rawLine = (showLblText
-                            ? ('<div class="patient-line" style="margin-top:' + mtPd + 'px;margin-bottom:' + gapPd + 'px;"><span class="label">' + lblEsc + '</span></div>')
+                            ? ('<div class="patient-line" style="padding-top:' + mtPd + 'px;padding-bottom:' + gapPd + 'px;"><span class="label">' + lblEsc + '</span></div>')
                             : '')
-                            + '<div class="patient-line" style="margin-top:' + valMtPd + 'px;margin-bottom:' + mbPd + 'px;">' + valPd + '</div>';
+                            + '<div class="patient-line" style="padding-top:' + valMtPd + 'px;padding-bottom:' + mbPd + 'px;">' + valPd + '</div>';
                     }
                     line = '<div style="' + escapeHtml(styleWrap) + '">' + rawLine + '</div>';
                 } else if (sectionKey === 'footer' && headerLikeTypes.indexOf(type) >= 0) {
@@ -2738,6 +2752,16 @@ document.addEventListener('DOMContentLoaded', function() {
         });
         previewEl.innerHTML = '';
         var wrap = document.createElement('div');
+        wrap.className = 'pdf-preview-scope';
+        if (sectionKey === 'header') {
+            wrap.classList.add('pdf-hg-block');
+        } else if (sectionKey === 'patient_doctor') {
+            wrap.classList.add('pdf-pd-block');
+        } else if (sectionKey === 'footer') {
+            wrap.classList.add('pdf-ft-block');
+        } else if (sectionKey === 'lab_firmas') {
+            wrap.classList.add('lab-firmas-pdf-block');
+        }
         if (ftFooter && ftFooter.section_top_border_enabled) {
             var bw = parseInt(ftFooter.section_top_border_width_px, 10);
             if (isNaN(bw)) bw = 1;
@@ -2748,8 +2772,10 @@ document.addEventListener('DOMContentLoaded', function() {
             }
             wrap.style.paddingTop = '8px';
         }
-        wrap.style.borderBottom = '1px solid #dee2e6';
-        wrap.style.paddingBottom = '8px';
+        if (sectionKey !== 'header') {
+            wrap.style.borderBottom = '1px solid #dee2e6';
+            wrap.style.paddingBottom = '8px';
+        }
         var pctNum = 100 / n;
         var pct = pctNum.toFixed(2) + '%';
 
@@ -2841,11 +2867,13 @@ document.addEventListener('DOMContentLoaded', function() {
             var csp = row.colspans;
             var stk = row.stacks;
             var tbl = document.createElement('table');
+            tbl.className = 'pdf-section-table';
             tbl.setAttribute('data-pdf-lh', '1');
             tbl.style.width = '100%';
             tbl.style.tableLayout = 'fixed';
             tbl.style.borderCollapse = 'collapse';
-            tbl.style.marginBottom = '6px';
+            var rowGapPx = readSectionRowGapPx(sectionKey);
+            tbl.style.marginBottom = rowGapPx + 'px';
             tbl.style.lineHeight = String(secSt.line_height);
             var tr = document.createElement('tr');
             var c = 0;
@@ -2868,11 +2896,10 @@ document.addEventListener('DOMContentLoaded', function() {
                     tdM.style.verticalAlign = secSt.column_align_v[sc] || 'top';
                     tdM.style.textAlign = secSt.column_align_h[sc] || 'left';
                     tdM.style.padding = '0 6px';
-                    block.items.forEach(function(sit, idx, arr) {
+                    block.items.forEach(function(sit) {
                         var divM = document.createElement('div');
-                        divM.className = 'pdf-preview-line';
+                        divM.className = 'pdf-el-item';
                         divM.style.lineHeight = 'inherit';
-                        if (idx < arr.length - 1) divM.style.marginBottom = '0.4em';
                         divM.innerHTML = sit.html;
                         tdM.appendChild(divM);
                     });
@@ -2885,11 +2912,10 @@ document.addEventListener('DOMContentLoaded', function() {
                     tdS.style.verticalAlign = secSt.column_align_v[c] || 'top';
                     tdS.style.textAlign = secSt.column_align_h[c] || 'left';
                     tdS.style.padding = '0 6px';
-                    stk[c].forEach(function(sit, idx, arr) {
+                    stk[c].forEach(function(sit) {
                         var d = document.createElement('div');
-                        d.className = 'pdf-preview-line';
+                        d.className = 'pdf-el-item';
                         d.style.lineHeight = 'inherit';
-                        if (idx < arr.length - 1) d.style.marginBottom = '0.4em';
                         d.innerHTML = sit.html;
                         tdS.appendChild(d);
                     });
@@ -3250,7 +3276,7 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         });
         pdfEditorInst.addEventListener('input', function(e) {
-            if (e.target && e.target.classList.contains('pdf-sec-line-height')) {
+            if (e.target && (e.target.classList.contains('pdf-sec-line-height') || e.target.classList.contains('pdf-sec-row-gap'))) {
                 rebuildAllPreviews();
             } else if (e.target && (e.target.closest('.pdf-text-style-controls') || e.target.closest('.custom-text-editor-root'))) {
                 rebuildAllPreviews();
@@ -3892,6 +3918,9 @@ document.addEventListener('DOMContentLoaded', function() {
         pushIfBadSelect('pd_font_style', fst, 'Estilo no permitido (cuadrícula paciente/médico).');
         pushIfBadSelect('pd_text_transform', tt, 'Transformación no permitida (cuadrícula paciente/médico).');
         pushIfBadNum('pd_line_height', 1, 3, 'Interlineado (cuadrícula paciente/médico): entre 1 y 3.');
+        ['header', 'patient_doctor', 'lab_firmas', 'footer'].forEach(function(secKey) {
+            pushIfBadNum('sec_row_gap_' + sectionIdSafe(secKey), 0, 40, 'Espacio entre filas (' + secKey + '): entre 0 y 40 px.');
+        });
         pushIfBadSelect('ft_font_family', ff, 'Fuente no permitida (cuadrícula pie).');
         pushIfBadNum('ft_font_size', 7, 20, 'Tamaño (cuadrícula pie): entre 7 y 20 pt.');
         pushIfBadSelect('ft_font_weight', fw, 'Grosor no permitido (cuadrícula pie).');

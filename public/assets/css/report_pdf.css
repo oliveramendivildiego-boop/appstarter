@@ -84,6 +84,13 @@ body {
     border-bottom: 2px solid var(--pdf-header-separator-color, #0066cc);
     padding-bottom: 10px;
 }
+.header.header-grid.pdf-hg-block {
+    margin-bottom: 0;
+    padding-bottom: 8px;
+}
+.pdf-hg-block table.pdf-section-table {
+    margin-bottom: var(--pdf-hg-row-gap, 6px) !important;
+}
 .pdf-section-table {
     width: 100%;
 }
@@ -108,19 +115,32 @@ body {
 }
 /*
  * Cuadrícula con interlineado configurable (tabla con data-pdf-lh + line-height inline).
- * Dompdf hereda mal el line-height solo desde td; se fuerza inherit en textos y se pasan
- * separaciones entre bloques a em para que el interlineado se note al subir/bajar el valor.
+ * Dompdf no colapsa márgenes como el navegador: evitar margin en piezas internas;
+ * el espaciado entre instancias apiladas va en .pdf-el-item y el px configurado en inline/padding.
  */
+.pdf-hg-block .pdf-section-table .header-piece,
+.pdf-ft-block .pdf-section-table .footer-piece,
+.pdf-pd-block .pdf-section-table .patient-line,
+.lab-firmas-pdf-block .pdf-section-table .patient-line {
+    margin-top: 0 !important;
+    margin-bottom: 0 !important;
+}
+.pdf-hg-block .pdf-section-table td.pdf-cell > .pdf-el-item:not(:last-child),
+.pdf-pd-block .pdf-section-table td.pdf-cell > .pdf-el-item:not(:last-child),
+.pdf-ft-block .pdf-section-table td.pdf-cell > .pdf-el-item:not(:last-child),
+.lab-firmas-pdf-block .pdf-section-table td.pdf-cell > .pdf-el-item:not(:last-child) {
+    margin-bottom: 0.4em;
+}
+.pdf-hg-block .pdf-section-table td p,
+.pdf-pd-block .pdf-section-table td p,
+.pdf-ft-block .pdf-section-table td p,
+.lab-firmas-pdf-block .pdf-section-table td p {
+    margin: 0 !important;
+}
 .pdf-section-table[data-pdf-lh] .header-piece,
 .pdf-section-table[data-pdf-lh] .footer-piece,
 .pdf-section-table[data-pdf-lh] .patient-line {
-    margin-bottom: 0.4em;
     line-height: inherit;
-}
-.pdf-section-table[data-pdf-lh] .header-piece:last-child,
-.pdf-section-table[data-pdf-lh] .footer-piece:last-child,
-.pdf-section-table[data-pdf-lh] .patient-line:last-child {
-    margin-bottom: 0;
 }
 .pdf-section-table[data-pdf-lh] td p,
 .pdf-section-table[data-pdf-lh] td h1,
@@ -130,12 +150,6 @@ body {
 .pdf-section-table[data-pdf-lh] td .qr-label,
 .pdf-section-table[data-pdf-lh] td .footer-piece-policy small {
     line-height: inherit !important;
-}
-.pdf-section-table[data-pdf-lh] td p {
-    margin: 0.1em 0 !important;
-}
-.pdf-section-table[data-pdf-lh] td .header-piece-qr .qr-label {
-    margin: 0.2em 0 0 0 !important;
 }
 .pdf-el-item {
     display: block;
@@ -249,7 +263,8 @@ body {
     border-radius: 4px;
 }
 .patient-section.pdf-pd-block {
-    padding: 0;
+    margin: 0 !important;
+    padding: 0 !important;
     background: transparent;
     border-radius: 0;
 }
@@ -570,7 +585,7 @@ table.results td {
     /* No forzar vertical-align ni text-align: vienen del estilo inline de la plantilla */
 }
 .lab-firmas-pdf-block .pdf-section-table {
-    margin-bottom: 6px;
+    margin-bottom: var(--pdf-lf-row-gap, 6px) !important;
 }
 /* Celdas vacías de la cuadrícula no tienen .pdf-cell: sin esto Dompdf pinta blanco y rompe «sin fondo». */
 .lab-firmas-pdf-block .pdf-section-table td:not(.pdf-cell) {
@@ -610,17 +625,15 @@ table.results td {
     background-image: none !important;
 }
 /*
- * Paciente / médico: en la vista HTML los márgenes se ven bien; en PDF (Dompdf) quedaba más aire
- * entre filas porque el motor no colapsa márgenes como el navegador y además se sumaban
- * margin-bottom global en .patient-line + margin-bottom:6px en cada tabla de section_layout_grid.
- * Reseteamos márgenes en hoja y el espaciado queda solo en los estilos inline de element.php.
+ * Paciente / médico: espaciado vertical solo vía padding inline (element.php) y row_gap entre tablas.
+ * Dompdf suma márgenes adyacentes; padding evita el doble aire respecto al preview del editor.
  */
 .pdf-pd-block table.pdf-section-table {
-    margin-bottom: 2px !important;
+    margin-bottom: var(--pdf-pd-row-gap, 2px) !important;
 }
 .pdf-pd-block .pdf-section-table .patient-line {
-    margin-top: 0;
-    margin-bottom: 0;
+    margin-top: 0 !important;
+    margin-bottom: 0 !important;
 }
 /* Heredar la tipografía del .pdf-el-item (estilo inline por instancia); evita que reglas globales (p. ej. .patient-section-lines) pisen la fuente en viewreport. */
 .pdf-hg-block .pdf-section-table td.pdf-cell > .pdf-el-item .patient-line,
@@ -694,13 +707,16 @@ table.results td {
 .pdf-ft-block.footer-grid {
     font-size: inherit;
     color: inherit;
-    margin-top: 12px;
+    margin-top: 0;
     margin-bottom: 0;
     padding-top: 8px;
     padding-bottom: 0;
     border-top-width: var(--pdf-ft-section-top-border-width, 1px);
     border-top-style: var(--pdf-ft-section-top-border-style, solid);
     border-top-color: var(--pdf-ft-section-top-border-color, #dddddd);
+}
+.pdf-ft-block table.pdf-section-table {
+    margin-bottom: var(--pdf-ft-row-gap, 6px) !important;
 }
 /*
  * Respaldo de color vía variables (tema). Sin !important: Dompdf y el motor CSS deben respetar los estilos inline

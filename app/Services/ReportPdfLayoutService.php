@@ -559,6 +559,7 @@ class ReportPdfLayoutService
                 'columns'        => 3,
                 'rows'           => 3,
                 'line_height'    => 1.35,
+                'row_gap_px'     => 6,
                 'column_align_h' => ['left', 'center', 'right'],
                 'column_align_v' => ['top', 'top', 'top'],
             ],
@@ -566,6 +567,7 @@ class ReportPdfLayoutService
                 'columns'        => 2,
                 'rows'           => 4,
                 'line_height'    => 1.35,
+                'row_gap_px'     => 2,
                 'column_align_h' => ['left', 'right'],
                 'column_align_v' => ['top', 'top'],
             ],
@@ -573,6 +575,7 @@ class ReportPdfLayoutService
                 'columns'        => 3,
                 'rows'           => 2,
                 'line_height'    => 1.35,
+                'row_gap_px'     => 6,
                 'column_align_h' => ['left', 'center', 'right'],
                 'column_align_v' => ['top', 'top', 'top'],
             ],
@@ -580,6 +583,7 @@ class ReportPdfLayoutService
                 'columns'        => 3,
                 'rows'           => 3,
                 'line_height'    => 1.35,
+                'row_gap_px'     => 6,
                 'column_align_h' => ['left', 'center', 'right'],
                 'column_align_v' => ['top', 'top', 'top'],
             ],
@@ -905,13 +909,23 @@ class ReportPdfLayoutService
 
             $hRaw = $rawSec['column_align_h'] ?? null;
             $vRaw = $rawSec['column_align_v'] ?? null;
-            $out[$key] = [
+            $entry = [
                 'columns'        => $n,
                 'rows'           => $r,
                 'line_height'    => $lh,
                 'column_align_h' => self::normalizeColumnAlignHArray(is_array($hRaw) ? $hRaw : [], $n),
                 'column_align_v' => self::normalizeColumnAlignVArray(is_array($vRaw) ? $vRaw : [], $n),
             ];
+            if ($key === 'patient_doctor') {
+                $defRg = (int) ($def['row_gap_px'] ?? 2);
+                $rg    = isset($rawSec['row_gap_px']) ? (int) $rawSec['row_gap_px'] : $defRg;
+                $entry['row_gap_px'] = max(0, min(40, $rg));
+            } else {
+                $defRg = (int) ($def['row_gap_px'] ?? 6);
+                $rg    = isset($rawSec['row_gap_px']) ? (int) $rawSec['row_gap_px'] : $defRg;
+                $entry['row_gap_px'] = max(0, min(40, $rg));
+            }
+            $out[$key] = $entry;
         }
 
         return $out;

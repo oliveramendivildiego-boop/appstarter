@@ -87,7 +87,7 @@ if (array_key_exists($type, \App\Services\ReportPdfLayoutService::PATIENT_DOCTOR
     $stPdLbl = \App\Services\ReportPdfLayoutService::patientDoctorGridLabelStyleAttr($pdS, $type);
     if ($inline) {
         ?>
-                <div class="patient-line" style="margin-top:<?= (int) max(0, $mtPx) ?>px;margin-bottom:<?= (int) max(0, $mbPx) ?>px;">
+                <div class="patient-line" style="padding-top:<?= (int) max(0, $mtPx) ?>px;padding-bottom:<?= (int) max(0, $mbPx) ?>px;">
                     <?php if ($showLblText): ?>
                         <span class="label" style="margin-right:<?= (int) max(0, $gapPx) ?>px;<?= esc($stPdLbl, 'attr') ?>"><?= esc($lbl) ?></span>
                     <?php endif; ?>
@@ -97,14 +97,14 @@ if (array_key_exists($type, \App\Services\ReportPdfLayoutService::PATIENT_DOCTOR
     } else {
         if ($showLblText) {
             ?>
-                <div class="patient-line" style="margin-top:<?= (int) max(0, $mtPx) ?>px;margin-bottom:<?= (int) max(0, $gapPx) ?>px;">
+                <div class="patient-line" style="padding-top:<?= (int) max(0, $mtPx) ?>px;padding-bottom:<?= (int) max(0, $gapPx) ?>px;">
                     <span class="label" style="<?= esc($stPdLbl, 'attr') ?>"><?= esc($lbl) ?></span>
                 </div>
             <?php
         }
         $valMt = $showLblText ? 0 : ((int) max(0, $mtPx) + (int) max(0, $gapPx));
         ?>
-                <div class="patient-line" style="margin-top:<?= (int) max(0, $valMt) ?>px;margin-bottom:<?= (int) max(0, $mbPx) ?>px;"><?= esc($val) ?></div>
+                <div class="patient-line" style="padding-top:<?= (int) max(0, $valMt) ?>px;padding-bottom:<?= (int) max(0, $mbPx) ?>px;"><?= esc($val) ?></div>
         <?php
     }
 
