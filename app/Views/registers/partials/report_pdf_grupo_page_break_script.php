@@ -34,29 +34,30 @@ $footerEnabled = ! empty($footer_enabled);
         footerEnabled: <?= $footerEnabled ? 'true' : 'false' ?>
     };
 
-    var MM_TO_PX = 96 / 25.4;
     var SEGMENT_SELECTOR = '.report-segment-table-wrap, .report-refs-matrix-wrap';
 
-    function currentFooterReserveMm() {
-        if (!cfg.footerEnabled) {
-            return 0;
-        }
-        if (isFinite(cfg.footerReserveMm) && cfg.footerReserveMm > 0) {
-            return cfg.footerReserveMm;
-        }
-        return 22;
+    function paginationApi() {
+        return window.reportPrintPagination || null;
     }
 
-    function printablePageHeightPx() {
-        var printableMm = cfg.pageHeightMm - cfg.marginTopMm - cfg.marginBottomMm - currentFooterReserveMm();
-        if (!isFinite(printableMm) || printableMm <= 0) {
-            printableMm = 240;
+    function getLayoutContext(container) {
+        var api = paginationApi();
+        if (!api) {
+            return null;
         }
-        return printableMm * MM_TO_PX;
+        var metrics = api.buildMetrics(container);
+        var boundarySet = api.buildBoundaries(container, metrics);
+        return {
+            metrics: metrics,
+            boundaries: boundarySet.boundaries,
+            boundarySet: boundarySet,
+            maxSlicePx: metrics.nextPageContentPx
+        };
     }
 
     function pxToMm(px) {
-        return px / MM_TO_PX;
+        var api = paginationApi();
+        return api ? api.pxToMm(px) : (px / (96 / 25.4));
     }
 
     function topWithinContainer(el, container) {
@@ -77,38 +78,12 @@ $footerEnabled = ! empty($footer_enabled);
         return top;
     }
 
-    function buildPageBoundaries(container, pagePx) {
-        var boundaries = [0];
-        var maxBottom = container.scrollHeight || 0;
-        var pos = pagePx;
-        while (pos < maxBottom + pagePx) {
-            boundaries.push(pos);
-            pos += pagePx;
+    function remainingOnPage(top, boundarySet) {
+        var api = paginationApi();
+        if (!api) {
+            return 0;
         }
-        if (boundaries.length < 2) {
-            boundaries.push(pagePx);
-        }
-        return boundaries;
-    }
-
-    function remainingOnPage(top, pagePx, boundaries) {
-        var pageEnds = boundaries || buildPageBoundaries(
-            document.querySelector('.pdf-main-stack') || document.body,
-            pagePx
-        );
-        for (var i = 0; i < pageEnds.length; i++) {
-            var pageStart = i === 0 ? 0 : pageEnds[i - 1];
-            var pageEnd = pageEnds[i];
-            if (top >= pageStart && top < pageEnd) {
-                return pageEnd - top;
-            }
-        }
-        var posOnPage = ((top % pagePx) + pagePx) % pagePx;
-        var remaining = pagePx - posOnPage;
-        if (remaining <= 0 || remaining > pagePx) {
-            remaining = pagePx;
-        }
-        return remaining;
+        return api.remainingOnPage(top, boundarySet);
     }
 
     function cabeceraForSegment(seg) {
@@ -142,8 +117,9 @@ $footerEnabled = ! empty($footer_enabled);
         return null;
     }
 
-    function hasMeaningfulContentAbove(container, topPx) {
-        return isFinite(topPx) && topPx > 12;
+    function hasMeaningfulContentAbove(container, topPx, metrics) {
+        var headerPx = metrics && metrics.headerHeightPx ? metrics.headerHeightPx : 0;
+        return isFinite(topPx) && topPx > Math.max(12, headerPx + 1);
     }
 
     function markForceBreakBeforeCabecera(cabecera) {
@@ -157,19 +133,21 @@ $footerEnabled = ! empty($footer_enabled);
         }
     }
 
-    function applyForceBreakForUnit(unit, seg, container, pagePx, boundaries) {
-        if (unit.height > pagePx) {
+    function applyForceBreakForUnit(unit, seg, container, layoutCtx) {
+        var maxSlicePx = layoutCtx.maxSlicePx;
+        var boundarySet = layoutCtx.boundarySet;
+
+        if (unit.height > maxSlicePx) {
             seg.classList.add('report-segment-allow-split');
             return;
         }
 
-        var remaining = remainingOnPage(unit.top, pagePx, boundaries);
+        var remaining = remainingOnPage(unit.top, boundarySet);
         if (unit.height <= remaining) {
             return;
         }
 
-        // Evitar page-break-before al inicio del flujo: Chrome deja la hoja 1 en blanco.
-        if (!hasMeaningfulContentAbove(container, unit.top)) {
+        if (!hasMeaningfulContentAbove(container, unit.top, layoutCtx.metrics)) {
             seg.classList.add('report-segment-allow-split');
             return;
         }
@@ -257,34 +235,32 @@ $footerEnabled = ! empty($footer_enabled);
         });
     }
 
-    /**
-     * Impresión navegador: cabecera de prueba + tabla deben ir juntas.
-     * Si no caben en el espacio restante de la hoja, mover el bloque completo a la siguiente.
-     */
-    function applyCabeceraSegmentIntegrity(container, pagePx, boundaries) {
+    function applyCabeceraSegmentIntegrity(container, layoutCtx) {
         container.querySelectorAll(SEGMENT_SELECTOR).forEach(function(seg) {
             var unit = segmentUnitMetrics(seg, container);
-            applyForceBreakForUnit(unit, seg, container, pagePx, boundaries);
+            applyForceBreakForUnit(unit, seg, container, layoutCtx);
         });
     }
 
-    function applySegmentPageBreaks(container, pagePx, boundaries, root) {
+    function applySegmentPageBreaks(container, layoutCtx, root) {
         var scope = root || container;
         scope.querySelectorAll(SEGMENT_SELECTOR).forEach(function(seg) {
             var unit = segmentUnitMetrics(seg, container);
-            applyForceBreakForUnit(unit, seg, container, pagePx, boundaries);
+            applyForceBreakForUnit(unit, seg, container, layoutCtx);
         });
     }
 
-    function applyIfFitsMode(container, pagePx, boundaries) {
+    function applyIfFitsMode(container, layoutCtx) {
         var keepOnPageGrupos = [];
+        var maxSlicePx = layoutCtx.maxSlicePx;
+        var boundarySet = layoutCtx.boundarySet;
 
         container.querySelectorAll('.report-pdf-grupo-prueba').forEach(function(grupo) {
             var top = topWithinContainer(grupo, container);
-            var remaining = remainingOnPage(top, pagePx, boundaries);
+            var remaining = remainingOnPage(top, boundarySet);
             var height = grupo.offsetHeight;
 
-            if (height > pagePx) {
+            if (height > maxSlicePx) {
                 grupo.classList.add('report-pdf-grupo-prueba-allow-split');
                 return;
             }
@@ -295,12 +271,11 @@ $footerEnabled = ! empty($footer_enabled);
                 return;
             }
 
-            // No cabe en el espacio restante: rellenar la hoja actual por segmentos.
             grupo.classList.add('report-pdf-grupo-prueba-allow-split');
-            applySegmentPageBreaks(container, pagePx, boundaries, grupo);
+            applySegmentPageBreaks(container, layoutCtx, grupo);
         });
 
-        applySegmentPageBreaks(container, pagePx, boundaries);
+        applySegmentPageBreaks(container, layoutCtx);
 
         keepOnPageGrupos.forEach(function(grupo) {
             grupo.querySelectorAll(SEGMENT_SELECTOR).forEach(function(seg) {
@@ -315,22 +290,26 @@ $footerEnabled = ! empty($footer_enabled);
         });
     }
 
-    function fallbackFillGrupo(grupo, container, pagePx, boundaries) {
+    function fallbackFillGrupo(grupo, container, layoutCtx) {
         grupo.classList.remove('report-pdf-grupo-prueba-force-break-before', 'report-pdf-grupo-prueba-keep-on-page');
         clearGrupoCompact(grupo);
         grupo.classList.add('report-pdf-grupo-prueba-allow-split');
-        applySegmentPageBreaks(container, pagePx, boundaries, grupo);
+        applySegmentPageBreaks(container, layoutCtx, grupo);
     }
 
-    function applyGrupoPageBreaks(container, pagePx, boundaries) {
+    function applyGrupoPageBreaks(container, layoutCtx) {
+        var maxSlicePx = layoutCtx.maxSlicePx;
+        var boundarySet = layoutCtx.boundarySet;
+        var metrics = layoutCtx.metrics;
+
         container.querySelectorAll('.report-pdf-grupo-prueba').forEach(function(grupo) {
             var top = topWithinContainer(grupo, container);
-            var remaining = remainingOnPage(top, pagePx, boundaries);
+            var remaining = remainingOnPage(top, boundarySet);
             var height = grupo.offsetHeight;
 
-            if (height > pagePx) {
+            if (height > maxSlicePx) {
                 grupo.classList.add('report-pdf-grupo-prueba-allow-split');
-                applySegmentPageBreaks(container, pagePx, boundaries, grupo);
+                applySegmentPageBreaks(container, layoutCtx, grupo);
                 return;
             }
 
@@ -351,41 +330,42 @@ $footerEnabled = ! empty($footer_enabled);
                 clearGrupoCompact(grupo);
             }
 
-            if (shouldForceBreakBefore(remaining) && hasMeaningfulContentAbove(container, top)) {
+            if (shouldForceBreakBefore(remaining) && hasMeaningfulContentAbove(container, top, metrics)) {
                 grupo.classList.add('report-pdf-grupo-prueba-force-break-before');
             } else {
-                fallbackFillGrupo(grupo, container, pagePx, boundaries);
+                fallbackFillGrupo(grupo, container, layoutCtx);
             }
         });
     }
 
     function applyPageBreakRules() {
         clearPageBreakAdjustments();
-        var container = document.querySelector('.pdf-main-stack') || document.body;
-        var pagePx = printablePageHeightPx();
-        if (!isFinite(pagePx) || pagePx <= 0) {
+        var container = (paginationApi() && paginationApi().getPrintContainer)
+            ? paginationApi().getPrintContainer()
+            : (document.querySelector('.pdf-main-stack') || document.body);
+
+        var layoutCtx = getLayoutContext(container);
+        if (!layoutCtx || !isFinite(layoutCtx.maxSlicePx) || layoutCtx.maxSlicePx <= 0) {
             return;
         }
-        var boundaries = buildPageBoundaries(container, pagePx);
 
         if (!cfg.mode || cfg.mode === 'flow') {
-            applyCabeceraSegmentIntegrity(container, pagePx, boundaries);
+            applyCabeceraSegmentIntegrity(container, layoutCtx);
             return;
         }
 
         if (cfg.mode === 'keep_segment') {
-            applySegmentPageBreaks(container, pagePx, boundaries);
+            applySegmentPageBreaks(container, layoutCtx);
             return;
         }
 
         if (cfg.mode === 'keep_together_if_fits') {
-            applyIfFitsMode(container, pagePx, boundaries);
+            applyIfFitsMode(container, layoutCtx);
             return;
         }
 
-        applyCabeceraSegmentIntegrity(container, pagePx, boundaries);
-
-        applyGrupoPageBreaks(container, pagePx, boundaries);
+        applyCabeceraSegmentIntegrity(container, layoutCtx);
+        applyGrupoPageBreaks(container, layoutCtx);
     }
 
     window.updateReportPrintPageBreakMetrics = function(metrics) {

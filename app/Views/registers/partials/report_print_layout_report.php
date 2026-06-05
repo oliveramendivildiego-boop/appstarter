@@ -70,9 +70,14 @@ $layoutReportMode = ! empty($layout_report_mode);
                 <td id="lr_footer_height_detail">Bloque pie fijo (<code>.pdf-ft-block</code>)</td>
             </tr>
             <tr>
-                <td>Altura contenido</td>
-                <td id="lr_content_height">—</td>
-                <td id="lr_content_height_detail">Área imprimible útil por hoja</td>
+                <td>Contenido hoja 1 (resultados)</td>
+                <td id="lr_first_page_content">—</td>
+                <td id="lr_first_page_content_detail">Área imprimible − header (solo página 1)</td>
+            </tr>
+            <tr>
+                <td>Contenido hojas siguientes</td>
+                <td id="lr_next_page_content">—</td>
+                <td id="lr_next_page_content_detail">Área imprimible por hoja (sin header)</td>
             </tr>
             <tr>
                 <td>Altura total renderizada</td>
@@ -102,7 +107,7 @@ $layoutReportMode = ! empty($layout_report_mode);
             <tr>
                 <td>Páginas estimadas</td>
                 <td id="lr_pages_estimated">—</td>
-                <td>Según altura total ÷ área imprimible por hoja</td>
+                <td id="lr_pages_estimated_detail">Hoja 1 + resto con alturas diferenciadas</td>
             </tr>
             <tr>
                 <td>Medición</td>

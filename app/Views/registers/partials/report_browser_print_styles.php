@@ -100,6 +100,14 @@ body.js-total-pages-ready .pdf-counter-pages::before {
         margin: 0 !important;
         padding: 0 !important;
     }
+    /*
+     * El pie (position:fixed) se ancla al borde inferior del área de página (@page content box).
+     * Con margin-bottom = mb + reserva pie, bottom:0 deja el pie ~reserva mm por encima del borde físico.
+     * Desplazarlo hacia la zona de margen inferior alinea el borde del pie con el borde útil de plantilla (mb).
+     */
+    body.report-browser-print .pdf-ft-block.footer-grid {
+        bottom: calc(-1 * var(--print-footer-reserve-mm, <?= esc((string) $pdfFooterReserveMm) ?>) * 1mm) !important;
+    }
     html,
     body.report-browser-print,
     body.report-browser-print .pdf-main-stack {

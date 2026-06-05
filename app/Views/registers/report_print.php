@@ -137,6 +137,13 @@
     'report_lab_firmas'               => $report_lab_firmas ?? [],
     'report_pria_refs_consolidada'    => $report_pria_refs_consolidada ?? [],
 ]) ?>
+<?= view('registers/partials/report_print_pagination_metrics', [
+    'page_height_mm'    => $printPageHeightMm,
+    'margin_top_mm'     => (float) $mt,
+    'margin_bottom_mm'  => (float) $mb,
+    'footer_reserve_mm' => (float) $pdfFooterReserveMm,
+    'footer_enabled'    => $pdfFooterEnabled,
+]) ?>
 <?= view('registers/partials/report_pdf_grupo_page_break_script', [
     'pdf_layout'         => $pdf_layout ?? [],
     'page_height_mm'     => $printPageHeightMm,
@@ -207,33 +214,15 @@
         return footerReserveMm;
     }
 
-    function printableHeightMm() {
-        var footerReserveMm = 0;
-        if (footerEnabled) {
-            var raw = getComputedStyle(document.documentElement).getPropertyValue('--print-footer-reserve-mm');
-            footerReserveMm = parseFloat(raw);
-            if (!isFinite(footerReserveMm) || footerReserveMm <= 0) {
-                footerReserveMm = defaultFooterReserveMm;
+    function estimateTotalPagesForPrint() {
+        if (window.reportPrintPagination && typeof window.reportPrintPagination.buildMetrics === 'function') {
+            var container = window.reportPrintPagination.getPrintContainer();
+            var metrics = window.reportPrintPagination.buildMetrics(container);
+            if (metrics && isFinite(metrics.estimatedPages) && metrics.estimatedPages >= 1) {
+                return metrics.estimatedPages;
             }
         }
-        var printable = PAGE_HEIGHT_MM - marginTopMm - marginBottomMm - footerReserveMm;
-        if (!isFinite(printable) || printable <= 0) {
-            printable = 240;
-        }
-        return printable;
-    }
-
-    function estimateTotalPagesForPrint() {
-        var content = document.querySelector('.pdf-main-stack') || document.body;
-        var printablePx = printableHeightMm() * MM_TO_PX;
-        if (!isFinite(printablePx) || printablePx <= 0) {
-            printablePx = 900;
-        }
-        var total = Math.ceil(content.scrollHeight / printablePx);
-        if (!isFinite(total) || total < 1) {
-            total = 1;
-        }
-        return total;
+        return 1;
     }
 
     function applyBrowserTotalPages() {
