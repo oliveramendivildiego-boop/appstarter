@@ -532,7 +532,7 @@ $labelsShort = [
                 </h2>
                 <div id="pdf_rs_panel_density" class="accordion-collapse collapse" data-bs-parent="#accordion_pdf_results">
                     <div class="accordion-body pt-0">
-                        <p class="small text-muted mb-2">Si las filas se ven muy altas o muy apretadas en el PDF, ajuste el <strong>relleno vertical</strong> (principal) y el interlineado en la sección anterior.</p>
+                        <p class="small text-muted mb-2">Si las filas se ven muy altas o muy apretadas en el PDF, ajuste el <strong>relleno vertical</strong> (principal) y el interlineado en la sección anterior. El relleno vertical también define el margen inferior del título de grupo (<code>.group-title</code>).</p>
                         <div class="row g-3">
             <div class="col-12 col-md-4 col-lg-3">
                 <label class="form-label small" for="rs_cell_padding_v" title="Espacio arriba y abajo en cada celda; controla el alto de la fila">Relleno vertical por fila (px)</label>

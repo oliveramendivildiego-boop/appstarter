@@ -58,6 +58,7 @@ foreach ($ordenPriaKeys as $subIdx => $priaKey) :
             'report_pria_tipo_muestra_nombre' => $nombresTipoPorPria,
             'report_pria_metodo_nombre'       => $nombresMetodoPorPria,
             'sub_idx'                         => $subIdx,
+            'grupo_es_primero'                => ! empty($grupo_es_primero),
         ]);
         continue;
     }
@@ -148,6 +149,8 @@ foreach ($ordenPriaKeys as $subIdx => $priaKey) :
     'variant'            => $variant,
     'pdf_layout'         => $pdf_layout ?? [],
     'web_title_mt'       => $webTitleMt,
+    'sub_idx'            => $subIdx,
+    'grupo_es_primero'   => ! empty($grupo_es_primero),
 ]) ?>
 </div>
 <?php else: ?>
@@ -159,6 +162,8 @@ foreach ($ordenPriaKeys as $subIdx => $priaKey) :
     'variant'            => $variant,
     'pdf_layout'         => $pdf_layout ?? [],
     'web_title_mt'       => $webTitleMt,
+    'sub_idx'            => $subIdx,
+    'grupo_es_primero'   => ! empty($grupo_es_primero),
 ]) ?>
 <?php endif; ?>
 <?php foreach ($segments as $seg): ?>

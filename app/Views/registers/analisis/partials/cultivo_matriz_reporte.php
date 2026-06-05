@@ -127,6 +127,8 @@ $subgrupoCultivoStyle = $subIdxCultivo > 0
     'variant'            => $variant ?? 'web',
     'pdf_layout'         => $pdf_layout ?? [],
     'web_title_mt'       => $webTitleMt,
+    'sub_idx'            => $subIdxCultivo,
+    'grupo_es_primero'   => ! empty($grupo_es_primero),
 ]) ?>
 </div>
 <?php else: ?>
@@ -138,6 +140,8 @@ $subgrupoCultivoStyle = $subIdxCultivo > 0
     'variant'            => $variant ?? 'web',
     'pdf_layout'         => $pdf_layout ?? [],
     'web_title_mt'       => $webTitleMt,
+    'sub_idx'            => $subIdxCultivo,
+    'grupo_es_primero'   => ! empty($grupo_es_primero),
 ]) ?>
 <?php endif; ?>
 

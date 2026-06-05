@@ -9,6 +9,8 @@
  * @var string $variant 'web' | 'pdf' | 'screen_pdf'
  * @var array<string,mixed>|null $pdf_layout
  * @var string $web_title_mt Clase margin-top para vista web (p. ej. mt-4, mt-5)
+ * @var int    $sub_idx Índice del subgrupo dentro del área (0 = primera prueba)
+ * @var bool   $grupo_es_primero Si es el primer área/grupo del reporte
  */
 $variant = $variant ?? 'web';
 $usePdfChrome = ($variant === 'pdf' || $variant === 'screen_pdf');
@@ -27,9 +29,18 @@ $tipoMuestraLinea = trim((string) ($tipo_muestra_linea ?? ''));
 $metodoLinea = trim((string) ($metodo_linea ?? ''));
 $mostrarTipoMuestra = \App\Services\ReportPdfLayoutService::grupoCabeceraMostrarTipoMuestra($pdfLayout, $tipoMuestraLinea);
 $mostrarMetodo = \App\Services\ReportPdfLayoutService::grupoCabeceraMostrarMetodo($pdfLayout, $metodoLinea);
+$isFirstSubgrupoInArea = ((int) ($sub_idx ?? 0)) === 0;
+$isFirstGrupoInReport = ! empty($grupo_es_primero);
+$groupTitleStyle = $usePdfChrome
+    ? \App\Services\ReportPdfLayoutService::groupTitleMarginStyleAttr(
+        $pdfLayout,
+        $isFirstSubgrupoInArea,
+        $isFirstGrupoInReport
+    )
+    : '';
 ?>
 <?php if ($usePdfChrome): ?>
-<div class="group-title"><?= esc($tituloGrupo) ?></div>
+<div class="group-title"<?= $groupTitleStyle !== '' ? ' style="' . esc($groupTitleStyle, 'attr') . '"' : '' ?>><?= esc($tituloGrupo) ?></div>
 <?php if ($mostrarTipoMuestra): ?>
 <div class="report-tipo-muestra" style="font-size:9pt;color:#555;margin:0 0 10px 0;line-height:1.3;">Tipo de Muestra: <?= esc($tipoMuestraLinea) ?></div>
 <?php endif; ?>

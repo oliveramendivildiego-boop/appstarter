@@ -367,6 +367,13 @@ table.results.pdf-notes-table td.pdf-notes-cell {
 .report-pdf-subgrupo-block.report-pdf-subgrupo-prueba {
     padding-top: <?= (int) ($rs['subgrupo_prueba_gap_px'] ?? 18) ?>px !important;
 }
+.report-pdf-grupo-cabecera .group-title {
+    margin-top: 0 !important;
+    margin-bottom: <?= (int) ($rs['cell_padding_v_px'] ?? 6) ?>px !important;
+}
+.report-pdf-grupo-prueba-first .report-pdf-subgrupo-block:not(.report-pdf-subgrupo-prueba) .report-pdf-grupo-cabecera .group-title {
+    margin-top: <?= (int) ($rs['grupo_prueba_gap_px'] ?? 10) ?>px !important;
+}
 <?php if (\App\Services\ReportPdfLayoutService::grupoPruebaPageBreakUsesPureGrupoIntact($gpb)): ?>
 .pdf-gpb-grupo-intact .report-pdf-grupo-prueba:not(.report-pdf-grupo-prueba-allow-split),
 .pdf-gpb-grupo-intact .report-pdf-grupo-prueba:not(.report-pdf-grupo-prueba-allow-split) .report-segment-table-wrap,

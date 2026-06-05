@@ -2991,6 +2991,24 @@ class ReportPdfLayoutService
     }
 
     /**
+     * Márgenes de .group-title en cabecera de prueba (sección 3 de resultados).
+     *
+     * @param array<string, mixed> $layout
+     */
+    public static function groupTitleMarginStyleAttr(array $layout, bool $isFirstSubgrupoInArea, bool $isFirstGrupoInReport): string
+    {
+        $ps = is_array($layout['page_style'] ?? null) ? $layout['page_style'] : [];
+        $rs = self::normalizeResultsTableStyle($ps['results_table'] ?? []);
+        $marginBottom = max(0, min(20, (int) ($rs['cell_padding_v_px'] ?? 6)));
+        $marginTop    = 0;
+        if ($isFirstSubgrupoInArea && $isFirstGrupoInReport) {
+            $marginTop = max(0, min(80, (int) ($rs['grupo_prueba_gap_px'] ?? 10)));
+        }
+
+        return sprintf('margin-top:%dpx;margin-bottom:%dpx;', $marginTop, $marginBottom);
+    }
+
+    /**
      * Pie fijo en cada página al generar PDF con Dompdf (fuera de .pdf-main-stack).
      *
      * @param array<string, mixed> $layout
