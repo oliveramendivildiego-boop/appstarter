@@ -541,7 +541,12 @@ $labelsShort = [
             <div class="col-12 col-md-4 col-lg-3">
                 <label class="form-label small" for="rs_grupo_prueba_gap" title="Separación vertical entre cada área o grupo de pruebas en el PDF (clase report-pdf-grupo-prueba)">Espacio entre grupos de prueba (px)</label>
                 <input type="number" class="form-control" id="rs_grupo_prueba_gap" min="0" max="80" step="1" value="<?= esc((string) (int) ($rs['grupo_prueba_gap_px'] ?? 10), 'attr') ?>">
-                <div class="form-text">Aplica solo a esta plantilla en PDF e impresión.</div>
+                <div class="form-text">Entre áreas distintas (<code>report-pdf-grupo-prueba</code>).</div>
+            </div>
+            <div class="col-12 col-md-4 col-lg-3">
+                <label class="form-label small" for="rs_subgrupo_prueba_gap" title="Separación vertical entre pruebas distintas dentro del mismo área (clase report-pdf-subgrupo-prueba)">Espacio entre pruebas del mismo área (px)</label>
+                <input type="number" class="form-control" id="rs_subgrupo_prueba_gap" min="0" max="80" step="1" value="<?= esc((string) (int) ($rs['subgrupo_prueba_gap_px'] ?? 18), 'attr') ?>">
+                <div class="form-text">Varias pruebas bajo el mismo padre (<code>report-pdf-subgrupo-block</code>).</div>
             </div>
                         </div>
                     </div>
@@ -3775,6 +3780,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 line_height: pickNum('rs_line_height', 1, 3, 1.35),
                 cell_padding_v_px: Math.round(pickNum('rs_cell_padding_v', 0, 20, 6)),
                 grupo_prueba_gap_px: Math.round(pickNum('rs_grupo_prueba_gap', 0, 80, 10)),
+                subgrupo_prueba_gap_px: Math.round(pickNum('rs_subgrupo_prueba_gap', 0, 80, 18)),
                 matrix_text_align: pickAllowedDomId('rs_matrix_align', 'text_aligns', 'center'),
                 matrix_vertical_align: pickAllowedDomId('rs_matrix_valign', 'vertical_aligns', 'middle'),
                 matrix_text_color: pickHex('rs_matrix_text_color', '#333333'),
@@ -3967,6 +3973,7 @@ document.addEventListener('DOMContentLoaded', function() {
         pushIfBadNum('rs_line_height', 1, 3, 'Interlineado en tabla de resultados: entre 1 y 3.');
         pushIfBadNum('rs_cell_padding_v', 0, 20, 'Relleno vertical de filas (tabla de resultados): entre 0 y 20 px.');
         pushIfBadNum('rs_grupo_prueba_gap', 0, 80, 'Espacio entre grupos de prueba: entre 0 y 80 px.');
+        pushIfBadNum('rs_subgrupo_prueba_gap', 0, 80, 'Espacio entre pruebas del mismo área: entre 0 y 80 px.');
         pushIfBadNum('rs_segment_border_width', 0, 4, 'Grosor de borde de segmento: entre 0 y 4 px.');
         pushIfBadSelect('rs_segment_shadow', pdfAllow('segment_shadows'), 'Sombra de segmento no permitida.');
         pushIfBadSelect('rs_matrix_align', ta, 'Alineación horizontal no permitida en matriz de referencia.');

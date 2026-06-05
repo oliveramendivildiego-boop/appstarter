@@ -193,6 +193,7 @@ class ReportPdfLayoutService
         'line_height'       => 1.35,
         'cell_padding_v_px' => 6,
         'grupo_prueba_gap_px' => 10,
+        'subgrupo_prueba_gap_px' => 18,
         'matrix_text_align' => 'center',
         'matrix_vertical_align' => 'middle',
         'matrix_text_color' => '#333333',
@@ -1710,6 +1711,15 @@ class ReportPdfLayoutService
                 return 'El espacio entre grupos de prueba debe estar entre 0 y 80 px.';
             }
         }
+        if (array_key_exists('subgrupo_prueba_gap_px', $raw)) {
+            if (! is_numeric($raw['subgrupo_prueba_gap_px'])) {
+                return 'Espacio entre pruebas del mismo área inválido.';
+            }
+            $sg = (int) $raw['subgrupo_prueba_gap_px'];
+            if ($sg < 0 || $sg > 80) {
+                return 'El espacio entre pruebas del mismo área debe estar entre 0 y 80 px.';
+            }
+        }
         if (array_key_exists('segment_border_width_px', $raw)) {
             if (! is_numeric($raw['segment_border_width_px'])) {
                 return 'El grosor del borde de segmento debe ser numérico.';
@@ -2951,6 +2961,17 @@ class ReportPdfLayoutService
     }
 
     /**
+     * @param array<string, mixed> $layout
+     */
+    public static function subgrupoPruebaGapPx(array $layout): int
+    {
+        $ps = is_array($layout['page_style'] ?? null) ? $layout['page_style'] : [];
+        $rs = self::normalizeResultsTableStyle($ps['results_table'] ?? []);
+
+        return max(0, min(80, (int) ($rs['subgrupo_prueba_gap_px'] ?? 18)));
+    }
+
+    /**
      * Separación entre pruebas dentro del mismo área (.report-pdf-subgrupo-block).
      * Dompdf suele ignorar margin-top; padding-top en inline es fiable.
      *
@@ -2961,8 +2982,12 @@ class ReportPdfLayoutService
         if (! $needsGap) {
             return '';
         }
+        $gap = self::subgrupoPruebaGapPx($layout);
+        if ($gap <= 0) {
+            return '';
+        }
 
-        return 'padding-top:18px;';
+        return 'padding-top:' . $gap . 'px;';
     }
 
     /**
@@ -3372,6 +3397,8 @@ class ReportPdfLayoutService
         $cellPadV = max(0, min(20, $cellPadV));
         $grupoGap = isset($s['grupo_prueba_gap_px']) ? (int) $s['grupo_prueba_gap_px'] : (int) ($def['grupo_prueba_gap_px'] ?? 10);
         $grupoGap = max(0, min(80, $grupoGap));
+        $subgrupoGap = isset($s['subgrupo_prueba_gap_px']) ? (int) $s['subgrupo_prueba_gap_px'] : (int) ($def['subgrupo_prueba_gap_px'] ?? 18);
+        $subgrupoGap = max(0, min(80, $subgrupoGap));
         $segBw = isset($s['segment_border_width_px']) ? (int) $s['segment_border_width_px'] : (int) $def['segment_border_width_px'];
         $segBw = max(0, min(4, $segBw));
         $segShadow = strtolower(trim((string) ($s['segment_shadow'] ?? $def['segment_shadow'])));
@@ -3443,6 +3470,7 @@ class ReportPdfLayoutService
             'line_height'       => $lh,
             'cell_padding_v_px' => $cellPadV,
             'grupo_prueba_gap_px' => $grupoGap,
+            'subgrupo_prueba_gap_px' => $subgrupoGap,
             'matrix_text_align' => $matrixAlign,
             'matrix_vertical_align' => $matrixVAlign,
             'matrix_text_color' => $pickColor('matrix_text_color', $def['matrix_text_color']),
