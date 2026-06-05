@@ -1,6 +1,6 @@
 <?php
 /**
- * Partial: Valores de referencia (prueba no compuesta).
+ * Partial: Valores de referencia (tipo de análisis simple).
  * Variables: labotests_info, poblaciones, priresultados, formulas, opciones,
  *            editar_pri, editar_pri_data, formulas_id_canonical, formulas_creadas
  */
@@ -11,7 +11,7 @@ foreach ($poblaciones ?? [] as $p) {
 $sexoMap = ['ambos' => 'Ambos', 'masculino' => 'Masculino', 'femenino' => 'Femenino'];
 ?>
 <div class="card mt-3">
-    <div class="card-header"><strong>Valores de referencia (prueba no compuesta)</strong></div>
+    <div class="card-header"><strong>Valores de referencia (<?= lang('Labotests.labotests_tipo_analisis_simple') ?>)</strong></div>
     <div class="card-body">
         <div class="table-responsive">
         <table class="table table-sm table-bordered">

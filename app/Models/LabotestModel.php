@@ -16,6 +16,16 @@ class LabotestModel extends Model
     public const COMPLEJA_COMPOUESTA = 1;
     public const COMPLEJA_CULTIVO   = 2;
 
+    /** Slug para exportación JSON según tipo de análisis. */
+    public static function tipoAnalisisSlug(int $compleja): string
+    {
+        return match ($compleja) {
+            self::COMPLEJA_COMPOUESTA => 'tabla',
+            self::COMPLEJA_CULTIVO    => 'cultivo',
+            default                   => 'simple',
+        };
+    }
+
     /**
      * Obtiene categorías con sus análisis (prianacategoria)
      * @param string|null $search Filtra por nombre de grupo o de examen
@@ -2151,7 +2161,8 @@ class LabotestModel extends Model
             return null;
         }
 
-        $isCompleja = (int) ($subInfo->compleja ?? 0) === 1;
+        $complejaVal = (int) ($subInfo->compleja ?? 0);
+        $isCompleja = $complejaVal === self::COMPLEJA_COMPOUESTA;
         $payload = [
             'schema_version'    => 1,
             'exported_at'       => date('c'),
@@ -2162,7 +2173,10 @@ class LabotestModel extends Model
             'mostrar_valores'   => (int) ($subInfo->mostrar_valores ?? 0),
         ];
 
-        if ($isCompleja) {
+        if ($complejaVal === self::COMPLEJA_CULTIVO) {
+            $payload['compleja'] = self::COMPLEJA_CULTIVO;
+            $payload['cultivo_matriz'] = $this->getCultivoMatrizConfig($prianacategoriaId);
+        } elseif ($isCompleja) {
             $rows = $this->getSubItems($prianacategoriaId);
             $payload['sub_items'] = array_map(static function (array $r): array {
                 return [
@@ -2213,10 +2227,35 @@ class LabotestModel extends Model
             return ['success' => false, 'message' => 'Prueba no encontrada'];
         }
 
-        $targetCompleja = (int) ($subInfo->compleja ?? 0) === 1;
+        $targetTipo = (int) ($subInfo->compleja ?? 0);
+        if ($targetTipo === self::COMPLEJA_CULTIVO) {
+            $sourceTipo = (int) ($payload['compleja'] ?? 0);
+            if ($sourceTipo !== self::COMPLEJA_CULTIVO) {
+                return ['success' => false, 'message' => 'El archivo no corresponde al tipo de análisis de esta prueba'];
+            }
+            $matrizRaw = $payload['cultivo_matriz'] ?? null;
+            if (! is_array($matrizRaw)) {
+                return ['success' => false, 'message' => 'El archivo no contiene matriz de cultivo para importar'];
+            }
+
+            $this->db->transStart();
+            $ok = $this->saveCultivoMatrizConfig($prianacategoriaId, $matrizRaw);
+            $this->db->transComplete();
+            if (! $ok || ! $this->db->transStatus()) {
+                return ['success' => false, 'message' => 'No se pudo guardar la matriz de cultivo'];
+            }
+
+            return [
+                'success'  => true,
+                'message'  => 'Matriz de cultivo importada correctamente',
+                'imported' => 1,
+            ];
+        }
+
+        $targetCompleja = $targetTipo === self::COMPLEJA_COMPOUESTA;
         $sourceCompleja = (int) ($payload['compleja'] ?? ($targetCompleja ? 1 : 0)) === 1;
         if ($sourceCompleja !== $targetCompleja) {
-            return ['success' => false, 'message' => 'El archivo no corresponde al tipo de prueba (compuesta/no compuesta)'];
+            return ['success' => false, 'message' => 'El archivo no corresponde al tipo de análisis de esta prueba'];
         }
 
         $rows = $targetCompleja

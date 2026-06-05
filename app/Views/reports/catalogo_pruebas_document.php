@@ -132,7 +132,7 @@ foreach ($categories as $c) {
                 <tr>
                     <th style="width:8%">ID</th>
                     <th>Análisis</th>
-                    <th style="width:12%">Tipo prueba</th>
+                    <th style="width:12%"><?= lang('Labotests.labotests_tipo_analisis') ?></th>
                     <th style="width:18%">Tipo de muestra</th>
                     <th style="width:18%">Método</th>
                 </tr>
@@ -142,14 +142,18 @@ foreach ($categories as $c) {
                 <?php
                 $pid = (int) ($it['id'] ?? 0);
                 $pname = (string) ($it['name'] ?? '');
-                $compleja = (int) ($it['compleja'] ?? 0) === 1;
+                $tipoAnalisis = match ((int) ($it['compleja'] ?? 0)) {
+                    \App\Models\LabotestModel::COMPLEJA_COMPOUESTA => lang('Labotests.labotests_tipo_analisis_tabla'),
+                    \App\Models\LabotestModel::COMPLEJA_CULTIVO => lang('Labotests.labotests_tipo_analisis_cultivo'),
+                    default => lang('Labotests.labotests_tipo_analisis_simple'),
+                };
                 $tm = (string) ($it['tipo_muestra'] ?? '');
                 $me = (string) ($it['metodo'] ?? '');
                 ?>
                 <tr>
                     <td><?= $pid ?></td>
                     <td><?= esc($pname) ?></td>
-                    <td><?= $compleja ? 'Compuesta' : 'Simple' ?></td>
+                    <td><?= esc($tipoAnalisis) ?></td>
                     <td><?= $tm !== '' ? esc($tm) : '—' ?></td>
                     <td><?= $me !== '' ? esc($me) : '—' ?></td>
                 </tr>

@@ -31,11 +31,11 @@
                 <input type="number" name="cost_deriv" id="cost_deriv" class="form-control" value="<?= esc($labotests_info->cost_deriv ?? 0) ?>" min="0">
             </div>
             <div class="col-md-6 mb-3">
-                <label for="compleja" class="form-label"><?= lang('Labotests.labotests_compuesta') ?></label>
+                <label for="compleja" class="form-label"><?= lang('Labotests.labotests_tipo_analisis') ?></label>
                 <select name="compleja" id="compleja" class="form-control">
-                    <option value="0" <?= ((int) ($labotests_info->compleja ?? 0) === 0 ? 'selected' : '') ?>><?= lang('Labotests.labotests_no') ?></option>
-                    <option value="1" <?= ((int) ($labotests_info->compleja ?? 0) === 1 ? 'selected' : '') ?>><?= lang('Labotests.labotests_yes') ?></option>
-                    <option value="2" <?= ((int) ($labotests_info->compleja ?? 0) === 2 ? 'selected' : '') ?>>Cultivo</option>
+                    <option value="0" <?= ((int) ($labotests_info->compleja ?? 0) === 0 ? 'selected' : '') ?>><?= lang('Labotests.labotests_tipo_analisis_simple') ?></option>
+                    <option value="1" <?= ((int) ($labotests_info->compleja ?? 0) === 1 ? 'selected' : '') ?>><?= lang('Labotests.labotests_tipo_analisis_tabla') ?></option>
+                    <option value="2" <?= ((int) ($labotests_info->compleja ?? 0) === 2 ? 'selected' : '') ?>><?= lang('Labotests.labotests_tipo_analisis_cultivo') ?></option>
                 </select>
             </div>
             <div class="col-md-6 mb-3">

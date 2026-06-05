@@ -32,9 +32,9 @@
         <strong><i class="fa-solid fa-file-arrow-up me-1"></i>Exportar / Importar configuración</strong>
         <span class="badge bg-secondary"><?php
             echo match ((int) ($compleja ?? 0)) {
-                1 => 'Prueba compuesta',
-                2 => 'Cultivo',
-                default => 'Prueba simple',
+                \App\Models\LabotestModel::COMPLEJA_COMPOUESTA => lang('Labotests.labotests_tipo_analisis_tabla'),
+                \App\Models\LabotestModel::COMPLEJA_CULTIVO => lang('Labotests.labotests_tipo_analisis_cultivo'),
+                default => lang('Labotests.labotests_tipo_analisis_simple'),
             };
         ?></span>
     </div>
@@ -213,7 +213,7 @@ if ($feRaw !== '' && !empty($formulas_con_expresion ?? [])) {
 ?>
 <div class="card card-tabla-sub-items mt-3">
     <div class="card-header d-flex flex-wrap align-items-center gap-2">
-        <strong>Valores de sub-clases (prueba compuesta)</strong>
+        <strong>Valores de sub-clases</strong>
         <?php if (! empty($sub_items)): ?>
         <span class="badge bg-secondary"><?= count($sub_items) ?> filas</span>
         <span class="text-muted small">Agrupadas por población; cada analito puede tener una fila por grupo y sexo.</span>

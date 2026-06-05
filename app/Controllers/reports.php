@@ -1352,7 +1352,7 @@ class Reports extends SecureArea
 
         $output = fopen('php://output', 'w');
         fwrite($output, "\xEF\xBB\xBF");
-        fputcsv($output, ['ID grupo', 'Grupo', 'ID análisis', 'Análisis', 'Tipo prueba', 'Tipo de muestra', 'Método']);
+        fputcsv($output, ['ID grupo', 'Grupo', 'ID análisis', 'Análisis', lang('Labotests.labotests_tipo_analisis'), 'Tipo de muestra', 'Método']);
 
         foreach ($categories as $cat) {
             $gid   = (int) ($cat['id'] ?? 0);
@@ -1365,7 +1365,11 @@ class Reports extends SecureArea
             }
 
             foreach ($items as $it) {
-                $tipo = (int) ($it['compleja'] ?? 0) === 1 ? 'Compuesta' : 'Simple';
+                $tipo = match ((int) ($it['compleja'] ?? 0)) {
+                    \App\Models\LabotestModel::COMPLEJA_COMPOUESTA => lang('Labotests.labotests_tipo_analisis_tabla'),
+                    \App\Models\LabotestModel::COMPLEJA_CULTIVO => lang('Labotests.labotests_tipo_analisis_cultivo'),
+                    default => lang('Labotests.labotests_tipo_analisis_simple'),
+                };
                 fputcsv($output, [
                     $gid,
                     $gname,

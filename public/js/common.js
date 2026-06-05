@@ -192,9 +192,43 @@ function makeTablesResponsive(root) {
     });
 }
 
+/**
+ * Sincroniza sidebar offcanvas al cambiar orientación o ancho.
+ * Evita banda vacía lateral y restos de backdrop al rotar el dispositivo.
+ */
+function syncDashboardSidebarLayout() {
+    var sb = document.getElementById('sidebarMenu');
+    if (!sb) {
+        return;
+    }
+
+    var isDesktop = window.innerWidth >= 992;
+
+    if (!isDesktop && typeof bootstrap !== 'undefined' && bootstrap.Offcanvas) {
+        var inst = bootstrap.Offcanvas.getInstance(sb);
+        if (inst) {
+            inst.hide();
+        }
+        sb.classList.remove('show', 'showing', 'hiding');
+        document.querySelectorAll('.offcanvas-backdrop').forEach(function (el) {
+            el.remove();
+        });
+        document.body.classList.remove('offcanvas-open');
+        document.body.style.removeProperty('overflow');
+        document.body.style.removeProperty('padding-right');
+    } else if (isDesktop) {
+        sb.classList.add('show');
+    }
+
+    document.querySelectorAll('.registros-table-responsive, .table-responsive').forEach(function (el) {
+        el.scrollLeft = 0;
+    });
+}
+
 document.addEventListener('DOMContentLoaded', function () {
     initAsyncForms();
     makeTablesResponsive(document);
+    syncDashboardSidebarLayout();
 
     // Cubre tablas que aparecen dinámicamente (AJAX/render tardío)
     var observerTimer = null;
@@ -223,4 +257,9 @@ document.addEventListener('DOMContentLoaded', function () {
             }
         });
     }
+});
+
+window.addEventListener('resize', syncDashboardSidebarLayout);
+window.addEventListener('orientationchange', function () {
+    setTimeout(syncDashboardSidebarLayout, 150);
 });

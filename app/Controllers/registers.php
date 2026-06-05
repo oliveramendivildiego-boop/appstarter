@@ -396,7 +396,7 @@ class Registers extends SecureArea
                 $html .= '<a href="' . site_url('registers/edit/' . $rid) . '" class="btn btn-sm btn-outline-success btn-icono-accion" title="' . esc($editOrderTitle) . '"><i class="fa-solid fa-flask"></i></a>';
                 $btnMasClass = ($saldoNum > 0) ? 'btn-warning' : 'btn-outline-secondary';
                 $html .= '<div class="dropdown">';
-                $html .= '<button class="btn btn-sm ' . $btnMasClass . ' dropdown-toggle btn-accion-mas" type="button" data-bs-toggle="dropdown" data-bs-boundary="viewport" aria-expanded="false" title="Más acciones"><i class="fa-solid fa-ellipsis"></i><span class="ms-1 d-none d-md-inline">Más</span></button>';
+                $html .= '<button class="btn btn-sm ' . $btnMasClass . ' dropdown-toggle btn-accion-mas" type="button" data-bs-toggle="dropdown" data-bs-boundary="viewport" data-bs-popper-config="' . esc('{"strategy":"fixed"}', 'attr') . '" aria-expanded="false" title="Más acciones"><i class="fa-solid fa-ellipsis"></i><span class="ms-1 d-none d-md-inline">Más</span></button>';
                 $html .= '<ul class="dropdown-menu dropdown-menu-end shadow-sm registros-acciones-menu">';
                 $pacientePhone = trim($r->paciente_phone ?? '');
                 $doctorPhone   = trim($r->doctor_phone ?? '');

@@ -858,7 +858,7 @@ class Labotests extends SecureArea
             return redirect()->to("labotests/detail/{$id}")->with('error', 'No se pudo generar el archivo de exportación');
         }
 
-        $tipo = ((int) ($payload['compleja'] ?? 0) === 1) ? 'compuesta' : 'simple';
+        $tipo = \App\Models\LabotestModel::tipoAnalisisSlug((int) ($payload['compleja'] ?? 0));
         $filename = 'labotest_' . $id . '_' . $tipo . '_' . date('Ymd_His') . '.json';
 
         return $this->response

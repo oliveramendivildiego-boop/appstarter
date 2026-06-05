@@ -34,9 +34,9 @@ foreach ($allowed_modules ?? [] as $m) {
     if ($mid === 'home') { $can_view_home = true; }
 }
 ?>
-<div class="sidebar border <?= esc($sbBorderClass) ?> col-md-3 col-lg-2 p-0">
+<div class="sidebar border <?= esc($sbBorderClass) ?> col-lg-2 p-0">
   <div class="offcanvas-lg <?= esc($offcanvasDir) ?>" tabindex="-1" id="sidebarMenu" aria-labelledby="sidebarMenuLabel">
-    <div class="offcanvas-header">
+    <div class="offcanvas-header d-lg-none">
       <h5 class="offcanvas-title" id="sidebarMenuLabel"><?= esc($companyName ?? 'Menu') ?></h5>
       <button type="button" class="btn-close" data-bs-dismiss="offcanvas" data-bs-target="#sidebarMenu" aria-label="Cerrar"></button>
     </div>

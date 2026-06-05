@@ -153,7 +153,8 @@ $listaBtnClass = static fn (bool $active): string => 'btn btn-sm ' . ($active ? 
         $desde = $totalReg > 0 ? (($pageNum - 1) * $perPage) + 1 : 0;
         $hasta = min($pageNum * $perPage, $totalReg);
         ?>
-        <p class="text-muted small">Mostrando <?= $desde ?>–<?= $hasta ?> de <?= $totalReg ?> registro(s)</p>
+        <p class="text-muted small mb-1">Mostrando <?= $desde ?>–<?= $hasta ?> de <?= $totalReg ?> registro(s)</p>
+        <p class="text-muted small d-md-none mb-2"><i class="fa-solid fa-arrows-left-right me-1"></i>Desliza horizontalmente para ver todas las columnas.</p>
         <?= $manage_table ?? '' ?>
     </div>
 </div>

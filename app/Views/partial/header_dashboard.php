@@ -49,17 +49,6 @@ $extraCss = isset($moduleCss[$currentMod]) ? $moduleCss[$currentMod] : null;
     <script src="<?= base_url('js/manage_tables.js') ?>"></script>
     <script src="<?= base_url('js/header-datetime.js') ?>"></script>
     <script>
-      document.addEventListener('DOMContentLoaded', function() {
-        var sb = document.getElementById('sidebarMenu');
-        if (sb && window.innerWidth >= 992) sb.classList.add('show');
-      });
-      window.addEventListener('resize', function() {
-        var sb = document.getElementById('sidebarMenu');
-        if (!sb) return;
-        if (window.innerWidth >= 992) sb.classList.add('show'); else sb.classList.remove('show');
-      });
-    </script>
-    <script>
       (function(){var d=document.documentElement;var p=d.getAttribute('data-theme-primary');var h=d.getAttribute('data-theme-hover');var a=d.getAttribute('data-theme-active');if(p)d.style.setProperty('--primary-color',p);if(h)d.style.setProperty('--primary-hover',h);if(a)d.style.setProperty('--primary-active',a);})();
     </script>
     <?php if (!empty($extra_head_links) && is_array($extra_head_links)): ?>
@@ -71,11 +60,11 @@ $extraCss = isset($moduleCss[$currentMod]) ? $moduleCss[$currentMod] : null;
 <body>
 <div id="toast-container" class="position-fixed top-0 end-0 p-3"></div>
 
-<header class="navbar navbar-dark navbar-theme sticky-top flex-md-nowrap p-0 shadow">
-    <button class="navbar-toggler d-md-none ms-2 me-2 collapsed" type="button" data-bs-toggle="offcanvas" data-bs-target="#sidebarMenu" aria-controls="sidebarMenu" aria-expanded="false" aria-label="Toggle navigation">
+<header class="navbar navbar-dark navbar-theme sticky-top flex-nowrap p-0 shadow">
+    <button class="navbar-toggler d-lg-none ms-2 me-2 collapsed flex-shrink-0" type="button" data-bs-toggle="offcanvas" data-bs-target="#sidebarMenu" aria-controls="sidebarMenu" aria-expanded="false" aria-label="Abrir menú">
         <span class="navbar-toggler-icon"></span>
     </button>
-    <a class="navbar-brand col-md-3 col-lg-2 me-0 px-3 fs-6 d-flex align-items-center" href="<?= employee_landing_url() ?>">
+    <a class="navbar-brand col-lg-2 me-0 px-3 fs-6 d-flex align-items-center" href="<?= employee_landing_url() ?>">
         <?php if ($showLogoInHeader): ?>
             <img src="<?= base_url($logoPath) ?>" alt="<?= esc($companyName) ?>" class="me-2 navbar-brand-logo">
         <?php else: ?>
@@ -93,5 +82,5 @@ $extraCss = isset($moduleCss[$currentMod]) ? $moduleCss[$currentMod] : null;
             'companyName'    => $companyName,
             'current_module' => $current_module ?? 'home',
         ]) ?>
-        <main class="col-12 col-md-9 col-lg-10 px-md-4 pt-4 ms-sm-auto">
+        <main class="col-12 col-lg-10 px-md-4 pt-4 ms-lg-auto">
             <div class="container-fluid">
