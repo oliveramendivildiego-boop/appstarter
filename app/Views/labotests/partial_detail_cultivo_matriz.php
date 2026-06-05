@@ -235,6 +235,14 @@ $resolveCategoriaCeldaCfg = static function (array $celdaRaw) use ($leyendasJsMa
 .cultivo-cuerpo-unidad-wrap {
     min-width: 9rem;
 }
+.cultivo-bulk-celda-panel {
+    border: 1px dashed #ced4da;
+    border-radius: 0.375rem;
+    background: #f8f9fa;
+}
+.cultivo-bulk-celda-panel .cultivo-bulk-celda-extra {
+    min-width: 12rem;
+}
 </style>
 <div class="card card-tabla-sub-items mt-3">
     <div class="card-header d-flex flex-wrap align-items-center gap-2">
@@ -400,6 +408,46 @@ $resolveCategoriaCeldaCfg = static function (array $celdaRaw) use ($leyendasJsMa
                     </div>
                 </div>
             </div>
+
+            <?php if ($secId === 'cuerpo'): ?>
+            <div class="cultivo-bulk-celda-panel p-2 mb-2">
+                <div class="d-flex flex-wrap align-items-end gap-2">
+                    <div>
+                        <label class="form-label small mb-1" for="cultivo_cuerpo_bulk_modo">Aplicar a todas las columnas</label>
+                        <select class="form-select form-select-sm cultivo-bulk-celda-modo" id="cultivo_cuerpo_bulk_modo" data-seccion="cuerpo">
+                            <option value="texto">Texto libre</option>
+                            <option value="opcion">Tipo de resultado</option>
+                            <option value="leyenda">Leyenda de cultivo</option>
+                        </select>
+                    </div>
+                    <div class="cultivo-bulk-celda-extra cultivo-bulk-opcion-wrap d-none">
+                        <label class="form-label small mb-1" for="cultivo_cuerpo_bulk_opcion">Tipo de resultado</label>
+                        <select class="form-select form-select-sm cultivo-bulk-celda-opcion" id="cultivo_cuerpo_bulk_opcion" data-seccion="cuerpo">
+                            <option value="0">— Seleccione tipo —</option>
+                            <?php foreach ($opcionesList as $oid => $oname): ?>
+                            <option value="<?= (int) $oid ?>"><?= esc($oname) ?></option>
+                            <?php endforeach; ?>
+                        </select>
+                    </div>
+                    <div class="cultivo-bulk-celda-extra cultivo-bulk-leyenda-wrap d-none">
+                        <label class="form-label small mb-1" for="cultivo_cuerpo_bulk_leyenda">Categoría de leyenda</label>
+                        <select class="form-select form-select-sm cultivo-bulk-celda-leyenda" id="cultivo_cuerpo_bulk_leyenda" data-seccion="cuerpo">
+                            <option value="0">— Seleccione categoría —</option>
+                            <?php foreach ($leyendasAgrupadasJs as $grupoLc):
+                                $grpCatId = (int) ($grupoLc['categoria_id'] ?? 0);
+                                if ($grpCatId < 1 || empty($grupoLc['leyendas'])) continue;
+                            ?>
+                            <option value="<?= $grpCatId ?>"><?= esc((string) ($grupoLc['categoria_nombre'] ?? '')) ?></option>
+                            <?php endforeach; ?>
+                        </select>
+                    </div>
+                    <button type="button" class="btn btn-sm btn-outline-secondary btn-cultivo-bulk-aplicar" data-seccion="cuerpo">
+                        <i class="fa-solid fa-arrows-left-right-to-line me-1"></i>Aplicar a todas las columnas
+                    </button>
+                </div>
+                <p class="small text-muted mb-0 mt-1">Define el tipo de celda del cuerpo y lo copia a todas las filas y columnas de datos.</p>
+            </div>
+            <?php endif; ?>
 
             <div class="table-responsive">
                 <table class="table table-bordered table-sm mb-0 cultivo-matriz-grid" data-seccion="<?= esc($secId, 'attr') ?>">
@@ -634,6 +682,74 @@ $resolveCategoriaCeldaCfg = static function (array $celdaRaw) use ($leyendasJsMa
         if (opcionWrap) opcionWrap.classList.toggle('d-none', modo !== 'opcion');
         if (leyendaWrap) leyendaWrap.classList.toggle('d-none', modo !== 'leyenda');
         if (valorWrap) valorWrap.classList.toggle('d-none', modo === 'opcion');
+    }
+
+    function toggleBulkCeldaPanels(wrap, modo) {
+        if (!wrap) return;
+        var opcionWrap = wrap.querySelector('.cultivo-bulk-opcion-wrap');
+        var leyendaWrap = wrap.querySelector('.cultivo-bulk-leyenda-wrap');
+        if (opcionWrap) opcionWrap.classList.toggle('d-none', modo !== 'opcion');
+        if (leyendaWrap) leyendaWrap.classList.toggle('d-none', modo !== 'leyenda');
+    }
+
+    function buildCeldaFromBulk(modo, opcionId, categoriaId) {
+        if (modo === 'opcion') {
+            var oid = parseInt(opcionId, 10);
+            return { modo: 'opcion', opcion_id: isNaN(oid) ? 0 : Math.max(0, oid) };
+        }
+        if (modo === 'leyenda') {
+            var cid = parseInt(categoriaId, 10);
+            return {
+                modo: 'leyenda',
+                leyenda_cultivo_categoria_id: isNaN(cid) ? 0 : Math.max(0, cid)
+            };
+        }
+        return { modo: 'texto' };
+    }
+
+    function aplicarBulkCeldaATodasColumnas(secId) {
+        if (secId !== 'cuerpo') return;
+        var wrap = getWrap(secId);
+        if (!wrap) return;
+        var modoSel = wrap.querySelector('.cultivo-bulk-celda-modo');
+        var modo = modoSel ? modoSel.value : 'texto';
+        var opcionSel = wrap.querySelector('.cultivo-bulk-celda-opcion');
+        var leyendaSel = wrap.querySelector('.cultivo-bulk-celda-leyenda');
+        var opcionId = opcionSel ? opcionSel.value : '0';
+        var categoriaId = leyendaSel ? leyendaSel.value : '0';
+
+        if (modo === 'opcion' && (!opcionId || parseInt(opcionId, 10) < 1)) {
+            if (typeof showToast === 'function') {
+                showToast('Seleccione un tipo de resultado', 'error');
+            }
+            return;
+        }
+        if (modo === 'leyenda' && (!categoriaId || parseInt(categoriaId, 10) < 1)) {
+            if (typeof showToast === 'function') {
+                showToast('Seleccione una categoría de leyenda', 'error');
+            }
+            return;
+        }
+
+        var data = capturarSeccion(secId);
+        if (!data || data.filas < 1) {
+            if (typeof showToast === 'function') {
+                showToast('Agregue al menos una fila de datos', 'error');
+            }
+            return;
+        }
+
+        var plantilla = buildCeldaFromBulk(modo, opcionId, categoriaId);
+        for (var r = 0; r < data.filas; r++) {
+            if (!Array.isArray(data.celdas[r])) data.celdas[r] = [];
+            for (var c = 0; c < data.columnas; c++) {
+                data.celdas[r][c] = normalizeCelda(plantilla);
+            }
+        }
+        renderSeccion(secId, data);
+        if (typeof showToast === 'function') {
+            showToast('Tipo de celda aplicado a todas las columnas', 'success');
+        }
     }
 
     function buildCeldaValorInputHtml(secId, fila, col, valor) {
@@ -1360,6 +1476,10 @@ $resolveCategoriaCeldaCfg = static function (array $celdaRaw) use ($leyendasJsMa
         if (!wrap) return;
         var dims = leerDimensiones(secId);
         if (dims) guardarDimensionesEnWrap(wrap, dims.filas, dims.columnas);
+        if (secId === 'cuerpo') {
+            var bulkModo = wrap.querySelector('.cultivo-bulk-celda-modo');
+            if (bulkModo) toggleBulkCeldaPanels(wrap, bulkModo.value);
+        }
         initSortableSeccion(secId);
         refrescarPreviewDesdeDom(secId);
     });
@@ -1425,9 +1545,20 @@ $resolveCategoriaCeldaCfg = static function (array $celdaRaw) use ($leyendasJsMa
             toggleCeldaModoPanels(config, e.target.value);
             return;
         }
+        if (e.target.classList.contains('cultivo-bulk-celda-modo')) {
+            var wrapBulk = e.target.closest('.cultivo-matriz-seccion');
+            if (wrapBulk) toggleBulkCeldaPanels(wrapBulk, e.target.value);
+            return;
+        }
     });
 
     form.addEventListener('click', function(e) {
+        var btnBulk = e.target.closest('.btn-cultivo-bulk-aplicar');
+        if (btnBulk) {
+            var secBulk = btnBulk.getAttribute('data-seccion');
+            if (secBulk) aplicarBulkCeldaATodasColumnas(secBulk);
+            return;
+        }
         var btn = e.target.closest('.btn-cultivo-add-titulo-in-col');
         if (!btn) return;
         var secId = btn.getAttribute('data-seccion');
