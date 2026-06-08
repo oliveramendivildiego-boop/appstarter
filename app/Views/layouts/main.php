@@ -199,5 +199,6 @@ if ($subAlert !== null && ! $hideSubAlertOnBlockedPage):
 </footer>
 
 <?php echo $this->renderSection('scripts'); ?>
+<?= view('partial/modern_ui') ?>
 </body>
 </html>

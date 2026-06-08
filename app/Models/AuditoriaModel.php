@@ -65,6 +65,26 @@ class AuditoriaModel extends Model
     }
 
     /**
+     * Eventos de auditoría de un registro/orden (más recientes primero, luego invertidos para grafo).
+     */
+    public function getPorRegistro(string $registroId, int $limit = 200): array
+    {
+        $registroId = trim($registroId);
+        if ($registroId === '') {
+            return [];
+        }
+
+        $rows = $this->db->table('auditoria')
+            ->select('auditoria.*, people.first_name, people.last_name_fa')
+            ->join('people', 'people.person_id = auditoria.person_id', 'left')
+            ->where('auditoria.registro_id', $registroId)
+            ->orderBy('auditoria.fecha', 'ASC')
+            ->limit($limit)
+            ->get()
+            ->getResultArray();
+    }
+
+    /**
      * Obtiene registros paginados con filtros opcionales.
      */
     public function getPaginados(int $perPage, int $offset, array $filters = []): array

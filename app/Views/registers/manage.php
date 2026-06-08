@@ -96,7 +96,7 @@
         background: #cfe2ff;
     }
 </style>
-<script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.2/Sortable.min.js"></script>
+<script src="<?= base_url('js/vendor/sortable.min.js') ?>"></script>
 <?= $this->endSection() ?>
 <?= $this->section('content') ?>
 <?php

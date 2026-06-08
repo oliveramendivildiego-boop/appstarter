@@ -426,7 +426,7 @@ if ($envelopeBootJson === false) {
     }
 })();
 </script>
-<script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.2/Sortable.min.js"></script>
+<script src="<?= base_url('js/vendor/sortable.min.js') ?>"></script>
 <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.6/dist/JsBarcode.all.min.js"></script>
 <script src="<?= base_url('js/envelope-barcode.js') ?>?v=4"></script>
 <script src="<?= base_url('js/envelope-editor.js') ?>?v=25"></script>

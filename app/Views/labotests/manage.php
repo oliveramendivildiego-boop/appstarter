@@ -167,7 +167,7 @@ $labRight = '<a href="' . site_url('labotests/perfiles') . '" class="btn btn-out
 <?= $this->endSection() ?>
 
 <?= $this->section('scripts') ?>
-<script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.2/Sortable.min.js"></script>
+<script src="<?= base_url('js/vendor/sortable.min.js') ?>"></script>
 <script>
 document.addEventListener('DOMContentLoaded', function() {
     var lists = Array.prototype.slice.call(document.querySelectorAll('.labotests-analysis-list'));

@@ -802,4 +802,5 @@ document.addEventListener('DOMContentLoaded', function() {
     actualizarCalculadas();
 });
 </script>
+<script src="<?= base_url('js/modern/formfill-offline-draft.js') ?>" defer></script>
 <?= $this->endSection() ?>

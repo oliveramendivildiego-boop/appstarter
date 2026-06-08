@@ -226,7 +226,7 @@ if ($feRaw !== '' && !empty($formulas_con_expresion ?? [])) {
         <?php endif; ?>
     </div>
     <div class="card-body">
-        <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.2/Sortable.min.js"></script>
+        <script src="<?= base_url('js/vendor/sortable.min.js') ?>"></script>
         <div class="wrapper-tabla-sub-items">
         <table class="table table-bordered" id="tabla_sub_items">
             <thead>

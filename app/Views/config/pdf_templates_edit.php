@@ -1,7 +1,7 @@
 <?= $this->extend('layouts/main') ?>
 <?= $this->section('title') ?>Editar plantilla PDF<?= $this->endSection() ?>
 <?= $this->section('head_extra') ?>
-<script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.2/Sortable.min.js"></script>
+<script src="<?= base_url('js/vendor/sortable.min.js') ?>"></script>
 <?= $this->endSection() ?>
 <?php
 $elLabels = $element_type_labels ?? \App\Services\ReportPdfLayoutService::elementTypeLabels();

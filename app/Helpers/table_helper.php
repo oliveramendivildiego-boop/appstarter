@@ -40,7 +40,7 @@ if (!function_exists('get_people_manage_table')) {
     function get_people_manage_table(array $people, object $controller): string
     {
         $isCustomers = strtolower($controller->getControllerName()) === 'customers';
-        $table = '<div class="table-responsive"><table class="table table-bordered" id="sortable_table">';
+        $table = '<div class="table-responsive lab-grid-enhanced"><table class="table table-bordered" id="sortable_table">';
         if ($isCustomers) {
             $headers = [
                 '<input type="checkbox" id="select_all" name="select_all" />',
@@ -90,7 +90,7 @@ if (!function_exists('get_people_manage_table_data_rows')) {
 if (!function_exists('get_doctors_manage_table')) {
     function get_doctors_manage_table(array $doctors, object $controller): string
     {
-        $table = '<div class="table-responsive"><table class="table table-bordered" id="sortable_table">';
+        $table = '<div class="table-responsive lab-grid-enhanced"><table class="table table-bordered" id="sortable_table">';
         $headers = [
             '<input type="checkbox" id="select_all" name="select_all" />',
             lang('Doctors.doctors_name'),

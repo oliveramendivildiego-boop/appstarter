@@ -68,11 +68,12 @@ $accionBadges = [
 <p class="text-muted small">Mostrando <?= $desde ?>–<?= $hasta ?> de <?= $totalReg ?> registro(s)</p>
 
 <div class="card">
-    <div class="card-header d-flex justify-content-between align-items-center">
+    <div class="card-header d-flex justify-content-between align-items-center flex-wrap gap-2">
         <strong><i class="fa-solid fa-clipboard-list me-2"></i>Registro de acciones</strong>
+        <a href="<?= site_url('lab-modern/trazabilidad') ?>" class="btn btn-sm btn-outline-primary"><i class="fa-solid fa-diagram-project me-1"></i> Mapa</a>
     </div>
     <div class="card-body p-0">
-        <div class="table-responsive">
+        <div class="table-responsive lab-grid-enhanced">
             <table class="table table-sm table-striped table-hover mb-0">
                 <thead class="table-dark">
                     <tr>
@@ -121,7 +122,7 @@ $accionBadges = [
                         </td>
                     </tr>
                     <?php if ($hasDatos): ?>
-                    <tr id="detail-<?= $idx ?>" class="audit-detail-row" style="display:none;">
+                    <tr id="detail-<?= $idx ?>" class="audit-detail-row lab-grid-skip" style="display:none;">
                         <td colspan="7" class="bg-light px-3 py-2">
                             <?php if ($datosArr !== null): ?>
                                 <div class="row small">

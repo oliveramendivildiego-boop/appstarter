@@ -345,7 +345,7 @@ class Registers extends SecureArea
     {
         $labelSinDoctor = $this->getLabelSinDoctorConfig();
 
-        $html = '<div class="table-responsive registros-table-responsive"><table class="table table-bordered table-striped registros-table"><thead><tr>';
+        $html = '<div class="table-responsive lab-grid-enhanced registros-table-responsive"><table class="table table-bordered table-striped registros-table"><thead><tr>';
         $html .= '<th>Código</th><th>Paciente</th><th>Doctor</th><th>Total</th><th>Saldo</th><th class="text-end">Acciones</th>';
         $html .= '</tr></thead><tbody>';
 
@@ -446,7 +446,7 @@ class Registers extends SecureArea
         if (empty($registros)) {
             $html .= '<tr><td colspan="6">No hay registros.</td></tr>';
         } else {
-            $html .= '<tr class="table-secondary fw-bold"><td colspan="3">Total</td>';
+            $html .= '<tr class="table-secondary fw-bold lab-grid-skip"><td colspan="3">Total</td>';
             $html .= '<td>' . number_format($sumTotal, 2) . '</td>';
             $html .= '<td>' . number_format($sumSaldo, 2) . '</td>';
             $html .= '<td></td></tr>';
