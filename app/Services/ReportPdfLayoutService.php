@@ -359,6 +359,12 @@ class ReportPdfLayoutService
     /** Altura reservada para el pie fijo en Dompdf (mm), dentro del margen inferior de @page. */
     public const DEFAULT_PDF_FOOTER_RESERVE_MM = 22.0;
 
+    /** Altura aproximada de la línea Paciente / No. Orden (mm). */
+    public const ORDER_SHEET_HEADER_HEIGHT_MM = 4.5;
+
+    /** Separación entre la cabecera orden y el bloque de pie (mm). */
+    public const ORDER_SHEET_HEADER_GAP_ABOVE_FOOTER_MM = 1.5;
+
     /**
      * Marca de agua centrada (PDF e impresión). file = ruta relativa a WRITEPATH.
      *

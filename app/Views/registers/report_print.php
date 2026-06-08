@@ -83,7 +83,6 @@
     $printPagLabelCssPos = $ppToCssPos((string) ($pp['label_position'] ?? 'bottom-left'), $mt, $mr, $mb, $ml);
     $printPagValueCssPos = $ppToCssPos((string) ($pp['value_position'] ?? 'bottom-right'), $mt, $mr, $mb, $ml);
     $orderSheetHeaderEnabled = \App\Services\ReportPdfLayoutService::isOrderSheetHeaderEnabledForLayout($pl);
-    $orderSheetHeaderReserveMm = 6.0;
     ?>
     <?= view('registers/partials/report_pdf_theme_styles', [
         'pdf_layout'                     => $pdf_layout ?? [],
@@ -101,8 +100,6 @@
         'printSegmentBreakInside' => $printSegmentBreakInside,
         'printPagLabelCssPos'          => $printPagLabelCssPos,
         'printPagValueCssPos'          => $printPagValueCssPos,
-        'orderSheetHeaderEnabled'      => $orderSheetHeaderEnabled,
-        'orderSheetHeaderReserveMm'    => $orderSheetHeaderReserveMm,
     ]) ?>
 </head>
 <body class="report-browser-print<?= $gpbBodyClass !== '' ? ' ' . esc($gpbBodyClass, 'attr') : '' ?><?= $layoutReportMode ? ' report-print-layout-report-mode' : '' ?>">

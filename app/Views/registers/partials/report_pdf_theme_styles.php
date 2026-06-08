@@ -66,8 +66,6 @@ $chCardBg = ! empty($ch['bg_transparent']) ? 'transparent' : (string) $ch['bg_co
 $rs = \App\Services\ReportPdfLayoutService::normalizeResultsTableStyle($ps['results_table'] ?? []);
 $gpb = \App\Services\ReportPdfLayoutService::normalizeGrupoPruebaPageBreakStyle($ps['grupo_prueba_page_break'] ?? []);
 $orderSheetHeaderEnabled = \App\Services\ReportPdfLayoutService::isOrderSheetHeaderEnabledForLayout($pl);
-$orderSheetHeaderReserveMm = 6.0;
-$pageMarginTopRestMm = $orderSheetHeaderEnabled ? $mt + $orderSheetHeaderReserveMm : $mt;
 $gpbCompactScale = round(max(75, min(100, (int) ($gpb['compact_min_scale_percent'] ?? 85))) / 100, 3);
 $rsBodyBg = ! empty($rs['body_transparent']) ? 'transparent' : (string) $rs['body_bg_color'];
 $rsSegBg  = ! empty($rs['segment_transparent']) ? 'transparent' : (string) $rs['segment_bg_color'];
@@ -154,27 +152,12 @@ body.report-browser-print .pdf-ft-block.footer-grid {
 <?php
 $bodyMarginBottomMm = $pdfFooterEnabled ? ($mb + $pdfFooterReserveMm) : $mb;
 ?>
-<?php if ($orderSheetHeaderEnabled): ?>
-@page :first {
-    margin-top: <?= esc((string) $mt) ?>mm;
-    margin-right: <?= esc((string) $mr) ?>mm;
-    margin-bottom: <?= esc((string) $bodyMarginBottomMm) ?>mm;
-    margin-left: <?= esc((string) $ml) ?>mm;
-}
-@page {
-    margin-top: <?= esc((string) $pageMarginTopRestMm) ?>mm;
-    margin-right: <?= esc((string) $mr) ?>mm;
-    margin-bottom: <?= esc((string) $bodyMarginBottomMm) ?>mm;
-    margin-left: <?= esc((string) $ml) ?>mm;
-}
-<?php else: ?>
 @page {
     margin-top: <?= esc((string) $mt) ?>mm;
     margin-right: <?= esc((string) $mr) ?>mm;
     margin-bottom: <?= esc((string) $bodyMarginBottomMm) ?>mm;
     margin-left: <?= esc((string) $ml) ?>mm;
 }
-<?php endif; ?>
 body {
     margin: 0 !important;
     padding: 0 !important;
@@ -556,9 +539,9 @@ table.results.pdf-notes-table td.pdf-notes-cell {
     text-align: right;
 }
 .pdf-order-sheet-header-injected {
-    margin: 0 0 2mm;
-    break-after: avoid-page;
-    page-break-after: avoid;
+    margin: 2mm 0 0;
+    break-before: avoid-page;
+    page-break-before: avoid;
 }
 <?php endif; ?>
 </style>

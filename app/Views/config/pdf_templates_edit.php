@@ -999,7 +999,7 @@ $labelsShort = [
         $isActivePrintTpl = $tplId > 0 && $tplId === $activePrintTplId;
         $oshGlobal = ! empty($pdf_order_sheet_header_global);
         ?>
-        <p class="small text-muted mb-2">Desde la <strong>2.ª hoja</strong> del PDF o impresión muestra «Paciente: …» (izquierda) y «No. Orden: …» (derecha). La 1.ª hoja no lleva esta cabecera porque ya incluye esos datos.</p>
+        <p class="small text-muted mb-2">Desde la <strong>2.ª hoja</strong> del PDF o impresión muestra «Paciente: …» (izquierda) y «No. Orden: …» (derecha), justo encima del pie. La 1.ª hoja no lleva esta línea porque ya incluye esos datos. No depende del margen superior de la plantilla.</p>
         <?php if ($oshGlobal): ?>
         <div class="alert alert-info py-2 small mb-2">Está activa la opción global en <strong>Configuración → Sistema</strong> para este laboratorio (aplica aunque este check esté desmarcado).</div>
         <?php endif; ?>

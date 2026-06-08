@@ -66,10 +66,14 @@ class PdfService
             return;
         }
 
-        $marginTopMm   = (float) ($data['margin_top_mm'] ?? 15);
-        $marginLeftMm  = (float) ($data['margin_left_mm'] ?? 15);
-        $marginRightMm = (float) ($data['margin_right_mm'] ?? 15);
-        $mmToPt        = 72 / 25.4;
+        $marginBottomMm  = (float) ($data['margin_bottom_mm'] ?? 15);
+        $marginLeftMm    = (float) ($data['margin_left_mm'] ?? 15);
+        $marginRightMm   = (float) ($data['margin_right_mm'] ?? 15);
+        $footerReserveMm = ! empty($data['footer_enabled'])
+            ? (float) ($data['footer_reserve_mm'] ?? 22)
+            : 0.0;
+        $gapAboveFooterMm = (float) ($data['gap_above_footer_mm'] ?? 1.5);
+        $mmToPt           = 72 / 25.4;
 
         $dompdf->setCallbacks([
             [
@@ -82,9 +86,11 @@ class PdfService
                 ) use (
                     $patientLine,
                     $orderLine,
-                    $marginTopMm,
+                    $marginBottomMm,
                     $marginLeftMm,
                     $marginRightMm,
+                    $footerReserveMm,
+                    $gapAboveFooterMm,
                     $mmToPt
                 ): void {
                     if ($pageNumber <= 1) {
@@ -99,9 +105,10 @@ class PdfService
 
                     $size  = 9.0;
                     $color = [0.2, 0.2, 0.2];
-                    $y     = $marginTopMm * $mmToPt;
-                    $xLeft = $marginLeftMm * $mmToPt;
-                    $xPad  = $marginRightMm * $mmToPt;
+                    $offsetFromBottomMm = $marginBottomMm + $footerReserveMm + $gapAboveFooterMm;
+                    $y                  = $pdf->get_height() - ($offsetFromBottomMm * $mmToPt) - ($size * 0.85);
+                    $xLeft              = $marginLeftMm * $mmToPt;
+                    $xPad               = $marginRightMm * $mmToPt;
 
                     if ($patientLine !== '') {
                         $pdf->text($xLeft, $y, $patientLine, $font, $size, $color);

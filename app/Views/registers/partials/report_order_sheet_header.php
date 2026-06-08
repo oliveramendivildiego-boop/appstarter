@@ -49,9 +49,19 @@ $variant     = (string) ($analisis_variant ?? 'pdf');
 $mm          = is_array($pl['margins_mm'] ?? null)
     ? $pl['margins_mm']
     : \App\Services\ReportPdfLayoutService::defaultMarginsMmStatic();
-$marginTopMm   = (float) ($mm['top'] ?? 15);
-$marginLeftMm  = (float) ($mm['left'] ?? 15);
-$marginRightMm = (float) ($mm['right'] ?? 15);
+$marginBottomMm = (float) ($mm['bottom'] ?? 15);
+$marginLeftMm   = (float) ($mm['left'] ?? 15);
+$marginRightMm  = (float) ($mm['right'] ?? 15);
+$pdfFooterEnabled = false;
+foreach (is_array($pl['blocks'] ?? null) ? $pl['blocks'] : [] as $fb) {
+    if (! empty($fb['enabled']) && (string) ($fb['id'] ?? '') === 'footer') {
+        $pdfFooterEnabled = true;
+        break;
+    }
+}
+$footerReserveMm = $pdfFooterEnabled
+    ? \App\Services\ReportPdfLayoutService::estimatePdfFooterReserveMm($pl)
+    : 0.0;
 
 if ($variant === 'browser_print'): ?>
 <div id="pdf-order-sheet-header-template" class="pdf-order-sheet-header-template" hidden
@@ -66,11 +76,14 @@ if ($variant !== 'pdf') {
 }
 
 $headerPayload = base64_encode((string) json_encode([
-    'patient'         => $patientLine,
-    'order'           => $orderLine,
-    'margin_top_mm'   => $marginTopMm,
-    'margin_left_mm'  => $marginLeftMm,
-    'margin_right_mm' => $marginRightMm,
+    'patient'              => $patientLine,
+    'order'                => $orderLine,
+    'margin_bottom_mm'     => $marginBottomMm,
+    'margin_left_mm'       => $marginLeftMm,
+    'margin_right_mm'      => $marginRightMm,
+    'footer_enabled'       => $pdfFooterEnabled,
+    'footer_reserve_mm'    => $footerReserveMm,
+    'gap_above_footer_mm'  => \App\Services\ReportPdfLayoutService::ORDER_SHEET_HEADER_GAP_ABOVE_FOOTER_MM,
 ], JSON_UNESCAPED_UNICODE));
 ?>
 <!-- pdf-order-sheet-header-dompdf -->

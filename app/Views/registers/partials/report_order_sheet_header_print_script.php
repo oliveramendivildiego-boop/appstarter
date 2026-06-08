@@ -1,6 +1,6 @@
 <?php
 /**
- * Inyecta cabecera Paciente / No. Orden al inicio de cada hoja desde la 2.ª (impresión navegador).
+ * Inyecta Paciente / No. Orden al pie de cada hoja desde la 2.ª (impresión navegador).
  *
  * @var bool $order_sheet_header_enabled
  */
@@ -21,6 +21,14 @@ if (empty($order_sheet_header_enabled)) {
             }
         }
         return node === container ? y : null;
+    }
+
+    function elementBottomWithinContainer(el, container) {
+        var top = offsetTopWithinContainer(el, container);
+        if (top === null) {
+            return null;
+        }
+        return top + (el.offsetHeight || 0);
     }
 
     function buildOrderSheetHeaderNode(tpl) {
@@ -53,9 +61,9 @@ if (empty($order_sheet_header_enabled)) {
         return wrap;
     }
 
-    function findFlowInsertPoint(container, targetY) {
+    function findLastFlowElementBefore(container, maxBottomY) {
         var best = null;
-        var bestTop = Infinity;
+        var bestBottom = -1;
         var nodes = container.querySelectorAll(
             '.header-grid, .patient-section, .pdf-notes-block, .pdf-lab-f-block, '
             + '.report-pdf-grupo-prueba, .report-pdf-grupo-cabecera, .report-segment-table-wrap, '
@@ -67,12 +75,12 @@ if (empty($order_sheet_header_enabled)) {
             if (el.classList && el.classList.contains('pdf-order-sheet-header-injected')) {
                 continue;
             }
-            var top = offsetTopWithinContainer(el, container);
-            if (top === null || top < targetY - 1) {
+            var bottom = elementBottomWithinContainer(el, container);
+            if (bottom === null || bottom > maxBottomY + 1) {
                 continue;
             }
-            if (top < bestTop) {
-                bestTop = top;
+            if (bottom > bestBottom) {
+                bestBottom = bottom;
                 best = el;
             }
         }
@@ -110,12 +118,26 @@ if (empty($order_sheet_header_enabled)) {
             return;
         }
 
-        for (var p = 0; p < boundaries.length; p++) {
-            var anchor = findFlowInsertPoint(container, boundaries[p]);
+        var maxBottom = container.scrollHeight || 0;
+        var pageNum;
+        for (pageNum = 2; pageNum <= metrics.estimatedPages; pageNum++) {
+            var pageEndY = pageNum - 1 < boundaries.length
+                ? boundaries[pageNum - 1]
+                : maxBottom;
+            if (pageNum === metrics.estimatedPages) {
+                pageEndY = Math.min(pageEndY, maxBottom);
+            }
+
+            var anchor = findLastFlowElementBefore(container, pageEndY);
             if (!anchor || !anchor.parentNode) {
                 continue;
             }
-            anchor.parentNode.insertBefore(buildOrderSheetHeaderNode(tpl), anchor);
+
+            if (anchor.nextSibling) {
+                anchor.parentNode.insertBefore(buildOrderSheetHeaderNode(tpl), anchor.nextSibling);
+            } else {
+                anchor.parentNode.appendChild(buildOrderSheetHeaderNode(tpl));
+            }
         }
     };
 })();

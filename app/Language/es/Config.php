@@ -205,7 +205,7 @@ return [
     'config_print_paper_height_mm' => 'Alto (mm)',
     'config_print_paper_custom_dims_help' => 'Tamaño de la hoja en milímetros: ancho × alto (orientación vertical).',
     'config_pdf_order_sheet_header_enabled' => 'Cabecera orden en hojas siguientes (Paciente / No. Orden)',
-    'config_pdf_order_sheet_header_enabled_help' => 'Desde la 2.ª hoja del PDF o impresión muestra «Paciente: …» a la izquierda y «No. Orden: …» a la derecha. Aplica a la plantilla activa de PDF e impresión de este laboratorio. También puede activarse solo en una plantilla (Plantillas PDF → General).',
+    'config_pdf_order_sheet_header_enabled_help' => 'Desde la 2.ª hoja del PDF o impresión muestra «Paciente: …» a la izquierda y «No. Orden: …» a la derecha, justo encima del pie. Aplica a la plantilla activa de PDF e impresión de este laboratorio. También puede activarse solo en una plantilla (Plantillas PDF → General).',
     'config_print_pagination_enabled' => 'Mostrar paginación en impresión directa',
     'config_print_pagination_position' => 'Posición de la paginación',
     'config_print_pagination_position_help' => 'Define en qué esquina/lado se mostrará «Página X de Y» al imprimir desde navegador.',
