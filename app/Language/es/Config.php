@@ -236,4 +236,10 @@ return [
     'config_lab_signature_image_help'     => 'JPG, PNG, GIF o WebP, máx. 2 MB. Reemplaza la firma anterior de esta persona.',
     'config_lab_seal_error'               => 'No se pudo guardar un sello (imagen válida hasta 2 MB).',
     'config_lab_signature_error'          => 'No se pudo guardar una firma (imagen válida hasta 2 MB).',
+    'config_lab_remove_seal'              => 'Eliminar sello',
+    'config_lab_remove_signature'         => 'Eliminar firma',
+    'config_lab_seal_deleted'             => 'Sello eliminado.',
+    'config_lab_signature_deleted'        => 'Firma eliminada.',
+    'config_lab_seal_already_empty'       => 'Este responsable no tiene sello.',
+    'config_lab_signature_already_empty'  => 'Este responsable no tiene firma.',
 ];

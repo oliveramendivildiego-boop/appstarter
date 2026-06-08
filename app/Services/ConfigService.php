@@ -1493,6 +1493,72 @@ class ConfigService
     }
 
     /**
+     * Elimina sello o firma de un responsable y actualiza lab_approvers_json.
+     *
+     * @param 'seal'|'signature' $kind
+     *
+     * @return array{success: bool, message: string}
+     */
+    public function deleteLabApproverImageFromRequest(array $post, string $kind): array
+    {
+        if (!in_array($kind, ['seal', 'signature'], true)) {
+            return ['success' => false, 'message' => 'Tipo de imagen no válido.'];
+        }
+
+        $approverId = $this->normalizeLabPersonId((string) ($post['approver_id'] ?? ''), null);
+        if ($approverId === '') {
+            return ['success' => false, 'message' => 'Identificador de responsable no válido.'];
+        }
+
+        $regex     = $kind === 'seal' ? '#^images/lab-approver-seal-#' : '#^images/lab-approver-sig-#';
+        $state     = $this->getLabValidationStateForView();
+        $approvers = $state['approvers'];
+        $found     = false;
+
+        foreach ($approvers as &$row) {
+            if (($row['id'] ?? '') !== $approverId) {
+                continue;
+            }
+            $found = true;
+            $old   = trim((string) ($row[$kind] ?? ''));
+            if ($old === '') {
+                return [
+                    'success' => true,
+                    'message' => $kind === 'seal'
+                        ? lang('Config.config_lab_seal_already_empty')
+                        : lang('Config.config_lab_signature_already_empty'),
+                ];
+            }
+            $this->deleteManagedConfigImage($old, $regex);
+            $row[$kind] = '';
+            break;
+        }
+        unset($row);
+
+        if (!$found) {
+            return ['success' => false, 'message' => 'No se encontró el responsable.'];
+        }
+
+        $ok = $this->appConfigModel->batchSave([
+            'lab_approvers_json' => json_encode($approvers, JSON_UNESCAPED_UNICODE),
+        ]);
+        if ($ok) {
+            $this->invalidateCache();
+        }
+
+        if (!$ok) {
+            return ['success' => false, 'message' => lang('Config.config_error')];
+        }
+
+        return [
+            'success' => true,
+            'message' => $kind === 'seal'
+                ? lang('Config.config_lab_seal_deleted')
+                : lang('Config.config_lab_signature_deleted'),
+        ];
+    }
+
+    /**
      * Validadores y aprobadores para la pestaña de configuración (incluye migración desde campos antiguos).
      *
      * @return array{validators: list<array{id: string, name: string}>, approvers: list<array{id: string, name: string, cargo: string, matricula: string, seal: string, signature: string}>}

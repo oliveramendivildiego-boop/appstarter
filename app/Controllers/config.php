@@ -506,6 +506,46 @@ class Config extends SecureArea
     }
 
     /**
+     * Elimina sello de un responsable al instante (AJAX).
+     */
+    public function deleteLabApproverSeal(): ResponseInterface
+    {
+        if (!$this->request->is('post')) {
+            return $this->response->setJSON(['success' => false, 'message' => 'Método no permitido.'])
+                ->setStatusCode(405);
+        }
+
+        $result = $this->configService->deleteLabApproverImageFromRequest(
+            $this->request->getPost(),
+            'seal'
+        );
+        $result['csrf_token'] = csrf_hash();
+        $result['csrf_name']  = csrf_token();
+
+        return $this->response->setJSON($result)->setStatusCode(($result['success'] ?? false) ? 200 : 400);
+    }
+
+    /**
+     * Elimina firma de un responsable al instante (AJAX).
+     */
+    public function deleteLabApproverSignature(): ResponseInterface
+    {
+        if (!$this->request->is('post')) {
+            return $this->response->setJSON(['success' => false, 'message' => 'Método no permitido.'])
+                ->setStatusCode(405);
+        }
+
+        $result = $this->configService->deleteLabApproverImageFromRequest(
+            $this->request->getPost(),
+            'signature'
+        );
+        $result['csrf_token'] = csrf_hash();
+        $result['csrf_name']  = csrf_token();
+
+        return $this->response->setJSON($result)->setStatusCode(($result['success'] ?? false) ? 200 : 400);
+    }
+
+    /**
      * Guarda apariencia del sistema (colores, fuente, menú).
      */
     public function saveUiStyle(): ResponseInterface

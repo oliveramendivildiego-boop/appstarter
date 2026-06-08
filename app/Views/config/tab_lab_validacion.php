@@ -10,6 +10,8 @@ $labels = [
     'seal'        => lang('Config.config_lab_seal_image'),
     'sig'         => lang('Config.config_lab_signature_image'),
     'remove'      => lang('Config.config_lab_remove_row'),
+    'removeSeal'  => lang('Config.config_lab_remove_seal'),
+    'removeSig'   => lang('Config.config_lab_remove_signature'),
 ];
 ?>
 <div class="tab-pane fade <?= $activeTab === 'lab_validacion' ? 'show active' : '' ?>" id="tab-lab-validacion" role="tabpanel">
@@ -73,7 +75,12 @@ $labels = [
                                     ?>
                                     <div class="mb-2 lab-seal-preview">
                                     <?php if ($sp !== '' && is_file($spFs)): ?>
-                                        <img src="<?= base_url($sp) ?>?v=<?= time() ?>" alt="" class="border rounded p-1 lab-seal-preview-img" style="max-height: 100px;">
+                                        <div class="d-flex align-items-start gap-2">
+                                            <img src="<?= base_url($sp) ?>?v=<?= time() ?>" alt="" class="border rounded p-1 lab-seal-preview-img" style="max-height: 100px;">
+                                            <button type="button" class="btn btn-outline-danger btn-sm lab-remove-seal" title="<?= esc(lang('Config.config_lab_remove_seal')) ?>">
+                                                <i class="fa-solid fa-trash-can me-1"></i><?= lang('Config.config_lab_remove_seal') ?>
+                                            </button>
+                                        </div>
                                     <?php endif; ?>
                                     </div>
                                     <input type="file" name="approver_seal_<?= esc($aid) ?>" class="form-control form-control-sm lab-seal-input" accept="image/jpeg,image/png,image/gif,image/webp,.jpg,.jpeg,.png,.gif,.webp" autocomplete="off">
@@ -87,10 +94,16 @@ $labels = [
                                     ?>
                                     <div class="mb-2 lab-sig-preview">
                                     <?php if ($gp !== '' && is_file($gpFs)): ?>
-                                        <img src="<?= base_url($gp) ?>?v=<?= time() ?>" alt="" class="border rounded p-1 lab-sig-preview-img" style="max-height: 64px;">
+                                        <div class="d-flex align-items-start gap-2">
+                                            <img src="<?= base_url($gp) ?>?v=<?= time() ?>" alt="" class="border rounded p-1 lab-sig-preview-img" style="max-height: 64px;">
+                                            <button type="button" class="btn btn-outline-danger btn-sm lab-remove-signature" title="<?= esc(lang('Config.config_lab_remove_signature')) ?>">
+                                                <i class="fa-solid fa-trash-can me-1"></i><?= lang('Config.config_lab_remove_signature') ?>
+                                            </button>
+                                        </div>
                                     <?php endif; ?>
                                     </div>
                                     <input type="file" name="approver_signature_<?= esc($aid) ?>" class="form-control form-control-sm lab-sig-input" accept="image/jpeg,image/png,image/gif,image/webp,.jpg,.jpeg,.png,.gif,.webp" autocomplete="off">
+                                    <div class="small text-muted lab-sig-upload-status mt-1">Al elegir imagen se guarda automáticamente.</div>
                                 </div>
                             </div>
                         </div>
@@ -114,6 +127,8 @@ $labels = [
     var L = <?= json_encode($labels, JSON_UNESCAPED_UNICODE) ?>;
     var sealUploadUrl = <?= json_encode(site_url('config/uploadLabApproverSeal')) ?>;
     var sigUploadUrl = <?= json_encode(site_url('config/uploadLabApproverSignature')) ?>;
+    var sealDeleteUrl = <?= json_encode(site_url('config/deleteLabApproverSeal')) ?>;
+    var sigDeleteUrl = <?= json_encode(site_url('config/deleteLabApproverSignature')) ?>;
 
     document.getElementById('btn-add-validator')?.addEventListener('click', function () {
         var wrap = document.getElementById('validator-rows');
@@ -184,9 +199,8 @@ $labels = [
                 if (data.csrf_token) window.CI_CSRF_TOKEN = data.csrf_token;
                 if (data.success && data.url) {
                     var wrap = card.querySelector(kind === 'seal' ? '.lab-seal-preview' : '.lab-sig-preview');
-                    var imgClass = kind === 'seal' ? 'lab-seal-preview-img' : 'lab-sig-preview-img';
                     if (wrap) {
-                        wrap.innerHTML = '<img src="' + data.url + '" class="border rounded p-1 ' + imgClass + '" style="max-height:' + (kind === 'seal' ? '100' : '64') + 'px" alt="">';
+                        wrap.innerHTML = buildLabImagePreviewHtml(kind, data.url);
                     }
                     if (statusEl) {
                         statusEl.textContent = data.message || 'Imagen guardada.';
@@ -216,6 +230,71 @@ $labels = [
             if (!/^image\//i.test(file.type || '')) return;
             uploadLabApproverImage(input, kind, uploadUrl);
         });
+    }
+
+    function buildLabImagePreviewHtml(kind, url) {
+        var imgClass = kind === 'seal' ? 'lab-seal-preview-img' : 'lab-sig-preview-img';
+        var maxH = kind === 'seal' ? '100' : '64';
+        var btnClass = kind === 'seal' ? 'lab-remove-seal' : 'lab-remove-signature';
+        var btnLabel = kind === 'seal' ? L.removeSeal : L.removeSig;
+        return '<div class="d-flex align-items-start gap-2">' +
+            '<img src="' + url + '" class="border rounded p-1 ' + imgClass + '" style="max-height:' + maxH + 'px" alt="">' +
+            '<button type="button" class="btn btn-outline-danger btn-sm ' + btnClass + '" title="' + escapeHtml(btnLabel) + '">' +
+            '<i class="fa-solid fa-trash-can me-1"></i>' + escapeHtml(btnLabel) +
+            '</button></div>';
+    }
+
+    function deleteLabApproverImage(card, kind, deleteUrl) {
+        var approverId = card.getAttribute('data-approver-id') || '';
+        var statusEl = card.querySelector(kind === 'seal' ? '.lab-seal-upload-status' : '.lab-sig-upload-status');
+        var btnLabel = kind === 'seal' ? L.removeSeal : L.removeSig;
+        if (!approverId) {
+            if (statusEl) {
+                statusEl.textContent = 'Error: falta identificador del responsable. Recargue la página.';
+                statusEl.className = 'small text-danger ' + (kind === 'seal' ? 'lab-seal-upload-status' : 'lab-sig-upload-status') + ' mt-1';
+            }
+            return;
+        }
+        if (!window.confirm('¿Eliminar ' + btnLabel.toLowerCase() + '?')) {
+            return;
+        }
+        if (statusEl) {
+            statusEl.textContent = 'Eliminando imagen…';
+            statusEl.className = 'small text-muted ' + (kind === 'seal' ? 'lab-seal-upload-status' : 'lab-sig-upload-status') + ' mt-1';
+        }
+        var fd = new FormData();
+        fd.append('approver_id', approverId);
+        var csrfName = window.CI_CSRF_TOKEN_NAME || 'csrf_test_name';
+        fd.append(csrfName, window.CI_CSRF_TOKEN || '');
+        fetch(deleteUrl, {
+            method: 'POST',
+            body: fd,
+            credentials: 'same-origin',
+            headers: { 'X-Requested-With': 'XMLHttpRequest' }
+        })
+            .then(function (r) { return r.json(); })
+            .then(function (data) {
+                if (data.csrf_token) window.CI_CSRF_TOKEN = data.csrf_token;
+                if (data.success) {
+                    var wrap = card.querySelector(kind === 'seal' ? '.lab-seal-preview' : '.lab-sig-preview');
+                    if (wrap) wrap.innerHTML = '';
+                    if (statusEl) {
+                        statusEl.textContent = data.message || 'Imagen eliminada.';
+                        statusEl.className = 'small text-success ' + (kind === 'seal' ? 'lab-seal-upload-status' : 'lab-sig-upload-status') + ' mt-1';
+                    }
+                    return;
+                }
+                if (statusEl) {
+                    statusEl.textContent = data.message || 'No se pudo eliminar la imagen.';
+                    statusEl.className = 'small text-danger ' + (kind === 'seal' ? 'lab-seal-upload-status' : 'lab-sig-upload-status') + ' mt-1';
+                }
+            })
+            .catch(function () {
+                if (statusEl) {
+                    statusEl.textContent = 'Error de conexión al eliminar la imagen.';
+                    statusEl.className = 'small text-danger ' + (kind === 'seal' ? 'lab-seal-upload-status' : 'lab-sig-upload-status') + ' mt-1';
+                }
+            });
     }
 
     document.querySelectorAll('.lab-seal-input').forEach(function (el) {
@@ -268,10 +347,23 @@ $labels = [
     });
 
     document.getElementById('approver-rows')?.addEventListener('click', function (e) {
-        var btn = e.target.closest('.lab-remove-approver');
-        if (!btn) return;
-        var row = btn.closest('.approver-row');
-        if (row) row.remove();
+        var btnApprover = e.target.closest('.lab-remove-approver');
+        if (btnApprover) {
+            var row = btnApprover.closest('.approver-row');
+            if (row) row.remove();
+            return;
+        }
+        var btnSeal = e.target.closest('.lab-remove-seal');
+        if (btnSeal) {
+            var cardSeal = btnSeal.closest('.approver-row');
+            if (cardSeal) deleteLabApproverImage(cardSeal, 'seal', sealDeleteUrl);
+            return;
+        }
+        var btnSig = e.target.closest('.lab-remove-signature');
+        if (btnSig) {
+            var cardSig = btnSig.closest('.approver-row');
+            if (cardSig) deleteLabApproverImage(cardSig, 'signature', sigDeleteUrl);
+        }
     });
 
     function escapeHtml(s) {

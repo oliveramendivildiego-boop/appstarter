@@ -131,6 +131,8 @@ $routes->post('config/save', 'Config::save');
 $routes->post('config/saveLabValidation', 'Config::saveLabValidation');
 $routes->post('config/uploadLabApproverSeal', 'Config::uploadLabApproverSeal');
 $routes->post('config/uploadLabApproverSignature', 'Config::uploadLabApproverSignature');
+$routes->post('config/deleteLabApproverSeal', 'Config::deleteLabApproverSeal');
+$routes->post('config/deleteLabApproverSignature', 'Config::deleteLabApproverSignature');
 $routes->post('config/saveUiStyle', 'Config::saveUiStyle');
 $routes->post('config/saveComprobanteStyle', 'Config::saveComprobanteStyle');
 $routes->post('config/saveWhatsapp', 'Config::saveWhatsapp');
