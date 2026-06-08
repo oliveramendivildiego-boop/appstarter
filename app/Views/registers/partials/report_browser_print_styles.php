@@ -26,6 +26,7 @@ $pdfFooterReserveMm = $pdfFooterEnabled
 $printSegmentBreakInside = (string) ($printSegmentBreakInside ?? 'auto');
 $printPagLabelCssPos = (string) ($printPagLabelCssPos ?? '');
 $printPagValueCssPos = (string) ($printPagValueCssPos ?? '');
+$orderSheetGapMm = \App\Services\ReportPdfLayoutService::ORDER_SHEET_HEADER_GAP_ABOVE_FOOTER_MM;
 ?>
 <style>
 :root {
@@ -34,6 +35,7 @@ $printPagValueCssPos = (string) ($printPagValueCssPos ?? '');
     --print-margin-bottom-mm: <?= esc((string) $mb) ?>;
     --print-margin-left-mm: <?= esc((string) $ml) ?>;
     --print-footer-reserve-mm: <?= esc((string) $pdfFooterReserveMm) ?>;
+    --print-order-sheet-gap-mm: <?= esc((string) $orderSheetGapMm) ?>;
 }
 @page {
     size: <?= esc($printPageCssSize) ?>;
@@ -111,8 +113,14 @@ body.js-total-pages-ready .pdf-counter-pages::before {
     body.report-browser-print .pdf-ft-block.footer-grid {
         position: fixed !important;
         bottom: calc(var(--print-margin-bottom-mm, <?= esc((string) $mb) ?>) * 1mm) !important;
-        left: calc(var(--print-margin-left-mm, <?= esc((string) $ml) ?>) * 1mm) !important;
-        right: calc(var(--print-margin-right-mm, <?= esc((string) $mr) ?>) * 1mm) !important;
+        left: 0 !important;
+        right: 0 !important;
+        width: 100% !important;
+        margin-left: 0 !important;
+        margin-right: 0 !important;
+        padding-left: 0 !important;
+        padding-right: 0 !important;
+        box-sizing: border-box !important;
     }
     html,
     body.report-browser-print,
@@ -234,6 +242,38 @@ body.js-total-pages-ready .pdf-counter-pages::before {
     }
     .report-print-toolbar {
         display: none !important;
+    }
+    body.report-browser-print.js-order-sheet-header-print .pdf-order-sheet-header-print-fixed {
+        display: block !important;
+        position: fixed !important;
+        left: 0 !important;
+        right: 0 !important;
+        width: 100% !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        z-index: 3 !important;
+        bottom: calc(
+            (var(--print-margin-bottom-mm, <?= esc((string) $mb) ?>)
+            + var(--print-footer-reserve-mm, <?= esc((string) $pdfFooterReserveMm) ?>)
+            + var(--print-order-sheet-gap-mm, <?= esc((string) $orderSheetGapMm) ?>)) * 1mm
+        ) !important;
+        background: #ffffff !important;
+        box-sizing: border-box !important;
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
+    }
+    body.report-browser-print.js-order-sheet-header-print .pdf-osh-page1-cover {
+        position: absolute !important;
+        left: 0 !important;
+        right: 0 !important;
+        width: 100% !important;
+        z-index: 5 !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        background: #ffffff !important;
+        pointer-events: none !important;
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
     }
     body,
     table.results th,

@@ -134,6 +134,7 @@ body.report-browser-print {
     position: relative;
 }
 body.report-browser-print .pdf-main-stack {
+    position: relative;
     padding-top: 0 !important;
     padding-bottom: 0 !important;
     box-sizing: border-box;
@@ -141,8 +142,13 @@ body.report-browser-print .pdf-main-stack {
 <?php if ($pdfFooterEnabled): ?>
 body.report-browser-print .pdf-ft-block.footer-grid {
     position: fixed;
+    left: 0;
+    right: 0;
+    width: 100%;
     z-index: 2;
     margin-top: 0 !important;
+    margin-left: 0 !important;
+    margin-right: 0 !important;
     padding-top: 6px;
     background: <?= esc($pdfFooterStripBg) ?>;
     box-sizing: border-box;
@@ -512,6 +518,7 @@ table.results.pdf-notes-table td.pdf-notes-cell {
 }
 <?php if ($orderSheetHeaderEnabled && $browserPrintMode): ?>
 .pdf-order-sheet-header,
+.pdf-order-sheet-header-print-fixed .pdf-order-sheet-header,
 .pdf-order-sheet-header-injected .pdf-order-sheet-header {
     width: 100%;
     border-collapse: collapse;
@@ -523,26 +530,32 @@ table.results.pdf-notes-table td.pdf-notes-cell {
     color: #333333;
 }
 .pdf-order-sheet-header td,
+.pdf-order-sheet-header-print-fixed .pdf-order-sheet-header td,
 .pdf-order-sheet-header-injected .pdf-order-sheet-header td {
     padding: 0;
     vertical-align: middle;
     white-space: nowrap;
 }
 .pdf-order-sheet-header-patient,
+.pdf-order-sheet-header-print-fixed .pdf-order-sheet-header-patient,
 .pdf-order-sheet-header-injected .pdf-order-sheet-header-patient {
     width: 50%;
     text-align: left;
 }
 .pdf-order-sheet-header-orden,
+.pdf-order-sheet-header-print-fixed .pdf-order-sheet-header-orden,
 .pdf-order-sheet-header-injected .pdf-order-sheet-header-orden {
     width: 50%;
     text-align: right;
 }
+.pdf-order-sheet-header-print-fixed,
 .pdf-order-sheet-header-injected {
-    margin: 2mm 0 0;
+    display: none;
+    width: 100%;
+    margin: 0;
+    padding: 0;
     background: #ffffff;
-    break-inside: avoid-page;
-    page-break-inside: avoid;
+    box-sizing: border-box;
 }
 <?php endif; ?>
 </style>

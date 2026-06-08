@@ -1,39 +1,24 @@
 <?php
 /**
- * Inyecta Paciente / No. Orden al final del contenido de cada hoja 2+ (impresión navegador).
+ * Cabecera Paciente / No. Orden en impresión navegador (hojas 2+), fija encima del pie.
  *
  * @var bool $order_sheet_header_enabled
  */
 if (empty($order_sheet_header_enabled)) {
     return;
 }
+
+$orderSheetGapMm = \App\Services\ReportPdfLayoutService::ORDER_SHEET_HEADER_GAP_ABOVE_FOOTER_MM;
+$orderSheetBandMm = \App\Services\ReportPdfLayoutService::ORDER_SHEET_HEADER_HEIGHT_MM;
 ?>
 <script>
 (function() {
-    function offsetTopWithinContainer(el, container) {
-        var y = 0;
-        var node = el;
-        while (node && node !== container) {
-            y += node.offsetTop || 0;
-            node = node.offsetParent;
-            if (!node) {
-                return null;
-            }
-        }
-        return node === container ? y : null;
-    }
-
-    function elementBottomWithinContainer(el, container) {
-        var top = offsetTopWithinContainer(el, container);
-        if (top === null) {
-            return null;
-        }
-        return top + (el.offsetHeight || 0);
-    }
+    var ORDER_SHEET_GAP_MM = <?= json_encode((float) $orderSheetGapMm) ?>;
+    var ORDER_SHEET_BAND_MM = <?= json_encode((float) $orderSheetBandMm) ?>;
 
     function buildOrderSheetHeaderNode(tpl) {
         var wrap = document.createElement('div');
-        wrap.className = 'pdf-order-sheet-header-injected';
+        wrap.className = 'pdf-order-sheet-header-print-fixed';
 
         var table = document.createElement('table');
         table.className = 'pdf-order-sheet-header';
@@ -61,49 +46,19 @@ if (empty($order_sheet_header_enabled)) {
         return wrap;
     }
 
-    function findLastFlowElementBefore(container, maxBottomY) {
-        var best = null;
-        var bestBottom = -1;
-        var nodes = container.querySelectorAll(
-            '.header-grid, .patient-section, .pdf-notes-block, .pdf-lab-f-block, '
-            + '.report-pdf-grupo-prueba, .report-pdf-grupo-cabecera, .report-segment-table-wrap, '
-            + '.report-refs-matrix-wrap, .report-pdf-subgrupo-block, table.results'
-        );
-
-        for (var i = 0; i < nodes.length; i++) {
-            var el = nodes[i];
-            if (el.classList && el.classList.contains('pdf-order-sheet-header-injected')) {
-                continue;
-            }
-            var bottom = elementBottomWithinContainer(el, container);
-            if (bottom === null || bottom > maxBottomY + 1) {
-                continue;
-            }
-            if (bottom > bestBottom) {
-                bestBottom = bottom;
-                best = el;
-            }
-        }
-
-        return best;
-    }
-
-    function clearInjectedOrderSheetHeaders() {
-        document.querySelectorAll('.pdf-order-sheet-header-injected').forEach(function(node) {
+    function clearOrderSheetHeaderPrintArtifacts() {
+        document.querySelectorAll('.pdf-order-sheet-header-print-fixed, .pdf-osh-page1-cover').forEach(function(node) {
             node.remove();
         });
+        document.body.classList.remove('js-order-sheet-header-print');
     }
 
-    function estimatePrintPages(container) {
-        if (!window.reportPrintPagination || typeof window.reportPrintPagination.buildMetrics !== 'function') {
-            return 1;
+    function estimatePrintPages(container, metrics) {
+        if (metrics && isFinite(metrics.estimatedPages) && metrics.estimatedPages >= 2) {
+            return metrics.estimatedPages;
         }
-        var metrics = window.reportPrintPagination.buildMetrics(container);
         if (!metrics) {
             return 1;
-        }
-        if (isFinite(metrics.estimatedPages) && metrics.estimatedPages >= 2) {
-            return metrics.estimatedPages;
         }
         var totalPx = container.scrollHeight || 0;
         var slicePx = metrics.nextPageContentPx || metrics.firstPageContentPx || 0;
@@ -113,53 +68,60 @@ if (empty($order_sheet_header_enabled)) {
         return 1;
     }
 
+    function resolveFooterZonePx(metrics) {
+        var mmToPx = window.reportPrintPagination && window.reportPrintPagination.mmToPx
+            ? window.reportPrintPagination.mmToPx
+            : function(mm) { return mm * (96 / 25.4); };
+        var footerReserveMm = metrics && metrics.footerReserveMM ? metrics.footerReserveMM : 0;
+        return mmToPx(footerReserveMm + ORDER_SHEET_GAP_MM + ORDER_SHEET_BAND_MM);
+    }
+
+    function insertPageOneCover(container, pageOneEndY, footerZonePx) {
+        if (!container || !isFinite(pageOneEndY) || pageOneEndY <= 0) {
+            return;
+        }
+
+        var cover = document.createElement('div');
+        cover.className = 'pdf-osh-page1-cover';
+        cover.setAttribute('aria-hidden', 'true');
+        cover.style.top = Math.round(pageOneEndY) + 'px';
+        cover.style.height = Math.round(Math.max(footerZonePx, 12)) + 'px';
+        container.appendChild(cover);
+    }
+
     window.injectOrderSheetHeadersFromPageTwo = function() {
         var tpl = document.getElementById('pdf-order-sheet-header-template');
         if (!tpl || !window.reportPrintPagination) {
             return;
         }
 
-        clearInjectedOrderSheetHeaders();
+        clearOrderSheetHeaderPrintArtifacts();
 
         var container = window.reportPrintPagination.getPrintContainer();
         if (!container) {
             return;
         }
 
-        var totalPages = estimatePrintPages(container);
+        var metrics = window.reportPrintPagination.buildMetrics(container);
+        if (!metrics) {
+            return;
+        }
+
+        var totalPages = estimatePrintPages(container, metrics);
         if (totalPages < 2) {
             return;
         }
 
-        var metrics = window.reportPrintPagination.buildMetrics(container);
         var boundarySet = window.reportPrintPagination.buildBoundaries(container, metrics);
         var boundaries = boundarySet && boundarySet.boundaries ? boundarySet.boundaries : [];
         if (!boundaries.length) {
             return;
         }
 
-        var maxBottom = container.scrollHeight || 0;
-        var pageNum;
-        for (pageNum = 2; pageNum <= totalPages; pageNum++) {
-            var pageEndY = pageNum - 1 < boundaries.length
-                ? boundaries[pageNum - 1]
-                : maxBottom;
-            if (pageNum === totalPages) {
-                pageEndY = Math.min(pageEndY, maxBottom);
-            }
+        document.body.classList.add('js-order-sheet-header-print');
+        document.body.appendChild(buildOrderSheetHeaderNode(tpl));
 
-            var anchor = findLastFlowElementBefore(container, pageEndY);
-            if (!anchor || !anchor.parentNode) {
-                continue;
-            }
-
-            var node = buildOrderSheetHeaderNode(tpl);
-            if (anchor.nextSibling) {
-                anchor.parentNode.insertBefore(node, anchor.nextSibling);
-            } else {
-                anchor.parentNode.appendChild(node);
-            }
-        }
+        insertPageOneCover(container, boundaries[0], resolveFooterZonePx(metrics));
     };
 })();
 </script>
