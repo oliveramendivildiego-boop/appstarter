@@ -389,6 +389,14 @@
             <small class="text-muted d-block mt-1"><?= lang('Config.config_print_paper_size_help') ?></small>
         </div>
         <div class="mb-3">
+            <input type="hidden" name="pdf_order_sheet_header_enabled" value="0">
+            <div class="form-check">
+                <?= form_checkbox('pdf_order_sheet_header_enabled', '1', (($config['pdf_order_sheet_header_enabled'] ?? '0') === '1'), 'id="pdf_order_sheet_header_enabled" class="form-check-input" autocomplete="off"') ?>
+                <?= form_label(lang('Config.config_pdf_order_sheet_header_enabled'), 'pdf_order_sheet_header_enabled', ['class' => 'form-check-label']) ?>
+            </div>
+            <small class="text-muted d-block mt-1"><?= lang('Config.config_pdf_order_sheet_header_enabled_help') ?></small>
+        </div>
+        <div class="mb-3">
             <input type="hidden" name="print_pagination_enabled" value="0">
             <div class="form-check">
                 <?= form_checkbox('print_pagination_enabled', '1', (($config['print_pagination_enabled'] ?? '0') === '1'), 'id="print_pagination_enabled" class="form-check-input" autocomplete="off"') ?>

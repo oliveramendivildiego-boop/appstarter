@@ -82,8 +82,7 @@
     };
     $printPagLabelCssPos = $ppToCssPos((string) ($pp['label_position'] ?? 'bottom-left'), $mt, $mr, $mb, $ml);
     $printPagValueCssPos = $ppToCssPos((string) ($pp['value_position'] ?? 'bottom-right'), $mt, $mr, $mb, $ml);
-    $osh = \App\Services\ReportPdfLayoutService::normalizeOrderSheetHeaderStyle($ps['order_sheet_header'] ?? []);
-    $orderSheetHeaderEnabled = ! empty($osh['enabled']);
+    $orderSheetHeaderEnabled = \App\Services\ReportPdfLayoutService::isOrderSheetHeaderEnabledForLayout($pl);
     $orderSheetHeaderReserveMm = 6.0;
     ?>
     <?= view('registers/partials/report_pdf_theme_styles', [

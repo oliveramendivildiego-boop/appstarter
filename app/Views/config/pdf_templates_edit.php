@@ -45,6 +45,7 @@ $ft = \App\Services\ReportPdfLayoutService::normalizeFooterGridStyle($ps['footer
 $pp = \App\Services\ReportPdfLayoutService::normalizePrintPaginationStyle($ps['print_pagination'] ?? []);
 $gpb = \App\Services\ReportPdfLayoutService::normalizeGrupoPruebaPageBreakStyle($ps['grupo_prueba_page_break'] ?? []);
 $osh = \App\Services\ReportPdfLayoutService::normalizeOrderSheetHeaderStyle($ps['order_sheet_header'] ?? []);
+// En el editor se muestra el valor guardado en la plantilla (sin override global).
 $pdfGridChk = static function (array $a, string $k): string {
     $v = $a[$k] ?? true;
 
@@ -987,13 +988,33 @@ $labelsShort = [
 
 <div class="card shadow-sm mb-4 pdf-config-panel" data-config-panels="general">
     <div class="card-header bg-secondary text-white">
-        <h5 class="mb-0">Cabecera de orden en cada hoja</h5>
+        <h5 class="mb-0">Cabecera de orden en hojas siguientes</h5>
     </div>
     <div class="card-body">
-        <p class="small text-muted mb-3">Al imprimir o generar PDF, repite en <strong>cada hoja</strong> «Paciente: …» a la izquierda y «No. Orden: …» a la derecha (dentro del margen superior de la plantilla).</p>
+        <?php
+        $tplId = (int) ($template->id ?? 0);
+        $activePdfTplId = (int) ($active_pdf_template_id ?? 0);
+        $activePrintTplId = (int) ($active_print_template_id ?? 0);
+        $isActivePdfTpl = $tplId > 0 && $tplId === $activePdfTplId;
+        $isActivePrintTpl = $tplId > 0 && $tplId === $activePrintTplId;
+        $oshGlobal = ! empty($pdf_order_sheet_header_global);
+        ?>
+        <p class="small text-muted mb-2">Desde la <strong>2.ª hoja</strong> del PDF o impresión muestra «Paciente: …» (izquierda) y «No. Orden: …» (derecha). La 1.ª hoja no lleva esta cabecera porque ya incluye esos datos.</p>
+        <?php if ($oshGlobal): ?>
+        <div class="alert alert-info py-2 small mb-2">Está activa la opción global en <strong>Configuración → Sistema</strong> para este laboratorio (aplica aunque este check esté desmarcado).</div>
+        <?php endif; ?>
+        <?php if ($tplId > 0 && ! $isActivePdfTpl && ! $isActivePrintTpl): ?>
+        <div class="alert alert-warning py-2 small mb-2">Esta plantilla <strong>no es la activa</strong> en Configuración → Sistema. Para que el cambio se vea al descargar PDF o imprimir, active aquí el check y guarde, <em>o</em> asigne esta plantilla como «Plantilla del PDF» / «Plantilla de impresión», <em>o</em> use la opción global en Sistema.</div>
+        <?php else: ?>
+        <p class="small text-muted mb-2">
+            Plantilla activa:
+            <?php if ($isActivePdfTpl): ?><span class="badge text-bg-primary">PDF</span><?php endif; ?>
+            <?php if ($isActivePrintTpl): ?><span class="badge text-bg-secondary">Impresión</span><?php endif; ?>
+        </p>
+        <?php endif; ?>
         <div class="form-check">
             <input class="form-check-input" type="checkbox" id="osh_enabled" <?= ! empty($osh['enabled']) ? 'checked' : '' ?>>
-            <label class="form-check-label" for="osh_enabled">Cabecera orden</label>
+            <label class="form-check-label" for="osh_enabled">Cabecera orden (en esta plantilla)</label>
         </div>
     </div>
 </div>

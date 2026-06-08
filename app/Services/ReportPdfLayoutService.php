@@ -3017,6 +3017,49 @@ class ReportPdfLayoutService
         ];
     }
 
+    public static function isTenantOrderSheetHeaderGloballyEnabled(): bool
+    {
+        try {
+            $val = model(AppConfigModel::class)->getValue('pdf_order_sheet_header_enabled');
+
+            return trim((string) $val) === '1';
+        } catch (\Throwable $e) {
+            return false;
+        }
+    }
+
+    /**
+     * @param array<string, mixed> $layout
+     */
+    public static function isOrderSheetHeaderEnabledForLayout(array $layout): bool
+    {
+        $ps = is_array($layout['page_style'] ?? null) ? $layout['page_style'] : self::defaultPageStyleStatic();
+
+        return ! empty(self::normalizeOrderSheetHeaderStyle($ps['order_sheet_header'] ?? [])['enabled']);
+    }
+
+    /**
+     * Aplica la opción global del tenant (Config → Sistema) sobre el layout normalizado.
+     *
+     * @param array<string, mixed> $layout
+     *
+     * @return array<string, mixed>
+     */
+    public static function applyTenantOrderSheetHeaderOverride(array $layout): array
+    {
+        if (! self::isTenantOrderSheetHeaderGloballyEnabled()) {
+            return $layout;
+        }
+
+        $pageStyle = is_array($layout['page_style'] ?? null)
+            ? $layout['page_style']
+            : self::defaultPageStyleStatic();
+        $pageStyle['order_sheet_header'] = self::normalizeOrderSheetHeaderStyle(['enabled' => true]);
+        $layout['page_style']            = $pageStyle;
+
+        return $layout;
+    }
+
     /**
      * @param mixed $raw
      *
@@ -4196,18 +4239,22 @@ class ReportPdfLayoutService
             if ($id > 0) {
                 $row = $templateModel->find($id);
                 if ($row && ! empty($row->layout_json)) {
-                    return $this->normalizeLayout((string) $row->layout_json);
+                    return self::applyTenantOrderSheetHeaderOverride(
+                        $this->normalizeLayout((string) $row->layout_json)
+                    );
                 }
             }
             $first = $templateModel->orderBy('id', 'ASC')->first();
             if ($first && ! empty($first->layout_json)) {
-                return $this->normalizeLayout((string) $first->layout_json);
+                return self::applyTenantOrderSheetHeaderOverride(
+                    $this->normalizeLayout((string) $first->layout_json)
+                );
             }
         } catch (\Throwable $e) {
             // tabla inexistente o error de BD: layout por defecto
         }
 
-        return $this->getDefaultLayout();
+        return self::applyTenantOrderSheetHeaderOverride($this->getDefaultLayout());
     }
 
     public function layoutJsonForEditor(object $template): array

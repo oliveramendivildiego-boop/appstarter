@@ -86,6 +86,7 @@ class ConfigService
         $data['print_paper_height_mm'] ??= '297';
         $data['print_pagination_enabled'] ??= '0';
         $data['print_pagination_position'] ??= 'bottom-right';
+        $data['pdf_order_sheet_header_enabled'] ??= '0';
         $data['lab_datetime_storage'] ??= '1';
         $data['timezone'] ??= 'America/Mexico_City';
         $data['lab_validators_json'] ??= '[]';
@@ -1039,6 +1040,9 @@ class ConfigService
         }
         if (array_key_exists('print_pagination_enabled', $postData)) {
             $batch['print_pagination_enabled'] = ($postData['print_pagination_enabled'] === '1') ? '1' : '0';
+        }
+        if (array_key_exists('pdf_order_sheet_header_enabled', $postData)) {
+            $batch['pdf_order_sheet_header_enabled'] = ($postData['pdf_order_sheet_header_enabled'] === '1') ? '1' : '0';
         }
         if (array_key_exists('print_pagination_position', $postData)) {
             $pos = strtolower(trim((string) $postData['print_pagination_position']));

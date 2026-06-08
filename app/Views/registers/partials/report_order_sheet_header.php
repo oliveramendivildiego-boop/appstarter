@@ -15,9 +15,7 @@ helper('registro');
 
 $pl = is_array($pdf_layout ?? null) ? $pdf_layout : [];
 $ps = is_array($pl['page_style'] ?? null) ? $pl['page_style'] : \App\Services\ReportPdfLayoutService::defaultPageStyleStatic();
-$osh = \App\Services\ReportPdfLayoutService::normalizeOrderSheetHeaderStyle($ps['order_sheet_header'] ?? []);
-
-if (empty($osh['enabled'])) {
+if (! \App\Services\ReportPdfLayoutService::isOrderSheetHeaderEnabledForLayout($pl)) {
     return;
 }
 

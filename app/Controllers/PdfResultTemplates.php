@@ -53,10 +53,19 @@ class PdfResultTemplates extends SecureArea
 
         $layoutService = new ReportPdfLayoutService();
         $layout        = $layoutService->layoutJsonForEditor($template);
+        $configModel   = model(\App\Models\AppConfigModel::class);
+        $activePdfTplId    = (int) $configModel->getValue('pdf_result_template_id');
+        $activePrintTplId  = (int) $configModel->getValue('print_result_template_id');
+        if ($activePrintTplId < 1) {
+            $activePrintTplId = $activePdfTplId;
+        }
 
         return view('config/pdf_templates_edit', [
             'template'                 => $template,
             'layout'                   => $layout,
+            'active_pdf_template_id'   => $activePdfTplId,
+            'active_print_template_id' => $activePrintTplId,
+            'pdf_order_sheet_header_global' => \App\Services\ReportPdfLayoutService::isTenantOrderSheetHeaderGloballyEnabled(),
             'block_labels'             => ReportPdfLayoutService::blockLabels(),
             'element_type_labels'      => ReportPdfLayoutService::elementTypeLabels(),
             'element_preview_samples'  => ReportPdfLayoutService::elementPreviewSamples(),
