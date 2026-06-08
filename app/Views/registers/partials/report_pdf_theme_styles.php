@@ -184,8 +184,9 @@ body {
 <?php if ($pdfFooterEnabled): ?>
 .pdf-ft-block.footer-grid {
     position: fixed !important;
-    left: <?= esc((string) $ml) ?>mm !important;
-    right: <?= esc((string) $mr) ?>mm !important;
+    left: 0 !important;
+    right: 0 !important;
+    width: 100% !important;
     bottom: -<?= esc((string) $pdfFooterReserveMm) ?>mm !important;
     min-height: <?= esc((string) $pdfFooterReserveMm) ?>mm !important;
     z-index: 2;

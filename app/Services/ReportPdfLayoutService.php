@@ -3211,12 +3211,6 @@ class ReportPdfLayoutService
      */
     public static function footerDompdfFixedStyleAttr(array $layout): string
     {
-        $mm = is_array($layout['margins_mm'] ?? null)
-            ? $layout['margins_mm']
-            : self::defaultMarginsMmStatic();
-        $ml = (float) ($mm['left'] ?? 15);
-        $mr = (float) ($mm['right'] ?? 15);
-        $mb = (float) ($mm['bottom'] ?? 15);
         $ps = is_array($layout['page_style'] ?? null) ? $layout['page_style'] : [];
         $ft = self::normalizeFooterGridStyle($ps['footer_grid'] ?? []);
         $bg = ! empty($ft['body_transparent']) ? '#ffffff' : (string) $ft['body_bg_color'];
@@ -3224,10 +3218,9 @@ class ReportPdfLayoutService
         $footerReserveMm = self::estimatePdfFooterReserveMm($layout);
         $fmt = static fn (float $v): string => rtrim(rtrim(number_format($v, 2, '.', ''), '0'), '.');
 
+        // left/right:0 — @page ya aplica márgenes horizontales; repetir ml/mr desalinea el pie en Dompdf.
         return sprintf(
-            'position:fixed;left:%smm;right:%smm;bottom:-%smm;min-height:%smm;z-index:2;margin:0;padding-top:6px;padding-bottom:0;background:%s;box-sizing:border-box;',
-            $fmt($ml),
-            $fmt($mr),
+            'position:fixed;left:0;right:0;bottom:-%smm;min-height:%smm;z-index:2;margin:0;padding-top:6px;padding-bottom:0;background:%s;box-sizing:border-box;width:100%%;',
             $fmt($footerReserveMm),
             $fmt($footerReserveMm),
             $bg
