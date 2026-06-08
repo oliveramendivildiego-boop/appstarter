@@ -3,6 +3,7 @@
 namespace App\Libraries;
 
 use Dompdf\Dompdf;
+use Dompdf\FontMetrics;
 use Dompdf\Options;
 
 /**
@@ -22,10 +23,97 @@ class PdfService
         return $dompdf;
     }
 
-    protected function renderHtmlToDompdf(Dompdf $dompdf, string $html): void
+    /**
+     * @param array<string, mixed>|null $orderSheetHeaderData
+     */
+    protected function renderHtmlToDompdf(Dompdf $dompdf, string $html, ?array $orderSheetHeaderData = null): void
     {
+        if ($orderSheetHeaderData !== null) {
+            $this->registerOrderSheetHeaderCallback($dompdf, $orderSheetHeaderData);
+        }
         $dompdf->loadHtml($html, 'UTF-8');
         $dompdf->render();
+    }
+
+    /**
+     * @return array<string, mixed>|null
+     */
+    protected function extractOrderSheetHeaderData(string $html): ?array
+    {
+        if (strpos($html, self::ORDER_SHEET_HEADER_MARKER) === false) {
+            return null;
+        }
+        if (! preg_match('/<!--\s*pdf-order-sheet-header-data:([A-Za-z0-9+\/=_-]+)\s*-->/', $html, $matches)) {
+            return null;
+        }
+        $json = base64_decode($matches[1], true);
+        if ($json === false) {
+            return null;
+        }
+        $data = json_decode($json, true);
+
+        return is_array($data) ? $data : null;
+    }
+
+    /**
+     * @param array<string, mixed> $data
+     */
+    protected function registerOrderSheetHeaderCallback(Dompdf $dompdf, array $data): void
+    {
+        $patientLine = trim((string) ($data['patient'] ?? ''));
+        $orderLine   = trim((string) ($data['order'] ?? ''));
+        if ($patientLine === '' && $orderLine === '') {
+            return;
+        }
+
+        $marginTopMm   = (float) ($data['margin_top_mm'] ?? 15);
+        $marginLeftMm  = (float) ($data['margin_left_mm'] ?? 15);
+        $marginRightMm = (float) ($data['margin_right_mm'] ?? 15);
+        $mmToPt        = 72 / 25.4;
+
+        $dompdf->setCallbacks([
+            [
+                'event' => 'end_document',
+                'f'     => static function (
+                    int $pageNumber,
+                    int $pageCount,
+                    $pdf,
+                    FontMetrics $fontMetrics
+                ) use (
+                    $patientLine,
+                    $orderLine,
+                    $marginTopMm,
+                    $marginLeftMm,
+                    $marginRightMm,
+                    $mmToPt
+                ): void {
+                    if ($pageNumber <= 1) {
+                        return;
+                    }
+
+                    try {
+                        $font = $fontMetrics->getFont('DejaVu Sans', 'bold');
+                    } catch (\Throwable $e) {
+                        $font = $fontMetrics->getFont('DejaVu Sans', 'normal');
+                    }
+
+                    $size  = 9.0;
+                    $color = [0.2, 0.2, 0.2];
+                    $y     = $marginTopMm * $mmToPt;
+                    $xLeft = $marginLeftMm * $mmToPt;
+                    $xPad  = $marginRightMm * $mmToPt;
+
+                    if ($patientLine !== '') {
+                        $pdf->text($xLeft, $y, $patientLine, $font, $size, $color);
+                    }
+                    if ($orderLine !== '') {
+                        $orderWidth = $fontMetrics->getTextWidth($orderLine, $font, $size);
+                        $xOrder     = $pdf->get_width() - $xPad - $orderWidth;
+                        $pdf->text($xOrder, $y, $orderLine, $font, $size, $color);
+                    }
+                },
+            ],
+        ]);
     }
 
     /**
@@ -37,15 +125,14 @@ class PdfService
         $options->set('isHtml5ParserEnabled', true);
         $options->set('isRemoteEnabled', true);
         $options->set('defaultFont', 'DejaVu Sans');
-        if (strpos($html, self::ORDER_SHEET_HEADER_MARKER) !== false) {
-            $options->set('isPhpEnabled', true);
-        }
+
+        $orderSheetHeaderData = $this->extractOrderSheetHeaderData($html);
 
         // Dompdf no garantiza counter(pages) correcto dentro del flujo (puede dar 0 en PDFs de 1 página).
         // Para el elemento "total de páginas" hacemos doble render solo si existe el token.
         if (strpos($html, self::TOTAL_PAGES_TOKEN) !== false) {
             $probe = $this->makeDompdf($options);
-            $this->renderHtmlToDompdf($probe, $html);
+            $this->renderHtmlToDompdf($probe, $html, null);
             $pageCount = (int) $probe->getCanvas()->get_page_count();
             if ($pageCount < 1) {
                 $pageCount = 1;
@@ -54,7 +141,7 @@ class PdfService
         }
 
         $dompdf = $this->makeDompdf($options);
-        $this->renderHtmlToDompdf($dompdf, $html);
+        $this->renderHtmlToDompdf($dompdf, $html, $orderSheetHeaderData);
 
         return $dompdf->output();
     }

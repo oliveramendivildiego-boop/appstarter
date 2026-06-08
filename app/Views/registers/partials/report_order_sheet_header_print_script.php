@@ -10,6 +10,19 @@ if (empty($order_sheet_header_enabled)) {
 ?>
 <script>
 (function() {
+    function offsetTopWithinContainer(el, container) {
+        var y = 0;
+        var node = el;
+        while (node && node !== container) {
+            y += node.offsetTop || 0;
+            node = node.offsetParent;
+            if (!node) {
+                return null;
+            }
+        }
+        return node === container ? y : null;
+    }
+
     function buildOrderSheetHeaderNode(tpl) {
         var wrap = document.createElement('div');
         wrap.className = 'pdf-order-sheet-header-injected';
@@ -42,6 +55,7 @@ if (empty($order_sheet_header_enabled)) {
 
     function findFlowInsertPoint(container, targetY) {
         var best = null;
+        var bestTop = Infinity;
         var nodes = container.querySelectorAll(
             '.header-grid, .patient-section, .pdf-notes-block, .pdf-lab-f-block, '
             + '.report-pdf-grupo-prueba, .report-pdf-grupo-cabecera, .report-segment-table-wrap, '
@@ -53,11 +67,12 @@ if (empty($order_sheet_header_enabled)) {
             if (el.classList && el.classList.contains('pdf-order-sheet-header-injected')) {
                 continue;
             }
-            var top = el.offsetTop || 0;
-            if (top + (el.offsetHeight || 0) <= targetY + 1) {
+            var top = offsetTopWithinContainer(el, container);
+            if (top === null || top < targetY - 1) {
                 continue;
             }
-            if (!best || top < best.offsetTop) {
+            if (top < bestTop) {
+                bestTop = top;
                 best = el;
             }
         }

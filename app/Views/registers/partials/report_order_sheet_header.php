@@ -1,7 +1,7 @@
 <?php
 /**
  * Cabecera por hoja (desde la 2.ª): Paciente izquierda, No. Orden derecha.
- * PDF: Dompdf page_script. Impresión navegador: plantilla para inyección JS.
+ * PDF: metadatos para PdfService (page_script tras render). Impresión: plantilla JS.
  *
  * @var array<string,mixed> $pdf_layout
  * @var object|null         $paciente
@@ -66,26 +66,14 @@ endif;
 if ($variant !== 'pdf') {
     return;
 }
+
+$headerPayload = base64_encode((string) json_encode([
+    'patient'         => $patientLine,
+    'order'           => $orderLine,
+    'margin_top_mm'   => $marginTopMm,
+    'margin_left_mm'  => $marginLeftMm,
+    'margin_right_mm' => $marginRightMm,
+], JSON_UNESCAPED_UNICODE));
 ?>
 <!-- pdf-order-sheet-header-dompdf -->
-<script type="text/php">
-if (isset($pdf)) {
-    $pdf->page_script('
-        if ($PAGE_NUM > 1) {
-            $font = $fontMetrics->getFont("DejaVu Sans", "bold");
-            $size = 9;
-            $color = array(0.2, 0.2, 0.2);
-            $mmToPt = 2.834645669;
-            $patientText = <?= json_encode($patientLine, JSON_UNESCAPED_UNICODE) ?>;
-            $orderText = <?= json_encode($orderLine, JSON_UNESCAPED_UNICODE) ?>;
-            $xLeft = <?= json_encode($marginLeftMm) ?> * $mmToPt;
-            $xRightPad = <?= json_encode($marginRightMm) ?> * $mmToPt;
-            $y = <?= json_encode($marginTopMm) ?> * $mmToPt;
-            $pdf->text($xLeft, $y, $patientText, $font, $size, $color);
-            $orderWidth = $fontMetrics->getTextWidth($orderText, $font, $size);
-            $xOrder = $pdf->get_width() - $xRightPad - $orderWidth;
-            $pdf->text($xOrder, $y, $orderText, $font, $size, $color);
-        }
-    ');
-}
-</script>
+<!-- pdf-order-sheet-header-data:<?= esc($headerPayload, 'attr') ?> -->
