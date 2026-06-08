@@ -510,15 +510,9 @@ table.results.pdf-notes-table td.pdf-notes-cell {
     text-align: right;
     white-space: nowrap;
 }
-<?php if ($orderSheetHeaderEnabled):
-    $orderSheetBandHeightMm = \App\Services\ReportPdfLayoutService::ORDER_SHEET_HEADER_HEIGHT_MM;
-    $orderSheetGapMm = \App\Services\ReportPdfLayoutService::ORDER_SHEET_HEADER_GAP_ABOVE_FOOTER_MM;
-?>
-.pdf-order-sheet-header-band {
-    display: none;
-}
-.pdf-order-sheet-header-band .pdf-order-sheet-header,
-.pdf-order-sheet-header {
+<?php if ($orderSheetHeaderEnabled && $browserPrintMode): ?>
+.pdf-order-sheet-header,
+.pdf-order-sheet-header-injected .pdf-order-sheet-header {
     width: 100%;
     border-collapse: collapse;
     border-spacing: 0;
@@ -528,46 +522,27 @@ table.results.pdf-notes-table td.pdf-notes-cell {
     line-height: 1.2;
     color: #333333;
 }
-.pdf-order-sheet-header-band .pdf-order-sheet-header td,
-.pdf-order-sheet-header td {
+.pdf-order-sheet-header td,
+.pdf-order-sheet-header-injected .pdf-order-sheet-header td {
     padding: 0;
     vertical-align: middle;
     white-space: nowrap;
 }
-.pdf-order-sheet-header-patient {
+.pdf-order-sheet-header-patient,
+.pdf-order-sheet-header-injected .pdf-order-sheet-header-patient {
     width: 50%;
     text-align: left;
 }
-.pdf-order-sheet-header-orden {
+.pdf-order-sheet-header-orden,
+.pdf-order-sheet-header-injected .pdf-order-sheet-header-orden {
     width: 50%;
     text-align: right;
 }
-<?php if ($browserPrintMode): ?>
-:root {
-    --print-order-sheet-gap-mm: <?= esc((string) $orderSheetGapMm) ?>;
-    --print-order-sheet-height-mm: <?= esc((string) $orderSheetBandHeightMm) ?>;
+.pdf-order-sheet-header-injected {
+    margin: 2mm 0 0;
+    background: #ffffff;
+    break-inside: avoid-page;
+    page-break-inside: avoid;
 }
-@media print {
-    body.report-browser-print.js-order-sheet-header-active .pdf-order-sheet-header-band.pdf-order-sheet-header-band--active {
-        display: block !important;
-        position: fixed !important;
-        left: calc(var(--print-margin-left-mm, <?= esc((string) $ml) ?>) * 1mm) !important;
-        right: calc(var(--print-margin-right-mm, <?= esc((string) $mr) ?>) * 1mm) !important;
-        bottom: calc(
-            (
-                var(--print-margin-bottom-mm, <?= esc((string) $mb) ?>)
-                + var(--print-footer-reserve-mm, 0)
-                + var(--print-order-sheet-gap-mm, <?= esc((string) $orderSheetGapMm) ?>)
-            ) * 1mm
-        ) !important;
-        min-height: calc(var(--print-order-sheet-height-mm, <?= esc((string) $orderSheetBandHeightMm) ?>) * 1mm) !important;
-        z-index: 3 !important;
-        margin: 0 !important;
-        padding: 0 !important;
-        background: #ffffff !important;
-        box-sizing: border-box !important;
-    }
-}
-<?php endif; ?>
 <?php endif; ?>
 </style>

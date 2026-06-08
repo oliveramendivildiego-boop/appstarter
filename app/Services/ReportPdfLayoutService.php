@@ -3085,12 +3085,31 @@ class ReportPdfLayoutService
      */
     public static function orderSheetHeaderDompdfFixedStyleAttr(array $layout): string
     {
-        $fmt = static fn (float $v): string => rtrim(rtrim(number_format($v, 2, '.', ''), '0'), '.');
+        $fmt    = static fn (float $v): string => rtrim(rtrim(number_format($v, 2, '.', ''), '0'), '.');
+        $height = self::ORDER_SHEET_HEADER_HEIGHT_MM;
+        $gap    = self::ORDER_SHEET_HEADER_GAP_ABOVE_FOOTER_MM;
+
+        // Misma convención que el pie: bottom negativo respecto al borde inferior del área de contenido.
+        if (self::isPdfFooterBlockEnabledForLayout($layout)) {
+            $footerReserveMm = self::estimatePdfFooterReserveMm($layout);
+            $bottomNegMm     = $footerReserveMm + $gap;
+
+            return sprintf(
+                'position:fixed;left:0;right:0;bottom:-%smm;min-height:%smm;z-index:3;margin:0;padding:0;background:#ffffff;box-sizing:border-box;width:100%%;',
+                $fmt($bottomNegMm),
+                $fmt($height)
+            );
+        }
+
+        $mm             = is_array($layout['margins_mm'] ?? null)
+            ? $layout['margins_mm']
+            : self::defaultMarginsMmStatic();
+        $marginBottomMm = (float) ($mm['bottom'] ?? 15);
 
         return sprintf(
-            'position:fixed;left:0;right:0;bottom:%smm;min-height:%smm;z-index:3;margin:0;padding:0 0 0 0;background:#ffffff;box-sizing:border-box;width:100%%;',
-            $fmt(self::orderSheetHeaderBottomOffsetMm($layout)),
-            $fmt(self::ORDER_SHEET_HEADER_HEIGHT_MM)
+            'position:fixed;left:0;right:0;bottom:%smm;min-height:%smm;z-index:3;margin:0;padding:0;background:#ffffff;box-sizing:border-box;width:100%%;',
+            $fmt($marginBottomMm + $gap),
+            $fmt($height)
         );
     }
 

@@ -1,7 +1,7 @@
 <?php
 /**
  * Cabecera por hoja (desde la 2.ª): Paciente izquierda, No. Orden derecha, encima del pie.
- * PDF: metadatos + page_script (PdfService). Impresión: banda fija en @media print.
+ * PDF: metadatos + page_script (PdfService). Impresión: plantilla JS (inyección al pie de hojas 2+).
  *
  * @var array<string,mixed> $pdf_layout
  * @var object|null         $paciente
@@ -57,22 +57,10 @@ $footerReserveMm = $pdfFooterEnabled
     : 0.0;
 $gapAboveFooterMm = \App\Services\ReportPdfLayoutService::ORDER_SHEET_HEADER_GAP_ABOVE_FOOTER_MM;
 
-$renderBandTable = static function () use ($patientLine, $orderLine): void {
-    ?>
-<table class="pdf-order-sheet-header" width="100%" cellpadding="0" cellspacing="0" role="presentation">
-    <tr>
-        <td class="pdf-order-sheet-header-patient" align="left"><?= esc($patientLine) ?></td>
-        <td class="pdf-order-sheet-header-orden" align="right"><?= esc($orderLine) ?></td>
-    </tr>
-</table>
-    <?php
-};
-
-if ($variant === 'browser_print'):
-    ?>
-<div id="pdf-order-sheet-header-band" class="pdf-order-sheet-header-band" aria-hidden="true">
-    <?php $renderBandTable(); ?>
-</div>
+if ($variant === 'browser_print'): ?>
+<div id="pdf-order-sheet-header-template" class="pdf-order-sheet-header-template" hidden
+     data-patient-line="<?= esc($patientLine, 'attr') ?>"
+     data-order-line="<?= esc($orderLine, 'attr') ?>"></div>
 <?php
     return;
 endif;
@@ -93,4 +81,4 @@ $headerPayload = base64_encode((string) json_encode([
 ], JSON_UNESCAPED_UNICODE));
 ?>
 <!-- pdf-order-sheet-header-dompdf -->
-<!-- pdf-order-sheet-header-data:<?= esc($headerPayload, 'attr') ?> -->
+<!-- pdf-order-sheet-header-data:<?= $headerPayload ?> -->

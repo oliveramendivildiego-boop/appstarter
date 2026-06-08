@@ -28,12 +28,12 @@ class PdfService
      */
     protected function renderHtmlToDompdf(Dompdf $dompdf, string $html, ?array $orderSheetHeaderData = null): void
     {
+        if ($orderSheetHeaderData !== null) {
+            $this->registerOrderSheetHeaderCallback($dompdf, $orderSheetHeaderData);
+        }
+
         $dompdf->loadHtml($html, 'UTF-8');
         $dompdf->render();
-
-        if ($orderSheetHeaderData !== null) {
-            $this->paintOrderSheetHeaderOnPages($dompdf, $orderSheetHeaderData);
-        }
     }
 
     /**
@@ -57,11 +57,11 @@ class PdfService
     }
 
     /**
-     * Dibuja Paciente / No. Orden encima del pie desde la 2.ª hoja (Dompdf page_script).
+     * Una sola línea Paciente / No. Orden encima del pie, solo desde la 2.ª hoja.
      *
      * @param array<string, mixed> $data
      */
-    protected function paintOrderSheetHeaderOnPages(Dompdf $dompdf, array $data): void
+    protected function registerOrderSheetHeaderCallback(Dompdf $dompdf, array $data): void
     {
         $patientLine = trim((string) ($data['patient'] ?? ''));
         $orderLine   = trim((string) ($data['order'] ?? ''));
@@ -69,58 +69,62 @@ class PdfService
             return;
         }
 
-        $marginBottomMm  = (float) ($data['margin_bottom_mm'] ?? 15);
-        $marginLeftMm    = (float) ($data['margin_left_mm'] ?? 15);
-        $marginRightMm   = (float) ($data['margin_right_mm'] ?? 15);
-        $footerReserveMm = ! empty($data['footer_enabled'])
+        $marginBottomMm   = (float) ($data['margin_bottom_mm'] ?? 15);
+        $marginLeftMm     = (float) ($data['margin_left_mm'] ?? 15);
+        $marginRightMm    = (float) ($data['margin_right_mm'] ?? 15);
+        $footerReserveMm  = ! empty($data['footer_enabled'])
             ? (float) ($data['footer_reserve_mm'] ?? 22)
             : 0.0;
         $gapAboveFooterMm = (float) ($data['gap_above_footer_mm'] ?? 1.5);
         $mmToPt           = 72 / 25.4;
 
-        $dompdf->getCanvas()->page_script(
-            static function (
-                int $pageNumber,
-                int $pageCount,
-                $pdf,
-                FontMetrics $fontMetrics
-            ) use (
-                $patientLine,
-                $orderLine,
-                $marginBottomMm,
-                $marginLeftMm,
-                $marginRightMm,
-                $footerReserveMm,
-                $gapAboveFooterMm,
-                $mmToPt
-            ): void {
-                if ($pageNumber <= 1) {
-                    return;
-                }
+        $dompdf->setCallbacks([
+            [
+                'event' => 'end_document',
+                'f'     => static function (
+                    int $pageNumber,
+                    int $pageCount,
+                    $pdf,
+                    FontMetrics $fontMetrics
+                ) use (
+                    $patientLine,
+                    $orderLine,
+                    $marginBottomMm,
+                    $marginLeftMm,
+                    $marginRightMm,
+                    $footerReserveMm,
+                    $gapAboveFooterMm,
+                    $mmToPt
+                ): void {
+                    if ($pageNumber <= 1) {
+                        return;
+                    }
 
-                try {
-                    $font = $fontMetrics->getFont('DejaVu Sans', 'bold');
-                } catch (\Throwable $e) {
-                    $font = $fontMetrics->getFont('DejaVu Sans', 'normal');
-                }
+                    try {
+                        $font = $fontMetrics->getFont('DejaVu Sans', 'bold');
+                    } catch (\Throwable $e) {
+                        $font = $fontMetrics->getFont('DejaVu Sans', 'normal');
+                    }
 
-                $size  = 9.0;
-                $color = [0.2, 0.2, 0.2];
-                $offsetFromBottomMm = $marginBottomMm + $footerReserveMm + $gapAboveFooterMm;
-                $y                  = $pdf->get_height() - ($offsetFromBottomMm * $mmToPt);
-                $xLeft              = $marginLeftMm * $mmToPt;
-                $xPad               = $marginRightMm * $mmToPt;
+                    $size  = 9.0;
+                    $color = [0.15, 0.15, 0.15];
+                    // Borde inferior físico de la hoja → encima del bloque de pie fijo.
+                    $offsetFromBottomMm = $marginBottomMm + $footerReserveMm + $gapAboveFooterMm;
+                    $y                  = $pdf->get_height() - ($offsetFromBottomMm * $mmToPt);
+                    $xLeft              = $marginLeftMm * $mmToPt;
+                    $xPad               = $marginRightMm * $mmToPt;
 
-                if ($patientLine !== '') {
-                    $pdf->text($xLeft, $y, $patientLine, $font, $size, $color);
-                }
-                if ($orderLine !== '') {
-                    $orderWidth = $fontMetrics->getTextWidth($orderLine, $font, $size);
-                    $xOrder     = $pdf->get_width() - $xPad - $orderWidth;
-                    $pdf->text($xOrder, $y, $orderLine, $font, $size, $color);
-                }
-            }
-        );
+                    if ($patientLine !== '') {
+                        $pdf->text($xLeft, $y, $patientLine, $font, $size, $color);
+                    }
+                    if ($orderLine !== '') {
+                        $orderWidth = $fontMetrics->getTextWidth($orderLine, $font, $size);
+                        $xOrder     = $pdf->get_width() - $xPad - $orderWidth;
+                        $pdf->text($xOrder, $y, $orderLine, $font, $size, $color);
+                    }
+                },
+            ],
+        ]);
     }
 
     /**
@@ -135,8 +139,6 @@ class PdfService
 
         $orderSheetHeaderData = $this->extractOrderSheetHeaderData($html);
 
-        // Dompdf no garantiza counter(pages) correcto dentro del flujo (puede dar 0 en PDFs de 1 página).
-        // Para el elemento "total de páginas" hacemos doble render solo si existe el token.
         if (strpos($html, self::TOTAL_PAGES_TOKEN) !== false) {
             $probe = $this->makeDompdf($options);
             $this->renderHtmlToDompdf($probe, $html, null);

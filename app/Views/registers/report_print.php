@@ -144,10 +144,6 @@
 ]) ?>
 <?= view('registers/partials/report_order_sheet_header_print_script', [
     'order_sheet_header_enabled' => $orderSheetHeaderEnabled,
-    'margin_bottom_mm'           => (float) $mb,
-    'margin_left_mm'             => (float) $ml,
-    'margin_right_mm'            => (float) $mr,
-    'gap_above_footer_mm'        => \App\Services\ReportPdfLayoutService::ORDER_SHEET_HEADER_GAP_ABOVE_FOOTER_MM,
 ]) ?>
 <?= view('registers/partials/report_print_pagination_metrics', [
     'page_height_mm'    => $printPageHeightMm,
