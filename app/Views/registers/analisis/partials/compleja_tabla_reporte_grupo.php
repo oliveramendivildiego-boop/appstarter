@@ -6,13 +6,13 @@
  *
  * @var string $padre
  * @var list<object|array<string,mixed>> $items
- * @var string $variant 'web' | 'pdf' | 'screen_pdf' (misma maquetación que PDF + inputs editables en pantalla)
+ * @var string $variant 'web' | 'pdf' | 'screen_pdf' | 'browser_print' (PDF chrome en pdf/screen_pdf/browser_print)
  * @var array<int,string> $report_pria_tipo_muestra_nombre prianacategoria_id => nombre (config. en análisis clínico)
  * @var array<int,string> $report_pria_metodo_nombre prianacategoria_id => nombre del método (config.)
  * @var array<int,list<array<string,mixed>>> $report_pria_refs_consolidada tabla consolidada de refs. por población (pruebas compuestas)
  */
 $variant = $variant ?? 'web';
-$usePdfChrome = ($variant === 'pdf' || $variant === 'screen_pdf');
+$usePdfChrome = in_array($variant, ['pdf', 'screen_pdf', 'browser_print'], true);
 $segmentWrapStyle = '';
 if ($usePdfChrome) {
     $segmentWrapStyle = \App\Services\ReportPdfLayoutService::grupoPruebaSegmentIntactStyleAttr(
@@ -223,7 +223,7 @@ foreach ($ordenPriaKeys as $subIdx => $priaKey) :
                     }
                     $aid = $item->secanacategoria_id ?? uniqid();
                     ?>
-                    <?php if ($variant !== 'pdf'): ?>
+                    <?php if ($variant === 'screen_pdf' || $variant === 'web'): ?>
                     <input type="hidden" id="analisis_<?= esc($aid) ?>" name="analisis_<?= esc($aid) ?>" class="analisis" padre="<?= esc($padre) ?>" hijo="<?= esc($hijo) ?>" analisis="<?= esc($item->nombre ?? '') ?>" value="<?= esc($item->regvalues ?? '') ?>" unidad="<?= esc($item->umedida ?? '') ?>" min="<?= esc($item->valor_min ?? '') ?>" max="<?= esc($item->valor_max ?? '') ?>">
                     <?php endif; ?>
                     <?php

@@ -5,10 +5,10 @@
  * @var string $padre Nombre del área (grupo)
  * @var array<string,mixed>|null $pdf_layout
  * @var bool   $grupo_es_primero Si es el primer área del reporte
- * @var string $variant 'web' | 'pdf' | 'screen_pdf'
+ * @var string $variant 'web' | 'pdf' | 'screen_pdf' | 'browser_print'
  */
 $variant = $variant ?? 'pdf';
-$usePdfChrome = ($variant === 'pdf' || $variant === 'screen_pdf');
+$usePdfChrome = in_array($variant, ['pdf', 'screen_pdf', 'browser_print'], true);
 if (! $usePdfChrome) {
     return;
 }

@@ -6,14 +6,14 @@
  * @var string $hijo
  * @var string $tipo_muestra_linea
  * @var string $metodo_linea
- * @var string $variant 'web' | 'pdf' | 'screen_pdf'
+ * @var string $variant 'web' | 'pdf' | 'screen_pdf' | 'browser_print'
  * @var array<string,mixed>|null $pdf_layout
  * @var string $web_title_mt Clase margin-top para vista web (p. ej. mt-4, mt-5)
  * @var int    $sub_idx Índice del subgrupo dentro del área (0 = primera prueba)
  * @var bool   $grupo_es_primero Si es el primer área/grupo del reporte
  */
 $variant = $variant ?? 'web';
-$usePdfChrome = ($variant === 'pdf' || $variant === 'screen_pdf');
+$usePdfChrome = in_array($variant, ['pdf', 'screen_pdf', 'browser_print'], true);
 $pdfLayout = is_array($pdf_layout ?? null) ? $pdf_layout : [];
 $webTitleMt = trim((string) ($web_title_mt ?? 'mt-4'));
 if ($webTitleMt === '') {

@@ -11,7 +11,7 @@
  * @var array<int, string> $report_pria_tipo_muestra_nombre
  * @var array<int, string> $report_pria_metodo_nombre
  */
-$usePdfChrome = (($variant ?? 'web') === 'pdf' || ($variant ?? 'web') === 'screen_pdf');
+$usePdfChrome = in_array((string) ($variant ?? 'web'), ['pdf', 'screen_pdf', 'browser_print'], true);
 $cultivoItem = $cultivo_item ?? null;
 $priaIdTitulo = (int) ($cultivoItem->prianacategoria_id ?? ($pria_id_titulo ?? 0));
 $padreTitulo = trim((string) ($cultivoItem->padre ?? ($padre ?? '')));
