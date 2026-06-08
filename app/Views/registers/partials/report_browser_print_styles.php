@@ -104,6 +104,13 @@ body.js-total-pages-ready .pdf-counter-pages::before {
     <?= esc($printPagValueCssPos, 'css') ?>
 }
 @media print {
+    body.report-browser-print .pdf-order-sheet-header {
+        position: fixed !important;
+        top: calc(var(--print-margin-top-mm, <?= esc((string) $mt) ?>) * 1mm) !important;
+        left: calc(var(--print-margin-left-mm, <?= esc((string) $ml) ?>) * 1mm) !important;
+        right: calc(var(--print-margin-right-mm, <?= esc((string) $mr) ?>) * 1mm) !important;
+        display: flex !important;
+    }
     /*
      * Pie fijo dentro del área imprimible; el margen inferior de @page es solo el de plantilla (config).
      * La reserva de pie para paginación se calcula en JS, no se suma a @page.

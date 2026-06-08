@@ -65,6 +65,8 @@ $nsColColor = (string) ($ns['column_border_color'] ?? '#DDDDDD');
 $chCardBg = ! empty($ch['bg_transparent']) ? 'transparent' : (string) $ch['bg_color'];
 $rs = \App\Services\ReportPdfLayoutService::normalizeResultsTableStyle($ps['results_table'] ?? []);
 $gpb = \App\Services\ReportPdfLayoutService::normalizeGrupoPruebaPageBreakStyle($ps['grupo_prueba_page_break'] ?? []);
+$osh = \App\Services\ReportPdfLayoutService::normalizeOrderSheetHeaderStyle($ps['order_sheet_header'] ?? []);
+$orderSheetHeaderEnabled = ! empty($osh['enabled']);
 $gpbCompactScale = round(max(75, min(100, (int) ($gpb['compact_min_scale_percent'] ?? 85))) / 100, 3);
 $rsBodyBg = ! empty($rs['body_transparent']) ? 'transparent' : (string) $rs['body_bg_color'];
 $rsSegBg  = ! empty($rs['segment_transparent']) ? 'transparent' : (string) $rs['segment_bg_color'];
@@ -432,5 +434,52 @@ table.results.pdf-notes-table td.pdf-notes-cell {
     page-break-before: always !important;
     break-before: page !important;
 }
+<?php endif; ?>
+<?php if ($orderSheetHeaderEnabled): ?>
+.pdf-order-sheet-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
+    font-family: "DejaVu Sans", Helvetica, Arial, sans-serif;
+    font-size: 9pt;
+    font-weight: 600;
+    line-height: 1.2;
+    color: #333333;
+    z-index: 15;
+    box-sizing: border-box;
+}
+.pdf-order-sheet-header-patient {
+    flex: 1 1 auto;
+    min-width: 0;
+    text-align: left;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+.pdf-order-sheet-header-orden {
+    flex: 0 0 auto;
+    text-align: right;
+    white-space: nowrap;
+}
+<?php if ($useSheetPadding): ?>
+.viewreport-pdf-sheet .pdf-order-sheet-header {
+    display: none;
+}
+<?php elseif ($browserPrintMode): ?>
+body.report-browser-print .pdf-order-sheet-header {
+    position: fixed;
+    top: calc(var(--print-margin-top-mm, <?= esc((string) $mt) ?>) * 1mm);
+    left: calc(var(--print-margin-left-mm, <?= esc((string) $ml) ?>) * 1mm);
+    right: calc(var(--print-margin-right-mm, <?= esc((string) $mr) ?>) * 1mm);
+}
+<?php else: ?>
+.pdf-order-sheet-header {
+    position: fixed;
+    top: <?= esc((string) $mt) ?>mm;
+    left: <?= esc((string) $ml) ?>mm;
+    right: <?= esc((string) $mr) ?>mm;
+}
+<?php endif; ?>
 <?php endif; ?>
 </style>

@@ -44,6 +44,7 @@ $pd = \App\Services\ReportPdfLayoutService::normalizePatientDoctorGridStyle($ps[
 $ft = \App\Services\ReportPdfLayoutService::normalizeFooterGridStyle($ps['footer_grid'] ?? []);
 $pp = \App\Services\ReportPdfLayoutService::normalizePrintPaginationStyle($ps['print_pagination'] ?? []);
 $gpb = \App\Services\ReportPdfLayoutService::normalizeGrupoPruebaPageBreakStyle($ps['grupo_prueba_page_break'] ?? []);
+$osh = \App\Services\ReportPdfLayoutService::normalizeOrderSheetHeaderStyle($ps['order_sheet_header'] ?? []);
 $pdfGridChk = static function (array $a, string $k): string {
     $v = $a[$k] ?? true;
 
@@ -980,6 +981,19 @@ $labelsShort = [
                 <label class="form-label small" for="margin_left">Izquierda</label>
                 <input type="number" class="form-control" id="margin_left" min="0" max="50" step="0.5" value="<?= esc((string) ($mm['left'] ?? 15)) ?>">
             </div>
+        </div>
+    </div>
+</div>
+
+<div class="card shadow-sm mb-4 pdf-config-panel" data-config-panels="general">
+    <div class="card-header bg-secondary text-white">
+        <h5 class="mb-0">Cabecera de orden en cada hoja</h5>
+    </div>
+    <div class="card-body">
+        <p class="small text-muted mb-3">Al imprimir o generar PDF, repite en <strong>cada hoja</strong> el nombre del paciente a la izquierda y el número de orden a la derecha (dentro del margen superior de la plantilla).</p>
+        <div class="form-check">
+            <input class="form-check-input" type="checkbox" id="osh_enabled" <?= ! empty($osh['enabled']) ? 'checked' : '' ?>>
+            <label class="form-check-label" for="osh_enabled">Cabecera orden</label>
         </div>
     </div>
 </div>
@@ -3741,6 +3755,9 @@ document.addEventListener('DOMContentLoaded', function() {
                 compact_cell_padding_px: Math.round(pickNum('gpb_compact_cell_padding', 0, 20, 0)),
                 compact_aggressive: pickChk('gpb_compact_aggressive', false),
                 min_remaining_mm_to_force_break: Math.round(pickNum('gpb_min_remaining_mm', 0, 120, 0) * 10) / 10
+            },
+            order_sheet_header: {
+                enabled: pickChk('osh_enabled', false)
             },
             notes: {
                 title_bg_color: pickHex('ns_title_bg', '#FFF3CD'),

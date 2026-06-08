@@ -78,6 +78,11 @@ $opacityCss = number_format(max(0.05, min(0.9, $opacityW)), 2, '.', '');
     </div>
 </div>
 <?php endif; ?>
+<?= view('registers/partials/report_order_sheet_header', [
+    'pdf_layout'    => $pl,
+    'paciente'      => $paciente,
+    'register_info' => $register_info,
+]) ?>
 <div class="pdf-main-stack">
 <?php foreach (($pl['blocks'] ?? []) as $block):
     if (empty($block['enabled'])) {

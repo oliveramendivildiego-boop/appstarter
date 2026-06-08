@@ -111,6 +111,11 @@ class ReportPdfLayoutService
         'min_remaining_mm_to_force_break'   => 0.0,
     ];
 
+    /** @var array{enabled: bool} */
+    public const DEFAULT_ORDER_SHEET_HEADER = [
+        'enabled' => false,
+    ];
+
     /**
      * Solo estos tipos se reinyectan si faltan (migración); no se fuerza título/validador/sello eliminados por el usuario.
      *
@@ -382,6 +387,7 @@ class ReportPdfLayoutService
             'footer_grid'         => self::normalizeFooterGridStyle([]),
             'print_pagination'        => self::normalizePrintPaginationStyle([]),
             'grupo_prueba_page_break' => self::normalizeGrupoPruebaPageBreakStyle([]),
+            'order_sheet_header'      => self::normalizeOrderSheetHeaderStyle([]),
         ];
     }
 
@@ -2948,6 +2954,22 @@ class ReportPdfLayoutService
     }
 
     /**
+     * Cabecera fija en cada hoja: paciente (izquierda) y nº de orden (derecha).
+     *
+     * @param mixed $raw
+     *
+     * @return array{enabled: bool}
+     */
+    public static function normalizeOrderSheetHeaderStyle($raw): array
+    {
+        $s = is_array($raw) ? $raw : [];
+
+        return [
+            'enabled' => self::labFirmasBool($s, 'enabled', ! empty(self::DEFAULT_ORDER_SHEET_HEADER['enabled'])),
+        ];
+    }
+
+    /**
      * @param mixed $raw
      *
      * @return array{mode: string, repeat_header_on_split: bool, compact_min_scale_percent: int, compact_cell_padding_px: int, compact_aggressive: bool, min_remaining_mm_to_force_break: float}
@@ -4056,6 +4078,7 @@ class ReportPdfLayoutService
             'footer_grid'         => self::normalizeFooterGridStyle($pageStyleRaw['footer_grid'] ?? []),
             'print_pagination'        => self::normalizePrintPaginationStyle($pageStyleRaw['print_pagination'] ?? []),
             'grupo_prueba_page_break' => self::normalizeGrupoPruebaPageBreakStyle($pageStyleRaw['grupo_prueba_page_break'] ?? []),
+            'order_sheet_header'      => self::normalizeOrderSheetHeaderStyle($pageStyleRaw['order_sheet_header'] ?? []),
         ];
 
         return [
