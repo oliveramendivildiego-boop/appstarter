@@ -244,20 +244,9 @@ $labels = [
             '</button></div>';
     }
 
-    function deleteLabApproverImage(card, kind, deleteUrl) {
+    function executeDeleteLabApproverImage(card, kind, deleteUrl) {
         var approverId = card.getAttribute('data-approver-id') || '';
         var statusEl = card.querySelector(kind === 'seal' ? '.lab-seal-upload-status' : '.lab-sig-upload-status');
-        var btnLabel = kind === 'seal' ? L.removeSeal : L.removeSig;
-        if (!approverId) {
-            if (statusEl) {
-                statusEl.textContent = 'Error: falta identificador del responsable. Recargue la página.';
-                statusEl.className = 'small text-danger ' + (kind === 'seal' ? 'lab-seal-upload-status' : 'lab-sig-upload-status') + ' mt-1';
-            }
-            return;
-        }
-        if (!window.confirm('¿Eliminar ' + btnLabel.toLowerCase() + '?')) {
-            return;
-        }
         if (statusEl) {
             statusEl.textContent = 'Eliminando imagen…';
             statusEl.className = 'small text-muted ' + (kind === 'seal' ? 'lab-seal-upload-status' : 'lab-sig-upload-status') + ' mt-1';
@@ -295,6 +284,25 @@ $labels = [
                     statusEl.className = 'small text-danger ' + (kind === 'seal' ? 'lab-seal-upload-status' : 'lab-sig-upload-status') + ' mt-1';
                 }
             });
+    }
+
+    function deleteLabApproverImage(card, kind, deleteUrl) {
+        var approverId = card.getAttribute('data-approver-id') || '';
+        var statusEl = card.querySelector(kind === 'seal' ? '.lab-seal-upload-status' : '.lab-sig-upload-status');
+        var btnLabel = kind === 'seal' ? L.removeSeal : L.removeSig;
+        if (!approverId) {
+            if (statusEl) {
+                statusEl.textContent = 'Error: falta identificador del responsable. Recargue la página.';
+                statusEl.className = 'small text-danger ' + (kind === 'seal' ? 'lab-seal-upload-status' : 'lab-sig-upload-status') + ' mt-1';
+            }
+            return;
+        }
+        if (typeof uiConfirm !== 'function') {
+            return;
+        }
+        uiConfirm('¿Eliminar ' + btnLabel.toLowerCase() + '?', 'Confirmar').then(function (ok) {
+            if (ok) executeDeleteLabApproverImage(card, kind, deleteUrl);
+        });
     }
 
     document.querySelectorAll('.lab-seal-input').forEach(function (el) {
