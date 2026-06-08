@@ -283,6 +283,53 @@ class RegisterModel extends Model
     }
 
     /**
+     * Elimina regvalues asociados a pruebas removidas de una orden existente.
+     *
+     * @param int[] $removedPrianacategoriaIds
+     */
+    public function deleteRegvaluesForRemovedPruebas(int $registroId, array $removedPrianacategoriaIds): void
+    {
+        if ($registroId < 1 || $removedPrianacategoriaIds === []) {
+            return;
+        }
+
+        $removedSet = [];
+        foreach ($removedPrianacategoriaIds as $id) {
+            $id = (int) $id;
+            if ($id > 0) {
+                $removedSet[$id] = true;
+            }
+        }
+        if ($removedSet === []) {
+            return;
+        }
+
+        $idsToDelete = [];
+        $nocCache = [];
+        $cCache = [];
+        foreach ($this->getInfoAnalisis($registroId) as $row) {
+            $regvaluesId = (int) ($row['regvalues_id'] ?? 0);
+            if ($regvaluesId < 1) {
+                continue;
+            }
+
+            $priaId = $this->resolvePrianacategoriaIdFromRegvalueName((string) ($row['name'] ?? ''), $nocCache, $cCache);
+            if ($priaId > 0 && isset($removedSet[$priaId])) {
+                $idsToDelete[$regvaluesId] = true;
+            }
+        }
+
+        if ($idsToDelete === []) {
+            return;
+        }
+
+        $this->db->table('regvalues')
+            ->where('registro_id', $registroId)
+            ->whereIn('regvalues_id', array_keys($idsToDelete))
+            ->delete();
+    }
+
+    /**
      * Elimina un registro y sus datos relacionados (pago, regvalues, resulanalisis, muestra)
      */
     public function deleteRegistro(int $registroId): bool

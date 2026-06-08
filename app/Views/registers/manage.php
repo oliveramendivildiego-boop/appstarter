@@ -483,9 +483,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 row.dataset.id = String(p.id);
                 var displayName = (p.name || '');
                 if (p.padre) displayName += ' <span class="text-muted small">(' + p.padre + ')</span>';
-                var removeButton = p.locked
-                    ? '<button type="button" class="btn btn-outline-secondary btn-sm" disabled title="Esta prueba ya tiene resultados"><i class="fa-solid fa-lock"></i></button>'
-                    : '<button type="button" class="btn btn-outline-danger btn-sm quitar-prueba" data-id="' + String(p.id) + '" title="Eliminar"><i class="fa-solid fa-times"></i></button>';
+                var removeButton = '<button type="button" class="btn btn-outline-danger btn-sm quitar-prueba" data-id="' + String(p.id) + '" title="Eliminar"><i class="fa-solid fa-times"></i></button>';
                 row.innerHTML = '<span class="prueba-drag-handle" title="Arrastrar para reordenar"><i class="fa-solid fa-grip-vertical"></i></span>' +
                     '<span class="flex-grow-1">' + displayName + '</span>' +
                     '<span class="badge bg-secondary me-2">' + formatCurrencyAmount(p.cost || 0, 0) + '</span>' +
@@ -504,14 +502,12 @@ document.addEventListener('DOMContentLoaded', function() {
             id: item.data,
             name: item.value || '',
             padre: item.padre || '',
-            cost: parseFloat(item.cost || 0),
-            locked: !!item.locked
+            cost: parseFloat(item.cost || 0)
         });
         renderPruebasLista();
     }
 
     function quitarPrueba(idx) {
-        if (pruebasSeleccionadas[idx] && pruebasSeleccionadas[idx].locked) return;
         pruebasSeleccionadas.splice(idx, 1);
         renderPruebasLista();
     }
@@ -1008,7 +1004,6 @@ document.addEventListener('DOMContentLoaded', function() {
             // Pruebas
             var pruebasStr = String(editInfo.pruebas || '').trim();
             if (pruebasStr) {
-                var hasResults = (parseInt(editInfo.regvalues_count || 0, 10) > 0);
                 pruebasStr.split(',').map(function(x) { return String(parseInt(x, 10)); })
                     .filter(function(x) { return x !== 'NaN'; })
                     .forEach(function(id) {
@@ -1018,8 +1013,7 @@ document.addEventListener('DOMContentLoaded', function() {
                                 value: info.name,
                                 padre: info.padre,
                                 data: id,
-                                cost: info.cost,
-                                locked: hasResults
+                                cost: info.cost
                             });
                             return;
                         }
@@ -1029,8 +1023,7 @@ document.addEventListener('DOMContentLoaded', function() {
                             value: 'Prueba #' + id + ' (no disponible en catálogo)',
                             padre: 'Histórico',
                             data: id,
-                            cost: 0,
-                            locked: hasResults
+                            cost: 0
                         });
                     });
             }

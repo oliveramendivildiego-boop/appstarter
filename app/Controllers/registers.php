@@ -517,10 +517,10 @@ class Registers extends SecureArea
         $registerInfo->paciente = $pacienteType;
         $patientGender = isset($registerInfo->gender) ? (int) $registerInfo->gender : null;
         $matchingPoblacionIds = $this->registerService->getMatchingPoblacionIds($registerInfo->birthday ?? null, $patientGender, $refIngreso);
+        $pruebasIds = $this->registerService->extractPrianacategoriaIdsFromRegistroPruebas((string) ($registerInfo->pruebas ?? ''));
         $pruebasInfo = $this->registerModel->getPruebasInput($registerInfo->pruebas ?? '', $matchingPoblacionIds, $patientGender);
         $pruebasInfoFallback = [];
         if ($pruebasInfo === []) {
-            $pruebasIds = $this->registerService->extractPrianacategoriaIdsFromRegistroPruebas((string) ($registerInfo->pruebas ?? ''));
             $cfgRows = $this->registerModel->getPrianacategoriaConfigByIds($pruebasIds);
             foreach ($cfgRows as $cfg) {
                 $anacategoriaId = (int) ($cfg['anacategoria_id'] ?? 0);
@@ -531,6 +531,38 @@ class Registers extends SecureArea
                     'padre'              => (string) ($catInfo->name ?? 'Sin categoría'),
                     'compleja'           => (int) ($cfg['compleja'] ?? 0),
                 ];
+            }
+        } elseif ($pruebasIds !== []) {
+            $presentIds = [];
+            foreach ($pruebasInfo as $row) {
+                $pid = (int) ($row['prianacategoria_id'] ?? 0);
+                if ($pid > 0) {
+                    $presentIds[$pid] = true;
+                }
+            }
+            $missingIds = array_values(array_filter(
+                $pruebasIds,
+                static fn(int $pid): bool => ! isset($presentIds[$pid])
+            ));
+            if ($missingIds !== []) {
+                foreach ($this->registerModel->getPrianacategoriaConfigByIds($missingIds) as $cfg) {
+                    $anacategoriaId = (int) ($cfg['anacategoria_id'] ?? 0);
+                    $catInfo = $anacategoriaId > 0 ? $this->labotestModel->getCategoryInfo($anacategoriaId) : null;
+                    $pruebasInfo[] = [
+                        'prianacategoria_id' => (int) ($cfg['prianacategoria_id'] ?? 0),
+                        'hijo'               => (string) ($cfg['name'] ?? ''),
+                        'padre'              => (string) ($catInfo->name ?? 'Sin categoría'),
+                        'compleja'           => (int) ($cfg['compleja'] ?? 0),
+                        'priresultados_id'   => 0,
+                    ];
+                }
+                $orderMap = array_flip($pruebasIds);
+                usort($pruebasInfo, static function (array $a, array $b) use ($orderMap): int {
+                    $pa = (int) ($a['prianacategoria_id'] ?? 0);
+                    $pb = (int) ($b['prianacategoria_id'] ?? 0);
+
+                    return ($orderMap[$pa] ?? PHP_INT_MAX) <=> ($orderMap[$pb] ?? PHP_INT_MAX);
+                });
             }
         }
 
@@ -1392,28 +1424,22 @@ class Registers extends SecureArea
             $pagos = is_array($pagos) ? $pagos : [];
             $doctorId = $this->normalizeOptionalDoctorId($registro['doctor_id'] ?? 0);
             $currentInfo = $this->registerModel->getInfoRefill($id);
-            $hasRegvalues = count($this->registerModel->getInfoAnalisis($id)) > 0;
-            if ($hasRegvalues) {
-                $parsePruebas = static function (?string $csv): array {
-                    $ids = [];
-                    foreach (explode(',', (string) $csv) as $rawId) {
-                        $idPrueba = (int) trim($rawId);
-                        if ($idPrueba > 0) {
-                            $ids[$idPrueba] = true;
-                        }
+            $parsePruebas = static function (?string $csv): array {
+                $ids = [];
+                foreach (explode(',', (string) $csv) as $rawId) {
+                    $idPrueba = (int) trim($rawId);
+                    if ($idPrueba > 0) {
+                        $ids[$idPrueba] = true;
                     }
-
-                    return array_keys($ids);
-                };
-                $currentPruebas = $parsePruebas((string) ($currentInfo->pruebas ?? ''));
-                $postedPruebas = $parsePruebas((string) ($registro['pruebas'] ?? ''));
-                $missingExisting = array_diff($currentPruebas, $postedPruebas);
-                if ($missingExisting !== []) {
-                    return $this->response->setJSON([
-                        'success' => false,
-                        'message' => 'La orden ya tiene resultados. Puede agregar más pruebas, pero no quitar pruebas existentes.',
-                    ])->setStatusCode(400);
                 }
+
+                return array_keys($ids);
+            };
+            $currentPruebas = $parsePruebas((string) ($currentInfo->pruebas ?? ''));
+            $postedPruebas = $parsePruebas((string) ($registro['pruebas'] ?? ''));
+            $removedPruebas = array_values(array_diff($currentPruebas, $postedPruebas));
+            if ($removedPruebas !== []) {
+                $this->registerModel->deleteRegvaluesForRemovedPruebas($id, $removedPruebas);
             }
 
             $registroData = [

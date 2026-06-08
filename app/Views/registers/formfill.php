@@ -110,15 +110,43 @@ $renderLabFirmaGrupoCerrado = static function (string $padreCerrado) use ($labGr
         'pria_ids_legacy'  => $labGruposFirma[$grpKey]['pria_ids'],
     ]);
 };
+$pruebaSubIdxPorPadre = [];
+$renderPruebaCabecera = static function (array $prueba) use (&$pruebaSubIdxPorPadre): void {
+    $padre = trim((string) ($prueba['padre'] ?? ''));
+    $hijo = trim((string) ($prueba['hijo'] ?? ''));
+    if ($padre === '' && $hijo === '') {
+        return;
+    }
+    if (! isset($pruebaSubIdxPorPadre[$padre])) {
+        $pruebaSubIdxPorPadre[$padre] = 0;
+    }
+    $subIdx = $pruebaSubIdxPorPadre[$padre];
+    $pruebaSubIdxPorPadre[$padre]++;
+    echo '<div class="col-12">';
+    echo view('registers/analisis/partials/report_grupo_cabecera_content', [
+        'padre'              => $padre,
+        'hijo'               => $hijo,
+        'tipo_muestra_linea' => '',
+        'metodo_linea'       => '',
+        'variant'            => 'web',
+        'pdf_layout'         => [],
+        'web_title_mt'       => $subIdx > 0 ? 'mt-4' : 'mt-0',
+        'sub_idx'            => $subIdx,
+        'grupo_es_primero'   => false,
+    ]);
+    echo '</div>';
+};
 foreach ($pruebas_info ?? [] as $prueba):
     if (($prueba['padre'] ?? '') != $last_padre):
         if ($last_padre !== '') {
             $renderLabFirmaGrupoCerrado($last_padre);
             echo '</div>';
         }
-        echo '<div class="row mb-3"><div class="col-12"><strong class="text-uppercase">' . esc($prueba['padre'] ?? '') . '</strong></div>';
+        echo '<div class="row mb-3">';
         $last_padre = $prueba['padre'] ?? '';
     endif;
+
+    $renderPruebaCabecera($prueba);
 
     $mostrarPrueba = true;
     if (($prueba['compleja'] ?? 0) == 1) {
