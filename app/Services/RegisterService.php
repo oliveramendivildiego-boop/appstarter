@@ -579,14 +579,14 @@ class RegisterService
             }
 
             if ($secId === 'cuerpo' && $alineacion === 'bordes') {
-                $html = '<div class="cultivo-celda-bordes" style="display:flex;justify-content:space-between;align-items:center;width:100%;gap:0.5rem;">';
+                $html = '<div class="cultivo-celda-bordes">';
                 if ($principal !== '') {
-                    $html .= '<span class="cultivo-celda-izq" style="flex:1 1 auto;min-width:0;text-align:left;">'
+                    $html .= '<span class="cultivo-celda-izq">'
                         . ($esHtmlContenido($principal) ? $principal : $escHtml($principal))
                         . '</span>';
                 }
                 if ($medida !== '') {
-                    $html .= '<span class="cultivo-celda-der" style="flex:0 0 auto;text-align:right;white-space:nowrap;">'
+                    $html .= '<span class="cultivo-celda-der">'
                         . $escHtml($medida) . '</span>';
                 }
                 $html .= '</div>';

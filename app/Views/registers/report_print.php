@@ -144,6 +144,10 @@
     'report_pria_metodo_nombre'       => $report_pria_metodo_nombre ?? [],
     'report_lab_firmas'               => $report_lab_firmas ?? [],
     'report_pria_refs_consolidada'    => $report_pria_refs_consolidada ?? [],
+    'analisis_variant'                => 'browser_print',
+]) ?>
+<?= view('registers/partials/report_order_sheet_header_print_script', [
+    'order_sheet_header_enabled' => $orderSheetHeaderEnabled,
 ]) ?>
 <?= view('registers/partials/report_print_pagination_metrics', [
     'page_height_mm'    => $printPageHeightMm,
@@ -266,6 +270,9 @@
 
     function preparePrintLayout() {
         syncReportPrintLayoutMetrics();
+        if (typeof window.injectOrderSheetHeadersFromPageTwo === 'function') {
+            window.injectOrderSheetHeadersFromPageTwo();
+        }
         if (typeof window.applyReportPdfGrupoPageBreaks === 'function') {
             window.applyReportPdfGrupoPageBreaks();
         }

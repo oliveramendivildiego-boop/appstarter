@@ -155,11 +155,11 @@ $subgrupoCultivoStyle = $subIdxCultivo > 0
     $colWidthPct = $numColsVisible > 0 ? (100 / $numColsVisible) : 100;
     $bandaColspan = max(1, $numColsVisible);
     $tieneBanda = $titulosBanda !== [];
-    $colsWrapStyle = $usePdfChrome
-        ? ' style="display:flex;width:100%;flex-wrap:nowrap;align-items:stretch;margin-top:0;"'
+    $colTdStyleAttr = $usePdfChrome
+        ? ' style="width:' . esc((string) $colWidthPct, 'attr') . '%;vertical-align:top;padding:0;border:none;"'
         : '';
-    $colStyleAttr = $usePdfChrome
-        ? ' style="flex:1 1 0;min-width:0;width:' . esc((string) $colWidthPct, 'attr') . '%;"'
+    $layoutTableStyle = $usePdfChrome
+        ? ' style="width:100%;table-layout:fixed;border-collapse:collapse;border-spacing:0;margin-top:0;"'
         : '';
     $tableFixedStyle = $usePdfChrome
         ? ' style="width:100%;table-layout:fixed;margin-top:0;margin-bottom:0;"'
@@ -205,15 +205,20 @@ $subgrupoCultivoStyle = $subIdxCultivo > 0
         </div>
         <?php endif; ?>
 
-        <div class="report-cultivo-columnas w-100"<?= $colsWrapStyle ?>>
-            <?php foreach ($columnasDetalle as $colDet):
-                $titulosFilasCol = is_array($colDet['titulos_filas'] ?? null) ? $colDet['titulos_filas'] : [];
-                $valoresCol = is_array($colDet['valores'] ?? null) ? $colDet['valores'] : [];
-                if ($titulosFilasCol === [] && $valoresCol === []) {
-                    continue;
-                }
+        <?php
+        $renderCultivoColumnaTabla = static function (array $colDet) use (
+            $mainTableClass,
+            $tableColStyle,
+            $thJoinStyle,
+            $tdClassCelda,
+            $renderCultivoCelda
+        ): void {
+            $titulosFilasCol = is_array($colDet['titulos_filas'] ?? null) ? $colDet['titulos_filas'] : [];
+            $valoresCol = is_array($colDet['valores'] ?? null) ? $colDet['valores'] : [];
+            if ($titulosFilasCol === [] && $valoresCol === []) {
+                return;
+            }
             ?>
-            <div class="report-cultivo-columna flex-fill"<?= $colStyleAttr ?>>
                 <table class="<?= esc($mainTableClass, 'attr') ?>"<?= $tableColStyle ?>>
                     <?php if ($titulosFilasCol !== []): ?>
                     <thead>
@@ -238,9 +243,42 @@ $subgrupoCultivoStyle = $subIdxCultivo > 0
                     </tbody>
                     <?php endif; ?>
                 </table>
+            <?php
+        };
+        ?>
+        <?php if ($usePdfChrome): ?>
+        <div class="report-cultivo-columnas w-100">
+            <table class="report-cultivo-layout-table"<?= $layoutTableStyle ?>>
+                <tr>
+                    <?php foreach ($columnasDetalle as $colDet):
+                        $titulosFilasCol = is_array($colDet['titulos_filas'] ?? null) ? $colDet['titulos_filas'] : [];
+                        $valoresCol = is_array($colDet['valores'] ?? null) ? $colDet['valores'] : [];
+                        if ($titulosFilasCol === [] && $valoresCol === []) {
+                            continue;
+                        }
+                    ?>
+                    <td class="report-cultivo-columna-td"<?= $colTdStyleAttr ?>>
+                        <?php $renderCultivoColumnaTabla($colDet); ?>
+                    </td>
+                    <?php endforeach; ?>
+                </tr>
+            </table>
+        </div>
+        <?php else: ?>
+        <div class="report-cultivo-columnas w-100">
+            <?php foreach ($columnasDetalle as $colDet):
+                $titulosFilasCol = is_array($colDet['titulos_filas'] ?? null) ? $colDet['titulos_filas'] : [];
+                $valoresCol = is_array($colDet['valores'] ?? null) ? $colDet['valores'] : [];
+                if ($titulosFilasCol === [] && $valoresCol === []) {
+                    continue;
+                }
+            ?>
+            <div class="report-cultivo-columna flex-fill">
+                <?php $renderCultivoColumnaTabla($colDet); ?>
             </div>
             <?php endforeach; ?>
         </div>
+        <?php endif; ?>
     </div>
 </div>
 <?php endforeach; ?>

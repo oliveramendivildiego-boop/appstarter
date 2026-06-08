@@ -12,6 +12,8 @@ class PdfService
 {
     private const TOTAL_PAGES_TOKEN = '__PDF_TOTAL_PAGES__';
 
+    private const ORDER_SHEET_HEADER_MARKER = 'pdf-order-sheet-header-dompdf';
+
     protected function makeDompdf(Options $options): Dompdf
     {
         $dompdf = new Dompdf($options);
@@ -35,6 +37,9 @@ class PdfService
         $options->set('isHtml5ParserEnabled', true);
         $options->set('isRemoteEnabled', true);
         $options->set('defaultFont', 'DejaVu Sans');
+        if (strpos($html, self::ORDER_SHEET_HEADER_MARKER) !== false) {
+            $options->set('isPhpEnabled', true);
+        }
 
         // Dompdf no garantiza counter(pages) correcto dentro del flujo (puede dar 0 en PDFs de 1 página).
         // Para el elemento "total de páginas" hacemos doble render solo si existe el token.

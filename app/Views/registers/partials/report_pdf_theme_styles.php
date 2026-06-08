@@ -68,7 +68,7 @@ $gpb = \App\Services\ReportPdfLayoutService::normalizeGrupoPruebaPageBreakStyle(
 $osh = \App\Services\ReportPdfLayoutService::normalizeOrderSheetHeaderStyle($ps['order_sheet_header'] ?? []);
 $orderSheetHeaderEnabled = ! empty($osh['enabled']);
 $orderSheetHeaderReserveMm = 6.0;
-$bodyMarginTopMm = $orderSheetHeaderEnabled ? $mt + $orderSheetHeaderReserveMm : $mt;
+$pageMarginTopRestMm = $orderSheetHeaderEnabled ? $mt + $orderSheetHeaderReserveMm : $mt;
 $gpbCompactScale = round(max(75, min(100, (int) ($gpb['compact_min_scale_percent'] ?? 85))) / 100, 3);
 $rsBodyBg = ! empty($rs['body_transparent']) ? 'transparent' : (string) $rs['body_bg_color'];
 $rsSegBg  = ! empty($rs['segment_transparent']) ? 'transparent' : (string) $rs['segment_bg_color'];
@@ -87,7 +87,9 @@ foreach (is_array($pl['blocks'] ?? null) ? $pl['blocks'] : [] as $fb) {
         break;
     }
 }
-$pdfFooterReserveMm = 22.0;
+$pdfFooterReserveMm = $pdfFooterEnabled
+    ? \App\Services\ReportPdfLayoutService::estimatePdfFooterReserveMm($pl)
+    : 0.0;
 $pdfFooterStripBg   = ($ftBodyBg !== 'transparent') ? $ftBodyBg : '#ffffff';
 $ftTopOn            = ! empty($ft['section_top_border_enabled']);
 $ftTopW             = max(0, min(6, (int) ($ft['section_top_border_width_px'] ?? 1)));
@@ -109,18 +111,20 @@ $ftTopWpx           = ($ftTopOn && $ftTopW > 0) ? $ftTopW : 0;
 <?php if ($pdfFooterEnabled): ?>
 .viewreport-pdf-sheet {
     min-height: 11in;
+    display: flex;
+    flex-direction: column;
 }
 .viewreport-pdf-sheet .pdf-main-stack {
-    padding-bottom: <?= esc((string) $pdfFooterReserveMm) ?>mm;
+    flex: 1 1 auto;
+    padding-bottom: 0;
     box-sizing: border-box;
+    min-height: 0;
 }
 .viewreport-pdf-sheet .pdf-ft-block.footer-grid {
-    position: absolute;
-    left: 0;
-    right: 0;
-    bottom: 0;
+    position: static;
+    flex-shrink: 0;
+    margin-top: auto;
     z-index: 2;
-    margin-top: 0 !important;
     padding-top: 6px;
     background: <?= esc($pdfFooterStripBg) ?>;
     box-sizing: border-box;
@@ -133,7 +137,7 @@ body.report-browser-print {
     position: relative;
 }
 body.report-browser-print .pdf-main-stack {
-    padding-top: <?= $orderSheetHeaderEnabled ? esc((string) $orderSheetHeaderReserveMm) : '0' ?>mm !important;
+    padding-top: 0 !important;
     padding-bottom: 0 !important;
     box-sizing: border-box;
 }
@@ -148,20 +152,46 @@ body.report-browser-print .pdf-ft-block.footer-grid {
 }
 <?php endif; ?>
 <?php else: ?>
-body { margin: <?= esc((string) $bodyMarginTopMm) ?>mm <?= esc((string) $mr) ?>mm <?= esc((string) $mb) ?>mm <?= esc((string) $ml) ?>mm !important; position: relative; }
-<?php if ($pdfFooterEnabled): ?>
-.pdf-main-stack {
-    padding-bottom: <?= esc((string) $pdfFooterReserveMm) ?>mm;
-    box-sizing: border-box;
+<?php
+$bodyMarginBottomMm = $pdfFooterEnabled ? ($mb + $pdfFooterReserveMm) : $mb;
+?>
+<?php if ($orderSheetHeaderEnabled): ?>
+@page :first {
+    margin-top: <?= esc((string) $mt) ?>mm;
+    margin-right: <?= esc((string) $mr) ?>mm;
+    margin-bottom: <?= esc((string) $bodyMarginBottomMm) ?>mm;
+    margin-left: <?= esc((string) $ml) ?>mm;
 }
+@page {
+    margin-top: <?= esc((string) $pageMarginTopRestMm) ?>mm;
+    margin-right: <?= esc((string) $mr) ?>mm;
+    margin-bottom: <?= esc((string) $bodyMarginBottomMm) ?>mm;
+    margin-left: <?= esc((string) $ml) ?>mm;
+}
+<?php else: ?>
+@page {
+    margin-top: <?= esc((string) $mt) ?>mm;
+    margin-right: <?= esc((string) $mr) ?>mm;
+    margin-bottom: <?= esc((string) $bodyMarginBottomMm) ?>mm;
+    margin-left: <?= esc((string) $ml) ?>mm;
+}
+<?php endif; ?>
+body {
+    margin: 0 !important;
+    padding: 0 !important;
+    position: relative;
+}
+<?php if ($pdfFooterEnabled): ?>
 .pdf-ft-block.footer-grid {
-    position: fixed;
-    left: <?= esc((string) $ml) ?>mm;
-    right: <?= esc((string) $mr) ?>mm;
-    bottom: <?= esc((string) $mb) ?>mm;
+    position: fixed !important;
+    left: <?= esc((string) $ml) ?>mm !important;
+    right: <?= esc((string) $mr) ?>mm !important;
+    bottom: -<?= esc((string) $pdfFooterReserveMm) ?>mm !important;
+    min-height: <?= esc((string) $pdfFooterReserveMm) ?>mm !important;
     z-index: 2;
-    margin-top: 0 !important;
+    margin: 0 !important;
     padding-top: 6px;
+    padding-bottom: 0;
     background: <?= esc($pdfFooterStripBg) ?>;
     box-sizing: border-box;
 }
@@ -437,13 +467,69 @@ table.results.pdf-notes-table td.pdf-notes-cell {
     break-before: page !important;
 }
 <?php endif; ?>
-<?php if ($orderSheetHeaderEnabled): ?>
-.pdf-order-sheet-header-wrap {
-    z-index: 15;
-    box-sizing: border-box;
-    background: #ffffff;
+.report-cultivo-seccion .report-cultivo-banda,
+.report-cultivo-seccion .report-cultivo-columnas {
+    width: 100%;
 }
-.pdf-order-sheet-header {
+.report-cultivo-seccion .report-cultivo-banda .table,
+.report-cultivo-seccion .report-cultivo-banda table.results {
+    width: 100%;
+    table-layout: fixed;
+    margin-bottom: 0;
+}
+.report-cultivo-layout-table {
+    width: 100%;
+    table-layout: fixed;
+    border-collapse: collapse;
+    border-spacing: 0;
+    margin-top: 0;
+}
+.report-cultivo-layout-table td.report-cultivo-columna-td {
+    vertical-align: top;
+    padding: 0;
+    border: none;
+}
+.report-cultivo-layout-table .report-cultivo-columna-td > table.results {
+    width: 100%;
+    table-layout: fixed;
+    margin-top: 0;
+    margin-bottom: 0;
+}
+.report-cultivo-seccion .report-cultivo-banda + .report-cultivo-columnas .report-cultivo-columna-td > table.results {
+    border-top: none;
+}
+.report-cultivo-seccion .report-cultivo-banda + .report-cultivo-columnas .report-cultivo-columna-td > table.results thead tr:first-child th {
+    border-top: none;
+}
+.report-cultivo-seccion.report-cultivo-alineacion-centro .report-cultivo-columna-td td {
+    text-align: center;
+}
+.report-cultivo-seccion.report-cultivo-alineacion-bordes .report-cultivo-columna-td td {
+    text-align: left;
+    padding-left: 0.5rem;
+    padding-right: 0.5rem;
+}
+.cultivo-celda-bordes {
+    display: table;
+    width: 100%;
+    table-layout: fixed;
+}
+.cultivo-celda-bordes .cultivo-celda-izq,
+.cultivo-celda-bordes .cultivo-celda-der {
+    display: table-cell;
+    vertical-align: middle;
+}
+.cultivo-celda-bordes .cultivo-celda-izq {
+    width: 99%;
+    text-align: left;
+}
+.cultivo-celda-bordes .cultivo-celda-der {
+    text-align: right;
+    white-space: nowrap;
+}
+<?php if ($orderSheetHeaderEnabled && $browserPrintMode): ?>
+.pdf-order-sheet-header,
+.pdf-order-sheet-header-injected .pdf-order-sheet-header {
     width: 100%;
     border-collapse: collapse;
     border-spacing: 0;
@@ -453,37 +539,26 @@ table.results.pdf-notes-table td.pdf-notes-cell {
     line-height: 1.2;
     color: #333333;
 }
-.pdf-order-sheet-header td {
+.pdf-order-sheet-header td,
+.pdf-order-sheet-header-injected .pdf-order-sheet-header td {
     padding: 0;
     vertical-align: middle;
     white-space: nowrap;
 }
-.pdf-order-sheet-header-patient {
+.pdf-order-sheet-header-patient,
+.pdf-order-sheet-header-injected .pdf-order-sheet-header-patient {
     width: 50%;
     text-align: left;
 }
-.pdf-order-sheet-header-orden {
+.pdf-order-sheet-header-orden,
+.pdf-order-sheet-header-injected .pdf-order-sheet-header-orden {
     width: 50%;
     text-align: right;
 }
-<?php if ($useSheetPadding): ?>
-.viewreport-pdf-sheet .pdf-order-sheet-header-wrap {
-    display: none;
+.pdf-order-sheet-header-injected {
+    margin: 0 0 2mm;
+    break-after: avoid-page;
+    page-break-after: avoid;
 }
-<?php elseif ($browserPrintMode): ?>
-body.report-browser-print .pdf-order-sheet-header-wrap {
-    position: fixed;
-    top: calc(var(--print-margin-top-mm, <?= esc((string) $mt) ?>) * 1mm);
-    left: calc(var(--print-margin-left-mm, <?= esc((string) $ml) ?>) * 1mm);
-    right: calc(var(--print-margin-right-mm, <?= esc((string) $mr) ?>) * 1mm);
-}
-<?php else: ?>
-.pdf-order-sheet-header-wrap {
-    position: fixed;
-    top: <?= esc((string) $mt) ?>mm;
-    left: <?= esc((string) $ml) ?>mm;
-    right: <?= esc((string) $mr) ?>mm;
-}
-<?php endif; ?>
 <?php endif; ?>
 </style>

@@ -356,6 +356,9 @@ class ReportPdfLayoutService
         'left'   => 15.0,
     ];
 
+    /** Altura reservada para el pie fijo en Dompdf (mm), dentro del margen inferior de @page. */
+    public const DEFAULT_PDF_FOOTER_RESERVE_MM = 22.0;
+
     /**
      * Marca de agua centrada (PDF e impresión). file = ruta relativa a WRITEPATH.
      *
@@ -562,6 +565,51 @@ class ReportPdfLayoutService
     public static function defaultMarginsMmStatic(): array
     {
         return self::DEFAULT_MARGINS_MM;
+    }
+
+    public static function defaultPdfFooterReserveMmStatic(): float
+    {
+        return self::DEFAULT_PDF_FOOTER_RESERVE_MM;
+    }
+
+    /**
+     * Altura estimada del pie fijo (mm) según filas y tipografía de la plantilla activa.
+     *
+     * @param array<string, mixed> $layout
+     */
+    public static function estimatePdfFooterReserveMm(array $layout): float
+    {
+        $ps = is_array($layout['page_style'] ?? null) ? $layout['page_style'] : [];
+        $ft = self::normalizeFooterGridStyle($ps['footer_grid'] ?? []);
+        $fontPt     = max(6.0, (float) ($ft['font_size_pt'] ?? 8.0));
+        $lineHeight = max(1.0, (float) ($ft['line_height'] ?? 1.35));
+        $secLayouts = is_array($layout['section_layouts'] ?? null) ? $layout['section_layouts'] : [];
+        $ftSec      = is_array($secLayouts['footer'] ?? null) ? $secLayouts['footer'] : [];
+        $rowGapPx   = max(0, min(40, (int) ($ftSec['row_gap_px'] ?? 6)));
+
+        $maxRow   = 0;
+        $maxStack = 0;
+        $enabled  = 0;
+        foreach ($layout['instances'] ?? [] as $inst) {
+            if (! is_array($inst) || ($inst['section'] ?? '') !== 'footer' || empty($inst['enabled'])) {
+                continue;
+            }
+            $enabled++;
+            $maxRow   = max($maxRow, max(0, (int) ($inst['grid_row'] ?? 0)));
+            $maxStack = max($maxStack, max(0, (int) ($inst['grid_stack'] ?? 0)));
+        }
+        if ($enabled < 1) {
+            return self::DEFAULT_PDF_FOOTER_RESERVE_MM;
+        }
+
+        $rows   = max(1, $maxRow + 1, $maxStack + 1);
+        $lineMm = $fontPt * $lineHeight * 0.352778;
+        $gapMm  = $rowGapPx * 0.264583;
+        $padMm  = 6.0 * 0.264583 + 1.5;
+
+        $estimate = $padMm + ($rows * $lineMm) + (max(0, $rows - 1) * $gapMm);
+
+        return max(self::DEFAULT_PDF_FOOTER_RESERVE_MM, min(40.0, round($estimate + 2.0, 1)));
     }
 
     /**
@@ -3173,11 +3221,15 @@ class ReportPdfLayoutService
         $ft = self::normalizeFooterGridStyle($ps['footer_grid'] ?? []);
         $bg = ! empty($ft['body_transparent']) ? '#ffffff' : (string) $ft['body_bg_color'];
 
+        $footerReserveMm = self::estimatePdfFooterReserveMm($layout);
+        $fmt = static fn (float $v): string => rtrim(rtrim(number_format($v, 2, '.', ''), '0'), '.');
+
         return sprintf(
-            'position:fixed;left:%smm;right:%smm;bottom:%smm;z-index:2;margin-top:0;padding-top:6px;background:%s;box-sizing:border-box;',
-            rtrim(rtrim(number_format($ml, 2, '.', ''), '0'), '.'),
-            rtrim(rtrim(number_format($mr, 2, '.', ''), '0'), '.'),
-            rtrim(rtrim(number_format($mb, 2, '.', ''), '0'), '.'),
+            'position:fixed;left:%smm;right:%smm;bottom:-%smm;min-height:%smm;z-index:2;margin:0;padding-top:6px;padding-bottom:0;background:%s;box-sizing:border-box;',
+            $fmt($ml),
+            $fmt($mr),
+            $fmt($footerReserveMm),
+            $fmt($footerReserveMm),
             $bg
         );
     }

@@ -41,6 +41,22 @@ $orderSheetHeaderReserveMm = isset($orderSheetHeaderReserveMm)
     --print-margin-left-mm: <?= esc((string) $ml) ?>;
     --print-footer-reserve-mm: <?= esc((string) $pdfFooterReserveMm) ?>;
 }
+<?php if ($orderSheetHeaderEnabled): ?>
+@page :first {
+    size: <?= esc($printPageCssSize) ?>;
+    margin-top: <?= esc((string) $mt) ?>mm;
+    margin-right: <?= esc((string) $mr) ?>mm;
+    margin-bottom: <?= esc((string) $mb) ?>mm;
+    margin-left: <?= esc((string) $ml) ?>mm;
+}
+@page {
+    size: <?= esc($printPageCssSize) ?>;
+    margin-top: <?= esc((string) ((float) $mt + $orderSheetHeaderReserveMm)) ?>mm;
+    margin-right: <?= esc((string) $mr) ?>mm;
+    margin-bottom: <?= esc((string) $mb) ?>mm;
+    margin-left: <?= esc((string) $ml) ?>mm;
+}
+<?php else: ?>
 @page {
     size: <?= esc($printPageCssSize) ?>;
     margin-top: <?= esc((string) $mt) ?>mm;
@@ -48,6 +64,7 @@ $orderSheetHeaderReserveMm = isset($orderSheetHeaderReserveMm)
     margin-bottom: <?= esc((string) $mb) ?>mm;
     margin-left: <?= esc((string) $ml) ?>mm;
 }
+<?php endif; ?>
 /* Solo @page define márgenes de hoja; body sin margen extra (evita doble margen en vista previa). */
 html,
 body.report-browser-print {
@@ -55,7 +72,7 @@ body.report-browser-print {
     padding: 0 !important;
 }
 body.report-browser-print .pdf-main-stack {
-    padding-top: <?= $orderSheetHeaderEnabled ? esc((string) $orderSheetHeaderReserveMm) : '0' ?>mm !important;
+    padding-top: 0 !important;
     padding-bottom: 0 !important;
     box-sizing: border-box;
 }
@@ -110,16 +127,6 @@ body.js-total-pages-ready .pdf-counter-pages::before {
     <?= esc($printPagValueCssPos, 'css') ?>
 }
 @media print {
-    body.report-browser-print .pdf-order-sheet-header-wrap {
-        position: fixed !important;
-        top: calc(var(--print-margin-top-mm, <?= esc((string) $mt) ?>) * 1mm) !important;
-        left: calc(var(--print-margin-left-mm, <?= esc((string) $ml) ?>) * 1mm) !important;
-        right: calc(var(--print-margin-right-mm, <?= esc((string) $mr) ?>) * 1mm) !important;
-        display: block !important;
-    }
-    body.report-browser-print .pdf-order-sheet-header {
-        width: 100% !important;
-    }
     /*
      * Pie fijo dentro del área imprimible; el margen inferior de @page es solo el de plantilla (config).
      * La reserva de pie para paginación se calcula en JS, no se suma a @page.
