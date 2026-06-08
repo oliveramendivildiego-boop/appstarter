@@ -990,7 +990,7 @@ $labelsShort = [
         <h5 class="mb-0">Cabecera de orden en cada hoja</h5>
     </div>
     <div class="card-body">
-        <p class="small text-muted mb-3">Al imprimir o generar PDF, repite en <strong>cada hoja</strong> el nombre del paciente a la izquierda y el número de orden a la derecha (dentro del margen superior de la plantilla).</p>
+        <p class="small text-muted mb-3">Al imprimir o generar PDF, repite en <strong>cada hoja</strong> «Paciente: …» a la izquierda y «No. Orden: …» a la derecha (dentro del margen superior de la plantilla).</p>
         <div class="form-check">
             <input class="form-check-input" type="checkbox" id="osh_enabled" <?= ! empty($osh['enabled']) ? 'checked' : '' ?>>
             <label class="form-check-label" for="osh_enabled">Cabecera orden</label>

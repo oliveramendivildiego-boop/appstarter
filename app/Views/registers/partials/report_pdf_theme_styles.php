@@ -67,6 +67,8 @@ $rs = \App\Services\ReportPdfLayoutService::normalizeResultsTableStyle($ps['resu
 $gpb = \App\Services\ReportPdfLayoutService::normalizeGrupoPruebaPageBreakStyle($ps['grupo_prueba_page_break'] ?? []);
 $osh = \App\Services\ReportPdfLayoutService::normalizeOrderSheetHeaderStyle($ps['order_sheet_header'] ?? []);
 $orderSheetHeaderEnabled = ! empty($osh['enabled']);
+$orderSheetHeaderReserveMm = 6.0;
+$bodyMarginTopMm = $orderSheetHeaderEnabled ? $mt + $orderSheetHeaderReserveMm : $mt;
 $gpbCompactScale = round(max(75, min(100, (int) ($gpb['compact_min_scale_percent'] ?? 85))) / 100, 3);
 $rsBodyBg = ! empty($rs['body_transparent']) ? 'transparent' : (string) $rs['body_bg_color'];
 $rsSegBg  = ! empty($rs['segment_transparent']) ? 'transparent' : (string) $rs['segment_bg_color'];
@@ -131,7 +133,7 @@ body.report-browser-print {
     position: relative;
 }
 body.report-browser-print .pdf-main-stack {
-    padding-top: 0 !important;
+    padding-top: <?= $orderSheetHeaderEnabled ? esc((string) $orderSheetHeaderReserveMm) : '0' ?>mm !important;
     padding-bottom: 0 !important;
     box-sizing: border-box;
 }
@@ -146,7 +148,7 @@ body.report-browser-print .pdf-ft-block.footer-grid {
 }
 <?php endif; ?>
 <?php else: ?>
-body { margin: <?= esc((string) $mt) ?>mm <?= esc((string) $mr) ?>mm <?= esc((string) $mb) ?>mm <?= esc((string) $ml) ?>mm !important; position: relative; }
+body { margin: <?= esc((string) $bodyMarginTopMm) ?>mm <?= esc((string) $mr) ?>mm <?= esc((string) $mb) ?>mm <?= esc((string) $ml) ?>mm !important; position: relative; }
 <?php if ($pdfFooterEnabled): ?>
 .pdf-main-stack {
     padding-bottom: <?= esc((string) $pdfFooterReserveMm) ?>mm;
@@ -436,45 +438,47 @@ table.results.pdf-notes-table td.pdf-notes-cell {
 }
 <?php endif; ?>
 <?php if ($orderSheetHeaderEnabled): ?>
+.pdf-order-sheet-header-wrap {
+    z-index: 15;
+    box-sizing: border-box;
+    background: #ffffff;
+}
 .pdf-order-sheet-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    gap: 12px;
+    width: 100%;
+    border-collapse: collapse;
+    border-spacing: 0;
     font-family: "DejaVu Sans", Helvetica, Arial, sans-serif;
     font-size: 9pt;
     font-weight: 600;
     line-height: 1.2;
     color: #333333;
-    z-index: 15;
-    box-sizing: border-box;
+}
+.pdf-order-sheet-header td {
+    padding: 0;
+    vertical-align: middle;
+    white-space: nowrap;
 }
 .pdf-order-sheet-header-patient {
-    flex: 1 1 auto;
-    min-width: 0;
+    width: 50%;
     text-align: left;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
 }
 .pdf-order-sheet-header-orden {
-    flex: 0 0 auto;
+    width: 50%;
     text-align: right;
-    white-space: nowrap;
 }
 <?php if ($useSheetPadding): ?>
-.viewreport-pdf-sheet .pdf-order-sheet-header {
+.viewreport-pdf-sheet .pdf-order-sheet-header-wrap {
     display: none;
 }
 <?php elseif ($browserPrintMode): ?>
-body.report-browser-print .pdf-order-sheet-header {
+body.report-browser-print .pdf-order-sheet-header-wrap {
     position: fixed;
     top: calc(var(--print-margin-top-mm, <?= esc((string) $mt) ?>) * 1mm);
     left: calc(var(--print-margin-left-mm, <?= esc((string) $ml) ?>) * 1mm);
     right: calc(var(--print-margin-right-mm, <?= esc((string) $mr) ?>) * 1mm);
 }
 <?php else: ?>
-.pdf-order-sheet-header {
+.pdf-order-sheet-header-wrap {
     position: fixed;
     top: <?= esc((string) $mt) ?>mm;
     left: <?= esc((string) $ml) ?>mm;

@@ -1,6 +1,6 @@
 <?php
 /**
- * Cabecera fija por hoja: nombre del paciente (izquierda) y nº de orden (derecha).
+ * Cabecera fija por hoja: Paciente (izquierda) y No. Orden (derecha).
  *
  * @var array<string,mixed> $pdf_layout
  * @var object|null         $paciente
@@ -19,11 +19,21 @@ if (empty($osh['enabled'])) {
     return;
 }
 
-$pacienteNombre = trim(
-    ($paciente->first_name ?? '') . ' '
-    . ($paciente->last_name_fa ?? '') . ' '
-    . ($paciente->last_name_mom ?? '')
-);
+$pacienteNombre = '';
+if (is_object($paciente ?? null)) {
+    $pacienteNombre = trim(
+        ($paciente->first_name ?? '') . ' '
+        . ($paciente->last_name_fa ?? '') . ' '
+        . ($paciente->last_name_mom ?? '')
+    );
+}
+if ($pacienteNombre === '' && is_object($register_info ?? null)) {
+    $pacienteNombre = trim(
+        ($register_info->first_name ?? '') . ' '
+        . ($register_info->last_name_fa ?? '') . ' '
+        . ($register_info->last_name_mom ?? '')
+    );
+}
 if ($pacienteNombre === '') {
     $pacienteNombre = '—';
 }
@@ -33,7 +43,11 @@ if ($numeroOrden === '') {
     $numeroOrden = '—';
 }
 ?>
-<div class="pdf-order-sheet-header" aria-hidden="true">
-    <span class="pdf-order-sheet-header-patient"><?= esc($pacienteNombre) ?></span>
-    <span class="pdf-order-sheet-header-orden"><?= esc($numeroOrden) ?></span>
+<div class="pdf-order-sheet-header-wrap" aria-hidden="true">
+    <table class="pdf-order-sheet-header" width="100%" cellpadding="0" cellspacing="0" role="presentation">
+        <tr>
+            <td class="pdf-order-sheet-header-patient" align="left" valign="middle">Paciente: <?= esc($pacienteNombre) ?></td>
+            <td class="pdf-order-sheet-header-orden" align="right" valign="middle">No. Orden: <?= esc($numeroOrden) ?></td>
+        </tr>
+    </table>
 </div>

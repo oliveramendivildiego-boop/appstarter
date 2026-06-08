@@ -13,6 +13,8 @@
  * @var string $printSegmentBreakInside
  * @var string $printPagLabelCssPos
  * @var string $printPagValueCssPos
+ * @var bool   $orderSheetHeaderEnabled
+ * @var float  $orderSheetHeaderReserveMm
  */
 $mt = (float) ($mt ?? 15);
 $mr = (float) ($mr ?? 15);
@@ -26,6 +28,10 @@ $pdfFooterReserveMm = $pdfFooterEnabled
 $printSegmentBreakInside = (string) ($printSegmentBreakInside ?? 'auto');
 $printPagLabelCssPos = (string) ($printPagLabelCssPos ?? '');
 $printPagValueCssPos = (string) ($printPagValueCssPos ?? '');
+$orderSheetHeaderEnabled = ! empty($orderSheetHeaderEnabled);
+$orderSheetHeaderReserveMm = isset($orderSheetHeaderReserveMm)
+    ? max(0.0, (float) $orderSheetHeaderReserveMm)
+    : 6.0;
 ?>
 <style>
 :root {
@@ -49,7 +55,7 @@ body.report-browser-print {
     padding: 0 !important;
 }
 body.report-browser-print .pdf-main-stack {
-    padding-top: 0 !important;
+    padding-top: <?= $orderSheetHeaderEnabled ? esc((string) $orderSheetHeaderReserveMm) : '0' ?>mm !important;
     padding-bottom: 0 !important;
     box-sizing: border-box;
 }
@@ -104,12 +110,15 @@ body.js-total-pages-ready .pdf-counter-pages::before {
     <?= esc($printPagValueCssPos, 'css') ?>
 }
 @media print {
-    body.report-browser-print .pdf-order-sheet-header {
+    body.report-browser-print .pdf-order-sheet-header-wrap {
         position: fixed !important;
         top: calc(var(--print-margin-top-mm, <?= esc((string) $mt) ?>) * 1mm) !important;
         left: calc(var(--print-margin-left-mm, <?= esc((string) $ml) ?>) * 1mm) !important;
         right: calc(var(--print-margin-right-mm, <?= esc((string) $mr) ?>) * 1mm) !important;
-        display: flex !important;
+        display: block !important;
+    }
+    body.report-browser-print .pdf-order-sheet-header {
+        width: 100% !important;
     }
     /*
      * Pie fijo dentro del área imprimible; el margen inferior de @page es solo el de plantilla (config).
@@ -126,7 +135,8 @@ body.js-total-pages-ready .pdf-counter-pages::before {
     body.report-browser-print .pdf-main-stack {
         overflow: visible !important;
         margin: 0 !important;
-        padding: 0 !important;
+        padding-bottom: 0 !important;
+        padding-top: <?= $orderSheetHeaderEnabled ? esc((string) $orderSheetHeaderReserveMm) : '0' ?>mm !important;
     }
     body.report-browser-print .pdf-main-stack {
         isolation: auto !important;

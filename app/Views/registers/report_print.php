@@ -82,6 +82,9 @@
     };
     $printPagLabelCssPos = $ppToCssPos((string) ($pp['label_position'] ?? 'bottom-left'), $mt, $mr, $mb, $ml);
     $printPagValueCssPos = $ppToCssPos((string) ($pp['value_position'] ?? 'bottom-right'), $mt, $mr, $mb, $ml);
+    $osh = \App\Services\ReportPdfLayoutService::normalizeOrderSheetHeaderStyle($ps['order_sheet_header'] ?? []);
+    $orderSheetHeaderEnabled = ! empty($osh['enabled']);
+    $orderSheetHeaderReserveMm = 6.0;
     ?>
     <?= view('registers/partials/report_pdf_theme_styles', [
         'pdf_layout'                     => $pdf_layout ?? [],
@@ -97,8 +100,10 @@
         'pdfFooterEnabled'        => $pdfFooterEnabled,
         'pdfFooterReserveMm'      => $pdfFooterReserveMm,
         'printSegmentBreakInside' => $printSegmentBreakInside,
-        'printPagLabelCssPos'     => $printPagLabelCssPos,
-        'printPagValueCssPos'     => $printPagValueCssPos,
+        'printPagLabelCssPos'          => $printPagLabelCssPos,
+        'printPagValueCssPos'          => $printPagValueCssPos,
+        'orderSheetHeaderEnabled'      => $orderSheetHeaderEnabled,
+        'orderSheetHeaderReserveMm'    => $orderSheetHeaderReserveMm,
     ]) ?>
 </head>
 <body class="report-browser-print<?= $gpbBodyClass !== '' ? ' ' . esc($gpbBodyClass, 'attr') : '' ?><?= $layoutReportMode ? ' report-print-layout-report-mode' : '' ?>">
