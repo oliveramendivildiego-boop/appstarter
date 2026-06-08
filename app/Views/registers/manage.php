@@ -330,6 +330,13 @@ document.addEventListener('DOMContentLoaded', function() {
     var pruebaListDropdown = document.getElementById('prueba_list');
     var pruebaListaContainer = document.getElementById('pruebas_lista');
     var guardarBtn = document.getElementById('guardar');
+    var guardandoOrden = false;
+    var submitToken = (function() {
+        if (window.crypto && typeof window.crypto.randomUUID === 'function') {
+            return window.crypto.randomUUID();
+        }
+        return 'st_' + Date.now() + '_' + Math.random().toString(36).slice(2, 12);
+    })();
     var pruebasModalEl = document.getElementById('modalSeleccionPruebas');
     var pruebasModal = (typeof bootstrap !== 'undefined' && pruebasModalEl) ? bootstrap.Modal.getOrCreateInstance(pruebasModalEl) : null;
     var modalPruebasLista = document.getElementById('modal_pruebas_lista');
@@ -685,6 +692,9 @@ document.addEventListener('DOMContentLoaded', function() {
     if (guardarBtn) {
         guardarBtn.addEventListener('click', function(e) {
             e.preventDefault();
+            if (guardandoOrden) {
+                return;
+            }
             quitarInvalid();
             var pruebas = pruebasSeleccionadas.map(function(p) { return p.id; });
             var pruebasStr = pruebas.join(',');
@@ -753,6 +763,11 @@ document.addEventListener('DOMContentLoaded', function() {
             var csrf = (typeof CI_CSRF_TOKEN !== 'undefined' && typeof CI_CSRF_TOKEN_NAME !== 'undefined')
                 ? '&' + CI_CSRF_TOKEN_NAME + '=' + encodeURIComponent(CI_CSRF_TOKEN) : '';
             var urlGuardar = editInfo && editInfo.registro_id ? ('<?= site_url('registers/update') ?>/' + editInfo.registro_id) : '<?= site_url('registers/save') ?>';
+            var esNuevaOrden = !(editInfo && editInfo.registro_id);
+            guardandoOrden = true;
+            guardarBtn.disabled = true;
+            var guardarBtnLabel = guardarBtn.textContent;
+            guardarBtn.textContent = 'Guardando...';
             fetch(urlGuardar, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'X-Requested-With': 'XMLHttpRequest' },
@@ -767,18 +782,25 @@ document.addEventListener('DOMContentLoaded', function() {
                     '&pagos[monto_pagar]=' + encodeURIComponent(pagosData.monto_pagar) +
                     '&pagos[tipopago]=' + encodeURIComponent(pagosData.tipopago) +
                     '&pagos[saldo]=' + encodeURIComponent(pagosData.saldo) +
-                    '&pagos[comentarios]=' + encodeURIComponent(pagosData.comentarios) + csrf
+                    '&pagos[comentarios]=' + encodeURIComponent(pagosData.comentarios) +
+                    (esNuevaOrden ? ('&submit_token=' + encodeURIComponent(submitToken)) : '') + csrf
             })
             .then(function(r) { return r.json(); })
             .then(function(res) {
                 if (res.success) {
                     window.location.href = '<?= site_url('registers/view') ?>/' + res.id;
-                } else {
-                    var errDiv = document.getElementById('registers_form_error');
-                    if (errDiv) { errDiv.textContent = (res.message || 'Error al guardar.'); errDiv.className = 'alert alert-danger'; errDiv.style.display = 'block'; errDiv.scrollIntoView({ behavior: 'smooth', block: 'center' }); }
+                    return;
                 }
+                guardandoOrden = false;
+                guardarBtn.disabled = false;
+                guardarBtn.textContent = guardarBtnLabel;
+                var errDiv = document.getElementById('registers_form_error');
+                if (errDiv) { errDiv.textContent = (res.message || 'Error al guardar.'); errDiv.className = 'alert alert-danger'; errDiv.style.display = 'block'; errDiv.scrollIntoView({ behavior: 'smooth', block: 'center' }); }
             })
             .catch(function() {
+                guardandoOrden = false;
+                guardarBtn.disabled = false;
+                guardarBtn.textContent = guardarBtnLabel;
                 var errDiv = document.getElementById('registers_form_error');
                 if (errDiv) { errDiv.textContent = 'Error en la petición.'; errDiv.className = 'alert alert-danger'; errDiv.style.display = 'block'; }
             });

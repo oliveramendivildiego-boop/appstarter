@@ -2228,6 +2228,93 @@ class RegisterModel extends Model
         return $suggestions;
     }
 
+    /**
+     * Normaliza el CSV de pruebas para comparaciones (orden estable, sin duplicados).
+     */
+    public static function normalizePruebasCsv(?string $csv): string
+    {
+        $ids = [];
+        foreach (explode(',', (string) $csv) as $rawId) {
+            $id = (int) trim($rawId);
+            if ($id > 0) {
+                $ids[$id] = true;
+            }
+        }
+        if ($ids === []) {
+            return '';
+        }
+        $keys = array_keys($ids);
+        sort($keys, SORT_NUMERIC);
+
+        return implode(',', $keys);
+    }
+
+    /**
+     * Busca una orden reciente idéntica (mismo paciente, médico, pruebas y usuario).
+     */
+    public function findRecentDuplicateRegistro(
+        int $personId,
+        int $doctorId,
+        ?string $pruebas,
+        int $sessionId,
+        int $windowSeconds = 180
+    ): ?int {
+        if ($personId < 1 || $sessionId < 1) {
+            return null;
+        }
+
+        $normalized = self::normalizePruebasCsv($pruebas);
+        if ($normalized === '') {
+            return null;
+        }
+
+        RegisterService::applyRequestTimezone();
+        $since = RegisterService::reportNow()->modify('-' . max(30, $windowSeconds) . ' seconds')->format('Y-m-d H:i:s');
+
+        $builder = $this->db->table('registro')
+            ->select('registro_id, pruebas')
+            ->where('person_id', $personId)
+            ->where('doctor_id', $doctorId)
+            ->where('id_session', $sessionId)
+            ->where('ingreso >=', $since)
+            ->orderBy('registro_id', 'DESC');
+
+        if ($this->registroTieneColumnaAnulado()) {
+            $builder->where('COALESCE(anulado, 0) = 0', null, false);
+        }
+
+        foreach ($builder->get()->getResult() as $row) {
+            if (self::normalizePruebasCsv($row->pruebas ?? '') === $normalized) {
+                return (int) $row->registro_id;
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * Bloqueo MySQL para serializar inserciones concurrentes de la misma orden.
+     *
+     * @return mixed
+     */
+    public function withRegistroInsertLock(int $personId, int $doctorId, ?string $pruebas, int $sessionId, callable $callback)
+    {
+        $lockKey = 'reg_ins_' . substr(md5(
+            $personId . '|' . $doctorId . '|' . self::normalizePruebasCsv($pruebas) . '|' . $sessionId
+        ), 0, 32);
+
+        $row = $this->db->query('SELECT GET_LOCK(?, 10) AS acquired', [$lockKey])->getRow();
+        if ($row === null || (int) ($row->acquired ?? 0) !== 1) {
+            throw new \RuntimeException('No se pudo reservar la creación de la orden. Intente nuevamente.');
+        }
+
+        try {
+            return $callback();
+        } finally {
+            $this->db->query('SELECT RELEASE_LOCK(?)', [$lockKey]);
+        }
+    }
+
     public function saveRegistro(array $data, $id = null)
     {
         if ($id === null || !$this->existsRegistro((int) $id)) {

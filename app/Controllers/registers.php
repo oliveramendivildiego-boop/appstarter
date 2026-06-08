@@ -1252,48 +1252,98 @@ class Registers extends SecureArea
             $registro = is_array($registro) ? $registro : [];
             $pagos = is_array($pagos) ? $pagos : [];
             $doctorId = $this->normalizeOptionalDoctorId($registro['doctor_id'] ?? 0);
+            $personId = (int) ($registro['person_id'] ?? 0);
+            $sessionId = (int) session()->get('person_id');
+            $submitToken = preg_replace('/[^a-zA-Z0-9_-]/', '', trim((string) $this->request->getPost('submit_token')));
+
+            if ($submitToken !== '' && strlen($submitToken) >= 16) {
+                $cached = \Config\Services::cache()->get('reg_submit_' . $submitToken);
+                if (is_array($cached) && ! empty($cached['id'])) {
+                    return $this->response->setJSON([
+                        'success' => true,
+                        'message' => 'Datos guardados correctamente',
+                        'id'      => (int) $cached['id'],
+                    ]);
+                }
+            }
 
             $registroData = [
                 'person_id'  => $registro['person_id'] ?? null,
                 'doctor_id'  => $doctorId,
                 'pruebas'    => $registro['pruebas'] ?? null,
                 'prioridad'  => (int) ($registro['prioridad'] ?? 0),
-                'id_session' => session()->get('person_id'),
+                'id_session' => $sessionId,
             ];
             $registroData = $this->withClinicalContextFields($registroData, $registro);
 
-            $registroId = $this->registerModel->saveRegistro($registroData);
-            $pagosNormalizados = $this->buildNormalizedPagoData($registroData, $pagos);
-            \App\Models\AuditoriaModel::log('registers', 'crear', (string) $registroId, \App\Models\AuditoriaModel::detail([
-                'paciente_id' => $registro['person_id'] ?? null,
-                'doctor_id' => $doctorId,
-                'pruebas' => $registro['pruebas'] ?? null,
-                'prioridad' => (int)($registro['prioridad'] ?? 0),
-                'total' => $pagosNormalizados['total'] ?? null,
-                'monto_pagar' => $pagosNormalizados['monto_pagar'] ?? null,
-                'descuento_institucion' => $pagosNormalizados['descuento_institucion'] ?? null,
-            ], 'Nuevo registro de orden'));
+            $saveResult = $this->registerModel->withRegistroInsertLock(
+                $personId,
+                $doctorId,
+                (string) ($registro['pruebas'] ?? ''),
+                $sessionId,
+                function () use ($registroData, $personId, $doctorId, $sessionId, $registro) {
+                    $existingId = $this->registerModel->findRecentDuplicateRegistro(
+                        $personId,
+                        $doctorId,
+                        (string) ($registro['pruebas'] ?? ''),
+                        $sessionId
+                    );
+                    if ($existingId !== null) {
+                        log_message('info', 'Registers::save orden duplicada evitada, registro_id=' . $existingId);
 
-            $pagosData = [
-                'registro_id'  => $registroId,
-                'total_reco'   => $pagosNormalizados['total_reco'] ?? null,
-                'total'        => $pagosNormalizados['total'] ?? null,
-                'monto_pagar'  => $pagosNormalizados['monto_pagar'] ?? null,
-                'tipopago'     => $pagosNormalizados['tipopago'] ?? null,
-                'saldo'        => $pagosNormalizados['saldo'] ?? null,
-                'comentarios'  => $pagosNormalizados['comentarios'] ?? null,
-            ];
-            $this->registerModel->savePago($pagosData);
-            $montoInicial = (float) ($pagosNormalizados['monto_pagar'] ?? 0);
-            if ($montoInicial > 0) {
-                $this->registerModel->insertAbonoInicial($registroId, $montoInicial, trim((string) ($pagosNormalizados['tipopago'] ?? '1')));
+                        return ['id' => $existingId, 'duplicate' => true];
+                    }
+
+                    $newId = $this->registerModel->saveRegistro($registroData);
+
+                    return ['id' => $newId, 'duplicate' => false];
+                }
+            );
+
+            $registroId = (int) ($saveResult['id'] ?? 0);
+            $isDuplicate = ! empty($saveResult['duplicate']);
+
+            if ($registroId < 1) {
+                throw new \RuntimeException('No se pudo crear la orden.');
             }
 
-            $this->syncDoctorCommissionForRegistro(
-                $registroId,
-                $doctorId,
-                (float) ($pagosNormalizados['total'] ?? 0)
-            );
+            if (! $isDuplicate) {
+                $pagosNormalizados = $this->buildNormalizedPagoData($registroData, $pagos);
+                \App\Models\AuditoriaModel::log('registers', 'crear', (string) $registroId, \App\Models\AuditoriaModel::detail([
+                    'paciente_id' => $registro['person_id'] ?? null,
+                    'doctor_id' => $doctorId,
+                    'pruebas' => $registro['pruebas'] ?? null,
+                    'prioridad' => (int)($registro['prioridad'] ?? 0),
+                    'total' => $pagosNormalizados['total'] ?? null,
+                    'monto_pagar' => $pagosNormalizados['monto_pagar'] ?? null,
+                    'descuento_institucion' => $pagosNormalizados['descuento_institucion'] ?? null,
+                ], 'Nuevo registro de orden'));
+
+                $pagosData = [
+                    'registro_id'  => $registroId,
+                    'total_reco'   => $pagosNormalizados['total_reco'] ?? null,
+                    'total'        => $pagosNormalizados['total'] ?? null,
+                    'monto_pagar'  => $pagosNormalizados['monto_pagar'] ?? null,
+                    'tipopago'     => $pagosNormalizados['tipopago'] ?? null,
+                    'saldo'        => $pagosNormalizados['saldo'] ?? null,
+                    'comentarios'  => $pagosNormalizados['comentarios'] ?? null,
+                ];
+                $this->registerModel->savePago($pagosData);
+                $montoInicial = (float) ($pagosNormalizados['monto_pagar'] ?? 0);
+                if ($montoInicial > 0) {
+                    $this->registerModel->insertAbonoInicial($registroId, $montoInicial, trim((string) ($pagosNormalizados['tipopago'] ?? '1')));
+                }
+
+                $this->syncDoctorCommissionForRegistro(
+                    $registroId,
+                    $doctorId,
+                    (float) ($pagosNormalizados['total'] ?? 0)
+                );
+            }
+
+            if ($submitToken !== '' && strlen($submitToken) >= 16) {
+                \Config\Services::cache()->save('reg_submit_' . $submitToken, ['id' => $registroId], 600);
+            }
 
             return $this->response->setJSON([
                 'success' => true,
