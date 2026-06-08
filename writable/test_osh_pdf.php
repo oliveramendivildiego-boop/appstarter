@@ -29,10 +29,10 @@ $html = <<<HTML
 <!-- pdf-order-sheet-header-data:{$payload} -->
 <div style="height:900px">P1</div>
 <div style="page-break-before:always;height:900px">P2</div>
-<div class="pdf-ft-block footer-grid">Pag __PDF_TOTAL_PAGES__</div>
+<div class="pdf-ft-block footer-grid">Pie fijo</div>
 </body></html>
 HTML;
 
 $pdf = (new PdfService())->generate($html, 'test.pdf');
-file_put_contents(__DIR__ . '/test_order_header_probe.pdf', $pdf);
-echo 'ok bytes=' . strlen($pdf) . PHP_EOL;
+file_put_contents(__DIR__ . '/test_osh_pdf.pdf', $pdf);
+echo 'ok pages test written' . PHP_EOL;

@@ -1,106 +1,66 @@
 <?php
 /**
- * Inyecta Paciente / No. Orden al pie de cada hoja desde la 2.ª (impresión navegador).
+ * Banda fija Paciente / No. Orden encima del pie en cada hoja (impresión navegador, 2+ páginas).
  *
- * @var bool $order_sheet_header_enabled
+ * @var bool   $order_sheet_header_enabled
+ * @var float  $margin_bottom_mm
+ * @var float  $margin_left_mm
+ * @var float  $margin_right_mm
+ * @var float  $gap_above_footer_mm
  */
 if (empty($order_sheet_header_enabled)) {
     return;
 }
+$marginBottomMm = (float) ($margin_bottom_mm ?? 15);
+$marginLeftMm   = (float) ($margin_left_mm ?? 15);
+$marginRightMm  = (float) ($margin_right_mm ?? 15);
+$gapAboveFooterMm = (float) ($gap_above_footer_mm ?? \App\Services\ReportPdfLayoutService::ORDER_SHEET_HEADER_GAP_ABOVE_FOOTER_MM);
 ?>
 <script>
 (function() {
-    function offsetTopWithinContainer(el, container) {
-        var y = 0;
-        var node = el;
-        while (node && node !== container) {
-            y += node.offsetTop || 0;
-            node = node.offsetParent;
-            if (!node) {
-                return null;
-            }
+    var cfg = {
+        marginBottomMm: <?= json_encode($marginBottomMm) ?>,
+        marginLeftMm: <?= json_encode($marginLeftMm) ?>,
+        marginRightMm: <?= json_encode($marginRightMm) ?>,
+        gapAboveFooterMm: <?= json_encode($gapAboveFooterMm) ?>
+    };
+
+    function readCssMm(varName, fallback) {
+        var raw = getComputedStyle(document.documentElement).getPropertyValue(varName);
+        var parsed = parseFloat(raw);
+        return (isFinite(parsed) && parsed >= 0) ? parsed : fallback;
+    }
+
+    function resolveFooterReserveMm() {
+        if (typeof window.measureReportPrintFooterReserveMm === 'function') {
+            return window.measureReportPrintFooterReserveMm();
         }
-        return node === container ? y : null;
+        return readCssMm('--print-footer-reserve-mm', 0);
     }
 
-    function elementBottomWithinContainer(el, container) {
-        var top = offsetTopWithinContainer(el, container);
-        if (top === null) {
-            return null;
-        }
-        return top + (el.offsetHeight || 0);
-    }
-
-    function buildOrderSheetHeaderNode(tpl) {
-        var wrap = document.createElement('div');
-        wrap.className = 'pdf-order-sheet-header-injected';
-
-        var table = document.createElement('table');
-        table.className = 'pdf-order-sheet-header';
-        table.setAttribute('width', '100%');
-        table.setAttribute('cellpadding', '0');
-        table.setAttribute('cellspacing', '0');
-
-        var row = document.createElement('tr');
-
-        var tdPatient = document.createElement('td');
-        tdPatient.className = 'pdf-order-sheet-header-patient';
-        tdPatient.setAttribute('align', 'left');
-        tdPatient.textContent = tpl.getAttribute('data-patient-line') || '';
-
-        var tdOrder = document.createElement('td');
-        tdOrder.className = 'pdf-order-sheet-header-orden';
-        tdOrder.setAttribute('align', 'right');
-        tdOrder.textContent = tpl.getAttribute('data-order-line') || '';
-
-        row.appendChild(tdPatient);
-        row.appendChild(tdOrder);
-        table.appendChild(row);
-        wrap.appendChild(table);
-
-        return wrap;
-    }
-
-    function findLastFlowElementBefore(container, maxBottomY) {
-        var best = null;
-        var bestBottom = -1;
-        var nodes = container.querySelectorAll(
-            '.header-grid, .patient-section, .pdf-notes-block, .pdf-lab-f-block, '
-            + '.report-pdf-grupo-prueba, .report-pdf-grupo-cabecera, .report-segment-table-wrap, '
-            + '.report-refs-matrix-wrap, .report-pdf-subgrupo-block'
-        );
-
-        for (var i = 0; i < nodes.length; i++) {
-            var el = nodes[i];
-            if (el.classList && el.classList.contains('pdf-order-sheet-header-injected')) {
-                continue;
-            }
-            var bottom = elementBottomWithinContainer(el, container);
-            if (bottom === null || bottom > maxBottomY + 1) {
-                continue;
-            }
-            if (bottom > bestBottom) {
-                bestBottom = bottom;
-                best = el;
-            }
-        }
-
-        return best;
-    }
-
-    function clearInjectedOrderSheetHeaders() {
-        document.querySelectorAll('.pdf-order-sheet-header-injected').forEach(function(node) {
-            node.remove();
-        });
-    }
-
-    window.injectOrderSheetHeadersFromPageTwo = function() {
-        var tpl = document.getElementById('pdf-order-sheet-header-template');
-        if (!tpl || !window.reportPrintPagination) {
+    function deactivateOrderSheetHeaderBand() {
+        document.body.classList.remove('js-order-sheet-header-active');
+        var band = document.getElementById('pdf-order-sheet-header-band');
+        if (!band) {
             return;
         }
+        band.classList.remove('pdf-order-sheet-header-band--active');
+        band.setAttribute('aria-hidden', 'true');
+        band.style.removeProperty('position');
+        band.style.removeProperty('left');
+        band.style.removeProperty('right');
+        band.style.removeProperty('bottom');
+        band.style.removeProperty('z-index');
+        band.style.removeProperty('background');
+        band.style.removeProperty('display');
+    }
 
-        clearInjectedOrderSheetHeaders();
+    function activateOrderSheetHeaderBand() {
+        deactivateOrderSheetHeaderBand();
+
+        if (!window.reportPrintPagination) {
+            return;
+        }
 
         var container = window.reportPrintPagination.getPrintContainer();
         if (!container) {
@@ -112,33 +72,38 @@ if (empty($order_sheet_header_enabled)) {
             return;
         }
 
-        var boundarySet = window.reportPrintPagination.buildBoundaries(container, metrics);
-        var boundaries = boundarySet && boundarySet.boundaries ? boundarySet.boundaries : [];
-        if (!boundaries.length) {
+        var band = document.getElementById('pdf-order-sheet-header-band');
+        if (!band) {
             return;
         }
 
-        var maxBottom = container.scrollHeight || 0;
-        var pageNum;
-        for (pageNum = 2; pageNum <= metrics.estimatedPages; pageNum++) {
-            var pageEndY = pageNum - 1 < boundaries.length
-                ? boundaries[pageNum - 1]
-                : maxBottom;
-            if (pageNum === metrics.estimatedPages) {
-                pageEndY = Math.min(pageEndY, maxBottom);
-            }
-
-            var anchor = findLastFlowElementBefore(container, pageEndY);
-            if (!anchor || !anchor.parentNode) {
-                continue;
-            }
-
-            if (anchor.nextSibling) {
-                anchor.parentNode.insertBefore(buildOrderSheetHeaderNode(tpl), anchor.nextSibling);
-            } else {
-                anchor.parentNode.appendChild(buildOrderSheetHeaderNode(tpl));
-            }
+        if (band.parentNode !== document.body) {
+            document.body.appendChild(band);
         }
-    };
+
+        var marginBottomMm = readCssMm('--print-margin-bottom-mm', cfg.marginBottomMm);
+        var marginLeftMm = readCssMm('--print-margin-left-mm', cfg.marginLeftMm);
+        var marginRightMm = readCssMm('--print-margin-right-mm', cfg.marginRightMm);
+        var footerReserveMm = resolveFooterReserveMm();
+        var bottomMm = marginBottomMm + footerReserveMm + cfg.gapAboveFooterMm;
+
+        document.documentElement.style.setProperty('--print-order-sheet-bottom-mm', String(bottomMm));
+
+        band.classList.add('pdf-order-sheet-header-band--active');
+        band.setAttribute('aria-hidden', 'false');
+        band.style.position = 'fixed';
+        band.style.left = marginLeftMm + 'mm';
+        band.style.right = marginRightMm + 'mm';
+        band.style.bottom = bottomMm + 'mm';
+        band.style.zIndex = '3';
+        band.style.background = '#ffffff';
+        band.style.margin = '0';
+        band.style.padding = '0';
+        band.style.boxSizing = 'border-box';
+
+        document.body.classList.add('js-order-sheet-header-active');
+    }
+
+    window.injectOrderSheetHeadersFromPageTwo = activateOrderSheetHeaderBand;
 })();
 </script>

@@ -28,11 +28,12 @@ class PdfService
      */
     protected function renderHtmlToDompdf(Dompdf $dompdf, string $html, ?array $orderSheetHeaderData = null): void
     {
-        if ($orderSheetHeaderData !== null) {
-            $this->registerOrderSheetHeaderCallback($dompdf, $orderSheetHeaderData);
-        }
         $dompdf->loadHtml($html, 'UTF-8');
         $dompdf->render();
+
+        if ($orderSheetHeaderData !== null) {
+            $this->paintOrderSheetHeaderOnPages($dompdf, $orderSheetHeaderData);
+        }
     }
 
     /**
@@ -56,9 +57,11 @@ class PdfService
     }
 
     /**
+     * Dibuja Paciente / No. Orden encima del pie desde la 2.ª hoja (Dompdf page_script).
+     *
      * @param array<string, mixed> $data
      */
-    protected function registerOrderSheetHeaderCallback(Dompdf $dompdf, array $data): void
+    protected function paintOrderSheetHeaderOnPages(Dompdf $dompdf, array $data): void
     {
         $patientLine = trim((string) ($data['patient'] ?? ''));
         $orderLine   = trim((string) ($data['order'] ?? ''));
@@ -75,52 +78,49 @@ class PdfService
         $gapAboveFooterMm = (float) ($data['gap_above_footer_mm'] ?? 1.5);
         $mmToPt           = 72 / 25.4;
 
-        $dompdf->setCallbacks([
-            [
-                'event' => 'end_document',
-                'f'     => static function (
-                    int $pageNumber,
-                    int $pageCount,
-                    $pdf,
-                    FontMetrics $fontMetrics
-                ) use (
-                    $patientLine,
-                    $orderLine,
-                    $marginBottomMm,
-                    $marginLeftMm,
-                    $marginRightMm,
-                    $footerReserveMm,
-                    $gapAboveFooterMm,
-                    $mmToPt
-                ): void {
-                    if ($pageNumber <= 1) {
-                        return;
-                    }
+        $dompdf->getCanvas()->page_script(
+            static function (
+                int $pageNumber,
+                int $pageCount,
+                $pdf,
+                FontMetrics $fontMetrics
+            ) use (
+                $patientLine,
+                $orderLine,
+                $marginBottomMm,
+                $marginLeftMm,
+                $marginRightMm,
+                $footerReserveMm,
+                $gapAboveFooterMm,
+                $mmToPt
+            ): void {
+                if ($pageNumber <= 1) {
+                    return;
+                }
 
-                    try {
-                        $font = $fontMetrics->getFont('DejaVu Sans', 'bold');
-                    } catch (\Throwable $e) {
-                        $font = $fontMetrics->getFont('DejaVu Sans', 'normal');
-                    }
+                try {
+                    $font = $fontMetrics->getFont('DejaVu Sans', 'bold');
+                } catch (\Throwable $e) {
+                    $font = $fontMetrics->getFont('DejaVu Sans', 'normal');
+                }
 
-                    $size  = 9.0;
-                    $color = [0.2, 0.2, 0.2];
-                    $offsetFromBottomMm = $marginBottomMm + $footerReserveMm + $gapAboveFooterMm;
-                    $y                  = $pdf->get_height() - ($offsetFromBottomMm * $mmToPt) - ($size * 0.85);
-                    $xLeft              = $marginLeftMm * $mmToPt;
-                    $xPad               = $marginRightMm * $mmToPt;
+                $size  = 9.0;
+                $color = [0.2, 0.2, 0.2];
+                $offsetFromBottomMm = $marginBottomMm + $footerReserveMm + $gapAboveFooterMm;
+                $y                  = $pdf->get_height() - ($offsetFromBottomMm * $mmToPt);
+                $xLeft              = $marginLeftMm * $mmToPt;
+                $xPad               = $marginRightMm * $mmToPt;
 
-                    if ($patientLine !== '') {
-                        $pdf->text($xLeft, $y, $patientLine, $font, $size, $color);
-                    }
-                    if ($orderLine !== '') {
-                        $orderWidth = $fontMetrics->getTextWidth($orderLine, $font, $size);
-                        $xOrder     = $pdf->get_width() - $xPad - $orderWidth;
-                        $pdf->text($xOrder, $y, $orderLine, $font, $size, $color);
-                    }
-                },
-            ],
-        ]);
+                if ($patientLine !== '') {
+                    $pdf->text($xLeft, $y, $patientLine, $font, $size, $color);
+                }
+                if ($orderLine !== '') {
+                    $orderWidth = $fontMetrics->getTextWidth($orderLine, $font, $size);
+                    $xOrder     = $pdf->get_width() - $xPad - $orderWidth;
+                    $pdf->text($xOrder, $y, $orderLine, $font, $size, $color);
+                }
+            }
+        );
     }
 
     /**
@@ -145,6 +145,7 @@ class PdfService
                 $pageCount = 1;
             }
             $html = str_replace(self::TOTAL_PAGES_TOKEN, (string) $pageCount, $html);
+            $orderSheetHeaderData = $this->extractOrderSheetHeaderData($html);
         }
 
         $dompdf = $this->makeDompdf($options);

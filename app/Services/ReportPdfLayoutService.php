@@ -3039,9 +3039,59 @@ class ReportPdfLayoutService
      */
     public static function isOrderSheetHeaderEnabledForLayout(array $layout): bool
     {
+        if (self::isTenantOrderSheetHeaderGloballyEnabled()) {
+            return true;
+        }
+
         $ps = is_array($layout['page_style'] ?? null) ? $layout['page_style'] : self::defaultPageStyleStatic();
 
         return ! empty(self::normalizeOrderSheetHeaderStyle($ps['order_sheet_header'] ?? [])['enabled']);
+    }
+
+    /**
+     * @param array<string, mixed> $layout
+     */
+    public static function isPdfFooterBlockEnabledForLayout(array $layout): bool
+    {
+        foreach (is_array($layout['blocks'] ?? null) ? $layout['blocks'] : [] as $fb) {
+            if (! empty($fb['enabled']) && (string) ($fb['id'] ?? '') === 'footer') {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * Distancia desde el borde inferior de la hoja hasta la base de la banda Paciente / No. Orden (mm).
+     *
+     * @param array<string, mixed> $layout
+     */
+    public static function orderSheetHeaderBottomOffsetMm(array $layout): float
+    {
+        $mm = is_array($layout['margins_mm'] ?? null)
+            ? $layout['margins_mm']
+            : self::defaultMarginsMmStatic();
+        $marginBottomMm = (float) ($mm['bottom'] ?? 15);
+        $footerReserveMm  = self::isPdfFooterBlockEnabledForLayout($layout)
+            ? self::estimatePdfFooterReserveMm($layout)
+            : 0.0;
+
+        return $marginBottomMm + $footerReserveMm + self::ORDER_SHEET_HEADER_GAP_ABOVE_FOOTER_MM;
+    }
+
+    /**
+     * @param array<string, mixed> $layout
+     */
+    public static function orderSheetHeaderDompdfFixedStyleAttr(array $layout): string
+    {
+        $fmt = static fn (float $v): string => rtrim(rtrim(number_format($v, 2, '.', ''), '0'), '.');
+
+        return sprintf(
+            'position:fixed;left:0;right:0;bottom:%smm;min-height:%smm;z-index:3;margin:0;padding:0 0 0 0;background:#ffffff;box-sizing:border-box;width:100%%;',
+            $fmt(self::orderSheetHeaderBottomOffsetMm($layout)),
+            $fmt(self::ORDER_SHEET_HEADER_HEIGHT_MM)
+        );
     }
 
     /**
