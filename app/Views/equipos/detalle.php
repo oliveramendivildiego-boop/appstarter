@@ -19,7 +19,17 @@
 </div>
 
 <div class="card">
-    <div class="card-header"><strong>Historial de mantenimientos</strong></div>
+    <div class="card-header d-flex flex-wrap justify-content-between align-items-center gap-2">
+        <strong>Historial de mantenimientos</strong>
+        <div class="d-flex flex-wrap gap-2">
+            <a href="<?= site_url('equipos/historialPrint/' . (int) ($equipo['equipo_id'] ?? 0)) ?>" class="btn btn-sm btn-primary" target="_blank" rel="noopener" title="Imprimir historial">
+                <i class="fas fa-print me-1"></i> Imprimir
+            </a>
+            <a href="<?= site_url('equipos/historialPdf/' . (int) ($equipo['equipo_id'] ?? 0)) ?>" class="btn btn-sm btn-danger" title="Exportar historial a PDF">
+                <i class="fas fa-file-pdf me-1"></i> PDF
+            </a>
+        </div>
+    </div>
     <div class="card-body">
         <div class="table-responsive">
         <table class="table table-sm">

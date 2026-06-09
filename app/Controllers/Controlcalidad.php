@@ -2,8 +2,10 @@
 
 namespace App\Controllers;
 
+use App\Libraries\PdfService;
 use App\Libraries\QcStatistics;
 use App\Models\ControlCalidadModel;
+use CodeIgniter\HTTP\ResponseInterface;
 
 class Controlcalidad extends SecureArea
 {
@@ -30,11 +32,67 @@ class Controlcalidad extends SecureArea
     public function grafica($controlId)
     {
         $controlId = (int) $controlId;
-        $control = $this->model->getById($controlId);
-        if (!$control) return redirect()->to('controlcalidad')->with('error', 'Control no encontrado');
+        $data = $this->buildGraficaData(
+            $controlId,
+            $this->request->getGet('fecha_ini'),
+            $this->request->getGet('fecha_fin')
+        );
+        if ($data === null) {
+            return redirect()->to('controlcalidad')->with('error', 'Control no encontrado');
+        }
 
-        $fechaIni = $this->request->getGet('fecha_ini') ?? lab_date_ymd('-30 days');
-        $fechaFin = $this->request->getGet('fecha_fin') ?? lab_today_ymd();
+        return view('controlcalidad/grafica', array_merge($data, [
+            'allowed_modules' => $this->allowed_modules,
+            'current_module'  => 'controlcalidad',
+            'user_info'       => $this->user_info,
+        ]));
+    }
+
+    public function graficaPdf($controlId): ResponseInterface
+    {
+        $controlId = (int) $controlId;
+        $data = $this->buildGraficaData(
+            $controlId,
+            $this->request->getGet('fecha_ini'),
+            $this->request->getGet('fecha_fin')
+        );
+        if ($data === null) {
+            return redirect()->to('controlcalidad')->with('error', 'Control no encontrado');
+        }
+
+        helper('layout');
+        $layoutCfg = layout_config();
+
+        $html = view('controlcalidad/grafica_pdf', array_merge($data, [
+            'lab_config' => $layoutCfg,
+            'generado_en' => \App\Services\RegisterService::formatNowForReportShort(),
+        ]));
+
+        $controlName = preg_replace('/[^a-zA-Z0-9_-]+/', '_', (string) ($data['control']['nombre'] ?? 'control')) ?: 'control';
+        $filename = 'control_calidad_' . $controlName . '_' . lab_filename_date() . '.pdf';
+
+        \App\Models\AuditoriaModel::log('controlcalidad', 'exportar_pdf', (string) $controlId);
+
+        $pdfContent = (new PdfService())->generate($html, $filename);
+
+        return $this->response
+            ->setHeader('Content-Type', 'application/pdf')
+            ->setHeader('Content-Disposition', 'attachment; filename="' . $filename . '"')
+            ->setBody($pdfContent);
+    }
+
+    /**
+     * @return array<string, mixed>|null
+     */
+    private function buildGraficaData(int $controlId, ?string $fechaIni, ?string $fechaFin): ?array
+    {
+        $control = $this->model->getById($controlId);
+        if (!$control) {
+            return null;
+        }
+
+        $fechaIni = $fechaIni ?? lab_date_ymd('-30 days');
+        $fechaFin = $fechaFin ?? lab_today_ymd();
         $valores = $this->model->getValores($controlId, $fechaIni, $fechaFin);
 
         $numeric = array_map(static fn ($v) => (float) ($v['valor'] ?? 0), $valores);
@@ -53,17 +111,14 @@ class Controlcalidad extends SecureArea
             $westgard = QcStatistics::evaluateWestgard($series, $qcStats['mean'], $qcStats['sd']);
         }
 
-        return view('controlcalidad/grafica', [
-            'control'          => $control,
-            'valores'          => $valores,
-            'fecha_ini'        => $fechaIni,
-            'fecha_fin'        => $fechaFin,
-            'qc_stats'         => $qcStats,
-            'westgard'         => $westgard,
-            'allowed_modules'  => $this->allowed_modules,
-            'current_module'   => 'controlcalidad',
-            'user_info'       => $this->user_info,
-        ]);
+        return [
+            'control'   => $control,
+            'valores'   => $valores,
+            'fecha_ini' => $fechaIni,
+            'fecha_fin' => $fechaFin,
+            'qc_stats'  => $qcStats,
+            'westgard'  => $westgard,
+        ];
     }
 
     public function savecontrol()

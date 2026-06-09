@@ -1366,6 +1366,140 @@ class ReportModel extends Model
     }
 
     /**
+     * Reporte detallado de pruebas: código de recepción, paciente, usuario de recepción y resumen de trazabilidad.
+     *
+     * @return list<array<string, mixed>>
+     */
+    public function getPruebasDetalladoPorFecha(string $startDate, string $endDate): array
+    {
+        $r  = $this->db->prefixTable('registro');
+        $p  = $this->db->prefixTable('people');
+        $pu = $this->db->prefixTable('people') . ' AS pu';
+        $d  = $this->db->prefixTable('doctors');
+        $pa = $this->db->prefixTable('pago');
+        $rv = $this->db->prefixTable('regvalues');
+
+        $b = $this->db->table('registro')
+            ->select("{$r}.registro_id, {$r}.numero_orden, {$r}.ingreso, {$r}.pruebas, {$r}.id_session,
+                CONCAT({$p}.first_name, ' ', {$p}.last_name_fa, ' ', {$p}.last_name_mom) AS paciente,
+                {$d}.name as doctor,
+                CONCAT(pu.first_name, ' ', pu.last_name_fa) AS usuario_recepcion,
+                CAST({$pa}.total AS DECIMAL(12,2)) as total", false)
+            ->join('people', "{$p}.person_id = {$r}.person_id")
+            ->join('doctors', "{$d}.doctor_id = {$r}.doctor_id")
+            ->join('pago', "{$r}.registro_id = {$pa}.registro_id")
+            ->join($pu, "pu.person_id = {$r}.id_session", 'left', false);
+        $b = $this->applySinRegistrosAnulados($b, $r);
+        $b = $this->applySinRegistrosEliminados($b, $r);
+        $b->where("(SELECT COUNT(*) FROM {$rv} WHERE {$rv}.registro_id = {$r}.registro_id) > 0", null, false);
+        $rows = RegistroIngresoDateRange::apply($b, $r, $startDate, $endDate)
+            ->where("{$r}.pruebas != '' AND {$r}.pruebas IS NOT NULL")
+            ->orderBy("{$r}.ingreso", 'ASC')
+            ->get()
+            ->getResultArray();
+
+        $rows = $this->attachPruebasNombresListado($rows);
+
+        return $this->attachTrazabilidadPruebasResumen($rows);
+    }
+
+    /**
+     * @param list<array<string, mixed>> $rows
+     *
+     * @return list<array<string, mixed>>
+     */
+    protected function attachTrazabilidadPruebasResumen(array $rows): array
+    {
+        if ($rows === []) {
+            return $rows;
+        }
+
+        $ids = [];
+        foreach ($rows as $row) {
+            $id = (int) ($row['registro_id'] ?? 0);
+            if ($id > 0) {
+                $ids[] = (string) $id;
+            }
+        }
+        if ($ids === []) {
+            return $rows;
+        }
+
+        $auditRows = $this->db->table('auditoria')
+            ->select('auditoria.registro_id, auditoria.accion, auditoria.datos, auditoria.fecha, people.first_name, people.last_name_fa')
+            ->join('people', 'people.person_id = auditoria.person_id', 'left')
+            ->where('auditoria.modulo', 'registers')
+            ->whereIn('auditoria.accion', ['crear', 'guardar_resultados'])
+            ->whereIn('auditoria.registro_id', $ids)
+            ->orderBy('auditoria.fecha', 'ASC')
+            ->get()
+            ->getResultArray();
+
+        $resumen = [];
+        foreach ($auditRows as $audit) {
+            $rid = (string) ($audit['registro_id'] ?? '');
+            if ($rid === '') {
+                continue;
+            }
+            if (! isset($resumen[$rid])) {
+                $resumen[$rid] = [
+                    'usuario_recepcion_audit' => '',
+                    'usuario_primera_carga'   => '',
+                    'usuario_ultima_edicion'  => '',
+                    'veces_guardado'          => 0,
+                    'veces_editado'           => 0,
+                ];
+            }
+            $usuario = trim((string) (($audit['first_name'] ?? '') . ' ' . ($audit['last_name_fa'] ?? '')));
+            $accion  = (string) ($audit['accion'] ?? '');
+            if ($accion === 'crear' && $usuario !== '' && $resumen[$rid]['usuario_recepcion_audit'] === '') {
+                $resumen[$rid]['usuario_recepcion_audit'] = $usuario;
+            }
+            if ($accion !== 'guardar_resultados') {
+                continue;
+            }
+            $resumen[$rid]['veces_guardado']++;
+            $datosArr = null;
+            $datosRaw = trim((string) ($audit['datos'] ?? ''));
+            if ($datosRaw !== '') {
+                $decoded = json_decode($datosRaw, true);
+                if (is_array($decoded)) {
+                    $datosArr = $decoded;
+                }
+            }
+            $esPrimera = is_array($datosArr) && ! empty($datosArr['es_primera_carga']);
+            $tieneCambios = is_array($datosArr) && (
+                ! empty($datosArr['cambios'])
+                || ! empty($datosArr['agregados'])
+                || ! empty($datosArr['eliminados'])
+            );
+            if ($esPrimera && $usuario !== '' && $resumen[$rid]['usuario_primera_carga'] === '') {
+                $resumen[$rid]['usuario_primera_carga'] = $usuario;
+            } elseif ($usuario !== '' && ($tieneCambios || $resumen[$rid]['veces_guardado'] > 1)) {
+                $resumen[$rid]['usuario_ultima_edicion'] = $usuario;
+                if (! $esPrimera) {
+                    $resumen[$rid]['veces_editado']++;
+                }
+            }
+        }
+
+        foreach ($rows as &$row) {
+            $rid = (string) ($row['registro_id'] ?? '');
+            $extra = $resumen[$rid] ?? [];
+            if (trim((string) ($row['usuario_recepcion'] ?? '')) === '' && ! empty($extra['usuario_recepcion_audit'])) {
+                $row['usuario_recepcion'] = $extra['usuario_recepcion_audit'];
+            }
+            $row['usuario_primera_carga']  = $extra['usuario_primera_carga'] ?? '';
+            $row['usuario_ultima_edicion'] = $extra['usuario_ultima_edicion'] ?? '';
+            $row['veces_guardado']         = (int) ($extra['veces_guardado'] ?? 0);
+            $row['veces_editado']          = (int) ($extra['veces_editado'] ?? 0);
+        }
+        unset($row);
+
+        return $rows;
+    }
+
+    /**
      * Órdenes con pruebas solicitadas pero sin ninguna fila en regvalues (incompletas), no anuladas ni eliminadas.
      *
      * @return list<array<string, mixed>>

@@ -82,6 +82,32 @@ class AuditoriaModel extends Model
             ->limit($limit)
             ->get()
             ->getResultArray();
+
+        return $rows;
+    }
+
+    /**
+     * Eventos de auditoría de órdenes de laboratorio relevantes para trazabilidad de pruebas.
+     *
+     * @return list<array<string, mixed>>
+     */
+    public function getTrazabilidadPruebasPorRegistro(string $registroId, int $limit = 200): array
+    {
+        $registroId = trim($registroId);
+        if ($registroId === '') {
+            return [];
+        }
+
+        return $this->db->table('auditoria')
+            ->select('auditoria.*, people.first_name, people.last_name_fa')
+            ->join('people', 'people.person_id = auditoria.person_id', 'left')
+            ->where('auditoria.registro_id', $registroId)
+            ->where('auditoria.modulo', 'registers')
+            ->whereIn('auditoria.accion', ['crear', 'editar_orden', 'guardar_resultados'])
+            ->orderBy('auditoria.fecha', 'ASC')
+            ->limit($limit)
+            ->get()
+            ->getResultArray();
     }
 
     /**

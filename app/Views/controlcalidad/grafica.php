@@ -39,6 +39,12 @@ $fmt = static function ($x, int $dec = 4) {
     <div class="col-auto"><label class="form-label mb-0">Desde</label><input type="text" id="fecha_ini" name="fecha_ini" class="form-control form-control-sm flatpickr-input" value="<?= esc($fecha_ini ?? '') ?>"></div>
     <div class="col-auto"><label class="form-label mb-0">Hasta</label><input type="text" id="fecha_fin" name="fecha_fin" class="form-control form-control-sm flatpickr-input" value="<?= esc($fecha_fin ?? '') ?>"></div>
     <div class="col-auto"><button type="submit" class="btn btn-sm btn-outline-primary">Filtrar</button></div>
+    <div class="col-auto">
+        <a href="<?= site_url('controlcalidad/graficaPdf/' . (int)($control['control_id'] ?? 0)) ?>?<?= http_build_query(array_filter(['fecha_ini' => $fecha_ini ?? '', 'fecha_fin' => $fecha_fin ?? ''])) ?>"
+           class="btn btn-sm btn-outline-danger" target="_blank" title="Exportar estadísticos, evaluación y gráfica a PDF">
+            <i class="fa-solid fa-file-pdf"></i> Exportar PDF
+        </a>
+    </div>
 </div>
 <?= form_close() ?>
 

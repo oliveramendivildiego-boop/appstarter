@@ -2094,6 +2094,14 @@ class RegisterModel extends Model
             || strpos($rawKey, '|') !== false;
     }
 
+    /**
+     * Etiqueta legible para una clave de regvalues (parámetro o prueba).
+     */
+    public function getRegvalueDisplayLabel(string $rawKey): string
+    {
+        return $this->getPruebaLabelFromRawKey(trim($rawKey));
+    }
+
     private function getPruebaLabelFromRawKey(string $rawKey): string
     {
         if (strpos($rawKey, '|') !== false) {

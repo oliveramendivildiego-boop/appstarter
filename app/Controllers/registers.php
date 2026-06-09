@@ -1747,6 +1747,18 @@ class Registers extends SecureArea
                 return $blocked;
             }
         }
+
+        $valoresAnteriores = [];
+        if (($registroId ?? 0) > 0) {
+            foreach ($this->registerModel->getInfoAnalisis((int) $registroId) as $rowPrev) {
+                $clave = trim((string) ($rowPrev['name'] ?? ''));
+                if ($clave === '') {
+                    continue;
+                }
+                $valoresAnteriores[$clave] = trim((string) ($rowPrev['regvalues'] ?? ''));
+            }
+        }
+
         if ($registroId !== null) {
             $this->registerModel->saveRegistro([
                 'comentario_resultado' => ($comentario !== '' ? $comentario : null),
@@ -1776,12 +1788,13 @@ class Registers extends SecureArea
         }
 
         if ($registroId !== null) {
-            \App\Models\AuditoriaModel::log('registers', 'guardar_resultados', (string) $registroId, \App\Models\AuditoriaModel::detail([
+            $detalleAuditoria = $this->buildRegvaluesAuditDetail(is_array($data) ? $data : [], $valoresAnteriores);
+            \App\Models\AuditoriaModel::log('registers', 'guardar_resultados', (string) $registroId, \App\Models\AuditoriaModel::detail(array_merge([
                 'cantidad_valores' => $valCount,
                 'tiene_comentario' => ($comentario !== ''),
                 'consumo_auto_aplicados' => (int) ($autoStats['aplicados'] ?? 0),
                 'consumo_auto_errores' => (int) ($autoStats['errores'] ?? 0),
-            ]));
+            ], $detalleAuditoria)));
         }
         return $this->response->setJSON([
             'success' => true,
@@ -1790,6 +1803,85 @@ class Registers extends SecureArea
             'csrf_token' => csrf_hash(),
             'csrf_name' => csrf_token(),
         ]);
+    }
+
+    /**
+     * @param list<array<string, mixed>> $data
+     * @param array<string, string>      $valoresAnteriores
+     *
+     * @return array{es_primera_carga: bool, cambios: list<array>, agregados: list<array>, eliminados: list<array>, pruebas_editadas: list<string>}
+     */
+    private function buildRegvaluesAuditDetail(array $data, array $valoresAnteriores): array
+    {
+        $valoresNuevos = [];
+        foreach ($data as $item) {
+            $clave = trim((string) ($item['id'] ?? ''));
+            if ($clave === '') {
+                continue;
+            }
+            $valoresNuevos[$clave] = trim((string) ($item['valor'] ?? ''));
+        }
+
+        $cambios = [];
+        $agregados = [];
+        $eliminados = [];
+        $pruebasEditadas = [];
+        $nocCache = [];
+        $cCache = [];
+
+        $resolverPrueba = function (string $clave) use (&$nocCache, &$cCache): string {
+            $priaId = $this->registerModel->resolvePrianacategoriaIdFromRegvalueName($clave, $nocCache, $cCache);
+
+            return $priaId > 0 ? $this->registerModel->getPrianacategoriaNombre($priaId) : '';
+        };
+
+        foreach ($valoresNuevos as $clave => $valorNuevo) {
+            $campo = $this->registerModel->getRegvalueDisplayLabel($clave);
+            $prueba = $resolverPrueba($clave);
+            if ($prueba !== '') {
+                $pruebasEditadas[$prueba] = true;
+            }
+            if (! array_key_exists($clave, $valoresAnteriores)) {
+                $agregados[] = [
+                    'campo'  => $campo,
+                    'valor'  => $valorNuevo,
+                    'prueba' => $prueba,
+                ];
+                continue;
+            }
+            if ($valoresAnteriores[$clave] !== $valorNuevo) {
+                $cambios[] = [
+                    'campo'           => $campo,
+                    'valor_anterior'  => $valoresAnteriores[$clave],
+                    'valor_nuevo'     => $valorNuevo,
+                    'prueba'          => $prueba,
+                ];
+            }
+        }
+
+        foreach ($valoresAnteriores as $clave => $valorAnterior) {
+            if (array_key_exists($clave, $valoresNuevos)) {
+                continue;
+            }
+            $campo = $this->registerModel->getRegvalueDisplayLabel($clave);
+            $prueba = $resolverPrueba($clave);
+            if ($prueba !== '') {
+                $pruebasEditadas[$prueba] = true;
+            }
+            $eliminados[] = [
+                'campo'          => $campo,
+                'valor_anterior' => $valorAnterior,
+                'prueba'         => $prueba,
+            ];
+        }
+
+        return [
+            'es_primera_carga'  => $valoresAnteriores === [],
+            'cambios'           => $cambios,
+            'agregados'         => $agregados,
+            'eliminados'        => $eliminados,
+            'pruebas_editadas'  => array_values(array_keys($pruebasEditadas)),
+        ];
     }
 
     public function saveanalisiss(): ResponseInterface

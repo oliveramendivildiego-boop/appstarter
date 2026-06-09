@@ -2,7 +2,9 @@
 
 namespace App\Controllers;
 
+use App\Libraries\PdfService;
 use App\Models\EquipoModel;
+use App\Services\RegisterService;
 
 class Equipos extends SecureArea
 {
@@ -71,5 +73,62 @@ class Equipos extends SecureArea
         ]);
         \App\Models\AuditoriaModel::log('equipos', 'mantenimiento', (string) $equipoId);
         return redirect()->to("equipos/detalle/{$equipoId}")->with('success', 'Mantenimiento registrado');
+    }
+
+    /**
+     * Vista del historial de mantenimientos lista para imprimir.
+     */
+    public function historialPrint($equipoId)
+    {
+        $data = $this->buildHistorialData((int) $equipoId);
+        if ($data === null) {
+            return redirect()->to('equipos')->with('error', 'Equipo no encontrado');
+        }
+        $data['show_toolbar'] = true;
+
+        \App\Models\AuditoriaModel::log('equipos', 'imprimir', (string) (int) $equipoId);
+
+        return view('equipos/historial_document', $data);
+    }
+
+    /**
+     * Exporta el historial de mantenimientos a PDF.
+     */
+    public function historialPdf($equipoId)
+    {
+        $equipoId = (int) $equipoId;
+        $data = $this->buildHistorialData($equipoId);
+        if ($data === null) {
+            return redirect()->to('equipos')->with('error', 'Equipo no encontrado');
+        }
+        $data['show_toolbar'] = false;
+
+        $html = view('equipos/historial_document', $data);
+        $slug = preg_replace('/[^a-zA-Z0-9_-]+/', '_', (string) ($data['equipo']['codigo'] ?? $data['equipo']['nombre'] ?? 'equipo')) ?: 'equipo';
+        $filename = 'historial_equipo_' . $slug . '_' . lab_filename_date() . '.pdf';
+
+        \App\Models\AuditoriaModel::log('equipos', 'exportar_pdf', (string) $equipoId);
+
+        (new PdfService())->download($html, $filename);
+    }
+
+    /**
+     * @return array<string, mixed>|null
+     */
+    private function buildHistorialData(int $equipoId): ?array
+    {
+        $equipo = $this->model->getEquipo($equipoId);
+        if (!$equipo) {
+            return null;
+        }
+
+        helper('layout');
+
+        return [
+            'equipo'           => $equipo,
+            'mantenimientos'   => $this->model->getMantenimientos($equipoId),
+            'company_name'     => layout_config()['company'] ?? 'Laboratorio',
+            'generado_en'      => RegisterService::formatNowForReportShort(),
+        ];
     }
 }

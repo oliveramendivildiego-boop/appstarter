@@ -10,6 +10,8 @@ use App\Models\EmployeeModel;
 use App\Models\PoblacionModel;
 use App\Models\ReportePagosCierreModel;
 use App\Models\LabotestModel;
+use App\Models\AuditoriaModel;
+use App\Models\RegisterModel;
 use App\Services\RegisterService;
 use App\Services\TenantScopedDatabaseService;
 use App\Libraries\PdfService;
@@ -859,6 +861,179 @@ class Reports extends SecureArea
             'allowed_modules' => $this->allowed_modules,
             'user_info'       => $this->user_info,
         ]);
+    }
+
+    public function pruebasDetallado()
+    {
+        helper('registro');
+
+        $startDate = $this->request->getGet('start') ?? RegisterService::todayForReport();
+        $endDate   = $this->request->getGet('end') ?? RegisterService::todayForReport();
+        $data      = $this->reportModel->getPruebasDetalladoPorFecha($startDate, $endDate);
+
+        return view('reports/pruebas_detallado', [
+            'title'           => 'Reporte detallado de pruebas',
+            'current_module'  => 'reports',
+            'subtitle'        => RegisterService::formatReportDateRangeSubtitle($startDate, $endDate),
+            'data'            => $data,
+            'startDate'       => $startDate,
+            'endDate'         => $endDate,
+            'allowed_modules' => $this->allowed_modules,
+            'user_info'       => $this->user_info,
+        ]);
+    }
+
+    public function pruebasDetalladoDetalle(): ResponseInterface
+    {
+        helper(['layout', 'registro']);
+
+        $registroId = (int) $this->request->getGet('registro_id');
+        if ($registroId < 1) {
+            return $this->response->setJSON([
+                'success' => false,
+                'message' => 'Orden no indicada.',
+            ])->setStatusCode(400);
+        }
+
+        $auditoriaModel = model(AuditoriaModel::class);
+        $registerModel  = model(RegisterModel::class);
+        $eventos        = $auditoriaModel->getTrazabilidadPruebasPorRegistro((string) $registroId);
+
+        $usuarioRecepcion    = '';
+        $usuarioPrimeraCarga = '';
+        $usuarioUltimaEdicion = '';
+        $edicionesOrden      = [];
+        $historialResultados = [];
+
+        foreach ($eventos as $evento) {
+            $usuario = trim((string) (($evento['first_name'] ?? '') . ' ' . ($evento['last_name_fa'] ?? '')));
+            $accion  = (string) ($evento['accion'] ?? '');
+            $fecha   = lab_dt_short(isset($evento['fecha']) ? (string) $evento['fecha'] : null);
+            $datos   = $this->decodeAuditoriaDatos($evento['datos'] ?? null);
+
+            if ($accion === 'crear') {
+                if ($usuario !== '' && $usuarioRecepcion === '') {
+                    $usuarioRecepcion = $usuario;
+                }
+                continue;
+            }
+
+            if ($accion === 'editar_orden') {
+                $pruebasAntes = $this->formatPruebasCsvParaAuditoria((string) ($datos['pruebas'] ?? ''), $registerModel);
+                $edicionesOrden[] = [
+                    'fecha'   => $fecha,
+                    'usuario' => $usuario !== '' ? $usuario : '—',
+                    'pruebas' => $pruebasAntes,
+                ];
+                continue;
+            }
+
+            if ($accion !== 'guardar_resultados') {
+                continue;
+            }
+
+            $esPrimera = ! empty($datos['es_primera_carga']);
+            if ($esPrimera && $usuario !== '' && $usuarioPrimeraCarga === '') {
+                $usuarioPrimeraCarga = $usuario;
+            } elseif ($usuario !== '') {
+                $usuarioUltimaEdicion = $usuario;
+            }
+
+            $cambios    = is_array($datos['cambios'] ?? null) ? $datos['cambios'] : [];
+            $agregados  = is_array($datos['agregados'] ?? null) ? $datos['agregados'] : [];
+            $eliminados = is_array($datos['eliminados'] ?? null) ? $datos['eliminados'] : [];
+            $pruebasEvt = is_array($datos['pruebas_editadas'] ?? null) ? $datos['pruebas_editadas'] : [];
+
+            $historialResultados[] = [
+                'fecha'            => $fecha,
+                'usuario'          => $usuario !== '' ? $usuario : '—',
+                'tipo'             => $esPrimera ? 'primera_carga' : 'edicion',
+                'pruebas_editadas' => array_values(array_filter(array_map('strval', $pruebasEvt))),
+                'cambios'          => $this->normalizeAuditoriaCambios($cambios),
+                'agregados'        => $this->normalizeAuditoriaCambios($agregados, true),
+                'eliminados'       => $this->normalizeAuditoriaCambios($eliminados, false, true),
+                'cantidad_valores' => (int) ($datos['cantidad_valores'] ?? 0),
+                'tiene_detalle'    => $cambios !== [] || $agregados !== [] || $eliminados !== [],
+            ];
+        }
+
+        return $this->response->setJSON([
+            'success'               => true,
+            'registro_id'           => $registroId,
+            'usuario_recepcion'     => $usuarioRecepcion,
+            'usuario_primera_carga' => $usuarioPrimeraCarga,
+            'usuario_ultima_edicion'=> $usuarioUltimaEdicion,
+            'ediciones_orden'       => $edicionesOrden,
+            'historial_resultados'  => $historialResultados,
+        ]);
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function decodeAuditoriaDatos(mixed $raw): array
+    {
+        if (is_array($raw)) {
+            return $raw;
+        }
+        $text = trim((string) $raw);
+        if ($text === '') {
+            return [];
+        }
+        $decoded = json_decode($text, true);
+
+        return is_array($decoded) ? $decoded : [];
+    }
+
+    private function formatPruebasCsvParaAuditoria(string $pruebasCsv, RegisterModel $registerModel): string
+    {
+        $pruebasCsv = trim($pruebasCsv);
+        if ($pruebasCsv === '') {
+            return '—';
+        }
+        $labels = [];
+        foreach (array_filter(array_map('trim', explode(',', $pruebasCsv))) as $token) {
+            if (preg_match('/^\d+$/', $token) === 1) {
+                $nombre = $registerModel->getPrianacategoriaNombre((int) $token);
+                $labels[] = $nombre !== '' ? $nombre : $token;
+                continue;
+            }
+            $labels[] = $token;
+        }
+
+        return $labels !== [] ? implode(', ', $labels) : $pruebasCsv;
+    }
+
+    /**
+     * @param list<array<string, mixed>> $items
+     *
+     * @return list<array<string, string>>
+     */
+    private function normalizeAuditoriaCambios(array $items, bool $soloAgregado = false, bool $soloEliminado = false): array
+    {
+        $out = [];
+        foreach ($items as $item) {
+            if (! is_array($item)) {
+                continue;
+            }
+            $campo  = trim((string) ($item['campo'] ?? ''));
+            $prueba = trim((string) ($item['prueba'] ?? ''));
+            $row    = [
+                'campo'  => $campo !== '' ? $campo : '—',
+                'prueba' => $prueba,
+            ];
+            if ($soloAgregado) {
+                $row['valor_nuevo'] = trim((string) ($item['valor'] ?? ''));
+            } elseif ($soloEliminado) {
+                $row['valor_anterior'] = trim((string) ($item['valor_anterior'] ?? ''));
+            } else {
+                $row['valor_anterior'] = trim((string) ($item['valor_anterior'] ?? ''));
+                $row['valor_nuevo']    = trim((string) ($item['valor_nuevo'] ?? ''));
+            }
+            $out[] = $row;
+        }
+
+        return $out;
     }
 
     /**
@@ -2496,6 +2671,23 @@ class Reports extends SecureArea
             'Pruebas realizadas por fecha',
             $sub,
             'reports/pdf/content/pruebas_fecha',
+            ['data' => $data]
+        );
+    }
+
+    public function pruebasDetalladoPdf()
+    {
+        helper('registro');
+
+        $startDate = $this->request->getGet('start') ?? RegisterService::todayForReport();
+        $endDate   = $this->request->getGet('end') ?? RegisterService::todayForReport();
+        $data      = $this->reportModel->getPruebasDetalladoPorFecha($startDate, $endDate);
+        $sub       = RegisterService::formatReportDateRangeSubtitle($startDate, $endDate);
+        ReportPdfDocument::download(
+            $this->safeReportPdfFilename('pruebas_detallado'),
+            'Reporte detallado de pruebas',
+            $sub,
+            'reports/pdf/content/pruebas_detallado',
             ['data' => $data]
         );
     }
