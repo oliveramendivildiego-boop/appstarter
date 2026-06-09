@@ -43,6 +43,7 @@ $pobMap = [];
 foreach (($poblaciones_catalogo ?? []) as $pobRow) {
     $pobMap[(int) ($pobRow['id_poblacion'] ?? 0)] = (string) ($pobRow['name'] ?? '');
 }
+$retiredPruebaIds = array_values(array_unique(array_map('intval', $retired_prueba_ids ?? [])));
 $existentes = [];
 foreach ($analisis ?? [] as $row) {
     $n = $row['name'] ?? null;
@@ -167,6 +168,15 @@ foreach ($pruebas_info ?? [] as $prueba):
 
     $renderPruebaCabecera($prueba);
 
+    $pidPrueba = (int) ($prueba['prianacategoria_id'] ?? 0);
+    $esPruebaRetirada = $pidPrueba > 0 && in_array($pidPrueba, $retiredPruebaIds, true);
+    if ($esPruebaRetirada) {
+        echo '<div class="col-12 mb-2"><div class="alert alert-secondary py-2 mb-0 small">'
+            . '<i class="fa-solid fa-lock me-1"></i> '
+            . 'Análisis retirado del catálogo. Los resultados guardados se muestran en <strong>solo lectura</strong>.'
+            . '</div></div>';
+    }
+
     $mostrarPrueba = true;
     if (($prueba['compleja'] ?? 0) == 1) {
         $prianacategoriaIdTmp = (int)($prueba['prianacategoria_id'] ?? 0);
@@ -267,6 +277,8 @@ foreach ($pruebas_info ?? [] as $prueba):
             $nocId = 'noc_' . ($prueba['priresultados_id'] ?? '');
             echo '<label for="' . esc($nocId) . '" class="form-label">' . esc($prueba['hijo'] ?? '') . $pRef . ':</label>';
             $extra = 'id="' . esc($nocId) . '" class="form-control input-con-ref"';
+            if ($pidPrueba > 0) $extra .= ' data-prianacategoria-id="' . $pidPrueba . '"';
+            if ($esPruebaRetirada) $extra .= ' disabled data-prueba-retirada="1"';
             if ($pMin !== '') $extra .= ' data-min="' . esc($pMin) . '"'; if ($pMax !== '') $extra .= ' data-max="' . esc($pMax) . '"';
             echo build_select($nocId, $valores, $existentes[$nocId] ?? '', $extra);
             echo '<span class="invalid-feedback d-block" data-msg-for="' . esc($nocId) . '"></span></div></div>';
@@ -288,6 +300,8 @@ foreach ($pruebas_info ?? [] as $prueba):
             $valRid = $existentes['noc_' . $rid] ?? '';
             $classes = $esCalculadaNoc ? 'form-control formula-calculada input-con-ref' : 'form-control input-con-ref';
             $attrs = 'name="noc_' . esc($rid) . '" id="noc_' . esc($rid) . '" class="' . $classes . '" value="' . esc($valRid) . '"';
+            if ($pidPrueba > 0) $attrs .= ' data-prianacategoria-id="' . $pidPrueba . '"';
+            if ($esPruebaRetirada) $attrs .= ' readonly tabindex="-1" data-prueba-retirada="1"';
             if ($pMin !== '') $attrs .= ' data-min="' . esc($pMin) . '"'; if ($pMax !== '') $attrs .= ' data-max="' . esc($pMax) . '"';
             if ($pUmed !== '') $attrs .= ' data-umedida="' . esc($pUmed) . '"';
             if ($esCalculadaNoc) {
@@ -308,6 +322,8 @@ foreach ($pruebas_info ?? [] as $prueba):
             echo '<label for="noc_' . esc($rid) . '" class="form-label">' . esc($prueba['hijo'] ?? '') . $pRef . ':</label>';
             $valRid = $existentes['noc_' . $rid] ?? '';
             $attrs = 'name="noc_' . esc($rid) . '" id="noc_' . esc($rid) . '" class="form-control input-con-ref" value="' . esc($valRid) . '"';
+            if ($pidPrueba > 0) $attrs .= ' data-prianacategoria-id="' . $pidPrueba . '"';
+            if ($esPruebaRetirada) $attrs .= ' readonly tabindex="-1" data-prueba-retirada="1"';
             if ($pMin !== '') $attrs .= ' data-min="' . esc($pMin) . '"'; if ($pMax !== '') $attrs .= ' data-max="' . esc($pMax) . '"';
             echo '<input type="text" ' . $attrs . '><span class="invalid-feedback d-block" data-msg-for="noc_' . esc($rid) . '"></span>';
             echo '</div></div>';
@@ -319,6 +335,7 @@ foreach ($pruebas_info ?? [] as $prueba):
             'titulo_prueba'      => (string) ($prueba['hijo'] ?? ''),
             'existentes'         => $existentes,
             'registerModel'      => $registerModel,
+            'solo_lectura'       => $esPruebaRetirada,
         ]);
     else:
         $prianacategoriaId = (int)($prueba['prianacategoria_id'] ?? 0);
@@ -361,6 +378,7 @@ foreach ($pruebas_info ?? [] as $prueba):
                 echo '<label for="' . esc($cId) . '" class="form-label">' . esc($v['nombre'] ?? '') . $refText . ':</label>';
                 $extra = 'id="' . esc($cId) . '" class="form-control input-con-ref"';
                 if ($prianacategoriaId > 0) $extra .= ' data-prianacategoria-id="' . $prianacategoriaId . '"';
+                if ($esPruebaRetirada) $extra .= ' readonly tabindex="-1" data-prueba-retirada="1"';
                 if ($nombrePrueba !== '') $extra .= ' data-prueba="' . esc($nombrePrueba) . '"';
                 if ($vMin !== '') $extra .= ' data-min="' . esc($vMin) . '"';
                 if ($vMax !== '') $extra .= ' data-max="' . esc($vMax) . '"';
@@ -499,7 +517,30 @@ endif;
 .resultado-texto-rico p:last-child { margin-bottom: 0; }
 </style>
 <script>
+window.RETIRED_PRUEBA_IDS = <?= json_encode($retiredPruebaIds, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP) ?>;
 document.addEventListener('DOMContentLoaded', function() {
+    function isRetiredField(el) {
+        if (!el || el.getAttribute('data-prueba-retirada') === '1') {
+            return true;
+        }
+        var retired = window.RETIRED_PRUEBA_IDS || [];
+        if (!retired.length) return false;
+        var priId = parseInt(el.getAttribute('data-prianacategoria-id') || '0', 10);
+        return priId > 0 && retired.indexOf(priId) !== -1;
+    }
+    function lockRetiredFields() {
+        document.querySelectorAll('.input-con-ref, .cultivo-celda-input, .cultivo-celda-valor-fill').forEach(function(el) {
+            if (!isRetiredField(el)) return;
+            el.setAttribute('data-prueba-retirada', '1');
+            el.readOnly = true;
+            el.classList.add('bg-light');
+            if (el.tagName === 'SELECT') {
+                el.disabled = true;
+            }
+        });
+    }
+    lockRetiredFields();
+
     function initTextoRicoEditors() {
         if (typeof jQuery === 'undefined' || !jQuery.fn.summernote) return;
         document.querySelectorAll('.input-texto-rico').forEach(function(el) {
@@ -754,6 +795,7 @@ document.addEventListener('DOMContentLoaded', function() {
         syncTextoRicoEditors();
         var datos = [];
         document.querySelectorAll('.input-con-ref').forEach(function(el) {
+            if (isRetiredField(el)) return;
             var valor = (el.value || '').trim();
             if (el.classList.contains('input-texto-rico')) {
                 valor = valor.replace(/^<p><br><\/p>$/i, '').replace(/^<p><\/p>$/i, '').trim();
@@ -777,6 +819,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
         var cultivoInputs = document.querySelectorAll('.cultivo-celda-input');
         cultivoInputs.forEach(function(el) {
+            if (isRetiredField(el)) return;
             var priId = el.getAttribute('data-prianacategoria-id');
             var sec = el.getAttribute('data-bloque-id') || el.getAttribute('data-seccion');
             var fila = parseInt(el.getAttribute('data-fila'), 10);

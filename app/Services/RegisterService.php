@@ -396,7 +396,8 @@ class RegisterService
             return null;
         }
 
-        $meta = $this->registerModel->getPrianacategoriaWithArea($prianacategoriaId);
+        $meta = $this->registerModel->getPrianacategoriaWithArea($prianacategoriaId)
+            ?? $this->registerModel->getPrianacategoriaWithAreaIncludingRetired($prianacategoriaId);
         if ($meta === null || (int) ($meta->compleja ?? 0) !== LabotestModel::COMPLEJA_CULTIVO) {
             return null;
         }
@@ -1589,7 +1590,7 @@ class RegisterService
             }
         }
         $pruebasIds = array_values(array_unique(array_filter(array_map('intval', $pruebasIds), static fn($x) => $x > 0)));
-        $priasCfg = $this->registerModel->getPrianacategoriaConfigByIds($pruebasIds);
+        $priasCfg = $this->registerModel->getPrianacategoriaConfigByIds($pruebasIds, true);
         $reportPriaTipoMuestraNombre = [];
         try {
             $tipoMuestraModel = model(\App\Models\TipoMuestraModel::class);

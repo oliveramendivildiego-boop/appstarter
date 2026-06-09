@@ -47,4 +47,34 @@ class PerfilExamenModel extends Model
     {
         return $this->db->table('perfil_examen')->where('perfil_id', $id)->update(['deleted' => 1]);
     }
+
+    /**
+     * Mapa prianacategoria_id => nombres de perfiles que incluyen ese análisis.
+     *
+     * @return array<int, list<string>>
+     */
+    public function getAnalysisToProfilesMap(): array
+    {
+        $map = [];
+        foreach ($this->getAll() as $perfil) {
+            $nombre = trim((string) ($perfil['nombre'] ?? ''));
+            $pruebas = (string) ($perfil['pruebas'] ?? '');
+            if ($nombre === '' || $pruebas === '') {
+                continue;
+            }
+            foreach (array_filter(array_map('intval', explode(',', $pruebas))) as $analysisId) {
+                if ($analysisId < 1) {
+                    continue;
+                }
+                $map[$analysisId][] = $nombre;
+            }
+        }
+
+        foreach ($map as &$perfiles) {
+            sort($perfiles, SORT_NATURAL | SORT_FLAG_CASE);
+        }
+        unset($perfiles);
+
+        return $map;
+    }
 }

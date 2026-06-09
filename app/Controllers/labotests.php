@@ -3,6 +3,8 @@
 namespace App\Controllers;
 
 use App\Models\LabotestModel;
+use App\Services\LabotestNameTransformService;
+use App\Services\PrianacategoriaReferenceService;
 use App\Models\LabotestReactivoConfigModel;
 use App\Models\OpcionModel;
 use App\Models\PerfilExamenModel;
@@ -547,6 +549,66 @@ class Labotests extends SecureArea
     }
 
     /**
+     * Reporte JSON de análisis con nombre duplicado y perfiles donde figura cada registro.
+     */
+    public function duplicateAnalysesReport(): ResponseInterface
+    {
+        $profileMap = model(PerfilExamenModel::class)->getAnalysisToProfilesMap();
+        $duplicates = $this->labotestModel->getDuplicateAnalysesWithProfiles($profileMap);
+        $totalEntries = 0;
+        foreach ($duplicates as $group) {
+            $totalEntries += (int) ($group['count'] ?? 0);
+        }
+
+        return $this->response->setJSON([
+            'success'        => true,
+            'total_groups'   => count($duplicates),
+            'total_entries'  => $totalEntries,
+            'duplicates'     => $duplicates,
+        ]);
+    }
+
+    /**
+     * Transforma en lote los nombres de grupos y análisis (mayúsculas, título, ortografía, etc.).
+     */
+    public function transformNames(): ResponseInterface
+    {
+        $mode = strtolower(trim((string) ($this->request->getPost('mode') ?? '')));
+        if (! LabotestNameTransformService::isAllowedMode($mode)) {
+            return $this->response->setJSON([
+                'success' => false,
+                'message' => 'Seleccione un formato válido',
+                'csrf_token' => csrf_hash(),
+                'csrf_name' => csrf_token(),
+            ])->setStatusCode(400);
+        }
+
+        $result = $this->labotestModel->transformAllNames($mode);
+        if ($result['success'] ?? false) {
+            \App\Models\AuditoriaModel::log(
+                'labotests',
+                'transformar_nombres',
+                '',
+                \App\Models\AuditoriaModel::detail([
+                    'modo' => $mode,
+                    'grupos' => (int) ($result['categories_updated'] ?? 0),
+                    'analisis' => (int) ($result['analyses_updated'] ?? 0),
+                ])
+            );
+        }
+
+        return $this->response->setJSON([
+            'success' => (bool) ($result['success'] ?? false),
+            'message' => (string) ($result['message'] ?? ''),
+            'categories_updated' => (int) ($result['categories_updated'] ?? 0),
+            'analyses_updated' => (int) ($result['analyses_updated'] ?? 0),
+            'unchanged' => (int) ($result['unchanged'] ?? 0),
+            'csrf_token' => csrf_hash(),
+            'csrf_name' => csrf_token(),
+        ])->setStatusCode(($result['success'] ?? false) ? 200 : 400);
+    }
+
+    /**
      * Reordena las categorías (grupos) con la lista completa enviada desde el modal.
      */
     public function reorderCategories(): ResponseInterface
@@ -727,19 +789,88 @@ class Labotests extends SecureArea
     }
 
     /**
-     * Eliminar análisis (hijo) y todas sus configuraciones
+     * Previsualiza el impacto de eliminar un análisis en órdenes registradas.
+     */
+    public function prianacategoriaDeletePreview($id): ResponseInterface
+    {
+        $id = (int) $id;
+        $impact = (new PrianacategoriaReferenceService())->getDeleteImpact($id);
+        if (! ($impact['success'] ?? false)) {
+            return $this->response->setJSON([
+                'success' => false,
+                'message' => (string) ($impact['message'] ?? 'Análisis no encontrado'),
+            ])->setStatusCode(404);
+        }
+
+        return $this->response->setJSON($impact);
+    }
+
+    /**
+     * Eliminar análisis (hijo) y todas sus configuraciones.
+     * Si existe un duplicado, migra referencias en /registers/ hacia la prueba que permanece.
      */
     public function deleteprianacategoria($id)
     {
         $id = (int) $id;
         $sub = $this->labotestModel->getSubInfo($id, null);
-        if (!$sub || !$sub->prianacategoria_id) {
+        if (! $sub || ! $sub->prianacategoria_id) {
             return redirect()->to('labotests')->with('error', 'Análisis no encontrado');
         }
-        $subName = $sub->name ?? '';
-        $this->labotestModel->deletePrianacategoriaWithAll($id);
-        \App\Models\AuditoriaModel::log('labotests', 'eliminar_analisis', (string)$id, \App\Models\AuditoriaModel::detail(['nombre' => $subName]));
-        return redirect()->to('labotests')->with('success', 'Análisis y configuraciones eliminados correctamente');
+
+        $subName = (string) ($sub->name ?? '');
+        $referenceService = new PrianacategoriaReferenceService();
+        $impact = $referenceService->getDeleteImpact($id);
+        $migrateTo = (int) ($this->request->getPost('migrate_to_id') ?? $this->request->getGet('migrate_to') ?? 0);
+
+        if ($migrateTo < 1 && ($impact['can_migrate'] ?? false)) {
+            $migrateTo = (int) ($impact['migrate_to_id'] ?? 0);
+        }
+
+        $migrationStats = null;
+        if ($migrateTo > 0) {
+            if (! $referenceService->isValidMigrationTarget($id, $migrateTo)) {
+                return redirect()->to('labotests')->with('error', 'No se pudo migrar: el análisis destino no es un duplicado válido');
+            }
+            $migrationStats = $referenceService->migrateReferences($id, $migrateTo);
+            $this->labotestModel->deletePrianacategoriaWithAll($id);
+        } else {
+            $referenceService->removeFromPerfiles($id);
+            $this->labotestModel->retirePrianacategoria($id);
+        }
+
+        $auditDetail = ['nombre' => $subName];
+        if ($migrateTo > 0) {
+            $auditDetail['modo'] = 'migrar_duplicado';
+            $auditDetail['migrado_a'] = $migrateTo;
+            $auditDetail['ordenes_actualizadas'] = (int) ($migrationStats['registros_updated'] ?? 0);
+            $auditDetail['valores_actualizados'] = (int) ($migrationStats['regvalues_updated'] ?? 0);
+        } else {
+            $auditDetail['modo'] = 'retirar_catalogo';
+            if ($impact['has_registered_values'] ?? false) {
+                $auditDetail['ordenes_historicas'] = (int) ($impact['registros_count'] ?? 0);
+                $auditDetail['conserva_historico'] = true;
+            }
+        }
+
+        \App\Models\AuditoriaModel::log('labotests', 'eliminar_analisis', (string) $id, \App\Models\AuditoriaModel::detail($auditDetail));
+
+        if ($migrateTo > 0) {
+            $targetName = (string) ($impact['migrate_to_name'] ?? ('#' . $migrateTo));
+            $orders = (int) ($migrationStats['registros_updated'] ?? 0);
+            $values = (int) ($migrationStats['regvalues_updated'] ?? 0);
+            $message = 'Análisis eliminado. Se actualizaron ' . $orders . ' orden(es) y ' . $values . ' valor(es) hacia "' . $targetName . '" (#' . $migrateTo . ').';
+
+            return redirect()->to('labotests')->with('success', $message);
+        }
+
+        if ($impact['has_registered_values'] ?? false) {
+            $orders = (int) ($impact['registros_count'] ?? 0);
+            $message = 'Análisis retirado del catálogo. Se conservan ' . $orders . ' orden(es) histórica(s) con sus resultados (solo lectura).';
+
+            return redirect()->to('labotests')->with('success', $message);
+        }
+
+        return redirect()->to('labotests')->with('success', 'Análisis retirado del catálogo correctamente');
     }
 
     /**

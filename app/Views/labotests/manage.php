@@ -39,12 +39,51 @@ $labRight = '<a href="' . site_url('labotests/perfiles') . '" class="btn btn-out
 <div class="py-3">
     <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-4">
         <h4 class="mb-0"><?= lang('Module.module_labotests') ?></h4>
-        <?php if (empty($search) && ! empty($all_categories)): ?>
-        <button type="button" class="btn btn-outline-primary btn-sm" data-bs-toggle="modal" data-bs-target="#reorderGroupsModal">
-            <i class="fa-solid fa-arrow-down-up-across-line me-1"></i> Ordenar grupos (<?= count($all_categories) ?>)
-        </button>
-        <?php endif; ?>
+        <div class="d-flex flex-wrap align-items-center gap-2">
+            <?php if (empty($search)): ?>
+            <div class="dropdown">
+                <button type="button" class="btn btn-outline-secondary btn-sm dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false" id="labotestsTransformNamesBtn">
+                    <i class="fa-solid fa-font me-1"></i> Formato de nombres
+                </button>
+                <ul class="dropdown-menu dropdown-menu-end labotests-transform-menu">
+                    <li><h6 class="dropdown-header">Aplicar a todos los grupos y análisis</h6></li>
+                    <li>
+                        <button type="button" class="dropdown-item labotests-transform-action" data-mode="uppercase">
+                            <i class="fa-solid fa-text-height me-2 text-muted"></i> TODO EN MAYÚSCULAS
+                        </button>
+                    </li>
+                    <li>
+                        <button type="button" class="dropdown-item labotests-transform-action" data-mode="sentence">
+                            <i class="fa-solid fa-a me-2 text-muted"></i> Primera letra en mayúscula
+                        </button>
+                    </li>
+                    <li>
+                        <button type="button" class="dropdown-item labotests-transform-action" data-mode="title">
+                            <i class="fa-solid fa-heading me-2 text-muted"></i> Primera letra de cada palabra
+                        </button>
+                    </li>
+                    <li><hr class="dropdown-divider"></li>
+                    <li>
+                        <button type="button" class="dropdown-item labotests-transform-action" data-mode="spell">
+                            <i class="fa-solid fa-spell-check me-2 text-muted"></i> Corrección ortográfica
+                        </button>
+                    </li>
+                </ul>
+            </div>
+            <?php endif; ?>
+            <?php if (empty($search)): ?>
+            <button type="button" class="btn btn-outline-warning btn-sm" data-bs-toggle="modal" data-bs-target="#duplicateAnalysesModal">
+                <i class="fa-solid fa-clone me-1"></i> Análisis duplicados
+            </button>
+            <?php endif; ?>
+            <?php if (empty($search) && ! empty($all_categories)): ?>
+            <button type="button" class="btn btn-outline-primary btn-sm" data-bs-toggle="modal" data-bs-target="#reorderGroupsModal">
+                <i class="fa-solid fa-arrow-down-up-across-line me-1"></i> Ordenar grupos (<?= count($all_categories) ?>)
+            </button>
+            <?php endif; ?>
+        </div>
     </div>
+    <div id="labotests-transform-status" class="small text-muted mb-3 d-none"></div>
 
     <div class="row labotests-groups-row">
         <?php foreach ($categories ?? [] as $cat): ?>
@@ -87,9 +126,13 @@ $labRight = '<a href="' . site_url('labotests/perfiles') . '" class="btn btn-out
                                     <button type="button" class="btn btn-outline-secondary btn-duplicate-analysis" title="Duplicar prueba a otro padre" data-bs-toggle="modal" data-bs-target="#duplicateAnalysisModal" data-analysis-id="<?= (int) $item['id'] ?>" data-analysis-name="<?= esc($item['name'], 'attr') ?>" data-current-parent="<?= (int) $cat['id'] ?>">
                                         <i class="fa-solid fa-copy"></i>
                                     </button>
-                                    <a href="<?= site_url('labotests/deleteprianacategoria/' . $item['id']) ?>" class="btn btn-outline-danger" title="Eliminar análisis y configuraciones" onclick="return uiConfirmLink(this, '¿Eliminar este análisis y todas sus configuraciones? Esta acción no se puede deshacer.');">
+                                    <button type="button"
+                                        class="btn btn-outline-danger btn-delete-analysis"
+                                        title="Eliminar análisis y configuraciones"
+                                        data-analysis-id="<?= (int) $item['id'] ?>"
+                                        data-analysis-name="<?= esc($item['name'], 'attr') ?>">
                                         <i class="fa-solid fa-trash"></i>
-                                    </a>
+                                    </button>
                                 </div>
                             </div>
                         </li>
@@ -174,6 +217,50 @@ $labRight = '<a href="' . site_url('labotests/perfiles') . '" class="btn btn-out
     </div>
 </div>
 <?php endif; ?>
+
+<div class="modal fade" id="duplicateAnalysesModal" tabindex="-1" aria-labelledby="duplicateAnalysesModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-xl modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="duplicateAnalysesModalLabel">
+                    <i class="fa-solid fa-clone me-2"></i>Análisis duplicados
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+            </div>
+            <div class="modal-body">
+                <p class="text-muted small mb-3">
+                    Muestra análisis con el mismo nombre en distintos grupos e indica en qué perfiles de exámenes está cada registro.
+                </p>
+                <div id="labotests-duplicates-status" class="small text-muted mb-3">Cargando...</div>
+                <div id="labotests-duplicates-content"></div>
+            </div>
+            <div class="modal-footer">
+                <a href="<?= site_url('labotests/perfiles') ?>" class="btn btn-outline-info btn-sm me-auto">
+                    <i class="fa-solid fa-layer-group me-1"></i> Gestionar perfiles
+                </a>
+                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cerrar</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="labotestsDeleteAnalysisModal" tabindex="-1" aria-labelledby="labotestsDeleteAnalysisModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="labotestsDeleteAnalysisModalLabel">Eliminar análisis</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+            </div>
+            <div class="modal-body" id="labotestsDeleteAnalysisModalBody">
+                <div class="text-muted small">Cargando impacto en órdenes registradas...</div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-danger" id="labotestsDeleteAnalysisConfirmBtn" disabled>Eliminar</button>
+            </div>
+        </div>
+    </div>
+</div>
 
 <div class="modal fade" id="duplicateAnalysisModal" tabindex="-1" aria-labelledby="duplicateAnalysisModalLabel" aria-hidden="true">
     <div class="modal-dialog">
@@ -440,11 +527,435 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 
 document.addEventListener('DOMContentLoaded', function() {
-    var modal = document.getElementById('duplicateAnalysisModal');
-    if (!modal) {
+    var transformStatus = document.getElementById('labotests-transform-status');
+    var transformActions = document.querySelectorAll('.labotests-transform-action');
+    if (!transformActions.length) {
         return;
     }
 
+    var modeLabels = {
+        uppercase: 'convertir todos los nombres a MAYÚSCULAS',
+        sentence: 'poner la primera letra en mayúscula y el resto en minúsculas',
+        title: 'poner la primera letra de cada palabra en mayúscula',
+        spell: 'corregir la ortografía de todos los nombres'
+    };
+    var transformBusy = false;
+    var transformToggle = document.getElementById('labotestsTransformNamesBtn');
+
+    function setTransformBusy(busy) {
+        transformBusy = !!busy;
+        if (transformToggle) {
+            transformToggle.disabled = transformBusy;
+            transformToggle.classList.toggle('disabled', transformBusy);
+            transformToggle.setAttribute('aria-busy', transformBusy ? 'true' : 'false');
+        }
+    }
+
+    function parseJsonResponse(response) {
+        return response.text().then(function(text) {
+            var data = null;
+            if (text) {
+                try {
+                    data = JSON.parse(text);
+                } catch (error) {
+                    throw new Error('Respuesta inválida del servidor');
+                }
+            }
+            return { ok: response.ok, data: data };
+        });
+    }
+
+    function getCsrfData() {
+        return {
+            name: window.CI_CSRF_TOKEN_NAME || 'csrf_test_name',
+            value: window.CI_CSRF_TOKEN || ''
+        };
+    }
+
+    function applyCsrfData(data) {
+        if (!data || !data.csrf_token || !data.csrf_name) {
+            return;
+        }
+        window.CI_CSRF_TOKEN = data.csrf_token;
+        window.CI_CSRF_TOKEN_NAME = data.csrf_name;
+    }
+
+    function setTransformStatus(message, className, show) {
+        if (!transformStatus) {
+            return;
+        }
+        transformStatus.className = 'small mb-3 ' + (className || 'text-muted') + (show ? '' : ' d-none');
+        transformStatus.textContent = message || '';
+    }
+
+    function runTransform(mode) {
+        if (transformBusy) {
+            return;
+        }
+        var label = modeLabels[mode] || 'transformar los nombres';
+        var confirmMessage = '¿Confirma ' + label + ' en todos los grupos y análisis? Esta acción modifica la base de datos.';
+        var proceed = function() {
+            setTransformStatus('Aplicando formato...', 'text-muted', true);
+            setTransformBusy(true);
+
+            var csrf = getCsrfData();
+            var fd = new FormData();
+            fd.append('mode', mode);
+            if (csrf.value) {
+                fd.append(csrf.name, csrf.value);
+            }
+
+            var willReload = false;
+            fetch('<?= site_url('labotests/transformnames') ?>', {
+                method: 'POST',
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'X-CSRF-TOKEN': csrf.value || ''
+                },
+                body: fd
+            })
+                .then(parseJsonResponse)
+                .then(function(result) {
+                    applyCsrfData(result.data);
+                    if (!result.ok || !result.data || !result.data.success) {
+                        throw new Error((result.data && result.data.message) || 'No se pudo aplicar el formato');
+                    }
+                    setTransformStatus(result.data.message, 'text-success', true);
+                    willReload = true;
+                    window.setTimeout(function() {
+                        window.location.reload();
+                    }, 900);
+                })
+                .catch(function(error) {
+                    setTransformStatus(error.message, 'text-danger', true);
+                })
+                .finally(function() {
+                    if (!willReload) {
+                        setTransformBusy(false);
+                    } else {
+                        window.setTimeout(function() {
+                            setTransformBusy(false);
+                        }, 4000);
+                    }
+                });
+        };
+
+        if (typeof uiConfirm === 'function') {
+            uiConfirm(confirmMessage, 'Confirmar formato').then(function(ok) {
+                if (ok) {
+                    proceed();
+                }
+            });
+            return;
+        }
+        if (window.confirm(confirmMessage)) {
+            proceed();
+        }
+    }
+
+    transformActions.forEach(function(button) {
+        button.addEventListener('click', function() {
+            var mode = button.getAttribute('data-mode') || '';
+            if (!mode) {
+                return;
+            }
+            runTransform(mode);
+        });
+    });
+});
+
+document.addEventListener('DOMContentLoaded', function() {
+    var duplicatesModal = document.getElementById('duplicateAnalysesModal');
+    if (duplicatesModal) {
+        var duplicatesStatus = document.getElementById('labotests-duplicates-status');
+        var duplicatesContent = document.getElementById('labotests-duplicates-content');
+        var duplicatesLoaded = false;
+        var duplicatesLoading = false;
+
+        function escapeHtml(value) {
+            return String(value || '')
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;');
+        }
+
+        function renderDuplicates(data) {
+            if (!duplicatesContent || !duplicatesStatus) {
+                return;
+            }
+
+            var groups = (data && data.duplicates) || [];
+            if (!groups.length) {
+                duplicatesStatus.className = 'small text-success mb-3';
+                duplicatesStatus.textContent = 'No se encontraron análisis con nombre duplicado.';
+                duplicatesContent.innerHTML = '';
+                return;
+            }
+
+            var totalGroups = data.total_groups || groups.length;
+            var totalEntries = data.total_entries || 0;
+            duplicatesStatus.className = 'small text-warning mb-3';
+            duplicatesStatus.textContent = totalGroups + ' nombre(s) duplicado(s), ' + totalEntries + ' registros en total.';
+
+            var html = '<div class="accordion labotests-duplicates-accordion" id="labotestsDuplicatesAccordion">';
+            groups.forEach(function(group, index) {
+                var collapseId = 'labotests-dup-' + index;
+                var headingId = 'labotests-dup-heading-' + index;
+                var entries = group.entries || [];
+                var rows = entries.map(function(entry) {
+                    var perfiles = entry.perfiles || [];
+                    var perfilesHtml = perfiles.length
+                        ? perfiles.map(function(perfil) {
+                            return '<span class="badge text-bg-light border me-1 mb-1">' + escapeHtml(perfil) + '</span>';
+                        }).join('')
+                        : '<span class="text-muted small">Sin perfiles</span>';
+                    var detailUrl = '<?= site_url('labotests/detail/') ?>' + entry.id;
+                    return '<tr>'
+                        + '<td><a href="' + detailUrl + '">#' + entry.id + '</a></td>'
+                        + '<td>' + escapeHtml(entry.name) + '</td>'
+                        + '<td>' + escapeHtml(entry.category_name || '—') + '</td>'
+                        + '<td>' + perfilesHtml + '</td>'
+                        + '</tr>';
+                }).join('');
+
+                html += '<div class="accordion-item">'
+                    + '<h2 class="accordion-header" id="' + headingId + '">'
+                    + '<button class="accordion-button' + (index > 0 ? ' collapsed' : '') + '" type="button" data-bs-toggle="collapse" data-bs-target="#' + collapseId + '" aria-expanded="' + (index === 0 ? 'true' : 'false') + '" aria-controls="' + collapseId + '">'
+                    + '<span class="fw-semibold me-2">' + escapeHtml(group.name) + '</span>'
+                    + '<span class="badge text-bg-warning">' + (group.count || entries.length) + ' registros</span>'
+                    + '</button>'
+                    + '</h2>'
+                    + '<div id="' + collapseId + '" class="accordion-collapse collapse' + (index === 0 ? ' show' : '') + '" aria-labelledby="' + headingId + '" data-bs-parent="#labotestsDuplicatesAccordion">'
+                    + '<div class="accordion-body p-0">'
+                    + '<div class="table-responsive">'
+                    + '<table class="table table-sm table-striped mb-0 labotests-duplicates-table">'
+                    + '<thead><tr><th>ID</th><th>Nombre</th><th>Grupo</th><th>Perfiles</th></tr></thead>'
+                    + '<tbody>' + rows + '</tbody>'
+                    + '</table>'
+                    + '</div>'
+                    + '</div>'
+                    + '</div>'
+                    + '</div>';
+            });
+            html += '</div>';
+            duplicatesContent.innerHTML = html;
+        }
+
+        function loadDuplicates(force) {
+            if (!duplicatesStatus || !duplicatesContent) {
+                return;
+            }
+            if (duplicatesLoading) {
+                return;
+            }
+            if (duplicatesLoaded && !force) {
+                return;
+            }
+
+            duplicatesLoading = true;
+            duplicatesStatus.className = 'small text-muted mb-3';
+            duplicatesStatus.textContent = 'Cargando análisis duplicados...';
+            duplicatesContent.innerHTML = '';
+
+            fetch('<?= site_url('labotests/duplicados') ?>', {
+                method: 'GET',
+                headers: { 'X-Requested-With': 'XMLHttpRequest' }
+            })
+                .then(function(response) {
+                    return response.json().then(function(data) {
+                        return { ok: response.ok, data: data };
+                    });
+                })
+                .then(function(result) {
+                    if (!result.ok || !result.data || !result.data.success) {
+                        throw new Error((result.data && result.data.message) || 'No se pudo cargar el reporte');
+                    }
+                    renderDuplicates(result.data);
+                    duplicatesLoaded = true;
+                })
+                .catch(function(error) {
+                    duplicatesStatus.className = 'small text-danger mb-3';
+                    duplicatesStatus.textContent = error.message;
+                    duplicatesContent.innerHTML = '';
+                })
+                .finally(function() {
+                    duplicatesLoading = false;
+                });
+        }
+
+        duplicatesModal.addEventListener('show.bs.modal', function() {
+            loadDuplicates(false);
+        });
+    }
+
+    var deleteModal = document.getElementById('labotestsDeleteAnalysisModal');
+    var deleteModalBody = document.getElementById('labotestsDeleteAnalysisModalBody');
+    var deleteConfirmBtn = document.getElementById('labotestsDeleteAnalysisConfirmBtn');
+    var pendingDelete = null;
+
+    function escapeDeleteHtml(value) {
+        return String(value || '')
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;');
+    }
+
+    function getDeleteCsrfData() {
+        return {
+            name: window.CI_CSRF_TOKEN_NAME || 'csrf_test_name',
+            value: window.CI_CSRF_TOKEN || ''
+        };
+    }
+
+    function renderDeleteImpact(data) {
+        if (!deleteModalBody || !deleteConfirmBtn) {
+            return;
+        }
+
+        var analysisName = escapeDeleteHtml(data.analysis_name || 'este análisis');
+        var categoryName = escapeDeleteHtml(data.category_name || '');
+        var orders = parseInt(data.registros_count || 0, 10);
+        var values = parseInt(data.regvalues_with_data || 0, 10);
+        var html = '<p class="mb-2">Va a eliminar <strong>' + analysisName + '</strong>';
+        if (categoryName) {
+            html += ' <span class="text-muted">(' + categoryName + ')</span>';
+        }
+        html += '.</p>';
+
+        if (data.can_migrate) {
+            html += '<div class="alert alert-info py-2 mb-3">'
+                + '<i class="fa-solid fa-arrow-right-arrow-left me-1"></i> '
+                + 'Existe un análisis duplicado de respaldo: <strong>' + escapeDeleteHtml(data.migrate_to_name || '') + '</strong>'
+                + (data.migrate_to_category ? ' <span class="text-muted">(' + escapeDeleteHtml(data.migrate_to_category) + ')</span>' : '')
+                + ' <span class="badge text-bg-light border">#' + parseInt(data.migrate_to_id || 0, 10) + '</span>.';
+            if (orders > 0 || values > 0) {
+                html += '<br><span class="small">Se actualizarán automáticamente '
+                    + orders + ' orden(es) registrada(s)';
+                if (values > 0) {
+                    html += ' y ' + values + ' valor(es) guardado(s)';
+                }
+                html += ' en <strong>/registers/</strong> para apuntar al análisis que permanece.</span>';
+            } else {
+                html += '<br><span class="small">Las futuras referencias usarán el análisis que permanece.</span>';
+            }
+            html += '</div>';
+        } else if (data.has_registered_values) {
+            html += '<div class="alert alert-warning py-2 mb-3">'
+                + '<i class="fa-solid fa-triangle-exclamation me-1"></i> '
+                + 'Este análisis tiene '
+                + orders + ' orden(es) registrada(s)';
+            if (values > 0) {
+                html += ' con ' + values + ' valor(es) guardado(s)';
+            }
+            html += ' y <strong>no hay otro duplicado</strong> al cual migrar.<br>'
+                + '<span class="small">Se retirará del catálogo y de nuevas órdenes, pero <strong>las órdenes y reportes históricos conservarán sus datos</strong> en solo lectura (no se podrán editar).</span>'
+                + '</div>';
+        } else {
+            html += '<p class="text-muted small mb-0">No hay órdenes registradas que dependan de este análisis.</p>';
+        }
+
+        html += '<p class="text-danger small mb-0">Esta acción no se puede deshacer.</p>';
+        deleteModalBody.innerHTML = html;
+        deleteConfirmBtn.disabled = false;
+        deleteConfirmBtn.textContent = data.can_migrate ? 'Eliminar y migrar' : 'Eliminar';
+        deleteConfirmBtn.className = 'btn btn-danger';
+    }
+
+    function submitDeleteAnalysis() {
+        if (!pendingDelete || !deleteConfirmBtn) {
+            return;
+        }
+
+        deleteConfirmBtn.disabled = true;
+        deleteConfirmBtn.textContent = 'Eliminando...';
+
+        var csrf = getDeleteCsrfData();
+        var fd = new FormData();
+        if (pendingDelete.migrateToId > 0) {
+            fd.append('migrate_to_id', String(pendingDelete.migrateToId));
+        }
+        if (csrf.value) {
+            fd.append(csrf.name, csrf.value);
+        }
+
+        fetch('<?= site_url('labotests/deleteprianacategoria/') ?>' + pendingDelete.analysisId, {
+            method: 'POST',
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest',
+                'X-CSRF-TOKEN': csrf.value || ''
+            },
+            body: fd
+        })
+            .then(function(response) {
+                if (response.redirected) {
+                    window.location.href = response.url;
+                    return null;
+                }
+                return response.text().then(function(text) {
+                    throw new Error(text || 'No se pudo eliminar el análisis');
+                });
+            })
+            .catch(function(error) {
+                if (deleteModalBody) {
+                    deleteModalBody.innerHTML = '<div class="alert alert-danger py-2 mb-0">' + escapeDeleteHtml(error.message) + '</div>';
+                }
+                if (deleteConfirmBtn) {
+                    deleteConfirmBtn.disabled = false;
+                    deleteConfirmBtn.textContent = 'Eliminar';
+                }
+            });
+    }
+
+    if (deleteModal && deleteModalBody && deleteConfirmBtn) {
+        document.querySelectorAll('.btn-delete-analysis').forEach(function(button) {
+            button.addEventListener('click', function() {
+                var analysisId = parseInt(button.getAttribute('data-analysis-id') || '0', 10);
+                if (analysisId < 1) {
+                    return;
+                }
+
+                pendingDelete = {
+                    analysisId: analysisId,
+                    migrateToId: 0
+                };
+                deleteModalBody.innerHTML = '<div class="text-muted small">Cargando impacto en órdenes registradas...</div>';
+                deleteConfirmBtn.disabled = true;
+                deleteConfirmBtn.textContent = 'Eliminar';
+
+                var modalInstance = bootstrap.Modal.getOrCreateInstance(deleteModal);
+                modalInstance.show();
+
+                fetch('<?= site_url('labotests/prianacategoriadeletepreview/') ?>' + analysisId, {
+                    method: 'GET',
+                    headers: { 'X-Requested-With': 'XMLHttpRequest' }
+                })
+                    .then(function(response) {
+                        return response.json().then(function(data) {
+                            return { ok: response.ok, data: data };
+                        });
+                    })
+                    .then(function(result) {
+                        if (!result.ok || !result.data || !result.data.success) {
+                            throw new Error((result.data && result.data.message) || 'No se pudo evaluar el impacto');
+                        }
+                        pendingDelete.migrateToId = result.data.can_migrate
+                            ? parseInt(result.data.migrate_to_id || 0, 10)
+                            : 0;
+                        renderDeleteImpact(result.data);
+                    })
+                    .catch(function(error) {
+                        deleteModalBody.innerHTML = '<div class="alert alert-danger py-2 mb-0">' + escapeDeleteHtml(error.message) + '</div>';
+                    });
+            });
+        });
+
+        deleteConfirmBtn.addEventListener('click', submitDeleteAnalysis);
+    }
+
+    var modal = document.getElementById('duplicateAnalysisModal');
+    if (modal) {
     modal.addEventListener('show.bs.modal', function(event) {
         var button = event.relatedTarget;
         if (!button) {
@@ -471,6 +982,7 @@ document.addEventListener('DOMContentLoaded', function() {
             });
         }
     });
+    }
 });
 </script>
 <?= $this->endSection() ?>

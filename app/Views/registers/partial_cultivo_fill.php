@@ -28,6 +28,12 @@ $tituloPrueba = (string) ($titulo_prueba ?? '');
 
 $existentes = is_array($existentes ?? null) ? $existentes : [];
 
+$soloLectura = ! empty($solo_lectura);
+
+$inputAttrsSoloLectura = $soloLectura ? ' readonly tabindex="-1" data-prueba-retirada="1"' : '';
+
+$selectAttrsSoloLectura = $soloLectura ? ' disabled data-prueba-retirada="1"' : '';
+
 $registerModel = $registerModel ?? null;
 
 
@@ -501,7 +507,7 @@ foreach ($leyendasPorId as $lid => $lcRow) {
 
                                            class="form-control form-control-sm cultivo-celda-input cultivo-fill-main"
 
-                                           <?= $dataAttrs ?>
+                                           <?= $dataAttrs ?><?= $inputAttrsSoloLectura ?>
 
                                            value="<?= esc($valorActual) ?>"
 
@@ -513,7 +519,7 @@ foreach ($leyendasPorId as $lid => $lcRow) {
 
                                             class="form-select form-select-sm cultivo-celda-input cultivo-fill-main"
 
-                                            <?= $dataAttrs ?>>
+                                            <?= $dataAttrs ?><?= $selectAttrsSoloLectura ?>>
 
                                         <option value="">— Seleccione —</option>
 
@@ -605,7 +611,7 @@ foreach ($leyendasPorId as $lid => $lcRow) {
 
                                             class="form-select form-select-sm cultivo-celda-input cultivo-leyenda-fill-select cultivo-fill-main"
 
-                                            <?= $dataAttrs ?>
+                                            <?= $dataAttrs ?><?= $selectAttrsSoloLectura ?>
 
                                             data-categoria-id="<?= $leyendaCatId ?>">
 
@@ -647,7 +653,7 @@ foreach ($leyendasPorId as $lid => $lcRow) {
 
                                            class="form-control form-control-sm cultivo-celda-input cultivo-fill-main"
 
-                                           <?= $dataAttrs ?>
+                                           <?= $dataAttrs ?><?= $inputAttrsSoloLectura ?>
 
                                            value="<?= esc($valorActual) ?>"
 

@@ -103,6 +103,12 @@
 .labotests-reorder-group-chosen {
     background: #f8fbff;
 }
+.labotests-transform-menu {
+    min-width: 17rem;
+}
+.labotests-transform-menu .dropdown-item {
+    white-space: normal;
+}
 #tabla_sub_items .sec-drag-handle {
     cursor: grab;
     padding: 0.25rem;
@@ -181,6 +187,16 @@
 .perfiles-pruebas-list {
     max-height: 200px;
     overflow-y: auto;
+}
+.labotests-duplicates-accordion .accordion-button {
+    align-items: center;
+    gap: 0.5rem;
+}
+.labotests-duplicates-table th {
+    white-space: nowrap;
+}
+.labotests-duplicates-table td {
+    vertical-align: middle;
 }
 .formula-op-hint {
     font-size: 0.85rem;

@@ -702,6 +702,44 @@ class RegisterModel extends Model
         return $row ?: null;
     }
 
+    public function getPrianacategoriaWithAreaIncludingRetired(int $prianacategoriaId): ?object
+    {
+        if ($prianacategoriaId < 1) {
+            return null;
+        }
+
+        $a = $this->db->prefixTable('anacategoria');
+        $tm = $this->db->prefixTable('tipo_muestra');
+        $m = $this->db->prefixTable('metodo');
+
+        $select = 'pt.prianacategoria_id, pt.name AS hijo, pt.compleja, ac.name AS padre';
+        if ($this->hasColumn('prianacategoria', 'tipo_muestra_id')) {
+            $select .= ', pt.tipo_muestra_id, tm.nombre AS tipo_muestra_nombre';
+        } else {
+            $select .= ", NULL AS tipo_muestra_id, '' AS tipo_muestra_nombre";
+        }
+        if ($this->hasColumn('prianacategoria', 'metodo_id')) {
+            $select .= ', pt.metodo_id, m.nombre AS metodo_nombre';
+        } else {
+            $select .= ", NULL AS metodo_id, '' AS metodo_nombre";
+        }
+
+        $builder = $this->db->table('prianacategoria pt')
+            ->select($select)
+            ->join("{$a} ac", 'ac.anacategoria_id = pt.anacategoria_id', 'left');
+        if ($this->hasColumn('prianacategoria', 'tipo_muestra_id')) {
+            $builder->join("{$tm} tm", 'tm.tipo_muestra_id = pt.tipo_muestra_id', 'left');
+        }
+        if ($this->hasColumn('prianacategoria', 'metodo_id')) {
+            $builder->join("{$m} m", 'm.metodo_id = pt.metodo_id', 'left');
+        }
+
+        return $builder
+            ->where('pt.prianacategoria_id', $prianacategoriaId)
+            ->get()
+            ->getRow() ?: null;
+    }
+
     public function getFormula(int $id)
     {
         return $this->db->table('formulas')
@@ -818,7 +856,7 @@ class RegisterModel extends Model
      * Retorna configuración básica de prianacategoria por ids.
      * @return array<int,array{prianacategoria_id:int,compleja:int,mostrar_valores:int,name:string,anacategoria_id:int,tipo_muestra_id?:int|null,metodo_id?:int|null}>
      */
-    public function getPrianacategoriaConfigByIds(array $ids): array
+    public function getPrianacategoriaConfigByIds(array $ids, bool $includeRetired = false): array
     {
         $ids = array_values(array_unique(array_filter(array_map('intval', $ids), static fn($x) => $x > 0)));
         if (empty($ids)) {
@@ -841,12 +879,13 @@ class RegisterModel extends Model
         } else {
             $select .= ", NULL as metodo_id";
         }
-        $rows = $this->db->table('prianacategoria')
+        $builder = $this->db->table('prianacategoria')
             ->select($select)
-            ->whereIn("{$pt}.prianacategoria_id", $ids)
-            ->where("({$pt}.deleted = 0 OR {$pt}.deleted IS NULL)")
-            ->get()
-            ->getResultArray();
+            ->whereIn("{$pt}.prianacategoria_id", $ids);
+        if (! $includeRetired) {
+            $builder->where("({$pt}.deleted = 0 OR {$pt}.deleted IS NULL)");
+        }
+        $rows = $builder->get()->getResultArray();
         $byId = [];
         foreach ($rows as $row) {
             $pid = (int) ($row['prianacategoria_id'] ?? 0);
@@ -862,6 +901,68 @@ class RegisterModel extends Model
         }
 
         return $ordered;
+    }
+
+    /**
+     * IDs de análisis retirados del catálogo (soft-deleted) dentro de un listado.
+     *
+     * @param list<int> $ids
+     * @return list<int>
+     */
+    public function getRetiredPrianacategoriaIds(array $ids): array
+    {
+        $ids = array_values(array_unique(array_filter(array_map('intval', $ids), static fn(int $x): bool => $x > 0)));
+        if ($ids === []) {
+            return [];
+        }
+
+        $pt = $this->db->prefixTable('prianacategoria');
+        $rows = $this->db->table('prianacategoria')
+            ->select("{$pt}.prianacategoria_id")
+            ->whereIn("{$pt}.prianacategoria_id", $ids)
+            ->where("{$pt}.deleted", 1)
+            ->get()
+            ->getResultArray();
+
+        return array_values(array_unique(array_filter(array_map(
+            static fn(array $row): int => (int) ($row['prianacategoria_id'] ?? 0),
+            $rows
+        ), static fn(int $id): bool => $id > 0)));
+    }
+
+    public function regvalueBelongsToRetiredPrianacategoria(string $name, array $retiredIds): bool
+    {
+        if ($name === '' || $retiredIds === []) {
+            return false;
+        }
+
+        $retiredSet = array_fill_keys($retiredIds, true);
+        $nocCache = [];
+        $cCache = [];
+        $priaId = $this->resolvePrianacategoriaIdFromRegvalueName($name, $nocCache, $cCache);
+        if ($priaId > 0 && isset($retiredSet[$priaId])) {
+            return true;
+        }
+
+        if (preg_match('/^lab_(val|app)_pri_(\d+)$/', $name, $m) === 1) {
+            return isset($retiredSet[(int) $m[2]]);
+        }
+
+        if (preg_match('/^cvu_(\d+)$/', $name, $m) === 1) {
+            return isset($retiredSet[(int) $m[1]]);
+        }
+
+        if (preg_match('/^(?:cv|cvn|cvu)_(\d+)_/', $name, $m) === 1) {
+            return isset($retiredSet[(int) $m[1]]);
+        }
+
+        if (strpos($name, '|') !== false) {
+            [$priaStr] = explode('|', $name, 2);
+
+            return isset($retiredSet[(int) trim($priaStr)]);
+        }
+
+        return false;
     }
 
     /**
@@ -1362,7 +1463,7 @@ class RegisterModel extends Model
      * @param int[] $matchingPoblacionIds ids de poblacion que aplican al paciente (edad según config)
      * @param int|null $gender Género del paciente (1=masculino, 2=femenino) para filtrar por sexo en priresultados
      */
-    public function getPruebasInput(string $valores, array $matchingPoblacionIds, ?int $gender = null): array
+    public function getPruebasInput(string $valores, array $matchingPoblacionIds, ?int $gender = null, bool $includeRetired = false): array
     {
         $parts = explode(',', $valores);
         $ids = [];
@@ -1421,9 +1522,8 @@ class RegisterModel extends Model
                 LEFT JOIN {$pr} pr ON pr.prianacategoria_id = pt.prianacategoria_id
                     AND pt.compleja = 0 AND (pr.deleted = 0 OR pr.deleted IS NULL) AND pr.id_poblacion IN {$poblacionIn}{$sexoCond}
                 LEFT JOIN {$f} f ON f.formulas_id = pr.formulas_id
-                WHERE (pt.deleted = 0 OR pt.deleted IS NULL)
-                AND (ac.deleted = 0 OR ac.deleted IS NULL)
-                AND pt.prianacategoria_id IN (" . implode(',', array_map('intval', $ids)) . ")
+                WHERE pt.prianacategoria_id IN (" . implode(',', array_map('intval', $ids)) . ")
+                " . ($includeRetired ? '' : " AND (pt.deleted = 0 OR pt.deleted IS NULL) AND (ac.deleted = 0 OR ac.deleted IS NULL)") . "
                 ORDER BY ac.order, pt.order, pr.id_poblacion ASC";
         $rows = empty($bindParams) ? $this->db->query($sql)->getResultArray() : $this->db->query($sql, $bindParams)->getResultArray();
 
@@ -2219,9 +2319,8 @@ class RegisterModel extends Model
         }
         $pt = $this->db->prefixTable('prianacategoria');
         $rows = $this->db->table('prianacategoria')
-            ->select("{$pt}.prianacategoria_id, {$pt}.name, {$pt}.cost")
+            ->select("{$pt}.prianacategoria_id, {$pt}.name, {$pt}.cost, {$pt}.deleted")
             ->whereIn("{$pt}.prianacategoria_id", $ids)
-            ->where("{$pt}.deleted", 0)
             ->get()
             ->getResult();
         $byId = [];

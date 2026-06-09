@@ -248,6 +248,8 @@ $routes->post('labotests/savecultivomatriz', 'Labotests::saveCultivoMatriz');
 $routes->post('labotests/orderSecItems', 'Labotests::orderSecItems');
 $routes->post('labotests/reorderanalysis', 'Labotests::reorderAnalysis');
 $routes->post('labotests/reordercategories', 'Labotests::reorderCategories');
+$routes->get('labotests/duplicados', 'Labotests::duplicateAnalysesReport');
+$routes->post('labotests/transformnames', 'Labotests::transformNames');
 $routes->post('labotests/duplicateanalysis', 'Labotests::duplicateAnalysisToParent');
 $routes->post('labotests/saveformula', 'Labotests::saveFormula');
 $routes->post('labotests/deleteformula/(:num)', 'Labotests::deleteFormula/$1');
@@ -258,6 +260,8 @@ $routes->post('labotests/duplicatesecitem/(:num)', 'Labotests::duplicatesecitem/
 $routes->get('labotests/exportdetailconfig/(:num)', 'Labotests::exportdetailconfig/$1');
 $routes->post('labotests/importdetailconfig/(:num)', 'Labotests::importdetailconfig/$1');
 $routes->get('labotests/deletecategory/(:num)', 'Labotests::deletecategory/$1');
+$routes->get('labotests/prianacategoriadeletepreview/(:num)', 'Labotests::prianacategoriaDeletePreview/$1');
+$routes->post('labotests/deleteprianacategoria/(:num)', 'Labotests::deleteprianacategoria/$1');
 $routes->get('labotests/deleteprianacategoria/(:num)', 'Labotests::deleteprianacategoria/$1');
 $routes->get('labotests/manuales', 'Labotests::manualesIndex');
 $routes->get('labotests/manuales/(:num)', 'Labotests::manuales/$1');

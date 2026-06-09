@@ -134,7 +134,6 @@ class LabotestModel extends Model
         return $this->db->table('anacategoria')
             ->select('anacategoria_id, name')
             ->where('(deleted = 0 OR deleted IS NULL)')
-            ->orderBy('order', 'ASC')
             ->orderBy('name', 'ASC')
             ->get()
             ->getResultArray();
@@ -1045,6 +1044,16 @@ class LabotestModel extends Model
         }
         return $this->db->table('anacategoria')
             ->where('anacategoria_id', $anacategoriaId)
+            ->update(['deleted' => 1]) !== false;
+    }
+
+    /**
+     * Retira un análisis del catálogo sin borrar su configuración ni datos históricos en órdenes.
+     */
+    public function retirePrianacategoria(int $prianacategoriaId): bool
+    {
+        return $this->db->table('prianacategoria')
+            ->where('prianacategoria_id', $prianacategoriaId)
             ->update(['deleted' => 1]) !== false;
     }
 
@@ -2725,5 +2734,151 @@ class LabotestModel extends Model
         return $this->db->table('formulas')
             ->where('formulas_id', $formulasId)
             ->countAllResults() > 0;
+    }
+
+    /**
+     * Aplica una transformación de texto a todos los nombres de grupos y análisis activos.
+     *
+     * @return array{success: bool, message: string, categories_updated: int, analyses_updated: int, unchanged: int}
+     */
+    public function transformAllNames(string $mode): array
+    {
+        $serviceClass = \App\Services\LabotestNameTransformService::class;
+        if (! $serviceClass::isAllowedMode($mode)) {
+            return [
+                'success'             => false,
+                'message'             => 'Modo de transformación inválido',
+                'categories_updated'  => 0,
+                'analyses_updated'    => 0,
+                'unchanged'           => 0,
+            ];
+        }
+
+        $categoriesUpdated = 0;
+        $analysesUpdated   = 0;
+        $unchanged         = 0;
+
+        $categories = $this->db->table('anacategoria')
+            ->select('anacategoria_id, name')
+            ->where('(deleted = 0 OR deleted IS NULL)')
+            ->get()
+            ->getResultArray();
+
+        foreach ($categories as $row) {
+            $id = (int) ($row['anacategoria_id'] ?? 0);
+            $original = trim((string) ($row['name'] ?? ''));
+            if ($id < 1 || $original === '') {
+                continue;
+            }
+            $transformed = $serviceClass::transform($original, $mode);
+            if ($transformed === $original) {
+                $unchanged++;
+                continue;
+            }
+            $this->db->table('anacategoria')->where('anacategoria_id', $id)->update(['name' => $transformed]);
+            $categoriesUpdated++;
+        }
+
+        $analyses = $this->db->table('prianacategoria')
+            ->select('prianacategoria_id, name')
+            ->where('(deleted = 0 OR deleted IS NULL)')
+            ->get()
+            ->getResultArray();
+
+        foreach ($analyses as $row) {
+            $id = (int) ($row['prianacategoria_id'] ?? 0);
+            $original = trim((string) ($row['name'] ?? ''));
+            if ($id < 1 || $original === '') {
+                continue;
+            }
+            $transformed = $serviceClass::transform($original, $mode);
+            if ($transformed === $original) {
+                $unchanged++;
+                continue;
+            }
+            $this->db->table('prianacategoria')->where('prianacategoria_id', $id)->update(['name' => $transformed]);
+            $analysesUpdated++;
+        }
+
+        $totalUpdated = $categoriesUpdated + $analysesUpdated;
+        $modeLabels = [
+            $serviceClass::MODE_UPPERCASE => 'MAYÚSCULAS',
+            $serviceClass::MODE_SENTENCE  => 'oración',
+            $serviceClass::MODE_TITLE     => 'título',
+            $serviceClass::MODE_SPELL     => 'ortografía',
+        ];
+        $label = $modeLabels[$mode] ?? $mode;
+
+        return [
+            'success'            => true,
+            'message'            => $totalUpdated > 0
+                ? "Se actualizaron {$categoriesUpdated} grupos y {$analysesUpdated} análisis (formato {$label})."
+                : 'No hubo cambios: los nombres ya cumplen el formato seleccionado.',
+            'categories_updated' => $categoriesUpdated,
+            'analyses_updated'   => $analysesUpdated,
+            'unchanged'          => $unchanged,
+        ];
+    }
+
+    /**
+     * Análisis con el mismo nombre (sin distinguir mayúsculas) y perfiles donde aparece cada uno.
+     *
+     * @param array<int, list<string>> $profileMap
+     * @return list<array{name: string, normalized: string, count: int, entries: list<array{id: int, name: string, category_id: int, category_name: string, perfiles: list<string>}>}>
+     */
+    public function getDuplicateAnalysesWithProfiles(array $profileMap): array
+    {
+        $rows = $this->db->table('prianacategoria pri')
+            ->select('pri.prianacategoria_id, pri.name, pri.anacategoria_id, ana.name AS category_name')
+            ->join('anacategoria ana', 'ana.anacategoria_id = pri.anacategoria_id', 'inner')
+            ->where('(pri.deleted = 0 OR pri.deleted IS NULL)')
+            ->where('(ana.deleted = 0 OR ana.deleted IS NULL)')
+            ->orderBy('pri.name', 'ASC')
+            ->orderBy('ana.name', 'ASC')
+            ->get()
+            ->getResultArray();
+
+        $byNormalized = [];
+        foreach ($rows as $row) {
+            $name = trim((string) ($row['name'] ?? ''));
+            if ($name === '') {
+                continue;
+            }
+            $key = mb_strtolower($name, 'UTF-8');
+            $id = (int) ($row['prianacategoria_id'] ?? 0);
+            if ($id < 1) {
+                continue;
+            }
+            if (! isset($byNormalized[$key])) {
+                $byNormalized[$key] = [
+                    'display_name' => $name,
+                    'entries'      => [],
+                ];
+            }
+            $byNormalized[$key]['entries'][] = [
+                'id'            => $id,
+                'name'          => $name,
+                'category_id'   => (int) ($row['anacategoria_id'] ?? 0),
+                'category_name' => trim((string) ($row['category_name'] ?? '')),
+                'perfiles'      => $profileMap[$id] ?? [],
+            ];
+        }
+
+        $duplicates = [];
+        foreach ($byNormalized as $key => $group) {
+            if (count($group['entries']) < 2) {
+                continue;
+            }
+            $duplicates[] = [
+                'name'       => $group['display_name'],
+                'normalized' => $key,
+                'count'      => count($group['entries']),
+                'entries'    => $group['entries'],
+            ];
+        }
+
+        usort($duplicates, static fn(array $a, array $b): int => strcasecmp($a['name'], $b['name']));
+
+        return $duplicates;
     }
 }

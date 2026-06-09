@@ -6,6 +6,7 @@ use App\Libraries\PdfService;
 use App\Services\BillingDocumentService;
 use App\Services\AutoReactivoConsumptionService;
 use App\Services\ConfigService;
+use App\Services\PrianacategoriaReferenceService;
 use App\Services\RegisterService;
 use App\Services\EnvelopeRenderService;
 use App\Services\ReportPdfLayoutService;
@@ -518,10 +519,11 @@ class Registers extends SecureArea
         $patientGender = isset($registerInfo->gender) ? (int) $registerInfo->gender : null;
         $matchingPoblacionIds = $this->registerService->getMatchingPoblacionIds($registerInfo->birthday ?? null, $patientGender, $refIngreso);
         $pruebasIds = $this->registerService->extractPrianacategoriaIdsFromRegistroPruebas((string) ($registerInfo->pruebas ?? ''));
-        $pruebasInfo = $this->registerModel->getPruebasInput($registerInfo->pruebas ?? '', $matchingPoblacionIds, $patientGender);
+        $retiredPruebaIds = $this->registerModel->getRetiredPrianacategoriaIds($pruebasIds);
+        $pruebasInfo = $this->registerModel->getPruebasInput($registerInfo->pruebas ?? '', $matchingPoblacionIds, $patientGender, true);
         $pruebasInfoFallback = [];
         if ($pruebasInfo === []) {
-            $cfgRows = $this->registerModel->getPrianacategoriaConfigByIds($pruebasIds);
+            $cfgRows = $this->registerModel->getPrianacategoriaConfigByIds($pruebasIds, true);
             foreach ($cfgRows as $cfg) {
                 $anacategoriaId = (int) ($cfg['anacategoria_id'] ?? 0);
                 $catInfo = $anacategoriaId > 0 ? $this->labotestModel->getCategoryInfo($anacategoriaId) : null;
@@ -545,7 +547,7 @@ class Registers extends SecureArea
                 static fn(int $pid): bool => ! isset($presentIds[$pid])
             ));
             if ($missingIds !== []) {
-                foreach ($this->registerModel->getPrianacategoriaConfigByIds($missingIds) as $cfg) {
+                foreach ($this->registerModel->getPrianacategoriaConfigByIds($missingIds, true) as $cfg) {
                     $anacategoriaId = (int) ($cfg['anacategoria_id'] ?? 0);
                     $catInfo = $anacategoriaId > 0 ? $this->labotestModel->getCategoryInfo($anacategoriaId) : null;
                     $pruebasInfo[] = [
@@ -573,6 +575,7 @@ class Registers extends SecureArea
         $decimalesSugerencia = (int) (model(AppConfigModel::class)->getValue('decimales_sugerencia') ?: 2);
         $decimalesSugerencia = max(0, min(10, $decimalesSugerencia));
 
+        (new PrianacategoriaReferenceService())->repairRegvaluesForRegistro($id);
         $analisis = $this->registerModel->getInfoAnalisis($id);
 
         $labValState = (new ConfigService())->getLabValidationStateForView();
@@ -596,6 +599,7 @@ class Registers extends SecureArea
             'leyendas_activas'  => ($this->configModel->getValue('leyendas_enabled') === '1') ? model(LeyendaModel::class)->where('activo', 1)->where('deleted', 0)->orderBy('titulo', 'ASC')->findAll() : [],
             'leyendas_enabled'  => ($this->configModel->getValue('leyendas_enabled') === '1'),
             'decimales_sugerencia' => $decimalesSugerencia,
+            'retired_prueba_ids' => $retiredPruebaIds,
             'allowed_modules'   => $this->allowed_modules,
             'user_info'         => $this->user_info,
         ]);
@@ -611,6 +615,7 @@ class Registers extends SecureArea
             return redirect()->to('registers/anulada/' . $id);
         }
 
+        (new PrianacategoriaReferenceService())->repairRegvaluesForRegistro($id);
         $data = $this->registerService->prepareReportData($id);
         
         if (!$data) {
@@ -754,7 +759,7 @@ class Registers extends SecureArea
         $registerInfo->paciente = $pacienteType;
         $patientGender = isset($registerInfo->gender) ? (int) $registerInfo->gender : null;
         $matchingPoblacionIds = $this->registerService->getMatchingPoblacionIds($registerInfo->birthday ?? null, $patientGender, $refIngreso);
-        $pruebasInfo = $this->registerModel->getPruebasInput($registerInfo->pruebas ?? '', $matchingPoblacionIds, $patientGender);
+        $pruebasInfo = $this->registerModel->getPruebasInput($registerInfo->pruebas ?? '', $matchingPoblacionIds, $patientGender, true);
 
         // Formato fecha similar al reporte
         $fecha = RegisterService::formatStoredReporteFechaCorta(
@@ -815,7 +820,7 @@ class Registers extends SecureArea
         $registerInfo->paciente = $pacienteType;
         $patientGender = isset($registerInfo->gender) ? (int) $registerInfo->gender : null;
         $matchingPoblacionIds = $this->registerService->getMatchingPoblacionIds($registerInfo->birthday ?? null, $patientGender, $refIngreso);
-        $pruebasInfo = $this->registerModel->getPruebasInput($registerInfo->pruebas ?? '', $matchingPoblacionIds, $patientGender);
+        $pruebasInfo = $this->registerModel->getPruebasInput($registerInfo->pruebas ?? '', $matchingPoblacionIds, $patientGender, true);
 
         $fecha = RegisterService::formatStoredReporteFechaCorta(
             $registerInfo->ingreso !== null && (string) $registerInfo->ingreso !== ''
@@ -1749,13 +1754,20 @@ class Registers extends SecureArea
         }
 
         $valoresAnteriores = [];
+        $regvaluesRetirados = [];
         if (($registroId ?? 0) > 0) {
+            $registroRow = $this->registerModel->getInfoRefill((int) $registroId);
+            $pruebasIds = $this->registerService->extractPrianacategoriaIdsFromRegistroPruebas((string) ($registroRow->pruebas ?? ''));
+            $retiredIds = $this->registerModel->getRetiredPrianacategoriaIds($pruebasIds);
             foreach ($this->registerModel->getInfoAnalisis((int) $registroId) as $rowPrev) {
                 $clave = trim((string) ($rowPrev['name'] ?? ''));
                 if ($clave === '') {
                     continue;
                 }
                 $valoresAnteriores[$clave] = trim((string) ($rowPrev['regvalues'] ?? ''));
+                if ($retiredIds !== [] && $this->registerModel->regvalueBelongsToRetiredPrianacategoria($clave, $retiredIds)) {
+                    $regvaluesRetirados[] = $rowPrev;
+                }
             }
         }
 
@@ -1773,6 +1785,20 @@ class Registers extends SecureArea
                 'registro_id' => $item['registro_id'] ?? null,
                 'name'        => $item['id'] ?? null,
                 'id_session'  => session()->get('person_id'),
+            ]);
+            $valCount++;
+        }
+
+        foreach ($regvaluesRetirados as $rowRetirado) {
+            $clave = trim((string) ($rowRetirado['name'] ?? ''));
+            if ($clave === '') {
+                continue;
+            }
+            $this->registerModel->saveRegvalues([
+                'regvalues'   => $rowRetirado['regvalues'] ?? null,
+                'registro_id' => $registroId,
+                'name'        => $clave,
+                'id_session'  => $rowRetirado['id_session'] ?? session()->get('person_id'),
             ]);
             $valCount++;
         }
