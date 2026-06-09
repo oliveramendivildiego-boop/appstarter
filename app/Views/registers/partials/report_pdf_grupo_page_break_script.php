@@ -35,6 +35,7 @@ $footerEnabled = ! empty($footer_enabled);
     };
 
     var SEGMENT_SELECTOR = '.report-segment-table-wrap, .report-refs-matrix-wrap';
+    var savedGrupoDomOrder = null;
 
     function paginationApi() {
         return window.reportPrintPagination || null;
@@ -293,7 +294,207 @@ $footerEnabled = ! empty($footer_enabled);
         }
     }
 
+    function restoreGrupoDomOrder() {
+        if (!savedGrupoDomOrder || !savedGrupoDomOrder.length) {
+            return;
+        }
+        savedGrupoDomOrder.forEach(function(entry) {
+            if (!entry || !entry.parent || !entry.el) {
+                return;
+            }
+            if (entry.nextSibling && entry.nextSibling.parentNode === entry.parent) {
+                entry.parent.insertBefore(entry.el, entry.nextSibling);
+            } else {
+                entry.parent.appendChild(entry.el);
+            }
+        });
+        savedGrupoDomOrder = null;
+        document.querySelectorAll('.report-pdf-grupo-prueba').forEach(function(grupo, idx) {
+            if (idx === 0) {
+                grupo.classList.add('report-pdf-grupo-prueba-first');
+            } else {
+                grupo.classList.remove('report-pdf-grupo-prueba-first');
+            }
+        });
+    }
+
+    function captureGrupoDomOrder(container) {
+        var entries = [];
+        container.querySelectorAll('.report-pdf-grupo-prueba').forEach(function(grupo) {
+            entries.push({
+                el: grupo,
+                parent: grupo.parentNode,
+                nextSibling: grupo.nextSibling
+            });
+        });
+        return entries;
+    }
+
+    function syncFirstGrupoClass(container) {
+        var grupos = container.querySelectorAll('.report-pdf-grupo-prueba');
+        grupos.forEach(function(grupo, idx) {
+            if (idx === 0) {
+                grupo.classList.add('report-pdf-grupo-prueba-first');
+            } else {
+                grupo.classList.remove('report-pdf-grupo-prueba-first');
+            }
+        });
+    }
+
+    function removeFromPool(pool, item) {
+        for (var i = 0; i < pool.length; i++) {
+            if (pool[i].el === item.el) {
+                pool.splice(i, 1);
+                return;
+            }
+        }
+    }
+
+    function packWholeGruposOnPage(pool, remainingPx, maxSlicePx) {
+        var packed = [];
+        var space = remainingPx;
+        var guard = 0;
+        while (guard < pool.length + 2) {
+            var bestI = -1;
+            var bestH = -1;
+            for (var i = 0; i < pool.length; i++) {
+                var h = pool[i].height;
+                if (h <= space && h <= maxSlicePx && h > bestH) {
+                    bestH = h;
+                    bestI = i;
+                }
+            }
+            if (bestI < 0) {
+                break;
+            }
+            packed.push(pool[bestI]);
+            space -= pool[bestI].height;
+            pool.splice(bestI, 1);
+            guard++;
+        }
+        return packed;
+    }
+
+    function simulateGrupoBySegments(grupo, cursorPage, cursorY, layoutCtx) {
+        var metrics = layoutCtx.metrics;
+        var boundarySet = layoutCtx.boundarySet;
+        var maxSlicePx = layoutCtx.maxSlicePx;
+        var lastSubgrupo = null;
+        var cabeceraCounted = false;
+        var page = cursorPage;
+        var y = cursorY;
+
+        grupo.querySelectorAll(SEGMENT_SELECTOR).forEach(function(seg) {
+            var cabecera = cabeceraForSegment(seg);
+            var subgrupo = subgrupoBlockForNode(seg);
+            if (subgrupo !== lastSubgrupo) {
+                lastSubgrupo = subgrupo;
+                cabeceraCounted = false;
+            }
+
+            var cabeceraH = (cabecera && !cabeceraCounted) ? (cabecera.offsetHeight || 0) : 0;
+            if (cabecera && !cabeceraCounted) {
+                cabeceraCounted = true;
+            }
+            var unitH = cabeceraH + (seg.offsetHeight || 0);
+            var remaining = pageEndPx(page, boundarySet, metrics) - y;
+
+            if (unitH > maxSlicePx) {
+                // Segmento demasiado alto: se parte en varias hojas.
+            } else if (unitH <= remaining) {
+                // Cabe en la hoja actual simulada.
+            } else if (atPageResultsStart(page, y, boundarySet, metrics)) {
+                // Inicio de resultados en la hoja: permitir partir.
+            } else {
+                page++;
+                y = pageStartPx(page, boundarySet);
+            }
+
+            var bumped = bumpCursorAfterPlace(page, y, unitH, boundarySet, metrics);
+            page = bumped.page;
+            y = bumped.y;
+        });
+
+        return { page: page, y: y };
+    }
+
+    function reorderGruposForAutoPack(container, layoutCtx) {
+        var grupos = Array.from(container.querySelectorAll('.report-pdf-grupo-prueba'));
+        if (grupos.length < 2) {
+            return;
+        }
+        var parent = grupos[0].parentNode;
+        if (!parent) {
+            return;
+        }
+
+        savedGrupoDomOrder = captureGrupoDomOrder(container);
+
+        var metrics = layoutCtx.metrics;
+        var boundarySet = layoutCtx.boundarySet;
+        var maxSlicePx = layoutCtx.maxSlicePx;
+        var headerPx = metrics.headerHeightPx || 0;
+        var items = grupos.map(function(grupo, idx) {
+            return {
+                el: grupo,
+                height: grupo.offsetHeight || 0,
+                origIdx: idx
+            };
+        });
+        var remaining = items.slice();
+        var ordered = [];
+        var cursorPage = 0;
+        var cursorY = headerPx;
+
+        while (remaining.length > 0) {
+            var remainingPx = pageEndPx(cursorPage, boundarySet, metrics) - cursorY;
+            var pool = remaining.slice();
+            var packed = packWholeGruposOnPage(pool, remainingPx, maxSlicePx);
+
+            if (packed.length > 0) {
+                ordered = ordered.concat(packed);
+                packed.forEach(function(item) {
+                    removeFromPool(remaining, item);
+                });
+                var packedHeight = 0;
+                packed.forEach(function(item) {
+                    packedHeight += item.height;
+                });
+                var bumpedPack = bumpCursorAfterPlace(cursorPage, cursorY, packedHeight, boundarySet, metrics);
+                cursorPage = bumpedPack.page;
+                cursorY = bumpedPack.y;
+                continue;
+            }
+
+            remaining.sort(function(a, b) {
+                return a.origIdx - b.origIdx;
+            });
+            var next = remaining.shift();
+            ordered.push(next);
+
+            if (next.height > maxSlicePx) {
+                var placedHuge = simulateGrupoBySegments(next.el, cursorPage, cursorY, layoutCtx);
+                cursorPage = placedHuge.page;
+                cursorY = placedHuge.y;
+            } else if (next.height <= remainingPx) {
+                var bumpedFit = bumpCursorAfterPlace(cursorPage, cursorY, next.height, boundarySet, metrics);
+                cursorPage = bumpedFit.page;
+                cursorY = bumpedFit.y;
+            } else {
+                var placedSplit = simulateGrupoBySegments(next.el, cursorPage, cursorY, layoutCtx);
+                cursorPage = placedSplit.page;
+                cursorY = placedSplit.y;
+            }
+        }
+
+        ordered.forEach(function(item) {
+            parent.appendChild(item.el);
+        });
+        syncFirstGrupoClass(container);
+    }
+
     function clearPageBreakAdjustments() {
+        restoreGrupoDomOrder();
         document.querySelectorAll('.report-pdf-grupo-cabecera').forEach(function(cabecera) {
             cabecera.classList.remove('report-cabecera-force-break-before');
         });
@@ -502,6 +703,12 @@ $footerEnabled = ! empty($footer_enabled);
         }
 
         if (cfg.mode === 'keep_together_if_fits') {
+            applyIfFitsMode(container, layoutCtx);
+            return;
+        }
+
+        if (cfg.mode === 'keep_together_if_fits_auto_order') {
+            reorderGruposForAutoPack(container, layoutCtx);
             applyIfFitsMode(container, layoutCtx);
             return;
         }

@@ -362,11 +362,13 @@ body {
     break-inside: auto !important;
 }
 /* Grupo íntegro solo si cabe en el espacio restante (Dompdf: segmentos; JS añade keep-on-page). */
-.pdf-gpb-keep-together-if-fits .report-pdf-grupo-prueba {
+.pdf-gpb-keep-together-if-fits .report-pdf-grupo-prueba,
+.pdf-gpb-keep-together-if-fits-auto-order .report-pdf-grupo-prueba {
     page-break-inside: auto;
     break-inside: auto;
 }
-.pdf-gpb-keep-together-if-fits .report-pdf-grupo-prueba.report-pdf-grupo-prueba-keep-on-page {
+.pdf-gpb-keep-together-if-fits .report-pdf-grupo-prueba.report-pdf-grupo-prueba-keep-on-page,
+.pdf-gpb-keep-together-if-fits-auto-order .report-pdf-grupo-prueba.report-pdf-grupo-prueba-keep-on-page {
     page-break-inside: avoid;
     break-inside: avoid-page;
 }

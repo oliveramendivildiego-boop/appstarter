@@ -57,7 +57,7 @@
 
     $gpbCfg = \App\Services\ReportPdfLayoutService::normalizeGrupoPruebaPageBreakStyle($ps['grupo_prueba_page_break'] ?? []);
     $gpbBodyClass = \App\Services\ReportPdfLayoutService::grupoPruebaPageBreakBodyClass($pl);
-    $printSegmentBreakInside = ($gpbCfg['mode'] ?? '') === 'keep_together_if_fits'
+    $printSegmentBreakInside = \App\Services\ReportPdfLayoutService::grupoPruebaPageBreakUsesIfFitsMode($gpbCfg)
         ? 'auto'
         : \App\Services\ReportPdfLayoutService::grupoPruebaPrintSegmentBreakInside($gpbCfg);
     $pp = \App\Services\ReportPdfLayoutService::normalizePrintPaginationStyle($ps['print_pagination'] ?? []);

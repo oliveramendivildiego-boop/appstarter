@@ -1032,6 +1032,7 @@ $labelsShort = [
                     <option value="flow" <?= ($gpb['mode'] ?? 'flow') === 'flow' ? 'selected' : '' ?>>Flujo libre — sin reglas extra; el contenido puede partirse en cualquier punto</option>
                     <option value="keep_segment" <?= ($gpb['mode'] ?? '') === 'keep_segment' ? 'selected' : '' ?>>Flujo por segmentos — cada segmento de tabla va entero a la página siguiente si no cabe</option>
                     <option value="keep_together_if_fits" <?= ($gpb['mode'] ?? '') === 'keep_together_if_fits' ? 'selected' : '' ?>>Grupo íntegro solo si cabe — mantiene el área junta solo si entra en el espacio restante; si no, rellena la hoja actual</option>
+                    <option value="keep_together_if_fits_auto_order" <?= ($gpb['mode'] ?? '') === 'keep_together_if_fits_auto_order' ? 'selected' : '' ?>>Grupo íntegro solo si cabe con orden automático — reordena las pruebas para llenar cada hoja; si no caben enteras, rellena la hoja actual y continúa en la siguiente</option>
                     <option value="keep_together" <?= ($gpb['mode'] ?? '') === 'keep_together' ? 'selected' : '' ?>>Grupo íntegro — todo el área se mueve junta a la página siguiente</option>
                     <option value="keep_together_compact" <?= ($gpb['mode'] ?? '') === 'keep_together_compact' ? 'selected' : '' ?>>Grupo íntegro con compactación — reduce fuentes/espaciado antes de mover el área completa</option>
                 </select>
@@ -1066,6 +1067,7 @@ $labelsShort = [
         </div>
         <ul class="small text-muted mb-0 mt-2 ps-3">
             <li><strong>Grupo íntegro solo si cabe:</strong> ideal para hemogramas; si el área no cabe tras la cabecera, empieza en la hoja 1 y continúa en la 2 (por segmentos), sin dejar la primera hoja vacía.</li>
+            <li><strong>Grupo íntegro solo si cabe con orden automático:</strong> igual que el anterior, pero reordena las áreas de prueba para aprovechar cada hoja completa antes de partir contenido.</li>
             <li><strong>Grupo íntegro:</strong> mueve todo el área a la siguiente hoja si no cabe entera. Deje el <strong>umbral en 0 mm</strong> para este comportamiento puro.</li>
             <li><strong>Umbral &gt; 0 mm:</strong> solo en «Grupo íntegro» / «con compactación»; si queda poco espacio libre, rellena la hoja actual por segmentos en lugar de mover el bloque.</li>
             <li><strong>Con compactación:</strong> reduce fuentes, relleno e interlineado (escala, relleno fijo y/o compactación agresiva) antes de mover el bloque.</li>
@@ -3769,7 +3771,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 mode: (function() {
                     var el = document.getElementById('gpb_mode');
                     var v = el ? el.value : 'keep_together_compact';
-                    return (v === 'flow' || v === 'keep_segment' || v === 'keep_together_if_fits' || v === 'keep_together' || v === 'keep_together_compact') ? v : 'keep_together_if_fits';
+                    return (v === 'flow' || v === 'keep_segment' || v === 'keep_together_if_fits' || v === 'keep_together_if_fits_auto_order' || v === 'keep_together' || v === 'keep_together_compact') ? v : 'keep_together_if_fits';
                 })(),
                 repeat_header_on_split: pickChk('gpb_repeat_header', true),
                 compact_min_scale_percent: Math.round(pickNum('gpb_compact_min_scale', 75, 100, 85)),
@@ -4012,7 +4014,7 @@ document.addEventListener('DOMContentLoaded', function() {
         var gpbModeEl = document.getElementById('gpb_mode');
         if (gpbModeEl) {
             var gpbMode = String(gpbModeEl.value || '').trim();
-            if (['flow', 'keep_segment', 'keep_together_if_fits', 'keep_together', 'keep_together_compact'].indexOf(gpbMode) < 0) {
+            if (['flow', 'keep_segment', 'keep_together_if_fits', 'keep_together_if_fits_auto_order', 'keep_together', 'keep_together_compact'].indexOf(gpbMode) < 0) {
                 errs.push('Modo de salto de página en grupos de prueba no válido.');
             }
         }

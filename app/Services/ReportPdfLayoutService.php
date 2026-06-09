@@ -97,6 +97,7 @@ class ReportPdfLayoutService
         'flow',
         'keep_segment',
         'keep_together_if_fits',
+        'keep_together_if_fits_auto_order',
         'keep_together',
         'keep_together_compact',
     ];
@@ -3370,12 +3371,19 @@ class ReportPdfLayoutService
      *
      * @param array<string, mixed> $layout
      */
+    public static function grupoPruebaPageBreakUsesIfFitsMode(array $gpb): bool
+    {
+        $mode = (string) ($gpb['mode'] ?? 'flow');
+
+        return $mode === 'keep_together_if_fits' || $mode === 'keep_together_if_fits_auto_order';
+    }
+
     public static function grupoPruebaSegmentIntactStyleAttr(array $layout): string
     {
         $ps  = is_array($layout['page_style'] ?? null) ? $layout['page_style'] : [];
         $gpb = self::normalizeGrupoPruebaPageBreakStyle($ps['grupo_prueba_page_break'] ?? []);
         $mode = (string) ($gpb['mode'] ?? 'flow');
-        if ($mode !== 'keep_segment' && $mode !== 'keep_together_if_fits') {
+        if ($mode !== 'keep_segment' && ! self::grupoPruebaPageBreakUsesIfFitsMode($gpb)) {
             return '';
         }
 
@@ -3389,7 +3397,7 @@ class ReportPdfLayoutService
     {
         $mode = (string) ($gpb['mode'] ?? 'flow');
 
-        return $mode === 'keep_segment' || $mode === 'keep_together_if_fits';
+        return $mode === 'keep_segment' || self::grupoPruebaPageBreakUsesIfFitsMode($gpb);
     }
 
     /**
@@ -3417,7 +3425,7 @@ class ReportPdfLayoutService
     public static function grupoPruebaPageBreakUsesSegmentCss(array $gpb): bool
     {
         $mode = (string) ($gpb['mode'] ?? 'flow');
-        if ($mode === 'keep_segment' || $mode === 'keep_together_if_fits') {
+        if ($mode === 'keep_segment' || self::grupoPruebaPageBreakUsesIfFitsMode($gpb)) {
             return true;
         }
         if ($mode === 'keep_together' || $mode === 'keep_together_compact') {
