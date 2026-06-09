@@ -1593,6 +1593,85 @@ class Registers extends SecureArea
         return $this->response->setJSON(['success' => false, 'message' => 'Error al agregar pago'])->setStatusCode(500);
     }
 
+    public function editarAbonoPago($id): ResponseInterface
+    {
+        $id = (int) $id;
+        $pagoAbonoId = (int) ($this->request->getPost('pago_abono_id') ?? 0);
+        $tipopago = trim((string) ($this->request->getPost('tipopago') ?? ''));
+        $montoRaw = trim((string) ($this->request->getPost('monto') ?? '0'));
+        $monto = (float) str_replace(',', '.', $montoRaw);
+
+        if ($id < 1 || $pagoAbonoId < 1) {
+            return $this->response->setJSON(['success' => false, 'message' => 'Datos inválidos'])->setStatusCode(400);
+        }
+        $blocked = $this->bloquearSiRegistroAnuladoJson($id);
+        if ($blocked !== null) {
+            return $blocked;
+        }
+        if (! in_array($tipopago, ['1', '2', '3', '4'], true)) {
+            return $this->response->setJSON(['success' => false, 'message' => 'Tipo de pago inválido'])->setStatusCode(400);
+        }
+        if ($monto <= 0) {
+            return $this->response->setJSON(['success' => false, 'message' => 'El monto debe ser mayor a 0'])->setStatusCode(400);
+        }
+
+        $abono = $this->registerModel->getAbonoById($pagoAbonoId);
+        if (! $abono || (int) ($abono['registro_id'] ?? 0) !== $id) {
+            return $this->response->setJSON(['success' => false, 'message' => 'Abono no encontrado'])->setStatusCode(404);
+        }
+
+        $tipoPagoMap = ['1' => 'Efectivo', '2' => 'QR', '3' => 'Transferencia', '4' => 'Pendiente'];
+        $anterior = $this->registerModel->updateAbono($pagoAbonoId, $tipopago, $monto);
+        if ($anterior === null) {
+            return $this->response->setJSON(['success' => false, 'message' => 'Error al actualizar'])->setStatusCode(500);
+        }
+
+        \App\Models\AuditoriaModel::log('registers', 'editar_pago', (string) $id, \App\Models\AuditoriaModel::detail([
+            'pago_abono_id'     => $pagoAbonoId,
+            'monto_anterior'    => (float) ($anterior['monto'] ?? 0),
+            'monto_nuevo'       => $monto,
+            'tipopago_anterior' => $tipoPagoMap[$anterior['tipopago'] ?? ''] ?? ($anterior['tipopago'] ?? ''),
+            'tipopago_nuevo'    => $tipoPagoMap[$tipopago] ?? $tipopago,
+            'fecha_abono'       => $anterior['fecha_abono'] ?? '',
+        ]));
+
+        return $this->response->setJSON(['success' => true, 'message' => 'Pago actualizado correctamente']);
+    }
+
+    public function eliminarAbonoPago($id): ResponseInterface
+    {
+        $id = (int) $id;
+        $pagoAbonoId = (int) ($this->request->getPost('pago_abono_id') ?? 0);
+
+        if ($id < 1 || $pagoAbonoId < 1) {
+            return $this->response->setJSON(['success' => false, 'message' => 'Datos inválidos'])->setStatusCode(400);
+        }
+        $blocked = $this->bloquearSiRegistroAnuladoJson($id);
+        if ($blocked !== null) {
+            return $blocked;
+        }
+
+        $abono = $this->registerModel->getAbonoById($pagoAbonoId);
+        if (! $abono || (int) ($abono['registro_id'] ?? 0) !== $id) {
+            return $this->response->setJSON(['success' => false, 'message' => 'Abono no encontrado'])->setStatusCode(404);
+        }
+
+        $tipoPagoMap = ['1' => 'Efectivo', '2' => 'QR', '3' => 'Transferencia', '4' => 'Pendiente'];
+        $eliminado = $this->registerModel->deleteAbono($pagoAbonoId);
+        if ($eliminado === null) {
+            return $this->response->setJSON(['success' => false, 'message' => 'Error al eliminar'])->setStatusCode(500);
+        }
+
+        \App\Models\AuditoriaModel::log('registers', 'eliminar_pago', (string) $id, \App\Models\AuditoriaModel::detail([
+            'pago_abono_id' => $pagoAbonoId,
+            'monto'         => (float) ($eliminado['monto'] ?? 0),
+            'tipopago'      => $tipoPagoMap[$eliminado['tipopago'] ?? ''] ?? ($eliminado['tipopago'] ?? ''),
+            'fecha_abono'   => $eliminado['fecha_abono'] ?? '',
+        ]));
+
+        return $this->response->setJSON(['success' => true, 'message' => 'Pago eliminado correctamente']);
+    }
+
     public function crearmuestra()
     {
         $registroId = (int) ($this->request->getPost('registro_id') ?? 0);

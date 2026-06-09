@@ -168,7 +168,7 @@ class Toquotes extends SecureArea
     {
         try {
             $labConfig = (model(AppConfigModel::class))->getMultiple([
-                'company', 'address', 'phone', 'email', 'website',
+                'company', 'sucursal', 'address', 'phone', 'email', 'website',
             ]);
             $totalCost = 0;
             $totalRefe = 0;

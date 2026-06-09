@@ -975,7 +975,7 @@ class ConfigService
     public function saveFromRequest(array $postData, ?UploadedFile $logoFile = null): array
     {
         $keys = [
-            'company', 'address', 'phone', 'email', 'fax', 'website',
+            'company', 'sucursal', 'address', 'phone', 'email', 'fax', 'website',
             'language', 'timezone', 'lab_datetime_storage', 'currency_symbol', 'currency_side',
             'default_tax_rate', 'default_tax_1_name', 'default_tax_1_rate',
             'default_tax_2_name', 'default_tax_2_rate', 'return_policy',
@@ -1002,6 +1002,9 @@ class ConfigService
         if (isset($batch['stock_alerta_factor'])) {
             $val = (float) $batch['stock_alerta_factor'];
             $batch['stock_alerta_factor'] = (string) max(0.5, min(3, $val > 0 ? $val : 1));
+        }
+        if (array_key_exists('sucursal', $postData)) {
+            $batch['sucursal'] = trim((string) $postData['sucursal']);
         }
         if (array_key_exists('show_order_barcode', $postData)) {
             $batch['show_order_barcode'] = ($postData['show_order_barcode'] === '1') ? '1' : '0';

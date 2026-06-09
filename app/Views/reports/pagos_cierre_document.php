@@ -115,6 +115,9 @@ $cajaPorTipoTotales = $cajaPorTipoTotales ?? ['ingresos' => 0, 'egresos' => 0, '
 
 <header>
     <h1><?= esc($company_name ?? 'Laboratorio') ?></h1>
+    <?php if (!empty(trim((string) ($sucursal ?? '')))): ?>
+        <p class="muted" style="margin:0 0 4px 0;"><?= esc(trim((string) $sucursal)) ?></p>
+    <?php endif; ?>
     <p class="muted" style="margin:0;">Cierre de pagos<?= !empty($cierre_id) ? ' #' . (int) $cierre_id : '' ?></p>
     <p class="muted" style="margin:4px 0 0 0;"><strong>Período:</strong> <?= esc($periodo_texto ?? '') ?></p>
 </header>

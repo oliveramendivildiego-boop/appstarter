@@ -303,6 +303,8 @@ $routes->post('registers/saveregvalues', 'Registers::saveregvalues');
 $routes->post('registers/saveanalisiss', 'Registers::saveanalisiss');
 $routes->post('registers/delete/(:num)', 'Registers::delete/$1');
 $routes->post('registers/addpago/(:num)', 'Registers::addpago/$1');
+$routes->post('registers/editarAbonoPago/(:num)', 'Registers::editarAbonoPago/$1');
+$routes->post('registers/eliminarAbonoPago/(:num)', 'Registers::eliminarAbonoPago/$1');
 $routes->get('registers/historial/(:num)', 'Registers::historial/$1');
 $routes->post('registers/sendWhatsapp/(:num)', 'Registers::sendWhatsapp/$1');
 $routes->get('registers/servePdfFile/(:alphanum)', 'Registers::servePdfFile/$1');

@@ -412,7 +412,8 @@ class Config extends SecureArea
     {
         $validation = \Config\Services::validation();
         $validation->setRules([
-            'company' => 'required|min_length[2]|max_length[255]',
+            'company'  => 'required|min_length[2]|max_length[255]',
+            'sucursal' => 'permit_empty|max_length[255]',
         ]);
 
         if (!$validation->withRequest($this->request)->run()) {

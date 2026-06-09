@@ -300,6 +300,40 @@ $listaBtnClass = static fn (bool $active): string => 'btn btn-sm ' . ($active ? 
     </ul>
 </nav>
 <?php endif; ?>
+<!-- Modal Editar pago (historial) -->
+<div class="modal fade" id="modalEditarTipoPago" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="fa-solid fa-pen-to-square me-2"></i>Editar pago</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+            </div>
+            <div class="modal-body">
+                <input type="hidden" id="edit_abono_registro_id" value="">
+                <input type="hidden" id="edit_abono_id" value="">
+                <p class="small text-muted mb-3" id="edit_abono_resumen"></p>
+                <div class="mb-3">
+                    <label for="edit_abono_monto" class="form-label">Monto:</label>
+                    <input type="text" id="edit_abono_monto" class="form-control" placeholder="0.00">
+                </div>
+                <div class="mb-0">
+                    <label for="edit_abono_tipopago" class="form-label">Método de pago:</label>
+                    <select id="edit_abono_tipopago" class="form-select">
+                        <option value="1">Efectivo</option>
+                        <option value="2">QR</option>
+                        <option value="3">Transferencia</option>
+                        <option value="4">Pendiente</option>
+                    </select>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-primary" id="btnGuardarTipoPago">Guardar cambio</button>
+            </div>
+        </div>
+    </div>
+</div>
+
 <!-- Modal mensaje (reemplaza alert para confirmaciones/mensajes) -->
 <div class="modal fade" id="modalMensajeAccion" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
@@ -427,67 +461,198 @@ document.addEventListener('DOMContentLoaded', function() {
     // Modal Historial
     var modalHistorial = document.getElementById('modalHistorial');
     var historialContent = document.getElementById('historialContent');
+    var historialRegistroIdActual = '';
+    var modalEditarTipoPago = document.getElementById('modalEditarTipoPago');
+    var editAbonoRegistroId = document.getElementById('edit_abono_registro_id');
+    var editAbonoId = document.getElementById('edit_abono_id');
+    var editAbonoTipopago = document.getElementById('edit_abono_tipopago');
+    var editAbonoMonto = document.getElementById('edit_abono_monto');
+    var editAbonoResumen = document.getElementById('edit_abono_resumen');
+    var btnGuardarTipoPago = document.getElementById('btnGuardarTipoPago');
+
+    function getCsrfBody() {
+        return (typeof CI_CSRF_TOKEN !== 'undefined' && typeof CI_CSRF_TOKEN_NAME !== 'undefined')
+            ? '&' + CI_CSRF_TOKEN_NAME + '=' + encodeURIComponent(CI_CSRF_TOKEN) : '';
+    }
+
+    function renderHistorialHtml(rid, d) {
+        var reg = d.registro || {};
+        var pago = d.pago || {};
+        var html = '<div class="mb-3"><h6 class="border-bottom pb-2">Datos del registro</h6>';
+        html += '<p class="mb-1"><strong>Orden:</strong> ' + escapeHtml((reg.numero_orden && String(reg.numero_orden).trim() !== '') ? reg.numero_orden : (reg.registro_id || '-')) + '</p>';
+        html += '<p class="mb-1"><strong>Paciente:</strong> ' + escapeHtml(reg.paciente || '-') + '</p>';
+        html += '<p class="mb-1"><strong>Doctor:</strong> ' + escapeHtml(reg.doctor || '-') + '</p>';
+        html += '<p class="mb-0"><strong>Fecha ingreso:</strong> ' + escapeHtml(reg.ingreso_display || reg.ingreso || '-') + '</p></div>';
+        html += '<div class="mb-3"><h6 class="border-bottom pb-2">Historial de pagos</h6>';
+        html += '<p class="mb-2"><strong>Total orden:</strong> ' + escapeHtml(pago.total || '0') + ' ' + (window.APP_CURRENCY_SYMBOL || '$') + ' &nbsp;|&nbsp; <strong>Pagado:</strong> ' + escapeHtml(pago.monto_pagar || '0') + ' ' + (window.APP_CURRENCY_SYMBOL || '$') + ' &nbsp;|&nbsp; <strong>Saldo:</strong> ' + escapeHtml(pago.saldo || '0') + ' ' + (window.APP_CURRENCY_SYMBOL || '$') + '</p>';
+        var urlComp = '<?= site_url('registers/comprobantePdf') ?>/' + encodeURIComponent(rid);
+        var lblComp = d.sin_billing_enabled ? 'Descargar factura (PDF)' : 'Descargar recibo (PDF)';
+        html += '<p class="mb-2"><a href="' + urlComp + '" class="btn btn-sm btn-outline-secondary" target="_blank" rel="noopener"><i class="fa-solid fa-file-invoice-dollar me-1"></i>' + escapeHtml(lblComp) + '</a></p>';
+        if (!d.pago_completo && pago && Object.keys(pago).length > 0) {
+            html += '<p class="small text-muted mb-2"><i class="fa-solid fa-circle-info me-1"></i>El comprobante mostrará el saldo pendiente si la orden aún no está saldada.</p>';
+        }
+        if (d.abonos && d.abonos.length > 0) {
+            var tieneEditable = d.abonos.some(function(a) { return a.pago_abono_id; });
+            html += '<div class="table-responsive"><table class="table table-sm table-bordered"><thead><tr><th>Fecha</th><th>Monto</th><th>Método</th>';
+            if (tieneEditable) html += '<th class="text-end" style="min-width:110px">Acciones</th>';
+            html += '</tr></thead><tbody>';
+            d.abonos.forEach(function(a) {
+                var fecha = a.fecha_abono_display || a.fecha_abono || '-';
+                var abonoId = a.pago_abono_id || '';
+                html += '<tr><td>' + escapeHtml(fecha) + '</td><td>' + escapeHtml(a.monto || '0') + ' ' + (window.APP_CURRENCY_SYMBOL || '$') + '</td><td>' + escapeHtml(a.tipo_nombre || a.tipopago || '-') + '</td>';
+                if (tieneEditable) {
+                    html += '<td class="text-end text-nowrap">';
+                    if (abonoId) {
+                        html += '<button type="button" class="btn btn-sm btn-outline-primary btn-editar-abono me-1" title="Editar pago" data-registro-id="' + escapeHtml(rid) + '" data-abono-id="' + escapeHtml(abonoId) + '" data-tipopago="' + escapeHtml(a.tipopago || '1') + '" data-monto="' + escapeHtml(a.monto || '0') + '" data-fecha="' + escapeHtml(fecha) + '"><i class="fa-solid fa-pen"></i></button>';
+                        html += '<button type="button" class="btn btn-sm btn-outline-danger btn-eliminar-abono" title="Eliminar pago" data-registro-id="' + escapeHtml(rid) + '" data-abono-id="' + escapeHtml(abonoId) + '" data-monto="' + escapeHtml(a.monto || '0') + '" data-fecha="' + escapeHtml(fecha) + '"><i class="fa-solid fa-trash"></i></button>';
+                    } else {
+                        html += '<span class="text-muted small">—</span>';
+                    }
+                    html += '</td>';
+                }
+                html += '</tr>';
+            });
+            html += '</tbody></table></div>';
+            if (!tieneEditable) {
+                html += '<p class="small text-muted mb-0"><i class="fa-solid fa-circle-info me-1"></i>Pago histórico sin detalle individual; no se puede editar ni eliminar por abono.</p>';
+            }
+        } else {
+            html += '<p class="text-muted small mb-0">Sin pagos registrados.</p>';
+        }
+        html += '</div>';
+        html += '<div><h6 class="border-bottom pb-2">Pruebas realizadas</h6>';
+        if (d.pruebas && d.pruebas.length > 0) {
+            html += '<ul class="list-group list-group-flush">';
+            d.pruebas.forEach(function(p) {
+                html += '<li class="list-group-item d-flex justify-content-between"><span>' + escapeHtml(p.nombre || '-') + '</span>';
+                if (p.categoria) html += '<span class="text-muted small">' + escapeHtml(p.categoria) + '</span>';
+                html += '</li>';
+            });
+            html += '</ul>';
+            html += '<p class="mt-2 small text-muted">Resultados: ' + escapeHtml(d.tiene_resultados ? d.regvalues_count + ' valores registrados' : 'Sin resultados') + '</p>';
+        } else {
+            html += '<p class="text-muted">No hay pruebas registradas.</p>';
+        }
+        html += '</div>';
+        return html;
+    }
+
+    function cargarHistorial(rid, mostrarModal) {
+        if (!rid) return;
+        historialRegistroIdActual = rid;
+        if (historialContent) historialContent.innerHTML = '<div class="text-center py-4"><div class="spinner-border text-primary" role="status"></div><p class="mt-2">Cargando...</p></div>';
+        if (mostrarModal && typeof bootstrap !== 'undefined' && modalHistorial) {
+            new bootstrap.Modal(modalHistorial).show();
+        }
+        fetch('<?= site_url('registers/historial') ?>/' + rid)
+            .then(function(r) { return r.json(); })
+            .then(function(res) {
+                if (!res.success || !res.data) {
+                    if (historialContent) historialContent.innerHTML = '<p class="text-danger">Error al cargar el historial.</p>';
+                    return;
+                }
+                if (historialContent) historialContent.innerHTML = renderHistorialHtml(rid, res.data);
+            })
+            .catch(function() {
+                if (historialContent) historialContent.innerHTML = '<p class="text-danger">Error de conexión.</p>';
+            });
+    }
+
     document.querySelectorAll('.btn-historial').forEach(function(btn) {
         btn.addEventListener('click', function() {
             var rid = this.getAttribute('data-id');
-            if (!rid) return;
-            if (historialContent) historialContent.innerHTML = '<div class="text-center py-4"><div class="spinner-border text-primary" role="status"></div><p class="mt-2">Cargando...</p></div>';
-            if (typeof bootstrap !== 'undefined' && modalHistorial) new bootstrap.Modal(modalHistorial).show();
-            fetch('<?= site_url('registers/historial') ?>/' + rid)
-                .then(function(r) { return r.json(); })
-                .then(function(res) {
-                    if (!res.success || !res.data) {
-                        if (historialContent) historialContent.innerHTML = '<p class="text-danger">Error al cargar el historial.</p>';
-                        return;
-                    }
-                    var d = res.data;
-                    var reg = d.registro || {};
-                    var pago = d.pago || {};
-                    var html = '<div class="mb-3"><h6 class="border-bottom pb-2">Datos del registro</h6>';
-                    html += '<p class="mb-1"><strong>Orden:</strong> ' + escapeHtml((reg.numero_orden && String(reg.numero_orden).trim() !== '') ? reg.numero_orden : (reg.registro_id || '-')) + '</p>';
-                    html += '<p class="mb-1"><strong>Paciente:</strong> ' + escapeHtml(reg.paciente || '-') + '</p>';
-                    html += '<p class="mb-1"><strong>Doctor:</strong> ' + escapeHtml(reg.doctor || '-') + '</p>';
-                    html += '<p class="mb-0"><strong>Fecha ingreso:</strong> ' + escapeHtml(reg.ingreso_display || reg.ingreso || '-') + '</p></div>';
-                    html += '<div class="mb-3"><h6 class="border-bottom pb-2">Historial de pagos</h6>';
-                    html += '<p class="mb-2"><strong>Total orden:</strong> ' + escapeHtml(pago.total || '0') + ' ' + (window.APP_CURRENCY_SYMBOL || '$') + ' &nbsp;|&nbsp; <strong>Pagado:</strong> ' + escapeHtml(pago.monto_pagar || '0') + ' ' + (window.APP_CURRENCY_SYMBOL || '$') + ' &nbsp;|&nbsp; <strong>Saldo:</strong> ' + escapeHtml(pago.saldo || '0') + ' ' + (window.APP_CURRENCY_SYMBOL || '$') + '</p>';
-                    var urlComp = '<?= site_url('registers/comprobantePdf') ?>/' + encodeURIComponent(rid);
-                    var lblComp = d.sin_billing_enabled ? 'Descargar factura (PDF)' : 'Descargar recibo (PDF)';
-                    html += '<p class="mb-2"><a href="' + urlComp + '" class="btn btn-sm btn-outline-secondary" target="_blank" rel="noopener"><i class="fa-solid fa-file-invoice-dollar me-1"></i>' + escapeHtml(lblComp) + '</a></p>';
-                    if (!d.pago_completo && pago && Object.keys(pago).length > 0) {
-                        html += '<p class="small text-muted mb-2"><i class="fa-solid fa-circle-info me-1"></i>El comprobante mostrará el saldo pendiente si la orden aún no está saldada.</p>';
-                    }
-                    if (d.abonos && d.abonos.length > 0) {
-                        html += '<div class="table-responsive"><table class="table table-sm table-bordered"><thead><tr><th>Fecha</th><th>Monto</th><th>Método</th></tr></thead><tbody>';
-                        d.abonos.forEach(function(a) {
-                            var fecha = a.fecha_abono_display || a.fecha_abono || '-';
-                            html += '<tr><td>' + escapeHtml(fecha) + '</td><td>' + escapeHtml(a.monto || '0') + ' ' + (window.APP_CURRENCY_SYMBOL || '$') + '</td><td>' + escapeHtml(a.tipo_nombre || a.tipopago || '-') + '</td></tr>';
-                        });
-                        html += '</tbody></table></div>';
-                    } else {
-                        html += '<p class="text-muted small mb-0">Sin pagos registrados.</p>';
-                    }
-                    html += '</div>';
-                    html += '<div><h6 class="border-bottom pb-2">Pruebas realizadas</h6>';
-                    if (d.pruebas && d.pruebas.length > 0) {
-                        html += '<ul class="list-group list-group-flush">';
-                        d.pruebas.forEach(function(p) {
-                            html += '<li class="list-group-item d-flex justify-content-between"><span>' + escapeHtml(p.nombre || '-') + '</span>';
-                            if (p.categoria) html += '<span class="text-muted small">' + escapeHtml(p.categoria) + '</span>';
-                            html += '</li>';
-                        });
-                        html += '</ul>';
-                        html += '<p class="mt-2 small text-muted">Resultados: ' + escapeHtml(d.tiene_resultados ? d.regvalues_count + ' valores registrados' : 'Sin resultados') + '</p>';
-                    } else {
-                        html += '<p class="text-muted">No hay pruebas registradas.</p>';
-                    }
-                    html += '</div>';
-                    if (historialContent) historialContent.innerHTML = html;
-                })
-                .catch(function() {
-                    if (historialContent) historialContent.innerHTML = '<p class="text-danger">Error de conexión.</p>';
-                });
+            cargarHistorial(rid, true);
         });
     });
+
+    if (historialContent) {
+        historialContent.addEventListener('click', function(e) {
+            var btnEdit = e.target.closest('.btn-editar-abono');
+            if (btnEdit) {
+                var rid = btnEdit.getAttribute('data-registro-id') || '';
+                var abonoId = btnEdit.getAttribute('data-abono-id') || '';
+                var tipopago = btnEdit.getAttribute('data-tipopago') || '1';
+                var monto = btnEdit.getAttribute('data-monto') || '0';
+                var fecha = btnEdit.getAttribute('data-fecha') || '';
+                if (editAbonoRegistroId) editAbonoRegistroId.value = rid;
+                if (editAbonoId) editAbonoId.value = abonoId;
+                if (editAbonoTipopago) editAbonoTipopago.value = tipopago;
+                if (editAbonoMonto) editAbonoMonto.value = monto;
+                if (editAbonoResumen) {
+                    editAbonoResumen.textContent = 'Pago registrado el ' + fecha;
+                }
+                if (typeof bootstrap !== 'undefined' && modalEditarTipoPago) {
+                    new bootstrap.Modal(modalEditarTipoPago).show();
+                }
+                return;
+            }
+            var btnDel = e.target.closest('.btn-eliminar-abono');
+            if (btnDel) {
+                var ridDel = btnDel.getAttribute('data-registro-id') || '';
+                var abonoIdDel = btnDel.getAttribute('data-abono-id') || '';
+                var montoDel = btnDel.getAttribute('data-monto') || '0';
+                var fechaDel = btnDel.getAttribute('data-fecha') || '';
+                var msg = '¿Eliminar el pago del ' + fechaDel + ' por ' + montoDel + ' ' + (window.APP_CURRENCY_SYMBOL || '$') + '? Se actualizará el saldo de la orden.';
+                var ejecutarEliminar = function() {
+                    var body = 'pago_abono_id=' + encodeURIComponent(abonoIdDel) + getCsrfBody();
+                    fetch('<?= site_url('registers/eliminarAbonoPago') ?>/' + ridDel, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'X-Requested-With': 'XMLHttpRequest' },
+                        body: body
+                    })
+                    .then(function(r) { return r.json(); })
+                    .then(function(res) {
+                        if (res.success) {
+                            cargarHistorial(ridDel, false);
+                        } else {
+                            mostrarMensajeModal('Error', res.message || 'Error al eliminar');
+                        }
+                    })
+                    .catch(function() { mostrarMensajeModal('Error', 'Error de conexión'); });
+                };
+                if (typeof uiConfirm === 'function') {
+                    uiConfirm(msg, 'Confirmar eliminación').then(function(ok) {
+                        if (ok) ejecutarEliminar();
+                    });
+                } else if (window.confirm(msg)) {
+                    ejecutarEliminar();
+                }
+            }
+        });
+    }
+
+    if (btnGuardarTipoPago) {
+        btnGuardarTipoPago.addEventListener('click', function() {
+            var rid = editAbonoRegistroId ? editAbonoRegistroId.value : '';
+            var abonoId = editAbonoId ? editAbonoId.value : '';
+            var tipopago = editAbonoTipopago ? editAbonoTipopago.value : '';
+            var monto = editAbonoMonto ? editAbonoMonto.value : '';
+            if (!rid || !abonoId) return;
+            if (!monto || parseFloat(String(monto).replace(',', '.')) <= 0) {
+                mostrarMensajeModal('Error', 'El monto debe ser mayor a 0');
+                return;
+            }
+            var body = 'pago_abono_id=' + encodeURIComponent(abonoId) + '&tipopago=' + encodeURIComponent(tipopago) + '&monto=' + encodeURIComponent(monto) + getCsrfBody();
+            fetch('<?= site_url('registers/editarAbonoPago') ?>/' + rid, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'X-Requested-With': 'XMLHttpRequest' },
+                body: body
+            })
+            .then(function(r) { return r.json(); })
+            .then(function(res) {
+                if (res.success) {
+                    if (typeof bootstrap !== 'undefined' && modalEditarTipoPago) {
+                        var inst = bootstrap.Modal.getInstance(modalEditarTipoPago);
+                        if (inst) inst.hide();
+                    }
+                    cargarHistorial(rid, false);
+                } else {
+                    mostrarMensajeModal('Error', res.message || 'Error al guardar');
+                }
+            })
+            .catch(function() { mostrarMensajeModal('Error', 'Error de conexión'); });
+        });
+    }
 
     // Modal WhatsApp
     var modalWhatsapp = document.getElementById('modalWhatsapp');

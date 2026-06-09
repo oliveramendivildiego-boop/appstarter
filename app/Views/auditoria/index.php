@@ -17,6 +17,8 @@ $accionBadges = [
     'eliminar' => 'bg-danger',
     'guardar_resultados' => 'bg-info', 'validar_tecnico' => 'bg-info', 'validar_medico' => 'bg-info',
     'agregar_pago' => 'bg-warning text-dark',
+    'editar_tipo_pago' => 'bg-primary', 'editar_pago' => 'bg-primary',
+    'eliminar_pago' => 'bg-danger',
     'enviar_whatsapp' => 'bg-success',
     'cambiar_estado_muestra' => 'bg-secondary',
     'tipo_muestra_crear' => 'bg-success', 'tipo_muestra_actualizar' => 'bg-primary', 'tipo_muestra_eliminar' => 'bg-danger',

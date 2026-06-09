@@ -258,6 +258,11 @@ if ($precioTipoVal === 'total') {
             </td>
             <td class="company-block">
                 <div class="company-name"><?= esc($company) ?></div>
+                <?php
+                $sucursal = trim((string) ($lab_config['sucursal'] ?? $layoutCfg['sucursal'] ?? ''));
+                if ($sucursal !== ''): ?>
+                    <p class="company-line"><?= esc($sucursal) ?></p>
+                <?php endif; ?>
                 <?php if (!empty($lab_config['address'])): ?>
                     <p class="company-line"><?= esc($lab_config['address']) ?></p>
                 <?php endif; ?>

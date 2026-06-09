@@ -129,6 +129,12 @@
                 <?= form_input(['name' => 'company', 'id' => 'company', 'class' => 'form-control', 'autocomplete' => 'organization', 'value' => $config['company'] ?? '']) ?>
             </div>
             <div class="col-md-6 mb-3">
+                <?= form_label(lang('Config.config_sucursal'), 'sucursal', ['class' => 'form-label']) ?>
+                <?= form_input(['name' => 'sucursal', 'id' => 'sucursal', 'class' => 'form-control', 'autocomplete' => 'off', 'value' => $config['sucursal'] ?? '']) ?>
+            </div>
+        </div>
+        <div class="row">
+            <div class="col-md-6 mb-3">
                 <?= form_label(lang('Config.config_phone'), 'phone', ['class' => 'form-label']) ?>
                 <?= form_input(['name' => 'phone', 'id' => 'phone', 'class' => 'form-control', 'autocomplete' => 'tel', 'value' => $config['phone'] ?? '']) ?>
             </div>

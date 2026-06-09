@@ -2552,6 +2552,105 @@ class RegisterModel extends Model
     }
 
     /**
+     * Obtiene un abono por ID.
+     */
+    public function getAbonoById(int $pagoAbonoId): ?array
+    {
+        if ($pagoAbonoId < 1 || !$this->db->tableExists('pago_abono')) {
+            return null;
+        }
+        $row = $this->db->table('pago_abono')
+            ->where('pago_abono_id', $pagoAbonoId)
+            ->get()
+            ->getRowArray();
+
+        return $row ?: null;
+    }
+
+    /**
+     * Recalcula monto_pagar, saldo y tipopago en pago según los abonos del registro.
+     */
+    public function recalcularPagoDesdeAbonos(int $registroId): bool
+    {
+        $pago = $this->getPagoByRegistroId($registroId);
+        if (!$pago) {
+            return false;
+        }
+
+        $abonos = $this->getAbonosByRegistroId($registroId);
+        $sumaMonto = 0.0;
+        $ultimoTipopago = (string) ($pago->tipopago ?? '1');
+        foreach ($abonos as $a) {
+            $sumaMonto += (float) ($a['monto'] ?? 0);
+            $ultimoTipopago = (string) ($a['tipopago'] ?? $ultimoTipopago);
+        }
+
+        $total = (float) ($pago->total ?? 0);
+        $nuevoSaldo = $total - $sumaMonto;
+
+        return $this->db->table('pago')->where('registro_id', $registroId)->update([
+            'monto_pagar' => number_format($sumaMonto, 2, '.', ''),
+            'saldo'       => number_format($nuevoSaldo, 2, '.', ''),
+            'tipopago'    => $ultimoTipopago !== '' ? $ultimoTipopago : '1',
+        ]);
+    }
+
+    /**
+     * Actualiza monto y método de pago de un abono; recalcula totales de la orden.
+     *
+     * @return array<string, mixed>|null Abono anterior (antes del cambio) o null si falla
+     */
+    public function updateAbono(int $pagoAbonoId, string $tipopago, float $monto): ?array
+    {
+        if (!$this->db->tableExists('pago_abono')) {
+            return null;
+        }
+
+        $abono = $this->getAbonoById($pagoAbonoId);
+        if (!$abono || $monto <= 0) {
+            return null;
+        }
+
+        $tipopagoValido = in_array($tipopago, ['1', '2', '3', '4'], true) ? $tipopago : '1';
+        $anterior = $abono;
+
+        $this->db->table('pago_abono')
+            ->where('pago_abono_id', $pagoAbonoId)
+            ->update([
+                'tipopago' => $tipopagoValido,
+                'monto'    => number_format($monto, 2, '.', ''),
+            ]);
+
+        $registroId = (int) ($abono['registro_id'] ?? 0);
+        $this->recalcularPagoDesdeAbonos($registroId);
+
+        return $anterior;
+    }
+
+    /**
+     * Elimina un abono y recalcula totales de pago.
+     *
+     * @return array<string, mixed>|null Abono eliminado o null si falla
+     */
+    public function deleteAbono(int $pagoAbonoId): ?array
+    {
+        if (!$this->db->tableExists('pago_abono')) {
+            return null;
+        }
+
+        $abono = $this->getAbonoById($pagoAbonoId);
+        if (!$abono) {
+            return null;
+        }
+
+        $registroId = (int) ($abono['registro_id'] ?? 0);
+        $this->db->table('pago_abono')->where('pago_abono_id', $pagoAbonoId)->delete();
+        $this->recalcularPagoDesdeAbonos($registroId);
+
+        return $abono;
+    }
+
+    /**
      * Obtiene historial: pago + pruebas realizadas para un registro
      */
     public function getHistorialRegistro(int $registroId): ?array

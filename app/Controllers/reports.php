@@ -587,6 +587,7 @@ class Reports extends SecureArea
 
         return [
             'company_name'            => $layoutConfig['company'] ?? 'Laboratorio',
+            'sucursal'                => trim((string) (model(\App\Models\AppConfigModel::class)->getValue('sucursal') ?? '')),
             'startDate'               => $startDate,
             'endDate'                 => $endDate,
             'periodo_texto'           => RegisterService::formatReportDate($startDate) . ' — ' . RegisterService::formatReportDate($endDate),
@@ -623,6 +624,7 @@ class Reports extends SecureArea
 
         return [
             'company_name'          => $live['company_name'],
+            'sucursal'              => $live['sucursal'] ?? '',
             'periodo_texto'         => $live['periodo_texto'],
             'generado_en'           => $live['generado_en'],
             'elaborado_por'         => $live['elaborado_por'],
@@ -803,6 +805,7 @@ class Reports extends SecureArea
 
         return [
             'company_name'            => $snapshot['company_name'] ?? 'Laboratorio',
+            'sucursal'                => trim((string) ($snapshot['sucursal'] ?? '')),
             'startDate'               => $startDate,
             'endDate'                 => $endDate,
             'periodo_texto'           => $snapshot['periodo_texto'] ?? '',

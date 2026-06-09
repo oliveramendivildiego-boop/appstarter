@@ -3,6 +3,7 @@
 return [
     'config_info'          => 'Configuración del sistema',
     'config_company'        => 'Empresa',
+    'config_sucursal'       => 'Sucursal',
     'config_logo'             => 'Logo de la empresa',
     'config_header_brand'     => 'Mostrar en el header',
     'config_header_brand_logo'=> 'Logo',
