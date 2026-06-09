@@ -298,4 +298,107 @@ class CustomerModel extends Model
         usort($out, static fn (string $a, string $b): int => strcasecmp($a, $b));
         return $out;
     }
+
+    /**
+     * Aplica una transformación de texto a nombre y apellidos de todos los pacientes activos.
+     *
+     * @return array{success: bool, message: string, patients_updated: int, unchanged: int}
+     */
+    public function transformAllNames(string $mode): array
+    {
+        $serviceClass = \App\Services\LabotestNameTransformService::class;
+        $allowedModes = [
+            $serviceClass::MODE_UPPERCASE,
+            $serviceClass::MODE_TITLE,
+        ];
+        if (! in_array($mode, $allowedModes, true)) {
+            return [
+                'success'          => false,
+                'message'          => 'Modo de transformación inválido',
+                'patients_updated' => 0,
+                'unchanged'        => 0,
+            ];
+        }
+
+        $split = $this->usesSplitNames();
+        $p = $this->peopleTable();
+        $c = $this->customersTable();
+        $select = $split
+            ? "{$p}.person_id, {$p}.first_name, {$p}.last_name_fa, {$p}.last_name_mom"
+            : "{$p}.person_id, {$p}.first_name, {$p}.last_name";
+
+        $rows = $this->db->table('customers')
+            ->select($select)
+            ->join('people', "{$p}.person_id = {$c}.person_id")
+            ->where("{$c}.deleted", 0)
+            ->get()
+            ->getResultArray();
+
+        $patientsUpdated = 0;
+        $unchanged       = 0;
+
+        foreach ($rows as $row) {
+            $personId = (int) ($row['person_id'] ?? 0);
+            if ($personId < 1) {
+                continue;
+            }
+
+            $updates = [];
+            $firstName = trim((string) ($row['first_name'] ?? ''));
+            if ($firstName !== '') {
+                $transformed = $serviceClass::transform($firstName, $mode);
+                if ($transformed !== $firstName) {
+                    $updates['first_name'] = $transformed;
+                }
+            }
+
+            if ($split) {
+                $lastNameFa = trim((string) ($row['last_name_fa'] ?? ''));
+                if ($lastNameFa !== '') {
+                    $transformed = $serviceClass::transform($lastNameFa, $mode);
+                    if ($transformed !== $lastNameFa) {
+                        $updates['last_name_fa'] = $transformed;
+                    }
+                }
+                $lastNameMom = trim((string) ($row['last_name_mom'] ?? ''));
+                if ($lastNameMom !== '') {
+                    $transformed = $serviceClass::transform($lastNameMom, $mode);
+                    if ($transformed !== $lastNameMom) {
+                        $updates['last_name_mom'] = $transformed;
+                    }
+                }
+            } else {
+                $lastName = trim((string) ($row['last_name'] ?? ''));
+                if ($lastName !== '') {
+                    $transformed = $serviceClass::transform($lastName, $mode);
+                    if ($transformed !== $lastName) {
+                        $updates['last_name'] = $transformed;
+                    }
+                }
+            }
+
+            if ($updates === []) {
+                $unchanged++;
+                continue;
+            }
+
+            $this->db->table('people')->where('person_id', $personId)->update($updates);
+            $patientsUpdated++;
+        }
+
+        $modeLabels = [
+            $serviceClass::MODE_UPPERCASE => 'MAYÚSCULAS',
+            $serviceClass::MODE_TITLE     => 'título',
+        ];
+        $label = $modeLabels[$mode] ?? $mode;
+
+        return [
+            'success'          => true,
+            'message'          => $patientsUpdated > 0
+                ? "Se actualizaron {$patientsUpdated} paciente(s) (formato {$label})."
+                : 'No hubo cambios: los nombres ya cumplen el formato seleccionado.',
+            'patients_updated' => $patientsUpdated,
+            'unchanged'        => $unchanged,
+        ];
+    }
 }

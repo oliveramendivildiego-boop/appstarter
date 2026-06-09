@@ -328,6 +328,7 @@ $routes->post('customers/save/(:num)', 'Customers::save/$1');
 $routes->post('customers/save/(:any)', 'Customers::save/-1');
 $routes->post('customers/save', 'Customers::save');
 $routes->post('customers/delete', 'Customers::delete');
+$routes->post('customers/transformnames', 'Customers::transformNames');
 
 // Doctors
 $routes->get('doctors/view/(:num)', 'Doctors::view/$1');
@@ -343,3 +344,4 @@ $routes->post('doctors/save', 'Doctors::saves');
 $routes->get('doctors/delete/(:num)', 'Doctors::deleteRedirect/$1');
 $routes->get('doctors/delete', 'Doctors::deleteRedirect');
 $routes->post('doctors/delete', 'Doctors::delete');
+$routes->post('doctors/transformnames', 'Doctors::transformNames');

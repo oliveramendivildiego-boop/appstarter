@@ -3,6 +3,7 @@
 namespace App\Controllers;
 
 use App\Models\DoctorModel;
+use App\Services\LabotestNameTransformService;
 use CodeIgniter\HTTP\RedirectResponse;
 use CodeIgniter\HTTP\ResponseInterface;
 
@@ -172,6 +173,48 @@ class Doctors extends SecureArea
         }
 
         return redirect()->to(site_url('doctors'));
+    }
+
+    /**
+     * Transforma en lote nombre y especialidad de todos los doctores (mayúsculas o título).
+     */
+    public function transformNames(): ResponseInterface
+    {
+        $mode = strtolower(trim((string) ($this->request->getPost('mode') ?? '')));
+        $allowedModes = [
+            LabotestNameTransformService::MODE_UPPERCASE,
+            LabotestNameTransformService::MODE_TITLE,
+        ];
+        if (! in_array($mode, $allowedModes, true)) {
+            return $this->response->setJSON([
+                'success' => false,
+                'message' => 'Seleccione un formato válido',
+                'csrf_token' => csrf_hash(),
+                'csrf_name' => csrf_token(),
+            ])->setStatusCode(400);
+        }
+
+        $result = $this->doctorModel->transformAllNames($mode);
+        if ($result['success'] ?? false) {
+            \App\Models\AuditoriaModel::log(
+                'doctors',
+                'transformar_nombres',
+                '',
+                \App\Models\AuditoriaModel::detail([
+                    'modo' => $mode,
+                    'doctores' => (int) ($result['doctors_updated'] ?? 0),
+                ])
+            );
+        }
+
+        return $this->response->setJSON([
+            'success' => (bool) ($result['success'] ?? false),
+            'message' => (string) ($result['message'] ?? ''),
+            'doctors_updated' => (int) ($result['doctors_updated'] ?? 0),
+            'unchanged' => (int) ($result['unchanged'] ?? 0),
+            'csrf_token' => csrf_hash(),
+            'csrf_name' => csrf_token(),
+        ])->setStatusCode(($result['success'] ?? false) ? 200 : 400);
     }
 
     /**

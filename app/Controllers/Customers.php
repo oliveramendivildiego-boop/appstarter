@@ -4,6 +4,7 @@ namespace App\Controllers;
 
 use App\Models\CustomerModel;
 use App\Services\ConfigService;
+use App\Services\LabotestNameTransformService;
 use CodeIgniter\HTTP\ResponseInterface;
 
 class Customers extends PersonController
@@ -194,6 +195,48 @@ class Customers extends PersonController
         }
 
         return redirect()->to(site_url('customers'));
+    }
+
+    /**
+     * Transforma en lote nombre y apellidos de todos los pacientes (mayúsculas o título).
+     */
+    public function transformNames(): ResponseInterface
+    {
+        $mode = strtolower(trim((string) ($this->request->getPost('mode') ?? '')));
+        $allowedModes = [
+            LabotestNameTransformService::MODE_UPPERCASE,
+            LabotestNameTransformService::MODE_TITLE,
+        ];
+        if (! in_array($mode, $allowedModes, true)) {
+            return $this->response->setJSON([
+                'success' => false,
+                'message' => 'Seleccione un formato válido',
+                'csrf_token' => csrf_hash(),
+                'csrf_name' => csrf_token(),
+            ])->setStatusCode(400);
+        }
+
+        $result = $this->customerModel->transformAllNames($mode);
+        if ($result['success'] ?? false) {
+            \App\Models\AuditoriaModel::log(
+                'customers',
+                'transformar_nombres',
+                '',
+                \App\Models\AuditoriaModel::detail([
+                    'modo' => $mode,
+                    'pacientes' => (int) ($result['patients_updated'] ?? 0),
+                ])
+            );
+        }
+
+        return $this->response->setJSON([
+            'success' => (bool) ($result['success'] ?? false),
+            'message' => (string) ($result['message'] ?? ''),
+            'patients_updated' => (int) ($result['patients_updated'] ?? 0),
+            'unchanged' => (int) ($result['unchanged'] ?? 0),
+            'csrf_token' => csrf_hash(),
+            'csrf_name' => csrf_token(),
+        ])->setStatusCode(($result['success'] ?? false) ? 200 : 400);
     }
 
     public function delete(): ResponseInterface

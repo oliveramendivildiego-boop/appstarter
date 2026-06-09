@@ -265,4 +265,82 @@ class DoctorModel extends Model
             ->findAll($limit);
         return array_map(fn ($r) => $r->name . ' (' . $r->speciality . ')', $rows);
     }
+
+    /**
+     * Aplica una transformación de texto a nombre y especialidad de todos los doctores activos.
+     *
+     * @return array{success: bool, message: string, doctors_updated: int, unchanged: int}
+     */
+    public function transformAllNames(string $mode): array
+    {
+        $serviceClass = \App\Services\LabotestNameTransformService::class;
+        $allowedModes = [
+            $serviceClass::MODE_UPPERCASE,
+            $serviceClass::MODE_TITLE,
+        ];
+        if (! in_array($mode, $allowedModes, true)) {
+            return [
+                'success'         => false,
+                'message'         => 'Modo de transformación inválido',
+                'doctors_updated' => 0,
+                'unchanged'       => 0,
+            ];
+        }
+
+        $rows = $this->db->table('doctors')
+            ->select('doctor_id, name, speciality')
+            ->where('deleted', 0)
+            ->get()
+            ->getResultArray();
+
+        $doctorsUpdated = 0;
+        $unchanged      = 0;
+
+        foreach ($rows as $row) {
+            $doctorId = (int) ($row['doctor_id'] ?? 0);
+            if ($doctorId < 1) {
+                continue;
+            }
+
+            $updates = [];
+            $name = trim((string) ($row['name'] ?? ''));
+            if ($name !== '') {
+                $transformed = $serviceClass::transform($name, $mode);
+                if ($transformed !== $name) {
+                    $updates['name'] = $transformed;
+                }
+            }
+
+            $speciality = trim((string) ($row['speciality'] ?? ''));
+            if ($speciality !== '') {
+                $transformed = $serviceClass::transform($speciality, $mode);
+                if ($transformed !== $speciality) {
+                    $updates['speciality'] = $transformed;
+                }
+            }
+
+            if ($updates === []) {
+                $unchanged++;
+                continue;
+            }
+
+            $this->db->table('doctors')->where('doctor_id', $doctorId)->update($updates);
+            $doctorsUpdated++;
+        }
+
+        $modeLabels = [
+            $serviceClass::MODE_UPPERCASE => 'MAYÚSCULAS',
+            $serviceClass::MODE_TITLE     => 'título',
+        ];
+        $label = $modeLabels[$mode] ?? $mode;
+
+        return [
+            'success'         => true,
+            'message'         => $doctorsUpdated > 0
+                ? "Se actualizaron {$doctorsUpdated} doctor(es) (formato {$label})."
+                : 'No hubo cambios: los nombres y especialidades ya cumplen el formato seleccionado.',
+            'doctors_updated' => $doctorsUpdated,
+            'unchanged'       => $unchanged,
+        ];
+    }
 }
