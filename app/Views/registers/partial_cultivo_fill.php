@@ -46,9 +46,7 @@ $leyendaCultivoModel = model(LeyendaCultivoModel::class);
 
 $matriz = $labotestModel->getCultivoMatrizConfig($prianacategoriaId);
 
-$cuerpoCfg = is_array($matriz['cuerpo'] ?? null) ? $matriz['cuerpo'] : [];
-
-$valoresFillHabilitado = ! empty($cuerpoCfg['valores_habilitado']);
+$bloquesMatriz = \App\Models\LabotestModel::resolveCultivoMatrizBloques($matriz);
 
 $leyendasActivas = $leyendaCultivoModel->getActivas();
 
@@ -84,15 +82,7 @@ if (! empty($existentes[$cultivoKey])) {
 
 
 
-$secciones = [
-
-    'encabezado' => 'Encabezado',
-
-    'cuerpo'     => 'Cuerpo',
-
-    'pie'        => 'Pie',
-
-];
+$secciones = \App\Models\LabotestModel::CULTIVO_SECCION_LABELS;
 
 
 
@@ -164,7 +154,9 @@ $renderExtrasFill = static function (
 
     int $priaId,
 
-    string $secId,
+    string $bloqueId,
+
+    string $bloqueTipo,
 
     int $r,
 
@@ -178,7 +170,7 @@ $renderExtrasFill = static function (
 
 ): string {
 
-    if ($secId !== 'cuerpo' || ! $mostrarValor) {
+    if ($bloqueTipo !== 'cuerpo' || ! $mostrarValor) {
 
         return '';
 
@@ -186,13 +178,15 @@ $renderExtrasFill = static function (
 
     $dataBase = ' data-prianacategoria-id="' . $priaId . '"'
 
-        . ' data-seccion="' . esc($secId, 'attr') . '"'
+        . ' data-bloque-id="' . esc($bloqueId, 'attr') . '"'
+
+        . ' data-seccion="' . esc($bloqueId, 'attr') . '"'
 
         . ' data-fila="' . $r . '"'
 
         . ' data-columna="' . $c . '"';
 
-    $idValor = 'cvn_' . $priaId . '_' . $secId . '_' . $r . '_' . $c;
+    $idValor = 'cvn_' . $priaId . '_' . $bloqueId . '_' . $r . '_' . $c;
 
     $valValor = trim((string) ($existentes[$idValor] ?? ''));
 
@@ -347,9 +341,21 @@ foreach ($leyendasPorId as $lid => $lcRow) {
 
 
 
-        <?php foreach ($secciones as $secId => $secLabel):
+        <?php foreach ($bloquesMatriz as $bloque):
 
-            $sec = $matriz[$secId] ?? ['filas' => 0, 'columnas' => 1, 'titulos' => [[]], 'celdas' => []];
+            $bloqueId = (string) ($bloque['id'] ?? '');
+
+            $bloqueTipo = (string) ($bloque['tipo'] ?? 'encabezado');
+
+            if ($bloqueId === '') {
+
+                continue;
+
+            }
+
+            $secLabel = \App\Models\LabotestModel::cultivoBloqueDisplayLabel($bloque, $bloquesMatriz);
+
+            $sec = $bloque;
 
             $filas = max(0, (int) ($sec['filas'] ?? 0));
 
@@ -361,7 +367,7 @@ foreach ($leyendasPorId as $lid => $lcRow) {
 
             $celdas = is_array($sec['celdas'] ?? null) ? $sec['celdas'] : [];
 
-            $mostrarValorSec = ($secId === 'cuerpo') && $valoresFillHabilitado;
+            $mostrarValorSec = ($bloqueTipo === 'cuerpo') && ! empty($sec['valores_habilitado']);
 
             $maxTituloFilas = count($titulosFilas);
 
@@ -429,19 +435,21 @@ foreach ($leyendasPorId as $lid => $lcRow) {
 
                                 $valorPlaceholder = is_array($celdaRaw) ? trim((string) ($celdaRaw['valor'] ?? '')) : '';
 
-                                $valorActual = (string) ($existentes['cv_' . $prianacategoriaId . '_' . $secId . '_' . $r . '_' . $c] ?? '');
+                                $valorActual = (string) ($existentes['cv_' . $prianacategoriaId . '_' . $bloqueId . '_' . $r . '_' . $c] ?? '');
 
                                 if ($valorActual === '') {
 
-                                    $valorActual = $valorCelda($valoresGuardados, $secId, $r, $c);
+                                    $valorActual = $valorCelda($valoresGuardados, $bloqueId, $r, $c);
 
                                 }
 
-                                $inputId = 'cv_' . $prianacategoriaId . '_' . $secId . '_' . $r . '_' . $c;
+                                $inputId = 'cv_' . $prianacategoriaId . '_' . $bloqueId . '_' . $r . '_' . $c;
 
                                 $dataAttrs = ' data-prianacategoria-id="' . $prianacategoriaId . '"'
 
-                                    . ' data-seccion="' . esc($secId, 'attr') . '"'
+                                    . ' data-bloque-id="' . esc($bloqueId, 'attr') . '"'
+
+                                    . ' data-seccion="' . esc($bloqueId, 'attr') . '"'
 
                                     . ' data-fila="' . $r . '"'
 
@@ -451,7 +459,9 @@ foreach ($leyendasPorId as $lid => $lcRow) {
 
                                     $prianacategoriaId,
 
-                                    $secId,
+                                    $bloqueId,
+
+                                    $bloqueTipo,
 
                                     $r,
 

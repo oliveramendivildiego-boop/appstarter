@@ -488,12 +488,21 @@ class Labotests extends SecureArea
         if (! is_string($json) || trim($json) === '') {
             $json = (string) ($_POST['cultivo_matriz_json'] ?? '');
         }
+        if (trim($json) === '') {
+            $rawBody = (string) $this->request->getBody();
+            if ($rawBody !== '' && str_contains($rawBody, 'cultivo_matriz_json=')) {
+                parse_str($rawBody, $parsedBody);
+                $json = (string) ($parsedBody['cultivo_matriz_json'] ?? '');
+            }
+        }
 
         $config = is_string($json) && trim($json) !== '' ? json_decode($json, true) : null;
         if (! is_array($config)) {
             $detail = json_last_error_msg();
             $msg = 'Configuración de matriz inválida';
-            if ($detail !== '' && $detail !== 'No error') {
+            if (trim($json) === '') {
+                $msg = 'No se recibió la configuración. Si la matriz es muy grande, aumente max_input_vars y post_max_size en PHP.';
+            } elseif ($detail !== '' && $detail !== 'No error') {
                 $msg .= ': ' . $detail;
             }
             return $respond(false, $msg, 400);
@@ -1060,6 +1069,7 @@ class Labotests extends SecureArea
      */
     public function opciones()
     {
+        $this->opcionModel->ensureSystemOpciones();
         $opciones = $this->opcionModel->findAll();
         foreach ($opciones as &$o) {
             $tabla = trim($o['tabla'] ?? '');

@@ -3,15 +3,12 @@
  * Matriz configurable para pruebas de tipo cultivo (encabezado, cuerpo, pie).
  *
  * @var object $labotests_info
- * @var array<string, array{filas: int, columnas: int, titulos: list<list<string>>, celdas: list<list<array{modo: string, opcion_id?: int}>>}> $cultivo_matriz
+ * @var array{version?: int, bloques?: list<array<string, mixed>>} $cultivo_matriz
  * @var array<int, string> $opciones
  * @var array<int, array<string, mixed>> $leyendas_cultivo
  */
-$secciones = [
-    'encabezado' => 'Encabezado',
-    'cuerpo'     => 'Cuerpo',
-    'pie'        => 'Pie',
-];
+$secciones = \App\Models\LabotestModel::CULTIVO_SECCION_LABELS;
+$bloquesMatriz = \App\Models\LabotestModel::resolveCultivoMatrizBloques($cultivo_matriz ?? []);
 $matriz = $cultivo_matriz ?? [];
 $opcionesList = $opciones ?? [];
 $leyendasCultivoList = $leyendas_cultivo ?? [];
@@ -127,6 +124,84 @@ $resolveCategoriaCeldaCfg = static function (array $celdaRaw) use ($leyendasJsMa
     font-size: 0.65rem;
     flex-shrink: 0;
 }
+.cultivo-bloques-toolbar {
+    border: 1px dashed #ced4da;
+    border-radius: 0.375rem;
+    background: #f8f9fa;
+}
+.cultivo-orden-panel {
+    border: 1px solid #0d6efd;
+    border-radius: 0.5rem;
+    background: #f0f6ff;
+    padding: 0.75rem 1rem;
+    margin-bottom: 1.25rem;
+}
+.cultivo-orden-panel-title {
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: #0d6efd;
+    margin-bottom: 0.5rem;
+}
+.cultivo-orden-list {
+    list-style: none;
+    padding: 0;
+    margin: 0 0 0.75rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+}
+.cultivo-orden-item {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.4rem 0.6rem;
+    background: #fff;
+    border: 1px solid #b6d4fe;
+    border-radius: 0.375rem;
+    font-size: 0.85rem;
+}
+.cultivo-orden-item.sortable-ghost { opacity: 0.45; }
+.cultivo-orden-item.sortable-chosen {
+    border-color: #0d6efd;
+    box-shadow: 0 0 0 2px rgba(13, 110, 253, 0.15);
+}
+.cultivo-orden-drag {
+    cursor: grab;
+    color: #0d6efd;
+    user-select: none;
+    flex-shrink: 0;
+}
+.cultivo-orden-drag:active { cursor: grabbing; }
+.cultivo-orden-pos {
+    flex-shrink: 0;
+    width: 1.4rem;
+    height: 1.4rem;
+    border-radius: 50%;
+    background: #e7f1ff;
+    color: #0d6efd;
+    font-size: 0.7rem;
+    font-weight: 700;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+.cultivo-orden-label {
+    font-weight: 600;
+    min-width: 0;
+}
+.cultivo-bloques-config-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+.cultivo-bloque-item {
+    border: 1px solid #dee2e6;
+    border-radius: 0.5rem;
+    padding: 0;
+    margin-bottom: 1.25rem;
+    background: #fff;
+}
+.cultivo-bloque-body { padding: 1rem; }
 .cultivo-col-stack {
     display: flex;
     flex-direction: column;
@@ -248,7 +323,7 @@ $resolveCategoriaCeldaCfg = static function (array $celdaRaw) use ($leyendasJsMa
     <div class="card-header d-flex flex-wrap align-items-center gap-2">
         <strong>Valores de sub-clases (prueba cultivo)</strong>
         <span class="badge bg-info text-dark">Matriz</span>
-        <span class="text-muted small">Apile títulos por columna; puede unir columnas por título; en leyenda de cultivo solo elija la categoría (el mensaje se elige al llenar la prueba).</span>
+        <span class="text-muted small">Apile títulos por columna; use el panel «Orden de secciones» arriba para reordenar, duplicar o agregar bloques.</span>
         <a href="<?= site_url('labotests/opciones') ?>" class="btn btn-sm btn-outline-primary" target="_blank" rel="noopener">
             <i class="fa-solid fa-list-check me-1"></i>Tipos de resultado
         </a>
@@ -261,8 +336,57 @@ $resolveCategoriaCeldaCfg = static function (array $celdaRaw) use ($leyendasJsMa
         <input type="hidden" name="prianacategoria_id" value="<?= (int) ($labotests_info->prianacategoria_id ?? 0) ?>">
         <input type="hidden" name="cultivo_matriz_json" id="cultivo_matriz_json" value="">
 
-        <?php foreach ($secciones as $secId => $secLabel):
-            $sec = $matriz[$secId] ?? ['filas' => 1, 'columnas' => 1, 'titulos' => [[]], 'celdas' => [[['modo' => 'texto']]]];
+        <input type="hidden" name="cultivo_matriz_json" id="cultivo_matriz_json" value="">
+
+        <div class="cultivo-orden-panel">
+            <div class="cultivo-orden-panel-title">
+                <i class="fa-solid fa-arrow-down-wide-short me-1"></i>Orden de secciones
+            </div>
+            <p class="small text-muted mb-2 mb-md-2">Arrastre aquí para cambiar el orden (encabezado, cuerpo, pie). La configuración de cada bloque está abajo.</p>
+            <ul class="cultivo-orden-list" id="cultivo_orden_list">
+            <?php $ordenIdx = 0; foreach ($bloquesMatriz as $bloqueOrden):
+                $bloqueIdOrden = (string) ($bloqueOrden['id'] ?? '');
+                $bloqueTipoOrden = (string) ($bloqueOrden['tipo'] ?? 'encabezado');
+                if ($bloqueIdOrden === '') continue;
+                $ordenIdx++;
+                $labelOrden = \App\Models\LabotestModel::cultivoBloqueDisplayLabel($bloqueOrden, $bloquesMatriz);
+            ?>
+                <li class="cultivo-orden-item" data-bloque-id="<?= esc($bloqueIdOrden, 'attr') ?>" data-tipo="<?= esc($bloqueTipoOrden, 'attr') ?>">
+                    <span class="cultivo-orden-drag" title="Arrastrar para reordenar"><i class="fa-solid fa-grip-vertical"></i></span>
+                    <span class="cultivo-orden-pos cultivo-orden-pos-num"><?= (int) $ordenIdx ?></span>
+                    <span class="cultivo-orden-label"><?= esc($labelOrden) ?></span>
+                    <span class="badge bg-secondary"><?= esc($secciones[$bloqueTipoOrden] ?? $bloqueTipoOrden) ?></span>
+                    <div class="ms-auto d-flex gap-1">
+                        <button type="button" class="btn btn-sm btn-outline-primary btn-cultivo-dup-bloque py-0 px-1" data-bloque-id="<?= esc($bloqueIdOrden, 'attr') ?>" title="Duplicar">
+                            <i class="fa-solid fa-copy"></i>
+                        </button>
+                        <button type="button" class="btn btn-sm btn-outline-danger btn-cultivo-del-bloque py-0 px-1" data-bloque-id="<?= esc($bloqueIdOrden, 'attr') ?>" title="Eliminar">
+                            <i class="fa-solid fa-trash-can"></i>
+                        </button>
+                    </div>
+                </li>
+            <?php endforeach; ?>
+            </ul>
+            <div class="cultivo-bloques-toolbar p-2">
+                <span class="small text-muted me-2">Agregar bloque:</span>
+                <?php foreach ($secciones as $tipoAdd => $labelAdd): ?>
+                <button type="button" class="btn btn-sm btn-outline-secondary btn-cultivo-add-bloque" data-tipo="<?= esc($tipoAdd, 'attr') ?>">
+                    <i class="fa-solid fa-plus me-1"></i><?= esc($labelAdd) ?>
+                </button>
+                <?php endforeach; ?>
+            </div>
+        </div>
+
+        <ul class="cultivo-bloques-config-list" id="cultivo_bloques_list">
+        <?php foreach ($bloquesMatriz as $bloque):
+            $bloqueId = (string) ($bloque['id'] ?? '');
+            $bloqueTipo = (string) ($bloque['tipo'] ?? 'encabezado');
+            if ($bloqueId === '') {
+                continue;
+            }
+            $secLabel = \App\Models\LabotestModel::cultivoBloqueDisplayLabel($bloque, $bloquesMatriz);
+            $sec = $bloque;
+            $secId = $bloqueId;
             $filas = max(0, (int) ($sec['filas'] ?? 1));
             $columnas = max(1, (int) ($sec['columnas'] ?? 1));
             $titulosRaw = $sec['titulos'] ?? [];
@@ -271,55 +395,58 @@ $resolveCategoriaCeldaCfg = static function (array $celdaRaw) use ($leyendasJsMa
                 is_array($titulosRaw) ? $titulosRaw : [],
                 $columnas
             );
-            $valoresHabilitado = ($secId === 'cuerpo') && ! empty($sec['valores_habilitado']);
-            $unidadesHabilitado = ($secId === 'cuerpo') && ! empty($sec['unidades_habilitado']);
-            $unidadGlobal = ($secId === 'cuerpo') ? trim((string) ($sec['unidad'] ?? '')) : '';
-            $alineacionFilas = ($secId === 'cuerpo') ? trim((string) ($sec['alineacion_filas'] ?? 'centro')) : 'centro';
+            $valoresHabilitado = ($bloqueTipo === 'cuerpo') && ! empty($sec['valores_habilitado']);
+            $unidadesHabilitado = ($bloqueTipo === 'cuerpo') && ! empty($sec['unidades_habilitado']);
+            $unidadGlobal = ($bloqueTipo === 'cuerpo') ? trim((string) ($sec['unidad'] ?? '')) : '';
+            $alineacionFilas = ($bloqueTipo === 'cuerpo') ? trim((string) ($sec['alineacion_filas'] ?? 'centro')) : 'centro';
             if ($alineacionFilas === 'cuerpo') {
                 $alineacionFilas = 'centro';
             }
             if (! in_array($alineacionFilas, ['centro', 'bordes'], true)) {
                 $alineacionFilas = 'centro';
             }
+            $bloqueIdSafe = preg_replace('/[^a-z0-9_]/', '_', $bloqueId);
         ?>
-        <div class="border rounded p-3 mb-4 cultivo-matriz-seccion" data-seccion="<?= esc($secId, 'attr') ?>"
+        <li class="cultivo-bloque-item" data-bloque-id="<?= esc($bloqueId, 'attr') ?>" data-tipo="<?= esc($bloqueTipo, 'attr') ?>">
+            <div class="cultivo-bloque-body">
+        <div class="border rounded p-3 mb-0 cultivo-matriz-seccion" data-bloque-id="<?= esc($bloqueId, 'attr') ?>" data-tipo="<?= esc($bloqueTipo, 'attr') ?>"
              data-filas="<?= $filas ?>" data-columnas="<?= $columnas ?>"
-             <?= $secId === 'cuerpo' ? 'data-valores-habilitado="' . ($valoresHabilitado ? '1' : '0') . '" data-unidades-habilitado="' . ($unidadesHabilitado ? '1' : '0') . '" data-unidad-global="' . esc($unidadGlobal, 'attr') . '" data-alineacion-filas="' . esc($alineacionFilas, 'attr') . '" data-celdas-json="' . esc(json_encode($celdas, JSON_UNESCAPED_UNICODE), 'attr') . '"' : '' ?>>
+             <?= $bloqueTipo === 'cuerpo' ? 'data-valores-habilitado="' . ($valoresHabilitado ? '1' : '0') . '" data-unidades-habilitado="' . ($unidadesHabilitado ? '1' : '0') . '" data-unidad-global="' . esc($unidadGlobal, 'attr') . '" data-alineacion-filas="' . esc($alineacionFilas, 'attr') . '" data-celdas-json="' . esc(json_encode($celdas, JSON_UNESCAPED_UNICODE), 'attr') . '"' : '' ?>>
             <div class="d-flex flex-wrap align-items-end gap-3 mb-3">
                 <div>
                     <h6 class="mb-1"><?= esc($secLabel) ?></h6>
                     <small class="text-muted">Varios títulos por columna; cada título puede ocupar más de una columna.</small>
                 </div>
-                <?php if ($secId === 'cuerpo'): ?>
+                <?php if ($bloqueTipo === 'cuerpo'): ?>
                 <div class="form-check mb-0">
                     <input type="checkbox" class="form-check-input cultivo-valores-habilitado-check"
-                           id="cultivo_cuerpo_valores_habilitado" data-seccion="cuerpo"
+                           id="cultivo_<?= esc($bloqueIdSafe, 'attr') ?>_valores_habilitado" data-bloque-id="<?= esc($bloqueId, 'attr') ?>"
                            <?= $valoresHabilitado ? 'checked' : '' ?>>
-                    <label class="form-check-label small" for="cultivo_cuerpo_valores_habilitado">Valores</label>
+                    <label class="form-check-label small" for="cultivo_<?= esc($bloqueIdSafe, 'attr') ?>_valores_habilitado">Valores</label>
                     <span class="small text-muted">(campo Valor en cada celda del cuerpo)</span>
                 </div>
                 <div class="form-check mb-0">
                     <input type="checkbox" class="form-check-input cultivo-unidades-habilitado-check"
-                           id="cultivo_cuerpo_unidades_habilitado" data-seccion="cuerpo"
+                           id="cultivo_<?= esc($bloqueIdSafe, 'attr') ?>_unidades_habilitado" data-bloque-id="<?= esc($bloqueId, 'attr') ?>"
                            <?= $unidadesHabilitado ? 'checked' : '' ?>>
-                    <label class="form-check-label small" for="cultivo_cuerpo_unidades_habilitado">Unidades</label>
+                    <label class="form-check-label small" for="cultivo_<?= esc($bloqueIdSafe, 'attr') ?>_unidades_habilitado">Unidades</label>
                     <span class="small text-muted">(una unidad de medida para todo el cuerpo)</span>
                 </div>
                 <div class="cultivo-cuerpo-unidad-wrap<?= $unidadesHabilitado ? '' : ' d-none' ?>">
-                    <label class="form-label small mb-1" for="cultivo_cuerpo_unidad">Unidad de medida</label>
+                    <label class="form-label small mb-1" for="cultivo_<?= esc($bloqueIdSafe, 'attr') ?>_unidad">Unidad de medida</label>
                     <input type="text"
                            class="form-control form-control-sm cultivo-cuerpo-unidad-input"
-                           id="cultivo_cuerpo_unidad"
-                           data-seccion="cuerpo"
+                           id="cultivo_<?= esc($bloqueIdSafe, 'attr') ?>_unidad"
+                           data-bloque-id="<?= esc($bloqueId, 'attr') ?>"
                            value="<?= esc($unidadGlobal) ?>"
                            placeholder="ej. UFC/mL, mg/dl"
                            style="min-width: 9rem;">
                 </div>
                 <div>
-                    <label class="form-label small mb-1" for="cultivo_cuerpo_alineacion_filas">Orden en filas</label>
+                    <label class="form-label small mb-1" for="cultivo_<?= esc($bloqueIdSafe, 'attr') ?>_alineacion_filas">Orden en filas</label>
                     <select class="form-select form-select-sm cultivo-alineacion-filas-select"
-                            id="cultivo_cuerpo_alineacion_filas"
-                            data-seccion="cuerpo"
+                            id="cultivo_<?= esc($bloqueIdSafe, 'attr') ?>_alineacion_filas"
+                            data-bloque-id="<?= esc($bloqueId, 'attr') ?>"
                             style="min-width: 9rem;">
                         <option value="centro" <?= $alineacionFilas === 'centro' ? 'selected' : '' ?>>Centro</option>
                         <option value="bordes" <?= $alineacionFilas === 'bordes' ? 'selected' : '' ?>>Bordes</option>
@@ -329,24 +456,24 @@ $resolveCategoriaCeldaCfg = static function (array $celdaRaw) use ($leyendasJsMa
                 <?php endif; ?>
                 <div class="ms-auto d-flex flex-wrap align-items-end gap-2">
                     <div>
-                        <label class="form-label small mb-1" for="cultivo_<?= esc($secId, 'attr') ?>_filas">Filas de datos</label>
-                        <input type="number" class="form-control form-control-sm cultivo-dim-input" id="cultivo_<?= esc($secId, 'attr') ?>_filas"
-                               data-seccion="<?= esc($secId, 'attr') ?>" data-dim="filas"
+                        <label class="form-label small mb-1" for="cultivo_<?= esc($bloqueIdSafe, 'attr') ?>_filas">Filas de datos</label>
+                        <input type="number" class="form-control form-control-sm cultivo-dim-input" id="cultivo_<?= esc($bloqueIdSafe, 'attr') ?>_filas"
+                               data-bloque-id="<?= esc($bloqueId, 'attr') ?>" data-dim="filas"
                                value="<?= $filas ?>" min="0" max="50" step="1" style="width: 5rem;">
                     </div>
                     <div>
-                        <label class="form-label small mb-1" for="cultivo_<?= esc($secId, 'attr') ?>_columnas">Columnas</label>
-                        <input type="number" class="form-control form-control-sm cultivo-dim-input" id="cultivo_<?= esc($secId, 'attr') ?>_columnas"
-                               data-seccion="<?= esc($secId, 'attr') ?>" data-dim="columnas"
+                        <label class="form-label small mb-1" for="cultivo_<?= esc($bloqueIdSafe, 'attr') ?>_columnas">Columnas</label>
+                        <input type="number" class="form-control form-control-sm cultivo-dim-input" id="cultivo_<?= esc($bloqueIdSafe, 'attr') ?>_columnas"
+                               data-bloque-id="<?= esc($bloqueId, 'attr') ?>" data-dim="columnas"
                                value="<?= $columnas ?>" min="1" max="20" step="1" style="width: 5rem;">
                     </div>
-                    <button type="button" class="btn btn-sm btn-outline-primary btn-cultivo-add-col" data-seccion="<?= esc($secId, 'attr') ?>">
+                    <button type="button" class="btn btn-sm btn-outline-primary btn-cultivo-add-col" data-bloque-id="<?= esc($bloqueId, 'attr') ?>">
                         <i class="fa-solid fa-plus me-1"></i>Agregar columna
                     </button>
                 </div>
             </div>
 
-            <div class="cultivo-titulo-palette mb-2" data-seccion="<?= esc($secId, 'attr') ?>">
+            <div class="cultivo-titulo-palette mb-2" data-bloque-id="<?= esc($bloqueId, 'attr') ?>">
                 <span class="small text-muted me-2">Arrastre a una columna para agregar título debajo:</span>
                 <ul class="list-unstyled d-inline-block mb-0">
                     <li class="cultivo-titulo-plantilla" title="Arrastrar a una columna">
@@ -358,9 +485,9 @@ $resolveCategoriaCeldaCfg = static function (array $celdaRaw) use ($leyendasJsMa
             <div class="row g-2 mb-2 align-items-stretch">
                 <div class="col">
                     <div class="small text-muted mb-1">Vista previa (columnas unidas según colspan):</div>
-                    <div class="cultivo-titulos-preview-grid" data-seccion="<?= esc($secId, 'attr') ?>"
+                    <div class="cultivo-titulos-preview-grid" data-bloque-id="<?= esc($bloqueId, 'attr') ?>"
                          style="--cultivo-cols: <?= (int) $columnas ?>;"></div>
-                    <ul class="cultivo-columnas-grid" data-seccion="<?= esc($secId, 'attr') ?>"
+                    <ul class="cultivo-columnas-grid" data-bloque-id="<?= esc($bloqueId, 'attr') ?>"
                         style="--cultivo-cols: <?= (int) $columnas ?>;">
                         <?php for ($c = 0; $c < $columnas; $c++): ?>
                         <li class="cultivo-col-stack">
@@ -368,7 +495,7 @@ $resolveCategoriaCeldaCfg = static function (array $celdaRaw) use ($leyendasJsMa
                                 <span class="cultivo-col-drag-handle" title="Arrastrar columna"><i class="fa-solid fa-grip-vertical"></i></span>
                                 <span>Col. <?= $c + 1 ?></span>
                             </div>
-                            <ul class="cultivo-titulos-col-list" data-seccion="<?= esc($secId, 'attr') ?>" data-columna="<?= $c ?>">
+                            <ul class="cultivo-titulos-col-list" data-bloque-id="<?= esc($bloqueId, 'attr') ?>" data-columna="<?= $c ?>">
                                 <?php foreach ($titulosPorCol[$c] as $ti => $tituloCell):
                                     $tituloTexto = (string) ($tituloCell['texto'] ?? '');
                                     $tituloColspan = max(1, min($columnas - $c, (int) ($tituloCell['colspan'] ?? 1)));
@@ -377,12 +504,12 @@ $resolveCategoriaCeldaCfg = static function (array $celdaRaw) use ($leyendasJsMa
                                     <span class="cultivo-titulo-drag-handle" title="Arrastrar título"><i class="fa-solid fa-grip-vertical"></i></span>
                                     <input type="text"
                                            class="form-control form-control-sm cultivo-titulo-input flex-grow-1"
-                                           data-seccion="<?= esc($secId, 'attr') ?>"
+                                           data-bloque-id="<?= esc($bloqueId, 'attr') ?>"
                                            data-columna="<?= $c ?>"
                                            value="<?= esc($tituloTexto) ?>"
                                            placeholder="Título <?= $ti + 1 ?>">
                                     <select class="form-select form-select-sm cultivo-titulo-colspan"
-                                            data-seccion="<?= esc($secId, 'attr') ?>"
+                                            data-bloque-id="<?= esc($bloqueId, 'attr') ?>"
                                             data-columna="<?= $c ?>"
                                             title="Columnas que ocupa">
                                         <?php for ($sp = 1; $sp <= ($columnas - $c); $sp++): ?>
@@ -395,7 +522,7 @@ $resolveCategoriaCeldaCfg = static function (array $celdaRaw) use ($leyendasJsMa
                                 <?php endforeach; ?>
                             </ul>
                             <button type="button" class="btn btn-sm btn-link btn-cultivo-add-titulo-in-col p-0 small text-start"
-                                    data-seccion="<?= esc($secId, 'attr') ?>" data-columna="<?= $c ?>">
+                                    data-bloque-id="<?= esc($bloqueId, 'attr') ?>" data-columna="<?= $c ?>">
                                 <i class="fa-solid fa-plus me-1"></i>Título
                             </button>
                         </li>
@@ -403,26 +530,26 @@ $resolveCategoriaCeldaCfg = static function (array $celdaRaw) use ($leyendasJsMa
                     </ul>
                 </div>
                 <div class="col-auto" style="min-width: 11rem;">
-                    <div class="cultivo-trash-zone px-2 text-center" data-seccion="<?= esc($secId, 'attr') ?>" title="Arrastre un título o columna aquí para eliminar">
+                    <div class="cultivo-trash-zone px-2 text-center" data-bloque-id="<?= esc($bloqueId, 'attr') ?>" title="Arrastre un título o columna aquí para eliminar">
                         <i class="fa-solid fa-trash-can me-1"></i>Eliminar
                     </div>
                 </div>
             </div>
 
-            <?php if ($secId === 'cuerpo'): ?>
+            <?php if ($bloqueTipo === 'cuerpo'): ?>
             <div class="cultivo-bulk-celda-panel p-2 mb-2">
                 <div class="d-flex flex-wrap align-items-end gap-2">
                     <div>
-                        <label class="form-label small mb-1" for="cultivo_cuerpo_bulk_modo">Aplicar a todas las columnas</label>
-                        <select class="form-select form-select-sm cultivo-bulk-celda-modo" id="cultivo_cuerpo_bulk_modo" data-seccion="cuerpo">
+                        <label class="form-label small mb-1">Aplicar a todas las columnas</label>
+                        <select class="form-select form-select-sm cultivo-bulk-celda-modo" data-bloque-id="<?= esc($bloqueId, 'attr') ?>">
                             <option value="texto">Texto libre</option>
                             <option value="opcion">Tipo de resultado</option>
                             <option value="leyenda">Leyenda de cultivo</option>
                         </select>
                     </div>
                     <div class="cultivo-bulk-celda-extra cultivo-bulk-opcion-wrap d-none">
-                        <label class="form-label small mb-1" for="cultivo_cuerpo_bulk_opcion">Tipo de resultado</label>
-                        <select class="form-select form-select-sm cultivo-bulk-celda-opcion" id="cultivo_cuerpo_bulk_opcion" data-seccion="cuerpo">
+                        <label class="form-label small mb-1">Tipo de resultado</label>
+                        <select class="form-select form-select-sm cultivo-bulk-celda-opcion" data-bloque-id="<?= esc($bloqueId, 'attr') ?>">
                             <option value="0">— Seleccione tipo —</option>
                             <?php foreach ($opcionesList as $oid => $oname): ?>
                             <option value="<?= (int) $oid ?>"><?= esc($oname) ?></option>
@@ -430,8 +557,8 @@ $resolveCategoriaCeldaCfg = static function (array $celdaRaw) use ($leyendasJsMa
                         </select>
                     </div>
                     <div class="cultivo-bulk-celda-extra cultivo-bulk-leyenda-wrap d-none">
-                        <label class="form-label small mb-1" for="cultivo_cuerpo_bulk_leyenda">Categoría de leyenda</label>
-                        <select class="form-select form-select-sm cultivo-bulk-celda-leyenda" id="cultivo_cuerpo_bulk_leyenda" data-seccion="cuerpo">
+                        <label class="form-label small mb-1">Categoría de leyenda</label>
+                        <select class="form-select form-select-sm cultivo-bulk-celda-leyenda" data-bloque-id="<?= esc($bloqueId, 'attr') ?>">
                             <option value="0">— Seleccione categoría —</option>
                             <?php foreach ($leyendasAgrupadasJs as $grupoLc):
                                 $grpCatId = (int) ($grupoLc['categoria_id'] ?? 0);
@@ -441,7 +568,7 @@ $resolveCategoriaCeldaCfg = static function (array $celdaRaw) use ($leyendasJsMa
                             <?php endforeach; ?>
                         </select>
                     </div>
-                    <button type="button" class="btn btn-sm btn-outline-secondary btn-cultivo-bulk-aplicar" data-seccion="cuerpo">
+                    <button type="button" class="btn btn-sm btn-outline-secondary btn-cultivo-bulk-aplicar" data-bloque-id="<?= esc($bloqueId, 'attr') ?>">
                         <i class="fa-solid fa-arrows-left-right-to-line me-1"></i>Aplicar a todas las columnas
                     </button>
                 </div>
@@ -450,7 +577,7 @@ $resolveCategoriaCeldaCfg = static function (array $celdaRaw) use ($leyendasJsMa
             <?php endif; ?>
 
             <div class="table-responsive">
-                <table class="table table-bordered table-sm mb-0 cultivo-matriz-grid" data-seccion="<?= esc($secId, 'attr') ?>">
+                <table class="table table-bordered table-sm mb-0 cultivo-matriz-grid" data-bloque-id="<?= esc($bloqueId, 'attr') ?>">
                     <thead class="table-light">
                         <tr class="cultivo-fila-ref">
                             <?php for ($c = 0; $c < $columnas; $c++): ?>
@@ -490,7 +617,7 @@ $resolveCategoriaCeldaCfg = static function (array $celdaRaw) use ($leyendasJsMa
                             <td class="p-1">
                                 <div class="cultivo-celda-config">
                                     <select class="form-select form-select-sm cultivo-celda-modo mb-1"
-                                            data-seccion="<?= esc($secId, 'attr') ?>"
+                                            data-bloque-id="<?= esc($bloqueId, 'attr') ?>"
                                             data-fila="<?= $r ?>"
                                             data-columna="<?= $c ?>">
                                         <option value="texto" <?= $celdaModo === 'texto' ? 'selected' : '' ?>>Texto libre</option>
@@ -501,9 +628,9 @@ $resolveCategoriaCeldaCfg = static function (array $celdaRaw) use ($leyendasJsMa
                                         <input type="text" class="form-control form-control-sm" value="" readonly
                                                placeholder="Campo de texto al capturar" tabindex="-1">
                                     </div>
-                                    <div class="cultivo-celda-opcion-wrap<?= $celdaModo !== 'opcion' ? ' d-none' : '' ?><?= ($secId === 'cuerpo' && $valoresHabilitado) ? ' cultivo-con-valor' : '' ?>">
+                                    <div class="cultivo-celda-opcion-wrap<?= $celdaModo !== 'opcion' ? ' d-none' : '' ?><?= ($bloqueTipo === 'cuerpo' && $valoresHabilitado) ? ' cultivo-con-valor' : '' ?>">
                                         <select class="form-select form-select-sm cultivo-opcion-input"
-                                                data-seccion="<?= esc($secId, 'attr') ?>"
+                                                data-bloque-id="<?= esc($bloqueId, 'attr') ?>"
                                                 data-fila="<?= $r ?>"
                                                 data-columna="<?= $c ?>">
                                             <option value="0" <?= $celdaOpcion === 0 ? 'selected' : '' ?>>— Seleccione tipo —</option>
@@ -511,10 +638,10 @@ $resolveCategoriaCeldaCfg = static function (array $celdaRaw) use ($leyendasJsMa
                                             <option value="<?= (int) $oid ?>" <?= $celdaOpcion === (int) $oid ? 'selected' : '' ?>><?= esc($oname) ?></option>
                                             <?php endforeach; ?>
                                         </select>
-                                        <?php if ($secId === 'cuerpo' && $valoresHabilitado): ?>
+                                        <?php if ($bloqueTipo === 'cuerpo' && $valoresHabilitado): ?>
                                         <input type="text"
                                                class="form-control form-control-sm cultivo-celda-valor-input"
-                                               data-seccion="cuerpo"
+                                               data-bloque-id="<?= esc($bloqueId, 'attr') ?>"
                                                data-fila="<?= $r ?>"
                                                data-columna="<?= $c ?>"
                                                value="<?= esc($celdaValor) ?>"
@@ -523,7 +650,7 @@ $resolveCategoriaCeldaCfg = static function (array $celdaRaw) use ($leyendasJsMa
                                     </div>
                                     <div class="cultivo-celda-leyenda-wrap<?= $celdaModo !== 'leyenda' ? ' d-none' : '' ?>">
                                         <select class="form-select form-select-sm cultivo-leyenda-categoria-input"
-                                                data-seccion="<?= esc($secId, 'attr') ?>"
+                                                data-bloque-id="<?= esc($bloqueId, 'attr') ?>"
                                                 data-fila="<?= $r ?>"
                                                 data-columna="<?= $c ?>">
                                             <option value="0" <?= $celdaCategoria === 0 ? 'selected' : '' ?>>— Seleccione categoría —</option>
@@ -538,11 +665,11 @@ $resolveCategoriaCeldaCfg = static function (array $celdaRaw) use ($leyendasJsMa
                                         </select>
                                         <p class="small text-muted mb-0 mt-1">Al llenar la prueba se elige el título/mensaje.</p>
                                     </div>
-                                    <?php if ($secId === 'cuerpo' && $valoresHabilitado && $celdaModo !== 'opcion'): ?>
+                                    <?php if ($bloqueTipo === 'cuerpo' && $valoresHabilitado && $celdaModo !== 'opcion'): ?>
                                     <div class="cultivo-celda-valor-wrap mt-1">
                                         <input type="text"
                                                class="form-control form-control-sm cultivo-celda-valor-input"
-                                               data-seccion="cuerpo"
+                                               data-bloque-id="<?= esc($bloqueId, 'attr') ?>"
                                                data-fila="<?= $r ?>"
                                                data-columna="<?= $c ?>"
                                                value="<?= esc($celdaValor) ?>"
@@ -559,7 +686,10 @@ $resolveCategoriaCeldaCfg = static function (array $celdaRaw) use ($leyendasJsMa
                 </table>
             </div>
         </div>
+            </div>
+        </li>
         <?php endforeach; ?>
+        </ul>
 
         <button type="submit" class="btn btn-primary">
             <i class="fa-solid fa-floppy-disk me-1"></i>Guardar matriz
@@ -576,10 +706,132 @@ $resolveCategoriaCeldaCfg = static function (array $celdaRaw) use ($leyendasJsMa
     var opcionesMap = <?= json_encode($opcionesList, JSON_UNESCAPED_UNICODE) ?>;
     var leyendasMap = <?= json_encode($leyendasJsMap, JSON_UNESCAPED_UNICODE) ?>;
     var leyendasAgrupadas = <?= json_encode($leyendasAgrupadasJs, JSON_UNESCAPED_UNICODE) ?>;
-    var seccionesIds = ['encabezado', 'cuerpo', 'pie'];
+    var seccionLabels = <?= json_encode($secciones, JSON_UNESCAPED_UNICODE) ?>;
     var sortableInstances = {};
-    var debounceTimers = {};
+    var bloquesSortable = null;
+    var bloqueTemplates = {};
+    var ordenTemplates = {};
+
+    function cacheBloqueTemplates() {
+        form.querySelectorAll('#cultivo_bloques_list .cultivo-bloque-item').forEach(function(item) {
+            var t = item.getAttribute('data-tipo');
+            if (t && !bloqueTemplates[t]) {
+                bloqueTemplates[t] = item.cloneNode(true);
+            }
+        });
+        form.querySelectorAll('#cultivo_orden_list .cultivo-orden-item').forEach(function(item) {
+            var t = item.getAttribute('data-tipo');
+            if (t && !ordenTemplates[t]) {
+                ordenTemplates[t] = item.cloneNode(true);
+            }
+        });
+    }
+
+    function getAllBloqueIds() {
+        var ids = [];
+        var list = document.getElementById('cultivo_orden_list');
+        if (!list) return ids;
+        list.querySelectorAll('.cultivo-orden-item[data-bloque-id]').forEach(function(item) {
+            var id = item.getAttribute('data-bloque-id');
+            if (id) ids.push(id);
+        });
+        return ids;
+    }
+
+    function getConfigItem(bloqueId) {
+        var list = document.getElementById('cultivo_bloques_list');
+        return list ? list.querySelector('.cultivo-bloque-item[data-bloque-id="' + bloqueId + '"]') : null;
+    }
+
+    function getOrdenItem(bloqueId) {
+        var list = document.getElementById('cultivo_orden_list');
+        return list ? list.querySelector('.cultivo-orden-item[data-bloque-id="' + bloqueId + '"]') : null;
+    }
+
+    function syncConfigOrderFromOrden() {
+        var configList = document.getElementById('cultivo_bloques_list');
+        if (!configList) return;
+        getAllBloqueIds().forEach(function(id) {
+            var item = getConfigItem(id);
+            if (item) configList.appendChild(item);
+        });
+        refreshOrdenPosNumbers();
+    }
+
+    function refreshOrdenPosNumbers() {
+        var list = document.getElementById('cultivo_orden_list');
+        if (!list) return;
+        list.querySelectorAll('.cultivo-orden-item').forEach(function(item, idx) {
+            var pos = item.querySelector('.cultivo-orden-pos-num');
+            if (pos) pos.textContent = String(idx + 1);
+        });
+    }
+
+    function getBloqueTipo(bloqueId) {
+        var wrap = getWrap(bloqueId);
+        return wrap ? (wrap.getAttribute('data-tipo') || 'encabezado') : 'encabezado';
+    }
+
+    function isCuerpoBloque(bloqueId) {
+        return getBloqueTipo(bloqueId) === 'cuerpo';
+    }
+
+    function generateBloqueId(tipo, existingIds) {
+        if (existingIds.indexOf(tipo) < 0) return tipo;
+        var n = 2;
+        while (existingIds.indexOf(tipo + '_' + n) >= 0) n++;
+        return tipo + '_' + n;
+    }
+
+    function bloqueDisplayLabel(bloque, allBloques) {
+        var tipo = bloque.tipo || 'encabezado';
+        var base = seccionLabels[tipo] || tipo;
+        var id = bloque.id || tipo;
+        if (id === tipo) {
+            var same = 0;
+            (allBloques || []).forEach(function(b) {
+                if ((b.tipo || '') === tipo) same++;
+            });
+            if (same <= 1) return base;
+        }
+        var m = String(id).match(new RegExp('^' + tipo + '_(\\d+)$'));
+        if (m) return base + ' ' + m[1];
+        return base + ' (' + id + ')';
+    }
+
+    function defaultBloqueData(tipo, id) {
+        var b = {
+            id: id,
+            tipo: tipo,
+            filas: 1,
+            columnas: 1,
+            titulos: [[]],
+            celdas: [[{ modo: 'texto' }]]
+        };
+        if (tipo === 'cuerpo') {
+            b.valores_habilitado = false;
+            b.unidades_habilitado = false;
+            b.unidad = '';
+            b.alineacion_filas = 'centro';
+        }
+        return b;
+    }
+
+    function deepCloneBloque(src) {
+        return JSON.parse(JSON.stringify(src));
+    }
+
+    function capturarTodosBloques() {
+        var bloques = [];
+        getAllBloqueIds().forEach(function(bloqueId) {
+            var data = capturarSeccion(bloqueId);
+            if (data) bloques.push(data);
+        });
+        return bloques;
+    }
     var MAX_TITULOS_POR_COL = 20;
+
+    var debounceTimers = {};
 
     function clampFilas(n) {
         n = parseInt(n, 10);
@@ -665,7 +917,7 @@ $resolveCategoriaCeldaCfg = static function (array $celdaRaw) use ($leyendasJsMa
             }
         }
         var html = '<select class="form-select form-select-sm cultivo-leyenda-categoria-input"'
-            + ' data-seccion="' + secId + '" data-fila="' + fila + '" data-columna="' + col + '">';
+            + ' data-bloque-id="' + secId + '" data-fila="' + fila + '" data-columna="' + col + '">';
         html += buildCategoriaLeyendaOptions(catId);
         html += '</select>';
         html += '<p class="small text-muted mb-0 mt-1">Al llenar la prueba se elige el título/mensaje.</p>';
@@ -708,7 +960,7 @@ $resolveCategoriaCeldaCfg = static function (array $celdaRaw) use ($leyendasJsMa
     }
 
     function aplicarBulkCeldaATodasColumnas(secId) {
-        if (secId !== 'cuerpo') return;
+        if (!isCuerpoBloque(secId)) return;
         var wrap = getWrap(secId);
         if (!wrap) return;
         var modoSel = wrap.querySelector('.cultivo-bulk-celda-modo');
@@ -754,7 +1006,7 @@ $resolveCategoriaCeldaCfg = static function (array $celdaRaw) use ($leyendasJsMa
 
     function buildCeldaValorInputHtml(secId, fila, col, valor) {
         return '<input type="text" class="form-control form-control-sm cultivo-celda-valor-input"'
-            + ' data-seccion="' + secId + '" data-fila="' + fila + '" data-columna="' + col + '"'
+            + ' data-bloque-id="' + secId + '" data-fila="' + fila + '" data-columna="' + col + '"'
             + ' value="' + escAttr(String(valor || '')) + '" placeholder="Valor">';
     }
 
@@ -763,7 +1015,7 @@ $resolveCategoriaCeldaCfg = static function (array $celdaRaw) use ($leyendasJsMa
         var modo = celda.modo || 'texto';
         var html = '<div class="cultivo-celda-config">';
         html += '<select class="form-select form-select-sm cultivo-celda-modo mb-1"'
-            + ' data-seccion="' + secId + '" data-fila="' + fila + '" data-columna="' + col + '">';
+            + ' data-bloque-id="' + secId + '" data-fila="' + fila + '" data-columna="' + col + '">';
         html += '<option value="texto"' + (modo === 'texto' ? ' selected' : '') + '>Texto libre</option>';
         html += '<option value="opcion"' + (modo === 'opcion' ? ' selected' : '') + '>Tipo de resultado</option>';
         html += '<option value="leyenda"' + (modo === 'leyenda' ? ' selected' : '') + '>Leyenda de cultivo</option>';
@@ -776,7 +1028,7 @@ $resolveCategoriaCeldaCfg = static function (array $celdaRaw) use ($leyendasJsMa
         if (mostrarValor) opcionClass += ' cultivo-con-valor';
         html += '<div class="' + opcionClass + '">';
         html += '<select class="form-select form-select-sm cultivo-opcion-input"'
-            + ' data-seccion="' + secId + '" data-fila="' + fila + '" data-columna="' + col + '">';
+            + ' data-bloque-id="' + secId + '" data-fila="' + fila + '" data-columna="' + col + '">';
         html += buildOpcionesSelectOptions(modo === 'opcion' ? celda.opcion_id : 0);
         html += '</select>';
         if (mostrarValor) {
@@ -786,7 +1038,7 @@ $resolveCategoriaCeldaCfg = static function (array $celdaRaw) use ($leyendasJsMa
         html += '<div class="cultivo-celda-leyenda-wrap' + (modo === 'leyenda' ? '' : ' d-none') + '">';
         html += buildLeyendaCeldaInner(secId, fila, col, modo === 'leyenda' ? celda : { leyenda_cultivo_categoria_id: 0 });
         html += '</div>';
-        if (mostrarValor && secId === 'cuerpo' && modo !== 'opcion') {
+        if (mostrarValor && isCuerpoBloque(secId) && modo !== 'opcion') {
             html += '<div class="cultivo-celda-valor-wrap mt-1">';
             html += buildCeldaValorInputHtml(secId, fila, col, celda.valor || '');
             html += '</div>';
@@ -838,11 +1090,11 @@ $resolveCategoriaCeldaCfg = static function (array $celdaRaw) use ($leyendasJsMa
         return '<li class="cultivo-titulo-item">'
             + '<span class="cultivo-titulo-drag-handle" title="Arrastrar título"><i class="fa-solid fa-grip-vertical"></i></span>'
             + '<input type="text" class="form-control form-control-sm cultivo-titulo-input flex-grow-1"'
-            + ' data-seccion="' + secId + '" data-columna="' + colIdx + '"'
+            + ' data-bloque-id="' + secId + '" data-columna="' + colIdx + '"'
             + ' value="' + escAttr(cell.texto || '') + '"'
             + ' placeholder="' + escAttr(ph) + '">'
             + '<select class="form-select form-select-sm cultivo-titulo-colspan"'
-            + ' data-seccion="' + secId + '" data-columna="' + colIdx + '"'
+            + ' data-bloque-id="' + secId + '" data-columna="' + colIdx + '"'
             + ' title="Columnas que ocupa">' + spanOpts + '</select>'
             + '<span class="badge bg-primary cultivo-titulo-span-badge' + (cell.colspan > 1 ? '' : ' d-none') + '"'
             + ' title="Columnas que ocupa">×' + cell.colspan + '</span>'
@@ -997,17 +1249,17 @@ $resolveCategoriaCeldaCfg = static function (array $celdaRaw) use ($leyendasJsMa
             + '<span class="cultivo-col-drag-handle" title="Arrastrar columna"><i class="fa-solid fa-grip-vertical"></i></span>'
             + '<span>Col. ' + (colIdx + 1) + '</span>'
             + '</div>'
-            + '<ul class="cultivo-titulos-col-list" data-seccion="' + secId + '" data-columna="' + colIdx + '">'
+            + '<ul class="cultivo-titulos-col-list" data-bloque-id="' + secId + '" data-columna="' + colIdx + '">'
             + listHtml
             + '</ul>'
             + '<button type="button" class="btn btn-sm btn-link btn-cultivo-add-titulo-in-col p-0 small text-start"'
-            + ' data-seccion="' + secId + '" data-columna="' + colIdx + '">'
+            + ' data-bloque-id="' + secId + '" data-columna="' + colIdx + '">'
             + '<i class="fa-solid fa-plus me-1"></i>Título</button>'
             + '</li>';
     }
 
     function getWrap(secId) {
-        return form.querySelector('.cultivo-matriz-seccion[data-seccion="' + secId + '"]');
+        return form.querySelector('.cultivo-matriz-seccion[data-bloque-id="' + secId + '"]');
     }
 
     function leerDimensiones(secId) {
@@ -1071,7 +1323,7 @@ $resolveCategoriaCeldaCfg = static function (array $celdaRaw) use ($leyendasJsMa
 
         var celdas = [];
         var fallbackCeldas = [];
-        if (secId === 'cuerpo') {
+        if (isCuerpoBloque(secId)) {
             var storedCells = wrap.getAttribute('data-celdas-json');
             if (storedCells) {
                 try {
@@ -1101,7 +1353,7 @@ $resolveCategoriaCeldaCfg = static function (array $celdaRaw) use ($leyendasJsMa
                 } else {
                     celdas[r][c] = { modo: 'texto' };
                 }
-                if (secId === 'cuerpo') {
+                if (isCuerpoBloque(secId)) {
                     var vInp = wrap.querySelector('.cultivo-celda-valor-input[data-fila="' + r + '"][data-columna="' + c + '"]');
                     if (vInp) {
                         var vStr = vInp.value || '';
@@ -1117,8 +1369,8 @@ $resolveCategoriaCeldaCfg = static function (array $celdaRaw) use ($leyendasJsMa
         }
 
         guardarDimensionesEnWrap(wrap, filas, columnas);
-        var result = { filas: filas, columnas: columnas, titulos: titulos, celdas: celdas };
-        if (secId === 'cuerpo') {
+        var result = { id: secId, tipo: getBloqueTipo(secId), filas: filas, columnas: columnas, titulos: titulos, celdas: celdas };
+        if (isCuerpoBloque(secId)) {
             var chkValores = wrap.querySelector('.cultivo-valores-habilitado-check');
             result.valores_habilitado = chkValores ? chkValores.checked : false;
             var chkUnidades = wrap.querySelector('.cultivo-unidades-habilitado-check');
@@ -1300,7 +1552,7 @@ $resolveCategoriaCeldaCfg = static function (array $celdaRaw) use ($leyendasJsMa
         actual.columnas = clampColumnas(actual.columnas);
         actual.filas = clampFilas(actual.filas);
 
-        if (secId === 'cuerpo') {
+        if (isCuerpoBloque(secId)) {
             if (typeof actual.valores_habilitado !== 'boolean') {
                 actual.valores_habilitado = wrap.getAttribute('data-valores-habilitado') === '1';
             }
@@ -1387,7 +1639,7 @@ $resolveCategoriaCeldaCfg = static function (array $celdaRaw) use ($leyendasJsMa
                 bodyHtml = '<tr class="cultivo-sin-filas"><td colspan="' + actual.columnas
                     + '" class="text-muted small text-center py-2">Sin filas de datos (solo títulos de columna)</td></tr>';
             } else {
-                var mostrarValorCelda = secId === 'cuerpo' && actual.valores_habilitado;
+                var mostrarValorCelda = isCuerpoBloque(secId) && actual.valores_habilitado;
                 for (var r = 0; r < actual.filas; r++) {
                     bodyHtml += '<tr>';
                     for (var c2 = 0; c2 < actual.columnas; c2++) {
@@ -1471,24 +1723,179 @@ $resolveCategoriaCeldaCfg = static function (array $celdaRaw) use ($leyendasJsMa
         }, 150);
     }
 
-    seccionesIds.forEach(function(secId) {
+    function reassignBloqueDomIds(root, oldId, newId, tipo) {
+        root.setAttribute('data-bloque-id', newId);
+        if (tipo) root.setAttribute('data-tipo', tipo);
+        root.querySelectorAll('[data-bloque-id]').forEach(function(el) {
+            if (el.getAttribute('data-bloque-id') === oldId) {
+                el.setAttribute('data-bloque-id', newId);
+            }
+        });
+        var wrap = root.querySelector('.cultivo-matriz-seccion');
+        if (wrap) {
+            wrap.setAttribute('data-bloque-id', newId);
+            if (tipo) wrap.setAttribute('data-tipo', tipo);
+        }
+    }
+
+    function updateBloqueLabels(bloque, allBloques) {
+        var labelText = bloqueDisplayLabel(bloque, allBloques);
+        var ordenItem = getOrdenItem(bloque.id);
+        if (ordenItem) {
+            var ordenLabel = ordenItem.querySelector('.cultivo-orden-label');
+            if (ordenLabel) ordenLabel.textContent = labelText;
+            var badge = ordenItem.querySelector('.badge');
+            if (badge && seccionLabels[bloque.tipo]) badge.textContent = seccionLabels[bloque.tipo];
+            var dupBtn = ordenItem.querySelector('.btn-cultivo-dup-bloque');
+            var delBtn = ordenItem.querySelector('.btn-cultivo-del-bloque');
+            if (dupBtn) dupBtn.setAttribute('data-bloque-id', bloque.id);
+            if (delBtn) delBtn.setAttribute('data-bloque-id', bloque.id);
+        }
+        var configItem = getConfigItem(bloque.id);
+        if (configItem) {
+            var h6 = configItem.querySelector('.cultivo-matriz-seccion h6');
+            if (h6) h6.textContent = labelText;
+        }
+    }
+
+    function initBloquesSortable() {
+        if (typeof Sortable === 'undefined') return;
+        var list = document.getElementById('cultivo_orden_list');
+        if (!list) return;
+        if (bloquesSortable && typeof bloquesSortable.destroy === 'function') {
+            bloquesSortable.destroy();
+        }
+        bloquesSortable = new Sortable(list, {
+            handle: '.cultivo-orden-drag',
+            animation: 150,
+            draggable: '.cultivo-orden-item',
+            onEnd: function() {
+                syncConfigOrderFromOrden();
+            }
+        });
+    }
+
+    function duplicarBloque(bloqueId) {
+        var data = capturarSeccion(bloqueId);
+        if (!data) return;
+        var bloques = capturarTodosBloques();
+        var ids = bloques.map(function(b) { return b.id; });
+        data.id = generateBloqueId(data.tipo, ids);
+
+        var ordenItem = getOrdenItem(bloqueId);
+        var configItem = getConfigItem(bloqueId);
+        if (!ordenItem || !configItem || !ordenItem.parentNode || !configItem.parentNode) return;
+
+        var ordenClone = ordenItem.cloneNode(true);
+        var configClone = configItem.cloneNode(true);
+        reassignBloqueDomIds(ordenClone, bloqueId, data.id, data.tipo);
+        reassignBloqueDomIds(configClone, bloqueId, data.id, data.tipo);
+        ordenItem.parentNode.insertBefore(ordenClone, ordenItem.nextSibling);
+        configItem.parentNode.insertBefore(configClone, configItem.nextSibling);
+
+        var allWithNew = capturarTodosBloques();
+        allWithNew.push(data);
+        updateBloqueLabels(data, allWithNew);
+        renderSeccion(data.id, data);
+        initSortableSeccion(data.id);
+        refreshOrdenPosNumbers();
+        initBloquesSortable();
+    }
+
+    function eliminarBloque(bloqueId) {
+        var bloques = capturarTodosBloques();
+        if (bloques.length <= 1) {
+            if (typeof showToast === 'function') {
+                showToast('Debe quedar al menos un bloque', 'error');
+            }
+            return;
+        }
+        destruirSortable(bloqueId);
+        var ordenItem = getOrdenItem(bloqueId);
+        var configItem = getConfigItem(bloqueId);
+        if (ordenItem) ordenItem.remove();
+        if (configItem) configItem.remove();
+        refreshOrdenPosNumbers();
+        initBloquesSortable();
+    }
+
+    function agregarBloque(tipo) {
+        if (!seccionLabels[tipo]) return;
+        var refId = null;
+        getAllBloqueIds().forEach(function(id) {
+            if (!refId && getBloqueTipo(id) === tipo) refId = id;
+        });
+        if (!refId) {
+            getAllBloqueIds().forEach(function(id) {
+                if (!refId) refId = id;
+            });
+        }
+        var bloques = capturarTodosBloques();
+        var ids = bloques.map(function(b) { return b.id; });
+        var newId = generateBloqueId(tipo, ids);
+        var newData = defaultBloqueData(tipo, newId);
+
+        var ordenList = document.getElementById('cultivo_orden_list');
+        var configList = document.getElementById('cultivo_bloques_list');
+        if (!ordenList || !configList) return;
+        if (!refId && !bloqueTemplates[tipo] && !ordenTemplates[tipo]) return;
+
+        var ordenRef = null;
+        if (ordenTemplates[tipo]) {
+            ordenRef = ordenTemplates[tipo].cloneNode(true);
+        } else if (refId) {
+            var liveOrden = getOrdenItem(refId);
+            if (liveOrden) ordenRef = liveOrden.cloneNode(true);
+        }
+        var configRef = null;
+        if (bloqueTemplates[tipo]) {
+            configRef = bloqueTemplates[tipo].cloneNode(true);
+        } else if (refId) {
+            var liveConfig = getConfigItem(refId);
+            if (liveConfig) configRef = liveConfig.cloneNode(true);
+        }
+        if (!ordenRef || !configRef) return;
+
+        var oldOrdenId = ordenRef.getAttribute('data-bloque-id') || refId || newId;
+        var oldConfigId = configRef.getAttribute('data-bloque-id') || refId || newId;
+        reassignBloqueDomIds(ordenRef, oldOrdenId, newId, tipo);
+        reassignBloqueDomIds(configRef, oldConfigId, newId, tipo);
+        ordenList.appendChild(ordenRef);
+        configList.appendChild(configRef);
+
+        var allBloques = capturarTodosBloques();
+        allBloques.push(newData);
+        updateBloqueLabels(newData, allBloques);
+        renderSeccion(newId, newData);
+        initSortableSeccion(newId);
+        refreshOrdenPosNumbers();
+        initBloquesSortable();
+    }
+
+    function attrBloqueId(el) {
+        return el ? (el.getAttribute('data-bloque-id') || el.getAttribute('data-seccion')) : '';
+    }
+
+    cacheBloqueTemplates();
+    getAllBloqueIds().forEach(function(secId) {
         var wrap = getWrap(secId);
         if (!wrap) return;
         var dims = leerDimensiones(secId);
         if (dims) guardarDimensionesEnWrap(wrap, dims.filas, dims.columnas);
-        if (secId === 'cuerpo') {
+        if (isCuerpoBloque(secId)) {
             var bulkModo = wrap.querySelector('.cultivo-bulk-celda-modo');
             if (bulkModo) toggleBulkCeldaPanels(wrap, bulkModo.value);
         }
         initSortableSeccion(secId);
         refrescarPreviewDesdeDom(secId);
     });
+    initBloquesSortable();
 
     form.addEventListener('input', function(e) {
         if (e.target.classList.contains('cultivo-titulo-input')) {
             var wrapInp = e.target.closest('.cultivo-matriz-seccion');
             if (wrapInp) {
-                var secInp = wrapInp.getAttribute('data-seccion');
+                var secInp = attrBloqueId(wrapInp);
                 if (secInp) refrescarPreviewDesdeDom(secInp);
             }
         }
@@ -1496,8 +1903,15 @@ $resolveCategoriaCeldaCfg = static function (array $celdaRaw) use ($leyendasJsMa
 
     form.querySelectorAll('.btn-cultivo-add-col').forEach(function(btn) {
         btn.addEventListener('click', function() {
-            var secId = btn.getAttribute('data-seccion');
+            var secId = attrBloqueId(btn);
             if (secId) agregarColumna(secId);
+        });
+    });
+
+    form.querySelectorAll('.btn-cultivo-add-bloque').forEach(function(btn) {
+        btn.addEventListener('click', function() {
+            var tipo = btn.getAttribute('data-tipo');
+            if (tipo) agregarBloque(tipo);
         });
     });
 
@@ -1505,13 +1919,13 @@ $resolveCategoriaCeldaCfg = static function (array $celdaRaw) use ($leyendasJsMa
         if (e.target.classList.contains('cultivo-titulo-colspan')) {
             var wrapSpan = e.target.closest('.cultivo-matriz-seccion');
             if (wrapSpan) {
-                var secSpan = wrapSpan.getAttribute('data-seccion');
+                var secSpan = attrBloqueId(wrapSpan);
                 if (secSpan) refrescarPreviewDesdeDom(secSpan);
             }
             return;
         }
         if (e.target.classList.contains('cultivo-valores-habilitado-check')) {
-            var secValores = e.target.getAttribute('data-seccion');
+            var secValores = attrBloqueId(e.target);
             if (secValores) {
                 var dataValores = capturarSeccion(secValores);
                 if (dataValores) {
@@ -1525,7 +1939,7 @@ $resolveCategoriaCeldaCfg = static function (array $celdaRaw) use ($leyendasJsMa
             return;
         }
         if (e.target.classList.contains('cultivo-unidades-habilitado-check')) {
-            var secUnidades = e.target.getAttribute('data-seccion');
+            var secUnidades = attrBloqueId(e.target);
             if (secUnidades) {
                 var wrapUnidades = getWrap(secUnidades);
                 var dataUnidades = capturarSeccion(secUnidades);
@@ -1553,15 +1967,27 @@ $resolveCategoriaCeldaCfg = static function (array $celdaRaw) use ($leyendasJsMa
     });
 
     form.addEventListener('click', function(e) {
+        var btnDup = e.target.closest('.btn-cultivo-dup-bloque');
+        if (btnDup) {
+            var dupId = btnDup.getAttribute('data-bloque-id');
+            if (dupId) duplicarBloque(dupId);
+            return;
+        }
+        var btnDel = e.target.closest('.btn-cultivo-del-bloque');
+        if (btnDel) {
+            var delId = btnDel.getAttribute('data-bloque-id');
+            if (delId) eliminarBloque(delId);
+            return;
+        }
         var btnBulk = e.target.closest('.btn-cultivo-bulk-aplicar');
         if (btnBulk) {
-            var secBulk = btnBulk.getAttribute('data-seccion');
+            var secBulk = attrBloqueId(btnBulk);
             if (secBulk) aplicarBulkCeldaATodasColumnas(secBulk);
             return;
         }
         var btn = e.target.closest('.btn-cultivo-add-titulo-in-col');
         if (!btn) return;
-        var secId = btn.getAttribute('data-seccion');
+        var secId = attrBloqueId(btn);
         var colIdx = parseInt(btn.getAttribute('data-columna'), 10);
         if (secId && !isNaN(colIdx)) {
             agregarTituloEnColumna(secId, colIdx);
@@ -1569,7 +1995,7 @@ $resolveCategoriaCeldaCfg = static function (array $celdaRaw) use ($leyendasJsMa
     });
 
     form.querySelectorAll('.cultivo-dim-input').forEach(function(inp) {
-        var secId = inp.getAttribute('data-seccion');
+        var secId = attrBloqueId(inp);
         if (!secId) return;
         inp.addEventListener('input', function() {
             var wrap = getWrap(secId);
@@ -1602,7 +2028,7 @@ $resolveCategoriaCeldaCfg = static function (array $celdaRaw) use ($leyendasJsMa
     form.addEventListener('submit', function(e) {
         e.preventDefault();
 
-        seccionesIds.forEach(function(secId) {
+        getAllBloqueIds().forEach(function(secId) {
             if (debounceTimers[secId]) {
                 clearTimeout(debounceTimers[secId]);
                 delete debounceTimers[secId];
@@ -1611,22 +2037,25 @@ $resolveCategoriaCeldaCfg = static function (array $celdaRaw) use ($leyendasJsMa
             if (data) renderSeccion(secId, data);
         });
 
-        var payload = {
-            encabezado: capturarSeccion('encabezado'),
-            cuerpo: capturarSeccion('cuerpo'),
-            pie: capturarSeccion('pie')
-        };
-
-        if (!payload.encabezado || !payload.cuerpo || !payload.pie) {
+        var bloquesPayload = capturarTodosBloques();
+        if (!bloquesPayload.length) {
             if (typeof showToast === 'function') {
                 showToast('No se pudo leer la configuración de la matriz', 'error');
             }
             return;
         }
 
+        var payload = { version: 2, bloques: bloquesPayload };
+        var jsonStr = JSON.stringify(payload);
+        if (!jsonStr) {
+            if (typeof showToast === 'function') {
+                showToast('No se pudo serializar la matriz', 'error');
+            }
+            return;
+        }
+
         var hidden = document.getElementById('cultivo_matriz_json');
-        if (!hidden) return;
-        hidden.value = JSON.stringify(payload);
+        if (hidden) hidden.value = jsonStr;
 
         var submitBtn = form.querySelector('button[type="submit"]');
         var originalHtml = submitBtn ? submitBtn.innerHTML : '';
@@ -1635,7 +2064,15 @@ $resolveCategoriaCeldaCfg = static function (array $celdaRaw) use ($leyendasJsMa
             submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Guardando...';
         }
 
-        var fd = new FormData(form);
+        var priaInp = form.querySelector('input[name="prianacategoria_id"]');
+        var priaId = priaInp ? priaInp.value : '';
+        var csrfInp = form.querySelector('input[name*="csrf"]');
+        var fd = new FormData();
+        fd.append('prianacategoria_id', priaId);
+        fd.append('cultivo_matriz_json', jsonStr);
+        if (csrfInp) {
+            fd.append(csrfInp.name, csrfInp.value);
+        }
         fetch(form.action, {
             method: 'POST',
             body: fd,

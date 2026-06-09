@@ -10,6 +10,12 @@ use CodeIgniter\Model;
  */
 class OpcionModel extends Model
 {
+    public const OPCION_TEXTO      = 3;
+    public const TABLA_TEXTO_RICO  = 'texto_rico';
+
+    /** @var int|null ID resuelto de la opción sistema "Texto enriquecido" */
+    private static ?int $textoRicoOpcionIdCache = null;
+
     protected $table            = 'opciones';
     protected $primaryKey       = 'opciones_id';
     protected $useAutoIncrement = true;
@@ -18,10 +24,61 @@ class OpcionModel extends Model
     protected $allowedFields    = ['opciones', 'tabla'];
 
     /**
+     * Crea la opción sistema "Texto enriquecido" si no existe (sin ID fijo).
+     */
+    public function ensureSystemOpciones(): void
+    {
+        $exists = $this->db->table($this->table)
+            ->where('tabla', self::TABLA_TEXTO_RICO)
+            ->countAllResults();
+        if ($exists > 0) {
+            return;
+        }
+
+        $this->db->table($this->table)->insert([
+            'opciones' => 'Texto enriquecido',
+            'tabla'    => self::TABLA_TEXTO_RICO,
+        ]);
+        self::$textoRicoOpcionIdCache = null;
+    }
+
+    /**
+     * ID de la opción "Texto enriquecido" (distinto por tenant si hubo tipos personalizados antes).
+     */
+    public function getTextoRicoOpcionId(): int
+    {
+        if (self::$textoRicoOpcionIdCache !== null && self::$textoRicoOpcionIdCache > 0) {
+            return self::$textoRicoOpcionIdCache;
+        }
+
+        $this->ensureSystemOpciones();
+        $row = $this->db->table($this->table)
+            ->select('opciones_id')
+            ->where('tabla', self::TABLA_TEXTO_RICO)
+            ->orderBy('opciones_id', 'ASC')
+            ->get()
+            ->getRowArray();
+
+        self::$textoRicoOpcionIdCache = (int) ($row['opciones_id'] ?? 0);
+
+        return self::$textoRicoOpcionIdCache;
+    }
+
+    public function isSystemOpcion(int $opcionesId): bool
+    {
+        if ($opcionesId <= self::OPCION_TEXTO) {
+            return true;
+        }
+
+        return $opcionesId > 0 && $opcionesId === $this->getTextoRicoOpcionId();
+    }
+
+    /**
      * Obtiene todas las opciones para el select de Tipo resultado
      */
     public function getAllOpciones(): array
     {
+        $this->ensureSystemOpciones();
         $rows = $this->orderBy('opciones_id', 'ASC')->findAll();
         $out = [];
         foreach ($rows as $r) {
@@ -207,7 +264,7 @@ class OpcionModel extends Model
         if (!$row) {
             return ['success' => false, 'message' => 'Opción no encontrada.'];
         }
-        if ((int) $row['opciones_id'] <= 3) {
+        if ($this->isSystemOpcion((int) $row['opciones_id'])) {
             return ['success' => false, 'message' => 'No se puede eliminar las opciones del sistema.'];
         }
         $enUso = $this->db->table('secanacategoria')->where('opcion_id', $opcionesId)->countAllResults() > 0
@@ -225,6 +282,25 @@ class OpcionModel extends Model
      */
     public function isEditable(int $opcionesId): bool
     {
-        return $opcionesId > 3;
+        return ! $this->isSystemOpcion($opcionesId);
+    }
+
+    public static function isTextoRico(int $opcionesId): bool
+    {
+        if ($opcionesId < 1) {
+            return false;
+        }
+
+        return $opcionesId === model(self::class)->getTextoRicoOpcionId();
+    }
+
+    public static function isTextoLibre(int $opcionesId): bool
+    {
+        return $opcionesId === self::OPCION_TEXTO || self::isTextoRico($opcionesId);
+    }
+
+    public static function isSelect(int $opcionesId): bool
+    {
+        return $opcionesId > 0 && ! self::isTextoLibre($opcionesId);
     }
 }

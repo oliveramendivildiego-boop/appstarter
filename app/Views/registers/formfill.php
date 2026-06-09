@@ -136,6 +136,25 @@ $renderPruebaCabecera = static function (array $prueba) use (&$pruebaSubIdxPorPa
     ]);
     echo '</div>';
 };
+$renderCampoTextoRico = static function (
+    string $fieldId,
+    string $labelHtml,
+    string $value,
+    array $extraAttrs = []
+): void {
+    $attrs = 'name="' . esc($fieldId) . '" id="' . esc($fieldId) . '" class="form-control input-con-ref input-texto-rico" rows="4" data-skip-ref-validation="1"';
+    foreach ($extraAttrs as $attrName => $attrVal) {
+        if ($attrVal === null || $attrVal === '') {
+            continue;
+        }
+        $attrs .= ' ' . esc($attrName) . '="' . esc((string) $attrVal) . '"';
+    }
+    echo '<div class="col-12 mb-3"><div class="mb-3">';
+    echo '<label for="' . esc($fieldId) . '" class="form-label">' . $labelHtml . ':</label>';
+    echo '<textarea ' . $attrs . '>' . registro_textarea_body_safe($value) . '</textarea>';
+    echo '<span class="invalid-feedback d-block" data-msg-for="' . esc($fieldId) . '"></span>';
+    echo '</div></div>';
+};
 foreach ($pruebas_info ?? [] as $prueba):
     if (($prueba['padre'] ?? '') != $last_padre):
         if ($last_padre !== '') {
@@ -240,7 +259,7 @@ foreach ($pruebas_info ?? [] as $prueba):
         $esCalculadaNoc = $formulaExprNoc !== '' && $formulasIdNoc > 1;
         $idsEnFormulaNoc = $esCalculadaNoc && preg_match_all('/c_\d+/', $formulaExprNoc, $mNoc) ? array_unique($mNoc[0]) : [];
         $esFormulaValorNoc = $esCalculadaNoc && count($idsEnFormulaNoc) === 0;
-        if (($prueba['opcion_id'] ?? '') != 3 && ($prueba['opcion_id'] ?? '') != '' && (int)($prueba['opcion_id'] ?? 0) > 0):
+        if (registro_opcion_es_select((int) ($prueba['opcion_id'] ?? 0))):
             $pMin = trim($prueba['valor_min'] ?? ''); $pMax = trim($prueba['valor_max'] ?? ''); $pUmed = trim($prueba['umedida'] ?? '');
             $pRef = ($pMin !== '' || $pMax !== '') ? ' <small class="text-muted">(Ref: ' . ($pMin ?: 'â€¦') . ' - ' . ($pMax ?: 'â€¦') . ($pUmed ? ' ' . $pUmed : '') . ')</small>' : '';
             $valores = $registerModel ? $registerModel->getOpciones((int)$prueba['opcion_id']) : [];
@@ -251,13 +270,21 @@ foreach ($pruebas_info ?? [] as $prueba):
             if ($pMin !== '') $extra .= ' data-min="' . esc($pMin) . '"'; if ($pMax !== '') $extra .= ' data-max="' . esc($pMax) . '"';
             echo build_select($nocId, $valores, $existentes[$nocId] ?? '', $extra);
             echo '<span class="invalid-feedback d-block" data-msg-for="' . esc($nocId) . '"></span></div></div>';
-        elseif (($prueba['opcion_id'] ?? '') == 3):
+        elseif (registro_opcion_es_texto_rico((int) ($prueba['opcion_id'] ?? 0))):
             $rid = $prueba['priresultados_id'] ?? $prueba['prianacategoria_id'] ?? '';
             $pMin = trim($prueba['valor_min'] ?? ''); $pMax = trim($prueba['valor_max'] ?? ''); $pUmed = trim($prueba['umedida'] ?? '');
-            $pRef = ($pMin !== '' || $pMax !== '') ? ' <small class="text-muted">(Ref: ' . ($pMin ?: 'â€¦') . ' - ' . ($pMax ?: 'â€¦') . ($pUmed ? ' ' . $pUmed : '') . ')</small>' : '';
+            $pRef = ($pMin !== '' || $pMax !== '') ? ' <small class="text-muted">(Ref: ' . ($pMin ?: '…') . ' - ' . ($pMax ?: '…') . ($pUmed ? ' ' . esc($pUmed) : '') . ')</small>' : '';
+            $nocRid = 'noc_' . $rid;
+            $valRid = $existentes['noc_' . $rid] ?? '';
+            $labelHtml = esc($prueba['hijo'] ?? '') . $pRef;
+            $renderCampoTextoRico($nocRid, $labelHtml, $valRid);
+        elseif (registro_opcion_es_texto_libre((int) ($prueba['opcion_id'] ?? 0))):
+            $rid = $prueba['priresultados_id'] ?? $prueba['prianacategoria_id'] ?? '';
+            $pMin = trim($prueba['valor_min'] ?? ''); $pMax = trim($prueba['valor_max'] ?? ''); $pUmed = trim($prueba['umedida'] ?? '');
+            $pRef = ($pMin !== '' || $pMax !== '') ? ' <small class="text-muted">(Ref: ' . ($pMin ?: '…') . ' - ' . ($pMax ?: '…') . ($pUmed ? ' ' . esc($pUmed) : '') . ')</small>' : '';
             echo '<div class="col-md-6 mb-3"><div class="mb-3">';
             $nocRid = 'noc_' . esc($rid);
-            echo '<label for="' . $nocRid . '" class="form-label">' . esc($prueba['hijo'] ?? '') . $pRef . ($esCalculadaNoc ? ' <span class="badge badge-calculada">' . ($esFormulaValorNoc ? 'FÃ³rmula (valor Ã— expresiÃ³n)' : 'Calculada') . '</span>' : '') . ':</label>';
+            echo '<label for="' . $nocRid . '" class="form-label">' . esc($prueba['hijo'] ?? '') . $pRef . ($esCalculadaNoc ? ' <span class="badge badge-calculada">' . ($esFormulaValorNoc ? 'Fórmula (valor × expresión)' : 'Calculada') . '</span>' : '') . ':</label>';
             $valRid = $existentes['noc_' . $rid] ?? '';
             $classes = $esCalculadaNoc ? 'form-control formula-calculada input-con-ref' : 'form-control input-con-ref';
             $attrs = 'name="noc_' . esc($rid) . '" id="noc_' . esc($rid) . '" class="' . $classes . '" value="' . esc($valRid) . '"';
@@ -270,7 +297,7 @@ foreach ($pruebas_info ?? [] as $prueba):
             }
             echo '<input type="text" ' . $attrs . '><span class="invalid-feedback d-block" data-msg-for="noc_' . esc($rid) . '"></span>';
             if ($esCalculadaNoc) {
-                echo '<span class="sugerencia-calculada small text-muted mt-1 d-block" data-sugerencia-for="noc_' . esc($rid) . '" role="button" tabindex="0" title="Clic para usar este valor">Sugerencia: â€”</span>';
+                echo '<span class="sugerencia-calculada small text-muted mt-1 d-block" data-sugerencia-for="noc_' . esc($rid) . '" role="button" tabindex="0" title="Clic para usar este valor">Sugerencia: —</span>';
             }
             echo '</div></div>';
         else:
@@ -328,7 +355,7 @@ foreach ($pruebas_info ?? [] as $prueba):
             $cId = 'c_' . ($v['secanacategoria_id'] ?? '');
             $nombrePrueba = trim($v['nombre'] ?? '');
             $valorExiste = $existentes[$cId] ?? ($prianacategoriaId > 0 && $nombrePrueba !== '' ? ($existentes[$prianacategoriaId . '|' . $nombrePrueba] ?? '') : '');
-            if (($v['opcion_id'] ?? 0) != 3):
+            if (registro_opcion_es_select((int) ($v['opcion_id'] ?? 0))):
                 $opts = $registerModel ? $registerModel->getOpciones((int)($v['opcion_id'] ?? 0)) : [];
                 echo '<div class="col-md-6 mb-3"><div class="mb-3">';
                 echo '<label for="' . esc($cId) . '" class="form-label">' . esc($v['nombre'] ?? '') . $refText . ':</label>';
@@ -339,6 +366,18 @@ foreach ($pruebas_info ?? [] as $prueba):
                 if ($vMax !== '') $extra .= ' data-max="' . esc($vMax) . '"';
                 echo build_select($cId, $opts, $valorExiste, $extra);
                 echo '<span class="invalid-feedback d-block" data-msg-for="' . esc($cId) . '"></span></div></div>';
+            elseif (registro_opcion_es_texto_rico((int) ($v['opcion_id'] ?? 0))):
+                $cId = 'c_' . ($v['secanacategoria_id'] ?? '');
+                $valRico = $valorExiste;
+                $labelHtml = esc($v['nombre'] ?? '') . $refText;
+                $extraRico = [];
+                if ($prianacategoriaId > 0) {
+                    $extraRico['data-prianacategoria-id'] = (string) $prianacategoriaId;
+                }
+                if ($nombrePrueba !== '') {
+                    $extraRico['data-prueba'] = $nombrePrueba;
+                }
+                $renderCampoTextoRico($cId, $labelHtml, $valRico, $extraRico);
             else:
                 $cId = 'c_' . ($v['secanacategoria_id'] ?? '');
                 $expresion = trim($v['formula_expresion'] ?? '');
@@ -453,8 +492,38 @@ endif;
 <?= $this->endSection() ?>
 
 <?= $this->section('scripts') ?>
+<link href="https://cdn.jsdelivr.net/npm/summernote@0.8.18/dist/summernote-lite.min.css" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/summernote@0.8.18/dist/summernote-lite.min.js"></script>
+<style>
+.note-editor.note-frame { border-color: #ced4da; }
+.resultado-texto-rico p:last-child { margin-bottom: 0; }
+</style>
 <script>
 document.addEventListener('DOMContentLoaded', function() {
+    function initTextoRicoEditors() {
+        if (typeof jQuery === 'undefined' || !jQuery.fn.summernote) return;
+        document.querySelectorAll('.input-texto-rico').forEach(function(el) {
+            if (jQuery(el).data('summernote')) return;
+            jQuery(el).summernote({
+                height: 160,
+                toolbar: [
+                    ['style', ['bold', 'italic', 'underline']],
+                    ['para', ['ul', 'ol']],
+                    ['insert', ['link']],
+                    ['view', ['codeview']]
+                ]
+            });
+        });
+    }
+    function syncTextoRicoEditors() {
+        if (typeof jQuery === 'undefined' || !jQuery.fn.summernote) return;
+        document.querySelectorAll('.input-texto-rico').forEach(function(el) {
+            if (jQuery(el).data('summernote')) {
+                el.value = jQuery(el).summernote('code');
+            }
+        });
+    }
+    initTextoRicoEditors();
     var decimalesSugerencia = <?= json_encode(max(0, min(10, (int)($decimales_sugerencia ?? 2)))) ?>;
     function formatearSugerencia(val) {
         if (val === '' || val == null) return '';
@@ -540,6 +609,7 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
     function validarInputAlEscribir(el) {
+        if (el.getAttribute('data-skip-ref-validation') === '1') return;
         var min = el.getAttribute('data-min');
         var max = el.getAttribute('data-max');
         var msgEl = document.querySelector('[data-msg-for="' + el.id + '"]');
@@ -611,6 +681,7 @@ document.addEventListener('DOMContentLoaded', function() {
         var faltantes = [];
         var fueraRango = [];
         document.querySelectorAll('.input-con-ref').forEach(function(el) {
+            if (el.getAttribute('data-skip-ref-validation') === '1') return;
             var min = el.getAttribute('data-min');
             var max = el.getAttribute('data-max');
             var labelEl = document.querySelector('label[for="' + el.id + '"]');
@@ -680,9 +751,13 @@ document.addEventListener('DOMContentLoaded', function() {
     }
     function ejecutarEnvio() {
         if (submitBtn) submitBtn.disabled = true;
+        syncTextoRicoEditors();
         var datos = [];
         document.querySelectorAll('.input-con-ref').forEach(function(el) {
             var valor = (el.value || '').trim();
+            if (el.classList.contains('input-texto-rico')) {
+                valor = valor.replace(/^<p><br><\/p>$/i, '').replace(/^<p><\/p>$/i, '').trim();
+            }
             var registroId = document.getElementById('registro_id').value;
             if (!registroId || valor === '') return;
             // c_* y noc_* son únicos por fila (secanacategoria_id / priresultados_id).
@@ -703,7 +778,7 @@ document.addEventListener('DOMContentLoaded', function() {
         var cultivoInputs = document.querySelectorAll('.cultivo-celda-input');
         cultivoInputs.forEach(function(el) {
             var priId = el.getAttribute('data-prianacategoria-id');
-            var sec = el.getAttribute('data-seccion');
+            var sec = el.getAttribute('data-bloque-id') || el.getAttribute('data-seccion');
             var fila = parseInt(el.getAttribute('data-fila'), 10);
             var col = parseInt(el.getAttribute('data-columna'), 10);
             if (!priId || !sec || isNaN(fila) || isNaN(col)) return;
@@ -721,7 +796,7 @@ document.addEventListener('DOMContentLoaded', function() {
         function pushCultivoAux(selector, prefix) {
             document.querySelectorAll(selector).forEach(function(el) {
                 var priId = el.getAttribute('data-prianacategoria-id');
-                var sec = el.getAttribute('data-seccion');
+                var sec = el.getAttribute('data-bloque-id') || el.getAttribute('data-seccion');
                 var fila = parseInt(el.getAttribute('data-fila'), 10);
                 var col = parseInt(el.getAttribute('data-columna'), 10);
                 if (!priId || !sec || isNaN(fila) || isNaN(col)) return;

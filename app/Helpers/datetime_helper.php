@@ -66,6 +66,24 @@ if (! function_exists('lab_dt_short')) {
     }
 }
 
+if (! function_exists('lab_now_form_datetime')) {
+    /** Fecha/hora actual (Y-m-d H:i) en la zona del laboratorio, para flatpickr y similares. */
+    function lab_now_form_datetime(): string
+    {
+        lab_tz_apply();
+
+        return RegisterService::formatNowForFormInput();
+    }
+}
+
+if (! function_exists('lab_stored_form_datetime')) {
+    /** DATETIME de BD → Y-m-d H:i en zona del laboratorio, para flatpickr y similares. */
+    function lab_stored_form_datetime(?string $mysqlDatetime): string
+    {
+        return RegisterService::formatStoredForFormInput($mysqlDatetime);
+    }
+}
+
 if (! function_exists('lab_date')) {
     /** Y-m-d → d/m/Y (solo fecha, sin conversión de huso). */
     function lab_date(?string $ymdDate): string

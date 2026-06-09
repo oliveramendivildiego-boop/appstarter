@@ -244,20 +244,22 @@ foreach ($ordenPriaKeys as $subIdx => $priaKey) :
                         $class = 'normal';
                         $isOutPdf = false;
                     }
-                    $resMostrar = registro_resultado_con_unidad($item->regvalues ?? '', $item->umedida ?? '');
+                    $opcionIdItem = (int) ($item->opcion_id ?? 3);
+                    $resMostrarHtml = registro_resultado_celda_html($item->regvalues ?? '', $item->umedida ?? '', $opcionIdItem);
                     $refMostrar = registro_rango_referencial_texto($item->valor_min ?? '', $item->valor_max ?? '', $item->umedida ?? '');
+                    $celdaRicoClass = registro_opcion_es_texto_rico($opcionIdItem) ? ' resultado-texto-rico-cell' : '';
                     ?>
                     <?php if (is_object($item)): ?>
                         <?php $itemConRef = registro_tiene_rango_referencial($item->valor_min ?? '', $item->valor_max ?? ''); ?>
                         <tr>
                             <td><?= esc($item->nombre ?? '') ?></td>
                             <?php if (! $conRefEnSeg): ?>
-                            <td class="text-center <?= $class ?><?= $usePdfChrome && $isOutPdf ? ' out-range' : '' ?>"><?= esc($resMostrar) ?></td>
+                            <td class="text-center<?= $celdaRicoClass ?> <?= $class ?><?= $usePdfChrome && $isOutPdf ? ' out-range' : '' ?>"><?= $resMostrarHtml ?></td>
                             <?php elseif ($itemConRef): ?>
-                            <td class="text-center <?= $class ?><?= $usePdfChrome && $isOutPdf ? ' out-range' : '' ?>"><?= esc($resMostrar) ?></td>
+                            <td class="text-center<?= $celdaRicoClass ?> <?= $class ?><?= $usePdfChrome && $isOutPdf ? ' out-range' : '' ?>"><?= $resMostrarHtml ?></td>
                             <td class="text-center<?= $usePdfChrome ? ' ref-range' : '' ?>"><?= esc($refMostrar) ?></td>
                             <?php else: ?>
-                            <td class="text-center <?= $class ?><?= $usePdfChrome && $isOutPdf ? ' out-range' : '' ?>" colspan="2"><?= esc($resMostrar) ?></td>
+                            <td class="text-center<?= $celdaRicoClass ?> <?= $class ?><?= $usePdfChrome && $isOutPdf ? ' out-range' : '' ?>" colspan="2"><?= $resMostrarHtml ?></td>
                             <?php endif; ?>
                         </tr>
                     <?php endif; ?>

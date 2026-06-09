@@ -169,6 +169,7 @@ $subgrupoCultivoStyle = $subIdxCultivo > 0
         : '';
     $thJoinStyle = ($usePdfChrome && $tieneBanda) ? ' style="border-top:none;"' : '';
     $secIdReport = (string) ($sec['seccion'] ?? '');
+    $secTipoReport = (string) ($sec['tipo'] ?? $secIdReport);
     $alineacionFilas = (string) ($sec['alineacion_filas'] ?? 'centro');
     if ($alineacionFilas === 'cuerpo') {
         $alineacionFilas = 'centro';
@@ -176,10 +177,10 @@ $subgrupoCultivoStyle = $subIdxCultivo > 0
     if (! in_array($alineacionFilas, ['centro', 'bordes'], true)) {
         $alineacionFilas = 'centro';
     }
-    $secClassAlineacion = ($secIdReport === 'cuerpo')
+    $secClassAlineacion = ($secTipoReport === 'cuerpo')
         ? ' report-cultivo-alineacion-' . esc($alineacionFilas, 'attr')
         : '';
-    $tdClassCelda = ($secIdReport === 'cuerpo' && $alineacionFilas === 'bordes') ? 'text-start' : 'text-center';
+    $tdClassCelda = ($secTipoReport === 'cuerpo' && $alineacionFilas === 'bordes') ? 'text-start' : 'text-center';
 ?>
 <div class="report-cultivo-seccion mb-3<?= $secClassAlineacion ?>">
     <div class="report-segment-table-wrap"<?= $segmentWrapStyleAttr ?>>

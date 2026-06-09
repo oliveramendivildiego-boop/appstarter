@@ -26,8 +26,9 @@
     </div>
     <div class="card-body">
         <p class="text-muted mb-4">
-            Estos tipos definen las opciones del select "Tipo resultado" al agregar sub-clases en análisis compuestos.
-            Puede crear tipos personalizados (ej: Color, Consistencia, Presencia de moco) y definir sus valores.
+            Estos tipos definen las opciones del select "Tipo resultado" al agregar valores en análisis simples y compuestos.
+            <strong>Texto</strong> usa un campo de una línea; <strong>Texto enriquecido</strong> usa un área de texto con negrita, cursiva y listas al capturar resultados.
+            Puede crear tipos personalizados (ej: Color, Consistencia) y definir sus valores.
         </p>
 
         <div class="table-responsive mb-4">

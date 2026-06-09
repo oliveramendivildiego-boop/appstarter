@@ -349,11 +349,11 @@ class RegisterService
                 continue;
             }
             $prefix = null;
-            if (preg_match('/^cv_(\d+)_(encabezado|cuerpo|pie)_(\d+)_(\d+)$/', $name, $m)) {
+            if (preg_match('/^cv_(\d+)_([a-z][a-z0-9_]*)_(\d+)_(\d+)$/', $name, $m)) {
                 $prefix = 'cv';
-            } elseif (preg_match('/^cvn_(\d+)_(encabezado|cuerpo|pie)_(\d+)_(\d+)$/', $name, $m)) {
+            } elseif (preg_match('/^cvn_(\d+)_([a-z][a-z0-9_]*)_(\d+)_(\d+)$/', $name, $m)) {
                 $prefix = 'cvn';
-            } elseif (preg_match('/^cvu_(\d+)_(encabezado|cuerpo|pie)_(\d+)_(\d+)$/', $name, $m)) {
+            } elseif (preg_match('/^cvu_(\d+)_([a-z][a-z0-9_]*)_(\d+)_(\d+)$/', $name, $m)) {
                 $prefix = 'cvu';
             } else {
                 continue;
@@ -468,11 +468,14 @@ class RegisterService
         array $cellNumeros = [],
         ?string $unidadGlobalRegistro = null
     ): array {
-        $labels = [
-            'encabezado' => 'Encabezado',
-            'cuerpo'     => 'Cuerpo',
-            'pie'        => 'Pie',
-        ];
+        $bloques = LabotestModel::resolveCultivoMatrizBloques($matriz);
+        $bloquesById = [];
+        foreach ($bloques as $bloqueRow) {
+            $bid = (string) ($bloqueRow['id'] ?? '');
+            if ($bid !== '') {
+                $bloquesById[$bid] = $bloqueRow;
+            }
+        }
         $leyendaModel = model(LeyendaCultivoModel::class);
         $leyendasCache = [];
         $resolveLeyenda = static function (int $leyendaId) use ($leyendaModel, &$leyendasCache): string {
@@ -504,17 +507,13 @@ class RegisterService
         };
 
         $cuerpoCfg = is_array($matriz['cuerpo'] ?? null) ? $matriz['cuerpo'] : [];
-        $unidadConfig = trim((string) ($cuerpoCfg['unidad'] ?? ''));
-        $unidadMedida = trim((string) ($unidadGlobalRegistro ?? ''));
-        if ($unidadMedida === '') {
-            $unidadMedida = $unidadConfig;
+        $unidadConfigLegacy = trim((string) ($cuerpoCfg['unidad'] ?? ''));
+        $alineacionCuerpoLegacy = trim((string) ($cuerpoCfg['alineacion_filas'] ?? 'centro'));
+        if ($alineacionCuerpoLegacy === 'cuerpo') {
+            $alineacionCuerpoLegacy = 'centro';
         }
-        $alineacionCuerpo = trim((string) ($cuerpoCfg['alineacion_filas'] ?? 'centro'));
-        if ($alineacionCuerpo === 'cuerpo') {
-            $alineacionCuerpo = 'centro';
-        }
-        if (! in_array($alineacionCuerpo, ['centro', 'bordes'], true)) {
-            $alineacionCuerpo = 'centro';
+        if (! in_array($alineacionCuerpoLegacy, ['centro', 'bordes'], true)) {
+            $alineacionCuerpoLegacy = 'centro';
         }
 
         $esHtmlContenido = static function (string $texto): bool {
@@ -544,20 +543,29 @@ class RegisterService
             return $raw;
         };
 
-        $resolveMedida = static function (string $secId, int $r, int $c) use (
-            $matriz,
+        $resolveMedida = static function (string $blockId, int $r, int $c) use (
+            $bloquesById,
             $cellNumeros,
-            $unidadMedida
+            $unidadGlobalRegistro,
+            $unidadConfigLegacy
         ): string {
-            $cuerpoCfgInner = is_array($matriz['cuerpo'] ?? null) ? $matriz['cuerpo'] : [];
-            $valoresOn = ($secId === 'cuerpo') && ! empty($cuerpoCfgInner['valores_habilitado']);
-            $unidadesOn = ($secId === 'cuerpo') && ! empty($cuerpoCfgInner['unidades_habilitado']);
+            $bloqueCfg = $bloquesById[$blockId] ?? [];
+            $bloqueTipo = (string) ($bloqueCfg['tipo'] ?? '');
+            $valoresOn = ($bloqueTipo === 'cuerpo') && ! empty($bloqueCfg['valores_habilitado']);
+            $unidadesOn = ($bloqueTipo === 'cuerpo') && ! empty($bloqueCfg['unidades_habilitado']);
             if (! $valoresOn) {
                 return '';
             }
-            $num = trim((string) ($cellNumeros[$secId][$r][$c] ?? ''));
+            $num = trim((string) ($cellNumeros[$blockId][$r][$c] ?? ''));
             if ($num === '') {
                 return '';
+            }
+            $unidadMedida = trim((string) ($unidadGlobalRegistro ?? ''));
+            if ($unidadMedida === '') {
+                $unidadMedida = trim((string) ($bloqueCfg['unidad'] ?? ''));
+            }
+            if ($unidadMedida === '') {
+                $unidadMedida = $unidadConfigLegacy;
             }
             if ($unidadesOn && $unidadMedida !== '') {
                 return $num . ' ' . $unidadMedida;
@@ -569,7 +577,7 @@ class RegisterService
         $buildCeldaReporte = static function (
             string $principal,
             string $medida,
-            string $secId,
+            string $bloqueTipo,
             string $alineacion
         ) use ($esHtmlContenido, $escHtml): string {
             $principal = trim($principal);
@@ -578,7 +586,7 @@ class RegisterService
                 return '';
             }
 
-            if ($secId === 'cuerpo' && $alineacion === 'bordes') {
+            if ($bloqueTipo === 'cuerpo' && $alineacion === 'bordes') {
                 $html = '<div class="cultivo-celda-bordes">';
                 if ($principal !== '') {
                     $html .= '<span class="cultivo-celda-izq">'
@@ -605,23 +613,37 @@ class RegisterService
         };
 
         $out = [];
-        foreach ($labels as $secId => $secLabel) {
-            $sec = $matriz[$secId] ?? ['filas' => 0, 'columnas' => 1, 'titulos' => [[]], 'celdas' => []];
-            $filas = max(0, (int) ($sec['filas'] ?? 0));
-            $columnas = max(1, (int) ($sec['columnas'] ?? 1));
-            $titulosRaw = is_array($sec['titulos'] ?? null) ? $sec['titulos'] : [];
+        foreach ($bloques as $bloque) {
+            $blockId = (string) ($bloque['id'] ?? '');
+            $bloqueTipo = (string) ($bloque['tipo'] ?? 'encabezado');
+            if ($blockId === '') {
+                continue;
+            }
+            $secLabel = LabotestModel::cultivoBloqueDisplayLabel($bloque, $bloques);
+            $filas = max(0, (int) ($bloque['filas'] ?? 0));
+            $columnas = max(1, (int) ($bloque['columnas'] ?? 1));
+            $titulosRaw = is_array($bloque['titulos'] ?? null) ? $bloque['titulos'] : [];
             $titulosPorCol = LabotestModel::parseCultivoTitulosPorColumna($titulosRaw, $columnas);
-            $celdasCfg = is_array($sec['celdas'] ?? null) ? $sec['celdas'] : [];
-            $alineacionSec = ($secId === 'cuerpo') ? $alineacionCuerpo : 'centro';
+            $celdasCfg = is_array($bloque['celdas'] ?? null) ? $bloque['celdas'] : [];
+            $alineacionSec = 'centro';
+            if ($bloqueTipo === 'cuerpo') {
+                $alineacionSec = trim((string) ($bloque['alineacion_filas'] ?? $alineacionCuerpoLegacy));
+                if ($alineacionSec === 'cuerpo') {
+                    $alineacionSec = 'centro';
+                }
+                if (! in_array($alineacionSec, ['centro', 'bordes'], true)) {
+                    $alineacionSec = 'centro';
+                }
+            }
             $filasRaw = [];
             for ($r = 0; $r < $filas; $r++) {
                 $rowOut = [];
                 for ($c = 0; $c < $columnas; $c++) {
                     $cfg = $normalizeCeldaCfg($celdasCfg[$r][$c] ?? ['modo' => 'texto']);
-                    $rawVal = (string) ($cellValues[$secId][$r][$c] ?? '');
+                    $rawVal = (string) ($cellValues[$blockId][$r][$c] ?? '');
                     $principal = $resolvePrincipal($cfg, $rawVal);
-                    $medida = $resolveMedida($secId, $r, $c);
-                    $rowOut[] = $buildCeldaReporte($principal, $medida, $secId, $alineacionSec);
+                    $medida = $resolveMedida($blockId, $r, $c);
+                    $rowOut[] = $buildCeldaReporte($principal, $medida, $bloqueTipo, $alineacionSec);
                 }
                 $filasRaw[] = $rowOut;
             }
@@ -632,7 +654,8 @@ class RegisterService
             }
 
             $out[] = [
-                'seccion'           => $secId,
+                'seccion'           => $blockId,
+                'tipo'              => $bloqueTipo,
                 'label'             => $secLabel,
                 'columnas'          => $compacto['columnas'],
                 'titulos_por_col'   => $compacto['titulos_por_col'],
@@ -1304,6 +1327,41 @@ class RegisterService
             return self::nowInReportTimezone()->format('d/m/Y H:i');
         } catch (\Throwable $e) {
             return (new \DateTimeImmutable('now', new \DateTimeZone('UTC')))->format('d/m/Y H:i');
+        }
+    }
+
+    /**
+     * Fecha/hora actual para inputs de formulario (Y-m-d H:i) en la zona del laboratorio.
+     */
+    public static function formatNowForFormInput(): string
+    {
+        try {
+            return self::nowInReportTimezone()->format('Y-m-d H:i');
+        } catch (\Throwable $e) {
+            return (new \DateTimeImmutable('now', new \DateTimeZone('UTC')))->format('Y-m-d H:i');
+        }
+    }
+
+    /**
+     * DATETIME de BD → Y-m-d H:i para inputs de formulario en la zona del laboratorio.
+     */
+    public static function formatStoredForFormInput(?string $mysqlDatetime): string
+    {
+        if ($mysqlDatetime === null || trim($mysqlDatetime) === '') {
+            return self::formatNowForFormInput();
+        }
+        $raw = trim($mysqlDatetime);
+        try {
+            if (self::usesUtcDatetimeStorage()) {
+                $dt = new \DateTimeImmutable($raw, new \DateTimeZone('UTC'));
+
+                return $dt->setTimezone(self::reportTimezoneObject())->format('Y-m-d H:i');
+            }
+            $dt = new \DateTimeImmutable($raw, self::reportTimezoneObject());
+
+            return $dt->format('Y-m-d H:i');
+        } catch (\Throwable $e) {
+            return strlen($raw) >= 16 ? substr($raw, 0, 16) : $raw;
         }
     }
 

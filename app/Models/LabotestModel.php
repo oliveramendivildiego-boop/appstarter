@@ -182,37 +182,186 @@ class LabotestModel extends Model
         return $row ?? (object) ['prianacategoria_id' => null, 'anacategoria_id' => $anacategoriaId, 'name' => '', 'order' => 0, 'compleja' => 0, 'mostrar_valores' => 0, 'tipo_muestra_id' => null, 'metodo_id' => null];
     }
 
+    /** @var array<string, string> */
+    public const CULTIVO_SECCION_LABELS = [
+        'encabezado' => 'Encabezado',
+        'cuerpo'     => 'Cuerpo',
+        'pie'        => 'Pie',
+    ];
+
     /**
-     * Configuración por defecto de la matriz de cultivo (encabezado, cuerpo, pie).
+     * Configuración por defecto de la matriz de cultivo (bloques encabezado, cuerpo, pie).
      *
-     * @return array<string, array{filas: int, columnas: int, titulos: list<list<string>>, celdas: list<list<array{modo: string, opcion_id?: int}>>}>
+     * @return array{version: int, bloques: list<array<string, mixed>>}
      */
     public function getDefaultCultivoMatrizConfig(): array
     {
         return [
-            'encabezado' => [
-                'filas'     => 1,
-                'columnas'  => 1,
-                'titulos'   => [[]],
-                'celdas'    => [[['modo' => 'texto']]],
-            ],
-            'cuerpo' => [
-                'filas'                => 1,
-                'columnas'             => 1,
-                'titulos'              => [[]],
-                'celdas'               => [[['modo' => 'texto']]],
-                'valores_habilitado'   => false,
-                'unidades_habilitado'  => false,
-                'unidad'               => '',
-                'alineacion_filas'     => 'centro',
-            ],
-            'pie' => [
-                'filas'     => 1,
-                'columnas'  => 1,
-                'titulos'   => [[]],
-                'celdas'    => [[['modo' => 'texto']]],
+            'version' => 2,
+            'bloques' => [
+                $this->defaultCultivoBloque('encabezado', 'encabezado'),
+                $this->defaultCultivoBloque('cuerpo', 'cuerpo'),
+                $this->defaultCultivoBloque('pie', 'pie'),
             ],
         ];
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function defaultCultivoBloque(string $id, string $tipo): array
+    {
+        $bloque = [
+            'id'       => $id,
+            'tipo'     => $tipo,
+            'filas'    => 1,
+            'columnas' => 1,
+            'titulos'  => [[]],
+            'celdas'   => [[['modo' => 'texto']]],
+        ];
+        if ($tipo === 'cuerpo') {
+            $bloque['valores_habilitado']  = false;
+            $bloque['unidades_habilitado'] = false;
+            $bloque['unidad']              = '';
+            $bloque['alineacion_filas']    = 'centro';
+        }
+
+        return $bloque;
+    }
+
+    /**
+     * @param array<string, mixed>|null $config
+     * @return list<array<string, mixed>>
+     */
+    public static function resolveCultivoMatrizBloques(?array $config): array
+    {
+        if (! is_array($config)) {
+            return model(self::class)->getDefaultCultivoMatrizConfig()['bloques'];
+        }
+        if (isset($config['bloques']) && is_array($config['bloques'])) {
+            return model(self::class)->normalizeCultivoMatrizConfig($config)['bloques'];
+        }
+
+        return model(self::class)->migrateLegacyCultivoMatrizToBloques($config);
+    }
+
+    /**
+     * @param array<string, mixed> $config
+     * @return list<array<string, mixed>>
+     */
+    public function migrateLegacyCultivoMatrizToBloques(array $config): array
+    {
+        $bloques = [];
+        foreach (array_keys(self::CULTIVO_SECCION_LABELS) as $tipo) {
+            if (! isset($config[$tipo]) || ! is_array($config[$tipo])) {
+                continue;
+            }
+            $bloques[] = array_merge(['id' => $tipo, 'tipo' => $tipo], $config[$tipo]);
+        }
+        if ($bloques === []) {
+            return $this->getDefaultCultivoMatrizConfig()['bloques'];
+        }
+
+        return $this->normalizeCultivoMatrizConfig(['version' => 2, 'bloques' => $bloques])['bloques'];
+    }
+
+    /**
+     * @param list<string> $existingIds
+     */
+    public static function generateCultivoBloqueId(string $tipo, array $existingIds): string
+    {
+        if (! isset(self::CULTIVO_SECCION_LABELS[$tipo])) {
+            $tipo = 'encabezado';
+        }
+        if (! in_array($tipo, $existingIds, true)) {
+            return $tipo;
+        }
+        $n = 2;
+        while (in_array($tipo . '_' . $n, $existingIds, true)) {
+            $n++;
+        }
+
+        return $tipo . '_' . $n;
+    }
+
+    /**
+     * @param array<string, mixed> $bloque
+     */
+    public static function cultivoBloqueDisplayLabel(array $bloque, array $allBloques = []): string
+    {
+        $tipo = (string) ($bloque['tipo'] ?? 'encabezado');
+        $base = self::CULTIVO_SECCION_LABELS[$tipo] ?? ucfirst($tipo);
+        $id = (string) ($bloque['id'] ?? $tipo);
+        if ($id === $tipo) {
+            $sameTipo = 0;
+            foreach ($allBloques as $b) {
+                if (($b['tipo'] ?? '') === $tipo) {
+                    $sameTipo++;
+                }
+            }
+            if ($sameTipo <= 1) {
+                return $base;
+            }
+        }
+        if (preg_match('/^' . preg_quote($tipo, '/') . '_(\d+)$/', $id, $m)) {
+            return $base . ' ' . $m[1];
+        }
+
+        return $base . ' (' . $id . ')';
+    }
+
+    /**
+     * @param array<string, mixed> $bloque
+     * @return array<string, mixed>
+     */
+    private function normalizeCultivoBloque(array $bloque): array
+    {
+        $tipo = (string) ($bloque['tipo'] ?? 'encabezado');
+        if (! isset(self::CULTIVO_SECCION_LABELS[$tipo])) {
+            $tipo = 'encabezado';
+        }
+        $id = trim((string) ($bloque['id'] ?? $tipo));
+        if ($id === '' || ! preg_match('/^[a-z][a-z0-9_]{0,47}$/', $id)) {
+            $id = $tipo;
+        }
+
+        $filas = max(0, min(50, (int) ($bloque['filas'] ?? 1)));
+        $columnas = max(1, min(20, (int) ($bloque['columnas'] ?? 1)));
+        $oldTitulos = is_array($bloque['titulos'] ?? null) ? $bloque['titulos'] : [];
+        $oldCeldas = is_array($bloque['celdas'] ?? null) ? $bloque['celdas'] : [];
+        $titulos = $this->normalizeCultivoTitulosPorColumna($oldTitulos, $columnas);
+
+        $celdas = [];
+        for ($r = 0; $r < $filas; $r++) {
+            $celdas[$r] = [];
+            for ($c = 0; $c < $columnas; $c++) {
+                $celdas[$r][$c] = $this->normalizeCultivoCelda($oldCeldas[$r][$c] ?? ['modo' => 'texto']);
+            }
+        }
+
+        $out = [
+            'id'       => $id,
+            'tipo'     => $tipo,
+            'filas'    => $filas,
+            'columnas' => $columnas,
+            'titulos'  => $titulos,
+            'celdas'   => $celdas,
+        ];
+
+        if ($tipo === 'cuerpo') {
+            $out['valores_habilitado'] = (int) ($bloque['valores_habilitado'] ?? 0) === 1
+                || ($bloque['valores_habilitado'] ?? false) === true;
+            $out['unidades_habilitado'] = (int) ($bloque['unidades_habilitado'] ?? 0) === 1
+                || ($bloque['unidades_habilitado'] ?? false) === true;
+            $out['unidad'] = trim((string) ($bloque['unidad'] ?? ''));
+            $aliRaw = trim((string) ($bloque['alineacion_filas'] ?? 'centro'));
+            if ($aliRaw === 'cuerpo') {
+                $aliRaw = 'centro';
+            }
+            $out['alineacion_filas'] = in_array($aliRaw, ['centro', 'bordes'], true) ? $aliRaw : 'centro';
+        }
+
+        return $out;
     }
 
     /**
@@ -746,58 +895,47 @@ class LabotestModel extends Model
 
     /**
      * @param array<string, mixed>|null $config
-     * @return array<string, array{filas: int, columnas: int, titulos: list<list<string>>, celdas: list<list<array{modo: string, opcion_id?: int, leyenda_cultivo_categoria_id?: int}>>}>
+     * @return array{version: int, bloques: list<array<string, mixed>>}
      */
     public function normalizeCultivoMatrizConfig(?array $config): array
     {
-        $defaults = $this->getDefaultCultivoMatrizConfig();
-        $out = [];
-
-        foreach (['encabezado', 'cuerpo', 'pie'] as $section) {
-            $src = is_array($config[$section] ?? null) ? $config[$section] : [];
-            $filas = max(0, min(50, (int) ($src['filas'] ?? $defaults[$section]['filas'])));
-            $columnas = max(1, min(20, (int) ($src['columnas'] ?? $defaults[$section]['columnas'])));
-            $oldTitulos = is_array($src['titulos'] ?? null) ? $src['titulos'] : [];
-            $oldCeldas = is_array($src['celdas'] ?? null) ? $src['celdas'] : [];
-
-            $titulos = $this->normalizeCultivoTitulosPorColumna($oldTitulos, $columnas);
-
-            $celdas = [];
-            for ($r = 0; $r < $filas; $r++) {
-                $celdas[$r] = [];
-                for ($c = 0; $c < $columnas; $c++) {
-                    $celdas[$r][$c] = $this->normalizeCultivoCelda($oldCeldas[$r][$c] ?? ['modo' => 'texto']);
-                }
-            }
-
-            $out[$section] = [
-                'filas'    => $filas,
-                'columnas' => $columnas,
-                'titulos'  => $titulos,
-                'celdas'   => $celdas,
-            ];
-
-            if ($section === 'cuerpo') {
-                $out[$section]['valores_habilitado'] = (int) ($src['valores_habilitado'] ?? 0) === 1
-                    || ($src['valores_habilitado'] ?? false) === true;
-                $out[$section]['unidades_habilitado'] = (int) ($src['unidades_habilitado'] ?? 0) === 1
-                    || ($src['unidades_habilitado'] ?? false) === true;
-                $out[$section]['unidad'] = trim((string) ($src['unidad'] ?? ''));
-                $aliRaw = trim((string) ($src['alineacion_filas'] ?? 'centro'));
-                if ($aliRaw === 'cuerpo') {
-                    $aliRaw = 'centro';
-                }
-                $out[$section]['alineacion_filas'] = in_array($aliRaw, ['centro', 'bordes'], true)
-                    ? $aliRaw
-                    : 'centro';
-            }
+        if (! is_array($config)) {
+            return $this->getDefaultCultivoMatrizConfig();
         }
 
-        return $out;
+        $rawBloques = $config['bloques'] ?? null;
+        if (! is_array($rawBloques)) {
+            $rawBloques = $this->migrateLegacyCultivoMatrizToBloques($config);
+        }
+
+        $bloques = [];
+        $usedIds = [];
+        foreach ($rawBloques as $rawBloque) {
+            if (! is_array($rawBloque)) {
+                continue;
+            }
+            $normalized = $this->normalizeCultivoBloque($rawBloque);
+            $id = $normalized['id'];
+            if (in_array($id, $usedIds, true)) {
+                $id = self::generateCultivoBloqueId($normalized['tipo'], $usedIds);
+                $normalized['id'] = $id;
+            }
+            $usedIds[] = $id;
+            $bloques[] = $normalized;
+        }
+
+        if ($bloques === []) {
+            return $this->getDefaultCultivoMatrizConfig();
+        }
+
+        return [
+            'version' => 2,
+            'bloques' => $bloques,
+        ];
     }
 
     /**
-     * @return array<string, array{filas: int, columnas: int, titulos: list<list<string>>, celdas: list<list<array{modo: string, opcion_id?: int}>>}>
+     * @return array{version: int, bloques: list<array<string, mixed>>}
      */
     public function getCultivoMatrizConfig(int $prianacategoriaId): array
     {
@@ -1296,6 +1434,7 @@ class LabotestModel extends Model
      */
     public function getOpciones(): array
     {
+        model(OpcionModel::class)->ensureSystemOpciones();
         $rows = $this->db->table('opciones')->orderBy('opciones_id')->get()->getResultArray();
         $out = [];
         foreach ($rows as $r) {

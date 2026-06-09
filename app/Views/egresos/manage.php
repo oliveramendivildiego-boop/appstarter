@@ -138,9 +138,11 @@
                 <div class="mb-3">
                     <label class="form-label">Fecha</label>
                     <input type="text" id="egreso_fecha" name="fecha" class="form-control flatpickr-input"
-                           value="<?= !empty($egreso_editar['fecha'])
-                               ? esc(substr((string) $egreso_editar['fecha'], 0, 16))
-                               : esc(substr(\App\Services\RegisterService::mysqlNowForReport(), 0, 16)) ?>">
+                           value="<?= esc(
+                               !empty($egreso_editar['fecha'])
+                                   ? lab_stored_form_datetime((string) $egreso_editar['fecha'])
+                                   : lab_now_form_datetime()
+                           ) ?>">
                 </div>
                 <div class="mb-3">
                     <label class="form-label">Monto</label>

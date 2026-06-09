@@ -78,6 +78,81 @@ if (! function_exists('registro_rango_referencial_texto')) {
     }
 }
 
+if (! function_exists('registro_opcion_es_texto_rico')) {
+    function registro_opcion_es_texto_rico(int $opcionId): bool
+    {
+        return \App\Models\OpcionModel::isTextoRico($opcionId);
+    }
+}
+
+if (! function_exists('registro_opcion_es_texto_libre')) {
+    function registro_opcion_es_texto_libre(int $opcionId): bool
+    {
+        return \App\Models\OpcionModel::isTextoLibre($opcionId);
+    }
+}
+
+if (! function_exists('registro_opcion_es_select')) {
+    function registro_opcion_es_select(int $opcionId): bool
+    {
+        return \App\Models\OpcionModel::isSelect($opcionId);
+    }
+}
+
+if (! function_exists('registro_sanitizar_html_rico')) {
+    /**
+     * Limpia HTML de resultados enriquecidos (negrita, cursiva, listas, etc.).
+     */
+    function registro_sanitizar_html_rico(string $html): string
+    {
+        $html = trim($html);
+        if ($html === '' || $html === '-') {
+            return '';
+        }
+
+        $allowed = '<p><br><strong><b><em><i><u><ul><ol><li><a><span><div>';
+        $clean = strip_tags($html, $allowed);
+        $clean = preg_replace('/\s+on\w+\s*=\s*(["\']).*?\1/i', '', $clean) ?? $clean;
+        $clean = preg_replace('/javascript\s*:/i', '', $clean) ?? $clean;
+
+        return trim($clean);
+    }
+}
+
+if (! function_exists('registro_textarea_body_safe')) {
+    /**
+     * Contenido seguro para pegar dentro de <textarea> (conserva HTML para Summernote).
+     */
+    function registro_textarea_body_safe(string $html): string
+    {
+        return str_replace('</textarea>', '&lt;/textarea&gt;', $html);
+    }
+}
+
+if (! function_exists('registro_resultado_celda_html')) {
+    /**
+     * HTML seguro para mostrar un resultado en reportes (texto plano escapado o HTML enriquecido).
+     *
+     * @param mixed $valor
+     * @param mixed $unidad
+     */
+    function registro_resultado_celda_html($valor, $unidad, int $opcionId = 3): string
+    {
+        if (registro_opcion_es_texto_rico($opcionId)) {
+            $html = registro_sanitizar_html_rico((string) ($valor ?? ''));
+            if ($html === '') {
+                return esc('-');
+            }
+            $u = trim((string) ($unidad ?? ''));
+            $suffix = $u !== '' ? ' <span class="text-muted">' . esc($u) . '</span>' : '';
+
+            return '<div class="resultado-texto-rico text-start d-inline-block">' . $html . $suffix . '</div>';
+        }
+
+        return esc(registro_resultado_con_unidad($valor, $unidad));
+    }
+}
+
 if (! function_exists('registro_tiene_rango_referencial')) {
     /**
      * Indica si hay al menos un límite (mín. o máx.) de referencia configurado.
