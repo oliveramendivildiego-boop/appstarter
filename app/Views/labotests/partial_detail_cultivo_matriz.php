@@ -1,14 +1,19 @@
 <?php
 /**
- * Matriz configurable para pruebas de tipo cultivo (encabezado, cuerpo, pie).
+ * Matriz configurable para pruebas de tipo cultivo o personalizado (encabezado, cuerpo, pie).
  *
  * @var object $labotests_info
  * @var array{version?: int, bloques?: list<array<string, mixed>>} $cultivo_matriz
  * @var array<int, string> $opciones
  * @var array<int, array<string, mixed>> $leyendas_cultivo
+ * @var string $matriz_tipo cultivo|personalizado
  */
+$matrizTipo = ($matriz_tipo ?? 'cultivo') === 'personalizado' ? 'personalizado' : 'cultivo';
+$esPersonalizado = $matrizTipo === 'personalizado';
 $secciones = \App\Models\LabotestModel::CULTIVO_SECCION_LABELS;
-$bloquesMatriz = \App\Models\LabotestModel::resolveCultivoMatrizBloques($cultivo_matriz ?? []);
+$bloquesMatriz = $esPersonalizado
+    ? \App\Models\LabotestModel::resolvePersonalizadoMatrizBloques($cultivo_matriz ?? [])
+    : \App\Models\LabotestModel::resolveCultivoMatrizBloques($cultivo_matriz ?? []);
 $matriz = $cultivo_matriz ?? [];
 $opcionesList = $opciones ?? [];
 $leyendasCultivoList = $leyendas_cultivo ?? [];
@@ -57,6 +62,30 @@ $resolveCategoriaCeldaCfg = static function (array $celdaRaw) use ($leyendasJsMa
     }
 
     return $catId;
+};
+$parsePersonalizadoCelda = static function (array $celdaRaw): array {
+    $ali = trim((string) ($celdaRaw['alineacion'] ?? 'izquierda'));
+    if (! in_array($ali, ['izquierda', 'centro', 'derecha'], true)) {
+        $ali = 'izquierda';
+    }
+    $fuente = trim((string) ($celdaRaw['fuente'] ?? 'normal'));
+    if (! in_array($fuente, ['normal', 'negrita', 'titulo'], true)) {
+        $fuente = 'normal';
+    }
+    $rol = trim((string) ($celdaRaw['rol'] ?? 'input'));
+    if (! in_array($rol, ['input', 'titulo', 'etiqueta'], true)) {
+        $rol = 'input';
+    }
+    $rowspan = max(1, min(50, (int) ($celdaRaw['rowspan'] ?? 1)));
+    $textoFijo = trim((string) ($celdaRaw['texto_fijo'] ?? ''));
+
+    return [
+        'alineacion' => $ali,
+        'fuente'     => $fuente,
+        'rol'        => $rol,
+        'rowspan'    => $rowspan,
+        'texto_fijo' => $textoFijo,
+    ];
 };
 ?>
 <script src="<?= base_url('js/vendor/sortable.min.js') ?>"></script>
@@ -318,12 +347,167 @@ $resolveCategoriaCeldaCfg = static function (array $celdaRaw) use ($leyendasJsMa
 .cultivo-bulk-celda-panel .cultivo-bulk-celda-extra {
     min-width: 12rem;
 }
+.cultivo-celda-extras-personalizado {
+    border-top: 1px dashed #dee2e6;
+    margin-top: 0.35rem;
+    padding-top: 0.35rem;
+}
+.cultivo-celda-extras-personalizado .form-label {
+    font-size: 0.65rem;
+    margin-bottom: 0.1rem;
+    color: #6c757d;
+}
+.cultivo-celda-cubierta-rowspan {
+    background: #f8f9fa;
+    opacity: 0.65;
+}
+.cultivo-celda-titulo-drop {
+    min-height: 2.1rem;
+    border: 2px dashed #6c757d;
+    border-radius: 0.35rem;
+    padding: 0.2rem;
+    margin-bottom: 0.35rem;
+    background: #f1f3f5;
+}
+.cultivo-celda-titulo-drop:empty::before,
+.cultivo-celda-titulo-drop.is-empty::before {
+    content: 'Arrastre título aquí';
+    display: block;
+    font-size: 0.65rem;
+    color: #adb5bd;
+    text-align: center;
+    padding: 0.25rem 0;
+}
+.cultivo-celda-titulo-drop .cultivo-titulo-colspan,
+.cultivo-celda-titulo-drop .cultivo-titulo-span-badge {
+    display: none !important;
+}
+.cultivo-celda-texto-rico-wrap .form-control {
+    min-height: 4rem;
+    font-size: 0.8rem;
+}
+.cultivo-matriz-grid-wrap {
+    border: 2px solid #495057;
+    border-radius: 0.5rem;
+    overflow: auto;
+    background: #fff;
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08);
+}
+.cultivo-matriz-grid {
+    border-collapse: separate !important;
+    border-spacing: 0;
+    margin-bottom: 0 !important;
+    width: 100%;
+}
+.cultivo-matriz-grid > thead > tr > th,
+.cultivo-matriz-grid > tbody > tr > th,
+.cultivo-matriz-grid > tbody > tr > td {
+    border: 2px solid #6c757d !important;
+    vertical-align: top;
+}
+.cultivo-matriz-grid > thead > tr > th.cultivo-grid-corner,
+.cultivo-matriz-grid > thead > tr > th.cultivo-grid-col-head {
+    background: #343a40;
+    color: #fff;
+    font-weight: 700;
+    font-size: 0.72rem;
+    padding: 0.45rem 0.4rem;
+    text-align: center;
+    white-space: nowrap;
+}
+.cultivo-matriz-grid > tbody > tr > th.cultivo-grid-row-head {
+    background: #495057;
+    color: #fff;
+    font-weight: 700;
+    font-size: 0.72rem;
+    padding: 0.45rem 0.35rem;
+    text-align: center;
+    white-space: nowrap;
+    width: 3.25rem;
+    min-width: 3.25rem;
+    vertical-align: middle;
+    position: sticky;
+    left: 0;
+    z-index: 1;
+}
+.cultivo-matriz-grid > tbody > tr > td.cultivo-grid-data-cell {
+    padding: 0.5rem !important;
+    min-width: 10.5rem;
+    background: #fff;
+}
+.cultivo-matriz-grid > tbody > tr:nth-child(odd) > td.cultivo-grid-data-cell {
+    background: #f8f9fa;
+}
+.cultivo-matriz-grid > tbody > tr > td.cultivo-grid-data-cell.cultivo-grid-col-par {
+    box-shadow: inset 0 0 0 9999px rgba(13, 110, 253, 0.04);
+}
+.cultivo-matriz-grid-personalizado > tbody > tr > td.cultivo-grid-data-cell {
+    min-width: 12rem;
+}
+.cultivo-celda-config {
+    border: 2px solid #ced4da;
+    border-radius: 0.5rem;
+    background: #fff;
+    padding: 0.5rem;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.06);
+}
+.cultivo-matriz-grid-personalizado .cultivo-celda-config {
+    border-color: #b6d4fe;
+    background: #fcfdff;
+}
+.cultivo-celda-coord-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    font-size: 0.68rem;
+    font-weight: 700;
+    color: #fff;
+    background: #0d6efd;
+    border-radius: 0.3rem;
+    padding: 0.2rem 0.5rem;
+    margin-bottom: 0.4rem;
+    letter-spacing: 0.03em;
+    line-height: 1.2;
+}
+.cultivo-matriz-grid-personalizado .cultivo-celda-coord-badge {
+    background: #6f42c1;
+}
+.cultivo-celda-slot {
+    min-height: 2.5rem;
+}
+.cultivo-celda-drag-handle {
+    float: right;
+    cursor: grab;
+    color: #6c757d;
+    padding: 0.15rem 0.35rem;
+    border-radius: 0.25rem;
+    line-height: 1;
+}
+.cultivo-celda-drag-handle:hover {
+    color: #0d6efd;
+    background: rgba(13, 110, 253, 0.08);
+}
+.cultivo-celda-config.cultivo-celda-es-titulo {
+    border-color: #a370f7;
+    background: #faf8ff;
+}
+.cultivo-celda-slot.sortable-ghost .cultivo-celda-config {
+    opacity: 0.45;
+    border-style: dashed;
+}
+.cultivo-matriz-leyenda-celdas {
+    font-size: 0.75rem;
+    color: #6c757d;
+    margin-bottom: 0.5rem;
+}
 </style>
 <div class="card card-tabla-sub-items mt-3">
     <div class="card-header d-flex flex-wrap align-items-center gap-2">
-        <strong>Valores de sub-clases (prueba cultivo)</strong>
-        <span class="badge bg-info text-dark">Matriz</span>
-        <span class="text-muted small">Apile títulos por columna; use el panel «Orden de secciones» arriba para reordenar, duplicar o agregar bloques.</span>
+        <strong><?= $esPersonalizado ? 'Matriz personalizada' : 'Valores de sub-clases (prueba cultivo)' ?></strong>
+        <span class="badge bg-info text-dark"><?= $esPersonalizado ? 'Personalizado' : 'Matriz' ?></span>
+        <span class="text-muted small"><?= $esPersonalizado
+            ? 'Configure filas y columnas como en cultivo. Por celda puede definir alineación, fuente, rol (título/input) y unir filas.'
+            : 'Apile títulos por columna; use el panel «Orden de secciones» arriba para reordenar, duplicar o agregar bloques.' ?></span>
         <a href="<?= site_url('labotests/opciones') ?>" class="btn btn-sm btn-outline-primary" target="_blank" rel="noopener">
             <i class="fa-solid fa-list-check me-1"></i>Tipos de resultado
         </a>
@@ -332,10 +516,8 @@ $resolveCategoriaCeldaCfg = static function (array $celdaRaw) use ($leyendasJsMa
         </a>
     </div>
     <div class="card-body">
-        <?= form_open('labotests/savecultivomatriz', ['id' => 'form_cultivo_matriz', 'novalidate' => 'novalidate']) ?>
+        <?= form_open($esPersonalizado ? 'labotests/savepersonalizadomatriz' : 'labotests/savecultivomatriz', ['id' => 'form_cultivo_matriz', 'novalidate' => 'novalidate']) ?>
         <input type="hidden" name="prianacategoria_id" value="<?= (int) ($labotests_info->prianacategoria_id ?? 0) ?>">
-        <input type="hidden" name="cultivo_matriz_json" id="cultivo_matriz_json" value="">
-
         <input type="hidden" name="cultivo_matriz_json" id="cultivo_matriz_json" value="">
 
         <div class="cultivo-orden-panel">
@@ -406,12 +588,24 @@ $resolveCategoriaCeldaCfg = static function (array $celdaRaw) use ($leyendasJsMa
                 $alineacionFilas = 'centro';
             }
             $bloqueIdSafe = preg_replace('/[^a-z0-9_]/', '_', $bloqueId);
+            $repEstilo = $esPersonalizado
+                ? \App\Models\LabotestModel::normalizePersonalizadoReporteEstiloBloque($sec)
+                : [];
+            $repFondoTabla = (string) ($repEstilo['reporte_fondo_tabla'] ?? 'transparente');
+            $repFondoTitulos = (string) ($repEstilo['reporte_fondo_titulos'] ?? 'transparente');
+            $repBordeModo = (string) ($repEstilo['reporte_borde_modo'] ?? 'default');
+            $repBordeAncho = (int) ($repEstilo['reporte_borde_ancho'] ?? 1);
+            $repBordeEstilo = (string) ($repEstilo['reporte_borde_estilo'] ?? 'solid');
+            $repBordeColor = (string) ($repEstilo['reporte_borde_color'] ?? '#cccccc');
+            $repFondoTablaEsColor = $repFondoTabla !== 'transparente';
+            $repFondoTitulosEsColor = $repFondoTitulos !== 'transparente';
         ?>
         <li class="cultivo-bloque-item" data-bloque-id="<?= esc($bloqueId, 'attr') ?>" data-tipo="<?= esc($bloqueTipo, 'attr') ?>">
             <div class="cultivo-bloque-body">
         <div class="border rounded p-3 mb-0 cultivo-matriz-seccion" data-bloque-id="<?= esc($bloqueId, 'attr') ?>" data-tipo="<?= esc($bloqueTipo, 'attr') ?>"
              data-filas="<?= $filas ?>" data-columnas="<?= $columnas ?>"
-             <?= $bloqueTipo === 'cuerpo' ? 'data-valores-habilitado="' . ($valoresHabilitado ? '1' : '0') . '" data-unidades-habilitado="' . ($unidadesHabilitado ? '1' : '0') . '" data-unidad-global="' . esc($unidadGlobal, 'attr') . '" data-alineacion-filas="' . esc($alineacionFilas, 'attr') . '" data-celdas-json="' . esc(json_encode($celdas, JSON_UNESCAPED_UNICODE), 'attr') . '"' : '' ?>>
+             data-celdas-json="<?= esc(json_encode($celdas, JSON_UNESCAPED_UNICODE), 'attr') ?>"
+             <?= $bloqueTipo === 'cuerpo' ? 'data-valores-habilitado="' . ($valoresHabilitado ? '1' : '0') . '" data-unidades-habilitado="' . ($unidadesHabilitado ? '1' : '0') . '" data-unidad-global="' . esc($unidadGlobal, 'attr') . '" data-alineacion-filas="' . esc($alineacionFilas, 'attr') . '"' : '' ?>>
             <div class="d-flex flex-wrap align-items-end gap-3 mb-3">
                 <div>
                     <h6 class="mb-1"><?= esc($secLabel) ?></h6>
@@ -473,8 +667,85 @@ $resolveCategoriaCeldaCfg = static function (array $celdaRaw) use ($leyendasJsMa
                 </div>
             </div>
 
+            <?php if ($esPersonalizado): ?>
+            <div class="cultivo-reporte-estilo-panel border rounded p-2 mb-3 bg-light-subtle" data-bloque-id="<?= esc($bloqueId, 'attr') ?>">
+                <div class="small fw-semibold mb-2">Estilo en reporte</div>
+                <div class="row g-2 align-items-end">
+                    <div class="col-auto">
+                        <label class="form-label small mb-1">Fondo tabla</label>
+                        <select class="form-select form-select-sm cultivo-reporte-fondo-tabla-modo"
+                                data-bloque-id="<?= esc($bloqueId, 'attr') ?>">
+                            <option value="transparente" <?= ! $repFondoTablaEsColor ? 'selected' : '' ?>>Transparente</option>
+                            <option value="color" <?= $repFondoTablaEsColor ? 'selected' : '' ?>>Color</option>
+                        </select>
+                    </div>
+                    <div class="col-auto cultivo-reporte-fondo-tabla-color-wrap<?= $repFondoTablaEsColor ? '' : ' d-none' ?>">
+                        <label class="form-label small mb-1">Color tabla</label>
+                        <input type="color"
+                               class="form-control form-control-color form-control-sm cultivo-reporte-fondo-tabla-color"
+                               data-bloque-id="<?= esc($bloqueId, 'attr') ?>"
+                               value="<?= esc($repFondoTablaEsColor ? $repFondoTabla : '#ffffff', 'attr') ?>">
+                    </div>
+                    <div class="col-auto">
+                        <label class="form-label small mb-1">Fondo títulos</label>
+                        <select class="form-select form-select-sm cultivo-reporte-fondo-titulos-modo"
+                                data-bloque-id="<?= esc($bloqueId, 'attr') ?>">
+                            <option value="transparente" <?= ! $repFondoTitulosEsColor ? 'selected' : '' ?>>Transparente</option>
+                            <option value="color" <?= $repFondoTitulosEsColor ? 'selected' : '' ?>>Color</option>
+                        </select>
+                    </div>
+                    <div class="col-auto cultivo-reporte-fondo-titulos-color-wrap<?= $repFondoTitulosEsColor ? '' : ' d-none' ?>">
+                        <label class="form-label small mb-1">Color títulos</label>
+                        <input type="color"
+                               class="form-control form-control-color form-control-sm cultivo-reporte-fondo-titulos-color"
+                               data-bloque-id="<?= esc($bloqueId, 'attr') ?>"
+                               value="<?= esc($repFondoTitulosEsColor ? $repFondoTitulos : '#f8f9fa', 'attr') ?>">
+                    </div>
+                    <div class="col-auto">
+                        <label class="form-label small mb-1">Bordes</label>
+                        <select class="form-select form-select-sm cultivo-reporte-borde-modo"
+                                data-bloque-id="<?= esc($bloqueId, 'attr') ?>">
+                            <option value="default" <?= $repBordeModo === 'default' ? 'selected' : '' ?>>Por defecto</option>
+                            <option value="none" <?= $repBordeModo === 'none' ? 'selected' : '' ?>>Sin bordes</option>
+                            <option value="custom" <?= $repBordeModo === 'custom' ? 'selected' : '' ?>>Personalizar</option>
+                        </select>
+                    </div>
+                    <div class="col-auto cultivo-reporte-borde-custom-wrap<?= $repBordeModo === 'custom' ? '' : ' d-none' ?>">
+                        <label class="form-label small mb-1">Grosor (px)</label>
+                        <input type="number"
+                               class="form-control form-control-sm cultivo-reporte-borde-ancho"
+                               data-bloque-id="<?= esc($bloqueId, 'attr') ?>"
+                               value="<?= (int) $repBordeAncho ?>"
+                               min="0"
+                               max="10"
+                               step="1"
+                               style="width:4rem;">
+                    </div>
+                    <div class="col-auto cultivo-reporte-borde-custom-wrap<?= $repBordeModo === 'custom' ? '' : ' d-none' ?>">
+                        <label class="form-label small mb-1">Estilo</label>
+                        <select class="form-select form-select-sm cultivo-reporte-borde-estilo"
+                                data-bloque-id="<?= esc($bloqueId, 'attr') ?>">
+                            <option value="solid" <?= $repBordeEstilo === 'solid' ? 'selected' : '' ?>>Sólido</option>
+                            <option value="dashed" <?= $repBordeEstilo === 'dashed' ? 'selected' : '' ?>>Discontinuo</option>
+                            <option value="dotted" <?= $repBordeEstilo === 'dotted' ? 'selected' : '' ?>>Punteado</option>
+                            <option value="double" <?= $repBordeEstilo === 'double' ? 'selected' : '' ?>>Doble</option>
+                        </select>
+                    </div>
+                    <div class="col-auto cultivo-reporte-borde-custom-wrap<?= $repBordeModo === 'custom' ? '' : ' d-none' ?>">
+                        <label class="form-label small mb-1">Color borde</label>
+                        <input type="color"
+                               class="form-control form-control-color form-control-sm cultivo-reporte-borde-color"
+                               data-bloque-id="<?= esc($bloqueId, 'attr') ?>"
+                               value="<?= esc($repBordeColor, 'attr') ?>">
+                    </div>
+                </div>
+            </div>
+            <?php endif; ?>
+
             <div class="cultivo-titulo-palette mb-2" data-bloque-id="<?= esc($bloqueId, 'attr') ?>">
-                <span class="small text-muted me-2">Arrastre a una columna para agregar título debajo:</span>
+                <span class="small text-muted me-2"><?= $esPersonalizado
+                    ? 'Use «Título aquí» en la celda deseada, o arrastre desde aquí:'
+                    : 'Arrastre a una columna para agregar título debajo:' ?></span>
                 <ul class="list-unstyled d-inline-block mb-0">
                     <li class="cultivo-titulo-plantilla" title="Arrastrar a una columna">
                         <i class="fa-solid fa-grip-vertical"></i> Nuevo título
@@ -543,6 +814,9 @@ $resolveCategoriaCeldaCfg = static function (array $celdaRaw) use ($leyendasJsMa
                         <label class="form-label small mb-1">Aplicar a todas las columnas</label>
                         <select class="form-select form-select-sm cultivo-bulk-celda-modo" data-bloque-id="<?= esc($bloqueId, 'attr') ?>">
                             <option value="texto">Texto libre</option>
+                            <?php if ($esPersonalizado): ?>
+                            <option value="texto_rico">Texto enriquecido</option>
+                            <?php endif; ?>
                             <option value="opcion">Tipo de resultado</option>
                             <option value="leyenda">Leyenda de cultivo</option>
                         </select>
@@ -576,23 +850,36 @@ $resolveCategoriaCeldaCfg = static function (array $celdaRaw) use ($leyendasJsMa
             </div>
             <?php endif; ?>
 
-            <div class="table-responsive">
-                <table class="table table-bordered table-sm mb-0 cultivo-matriz-grid" data-bloque-id="<?= esc($bloqueId, 'attr') ?>">
-                    <thead class="table-light">
+            <?php if ($filas > 0): ?>
+            <p class="cultivo-matriz-leyenda-celdas mb-2">
+                <span class="badge bg-secondary me-1">Fila (F#)</span>
+                <span class="badge bg-dark me-1">Columna (C#)</span>
+                <span class="badge <?= $esPersonalizado ? 'bg-primary' : 'bg-info text-dark' ?> me-1">Celda F# · C#</span>
+                <span class="ms-1">Cada recuadro con borde es una celda distinta.</span>
+                <?php if ($esPersonalizado): ?>
+                <span class="ms-2"><i class="fa-solid fa-grip me-1"></i>Arrastre el icono de la celda para intercambiar su contenido con otra.</span>
+                <?php endif; ?>
+            </p>
+            <?php endif; ?>
+            <div class="table-responsive cultivo-matriz-grid-wrap">
+                <table class="table table-sm mb-0 cultivo-matriz-grid<?= $esPersonalizado ? ' cultivo-matriz-grid-personalizado' : '' ?>" data-bloque-id="<?= esc($bloqueId, 'attr') ?>">
+                    <thead>
                         <tr class="cultivo-fila-ref">
+                            <th class="cultivo-grid-corner">F \ C</th>
                             <?php for ($c = 0; $c < $columnas; $c++): ?>
-                            <th class="p-1 small text-muted text-center"><?= $c + 1 ?></th>
+                            <th class="cultivo-grid-col-head">C<?= $c + 1 ?></th>
                             <?php endfor; ?>
                         </tr>
                     </thead>
                     <tbody>
                         <?php if ($filas < 1): ?>
                         <tr class="cultivo-sin-filas">
-                            <td colspan="<?= $columnas ?>" class="text-muted small text-center py-2">Sin filas de datos (solo títulos de columna)</td>
+                            <td colspan="<?= $columnas + 1 ?>" class="text-muted small text-center py-2">Sin filas de datos (solo títulos de columna)</td>
                         </tr>
                         <?php else: ?>
                         <?php for ($r = 0; $r < $filas; $r++): ?>
                         <tr>
+                            <th class="cultivo-grid-row-head" scope="row">F<?= $r + 1 ?></th>
                             <?php for ($c = 0; $c < $columnas; $c++):
                                 $celdaRaw = $celdas[$r][$c] ?? ['modo' => 'texto'];
                                 $celdaModo = 'texto';
@@ -605,6 +892,8 @@ $resolveCategoriaCeldaCfg = static function (array $celdaRaw) use ($leyendasJsMa
                                     if ($modoRaw === 'opcion') {
                                         $celdaModo = 'opcion';
                                         $celdaOpcion = (int) ($celdaRaw['opcion_id'] ?? 0);
+                                    } elseif ($modoRaw === 'texto_rico') {
+                                        $celdaModo = 'texto_rico';
                                     } elseif ($modoRaw === 'leyenda') {
                                         $celdaModo = 'leyenda';
                                         $celdaCategoria = $resolveCategoriaCeldaCfg($celdaRaw);
@@ -613,20 +902,73 @@ $resolveCategoriaCeldaCfg = static function (array $celdaRaw) use ($leyendasJsMa
                                     $celdaOpcion = (int) $celdaRaw;
                                     $celdaModo = $celdaOpcion > 0 ? 'opcion' : 'texto';
                                 }
+                                $persTituloCelda = $esPersonalizado ? $parsePersonalizadoCelda(is_array($celdaRaw) ? $celdaRaw : []) : [];
+                                $rolTituloCelda = $esPersonalizado && in_array($persTituloCelda['rol'] ?? '', ['titulo', 'etiqueta'], true);
+                                $tituloEnCelda = $esPersonalizado ? (string) ($persTituloCelda['texto_fijo'] ?? '') : '';
+                                $tieneTituloCelda = $esPersonalizado && ($rolTituloCelda || $tituloEnCelda !== '');
+                                $persCelda = $esPersonalizado ? $persTituloCelda : [];
+                                $maxRowspan = $esPersonalizado ? max(1, $filas - $r) : 1;
                             ?>
-                            <td class="p-1">
-                                <div class="cultivo-celda-config">
+                            <td class="cultivo-grid-data-cell<?= ($c % 2 === 1) ? ' cultivo-grid-col-par' : '' ?>">
+                                <div class="cultivo-celda-slot" data-fila="<?= $r ?>" data-columna="<?= $c ?>">
+                                <div class="cultivo-celda-config<?= $tieneTituloCelda ? ' cultivo-celda-es-titulo' : '' ?>">
+                                    <?php if ($esPersonalizado): ?>
+                                    <span class="cultivo-celda-drag-handle" title="Arrastrar celda"><i class="fa-solid fa-grip"></i></span>
+                                    <?php endif; ?>
+                                    <div class="cultivo-celda-coord-badge" title="Fila <?= $r + 1 ?>, Columna <?= $c + 1 ?>">
+                                        <i class="fa-solid fa-table-cells"></i> F<?= $r + 1 ?> · C<?= $c + 1 ?>
+                                    </div>
+                                    <?php if ($esPersonalizado): ?>
+                                    <ul class="cultivo-titulos-col-list cultivo-celda-titulo-drop list-unstyled mb-1<?= $tieneTituloCelda ? '' : ' is-empty' ?>"
+                                        data-bloque-id="<?= esc($bloqueId, 'attr') ?>"
+                                        data-fila="<?= $r ?>"
+                                        data-columna="<?= $c ?>">
+                                        <?php if ($tieneTituloCelda): ?>
+                                        <li class="cultivo-titulo-item">
+                                            <span class="cultivo-titulo-drag-handle" title="Arrastrar título"><i class="fa-solid fa-grip-vertical"></i></span>
+                                            <input type="text"
+                                                   class="form-control form-control-sm cultivo-titulo-input flex-grow-1"
+                                                   data-bloque-id="<?= esc($bloqueId, 'attr') ?>"
+                                                   data-columna="<?= $c ?>"
+                                                   value="<?= esc($tituloEnCelda) ?>"
+                                                   placeholder="Título en celda">
+                                            <select class="form-select form-select-sm cultivo-titulo-colspan"
+                                                    data-bloque-id="<?= esc($bloqueId, 'attr') ?>"
+                                                    data-columna="<?= $c ?>"
+                                                    title="Columnas que ocupa">
+                                                <option value="1" selected>1</option>
+                                            </select>
+                                        </li>
+                                        <?php endif; ?>
+                                    </ul>
+                                    <button type="button"
+                                            class="btn btn-sm btn-outline-primary btn-cultivo-add-titulo-en-celda py-0 px-2 mb-1<?= $tieneTituloCelda ? ' d-none' : '' ?>"
+                                            data-bloque-id="<?= esc($bloqueId, 'attr') ?>"
+                                            data-fila="<?= $r ?>"
+                                            data-columna="<?= $c ?>">
+                                        <i class="fa-solid fa-plus me-1"></i>Título aquí
+                                    </button>
+                                    <?php endif; ?>
+                                    <div class="cultivo-celda-input-panel<?= $tieneTituloCelda ? ' d-none' : '' ?>">
                                     <select class="form-select form-select-sm cultivo-celda-modo mb-1"
                                             data-bloque-id="<?= esc($bloqueId, 'attr') ?>"
                                             data-fila="<?= $r ?>"
                                             data-columna="<?= $c ?>">
                                         <option value="texto" <?= $celdaModo === 'texto' ? 'selected' : '' ?>>Texto libre</option>
+                                        <?php if ($esPersonalizado): ?>
+                                        <option value="texto_rico" <?= $celdaModo === 'texto_rico' ? 'selected' : '' ?>>Texto enriquecido</option>
+                                        <?php endif; ?>
                                         <option value="opcion" <?= $celdaModo === 'opcion' ? 'selected' : '' ?>>Tipo de resultado</option>
                                         <option value="leyenda" <?= $celdaModo === 'leyenda' ? 'selected' : '' ?>>Leyenda de cultivo</option>
                                     </select>
                                     <div class="cultivo-celda-texto-wrap<?= $celdaModo !== 'texto' ? ' d-none' : '' ?>">
                                         <input type="text" class="form-control form-control-sm" value="" readonly
                                                placeholder="Campo de texto al capturar" tabindex="-1">
+                                    </div>
+                                    <div class="cultivo-celda-texto-rico-wrap<?= $celdaModo !== 'texto_rico' ? ' d-none' : '' ?>">
+                                        <textarea class="form-control form-control-sm" rows="3" readonly tabindex="-1"
+                                                  placeholder="Área con negrita, cursiva y listas al capturar"></textarea>
+                                        <p class="small text-muted mb-0 mt-1">Editor enriquecido al llenar la prueba.</p>
                                     </div>
                                     <div class="cultivo-celda-opcion-wrap<?= $celdaModo !== 'opcion' ? ' d-none' : '' ?><?= ($bloqueTipo === 'cuerpo' && $valoresHabilitado) ? ' cultivo-con-valor' : '' ?>">
                                         <select class="form-select form-select-sm cultivo-opcion-input"
@@ -665,7 +1007,7 @@ $resolveCategoriaCeldaCfg = static function (array $celdaRaw) use ($leyendasJsMa
                                         </select>
                                         <p class="small text-muted mb-0 mt-1">Al llenar la prueba se elige el título/mensaje.</p>
                                     </div>
-                                    <?php if ($bloqueTipo === 'cuerpo' && $valoresHabilitado && $celdaModo !== 'opcion'): ?>
+                                    <?php if ($bloqueTipo === 'cuerpo' && $valoresHabilitado && ! in_array($celdaModo, ['opcion', 'texto_rico'], true)): ?>
                                     <div class="cultivo-celda-valor-wrap mt-1">
                                         <input type="text"
                                                class="form-control form-control-sm cultivo-celda-valor-input"
@@ -676,6 +1018,64 @@ $resolveCategoriaCeldaCfg = static function (array $celdaRaw) use ($leyendasJsMa
                                                placeholder="Valor">
                                     </div>
                                     <?php endif; ?>
+                                    </div>
+                                    <?php if ($esPersonalizado): ?>
+                                    <div class="cultivo-celda-extras-personalizado">
+                                        <div class="row g-1">
+                                            <div class="col-6">
+                                                <label class="form-label">Alineación</label>
+                                                <select class="form-select form-select-sm cultivo-celda-alineacion"
+                                                        data-bloque-id="<?= esc($bloqueId, 'attr') ?>"
+                                                        data-fila="<?= $r ?>" data-columna="<?= $c ?>">
+                                                    <option value="izquierda" <?= $persCelda['alineacion'] === 'izquierda' ? 'selected' : '' ?>>Izquierda</option>
+                                                    <option value="centro" <?= $persCelda['alineacion'] === 'centro' ? 'selected' : '' ?>>Centro</option>
+                                                    <option value="derecha" <?= $persCelda['alineacion'] === 'derecha' ? 'selected' : '' ?>>Derecha</option>
+                                                </select>
+                                            </div>
+                                            <div class="col-6">
+                                                <label class="form-label">Fuente</label>
+                                                <select class="form-select form-select-sm cultivo-celda-fuente"
+                                                        data-bloque-id="<?= esc($bloqueId, 'attr') ?>"
+                                                        data-fila="<?= $r ?>" data-columna="<?= $c ?>">
+                                                    <option value="normal" <?= $persCelda['fuente'] === 'normal' ? 'selected' : '' ?>>Normal</option>
+                                                    <option value="negrita" <?= $persCelda['fuente'] === 'negrita' ? 'selected' : '' ?>>Negrita</option>
+                                                    <option value="titulo" <?= $persCelda['fuente'] === 'titulo' ? 'selected' : '' ?>>Título</option>
+                                                </select>
+                                            </div>
+                                            <div class="col-6 cultivo-celda-rol-wrap<?= $tieneTituloCelda ? ' d-none' : '' ?>">
+                                                <label class="form-label">Rol celda</label>
+                                                <select class="form-select form-select-sm cultivo-celda-rol"
+                                                        data-bloque-id="<?= esc($bloqueId, 'attr') ?>"
+                                                        data-fila="<?= $r ?>" data-columna="<?= $c ?>">
+                                                    <option value="input" <?= $persCelda['rol'] === 'input' ? 'selected' : '' ?>>Input (captura)</option>
+                                                    <option value="titulo" <?= $persCelda['rol'] === 'titulo' ? 'selected' : '' ?>>Título fijo</option>
+                                                    <option value="etiqueta" <?= $persCelda['rol'] === 'etiqueta' ? 'selected' : '' ?>>Etiqueta</option>
+                                                </select>
+                                            </div>
+                                            <div class="col-6">
+                                                <label class="form-label">Unir filas</label>
+                                                <select class="form-select form-select-sm cultivo-celda-rowspan"
+                                                        data-bloque-id="<?= esc($bloqueId, 'attr') ?>"
+                                                        data-fila="<?= $r ?>" data-columna="<?= $c ?>">
+                                                    <?php for ($rs = 1; $rs <= $maxRowspan; $rs++): ?>
+                                                    <option value="<?= $rs ?>" <?= $persCelda['rowspan'] === $rs ? 'selected' : '' ?>><?= $rs ?></option>
+                                                    <?php endfor; ?>
+                                                </select>
+                                            </div>
+                                            <div class="col-12 cultivo-celda-texto-fijo-wrap d-none">
+                                                <label class="form-label">Texto fijo</label>
+                                                <input type="text"
+                                                       class="form-control form-control-sm cultivo-celda-texto-fijo"
+                                                       data-bloque-id="<?= esc($bloqueId, 'attr') ?>"
+                                                       data-fila="<?= $r ?>"
+                                                       data-columna="<?= $c ?>"
+                                                       value="<?= esc($persCelda['texto_fijo']) ?>"
+                                                       placeholder="Texto que se muestra en reporte">
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <?php endif; ?>
+                                </div>
                                 </div>
                             </td>
                             <?php endfor; ?>
@@ -707,7 +1107,9 @@ $resolveCategoriaCeldaCfg = static function (array $celdaRaw) use ($leyendasJsMa
     var leyendasMap = <?= json_encode($leyendasJsMap, JSON_UNESCAPED_UNICODE) ?>;
     var leyendasAgrupadas = <?= json_encode($leyendasAgrupadasJs, JSON_UNESCAPED_UNICODE) ?>;
     var seccionLabels = <?= json_encode($secciones, JSON_UNESCAPED_UNICODE) ?>;
+    var esPersonalizado = <?= $esPersonalizado ? 'true' : 'false' ?>;
     var sortableInstances = {};
+    var dragCellSnapshot = {};
     var bloquesSortable = null;
     var bloqueTemplates = {};
     var ordenTemplates = {};
@@ -806,13 +1208,21 @@ $resolveCategoriaCeldaCfg = static function (array $celdaRaw) use ($leyendasJsMa
             filas: 1,
             columnas: 1,
             titulos: [[]],
-            celdas: [[{ modo: 'texto' }]]
+            celdas: [[celdaDefault()]]
         };
         if (tipo === 'cuerpo') {
             b.valores_habilitado = false;
             b.unidades_habilitado = false;
             b.unidad = '';
             b.alineacion_filas = 'centro';
+        }
+        if (esPersonalizado) {
+            b.reporte_fondo_tabla = 'transparente';
+            b.reporte_fondo_titulos = 'transparente';
+            b.reporte_borde_modo = 'default';
+            b.reporte_borde_ancho = 1;
+            b.reporte_borde_estilo = 'solid';
+            b.reporte_borde_color = '#cccccc';
         }
         return b;
     }
@@ -853,7 +1263,34 @@ $resolveCategoriaCeldaCfg = static function (array $celdaRaw) use ($leyendasJsMa
     }
 
     function celdaDefault() {
-        return { modo: 'texto' };
+        var base = { modo: 'texto' };
+        if (esPersonalizado) {
+            base.alineacion = 'izquierda';
+            base.fuente = 'normal';
+            base.rol = 'input';
+            base.rowspan = 1;
+        }
+        return base;
+    }
+
+    function withPersonalizadoExtras(out, raw) {
+        if (!esPersonalizado) return out;
+        var ali = raw && raw.alineacion ? String(raw.alineacion) : 'izquierda';
+        if (['izquierda', 'centro', 'derecha'].indexOf(ali) < 0) ali = 'izquierda';
+        out.alineacion = ali;
+        var fuente = raw && raw.fuente ? String(raw.fuente) : 'normal';
+        if (['normal', 'negrita', 'titulo'].indexOf(fuente) < 0) fuente = 'normal';
+        out.fuente = fuente;
+        var rol = raw && raw.rol ? String(raw.rol) : 'input';
+        if (['input', 'titulo', 'etiqueta'].indexOf(rol) < 0) rol = 'input';
+        out.rol = rol;
+        var rowspan = parseInt(raw && raw.rowspan !== undefined ? raw.rowspan : 1, 10);
+        out.rowspan = (isNaN(rowspan) || rowspan < 1) ? 1 : Math.min(50, rowspan);
+        var textoFijo = raw && raw.texto_fijo !== undefined ? String(raw.texto_fijo || '') : '';
+        if (textoFijo.trim() !== '' || rol === 'titulo' || rol === 'etiqueta') {
+            out.texto_fijo = textoFijo.trim();
+        }
+        return out;
     }
 
     function normalizeCelda(raw) {
@@ -864,7 +1301,7 @@ $resolveCategoriaCeldaCfg = static function (array $celdaRaw) use ($leyendasJsMa
                     if (v !== '') out.valor = v;
                 }
             }
-            return out;
+            return withPersonalizadoExtras(out, raw);
         }
         if (raw && typeof raw === 'object' && !Array.isArray(raw)) {
             if (raw.modo === 'opcion') {
@@ -884,6 +1321,9 @@ $resolveCategoriaCeldaCfg = static function (array $celdaRaw) use ($leyendasJsMa
                     }
                 }
                 return withExtras(celda);
+            }
+            if (raw.modo === 'texto_rico') {
+                return withExtras({ modo: 'texto_rico' });
             }
             return withExtras({ modo: 'texto' });
         }
@@ -927,13 +1367,15 @@ $resolveCategoriaCeldaCfg = static function (array $celdaRaw) use ($leyendasJsMa
     function toggleCeldaModoPanels(config, modo) {
         if (!config) return;
         var textoWrap = config.querySelector('.cultivo-celda-texto-wrap');
+        var textoRicoWrap = config.querySelector('.cultivo-celda-texto-rico-wrap');
         var opcionWrap = config.querySelector('.cultivo-celda-opcion-wrap');
         var leyendaWrap = config.querySelector('.cultivo-celda-leyenda-wrap');
         var valorWrap = config.querySelector('.cultivo-celda-valor-wrap');
         if (textoWrap) textoWrap.classList.toggle('d-none', modo !== 'texto');
+        if (textoRicoWrap) textoRicoWrap.classList.toggle('d-none', modo !== 'texto_rico');
         if (opcionWrap) opcionWrap.classList.toggle('d-none', modo !== 'opcion');
         if (leyendaWrap) leyendaWrap.classList.toggle('d-none', modo !== 'leyenda');
-        if (valorWrap) valorWrap.classList.toggle('d-none', modo === 'opcion');
+        if (valorWrap) valorWrap.classList.toggle('d-none', modo === 'opcion' || modo === 'texto_rico');
     }
 
     function toggleBulkCeldaPanels(wrap, modo) {
@@ -956,7 +1398,187 @@ $resolveCategoriaCeldaCfg = static function (array $celdaRaw) use ($leyendasJsMa
                 leyenda_cultivo_categoria_id: isNaN(cid) ? 0 : Math.max(0, cid)
             };
         }
+        if (modo === 'texto_rico') {
+            return { modo: 'texto_rico' };
+        }
         return { modo: 'texto' };
+    }
+
+    function buildCeldaTituloDropHtml(secId, fila, col, celda) {
+        if (!esPersonalizado) return '';
+        var texto = String(celda && celda.texto_fijo !== undefined ? celda.texto_fijo : '');
+        var rolTitulo = celda && (celda.rol === 'titulo' || celda.rol === 'etiqueta');
+        var tieneTitulo = rolTitulo || String(texto).trim() !== '';
+        var emptyClass = tieneTitulo ? '' : ' is-empty';
+        var html = '<ul class="cultivo-titulos-col-list cultivo-celda-titulo-drop list-unstyled mb-1' + emptyClass + '"'
+            + ' data-bloque-id="' + secId + '" data-fila="' + fila + '" data-columna="' + col + '">';
+        if (tieneTitulo) {
+            html += buildTituloItem(secId, col, { texto: texto, colspan: 1 }, 0, 1);
+        }
+        html += '</ul>';
+        return html;
+    }
+
+    function agregarTituloEnCelda(secId, fila, col) {
+        var wrap = getWrap(secId);
+        if (!wrap) return;
+        var drop = wrap.querySelector('.cultivo-celda-titulo-drop[data-fila="' + fila + '"][data-columna="' + col + '"]');
+        if (!drop) return;
+        var existente = drop.querySelector('.cultivo-titulo-item');
+        if (existente) {
+            var inpExist = existente.querySelector('.cultivo-titulo-input');
+            if (inpExist) inpExist.focus();
+            return;
+        }
+        var temp = document.createElement('div');
+        temp.innerHTML = buildTituloItem(secId, col, '', 0, 1);
+        var item = temp.firstElementChild;
+        if (!item) return;
+        drop.appendChild(item);
+        drop.classList.remove('is-empty');
+        syncTituloDropACelda(secId, fila, col);
+        var rolSel = drop.closest('.cultivo-celda-config');
+        if (rolSel) {
+            var rolInput = rolSel.querySelector('.cultivo-celda-rol');
+            if (rolInput) rolInput.value = 'titulo';
+            var textoWrap = rolSel.querySelector('.cultivo-celda-texto-fijo-wrap');
+            if (textoWrap) textoWrap.classList.remove('d-none');
+        }
+        var inp = drop.querySelector('.cultivo-titulo-input');
+        if (inp) inp.focus();
+        initSortableSeccion(secId);
+        persistirCeldasEnWrap(secId);
+    }
+
+    function syncTituloDropACelda(secId, fila, col) {
+        var wrap = getWrap(secId);
+        if (!wrap) return;
+        var drop = wrap.querySelector('.cultivo-celda-titulo-drop[data-fila="' + fila + '"][data-columna="' + col + '"]');
+        if (!drop) return;
+        var items = drop.querySelectorAll('.cultivo-titulo-item');
+        for (var i = 1; i < items.length; i++) {
+            items[i].remove();
+        }
+        drop.classList.toggle('is-empty', drop.querySelectorAll('.cultivo-titulo-item').length < 1);
+        var inp = drop.querySelector('.cultivo-titulo-input');
+        var config = drop.closest('.cultivo-celda-config');
+        if (!config) return;
+        var rolSel = config.querySelector('.cultivo-celda-rol');
+        var textoWrap = config.querySelector('.cultivo-celda-texto-fijo-wrap');
+        var textoInp = config.querySelector('.cultivo-celda-texto-fijo');
+        var textoDrop = inp ? String(inp.value || '') : '';
+        var textoFijo = textoInp ? String(textoInp.value || '') : '';
+        var texto = textoDrop.trim() !== '' ? textoDrop : textoFijo;
+        if (inp && textoDrop.trim() === '' && texto.trim() !== '') {
+            inp.value = texto;
+        }
+        var tieneItem = drop.querySelector('.cultivo-titulo-item');
+        if (tieneItem) {
+            if (rolSel) rolSel.value = 'titulo';
+            if (textoWrap) textoWrap.classList.remove('d-none');
+            if (textoInp) textoInp.value = texto;
+        } else {
+            if (textoInp) textoInp.value = '';
+            if (rolSel && rolSel.value === 'titulo') rolSel.value = 'input';
+            if (textoWrap) textoWrap.classList.add('d-none');
+        }
+        actualizarVisibilidadPanelCelda(config);
+    }
+
+    function syncTodosTitulosCeldaEnSeccion(secId) {
+        var wrap = getWrap(secId);
+        if (!wrap || !esPersonalizado) return;
+        wrap.querySelectorAll('.cultivo-celda-titulo-drop').forEach(function(drop) {
+            var fila = parseInt(drop.getAttribute('data-fila'), 10);
+            var col = parseInt(drop.getAttribute('data-columna'), 10);
+            if (!isNaN(fila) && !isNaN(col)) {
+                syncTituloDropACelda(secId, fila, col);
+            }
+        });
+    }
+
+    function leerTextoTituloCelda(wrap, fila, col) {
+        var drop = wrap.querySelector('.cultivo-celda-titulo-drop[data-fila="' + fila + '"][data-columna="' + col + '"]');
+        var inpDrop = drop ? drop.querySelector('.cultivo-titulo-input') : null;
+        var textoDrop = inpDrop ? String(inpDrop.value || '') : '';
+        var textoFijoInp = wrap.querySelector('.cultivo-celda-texto-fijo[data-fila="' + fila + '"][data-columna="' + col + '"]');
+        var textoFijo = textoFijoInp ? String(textoFijoInp.value || '') : '';
+        return textoDrop.trim() !== '' ? textoDrop : textoFijo;
+    }
+
+    function aplicarTitulosCeldaDesdeDom(wrap, celdas, filas, columnas) {
+        if (!esPersonalizado || !wrap) return;
+        for (var r = 0; r < filas; r++) {
+            for (var c = 0; c < columnas; c++) {
+                var drop = wrap.querySelector('.cultivo-celda-titulo-drop[data-fila="' + r + '"][data-columna="' + c + '"]');
+                var item = drop ? drop.querySelector('.cultivo-titulo-item') : null;
+                var rolSel = wrap.querySelector('.cultivo-celda-rol[data-fila="' + r + '"][data-columna="' + c + '"]');
+                var rolDom = rolSel ? rolSel.value : 'input';
+                var texto = leerTextoTituloCelda(wrap, r, c);
+                var esTitulo = !!item
+                    || rolDom === 'titulo'
+                    || rolDom === 'etiqueta'
+                    || String(texto).trim() !== '';
+                if (!esTitulo) continue;
+                if (!celdas[r]) celdas[r] = [];
+                var base = celdas[r][c] || celdaDefault();
+                var aliSel = wrap.querySelector('.cultivo-celda-alineacion[data-fila="' + r + '"][data-columna="' + c + '"]');
+                var fuenteSel = wrap.querySelector('.cultivo-celda-fuente[data-fila="' + r + '"][data-columna="' + c + '"]');
+                var rowspanSel = wrap.querySelector('.cultivo-celda-rowspan[data-fila="' + r + '"][data-columna="' + c + '"]');
+                var rolFinal = rolDom === 'etiqueta' ? 'etiqueta' : 'titulo';
+                celdas[r][c] = withPersonalizadoExtras(base, {
+                    alineacion: aliSel ? aliSel.value : (base.alineacion || 'izquierda'),
+                    fuente: fuenteSel ? fuenteSel.value : (base.fuente || 'normal'),
+                    rol: rolFinal,
+                    rowspan: rowspanSel ? rowspanSel.value : (base.rowspan || 1),
+                    texto_fijo: texto
+                });
+            }
+        }
+    }
+
+    function persistirCeldasEnWrap(secId) {
+        if (!esPersonalizado) return;
+        syncTodosTitulosCeldaEnSeccion(secId);
+        var data = capturarSeccion(secId);
+        if (!data) return;
+        var wrap = getWrap(secId);
+        if (wrap) {
+            wrap.setAttribute('data-celdas-json', JSON.stringify(data.celdas || []));
+        }
+    }
+
+    function listaInvolucraCeldaTitulo(list) {
+        return !!(list && list.classList && list.classList.contains('cultivo-celda-titulo-drop'));
+    }
+
+    function finalizarDragTituloCelda(secId, evt) {
+        if (!esPersonalizado) return false;
+        var listas = [];
+        if (evt && evt.to) listas.push(evt.to);
+        if (evt && evt.from) listas.push(evt.from);
+        var involucraCelda = listas.some(listaInvolucraCeldaTitulo);
+        if (!involucraCelda) return false;
+        listas.forEach(function(list) {
+            if (!listaInvolucraCeldaTitulo(list)) return;
+            var fila = parseInt(list.getAttribute('data-fila'), 10);
+            var col = parseInt(list.getAttribute('data-columna'), 10);
+            if (!isNaN(fila) && !isNaN(col)) {
+                syncTituloDropACelda(secId, fila, col);
+            }
+        });
+        persistirCeldasEnWrap(secId);
+        return true;
+    }
+
+    function celdaModoOptionsHtml(modo) {
+        var html = '<option value="texto"' + (modo === 'texto' ? ' selected' : '') + '>Texto libre</option>';
+        if (esPersonalizado) {
+            html += '<option value="texto_rico"' + (modo === 'texto_rico' ? ' selected' : '') + '>Texto enriquecido</option>';
+        }
+        html += '<option value="opcion"' + (modo === 'opcion' ? ' selected' : '') + '>Tipo de resultado</option>';
+        html += '<option value="leyenda"' + (modo === 'leyenda' ? ' selected' : '') + '>Leyenda de cultivo</option>';
+        return html;
     }
 
     function aplicarBulkCeldaATodasColumnas(secId) {
@@ -1010,19 +1632,72 @@ $resolveCategoriaCeldaCfg = static function (array $celdaRaw) use ($leyendasJsMa
             + ' value="' + escAttr(String(valor || '')) + '" placeholder="Valor">';
     }
 
-    function buildCeldaCell(secId, fila, col, celdaRaw, mostrarValor) {
+    function buildCeldaCoordBadge(fila, col) {
+        return '<div class="cultivo-celda-coord-badge" title="Fila ' + (fila + 1) + ', Columna ' + (col + 1) + '">'
+            + '<i class="fa-solid fa-table-cells"></i> F' + (fila + 1) + ' · C' + (col + 1) + '</div>';
+    }
+
+    function celdaTieneTitulo(celda) {
+        if (!esPersonalizado || !celda) return false;
+        var rol = celda.rol || 'input';
+        if (rol === 'titulo' || rol === 'etiqueta') return true;
+        return String(celda.texto_fijo || '').trim() !== '';
+    }
+
+    function actualizarVisibilidadPanelCelda(configEl) {
+        if (!configEl || !esPersonalizado) return;
+        var drop = configEl.querySelector('.cultivo-celda-titulo-drop');
+        var item = drop ? drop.querySelector('.cultivo-titulo-item') : null;
+        var rolSel = configEl.querySelector('.cultivo-celda-rol');
+        var rol = rolSel ? rolSel.value : 'input';
+        var esTitulo = !!item || rol === 'titulo' || rol === 'etiqueta';
+        var inputPanel = configEl.querySelector('.cultivo-celda-input-panel');
+        var btnAdd = configEl.querySelector('.btn-cultivo-add-titulo-en-celda');
+        var rolWrap = configEl.querySelector('.cultivo-celda-rol-wrap');
+        if (inputPanel) inputPanel.classList.toggle('d-none', esTitulo);
+        if (btnAdd) btnAdd.classList.toggle('d-none', esTitulo);
+        if (rolWrap) rolWrap.classList.toggle('d-none', esTitulo);
+        configEl.classList.toggle('cultivo-celda-es-titulo', esTitulo);
+    }
+
+    function refrescarVisibilidadCeldas(secId) {
+        if (!esPersonalizado) return;
+        var wrap = getWrap(secId);
+        if (!wrap) return;
+        wrap.querySelectorAll('.cultivo-celda-config').forEach(function(config) {
+            actualizarVisibilidadPanelCelda(config);
+        });
+    }
+
+    function buildCeldaCell(secId, fila, col, celdaRaw, mostrarValor, totalFilas) {
         var celda = normalizeCelda(celdaRaw);
         var modo = celda.modo || 'texto';
-        var html = '<div class="cultivo-celda-config">';
+        var esTitulo = celdaTieneTitulo(celda);
+        var html = '<div class="cultivo-celda-slot" data-fila="' + fila + '" data-columna="' + col + '">';
+        html += '<div class="cultivo-celda-config' + (esTitulo ? ' cultivo-celda-es-titulo' : '') + '">';
+        if (esPersonalizado) {
+            html += '<span class="cultivo-celda-drag-handle" title="Arrastrar celda"><i class="fa-solid fa-grip"></i></span>';
+        }
+        html += buildCeldaCoordBadge(fila, col);
+        if (esPersonalizado) {
+            html += buildCeldaTituloDropHtml(secId, fila, col, celda);
+            html += '<button type="button" class="btn btn-sm btn-outline-primary btn-cultivo-add-titulo-en-celda py-0 px-2 mb-1'
+                + (esTitulo ? ' d-none' : '') + '" data-bloque-id="' + secId + '" data-fila="' + fila + '" data-columna="' + col + '">'
+                + '<i class="fa-solid fa-plus me-1"></i>Título aquí</button>';
+        }
+        html += '<div class="cultivo-celda-input-panel' + (esPersonalizado && esTitulo ? ' d-none' : '') + '">';
         html += '<select class="form-select form-select-sm cultivo-celda-modo mb-1"'
             + ' data-bloque-id="' + secId + '" data-fila="' + fila + '" data-columna="' + col + '">';
-        html += '<option value="texto"' + (modo === 'texto' ? ' selected' : '') + '>Texto libre</option>';
-        html += '<option value="opcion"' + (modo === 'opcion' ? ' selected' : '') + '>Tipo de resultado</option>';
-        html += '<option value="leyenda"' + (modo === 'leyenda' ? ' selected' : '') + '>Leyenda de cultivo</option>';
+        html += celdaModoOptionsHtml(modo);
         html += '</select>';
         html += '<div class="cultivo-celda-texto-wrap' + (modo === 'texto' ? '' : ' d-none') + '">';
         html += '<input type="text" class="form-control form-control-sm" value="" readonly'
             + ' placeholder="Campo de texto al capturar" tabindex="-1">';
+        html += '</div>';
+        html += '<div class="cultivo-celda-texto-rico-wrap' + (modo === 'texto_rico' ? '' : ' d-none') + '">';
+        html += '<textarea class="form-control form-control-sm" rows="3" readonly tabindex="-1"'
+            + ' placeholder="Área con negrita, cursiva y listas al capturar"></textarea>';
+        html += '<p class="small text-muted mb-0 mt-1">Editor enriquecido al llenar la prueba.</p>';
         html += '</div>';
         var opcionClass = 'cultivo-celda-opcion-wrap' + (modo === 'opcion' ? '' : ' d-none');
         if (mostrarValor) opcionClass += ' cultivo-con-valor';
@@ -1038,12 +1713,54 @@ $resolveCategoriaCeldaCfg = static function (array $celdaRaw) use ($leyendasJsMa
         html += '<div class="cultivo-celda-leyenda-wrap' + (modo === 'leyenda' ? '' : ' d-none') + '">';
         html += buildLeyendaCeldaInner(secId, fila, col, modo === 'leyenda' ? celda : { leyenda_cultivo_categoria_id: 0 });
         html += '</div>';
-        if (mostrarValor && isCuerpoBloque(secId) && modo !== 'opcion') {
+        if (mostrarValor && isCuerpoBloque(secId) && modo !== 'opcion' && modo !== 'texto_rico') {
             html += '<div class="cultivo-celda-valor-wrap mt-1">';
             html += buildCeldaValorInputHtml(secId, fila, col, celda.valor || '');
             html += '</div>';
         }
         html += '</div>';
+        if (esPersonalizado) {
+            var ali = celda.alineacion || 'izquierda';
+            var fuente = celda.fuente || 'normal';
+            var rol = celda.rol || 'input';
+            var rowspan = parseInt(celda.rowspan || 1, 10);
+            if (isNaN(rowspan) || rowspan < 1) rowspan = 1;
+            var maxRowspan = Math.max(1, (totalFilas || 50) - fila);
+            if (rowspan > maxRowspan) rowspan = maxRowspan;
+            html += '<div class="cultivo-celda-extras-personalizado"><div class="row g-1">';
+            html += '<div class="col-6"><label class="form-label">Alineación</label>';
+            html += '<select class="form-select form-select-sm cultivo-celda-alineacion" data-bloque-id="' + secId + '" data-fila="' + fila + '" data-columna="' + col + '">';
+            ['izquierda', 'centro', 'derecha'].forEach(function(v) {
+                html += '<option value="' + v + '"' + (ali === v ? ' selected' : '') + '>'
+                    + (v === 'izquierda' ? 'Izquierda' : (v === 'centro' ? 'Centro' : 'Derecha')) + '</option>';
+            });
+            html += '</select></div>';
+            html += '<div class="col-6"><label class="form-label">Fuente</label>';
+            html += '<select class="form-select form-select-sm cultivo-celda-fuente" data-bloque-id="' + secId + '" data-fila="' + fila + '" data-columna="' + col + '">';
+            [['normal', 'Normal'], ['negrita', 'Negrita'], ['titulo', 'Título']].forEach(function(pair) {
+                html += '<option value="' + pair[0] + '"' + (fuente === pair[0] ? ' selected' : '') + '>' + pair[1] + '</option>';
+            });
+            html += '</select></div>';
+            html += '<div class="col-6 cultivo-celda-rol-wrap' + (esTitulo ? ' d-none' : '') + '"><label class="form-label">Rol celda</label>';
+            html += '<select class="form-select form-select-sm cultivo-celda-rol" data-bloque-id="' + secId + '" data-fila="' + fila + '" data-columna="' + col + '">';
+            [['input', 'Input (captura)'], ['titulo', 'Título fijo'], ['etiqueta', 'Etiqueta']].forEach(function(pair) {
+                html += '<option value="' + pair[0] + '"' + (rol === pair[0] ? ' selected' : '') + '>' + pair[1] + '</option>';
+            });
+            html += '</select></div>';
+            html += '<div class="col-6"><label class="form-label">Unir filas</label>';
+            html += '<select class="form-select form-select-sm cultivo-celda-rowspan" data-bloque-id="' + secId + '" data-fila="' + fila + '" data-columna="' + col + '">';
+            for (var rs = 1; rs <= maxRowspan; rs++) {
+                html += '<option value="' + rs + '"' + (rowspan === rs ? ' selected' : '') + '>' + rs + '</option>';
+            }
+            html += '</select></div>';
+            html += '<div class="col-12 cultivo-celda-texto-fijo-wrap d-none">';
+            html += '<label class="form-label">Texto fijo</label>';
+            html += '<input type="text" class="form-control form-control-sm cultivo-celda-texto-fijo"'
+                + ' data-bloque-id="' + secId + '" data-fila="' + fila + '" data-columna="' + col + '"'
+                + ' value="' + escAttr(String(celda.texto_fijo || '')) + '" placeholder="Texto que se muestra en reporte">';
+            html += '</div></div></div>';
+        }
+        html += '</div></div>';
         return html;
     }
 
@@ -1148,7 +1865,7 @@ $resolveCategoriaCeldaCfg = static function (array $celdaRaw) use ($leyendasJsMa
         var stacks = wrap.querySelectorAll('.cultivo-columnas-grid .cultivo-col-stack');
         stacks.forEach(function(stack, colIdx) {
             var colTitulos = [];
-            stack.querySelectorAll('.cultivo-titulos-col-list .cultivo-titulo-item').forEach(function(item) {
+            stack.querySelectorAll('.cultivo-titulos-col-list:not(.cultivo-celda-titulo-drop) .cultivo-titulo-item').forEach(function(item) {
                 var inp = item.querySelector('.cultivo-titulo-input');
                 var spanSel = item.querySelector('.cultivo-titulo-colspan');
                 var colspan = spanSel ? parseInt(spanSel.value, 10) : 1;
@@ -1307,7 +2024,7 @@ $resolveCategoriaCeldaCfg = static function (array $celdaRaw) use ($leyendasJsMa
         var titulos = [];
         stacks.forEach(function(stack, colIdx) {
             var colTitulos = [];
-            stack.querySelectorAll('.cultivo-titulos-col-list .cultivo-titulo-item').forEach(function(item) {
+            stack.querySelectorAll('.cultivo-titulos-col-list:not(.cultivo-celda-titulo-drop) .cultivo-titulo-item').forEach(function(item) {
                 var inp = item.querySelector('.cultivo-titulo-input');
                 var spanSel = item.querySelector('.cultivo-titulo-colspan');
                 var colspan = spanSel ? parseInt(spanSel.value, 10) : 1;
@@ -1323,23 +2040,23 @@ $resolveCategoriaCeldaCfg = static function (array $celdaRaw) use ($leyendasJsMa
 
         var celdas = [];
         var fallbackCeldas = [];
-        if (isCuerpoBloque(secId)) {
-            var storedCells = wrap.getAttribute('data-celdas-json');
-            if (storedCells) {
-                try {
-                    fallbackCeldas = JSON.parse(storedCells);
-                } catch (errCells) {
-                    fallbackCeldas = [];
-                }
+        var storedCells = wrap.getAttribute('data-celdas-json');
+        if (storedCells) {
+            try {
+                fallbackCeldas = JSON.parse(storedCells);
+            } catch (errCells) {
+                fallbackCeldas = [];
             }
-            if (!Array.isArray(fallbackCeldas)) fallbackCeldas = [];
         }
+        if (!Array.isArray(fallbackCeldas)) fallbackCeldas = [];
         for (var r = 0; r < filas; r++) {
             celdas[r] = [];
             for (var c = 0; c < columnas; c++) {
                 var modoSel = wrap.querySelector('.cultivo-celda-modo[data-fila="' + r + '"][data-columna="' + c + '"]');
                 var modo = modoSel ? modoSel.value : 'texto';
-                if (modo === 'opcion') {
+                if (modo === 'texto_rico') {
+                    celdas[r][c] = { modo: 'texto_rico' };
+                } else if (modo === 'opcion') {
                     var opcSel = wrap.querySelector('.cultivo-opcion-input[data-fila="' + r + '"][data-columna="' + c + '"]');
                     var val = opcSel ? parseInt(opcSel.value, 10) : 0;
                     celdas[r][c] = { modo: 'opcion', opcion_id: isNaN(val) ? 0 : Math.max(0, val) };
@@ -1365,7 +2082,39 @@ $resolveCategoriaCeldaCfg = static function (array $celdaRaw) use ($leyendasJsMa
                         }
                     }
                 }
+                if (esPersonalizado) {
+                    var cellDrop = wrap.querySelector('.cultivo-celda-titulo-drop[data-fila="' + r + '"][data-columna="' + c + '"]');
+                    var titInpDrop = cellDrop ? cellDrop.querySelector('.cultivo-titulo-input') : null;
+                    var textoDesdeDrop = titInpDrop ? String(titInpDrop.value || '').trim() : '';
+                    var aliSel = wrap.querySelector('.cultivo-celda-alineacion[data-fila="' + r + '"][data-columna="' + c + '"]');
+                    var fuenteSel = wrap.querySelector('.cultivo-celda-fuente[data-fila="' + r + '"][data-columna="' + c + '"]');
+                    var rolSel = wrap.querySelector('.cultivo-celda-rol[data-fila="' + r + '"][data-columna="' + c + '"]');
+                    var rowspanSel = wrap.querySelector('.cultivo-celda-rowspan[data-fila="' + r + '"][data-columna="' + c + '"]');
+                    var textoFijoInp = wrap.querySelector('.cultivo-celda-texto-fijo[data-fila="' + r + '"][data-columna="' + c + '"]');
+                    var rolVal = rolSel ? rolSel.value : 'input';
+                    var textoFijoVal = textoFijoInp ? textoFijoInp.value : '';
+                    var tieneItemTitulo = cellDrop && cellDrop.querySelector('.cultivo-titulo-item');
+                    if (tieneItemTitulo || textoDesdeDrop !== '' || rolVal === 'titulo' || rolVal === 'etiqueta') {
+                        if (textoDesdeDrop !== '') {
+                            textoFijoVal = textoDesdeDrop;
+                        }
+                        if (tieneItemTitulo || textoDesdeDrop !== '' || rolVal === 'titulo') {
+                            rolVal = (rolSel && rolSel.value === 'etiqueta') ? 'etiqueta' : 'titulo';
+                        }
+                    }
+                    celdas[r][c] = withPersonalizadoExtras(celdas[r][c], {
+                        alineacion: aliSel ? aliSel.value : 'izquierda',
+                        fuente: fuenteSel ? fuenteSel.value : 'normal',
+                        rol: rolVal,
+                        rowspan: rowspanSel ? rowspanSel.value : 1,
+                        texto_fijo: textoFijoVal
+                    });
+                }
             }
+        }
+
+        if (esPersonalizado && filas > 0) {
+            aplicarTitulosCeldaDesdeDom(wrap, celdas, filas, columnas);
         }
 
         guardarDimensionesEnWrap(wrap, filas, columnas);
@@ -1384,7 +2133,119 @@ $resolveCategoriaCeldaCfg = static function (array $celdaRaw) use ($leyendasJsMa
             var aliSel = wrap.querySelector('.cultivo-alineacion-filas-select');
             result.alineacion_filas = aliSel ? aliSel.value : (wrap.getAttribute('data-alineacion-filas') || 'centro');
         }
+        if (esPersonalizado) {
+            var repEst = capturarReporteEstiloFromWrap(wrap);
+            Object.keys(repEst).forEach(function(k) {
+                result[k] = repEst[k];
+            });
+        }
         return result;
+    }
+
+    function capturarReporteEstiloFromWrap(wrap) {
+        var defaults = {
+            reporte_fondo_tabla: 'transparente',
+            reporte_fondo_titulos: 'transparente',
+            reporte_borde_modo: 'default',
+            reporte_borde_ancho: 1,
+            reporte_borde_estilo: 'solid',
+            reporte_borde_color: '#cccccc'
+        };
+        if (!esPersonalizado || !wrap) return defaults;
+        var panel = wrap.querySelector('.cultivo-reporte-estilo-panel');
+        if (!panel) return defaults;
+        var out = Object.assign({}, defaults);
+        var fondoTablaModo = panel.querySelector('.cultivo-reporte-fondo-tabla-modo');
+        var fondoTablaColor = panel.querySelector('.cultivo-reporte-fondo-tabla-color');
+        if (fondoTablaModo && fondoTablaModo.value === 'color' && fondoTablaColor) {
+            out.reporte_fondo_tabla = fondoTablaColor.value || '#ffffff';
+        }
+        var fondoTitulosModo = panel.querySelector('.cultivo-reporte-fondo-titulos-modo');
+        var fondoTitulosColor = panel.querySelector('.cultivo-reporte-fondo-titulos-color');
+        if (fondoTitulosModo && fondoTitulosModo.value === 'color' && fondoTitulosColor) {
+            out.reporte_fondo_titulos = fondoTitulosColor.value || '#f8f9fa';
+        }
+        var bordeModo = panel.querySelector('.cultivo-reporte-borde-modo');
+        if (bordeModo && ['default', 'none', 'custom'].indexOf(bordeModo.value) >= 0) {
+            out.reporte_borde_modo = bordeModo.value;
+        }
+        var bordeAncho = panel.querySelector('.cultivo-reporte-borde-ancho');
+        if (bordeAncho) {
+            var anchoNum = parseInt(bordeAncho.value, 10);
+            if (!isNaN(anchoNum)) {
+                out.reporte_borde_ancho = Math.max(0, Math.min(10, anchoNum));
+            }
+        }
+        var bordeEstilo = panel.querySelector('.cultivo-reporte-borde-estilo');
+        if (bordeEstilo && ['solid', 'dashed', 'dotted', 'double'].indexOf(bordeEstilo.value) >= 0) {
+            out.reporte_borde_estilo = bordeEstilo.value;
+        }
+        var bordeColor = panel.querySelector('.cultivo-reporte-borde-color');
+        if (bordeColor) {
+            out.reporte_borde_color = bordeColor.value || '#cccccc';
+        }
+        return out;
+    }
+
+    function syncReporteEstiloPanelVisibility(wrap) {
+        if (!esPersonalizado || !wrap) return;
+        var panel = wrap.querySelector('.cultivo-reporte-estilo-panel');
+        if (!panel) return;
+        var fondoTablaModo = panel.querySelector('.cultivo-reporte-fondo-tabla-modo');
+        var fondoTablaColorWrap = panel.querySelector('.cultivo-reporte-fondo-tabla-color-wrap');
+        if (fondoTablaModo && fondoTablaColorWrap) {
+            fondoTablaColorWrap.classList.toggle('d-none', fondoTablaModo.value !== 'color');
+        }
+        var fondoTitulosModo = panel.querySelector('.cultivo-reporte-fondo-titulos-modo');
+        var fondoTitulosColorWrap = panel.querySelector('.cultivo-reporte-fondo-titulos-color-wrap');
+        if (fondoTitulosModo && fondoTitulosColorWrap) {
+            fondoTitulosColorWrap.classList.toggle('d-none', fondoTitulosModo.value !== 'color');
+        }
+        var bordeModo = panel.querySelector('.cultivo-reporte-borde-modo');
+        panel.querySelectorAll('.cultivo-reporte-borde-custom-wrap').forEach(function(el) {
+            el.classList.toggle('d-none', !bordeModo || bordeModo.value !== 'custom');
+        });
+    }
+
+    function aplicarReporteEstiloEnWrap(wrap, data) {
+        if (!esPersonalizado || !wrap || !data) return;
+        var panel = wrap.querySelector('.cultivo-reporte-estilo-panel');
+        if (!panel) return;
+        var fondoTabla = String(data.reporte_fondo_tabla || 'transparente');
+        var fondoTablaModo = panel.querySelector('.cultivo-reporte-fondo-tabla-modo');
+        var fondoTablaColor = panel.querySelector('.cultivo-reporte-fondo-tabla-color');
+        if (fondoTablaModo) {
+            fondoTablaModo.value = fondoTabla === 'transparente' ? 'transparente' : 'color';
+        }
+        if (fondoTablaColor && fondoTabla !== 'transparente') {
+            fondoTablaColor.value = fondoTabla;
+        }
+        var fondoTitulos = String(data.reporte_fondo_titulos || 'transparente');
+        var fondoTitulosModo = panel.querySelector('.cultivo-reporte-fondo-titulos-modo');
+        var fondoTitulosColor = panel.querySelector('.cultivo-reporte-fondo-titulos-color');
+        if (fondoTitulosModo) {
+            fondoTitulosModo.value = fondoTitulos === 'transparente' ? 'transparente' : 'color';
+        }
+        if (fondoTitulosColor && fondoTitulos !== 'transparente') {
+            fondoTitulosColor.value = fondoTitulos;
+        }
+        var bordeModoSel = panel.querySelector('.cultivo-reporte-borde-modo');
+        if (bordeModoSel) {
+            bordeModoSel.value = data.reporte_borde_modo || 'default';
+        }
+        var bordeAncho = panel.querySelector('.cultivo-reporte-borde-ancho');
+        if (bordeAncho) {
+            bordeAncho.value = data.reporte_borde_ancho !== undefined ? data.reporte_borde_ancho : 1;
+        }
+        var bordeEstilo = panel.querySelector('.cultivo-reporte-borde-estilo');
+        if (bordeEstilo) {
+            bordeEstilo.value = data.reporte_borde_estilo || 'solid';
+        }
+        var bordeColor = panel.querySelector('.cultivo-reporte-borde-color');
+        if (bordeColor) {
+            bordeColor.value = data.reporte_borde_color || '#cccccc';
+        }
+        syncReporteEstiloPanelVisibility(wrap);
     }
 
     function destruirSortable(secId) {
@@ -1402,6 +2263,69 @@ $resolveCategoriaCeldaCfg = static function (array $celdaRaw) use ($leyendasJsMa
             });
         }
         delete sortableInstances[secId + '-titles'];
+        var celdaInsts = sortableInstances[secId + '-celdas'];
+        if (Array.isArray(celdaInsts)) {
+            celdaInsts.forEach(function(inst) {
+                if (inst && typeof inst.destroy === 'function') inst.destroy();
+            });
+        }
+        delete sortableInstances[secId + '-celdas'];
+        delete dragCellSnapshot[secId];
+    }
+
+    function intercambiarCeldasMatriz(data, fr, fc, tr, tc) {
+        if (!data || !Array.isArray(data.celdas)) return data;
+        if (!data.celdas[fr]) data.celdas[fr] = [];
+        if (!data.celdas[tr]) data.celdas[tr] = [];
+        var temp = data.celdas[fr][fc] !== undefined ? data.celdas[fr][fc] : celdaDefault();
+        data.celdas[fr][fc] = data.celdas[tr][tc] !== undefined ? data.celdas[tr][tc] : celdaDefault();
+        data.celdas[tr][tc] = temp;
+        return data;
+    }
+
+    function initCeldasSortable(secId) {
+        if (!esPersonalizado || typeof Sortable === 'undefined') return;
+        var wrap = getWrap(secId);
+        if (!wrap) return;
+        var group = 'cultivo-celdas-' + secId;
+        var celdaInsts = [];
+        wrap.querySelectorAll('.cultivo-celda-slot').forEach(function(slot) {
+            celdaInsts.push(new Sortable(slot, {
+                group: { name: group, pull: true, put: true },
+                handle: '.cultivo-celda-drag-handle',
+                draggable: '.cultivo-celda-config',
+                animation: 150,
+                ghostClass: 'sortable-ghost',
+                onStart: function() {
+                    dragCellSnapshot[secId] = capturarSeccion(secId);
+                },
+                onEnd: function(evt) {
+                    var data = dragCellSnapshot[secId];
+                    delete dragCellSnapshot[secId];
+                    if (!data) {
+                        renderSeccion(secId);
+                        return;
+                    }
+                    var fromSlot = evt.from;
+                    var toSlot = evt.to;
+                    if (!fromSlot || !toSlot) {
+                        renderSeccion(secId, data);
+                        return;
+                    }
+                    var fr = parseInt(fromSlot.getAttribute('data-fila'), 10);
+                    var fc = parseInt(fromSlot.getAttribute('data-columna'), 10);
+                    var tr = parseInt(toSlot.getAttribute('data-fila'), 10);
+                    var tc = parseInt(toSlot.getAttribute('data-columna'), 10);
+                    if (isNaN(fr) || isNaN(fc) || isNaN(tr) || isNaN(tc) || (fr === tr && fc === tc)) {
+                        renderSeccion(secId, data);
+                        return;
+                    }
+                    intercambiarCeldasMatriz(data, fr, fc, tr, tc);
+                    renderSeccion(secId, data);
+                }
+            }));
+        });
+        sortableInstances[secId + '-celdas'] = celdaInsts;
     }
 
     function convertirPlantillaEnTitulo(evt, secId) {
@@ -1411,12 +2335,22 @@ $resolveCategoriaCeldaCfg = static function (array $celdaRaw) use ($leyendasJsMa
             evt.item.remove();
             return;
         }
-        var stack = list.closest('.cultivo-col-stack');
-        var stacks = getWrap(secId).querySelectorAll('.cultivo-columnas-grid .cultivo-col-stack');
-        var colIdx = Array.prototype.indexOf.call(stacks, stack);
-        if (colIdx < 0) colIdx = 0;
+        var isCellDrop = list.classList.contains('cultivo-celda-titulo-drop');
+        var colIdx = 0;
+        var totalCols = 1;
+        if (isCellDrop) {
+            colIdx = parseInt(list.getAttribute('data-columna'), 10);
+            if (isNaN(colIdx) || colIdx < 0) colIdx = 0;
+            totalCols = 1;
+        } else {
+            var stack = list.closest('.cultivo-col-stack');
+            var stacks = getWrap(secId).querySelectorAll('.cultivo-columnas-grid .cultivo-col-stack');
+            colIdx = Array.prototype.indexOf.call(stacks, stack);
+            if (colIdx < 0) colIdx = 0;
+            totalCols = stacks.length;
+        }
         var temp = document.createElement('div');
-        temp.innerHTML = buildTituloItem(secId, colIdx, '', evt.newIndex >= 0 ? evt.newIndex : 0, stacks.length);
+        temp.innerHTML = buildTituloItem(secId, colIdx, '', evt.newIndex >= 0 ? evt.newIndex : 0, totalCols);
         var newItem = temp.firstElementChild;
         if (newItem) {
             evt.item.replaceWith(newItem);
@@ -1459,9 +2393,15 @@ $resolveCategoriaCeldaCfg = static function (array $celdaRaw) use ($leyendasJsMa
                 draggable: '.cultivo-titulo-item',
                 onAdd: function(evt) {
                     convertirPlantillaEnTitulo(evt, secId);
+                    if (finalizarDragTituloCelda(secId, evt)) {
+                        return;
+                    }
                     setTimeout(function() { renderSeccion(secId); }, 0);
                 },
-                onEnd: function() {
+                onEnd: function(evt) {
+                    if (finalizarDragTituloCelda(secId, evt)) {
+                        return;
+                    }
                     renderSeccion(secId);
                 }
             }));
@@ -1522,12 +2462,26 @@ $resolveCategoriaCeldaCfg = static function (array $celdaRaw) use ($leyendasJsMa
 
                 if (evt.item.classList.contains('cultivo-titulo-item')) {
                     var fromList = evt.from;
+                    var isFromCell = fromList && fromList.classList.contains('cultivo-celda-titulo-drop');
                     var fromStack = fromList ? fromList.closest('.cultivo-col-stack') : null;
                     var allStacks = wrap.querySelectorAll('.cultivo-columnas-grid .cultivo-col-stack');
                     var fromColIdx = fromStack ? Array.prototype.indexOf.call(allStacks, fromStack) : -1;
                     var titleIdx = evt.oldIndex;
 
                     evt.item.remove();
+
+                    if (isFromCell) {
+                        var filaCell = parseInt(fromList.getAttribute('data-fila'), 10);
+                        var colCell = parseInt(fromList.getAttribute('data-columna'), 10);
+                        if (!isNaN(filaCell) && !isNaN(colCell)
+                            && data.celdas[filaCell] && data.celdas[filaCell][colCell]) {
+                            data.celdas[filaCell][colCell] = normalizeCelda(data.celdas[filaCell][colCell]);
+                            data.celdas[filaCell][colCell].rol = 'input';
+                            delete data.celdas[filaCell][colCell].texto_fijo;
+                        }
+                        renderSeccion(secId, data);
+                        return;
+                    }
 
                     if (fromColIdx < 0 || fromColIdx >= data.titulos.length) {
                         renderSeccion(secId, data);
@@ -1540,6 +2494,8 @@ $resolveCategoriaCeldaCfg = static function (array $celdaRaw) use ($leyendasJsMa
                 }
             }
         });
+
+        initCeldasSortable(secId);
     }
 
     function renderSeccion(secId, dataOpt) {
@@ -1576,6 +2532,10 @@ $resolveCategoriaCeldaCfg = static function (array $celdaRaw) use ($leyendasJsMa
             var aliRender = wrap.querySelector('.cultivo-alineacion-filas-select');
             if (aliRender) aliRender.value = actual.alineacion_filas || 'centro';
             wrap.setAttribute('data-alineacion-filas', actual.alineacion_filas || 'centro');
+        }
+
+        if (esPersonalizado) {
+            aplicarReporteEstiloEnWrap(wrap, actual);
         }
 
         if (!Array.isArray(actual.titulos)) actual.titulos = [[]];
@@ -1621,9 +2581,9 @@ $resolveCategoriaCeldaCfg = static function (array $celdaRaw) use ($leyendasJsMa
 
         var table = wrap.querySelector('.cultivo-matriz-grid');
         if (table) {
-            var refHtml = '<tr class="cultivo-fila-ref">';
+            var refHtml = '<tr class="cultivo-fila-ref"><th class="cultivo-grid-corner">F \\ C</th>';
             for (var rc = 0; rc < actual.columnas; rc++) {
-                refHtml += '<th class="p-1 small text-muted text-center">' + (rc + 1) + '</th>';
+                refHtml += '<th class="cultivo-grid-col-head">C' + (rc + 1) + '</th>';
             }
             refHtml += '</tr>';
             var thead = table.querySelector('thead');
@@ -1636,15 +2596,18 @@ $resolveCategoriaCeldaCfg = static function (array $celdaRaw) use ($leyendasJsMa
             }
             var bodyHtml = '';
             if (actual.filas < 1) {
-                bodyHtml = '<tr class="cultivo-sin-filas"><td colspan="' + actual.columnas
+                bodyHtml = '<tr class="cultivo-sin-filas"><td colspan="' + (actual.columnas + 1)
                     + '" class="text-muted small text-center py-2">Sin filas de datos (solo títulos de columna)</td></tr>';
             } else {
                 var mostrarValorCelda = isCuerpoBloque(secId) && actual.valores_habilitado;
                 for (var r = 0; r < actual.filas; r++) {
                     bodyHtml += '<tr>';
+                    bodyHtml += '<th class="cultivo-grid-row-head" scope="row">F' + (r + 1) + '</th>';
                     for (var c2 = 0; c2 < actual.columnas; c2++) {
                         var val = (actual.celdas[r] && actual.celdas[r][c2] !== undefined) ? actual.celdas[r][c2] : celdaDefault();
-                        bodyHtml += '<td class="p-1">' + buildCeldaCell(secId, r, c2, val, mostrarValorCelda) + '</td>';
+                        var colParClass = (c2 % 2 === 1) ? ' cultivo-grid-col-par' : '';
+                        bodyHtml += '<td class="cultivo-grid-data-cell' + colParClass + '">'
+                            + buildCeldaCell(secId, r, c2, val, mostrarValorCelda, actual.filas) + '</td>';
                     }
                     bodyHtml += '</tr>';
                 }
@@ -1654,6 +2617,7 @@ $resolveCategoriaCeldaCfg = static function (array $celdaRaw) use ($leyendasJsMa
 
         actualizarPreviewTitulos(secId, actual.titulos, actual.columnas);
         initSortableSeccion(secId);
+        refrescarVisibilidadCeldas(secId);
     }
 
     function agregarColumna(secId) {
@@ -1887,12 +2851,39 @@ $resolveCategoriaCeldaCfg = static function (array $celdaRaw) use ($leyendasJsMa
             if (bulkModo) toggleBulkCeldaPanels(wrap, bulkModo.value);
         }
         initSortableSeccion(secId);
+        refrescarVisibilidadCeldas(secId);
         refrescarPreviewDesdeDom(secId);
     });
     initBloquesSortable();
 
     form.addEventListener('input', function(e) {
+        if (e.target.classList.contains('cultivo-celda-texto-fijo') && esPersonalizado) {
+            var configTf = e.target.closest('.cultivo-celda-config');
+            var wrapTf = e.target.closest('.cultivo-matriz-seccion');
+            if (configTf && wrapTf) {
+                var secTf = attrBloqueId(wrapTf);
+                var filaTf = parseInt(e.target.getAttribute('data-fila'), 10);
+                var colTf = parseInt(e.target.getAttribute('data-columna'), 10);
+                if (secTf && !isNaN(filaTf) && !isNaN(colTf)) {
+                    syncTituloDropACelda(secTf, filaTf, colTf);
+                    persistirCeldasEnWrap(secTf);
+                }
+            }
+            return;
+        }
         if (e.target.classList.contains('cultivo-titulo-input')) {
+            var cellDropInp = e.target.closest('.cultivo-celda-titulo-drop');
+            if (cellDropInp && esPersonalizado) {
+                var secCell = attrBloqueId(cellDropInp);
+                var filaCell = parseInt(cellDropInp.getAttribute('data-fila'), 10);
+                var colCell = parseInt(cellDropInp.getAttribute('data-columna'), 10);
+                cellDropInp.classList.toggle('is-empty', String(e.target.value || '').trim() === '');
+                if (secCell && !isNaN(filaCell) && !isNaN(colCell)) {
+                    syncTituloDropACelda(secCell, filaCell, colCell);
+                    persistirCeldasEnWrap(secCell);
+                }
+                return;
+            }
             var wrapInp = e.target.closest('.cultivo-matriz-seccion');
             if (wrapInp) {
                 var secInp = attrBloqueId(wrapInp);
@@ -1959,9 +2950,29 @@ $resolveCategoriaCeldaCfg = static function (array $celdaRaw) use ($leyendasJsMa
             toggleCeldaModoPanels(config, e.target.value);
             return;
         }
+        if (e.target.classList.contains('cultivo-celda-rol')) {
+            var configRol = e.target.closest('.cultivo-celda-config');
+            if (configRol) {
+                var textoWrap = configRol.querySelector('.cultivo-celda-texto-fijo-wrap');
+                if (textoWrap) {
+                    var rolVal = e.target.value;
+                    textoWrap.classList.toggle('d-none', rolVal !== 'titulo' && rolVal !== 'etiqueta');
+                }
+            }
+            return;
+        }
         if (e.target.classList.contains('cultivo-bulk-celda-modo')) {
             var wrapBulk = e.target.closest('.cultivo-matriz-seccion');
             if (wrapBulk) toggleBulkCeldaPanels(wrapBulk, e.target.value);
+            return;
+        }
+        if (esPersonalizado && (
+            e.target.classList.contains('cultivo-reporte-fondo-tabla-modo')
+            || e.target.classList.contains('cultivo-reporte-fondo-titulos-modo')
+            || e.target.classList.contains('cultivo-reporte-borde-modo')
+        )) {
+            var wrapRep = e.target.closest('.cultivo-matriz-seccion');
+            if (wrapRep) syncReporteEstiloPanelVisibility(wrapRep);
             return;
         }
     });
@@ -1983,6 +2994,16 @@ $resolveCategoriaCeldaCfg = static function (array $celdaRaw) use ($leyendasJsMa
         if (btnBulk) {
             var secBulk = attrBloqueId(btnBulk);
             if (secBulk) aplicarBulkCeldaATodasColumnas(secBulk);
+            return;
+        }
+        var btnCelda = e.target.closest('.btn-cultivo-add-titulo-en-celda');
+        if (btnCelda) {
+            var secCelda = attrBloqueId(btnCelda);
+            var filaCelda = parseInt(btnCelda.getAttribute('data-fila'), 10);
+            var colCelda = parseInt(btnCelda.getAttribute('data-columna'), 10);
+            if (secCelda && !isNaN(filaCelda) && !isNaN(colCelda)) {
+                agregarTituloEnCelda(secCelda, filaCelda, colCelda);
+            }
             return;
         }
         var btn = e.target.closest('.btn-cultivo-add-titulo-in-col');
@@ -2033,8 +3054,9 @@ $resolveCategoriaCeldaCfg = static function (array $celdaRaw) use ($leyendasJsMa
                 clearTimeout(debounceTimers[secId]);
                 delete debounceTimers[secId];
             }
-            var data = capturarSeccion(secId);
-            if (data) renderSeccion(secId, data);
+            if (esPersonalizado) {
+                syncTodosTitulosCeldaEnSeccion(secId);
+            }
         });
 
         var bloquesPayload = capturarTodosBloques();

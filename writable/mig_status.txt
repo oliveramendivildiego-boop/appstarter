@@ -1,0 +1,54 @@
+
+CodeIgniter v4.7.0 Command Line Tool - Server Time: 2026-06-09 22:19:42 UTC+00:00
+
++-----------+-------------------+-----------------------------------------+---------+---------------------+-------+
+| Namespace | Version           | Filename                                | Group   | Migrated On         | Batch |
++-----------+-------------------+-----------------------------------------+---------+---------------------+-------+
+| App       | 2026-03-19-000000 | CreateActiveSessionsTable               | default | 2026-03-19 15:43:56 | 2     |
+| App       | 2026-03-19-150032 | AddActiveFieldToEmployees               | default | 2026-03-19 15:01:23 | 1     |
+| App       | 2026-03-19-160000 | AddActiveFieldToEmployees               | default | 2026-03-19 16:23:47 | 3     |
+| App       | 2026-03-19-160001 | AddActiveFieldToDoctors                 | default | 2026-03-19 16:23:47 | 3     |
+| App       | 2026-03-19-170000 | CreateDomCiSessionsTable                | default | 2026-03-24 02:24:52 | 4     |
+| App       | 2026-03-24-100000 | AddMostrarValoresToPrianacategoria      | default | 2026-03-24 02:24:52 | 4     |
+| App       | 2026-03-24-150000 | CreateLeyendasAndModule                 | default | 2026-03-24 14:45:56 | 5     |
+| App       | 2026-03-24-160000 | AddComentarioResultadoToRegistro        | default | 2026-03-24 14:57:15 | 6     |
+| App       | 2026-03-24-170000 | AddUserAgentToAuditoria                 | default | 2026-03-24 15:10:24 | 7     |
+| App       | 2026-03-24-180000 | RegistroNumeroOrdenFolio                | default | 2026-03-24 15:32:16 | 8     |
+| App       | 2026-03-24-190000 | AddAnuladoToRegistro                    | default | 2026-03-24 15:43:17 | 9     |
+| App       | 2026-03-30-120000 | CreateTenantConfigsTable                | default | 2026-03-30 14:33:41 | 10    |
+| App       | 2026-03-30-130000 | AddIsDefaultToTenantConfigs             | default | 2026-03-30 14:40:52 | 11    |
+| App       | 2026-03-30-140000 | CreateReportPdfTemplatesTable           | default | 2026-03-30 17:36:38 | 12    |
+| App       | 2026-03-31-120000 | AppConfigPrintResultTemplate            | default | 2026-03-30 19:42:19 | 13    |
+| App       | 2026-04-01-120000 | AddSesgoToControlCalidad                | default | 2026-04-01 17:18:19 | 14    |
+| App       | 2026-04-01-200000 | DbOptimizeIndexesLaboratorio            | default | 2026-04-01 20:55:28 | 16    |
+| App       | 2026-04-04-120000 | AddPublicBaseUrlToTenantConfigs         | default | 2026-04-04 20:24:53 | 17    |
+| App       | 2026-04-04-130000 | AddEsSeparadorToSecanacategoria         | default | 2026-04-05 02:45:39 | 18    |
+| App       | 2026-04-08-120000 | TipoMuestra                             | default | 2026-04-08 00:47:59 | 19    |
+| App       | 2026-04-08-130000 | PrianacategoriaTipoMuestra              | default | 2026-04-08 00:52:27 | 20    |
+| App       | 2026-04-08-150000 | TenantSubscriptionPayments              | default | 2026-04-08 01:10:44 | 21    |
+| App       | 2026-04-08-160000 | MetodoPrueba                            | default | 2026-04-08 01:50:30 | 22    |
+| App       | 2026-04-08-160001 | PrianacategoriaMetodoId                 | default | 2026-04-08 01:50:30 | 22    |
+| App       | 2026-04-09-120000 | ReportePagosCierre                      | default | 2026-04-09 16:29:27 | 23    |
+| App       | 2026-04-09-140000 | RegistroFechaHoraReporteFijada          | default | 2026-04-10 03:35:11 | 24    |
+| App       | 2026-04-09-150000 | RegistroPublicAccessToken               | default | 2026-04-10 03:58:54 | 25    |
+| App       | 2026-04-15-180000 | CreateEgresosTable                      | default | 2026-04-15 17:00:41 | 26    |
+| App       | 2026-04-15-180100 | AddEgresosModule                        | default | 2026-04-15 17:00:41 | 26    |
+| App       | 2026-04-15-190000 | AddTipoMovimientoToEgresos              | default | 2026-04-15 17:43:57 | 27    |
+| App       | 2026-04-15-210000 | AddLabotestReactivoAutoConsumption      | default | 2026-04-15 17:43:57 | 27    |
+| App       | 2026-04-17-120000 | AppConfigValueMediumtext                | default | 2026-04-17 22:49:29 | 28    |
+| App       | 2026-04-21-140000 | ApplyValoresReferenciaPorPoblacion      | default | 2026-04-21 01:31:48 | 29    |
+| App       | 2026-04-22-100000 | InsertHemogramaReferenciasPorPoblacion  | default | 2026-04-21 01:42:18 | 30    |
+| App       | 2026-04-24-210000 | AddHideCommissionDetailsToDoctors       | default | 2026-04-25 01:08:58 | 33    |
+| App       | 2026-04-24-220000 | DoctorClinicalModules                   | default | 2026-04-27 16:45:38 | 34    |
+| App       | 2026-05-21-120000 | AddAddress1ToPeople                     | default | 2026-05-21 22:39:02 | 35    |
+| App       | 2026-05-25-120000 | AddHomeModule                           | default | 2026-05-25 15:12:33 | 36    |
+| App       | 2026-05-28-120000 | CreateEnvelopeTemplatesTable            | default | 2026-05-28 17:57:56 | 37    |
+| App       | 2026-05-29-100000 | AddPrintEnvelopeTemplateConfig          | default | 2026-06-04 22:14:07 | 38    |
+| App       | 2026-06-02-120000 | AddNumeroReciboToPago                   | default | 2026-06-04 22:14:07 | 38    |
+| App       | 2026-06-04-120000 | AddCultivoMatrizConfigToPrianacategoria | default | 2026-06-04 22:14:07 | 38    |
+| App       | 2026-06-04-140000 | ExpandRegvaluesValueColumn              | default | 2026-06-04 22:49:31 | 39    |
+| App       | 2026-06-04-150000 | CreateLeyendasCultivoTable              | default | 2026-06-04 22:49:31 | 39    |
+| App       | 2026-06-04-160000 | CreateLeyendasCultivoCategoriasTable    | default | 2026-06-04 22:55:11 | 40    |
+| App       | 2026-06-04-161000 | AddCategoriaToLeyendasCultivo           | default | 2026-06-04 22:55:11 | 40    |
++-----------+-------------------+-----------------------------------------+---------+---------------------+-------+
+

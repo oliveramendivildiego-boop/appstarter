@@ -34,6 +34,7 @@
             echo match ((int) ($compleja ?? 0)) {
                 \App\Models\LabotestModel::COMPLEJA_COMPOUESTA => lang('Labotests.labotests_tipo_analisis_tabla'),
                 \App\Models\LabotestModel::COMPLEJA_CULTIVO => lang('Labotests.labotests_tipo_analisis_cultivo'),
+                \App\Models\LabotestModel::COMPLEJA_PERSONALIZADO => lang('Labotests.labotests_tipo_analisis_personalizado'),
                 default => lang('Labotests.labotests_tipo_analisis_simple'),
             };
         ?></span>
@@ -241,6 +242,7 @@ if ($feRaw !== '' && !empty($formulas_con_expresion ?? [])) {
                     <th>Valor mín</th>
                     <th>Valor máx</th>
                     <th>U. medida</th>
+                    <th class="text-center">No mostrar Medida</th>
                     <th>Fórmula</th>
                     <th>Tipo</th>
                     <th class="text-center">Acciones</th>
@@ -286,6 +288,7 @@ if ($feRaw !== '' && !empty($formulas_con_expresion ?? [])) {
                         'valor_min' => $s['valor_min'] ?? '',
                         'valor_max' => $s['valor_max'] ?? '',
                         'umedida' => $s['umedida'] ?? '',
+                        'mostrar_medida' => (int) ($s['mostrar_medida'] ?? 0),
                         'formulas_id' => (int)($s['formulas_id'] ?? 1),
                         'opcion_id' => (int)($s['opcion_id'] ?? 3),
                         'formula_para_textarea' => $rowFormulaTextarea,
@@ -315,7 +318,7 @@ if ($feRaw !== '' && !empty($formulas_con_expresion ?? [])) {
                         <button type="button" class="btn btn-sm btn-outline-secondary btn-sec-bajar" title="Bajar una fila"><i class="fa-solid fa-arrow-down"></i></button>
                         <button type="button" class="btn btn-sm btn-outline-secondary btn-sec-ultimo" title="Ir al final de la lista"><i class="fa-solid fa-angles-down"></i></button>
                     </td>
-                    <td colspan="8" class="table-secondary"><span class="badge bg-secondary me-2">Título</span><strong><?= esc($s['nombre'] ?? '') ?></strong></td>
+                    <td colspan="9" class="table-secondary"><span class="badge bg-secondary me-2">Título</span><strong><?= esc($s['nombre'] ?? '') ?></strong></td>
                     <td class="text-center">
                         <button type="button" class="btn btn-sm btn-outline-primary btn-editar-sec" title="Editar"><i class="fa-solid fa-pen"></i></button>
                         <a href="<?= site_url("labotests/duplicatesecitem/" . (int)($s['secanacategoria_id'] ?? 0)) ?>" class="btn btn-sm btn-outline-secondary btn-sec-duplicar" title="Duplicar"><i class="fa-solid fa-copy"></i></a>
@@ -338,6 +341,7 @@ if ($feRaw !== '' && !empty($formulas_con_expresion ?? [])) {
                     <td><?= esc($s['valor_min'] ?? '') ?></td>
                     <td><?= esc($s['valor_max'] ?? '') ?></td>
                     <td><?= esc($s['umedida'] ?? '') ?></td>
+                    <td class="text-center"><?= ((int) ($s['mostrar_medida'] ?? 0) === 1) ? 'Sí' : 'No' ?></td>
                     <td><?php
 $fe = $s['formula_expresion'] ?? '';
 if ($fe !== '') {
@@ -468,6 +472,14 @@ if ($fe !== '') {
             <div class="col-md-2 mb-2">
                 <label class="form-label">U. medida</label>
                 <input type="text" name="umedida" class="form-control form-control-sm" value="<?= esc($editar_sec_data['umedida'] ?? '') ?>">
+            </div>
+            <div class="col-md-3 mb-2 d-flex align-items-end">
+                <input type="hidden" name="mostrar_medida" value="0">
+                <div class="form-check">
+                    <input type="checkbox" name="mostrar_medida" value="1" id="sec_mostrar_medida" class="form-check-input" <?= ((int) ($editar_sec_data['mostrar_medida'] ?? 0) === 1) ? 'checked' : '' ?>>
+                    <label class="form-check-label" for="sec_mostrar_medida">No mostrar Medida</label>
+                </div>
+                <small class="text-muted ms-2">Sin unidad en resultado; solo en rango referencial</small>
             </div>
         </div>
         <div class="row">
@@ -1042,6 +1054,8 @@ if ($fe !== '') {
                 set('valor_min', data.valor_min);
                 set('valor_max', data.valor_max);
                 set('umedida', data.umedida);
+                var mostrarMedidaCb = document.getElementById('sec_mostrar_medida');
+                if (mostrarMedidaCb) mostrarMedidaCb.checked = !!(parseInt(String(data.mostrar_medida || 0), 10) === 1);
                 set('opcion_id', data.opcion_id);
                 var calc = document.getElementById('es_calculada');
                 var fid = esSep ? 1 : ((data.formulas_id || 1) | 0);
@@ -1092,6 +1106,7 @@ if ($fe !== '') {
                     valor_min: '',
                     valor_max: '',
                     umedida: '',
+                    mostrar_medida: 0,
                     formulas_id: 1,
                     opcion_id: 3,
                     formula_para_textarea: '',
@@ -1509,6 +1524,7 @@ if ($fe !== '') {
                 'valor_min' => $editar_sec_data['valor_min'] ?? '',
                 'valor_max' => $editar_sec_data['valor_max'] ?? '',
                 'umedida' => $editar_sec_data['umedida'] ?? '',
+                'mostrar_medida' => (int) ($editar_sec_data['mostrar_medida'] ?? 0),
                 'formulas_id' => (int)($editar_sec_data['formulas_id'] ?? 1),
                 'opcion_id' => (int)($editar_sec_data['opcion_id'] ?? 3),
                 'formula_para_textarea' => $formulaParaTextarea ?? '',
@@ -1524,12 +1540,19 @@ if ($fe !== '') {
         </script>
     </div>
 </div>
-<?php elseif (($compleja ?? 0) === 2): ?>
+<?php elseif (($compleja ?? 0) === \App\Models\LabotestModel::COMPLEJA_CULTIVO): ?>
 <?= view('labotests/partial_detail_cultivo_matriz', [
     'labotests_info' => $labotests_info,
     'cultivo_matriz' => $cultivo_matriz ?? [],
     'opciones'       => $opciones ?? [],
     'leyendas_cultivo' => $leyendas_cultivo ?? [],
+]) ?>
+<?php elseif (($compleja ?? 0) === \App\Models\LabotestModel::COMPLEJA_PERSONALIZADO): ?>
+<?= view('labotests/partial_detail_personalizado_matriz', [
+    'labotests_info'       => $labotests_info,
+    'personalizado_matriz' => $personalizado_matriz ?? [],
+    'opciones'             => $opciones ?? [],
+    'leyendas_cultivo'     => $leyendas_cultivo ?? [],
 ]) ?>
 <?php else: ?>
 <?= view('labotests/partial_detail_pri_resultados', get_defined_vars()) ?>

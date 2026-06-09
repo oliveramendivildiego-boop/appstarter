@@ -245,7 +245,8 @@ foreach ($ordenPriaKeys as $subIdx => $priaKey) :
                         $isOutPdf = false;
                     }
                     $opcionIdItem = (int) ($item->opcion_id ?? 3);
-                    $resMostrarHtml = registro_resultado_celda_html($item->regvalues ?? '', $item->umedida ?? '', $opcionIdItem);
+                    $mostrarMedidaSoloRef = registro_mostrar_medida_solo_en_referencia($item);
+                    $resMostrarHtml = registro_resultado_celda_html($item->regvalues ?? '', $item->umedida ?? '', $opcionIdItem, $mostrarMedidaSoloRef);
                     $refMostrar = registro_rango_referencial_texto($item->valor_min ?? '', $item->valor_max ?? '', $item->umedida ?? '');
                     $celdaRicoClass = registro_opcion_es_texto_rico($opcionIdItem) ? ' resultado-texto-rico-cell' : '';
                     ?>

@@ -398,17 +398,21 @@ class RegisterService
 
         $meta = $this->registerModel->getPrianacategoriaWithArea($prianacategoriaId)
             ?? $this->registerModel->getPrianacategoriaWithAreaIncludingRetired($prianacategoriaId);
-        if ($meta === null || (int) ($meta->compleja ?? 0) !== LabotestModel::COMPLEJA_CULTIVO) {
+        if ($meta === null || ! LabotestModel::esMatrizConfigurable((int) ($meta->compleja ?? 0))) {
             return null;
         }
 
         $labotestModel = model(LabotestModel::class);
-        $matriz = $labotestModel->getCultivoMatrizConfig($prianacategoriaId);
-        $display = $this->formatCultivoMatrizForReport($matriz, $cellValues, $cellNumeros, $unidadGlobalRegistro);
+        $esPersonalizado = (int) ($meta->compleja ?? 0) === LabotestModel::COMPLEJA_PERSONALIZADO;
+        $matriz = $esPersonalizado
+            ? $labotestModel->getPersonalizadoMatrizConfig($prianacategoriaId)
+            : $labotestModel->getCultivoMatrizConfig($prianacategoriaId);
+        $display = $this->formatCultivoMatrizForReport($matriz, $cellValues, $cellNumeros, $unidadGlobalRegistro, $esPersonalizado);
 
         return (object) [
-            'es_cultivo_matriz'    => true,
-            'prianacategoria_id'   => $prianacategoriaId,
+            'es_cultivo_matriz'      => true,
+            'es_personalizado_matriz'=> $esPersonalizado,
+            'prianacategoria_id'     => $prianacategoriaId,
             'padre'                => trim((string) ($meta->padre ?? '')),
             'hijo'                 => trim((string) ($meta->hijo ?? '')),
             'tipo_muestra_nombre'  => trim((string) ($meta->tipo_muestra_nombre ?? '')),
@@ -467,9 +471,12 @@ class RegisterService
         array $matriz,
         array $cellValues,
         array $cellNumeros = [],
-        ?string $unidadGlobalRegistro = null
+        ?string $unidadGlobalRegistro = null,
+        bool $esPersonalizado = false
     ): array {
-        $bloques = LabotestModel::resolveCultivoMatrizBloques($matriz);
+        $bloques = $esPersonalizado
+            ? LabotestModel::resolvePersonalizadoMatrizBloques($matriz)
+            : LabotestModel::resolveCultivoMatrizBloques($matriz);
         $bloquesById = [];
         foreach ($bloques as $bloqueRow) {
             $bid = (string) ($bloqueRow['id'] ?? '');
@@ -491,20 +498,44 @@ class RegisterService
             return $leyendasCache[$leyendaId];
         };
 
-        $normalizeCeldaCfg = static function ($raw): array {
+        $normalizeCeldaCfg = static function ($raw) use ($esPersonalizado): array {
+            $out = ['modo' => 'texto'];
             if (is_array($raw)) {
                 $modo = (string) ($raw['modo'] ?? 'texto');
                 if ($modo === 'opcion') {
-                    return ['modo' => 'opcion'];
+                    $out = [
+                        'modo'      => 'opcion',
+                        'opcion_id' => max(0, (int) ($raw['opcion_id'] ?? 0)),
+                    ];
+                } elseif ($modo === 'texto_rico') {
+                    $out = ['modo' => 'texto_rico'];
+                } elseif ($modo === 'leyenda') {
+                    $out = ['modo' => 'leyenda'];
                 }
-                if ($modo === 'leyenda') {
-                    return ['modo' => 'leyenda'];
+                $rol = trim((string) ($raw['rol'] ?? 'input'));
+                if (in_array($rol, ['input', 'titulo', 'etiqueta'], true)) {
+                    $out['rol'] = $rol;
                 }
+                $textoFijo = trim((string) ($raw['texto_fijo'] ?? ''));
+                if ($textoFijo !== '') {
+                    $out['texto_fijo'] = $textoFijo;
+                }
+                if ($esPersonalizado) {
+                    $ali = trim((string) ($raw['alineacion'] ?? 'izquierda'));
+                    if (! in_array($ali, ['izquierda', 'centro', 'derecha'], true)) {
+                        $ali = 'izquierda';
+                    }
+                    $out['alineacion'] = $ali;
 
-                return ['modo' => 'texto'];
+                    $fuente = trim((string) ($raw['fuente'] ?? 'normal'));
+                    if (! in_array($fuente, ['normal', 'negrita', 'titulo'], true)) {
+                        $fuente = 'normal';
+                    }
+                    $out['fuente'] = $fuente;
+                }
             }
 
-            return ['modo' => 'texto'];
+            return $out;
         };
 
         $cuerpoCfg = is_array($matriz['cuerpo'] ?? null) ? $matriz['cuerpo'] : [];
@@ -539,6 +570,13 @@ class RegisterService
                 $html = $resolveLeyenda((int) $raw);
 
                 return $html !== '' ? $html : $raw;
+            }
+            if (($celdaCfg['modo'] ?? '') === 'texto_rico') {
+                return registro_sanitizar_html_rico($raw);
+            }
+            if (($celdaCfg['modo'] ?? '') === 'opcion'
+                && registro_opcion_es_texto_rico((int) ($celdaCfg['opcion_id'] ?? 0))) {
+                return registro_sanitizar_html_rico($raw);
             }
 
             return $raw;
@@ -613,6 +651,16 @@ class RegisterService
             return $principal . ' ' . $medida;
         };
 
+        $wrapPersonalizadoCelda = static function (string $html, array $cfg) use ($esPersonalizado): string {
+            if (! $esPersonalizado || trim($html) === '') {
+                return $html;
+            }
+            $style = LabotestModel::buildPersonalizadoCeldaReporteStyle($cfg);
+
+            return '<div class="pers-celda-reporte" style="' . htmlspecialchars($style, ENT_QUOTES, 'UTF-8') . '">'
+                . $html . '</div>';
+        };
+
         $out = [];
         foreach ($bloques as $bloque) {
             $blockId = (string) ($bloque['id'] ?? '');
@@ -642,9 +690,13 @@ class RegisterService
                 for ($c = 0; $c < $columnas; $c++) {
                     $cfg = $normalizeCeldaCfg($celdasCfg[$r][$c] ?? ['modo' => 'texto']);
                     $rawVal = (string) ($cellValues[$blockId][$r][$c] ?? '');
+                    if ($rawVal === '' && in_array($cfg['rol'] ?? 'input', ['titulo', 'etiqueta'], true)) {
+                        $rawVal = (string) ($cfg['texto_fijo'] ?? '');
+                    }
                     $principal = $resolvePrincipal($cfg, $rawVal);
                     $medida = $resolveMedida($blockId, $r, $c);
-                    $rowOut[] = $buildCeldaReporte($principal, $medida, $bloqueTipo, $alineacionSec);
+                    $celdaHtml = $buildCeldaReporte($principal, $medida, $bloqueTipo, $alineacionSec);
+                    $rowOut[] = $wrapPersonalizadoCelda($celdaHtml, $cfg);
                 }
                 $filasRaw[] = $rowOut;
             }
@@ -654,7 +706,7 @@ class RegisterService
                 continue;
             }
 
-            $out[] = [
+            $secOut = [
                 'seccion'           => $blockId,
                 'tipo'              => $bloqueTipo,
                 'label'             => $secLabel,
@@ -667,6 +719,10 @@ class RegisterService
                 'filas'             => $compacto['filas'],
                 'alineacion_filas'  => $alineacionSec,
             ];
+            if ($esPersonalizado) {
+                $secOut['reporte_estilo'] = LabotestModel::normalizePersonalizadoReporteEstiloBloque($bloque);
+            }
+            $out[] = $secOut;
         }
 
         return $out;
@@ -859,7 +915,7 @@ class RegisterService
                 continue;
             }
             $isCompleja = (int)($cfg['compleja'] ?? 0) === 1;
-            if ((int) ($cfg['compleja'] ?? 0) === LabotestModel::COMPLEJA_CULTIVO) {
+            if (LabotestModel::esMatrizConfigurable((int) ($cfg['compleja'] ?? 0))) {
                 continue;
             }
 

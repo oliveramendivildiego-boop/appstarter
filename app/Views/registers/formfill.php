@@ -328,7 +328,7 @@ foreach ($pruebas_info ?? [] as $prueba):
             echo '<input type="text" ' . $attrs . '><span class="invalid-feedback d-block" data-msg-for="noc_' . esc($rid) . '"></span>';
             echo '</div></div>';
         endif;
-    elseif (($prueba['compleja'] ?? 0) == 2):
+    elseif (in_array((int) ($prueba['compleja'] ?? 0), [\App\Models\LabotestModel::COMPLEJA_CULTIVO, \App\Models\LabotestModel::COMPLEJA_PERSONALIZADO], true)):
         $prianacategoriaIdCultivo = (int) ($prueba['prianacategoria_id'] ?? 0);
         echo view('registers/partial_cultivo_fill', [
             'prianacategoria_id' => $prianacategoriaIdCultivo,
@@ -336,6 +336,7 @@ foreach ($pruebas_info ?? [] as $prueba):
             'existentes'         => $existentes,
             'registerModel'      => $registerModel,
             'solo_lectura'       => $esPruebaRetirada,
+            'es_personalizado'   => (int) ($prueba['compleja'] ?? 0) === \App\Models\LabotestModel::COMPLEJA_PERSONALIZADO,
         ]);
     else:
         $prianacategoriaId = (int)($prueba['prianacategoria_id'] ?? 0);
@@ -529,7 +530,7 @@ document.addEventListener('DOMContentLoaded', function() {
         return priId > 0 && retired.indexOf(priId) !== -1;
     }
     function lockRetiredFields() {
-        document.querySelectorAll('.input-con-ref, .cultivo-celda-input, .cultivo-celda-valor-fill').forEach(function(el) {
+        document.querySelectorAll('.input-con-ref, .cultivo-celda-input, .cultivo-celda-valor-fill, .input-texto-rico').forEach(function(el) {
             if (!isRetiredField(el)) return;
             el.setAttribute('data-prueba-retirada', '1');
             el.readOnly = true;
@@ -545,8 +546,10 @@ document.addEventListener('DOMContentLoaded', function() {
         if (typeof jQuery === 'undefined' || !jQuery.fn.summernote) return;
         document.querySelectorAll('.input-texto-rico').forEach(function(el) {
             if (jQuery(el).data('summernote')) return;
+            var enPersonalizado = !!el.closest('.cultivo-fill-personalizado');
             jQuery(el).summernote({
-                height: 160,
+                height: enPersonalizado ? 200 : 160,
+                width: '100%',
                 toolbar: [
                     ['style', ['bold', 'italic', 'underline']],
                     ['para', ['ul', 'ol']],
@@ -826,6 +829,9 @@ document.addEventListener('DOMContentLoaded', function() {
             var col = parseInt(el.getAttribute('data-columna'), 10);
             if (!priId || !sec || isNaN(fila) || isNaN(col)) return;
             var valor = (el.value || '').trim();
+            if (el.classList.contains('input-texto-rico')) {
+                valor = valor.replace(/^<p><br><\/p>$/i, '').replace(/^<p><\/p>$/i, '').trim();
+            }
             if (valor === '') return;
             var registroIdCv = document.getElementById('registro_id').value;
             if (!registroIdCv) return;

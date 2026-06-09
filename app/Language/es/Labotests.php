@@ -17,6 +17,7 @@ return [
     'labotests_tipo_analisis_simple' => 'Simple',
     'labotests_tipo_analisis_tabla' => 'Compuesta',
     'labotests_tipo_analisis_cultivo' => 'Cultivo',
+    'labotests_tipo_analisis_personalizado' => 'Personalizado',
     'labotests_no'            => 'No',
     'labotests_yes'           => 'Sí',
     'labotests_no_price_here' => 'Los precios se configuran después desde el botón de engranaje en cada análisis.',

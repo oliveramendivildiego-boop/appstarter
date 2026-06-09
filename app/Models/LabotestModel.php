@@ -12,18 +12,25 @@ class LabotestModel extends Model
     protected $useAutoIncrement = true;
     protected $returnType       = 'object';
 
-    public const COMPLEJA_SIMPLE    = 0;
-    public const COMPLEJA_COMPOUESTA = 1;
-    public const COMPLEJA_CULTIVO   = 2;
+    public const COMPLEJA_SIMPLE       = 0;
+    public const COMPLEJA_COMPOUESTA   = 1;
+    public const COMPLEJA_CULTIVO      = 2;
+    public const COMPLEJA_PERSONALIZADO = 3;
 
     /** Slug para exportación JSON según tipo de análisis. */
     public static function tipoAnalisisSlug(int $compleja): string
     {
         return match ($compleja) {
-            self::COMPLEJA_COMPOUESTA => 'tabla',
-            self::COMPLEJA_CULTIVO    => 'cultivo',
-            default                   => 'simple',
+            self::COMPLEJA_COMPOUESTA   => 'tabla',
+            self::COMPLEJA_CULTIVO      => 'cultivo',
+            self::COMPLEJA_PERSONALIZADO => 'personalizado',
+            default                     => 'simple',
         };
+    }
+
+    public static function esMatrizConfigurable(int $compleja): bool
+    {
+        return in_array($compleja, [self::COMPLEJA_CULTIVO, self::COMPLEJA_PERSONALIZADO], true);
     }
 
     /**
@@ -270,6 +277,19 @@ class LabotestModel extends Model
     }
 
     /**
+     * @param array<string, mixed>|null $config
+     * @return list<array<string, mixed>>
+     */
+    public static function resolvePersonalizadoMatrizBloques(?array $config): array
+    {
+        if (! is_array($config)) {
+            return model(self::class)->getDefaultCultivoMatrizConfig()['bloques'];
+        }
+
+        return model(self::class)->normalizePersonalizadoMatrizConfig($config)['bloques'];
+    }
+
+    /**
      * @param array<string, mixed> $config
      * @return list<array<string, mixed>>
      */
@@ -389,9 +409,9 @@ class LabotestModel extends Model
     }
 
     /**
-     * @return array{modo: 'texto'|'opcion'|'leyenda', opcion_id?: int, leyenda_cultivo_categoria_id?: int}
+     * @return array<string, mixed>
      */
-    private function normalizeCultivoCelda(mixed $raw): array
+    private function normalizeCultivoCelda(mixed $raw, bool $conExtrasPersonalizado = false): array
     {
         $valor = is_array($raw) ? trim((string) ($raw['valor'] ?? '')) : '';
         $out = ['modo' => 'texto'];
@@ -403,6 +423,8 @@ class LabotestModel extends Model
                     'modo'       => 'opcion',
                     'opcion_id'  => max(0, (int) ($raw['opcion_id'] ?? 0)),
                 ];
+            } elseif ($modoRaw === 'texto_rico') {
+                $out = ['modo' => 'texto_rico'];
             } elseif ($modoRaw === 'leyenda') {
                 $out = [
                     'modo'                         => 'leyenda',
@@ -420,7 +442,278 @@ class LabotestModel extends Model
             $out['valor'] = $valor;
         }
 
+        if ($conExtrasPersonalizado && is_array($raw)) {
+            $ali = trim((string) ($raw['alineacion'] ?? 'izquierda'));
+            if (! in_array($ali, ['izquierda', 'centro', 'derecha'], true)) {
+                $ali = 'izquierda';
+            }
+            $out['alineacion'] = $ali;
+
+            $fuente = trim((string) ($raw['fuente'] ?? 'normal'));
+            if (! in_array($fuente, ['normal', 'negrita', 'titulo'], true)) {
+                $fuente = 'normal';
+            }
+            $out['fuente'] = $fuente;
+
+            $rol = trim((string) ($raw['rol'] ?? 'input'));
+            if (! in_array($rol, ['input', 'titulo', 'etiqueta'], true)) {
+                $rol = 'input';
+            }
+            $out['rol'] = $rol;
+
+            $rowspan = max(1, min(50, (int) ($raw['rowspan'] ?? 1)));
+            $out['rowspan'] = $rowspan;
+
+            $textoFijo = trim((string) ($raw['texto_fijo'] ?? ''));
+            if ($textoFijo !== '' || in_array($rol, ['titulo', 'etiqueta'], true)) {
+                $out['texto_fijo'] = $textoFijo;
+            }
+        }
+
         return $out;
+    }
+
+    /**
+     * Estilo de bloque personalizado en reporte (fondo tabla/títulos, bordes).
+     *
+     * @param array<string, mixed> $bloque
+     * @return array{
+     *   reporte_fondo_tabla: string,
+     *   reporte_fondo_titulos: string,
+     *   reporte_borde_modo: string,
+     *   reporte_borde_ancho: int,
+     *   reporte_borde_estilo: string,
+     *   reporte_borde_color: string
+     * }
+     */
+    public static function normalizePersonalizadoReporteEstiloBloque(array $bloque): array
+    {
+        $fondoTabla = trim((string) ($bloque['reporte_fondo_tabla'] ?? 'transparente'));
+        if ($fondoTabla !== 'transparente' && ! preg_match('/^#[0-9A-Fa-f]{3,8}$/', $fondoTabla)) {
+            $fondoTabla = 'transparente';
+        }
+
+        $fondoTitulos = trim((string) ($bloque['reporte_fondo_titulos'] ?? 'transparente'));
+        if ($fondoTitulos !== 'transparente' && ! preg_match('/^#[0-9A-Fa-f]{3,8}$/', $fondoTitulos)) {
+            $fondoTitulos = 'transparente';
+        }
+
+        $bordeModo = trim((string) ($bloque['reporte_borde_modo'] ?? 'default'));
+        if (! in_array($bordeModo, ['default', 'none', 'custom'], true)) {
+            $bordeModo = 'default';
+        }
+
+        $bordeAncho = max(0, min(10, (int) ($bloque['reporte_borde_ancho'] ?? 1)));
+        $bordeEstilo = trim((string) ($bloque['reporte_borde_estilo'] ?? 'solid'));
+        if (! in_array($bordeEstilo, ['solid', 'dashed', 'dotted', 'double'], true)) {
+            $bordeEstilo = 'solid';
+        }
+
+        $bordeColor = trim((string) ($bloque['reporte_borde_color'] ?? '#cccccc'));
+        if (! preg_match('/^#[0-9A-Fa-f]{3,8}$/', $bordeColor)) {
+            $bordeColor = '#cccccc';
+        }
+
+        return [
+            'reporte_fondo_tabla'   => $fondoTabla,
+            'reporte_fondo_titulos' => $fondoTitulos,
+            'reporte_borde_modo'    => $bordeModo,
+            'reporte_borde_ancho'   => $bordeAncho,
+            'reporte_borde_estilo'  => $bordeEstilo,
+            'reporte_borde_color'   => $bordeColor,
+        ];
+    }
+
+    /**
+     * @param array<string, mixed> $cfg Celda personalizada (alineacion, fuente)
+     */
+    public static function buildPersonalizadoCeldaReporteStyle(array $cfg): string
+    {
+        $styles = [];
+        $ali = trim((string) ($cfg['alineacion'] ?? 'izquierda'));
+        $map = ['izquierda' => 'left', 'centro' => 'center', 'derecha' => 'right'];
+        $styles[] = 'text-align:' . ($map[$ali] ?? 'left');
+
+        $fuente = trim((string) ($cfg['fuente'] ?? 'normal'));
+        if ($fuente === 'negrita') {
+            $styles[] = 'font-weight:700';
+        } elseif ($fuente === 'titulo') {
+            $styles[] = 'font-weight:700';
+            $styles[] = 'font-size:1.1em';
+        }
+
+        return implode(';', $styles);
+    }
+
+    /**
+     * @param array<string, mixed> $estilo
+     */
+    public static function buildPersonalizadoReporteTableStyleAttr(array $estilo): string
+    {
+        $styles = [];
+        $fondo = (string) ($estilo['reporte_fondo_tabla'] ?? 'transparente');
+        if ($fondo !== 'transparente') {
+            $styles[] = 'background-color:' . $fondo;
+        }
+
+        $bordeModo = (string) ($estilo['reporte_borde_modo'] ?? 'default');
+        if ($bordeModo === 'none') {
+            $styles[] = 'border:none';
+            $styles[] = 'border-collapse:collapse';
+        } elseif ($bordeModo === 'custom') {
+            $styles[] = self::personalizadoReporteBorderCss($estilo);
+            $styles[] = 'border-collapse:collapse';
+        }
+
+        return implode(';', $styles);
+    }
+
+    /**
+     * @param array<string, mixed> $estilo
+     */
+    public static function buildPersonalizadoReporteThStyleAttr(array $estilo): string
+    {
+        $styles = [];
+        $fondo = (string) ($estilo['reporte_fondo_titulos'] ?? 'transparente');
+        if ($fondo !== 'transparente') {
+            $styles[] = 'background-color:' . $fondo;
+        }
+
+        $bordeModo = (string) ($estilo['reporte_borde_modo'] ?? 'default');
+        if ($bordeModo === 'none') {
+            $styles[] = 'border:none';
+        } elseif ($bordeModo === 'custom') {
+            $styles[] = self::personalizadoReporteBorderCss($estilo);
+        }
+
+        return implode(';', $styles);
+    }
+
+    /**
+     * @param array<string, mixed> $estilo
+     */
+    public static function buildPersonalizadoReporteTdBorderStyleAttr(array $estilo): string
+    {
+        $bordeModo = (string) ($estilo['reporte_borde_modo'] ?? 'default');
+        if ($bordeModo === 'none') {
+            return 'border:none';
+        }
+        if ($bordeModo === 'custom') {
+            return self::personalizadoReporteBorderCss($estilo);
+        }
+
+        return '';
+    }
+
+    /**
+     * @param array<string, mixed> $estilo
+     */
+    private static function personalizadoReporteBorderCss(array $estilo): string
+    {
+        $w = max(0, (int) ($estilo['reporte_borde_ancho'] ?? 1));
+        $est = (string) ($estilo['reporte_borde_estilo'] ?? 'solid');
+        $col = (string) ($estilo['reporte_borde_color'] ?? '#cccccc');
+
+        return 'border:' . $w . 'px ' . $est . ' ' . $col;
+    }
+
+    /**
+     * @return array<string, mixed>|null
+     */
+    private function decodeCultivoMatrizConfigRaw(int $prianacategoriaId): ?array
+    {
+        if (! $this->ensureCultivoMatrizConfigColumn()) {
+            return null;
+        }
+
+        $row = $this->db->table('prianacategoria')
+            ->select('cultivo_matriz_config')
+            ->where('prianacategoria_id', $prianacategoriaId)
+            ->where('(deleted = 0 OR deleted IS NULL)')
+            ->get()
+            ->getRow();
+
+        if (! $row || trim((string) ($row->cultivo_matriz_config ?? '')) === '') {
+            return null;
+        }
+
+        $decoded = json_decode((string) $row->cultivo_matriz_config, true);
+
+        return is_array($decoded) ? $decoded : null;
+    }
+
+    /**
+     * @param array<string, mixed>|null $config
+     * @return array{version: int, bloques: list<array<string, mixed>>}
+     */
+    public function normalizePersonalizadoMatrizConfig(?array $config): array
+    {
+        $origById = [];
+        $origBloques = [];
+        if (is_array($config['bloques'] ?? null)) {
+            foreach ($config['bloques'] as $bloqueRaw) {
+                if (! is_array($bloqueRaw)) {
+                    continue;
+                }
+                $origBloques[] = $bloqueRaw;
+                $bid = (string) ($bloqueRaw['id'] ?? '');
+                if ($bid !== '') {
+                    $origById[$bid] = $bloqueRaw;
+                }
+            }
+        }
+
+        $normalized = $this->normalizeCultivoMatrizConfig($config);
+        foreach ($normalized['bloques'] as $idx => &$bloque) {
+            $bloqueId = (string) ($bloque['id'] ?? '');
+            $origBloque = $origById[$bloqueId] ?? ($origBloques[$idx] ?? []);
+            $origCeldas = is_array($origBloque['celdas'] ?? null) ? $origBloque['celdas'] : [];
+            $filas = max(0, (int) ($bloque['filas'] ?? 0));
+            $columnas = max(1, (int) ($bloque['columnas'] ?? 1));
+            $celdas = [];
+            for ($r = 0; $r < $filas; $r++) {
+                $celdas[$r] = [];
+                for ($c = 0; $c < $columnas; $c++) {
+                    $rawCell = $origCeldas[$r][$c] ?? ($bloque['celdas'][$r][$c] ?? ['modo' => 'texto']);
+                    $celdas[$r][$c] = $this->normalizeCultivoCelda($rawCell, true);
+                }
+            }
+            $bloque['celdas'] = $celdas;
+            $bloque = array_merge($bloque, self::normalizePersonalizadoReporteEstiloBloque($origBloque));
+        }
+        unset($bloque);
+
+        return $normalized;
+    }
+
+    /**
+     * @return array{version: int, bloques: list<array<string, mixed>>}
+     */
+    public function getPersonalizadoMatrizConfig(int $prianacategoriaId): array
+    {
+        $raw = $this->decodeCultivoMatrizConfigRaw($prianacategoriaId);
+
+        return $this->normalizePersonalizadoMatrizConfig($raw ?? $this->getDefaultCultivoMatrizConfig());
+    }
+
+    /**
+     * @param array<string, mixed> $config
+     */
+    public function savePersonalizadoMatrizConfig(int $prianacategoriaId, array $config): bool
+    {
+        if ($prianacategoriaId < 1 || ! $this->ensureCultivoMatrizConfigColumn()) {
+            return false;
+        }
+
+        $normalized = $this->normalizePersonalizadoMatrizConfig($config);
+        $json = json_encode($normalized, JSON_UNESCAPED_UNICODE);
+        if ($json === false) {
+            return false;
+        }
+
+        return $this->db->table('prianacategoria')
+            ->where('prianacategoria_id', $prianacategoriaId)
+            ->update(['cultivo_matriz_config' => $json]) !== false;
     }
 
     /**
@@ -1664,6 +1957,9 @@ class LabotestModel extends Model
             $save['umedida']     = '';
             $save['formulas_id'] = 1;
             $save['opcion_id']   = 3;
+            if ($this->hasColumn('secanacategoria', 'mostrar_medida')) {
+                $save['mostrar_medida'] = 0;
+            }
         }
         if ($this->hasColumn('secanacategoria', 'es_separador')) {
             $save['es_separador'] = $esSeparador ? 1 : 0;
@@ -1674,6 +1970,9 @@ class LabotestModel extends Model
         if ($this->hasColumn('secanacategoria', 'sexo')) {
             $sexo = $data['sexo'] ?? 'ambos';
             $save['sexo'] = in_array($sexo, ['masculino', 'femenino'], true) ? $sexo : 'ambos';
+        }
+        if ($this->hasColumn('secanacategoria', 'mostrar_medida', true)) {
+            $save['mostrar_medida'] = ! empty($data['mostrar_medida']) ? 1 : 0;
         }
         if ($this->hasColumn('secanacategoria', 'orden')) {
             if ($id && $id > 0) {
@@ -1849,6 +2148,9 @@ class LabotestModel extends Model
         if ($this->hasColumn('priresultados', 'sexo')) {
             $sexo = $data['sexo'] ?? 'ambos';
             $save['sexo'] = in_array($sexo, ['masculino', 'femenino'], true) ? $sexo : 'ambos';
+        }
+        if ($this->hasColumn('priresultados', 'mostrar_medida', true)) {
+            $save['mostrar_medida'] = ! empty($data['mostrar_medida']) ? 1 : 0;
         }
         if ($id && $id > 0) {
             return $this->db->table('priresultados')->where('priresultados_id', $id)->update($save);
@@ -2099,6 +2401,9 @@ class LabotestModel extends Model
             if (array_key_exists('umedida', $row)) {
                 $update['umedida'] = (string) $row['umedida'];
             }
+            if (array_key_exists('mostrar_medida', $row) && $this->hasColumn('secanacategoria', 'mostrar_medida')) {
+                $update['mostrar_medida'] = ! empty($row['mostrar_medida']) ? 1 : 0;
+            }
             if (array_key_exists('paciente_id', $row)) {
                 $update['paciente_id'] = max(0, (int) $row['paciente_id']);
             }
@@ -2171,6 +2476,9 @@ class LabotestModel extends Model
             }
             if (array_key_exists('umedida', $row)) {
                 $update['umedida'] = (string) $row['umedida'];
+            }
+            if (array_key_exists('mostrar_medida', $row) && $this->hasColumn('priresultados', 'mostrar_medida')) {
+                $update['mostrar_medida'] = ! empty($row['mostrar_medida']) ? 1 : 0;
             }
             if (array_key_exists('id_poblacion', $row)) {
                 $update['id_poblacion'] = max(0, (int) $row['id_poblacion']);
@@ -2628,6 +2936,9 @@ class LabotestModel extends Model
         if ($complejaVal === self::COMPLEJA_CULTIVO) {
             $payload['compleja'] = self::COMPLEJA_CULTIVO;
             $payload['cultivo_matriz'] = $this->getCultivoMatrizConfig($prianacategoriaId);
+        } elseif ($complejaVal === self::COMPLEJA_PERSONALIZADO) {
+            $payload['compleja'] = self::COMPLEJA_PERSONALIZADO;
+            $payload['personalizado_matriz'] = $this->getPersonalizadoMatrizConfig($prianacategoriaId);
         } elseif ($isCompleja) {
             $rows = $this->getSubItems($prianacategoriaId);
             $payload['sub_items'] = array_map(static function (array $r): array {
@@ -2640,6 +2951,7 @@ class LabotestModel extends Model
                     'critico_min'  => (string) ($r['critico_min'] ?? ''),
                     'critico_max'  => (string) ($r['critico_max'] ?? ''),
                     'umedida'      => (string) ($r['umedida'] ?? ''),
+                    'mostrar_medida' => (int) ($r['mostrar_medida'] ?? 0) === 1 ? 1 : 0,
                     'formulas_id'  => (int) ($r['formulas_id'] ?? 1),
                     'opcion_id'    => (int) ($r['opcion_id'] ?? 3),
                     'es_separador' => (int) ($r['es_separador'] ?? 0) === 1 ? 1 : 0,
@@ -2657,6 +2969,7 @@ class LabotestModel extends Model
                     'critico_min'  => (string) ($r['critico_min'] ?? ''),
                     'critico_max'  => (string) ($r['critico_max'] ?? ''),
                     'umedida'      => (string) ($r['umedida'] ?? ''),
+                    'mostrar_medida' => (int) ($r['mostrar_medida'] ?? 0) === 1 ? 1 : 0,
                     'formulas_id'  => (int) ($r['formulas_id'] ?? 1),
                     'opcion_id'    => (int) ($r['opcion_id'] ?? 3),
                 ];
@@ -2700,6 +3013,30 @@ class LabotestModel extends Model
             return [
                 'success'  => true,
                 'message'  => 'Matriz de cultivo importada correctamente',
+                'imported' => 1,
+            ];
+        }
+
+        if ($targetTipo === self::COMPLEJA_PERSONALIZADO) {
+            $sourceTipo = (int) ($payload['compleja'] ?? 0);
+            if ($sourceTipo !== self::COMPLEJA_PERSONALIZADO) {
+                return ['success' => false, 'message' => 'El archivo no corresponde al tipo de análisis de esta prueba'];
+            }
+            $matrizRaw = $payload['personalizado_matriz'] ?? ($payload['cultivo_matriz'] ?? null);
+            if (! is_array($matrizRaw)) {
+                return ['success' => false, 'message' => 'El archivo no contiene matriz personalizada para importar'];
+            }
+
+            $this->db->transStart();
+            $ok = $this->savePersonalizadoMatrizConfig($prianacategoriaId, $matrizRaw);
+            $this->db->transComplete();
+            if (! $ok || ! $this->db->transStatus()) {
+                return ['success' => false, 'message' => 'No se pudo guardar la matriz personalizada'];
+            }
+
+            return [
+                'success'  => true,
+                'message'  => 'Matriz personalizada importada correctamente',
                 'imported' => 1,
             ];
         }
@@ -2754,6 +3091,9 @@ class LabotestModel extends Model
                 if ($this->hasColumn('secanacategoria', 'es_separador')) {
                     $insert['es_separador'] = $esSeparador ? 1 : 0;
                 }
+                if ($this->hasColumn('secanacategoria', 'mostrar_medida')) {
+                    $insert['mostrar_medida'] = $esSeparador ? 0 : (! empty($raw['mostrar_medida']) ? 1 : 0);
+                }
                 if ($esSeparador) {
                     $insert['valor_min']   = '';
                     $insert['valor_max']   = '';
@@ -2797,6 +3137,9 @@ class LabotestModel extends Model
                 if ($this->hasColumn('priresultados', 'sexo')) {
                     $sexo = strtolower(trim((string) ($raw['sexo'] ?? 'ambos')));
                     $insert['sexo'] = in_array($sexo, ['masculino', 'femenino'], true) ? $sexo : 'ambos';
+                }
+                if ($this->hasColumn('priresultados', 'mostrar_medida')) {
+                    $insert['mostrar_medida'] = ! empty($raw['mostrar_medida']) ? 1 : 0;
                 }
                 $ok = $this->db->table('priresultados')->insert($insert);
                 if ($ok !== false) {

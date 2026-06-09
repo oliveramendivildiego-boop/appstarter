@@ -144,6 +144,7 @@ class Labotests extends SecureArea
         $subItems = [];
         $priresultados = [];
         $cultivoMatriz = [];
+        $personalizadoMatriz = [];
         $poblaciones = $this->labotestModel->getPoblaciones();
         $formulas = $this->labotestModel->getFormulas();
         try {
@@ -187,6 +188,8 @@ class Labotests extends SecureArea
             }
         } elseif ($compleja === LabotestModel::COMPLEJA_CULTIVO) {
             $cultivoMatriz = $this->labotestModel->getCultivoMatrizConfig($prianacategoriaId);
+        } elseif ($compleja === LabotestModel::COMPLEJA_PERSONALIZADO) {
+            $personalizadoMatriz = $this->labotestModel->getPersonalizadoMatrizConfig($prianacategoriaId);
         } else {
             $priresultados = $this->labotestModel->getPriResultados($prianacategoriaId);
             if ($editarPri > 0) {
@@ -222,7 +225,8 @@ class Labotests extends SecureArea
             'compleja'          => $compleja,
             'sub_items'         => $subItems,
             'priresultados'     => $priresultados,
-            'cultivo_matriz'    => $cultivoMatriz,
+            'cultivo_matriz'       => $cultivoMatriz ?? [],
+            'personalizado_matriz' => $personalizadoMatriz ?? [],
             'poblaciones'       => $poblaciones,
             'formulas'               => $formulas,
             'formulas_creadas'       => $formulasCreadas,
@@ -444,6 +448,7 @@ class Labotests extends SecureArea
             'critico_min'        => $this->request->getPost('critico_min') ?? '',
             'critico_max'        => $this->request->getPost('critico_max') ?? '',
             'umedida'            => $this->request->getPost('umedida') ?? '',
+            'mostrar_medida'     => (int) ($this->request->getPost('mostrar_medida') ?? 0) === 1 ? 1 : 0,
             'formulas_id'        => $formulasId,
             'formula_expresion'  => $formulaExpresion,
             'opcion_id'          => $esSeparador ? 3 : (int) ($this->request->getPost('opcion_id') ?? 3),
@@ -523,6 +528,72 @@ class Labotests extends SecureArea
         );
 
         return $respond(true, 'Matriz de cultivo guardada correctamente');
+    }
+
+    /**
+     * Guardar matriz personalizada (misma estructura que cultivo con extras por celda).
+     */
+    public function savePersonalizadoMatriz()
+    {
+        $prianacategoriaId = (int) ($this->request->getPost('prianacategoria_id') ?? 0);
+        $subInfo = $this->labotestModel->getSubInfo($prianacategoriaId);
+        $isAjax = $this->request->isAJAX();
+
+        $respond = static function (bool $success, string $message, int $status = 200) use ($isAjax, $prianacategoriaId) {
+            if ($isAjax) {
+                return service('response')->setJSON([
+                    'success'    => $success,
+                    'message'    => $message,
+                    'csrf_token' => csrf_hash(),
+                    'csrf_name'  => csrf_token(),
+                    'reload'     => $success,
+                ])->setStatusCode($status);
+            }
+
+            return redirect()->to("labotests/detail/{$prianacategoriaId}")
+                ->with($success ? 'success' : 'error', $message);
+        };
+
+        if ($prianacategoriaId < 1 || (int) ($subInfo->compleja ?? 0) !== LabotestModel::COMPLEJA_PERSONALIZADO) {
+            return $respond(false, 'La prueba no es de tipo personalizado', 400);
+        }
+
+        $json = $this->request->getPost('cultivo_matriz_json');
+        if (! is_string($json) || trim($json) === '') {
+            $json = (string) ($_POST['cultivo_matriz_json'] ?? '');
+        }
+        if (trim($json) === '') {
+            $rawBody = (string) $this->request->getBody();
+            if ($rawBody !== '' && str_contains($rawBody, 'cultivo_matriz_json=')) {
+                parse_str($rawBody, $parsedBody);
+                $json = (string) ($parsedBody['cultivo_matriz_json'] ?? '');
+            }
+        }
+
+        $config = is_string($json) && trim($json) !== '' ? json_decode($json, true) : null;
+        if (! is_array($config)) {
+            $detail = json_last_error_msg();
+            $msg = 'Configuración de matriz inválida';
+            if (trim($json) === '') {
+                $msg = 'No se recibió la configuración. Si la matriz es muy grande, aumente max_input_vars y post_max_size en PHP.';
+            } elseif ($detail !== '' && $detail !== 'No error') {
+                $msg .= ': ' . $detail;
+            }
+            return $respond(false, $msg, 400);
+        }
+
+        if (! $this->labotestModel->savePersonalizadoMatrizConfig($prianacategoriaId, $config)) {
+            return $respond(false, 'No se pudo guardar la matriz personalizada. Verifique migraciones (cultivo_matriz_config).', 500);
+        }
+
+        \App\Models\AuditoriaModel::log(
+            'labotests',
+            'guardar_matriz_personalizado',
+            (string) $prianacategoriaId,
+            \App\Models\AuditoriaModel::detail(['nombre' => $subInfo->name ?? ''])
+        );
+
+        return $respond(true, 'Matriz personalizada guardada correctamente');
     }
 
     /**
@@ -1255,6 +1326,7 @@ class Labotests extends SecureArea
             'critico_min'       => $this->request->getPost('critico_min') ?? '',
             'critico_max'       => $this->request->getPost('critico_max') ?? '',
             'umedida'           => $this->request->getPost('umedida') ?? '',
+            'mostrar_medida'    => (int) ($this->request->getPost('mostrar_medida') ?? 0) === 1 ? 1 : 0,
             'formulas_id'       => (int) ($this->request->getPost('formulas_id') ?? 1),
             'opcion_id'         => (int) ($this->request->getPost('opcion_id') ?? 3),
         ];

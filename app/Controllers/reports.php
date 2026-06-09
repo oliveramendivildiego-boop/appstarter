@@ -1593,6 +1593,7 @@ class Reports extends SecureArea
                 $tipo = match ((int) ($it['compleja'] ?? 0)) {
                     \App\Models\LabotestModel::COMPLEJA_COMPOUESTA => lang('Labotests.labotests_tipo_analisis_tabla'),
                     \App\Models\LabotestModel::COMPLEJA_CULTIVO => lang('Labotests.labotests_tipo_analisis_cultivo'),
+                    \App\Models\LabotestModel::COMPLEJA_PERSONALIZADO => lang('Labotests.labotests_tipo_analisis_personalizado'),
                     default => lang('Labotests.labotests_tipo_analisis_simple'),
                 };
                 fputcsv($output, [

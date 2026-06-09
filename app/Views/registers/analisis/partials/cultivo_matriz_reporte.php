@@ -25,6 +25,7 @@ if ($metodoLinea === '' && $priaIdTitulo > 0) {
     $metodoLinea = trim((string) (($report_pria_metodo_nombre ?? [])[$priaIdTitulo] ?? ''));
 }
 $secciones = is_array($cultivoItem->cultivo_display ?? null) ? $cultivoItem->cultivo_display : [];
+$esPersonalizadoMatriz = ! empty($cultivoItem->es_personalizado_matriz);
 $segmentWrapStyle = '';
 if ($usePdfChrome) {
     $segmentWrapStyle = \App\Services\ReportPdfLayoutService::grupoPruebaSegmentIntactStyleAttr(
@@ -34,10 +35,13 @@ if ($usePdfChrome) {
 $segmentWrapStyleAttr = $segmentWrapStyle !== '' ? ' style="' . esc($segmentWrapStyle, 'attr') . '"' : '';
 $mainTableClass = $usePdfChrome ? 'results' : 'table table-bordered table-sm mb-0';
 $webTitleMt = ($sub_idx ?? 0) > 0 ? 'mt-5' : 'mt-4';
-$renderCultivoCelda = static function (string $cellHtml, string $tdClass = 'text-center'): void {
+$renderCultivoCelda = static function (string $cellHtml, string $tdClass = 'text-center', string $tdStyleExtra = ''): void {
     $isBordesHtml = str_contains($cellHtml, 'cultivo-celda-bordes');
-    $isHtml = $isBordesHtml || ($cellHtml !== '' && $cellHtml !== strip_tags($cellHtml));
-    echo '<td class="' . esc($tdClass, 'attr') . ' align-middle' . ($isHtml ? ' cultivo-celda-html' : '') . '">';
+    $isHtml = $isBordesHtml || str_contains($cellHtml, 'pers-celda-reporte')
+        || ($cellHtml !== '' && $cellHtml !== strip_tags($cellHtml));
+    $classes = trim($tdClass . ' align-middle' . ($isHtml ? ' cultivo-celda-html' : ''));
+    $styleAttr = $tdStyleExtra !== '' ? ' style="' . esc($tdStyleExtra, 'attr') . '"' : '';
+    echo '<td class="' . esc($classes, 'attr') . '"' . $styleAttr . '>';
     if ($isHtml) {
         echo $cellHtml;
     } else {
@@ -86,6 +90,12 @@ $renderCultivoCelda = static function (string $cellHtml, string $tdClass = 'text
     text-align: left;
     padding-left: 0.5rem;
     padding-right: 0.5rem;
+}
+.report-cultivo-seccion.report-cultivo-personalizado .report-cultivo-columna td {
+    text-align: inherit;
+}
+.report-cultivo-seccion.report-cultivo-personalizado .pers-celda-reporte {
+    width: 100%;
 }
 .cultivo-celda-bordes {
     display: flex;
@@ -177,16 +187,36 @@ $subgrupoCultivoStyle = $subIdxCultivo > 0
     if (! in_array($alineacionFilas, ['centro', 'bordes'], true)) {
         $alineacionFilas = 'centro';
     }
-    $secClassAlineacion = ($secTipoReport === 'cuerpo')
+    $secClassAlineacion = ($secTipoReport === 'cuerpo' && ! $esPersonalizadoMatriz)
         ? ' report-cultivo-alineacion-' . esc($alineacionFilas, 'attr')
         : '';
-    $tdClassCelda = ($secTipoReport === 'cuerpo' && $alineacionFilas === 'bordes') ? 'text-start' : 'text-center';
+    $tdClassCelda = ($esPersonalizadoMatriz || ($secTipoReport === 'cuerpo' && $alineacionFilas === 'bordes'))
+        ? ''
+        : 'text-center';
+    $reporteEstilo = ($esPersonalizadoMatriz && is_array($sec['reporte_estilo'] ?? null))
+        ? $sec['reporte_estilo']
+        : null;
+    $tableStylePersonalizado = $reporteEstilo !== null
+        ? \App\Models\LabotestModel::buildPersonalizadoReporteTableStyleAttr($reporteEstilo)
+        : '';
+    $thStylePersonalizado = $reporteEstilo !== null
+        ? \App\Models\LabotestModel::buildPersonalizadoReporteThStyleAttr($reporteEstilo)
+        : '';
+    $tdBorderPersonalizado = $reporteEstilo !== null
+        ? \App\Models\LabotestModel::buildPersonalizadoReporteTdBorderStyleAttr($reporteEstilo)
+        : '';
+    $mergeStyleAttr = static function (string $base, string $extra): string {
+        $merged = trim($base . ($base !== '' && $extra !== '' ? ';' : '') . $extra);
+
+        return $merged !== '' ? ' style="' . esc($merged, 'attr') . '"' : '';
+    };
+    $secClassPersonalizado = $esPersonalizadoMatriz ? ' report-cultivo-personalizado' : '';
 ?>
-<div class="report-cultivo-seccion mb-3<?= $secClassAlineacion ?>">
+<div class="report-cultivo-seccion mb-3<?= $secClassAlineacion ?><?= $secClassPersonalizado ?>">
     <div class="report-segment-table-wrap"<?= $segmentWrapStyleAttr ?>>
         <?php if ($tieneBanda): ?>
         <div class="report-cultivo-banda w-100">
-            <table class="<?= esc($mainTableClass, 'attr') ?>"<?= $tableFixedStyle ?>>
+            <table class="<?= esc($mainTableClass, 'attr') ?>"<?= $mergeStyleAttr($tableFixedStyle !== '' ? trim(str_replace([' style="', '"'], '', $tableFixedStyle)) : '', $tableStylePersonalizado) ?>>
                 <thead>
                     <?php foreach ($titulosBanda as $filaTitulos): ?>
                     <tr>
@@ -196,8 +226,13 @@ $subgrupoCultivoStyle = $subIdxCultivo > 0
                             if ($thColspan < $bandaColspan) {
                                 $thColspan = $bandaColspan;
                             }
+                            $thJoinMerged = trim(
+                                ($thJoinStyle !== '' ? trim(str_replace([' style="', '"'], '', $thJoinStyle)) : '')
+                                . ($thStylePersonalizado !== '' ? ($thJoinStyle !== '' ? ';' : '') . $thStylePersonalizado : '')
+                            );
+                            $thClass = $esPersonalizadoMatriz ? '' : 'text-center';
                         ?>
-                        <th class="text-center" colspan="<?= (int) $thColspan ?>"><?= esc($thTexto) ?></th>
+                        <th class="<?= esc($thClass, 'attr') ?>" colspan="<?= (int) $thColspan ?>"<?= $thJoinMerged !== '' ? ' style="' . esc($thJoinMerged, 'attr') . '"' : '' ?>><?= esc($thTexto) ?></th>
                         <?php endforeach; ?>
                     </tr>
                     <?php endforeach; ?>
@@ -212,23 +247,36 @@ $subgrupoCultivoStyle = $subIdxCultivo > 0
             $tableColStyle,
             $thJoinStyle,
             $tdClassCelda,
-            $renderCultivoCelda
+            $renderCultivoCelda,
+            $tableStylePersonalizado,
+            $thStylePersonalizado,
+            $tdBorderPersonalizado,
+            $esPersonalizadoMatriz,
+            $mergeStyleAttr
         ): void {
             $titulosFilasCol = is_array($colDet['titulos_filas'] ?? null) ? $colDet['titulos_filas'] : [];
             $valoresCol = is_array($colDet['valores'] ?? null) ? $colDet['valores'] : [];
             if ($titulosFilasCol === [] && $valoresCol === []) {
                 return;
             }
+            $tableBaseStyle = $tableColStyle !== ''
+                ? trim(str_replace([' style="', '"'], '', $tableColStyle))
+                : '';
             ?>
-                <table class="<?= esc($mainTableClass, 'attr') ?>"<?= $tableColStyle ?>>
+                <table class="<?= esc($mainTableClass, 'attr') ?>"<?= $mergeStyleAttr($tableBaseStyle, $tableStylePersonalizado) ?>>
                     <?php if ($titulosFilasCol !== []): ?>
                     <thead>
                         <?php foreach ($titulosFilasCol as $filaTitulos): ?>
                         <tr>
                             <?php foreach ($filaTitulos as $thCell):
                                 $thTexto = (string) ($thCell['texto'] ?? '');
+                                $thJoinMerged = trim(
+                                    ($thJoinStyle !== '' ? trim(str_replace([' style="', '"'], '', $thJoinStyle)) : '')
+                                    . ($thStylePersonalizado !== '' ? ($thJoinStyle !== '' ? ';' : '') . $thStylePersonalizado : '')
+                                );
+                                $thClass = $esPersonalizadoMatriz ? '' : 'text-center';
                             ?>
-                            <th class="text-center"<?= $thJoinStyle ?>><?= esc($thTexto) ?></th>
+                            <th class="<?= esc($thClass, 'attr') ?>"<?= $thJoinMerged !== '' ? ' style="' . esc($thJoinMerged, 'attr') . '"' : '' ?>><?= esc($thTexto) ?></th>
                             <?php endforeach; ?>
                         </tr>
                         <?php endforeach; ?>
@@ -238,7 +286,7 @@ $subgrupoCultivoStyle = $subIdxCultivo > 0
                     <tbody>
                         <?php foreach ($valoresCol as $cellHtml): ?>
                         <tr>
-                            <?php $renderCultivoCelda((string) $cellHtml, $tdClassCelda); ?>
+                            <?php $renderCultivoCelda((string) $cellHtml, $tdClassCelda, $tdBorderPersonalizado); ?>
                         </tr>
                         <?php endforeach; ?>
                     </tbody>

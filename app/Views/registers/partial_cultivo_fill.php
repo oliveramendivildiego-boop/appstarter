@@ -50,9 +50,14 @@ $labotestModel = model(LabotestModel::class);
 
 $leyendaCultivoModel = model(LeyendaCultivoModel::class);
 
-$matriz = $labotestModel->getCultivoMatrizConfig($prianacategoriaId);
+$esPersonalizado = ! empty($es_personalizado);
+$matriz = $esPersonalizado
+    ? $labotestModel->getPersonalizadoMatrizConfig($prianacategoriaId)
+    : $labotestModel->getCultivoMatrizConfig($prianacategoriaId);
 
-$bloquesMatriz = \App\Models\LabotestModel::resolveCultivoMatrizBloques($matriz);
+$bloquesMatriz = $esPersonalizado
+    ? \App\Models\LabotestModel::resolvePersonalizadoMatrizBloques($matriz)
+    : \App\Models\LabotestModel::resolveCultivoMatrizBloques($matriz);
 
 $leyendasActivas = $leyendaCultivoModel->getActivas();
 
@@ -116,45 +121,99 @@ $normalizeTitulosCol = static function (array $sec, int $columnas): array {
 
 
 
-$normalizeCeldaCfg = static function ($raw): array {
+$normalizeCeldaCfg = static function ($raw) use ($esPersonalizado): array {
+    $out = ['modo' => 'texto'];
 
     if (is_array($raw)) {
-
         $modo = (string) ($raw['modo'] ?? 'texto');
-
         if ($modo === 'opcion') {
-
-            return ['modo' => 'opcion', 'opcion_id' => max(0, (int) ($raw['opcion_id'] ?? 0))];
-
-        }
-
-        if ($modo === 'leyenda') {
-
-            return [
-
+            $out = ['modo' => 'opcion', 'opcion_id' => max(0, (int) ($raw['opcion_id'] ?? 0))];
+        } elseif ($modo === 'texto_rico') {
+            $out = ['modo' => 'texto_rico'];
+        } elseif ($modo === 'leyenda') {
+            $out = [
                 'modo'                         => 'leyenda',
-
                 'leyenda_cultivo_categoria_id' => max(0, (int) ($raw['leyenda_cultivo_categoria_id'] ?? 0)),
-
             ];
-
         }
-
-        return ['modo' => 'texto'];
-
+    } elseif (is_numeric($raw) && (int) $raw > 0) {
+        $out = ['modo' => 'opcion', 'opcion_id' => (int) $raw];
     }
 
-    if (is_numeric($raw) && (int) $raw > 0) {
-
-        return ['modo' => 'opcion', 'opcion_id' => (int) $raw];
-
+    if ($esPersonalizado && is_array($raw)) {
+        $ali = trim((string) ($raw['alineacion'] ?? 'izquierda'));
+        if (! in_array($ali, ['izquierda', 'centro', 'derecha'], true)) {
+            $ali = 'izquierda';
+        }
+        $out['alineacion'] = $ali;
+        $fuente = trim((string) ($raw['fuente'] ?? 'normal'));
+        if (! in_array($fuente, ['normal', 'negrita', 'titulo'], true)) {
+            $fuente = 'normal';
+        }
+        $out['fuente'] = $fuente;
+        $rol = trim((string) ($raw['rol'] ?? 'input'));
+        if (! in_array($rol, ['input', 'titulo', 'etiqueta'], true)) {
+            $rol = 'input';
+        }
+        $out['rol'] = $rol;
+        $out['rowspan'] = max(1, min(50, (int) ($raw['rowspan'] ?? 1)));
+        $textoFijo = trim((string) ($raw['texto_fijo'] ?? ''));
+        if ($textoFijo !== '') {
+            $out['texto_fijo'] = $textoFijo;
+        }
     }
 
-    return ['modo' => 'texto'];
-
+    return $out;
 };
 
+$estiloCeldaPersonalizado = static function (array $celdaCfg): string {
+    $styles = [];
+    $ali = $celdaCfg['alineacion'] ?? 'izquierda';
+    $styles[] = 'text-align:' . ($ali === 'centro' ? 'center' : ($ali === 'derecha' ? 'right' : 'left'));
+    $fuente = $celdaCfg['fuente'] ?? 'normal';
+    if ($fuente === 'negrita') {
+        $styles[] = 'font-weight:700';
+    } elseif ($fuente === 'titulo') {
+        $styles[] = 'font-weight:700';
+        $styles[] = 'font-size:1.05em';
+    }
 
+    return $styles === [] ? '' : ' style="' . esc(implode(';', $styles), 'attr') . '"';
+};
+
+$celdaEsTituloFill = static function (array $cfg): bool {
+    $rol = $cfg['rol'] ?? 'input';
+
+    return in_array($rol, ['titulo', 'etiqueta'], true);
+};
+
+$celdaEsInputFill = static function (array $cfg): bool {
+    $rol = $cfg['rol'] ?? 'input';
+
+    return ! in_array($rol, ['titulo', 'etiqueta'], true);
+};
+
+$calcColspanTextoRicoPersonalizado = static function (
+    int $r,
+    int $c,
+    int $columnas,
+    array $celdas,
+    array $coveredRowspan,
+    callable $normalizeCeldaCfg,
+    callable $celdaEsInputFill
+): int {
+    for ($cc = $c + 1; $cc < $columnas; $cc++) {
+        if (isset($coveredRowspan[$r . ',' . $cc])) {
+            continue;
+        }
+        $cfg = $normalizeCeldaCfg($celdas[$r][$cc] ?? ['modo' => 'texto']);
+        if ($celdaEsInputFill($cfg)) {
+            return 1;
+        }
+    }
+
+    return max(1, $columnas - $c);
+};
 
 $renderExtrasFill = static function (
 
@@ -331,9 +390,42 @@ foreach ($leyendasPorId as $lid => $lcRow) {
     max-width: 7.5rem;
 }
 
+.cultivo-fill-wrap.cultivo-fill-personalizado .table {
+    width: 100%;
+}
+
+.cultivo-fill-wrap.cultivo-fill-personalizado .cultivo-fill-td-texto-rico {
+    width: 100%;
+}
+
+.cultivo-fill-wrap.cultivo-fill-personalizado .cultivo-fill-texto-rico-row {
+    display: block;
+    width: 100%;
+}
+
+.cultivo-fill-wrap.cultivo-fill-personalizado .cultivo-fill-texto-rico-row .cultivo-fill-main {
+    flex: none;
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+}
+
+.cultivo-fill-wrap.cultivo-fill-personalizado .cultivo-fill-texto-rico-row .note-editor.note-frame {
+    width: 100% !important;
+    max-width: 100%;
+    box-sizing: border-box;
+}
+
+.cultivo-fill-wrap.cultivo-fill-personalizado .cultivo-fill-texto-rico-row .cultivo-celda-valor-fill {
+    flex: none;
+    width: 100%;
+    max-width: 12rem;
+    margin-top: 0.35rem;
+}
+
 </style>
 
-<div class="col-12 mb-3 cultivo-fill-wrap" data-prianacategoria-id="<?= $prianacategoriaId ?>">
+<div class="col-12 mb-3 cultivo-fill-wrap<?= $esPersonalizado ? ' cultivo-fill-personalizado' : '' ?>" data-prianacategoria-id="<?= $prianacategoriaId ?>">
 
     <div class="border rounded p-3 bg-white">
 
@@ -341,7 +433,7 @@ foreach ($leyendasPorId as $lid => $lcRow) {
 
             <strong><?= esc($tituloPrueba) ?></strong>
 
-            <span class="badge bg-info text-dark">Cultivo</span>
+            <span class="badge <?= $esPersonalizado ? 'bg-primary' : 'bg-info text-dark' ?>"><?= $esPersonalizado ? 'Personalizado' : 'Cultivo' ?></span>
 
         </div>
 
@@ -429,15 +521,53 @@ foreach ($leyendasPorId as $lid => $lcRow) {
 
                     <tbody>
 
-                        <?php for ($r = 0; $r < $filas; $r++): ?>
+                        <?php
+                        $coveredRowspan = [];
+                        $skipCols = [];
+                        for ($r = 0; $r < $filas; $r++):
+                        ?>
 
                         <tr>
 
                             <?php for ($c = 0; $c < $columnas; $c++):
+                                if (isset($coveredRowspan[$r . ',' . $c]) || isset($skipCols[$r . ',' . $c])) {
+                                    continue;
+                                }
 
                                 $celdaRaw = $celdas[$r][$c] ?? ['modo' => 'texto'];
 
                                 $celdaCfg = $normalizeCeldaCfg($celdaRaw);
+                                $esTextoRicoFill = ($celdaCfg['modo'] ?? '') === 'texto_rico'
+                                    || (($celdaCfg['modo'] ?? '') === 'opcion'
+                                        && registro_opcion_es_texto_rico((int) ($celdaCfg['opcion_id'] ?? 0)));
+                                $tdColspanAttr = '';
+                                $tdClass = 'p-1';
+                                if ($esPersonalizado && $esTextoRicoFill && $celdaEsInputFill($celdaCfg)) {
+                                    $ricoColspan = $calcColspanTextoRicoPersonalizado(
+                                        $r,
+                                        $c,
+                                        $columnas,
+                                        $celdas,
+                                        $coveredRowspan,
+                                        $normalizeCeldaCfg,
+                                        $celdaEsInputFill
+                                    );
+                                    if ($ricoColspan > 1) {
+                                        $tdColspanAttr = ' colspan="' . (int) $ricoColspan . '"';
+                                        for ($cc = $c + 1; $cc < $c + $ricoColspan; $cc++) {
+                                            $skipCols[$r . ',' . $cc] = true;
+                                        }
+                                    }
+                                    $tdClass .= ' cultivo-fill-td-texto-rico';
+                                }
+                                $rowspan = $esPersonalizado ? max(1, (int) ($celdaCfg['rowspan'] ?? 1)) : 1;
+                                if ($rowspan > 1) {
+                                    for ($rr = $r + 1; $rr < $r + $rowspan && $rr < $filas; $rr++) {
+                                        $coveredRowspan[$rr . ',' . $c] = true;
+                                    }
+                                }
+                                $tdStyle = $esPersonalizado ? $estiloCeldaPersonalizado($celdaCfg) : '';
+                                $tdRowspan = ($esPersonalizado && $rowspan > 1) ? ' rowspan="' . (int) $rowspan . '"' : '';
 
                                 $valorPlaceholder = is_array($celdaRaw) ? trim((string) ($celdaRaw['valor'] ?? '')) : '';
 
@@ -483,9 +613,34 @@ foreach ($leyendasPorId as $lid => $lcRow) {
 
                             ?>
 
-                            <td class="p-1">
+                            <td class="<?= esc($tdClass) ?>"<?= $tdStyle ?><?= $tdRowspan ?><?= $tdColspanAttr ?>>
 
-                                <?php if ($celdaCfg['modo'] === 'opcion'):
+                                <?php if ($esPersonalizado && $celdaEsTituloFill($celdaCfg)):
+                                    $textoMostrar = trim((string) ($celdaCfg['texto_fijo'] ?? ''));
+                                ?>
+                                    <div class="cultivo-fill-celda-row">
+                                        <span class="cultivo-fill-texto-fijo"><?= esc($textoMostrar) ?></span>
+                                    </div>
+                                <?php elseif ($celdaCfg['modo'] === 'texto_rico'
+                                    || ($celdaCfg['modo'] === 'opcion' && registro_opcion_es_texto_rico((int) ($celdaCfg['opcion_id'] ?? 0)))): ?>
+
+                                    <div class="cultivo-fill-celda-row<?= ($esPersonalizado && $esTextoRicoFill) ? ' cultivo-fill-texto-rico-row' : '' ?>">
+
+                                    <textarea id="<?= esc($inputId, 'attr') ?>"
+
+                                              class="form-control<?= ($esPersonalizado && $esTextoRicoFill) ? '' : ' form-control-sm' ?> cultivo-celda-input cultivo-fill-main input-texto-rico"
+
+                                              rows="<?= ($esPersonalizado && $esTextoRicoFill) ? '6' : '4' ?>"
+
+                                              data-skip-ref-validation="1"
+
+                                              <?= $dataAttrs ?><?= $inputAttrsSoloLectura ?>><?= registro_textarea_body_safe($valorActual) ?></textarea>
+
+                                    <?= $extrasHtml ?>
+
+                                    </div>
+
+                                <?php elseif ($celdaCfg['modo'] === 'opcion'):
 
                                     $opcionTipoId = (int) ($celdaCfg['opcion_id'] ?? 0);
 

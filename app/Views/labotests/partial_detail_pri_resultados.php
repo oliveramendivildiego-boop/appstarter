@@ -22,6 +22,7 @@ $sexoMap = ['ambos' => 'Ambos', 'masculino' => 'Masculino', 'femenino' => 'Femen
                     <th>Valor mín</th>
                     <th>Valor máx</th>
                     <th>U. medida</th>
+                    <th class="text-center">No mostrar Medida</th>
                     <th>Fórmula</th>
                     <th>Tipo</th>
                     <th class="text-center">Acciones</th>
@@ -37,6 +38,7 @@ $sexoMap = ['ambos' => 'Ambos', 'masculino' => 'Masculino', 'femenino' => 'Femen
                     'valor_min' => $pr['valor_min'] ?? '',
                     'valor_max' => $pr['valor_max'] ?? '',
                     'umedida' => $pr['umedida'] ?? '',
+                    'mostrar_medida' => (int) ($pr['mostrar_medida'] ?? 0),
                     'formulas_id' => (int) ($pr['formulas_id'] ?? 1),
                     'opcion_id' => (int) ($pr['opcion_id'] ?? 3),
                 ];
@@ -47,6 +49,7 @@ $sexoMap = ['ambos' => 'Ambos', 'masculino' => 'Masculino', 'femenino' => 'Femen
                     <td><?= esc($pr['valor_min'] ?? '') ?></td>
                     <td><?= esc($pr['valor_max'] ?? '') ?></td>
                     <td><?= esc($pr['umedida'] ?? '') ?></td>
+                    <td class="text-center"><?= ((int) ($pr['mostrar_medida'] ?? 0) === 1) ? 'Sí' : 'No' ?></td>
                     <td><?= esc($formulas[(int) ($pr['formulas_id'] ?? 0)] ?? '') ?></td>
                     <td><?= esc($opciones[(int) ($pr['opcion_id'] ?? 0)] ?? '') ?></td>
                     <td class="text-center">
@@ -103,6 +106,14 @@ $sexoMap = ['ambos' => 'Ambos', 'masculino' => 'Masculino', 'femenino' => 'Femen
                             <div class="col-md-3 mb-2">
                                 <label class="form-label">U. medida</label>
                                 <input type="text" name="umedida" class="form-control form-control-sm" value="">
+                            </div>
+                            <div class="col-md-3 mb-2 d-flex align-items-end">
+                                <input type="hidden" name="mostrar_medida" value="0">
+                                <div class="form-check">
+                                    <input type="checkbox" name="mostrar_medida" value="1" id="pri_mostrar_medida" class="form-check-input">
+                                    <label class="form-check-label" for="pri_mostrar_medida">No mostrar Medida</label>
+                                </div>
+                                <small class="text-muted ms-2">Sin unidad en resultado; solo en rango referencial</small>
                             </div>
                             <div class="col-md-2 mb-2">
                                 <label class="form-label">¿Calculada?</label>
@@ -197,6 +208,7 @@ $sexoMap = ['ambos' => 'Ambos', 'masculino' => 'Masculino', 'femenino' => 'Femen
     var btnSubmit = document.getElementById('btn_submit_pri');
     var form = document.getElementById('form_priresultado');
     var calcCb = document.getElementById('pri_es_calculada');
+    var mostrarMedidaCb = document.getElementById('pri_mostrar_medida');
     var formulasHidden = document.getElementById('pri_formulas_id_hidden');
     var formulasSelect = document.getElementById('pri_formulas_id');
     var predefSelect = document.getElementById('pri_formula_predefinida_select');
@@ -249,6 +261,7 @@ $sexoMap = ['ambos' => 'Ambos', 'masculino' => 'Masculino', 'femenino' => 'Femen
         setField('valor_min', data.valor_min || '');
         setField('valor_max', data.valor_max || '');
         setField('umedida', data.umedida || '');
+        if (mostrarMedidaCb) mostrarMedidaCb.checked = !!(parseInt(String(data.mostrar_medida || 0), 10) === 1);
         setField('opcion_id', (data.opcion_id || 3) | 0);
 
         var fid = (data.formulas_id || 1) | 0;
@@ -281,6 +294,7 @@ $sexoMap = ['ambos' => 'Ambos', 'masculino' => 'Masculino', 'femenino' => 'Femen
             valor_min: '',
             valor_max: '',
             umedida: '',
+            mostrar_medida: 0,
             formulas_id: 1,
             opcion_id: 3
         });
@@ -564,6 +578,7 @@ $sexoMap = ['ambos' => 'Ambos', 'masculino' => 'Masculino', 'femenino' => 'Femen
         'valor_min' => $editar_pri_data['valor_min'] ?? '',
         'valor_max' => $editar_pri_data['valor_max'] ?? '',
         'umedida' => $editar_pri_data['umedida'] ?? '',
+        'mostrar_medida' => (int) ($editar_pri_data['mostrar_medida'] ?? 0),
         'formulas_id' => (int) ($editar_pri_data['formulas_id'] ?? 1),
         'opcion_id' => (int) ($editar_pri_data['opcion_id'] ?? 3),
     ]) ?>);

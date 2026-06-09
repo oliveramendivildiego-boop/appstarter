@@ -156,6 +156,41 @@ if (! function_exists('registro_textarea_body_safe')) {
     }
 }
 
+if (! function_exists('registro_mostrar_medida_solo_en_referencia')) {
+    /**
+     * Indica si la unidad debe mostrarse solo en el rango referencial (no junto al resultado).
+     *
+     * @param object|array<string,mixed>|null $item
+     */
+    function registro_mostrar_medida_solo_en_referencia(object|array|null $item): bool
+    {
+        if ($item === null) {
+            return false;
+        }
+        $flag = is_object($item)
+            ? ($item->mostrar_medida ?? 0)
+            : ($item['mostrar_medida'] ?? 0);
+
+        return (int) $flag === 1;
+    }
+}
+
+if (! function_exists('registro_unidad_para_resultado')) {
+    /**
+     * Unidad visible junto al valor del resultado en reportes.
+     *
+     * @param mixed $unidad
+     */
+    function registro_unidad_para_resultado($unidad, bool $mostrarMedidaSoloEnReferencia): string
+    {
+        if ($mostrarMedidaSoloEnReferencia) {
+            return '';
+        }
+
+        return trim((string) ($unidad ?? ''));
+    }
+}
+
 if (! function_exists('registro_resultado_celda_html')) {
     /**
      * HTML seguro para mostrar un resultado en reportes (texto plano escapado o HTML enriquecido).
@@ -163,20 +198,21 @@ if (! function_exists('registro_resultado_celda_html')) {
      * @param mixed $valor
      * @param mixed $unidad
      */
-    function registro_resultado_celda_html($valor, $unidad, int $opcionId = 3): string
+    function registro_resultado_celda_html($valor, $unidad, int $opcionId = 3, bool $mostrarMedidaSoloEnReferencia = false): string
     {
+        $u = registro_unidad_para_resultado($unidad, $mostrarMedidaSoloEnReferencia);
+
         if (registro_opcion_es_texto_rico($opcionId)) {
             $html = registro_sanitizar_html_rico((string) ($valor ?? ''));
             if ($html === '') {
                 return esc('-');
             }
-            $u = trim((string) ($unidad ?? ''));
             $suffix = $u !== '' ? ' <span class="text-muted">' . esc($u) . '</span>' : '';
 
             return '<div class="resultado-texto-rico text-start d-inline-block">' . $html . $suffix . '</div>';
         }
 
-        return esc(registro_resultado_con_unidad($valor, $unidad));
+        return esc(registro_resultado_con_unidad($valor, $u));
     }
 }
 
