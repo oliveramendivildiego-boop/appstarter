@@ -55,13 +55,13 @@
         <tbody>
             <?php foreach ($data ?? [] as $row): ?>
             <?php
-            $codigo = registro_orden_display($row);
+            $codigo = registro_codigo_recepcion_display($row, false);
             $usuarioRecepcion = trim((string) ($row['usuario_recepcion'] ?? ''));
             $usuarioPrimera   = trim((string) ($row['usuario_primera_carga'] ?? ''));
             $usuarioEdicion   = trim((string) ($row['usuario_ultima_edicion'] ?? ''));
             ?>
             <tr>
-                <td><strong><?= esc($codigo) ?></strong></td>
+                <td><strong><?= esc($codigo !== '' ? $codigo : '—') ?></strong></td>
                 <td><?= esc(lab_dt_short($row['ingreso'] ?? null)) ?></td>
                 <td><?= esc($row['paciente'] ?? '') ?></td>
                 <td><?= esc($usuarioRecepcion !== '' ? $usuarioRecepcion : '—') ?></td>

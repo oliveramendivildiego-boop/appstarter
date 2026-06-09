@@ -1,5 +1,32 @@
 <?php
 
+if (! function_exists('registro_codigo_recepcion_display')) {
+    /**
+     * Código de recepción (folio). Nunca muestra el registro_id interno.
+     */
+    function registro_codigo_recepcion_display(object|array|null $row, bool $persistIfMissing = true): string
+    {
+        if ($row === null) {
+            return '';
+        }
+
+        $registroId  = (int) (is_object($row) ? ($row->registro_id ?? 0) : ($row['registro_id'] ?? 0));
+        $numeroOrden = trim((string) (is_object($row) ? ($row->numero_orden ?? '') : ($row['numero_orden'] ?? '')));
+        $ingreso     = (string) (is_object($row) ? ($row->ingreso ?? '') : ($row['ingreso'] ?? ''));
+        $codigo      = trim((string) (is_object($row) ? ($row->codigo_recepcion ?? '') : ($row['codigo_recepcion'] ?? '')));
+        if ($codigo !== '') {
+            return $codigo;
+        }
+
+        return (new \App\Services\RegistroFolioService())->codigoRecepcionDisplay(
+            $registroId,
+            $numeroOrden,
+            $ingreso,
+            $persistIfMissing
+        );
+    }
+}
+
 if (! function_exists('registro_orden_display')) {
     /**
      * Número de orden visible (folio personalizado) o, si no hay, el registro_id interno.

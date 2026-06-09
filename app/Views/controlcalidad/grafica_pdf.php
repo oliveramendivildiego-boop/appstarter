@@ -133,7 +133,7 @@
             background: #fff;
             text-align: center;
         }
-        .chart-wrap svg { max-width: 100%; height: auto; }
+        .chart-wrap img { max-width: 100%; height: auto; display: block; margin: 0 auto; }
 
         .legend {
             font-size: 7.5pt;
@@ -184,180 +184,7 @@ $initial = function_exists('mb_substr')
 $controlNombre = (string) ($control['nombre'] ?? 'Control');
 $tipoLabel = ((int) ($control['tipo'] ?? 1) === 2) ? 'Externo' : 'Interno';
 
-$chartSvg = '';
-if ($qc !== null && $n > 0) {
-    $chartW = 680;
-    $chartH = 280;
-    $padL = 52;
-    $padR = 18;
-    $padT = 22;
-    $padB = 48;
-
-    $points = [];
-    foreach ($valores ?? [] as $v) {
-        $points[] = [
-            'fecha'    => (string) ($v['fecha'] ?? ''),
-            'valor'    => (float) ($v['valor'] ?? 0),
-            'esperado' => isset($v['esperado']) && $v['esperado'] !== null && $v['esperado'] !== ''
-                ? (float) $v['esperado']
-                : null,
-        ];
-    }
-
-    $mean = (float) $qc['mean'];
-    $sd   = (float) ($qc['sd'] ?? 0);
-    $yVals = array_map(static fn ($p) => $p['valor'], $points);
-    $yVals[] = $mean;
-    if ($sd > 0) {
-        for ($k = -3; $k <= 3; $k++) {
-            $yVals[] = $mean + ($k * $sd);
-        }
-    }
-    foreach ($points as $p) {
-        if ($p['esperado'] !== null) {
-            $yVals[] = $p['esperado'];
-        }
-    }
-
-    $yMin = min($yVals);
-    $yMax = max($yVals);
-    $span = $yMax - $yMin;
-    $margin = $span > 0 ? $span * 0.08 : 1.0;
-    $yMin -= $margin;
-    $yMax += $margin;
-    if ($yMax <= $yMin) {
-        $yMax = $yMin + 1.0;
-    }
-
-    $plotW = $chartW - $padL - $padR;
-    $plotH = $chartH - $padT - $padB;
-    $count = count($points);
-
-    $yToPx = static function (float $y) use ($yMin, $yMax, $plotH, $padT): float {
-        return $padT + $plotH * (1.0 - (($y - $yMin) / ($yMax - $yMin)));
-    };
-    $xToPx = static function (int $i) use ($count, $padL, $plotW): float {
-        if ($count <= 1) {
-            return $padL + ($plotW / 2);
-        }
-        return $padL + ($i / ($count - 1)) * $plotW;
-    };
-
-    $lines = [];
-    if ($sd > 0) {
-        $specs = [
-            ['y' => $mean, 'color' => '#0d6efd', 'dash' => '', 'w' => 2],
-            ['y' => $mean + $sd, 'color' => '#6c757d', 'dash' => '4,4', 'w' => 1],
-            ['y' => $mean - $sd, 'color' => '#6c757d', 'dash' => '4,4', 'w' => 1],
-            ['y' => $mean + 2 * $sd, 'color' => '#d39e00', 'dash' => '6,3', 'w' => 1],
-            ['y' => $mean - 2 * $sd, 'color' => '#d39e00', 'dash' => '6,3', 'w' => 1],
-            ['y' => $mean + 3 * $sd, 'color' => '#dc3545', 'dash' => '2,3', 'w' => 1],
-            ['y' => $mean - 3 * $sd, 'color' => '#dc3545', 'dash' => '2,3', 'w' => 1],
-        ];
-        foreach ($specs as $spec) {
-            $yy = $yToPx((float) $spec['y']);
-            $dash = $spec['dash'] !== '' ? ' stroke-dasharray="' . $spec['dash'] . '"' : '';
-            $lines[] = sprintf(
-                '<line x1="%s" y1="%s" x2="%s" y2="%s" stroke="%s" stroke-width="%s"%s/>',
-                $padL,
-                $yy,
-                $padL + $plotW,
-                $yy,
-                $spec['color'],
-                $spec['w'],
-                $dash
-            );
-        }
-    } else {
-        $yy = $yToPx($mean);
-        $lines[] = sprintf(
-            '<line x1="%s" y1="%s" x2="%s" y2="%s" stroke="#0d6efd" stroke-width="2"/>',
-            $padL,
-            $yy,
-            $padL + $plotW,
-            $yy
-        );
-    }
-
-    $poly = [];
-    $dots = [];
-    foreach ($points as $i => $p) {
-        $x = $xToPx($i);
-        $y = $yToPx($p['valor']);
-        $poly[] = round($x, 1) . ',' . round($y, 1);
-        $dots[] = sprintf('<circle cx="%s" cy="%s" r="3.5" fill="#198754" stroke="#fff" stroke-width="1"/>', round($x, 1), round($y, 1));
-    }
-
-    $esperadoSegs = [];
-    $seg = [];
-    foreach ($points as $i => $p) {
-        if ($p['esperado'] === null) {
-            if ($seg !== []) {
-                $esperadoSegs[] = $seg;
-                $seg = [];
-            }
-            continue;
-        }
-        $seg[] = ['x' => $xToPx($i), 'y' => $yToPx($p['esperado'])];
-    }
-    if ($seg !== []) {
-        $esperadoSegs[] = $seg;
-    }
-    $esperadoLines = [];
-    foreach ($esperadoSegs as $seg) {
-        if (count($seg) < 2) {
-            continue;
-        }
-        $pts = array_map(static fn ($s) => round($s['x'], 1) . ',' . round($s['y'], 1), $seg);
-        $esperadoLines[] = '<polyline fill="none" stroke="#d63384" stroke-width="1.5" stroke-dasharray="5,5" points="' . implode(' ', $pts) . '"/>';
-    }
-
-    $yTicks = [];
-    for ($t = 0; $t <= 4; $t++) {
-        $val = $yMin + (($yMax - $yMin) * $t / 4);
-        $yy = $yToPx($val);
-        $yTicks[] = sprintf(
-            '<line x1="%s" y1="%s" x2="%s" y2="%s" stroke="#e2e8f0" stroke-width="1"/>',
-            $padL,
-            $yy,
-            $padL + $plotW,
-            $yy
-        );
-        $yTicks[] = sprintf(
-            '<text x="%s" y="%s" font-size="7" fill="#64748b" text-anchor="end">%s</text>',
-            $padL - 6,
-            $yy + 3,
-            $fmt($val)
-        );
-    }
-
-    $xLabels = [];
-    $step = max(1, (int) ceil($count / 8));
-    foreach ($points as $i => $p) {
-        if ($i % $step !== 0 && $i !== $count - 1) {
-            continue;
-        }
-        $x = $xToPx($i);
-        $xLabels[] = sprintf(
-            '<text x="%s" y="%s" font-size="6.5" fill="#64748b" text-anchor="middle" transform="rotate(-35 %s %s)">%s</text>',
-            $x,
-            $chartH - 8,
-            $x,
-            $chartH - 8,
-            esc($p['fecha'])
-        );
-    }
-
-    $chartSvg = '<svg xmlns="http://www.w3.org/2000/svg" width="' . $chartW . '" height="' . $chartH . '" viewBox="0 0 ' . $chartW . ' ' . $chartH . '">'
-        . '<rect x="' . $padL . '" y="' . $padT . '" width="' . $plotW . '" height="' . $plotH . '" fill="#fafafa" stroke="#e2e8f0"/>'
-        . implode('', $yTicks)
-        . implode('', $lines)
-        . implode('', $esperadoLines)
-        . '<polyline fill="none" stroke="#198754" stroke-width="2" points="' . implode(' ', $poly) . '"/>'
-        . implode('', $dots)
-        . implode('', $xLabels)
-        . '</svg>';
-}
+$chartImageUri = \App\Libraries\QcLeveyJenningsChartImage::toPngDataUri($valores ?? [], $qc);
 ?>
 <div class="sheet">
     <table class="header-wrap">
@@ -444,11 +271,11 @@ if ($qc !== null && $n > 0) {
     </table>
 
     <div class="section-title">Gráfica de Levey-Jennings</div>
-    <?php if ($chartSvg === ''): ?>
+    <?php if ($chartImageUri === null || $chartImageUri === ''): ?>
         <p class="muted">Agregue valores en el rango o amplíe las fechas para ver la gráfica.</p>
     <?php else: ?>
         <div class="chart-wrap">
-            <?= $chartSvg ?>
+            <img src="<?= $chartImageUri ?>" alt="Gráfica Levey-Jennings">
         </div>
         <div class="legend">
             <span class="lg-measured">■ Valor medido</span>

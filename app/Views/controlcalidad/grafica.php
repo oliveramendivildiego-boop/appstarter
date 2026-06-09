@@ -5,7 +5,7 @@
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/themes/material_green.css">
 <script src="<?= base_url('js/vendor/flatpickr.min.js') ?>"></script>
 <script src="https://cdn.jsdelivr.net/npm/flatpickr@4.6.13/dist/l10n/es.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@3.9.1/dist/chart.min.js"></script>
 <?= $this->endSection() ?>
 
 <?= $this->section('content') ?>
@@ -97,7 +97,9 @@ $fmt = static function ($x, int $dec = 4) {
         <?php if ($qc === null): ?>
         <p class="text-muted mb-0">Agregue valores en el rango o amplíe las fechas para ver la gráfica.</p>
         <?php else: ?>
-        <canvas id="chartLevey" height="110"></canvas>
+        <div class="qc-chart-wrap" style="position:relative; height:340px; width:100%;">
+            <canvas id="chartLevey"></canvas>
+        </div>
         <?php endif; ?>
     </div>
 </div>
@@ -144,12 +146,23 @@ $fmt = static function ($x, int $dec = 4) {
 <?= $this->section('scripts') ?>
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-    flatpickr("#fecha_ini", { dateFormat: "Y-m-d", locale: "es", onOpen: function(s,d,i){ flatpickrPositionArrowTopLeft(i); } });
-    flatpickr("#fecha_fin", { dateFormat: "Y-m-d", locale: "es", onOpen: function(s,d,i){ flatpickrPositionArrowTopLeft(i); } });
-    flatpickr("#fecha_control", { dateFormat: "Y-m-d", locale: "es", maxDate: "today", onOpen: function(s,d,i){ flatpickrPositionArrowTopLeft(i); } });
+    var fpOpen = function(s, d, i) {
+        if (typeof flatpickrPositionArrowTopLeft === 'function') {
+            flatpickrPositionArrowTopLeft(i);
+        }
+    };
+    flatpickr("#fecha_ini", { dateFormat: "Y-m-d", locale: "es", onOpen: fpOpen });
+    flatpickr("#fecha_fin", { dateFormat: "Y-m-d", locale: "es", onOpen: fpOpen });
+    flatpickr("#fecha_control", { dateFormat: "Y-m-d", locale: "es", maxDate: "today", onOpen: fpOpen });
 
-    var qc = <?= json_encode($qc_stats, JSON_THROW_ON_ERROR) ?>;
-    if (!qc || typeof qc.mean !== 'number') return;
+    var qc = <?= json_encode($qc_stats ?? null, JSON_THROW_ON_ERROR) ?>;
+    var canvas = document.getElementById('chartLevey');
+    if (!canvas || typeof Chart === 'undefined') {
+        return;
+    }
+    if (!qc || qc.mean === null || qc.mean === undefined || isNaN(Number(qc.mean))) {
+        return;
+    }
 
     var valores = <?= json_encode(array_map(fn($v) => ['fecha' => $v['fecha'], 'valor' => (float)($v['valor'] ?? 0), 'esperado' => isset($v['esperado']) && $v['esperado'] !== null && $v['esperado'] !== '' ? (float)$v['esperado'] : null], $valores ?? []), JSON_THROW_ON_ERROR) ?>;
     var labels = valores.map(function(v) { return v.fecha; });
@@ -209,11 +222,12 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
-    new Chart(document.getElementById('chartLevey'), {
+    new Chart(canvas, {
         type: 'line',
         data: { labels: labels, datasets: datasets },
         options: {
             responsive: true,
+            maintainAspectRatio: false,
             interaction: { mode: 'index', intersect: false },
             plugins: {
                 legend: { position: 'bottom', labels: { boxWidth: 12, font: { size: 11 } } },

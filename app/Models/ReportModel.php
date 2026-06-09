@@ -1399,8 +1399,38 @@ class ReportModel extends Model
             ->getResultArray();
 
         $rows = $this->attachPruebasNombresListado($rows);
+        $rows = $this->attachCodigoRecepcionListado($rows);
 
         return $this->attachTrazabilidadPruebasResumen($rows);
+    }
+
+    /**
+     * @param list<array<string, mixed>> $rows
+     *
+     * @return list<array<string, mixed>>
+     */
+    protected function attachCodigoRecepcionListado(array $rows): array
+    {
+        if ($rows === []) {
+            return $rows;
+        }
+
+        $folioService = new \App\Services\RegistroFolioService();
+        foreach ($rows as &$row) {
+            $codigo = $folioService->codigoRecepcionDisplay(
+                (int) ($row['registro_id'] ?? 0),
+                isset($row['numero_orden']) ? (string) $row['numero_orden'] : null,
+                isset($row['ingreso']) ? (string) $row['ingreso'] : null,
+                true
+            );
+            $row['codigo_recepcion'] = $codigo;
+            if ($codigo !== '') {
+                $row['numero_orden'] = $codigo;
+            }
+        }
+        unset($row);
+
+        return $rows;
     }
 
     /**

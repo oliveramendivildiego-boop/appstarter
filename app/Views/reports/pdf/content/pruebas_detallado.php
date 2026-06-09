@@ -17,7 +17,7 @@ $data = $data ?? [];
     <tbody>
         <?php foreach ($data as $row): ?>
             <tr>
-                <td><?= esc(registro_orden_display($row)) ?></td>
+                <td><?= esc(registro_codigo_recepcion_display($row, false)) ?></td>
                 <td><?= esc(lab_dt_short($row['ingreso'] ?? null)) ?></td>
                 <td><?= esc($row['paciente'] ?? '') ?></td>
                 <td class="small"><?= esc(trim((string) ($row['usuario_recepcion'] ?? '')) ?: '—') ?></td>

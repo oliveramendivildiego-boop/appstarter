@@ -248,4 +248,104 @@ class RegistroFolioService
 
         return $w;
     }
+
+    /**
+     * Código de recepción visible: folio guardado o inferido por formato y fecha de ingreso.
+     * Nunca devuelve el registro_id interno.
+     */
+    public function codigoRecepcionDisplay(int $registroId, ?string $numeroOrden, ?string $ingreso, bool $persistIfMissing = true): string
+    {
+        if ($registroId < 1) {
+            return '';
+        }
+
+        $existing = trim((string) ($numeroOrden ?? ''));
+        if ($existing !== '') {
+            return $existing;
+        }
+
+        $inferred = $this->inferFolioFromIngreso($registroId, $ingreso);
+        if ($inferred === null || $inferred === '') {
+            return '';
+        }
+
+        if ($persistIfMissing) {
+            $this->persistNumeroOrdenIfVacant($registroId, $inferred);
+        }
+
+        return $inferred;
+    }
+
+    /**
+     * Calcula el folio que correspondería según la posición cronológica en el periodo de reinicio.
+     */
+    public function inferFolioFromIngreso(int $registroId, ?string $ingreso): ?string
+    {
+        if ($registroId < 1) {
+            return null;
+        }
+
+        $format = trim((string) $this->appConfigModel->getValue('registro_folio_format'));
+        if ($format === '' || ! str_contains($format, '%i')) {
+            return null;
+        }
+
+        $ingreso = trim((string) $ingreso);
+        if ($ingreso === '') {
+            return null;
+        }
+
+        try {
+            $at = new \DateTimeImmutable($ingreso, new \DateTimeZone(RegisterService::reportDisplayTimezone()));
+        } catch (\Throwable) {
+            return null;
+        }
+
+        $db = Database::connect();
+        $builder = $db->table('registro')
+            ->select('registro_id')
+            ->orderBy('ingreso', 'ASC')
+            ->orderBy('registro_id', 'ASC');
+        $this->applyIngresoFilterForSeqKey($builder, $this->sequenceKey($format, $at, $this->counterResetMode()), $at);
+
+        $position = 0;
+        foreach ($builder->get()->getResultArray() as $idx => $row) {
+            if ((int) ($row['registro_id'] ?? 0) === $registroId) {
+                $position = $idx + 1;
+                break;
+            }
+        }
+        if ($position < 1) {
+            return null;
+        }
+
+        $folio = $this->applyFormat($format, $at, $position, $this->counterPadWidth());
+
+        return $folio !== '' ? $folio : null;
+    }
+
+    protected function persistNumeroOrdenIfVacant(int $registroId, string $folio): void
+    {
+        $folio = trim($folio);
+        if ($folio === '') {
+            return;
+        }
+
+        $db = Database::connect();
+        $taken = (int) $db->table('registro')
+            ->where('numero_orden', $folio)
+            ->where('registro_id !=', $registroId)
+            ->countAllResults();
+        if ($taken > 0) {
+            return;
+        }
+
+        $db->table('registro')
+            ->where('registro_id', $registroId)
+            ->groupStart()
+            ->where('numero_orden IS NULL', null, false)
+            ->orWhere('numero_orden', '')
+            ->groupEnd()
+            ->update(['numero_orden' => $folio]);
+    }
 }
