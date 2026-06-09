@@ -53,6 +53,7 @@ class LabotestModel extends Model
             ->join('prianacategoria', "{$ana}.anacategoria_id = {$pri}.anacategoria_id AND ({$pri}.deleted = 0 OR {$pri}.deleted IS NULL)", 'left')
             ->where("({$ana}.deleted = 0 OR {$ana}.deleted IS NULL)")
             ->orderBy("{$ana}.order", 'ASC')
+            ->orderBy("{$ana}.anacategoria_id", 'ASC')
             ->orderBy("{$pri}.order", 'ASC');
 
         if ($this->hasColumn('prianacategoria', 'tipo_muestra_id')) {
@@ -105,7 +106,17 @@ class LabotestModel extends Model
             }
         }
 
-        return array_values($grouped);
+        $out = array_values($grouped);
+        usort($out, static function (array $a, array $b): int {
+            $orderCmp = ((int) ($a['order'] ?? 0)) <=> ((int) ($b['order'] ?? 0));
+            if ($orderCmp !== 0) {
+                return $orderCmp;
+            }
+
+            return ((int) ($a['id'] ?? 0)) <=> ((int) ($b['id'] ?? 0));
+        });
+
+        return $out;
     }
 
     /**
@@ -1096,6 +1107,7 @@ class LabotestModel extends Model
             ->where("({$pri}.deleted = 0 OR {$pri}.deleted IS NULL)")
             ->where("({$ana}.deleted = 0 OR {$ana}.deleted IS NULL)")
             ->orderBy("{$ana}.order", 'ASC')
+            ->orderBy("{$ana}.anacategoria_id", 'ASC')
             ->orderBy("{$pri}.order", 'ASC');
 
         if ($search !== null && trim($search) !== '') {
@@ -2394,10 +2406,10 @@ class LabotestModel extends Model
         }
 
         $this->db->transStart();
-        foreach ($orderedIds as $order => $id) {
+        foreach ($orderedIds as $position => $id) {
             $this->db->table('anacategoria')
                 ->where('anacategoria_id', $id)
-                ->update(['order' => (int) $order]);
+                ->update(['order' => $position + 1]);
         }
         $this->db->transComplete();
 
