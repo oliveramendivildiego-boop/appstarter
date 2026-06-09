@@ -1591,7 +1591,7 @@ class LabotestModel extends Model
     public function getOpciones(): array
     {
         model(OpcionModel::class)->ensureSystemOpciones();
-        $rows = $this->db->table('opciones')->orderBy('opciones_id')->get()->getResultArray();
+        $rows = $this->db->table('opciones')->orderBy('opciones', 'ASC')->get()->getResultArray();
         $out = [];
         foreach ($rows as $r) {
             $out[(int) $r['opciones_id']] = $r['opciones'] ?? '';

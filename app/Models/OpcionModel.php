@@ -79,7 +79,7 @@ class OpcionModel extends Model
     public function getAllOpciones(): array
     {
         $this->ensureSystemOpciones();
-        $rows = $this->orderBy('opciones_id', 'ASC')->findAll();
+        $rows = $this->orderBy('opciones', 'ASC')->findAll();
         $out = [];
         foreach ($rows as $r) {
             $out[(int) $r['opciones_id']] = $r['opciones'] ?? '';
