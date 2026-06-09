@@ -910,13 +910,22 @@ class Reports extends SecureArea
 
         $auditoriaModel = model(AuditoriaModel::class);
         $registerModel  = model(RegisterModel::class);
-        $eventos        = $auditoriaModel->getTrazabilidadPruebasPorRegistro((string) $registroId);
+        $resumenOrden   = $this->reportModel->getRegistroResumenDetallePruebas($registroId);
+        if ($resumenOrden === null) {
+            return $this->response->setJSON([
+                'success' => false,
+                'message' => 'Orden no encontrada.',
+            ])->setStatusCode(404);
+        }
 
-        $usuarioRecepcion    = '';
-        $usuarioPrimeraCarga = '';
-        $usuarioUltimaEdicion = '';
-        $edicionesOrden      = [];
-        $historialResultados = [];
+        $eventos = $auditoriaModel->getTrazabilidadPruebasPorRegistro((string) $registroId);
+
+        $usuarioRecepcion     = trim((string) ($resumenOrden['usuario_recepcion'] ?? ''));
+        $fechaRecepcion       = lab_dt_short(isset($resumenOrden['ingreso']) ? (string) $resumenOrden['ingreso'] : null);
+        $usuarioPrimeraCarga  = trim((string) ($resumenOrden['usuario_primera_carga'] ?? ''));
+        $usuarioUltimaEdicion = trim((string) ($resumenOrden['usuario_ultima_edicion'] ?? ''));
+        $edicionesOrden       = [];
+        $historialResultados  = [];
 
         foreach ($eventos as $evento) {
             $usuario = trim((string) (($evento['first_name'] ?? '') . ' ' . ($evento['last_name_fa'] ?? '')));
@@ -925,8 +934,11 @@ class Reports extends SecureArea
             $datos   = $this->decodeAuditoriaDatos($evento['datos'] ?? null);
 
             if ($accion === 'crear') {
-                if ($usuario !== '' && $usuarioRecepcion === '') {
+                if ($usuario !== '') {
                     $usuarioRecepcion = $usuario;
+                }
+                if ($fecha !== '') {
+                    $fechaRecepcion = $fecha;
                 }
                 continue;
             }
@@ -970,9 +982,26 @@ class Reports extends SecureArea
             ];
         }
 
+        $codigoRecepcion = registro_codigo_recepcion_display($resumenOrden, false);
+        $tieneResultados = (int) ($resumenOrden['regvalues_cnt'] ?? 0) > 0;
+
         return $this->response->setJSON([
             'success'               => true,
             'registro_id'           => $registroId,
+            'orden'                 => [
+                'codigo'           => $codigoRecepcion,
+                'paciente'         => trim((string) ($resumenOrden['paciente'] ?? '')),
+                'doctor'           => trim((string) ($resumenOrden['doctor'] ?? '')),
+                'ingreso'          => lab_dt_short(isset($resumenOrden['ingreso']) ? (string) $resumenOrden['ingreso'] : null),
+                'pruebas'          => trim((string) ($resumenOrden['pruebas_nombres'] ?? '')),
+                'estado'           => $tieneResultados ? 'Con resultados' : 'Sin resultados',
+                'usuario_recepcion'=> $usuarioRecepcion,
+            ],
+            'recepcion'             => [
+                'usuario' => $usuarioRecepcion !== '' ? $usuarioRecepcion : '—',
+                'fecha'   => $fechaRecepcion !== '' ? $fechaRecepcion : '—',
+                'pruebas' => trim((string) ($resumenOrden['pruebas_nombres'] ?? '')) ?: '—',
+            ],
             'usuario_recepcion'     => $usuarioRecepcion,
             'usuario_primera_carga' => $usuarioPrimeraCarga,
             'usuario_ultima_edicion'=> $usuarioUltimaEdicion,

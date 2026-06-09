@@ -1366,6 +1366,47 @@ class ReportModel extends Model
     }
 
     /**
+     * Resumen de una orden para el modal de trazabilidad del reporte detallado.
+     *
+     * @return array<string, mixed>|null
+     */
+    public function getRegistroResumenDetallePruebas(int $registroId): ?array
+    {
+        if ($registroId < 1) {
+            return null;
+        }
+
+        $r  = $this->db->prefixTable('registro');
+        $p  = $this->db->prefixTable('people');
+        $pu = $this->db->prefixTable('people') . ' AS pu';
+        $d  = $this->db->prefixTable('doctors');
+        $rv = $this->db->prefixTable('regvalues');
+
+        $row = $this->db->table('registro')
+            ->select("{$r}.registro_id, {$r}.numero_orden, {$r}.ingreso, {$r}.pruebas, {$r}.id_session,
+                CONCAT({$p}.first_name, ' ', {$p}.last_name_fa, ' ', {$p}.last_name_mom) AS paciente,
+                {$d}.name as doctor,
+                CONCAT(pu.first_name, ' ', pu.last_name_fa) AS usuario_recepcion,
+                (SELECT COUNT(*) FROM {$rv} WHERE {$rv}.registro_id = {$r}.registro_id) AS regvalues_cnt", false)
+            ->join('people', "{$p}.person_id = {$r}.person_id")
+            ->join('doctors', "{$d}.doctor_id = {$r}.doctor_id", 'left')
+            ->join($pu, "pu.person_id = {$r}.id_session", 'left', false)
+            ->where("{$r}.registro_id", $registroId)
+            ->get()
+            ->getRowArray();
+
+        if ($row === null) {
+            return null;
+        }
+
+        $rows = $this->attachPruebasNombresListado([$row]);
+        $rows = $this->attachCodigoRecepcionListado($rows);
+        $rows = $this->attachTrazabilidadPruebasResumen($rows);
+
+        return $rows[0] ?? null;
+    }
+
+    /**
      * Cuenta órdenes del reporte detallado de pruebas en el rango de fechas.
      */
     public function countPruebasDetalladoPorFecha(string $startDate, string $endDate): int

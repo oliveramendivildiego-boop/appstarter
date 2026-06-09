@@ -91,7 +91,13 @@
                             class="btn btn-sm btn-outline-primary btn-ver-detalle-prueba"
                             data-registro-id="<?= (int) ($row['registro_id'] ?? 0) ?>"
                             data-codigo="<?= esc($codigo) ?>"
-                            data-paciente="<?= esc($row['paciente'] ?? '') ?>">
+                            data-paciente="<?= esc($row['paciente'] ?? '') ?>"
+                            data-usuario-recepcion="<?= esc($usuarioRecepcion) ?>"
+                            data-usuario-primera="<?= esc($usuarioPrimera) ?>"
+                            data-usuario-edicion="<?= esc($usuarioEdicion) ?>"
+                            data-ingreso="<?= esc(lab_dt_short($row['ingreso'] ?? null)) ?>"
+                            data-pruebas="<?= esc($row['pruebas_nombres'] ?? '') ?>"
+                            data-estado="<?= $tieneResultados ? 'Con resultados' : 'Sin resultados' ?>">
                         <i class="fa-solid fa-magnifying-glass me-1"></i> Ver detalles
                     </button>
                 </td>
@@ -166,6 +172,7 @@ $paginacionParams = static function (array $extra = []) use ($startDate, $endDat
                 </div>
                 <div id="modalPruebasDetalladoError" class="alert alert-danger d-none"></div>
                 <div id="modalPruebasDetalladoContenido" class="d-none">
+                    <div class="border rounded p-3 mb-3 bg-light" id="detalleOrdenResumen"></div>
                     <div class="row g-3 mb-4">
                         <div class="col-md-4">
                             <div class="border rounded p-3 h-100">
@@ -218,8 +225,45 @@ document.addEventListener('DOMContentLoaded', function() {
         document.getElementById('modalPruebasDetalladoCargando').classList.remove('d-none');
         document.getElementById('modalPruebasDetalladoError').classList.add('d-none');
         document.getElementById('modalPruebasDetalladoContenido').classList.add('d-none');
+        document.getElementById('detalleOrdenResumen').innerHTML = '';
         document.getElementById('detalleHistorialResultados').innerHTML = '';
         document.getElementById('detalleEdicionesOrden').innerHTML = '';
+    }
+
+    function renderOrdenResumen(orden, recepcion) {
+        const o = orden || {};
+        const r = recepcion || {};
+        const pruebas = (o.pruebas || r.pruebas || '—');
+        return '<div class="row g-2 small">'
+            + '<div class="col-md-4"><span class="text-muted">Código:</span> <strong>' + escHtml(o.codigo || '—') + '</strong></div>'
+            + '<div class="col-md-4"><span class="text-muted">Paciente:</span> ' + escHtml(o.paciente || '—') + '</div>'
+            + '<div class="col-md-4"><span class="text-muted">Ingreso:</span> ' + escHtml(o.ingreso || r.fecha || '—') + '</div>'
+            + '<div class="col-md-4"><span class="text-muted">Estado:</span> ' + escHtml(o.estado || '—') + '</div>'
+            + '<div class="col-md-4"><span class="text-muted">Recepcionó:</span> <strong>' + escHtml(r.usuario || o.usuario_recepcion || '—') + '</strong></div>'
+            + '<div class="col-md-4"><span class="text-muted">Fecha recepción:</span> ' + escHtml(r.fecha || o.ingreso || '—') + '</div>'
+            + '<div class="col-12"><span class="text-muted">Pruebas:</span> ' + escHtml(pruebas) + '</div>'
+            + '</div>';
+    }
+
+    function aplicarResumenBasico(btn) {
+        const orden = {
+            codigo: btn.getAttribute('data-codigo') || '',
+            paciente: btn.getAttribute('data-paciente') || '',
+            ingreso: btn.getAttribute('data-ingreso') || '',
+            pruebas: btn.getAttribute('data-pruebas') || '',
+            estado: btn.getAttribute('data-estado') || '',
+            usuario_recepcion: btn.getAttribute('data-usuario-recepcion') || '',
+        };
+        const recepcion = {
+            usuario: btn.getAttribute('data-usuario-recepcion') || '',
+            fecha: btn.getAttribute('data-ingreso') || '',
+            pruebas: btn.getAttribute('data-pruebas') || '',
+        };
+        document.getElementById('detalleOrdenResumen').innerHTML = renderOrdenResumen(orden, recepcion);
+        document.getElementById('detalleUsuarioRecepcion').textContent = orden.usuario_recepcion || '—';
+        document.getElementById('detalleUsuarioPrimeraCarga').textContent = btn.getAttribute('data-usuario-primera') || '—';
+        document.getElementById('detalleUsuarioUltimaEdicion').textContent = btn.getAttribute('data-usuario-edicion') || '—';
+        document.getElementById('modalPruebasDetalladoContenido').classList.remove('d-none');
     }
 
     function renderCambiosTabla(cambios, tipo) {
@@ -248,25 +292,46 @@ document.addEventListener('DOMContentLoaded', function() {
         return html;
     }
 
-    async function abrirDetalle(registroId, codigo, paciente) {
+    async function abrirDetalle(registroId, codigo, paciente, btn) {
         if (!modalEl || typeof bootstrap === 'undefined') return;
         resetModal();
         document.getElementById('modalPruebasDetalladoSubtitulo').textContent =
             'Orden ' + codigo + ' · ' + paciente;
         bootstrap.Modal.getOrCreateInstance(modalEl).show();
+        if (btn) {
+            aplicarResumenBasico(btn);
+            document.getElementById('modalPruebasDetalladoCargando').classList.add('d-none');
+        }
 
         try {
-            const res = await fetch(detalleUrl + '?' + new URLSearchParams({ registro_id: String(registroId) }));
-            const data = await res.json();
+            const res = await fetch(detalleUrl + '?' + new URLSearchParams({ registro_id: String(registroId) }), {
+                headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+                credentials: 'same-origin',
+            });
+            let data;
+            try {
+                data = await res.json();
+            } catch (parseErr) {
+                throw new Error('Respuesta inválida del servidor');
+            }
             document.getElementById('modalPruebasDetalladoCargando').classList.add('d-none');
-            if (!data.success) {
+            if (!res.ok || !data.success) {
+                if (btn) {
+                    document.getElementById('detalleHistorialResultados').innerHTML =
+                        '<p class="text-muted small mb-0">No se pudo cargar el historial completo. Se muestran los datos visibles en la tabla.</p>';
+                    document.getElementById('detalleEdicionesOrden').innerHTML =
+                        '<p class="text-muted small mb-0">—</p>';
+                    return;
+                }
                 const err = document.getElementById('modalPruebasDetalladoError');
                 err.textContent = data.message || 'No se pudo cargar el detalle.';
                 err.classList.remove('d-none');
                 return;
             }
 
-            document.getElementById('detalleUsuarioRecepcion').textContent = data.usuario_recepcion || '—';
+            document.getElementById('detalleOrdenResumen').innerHTML = renderOrdenResumen(data.orden || {}, data.recepcion || {});
+            document.getElementById('detalleUsuarioRecepcion').textContent =
+                (data.recepcion && data.recepcion.usuario) || data.usuario_recepcion || '—';
             document.getElementById('detalleUsuarioPrimeraCarga').textContent = data.usuario_primera_carga || '—';
             document.getElementById('detalleUsuarioUltimaEdicion').textContent = data.usuario_ultima_edicion || '—';
 
@@ -337,7 +402,8 @@ document.addEventListener('DOMContentLoaded', function() {
             abrirDetalle(
                 btn.getAttribute('data-registro-id'),
                 btn.getAttribute('data-codigo') || '',
-                btn.getAttribute('data-paciente') || ''
+                btn.getAttribute('data-paciente') || '',
+                btn
             );
         });
     });
