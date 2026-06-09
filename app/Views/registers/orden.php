@@ -114,6 +114,7 @@ if ($doctorOrdenDisplay === '') {
     body.print-barcode-labels .barcode-label-item {
         page-break-inside: avoid;
         break-inside: avoid;
+        overflow: visible !important;
     }
 
     /* Vertical: una etiqueta por fila, código y nombre centrados */
@@ -142,15 +143,27 @@ if ($doctorOrdenDisplay === '') {
         margin-left: auto !important;
         margin-right: auto !important;
     }
+    body.print-barcode-labels #barcode-labels-root.barcode-layout-horizontal .orden-barcode-patient-name {
+        width: 100% !important;
+        max-width: 100% !important;
+    }
     body.print-barcode-labels .orden-barcode-patient-name {
-        font-size: 0.8rem !important;
-        line-height: 0 !important;
-        margin-bottom: 0.15rem !important;
+        font-size: 0.7rem !important;
+        line-height: 1.15 !important;
+        margin-bottom: 0.1rem !important;
+        overflow: visible !important;
+        word-break: break-word !important;
+        overflow-wrap: break-word !important;
+        white-space: normal !important;
     }
     body:not(.print-barcode-labels) #print-area .orden-barcode-patient-name {
         font-size: 0.8rem !important;
-        line-height: 0 !important;
-        margin-bottom: 0.15rem !important;
+        line-height: 1.15 !important;
+        margin-bottom: 0.1rem !important;
+        overflow: visible !important;
+        word-break: break-word !important;
+        overflow-wrap: break-word !important;
+        white-space: normal !important;
     }
     body:not(.print-barcode-labels) .orden-barcode-section {
         display: block !important;
@@ -274,8 +287,11 @@ if ($doctorOrdenDisplay === '') {
 .orden-barcode-patient-name {
     font-weight: 600;
     font-size: 0.8rem;
-    line-height: 0;
-    margin-bottom: 0.15rem;
+    line-height: 1.15;
+    margin-bottom: 0.1rem;
+    word-break: break-word;
+    overflow-wrap: break-word;
+    white-space: normal;
 }
 
 .orden-pruebas-items {
@@ -496,10 +512,6 @@ if ($doctorOrdenDisplay === '') {
                 copiesInput.value = String(n);
                 labelsRoot.innerHTML = '';
                 labelsRoot.classList.remove('barcode-layout-horizontal');
-                labelsRoot.style.setProperty(
-                    '--barcode-label-name-size',
-                    Math.max(14, Math.round(14 * sz)) + 'px'
-                );
                 if (printLayout === 'horizontal') {
                     labelsRoot.classList.add('barcode-layout-horizontal');
                 }

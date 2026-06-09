@@ -133,7 +133,7 @@ $cierreEnd   = $endDate ?? lab_today_ymd();
 </div>
 
 <h5 class="mt-4">Resumen por tipo de pago (cobros del período)</h5>
-<p class="small text-muted">Haga clic en un tipo de pago para ver el detalle de pacientes y montos cobrados.</p>
+<p class="small text-muted">Haga clic en un tipo de pago para ver el detalle de pacientes y montos pendientes.</p>
 <div class="table-responsive mb-4">
     <table class="table table-bordered table-striped" id="tabla_resumen_pagos_tipo">
         <thead class="table-primary">
@@ -152,7 +152,10 @@ $cierreEnd   = $endDate ?? lab_today_ymd();
                     $tipoKey = (string) ($row['tipopago'] ?? '');
                     $tipoLabel = $tipoPagoMap[$tipoKey] ?? $tipoKey ?: '-';
                     $cantidadTipo = (int) ($row['cantidad'] ?? 0);
-                    $puedeDetalle = $tipoKey !== '' && $cantidadTipo > 0;
+                    $puedeDetalle = $tipoKey !== '' && (
+                        $cantidadTipo > 0
+                        || ($tipoKey === '4' && (float) ($row['total_pendiente'] ?? 0) > 0.02)
+                    );
                     ?>
                     <tr>
                         <td>
@@ -203,7 +206,7 @@ $cierreEnd   = $endDate ?? lab_today_ymd();
                                 <th>Fecha cobro</th>
                                 <th>Paciente</th>
                                 <th>Doctor</th>
-                                <th class="text-end">Monto cobrado</th>
+                                <th class="text-end">Monto pendiente</th>
                             </tr>
                         </thead>
                         <tbody id="modalPagosPorTipoBody"></tbody>
@@ -215,7 +218,7 @@ $cierreEnd   = $endDate ?? lab_today_ymd();
                         </tfoot>
                     </table>
                 </div>
-                <p id="modalPagosPorTipoVacio" class="text-muted text-center mb-0 d-none">No hay cobros de este tipo en el período.</p>
+                <p id="modalPagosPorTipoVacio" class="text-muted text-center mb-0 d-none">No hay registros de este tipo en el período.</p>
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
@@ -597,7 +600,9 @@ document.addEventListener('DOMContentLoaded', function() {
         if (!modalEl || typeof bootstrap === 'undefined') return;
 
         resetModalEstado();
-        document.getElementById('modalPagosPorTipoLabel').textContent = 'Cobros: ' + tipoLabel;
+        const esPendiente = tipopago === '4';
+        document.getElementById('modalPagosPorTipoLabel').textContent =
+            (esPendiente ? 'Órdenes pendientes: ' : 'Cobros: ') + tipoLabel;
         document.getElementById('modalPagosPorTipoSubtitulo').textContent = 'Período del reporte · cargando…';
         document.getElementById('modalPagosPorTipoCargando').classList.remove('d-none');
         bootstrap.Modal.getOrCreateInstance(modalEl).show();
@@ -622,18 +627,24 @@ document.addEventListener('DOMContentLoaded', function() {
 
             const items = data.items || [];
             if (items.length === 0) {
-                document.getElementById('modalPagosPorTipoVacio').classList.remove('d-none');
+                const vacio = document.getElementById('modalPagosPorTipoVacio');
+                vacio.textContent = esPendiente
+                    ? 'No hay órdenes pendientes de pago en el período.'
+                    : 'No hay cobros de este tipo en el período.';
+                vacio.classList.remove('d-none');
                 return;
             }
 
             const tbody = document.getElementById('modalPagosPorTipoBody');
             tbody.innerHTML = items.map(function(row) {
+                const pendiente = parseFloat(row.monto_pendiente) || 0;
+                const pendienteClass = pendiente > 0.02 ? 'text-danger fw-bold' : '';
                 return '<tr>'
                     + '<td>' + escHtml(row.orden) + '</td>'
                     + '<td>' + escHtml(row.fecha_cobro) + '</td>'
                     + '<td>' + escHtml(row.paciente || '—') + '</td>'
                     + '<td>' + escHtml(row.doctor || '—') + '</td>'
-                    + '<td class="text-end fw-semibold">' + escHtml(row.monto_cobro_fmt) + '</td>'
+                    + '<td class="text-end fw-semibold ' + pendienteClass + '">' + escHtml(row.monto_pendiente_fmt) + '</td>'
                     + '</tr>';
             }).join('');
 

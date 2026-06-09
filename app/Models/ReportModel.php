@@ -465,6 +465,10 @@ class ReportModel extends Model
      */
     public function getCobrosDetallePorFecha(string $startDate, string $endDate, ?string $saldoFiltro = null, ?string $tipopago = null): array
     {
+        if ($tipopago === '4') {
+            return $this->fetchOrdenesPendienteTipoDetalle($startDate, $endDate, $saldoFiltro);
+        }
+
         if ($this->db->tableExists('pago_abono')) {
             $rows = $this->fetchCobrosAbonoPorFecha($startDate, $endDate, $saldoFiltro, $tipopago);
             $legacy = $this->fetchCobrosLegacySinAbono($startDate, $endDate, $saldoFiltro, $tipopago);
@@ -582,6 +586,86 @@ class ReportModel extends Model
         return $b->orderBy("{$r}.ingreso", 'DESC')
             ->get()
             ->getResultArray();
+    }
+
+    /**
+     * Órdenes registradas como Pendiente (tipopago=4) con saldo en el período (fecha de ingreso).
+     *
+     * @param 'pendiente'|'pagado'|null $saldoFiltro
+     *
+     * @return list<array<string, mixed>>
+     */
+    protected function fetchOrdenesPendienteTipoDetalle(string $startDate, string $endDate, ?string $saldoFiltro = null): array
+    {
+        if ($saldoFiltro === 'pagado') {
+            return [];
+        }
+
+        $r              = $this->db->prefixTable('registro');
+        $p              = $this->db->prefixTable('people');
+        $d              = $this->db->prefixTable('doctors');
+        $pa             = $this->db->prefixTable('pago');
+        $saldoPendiente = $this->sqlSaldoPendienteEfectivo($pa);
+        $pacienteSql    = $this->sqlPacienteNombreReporte($p);
+
+        $b = $this->db->table('registro')
+            ->select("NULL as pago_abono_id, {$r}.ingreso as fecha_cobro,
+                0.00 as monto_cobro,
+                {$pa}.tipopago,
+                {$r}.registro_id, {$r}.numero_orden, {$r}.ingreso,
+                {$pacienteSql} AS paciente,
+                COALESCE({$d}.name, '') as doctor,
+                CAST({$pa}.total AS DECIMAL(12,2)) as total,
+                CAST({$pa}.monto_pagar AS DECIMAL(12,2)) as monto_pagado,
+                {$saldoPendiente} as saldo", false)
+            ->join('people', "{$p}.person_id = {$r}.person_id", 'left')
+            ->join('doctors', "{$d}.doctor_id = {$r}.doctor_id", 'left')
+            ->join('pago', "{$r}.registro_id = {$pa}.registro_id")
+            ->where("{$pa}.tipopago", '4')
+            ->where("{$saldoPendiente} >", 0.02, false);
+        $b = $this->applySinRegistrosAnulados($b, $r);
+
+        return RegistroIngresoDateRange::apply($b, $r, $startDate, $endDate)
+            ->orderBy("{$r}.ingreso", 'DESC')
+            ->get()
+            ->getResultArray();
+    }
+
+    /**
+     * Resumen agregado de órdenes con tipopago Pendiente (4) ingresadas en el período.
+     *
+     * @return array<string, mixed>|null
+     */
+    private function fetchResumenTipoPendienteRegistro(string $startDate, string $endDate): ?array
+    {
+        $r              = $this->db->prefixTable('registro');
+        $pa             = $this->db->prefixTable('pago');
+        $saldoEfectivo  = $this->sqlSaldoPendienteEfectivo($pa);
+
+        $b = $this->db->table('registro')
+            ->select("COUNT(*) as cantidad,
+                SUM(CAST({$pa}.total AS DECIMAL(12,2))) as total_facturado,
+                SUM(CAST({$pa}.monto_pagar AS DECIMAL(12,2))) as total_cobrado,
+                SUM({$saldoEfectivo}) as total_pendiente", false)
+            ->join('pago', "{$r}.registro_id = {$pa}.registro_id")
+            ->where("{$pa}.tipopago", '4')
+            ->where("{$saldoEfectivo} >", 0.02, false);
+        $b = $this->applySinRegistrosAnulados($b, $r);
+        $row = RegistroIngresoDateRange::apply($b, $r, $startDate, $endDate)
+            ->get()
+            ->getRow();
+
+        if ($row === null || (int) ($row->cantidad ?? 0) === 0) {
+            return null;
+        }
+
+        return [
+            'tipopago'        => '4',
+            'cantidad'        => (int) ($row->cantidad ?? 0),
+            'total_facturado' => round((float) ($row->total_facturado ?? 0), 2),
+            'total_cobrado'   => round((float) ($row->total_cobrado ?? 0), 2),
+            'total_pendiente' => round((float) ($row->total_pendiente ?? 0), 2),
+        ];
     }
 
     /**
@@ -756,6 +840,56 @@ class ReportModel extends Model
     }
 
     /**
+     * Facturado y saldo pendiente por tipo de pago (órdenes únicas con cobro en el período).
+     *
+     * @param array<string, array<string, mixed>> $resumen
+     */
+    private function enrichResumenPagosPorTipoFacturadoPendiente(array &$resumen, string $startDate, string $endDate): void
+    {
+        if ($resumen === []) {
+            return;
+        }
+
+        $r             = $this->db->prefixTable('registro');
+        $pa            = $this->db->prefixTable('pago');
+        $ab            = $this->db->prefixTable('pago_abono');
+        $saldoEfectivo = $this->sqlSaldoPendienteEfectivo($pa);
+
+        $b = $this->db->table('pago_abono')
+            ->select("{$ab}.tipopago, {$ab}.registro_id,
+                CAST({$pa}.total AS DECIMAL(12,2)) as total,
+                {$saldoEfectivo} as saldo", false)
+            ->join('registro', "{$r}.registro_id = {$ab}.registro_id")
+            ->join('pago', "{$r}.registro_id = {$pa}.registro_id")
+            ->where("{$ab}.tipopago !=", '4');
+        $b = $this->applySinRegistrosAnulados($b, $r);
+        $rows = LabNaiveDateRange::apply($b, $ab, 'fecha_abono', $startDate, $endDate)
+            ->get()
+            ->getResultArray();
+
+        $vistos = [];
+        foreach ($rows as $row) {
+            $tipo = (string) ($row['tipopago'] ?? '');
+            $rid  = (int) ($row['registro_id'] ?? 0);
+            if ($tipo === '' || $rid === 0 || !isset($resumen[$tipo])) {
+                continue;
+            }
+            if (isset($vistos[$tipo][$rid])) {
+                continue;
+            }
+            $vistos[$tipo][$rid] = true;
+            $resumen[$tipo]['total_facturado'] = (float) ($resumen[$tipo]['total_facturado'] ?? 0) + (float) ($row['total'] ?? 0);
+            $resumen[$tipo]['total_pendiente'] = (float) ($resumen[$tipo]['total_pendiente'] ?? 0) + (float) ($row['saldo'] ?? 0);
+        }
+
+        foreach ($resumen as &$row) {
+            $row['total_facturado'] = round((float) ($row['total_facturado'] ?? 0), 2);
+            $row['total_pendiente'] = round((float) ($row['total_pendiente'] ?? 0), 2);
+        }
+        unset($row);
+    }
+
+    /**
      * Resumen de pagos por tipo (Efectivo/QR/Transferencia/Pendiente).
      * Con pago_abono: cobros por fecha_abono (dinero que entró en el período).
      */
@@ -767,6 +901,7 @@ class ReportModel extends Model
 
         if ($this->db->tableExists('pago_abono')) {
             $resumen = [];
+            $saldoEfectivo = $this->sqlSaldoPendienteEfectivo($pa);
 
             // Fuente principal: historial real de abonos por tipo y fecha de cobro.
             $bAbonos = $this->db->table('pago_abono')
@@ -798,13 +933,15 @@ class ReportModel extends Model
                 ];
             }
 
+            $this->enrichResumenPagosPorTipoFacturadoPendiente($resumen, $startDate, $endDate);
+
             // Compatibilidad: registros antiguos sin filas en pago_abono.
             $bLegacy = $this->db->table('registro')
                 ->select("{$pa}.tipopago,
                     COUNT(*) as cantidad,
-                    0.00 as total_facturado,
+                    SUM(CAST({$pa}.total AS DECIMAL(12,2))) as total_facturado,
                     SUM(CAST({$pa}.monto_pagar AS DECIMAL(12,2))) as total_cobrado,
-                    0.00 as total_pendiente", false)
+                    SUM({$saldoEfectivo}) as total_pendiente", false)
                 ->join('pago', "{$r}.registro_id = {$pa}.registro_id")
                 ->join('pago_abono', "{$ab}.registro_id = {$r}.registro_id", 'left')
                 ->where("{$ab}.registro_id IS NULL", null, false);
@@ -830,7 +967,16 @@ class ReportModel extends Model
                     ];
                 }
                 $resumen[$tipo]['cantidad'] += (int) ($row['cantidad'] ?? 0);
+                $resumen[$tipo]['total_facturado'] += (float) ($row['total_facturado'] ?? 0);
                 $resumen[$tipo]['total_cobrado'] += (float) ($row['total_cobrado'] ?? 0);
+                $resumen[$tipo]['total_pendiente'] += (float) ($row['total_pendiente'] ?? 0);
+            }
+
+            $tipoPend = $this->fetchResumenTipoPendienteRegistro($startDate, $endDate);
+            if ($tipoPend !== null) {
+                $resumen['4'] = $tipoPend;
+            } else {
+                unset($resumen['4']);
             }
 
             if ($resumen !== []) {

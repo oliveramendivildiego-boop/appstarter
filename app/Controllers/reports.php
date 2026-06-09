@@ -251,17 +251,22 @@ class Reports extends SecureArea
         $rows        = $this->reportModel->getCobrosDetallePorFecha($startDate, $endDate, null, $tipopago);
 
         $items = [];
-        $total = 0.0;
+        $totalPendiente = 0.0;
+        $ordenesVistas  = [];
         foreach ($rows as $row) {
-            $monto = (float) ($row['monto_cobro'] ?? $row['monto_pagado'] ?? 0);
-            $total += $monto;
+            $saldo = (float) ($row['saldo'] ?? 0);
+            $rid   = (string) ($row['registro_id'] ?? '');
+            if ($rid !== '' && !isset($ordenesVistas[$rid])) {
+                $ordenesVistas[$rid] = true;
+                $totalPendiente += $saldo;
+            }
             $items[] = [
-                'orden'           => registro_orden_display($row),
-                'paciente'        => trim((string) ($row['paciente'] ?? '')),
-                'doctor'          => trim((string) ($row['doctor'] ?? '')),
-                'monto_cobro'     => round($monto, 2),
-                'monto_cobro_fmt' => format_currency($monto),
-                'fecha_cobro'     => RegisterService::formatStoredReporteFechaCorta($row['fecha_cobro'] ?? $row['ingreso'] ?? ''),
+                'orden'              => registro_orden_display($row),
+                'paciente'           => trim((string) ($row['paciente'] ?? '')),
+                'doctor'             => trim((string) ($row['doctor'] ?? '')),
+                'monto_pendiente'    => round($saldo, 2),
+                'monto_pendiente_fmt'=> format_currency($saldo),
+                'fecha_cobro'        => RegisterService::formatStoredReporteFechaCorta($row['fecha_cobro'] ?? $row['ingreso'] ?? ''),
             ];
         }
 
@@ -271,8 +276,8 @@ class Reports extends SecureArea
             'periodo'    => RegisterService::formatReportDateRangeSubtitle($startDate, $endDate),
             'items'      => $items,
             'count'      => count($items),
-            'total'      => round($total, 2),
-            'total_fmt'  => format_currency($total),
+            'total'      => round($totalPendiente, 2),
+            'total_fmt'  => format_currency($totalPendiente),
         ]);
     }
 
