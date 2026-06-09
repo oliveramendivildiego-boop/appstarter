@@ -164,6 +164,44 @@
         .footer-note .web { color: #0d9488; }
 
         .text-right { text-align: right; }
+
+        .recomendaciones-section {
+            margin-top: 22px;
+            page-break-inside: avoid;
+        }
+        .recomendaciones-title {
+            font-size: 10pt;
+            font-weight: bold;
+            color: #b45309;
+            margin-bottom: 10px;
+            padding-bottom: 6px;
+            border-bottom: 2px solid #fcd34d;
+        }
+        .recomendacion-item {
+            margin-bottom: 12px;
+            border: 1px solid #fde68a;
+            border-radius: 4px;
+            overflow: hidden;
+        }
+        .recomendacion-item-name {
+            background: #fffbeb;
+            color: #92400e;
+            font-weight: bold;
+            font-size: 9.5pt;
+            padding: 8px 12px;
+            border-bottom: 1px solid #fde68a;
+        }
+        .recomendacion-item-body {
+            padding: 10px 12px;
+            font-size: 9.5pt;
+            color: #334155;
+            line-height: 1.5;
+        }
+        .recomendacion-item-body ul,
+        .recomendacion-item-body ol {
+            margin: 4px 0 4px 18px;
+            padding: 0;
+        }
     </style>
 </head>
 <body>
@@ -316,6 +354,27 @@ if ($precioTipoVal === 'total') {
             </td>
         </tr>
     </table>
+
+    <?php
+    $itemsConRecomendaciones = [];
+    foreach ($items as $it) {
+        $rec = (string) ($it['recomendaciones'] ?? '');
+        if (\App\Models\LabotestModel::recomendacionTieneContenido($rec)) {
+            $itemsConRecomendaciones[] = ['name' => $it['name'] ?? '', 'recomendaciones' => $rec];
+        }
+    }
+    ?>
+    <?php if (! empty($itemsConRecomendaciones)): ?>
+    <div class="recomendaciones-section">
+        <div class="recomendaciones-title">Recomendaciones previas al examen</div>
+        <?php foreach ($itemsConRecomendaciones as $recItem): ?>
+        <div class="recomendacion-item">
+            <div class="recomendacion-item-name"><?= esc($recItem['name']) ?></div>
+            <div class="recomendacion-item-body"><?= $recItem['recomendaciones'] ?></div>
+        </div>
+        <?php endforeach; ?>
+    </div>
+    <?php endif; ?>
 
     <p class="footer-note">
         Documento generado electrónicamente. Los precios pueden variar según políticas vigentes.

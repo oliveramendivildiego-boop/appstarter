@@ -13,3 +13,13 @@
 #autocompleteDropdown .list-group-item:hover {
     background-color: #e9ecef;
 }
+
+.toquotes-recomendacion-card .card-header {
+    border-bottom: 1px solid rgba(255, 193, 7, 0.35);
+}
+
+.toquotes-recomendacion-body ul,
+.toquotes-recomendacion-body ol {
+    margin-bottom: 0.5rem;
+    padding-left: 1.25rem;
+}

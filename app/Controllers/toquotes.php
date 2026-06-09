@@ -177,6 +177,8 @@ class Toquotes extends SecureArea
                 $totalRefe += (int) ($it['refe'] ?? 0);
             }
 
+            $items = $this->toquoteModel->enrichItemsWithRecomendaciones($items);
+
             $html = view('toquotes/quote_pdf', [
                 'items'         => $items,
                 'totalCost'     => $totalCost,

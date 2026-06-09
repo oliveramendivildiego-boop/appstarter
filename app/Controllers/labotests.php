@@ -793,6 +793,45 @@ class Labotests extends SecureArea
     }
 
     /**
+     * Editar recomendaciones previas al examen (toma de muestra)
+     */
+    public function recomendacionesPrevias($id)
+    {
+        $id = (int) $id;
+        $sub = $this->labotestModel->getSubInfo($id, null);
+        if (!$sub || !$sub->prianacategoria_id) {
+            return redirect()->to('labotests')->with('error', 'Análisis no encontrado');
+        }
+        return view('labotests/recomendaciones_previas', [
+            'labotests_info'         => $sub,
+            'prianacategoria_id'     => $id,
+            'recomendaciones_previas' => $this->labotestModel->getRecomendacionesPrevias($id),
+            'allowed_modules'        => $this->allowed_modules,
+            'user_info'              => $this->user_info,
+            'current_module'         => 'labotests',
+        ]);
+    }
+
+    /**
+     * Guardar recomendaciones previas al examen
+     */
+    public function saveRecomendacionesPrevias()
+    {
+        $prianacategoriaId = (int) ($this->request->getPost('prianacategoria_id') ?? 0);
+        $contenido = $this->request->getPost('recomendaciones_previas') ?? '';
+        if ($prianacategoriaId < 1) {
+            return redirect()->back()->with('error', 'Datos incompletos');
+        }
+        $sub = $this->labotestModel->getSubInfo($prianacategoriaId, null);
+        if (!$sub || !$sub->prianacategoria_id) {
+            return redirect()->to('labotests')->with('error', 'Análisis no encontrado');
+        }
+        $ok = $this->labotestModel->saveRecomendacionesPrevias($prianacategoriaId, $contenido);
+        return redirect()->to("labotests/recomendacionesprevias/{$prianacategoriaId}")
+            ->with($ok ? 'success' : 'error', $ok ? 'Recomendaciones guardadas' : 'Error al guardar');
+    }
+
+    /**
      * Duplicar sub-clase con los mismos datos
      */
     public function duplicatesecitem($id)

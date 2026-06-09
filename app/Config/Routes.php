@@ -256,6 +256,8 @@ $routes->get('labotests/manuales', 'Labotests::manualesIndex');
 $routes->get('labotests/manuales/(:num)', 'Labotests::manuales/$1');
 $routes->post('labotests/savemanual', 'Labotests::saveManual');
 $routes->get('labotests/deletemanual/(:num)', 'Labotests::deleteManual/$1');
+$routes->get('labotests/recomendacionesprevias/(:num)', 'Labotests::recomendacionesPrevias/$1');
+$routes->post('labotests/saverecomendacionesprevias', 'Labotests::saveRecomendacionesPrevias');
 $routes->get('interpretacion-clinica', 'InterpretacionClinica::index');
 $routes->get('interpretacion-clinica/(:num)', 'InterpretacionClinica::detail/$1');
 $routes->post('interpretacion-clinica/save', 'InterpretacionClinica::save');

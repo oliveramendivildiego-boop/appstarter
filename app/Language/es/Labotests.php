@@ -20,4 +20,11 @@ return [
     'labotests_no'            => 'No',
     'labotests_yes'           => 'Sí',
     'labotests_no_price_here' => 'Los precios se configuran después desde el botón de engranaje en cada análisis.',
+    'labotests_recomendaciones_previas'           => 'Recomendaciones previas al examen',
+    'labotests_recomendaciones_previas_desc'        => 'Indique las indicaciones para la toma de muestra de este examen (ayuno, horario, preparación del paciente, etc.).',
+    'labotests_recomendaciones_previas_contenido'   => 'Contenido de la recomendación',
+    'labotests_recomendaciones_previas_hint'        => 'Use negrilla, cursiva y listas para destacar las indicaciones importantes.',
+    'labotests_recomendaciones_previas_guardar'     => 'Guardar recomendación',
+    'labotests_recomendaciones_previas_vista'       => 'Vista previa',
+    'labotests_recomendaciones_previas_volver'      => 'Exámenes',
 ];

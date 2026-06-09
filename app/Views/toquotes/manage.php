@@ -92,6 +92,13 @@ $currencyIsRight = strtolower(trim($currencySide)) === 'right';
                     <?php endif; ?>
                 </div>
             </div>
+            <div id="recomendacionesSection" class="mt-4 border-top pt-3" style="display:none;">
+                <h6 class="text-warning mb-1">
+                    <i class="fa-solid fa-clipboard-list me-1"></i><?= esc(lang('Toquotes.toquotes_recomendaciones_titulo')) ?>
+                </h6>
+                <p class="text-muted small mb-3"><?= esc(lang('Toquotes.toquotes_recomendaciones_hint')) ?></p>
+                <div id="recomendacionesList"></div>
+            </div>
         </div>
     </div>
 </div>
@@ -102,6 +109,7 @@ $currencyIsRight = strtolower(trim($currencySide)) === 'right';
 <script>
 (function() {
     var selectedItems = [];
+    var recomendacionesCache = {};
     var currentQuoteId = null;
     var currencySym = <?= json_encode($currencySym) ?>;
     var currencyIsRight = <?= json_encode($currencyIsRight) ?>;
@@ -110,6 +118,8 @@ $currencyIsRight = strtolower(trim($currencySide)) === 'right';
     var selectedEmpty = document.getElementById('selectedEmpty');
     var selectedList = document.getElementById('selectedList');
     var selectedTableBody = document.getElementById('selectedTableBody');
+    var recomendacionesSection = document.getElementById('recomendacionesSection');
+    var recomendacionesList = document.getElementById('recomendacionesList');
     var guardarBtn = document.getElementById('guardarBtn');
     var pdfExportBtns = document.querySelectorAll('.pdf-export-btn');
     var feedbackEl = document.getElementById('toquotesFeedback');
@@ -122,9 +132,20 @@ $currencyIsRight = strtolower(trim($currencySide)) === 'right';
         feedbackEl.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
     }
 
+    function hasRecomendacion(html) {
+        if (!html) return false;
+        var tmp = document.createElement('div');
+        tmp.innerHTML = html;
+        return (tmp.textContent || tmp.innerText || '').trim().length > 0;
+    }
+
     function addItem(item) {
         if (selectedItems.some(function(x) { return x.id === item.id; })) return;
-        selectedItems.push({ id: item.id, name: item.name, cost: item.cost, refe: item.refe });
+        var entry = { id: item.id, name: item.name, cost: item.cost, refe: item.refe };
+        if (hasRecomendacion(item.recomendaciones)) {
+            entry.recomendaciones = item.recomendaciones;
+        }
+        selectedItems.push(entry);
         currentQuoteId = null;
         renderSelected();
     }
@@ -164,6 +185,29 @@ $currencyIsRight = strtolower(trim($currencySide)) === 'right';
         tbody.querySelectorAll('.remove-item').forEach(function(btn) {
             btn.addEventListener('click', function() { removeItem(parseInt(btn.dataset.id, 10)); });
         });
+
+        renderRecomendaciones();
+    }
+
+    function renderRecomendaciones() {
+        if (!recomendacionesList || !recomendacionesSection) return;
+        recomendacionesList.innerHTML = '';
+        var conRec = selectedItems.filter(function(it) { return hasRecomendacion(it.recomendaciones); });
+        if (conRec.length === 0) {
+            recomendacionesSection.style.display = 'none';
+            return;
+        }
+        conRec.forEach(function(it) {
+            var card = document.createElement('div');
+            card.className = 'card shadow-sm mb-2 toquotes-recomendacion-card';
+            card.innerHTML =
+                '<div class="card-header py-2 bg-warning-subtle">' +
+                    '<strong class="small"><i class="fa-solid fa-vial me-1"></i>' + escapeHtml(it.name) + '</strong>' +
+                '</div>' +
+                '<div class="card-body py-2 small toquotes-recomendacion-body">' + it.recomendaciones + '</div>';
+            recomendacionesList.appendChild(card);
+        });
+        recomendacionesSection.style.display = 'block';
     }
 
     function escapeHtml(s) {
@@ -195,16 +239,31 @@ $currencyIsRight = strtolower(trim($currencySide)) === 'right';
                         autocompleteDropdown.innerHTML = '<div class="list-group-item text-muted"><?= lang('Toquotes.toquotes_not_found') ?></div>';
                     } else {
                         d.items.forEach(function(it) {
+                            if (hasRecomendacion(it.recomendaciones)) {
+                                recomendacionesCache[it.id] = it.recomendaciones;
+                            }
                             var li = document.createElement('div');
                             li.className = 'list-group-item list-group-item-action';
                             li.style.cursor = 'pointer';
-                            li.innerHTML = '<strong>' + escapeHtml(it.name) + '</strong><br><small class="text-muted">' + escapeHtml(it.cat_name) + ' &middot; ' + formatCurrencyAmount(it.cost) + ' / Ref: ' + formatCurrencyAmount(it.refe) + '</small>';
+                            var recBadge = hasRecomendacion(it.recomendaciones)
+                                ? ' <span class="badge bg-warning text-dark ms-1" title="<?= esc(lang('Toquotes.toquotes_recomendaciones_titulo')) ?>"><i class="fa-solid fa-clipboard-list"></i></span>'
+                                : '';
+                            li.innerHTML = '<strong>' + escapeHtml(it.name) + recBadge + '</strong><br><small class="text-muted">' + escapeHtml(it.cat_name) + ' &middot; ' + formatCurrencyAmount(it.cost) + ' / Ref: ' + formatCurrencyAmount(it.refe) + '</small>';
                             li.dataset.id = it.id;
                             li.dataset.name = it.name;
                             li.dataset.cost = it.cost;
                             li.dataset.refe = it.refe;
                             li.addEventListener('click', function() {
-                                addItem({ id: parseInt(li.dataset.id,10), name: li.dataset.name, cost: parseInt(li.dataset.cost,10), refe: parseInt(li.dataset.refe,10) });
+                                var payload = {
+                                    id: parseInt(li.dataset.id, 10),
+                                    name: li.dataset.name,
+                                    cost: parseInt(li.dataset.cost, 10),
+                                    refe: parseInt(li.dataset.refe, 10)
+                                };
+                                if (recomendacionesCache[payload.id]) {
+                                    payload.recomendaciones = recomendacionesCache[payload.id];
+                                }
+                                addItem(payload);
                                 analisisInput.value = '';
                                 autocompleteDropdown.style.display = 'none';
                                 autocompleteDropdown.innerHTML = '';

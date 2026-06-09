@@ -142,7 +142,37 @@ class ToquoteModel extends Model
                 'refe'     => (int) ($r->refe ?? 0),
             ];
         }
-        return $out;
+
+        return $this->enrichItemsWithRecomendaciones($out);
+    }
+
+    /**
+     * Agrega recomendaciones previas a cada ítem de cotización (desde catálogo si faltan).
+     *
+     * @param list<array<string, mixed>> $items
+     * @return list<array<string, mixed>>
+     */
+    public function enrichItemsWithRecomendaciones(array $items): array
+    {
+        if ($items === []) {
+            return [];
+        }
+
+        $ids = array_map(static fn (array $it): int => (int) ($it['id'] ?? 0), $items);
+        $map = model(LabotestModel::class)->getRecomendacionesPreviasMap($ids);
+
+        foreach ($items as &$it) {
+            $id = (int) ($it['id'] ?? 0);
+            $actual = (string) ($it['recomendaciones'] ?? '');
+            if (! LabotestModel::recomendacionTieneContenido($actual) && isset($map[$id])) {
+                $it['recomendaciones'] = $map[$id];
+            } elseif (! LabotestModel::recomendacionTieneContenido($actual)) {
+                unset($it['recomendaciones']);
+            }
+        }
+        unset($it);
+
+        return $items;
     }
 
     /**

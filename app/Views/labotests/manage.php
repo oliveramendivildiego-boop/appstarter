@@ -73,6 +73,9 @@ $labRight = '<a href="' . site_url('labotests/perfiles') . '" class="btn btn-out
                                 <a href="<?= site_url('labotests/manuales/' . $item['id']) ?>" class="btn btn-outline-info btn-sm" title="Ver manuales y notas">
                                     <i class="fa-solid fa-book"></i>
                                 </a>
+                                <a href="<?= site_url('labotests/recomendacionesprevias/' . $item['id']) ?>" class="btn btn-outline-warning btn-sm" title="<?= lang('Labotests.labotests_recomendaciones_previas') ?>">
+                                    <i class="fa-solid fa-clipboard-list"></i>
+                                </a>
                                 <button type="button" class="btn btn-outline-secondary btn-sm btn-duplicate-analysis" title="Duplicar prueba a otro padre" data-bs-toggle="modal" data-bs-target="#duplicateAnalysisModal" data-analysis-id="<?= (int) $item['id'] ?>" data-analysis-name="<?= esc($item['name'], 'attr') ?>" data-current-parent="<?= (int) $cat['id'] ?>">
                                     <i class="fa-solid fa-copy"></i>
                                 </button>

@@ -1168,6 +1168,126 @@ class LabotestModel extends Model
     }
 
     /**
+     * Crea la columna recomendaciones_previas si la migración aún no corrió en esta BD.
+     */
+    private function ensureRecomendacionesPreviasColumn(): bool
+    {
+        if ($this->hasColumn('prianacategoria', 'recomendaciones_previas')) {
+            return true;
+        }
+
+        $fullTable = $this->db->prefixTable('prianacategoria');
+        if (! $this->db->tableExists($fullTable)) {
+            return false;
+        }
+
+        try {
+            $column = [
+                'type' => 'MEDIUMTEXT',
+                'null' => true,
+            ];
+            if ($this->hasColumn('prianacategoria', 'cultivo_matriz_config')) {
+                $column['after'] = 'cultivo_matriz_config';
+            } elseif ($this->hasColumn('prianacategoria', 'metodo_id')) {
+                $column['after'] = 'metodo_id';
+            }
+
+            \Config\Database::forge($this->db)->addColumn('prianacategoria', [
+                'recomendaciones_previas' => $column,
+            ]);
+
+            return $this->hasColumn('prianacategoria', 'recomendaciones_previas', true);
+        } catch (\Throwable $e) {
+            log_message('error', 'ensureRecomendacionesPreviasColumn: {err}', ['err' => $e->getMessage()]);
+
+            return false;
+        }
+    }
+
+    /**
+     * Obtiene las recomendaciones previas al examen (toma de muestra) de un análisis.
+     */
+    public function getRecomendacionesPrevias(int $prianacategoriaId): string
+    {
+        if ($prianacategoriaId < 1 || ! $this->ensureRecomendacionesPreviasColumn()) {
+            return '';
+        }
+
+        try {
+            $row = $this->db->table('prianacategoria')
+                ->select('recomendaciones_previas')
+                ->where('prianacategoria_id', $prianacategoriaId)
+                ->where('(deleted = 0 OR deleted IS NULL)')
+                ->get()
+                ->getRowArray();
+
+            return (string) ($row['recomendaciones_previas'] ?? '');
+        } catch (\Throwable $e) {
+            return '';
+        }
+    }
+
+    /**
+     * Guarda las recomendaciones previas al examen de un análisis.
+     */
+    public function saveRecomendacionesPrevias(int $prianacategoriaId, string $contenido): bool
+    {
+        if ($prianacategoriaId < 1 || ! $this->ensureRecomendacionesPreviasColumn()) {
+            return false;
+        }
+
+        return $this->db->table('prianacategoria')
+            ->where('prianacategoria_id', $prianacategoriaId)
+            ->update(['recomendaciones_previas' => $contenido]) !== false;
+    }
+
+    /**
+     * Indica si el HTML de recomendaciones tiene texto visible.
+     */
+    public static function recomendacionTieneContenido(?string $html): bool
+    {
+        return trim(strip_tags($html ?? '')) !== '';
+    }
+
+    /**
+     * Mapa prianacategoria_id => HTML de recomendaciones (solo ítems con contenido).
+     *
+     * @param list<int> $prianacategoriaIds
+     * @return array<int, string>
+     */
+    public function getRecomendacionesPreviasMap(array $prianacategoriaIds): array
+    {
+        $ids = array_values(array_unique(array_filter(
+            array_map('intval', $prianacategoriaIds),
+            static fn (int $id): bool => $id > 0
+        )));
+        if ($ids === [] || ! $this->ensureRecomendacionesPreviasColumn()) {
+            return [];
+        }
+
+        try {
+            $rows = $this->db->table('prianacategoria')
+                ->select('prianacategoria_id, recomendaciones_previas')
+                ->whereIn('prianacategoria_id', $ids)
+                ->where('(deleted = 0 OR deleted IS NULL)')
+                ->get()
+                ->getResultArray();
+        } catch (\Throwable $e) {
+            return [];
+        }
+
+        $out = [];
+        foreach ($rows as $row) {
+            $html = (string) ($row['recomendaciones_previas'] ?? '');
+            if (self::recomendacionTieneContenido($html)) {
+                $out[(int) $row['prianacategoria_id']] = $html;
+            }
+        }
+
+        return $out;
+    }
+
+    /**
      * Guardar categoría (grupo)
      */
     public function saveCategory(array $data, $id = null): bool

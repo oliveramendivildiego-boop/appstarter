@@ -23,4 +23,7 @@ return [
     'toquotes_pdf_err_403'    => 'Acceso denegado. Recargue la página e intente de nuevo.',
     'toquotes_pdf_err_500'    => 'Error en el servidor. Revise los logs.',
     'toquotes_pdf_err_notpdf' => 'La respuesta no es un PDF válido.',
+
+    'toquotes_recomendaciones_titulo' => 'Recomendaciones previas al examen',
+    'toquotes_recomendaciones_hint' => 'Indicaciones para la toma de muestra de los análisis seleccionados.',
 ];
