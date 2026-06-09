@@ -244,6 +244,9 @@ if ($precioTipoVal === 'total') {
                 <span class="doc-badge">COTIZACIÓN &nbsp;·&nbsp; ANÁLISIS CLÍNICOS</span>
             </td>
             <td class="doc-meta">
+                <?php if (!empty($cotizacionId)): ?>
+                    <strong>No. cotización: <?= (int) $cotizacionId ?></strong><br>
+                <?php endif; ?>
                 <strong><?= esc($subtituloPdf) ?></strong><br>
                 Fecha: <?= esc($fecha) ?>
             </td>

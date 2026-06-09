@@ -102,6 +102,7 @@ $currencyIsRight = strtolower(trim($currencySide)) === 'right';
 <script>
 (function() {
     var selectedItems = [];
+    var currentQuoteId = null;
     var currencySym = <?= json_encode($currencySym) ?>;
     var currencyIsRight = <?= json_encode($currencyIsRight) ?>;
     var analisisInput = document.getElementById('analisisInput');
@@ -124,11 +125,13 @@ $currencyIsRight = strtolower(trim($currencySide)) === 'right';
     function addItem(item) {
         if (selectedItems.some(function(x) { return x.id === item.id; })) return;
         selectedItems.push({ id: item.id, name: item.name, cost: item.cost, refe: item.refe });
+        currentQuoteId = null;
         renderSelected();
     }
 
     function removeItem(id) {
         selectedItems = selectedItems.filter(function(x) { return x.id !== id; });
+        currentQuoteId = null;
         renderSelected();
     }
 
@@ -249,6 +252,7 @@ $currencyIsRight = strtolower(trim($currencySide)) === 'right';
         data.append('costo', costo);
         data.append('refe', refe);
         data.append('items_json', itemsJson);
+        if (currentQuoteId) data.append('quote_id', currentQuoteId);
         if (typeof window.CI_CSRF_TOKEN_NAME !== 'undefined' && window.CI_CSRF_TOKEN) {
             data.append(window.CI_CSRF_TOKEN_NAME, window.CI_CSRF_TOKEN);
         }
@@ -265,8 +269,14 @@ $currencyIsRight = strtolower(trim($currencySide)) === 'right';
         })
         .then(function(r) { return r.json(); })
         .then(function(d) {
-            if (d.success) showFeedback(d.message || '<?= lang('Toquotes.toquotes_saved') ?>', false);
-            else showFeedback(d.message || '<?= lang('Toquotes.toquotes_error') ?>', true);
+            if (d.success) {
+                if (d.quote_id) currentQuoteId = d.quote_id;
+                var msg = d.message || '<?= lang('Toquotes.toquotes_saved') ?>';
+                if (currentQuoteId) msg += ' (No. ' + currentQuoteId + ')';
+                showFeedback(msg, false);
+            } else {
+                showFeedback(d.message || '<?= lang('Toquotes.toquotes_error') ?>', true);
+            }
         })
         .catch(function() { showFeedback('<?= lang('Toquotes.toquotes_error') ?>', true); });
     });
@@ -279,6 +289,7 @@ $currencyIsRight = strtolower(trim($currencySide)) === 'right';
         var data = new URLSearchParams();
         data.append('items_json', JSON.stringify(selectedItems));
         data.append('pdf_tipo', pdfTipo);
+        if (currentQuoteId) data.append('quote_id', currentQuoteId);
         if (typeof window.CI_CSRF_TOKEN_NAME !== 'undefined' && window.CI_CSRF_TOKEN) {
             data.append(window.CI_CSRF_TOKEN_NAME, window.CI_CSRF_TOKEN);
         }
@@ -293,22 +304,29 @@ $currencyIsRight = strtolower(trim($currencySide)) === 'right';
         })
         .then(function(r) {
             var ct = (r.headers.get('Content-Type') || '').toLowerCase();
+            var quoteHeader = r.headers.get('X-Cotizacion-Id');
             if (!r.ok) {
                 return r.text().then(function(t) { throw new Error('HTTP ' + r.status); });
             }
             if (ct.indexOf('application/pdf') === -1) {
                 return r.text().then(function() { throw new Error('Respuesta no es PDF'); });
             }
-            return r.blob();
+            return r.blob().then(function(blob) {
+                return { blob: blob, quoteId: quoteHeader ? parseInt(quoteHeader, 10) : null };
+            });
         })
-        .then(function(blob) {
-            var url = URL.createObjectURL(blob);
+        .then(function(result) {
+            if (result.quoteId) currentQuoteId = result.quoteId;
+            var url = URL.createObjectURL(result.blob);
             var a = document.createElement('a');
             a.href = url;
-            a.download = 'cotizacion_' + pdfTipo + '_' + new Date().toISOString().slice(0,10) + '.pdf';
+            var idPart = currentQuoteId ? ('_' + currentQuoteId) : '';
+            a.download = 'cotizacion' + idPart + '_' + pdfTipo + '_' + new Date().toISOString().slice(0,10) + '.pdf';
             a.click();
             URL.revokeObjectURL(url);
-            showFeedback('<?= lang('Toquotes.toquotes_pdf_ok') ?>', false);
+            var okMsg = '<?= lang('Toquotes.toquotes_pdf_ok') ?>';
+            if (currentQuoteId) okMsg += ' No. ' + currentQuoteId + '.';
+            showFeedback(okMsg, false);
         })
         .catch(function(err) {
             var msg = '<?= lang('Toquotes.toquotes_pdf_error') ?>';

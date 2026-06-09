@@ -50,10 +50,24 @@ class Toquotes extends SecureArea
         $costo     = (int) ($this->request->getPost('costo') ?? 0);
         $refe      = (int) ($this->request->getPost('refe') ?? 0);
         $itemsJson = $this->request->getPost('items_json');
+        $quoteId   = (int) ($this->request->getPost('quote_id') ?? 0);
 
-        if ($this->toquoteModel->saveLog($cotizo, $costo, $refe, $itemsJson)) {
-            return $this->response->setJSON(['success' => true, 'message' => lang('Toquotes.toquotes_saved')]);
+        $id = $this->toquoteModel->saveOrGetId(
+            $cotizo,
+            $costo,
+            $refe,
+            $itemsJson,
+            $quoteId > 0 ? $quoteId : null
+        );
+
+        if ($id !== null) {
+            return $this->response->setJSON([
+                'success'  => true,
+                'message'  => lang('Toquotes.toquotes_saved'),
+                'quote_id' => $id,
+            ]);
         }
+
         return $this->response->setJSON(['success' => false, 'message' => lang('Toquotes.toquotes_error')]);
     }
 
@@ -72,8 +86,28 @@ class Toquotes extends SecureArea
         }
         $pdfTipo   = (string) ($this->request->getPost('pdf_tipo') ?? $this->request->getGet('pdf_tipo') ?? 'ambos');
         $precioTipo = $this->normalizePdfPrecioTipo($pdfTipo);
+        $quoteId   = (int) ($this->request->getPost('quote_id') ?? $this->request->getGet('quote_id') ?? 0);
 
-        return $this->generatePdfResponse($items, $precioTipo);
+        $cotizo = implode(',', array_column($items, 'name'));
+        $costo  = array_sum(array_map(static fn ($it) => (int) ($it['cost'] ?? 0), $items));
+        $refe   = array_sum(array_map(static fn ($it) => (int) ($it['refe'] ?? 0), $items));
+        $savedId = $this->toquoteModel->saveOrGetId(
+            $cotizo,
+            $costo,
+            $refe,
+            json_encode($items),
+            $quoteId > 0 ? $quoteId : null
+        );
+
+        if ($savedId === null) {
+            if ($this->request->isAJAX()) {
+                return $this->response->setStatusCode(500)->setJSON(['error' => lang('Toquotes.toquotes_error')]);
+            }
+
+            return redirect()->to('toquotes')->with('error', lang('Toquotes.toquotes_error'));
+        }
+
+        return $this->generatePdfResponse($items, $precioTipo, $savedId);
     }
 
     /**
@@ -93,7 +127,8 @@ class Toquotes extends SecureArea
             return redirect()->back()->with('error', 'Esta cotización no tiene detalle para generar PDF');
         }
         $tipo = in_array($tipo, ['refe', 'total'], true) ? $tipo : null;
-        return $this->generatePdfResponse($items, $tipo);
+
+        return $this->generatePdfResponse($items, $tipo, $id);
     }
 
     /**
@@ -129,7 +164,7 @@ class Toquotes extends SecureArea
      * @param array $items
      * @param string|null $precioTipo 'refe' solo ref, 'total' solo total, null ambos
      */
-    private function generatePdfResponse(array $items, ?string $precioTipo = null): ResponseInterface
+    private function generatePdfResponse(array $items, ?string $precioTipo = null, ?int $cotizacionId = null): ResponseInterface
     {
         try {
             $labConfig = (model(AppConfigModel::class))->getMultiple([
@@ -143,22 +178,30 @@ class Toquotes extends SecureArea
             }
 
             $html = view('toquotes/quote_pdf', [
-                'items'       => $items,
-                'totalCost'   => $totalCost,
-                'totalRefe'   => $totalRefe,
-                'lab_config'  => $labConfig,
-                'fecha'       => \App\Services\RegisterService::formatNowForReportShort(),
-                'precioTipo'  => in_array($precioTipo, ['refe', 'total'], true) ? $precioTipo : null,
+                'items'         => $items,
+                'totalCost'     => $totalCost,
+                'totalRefe'     => $totalRefe,
+                'lab_config'    => $labConfig,
+                'fecha'         => \App\Services\RegisterService::formatNowForReportShort(),
+                'precioTipo'    => in_array($precioTipo, ['refe', 'total'], true) ? $precioTipo : null,
+                'cotizacionId'  => $cotizacionId,
             ]);
 
             $pdfService = new PdfService();
             $pdfContent = $pdfService->generate($html, 'cotizacion.pdf');
             $slug         = $this->pdfDownloadSlug($precioTipo);
+            $idSuffix     = $cotizacionId !== null && $cotizacionId > 0 ? '_' . $cotizacionId : '';
 
-            return $this->response
+            $response = $this->response
                 ->setHeader('Content-Type', 'application/pdf')
-                ->setHeader('Content-Disposition', 'attachment; filename="cotizacion_' . $slug . '_' . lab_filename_datetime() . '.pdf"')
+                ->setHeader('Content-Disposition', 'attachment; filename="cotizacion' . $idSuffix . '_' . $slug . '_' . lab_filename_datetime() . '.pdf"')
                 ->setBody($pdfContent);
+
+            if ($cotizacionId !== null && $cotizacionId > 0) {
+                $response->setHeader('X-Cotizacion-Id', (string) $cotizacionId);
+            }
+
+            return $response;
         } catch (\Throwable $e) {
             log_message('error', 'Toquotes::generatePdfResponse: ' . $e->getMessage());
             return redirect()->back()->with('error', 'Error al generar el PDF');

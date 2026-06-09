@@ -59,14 +59,17 @@ class ToquoteModel extends Model
     }
 
     /**
-     * Guarda una cotización en el log
-     * @param string $cotizo Nombres de análisis (comma-sep), por compatibilidad
-     * @param int $costo Costo total
-     * @param int $refe Costo de referencia total
-     * @param string|null $itemsJson JSON de items [{"id", "name", "cost", "refe"}, ...]
+     * Guarda o actualiza una cotización y devuelve su ID (sin duplicar si ya existe).
+     *
+     * @param int|null $existingId ID de cotización ya guardada en la sesión actual
      */
-    public function saveLog(string $cotizo, int $costo, int $refe = 0, ?string $itemsJson = null): bool
-    {
+    public function saveOrGetId(
+        string $cotizo,
+        int $costo,
+        int $refe = 0,
+        ?string $itemsJson = null,
+        ?int $existingId = null
+    ): ?int {
         $personId = session()->get('person_id') ?? 0;
         $data = [
             'person_id' => $personId,
@@ -85,9 +88,24 @@ class ToquoteModel extends Model
         } catch (\Throwable $e) {
             // Si las columnas no existen, usar solo campos básicos
         }
-        $data['fecha'] = RegisterService::mysqlNowForReport();
 
-        return $this->db->table('toquotelogs')->insert($data);
+        if ($existingId !== null && $existingId > 0 && $this->getById($existingId) !== null) {
+            $this->db->table('toquotelogs')->where('toquotelogs_id', $existingId)->update($data);
+
+            return $existingId;
+        }
+
+        $data['fecha'] = RegisterService::mysqlNowForReport();
+        if ($this->db->table('toquotelogs')->insert($data)) {
+            return (int) $this->db->insertID();
+        }
+
+        return null;
+    }
+
+    public function saveLog(string $cotizo, int $costo, int $refe = 0, ?string $itemsJson = null): bool
+    {
+        return $this->saveOrGetId($cotizo, $costo, $refe, $itemsJson) !== null;
     }
 
     /**
