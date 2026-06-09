@@ -61,7 +61,7 @@
                 <a href="<?= site_url('reports/pruebasDetallado') ?>" class="list-group-item list-group-item-action">
                     <i class="fas fa-search-plus me-2"></i> Reporte detallado de pruebas
                 </a>
-                <p class="list-group-item small text-muted mb-0">Código de recepción, paciente, usuario de recepción y trazabilidad de quién cargó o editó resultados.</p>
+                <p class="list-group-item small text-muted mb-0">Código de recepción, paciente, usuario de recepción y trazabilidad; incluye órdenes nuevas aunque aún no tengan resultados.</p>
                 <a href="<?= site_url('reports/costosPruebas') ?>" class="list-group-item list-group-item-action">
                     <i class="fas fa-dollar-sign me-2"></i> Costos de todas las pruebas
                 </a>

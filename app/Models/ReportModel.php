@@ -1366,11 +1366,44 @@ class ReportModel extends Model
     }
 
     /**
+     * Cuenta órdenes del reporte detallado de pruebas en el rango de fechas.
+     */
+    public function countPruebasDetalladoPorFecha(string $startDate, string $endDate): int
+    {
+        $r = $this->db->prefixTable('registro');
+
+        return (int) $this->buildPruebasDetalladoPorFechaBuilder($startDate, $endDate)
+            ->countAllResults();
+    }
+
+    /**
      * Reporte detallado de pruebas: código de recepción, paciente, usuario de recepción y resumen de trazabilidad.
      *
      * @return list<array<string, mixed>>
      */
-    public function getPruebasDetalladoPorFecha(string $startDate, string $endDate): array
+    public function getPruebasDetalladoPorFecha(string $startDate, string $endDate, ?int $limit = null, int $offset = 0): array
+    {
+        $r = $this->db->prefixTable('registro');
+
+        $builder = $this->buildPruebasDetalladoPorFechaBuilder($startDate, $endDate)
+            ->orderBy("{$r}.ingreso", 'DESC')
+            ->orderBy("{$r}.registro_id", 'DESC');
+
+        if ($limit !== null && $limit > 0) {
+            $builder->limit($limit, max(0, $offset));
+        }
+
+        $rows = $builder->get()->getResultArray();
+        $rows = $this->attachPruebasNombresListado($rows);
+        $rows = $this->attachCodigoRecepcionListado($rows);
+
+        return $this->attachTrazabilidadPruebasResumen($rows);
+    }
+
+    /**
+     * @return \CodeIgniter\Database\BaseBuilder
+     */
+    protected function buildPruebasDetalladoPorFechaBuilder(string $startDate, string $endDate)
     {
         $r  = $this->db->prefixTable('registro');
         $p  = $this->db->prefixTable('people');
@@ -1384,24 +1417,17 @@ class ReportModel extends Model
                 CONCAT({$p}.first_name, ' ', {$p}.last_name_fa, ' ', {$p}.last_name_mom) AS paciente,
                 {$d}.name as doctor,
                 CONCAT(pu.first_name, ' ', pu.last_name_fa) AS usuario_recepcion,
-                CAST({$pa}.total AS DECIMAL(12,2)) as total", false)
+                CAST({$pa}.total AS DECIMAL(12,2)) as total,
+                (SELECT COUNT(*) FROM {$rv} WHERE {$rv}.registro_id = {$r}.registro_id) AS regvalues_cnt", false)
             ->join('people', "{$p}.person_id = {$r}.person_id")
-            ->join('doctors', "{$d}.doctor_id = {$r}.doctor_id")
-            ->join('pago', "{$r}.registro_id = {$pa}.registro_id")
+            ->join('doctors', "{$d}.doctor_id = {$r}.doctor_id", 'left')
+            ->join('pago', "{$r}.registro_id = {$pa}.registro_id", 'left')
             ->join($pu, "pu.person_id = {$r}.id_session", 'left', false);
         $b = $this->applySinRegistrosAnulados($b, $r);
         $b = $this->applySinRegistrosEliminados($b, $r);
-        $b->where("(SELECT COUNT(*) FROM {$rv} WHERE {$rv}.registro_id = {$r}.registro_id) > 0", null, false);
-        $rows = RegistroIngresoDateRange::apply($b, $r, $startDate, $endDate)
-            ->where("{$r}.pruebas != '' AND {$r}.pruebas IS NOT NULL")
-            ->orderBy("{$r}.ingreso", 'ASC')
-            ->get()
-            ->getResultArray();
 
-        $rows = $this->attachPruebasNombresListado($rows);
-        $rows = $this->attachCodigoRecepcionListado($rows);
-
-        return $this->attachTrazabilidadPruebasResumen($rows);
+        return RegistroIngresoDateRange::apply($b, $r, $startDate, $endDate)
+            ->where("{$r}.pruebas != '' AND {$r}.pruebas IS NOT NULL");
     }
 
     /**

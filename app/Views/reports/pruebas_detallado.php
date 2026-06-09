@@ -36,7 +36,7 @@
 
 <h4><?= esc($title ?? '') ?></h4>
 <p class="text-muted"><?= esc($subtitle ?? '') ?></p>
-<p class="small text-muted">Órdenes completas con trazabilidad de recepción y edición de resultados. Use <strong>Ver detalles</strong> para consultar quién cargó o modificó valores.</p>
+<p class="small text-muted">Todas las órdenes recepcionadas en el período (con o sin resultados cargados). Use <strong>Ver detalles</strong> para consultar quién recepcionó, cargó o editó valores.</p>
 
 <div class="table-responsive">
     <table class="table table-bordered table-striped">
@@ -46,6 +46,7 @@
                 <th>Fecha</th>
                 <th>Paciente</th>
                 <th>Usuario recepción</th>
+                <th>Estado</th>
                 <th>Primera carga</th>
                 <th>Última edición</th>
                 <th>Pruebas</th>
@@ -59,12 +60,20 @@
             $usuarioRecepcion = trim((string) ($row['usuario_recepcion'] ?? ''));
             $usuarioPrimera   = trim((string) ($row['usuario_primera_carga'] ?? ''));
             $usuarioEdicion   = trim((string) ($row['usuario_ultima_edicion'] ?? ''));
+            $tieneResultados  = (int) ($row['regvalues_cnt'] ?? 0) > 0;
             ?>
             <tr>
                 <td><strong><?= esc($codigo !== '' ? $codigo : '—') ?></strong></td>
                 <td><?= esc(lab_dt_short($row['ingreso'] ?? null)) ?></td>
                 <td><?= esc($row['paciente'] ?? '') ?></td>
                 <td><?= esc($usuarioRecepcion !== '' ? $usuarioRecepcion : '—') ?></td>
+                <td>
+                    <?php if ($tieneResultados): ?>
+                        <span class="badge bg-success">Con resultados</span>
+                    <?php else: ?>
+                        <span class="badge bg-secondary">Sin resultados</span>
+                    <?php endif; ?>
+                </td>
                 <td><?= esc($usuarioPrimera !== '' ? $usuarioPrimera : '—') ?></td>
                 <td>
                     <?php if ($usuarioEdicion !== ''): ?>
@@ -92,10 +101,53 @@
     </table>
 </div>
 
+<?php
+$totalReg = (int) ($total ?? 0);
+$pageNum  = (int) ($page ?? 1);
+$perPage  = (int) ($perPage ?? 15);
+$desde    = $totalReg > 0 ? (($pageNum - 1) * $perPage) + 1 : 0;
+$hasta    = min($pageNum * $perPage, $totalReg);
+$paginacionParams = static function (array $extra = []) use ($startDate, $endDate): string {
+    $params = array_filter([
+        'start' => $startDate ?? '',
+        'end'   => $endDate ?? '',
+    ], static fn ($v): bool => $v !== null && $v !== '');
+    foreach ($extra as $k => $v) {
+        if ($v === null || $v === '') {
+            unset($params[$k]);
+        } else {
+            $params[$k] = $v;
+        }
+    }
+
+    return http_build_query($params);
+};
+?>
 <?php if (empty($data)): ?>
-<p class="text-muted">No hay órdenes con pruebas en el período seleccionado.</p>
+<p class="text-muted">No hay órdenes recepcionadas en el período seleccionado. Verifique que el rango de fechas coincida con la fecha de ingreso de la orden.</p>
 <?php else: ?>
-<p class="text-muted small">Total: <?= count($data) ?> orden(es).</p>
+<p class="text-muted small">Mostrando <?= $desde ?>–<?= $hasta ?> de <?= $totalReg ?> orden(es). Las más recientes aparecen primero.</p>
+<?php if (($totalPages ?? 1) > 1): ?>
+<nav aria-label="Paginación del reporte" class="mt-3 d-print-none">
+    <ul class="pagination pagination-sm mb-0">
+        <?php if ($pageNum > 1): ?>
+        <li class="page-item">
+            <a class="page-link" href="<?= site_url('reports/pruebasDetallado?' . $paginacionParams(['page' => $pageNum - 1])) ?>">Anterior</a>
+        </li>
+        <?php endif; ?>
+        <?php for ($i = max(1, $pageNum - 2); $i <= min((int) ($totalPages ?? 1), $pageNum + 2); $i++): ?>
+        <li class="page-item <?= $i === $pageNum ? 'active' : '' ?>">
+            <a class="page-link" href="<?= site_url('reports/pruebasDetallado?' . $paginacionParams(['page' => $i])) ?>"><?= $i ?></a>
+        </li>
+        <?php endfor; ?>
+        <?php if ($pageNum < (int) ($totalPages ?? 1)): ?>
+        <li class="page-item">
+            <a class="page-link" href="<?= site_url('reports/pruebasDetallado?' . $paginacionParams(['page' => $pageNum + 1])) ?>">Siguiente</a>
+        </li>
+        <?php endif; ?>
+    </ul>
+</nav>
+<?php endif; ?>
 <?php endif; ?>
 
 <div class="modal fade d-print-none" id="modalPruebasDetallado" tabindex="-1" aria-labelledby="modalPruebasDetalladoLabel" aria-hidden="true">

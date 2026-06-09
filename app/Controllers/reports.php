@@ -867,9 +867,18 @@ class Reports extends SecureArea
     {
         helper('registro');
 
-        $startDate = $this->request->getGet('start') ?? RegisterService::todayForReport();
-        $endDate   = $this->request->getGet('end') ?? RegisterService::todayForReport();
-        $data      = $this->reportModel->getPruebasDetalladoPorFecha($startDate, $endDate);
+        $startDate  = $this->request->getGet('start') ?? RegisterService::todayForReport();
+        $endDate    = $this->request->getGet('end') ?? RegisterService::todayForReport();
+        $perPage    = 15;
+        $page       = max(1, (int) ($this->request->getGet('page') ?? 1));
+        $offset     = ($page - 1) * $perPage;
+        $total      = $this->reportModel->countPruebasDetalladoPorFecha($startDate, $endDate);
+        $totalPages = $total > 0 ? (int) ceil($total / $perPage) : 1;
+        if ($page > $totalPages) {
+            $page   = $totalPages;
+            $offset = ($page - 1) * $perPage;
+        }
+        $data = $this->reportModel->getPruebasDetalladoPorFecha($startDate, $endDate, $perPage, $offset);
 
         return view('reports/pruebas_detallado', [
             'title'           => 'Reporte detallado de pruebas',
@@ -878,6 +887,10 @@ class Reports extends SecureArea
             'data'            => $data,
             'startDate'       => $startDate,
             'endDate'         => $endDate,
+            'page'            => $page,
+            'totalPages'      => $totalPages,
+            'total'           => $total,
+            'perPage'         => $perPage,
             'allowed_modules' => $this->allowed_modules,
             'user_info'       => $this->user_info,
         ]);
