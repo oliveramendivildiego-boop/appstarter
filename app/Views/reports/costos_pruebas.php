@@ -9,12 +9,19 @@ $layoutCfg = layout_config();
 $currencySym = $layoutCfg['currency_symbol'] ?? '$';
 $currencySide = isset($layoutCfg['currency_side']) ? (string)$layoutCfg['currency_side'] : 'left';
 $currencyIsRight = strtolower(trim($currencySide)) === 'right';
+$tenantKey = (string) ($tenant_scope['tenant_key'] ?? '');
+$tenantDb  = (string) ($tenant_scope['database'] ?? '');
 ?>
 <div class="mb-4">
     <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
         <div>
             <h3 class="mb-1"><?= esc($title) ?></h3>
-            <p class="text-muted"><?= esc($subtitle) ?></p>
+            <p class="text-muted mb-0"><?= esc($subtitle) ?></p>
+            <?php if ($tenantKey !== ''): ?>
+            <p class="text-muted small mb-0">
+                Laboratorio: <strong><?= esc($tenantKey) ?></strong><?= $tenantDb !== '' ? ' · BD ' . esc($tenantDb) : '' ?>
+            </p>
+            <?php endif; ?>
         </div>
         <div class="d-print-none d-flex flex-wrap gap-2 align-items-center">
             <a href="<?= site_url('reports/editarCostosPruebas') ?><?= ! empty($busqueda) ? '?busqueda=' . urlencode($busqueda) : '' ?>"
@@ -33,6 +40,10 @@ $currencyIsRight = strtolower(trim($currencySide)) === 'right';
         </div>
     </div>
 </div>
+
+<?php if (session()->getFlashdata('error')): ?>
+<div class="alert alert-danger d-print-none"><?= esc(session()->getFlashdata('error')) ?></div>
+<?php endif; ?>
 
 <div class="card shadow-sm mb-4 d-print-none">
     <div class="card-header bg-primary text-white">
@@ -71,7 +82,7 @@ $currencyIsRight = strtolower(trim($currencySide)) === 'right';
             </div>
         <?php else: ?>
             <div class="table-responsive">
-                <table class="table table-hover table-striped mb-0">
+                <table class="table table-hover table-striped mb-0 table-costos-pruebas">
                     <thead class="table-dark">
                         <tr>
                             <th>Categoría</th>
@@ -82,27 +93,33 @@ $currencyIsRight = strtolower(trim($currencySide)) === 'right';
                     </thead>
                     <tbody>
                         <?php 
-                        $categoriaActual = null;
+                        $categoriaHeaderKey = null;
+                        $categoriaActualNombre = null;
                         $totalPrecio = 0;
                         $totalDerivado = 0;
                         ?>
                         <?php foreach ($data as $item): ?>
-                            <?php if ($categoriaActual !== $item['categoria']): ?>
-                                <?php if ($categoriaActual !== null): ?>
+                            <?php
+                            $catNombre = (string) ($item['categoria'] ?? '');
+                            $catHeaderKey = mb_strtolower($catNombre, 'UTF-8');
+                            ?>
+                            <?php if ($categoriaHeaderKey !== $catHeaderKey): ?>
+                                <?php if ($categoriaHeaderKey !== null): ?>
                                     <tr class="table-secondary fw-bold">
-                                        <td colspan="2" class="text-end">Subtotal <?= esc($categoriaActual) ?>:</td>
+                                        <td colspan="2" class="text-end">Subtotal <?= esc($categoriaActualNombre) ?>:</td>
                                         <td class="text-end"><?= $currencyIsRight ? (number_format($subtotalPrecio, 2) . ' ' . esc($currencySym)) : (esc($currencySym) . ' ' . number_format($subtotalPrecio, 2)) ?></td>
                                         <td class="text-end"><?= $currencyIsRight ? (number_format($subtotalDerivado, 2) . ' ' . esc($currencySym)) : (esc($currencySym) . ' ' . number_format($subtotalDerivado, 2)) ?></td>
                                     </tr>
                                 <?php endif; ?>
                                 <?php 
-                                $categoriaActual = $item['categoria'];
+                                $categoriaHeaderKey = $catHeaderKey;
+                                $categoriaActualNombre = $catNombre;
                                 $subtotalPrecio = 0;
                                 $subtotalDerivado = 0;
                                 ?>
-                                <tr class="table-info">
-                                    <td colspan="4" class="fw-bold text-primary">
-                                        <i class="fas fa-folder me-2"></i><?= esc($item['categoria']) ?>
+                                <tr class="costos-grupo-header">
+                                    <td colspan="4">
+                                        <i class="fas fa-folder me-2"></i><?= esc($catNombre) ?>
                                     </td>
                                 </tr>
                             <?php endif; ?>
@@ -127,9 +144,9 @@ $currencyIsRight = strtolower(trim($currencySide)) === 'right';
                         <?php endforeach; ?>
                         
                         <!-- Último subtotal -->
-                        <?php if ($categoriaActual !== null): ?>
+                        <?php if ($categoriaHeaderKey !== null): ?>
                             <tr class="table-secondary fw-bold">
-                                <td colspan="2" class="text-end">Subtotal <?= esc($categoriaActual) ?>:</td>
+                                <td colspan="2" class="text-end">Subtotal <?= esc($categoriaActualNombre) ?>:</td>
                                 <td class="text-end"><?= $currencyIsRight ? (number_format($subtotalPrecio, 2) . ' ' . esc($currencySym)) : (esc($currencySym) . ' ' . number_format($subtotalPrecio, 2)) ?></td>
                                 <td class="text-end"><?= $currencyIsRight ? (number_format($subtotalDerivado, 2) . ' ' . esc($currencySym)) : (esc($currencySym) . ' ' . number_format($subtotalDerivado, 2)) ?></td>
                             </tr>
@@ -154,6 +171,7 @@ $currencyIsRight = strtolower(trim($currencySide)) === 'right';
     </a>
 </div>
 
+<?= view('reports/partials/costos_pruebas_table_styles') ?>
 <style>
 @media print {
     .btn, .card-header, .breadcrumb {

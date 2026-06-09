@@ -1617,6 +1617,11 @@ class Reports extends SecureArea
     public function costosPruebas()
     {
         $busqueda = $this->request->getGet('busqueda') ?? '';
+        $scope    = $this->ensureTenantCostosScope();
+        if ($scope === null) {
+            return $this->redirectTenantCostosError($busqueda, 'reports/costosPruebas');
+        }
+
         $data = $this->reportModel->getCostosPruebas($busqueda);
 
         return view('reports/costos_pruebas', [
@@ -1625,6 +1630,7 @@ class Reports extends SecureArea
             'subtitle'        => 'Precio y precio derivado de todas las pruebas',
             'data'            => $data,
             'busqueda'        => $busqueda,
+            'tenant_scope'    => $scope,
             'allowed_modules' => $this->allowed_modules,
             'user_info'       => $this->user_info,
         ]);
@@ -1982,9 +1988,9 @@ class Reports extends SecureArea
         }
     }
 
-    private function redirectTenantCostosError(string $busqueda = ''): ResponseInterface
+    private function redirectTenantCostosError(string $busqueda = '', string $route = 'reports/editarCostosPruebas'): ResponseInterface
     {
-        $redirect = 'reports/editarCostosPruebas' . ($busqueda !== '' ? '?busqueda=' . urlencode($busqueda) : '');
+        $redirect = $route . ($busqueda !== '' ? '?busqueda=' . urlencode($busqueda) : '');
 
         return redirect()->to($redirect)->with(
             'error',
@@ -2095,6 +2101,11 @@ class Reports extends SecureArea
     public function exportCostosPruebas()
     {
         $busqueda = $this->request->getGet('busqueda') ?? '';
+        $scope    = $this->ensureTenantCostosScope();
+        if ($scope === null) {
+            return $this->response->setStatusCode(403)->setBody('No se pudo determinar el laboratorio (tenant) activo.');
+        }
+
         $data = $this->reportModel->getCostosPruebas($busqueda);
 
         $filename = 'costos_pruebas_' . lab_filename_datetime() . '.csv';
@@ -2809,6 +2820,11 @@ class Reports extends SecureArea
     public function costosPruebasPdf()
     {
         $busqueda = $this->request->getGet('busqueda') ?? '';
+        $scope    = $this->ensureTenantCostosScope();
+        if ($scope === null) {
+            return $this->response->setStatusCode(403)->setBody('No se pudo determinar el laboratorio (tenant) activo.');
+        }
+
         $data     = $this->reportModel->getCostosPruebas($busqueda);
         $sub      = $busqueda !== '' ? ('Búsqueda: ' . $busqueda) : 'Catálogo completo';
         ReportPdfDocument::download(

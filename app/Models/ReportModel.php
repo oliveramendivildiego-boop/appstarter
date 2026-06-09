@@ -199,7 +199,7 @@ class ReportModel extends Model
         $pri = $this->db->prefixTable('prianacategoria');
 
         $builder = $this->db->table('anacategoria')
-            ->select("{$ana}.name as categoria, {$pri}.name as prueba,
+            ->select("{$ana}.anacategoria_id, {$ana}.name as categoria, {$pri}.name as prueba,
                       {$pri}.prianacategoria_id,
                       {$pri}.cost as precio, {$pri}.cost_deriv as precio_derivado,
                       {$pri}.order as orden_prueba, {$ana}.order as orden_categoria")
@@ -214,11 +214,43 @@ class ReportModel extends Model
                 ->groupEnd();
         }
 
-        return $builder
+        $rows = $builder
             ->orderBy("{$ana}.order", 'ASC')
+            ->orderBy("{$ana}.anacategoria_id", 'ASC')
             ->orderBy("{$pri}.order", 'ASC')
+            ->orderBy("{$pri}.prianacategoria_id", 'ASC')
             ->get()
             ->getResultArray();
+
+        foreach ($rows as &$row) {
+            $row['anacategoria_id'] = (int) ($row['anacategoria_id'] ?? 0);
+            $row['categoria']       = trim((string) ($row['categoria'] ?? ''));
+            $row['prueba']          = trim((string) ($row['prueba'] ?? ''));
+        }
+        unset($row);
+
+        usort($rows, static function (array $a, array $b): int {
+            $cmp = ((int) ($a['orden_categoria'] ?? 0)) <=> ((int) ($b['orden_categoria'] ?? 0));
+            if ($cmp !== 0) {
+                return $cmp;
+            }
+            $cmp = strcasecmp((string) ($a['categoria'] ?? ''), (string) ($b['categoria'] ?? ''));
+            if ($cmp !== 0) {
+                return $cmp;
+            }
+            $cmp = ((int) ($a['anacategoria_id'] ?? 0)) <=> ((int) ($b['anacategoria_id'] ?? 0));
+            if ($cmp !== 0) {
+                return $cmp;
+            }
+            $cmp = ((int) ($a['orden_prueba'] ?? 0)) <=> ((int) ($b['orden_prueba'] ?? 0));
+            if ($cmp !== 0) {
+                return $cmp;
+            }
+
+            return ((int) ($a['prianacategoria_id'] ?? 0)) <=> ((int) ($b['prianacategoria_id'] ?? 0));
+        });
+
+        return $rows;
     }
 
     /**

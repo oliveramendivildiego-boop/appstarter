@@ -163,6 +163,7 @@ $tenantDb    = (string) ($tenant_scope['database'] ?? '');
         </div>
     </div>
 </div>
+<?= view('reports/partials/costos_pruebas_table_styles') ?>
 <style>
 .costos-mass-toolbar .costos-mass-input { width: 4.5rem; }
 .costos-mass-toolbar .btn-group-sm > .btn { font-size: 0.75rem; padding: 0.15rem 0.45rem; }
@@ -181,7 +182,7 @@ $tenantDb    = (string) ($tenant_scope['database'] ?? '');
     </div>
     <div class="card-body p-0">
         <div class="table-responsive" style="max-height: 70vh;">
-            <table class="table table-hover table-sm mb-0 align-middle" id="tabla_costos_edit">
+            <table class="table table-hover table-sm mb-0 align-middle table-costos-pruebas" id="tabla_costos_edit">
                 <thead class="table-dark sticky-top" style="top: 0; z-index: 1010;">
                     <tr>
                         <th style="width: 2.5rem;" class="text-center">
@@ -195,21 +196,22 @@ $tenantDb    = (string) ($tenant_scope['database'] ?? '');
                 </thead>
                 <tbody>
                     <?php
-                    $categoriaActual = null;
+                    $categoriaHeaderKey = null;
                     foreach ($data as $item):
                         $id = (int) ($item['prianacategoria_id'] ?? 0);
                         if ($id < 1) {
                             continue;
                         }
+                        $catNombre = (string) ($item['categoria'] ?? '');
+                        $catHeaderKey = mb_strtolower($catNombre, 'UTF-8');
                         $precio = (int) ($item['precio'] ?? 0);
                         $derivado = (int) ($item['precio_derivado'] ?? 0);
-                        if ($categoriaActual !== $item['categoria']):
-                            $categoriaActual = $item['categoria'];
+                        if ($categoriaHeaderKey !== $catHeaderKey):
+                            $categoriaHeaderKey = $catHeaderKey;
                             ?>
-                    <tr class="table-info">
-                        <td></td>
-                        <td colspan="4" class="fw-bold text-primary py-2">
-                            <i class="fas fa-folder me-2"></i><?= esc($item['categoria']) ?>
+                    <tr class="costos-grupo-header">
+                        <td colspan="5" class="py-2">
+                            <i class="fas fa-folder me-2"></i><?= esc($catNombre) ?>
                         </td>
                     </tr>
                         <?php endif; ?>
@@ -217,7 +219,7 @@ $tenantDb    = (string) ($tenant_scope['database'] ?? '');
                         <td class="text-center">
                             <input type="checkbox" class="form-check-input row-check" value="<?= $id ?>">
                         </td>
-                        <td class="text-muted small"><?= esc($item['categoria']) ?></td>
+                        <td></td>
                         <td><?= esc($item['prueba']) ?></td>
                         <td>
                             <input type="number" name="precio[<?= $id ?>]" class="form-control form-control-sm text-end input-precio"

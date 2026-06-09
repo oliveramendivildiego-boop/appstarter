@@ -17,28 +17,34 @@ $data            = $data ?? [];
     </thead>
     <tbody>
         <?php
-        $categoriaActual = null;
+        $categoriaHeaderKey = null;
+        $categoriaActualNombre = null;
         $totalPrecio     = 0.0;
         $totalDerivado   = 0.0;
         $subtotalPrecio  = 0.0;
         $subtotalDerivado = 0.0;
         ?>
         <?php foreach ($data as $item): ?>
-            <?php if ($categoriaActual !== $item['categoria']): ?>
-                <?php if ($categoriaActual !== null): ?>
+            <?php
+            $catNombre = (string) ($item['categoria'] ?? '');
+            $catHeaderKey = mb_strtolower($catNombre, 'UTF-8');
+            ?>
+            <?php if ($categoriaHeaderKey !== $catHeaderKey): ?>
+                <?php if ($categoriaHeaderKey !== null): ?>
                     <tr>
-                        <td colspan="2" class="text-end"><strong>Subtotal <?= esc($categoriaActual) ?></strong></td>
+                        <td colspan="2" class="text-end"><strong>Subtotal <?= esc($categoriaActualNombre) ?></strong></td>
                         <td class="text-end"><?= $currencyIsRight ? (number_format($subtotalPrecio, 2) . ' ' . esc($currencySym)) : (esc($currencySym) . ' ' . number_format($subtotalPrecio, 2)) ?></td>
                         <td class="text-end"><?= $currencyIsRight ? (number_format($subtotalDerivado, 2) . ' ' . esc($currencySym)) : (esc($currencySym) . ' ' . number_format($subtotalDerivado, 2)) ?></td>
                     </tr>
                 <?php endif; ?>
                 <?php
-                $categoriaActual  = $item['categoria'];
+                $categoriaHeaderKey = $catHeaderKey;
+                $categoriaActualNombre = $catNombre;
                 $subtotalPrecio   = 0.0;
                 $subtotalDerivado = 0.0;
                 ?>
                 <tr>
-                    <td colspan="4"><strong><?= esc($item['categoria']) ?></strong></td>
+                    <td colspan="4"><strong><?= esc($catNombre) ?></strong></td>
                 </tr>
             <?php endif; ?>
             <?php
@@ -56,9 +62,9 @@ $data            = $data ?? [];
                 <td class="text-end"><?= $currencyIsRight ? (number_format($derivado, 2) . ' ' . esc($currencySym)) : (esc($currencySym) . ' ' . number_format($derivado, 2)) ?></td>
             </tr>
         <?php endforeach; ?>
-        <?php if ($categoriaActual !== null): ?>
+        <?php if ($categoriaHeaderKey !== null): ?>
             <tr>
-                <td colspan="2" class="text-end"><strong>Subtotal <?= esc($categoriaActual) ?></strong></td>
+                <td colspan="2" class="text-end"><strong>Subtotal <?= esc($categoriaActualNombre) ?></strong></td>
                 <td class="text-end"><?= $currencyIsRight ? (number_format($subtotalPrecio, 2) . ' ' . esc($currencySym)) : (esc($currencySym) . ' ' . number_format($subtotalPrecio, 2)) ?></td>
                 <td class="text-end"><?= $currencyIsRight ? (number_format($subtotalDerivado, 2) . ' ' . esc($currencySym)) : (esc($currencySym) . ' ' . number_format($subtotalDerivado, 2)) ?></td>
             </tr>
