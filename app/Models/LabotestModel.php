@@ -54,7 +54,8 @@ class LabotestModel extends Model
             ->where("({$ana}.deleted = 0 OR {$ana}.deleted IS NULL)")
             ->orderBy("{$ana}.order", 'ASC')
             ->orderBy("{$ana}.anacategoria_id", 'ASC')
-            ->orderBy("{$pri}.order", 'ASC');
+            ->orderBy("{$pri}.order", 'ASC')
+            ->orderBy("{$pri}.prianacategoria_id", 'ASC');
 
         if ($this->hasColumn('prianacategoria', 'tipo_muestra_id')) {
             $builder->join('tipo_muestra tm', "{$pri}.tipo_muestra_id = tm.tipo_muestra_id", 'left');
@@ -97,6 +98,7 @@ class LabotestModel extends Model
                 $grouped[$catId]['items'][] = [
                     'id'             => $row->prianacategoria_id,
                     'name'           => $row->pria_nombre,
+                    'order'          => (int) ($row->pria_order ?? 0),
                     'cost'           => $row->cost,
                     'cost_deriv'     => $row->cost_deriv,
                     'compleja'       => $row->compleja,
@@ -105,6 +107,18 @@ class LabotestModel extends Model
                 ];
             }
         }
+
+        foreach ($grouped as &$category) {
+            usort($category['items'], static function (array $a, array $b): int {
+                $orderCmp = ((int) ($a['order'] ?? 0)) <=> ((int) ($b['order'] ?? 0));
+                if ($orderCmp !== 0) {
+                    return $orderCmp;
+                }
+
+                return ((int) ($a['id'] ?? 0)) <=> ((int) ($b['id'] ?? 0));
+            });
+        }
+        unset($category);
 
         $out = array_values($grouped);
         usort($out, static function (array $a, array $b): int {
@@ -1108,7 +1122,8 @@ class LabotestModel extends Model
             ->where("({$ana}.deleted = 0 OR {$ana}.deleted IS NULL)")
             ->orderBy("{$ana}.order", 'ASC')
             ->orderBy("{$ana}.anacategoria_id", 'ASC')
-            ->orderBy("{$pri}.order", 'ASC');
+            ->orderBy("{$pri}.order", 'ASC')
+            ->orderBy("{$pri}.prianacategoria_id", 'ASC');
 
         if ($search !== null && trim($search) !== '') {
             $esc = $this->db->escapeLikeString(trim($search));
@@ -2205,9 +2220,20 @@ class LabotestModel extends Model
         if (!$anacategoriaId) {
             return false;
         }
+        $order = (int) ($data['order'] ?? 0);
+        $isUpdate = $id && $this->existsSub((int) $id);
+        if (! $isUpdate && $order === 0) {
+            $maxOrder = $this->db->table('prianacategoria')
+                ->where('anacategoria_id', $anacategoriaId)
+                ->where('(deleted = 0 OR deleted IS NULL)')
+                ->selectMax('order', 'max_order')
+                ->get()
+                ->getRowArray();
+            $order = 1 + (int) ($maxOrder['max_order'] ?? 0);
+        }
         $save = [
             'name'           => $data['name'] ?? '',
-            'order'          => (int) ($data['order'] ?? 0),
+            'order'          => $order,
             'anacategoria_id'=> $anacategoriaId,
             'compleja'       => (int) ($data['compleja'] ?? 0),
             'deleted'        => 0,
@@ -2223,7 +2249,7 @@ class LabotestModel extends Model
             $mid = (int) ($data['metodo_id'] ?? 0);
             $save['metodo_id'] = $mid > 0 ? $mid : null;
         }
-        if ($id && $this->existsSub((int) $id)) {
+        if ($isUpdate) {
             if (isset($data['cost'])) {
                 $save['cost']      = (int) ($data['cost'] ?? 0);
                 $save['cost_deriv']= (int) ($data['cost_deriv'] ?? 0);
@@ -2473,7 +2499,7 @@ class LabotestModel extends Model
                 continue;
             }
 
-            foreach ($children as $order => $childId) {
+            foreach ($children as $position => $childId) {
                 if (! isset($validChildLookup[$childId])) {
                     continue;
                 }
@@ -2482,7 +2508,7 @@ class LabotestModel extends Model
                     ->where('prianacategoria_id', $childId)
                     ->update([
                         'anacategoria_id' => (int) $parentId,
-                        'order' => (int) $order,
+                        'order' => $position + 1,
                     ]);
             }
         }
@@ -2511,14 +2537,66 @@ class LabotestModel extends Model
                 }
             }
 
-            foreach (array_merge($desired, $remaining) as $order => $childId) {
+            foreach (array_merge($desired, $remaining) as $position => $childId) {
                 $this->db->table('prianacategoria')
                     ->where('prianacategoria_id', $childId)
                     ->update([
                         'anacategoria_id' => (int) $parentId,
-                        'order' => (int) $order,
+                        'order' => $position + 1,
                     ]);
             }
+        }
+        $this->db->transComplete();
+
+        return $this->db->transStatus();
+    }
+
+    /**
+     * Ordena alfabéticamente los análisis de un grupo y asigna orden secuencial 1..n.
+     */
+    public function sortAnalysesAlphabeticallyInCategory(int $parentId): bool
+    {
+        if ($parentId < 1) {
+            return false;
+        }
+
+        $parent = $this->db->table('anacategoria')
+            ->select('anacategoria_id')
+            ->where('anacategoria_id', $parentId)
+            ->where('(deleted = 0 OR deleted IS NULL)')
+            ->get()
+            ->getRowArray();
+        if (! $parent) {
+            return false;
+        }
+
+        $rows = $this->db->table('prianacategoria')
+            ->select('prianacategoria_id, name')
+            ->where('anacategoria_id', $parentId)
+            ->where('(deleted = 0 OR deleted IS NULL)')
+            ->get()
+            ->getResultArray();
+        if ($rows === []) {
+            return true;
+        }
+
+        usort($rows, static function (array $a, array $b): int {
+            $nameCmp = strcasecmp(
+                trim((string) ($a['name'] ?? '')),
+                trim((string) ($b['name'] ?? ''))
+            );
+            if ($nameCmp !== 0) {
+                return $nameCmp;
+            }
+
+            return ((int) ($a['prianacategoria_id'] ?? 0)) <=> ((int) ($b['prianacategoria_id'] ?? 0));
+        });
+
+        $this->db->transStart();
+        foreach ($rows as $position => $row) {
+            $this->db->table('prianacategoria')
+                ->where('prianacategoria_id', (int) ($row['prianacategoria_id'] ?? 0))
+                ->update(['order' => $position + 1]);
         }
         $this->db->transComplete();
 

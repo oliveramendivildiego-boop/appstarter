@@ -99,6 +99,15 @@ $labRight = '<a href="' . site_url('labotests/perfiles') . '" class="btn btn-out
                         <a href="<?= site_url('labotests/subview/' . $cat['id']) ?>" class="btn btn-light" title="<?= lang('Labotests.labotests_new_analysis') ?>">
                             <i class="fa-solid fa-plus"></i>
                         </a>
+                        <?php if (! empty($cat['items'])): ?>
+                        <button type="button"
+                            class="btn btn-outline-light btn-sort-analysis-alpha"
+                            title="Ordenar análisis alfabéticamente"
+                            data-category-id="<?= (int) $cat['id'] ?>"
+                            data-category-name="<?= esc($cat['name'], 'attr') ?>">
+                            <i class="fa-solid fa-arrow-down-a-z"></i>
+                        </button>
+                        <?php endif; ?>
                         <a href="<?= site_url('labotests/deletecategory/' . $cat['id']) ?>" class="btn btn-outline-light" title="Eliminar categoría y todos sus análisis" onclick="return uiConfirmLink(this, '¿Eliminar la categoría y todos sus análisis con configuraciones? Esta acción no se puede deshacer.');">
                             <i class="fa-solid fa-trash"></i>
                         </a>
@@ -308,8 +317,8 @@ document.addEventListener('DOMContentLoaded', function() {
     status.className = 'small text-muted mt-2';
     status.id = 'labotests-sort-status';
     status.textContent = reorderList
-        ? 'Puedes arrastrar un analisis para cambiarlo de grupo o reordenarlo. Usa "Ordenar grupos" para ver y mover todos los grupos.'
-        : 'Puedes arrastrar un analisis para cambiarlo de grupo o reordenarlo.';
+        ? 'Puedes arrastrar un analisis para cambiarlo de grupo o reordenarlo manualmente. Usa el boton A-Z en cada grupo para orden alfabetico, o "Ordenar grupos" para mover los grupos.'
+        : 'Puedes arrastrar un analisis para cambiarlo de grupo o reordenarlo manualmente. Usa el boton A-Z en cada grupo para orden alfabetico.';
     var wrapper = document.querySelector('.py-3 .d-flex');
     if (wrapper && wrapper.parentNode) {
         wrapper.parentNode.insertBefore(status, wrapper.nextSibling);
@@ -520,6 +529,54 @@ document.addEventListener('DOMContentLoaded', function() {
             ghostClass: 'labotests-sortable-ghost',
             onStart: removeEmptyItems,
             onEnd: savePlacement
+        });
+    });
+
+    document.querySelectorAll('.btn-sort-analysis-alpha').forEach(function(button) {
+        button.addEventListener('click', function() {
+            var categoryId = parseInt(button.getAttribute('data-category-id') || '0', 10);
+            var categoryName = button.getAttribute('data-category-name') || 'este grupo';
+            if (categoryId < 1) {
+                return;
+            }
+            if (!window.confirm('¿Ordenar alfabéticamente los análisis de "' + categoryName + '"? Se reemplazará el orden manual (arrastrar y soltar).')) {
+                return;
+            }
+
+            button.disabled = true;
+            setStatus('Ordenando análisis alfabéticamente...', 'text-muted');
+
+            var csrf = getCsrfData();
+            var fd = new FormData();
+            fd.append('category_id', String(categoryId));
+            if (csrf.value) {
+                fd.append(csrf.name, csrf.value);
+            }
+
+            fetch('<?= site_url('labotests/sortanalysisalphabetic') ?>', {
+                method: 'POST',
+                headers: buildFetchHeaders(csrf),
+                body: fd
+            })
+                .then(function(response) {
+                    return response.json().then(function(data) {
+                        return { ok: response.ok, data: data };
+                    });
+                })
+                .then(function(result) {
+                    applyCsrfData(result.data);
+                    if (!result.ok || !result.data || !result.data.success) {
+                        throw new Error((result.data && result.data.message) || 'No se pudo ordenar');
+                    }
+                    setStatus('Análisis ordenados alfabéticamente. Recargando...', 'text-success');
+                    window.setTimeout(function() {
+                        window.location.reload();
+                    }, 600);
+                })
+                .catch(function(error) {
+                    button.disabled = false;
+                    setStatus(error.message, 'text-danger');
+                });
         });
     });
 

@@ -697,6 +697,46 @@ class Labotests extends SecureArea
     }
 
     /**
+     * Ordena alfabéticamente los análisis de un grupo.
+     */
+    public function sortAnalysisAlphabetic(): ResponseInterface
+    {
+        $categoryId = (int) ($this->request->getPost('category_id') ?? 0);
+        if ($categoryId < 1) {
+            return $this->response->setJSON([
+                'success' => false,
+                'message' => 'Grupo inválido',
+                'csrf_token' => csrf_hash(),
+                'csrf_name' => csrf_token(),
+            ])->setStatusCode(400);
+        }
+
+        $saved = $this->labotestModel->sortAnalysesAlphabeticallyInCategory($categoryId);
+        if (! $saved) {
+            return $this->response->setJSON([
+                'success' => false,
+                'message' => 'No se pudo ordenar los análisis',
+                'csrf_token' => csrf_hash(),
+                'csrf_name' => csrf_token(),
+            ])->setStatusCode(400);
+        }
+
+        \App\Models\AuditoriaModel::log(
+            'labotests',
+            'ordenar_analisis_alfabetico',
+            (string) $categoryId,
+            \App\Models\AuditoriaModel::detail(['grupo_id' => $categoryId])
+        );
+
+        return $this->response->setJSON([
+            'success' => true,
+            'message' => 'Análisis ordenados alfabéticamente',
+            'csrf_token' => csrf_hash(),
+            'csrf_name' => csrf_token(),
+        ]);
+    }
+
+    /**
      * Duplica una prueba completa hacia otra categoría padre.
      */
     public function duplicateAnalysisToParent()

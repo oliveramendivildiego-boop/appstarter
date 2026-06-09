@@ -2,7 +2,7 @@ function checkbox_click(event)
 {
 	event.stopPropagation();
 	do_email(enable_email.url);
-	if($(event.target).attr('checked'))
+	if($(event.target).prop('checked'))
 	{
 		$(event.target).parent().parent().find("td").addClass('selected').css("backgroundColor","");		
 	}
@@ -74,7 +74,7 @@ function do_search(show_feedback,on_complete)
 		update_sortable_table();	
 		enable_row_selection();		
 		$('#sortable_table tbody :checkbox').click(checkbox_click);
-		$("#select_all").attr('checked',false);
+		$("#select_all").prop('checked', false);
 	});
 }
 
@@ -216,11 +216,11 @@ function enable_select_all()
 
 	$('#select_all').click(function()
 	{
-		if($(this).attr('checked'))
+		if($(this).prop('checked'))
 		{	
 			$("#sortable_table tbody :checkbox").each(function()
 			{
-				$(this).attr('checked',true);
+				$(this).prop('checked', true);
 				$(this).parent().parent().find("td").addClass('selected').css("backgroundColor","");
 
 			});
@@ -229,7 +229,7 @@ function enable_select_all()
 		{
 			$("#sortable_table tbody :checkbox").each(function()
 			{
-				$(this).attr('checked',false);
+				$(this).prop('checked', false);
 				$(this).parent().parent().find("td").removeClass();				
 			});    	
 		}
@@ -266,10 +266,10 @@ function enable_row_selection(rows)
 	{	
 
 		var checkbox = $(this).find(":checkbox");
-		checkbox.attr('checked',!checkbox.attr('checked'));
+		checkbox.prop('checked', !checkbox.prop('checked'));
 		do_email(enable_email.url);
 		
-		if(checkbox.attr('checked'))
+		if(checkbox.prop('checked'))
 		{
 			$(this).find("td").addClass('selected').css("backgroundColor","");
 		}

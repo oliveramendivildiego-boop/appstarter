@@ -247,6 +247,7 @@ $routes->post('labotests/savesecitem', 'Labotests::savesecitem');
 $routes->post('labotests/savecultivomatriz', 'Labotests::saveCultivoMatriz');
 $routes->post('labotests/orderSecItems', 'Labotests::orderSecItems');
 $routes->post('labotests/reorderanalysis', 'Labotests::reorderAnalysis');
+$routes->post('labotests/sortanalysisalphabetic', 'Labotests::sortAnalysisAlphabetic');
 $routes->post('labotests/reordercategories', 'Labotests::reorderCategories');
 $routes->get('labotests/duplicados', 'Labotests::duplicateAnalysesReport');
 $routes->post('labotests/transformnames', 'Labotests::transformNames');
