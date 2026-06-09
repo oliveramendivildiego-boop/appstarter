@@ -72,6 +72,7 @@ class Labotests extends SecureArea
 
         return view('labotests/manage', [
             'categories'       => $result['categories'],
+            'all_categories'   => $search === null ? $this->labotestModel->getCategoriesForReorder() : [],
             'total'            => $result['total'],
             'page'             => $result['page'],
             'total_pages'      => $result['total_pages'],
@@ -543,6 +544,50 @@ class Labotests extends SecureArea
             $json['csrf_name'] = csrf_token();
         }
         return $this->response->setJSON($json);
+    }
+
+    /**
+     * Reordena las categorías (grupos) con la lista completa enviada desde el modal.
+     */
+    public function reorderCategories(): ResponseInterface
+    {
+        $orderedIds = $this->request->getPost('ordered_ids');
+        if (! is_array($orderedIds)) {
+            $orderedIds = is_string($orderedIds) ? json_decode($orderedIds, true) : [];
+        }
+
+        if (! is_array($orderedIds) || $orderedIds === []) {
+            return $this->response->setJSON([
+                'success' => false,
+                'message' => 'No se recibio el orden de los grupos',
+                'csrf_token' => csrf_hash(),
+                'csrf_name' => csrf_token(),
+            ])->setStatusCode(400);
+        }
+
+        $saved = $this->labotestModel->updateAllCategoryOrder($orderedIds);
+        if (! $saved) {
+            return $this->response->setJSON([
+                'success' => false,
+                'message' => 'No se pudo guardar el orden de los grupos',
+                'csrf_token' => csrf_hash(),
+                'csrf_name' => csrf_token(),
+            ])->setStatusCode(400);
+        }
+
+        \App\Models\AuditoriaModel::log(
+            'labotests',
+            'reordenar_grupos',
+            '',
+            \App\Models\AuditoriaModel::detail(['grupos' => count($orderedIds)])
+        );
+
+        return $this->response->setJSON([
+            'success' => true,
+            'message' => 'Orden de grupos guardado',
+            'csrf_token' => csrf_hash(),
+            'csrf_name' => csrf_token(),
+        ]);
     }
 
     /**

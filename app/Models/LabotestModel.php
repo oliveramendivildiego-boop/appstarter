@@ -2302,6 +2302,100 @@ class LabotestModel extends Model
     }
 
     /**
+     * Lista ligera de categorías activas para reordenar en modal.
+     *
+     * @return list<array{id:int, name:string, items_count:int}>
+     */
+    public function getCategoriesForReorder(): array
+    {
+        $rows = $this->db->table('anacategoria')
+            ->select('anacategoria_id, name')
+            ->where('(deleted = 0 OR deleted IS NULL)')
+            ->orderBy('order', 'ASC')
+            ->orderBy('anacategoria_id', 'ASC')
+            ->get()
+            ->getResultArray();
+
+        if ($rows === []) {
+            return [];
+        }
+
+        $counts = [];
+        $countRows = $this->db->table('prianacategoria')
+            ->select('anacategoria_id, COUNT(*) as total', false)
+            ->where('(deleted = 0 OR deleted IS NULL)')
+            ->groupBy('anacategoria_id')
+            ->get()
+            ->getResultArray();
+        foreach ($countRows as $row) {
+            $counts[(int) ($row['anacategoria_id'] ?? 0)] = (int) ($row['total'] ?? 0);
+        }
+
+        $out = [];
+        foreach ($rows as $row) {
+            $id = (int) ($row['anacategoria_id'] ?? 0);
+            if ($id < 1) {
+                continue;
+            }
+            $out[] = [
+                'id'           => $id,
+                'name'         => (string) ($row['name'] ?? ''),
+                'items_count'  => $counts[$id] ?? 0,
+            ];
+        }
+
+        return $out;
+    }
+
+    /**
+     * Reordena todas las categorías activas según la lista completa recibida.
+     *
+     * @param list<int> $orderedIds
+     */
+    public function updateAllCategoryOrder(array $orderedIds): bool
+    {
+        $orderedIds = array_values(array_unique(array_filter(array_map('intval', $orderedIds))));
+        if ($orderedIds === []) {
+            return false;
+        }
+
+        $allRows = $this->db->table('anacategoria')
+            ->select('anacategoria_id')
+            ->where('(deleted = 0 OR deleted IS NULL)')
+            ->orderBy('order', 'ASC')
+            ->orderBy('anacategoria_id', 'ASC')
+            ->get()
+            ->getResultArray();
+
+        $allIds = array_values(array_filter(array_map(
+            static fn(array $row): int => (int) ($row['anacategoria_id'] ?? 0),
+            $allRows
+        ), static fn(int $id): bool => $id > 0));
+
+        if ($allIds === []) {
+            return false;
+        }
+
+        $expected = $allIds;
+        sort($expected);
+        $received = $orderedIds;
+        sort($received);
+        if ($expected !== $received) {
+            return false;
+        }
+
+        $this->db->transStart();
+        foreach ($orderedIds as $order => $id) {
+            $this->db->table('anacategoria')
+                ->where('anacategoria_id', $id)
+                ->update(['order' => (int) $order]);
+        }
+        $this->db->transComplete();
+
+        return $this->db->transStatus();
+    }
+
+    /**
      * Reubica análisis entre categorías y actualiza únicamente su orden dentro de cada padre.
      *
      * @param array<int, array{parent_id:int, children:array<int,int>}> $groups

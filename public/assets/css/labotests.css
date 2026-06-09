@@ -1,6 +1,25 @@
 /**
  * Módulo Labotests - form_detail, sub-clases, fórmulas
  */
+.labotests-groups-row > [class*="col-"] {
+    min-width: 0;
+}
+.labotests-group-card {
+    min-width: 0;
+    overflow: hidden;
+}
+.labotests-group-card > .card-header {
+    min-width: 0;
+}
+.labotests-group-card > .card-header > .btn-group {
+    flex-shrink: 0;
+}
+.labotests-analysis-body,
+.labotests-analysis-list {
+    min-width: 0;
+    max-width: 100%;
+    overflow: hidden;
+}
 .labotests-analysis-list {
     min-height: 3rem;
 }
@@ -9,12 +28,46 @@
     color: #6c757d;
     line-height: 1;
     user-select: none;
+    flex-shrink: 0;
 }
 .labotests-analysis-drag:active {
     cursor: grabbing;
 }
 .labotests-analysis-item {
+    min-width: 0;
+    max-width: 100%;
+    overflow: hidden;
+}
+.labotests-analysis-item__row {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center;
     gap: 0.75rem;
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+}
+.labotests-analysis-item__label {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    min-width: 0;
+    overflow: hidden;
+}
+.labotests-analysis-item__name {
+    flex: 1 1 0%;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+.labotests-analysis-item__actions {
+    flex-shrink: 0;
+    justify-self: end;
+}
+.labotests-analysis-item__actions > .btn {
+    padding-left: 0.35rem;
+    padding-right: 0.35rem;
 }
 .labotests-analysis-item.sortable-chosen {
     background: #f8fbff;
@@ -25,6 +78,30 @@
 }
 .labotests-empty-item {
     pointer-events: none;
+}
+.labotests-reorder-groups-list {
+    max-height: min(70vh, 520px);
+    overflow-y: auto;
+}
+.labotests-reorder-group-drag {
+    cursor: grab;
+    color: #6c757d;
+    line-height: 1;
+    user-select: none;
+    flex-shrink: 0;
+}
+.labotests-reorder-group-drag:active {
+    cursor: grabbing;
+}
+.labotests-reorder-group-item {
+    gap: 0.75rem;
+}
+.labotests-reorder-group-ghost {
+    opacity: 0.45;
+    background: #e7f1ff;
+}
+.labotests-reorder-group-chosen {
+    background: #f8fbff;
 }
 #tabla_sub_items .sec-drag-handle {
     cursor: grab;
