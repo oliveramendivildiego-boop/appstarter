@@ -212,9 +212,12 @@ class LayoutService
             'ui_font_family', 'ui_font_size_base', 'ui_font_size_main', 'ui_font_size_header', 'ui_font_size_sidebar',
             'ui_font_size_footer', 'ui_font_size_heading', 'ui_font_size_base_mobile',
             'ui_sidebar_position', 'ui_body_text_color', 'ui_sidebar_bg', 'ui_sidebar_link_color',
-            'ui_sidebar_hover_bg', 'ui_sidebar_active_bg', 'ui_header_bg', 'ui_header_text_color', 'ui_header_datetime_color', 'ui_header_datetime_format', 'ui_main_bg',
+            'ui_sidebar_hover_bg', 'ui_sidebar_active_bg',
+            'ui_navbar_text_color', 'ui_navbar_text_weight', 'ui_navbar_text_style',
+            'ui_breadcrumb_bg', 'ui_breadcrumb_text_color', 'ui_breadcrumb_text_weight', 'ui_breadcrumb_text_style',
+            'ui_header_bg', 'ui_header_text_color', 'ui_header_text_weight', 'ui_header_text_style',
+            'ui_header_datetime_color', 'ui_header_datetime_format', 'ui_main_bg',
             'ui_footer_bg', 'ui_footer_text_color', 'ui_footer_text_align', 'ui_card_radius', 'ui_link_color',
-            'ui_header_text_weight', 'ui_header_text_style',
             'ui_sidebar_link_weight', 'ui_sidebar_link_style',
             'ui_body_text_weight', 'ui_body_text_style',
             'ui_link_weight', 'ui_link_style',
@@ -223,7 +226,7 @@ class LayoutService
             'ui_btn_primary_bg', 'ui_btn_primary_text', 'ui_btn_primary_hover_bg',
             'ui_btn_border_width', 'ui_btn_border_color', 'ui_btn_border_sides', 'ui_btn_shadow',
             'ui_card_border_width', 'ui_card_border_color', 'ui_card_border_sides', 'ui_card_shadow',
-            'ui_labotests_card_header_title_color', 'ui_labotests_card_header_title_weight', 'ui_labotests_card_header_title_style',
+            'ui_labotests_card_header_bg', 'ui_labotests_card_header_title_color', 'ui_labotests_card_header_title_weight', 'ui_labotests_card_header_title_style',
             'ui_pagination_link_color', 'ui_pagination_link_weight', 'ui_pagination_link_style',
             'ui_pagination_active_bg', 'ui_pagination_active_color',
         ]);
@@ -268,27 +271,39 @@ class LayoutService
         $sidebarHoverBg = $this->normalizeHex($keys['ui_sidebar_hover_bg'] ?? '');
         $sidebarActiveBg = $this->normalizeHex($keys['ui_sidebar_active_bg'] ?? '');
 
-        $headerBgRaw = trim((string) ($keys['ui_header_bg'] ?? ''));
-        if (strtolower($headerBgRaw) === 'transparent') {
-            $headerBg = 'transparent';
-        } elseif ($headerBgRaw === '') {
-            $headerBg = $themeColor;
+        // Encabezado fijo (<header class="navbar-theme">): degradado del tema (Marca y degradado).
+        $navbarBg      = $themeColor;
+        $navbarBgImage = 'linear-gradient(135deg,' . $themeColor . ',' . $gradientEnd . ')';
+        $navbarText    = $this->normalizeHex($keys['ui_navbar_text_color'] ?? $keys['ui_header_text_color'] ?? '') ?? '#ffffff';
+        $navbarFontW   = self::normalizeUiFontWeight((string) ($keys['ui_navbar_text_weight'] ?? $keys['ui_header_text_weight'] ?? ''), '500');
+        $navbarFontS   = self::normalizeUiFontStyle((string) ($keys['ui_navbar_text_style'] ?? $keys['ui_header_text_style'] ?? ''), 'normal');
+
+        // Barra de migas (<nav class="breadcrumb-nav-theme">): Config → Barra superior.
+        $breadcrumbBgRaw = trim((string) ($keys['ui_breadcrumb_bg'] ?? $keys['ui_header_bg'] ?? ''));
+        if (strtolower($breadcrumbBgRaw) === 'transparent') {
+            $breadcrumbBg      = 'transparent';
+            $breadcrumbBgImage = 'none';
+        } elseif ($breadcrumbBgRaw === '') {
+            $breadcrumbBg      = $themeColor;
+            $breadcrumbBgImage = 'linear-gradient(135deg,' . $themeColor . ',' . $gradientEnd . ')';
         } else {
-            $headerBg = $this->normalizeHex($headerBgRaw) ?? $themeColor;
+            $breadcrumbBg      = $this->normalizeHex($breadcrumbBgRaw) ?? $themeColor;
+            $breadcrumbBgImage = 'none';
         }
-        $headerText = $this->normalizeHex($keys['ui_header_text_color'] ?? '') ?? '#ffffff';
+        $breadcrumbText  = $this->normalizeHex($keys['ui_breadcrumb_text_color'] ?? $keys['ui_header_text_color'] ?? '') ?? '#ffffff';
+        $breadcrumbFontW = self::normalizeUiFontWeight((string) ($keys['ui_breadcrumb_text_weight'] ?? $keys['ui_header_text_weight'] ?? ''), '500');
+        $breadcrumbFontS = self::normalizeUiFontStyle((string) ($keys['ui_breadcrumb_text_style'] ?? $keys['ui_header_text_style'] ?? ''), 'normal');
+
         $headerDatetimeStored = $this->normalizeHex($keys['ui_header_datetime_color'] ?? '');
         $headerDatetimeColor = ($headerDatetimeStored !== null && $headerDatetimeStored !== '')
             ? $headerDatetimeStored
-            : $headerText;
+            : $navbarText;
 
         $mainBg = $this->resolveUiBackground($keys['ui_main_bg'] ?? null, '#ffffff');
         $footerBg = $this->resolveUiBackground($keys['ui_footer_bg'] ?? null, '#f8f9fa');
         $footerText = $this->normalizeHex($keys['ui_footer_text_color'] ?? '') ?? '#6c757d';
         $linkColor = $this->normalizeHex($keys['ui_link_color'] ?? '');
 
-        $headerFontW    = self::normalizeUiFontWeight((string) ($keys['ui_header_text_weight'] ?? ''), '500');
-        $headerFontS    = self::normalizeUiFontStyle((string) ($keys['ui_header_text_style'] ?? ''), 'normal');
         $sidebarLinkW = self::normalizeUiFontWeight((string) ($keys['ui_sidebar_link_weight'] ?? ''), '500');
         $sidebarLinkS = self::normalizeUiFontStyle((string) ($keys['ui_sidebar_link_style'] ?? ''), 'normal');
         $bodyFontW      = self::normalizeUiFontWeight((string) ($keys['ui_body_text_weight'] ?? ''), '400');
@@ -380,9 +395,11 @@ class LayoutService
             $fontSizeCss .= '--ui-font-size-base-mobile:' . $fsBaseMobile . 'rem;';
         }
         $typoExtra = sprintf(
-            '--ui-header-font-weight:%s;--ui-header-font-style:%s;--ui-sidebar-link-font-weight:%s;--ui-sidebar-link-font-style:%s;--ui-body-font-weight:%s;--ui-body-font-style:%s;--ui-link-font-weight:%s;--ui-link-font-style:%s;--ui-footer-font-weight:%s;--ui-footer-font-style:%s;--ui-btn-font-weight:%s;--ui-btn-font-style:%s;',
-            $headerFontW,
-            $headerFontS,
+            '--ui-navbar-font-weight:%s;--ui-navbar-font-style:%s;--ui-breadcrumb-font-weight:%s;--ui-breadcrumb-font-style:%s;--ui-sidebar-link-font-weight:%s;--ui-sidebar-link-font-style:%s;--ui-body-font-weight:%s;--ui-body-font-style:%s;--ui-link-font-weight:%s;--ui-link-font-style:%s;--ui-footer-font-weight:%s;--ui-footer-font-style:%s;--ui-btn-font-weight:%s;--ui-btn-font-style:%s;',
+            $navbarFontW,
+            $navbarFontS,
+            $breadcrumbFontW,
+            $breadcrumbFontS,
             $sidebarLinkW,
             $sidebarLinkS,
             $bodyFontW,
@@ -394,6 +411,18 @@ class LayoutService
             $btnFontW,
             $btnFontS
         );
+
+        $labotestsCardBgRaw = trim((string) ($keys['ui_labotests_card_header_bg'] ?? ''));
+        if (strtolower($labotestsCardBgRaw) === 'transparent') {
+            $labotestsCardBg      = 'transparent';
+            $labotestsCardBgImage = 'none';
+        } elseif ($labotestsCardBgRaw === '') {
+            $labotestsCardBg      = $themeColor;
+            $labotestsCardBgImage = 'linear-gradient(135deg,' . $themeColor . ',' . $gradientEnd . ')';
+        } else {
+            $labotestsCardBg      = $this->normalizeHex($labotestsCardBgRaw) ?? $themeColor;
+            $labotestsCardBgImage = 'none';
+        }
 
         $labotestsCardTitle = $this->normalizeHex($keys['ui_labotests_card_header_title_color'] ?? '') ?? '#ffffff';
         $labotestsCardTitleW = self::normalizeUiFontWeight((string) ($keys['ui_labotests_card_header_title_weight'] ?? ''), '600');
@@ -408,15 +437,21 @@ class LayoutService
         $uiInlineStyle = '--theme-gradient-end:' . $gradientEnd . ';--ui-font-family:' . $fontPreset['family'] . ';' . $fontSizeCss
             . '--ui-footer-justify:' . $footerJustify . ';'
             . sprintf(
-                '--ui-body-color:%s;--ui-sidebar-bg:%s;--ui-sidebar-link:%s;--ui-sidebar-hover-bg:%s;--ui-sidebar-active-bg:%s;--ui-header-bg:%s;--ui-header-text:%s;--ui-header-datetime-color:%s;--ui-main-bg:%s;--ui-footer-bg:%s;--ui-footer-text:%s;--ui-card-radius:%dpx;%s%s%s%s--ui-labotests-card-header-title:%s;',
+                '--ui-body-color:%s;--text-main:%s;--ui-sidebar-bg:%s;--ui-sidebar-link:%s;--ui-sidebar-hover-bg:%s;--ui-sidebar-active-bg:%s;--ui-navbar-bg:%s;--ui-navbar-bg-image:%s;--ui-navbar-text:%s;--ui-breadcrumb-bg:%s;--ui-breadcrumb-bg-image:%s;--ui-breadcrumb-text:%s;--ui-header-datetime-color:%s;--ui-main-bg:%s;--bg-main:%s;--ui-footer-bg:%s;--ui-footer-text:%s;--ui-card-radius:%dpx;%s%s%s%s--ui-labotests-card-header-bg:%s;--ui-labotests-card-header-bg-image:%s;--ui-labotests-card-header-title:%s;',
+                $bodyColor,
                 $bodyColor,
                 $sidebarBg,
                 $sidebarLinkCss,
                 $sidebarHoverCss,
                 $sidebarActiveCss,
-                $headerBg,
-                $headerText,
+                $navbarBg,
+                $navbarBgImage,
+                $navbarText,
+                $breadcrumbBg,
+                $breadcrumbBgImage,
+                $breadcrumbText,
                 $headerDatetimeColor,
+                $mainBg,
                 $mainBg,
                 $footerBg,
                 $footerText,
@@ -425,6 +460,8 @@ class LayoutService
                 $btnExtra,
                 $cardExtra,
                 $typoExtra,
+                $labotestsCardBg,
+                $labotestsCardBgImage,
                 $labotestsCardTitle
             )
             . sprintf(

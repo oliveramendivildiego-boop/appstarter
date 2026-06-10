@@ -19,20 +19,20 @@ $curFont         = strtolower((string) ($config['ui_font_family'] ?? 'poppins'))
 $curFontResolved = array_key_exists($curFont, $fontOpts) ? $curFont : 'poppins';
 $fontPreviewStackEsc = esc(LayoutService::uiFontFamilyCssStackForKey($curFontResolved), 'attr');
 $fontPreviewLabel    = $fontOpts[$curFontResolved];
-$headerBgSaved = trim((string) ($config['ui_header_bg'] ?? ''));
-$headerMode    = match (true) {
-    strtolower($headerBgSaved) === 'transparent' => 'transparent',
-    $headerBgSaved === ''                        => 'theme',
-    default                                      => 'custom',
+$breadcrumbBgSaved = trim((string) ($config['ui_breadcrumb_bg'] ?? $config['ui_header_bg'] ?? ''));
+$breadcrumbMode    = match (true) {
+    strtolower($breadcrumbBgSaved) === 'transparent' => 'transparent',
+    $breadcrumbBgSaved === ''                        => 'theme',
+    default                                          => 'custom',
 };
-$headerIsCustom = $headerMode === 'custom';
-$headerPick     = (string) ($config['theme_color'] ?? '#FF7218');
-if ($headerIsCustom && preg_match('/^#([0-9A-Fa-f]{3}|[0-9A-Fa-f]{6})$/', $headerBgSaved)) {
-    $headerPick = strtoupper(strlen($headerBgSaved) === 4
-        ? '#' . $headerBgSaved[1] . $headerBgSaved[1] . $headerBgSaved[2] . $headerBgSaved[2] . $headerBgSaved[3] . $headerBgSaved[3]
-        : $headerBgSaved);
+$breadcrumbIsCustom = $breadcrumbMode === 'custom';
+$breadcrumbPick     = (string) ($config['theme_color'] ?? '#FF7218');
+if ($breadcrumbIsCustom && preg_match('/^#([0-9A-Fa-f]{3}|[0-9A-Fa-f]{6})$/', $breadcrumbBgSaved)) {
+    $breadcrumbPick = strtoupper(strlen($breadcrumbBgSaved) === 4
+        ? '#' . $breadcrumbBgSaved[1] . $breadcrumbBgSaved[1] . $breadcrumbBgSaved[2] . $breadcrumbBgSaved[2] . $breadcrumbBgSaved[3] . $breadcrumbBgSaved[3]
+        : $breadcrumbBgSaved);
 }
-$headerPick = LayoutService::htmlColorPickerValue($headerPick, '#FF7218');
+$breadcrumbPick = LayoutService::htmlColorPickerValue($breadcrumbPick, '#FF7218');
 $linkSaved       = trim((string) ($config['ui_sidebar_link_color'] ?? ''));
 $linkIsCustom    = $linkSaved !== '';
 $linkPick        = $linkIsCustom ? $linkSaved : (string) ($config['theme_color'] ?? '#0d6efd');
@@ -70,10 +70,11 @@ $mainBgRaw       = $mainBgTransparent ? '#e9ecef' : $mainBgStored;
 $footerBgRaw     = $footerBgTransparent ? '#e9ecef' : $footerBgStored;
 $bodyTextRaw     = trim((string) ($config['ui_body_text_color'] ?? '#212529'));
 $footerTextRaw   = trim((string) ($config['ui_footer_text_color'] ?? '#6c757d'));
-$headerTextRaw   = trim((string) ($config['ui_header_text_color'] ?? '#ffffff'));
+$navbarTextRaw   = trim((string) ($config['ui_navbar_text_color'] ?? $config['ui_header_text_color'] ?? '#ffffff'));
+$breadcrumbTextRaw = trim((string) ($config['ui_breadcrumb_text_color'] ?? $config['ui_header_text_color'] ?? '#ffffff'));
 $headerDatetimeRaw = trim((string) ($config['ui_header_datetime_color'] ?? ''));
 $headerDatetimeUseDefault = $headerDatetimeRaw === '';
-$headerDatetimePick = $headerDatetimeUseDefault ? $headerTextRaw : $headerDatetimeRaw;
+$headerDatetimePick = $headerDatetimeUseDefault ? $navbarTextRaw : $headerDatetimeRaw;
 $headerDatetimePick = LayoutService::htmlColorPickerValue($headerDatetimePick, '#ffffff');
 $headerDtFormatKey = LayoutService::normalizeHeaderDatetimeFormat((string) ($config['ui_header_datetime_format'] ?? ''));
 $headerDtFormatOpts = LayoutService::headerDatetimeFormatOptionsForView();
@@ -84,22 +85,45 @@ try {
     $headerDtPreviewNow = new \DateTimeImmutable('now', new \DateTimeZone('UTC'));
 }
 $headerDtPreviewText = LayoutService::formatHeaderDatetime($headerDtPreviewNow, $headerDtFormatKey);
+$labotestsCardBgSaved = trim((string) ($config['ui_labotests_card_header_bg'] ?? ''));
+$labotestsCardMode    = match (true) {
+    strtolower($labotestsCardBgSaved) === 'transparent' => 'transparent',
+    $labotestsCardBgSaved === ''                        => 'theme',
+    default                                             => 'custom',
+};
+$labotestsCardIsCustom = $labotestsCardMode === 'custom';
+$labotestsCardPick     = (string) ($config['theme_color'] ?? '#FF7218');
+if ($labotestsCardIsCustom && preg_match('/^#([0-9A-Fa-f]{3}|[0-9A-Fa-f]{6})$/', $labotestsCardBgSaved)) {
+    $labotestsCardPick = strtoupper(strlen($labotestsCardBgSaved) === 4
+        ? '#' . $labotestsCardBgSaved[1] . $labotestsCardBgSaved[1] . $labotestsCardBgSaved[2] . $labotestsCardBgSaved[2] . $labotestsCardBgSaved[3] . $labotestsCardBgSaved[3]
+        : $labotestsCardBgSaved);
+}
+$labotestsCardPick = LayoutService::htmlColorPickerValue($labotestsCardPick, '#FF7218');
 $labotestsCardTitleColor = trim((string) ($config['ui_labotests_card_header_title_color'] ?? '#ffffff'));
 if (!preg_match('/^#([0-9A-Fa-f]{3}|[0-9A-Fa-f]{6})$/', $labotestsCardTitleColor)) {
     $labotestsCardTitleColor = '#ffffff';
 }
 $labotestsCardTitleColor = LayoutService::htmlColorPickerValue($labotestsCardTitleColor, '#ffffff');
-$barBgApprox = match ($headerMode) {
+$pvLabCardHeaderStyle = match ($labotestsCardMode) {
+    'transparent' => 'background:transparent;border:1px dashed #adb5bd;',
+    'custom'      => 'background-color:' . esc($labotestsCardPick, 'attr') . ';',
+    default       => 'background:linear-gradient(90deg,' . $previewTheme . ',' . $previewGrad . ');',
+};
+$navbarBgApprox = (string) ($config['theme_gradient_end'] ?? '#4f46e5');
+$pvNavbarFgWire = LayoutService::readableForegroundOnBackground($navbarBgApprox, $navbarTextRaw);
+$pvNavbarClockFg = LayoutService::readableForegroundOnBackground($navbarBgApprox, $headerDatetimePick);
+$pvNavbarStyle = 'background:linear-gradient(90deg,' . $previewTheme . ',' . $previewGrad . ');color:' . esc($pvNavbarFgWire, 'attr') . ';';
+
+$breadcrumbBgApprox = match ($breadcrumbMode) {
     'transparent' => '#e9ecef',
-    'custom'      => $headerPick,
+    'custom'      => $breadcrumbPick,
     default       => (string) ($config['theme_gradient_end'] ?? '#4f46e5'),
 };
-$pvBarFgWire = LayoutService::readableForegroundOnBackground($barBgApprox, $headerTextRaw);
-$pvBarClockFg = LayoutService::readableForegroundOnBackground($barBgApprox, $headerDatetimePick);
-$pvBarStyle  = match ($headerMode) {
-    'transparent' => 'background:transparent;border:1px dashed #adb5bd;color:' . esc($pvBarFgWire, 'attr') . ';',
-    'custom'      => 'background-color:' . esc($headerPick, 'attr') . ';color:' . esc($pvBarFgWire, 'attr') . ';',
-    default       => 'background:linear-gradient(90deg,' . $previewTheme . ',' . $previewGrad . ');color:' . esc($pvBarFgWire, 'attr') . ';',
+$pvBreadcrumbFgWire = LayoutService::readableForegroundOnBackground($breadcrumbBgApprox, $breadcrumbTextRaw);
+$pvBreadcrumbStyle  = match ($breadcrumbMode) {
+    'transparent' => 'background:transparent;border:1px dashed #adb5bd;color:' . esc($pvBreadcrumbFgWire, 'attr') . ';',
+    'custom'      => 'background-color:' . esc($breadcrumbPick, 'attr') . ';color:' . esc($pvBreadcrumbFgWire, 'attr') . ';',
+    default       => 'background:linear-gradient(90deg,' . $previewTheme . ',' . $previewGrad . ');color:' . esc($pvBreadcrumbFgWire, 'attr') . ';',
 };
 $pvSidebarFgWire = LayoutService::readableForegroundOnBackground($sidebarBgRaw, $linkPick);
 $pvMainFgWire    = LayoutService::readableForegroundOnBackground($mainBgRaw, $bodyTextRaw);
@@ -143,8 +167,10 @@ $uiCardSh         = LayoutService::normalizeUiShadowKey((string) ($config['ui_ca
 $borderSideOpts   = LayoutService::uiBorderSidesOptionsForView();
 $shadowOpts       = LayoutService::uiShadowOptionsForView();
 
-$fwHeader   = LayoutService::normalizeUiFontWeight((string) ($config['ui_header_text_weight'] ?? ''), '500');
-$fsHeader   = LayoutService::normalizeUiFontStyle((string) ($config['ui_header_text_style'] ?? ''), 'normal');
+$fwNavbar      = LayoutService::normalizeUiFontWeight((string) ($config['ui_navbar_text_weight'] ?? $config['ui_header_text_weight'] ?? ''), '500');
+$fsNavbar      = LayoutService::normalizeUiFontStyle((string) ($config['ui_navbar_text_style'] ?? $config['ui_header_text_style'] ?? ''), 'normal');
+$fwBreadcrumb  = LayoutService::normalizeUiFontWeight((string) ($config['ui_breadcrumb_text_weight'] ?? $config['ui_header_text_weight'] ?? ''), '500');
+$fsBreadcrumb  = LayoutService::normalizeUiFontStyle((string) ($config['ui_breadcrumb_text_style'] ?? $config['ui_header_text_style'] ?? ''), 'normal');
 $fwSidebarL = LayoutService::normalizeUiFontWeight((string) ($config['ui_sidebar_link_weight'] ?? ''), '500');
 $fsSidebarL = LayoutService::normalizeUiFontStyle((string) ($config['ui_sidebar_link_style'] ?? ''), 'normal');
 $fwBody     = LayoutService::normalizeUiFontWeight((string) ($config['ui_body_text_weight'] ?? ''), '400');
@@ -208,9 +234,9 @@ $pgActiveColor = LayoutService::htmlColorPickerValue($pgActiveColor, '#ffffff');
             <div id="estsec-mapa" class="accordion-collapse collapse show" data-cfg-default-open="1">
             <div class="accordion-body">
                 <div class="config-layout-map__frame rounded border border-2 overflow-hidden bg-white shadow-sm">
-                    <div class="config-layout-map__bar px-3 py-2 small fw-semibold d-flex justify-content-between align-items-center gap-2" style="<?= $pvBarStyle ?>">
-                        <span><span class="me-2 opacity-75">☰</span><?= lang('Config.config_style_section_bar') ?> · <?= lang('Config.config_company') ?></span>
-                        <span class="config-header-datetime-preview text-nowrap" style="color: <?= esc($pvBarClockFg, 'attr') ?>; font-weight: normal;">
+                    <div class="config-layout-map__bar px-3 py-2 small fw-semibold d-flex justify-content-between align-items-center gap-2" style="<?= $pvNavbarStyle ?>">
+                        <span><span class="me-2 opacity-75">☰</span><?= lang('Config.config_style_theme_section') ?> · <?= lang('Config.config_company') ?></span>
+                        <span class="config-header-datetime-preview text-nowrap" style="color: <?= esc($pvNavbarClockFg, 'attr') ?>; font-weight: normal;">
                             <i class="fa-regular fa-clock me-1" aria-hidden="true"></i><span class="config-header-datetime-preview-text"><?= esc($headerDtPreviewText) ?></span>
                         </span>
                     </div>
@@ -221,6 +247,7 @@ $pgActiveColor = LayoutService::htmlColorPickerValue($pgActiveColor, '#ffffff');
                             <div class="opacity-75 small">• …</div>
                         </div>
                         <div class="config-layout-map__main flex-grow-1 p-3 small" style="background: <?= $pvMainBg ?>; color: <?= esc($pvMainFgWire, 'attr') ?>;">
+                            <div class="rounded-2 px-2 py-1 small mb-2" style="<?= $pvBreadcrumbStyle ?>"><?= lang('Config.config_style_section_breadcrumb') ?> · Módulo</div>
                             <div class="fw-semibold mb-1"><?= lang('Config.config_style_section_page') ?></div>
                             <p class="mb-1 small"><?= lang('Config.config_style_font_size_main_preview') ?></p>
                             <a href="#" class="small" style="color: <?= esc($pvMainLinkWire, 'attr') ?>; pointer-events: none; text-decoration: underline;"><?= lang('Config.config_style_link_color') ?></a>
@@ -241,7 +268,7 @@ $pgActiveColor = LayoutService::htmlColorPickerValue($pgActiveColor, '#ffffff');
                 <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#estsec-marca" aria-expanded="false" aria-controls="estsec-marca">
                     <i class="fa-solid fa-palette me-2 text-primary"></i>
                     <span class="fw-semibold"><?= lang('Config.config_style_theme_section') ?></span>
-                    <span class="cfg-sec-hint small text-muted ms-2 d-none d-md-inline">Color del tema, degradado y texto de la barra</span>
+                    <span class="cfg-sec-hint small text-muted ms-2 d-none d-md-inline">Encabezado fijo: marca, degradado, texto y reloj</span>
                 </button>
             </h2>
             <div id="estsec-marca" class="accordion-collapse collapse">
@@ -283,9 +310,44 @@ $pgActiveColor = LayoutService::htmlColorPickerValue($pgActiveColor, '#ffffff');
                         <small class="text-muted d-block"><?= lang('Config.config_theme_gradient_help') ?></small>
                     </div>
                     <div class="col-md-4 mb-3">
-                        <label class="form-label fw-semibold" for="ui_header_text_color_theme"><?= lang('Config.config_style_header_text') ?></label>
-                        <input type="color" id="ui_header_text_color_theme" value="<?= esc(LayoutService::htmlColorPickerValue($config['ui_header_text_color'] ?? '', '#ffffff')) ?>" class="form-control form-control-color">
-                        <small class="text-muted d-block"><?= lang('Config.config_style_header_text_breadcrumb_hint') ?></small>
+                        <label class="form-label fw-semibold" for="ui_navbar_text_color"><?= lang('Config.config_style_navbar_text') ?></label>
+                        <input type="color" name="ui_navbar_text_color" id="ui_navbar_text_color" value="<?= esc(LayoutService::htmlColorPickerValue($config['ui_navbar_text_color'] ?? $config['ui_header_text_color'] ?? '', '#ffffff')) ?>" class="form-control form-control-color">
+                        <small class="text-muted d-block"><?= lang('Config.config_style_navbar_text_hint') ?></small>
+                        <?= view('config/partials/ui_font_variant', [
+                            'weightField' => 'ui_navbar_text_weight',
+                            'styleField'  => 'ui_navbar_text_style',
+                            'weightId'    => 'ui_navbar_text_weight',
+                            'styleId'     => 'ui_navbar_text_style',
+                            'weightVal'   => $fwNavbar,
+                            'styleVal'    => $fsNavbar,
+                        ]) ?>
+                    </div>
+                </div>
+                <hr class="text-muted my-2">
+                <div class="row align-items-end">
+                    <div class="col-lg-4 mb-3">
+                        <label class="form-label" for="ui_header_datetime_color"><?= lang('Config.config_style_header_datetime_color') ?></label>
+                        <input type="hidden" name="ui_header_datetime_default" value="0">
+                        <div class="form-check mb-2">
+                            <input class="form-check-input" type="checkbox" name="ui_header_datetime_default" id="ui_header_datetime_default" value="1" autocomplete="off" <?= $headerDatetimeUseDefault ? 'checked' : '' ?>>
+                            <label class="form-check-label" for="ui_header_datetime_default"><?= lang('Config.config_style_header_datetime_same_as_bar') ?></label>
+                        </div>
+                        <input type="color" name="ui_header_datetime_color" id="ui_header_datetime_color" value="<?= esc($headerDatetimePick) ?>" class="form-control form-control-color" title="<?= lang('Config.config_style_header_datetime_color') ?>">
+                        <small class="text-muted d-block mt-1"><?= lang('Config.config_style_header_datetime_color_help') ?></small>
+                    </div>
+                    <div class="col-lg-8 mb-3">
+                        <label class="form-label fw-semibold" for="ui_header_datetime_format"><?= lang('Config.config_style_header_datetime_format') ?></label>
+                        <select name="ui_header_datetime_format" id="ui_header_datetime_format" class="form-select" autocomplete="off">
+                            <?php foreach ($headerDtFormatOpts as $fmtVal => $fmtLabel): ?>
+                                <?php $fmtSample = $headerDtFormatPresets[$fmtVal]['preview'] ?? ''; ?>
+                                <option value="<?= esc($fmtVal, 'attr') ?>" data-sample="<?= esc($fmtSample, 'attr') ?>" <?= $fmtVal === $headerDtFormatKey ? 'selected' : '' ?>><?= esc($fmtLabel) ?></option>
+                            <?php endforeach; ?>
+                        </select>
+                        <small class="text-muted d-block mt-1"><?= lang('Config.config_style_header_datetime_format_help') ?></small>
+                        <div class="small mt-2">
+                            <?= lang('Config.config_style_header_datetime_format_example') ?>:
+                            <strong id="ui_header_datetime_format_live" class="font-monospace"><?= esc($headerDtPreviewText) ?></strong>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -474,7 +536,7 @@ $pgActiveColor = LayoutService::htmlColorPickerValue($pgActiveColor, '#ffffff');
                     <div class="small fw-semibold text-secondary text-uppercase config-style-preview-title mb-2"><?= lang('Config.config_style_preview_caption') ?></div>
                     <p class="text-muted small mb-3"><?= lang('Config.config_style_font_sizes_intro') ?></p>
                     <div class="config-zone-preview config-zone-preview--wireframe rounded-3 overflow-hidden border border-2 mb-0">
-                        <div class="config-zone-preview__bar text-white text-center small py-2" style="background: linear-gradient(90deg, <?= $previewTheme ?>, <?= $previewGrad ?>);"><?= lang('Config.config_style_section_bar') ?></div>
+                        <div class="config-zone-preview__bar text-white text-center small py-2" style="background: linear-gradient(90deg, <?= $previewTheme ?>, <?= $previewGrad ?>);"><?= lang('Config.config_style_theme_section') ?></div>
                         <div class="d-flex" style="min-height: 5rem;">
                             <div class="border-end text-center small py-2 px-1" style="width: 26%; background: <?= $pvSidebarBg ?>; color: <?= esc($pvSidebarFgWire, 'attr') ?>;"><?= lang('Config.config_style_section_menu') ?></div>
                             <div class="flex-grow-1 p-2 small text-center" style="background-color: <?= $pvMainBg ?>; color: <?= esc($pvMainFgWire, 'attr') ?>;">
@@ -503,7 +565,7 @@ $pgActiveColor = LayoutService::htmlColorPickerValue($pgActiveColor, '#ffffff');
                     </div>
                     <div class="col-lg-6">
                         <div class="config-zone-preview config-zone-preview--lg config-zone-preview--header rounded-3 overflow-hidden mb-2 border">
-                            <div class="config-zone-preview__bar text-white" style="background: linear-gradient(90deg, <?= $previewTheme ?>, <?= $previewGrad ?>); font-size: 0.8125rem;"><?= lang('Config.config_style_section_bar') ?> · <?= lang('Config.config_company') ?></div>
+                            <div class="config-zone-preview__bar text-white" style="background: linear-gradient(90deg, <?= $previewTheme ?>, <?= $previewGrad ?>); font-size: 0.8125rem;"><?= lang('Config.config_style_theme_section') ?> · <?= lang('Config.config_company') ?></div>
                             <div class="config-zone-preview__caption text-muted px-2 py-1 bg-white"><?= lang('Config.config_style_font_size_header_preview') ?></div>
                         </div>
                         <label class="form-label fw-semibold" for="ui_font_size_header"><?= lang('Config.config_style_font_size_header') ?></label>
@@ -558,82 +620,54 @@ $pgActiveColor = LayoutService::htmlColorPickerValue($pgActiveColor, '#ffffff');
             </div>
         </div>
 
-        <!-- Sección: Barra superior -->
+        <!-- Sección: Barra de migas de pan -->
         <div class="accordion-item">
             <h2 class="accordion-header">
                 <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#estsec-barra" aria-expanded="false" aria-controls="estsec-barra">
                     <i class="fa-solid fa-fill-drip me-2 text-primary"></i>
-                    <span class="fw-semibold"><?= lang('Config.config_style_section_bar') ?></span>
-                    <span class="cfg-sec-hint small text-muted ms-2 d-none d-md-inline">Fondo, texto y fecha/hora de la franja superior</span>
+                    <span class="fw-semibold"><?= lang('Config.config_style_section_breadcrumb') ?></span>
+                    <span class="cfg-sec-hint small text-muted ms-2 d-none d-md-inline">Fondo y texto del nav de ruta (breadcrumb)</span>
                 </button>
             </h2>
             <div id="estsec-barra" class="accordion-collapse collapse">
             <div class="accordion-body">
                 <div class="config-section-preview mb-4 p-3 rounded-3 border bg-light">
                     <div class="small fw-semibold text-secondary text-uppercase config-style-preview-title mb-2"><?= lang('Config.config_style_preview_caption') ?></div>
-                    <div class="rounded-3 py-3 px-3 shadow-sm mb-2 d-flex justify-content-between align-items-center gap-2 flex-wrap" style="<?= $pvBarStyle ?>">
-                        <span><?= lang('Config.config_style_section_bar') ?> · <?= lang('Config.config_company') ?></span>
-                        <span class="config-header-datetime-preview text-nowrap small" style="color: <?= esc($pvBarClockFg, 'attr') ?>;">
-                            <i class="fa-regular fa-clock me-1" aria-hidden="true"></i><span class="config-header-datetime-preview-text"><?= esc($headerDtPreviewText) ?></span>
-                        </span>
+                    <div class="rounded-3 py-3 px-3 shadow-sm mb-2" style="<?= $pvBreadcrumbStyle ?>">
+                        <span><?= lang('Config.config_style_section_breadcrumb') ?> · Módulo › Página</span>
                     </div>
-                    <p class="small text-muted mb-0"><?= lang('Config.config_style_preview_bar_hint') ?></p>
+                    <p class="small text-muted mb-0"><?= lang('Config.config_style_preview_breadcrumb_hint') ?></p>
                 </div>
                 <div class="row align-items-end">
                     <div class="col-lg-4 mb-3">
-                        <label class="form-label"><?= lang('Config.config_style_header_bg') ?></label>
+                        <label class="form-label"><?= lang('Config.config_style_breadcrumb_bg') ?></label>
                         <div class="form-check mb-2">
-                            <input class="form-check-input" type="radio" name="ui_header_mode" id="ui_hdr_theme" value="theme" <?= $headerMode === 'theme' ? 'checked' : '' ?> autocomplete="off">
-                            <label class="form-check-label" for="ui_hdr_theme"><?= lang('Config.config_style_use_theme_primary') ?></label>
+                            <input class="form-check-input" type="radio" name="ui_breadcrumb_mode" id="ui_bc_theme" value="theme" <?= $breadcrumbMode === 'theme' ? 'checked' : '' ?> autocomplete="off">
+                            <label class="form-check-label" for="ui_bc_theme"><?= lang('Config.config_style_use_theme_primary') ?></label>
                         </div>
                         <div class="form-check mb-2">
-                            <input class="form-check-input" type="radio" name="ui_header_mode" id="ui_hdr_custom" value="custom" <?= $headerMode === 'custom' ? 'checked' : '' ?> autocomplete="off">
-                            <label class="form-check-label" for="ui_hdr_custom"><?= lang('Config.config_style_custom_color') ?></label>
+                            <input class="form-check-input" type="radio" name="ui_breadcrumb_mode" id="ui_bc_custom" value="custom" <?= $breadcrumbMode === 'custom' ? 'checked' : '' ?> autocomplete="off">
+                            <label class="form-check-label" for="ui_bc_custom"><?= lang('Config.config_style_custom_color') ?></label>
                         </div>
                         <div class="form-check mb-2">
-                            <input class="form-check-input" type="radio" name="ui_header_mode" id="ui_hdr_transparent" value="transparent" <?= $headerMode === 'transparent' ? 'checked' : '' ?> autocomplete="off">
-                            <label class="form-check-label" for="ui_hdr_transparent"><?= lang('Config.config_style_bg_transparent') ?></label>
+                            <input class="form-check-input" type="radio" name="ui_breadcrumb_mode" id="ui_bc_transparent" value="transparent" <?= $breadcrumbMode === 'transparent' ? 'checked' : '' ?> autocomplete="off">
+                            <label class="form-check-label" for="ui_bc_transparent"><?= lang('Config.config_style_bg_transparent') ?></label>
                         </div>
-                        <input type="color" name="ui_header_bg_custom" id="ui_header_bg_custom" value="<?= esc($headerPick) ?>" class="form-control form-control-color" title="<?= lang('Config.config_style_header_bg') ?>">
-                        <small class="text-muted d-block mt-1"><?= lang('Config.config_style_header_transparent_help') ?></small>
+                        <input type="color" name="ui_breadcrumb_bg_custom" id="ui_breadcrumb_bg_custom" value="<?= esc($breadcrumbPick) ?>" class="form-control form-control-color" title="<?= lang('Config.config_style_breadcrumb_bg') ?>">
+                        <small class="text-muted d-block mt-1"><?= lang('Config.config_style_breadcrumb_transparent_help') ?></small>
                     </div>
                     <div class="col-lg-4 mb-3">
-                        <label class="form-label" for="ui_header_text_color"><?= lang('Config.config_style_header_text') ?></label>
-                        <input type="color" name="ui_header_text_color" id="ui_header_text_color" value="<?= esc(LayoutService::htmlColorPickerValue($config['ui_header_text_color'] ?? '', '#ffffff')) ?>" class="form-control form-control-color">
-                        <small class="text-muted d-block mt-1"><?= lang('Config.config_style_header_text_breadcrumb_hint') ?></small>
+                        <label class="form-label" for="ui_breadcrumb_text_color"><?= lang('Config.config_style_breadcrumb_text') ?></label>
+                        <input type="color" name="ui_breadcrumb_text_color" id="ui_breadcrumb_text_color" value="<?= esc(LayoutService::htmlColorPickerValue($config['ui_breadcrumb_text_color'] ?? $config['ui_header_text_color'] ?? '', '#ffffff')) ?>" class="form-control form-control-color">
+                        <small class="text-muted d-block mt-1"><?= lang('Config.config_style_breadcrumb_text_hint') ?></small>
                         <?= view('config/partials/ui_font_variant', [
-                            'weightField' => 'ui_header_text_weight',
-                            'styleField'  => 'ui_header_text_style',
-                            'weightId'    => 'ui_header_text_weight',
-                            'styleId'     => 'ui_header_text_style',
-                            'weightVal'   => $fwHeader,
-                            'styleVal'    => $fsHeader,
+                            'weightField' => 'ui_breadcrumb_text_weight',
+                            'styleField'  => 'ui_breadcrumb_text_style',
+                            'weightId'    => 'ui_breadcrumb_text_weight',
+                            'styleId'     => 'ui_breadcrumb_text_style',
+                            'weightVal'   => $fwBreadcrumb,
+                            'styleVal'    => $fsBreadcrumb,
                         ]) ?>
-                    </div>
-                    <div class="col-lg-4 mb-3">
-                        <label class="form-label" for="ui_header_datetime_color"><?= lang('Config.config_style_header_datetime_color') ?></label>
-                        <input type="hidden" name="ui_header_datetime_default" value="0">
-                        <div class="form-check mb-2">
-                            <input class="form-check-input" type="checkbox" name="ui_header_datetime_default" id="ui_header_datetime_default" value="1" autocomplete="off" <?= $headerDatetimeUseDefault ? 'checked' : '' ?>>
-                            <label class="form-check-label" for="ui_header_datetime_default"><?= lang('Config.config_style_header_datetime_same_as_bar') ?></label>
-                        </div>
-                        <input type="color" name="ui_header_datetime_color" id="ui_header_datetime_color" value="<?= esc($headerDatetimePick) ?>" class="form-control form-control-color" title="<?= lang('Config.config_style_header_datetime_color') ?>">
-                        <small class="text-muted d-block mt-1"><?= lang('Config.config_style_header_datetime_color_help') ?></small>
-                    </div>
-                    <div class="col-12 mb-0">
-                        <hr class="text-muted my-3">
-                        <label class="form-label fw-semibold" for="ui_header_datetime_format"><?= lang('Config.config_style_header_datetime_format') ?></label>
-                        <select name="ui_header_datetime_format" id="ui_header_datetime_format" class="form-select" autocomplete="off">
-                            <?php foreach ($headerDtFormatOpts as $fmtVal => $fmtLabel): ?>
-                                <?php $fmtSample = $headerDtFormatPresets[$fmtVal]['preview'] ?? ''; ?>
-                                <option value="<?= esc($fmtVal, 'attr') ?>" data-sample="<?= esc($fmtSample, 'attr') ?>" <?= $fmtVal === $headerDtFormatKey ? 'selected' : '' ?>><?= esc($fmtLabel) ?></option>
-                            <?php endforeach; ?>
-                        </select>
-                        <small class="text-muted d-block mt-1"><?= lang('Config.config_style_header_datetime_format_help') ?></small>
-                        <div class="small mt-2">
-                            <?= lang('Config.config_style_header_datetime_format_example') ?>:
-                            <strong id="ui_header_datetime_format_live" class="font-monospace"><?= esc($headerDtPreviewText) ?></strong>
-                        </div>
                     </div>
                 </div>
             </div>
@@ -736,7 +770,7 @@ $pgActiveColor = LayoutService::htmlColorPickerValue($pgActiveColor, '#ffffff');
                 <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#estsec-pagina" aria-expanded="false" aria-controls="estsec-pagina">
                     <i class="fa-solid fa-table-columns me-2 text-primary"></i>
                     <span class="fw-semibold"><?= lang('Config.config_style_section_page') ?></span>
-                    <span class="cfg-sec-hint small text-muted ms-2 d-none d-md-inline">Texto, fondo y enlaces del contenido central</span>
+                    <span class="cfg-sec-hint small text-muted ms-2 d-none d-md-inline">Fondo del body, texto y enlaces del contenido central</span>
                 </button>
             </h2>
             <div id="estsec-pagina" class="accordion-collapse collapse">
@@ -1009,14 +1043,31 @@ $pgActiveColor = LayoutService::htmlColorPickerValue($pgActiveColor, '#ffffff');
                 <div class="config-section-preview mb-4 p-3 rounded-3 border bg-light">
                     <div class="small fw-semibold text-secondary text-uppercase config-style-preview-title mb-2"><?= lang('Config.config_style_preview_caption') ?></div>
                     <div class="rounded-3 overflow-hidden shadow-sm border mb-2" style="max-width: 22rem;">
-                        <div class="card-header bg-primary text-white py-2 px-3 d-flex align-items-center">
+                        <div class="card-header bg-primary text-white py-2 px-3 d-flex align-items-center config-labotests-card-header-preview" style="<?= $pvLabCardHeaderStyle ?>">
                             <h6 class="mb-0 config-labotests-card-title-preview" style="color: <?= esc($labotestsCardTitleColor, 'attr') ?> !important; font-weight: <?= esc($fwLabCard, 'attr') ?> !important; font-style: <?= esc($fsLabCard, 'attr') ?> !important;"><?= lang('Config.config_style_labotests_card_preview_sample') ?></h6>
                         </div>
                     </div>
                     <p class="small text-muted mb-0"><?= lang('Config.config_style_labotests_card_preview_help') ?></p>
                 </div>
                 <div class="row align-items-end">
-                    <div class="col-md-6 mb-3 mb-md-0">
+                    <div class="col-lg-4 mb-3">
+                        <label class="form-label"><?= lang('Config.config_style_labotests_card_bg') ?></label>
+                        <div class="form-check mb-2">
+                            <input class="form-check-input" type="radio" name="ui_labotests_card_mode" id="ui_lab_card_theme" value="theme" <?= $labotestsCardMode === 'theme' ? 'checked' : '' ?> autocomplete="off">
+                            <label class="form-check-label" for="ui_lab_card_theme"><?= lang('Config.config_style_use_theme_primary') ?></label>
+                        </div>
+                        <div class="form-check mb-2">
+                            <input class="form-check-input" type="radio" name="ui_labotests_card_mode" id="ui_lab_card_custom" value="custom" <?= $labotestsCardMode === 'custom' ? 'checked' : '' ?> autocomplete="off">
+                            <label class="form-check-label" for="ui_lab_card_custom"><?= lang('Config.config_style_custom_color') ?></label>
+                        </div>
+                        <div class="form-check mb-2">
+                            <input class="form-check-input" type="radio" name="ui_labotests_card_mode" id="ui_lab_card_transparent" value="transparent" <?= $labotestsCardMode === 'transparent' ? 'checked' : '' ?> autocomplete="off">
+                            <label class="form-check-label" for="ui_lab_card_transparent"><?= lang('Config.config_style_bg_transparent') ?></label>
+                        </div>
+                        <input type="color" name="ui_labotests_card_bg_custom" id="ui_labotests_card_bg_custom" value="<?= esc($labotestsCardPick) ?>" class="form-control form-control-color" title="<?= lang('Config.config_style_labotests_card_bg') ?>">
+                        <small class="text-muted d-block mt-1"><?= lang('Config.config_style_labotests_card_transparent_help') ?></small>
+                    </div>
+                    <div class="col-lg-4 mb-3 mb-md-0">
                         <label class="form-label" for="ui_labotests_card_header_title_color"><?= lang('Config.config_style_labotests_card_title_color') ?></label>
                         <input type="color" name="ui_labotests_card_header_title_color" id="ui_labotests_card_header_title_color" value="<?= esc(LayoutService::htmlColorPickerValue($labotestsCardTitleColor, '#ffffff')) ?>" class="form-control form-control-color" title="<?= lang('Config.config_style_labotests_card_title_color') ?>">
                         <small class="text-muted d-block mt-1"><?= lang('Config.config_style_labotests_card_title_color_help') ?></small>
@@ -1032,19 +1083,64 @@ $pgActiveColor = LayoutService::htmlColorPickerValue($pgActiveColor, '#ffffff');
                 </div>
                 <script>
                 (function () {
+                    var themeColor = document.getElementById('theme_color');
+                    var themeGrad = document.getElementById('theme_gradient_end');
                     var input = document.getElementById('ui_labotests_card_header_title_color');
                     var wSel = document.getElementById('ui_labotests_card_header_title_weight');
                     var sSel = document.getElementById('ui_labotests_card_header_title_style');
-                    var preview = document.querySelector('.config-labotests-card-title-preview');
-                    if (!preview) return;
-                    function syncPreview() {
-                        if (input) preview.style.setProperty('color', input.value, 'important');
-                        if (wSel) preview.style.setProperty('font-weight', wSel.value, 'important');
-                        if (sSel) preview.style.setProperty('font-style', sSel.value, 'important');
+                    var bgCustom = document.getElementById('ui_labotests_card_bg_custom');
+                    var headerPreview = document.querySelector('.config-labotests-card-header-preview');
+                    var titlePreview = document.querySelector('.config-labotests-card-title-preview');
+                    if (!titlePreview) return;
+
+                    function labCardMode() {
+                        if (document.getElementById('ui_lab_card_transparent') && document.getElementById('ui_lab_card_transparent').checked) return 'transparent';
+                        if (document.getElementById('ui_lab_card_custom') && document.getElementById('ui_lab_card_custom').checked) return 'custom';
+                        return 'theme';
                     }
-                    if (input) input.addEventListener('input', syncPreview);
-                    if (wSel) wSel.addEventListener('change', syncPreview);
-                    if (sSel) sSel.addEventListener('change', syncPreview);
+
+                    function syncBgPreview() {
+                        if (!headerPreview) return;
+                        var mode = labCardMode();
+                        if (mode === 'transparent') {
+                            headerPreview.style.background = 'transparent';
+                            headerPreview.style.border = '1px dashed #adb5bd';
+                        } else if (mode === 'custom' && bgCustom) {
+                            headerPreview.style.border = '';
+                            headerPreview.style.background = bgCustom.value;
+                            headerPreview.style.backgroundImage = 'none';
+                        } else {
+                            headerPreview.style.border = '';
+                            var c1 = themeColor ? themeColor.value : '#FF7218';
+                            var c2 = themeGrad ? themeGrad.value : '#4f46e5';
+                            headerPreview.style.background = 'linear-gradient(90deg,' + c1 + ',' + c2 + ')';
+                            headerPreview.style.backgroundImage = '';
+                        }
+                        if (bgCustom) bgCustom.disabled = mode !== 'custom';
+                    }
+
+                    function syncTitlePreview() {
+                        if (input) titlePreview.style.setProperty('color', input.value, 'important');
+                        if (wSel) titlePreview.style.setProperty('font-weight', wSel.value, 'important');
+                        if (sSel) titlePreview.style.setProperty('font-style', sSel.value, 'important');
+                    }
+
+                    function syncPreview() {
+                        syncBgPreview();
+                        syncTitlePreview();
+                    }
+
+                    ['ui_lab_card_theme', 'ui_lab_card_custom', 'ui_lab_card_transparent'].forEach(function (id) {
+                        var el = document.getElementById(id);
+                        if (el) el.addEventListener('change', syncPreview);
+                    });
+                    if (bgCustom) bgCustom.addEventListener('input', syncPreview);
+                    if (input) input.addEventListener('input', syncTitlePreview);
+                    if (wSel) wSel.addEventListener('change', syncTitlePreview);
+                    if (sSel) sSel.addEventListener('change', syncTitlePreview);
+                    if (themeColor) themeColor.addEventListener('input', syncBgPreview);
+                    if (themeGrad) themeGrad.addEventListener('input', syncBgPreview);
+                    syncPreview();
                 })();
                 </script>
             </div>
@@ -1189,26 +1285,26 @@ $pgActiveColor = LayoutService::htmlColorPickerValue($pgActiveColor, '#ffffff');
 
 <script>
 (function() {
-    function toggleHdr() {
-        var custom = document.getElementById('ui_hdr_custom').checked;
-        var el = document.getElementById('ui_header_bg_custom');
+    function toggleBc() {
+        var custom = document.getElementById('ui_bc_custom').checked;
+        var el = document.getElementById('ui_breadcrumb_bg_custom');
         if (el) el.disabled = !custom;
     }
     function toggleSl() {
         var custom = document.getElementById('ui_sl_custom').checked;
         document.getElementById('ui_sidebar_link_custom').disabled = !custom;
     }
-    var h1 = document.getElementById('ui_hdr_theme');
-    var h2 = document.getElementById('ui_hdr_custom');
-    var h3 = document.getElementById('ui_hdr_transparent');
-    if (h1) h1.addEventListener('change', toggleHdr);
-    if (h2) h2.addEventListener('change', toggleHdr);
-    if (h3) h3.addEventListener('change', toggleHdr);
+    var h1 = document.getElementById('ui_bc_theme');
+    var h2 = document.getElementById('ui_bc_custom');
+    var h3 = document.getElementById('ui_bc_transparent');
+    if (h1) h1.addEventListener('change', toggleBc);
+    if (h2) h2.addEventListener('change', toggleBc);
+    if (h3) h3.addEventListener('change', toggleBc);
     var s1 = document.getElementById('ui_sl_theme');
     var s2 = document.getElementById('ui_sl_custom');
     if (s1) s1.addEventListener('change', toggleSl);
     if (s2) s2.addEventListener('change', toggleSl);
-    toggleHdr();
+    toggleBc();
     toggleSl();
 
     function toggleBgTransparent(checkId, colorId) {
@@ -1301,17 +1397,6 @@ $pgActiveColor = LayoutService::htmlColorPickerValue($pgActiveColor, '#ffffff');
     toggleBtnBorderDeps();
     toggleCardBorderDeps();
 
-    // Duplicar control de color de texto de barra superior en sección "Marca y degradado".
-    var hdrTextMain = document.getElementById('ui_header_text_color');
-    var hdrTextTheme = document.getElementById('ui_header_text_color_theme');
-    if (hdrTextMain && hdrTextTheme) {
-        hdrTextTheme.value = hdrTextMain.value || hdrTextTheme.value;
-        var syncHdrMain = function() { hdrTextMain.value = hdrTextTheme.value; syncHeaderDatetimePreview(); };
-        var syncHdrTheme = function() { hdrTextTheme.value = hdrTextMain.value; syncHeaderDatetimePreview(); };
-        hdrTextTheme.addEventListener('input', syncHdrMain);
-        hdrTextMain.addEventListener('input', syncHdrTheme);
-    }
-
     function toggleHeaderDatetimeColor() {
         var useDefault = document.getElementById('ui_header_datetime_default');
         var picker = document.getElementById('ui_header_datetime_color');
@@ -1324,9 +1409,9 @@ $pgActiveColor = LayoutService::htmlColorPickerValue($pgActiveColor, '#ffffff');
     function syncHeaderDatetimePreview() {
         var useDefault = document.getElementById('ui_header_datetime_default');
         var picker = document.getElementById('ui_header_datetime_color');
-        var hdrText = document.getElementById('ui_header_text_color');
-        var color = (useDefault && useDefault.checked && hdrText)
-            ? hdrText.value
+        var navbarText = document.getElementById('ui_navbar_text_color');
+        var color = (useDefault && useDefault.checked && navbarText)
+            ? navbarText.value
             : (picker ? picker.value : '');
         document.querySelectorAll('.config-header-datetime-preview').forEach(function(el) {
             el.style.color = color;
@@ -1337,6 +1422,8 @@ $pgActiveColor = LayoutService::htmlColorPickerValue($pgActiveColor, '#ffffff');
     var hdrDtColor = document.getElementById('ui_header_datetime_color');
     if (hdrDtDefault) hdrDtDefault.addEventListener('change', toggleHeaderDatetimeColor);
     if (hdrDtColor) hdrDtColor.addEventListener('input', syncHeaderDatetimePreview);
+    var navbarTextEl = document.getElementById('ui_navbar_text_color');
+    if (navbarTextEl) navbarTextEl.addEventListener('input', syncHeaderDatetimePreview);
     toggleHeaderDatetimeColor();
 
     var hdrDtFormatSel = document.getElementById('ui_header_datetime_format');

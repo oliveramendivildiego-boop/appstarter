@@ -202,7 +202,14 @@
     font-size: 0.85rem;
 }
 
-/* Color del título en cabeceras .card-header.bg-primary (Config → Apariencia) */
+/* Cabeceras de tarjetas en Análisis clínicos (Config → Apariencia → Análisis clínicos) */
+.card-header.bg-primary {
+    background-color: var(--ui-labotests-card-header-bg, var(--primary-color)) !important;
+    background-image: var(--ui-labotests-card-header-bg-image, none) !important;
+    border-bottom-color: transparent !important;
+}
+
+/* Color del título en cabeceras .card-header.bg-primary */
 .card-header.bg-primary > h6.mb-0,
 .card-header.bg-primary > h6.mb-0 a.text-white,
 .card-header.bg-primary > h5.mb-0,

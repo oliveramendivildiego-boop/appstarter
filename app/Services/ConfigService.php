@@ -1951,9 +1951,13 @@ class ConfigService
             return \App\Services\LayoutService::normalizeUiFontSizeRemInput((string) ($post[$postKey] ?? ''), $default);
         };
 
-        $headerMode = strtolower(trim((string) ($post['ui_header_mode'] ?? 'theme')));
-        if (! in_array($headerMode, ['theme', 'custom', 'transparent'], true)) {
-            $headerMode = 'theme';
+        $breadcrumbMode = strtolower(trim((string) ($post['ui_breadcrumb_mode'] ?? $post['ui_header_mode'] ?? 'theme')));
+        if (! in_array($breadcrumbMode, ['theme', 'custom', 'transparent'], true)) {
+            $breadcrumbMode = 'theme';
+        }
+        $labotestsCardMode = strtolower(trim((string) ($post['ui_labotests_card_mode'] ?? 'theme')));
+        if (! in_array($labotestsCardMode, ['theme', 'custom', 'transparent'], true)) {
+            $labotestsCardMode = 'theme';
         }
         $linkCustom = (($post['ui_sidebar_link_mode'] ?? '') === 'custom');
 
@@ -1993,20 +1997,28 @@ class ConfigService
             'ui_sidebar_active_bg' => ! empty($post['ui_sidebar_active_default'])
                 ? ''
                 : $this->normalizeUiHex((string) ($post['ui_sidebar_active_bg'] ?? ''), '#ced4da'),
-            'ui_header_bg'          => match ($headerMode) {
+            'ui_navbar_text_color' => $this->normalizeUiHex((string) ($post['ui_navbar_text_color'] ?? $post['ui_header_text_color'] ?? ''), '#ffffff'),
+            'ui_navbar_text_weight' => \App\Services\LayoutService::normalizeUiFontWeight((string) ($post['ui_navbar_text_weight'] ?? $post['ui_header_text_weight'] ?? ''), '500'),
+            'ui_navbar_text_style'  => \App\Services\LayoutService::normalizeUiFontStyle((string) ($post['ui_navbar_text_style'] ?? $post['ui_header_text_style'] ?? ''), 'normal'),
+            'ui_breadcrumb_bg'          => match ($breadcrumbMode) {
                 'transparent' => 'transparent',
-                'custom'      => $this->normalizeUiHex((string) ($post['ui_header_bg_custom'] ?? ''), '#0d6efd'),
+                'custom'      => $this->normalizeUiHex((string) ($post['ui_breadcrumb_bg_custom'] ?? $post['ui_header_bg_custom'] ?? ''), '#0d6efd'),
                 default       => '',
             },
-            'ui_header_text_color' => $this->normalizeUiHex((string) ($post['ui_header_text_color'] ?? ''), '#ffffff'),
-            'ui_header_text_weight' => \App\Services\LayoutService::normalizeUiFontWeight((string) ($post['ui_header_text_weight'] ?? ''), '500'),
-            'ui_header_text_style'  => \App\Services\LayoutService::normalizeUiFontStyle((string) ($post['ui_header_text_style'] ?? ''), 'normal'),
+            'ui_breadcrumb_text_color' => $this->normalizeUiHex((string) ($post['ui_breadcrumb_text_color'] ?? $post['ui_header_text_color'] ?? ''), '#ffffff'),
+            'ui_breadcrumb_text_weight' => \App\Services\LayoutService::normalizeUiFontWeight((string) ($post['ui_breadcrumb_text_weight'] ?? $post['ui_header_text_weight'] ?? ''), '500'),
+            'ui_breadcrumb_text_style'  => \App\Services\LayoutService::normalizeUiFontStyle((string) ($post['ui_breadcrumb_text_style'] ?? $post['ui_header_text_style'] ?? ''), 'normal'),
             'ui_header_datetime_color' => ! empty($post['ui_header_datetime_default'])
                 ? ''
                 : $this->normalizeUiHex((string) ($post['ui_header_datetime_color'] ?? ''), '#ffffff'),
             'ui_header_datetime_format' => \App\Services\LayoutService::normalizeHeaderDatetimeFormat(
                 (string) ($post['ui_header_datetime_format'] ?? '')
             ),
+            'ui_labotests_card_header_bg' => match ($labotestsCardMode) {
+                'transparent' => 'transparent',
+                'custom'      => $this->normalizeUiHex((string) ($post['ui_labotests_card_bg_custom'] ?? ''), '#FF7218'),
+                default       => '',
+            },
             'ui_labotests_card_header_title_color' => $this->normalizeUiHex((string) ($post['ui_labotests_card_header_title_color'] ?? ''), '#ffffff'),
             'ui_labotests_card_header_title_weight' => \App\Services\LayoutService::normalizeUiFontWeight((string) ($post['ui_labotests_card_header_title_weight'] ?? ''), '600'),
             'ui_labotests_card_header_title_style' => \App\Services\LayoutService::normalizeUiFontStyle((string) ($post['ui_labotests_card_header_title_style'] ?? ''), 'normal'),

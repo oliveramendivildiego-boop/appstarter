@@ -8,6 +8,10 @@ $currencySym = $layoutCfg['currency_symbol'] ?? '$';
 $currencySide = isset($layoutCfg['currency_side']) ? (string)$layoutCfg['currency_side'] : 'left';
 $currencyIsRight = strtolower(trim($currencySide)) === 'right';
 ?>
+<?= view('partial/breadcrumb_nav', ['items' => [
+    ['label' => lang('Module.module_doctor_commissions'), 'url' => site_url('doctor_commissions')],
+    ['label' => $doctor->name, 'url' => null],
+]]) ?>
 <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
     <h1 class="h2"><i class="fa-solid fa-user-doctor me-2"></i>Comisiones de <?= esc($doctor->name) ?></h1>
     <div class="btn-toolbar mb-2 mb-md-0">

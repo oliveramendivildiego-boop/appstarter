@@ -65,13 +65,17 @@
   font-size: calc(var(--ui-font-size-sidebar, 1rem) * 0.75);
 }
 
-.navbar-theme {
-  background-color: var(--primary-color, #212529) !important;
+/* Encabezado fijo: Config → Apariencia → Marca y degradado (--ui-navbar-bg / --ui-navbar-bg-image) */
+header.navbar-theme,
+.navbar-theme.sticky-top {
+  background-color: var(--ui-navbar-bg, var(--primary-color, #212529)) !important;
+  background-image: var(--ui-navbar-bg-image, linear-gradient(135deg, var(--primary-color, #212529), var(--theme-gradient-end, #4f46e5))) !important;
 }
 
-/* Breadcrumb nav usa el color del tema */
+/* Barra de migas: Config → Apariencia → Barra de migas de pan (--ui-breadcrumb-bg / --ui-breadcrumb-bg-image) */
 .breadcrumb-nav-theme {
-  background-color: var(--primary-color, #212529) !important;
+  background-color: var(--ui-breadcrumb-bg, var(--primary-color, #212529)) !important;
+  background-image: var(--ui-breadcrumb-bg-image, none) !important;
 }
 
 /* Botones y toggler visibles sobre el fondo del tema */
@@ -115,25 +119,25 @@
   color: #fff !important;
 }
 
-/* Migas de pan (breadcrumb): mismo color que Apariencia → Barra superior → «Color del texto en la barra» (--ui-header-text) */
+/* Migas de pan: Config → Apariencia → Barra de migas de pan */
 html body.ynex-theme .breadcrumb-nav-theme.navbar-dark .navbar-nav .nav-link,
 html body.ynex-theme .breadcrumb-nav-theme.navbar-dark .navbar-nav .nav-link:focus,
 html body.ynex-theme .breadcrumb-nav-theme.navbar-dark .navbar-nav .nav-link:visited,
 html body.ynex-theme .breadcrumb-nav-theme.navbar-dark .navbar-nav span.nav-link.active {
-  color: var(--ui-header-text, #ffffff) !important;
-  font-weight: var(--ui-header-font-weight, 500) !important;
-  font-style: var(--ui-header-font-style, normal) !important;
+  color: var(--ui-breadcrumb-text, #ffffff) !important;
+  font-weight: var(--ui-breadcrumb-font-weight, 500) !important;
+  font-style: var(--ui-breadcrumb-font-style, normal) !important;
 }
 
 html body.ynex-theme .breadcrumb-nav-theme.navbar-dark .navbar-nav a.nav-link:hover {
-  color: var(--ui-header-text, #ffffff) !important;
-  font-weight: var(--ui-header-font-weight, 500) !important;
-  font-style: var(--ui-header-font-style, normal) !important;
+  color: var(--ui-breadcrumb-text, #ffffff) !important;
+  font-weight: var(--ui-breadcrumb-font-weight, 500) !important;
+  font-style: var(--ui-breadcrumb-font-style, normal) !important;
   opacity: 0.88;
 }
 
 html body.ynex-theme #breadcrumbNav .navbar-nav .nav-item:not(:last-child)::after {
-  color: var(--ui-header-text, #ffffff) !important;
+  color: var(--ui-breadcrumb-text, #ffffff) !important;
   opacity: 0.65;
 }
 
@@ -176,8 +180,8 @@ body.ynex-theme {
   font-size: var(--ui-font-size-base, 1rem);
   font-weight: var(--ui-body-font-weight, 400);
   font-style: var(--ui-body-font-style, normal);
-  color: var(--ui-body-color, #212529);
-  background-color: var(--ui-main-bg, #fff);
+  color: var(--ui-body-color, var(--text-main, #212529));
+  background-color: var(--ui-main-bg, var(--bg-main, #fff));
 }
 
 body.ynex-theme main {
@@ -270,26 +274,24 @@ html body.ynex-theme main #configTabs.nav-tabs .nav-item.show .nav-link {
   font-style: var(--ui-sidebar-link-font-style, normal) !important;
 }
 
-.navbar-theme {
-  background-color: var(--ui-header-bg, var(--primary-color, #212529)) !important;
+header.navbar-theme .navbar-brand,
+.navbar-theme.sticky-top .navbar-brand {
+  color: var(--ui-navbar-text, #fff) !important;
+  font-weight: var(--ui-navbar-font-weight, 500) !important;
+  font-style: var(--ui-navbar-font-style, normal) !important;
 }
 
-.navbar-theme .navbar-brand {
-  color: var(--ui-header-text, #fff) !important;
-  font-weight: var(--ui-header-font-weight, 500) !important;
-  font-style: var(--ui-header-font-style, normal) !important;
-}
-
-.navbar-theme-meta {
-  color: var(--ui-header-text, #fff);
+header.navbar-theme .navbar-theme-meta,
+.navbar-theme.sticky-top .navbar-theme-meta {
+  color: var(--ui-navbar-text, #fff);
   opacity: 0.8;
-  font-weight: var(--ui-header-font-weight, 500);
-  font-style: var(--ui-header-font-style, normal);
+  font-weight: var(--ui-navbar-font-weight, 500);
+  font-style: var(--ui-navbar-font-style, normal);
 }
 
 .header-datetime,
 .header-datetime__icon {
-  color: var(--ui-header-datetime-color, var(--ui-header-text, #fff)) !important;
+  color: var(--ui-header-datetime-color, var(--ui-navbar-text, #fff)) !important;
 }
 
 /* Reloj del header (derecha, zona del sistema) */
@@ -412,8 +414,8 @@ body.ynex-theme .btn-primary:focus-visible {
  * texto de la barra superior (Config → Apariencia → texto en la barra).
  */
 body.ynex-theme main .btn-outline-primary {
-  color: var(--ui-header-text, #0d6efd) !important;
-  border-color: var(--ui-header-text, #0d6efd) !important;
+  color: var(--ui-navbar-text, #0d6efd) !important;
+  border-color: var(--ui-navbar-text, #0d6efd) !important;
   background-color: transparent !important;
 }
 

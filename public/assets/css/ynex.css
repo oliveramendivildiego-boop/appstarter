@@ -230,9 +230,11 @@ body.ynex-theme .sidebar .offcanvas-title {
     font-weight: 600;
 }
 
-/* Navbar principal (dashboard) con estilo YNEX */
-body.ynex-theme .navbar-theme {
-    background: linear-gradient(135deg, var(--primary-color, var(--ynex-primary)), var(--theme-gradient-end, var(--ynex-primary-hover))) !important;
+/* Encabezado fijo: Config → Apariencia → Marca y degradado */
+body.ynex-theme header.navbar-theme,
+body.ynex-theme .navbar-theme.sticky-top {
+    background-color: var(--ui-navbar-bg, var(--primary-color, var(--ynex-primary))) !important;
+    background-image: var(--ui-navbar-bg-image, linear-gradient(135deg, var(--primary-color, var(--ynex-primary)), var(--theme-gradient-end, var(--ynex-primary-hover)))) !important;
     box-shadow: var(--ynex-shadow-md);
 }
 
@@ -358,8 +360,10 @@ body.ynex-theme .navbar-theme .navbar-brand {
     text-decoration: none;
 }
 
+/* Barra de migas: Config → Apariencia → Barra de migas de pan */
 .ynex-theme .breadcrumb-nav-theme {
-    background: linear-gradient(135deg, var(--primary-color, var(--ynex-primary)), var(--theme-gradient-end, var(--ynex-primary-hover))) !important;
+    background-color: var(--ui-breadcrumb-bg, var(--primary-color, var(--ynex-primary))) !important;
+    background-image: var(--ui-breadcrumb-bg-image, linear-gradient(135deg, var(--primary-color, var(--ynex-primary)), var(--theme-gradient-end, var(--ynex-primary-hover)))) !important;
 }
 
 /* ========== Dashboard - tabla alertas insumos (scroll horizontal) ========== */

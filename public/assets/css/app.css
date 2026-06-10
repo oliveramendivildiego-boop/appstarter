@@ -17,9 +17,11 @@
     z-index: 9999;
 }
 
-/* Doctor portal / barra superior - usa --ui-header-bg si existe */
-.navbar-theme {
-    background: var(--ui-header-bg, var(--primary-color, #FF7218)) !important;
+/* Doctor portal / encabezado fijo - usa --ui-navbar-bg / --ui-navbar-bg-image */
+header.navbar-theme,
+.navbar-theme.sticky-top {
+    background-color: var(--ui-navbar-bg, var(--primary-color, #FF7218)) !important;
+    background-image: var(--ui-navbar-bg-image, none) !important;
 }
 .navbar-brand-logo,
 .navbar-theme .navbar-brand img {
