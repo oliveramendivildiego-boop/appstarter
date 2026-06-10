@@ -216,7 +216,7 @@ class LayoutService
             'ui_navbar_text_color', 'ui_navbar_text_weight', 'ui_navbar_text_style',
             'ui_breadcrumb_bg', 'ui_breadcrumb_text_color', 'ui_breadcrumb_text_weight', 'ui_breadcrumb_text_style',
             'ui_header_bg', 'ui_header_text_color', 'ui_header_text_weight', 'ui_header_text_style',
-            'ui_header_datetime_color', 'ui_header_datetime_format', 'ui_main_bg',
+            'ui_header_datetime_color', 'ui_header_datetime_format', 'ui_body_bg', 'ui_main_bg',
             'ui_footer_bg', 'ui_footer_text_color', 'ui_footer_text_align', 'ui_card_radius', 'ui_link_color',
             'ui_sidebar_link_weight', 'ui_sidebar_link_style',
             'ui_body_text_weight', 'ui_body_text_style',
@@ -299,7 +299,13 @@ class LayoutService
             ? $headerDatetimeStored
             : $navbarText;
 
-        $mainBg = $this->resolveUiBackground($keys['ui_main_bg'] ?? null, '#ffffff');
+        $mainBgStored = trim((string) ($keys['ui_main_bg'] ?? ''));
+        $bodyBgStored = trim((string) ($keys['ui_body_bg'] ?? ''));
+        if ($bodyBgStored === '') {
+            $bodyBgStored = $mainBgStored !== '' ? $mainBgStored : '#ffffff';
+        }
+        $bodyBg = $this->resolveUiBackground($bodyBgStored, '#ffffff');
+        $mainBg = $this->resolveUiBackground($mainBgStored !== '' ? $mainBgStored : '#ffffff', '#ffffff');
         $footerBg = $this->resolveUiBackground($keys['ui_footer_bg'] ?? null, '#f8f9fa');
         $footerText = $this->normalizeHex($keys['ui_footer_text_color'] ?? '') ?? '#6c757d';
         $linkColor = $this->normalizeHex($keys['ui_link_color'] ?? '');
@@ -437,7 +443,7 @@ class LayoutService
         $uiInlineStyle = '--theme-gradient-end:' . $gradientEnd . ';--ui-font-family:' . $fontPreset['family'] . ';' . $fontSizeCss
             . '--ui-footer-justify:' . $footerJustify . ';'
             . sprintf(
-                '--ui-body-color:%s;--text-main:%s;--ui-sidebar-bg:%s;--ui-sidebar-link:%s;--ui-sidebar-hover-bg:%s;--ui-sidebar-active-bg:%s;--ui-navbar-bg:%s;--ui-navbar-bg-image:%s;--ui-navbar-text:%s;--ui-breadcrumb-bg:%s;--ui-breadcrumb-bg-image:%s;--ui-breadcrumb-text:%s;--ui-header-datetime-color:%s;--ui-main-bg:%s;--bg-main:%s;--ui-footer-bg:%s;--ui-footer-text:%s;--ui-card-radius:%dpx;%s%s%s%s--ui-labotests-card-header-bg:%s;--ui-labotests-card-header-bg-image:%s;--ui-labotests-card-header-title:%s;',
+                '--ui-body-color:%s;--text-main:%s;--ui-sidebar-bg:%s;--ui-sidebar-link:%s;--ui-sidebar-hover-bg:%s;--ui-sidebar-active-bg:%s;--ui-navbar-bg:%s;--ui-navbar-bg-image:%s;--ui-navbar-text:%s;--ui-breadcrumb-bg:%s;--ui-breadcrumb-bg-image:%s;--ui-breadcrumb-text:%s;--ui-header-datetime-color:%s;--ui-body-bg:%s;--ui-main-bg:%s;--bg-main:%s;--ui-footer-bg:%s;--ui-footer-text:%s;--ui-card-radius:%dpx;%s%s%s%s--ui-labotests-card-header-bg:%s;--ui-labotests-card-header-bg-image:%s;--ui-labotests-card-header-title:%s;',
                 $bodyColor,
                 $bodyColor,
                 $sidebarBg,
@@ -451,8 +457,9 @@ class LayoutService
                 $breadcrumbBgImage,
                 $breadcrumbText,
                 $headerDatetimeColor,
+                $bodyBg,
                 $mainBg,
-                $mainBg,
+                $bodyBg,
                 $footerBg,
                 $footerText,
                 $radius,

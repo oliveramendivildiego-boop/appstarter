@@ -134,8 +134,8 @@ html {
     font-family: 'Inter', system-ui, -apple-system, sans-serif;
 }
 body {
-    /* Unificado con Config → Apariencia → Área de trabajo (--ui-main-bg / --ui-body-color en <html>) */
-    background-color: var(--ui-main-bg, var(--bg-main)) !important;
+    /* Config → Apariencia → Área de trabajo: fondo del body (--ui-body-bg en <html>) */
+    background-color: var(--ui-body-bg, var(--bg-main)) !important;
     color: var(--ui-body-color, var(--text-main)) !important;
     font-size: 1rem;
     line-height: 1.5;

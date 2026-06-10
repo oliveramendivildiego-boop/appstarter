@@ -45,13 +45,19 @@ $activeBgVal     = trim((string) ($config['ui_sidebar_active_bg'] ?? ''));
 
 $sidebarBgStored = trim((string) ($config['ui_sidebar_bg'] ?? '#f8f9fa'));
 $mainBgStored    = trim((string) ($config['ui_main_bg'] ?? '#ffffff'));
+$bodyBgStored    = trim((string) ($config['ui_body_bg'] ?? ''));
+if ($bodyBgStored === '') {
+    $bodyBgStored = $mainBgStored;
+}
 $footerBgStored  = trim((string) ($config['ui_footer_bg'] ?? '#f8f9fa'));
 $sidebarBgTransparent = strtolower($sidebarBgStored) === 'transparent';
+$bodyBgTransparent    = strtolower($bodyBgStored) === 'transparent';
 $mainBgTransparent    = strtolower($mainBgStored) === 'transparent';
 $footerBgTransparent  = strtolower($footerBgStored) === 'transparent';
 $pvSidebarBg          = $sidebarBgTransparent ? 'transparent' : esc($sidebarBgStored, 'attr');
 $pvSidebarHoverBox    = esc($hoverBgVal !== '' ? $hoverBgVal : '#e9ecef', 'attr');
 $pvSidebarActiveBox   = esc($activeBgVal !== '' ? $activeBgVal : '#dee2e6', 'attr');
+$pvBodyBg             = $bodyBgTransparent ? 'transparent' : esc($bodyBgStored, 'attr');
 $pvMainBg             = $mainBgTransparent ? 'transparent' : esc($mainBgStored, 'attr');
 $pvFooterBg           = $footerBgTransparent ? 'transparent' : esc($footerBgStored, 'attr');
 $footerAlignSaved     = strtolower((string) ($config['ui_footer_text_align'] ?? 'left'));
@@ -66,7 +72,8 @@ $pvFooterJustifyPreview = match ($footerAlignSaved) {
 $pvCardRadius         = max(0, min(24, (int) ($config['ui_card_radius'] ?? 8)));
 
 $sidebarBgRaw    = $sidebarBgTransparent ? '#e9ecef' : $sidebarBgStored;
-$mainBgRaw       = $mainBgTransparent ? '#e9ecef' : $mainBgStored;
+$bodyBgRaw       = $bodyBgTransparent ? '#e9ecef' : $bodyBgStored;
+$mainBgRaw       = $mainBgTransparent ? ($bodyBgTransparent ? '#e9ecef' : $bodyBgStored) : $mainBgStored;
 $footerBgRaw     = $footerBgTransparent ? '#e9ecef' : $footerBgStored;
 $bodyTextRaw     = trim((string) ($config['ui_body_text_color'] ?? '#212529'));
 $footerTextRaw   = trim((string) ($config['ui_footer_text_color'] ?? '#6c757d'));
@@ -240,7 +247,7 @@ $pgActiveColor = LayoutService::htmlColorPickerValue($pgActiveColor, '#ffffff');
                             <i class="fa-regular fa-clock me-1" aria-hidden="true"></i><span class="config-header-datetime-preview-text"><?= esc($headerDtPreviewText) ?></span>
                         </span>
                     </div>
-                    <div class="d-flex config-layout-map__mid" style="min-height: 9rem;">
+                    <div class="d-flex config-layout-map__mid" style="min-height: 9rem; background: <?= $pvBodyBg ?>;">
                         <div class="config-layout-map__side border-end p-2 small" style="width: 32%; min-width: 7.5rem; background: <?= $pvSidebarBg ?>; color: <?= esc($pvSidebarFgWire, 'attr') ?>;">
                             <div class="fw-semibold mb-1"><?= lang('Config.config_style_section_menu') ?></div>
                             <div class="opacity-90">• <?= lang('Config.config_style_preview_menu_left') ?></div>
@@ -770,16 +777,19 @@ $pgActiveColor = LayoutService::htmlColorPickerValue($pgActiveColor, '#ffffff');
                 <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#estsec-pagina" aria-expanded="false" aria-controls="estsec-pagina">
                     <i class="fa-solid fa-table-columns me-2 text-primary"></i>
                     <span class="fw-semibold"><?= lang('Config.config_style_section_page') ?></span>
-                    <span class="cfg-sec-hint small text-muted ms-2 d-none d-md-inline">Fondo del body, texto y enlaces del contenido central</span>
+                    <span class="cfg-sec-hint small text-muted ms-2 d-none d-md-inline">Fondo del body y del main, texto y enlaces</span>
                 </button>
             </h2>
             <div id="estsec-pagina" class="accordion-collapse collapse">
             <div class="accordion-body">
                 <div class="config-section-preview mb-4 p-3 rounded-3 border bg-light">
                     <div class="small fw-semibold text-secondary text-uppercase config-style-preview-title mb-2"><?= lang('Config.config_style_preview_caption') ?></div>
-                    <div class="rounded-3 border p-3 shadow-sm" style="background: <?= $pvMainBg ?>; color: <?= esc($pvMainFgWire, 'attr') ?>;">
-                        <p class="mb-2 small"><?= lang('Config.config_style_body_text') ?> — <?= lang('Config.config_style_main_bg') ?></p>
-                        <a href="#" class="small" style="color: <?= esc($pvMainLinkWire, 'attr') ?>; pointer-events: none;"><?= lang('Config.config_style_link_color') ?></a>
+                    <div class="rounded-3 border overflow-hidden shadow-sm">
+                        <div class="px-3 py-2 small text-muted border-bottom" style="background: <?= $pvBodyBg ?>;"><?= lang('Config.config_style_body_bg') ?></div>
+                        <div class="p-3" style="background: <?= $pvMainBg ?>; color: <?= esc($pvMainFgWire, 'attr') ?>;">
+                            <p class="mb-2 small"><?= lang('Config.config_style_body_text') ?> — <?= lang('Config.config_style_main_bg') ?></p>
+                            <a href="#" class="small" style="color: <?= esc($pvMainLinkWire, 'attr') ?>; pointer-events: none;"><?= lang('Config.config_style_link_color') ?></a>
+                        </div>
                     </div>
                     <p class="small text-muted mb-0 mt-2"><?= lang('Config.config_style_preview_page_hint') ?></p>
                 </div>
@@ -797,6 +807,16 @@ $pgActiveColor = LayoutService::htmlColorPickerValue($pgActiveColor, '#ffffff');
                         ]) ?>
                     </div>
                     <div class="col-md-4 mb-3">
+                        <label class="form-label" for="ui_body_bg"><?= lang('Config.config_style_body_bg') ?></label>
+                        <input type="hidden" name="ui_body_bg_transparent" value="0">
+                        <div class="form-check mb-2">
+                            <input class="form-check-input" type="checkbox" name="ui_body_bg_transparent" id="ui_body_bg_transparent" value="1" autocomplete="off" <?= $bodyBgTransparent ? 'checked' : '' ?>>
+                            <label class="form-check-label" for="ui_body_bg_transparent"><?= lang('Config.config_style_bg_transparent') ?></label>
+                        </div>
+                        <input type="color" name="ui_body_bg" id="ui_body_bg" value="<?= esc($bodyBgTransparent ? '#ffffff' : LayoutService::htmlColorPickerValue($bodyBgStored, '#ffffff')) ?>" class="form-control form-control-color" title="<?= lang('Config.config_style_body_bg') ?>">
+                        <small class="text-muted d-block mt-1"><?= lang('Config.config_style_body_bg_transparent_help') ?></small>
+                    </div>
+                    <div class="col-md-4 mb-3">
                         <label class="form-label" for="ui_main_bg"><?= lang('Config.config_style_main_bg') ?></label>
                         <input type="hidden" name="ui_main_bg_transparent" value="0">
                         <div class="form-check mb-2">
@@ -806,6 +826,8 @@ $pgActiveColor = LayoutService::htmlColorPickerValue($pgActiveColor, '#ffffff');
                         <input type="color" name="ui_main_bg" id="ui_main_bg" value="<?= esc($mainBgTransparent ? '#ffffff' : LayoutService::htmlColorPickerValue($mainBgStored, '#ffffff')) ?>" class="form-control form-control-color" title="<?= lang('Config.config_style_main_bg') ?>">
                         <small class="text-muted d-block mt-1"><?= lang('Config.config_style_main_bg_transparent_help') ?></small>
                     </div>
+                </div>
+                <div class="row">
                     <div class="col-md-4 mb-3">
                         <label class="form-label"><?= lang('Config.config_style_link_color') ?></label>
                         <input type="hidden" name="ui_link_default" value="0">
@@ -1313,12 +1335,15 @@ $pgActiveColor = LayoutService::htmlColorPickerValue($pgActiveColor, '#ffffff');
         if (p) p.disabled = c && c.checked;
     }
     var sb = document.getElementById('ui_sidebar_bg_transparent');
+    var bb = document.getElementById('ui_body_bg_transparent');
     var mb = document.getElementById('ui_main_bg_transparent');
     var fb = document.getElementById('ui_footer_bg_transparent');
     if (sb) sb.addEventListener('change', function() { toggleBgTransparent('ui_sidebar_bg_transparent', 'ui_sidebar_bg'); });
+    if (bb) bb.addEventListener('change', function() { toggleBgTransparent('ui_body_bg_transparent', 'ui_body_bg'); });
     if (mb) mb.addEventListener('change', function() { toggleBgTransparent('ui_main_bg_transparent', 'ui_main_bg'); });
     if (fb) fb.addEventListener('change', function() { toggleBgTransparent('ui_footer_bg_transparent', 'ui_footer_bg'); });
     toggleBgTransparent('ui_sidebar_bg_transparent', 'ui_sidebar_bg');
+    toggleBgTransparent('ui_body_bg_transparent', 'ui_body_bg');
     toggleBgTransparent('ui_main_bg_transparent', 'ui_main_bg');
     toggleBgTransparent('ui_footer_bg_transparent', 'ui_footer_bg');
 

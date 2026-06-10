@@ -55,11 +55,70 @@
   font-style: var(--ui-sidebar-link-font-style, normal);
 }
 
-.sidebar .nav-link i {
+.sidebar .nav-link > i.fa-solid,
+.sidebar .nav-link > i.fa-regular {
   width: 1.25rem;
   text-align: center;
   color: inherit !important;
 }
+
+/* Iconos del menú: tiles de color estilo app (iOS / Meta) */
+.sidebar-app-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2rem;
+  height: 2rem;
+  border-radius: 0.55rem;
+  flex-shrink: 0;
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.14), inset 0 1px 0 rgba(255, 255, 255, 0.22);
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.sidebar-app-icon--sm {
+  width: 1.65rem;
+  height: 1.65rem;
+  border-radius: 0.45rem;
+}
+
+.sidebar-app-icon i {
+  color: #fff !important;
+  font-size: 0.95rem;
+  line-height: 1;
+}
+
+.sidebar-app-icon--sm i {
+  font-size: 0.78rem;
+}
+
+.sidebar .nav-link:hover .sidebar-app-icon,
+.sidebar .nav-link.active .sidebar-app-icon {
+  transform: scale(1.04);
+  box-shadow: 0 2px 6px rgba(15, 23, 42, 0.18), inset 0 1px 0 rgba(255, 255, 255, 0.28);
+}
+
+.sidebar-app-icon--home          { background: linear-gradient(145deg, #1877f2, #4dabf7); }
+.sidebar-app-icon--customers     { background: linear-gradient(145deg, #00b894, #38d9a9); }
+.sidebar-app-icon--doctors       { background: linear-gradient(145deg, #7048e8, #9775fa); }
+.sidebar-app-icon--commissions   { background: linear-gradient(145deg, #2f9e44, #69db7c); }
+.sidebar-app-icon--labotests     { background: linear-gradient(145deg, #f76707, #ffa94d); }
+.sidebar-app-icon--toquotes      { background: linear-gradient(145deg, #4263eb, #748ffc); }
+.sidebar-app-icon--registers     { background: linear-gradient(145deg, #1c7ed6, #4dabf7); }
+.sidebar-app-icon--registers-nuevo { background: linear-gradient(145deg, #12b886, #63e6be); }
+.sidebar-app-icon--expediente    { background: linear-gradient(145deg, #9c36b5, #da77f2); }
+.sidebar-app-icon--reports       { background: linear-gradient(145deg, #0c8599, #3bc9db); }
+.sidebar-app-icon--controlcalidad { background: linear-gradient(145deg, #099268, #40c057); }
+.sidebar-app-icon--reactivos     { background: linear-gradient(145deg, #e67700, #ffd43b); }
+.sidebar-app-icon--equipos       { background: linear-gradient(145deg, #495057, #868e96); }
+.sidebar-app-icon--egresos       { background: linear-gradient(145deg, #e03131, #ff8787); }
+.sidebar-app-icon--leyendas      { background: linear-gradient(145deg, #d6336c, #f783ac); }
+.sidebar-app-icon--auditoria     { background: linear-gradient(145deg, #364fc7, #748ffc); }
+.sidebar-app-icon--employees     { background: linear-gradient(145deg, #0ca678, #38d9a9); }
+.sidebar-app-icon--config        { background: linear-gradient(145deg, #5c677d, #adb5bd); }
+.sidebar-app-icon--subscription  { background: linear-gradient(145deg, #1971c2, #74c0fc); }
+.sidebar-app-icon--password      { background: linear-gradient(145deg, #f08c00, #ffc078); }
+.sidebar-app-icon--logout        { background: linear-gradient(145deg, #868e96, #ced4da); }
+.sidebar-app-icon--default       { background: linear-gradient(145deg, #495057, #868e96); }
 
 .sidebar-heading {
   font-size: calc(var(--ui-font-size-sidebar, 1rem) * 0.75);
@@ -181,11 +240,12 @@ body.ynex-theme {
   font-weight: var(--ui-body-font-weight, 400);
   font-style: var(--ui-body-font-style, normal);
   color: var(--ui-body-color, var(--text-main, #212529));
-  background-color: var(--ui-main-bg, var(--bg-main, #fff));
+  background-color: var(--ui-body-bg, var(--bg-main, #fff));
 }
 
 body.ynex-theme main {
   font-size: var(--ui-font-size-main, 1rem);
+  background-color: var(--ui-main-bg, transparent);
 }
 
 /* Tamaño de letra en pantallas pequeñas (configurable: --ui-font-size-base-mobile) */

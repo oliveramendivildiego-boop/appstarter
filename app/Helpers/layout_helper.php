@@ -141,3 +141,54 @@ if (!function_exists('app_header_datetime_format')) {
         );
     }
 }
+
+if (!function_exists('sidebar_module_icon_defs')) {
+    /**
+     * Iconos del menú lateral: glifo + variante de color (estilo app iOS / Meta).
+     *
+     * @return array<string, array{icon: string, tone: string}>
+     */
+    function sidebar_module_icon_defs(): array
+    {
+        return [
+            'home'                 => ['icon' => 'fa-house', 'tone' => 'home'],
+            'customers'            => ['icon' => 'fa-user-group', 'tone' => 'customers'],
+            'doctors'              => ['icon' => 'fa-user-doctor', 'tone' => 'doctors'],
+            'doctor_commissions'   => ['icon' => 'fa-hand-holding-dollar', 'tone' => 'commissions'],
+            'labotests'            => ['icon' => 'fa-flask-vial', 'tone' => 'labotests'],
+            'toquotes'             => ['icon' => 'fa-file-invoice-dollar', 'tone' => 'toquotes'],
+            'registers'            => ['icon' => 'fa-clipboard-check', 'tone' => 'registers'],
+            'registers_nuevo'      => ['icon' => 'fa-circle-plus', 'tone' => 'registers-nuevo'],
+            'expediente'           => ['icon' => 'fa-clock-rotate-left', 'tone' => 'expediente'],
+            'reports'              => ['icon' => 'fa-chart-pie', 'tone' => 'reports'],
+            'controlcalidad'       => ['icon' => 'fa-shield-heart', 'tone' => 'controlcalidad'],
+            'reactivos'            => ['icon' => 'fa-boxes-stacked', 'tone' => 'reactivos'],
+            'equipos'              => ['icon' => 'fa-microscope', 'tone' => 'equipos'],
+            'egresos'              => ['icon' => 'fa-wallet', 'tone' => 'egresos'],
+            'leyendas'             => ['icon' => 'fa-comments', 'tone' => 'leyendas'],
+            'auditoria'            => ['icon' => 'fa-list-check', 'tone' => 'auditoria'],
+            'employees'            => ['icon' => 'fa-id-badge', 'tone' => 'employees'],
+            'config'               => ['icon' => 'fa-sliders', 'tone' => 'config'],
+            'tenant_subscription'  => ['icon' => 'fa-file-contract', 'tone' => 'subscription'],
+            'account_password'     => ['icon' => 'fa-lock', 'tone' => 'password'],
+            'logout'               => ['icon' => 'fa-arrow-right-from-bracket', 'tone' => 'logout'],
+        ];
+    }
+}
+
+if (!function_exists('sidebar_module_icon')) {
+    /**
+     * HTML del icono del menú lateral (tile de color + glifo blanco).
+     */
+    function sidebar_module_icon(string $moduleKey, bool $small = false): string
+    {
+        $defs = sidebar_module_icon_defs();
+        $def  = $defs[$moduleKey] ?? ['icon' => 'fa-table-cells', 'tone' => 'default'];
+        $tone = preg_replace('/[^a-z0-9-]/', '', (string) ($def['tone'] ?? 'default')) ?: 'default';
+        $icon = preg_replace('/[^a-z0-9-]/', '', (string) ($def['icon'] ?? 'fa-circle')) ?: 'fa-circle';
+        $size = $small ? ' sidebar-app-icon--sm' : '';
+
+        return '<span class="sidebar-app-icon sidebar-app-icon--' . $tone . $size . '" aria-hidden="true">'
+            . '<i class="fa-solid ' . $icon . '"></i></span>';
+    }
+}

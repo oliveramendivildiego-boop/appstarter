@@ -2033,6 +2033,9 @@ class ConfigService
                 $this->normalizeUiHex((string) ($post['theme_color'] ?? ''), '#FF7218')
             ),
             'ui_pagination_active_color' => $this->normalizeUiHex((string) ($post['ui_pagination_active_color'] ?? ''), '#ffffff'),
+            'ui_body_bg'            => ! empty($post['ui_body_bg_transparent'])
+                ? 'transparent'
+                : $this->normalizeUiHex((string) ($post['ui_body_bg'] ?? ''), '#ffffff'),
             'ui_main_bg'            => ! empty($post['ui_main_bg_transparent'])
                 ? 'transparent'
                 : $this->normalizeUiHex((string) ($post['ui_main_bg'] ?? ''), '#ffffff'),
