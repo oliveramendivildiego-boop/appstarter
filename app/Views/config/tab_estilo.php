@@ -7,6 +7,8 @@
  * @var array<string, string> $theme_palette
  */
 
+helper('layout');
+
 use App\Services\LayoutService;
 
 $fontOpts        = LayoutService::uiFontOptionsForView();
@@ -243,8 +245,8 @@ $pgActiveColor = LayoutService::htmlColorPickerValue($pgActiveColor, '#ffffff');
                 <div class="config-layout-map__frame rounded border border-2 overflow-hidden bg-white shadow-sm">
                     <div class="config-layout-map__bar px-3 py-2 small fw-semibold d-flex justify-content-between align-items-center gap-2" style="<?= $pvNavbarStyle ?>">
                         <span><span class="me-2 opacity-75">☰</span><?= lang('Config.config_style_theme_section') ?> · <?= lang('Config.config_company') ?></span>
-                        <span class="config-header-datetime-preview text-nowrap" style="color: <?= esc($pvNavbarClockFg, 'attr') ?>; font-weight: normal;">
-                            <i class="fa-regular fa-clock me-1" aria-hidden="true"></i><span class="config-header-datetime-preview-text"><?= esc($headerDtPreviewText) ?></span>
+                        <span class="config-header-datetime-preview d-inline-flex align-items-center text-nowrap" style="color: <?= esc($pvNavbarClockFg, 'attr') ?>; font-weight: normal;">
+                            <?= header_datetime_icon() ?><span class="config-header-datetime-preview-text"><?= esc($headerDtPreviewText) ?></span>
                         </span>
                     </div>
                     <div class="d-flex config-layout-map__mid" style="min-height: 9rem; background: <?= $pvBodyBg ?>;">

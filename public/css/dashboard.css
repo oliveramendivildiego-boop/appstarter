@@ -349,9 +349,28 @@ header.navbar-theme .navbar-theme-meta,
   font-style: var(--ui-navbar-font-style, normal);
 }
 
-.header-datetime,
-.header-datetime__icon {
+.header-datetime {
   color: var(--ui-header-datetime-color, var(--ui-navbar-text, #fff)) !important;
+}
+
+/* Reloj del header: tile de color estilo app (iOS / Meta) */
+.header-datetime-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.55rem;
+  height: 1.55rem;
+  border-radius: 0.45rem;
+  flex-shrink: 0;
+  background: linear-gradient(145deg, #f08c00, #ffd43b);
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.14), inset 0 1px 0 rgba(255, 255, 255, 0.22);
+  vertical-align: middle;
+}
+
+.header-datetime-icon i {
+  color: #fff !important;
+  font-size: 0.72rem;
+  line-height: 1;
 }
 
 /* Reloj del header (derecha, zona del sistema) */
@@ -367,12 +386,6 @@ header.navbar-theme {
 .header-datetime {
   font-size: clamp(0.7rem, 2.2vw, 0.875rem);
   letter-spacing: 0.01em;
-}
-
-.header-datetime__icon {
-  opacity: 0.85;
-  font-size: 0.9em;
-  flex-shrink: 0;
 }
 
 .header-datetime.navbar-theme-meta {

@@ -208,6 +208,10 @@ html body.ynex-theme .sidebar .sidebar-app-icon i {
     color: #fff !important;
 }
 
+html body.ynex-theme .header-datetime-icon i {
+    color: #fff !important;
+}
+
 html body.ynex-theme .sidebar .nav-link:hover,
 html body.ynex-theme .sidebar a.nav-link:hover {
     background-color: var(--ui-sidebar-hover-bg, rgba(0, 0, 0, 0.08)) !important;

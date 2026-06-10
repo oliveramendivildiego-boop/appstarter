@@ -14,6 +14,7 @@ use App\Models\AuditoriaModel;
 use App\Models\RegisterModel;
 use App\Services\RegisterService;
 use App\Services\TenantScopedDatabaseService;
+use App\Services\ReportsAnalyticsSeenService;
 use App\Libraries\PdfService;
 use App\Libraries\ReportPdfDocument;
 use CodeIgniter\HTTP\ResponseInterface;
@@ -40,10 +41,14 @@ class Reports extends SecureArea
 
     public function index()
     {
+        $personId = (int) session()->get('person_id');
+        $seenService = new ReportsAnalyticsSeenService();
+
         return view('reports/listing', [
             'allowed_modules'  => $this->allowed_modules,
             'user_info'        => $this->user_info,
             'current_module'   => 'reports',
+            'analytics_seen'   => $seenService->getSeenKeys($personId),
         ]);
     }
 

@@ -5,6 +5,7 @@ namespace App\Controllers;
 use App\Libraries\ReportPdfDocument;
 use App\Models\ReportAnalyticsModel;
 use App\Services\RegisterService;
+use App\Services\ReportsAnalyticsSeenService;
 use CodeIgniter\HTTP\ResponseInterface;
 
 /**
@@ -21,10 +22,22 @@ class ReportsAnalytics extends SecureArea
 
     protected ReportAnalyticsModel $analytics;
 
+    protected ReportsAnalyticsSeenService $seenService;
+
     public function __construct()
     {
         parent::__construct();
-        $this->analytics = model(ReportAnalyticsModel::class);
+        $this->analytics   = model(ReportAnalyticsModel::class);
+        $this->seenService = new ReportsAnalyticsSeenService();
+    }
+
+    /** Marca el reporte analítico como visto por el usuario actual (solo vista HTML). */
+    private function markAnalyticsReportSeen(string $reportKey): void
+    {
+        $personId = (int) session()->get('person_id');
+        if ($personId > 0) {
+            $this->seenService->markSeen($personId, $reportKey);
+        }
     }
 
     // ------------------------------------------------------------------
@@ -130,6 +143,7 @@ class ReportsAnalytics extends SecureArea
 
     public function pruebasMasSolicitadas()
     {
+        $this->markAnalyticsReportSeen('pruebas_mas_solicitadas');
         $payload = $this->collectMasSolicitadasPayload();
 
         return view('reports/analytics/pruebas_mas_solicitadas', array_merge(
@@ -200,6 +214,7 @@ class ReportsAnalytics extends SecureArea
 
     public function tendenciaPaciente()
     {
+        $this->markAnalyticsReportSeen('tendencia_paciente');
         $payload = $this->collectTendenciaPayload();
 
         return view('reports/analytics/tendencia_paciente', array_merge(
@@ -268,6 +283,7 @@ class ReportsAnalytics extends SecureArea
 
     public function valoresCriticos()
     {
+        $this->markAnalyticsReportSeen('valores_criticos');
         $payload = $this->collectValoresCriticosPayload();
 
         return view('reports/analytics/valores_criticos', array_merge(
@@ -352,6 +368,7 @@ class ReportsAnalytics extends SecureArea
 
     public function tiempoEntrega()
     {
+        $this->markAnalyticsReportSeen('tiempo_entrega');
         $payload = $this->collectTiempoEntregaPayload();
 
         return view('reports/analytics/tiempo_entrega', array_merge(
@@ -430,6 +447,7 @@ class ReportsAnalytics extends SecureArea
 
     public function productividadUsuarios()
     {
+        $this->markAnalyticsReportSeen('productividad_usuarios');
         $payload = $this->collectProductividadPayload();
 
         return view('reports/analytics/productividad_usuarios', array_merge(
@@ -499,6 +517,7 @@ class ReportsAnalytics extends SecureArea
 
     public function resultadosCorregidos()
     {
+        $this->markAnalyticsReportSeen('resultados_corregidos');
         $payload = $this->collectCorregidosPayload();
 
         return view('reports/analytics/resultados_corregidos', array_merge(
@@ -578,6 +597,7 @@ class ReportsAnalytics extends SecureArea
 
     public function pendientesValidacion()
     {
+        $this->markAnalyticsReportSeen('pendientes_validacion');
         $payload = $this->collectPendientesPayload();
 
         return view('reports/analytics/pendientes_validacion', array_merge(
@@ -647,6 +667,7 @@ class ReportsAnalytics extends SecureArea
 
     public function consumoInsumos()
     {
+        $this->markAnalyticsReportSeen('consumo_insumos');
         $payload = $this->collectConsumoPayload();
 
         return view('reports/analytics/consumo_insumos', array_merge(
@@ -714,6 +735,7 @@ class ReportsAnalytics extends SecureArea
 
     public function proyeccionInsumos()
     {
+        $this->markAnalyticsReportSeen('proyeccion_insumos');
         $payload = $this->collectProyeccionPayload();
         $hoy     = RegisterService::todayForReport();
 
@@ -786,6 +808,7 @@ class ReportsAnalytics extends SecureArea
 
     public function comparativoMensual()
     {
+        $this->markAnalyticsReportSeen('comparativo_mensual');
         $payload = $this->collectComparativoPayload();
 
         return view('reports/analytics/comparativo_mensual', array_merge(

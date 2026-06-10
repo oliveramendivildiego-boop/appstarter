@@ -192,3 +192,14 @@ if (!function_exists('sidebar_module_icon')) {
             . '<i class="fa-solid ' . $icon . '"></i></span>';
     }
 }
+
+if (!function_exists('header_datetime_icon')) {
+    /**
+     * Icono del reloj del header (tile de color estilo app iOS / Meta).
+     */
+    function header_datetime_icon(): string
+    {
+        return '<span class="header-datetime-icon me-1 me-sm-2" aria-hidden="true">'
+            . '<i class="fa-solid fa-clock"></i></span>';
+    }
+}
