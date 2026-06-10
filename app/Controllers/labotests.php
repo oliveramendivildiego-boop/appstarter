@@ -69,16 +69,21 @@ class Labotests extends SecureArea
         if ($search === '') {
             $search = null;
         }
+        $grupoId = (int) ($this->request->getGet('grupo') ?? 0);
+        if ($grupoId < 1) {
+            $grupoId = null;
+        }
 
-        $result = $this->labotestModel->getGroupedByCategoryPaginated(6, $page, $search);
+        $result = $this->labotestModel->getGroupedByCategoryPaginated(6, $page, $search, $grupoId);
 
         return view('labotests/manage', [
             'categories'       => $result['categories'],
-            'all_categories'   => $search === null ? $this->labotestModel->getCategoriesForReorder() : [],
+            'all_categories'   => ($search === null && $grupoId === null) ? $this->labotestModel->getCategoriesForReorder() : [],
             'total'            => $result['total'],
             'page'             => $result['page'],
             'total_pages'      => $result['total_pages'],
             'search'           => $search,
+            'grupo_filter'     => $grupoId,
             'category_options'  => $this->labotestModel->getCategoryOptions(),
             'allowed_modules'  => $this->allowed_modules,
             'user_info'        => $this->user_info,

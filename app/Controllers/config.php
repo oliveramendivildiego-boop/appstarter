@@ -1208,6 +1208,56 @@ class Config extends SecureArea
         return redirect()->to($this->opcionesTabUrl())->with('success', 'Orden actualizado.');
     }
 
+    /**
+     * Ordena alfabéticamente (A-Z / Z-A) los valores de una opción personalizada.
+     */
+    public function sortOpcionValores(): ResponseInterface
+    {
+        $opcionesId = (int) ($this->request->getPost('opciones_id') ?? 0);
+        $direction = strtolower(trim((string) ($this->request->getPost('direction') ?? 'asc')));
+        $row = $opcionesId > 0 ? $this->opcionModel->find($opcionesId) : null;
+        if (!$row || trim((string) ($row['tabla'] ?? '')) !== 'opcion_valores') {
+            if ($this->shouldReturnJson()) {
+                return $this->response->setJSON($this->buildOpcionesPayload(false, 'Solo se puede ordenar en opciones personalizadas.'))->setStatusCode(400);
+            }
+            return redirect()->to($this->opcionesTabUrl())->with('error', 'Solo se puede ordenar en opciones personalizadas.');
+        }
+
+        $ok = $this->opcionModel->sortValoresAlfabeticamente($opcionesId, $direction === 'desc');
+        $message = $ok
+            ? 'Valores ordenados ' . ($direction === 'desc' ? 'de Z a A.' : 'de A a Z.')
+            : 'No hay valores suficientes para ordenar.';
+        if ($this->shouldReturnJson()) {
+            return $this->response->setJSON($this->buildOpcionesPayload($ok, $message))->setStatusCode($ok ? 200 : 400);
+        }
+        return redirect()->to($this->opcionesTabUrl())->with($ok ? 'success' : 'error', $message);
+    }
+
+    /**
+     * Cambia mayúsculas/minúsculas de todos los valores de una opción personalizada.
+     */
+    public function transformOpcionValores(): ResponseInterface
+    {
+        $opcionesId = (int) ($this->request->getPost('opciones_id') ?? 0);
+        $mode = strtolower(trim((string) ($this->request->getPost('mode') ?? '')));
+        $row = $opcionesId > 0 ? $this->opcionModel->find($opcionesId) : null;
+        if (!$row || trim((string) ($row['tabla'] ?? '')) !== 'opcion_valores' || !in_array($mode, ['upper', 'first', 'title'], true)) {
+            if ($this->shouldReturnJson()) {
+                return $this->response->setJSON($this->buildOpcionesPayload(false, 'Operación inválida.'))->setStatusCode(400);
+            }
+            return redirect()->to($this->opcionesTabUrl())->with('error', 'Operación inválida.');
+        }
+
+        $cambiados = $this->opcionModel->transformValoresCase($opcionesId, $mode);
+        $message = $cambiados > 0
+            ? 'Se actualizaron ' . $cambiados . ' valor(es).'
+            : 'Los valores ya tenían ese formato.';
+        if ($this->shouldReturnJson()) {
+            return $this->response->setJSON($this->buildOpcionesPayload(true, $message));
+        }
+        return redirect()->to($this->opcionesTabUrl())->with('success', $message);
+    }
+
     public function saveValorTabla(): ResponseInterface
     {
         $tabla   = trim($this->request->getPost('tabla') ?? '');

@@ -246,6 +246,75 @@ class OpcionModel extends Model
     }
 
     /**
+     * Ordena alfabéticamente los valores de una opción personalizada y persiste el orden.
+     */
+    public function sortValoresAlfabeticamente(int $opcionesId, bool $descendente = false): bool
+    {
+        $valores = $this->getValores($opcionesId);
+        if (count($valores) < 2) {
+            return count($valores) === 1;
+        }
+
+        $collator = class_exists(\Collator::class) ? new \Collator('es_ES') : null;
+        usort($valores, static function (array $a, array $b) use ($collator): int {
+            $va = (string) ($a['valor'] ?? '');
+            $vb = (string) ($b['valor'] ?? '');
+            if ($collator !== null) {
+                return (int) $collator->compare($va, $vb);
+            }
+            return strnatcasecmp($va, $vb);
+        });
+        if ($descendente) {
+            $valores = array_reverse($valores);
+        }
+
+        $ids = array_map(static fn (array $v): int => (int) ($v['opcion_valor_id'] ?? 0), $valores);
+
+        return $this->reorderValores($opcionesId, $ids);
+    }
+
+    /**
+     * Cambia mayúsculas/minúsculas de todos los valores de una opción personalizada.
+     *
+     * @param string $mode upper (TODO MAYÚSCULAS), first (Primera letra), title (Cada Palabra)
+     * @return int Cantidad de valores modificados
+     */
+    public function transformValoresCase(int $opcionesId, string $mode): int
+    {
+        $valores = $this->getValores($opcionesId);
+        $cambiados = 0;
+        foreach ($valores as $v) {
+            $valorId = (int) ($v['opcion_valor_id'] ?? 0);
+            $original = (string) ($v['valor'] ?? '');
+            if ($valorId < 1 || $original === '') {
+                continue;
+            }
+            switch ($mode) {
+                case 'upper':
+                    $nuevo = mb_strtoupper($original, 'UTF-8');
+                    break;
+                case 'first':
+                    $nuevo = mb_strtoupper(mb_substr($original, 0, 1, 'UTF-8'), 'UTF-8')
+                        . mb_strtolower(mb_substr($original, 1, null, 'UTF-8'), 'UTF-8');
+                    break;
+                case 'title':
+                    $nuevo = mb_convert_case(mb_strtolower($original, 'UTF-8'), MB_CASE_TITLE, 'UTF-8');
+                    break;
+                default:
+                    continue 2;
+            }
+            if ($nuevo !== $original) {
+                $this->db->table('opcion_valores')
+                    ->where('opcion_valor_id', $valorId)
+                    ->update(['valor' => $nuevo]);
+                $cambiados++;
+            }
+        }
+
+        return $cambiados;
+    }
+
+    /**
      * Elimina un valor de opcion_valores
      */
     public function deleteValor(int $opcionValorId): bool

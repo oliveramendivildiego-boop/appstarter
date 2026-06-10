@@ -6,7 +6,7 @@
 <?= view('partial/breadcrumb_nav', [
     'items' => [
         ['label' => lang('Module.module_labotests'), 'url' => site_url('labotests')],
-        ['label' => $labotests_master->name ?? '', 'url' => site_url('labotests/view/' . $labotests_namecate)],
+        ['label' => $labotests_master->name ?? '', 'url' => site_url('labotests') . '?page=1&grupo=' . (int) $labotests_namecate],
         ['label' => ($labotests_info->name ?? '') . ' - ' . lang('Labotests.labotests_config'), 'url' => null],
     ],
     'right' => '<a href="' . site_url('labotests/opciones') . '" class="btn btn-outline-primary btn-sm" title="Administrar tipos de resultado"><i class="fa-solid fa-list-check me-1"></i>Tipos resultado</a>'

@@ -17,11 +17,23 @@ $labRight = '<a href="' . site_url('labotests/perfiles') . '" class="btn btn-out
     <input type="hidden" name="page" value="1">
     <input type="search" name="q" class="form-control form-control-sm" style="max-width:280px" placeholder="Buscar examen o grupo..." value="<?= esc($search ?? '') ?>">
     <button type="submit" class="btn btn-outline-primary btn-sm"><i class="fa-solid fa-search"></i> Buscar</button>
-    <?php if (!empty($search)): ?>
+    <?php if (!empty($search) || !empty($grupo_filter)): ?>
     <a href="<?= site_url('labotests') ?>" class="btn btn-outline-secondary btn-sm">Limpiar</a>
     <?php endif; ?>
     <?= form_close() ?>
 </div>
+
+<?php if (!empty($grupo_filter)): ?>
+<div class="alert alert-info d-flex justify-content-between align-items-center py-2">
+    <span>
+        <i class="fa-solid fa-filter me-1"></i>
+        Mostrando solo el grupo
+        <strong><?= esc($categories[0]['name'] ?? ('#' . (int) $grupo_filter)) ?></strong>
+        y todos sus análisis.
+    </span>
+    <a href="<?= site_url('labotests') ?>" class="btn btn-outline-secondary btn-sm">Ver todos los grupos</a>
+</div>
+<?php endif; ?>
 
 <?php if (session()->getFlashdata('success')): ?>
 <div class="alert alert-success alert-dismissible fade show">
@@ -40,7 +52,7 @@ $labRight = '<a href="' . site_url('labotests/perfiles') . '" class="btn btn-out
     <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-4">
         <h4 class="mb-0"><?= lang('Module.module_labotests') ?></h4>
         <div class="d-flex flex-wrap align-items-center gap-2">
-            <?php if (empty($search)): ?>
+            <?php if (empty($search) && empty($grupo_filter)): ?>
             <div class="dropdown">
                 <button type="button" class="btn btn-outline-secondary btn-sm dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false" id="labotestsTransformNamesBtn">
                     <i class="fa-solid fa-font me-1"></i> Formato de nombres
@@ -71,7 +83,7 @@ $labRight = '<a href="' . site_url('labotests/perfiles') . '" class="btn btn-out
                 </ul>
             </div>
             <?php endif; ?>
-            <?php if (empty($search)): ?>
+            <?php if (empty($search) && empty($grupo_filter)): ?>
             <button type="button" class="btn btn-outline-warning btn-sm" data-bs-toggle="modal" data-bs-target="#duplicateAnalysesModal">
                 <i class="fa-solid fa-clone me-1"></i> Análisis duplicados
             </button>
@@ -177,6 +189,9 @@ $labRight = '<a href="' . site_url('labotests/perfiles') . '" class="btn btn-out
     $params = ['page' => 1];
     if (!empty($search)) {
         $params['q'] = $search;
+    }
+    if (!empty($grupo_filter)) {
+        $params['grupo'] = (int) $grupo_filter;
     }
     ?>
     <nav class="mt-4" aria-label="Paginación">

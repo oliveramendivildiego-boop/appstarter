@@ -37,7 +37,7 @@ class LabotestModel extends Model
      * Obtiene categorías con sus análisis (prianacategoria)
      * @param string|null $search Filtra por nombre de grupo o de examen
      */
-    public function getAllWithAnalysis(?string $search = null): array
+    public function getAllWithAnalysis(?string $search = null, ?int $categoriaId = null): array
     {
         $ana = $this->db->prefixTable('anacategoria');
         $pri = $this->db->prefixTable('prianacategoria');
@@ -71,6 +71,10 @@ class LabotestModel extends Model
             $builder->join('metodo me', "{$pri}.metodo_id = me.metodo_id", 'left');
         }
 
+        if ($categoriaId !== null && $categoriaId > 0) {
+            $builder->where("{$ana}.anacategoria_id", $categoriaId);
+        }
+
         if ($search !== null && trim($search) !== '') {
             $esc = $this->db->escapeLikeString(trim($search));
             $pat = "%{$esc}%";
@@ -86,9 +90,9 @@ class LabotestModel extends Model
     /**
      * Agrupa por categoría para la vista
      */
-    public function getGroupedByCategory(?string $search = null): array
+    public function getGroupedByCategory(?string $search = null, ?int $categoriaId = null): array
     {
-        $rows = $this->getAllWithAnalysis($search);
+        $rows = $this->getAllWithAnalysis($search, $categoriaId);
         $grouped = [];
 
         foreach ($rows as $row) {
@@ -143,9 +147,9 @@ class LabotestModel extends Model
     /**
      * Obtiene categorías agrupadas con paginación (6 cajas por página) y búsqueda
      */
-    public function getGroupedByCategoryPaginated(int $perPage = 6, int $page = 1, ?string $search = null): array
+    public function getGroupedByCategoryPaginated(int $perPage = 6, int $page = 1, ?string $search = null, ?int $categoriaId = null): array
     {
-        $all = $this->getGroupedByCategory($search);
+        $all = $this->getGroupedByCategory($search, $categoriaId);
         $total = count($all);
         $offset = ($page - 1) * $perPage;
         $paged = array_slice($all, $offset, $perPage);

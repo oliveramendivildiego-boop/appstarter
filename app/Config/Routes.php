@@ -146,6 +146,8 @@ $routes->post('config/saveopcion', 'Config::saveOpcion');
 $routes->post('config/importOpciones', 'Config::importOpciones');
 $routes->post('config/saveopcionvalor', 'Config::saveOpcionValor');
 $routes->post('config/reorderopcionvalores', 'Config::reorderOpcionValores');
+$routes->post('config/sortopcionvalores', 'Config::sortOpcionValores');
+$routes->post('config/transformopcionvalores', 'Config::transformOpcionValores');
 $routes->post('config/savevalortabla', 'Config::saveValorTabla');
 $routes->post('config/savetenant', 'Config::saveTenant');
 $routes->post('config/saveTenantBackupSchedule', 'Config::saveTenantBackupSchedule');

@@ -54,6 +54,32 @@ $opcionesTotalPages = max(1, (int) ($opcionesPagination['pages'] ?? 1));
                 </td>
                 <td>
                     <?php if ($o['usa_valores_genericos'] ?? false): ?>
+                    <?php if (count($o['valores'] ?? []) > 0): ?>
+                    <div class="d-flex flex-wrap align-items-center gap-2 mb-2">
+                        <?= form_open('config/sortopcionvalores', ['class' => 'd-inline-flex']) ?>
+                        <input type="hidden" name="opciones_id" value="<?= (int)($o['opciones_id'] ?? 0) ?>">
+                        <input type="hidden" name="opciones_page" value="<?= $opcionesCurrentPage ?>">
+                        <div class="btn-group btn-group-sm" role="group" aria-label="Ordenar valores">
+                            <button type="submit" name="direction" value="asc" class="btn btn-outline-secondary" title="Ordenar de A a Z"><i class="fa-solid fa-arrow-down-a-z me-1"></i>A-Z</button>
+                            <button type="submit" name="direction" value="desc" class="btn btn-outline-secondary" title="Ordenar de Z a A"><i class="fa-solid fa-arrow-up-z-a me-1"></i>Z-A</button>
+                        </div>
+                        <?= form_close() ?>
+                        <?= form_open('config/transformopcionvalores', ['class' => 'd-inline-flex']) ?>
+                        <input type="hidden" name="opciones_id" value="<?= (int)($o['opciones_id'] ?? 0) ?>">
+                        <input type="hidden" name="opciones_page" value="<?= $opcionesCurrentPage ?>">
+                        <div class="btn-group btn-group-sm" role="group">
+                            <button type="button" class="btn btn-outline-secondary dropdown-toggle" data-bs-toggle="dropdown" data-bs-display="static" aria-expanded="false" title="Cambiar mayúsculas/minúsculas">
+                                <i class="fa-solid fa-font me-1"></i>Aa
+                            </button>
+                            <ul class="dropdown-menu">
+                                <li><button type="submit" class="dropdown-item" name="mode" value="upper">TODO MAYÚSCULAS</button></li>
+                                <li><button type="submit" class="dropdown-item" name="mode" value="first">Solo primera letra mayúscula</button></li>
+                                <li><button type="submit" class="dropdown-item" name="mode" value="title">Primera Letra De Cada Palabra</button></li>
+                            </ul>
+                        </div>
+                        <?= form_close() ?>
+                    </div>
+                    <?php endif; ?>
                     <ul class="list-unstyled mb-0 small opcion-valores-list" data-opciones-id="<?= (int)($o['opciones_id'] ?? 0) ?>">
                         <?php foreach ($o['valores'] ?? [] as $v): ?>
                         <li class="d-flex align-items-center gap-2 py-1 opcion-valor-item" draggable="true" data-valor-id="<?= (int)($v['opcion_valor_id'] ?? 0) ?>">
@@ -154,7 +180,9 @@ $opcionesTotalPages = max(1, (int) ($opcionesPagination['pages'] ?? 1));
 </style>
 
 <script>
-(function () {
+// Inicializa drag & drop de valores. Se expone globalmente porque el contenido
+// se reemplaza vía AJAX (innerHTML no re-ejecuta scripts) y hay que re-vincular.
+window.initOpcionesDragDrop = function () {
     var lists = document.querySelectorAll('.opcion-valores-list');
     if (!lists.length) {
         return;
@@ -174,6 +202,10 @@ $opcionesTotalPages = max(1, (int) ($opcionesPagination['pages'] ?? 1));
     }
 
     lists.forEach(function (list) {
+        if (list.dataset.dragInit === '1') {
+            return;
+        }
+        list.dataset.dragInit = '1';
         var items = list.querySelectorAll('.opcion-valor-item');
         items.forEach(function (item) {
             item.addEventListener('dragstart', function () {
@@ -240,7 +272,8 @@ $opcionesTotalPages = max(1, (int) ($opcionesPagination['pages'] ?? 1));
             }
         });
     });
-})();
+};
+window.initOpcionesDragDrop();
 </script>
 
 <?php if ($opcionesTotalPages > 1): ?>

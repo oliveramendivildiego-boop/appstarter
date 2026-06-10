@@ -2000,6 +2000,10 @@ $(document).ready(function() {
         if (!cont || !response || typeof response.html !== 'string') return;
         cont.innerHTML = response.html;
         initNuevaOpcionValidation();
+        // Los <script> insertados via innerHTML no se ejecutan: re-vincular drag & drop.
+        if (typeof window.initOpcionesDragDrop === 'function') {
+            window.initOpcionesDragDrop();
+        }
     }
 
     function showOpcionesToast(message, ok) {
@@ -2015,11 +2019,15 @@ $(document).ready(function() {
             if (!(form instanceof HTMLFormElement)) return;
 
             var action = String(form.getAttribute('action') || '');
-            var isOpcionesAction = /config\/(saveopcion|saveopcionvalor|savevalortabla)/i.test(action);
+            var isOpcionesAction = /config\/(saveopcion|saveopcionvalor|savevalortabla|sortopcionvalores|transformopcionvalores)/i.test(action);
             if (!isOpcionesAction) return;
 
             event.preventDefault();
             var formData = new FormData(form);
+            // FormData(form) no incluye el botón submit pulsado (direction/mode).
+            if (event.submitter && event.submitter.name) {
+                formData.append(event.submitter.name, event.submitter.value || '');
+            }
             fetch(action, {
                 method: 'POST',
                 body: formData,
