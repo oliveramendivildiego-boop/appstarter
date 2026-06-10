@@ -277,7 +277,7 @@ foreach ($pruebas_info ?? [] as $prueba):
             $pMin = trim($prueba['valor_min'] ?? ''); $pMax = trim($prueba['valor_max'] ?? ''); $pUmed = trim($prueba['umedida'] ?? '');
             $pRef = ($pMin !== '' || $pMax !== '') ? ' <small class="text-muted">(Ref: ' . ($pMin ?: 'â€¦') . ' - ' . ($pMax ?: 'â€¦') . ($pUmed ? ' ' . $pUmed : '') . ')</small>' : '';
             $valores = $registerModel ? $registerModel->getOpciones((int)$prueba['opcion_id']) : [];
-            echo '<div class="col-12 col-md-6 col-lg-4 col-xl-3 mb-3"><div class="mb-3">';
+            echo '<div class="col-12 col-md-6 col-lg-4 mb-3"><div class="mb-3">';
             $nocId = 'noc_' . ($prueba['priresultados_id'] ?? '');
             echo '<label for="' . esc($nocId) . '" class="form-label">' . esc($prueba['hijo'] ?? '') . $pRef . ':</label>';
             $extra = 'id="' . esc($nocId) . '" class="form-control input-con-ref"';
@@ -298,7 +298,7 @@ foreach ($pruebas_info ?? [] as $prueba):
             $rid = $prueba['priresultados_id'] ?? $prueba['prianacategoria_id'] ?? '';
             $pMin = trim($prueba['valor_min'] ?? ''); $pMax = trim($prueba['valor_max'] ?? ''); $pUmed = trim($prueba['umedida'] ?? '');
             $pRef = ($pMin !== '' || $pMax !== '') ? ' <small class="text-muted">(Ref: ' . ($pMin ?: '…') . ' - ' . ($pMax ?: '…') . ($pUmed ? ' ' . esc($pUmed) : '') . ')</small>' : '';
-            echo '<div class="col-12 col-md-6 col-lg-4 col-xl-3 mb-3"><div class="mb-3">';
+            echo '<div class="col-12 col-md-6 col-lg-4 mb-3"><div class="mb-3">';
             $nocRid = 'noc_' . esc($rid);
             echo '<label for="' . $nocRid . '" class="form-label">' . esc($prueba['hijo'] ?? '') . $pRef . ($esCalculadaNoc ? ' <span class="badge badge-calculada">' . ($esFormulaValorNoc ? 'Fórmula (valor × expresión)' : 'Calculada') . '</span>' : '') . ':</label>';
             $valRid = $existentes['noc_' . $rid] ?? '';
@@ -322,7 +322,7 @@ foreach ($pruebas_info ?? [] as $prueba):
             $rid = $prueba['priresultados_id'] ?? $prueba['prianacategoria_id'] ?? '';
             $pMin = trim($prueba['valor_min'] ?? ''); $pMax = trim($prueba['valor_max'] ?? ''); $pUmed = trim($prueba['umedida'] ?? '');
             $pRef = ($pMin !== '' || $pMax !== '') ? ' <small class="text-muted">(Ref: ' . ($pMin ?: 'â€¦') . ' - ' . ($pMax ?: 'â€¦') . ($pUmed ? ' ' . $pUmed : '') . ')</small>' : ' <small class="text-muted">(Por favor revise los valores de referencia en AnÃ¡lisis clÃ­nico)</small>';
-            echo '<div class="col-12 col-md-6 col-lg-4 col-xl-3 mb-3"><div class="mb-3">';
+            echo '<div class="col-12 col-md-6 col-lg-4 mb-3"><div class="mb-3">';
             echo '<label for="noc_' . esc($rid) . '" class="form-label">' . esc($prueba['hijo'] ?? '') . $pRef . ':</label>';
             $valRid = $existentes['noc_' . $rid] ?? '';
             $attrs = 'name="noc_' . esc($rid) . '" id="noc_' . esc($rid) . '" class="form-control input-con-ref" value="' . esc($valRid) . '"';
@@ -379,7 +379,7 @@ foreach ($pruebas_info ?? [] as $prueba):
             $valorExiste = $existentes[$cId] ?? ($prianacategoriaId > 0 && $nombrePrueba !== '' ? ($existentes[$prianacategoriaId . '|' . $nombrePrueba] ?? '') : '');
             if (registro_opcion_es_select((int) ($v['opcion_id'] ?? 0))):
                 $opts = $registerModel ? $registerModel->getOpciones((int)($v['opcion_id'] ?? 0)) : [];
-                echo '<div class="col-12 col-md-6 col-lg-4 col-xl-3 mb-3"><div class="mb-3">';
+                echo '<div class="col-12 col-md-6 col-lg-4 mb-3"><div class="mb-3">';
                 echo '<label for="' . esc($cId) . '" class="form-label">' . esc($v['nombre'] ?? '') . $refText . ':</label>';
                 $extra = 'id="' . esc($cId) . '" class="form-control input-con-ref"';
                 if ($prianacategoriaId > 0) $extra .= ' data-prianacategoria-id="' . $prianacategoriaId . '"';
@@ -425,7 +425,7 @@ foreach ($pruebas_info ?? [] as $prueba):
                 $esCalculada = $expresion !== '' && $formulasId !== 1;
                 $idsEnFormula = $esCalculada && preg_match_all('/c_\d+/', $expresion, $m) ? array_unique($m[0]) : [];
                 $esFormulaValor = $esCalculada && count($idsEnFormula) === 1 && in_array($cId, $idsEnFormula, true);
-                echo '<div class="col-12 col-md-6 col-lg-4 col-xl-3 mb-3"><div class="mb-3">';
+                echo '<div class="col-12 col-md-6 col-lg-4 mb-3"><div class="mb-3">';
                 echo '<label for="' . esc($cId) . '" class="form-label">' . esc($v['nombre'] ?? '') . $refText . ($esCalculada ? ' <span class="badge badge-calculada">' . ($esFormulaValor ? 'FÃ³rmula (valor Ã— expresiÃ³n)' : 'Calculada') . '</span>' : '') . ':</label>';
                 if ($esCalculada) {
                     if ($esFormulaValor) {
