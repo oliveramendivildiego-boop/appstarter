@@ -91,9 +91,11 @@ class Config extends SecureArea
 
         $editarTipoMuestraId = (int) ($this->request->getGet('editar_tipo') ?? 0);
         $editarTipoMuestraData = [];
+        $tiposMuestraSort = strtolower(trim((string) ($this->request->getGet('tm_sort') ?? '')));
+        $tiposMuestraSort = in_array($tiposMuestraSort, ['az', 'za'], true) ? $tiposMuestraSort : 'az';
         $tiposMuestraLista = [];
         try {
-            $tiposMuestraLista = $this->tipoMuestraModel->getAllActive();
+            $tiposMuestraLista = $this->tipoMuestraModel->getAllActive($tiposMuestraSort === 'za');
         } catch (\Throwable $e) {
             $tiposMuestraLista = [];
         }
@@ -112,9 +114,11 @@ class Config extends SecureArea
 
         $editarMetodoId = (int) ($this->request->getGet('editar_metodo') ?? 0);
         $editarMetodoData = [];
+        $metodosSort = strtolower(trim((string) ($this->request->getGet('met_sort') ?? '')));
+        $metodosSort = in_array($metodosSort, ['az', 'za'], true) ? $metodosSort : 'az';
         $metodosLista = [];
         try {
-            $metodosLista = $this->metodoModel->getAllActive();
+            $metodosLista = $this->metodoModel->getAllActive($metodosSort === 'za');
         } catch (\Throwable $e) {
             $metodosLista = [];
         }
@@ -163,7 +167,7 @@ class Config extends SecureArea
             }
         }
 
-        $opcionesPageData = $this->loadOpcionesPageForView($this->resolveOpcionesPage(), 10);
+        $opcionesPageData = $this->loadOpcionesPageForView($this->resolveOpcionesPage(), 10, $this->resolveOpcionesSort());
         $opciones = $opcionesPageData['items'];
         $tenants = $this->tenantConfigService->getAll();
         $canManageTenants = $this->canManageTenants();
@@ -285,9 +289,11 @@ class Config extends SecureArea
             'editar_poblacion'     => $editarPoblacion,
             'editar_poblacion_data'=> $editarPoblacionData,
             'tipos_muestra'        => $tiposMuestraLista,
+            'tipos_muestra_sort'   => $tiposMuestraSort,
             'editar_tipo_muestra'  => $editarTipoMuestraId,
             'editar_tipo_muestra_data' => $editarTipoMuestraData,
             'metodos_prueba'       => $metodosLista,
+            'metodos_sort'         => $metodosSort,
             'editar_metodo'        => $editarMetodoId,
             'editar_metodo_data'   => $editarMetodoData,
             'leyendas_cultivo'     => $leyendasCultivoLista,
@@ -346,7 +352,7 @@ class Config extends SecureArea
         return $this->enrichOpcionesForView($this->opcionModel->findAll());
     }
 
-    private function loadOpcionesPageForView(int $page, int $perPage = 10): array
+    private function loadOpcionesPageForView(int $page, int $perPage = 10, string $sort = ''): array
     {
         $page = max(1, $page);
         $perPage = max(1, $perPage);
@@ -356,7 +362,12 @@ class Config extends SecureArea
             $page = $pages;
         }
         $offset = ($page - 1) * $perPage;
-        $rows = $this->opcionModel->orderBy('opciones_id', 'ASC')->findAll($perPage, $offset);
+        if ($sort === 'az' || $sort === 'za') {
+            $this->opcionModel->orderBy('opciones', $sort === 'za' ? 'DESC' : 'ASC');
+        } else {
+            $this->opcionModel->orderBy('opciones_id', 'ASC');
+        }
+        $rows = $this->opcionModel->findAll($perPage, $offset);
 
         return [
             'items' => $this->enrichOpcionesForView($rows),
@@ -365,6 +376,7 @@ class Config extends SecureArea
                 'per_page' => $perPage,
                 'total' => $total,
                 'pages' => $pages,
+                'sort' => $sort,
             ],
         ];
     }
@@ -379,11 +391,23 @@ class Config extends SecureArea
         return $page > 0 ? $page : 1;
     }
 
+    private function resolveOpcionesSort(): string
+    {
+        $raw = $this->request->getPost('opciones_sort');
+        if ($raw === null || $raw === '') {
+            $raw = $this->request->getGet('opciones_sort');
+        }
+        $sort = strtolower(trim((string) $raw));
+        return in_array($sort, ['az', 'za'], true) ? $sort : '';
+    }
+
     private function opcionesTabUrl(?int $page = null): string
     {
         $targetPage = $page ?? $this->resolveOpcionesPage();
         $targetPage = max(1, (int) $targetPage);
-        return 'config?tab=opciones&opciones_page=' . $targetPage;
+        $sort = $this->resolveOpcionesSort();
+        return 'config?tab=opciones&opciones_page=' . $targetPage
+            . ($sort !== '' ? '&opciones_sort=' . $sort : '');
     }
 
     private function shouldReturnJson(): bool
@@ -395,7 +419,7 @@ class Config extends SecureArea
 
     private function buildOpcionesPayload(bool $success, string $message): array
     {
-        $pageData = $this->loadOpcionesPageForView($this->resolveOpcionesPage(), 10);
+        $pageData = $this->loadOpcionesPageForView($this->resolveOpcionesPage(), 10, $this->resolveOpcionesSort());
         return [
             'success'    => $success,
             'message'    => $message,
@@ -1209,53 +1233,81 @@ class Config extends SecureArea
     }
 
     /**
-     * Ordena alfabéticamente (A-Z / Z-A) los valores de una opción personalizada.
+     * Cambia mayúsculas/minúsculas de los nombres de los tipos de resultado (solo editables).
      */
-    public function sortOpcionValores(): ResponseInterface
+    public function transformOpcionNombres(): ResponseInterface
     {
-        $opcionesId = (int) ($this->request->getPost('opciones_id') ?? 0);
-        $direction = strtolower(trim((string) ($this->request->getPost('direction') ?? 'asc')));
-        $row = $opcionesId > 0 ? $this->opcionModel->find($opcionesId) : null;
-        if (!$row || trim((string) ($row['tabla'] ?? '')) !== 'opcion_valores') {
-            if ($this->shouldReturnJson()) {
-                return $this->response->setJSON($this->buildOpcionesPayload(false, 'Solo se puede ordenar en opciones personalizadas.'))->setStatusCode(400);
-            }
-            return redirect()->to($this->opcionesTabUrl())->with('error', 'Solo se puede ordenar en opciones personalizadas.');
-        }
-
-        $ok = $this->opcionModel->sortValoresAlfabeticamente($opcionesId, $direction === 'desc');
-        $message = $ok
-            ? 'Valores ordenados ' . ($direction === 'desc' ? 'de Z a A.' : 'de A a Z.')
-            : 'No hay valores suficientes para ordenar.';
-        if ($this->shouldReturnJson()) {
-            return $this->response->setJSON($this->buildOpcionesPayload($ok, $message))->setStatusCode($ok ? 200 : 400);
-        }
-        return redirect()->to($this->opcionesTabUrl())->with($ok ? 'success' : 'error', $message);
-    }
-
-    /**
-     * Cambia mayúsculas/minúsculas de todos los valores de una opción personalizada.
-     */
-    public function transformOpcionValores(): ResponseInterface
-    {
-        $opcionesId = (int) ($this->request->getPost('opciones_id') ?? 0);
         $mode = strtolower(trim((string) ($this->request->getPost('mode') ?? '')));
-        $row = $opcionesId > 0 ? $this->opcionModel->find($opcionesId) : null;
-        if (!$row || trim((string) ($row['tabla'] ?? '')) !== 'opcion_valores' || !in_array($mode, ['upper', 'first', 'title'], true)) {
+        if (!in_array($mode, ['upper', 'first', 'title'], true)) {
             if ($this->shouldReturnJson()) {
                 return $this->response->setJSON($this->buildOpcionesPayload(false, 'Operación inválida.'))->setStatusCode(400);
             }
             return redirect()->to($this->opcionesTabUrl())->with('error', 'Operación inválida.');
         }
 
-        $cambiados = $this->opcionModel->transformValoresCase($opcionesId, $mode);
+        $cambiados = $this->opcionModel->transformNombresCase($mode);
         $message = $cambiados > 0
-            ? 'Se actualizaron ' . $cambiados . ' valor(es).'
-            : 'Los valores ya tenían ese formato.';
+            ? 'Se actualizaron ' . $cambiados . ' nombre(s).'
+            : 'Los nombres ya tenían ese formato (los tipos del sistema no se modifican).';
+        if ($cambiados > 0) {
+            \App\Models\AuditoriaModel::log('config', 'opciones_transformar_nombres', null, $mode);
+        }
         if ($this->shouldReturnJson()) {
             return $this->response->setJSON($this->buildOpcionesPayload(true, $message));
         }
         return redirect()->to($this->opcionesTabUrl())->with('success', $message);
+    }
+
+    /**
+     * Cambia mayúsculas/minúsculas de los nombres de tipos de muestra.
+     */
+    public function transformTiposMuestra(): ResponseInterface
+    {
+        $redirect = 'config?tab=tipos_muestra&tm_sort=' . ($this->request->getPost('tm_sort') === 'za' ? 'za' : 'az');
+        $mode = strtolower(trim((string) ($this->request->getPost('mode') ?? '')));
+        if (!in_array($mode, ['upper', 'first', 'title'], true)) {
+            return redirect()->to($redirect)->with('error', 'Operación inválida.');
+        }
+
+        try {
+            $cambiados = $this->tipoMuestraModel->transformNombresCase($mode);
+        } catch (\Throwable $e) {
+            return redirect()->to($redirect)->with('error', 'No se pudieron actualizar los nombres.');
+        }
+        if ($cambiados > 0) {
+            \App\Models\AuditoriaModel::log('config', 'tipos_muestra_transformar_nombres', null, $mode);
+        }
+
+        return redirect()->to($redirect)->with(
+            'success',
+            $cambiados > 0 ? 'Se actualizaron ' . $cambiados . ' nombre(s).' : 'Los nombres ya tenían ese formato.'
+        );
+    }
+
+    /**
+     * Cambia mayúsculas/minúsculas de los nombres de métodos de prueba.
+     */
+    public function transformMetodos(): ResponseInterface
+    {
+        $redirect = 'config?tab=metodos_prueba&met_sort=' . ($this->request->getPost('met_sort') === 'za' ? 'za' : 'az');
+        $mode = strtolower(trim((string) ($this->request->getPost('mode') ?? '')));
+        if (!in_array($mode, ['upper', 'first', 'title'], true)) {
+            return redirect()->to($redirect)->with('error', 'Operación inválida.');
+        }
+
+        try {
+            $cambiados = $this->metodoModel->transformNombresCase($mode);
+        } catch (\Throwable $e) {
+            return redirect()->to($redirect)->with('error', 'No se pudieron actualizar los nombres.');
+        }
+        if ($cambiados > 0) {
+            \App\Models\AuditoriaModel::log('config', 'metodos_transformar_nombres', null, $mode);
+        }
+
+        return redirect()->to($redirect)->with(
+            'success',
+            $cambiados > 0 ? 'Se actualizaron ' . $cambiados . ' nombre(s).' : 'Los nombres ya tenían ese formato.'
+        );
     }
 
     public function saveValorTabla(): ResponseInterface

@@ -246,67 +246,43 @@ class OpcionModel extends Model
     }
 
     /**
-     * Ordena alfabéticamente los valores de una opción personalizada y persiste el orden.
+     * Aplica una transformación de mayúsculas/minúsculas a un texto (UTF-8).
+     *
+     * @param string $mode upper (TODO MAYÚSCULAS), first (Primera letra), title (Cada Palabra)
      */
-    public function sortValoresAlfabeticamente(int $opcionesId, bool $descendente = false): bool
+    public static function applyCaseTransform(string $value, string $mode): string
     {
-        $valores = $this->getValores($opcionesId);
-        if (count($valores) < 2) {
-            return count($valores) === 1;
+        switch ($mode) {
+            case 'upper':
+                return mb_strtoupper($value, 'UTF-8');
+            case 'first':
+                return mb_strtoupper(mb_substr($value, 0, 1, 'UTF-8'), 'UTF-8')
+                    . mb_strtolower(mb_substr($value, 1, null, 'UTF-8'), 'UTF-8');
+            case 'title':
+                return mb_convert_case(mb_strtolower($value, 'UTF-8'), MB_CASE_TITLE, 'UTF-8');
+            default:
+                return $value;
         }
-
-        $collator = class_exists(\Collator::class) ? new \Collator('es_ES') : null;
-        usort($valores, static function (array $a, array $b) use ($collator): int {
-            $va = (string) ($a['valor'] ?? '');
-            $vb = (string) ($b['valor'] ?? '');
-            if ($collator !== null) {
-                return (int) $collator->compare($va, $vb);
-            }
-            return strnatcasecmp($va, $vb);
-        });
-        if ($descendente) {
-            $valores = array_reverse($valores);
-        }
-
-        $ids = array_map(static fn (array $v): int => (int) ($v['opcion_valor_id'] ?? 0), $valores);
-
-        return $this->reorderValores($opcionesId, $ids);
     }
 
     /**
-     * Cambia mayúsculas/minúsculas de todos los valores de una opción personalizada.
+     * Cambia mayúsculas/minúsculas de los nombres de los tipos de resultado editables.
      *
-     * @param string $mode upper (TODO MAYÚSCULAS), first (Primera letra), title (Cada Palabra)
-     * @return int Cantidad de valores modificados
+     * @return int Cantidad de nombres modificados
      */
-    public function transformValoresCase(int $opcionesId, string $mode): int
+    public function transformNombresCase(string $mode): int
     {
-        $valores = $this->getValores($opcionesId);
+        $rows = $this->findAll();
         $cambiados = 0;
-        foreach ($valores as $v) {
-            $valorId = (int) ($v['opcion_valor_id'] ?? 0);
-            $original = (string) ($v['valor'] ?? '');
-            if ($valorId < 1 || $original === '') {
+        foreach ($rows as $row) {
+            $id = (int) ($row['opciones_id'] ?? 0);
+            if ($id < 1 || $this->isSystemOpcion($id)) {
                 continue;
             }
-            switch ($mode) {
-                case 'upper':
-                    $nuevo = mb_strtoupper($original, 'UTF-8');
-                    break;
-                case 'first':
-                    $nuevo = mb_strtoupper(mb_substr($original, 0, 1, 'UTF-8'), 'UTF-8')
-                        . mb_strtolower(mb_substr($original, 1, null, 'UTF-8'), 'UTF-8');
-                    break;
-                case 'title':
-                    $nuevo = mb_convert_case(mb_strtolower($original, 'UTF-8'), MB_CASE_TITLE, 'UTF-8');
-                    break;
-                default:
-                    continue 2;
-            }
-            if ($nuevo !== $original) {
-                $this->db->table('opcion_valores')
-                    ->where('opcion_valor_id', $valorId)
-                    ->update(['valor' => $nuevo]);
+            $original = (string) ($row['opciones'] ?? '');
+            $nuevo = self::applyCaseTransform($original, $mode);
+            if ($nuevo !== '' && $nuevo !== $original) {
+                $this->update($id, ['opciones' => $nuevo]);
                 $cambiados++;
             }
         }

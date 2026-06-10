@@ -17,13 +17,35 @@ class MetodoModel extends Model
     protected $allowedFields      = ['nombre', 'deleted'];
     protected $useTimestamps      = false;
 
-    public function getAllActive(): array
+    public function getAllActive(bool $descendente = false): array
     {
         return $this->builder()
             ->where('(deleted = 0 OR deleted IS NULL)')
-            ->orderBy('nombre', 'ASC')
+            ->orderBy('nombre', $descendente ? 'DESC' : 'ASC')
             ->get()
             ->getResultArray();
+    }
+
+    /**
+     * Cambia mayúsculas/minúsculas de todos los nombres activos.
+     *
+     * @param string $mode upper|first|title (ver OpcionModel::applyCaseTransform)
+     * @return int Cantidad de nombres modificados
+     */
+    public function transformNombresCase(string $mode): int
+    {
+        $cambiados = 0;
+        foreach ($this->getAllActive() as $row) {
+            $id = (int) ($row['metodo_id'] ?? 0);
+            $original = (string) ($row['nombre'] ?? '');
+            $nuevo = OpcionModel::applyCaseTransform($original, $mode);
+            if ($id > 0 && $nuevo !== '' && $nuevo !== $original) {
+                $this->update($id, ['nombre' => $nuevo]);
+                $cambiados++;
+            }
+        }
+
+        return $cambiados;
     }
 
     public function countPrianacategoriaUsando(int $metodoId): int

@@ -1338,6 +1338,26 @@
                 <p class="text-muted small mb-3">
                     Defina los tipos que aparecerán al <strong>crear una muestra</strong> en una orden (sangre, suero, orina, etc.). La eliminación es lógica y solo está permitida si ninguna muestra usa ese tipo.
                 </p>
+                <div class="d-flex flex-wrap align-items-center gap-2 mb-2">
+                    <span class="text-muted small">Ordenar nombres:</span>
+                    <div class="btn-group btn-group-sm" role="group" aria-label="Ordenar nombres">
+                        <a href="<?= site_url('config?tab=tipos_muestra&tm_sort=az') ?>" class="btn btn-outline-secondary <?= ($tipos_muestra_sort ?? 'az') === 'az' ? 'active' : '' ?>" title="Ordenar de A a Z"><i class="fa-solid fa-arrow-down-a-z me-1"></i>A-Z</a>
+                        <a href="<?= site_url('config?tab=tipos_muestra&tm_sort=za') ?>" class="btn btn-outline-secondary <?= ($tipos_muestra_sort ?? '') === 'za' ? 'active' : '' ?>" title="Ordenar de Z a A"><i class="fa-solid fa-arrow-up-z-a me-1"></i>Z-A</a>
+                    </div>
+                    <?= form_open('config/transformtiposmuestra', ['class' => 'd-inline-flex']) ?>
+                    <input type="hidden" name="tm_sort" value="<?= esc($tipos_muestra_sort ?? 'az') ?>">
+                    <div class="btn-group btn-group-sm" role="group">
+                        <button type="button" class="btn btn-outline-secondary dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false" title="Cambiar mayúsculas/minúsculas de los nombres">
+                            <i class="fa-solid fa-font me-1"></i>Aa
+                        </button>
+                        <ul class="dropdown-menu">
+                            <li><button type="submit" class="dropdown-item" name="mode" value="upper">TODO MAYÚSCULAS</button></li>
+                            <li><button type="submit" class="dropdown-item" name="mode" value="first">Solo primera letra mayúscula</button></li>
+                            <li><button type="submit" class="dropdown-item" name="mode" value="title">Primera Letra De Cada Palabra</button></li>
+                        </ul>
+                    </div>
+                    <?= form_close() ?>
+                </div>
                 <div class="table-responsive mb-4">
                     <table class="table table-sm table-bordered align-middle">
                         <thead class="table-light">
@@ -1403,6 +1423,26 @@
                 <p class="text-muted small mb-3">
                     Defina los <strong>métodos o técnicas</strong> empleadas en cada análisis (por ejemplo inmunoenzimático, quimioluminiscencia). Se asignan en <strong>Análisis clínicos → detalle del análisis</strong>, debajo del tipo de muestra, y aparecen en el reporte bajo «Tipo de Muestra». Solo se puede eliminar un método si ningún análisis lo usa.
                 </p>
+                <div class="d-flex flex-wrap align-items-center gap-2 mb-2">
+                    <span class="text-muted small">Ordenar nombres:</span>
+                    <div class="btn-group btn-group-sm" role="group" aria-label="Ordenar nombres">
+                        <a href="<?= site_url('config?tab=metodos_prueba&met_sort=az') ?>" class="btn btn-outline-secondary <?= ($metodos_sort ?? 'az') === 'az' ? 'active' : '' ?>" title="Ordenar de A a Z"><i class="fa-solid fa-arrow-down-a-z me-1"></i>A-Z</a>
+                        <a href="<?= site_url('config?tab=metodos_prueba&met_sort=za') ?>" class="btn btn-outline-secondary <?= ($metodos_sort ?? '') === 'za' ? 'active' : '' ?>" title="Ordenar de Z a A"><i class="fa-solid fa-arrow-up-z-a me-1"></i>Z-A</a>
+                    </div>
+                    <?= form_open('config/transformmetodos', ['class' => 'd-inline-flex']) ?>
+                    <input type="hidden" name="met_sort" value="<?= esc($metodos_sort ?? 'az') ?>">
+                    <div class="btn-group btn-group-sm" role="group">
+                        <button type="button" class="btn btn-outline-secondary dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false" title="Cambiar mayúsculas/minúsculas de los nombres">
+                            <i class="fa-solid fa-font me-1"></i>Aa
+                        </button>
+                        <ul class="dropdown-menu">
+                            <li><button type="submit" class="dropdown-item" name="mode" value="upper">TODO MAYÚSCULAS</button></li>
+                            <li><button type="submit" class="dropdown-item" name="mode" value="first">Solo primera letra mayúscula</button></li>
+                            <li><button type="submit" class="dropdown-item" name="mode" value="title">Primera Letra De Cada Palabra</button></li>
+                        </ul>
+                    </div>
+                    <?= form_close() ?>
+                </div>
                 <div class="table-responsive mb-4">
                     <table class="table table-sm table-bordered align-middle">
                         <thead class="table-light">
@@ -2019,7 +2059,7 @@ $(document).ready(function() {
             if (!(form instanceof HTMLFormElement)) return;
 
             var action = String(form.getAttribute('action') || '');
-            var isOpcionesAction = /config\/(saveopcion|saveopcionvalor|savevalortabla|sortopcionvalores|transformopcionvalores)/i.test(action);
+            var isOpcionesAction = /config\/(saveopcion|saveopcionvalor|savevalortabla|transformopcionnombres)/i.test(action);
             if (!isOpcionesAction) return;
 
             event.preventDefault();
