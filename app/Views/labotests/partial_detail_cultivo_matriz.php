@@ -516,6 +516,10 @@ $parsePersonalizadoCelda = static function (array $celdaRaw): array {
         </a>
     </div>
     <div class="card-body">
+        <?= view('labotests/partial_detail_matriz_export_import', [
+            'labotests_info' => $labotests_info,
+            'matriz_tipo'    => $matrizTipo,
+        ]) ?>
         <?= form_open($esPersonalizado ? 'labotests/savepersonalizadomatriz' : 'labotests/savecultivomatriz', ['id' => 'form_cultivo_matriz', 'novalidate' => 'novalidate']) ?>
         <input type="hidden" name="prianacategoria_id" value="<?= (int) ($labotests_info->prianacategoria_id ?? 0) ?>">
         <input type="hidden" name="cultivo_matriz_json" id="cultivo_matriz_json" value="">

@@ -2935,10 +2935,14 @@ class LabotestModel extends Model
 
         if ($complejaVal === self::COMPLEJA_CULTIVO) {
             $payload['compleja'] = self::COMPLEJA_CULTIVO;
+            $payload['matriz_tipo'] = 'cultivo';
             $payload['cultivo_matriz'] = $this->getCultivoMatrizConfig($prianacategoriaId);
         } elseif ($complejaVal === self::COMPLEJA_PERSONALIZADO) {
+            $matriz = $this->getPersonalizadoMatrizConfig($prianacategoriaId);
             $payload['compleja'] = self::COMPLEJA_PERSONALIZADO;
-            $payload['personalizado_matriz'] = $this->getPersonalizadoMatrizConfig($prianacategoriaId);
+            $payload['matriz_tipo'] = 'personalizado';
+            $payload['personalizado_matriz'] = $matriz;
+            $payload['cultivo_matriz'] = $matriz;
         } elseif ($isCompleja) {
             $rows = $this->getSubItems($prianacategoriaId);
             $payload['sub_items'] = array_map(static function (array $r): array {
@@ -2980,6 +2984,73 @@ class LabotestModel extends Model
     }
 
     /**
+     * Extrae configuración de matriz desde un JSON de importación.
+     *
+     * @return array<string, mixed>|null
+     */
+    public static function extractMatrizFromDetailImportPayload(array $payload, int $targetTipo): ?array
+    {
+        $candidates = [];
+        if ($targetTipo === self::COMPLEJA_PERSONALIZADO) {
+            $candidates = [
+                $payload['personalizado_matriz'] ?? null,
+                $payload['cultivo_matriz'] ?? null,
+            ];
+        } elseif ($targetTipo === self::COMPLEJA_CULTIVO) {
+            $candidates = [
+                $payload['cultivo_matriz'] ?? null,
+                $payload['personalizado_matriz'] ?? null,
+            ];
+        }
+
+        if (isset($payload['bloques']) && is_array($payload['bloques'])) {
+            $candidates[] = $payload;
+        }
+
+        foreach ($candidates as $raw) {
+            if (! is_array($raw)) {
+                continue;
+            }
+            if (isset($raw['bloques']) && is_array($raw['bloques'])) {
+                return $raw;
+            }
+            if (isset($raw['encabezado']) || isset($raw['cuerpo']) || isset($raw['pie'])) {
+                return $raw;
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * Valida si el JSON importado puede aplicarse a una prueba matriz (cultivo/personalizado).
+     */
+    public static function detailImportMatrizSourceEsCompatible(int $targetTipo, int $sourceTipo, ?array $matrizRaw): bool
+    {
+        if ($matrizRaw === null) {
+            return false;
+        }
+
+        if ($targetTipo === self::COMPLEJA_PERSONALIZADO) {
+            if ($sourceTipo === self::COMPLEJA_COMPOUESTA) {
+                return false;
+            }
+
+            return in_array($sourceTipo, [0, self::COMPLEJA_CULTIVO, self::COMPLEJA_PERSONALIZADO], true);
+        }
+
+        if ($targetTipo === self::COMPLEJA_CULTIVO) {
+            if ($sourceTipo === self::COMPLEJA_COMPOUESTA) {
+                return false;
+            }
+
+            return in_array($sourceTipo, [0, self::COMPLEJA_CULTIVO, self::COMPLEJA_PERSONALIZADO], true);
+        }
+
+        return false;
+    }
+
+    /**
      * Importa configuracion de detalle a una prueba existente.
      * Reemplaza completamente filas actuales (soft-delete + insert).
      *
@@ -2995,11 +3066,11 @@ class LabotestModel extends Model
         $targetTipo = (int) ($subInfo->compleja ?? 0);
         if ($targetTipo === self::COMPLEJA_CULTIVO) {
             $sourceTipo = (int) ($payload['compleja'] ?? 0);
-            if ($sourceTipo !== self::COMPLEJA_CULTIVO) {
+            $matrizRaw = self::extractMatrizFromDetailImportPayload($payload, $targetTipo);
+            if (! self::detailImportMatrizSourceEsCompatible($targetTipo, $sourceTipo, $matrizRaw)) {
                 return ['success' => false, 'message' => 'El archivo no corresponde al tipo de análisis de esta prueba'];
             }
-            $matrizRaw = $payload['cultivo_matriz'] ?? null;
-            if (! is_array($matrizRaw)) {
+            if ($matrizRaw === null) {
                 return ['success' => false, 'message' => 'El archivo no contiene matriz de cultivo para importar'];
             }
 
@@ -3019,11 +3090,11 @@ class LabotestModel extends Model
 
         if ($targetTipo === self::COMPLEJA_PERSONALIZADO) {
             $sourceTipo = (int) ($payload['compleja'] ?? 0);
-            if ($sourceTipo !== self::COMPLEJA_PERSONALIZADO) {
+            $matrizRaw = self::extractMatrizFromDetailImportPayload($payload, $targetTipo);
+            if (! self::detailImportMatrizSourceEsCompatible($targetTipo, $sourceTipo, $matrizRaw)) {
                 return ['success' => false, 'message' => 'El archivo no corresponde al tipo de análisis de esta prueba'];
             }
-            $matrizRaw = $payload['personalizado_matriz'] ?? ($payload['cultivo_matriz'] ?? null);
-            if (! is_array($matrizRaw)) {
+            if ($matrizRaw === null) {
                 return ['success' => false, 'message' => 'El archivo no contiene matriz personalizada para importar'];
             }
 

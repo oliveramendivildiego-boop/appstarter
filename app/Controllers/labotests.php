@@ -1188,7 +1188,7 @@ class Labotests extends SecureArea
             return redirect()->to('labotests')->with('error', 'Prueba no encontrada');
         }
 
-        $json = json_encode($payload, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+        $json = json_encode($payload, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_INVALID_UTF8_SUBSTITUTE);
         if ($json === false) {
             return redirect()->to("labotests/detail/{$id}")->with('error', 'No se pudo generar el archivo de exportación');
         }
@@ -1242,8 +1242,21 @@ class Labotests extends SecureArea
             'filas_importadas' => $imported,
         ]));
 
+        $successMsg = (string) ($result['message'] ?? 'Configuración importada correctamente');
+        if ($successMsg === 'Configuración importada correctamente' && $imported > 0) {
+            $subInfo = $this->labotestModel->getSubInfo($id);
+            $tipo = (int) ($subInfo->compleja ?? 0);
+            if (\App\Models\LabotestModel::esMatrizConfigurable($tipo)) {
+                $successMsg = $tipo === \App\Models\LabotestModel::COMPLEJA_PERSONALIZADO
+                    ? 'Matriz personalizada importada correctamente'
+                    : 'Matriz de cultivo importada correctamente';
+            } elseif ($imported > 0) {
+                $successMsg = 'Configuración importada correctamente (' . $imported . ' filas)';
+            }
+        }
+
         return redirect()->to("labotests/detail/{$id}")
-            ->with('success', 'Configuración importada correctamente (' . $imported . ' filas)');
+            ->with('success', $successMsg);
     }
 
     /**

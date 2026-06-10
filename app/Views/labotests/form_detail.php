@@ -27,6 +27,11 @@
 
 <?= form_close() ?>
 
+<?php
+$complejaTipo = (int) ($compleja ?? 0);
+$esMatrizConfigurable = \App\Models\LabotestModel::esMatrizConfigurable($complejaTipo);
+?>
+<?php if (! $esMatrizConfigurable): ?>
 <div class="card mt-3">
     <div class="card-header d-flex justify-content-between align-items-center">
         <strong><i class="fa-solid fa-file-arrow-up me-1"></i>Exportar / Importar configuración</strong>
@@ -84,6 +89,7 @@
     });
 })();
 </script>
+<?php endif; ?>
 
 <div class="card mt-3">
     <div class="card-header d-flex justify-content-between align-items-center">
