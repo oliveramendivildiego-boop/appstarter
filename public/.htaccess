@@ -24,6 +24,9 @@
 </IfModule>
 
 <IfModule mod_headers.c>
+    <Files "sw.js">
+        Header set Cache-Control "no-cache, must-revalidate"
+    </Files>
     <FilesMatch "\.(css|js|png|jpe?g|gif|webp|svg|woff2?)$">
         Header set Cache-Control "public, max-age=2592000, immutable"
     </FilesMatch>

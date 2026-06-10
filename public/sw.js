@@ -1,11 +1,12 @@
 /**
  * Service Worker — solo assets estáticos. Network-first para todo lo demás.
  */
-var CACHE = 'lab-static-v1';
+var CACHE = 'lab-static-v2';
 var ASSETS = [
     'css/vendor/bootstrap.min.css',
     'css/dom.css',
     'css/dashboard.css',
+    'assets/css/ynex.css',
     'assets/css/app.css',
     'css/modern-ui.css',
     'js/jquery-3.7.1.min.js',

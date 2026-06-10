@@ -15,7 +15,7 @@ $showLogoInHeader = !empty($layoutConfig['show_logo']);
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title><?= lang('Login.login_login') ?> - <?= esc($companyName) ?></title>
-    <link rel="stylesheet" href="<?= base_url('css/login-modern.css') ?>" />
+    <link rel="stylesheet" href="<?= asset_url('css/login-modern.css') ?>" />
     <?php if (!empty($googleClientId ?? '')): ?>
     <script src="https://accounts.google.com/gsi/client" async defer></script>
     <?php endif; ?>

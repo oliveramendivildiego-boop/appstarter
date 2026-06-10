@@ -55,25 +55,25 @@ $pageTitle = $this->renderSection('title');
     <meta name="csrf-token-name" content="<?= esc(csrf_token(), 'attr') ?>" />
     <base href="<?= base_url() ?>" />
     <title><?= trim($pageTitle ?? '') !== '' ? esc($pageTitle) . ' - ' : '' ?><?= esc($companyName) ?> - <?= lang('Common.common_powered_by') ?> Olivera Solutions</title>
-    <link rel="stylesheet" href="<?= base_url('css/dom_print.css') ?>" media="print"/>
-    <link rel="stylesheet" href="<?= base_url('css/vendor/bootstrap.min.css') ?>" />
-    <link rel="stylesheet" href="<?= base_url('css/vendor/fontawesome.min.css') ?>" />
-    <link rel="stylesheet" href="<?= base_url('css/vendor/material-icons.css') ?>" />
+    <link rel="stylesheet" href="<?= asset_url('css/dom_print.css') ?>" media="print"/>
+    <link rel="stylesheet" href="<?= asset_url('css/vendor/bootstrap.min.css') ?>" />
+    <link rel="stylesheet" href="<?= asset_url('css/vendor/fontawesome.min.css') ?>" />
+    <link rel="stylesheet" href="<?= asset_url('css/vendor/material-icons.css') ?>" />
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <?php if ($uiGoogleFont): ?>
     <link href="<?= esc($uiGoogleFont) ?>" rel="stylesheet">
     <?php endif; ?>
     <?php if ($uiUseInter): ?>
-    <link rel="stylesheet" href="<?= base_url('css/vendor/inter-font.css') ?>" />
+    <link rel="stylesheet" href="<?= asset_url('css/vendor/inter-font.css') ?>" />
     <?php endif; ?>
-    <link rel="stylesheet" href="<?= base_url('css/dom.css') ?>" />
-    <link rel="stylesheet" href="<?= base_url('assets/css/ynex.css') ?>" />
-    <link rel="stylesheet" href="<?= base_url('css/dashboard.css') ?>" />
-    <link rel="stylesheet" href="<?= base_url('css/autocomplete.css') ?>" />
-    <link rel="stylesheet" href="<?= base_url('assets/css/app.css') ?>" />
+    <link rel="stylesheet" href="<?= asset_url('css/dom.css') ?>" />
+    <link rel="stylesheet" href="<?= asset_url('assets/css/ynex.css') ?>" />
+    <link rel="stylesheet" href="<?= asset_url('css/dashboard.css') ?>" />
+    <link rel="stylesheet" href="<?= asset_url('css/autocomplete.css') ?>" />
+    <link rel="stylesheet" href="<?= asset_url('assets/css/app.css') ?>" />
     <?php if ($extraCss): ?>
-    <link rel="stylesheet" href="<?= base_url($extraCss) ?>" />
+    <link rel="stylesheet" href="<?= asset_url($extraCss) ?>" />
     <?php endif; ?>
     <script>
       BASE_URL = '<?= site_url() ?>';
@@ -85,14 +85,14 @@ $pageTitle = $this->renderSection('title');
       window.APP_CURRENCY_SYMBOL = <?= json_encode($layoutConfig['currency_symbol'] ?? '$', JSON_UNESCAPED_UNICODE) ?>;
       window.APP_CURRENCY_IS_RIGHT = <?= json_encode(strtolower(trim((string) ($layoutConfig['currency_side'] ?? 'left'))) === 'right') ?>;
     </script>
-    <script src="<?= base_url('js/jquery-3.7.1.min.js') ?>"></script>
-    <script src="<?= base_url('js/jquery.autocomplete.js') ?>"></script>
-    <script src="<?= base_url('js/vendor/bootstrap.bundle.min.js') ?>"></script>
-    <script src="<?= base_url('js/common.js') ?>"></script>
-    <script src="<?= base_url('js/validation-common.js') ?>"></script>
-    <script src="<?= base_url('js/manage_tables.js') ?>"></script>
-    <script src="<?= base_url('js/session-monitor.js') ?>"></script>
-    <script src="<?= base_url('js/header-datetime.js') ?>"></script>
+    <script src="<?= asset_url('js/jquery-3.7.1.min.js') ?>"></script>
+    <script src="<?= asset_url('js/jquery.autocomplete.js') ?>"></script>
+    <script src="<?= asset_url('js/vendor/bootstrap.bundle.min.js') ?>"></script>
+    <script src="<?= asset_url('js/common.js') ?>"></script>
+    <script src="<?= asset_url('js/validation-common.js') ?>"></script>
+    <script src="<?= asset_url('js/manage_tables.js') ?>"></script>
+    <script src="<?= asset_url('js/session-monitor.js') ?>"></script>
+    <script src="<?= asset_url('js/header-datetime.js') ?>"></script>
     <script>
       (function(){var d=document.documentElement;var p=d.getAttribute('data-theme-primary');var h=d.getAttribute('data-theme-hover');var a=d.getAttribute('data-theme-active');if(p)d.style.setProperty('--primary-color',p);if(h)d.style.setProperty('--primary-hover',h);if(a)d.style.setProperty('--primary-active',a);})();
     </script>

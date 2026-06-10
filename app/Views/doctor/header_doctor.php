@@ -15,19 +15,19 @@ $themeActive = $layoutConfig['theme_active'] ?? $themeColor;
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <base href="<?= base_url() ?>" />
     <title><?= esc($companyName) ?> - Portal Doctor</title>
-    <link rel="stylesheet" href="<?= base_url('css/vendor/bootstrap.min.css') ?>" />
-    <link rel="stylesheet" href="<?= base_url('css/vendor/fontawesome.min.css') ?>" />
-    <link rel="stylesheet" href="<?= base_url('css/dom.css') ?>" />
-    <link rel="stylesheet" href="<?= base_url('css/dashboard.css') ?>" />
-    <link rel="stylesheet" href="<?= base_url('assets/css/app.css') ?>" />
+    <link rel="stylesheet" href="<?= asset_url('css/vendor/bootstrap.min.css') ?>" />
+    <link rel="stylesheet" href="<?= asset_url('css/vendor/fontawesome.min.css') ?>" />
+    <link rel="stylesheet" href="<?= asset_url('css/dom.css') ?>" />
+    <link rel="stylesheet" href="<?= asset_url('css/dashboard.css') ?>" />
+    <link rel="stylesheet" href="<?= asset_url('assets/css/app.css') ?>" />
     <script>
       BASE_URL = '<?= site_url() ?>';
       window.CI_CSRF_TOKEN = '<?= csrf_hash() ?>';
       window.CI_CSRF_TOKEN_NAME = '<?= csrf_token() ?>';
     </script>
-    <script src="<?= base_url('js/jquery-3.7.1.min.js') ?>"></script>
-    <script src="<?= base_url('js/vendor/bootstrap.bundle.min.js') ?>"></script>
-    <script src="<?= base_url('js/common.js') ?>"></script>
+    <script src="<?= asset_url('js/jquery-3.7.1.min.js') ?>"></script>
+    <script src="<?= asset_url('js/vendor/bootstrap.bundle.min.js') ?>"></script>
+    <script src="<?= asset_url('js/common.js') ?>"></script>
     <script>(function(){var d=document.documentElement;var p=d.getAttribute('data-theme-primary');if(p)d.style.setProperty('--primary-color',p);var h=d.getAttribute('data-theme-hover');if(h)d.style.setProperty('--primary-hover',h);})();</script>
     <?php if (!empty($extra_head_links) && is_array($extra_head_links)): ?>
         <?php foreach ($extra_head_links as $link): ?><?= $link . "\n" ?><?php endforeach; ?>

@@ -1,6 +1,6 @@
 <!-- Capa UI moderna (Fase 1–2): aditiva, no altera flujos existentes -->
 <link rel="manifest" href="<?= base_url('manifest.webmanifest') ?>" />
-<link rel="stylesheet" href="<?= base_url('css/modern-ui.css') ?>" />
+<link rel="stylesheet" href="<?= asset_url('css/modern-ui.css') ?>" />
 
 <div id="lab-command-palette" class="lab-cmd-palette" hidden aria-hidden="true">
     <div class="lab-cmd-backdrop"></div>
@@ -15,6 +15,7 @@
     </div>
 </div>
 
-<script src="<?= base_url('js/modern/command-palette.js') ?>" defer></script>
-<script src="<?= base_url('js/modern/data-grid-enhance.js') ?>" defer></script>
-<script src="<?= base_url('js/modern/offline-pwa.js') ?>" defer></script>
+<script>window.ASSET_SW_VERSION = '<?= esc(asset_version('sw.js'), 'js') ?>';</script>
+<script src="<?= asset_url('js/modern/command-palette.js') ?>" defer></script>
+<script src="<?= asset_url('js/modern/data-grid-enhance.js') ?>" defer></script>
+<script src="<?= asset_url('js/modern/offline-pwa.js') ?>" defer></script>

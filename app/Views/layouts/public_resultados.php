@@ -34,11 +34,11 @@ $pageTitle = $this->renderSection('title');
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="<?= base_url('css/vendor/bootstrap.min.css') ?>" />
-    <link rel="stylesheet" href="<?= base_url('css/vendor/fontawesome.min.css') ?>" />
-    <link rel="stylesheet" href="<?= base_url('css/dom.css') ?>" />
-    <link rel="stylesheet" href="<?= base_url('assets/css/ynex.css') ?>" />
-    <link rel="stylesheet" href="<?= base_url('assets/css/app.css') ?>" />
+    <link rel="stylesheet" href="<?= asset_url('css/vendor/bootstrap.min.css') ?>" />
+    <link rel="stylesheet" href="<?= asset_url('css/vendor/fontawesome.min.css') ?>" />
+    <link rel="stylesheet" href="<?= asset_url('css/dom.css') ?>" />
+    <link rel="stylesheet" href="<?= asset_url('assets/css/ynex.css') ?>" />
+    <link rel="stylesheet" href="<?= asset_url('assets/css/app.css') ?>" />
     <script>(function(){var d=document.documentElement;var p=d.getAttribute('data-theme-primary');var h=d.getAttribute('data-theme-hover');var a=d.getAttribute('data-theme-active');var g=d.getAttribute('data-theme-gradient-end');if(p)d.style.setProperty('--primary-color',p);if(h)d.style.setProperty('--primary-hover',h);if(a)d.style.setProperty('--primary-active',a);if(g)d.style.setProperty('--theme-gradient-end',g);})();</script>
     <?= $this->renderSection('head_extra') ?>
 </head>

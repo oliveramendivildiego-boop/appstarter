@@ -34,20 +34,20 @@ $pageTitle = $this->renderSection('title');
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="<?= base_url('css/vendor/bootstrap.min.css') ?>" />
-    <link rel="stylesheet" href="<?= base_url('css/vendor/fontawesome.min.css') ?>" />
-    <link rel="stylesheet" href="<?= base_url('css/dom.css') ?>" />
-    <link rel="stylesheet" href="<?= base_url('css/dashboard.css') ?>" />
-    <link rel="stylesheet" href="<?= base_url('assets/css/ynex.css') ?>" />
-    <link rel="stylesheet" href="<?= base_url('assets/css/app.css') ?>" />
+    <link rel="stylesheet" href="<?= asset_url('css/vendor/bootstrap.min.css') ?>" />
+    <link rel="stylesheet" href="<?= asset_url('css/vendor/fontawesome.min.css') ?>" />
+    <link rel="stylesheet" href="<?= asset_url('css/dom.css') ?>" />
+    <link rel="stylesheet" href="<?= asset_url('css/dashboard.css') ?>" />
+    <link rel="stylesheet" href="<?= asset_url('assets/css/ynex.css') ?>" />
+    <link rel="stylesheet" href="<?= asset_url('assets/css/app.css') ?>" />
     <script>
       BASE_URL = '<?= site_url() ?>';
       window.CI_CSRF_TOKEN = '<?= csrf_hash() ?>';
       window.CI_CSRF_TOKEN_NAME = '<?= csrf_token() ?>';
     </script>
-    <script src="<?= base_url('js/jquery-3.7.1.min.js') ?>"></script>
-    <script src="<?= base_url('js/vendor/bootstrap.bundle.min.js') ?>"></script>
-    <script src="<?= base_url('js/common.js') ?>"></script>
+    <script src="<?= asset_url('js/jquery-3.7.1.min.js') ?>"></script>
+    <script src="<?= asset_url('js/vendor/bootstrap.bundle.min.js') ?>"></script>
+    <script src="<?= asset_url('js/common.js') ?>"></script>
     <script>(function(){var d=document.documentElement;var p=d.getAttribute('data-theme-primary');var h=d.getAttribute('data-theme-hover');var a=d.getAttribute('data-theme-active');var g=d.getAttribute('data-theme-gradient-end');if(p)d.style.setProperty('--primary-color',p);if(h)d.style.setProperty('--primary-hover',h);if(a)d.style.setProperty('--primary-active',a);if(g)d.style.setProperty('--theme-gradient-end',g);})();</script>
     <?= $this->renderSection('head_extra') ?>
 </head>

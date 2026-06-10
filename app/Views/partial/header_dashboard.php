@@ -25,29 +25,29 @@ $extraCss = isset($moduleCss[$currentMod]) ? $moduleCss[$currentMod] : null;
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <base href="<?= base_url() ?>" />
     <title><?= esc($companyName) ?> - <?= lang('Common.common_powered_by') ?> Olivera Solutions</title>
-    <link rel="stylesheet" href="<?= base_url('css/dom_print.css') ?>" media="print"/>
-    <link rel="stylesheet" href="<?= base_url('css/vendor/bootstrap.min.css') ?>" />
-    <link rel="stylesheet" href="<?= base_url('css/vendor/fontawesome.min.css') ?>" />
-    <link rel="stylesheet" href="<?= base_url('css/vendor/material-icons.css') ?>" />
-    <link rel="stylesheet" href="<?= base_url('css/vendor/inter-font.css') ?>" />
-    <link rel="stylesheet" href="<?= base_url('css/dom.css') ?>" />
-    <link rel="stylesheet" href="<?= base_url('css/dashboard.css') ?>" />
-    <link rel="stylesheet" href="<?= base_url('css/autocomplete.css') ?>" />
-    <link rel="stylesheet" href="<?= base_url('assets/css/app.css') ?>" />
+    <link rel="stylesheet" href="<?= asset_url('css/dom_print.css') ?>" media="print"/>
+    <link rel="stylesheet" href="<?= asset_url('css/vendor/bootstrap.min.css') ?>" />
+    <link rel="stylesheet" href="<?= asset_url('css/vendor/fontawesome.min.css') ?>" />
+    <link rel="stylesheet" href="<?= asset_url('css/vendor/material-icons.css') ?>" />
+    <link rel="stylesheet" href="<?= asset_url('css/vendor/inter-font.css') ?>" />
+    <link rel="stylesheet" href="<?= asset_url('css/dom.css') ?>" />
+    <link rel="stylesheet" href="<?= asset_url('css/dashboard.css') ?>" />
+    <link rel="stylesheet" href="<?= asset_url('css/autocomplete.css') ?>" />
+    <link rel="stylesheet" href="<?= asset_url('assets/css/app.css') ?>" />
     <?php if ($extraCss): ?>
-    <link rel="stylesheet" href="<?= base_url($extraCss) ?>" />
+    <link rel="stylesheet" href="<?= asset_url($extraCss) ?>" />
     <?php endif; ?>
     <script>
       BASE_URL = '<?= site_url() ?>';
       window.CI_CSRF_TOKEN = '<?= csrf_hash() ?>';
       window.CI_CSRF_TOKEN_NAME = '<?= csrf_token() ?>';
     </script>
-    <script src="<?= base_url('js/jquery-3.7.1.min.js') ?>"></script>
-    <script src="<?= base_url('js/jquery.autocomplete.js') ?>"></script>
-    <script src="<?= base_url('js/vendor/bootstrap.bundle.min.js') ?>"></script>
-    <script src="<?= base_url('js/common.js') ?>"></script>
-    <script src="<?= base_url('js/manage_tables.js') ?>"></script>
-    <script src="<?= base_url('js/header-datetime.js') ?>"></script>
+    <script src="<?= asset_url('js/jquery-3.7.1.min.js') ?>"></script>
+    <script src="<?= asset_url('js/jquery.autocomplete.js') ?>"></script>
+    <script src="<?= asset_url('js/vendor/bootstrap.bundle.min.js') ?>"></script>
+    <script src="<?= asset_url('js/common.js') ?>"></script>
+    <script src="<?= asset_url('js/manage_tables.js') ?>"></script>
+    <script src="<?= asset_url('js/header-datetime.js') ?>"></script>
     <script>
       (function(){var d=document.documentElement;var p=d.getAttribute('data-theme-primary');var h=d.getAttribute('data-theme-hover');var a=d.getAttribute('data-theme-active');if(p)d.style.setProperty('--primary-color',p);if(h)d.style.setProperty('--primary-hover',h);if(a)d.style.setProperty('--primary-active',a);})();
     </script>

@@ -29,8 +29,10 @@
 
     if ('serviceWorker' in navigator) {
         window.addEventListener('load', function () {
-            var swUrl = (window.BASE_URL || '/').replace(/\/?$/, '/') + 'sw.js';
-            navigator.serviceWorker.register(swUrl, { scope: (window.BASE_URL || '/').replace(/\/?$/, '/') })
+            var base = (window.BASE_URL || '/').replace(/\/?$/, '/');
+            var swVer = window.ASSET_SW_VERSION || '';
+            var swUrl = base + 'sw.js' + (swVer ? ('?v=' + encodeURIComponent(swVer)) : '');
+            navigator.serviceWorker.register(swUrl, { scope: base })
                 .catch(function () { /* silencioso — no afecta la app */ });
         });
     }
