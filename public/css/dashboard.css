@@ -184,6 +184,16 @@ body.ynex-theme main {
   font-size: var(--ui-font-size-main, 1rem);
 }
 
+/* Tamaño de letra en pantallas pequeñas (configurable: --ui-font-size-base-mobile) */
+@media (max-width: 767.98px) {
+  body.ynex-theme {
+    font-size: var(--ui-font-size-base-mobile, var(--ui-font-size-base, 1rem));
+  }
+  body.ynex-theme main {
+    font-size: var(--ui-font-size-base-mobile, var(--ui-font-size-main, 1rem));
+  }
+}
+
 header.navbar-theme {
   font-size: var(--ui-font-size-header, 1rem);
 }

@@ -18,6 +18,9 @@ class ConfigService
     /** Filtro de fechas por defecto en registers/lista: hoy | semana | mes | todos */
     public const REGISTERS_LISTA_FECHA_DEFAULT_KEY = 'registers_lista_fecha_default';
 
+    /** Modo de validación del laboratorio al llenar resultados: none | area | analisis */
+    public const LAB_VALIDATION_MODE_KEY = 'lab_validation_mode';
+
     protected AppConfigModel $appConfigModel;
 
     public function __construct(?AppConfigModel $appConfigModel = null)
@@ -91,6 +94,7 @@ class ConfigService
         $data['timezone'] ??= 'America/Mexico_City';
         $data['lab_validators_json'] ??= '[]';
         $data['lab_approvers_json'] ??= '[]';
+        $data[self::LAB_VALIDATION_MODE_KEY] ??= 'area';
         $data['comprobante_primary_color'] ??= '#0f766e';
         $data['comprobante_secondary_color'] ??= '#134e4a';
         $data['comprobante_text_color'] ??= '#1e293b';
@@ -120,6 +124,20 @@ class ConfigService
         $v = strtolower(trim($raw));
 
         return in_array($v, ['hoy', 'semana', 'mes', 'todos'], true) ? $v : 'hoy';
+    }
+
+    public static function normalizeLabValidationMode(string $raw): string
+    {
+        $v = strtolower(trim($raw));
+
+        return in_array($v, ['none', 'area', 'analisis'], true) ? $v : 'area';
+    }
+
+    public function getLabValidationMode(): string
+    {
+        return self::normalizeLabValidationMode(
+            (string) ($this->getAllAsArray()[self::LAB_VALIDATION_MODE_KEY] ?? 'area')
+        );
     }
 
     /**
@@ -1723,6 +1741,9 @@ class ConfigService
         $batch = [
             'lab_validators_json'        => json_encode($validators, JSON_UNESCAPED_UNICODE),
             'lab_approvers_json'         => json_encode($newApprovers, JSON_UNESCAPED_UNICODE),
+            self::LAB_VALIDATION_MODE_KEY => self::normalizeLabValidationMode(
+                (string) ($post[self::LAB_VALIDATION_MODE_KEY] ?? 'area')
+            ),
             'lab_validators_names'       => '',
             'lab_approvers_names'        => '',
             'lab_signatory_cargo'        => '',
@@ -1951,6 +1972,9 @@ class ConfigService
             'ui_font_size_sidebar'  => $normFs('ui_font_size_sidebar', '1'),
             'ui_font_size_footer'   => $normFs('ui_font_size_footer', '0.875'),
             'ui_font_size_heading'  => $normFs('ui_font_size_heading', '1.125'),
+            'ui_font_size_base_mobile' => trim((string) ($post['ui_font_size_base_mobile'] ?? '')) === ''
+                ? ''
+                : \App\Services\LayoutService::normalizeUiFontSizeRemInput((string) $post['ui_font_size_base_mobile'], '1'),
             'ui_sidebar_position'   => $side,
             'ui_body_text_color'    => $this->normalizeUiHex((string) ($post['ui_body_text_color'] ?? ''), '#212529'),
             'ui_body_text_weight'   => \App\Services\LayoutService::normalizeUiFontWeight((string) ($post['ui_body_text_weight'] ?? ''), '400'),

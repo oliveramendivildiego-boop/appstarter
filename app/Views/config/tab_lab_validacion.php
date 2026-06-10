@@ -25,6 +25,16 @@ $labels = [
             <?= form_open_multipart(site_url('config/saveLabValidation'), ['id' => 'lab_validation_form']) ?>
             <?= csrf_field() ?>
 
+            <h6 class="border-bottom pb-2"><?= lang('Config.config_lab_validation_mode_heading') ?></h6>
+            <p class="small text-muted mb-2"><?= lang('Config.config_lab_validation_mode_intro') ?></p>
+            <div class="mb-4">
+                <?= form_dropdown('lab_validation_mode', [
+                    'none'     => lang('Config.config_lab_validation_mode_none'),
+                    'area'     => lang('Config.config_lab_validation_mode_area'),
+                    'analisis' => lang('Config.config_lab_validation_mode_analisis'),
+                ], $lab_validation_mode ?? 'area', 'id="lab_validation_mode" class="form-select" style="max-width: 36rem;" autocomplete="off"') ?>
+            </div>
+
             <h6 class="border-bottom pb-2"><?= lang('Config.config_lab_validators_heading') ?></h6>
             <p class="small text-muted mb-3"><?= lang('Config.config_lab_validators_intro') ?></p>
             <div id="validator-rows" class="mb-3">

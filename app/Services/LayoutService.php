@@ -72,6 +72,66 @@ class LayoutService
             'use_inter_css' => false,
             'family'        => '\'Merriweather\', Georgia, \'Times New Roman\', serif',
         ],
+        'montserrat' => [
+            'href'          => 'https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700&display=swap',
+            'use_inter_css' => false,
+            'family'        => '\'Montserrat\', system-ui, sans-serif',
+        ],
+        'raleway' => [
+            'href'          => 'https://fonts.googleapis.com/css2?family=Raleway:wght@300;400;500;600;700&display=swap',
+            'use_inter_css' => false,
+            'family'        => '\'Raleway\', system-ui, sans-serif',
+        ],
+        'work_sans' => [
+            'href'          => 'https://fonts.googleapis.com/css2?family=Work+Sans:wght@300;400;500;600;700&display=swap',
+            'use_inter_css' => false,
+            'family'        => '\'Work Sans\', system-ui, sans-serif',
+        ],
+        'source_sans' => [
+            'href'          => 'https://fonts.googleapis.com/css2?family=Source+Sans+3:wght@300;400;500;600;700&display=swap',
+            'use_inter_css' => false,
+            'family'        => '\'Source Sans 3\', system-ui, sans-serif',
+        ],
+        'rubik' => [
+            'href'          => 'https://fonts.googleapis.com/css2?family=Rubik:wght@300;400;500;600;700&display=swap',
+            'use_inter_css' => false,
+            'family'        => '\'Rubik\', system-ui, sans-serif',
+        ],
+        'manrope' => [
+            'href'          => 'https://fonts.googleapis.com/css2?family=Manrope:wght@300;400;500;600;700&display=swap',
+            'use_inter_css' => false,
+            'family'        => '\'Manrope\', system-ui, sans-serif',
+        ],
+        'mulish' => [
+            'href'          => 'https://fonts.googleapis.com/css2?family=Mulish:wght@300;400;500;600;700&display=swap',
+            'use_inter_css' => false,
+            'family'        => '\'Mulish\', system-ui, sans-serif',
+        ],
+        'karla' => [
+            'href'          => 'https://fonts.googleapis.com/css2?family=Karla:wght@300;400;500;600;700&display=swap',
+            'use_inter_css' => false,
+            'family'        => '\'Karla\', system-ui, sans-serif',
+        ],
+        'quicksand' => [
+            'href'          => 'https://fonts.googleapis.com/css2?family=Quicksand:wght@300;400;500;600;700&display=swap',
+            'use_inter_css' => false,
+            'family'        => '\'Quicksand\', system-ui, sans-serif',
+        ],
+        'fira_sans' => [
+            'href'          => 'https://fonts.googleapis.com/css2?family=Fira+Sans:wght@300;400;500;700&display=swap',
+            'use_inter_css' => false,
+            'family'        => '\'Fira Sans\', system-ui, sans-serif',
+        ],
+        'lora' => [
+            'href'          => 'https://fonts.googleapis.com/css2?family=Lora:wght@400;500;600;700&display=swap',
+            'use_inter_css' => false,
+            'family'        => '\'Lora\', Georgia, \'Times New Roman\', serif',
+        ],
+        'playfair' => [
+            'href'          => 'https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;500;600;700&display=swap',
+            'use_inter_css' => false,
+            'family'        => '\'Playfair Display\', Georgia, \'Times New Roman\', serif',
+        ],
     ];
 
     public function __construct()
@@ -150,7 +210,7 @@ class LayoutService
         $keys = $this->appConfig->getMultiple([
             'company', 'logo', 'header_brand', 'theme_color', 'theme_gradient_end', 'website', 'currency_symbol', 'currency_side',
             'ui_font_family', 'ui_font_size_base', 'ui_font_size_main', 'ui_font_size_header', 'ui_font_size_sidebar',
-            'ui_font_size_footer', 'ui_font_size_heading',
+            'ui_font_size_footer', 'ui_font_size_heading', 'ui_font_size_base_mobile',
             'ui_sidebar_position', 'ui_body_text_color', 'ui_sidebar_bg', 'ui_sidebar_link_color',
             'ui_sidebar_hover_bg', 'ui_sidebar_active_bg', 'ui_header_bg', 'ui_header_text_color', 'ui_header_datetime_color', 'ui_header_datetime_format', 'ui_main_bg',
             'ui_footer_bg', 'ui_footer_text_color', 'ui_footer_text_align', 'ui_card_radius', 'ui_link_color',
@@ -259,6 +319,8 @@ class LayoutService
         $fsSidebar = self::normalizeUiFontSizeRemInput((string) ($keys['ui_font_size_sidebar'] ?? ''), '1');
         $fsFooter  = self::normalizeUiFontSizeRemInput((string) ($keys['ui_font_size_footer'] ?? ''), '0.875');
         $fsHeading = self::normalizeUiFontSizeRemInput((string) ($keys['ui_font_size_heading'] ?? ''), '1.125');
+        $fsBaseMobileRaw = trim((string) ($keys['ui_font_size_base_mobile'] ?? ''));
+        $fsBaseMobile    = $fsBaseMobileRaw === '' ? '' : self::normalizeUiFontSizeRemInput($fsBaseMobileRaw, '1');
 
         $sidebarLinkCss = $sidebarLink ?? $themeColor;
         $sidebarHoverCss = $sidebarHoverBg ?? 'rgba(0, 0, 0, 0.07)';
@@ -314,6 +376,9 @@ class LayoutService
             $fsFooter,
             $fsHeading
         );
+        if ($fsBaseMobile !== '') {
+            $fontSizeCss .= '--ui-font-size-base-mobile:' . $fsBaseMobile . 'rem;';
+        }
         $typoExtra = sprintf(
             '--ui-header-font-weight:%s;--ui-header-font-style:%s;--ui-sidebar-link-font-weight:%s;--ui-sidebar-link-font-style:%s;--ui-body-font-weight:%s;--ui-body-font-style:%s;--ui-link-font-weight:%s;--ui-link-font-style:%s;--ui-footer-font-weight:%s;--ui-footer-font-style:%s;--ui-btn-font-weight:%s;--ui-btn-font-style:%s;',
             $headerFontW,
@@ -414,8 +479,46 @@ class LayoutService
             'lato'         => 'Lato',
             'nunito'       => 'Nunito',
             'ubuntu'       => 'Ubuntu',
+            'montserrat'   => 'Montserrat',
+            'raleway'      => 'Raleway',
+            'work_sans'    => 'Work Sans',
+            'source_sans'  => 'Source Sans 3',
+            'rubik'        => 'Rubik',
+            'manrope'      => 'Manrope',
+            'mulish'       => 'Mulish',
+            'karla'        => 'Karla',
+            'quicksand'    => 'Quicksand (redondeada)',
+            'fira_sans'    => 'Fira Sans',
             'merriweather' => 'Merriweather (serif)',
+            'lora'         => 'Lora (serif)',
+            'playfair'     => 'Playfair Display (serif)',
         ];
+    }
+
+    /**
+     * URL combinada de Google Fonts para previsualizar todas las tipografías
+     * en Configuración → Apariencia (solo se carga en esa página).
+     */
+    public static function uiFontPreviewGoogleHref(): ?string
+    {
+        $params = [];
+        foreach (self::FONT_PRESETS as $preset) {
+            $href = $preset['href'] ?? null;
+            if (! is_string($href) || $href === '') {
+                continue;
+            }
+            $query = (string) parse_url($href, PHP_URL_QUERY);
+            foreach (explode('&', $query) as $pair) {
+                if (str_starts_with($pair, 'family=')) {
+                    $params[] = $pair;
+                }
+            }
+        }
+        if ($params === []) {
+            return null;
+        }
+
+        return 'https://fonts.googleapis.com/css2?' . implode('&', array_unique($params)) . '&display=swap';
     }
 
     /**

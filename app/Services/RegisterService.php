@@ -1919,6 +1919,19 @@ class RegisterService
                 ], $resolveFirmaRow($valId, $appId));
             }
 
+            // En modo «validar por análisis» todas las áreas comparten la misma firma:
+            // se muestra una sola vez (sin etiqueta de área) si son idénticas.
+            if ($configSvc->getLabValidationMode() === 'analisis') {
+                $sinNombre = array_map(
+                    static fn (array $row): array => array_merge($row, ['prueba_nombre' => '']),
+                    $out
+                );
+                $consolidado = $this->consolidarLabFirmasSiIguales($sinNombre);
+                if (count($consolidado) === 1) {
+                    return $consolidado;
+                }
+            }
+
             return $this->consolidarLabFirmasSiIguales($out);
         }
 

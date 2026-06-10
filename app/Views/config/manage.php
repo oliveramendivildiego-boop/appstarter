@@ -52,6 +52,37 @@
     color: #fff;
     box-shadow: 0 .2rem .6rem rgba(31, 111, 215, .25);
 }
+.config-sistema-search-group {
+    min-width: 16rem;
+}
+.config-accordion .accordion-button {
+    padding: .65rem .9rem;
+    font-size: .95rem;
+}
+.config-accordion .accordion-button:not(.collapsed) {
+    background: #eaf1fb;
+    color: #1d3557;
+    box-shadow: inset 0 -1px 0 rgba(0, 0, 0, .08);
+}
+.config-accordion .accordion-button:focus {
+    box-shadow: 0 0 0 .15rem rgba(31, 111, 215, .2);
+}
+.config-accordion .cfg-sec-hint {
+    font-weight: 400;
+}
+.config-accordion .cfg-sub-title {
+    font-size: .78rem;
+    letter-spacing: .05em;
+    text-transform: uppercase;
+}
+.config-accordion .cfg-item.cfg-hit {
+    background: #fff8dc;
+    border-radius: .4rem;
+    box-shadow: 0 0 0 .35rem #fff8dc;
+}
+.config-sistema-savebar {
+    z-index: 5;
+}
 </style>
 <ul class="nav nav-tabs mb-3 config-tabs-nav" id="configTabs" role="tablist">
     <li class="nav-item" role="presentation">
@@ -119,28 +150,64 @@
     <div class="tab-pane fade <?= $activeTab === 'sistema' ? 'show active' : '' ?>" id="tab-sistema" role="tabpanel">
         <div class="card shadow-sm">
             <div class="card-header bg-primary text-white">
-                <h5 class="mb-0"><i class="fa-solid fa-gear me-2"></i><?= lang('Config.config_info') ?></h5>
+                <div class="d-flex flex-wrap align-items-center gap-2">
+                    <h5 class="mb-0"><i class="fa-solid fa-gear me-2"></i><?= lang('Config.config_info') ?></h5>
+                    <div class="ms-md-auto d-flex align-items-center gap-2 flex-grow-1 flex-md-grow-0">
+                        <div class="input-group input-group-sm config-sistema-search-group">
+                            <span class="input-group-text bg-white"><i class="fa-solid fa-magnifying-glass"></i></span>
+                            <input type="search" id="config_sistema_search" class="form-control" placeholder="Buscar configuración (logo, moneda, papel...)" autocomplete="off">
+                        </div>
+                        <span id="config_sistema_search_count" class="small text-nowrap" style="color: rgba(255,255,255,.85);"></span>
+                    </div>
+                </div>
             </div>
             <div class="card-body">
 <?= form_open_multipart(site_url('config/save'), ['id' => 'config_form', 'data-async' => '1', 'data-reload-on-success' => '1']) ?>
+        <div class="accordion config-accordion" id="configSistemaAccordion">
+
+            <!-- Sección: Datos del laboratorio -->
+            <div class="accordion-item">
+                <h2 class="accordion-header">
+                    <button class="accordion-button" type="button" data-bs-toggle="collapse" data-bs-target="#cfgsec-datos" aria-expanded="true" aria-controls="cfgsec-datos">
+                        <i class="fa-solid fa-building me-2 text-primary"></i>
+                        <span class="fw-semibold">Datos del laboratorio</span>
+                        <span class="cfg-sec-hint small text-muted ms-2 d-none d-md-inline">Nombre, contacto, dirección y logo</span>
+                    </button>
+                </h2>
+                <div id="cfgsec-datos" class="accordion-collapse collapse show" data-cfg-default-open="1">
+                    <div class="accordion-body">
         <div class="row">
-            <div class="col-md-6 mb-3">
+            <div class="col-md-6 mb-3 cfg-item">
                 <?= form_label(lang('Config.config_company'), 'company', ['class' => 'form-label']) ?>
                 <?= form_input(['name' => 'company', 'id' => 'company', 'class' => 'form-control', 'autocomplete' => 'organization', 'value' => $config['company'] ?? '']) ?>
             </div>
-            <div class="col-md-6 mb-3">
+            <div class="col-md-6 mb-3 cfg-item">
                 <?= form_label(lang('Config.config_sucursal'), 'sucursal', ['class' => 'form-label']) ?>
                 <?= form_input(['name' => 'sucursal', 'id' => 'sucursal', 'class' => 'form-control', 'autocomplete' => 'off', 'value' => $config['sucursal'] ?? '']) ?>
             </div>
         </div>
         <div class="row">
-            <div class="col-md-6 mb-3">
+            <div class="col-md-6 mb-3 cfg-item">
                 <?= form_label(lang('Config.config_phone'), 'phone', ['class' => 'form-label']) ?>
                 <?= form_input(['name' => 'phone', 'id' => 'phone', 'class' => 'form-control', 'autocomplete' => 'tel', 'value' => $config['phone'] ?? '']) ?>
             </div>
+            <div class="col-md-6 mb-3 cfg-item">
+                <?= form_label(lang('Config.config_email'), 'email', ['class' => 'form-label']) ?>
+                <?= form_input(['name' => 'email', 'id' => 'email', 'type' => 'email', 'class' => 'form-control', 'autocomplete' => 'email', 'value' => $config['email'] ?? '']) ?>
+            </div>
         </div>
         <div class="row">
-            <div class="col-md-6 mb-3">
+            <div class="col-md-6 mb-3 cfg-item">
+                <?= form_label(lang('Config.config_address'), 'address', ['class' => 'form-label']) ?>
+                <?= form_input(['name' => 'address', 'id' => 'address', 'class' => 'form-control', 'autocomplete' => 'street-address', 'value' => $config['address'] ?? '']) ?>
+            </div>
+            <div class="col-md-6 mb-3 cfg-item">
+                <?= form_label(lang('Config.config_website'), 'website', ['class' => 'form-label']) ?>
+                <?= form_input(['name' => 'website', 'id' => 'website', 'class' => 'form-control', 'autocomplete' => 'url', 'value' => $config['website'] ?? '']) ?>
+            </div>
+        </div>
+        <div class="row">
+            <div class="col-md-6 mb-3 cfg-item">
                 <?= form_label(lang('Config.config_header_brand'), 'header_brand', ['class' => 'form-label']) ?>
                 <?= form_dropdown('header_brand', [
                     'logo'  => lang('Config.config_header_brand_logo'),
@@ -148,7 +215,7 @@
                 ], $config['header_brand'] ?? 'logo', 'id="header_brand" class="form-select" autocomplete="off"') ?>
                 <small class="text-muted"><?= lang('Config.config_header_brand_help') ?></small>
             </div>
-            <div class="col-md-6 mb-3">
+            <div class="col-md-6 mb-3 cfg-item">
                 <?= form_label(lang('Config.config_logo'), 'logo_upload', ['class' => 'form-label']) ?>
                 <?php $logoPath = $config['logo'] ?? 'images/logo-john.png'; ?>
                 <?php if (!empty($logoPath) && file_exists(FCPATH . $logoPath)): ?>
@@ -160,26 +227,27 @@
                 <small class="text-muted">Formatos: JPG, PNG, GIF. Se reemplazará el logo actual.</small>
             </div>
         </div>
-        <div class="mb-3">
-            <?= form_label(lang('Config.config_address'), 'address', ['class' => 'form-label']) ?>
-            <?= form_input(['name' => 'address', 'id' => 'address', 'class' => 'form-control', 'autocomplete' => 'street-address', 'value' => $config['address'] ?? '']) ?>
-        </div>
-        <div class="row">
-            <div class="col-md-6 mb-3">
-                <?= form_label(lang('Config.config_email'), 'email', ['class' => 'form-label']) ?>
-                <?= form_input(['name' => 'email', 'id' => 'email', 'type' => 'email', 'class' => 'form-control', 'autocomplete' => 'email', 'value' => $config['email'] ?? '']) ?>
+                    </div>
+                </div>
             </div>
-            <div class="col-md-6 mb-3">
-                <?= form_label(lang('Config.config_website'), 'website', ['class' => 'form-label']) ?>
-                <?= form_input(['name' => 'website', 'id' => 'website', 'class' => 'form-control', 'autocomplete' => 'url', 'value' => $config['website'] ?? '']) ?>
-            </div>
-        </div>
+
+            <!-- Sección: Idioma, zona horaria y moneda -->
+            <div class="accordion-item">
+                <h2 class="accordion-header">
+                    <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#cfgsec-regional" aria-expanded="false" aria-controls="cfgsec-regional">
+                        <i class="fa-solid fa-globe me-2 text-primary"></i>
+                        <span class="fw-semibold">Idioma, zona horaria y moneda</span>
+                        <span class="cfg-sec-hint small text-muted ms-2 d-none d-md-inline">Idioma del sistema, reloj del laboratorio y formato de moneda</span>
+                    </button>
+                </h2>
+                <div id="cfgsec-regional" class="accordion-collapse collapse">
+                    <div class="accordion-body">
         <div class="row">
-            <div class="col-md-6 mb-3">
+            <div class="col-md-6 mb-3 cfg-item">
                 <?= form_label(lang('Config.config_language'), 'language', ['class' => 'form-label']) ?>
                 <?= form_dropdown('language', ['es' => 'Español', 'en' => 'English'], $config['language'] ?? 'es', 'id="language" class="form-select" autocomplete="off"') ?>
             </div>
-            <div class="col-md-6 mb-3">
+            <div class="col-md-6 mb-3 cfg-item">
                 <?= form_label(lang('Config.config_timezone'), 'timezone', ['class' => 'form-label']) ?>
                 <?php
                 $labTzOffsetNow = \App\Services\RegisterService::reportNow()->format('P');
@@ -207,21 +275,61 @@
             </div>
         </div>
         <div class="row">
-            <div class="col-md-6 mb-3">
+            <div class="col-md-6 mb-3 cfg-item">
                 <?= form_label(lang('Config.config_currency_symbol'), 'currency_symbol', ['class' => 'form-label']) ?>
                 <?= form_input(['name' => 'currency_symbol', 'id' => 'currency_symbol', 'class' => 'form-control', 'autocomplete' => 'off', 'value' => $config['currency_symbol'] ?? '$']) ?>
-                    <?= form_label(lang('Config.config_currency_side'), 'currency_side', ['class' => 'form-label mt-3']) ?>
-                    <?= form_dropdown(
-                        'currency_side',
-                        [
-                            'left'  => lang('Config.config_currency_side_left'),
-                            'right' => lang('Config.config_currency_side_right'),
-                        ],
-                        $config['currency_side'] ?? 'left',
-                        'id="currency_side" class="form-select" autocomplete="off"'
-                    ) ?>
             </div>
-            <div class="col-md-6 mb-3">
+            <div class="col-md-6 mb-3 cfg-item">
+                <?= form_label(lang('Config.config_currency_side'), 'currency_side', ['class' => 'form-label']) ?>
+                <?= form_dropdown(
+                    'currency_side',
+                    [
+                        'left'  => lang('Config.config_currency_side_left'),
+                        'right' => lang('Config.config_currency_side_right'),
+                    ],
+                    $config['currency_side'] ?? 'left',
+                    'id="currency_side" class="form-select" autocomplete="off"'
+                ) ?>
+            </div>
+        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Sección: Recepción y órdenes -->
+            <div class="accordion-item">
+                <h2 class="accordion-header">
+                    <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#cfgsec-recepcion" aria-expanded="false" aria-controls="cfgsec-recepcion">
+                        <i class="fa-solid fa-clipboard-list me-2 text-primary"></i>
+                        <span class="fw-semibold">Recepción y órdenes</span>
+                        <span class="cfg-sec-hint small text-muted ms-2 d-none d-md-inline">Número de orden, lista de recepción y etiquetas</span>
+                    </button>
+                </h2>
+                <div id="cfgsec-recepcion" class="accordion-collapse collapse">
+                    <div class="accordion-body">
+        <div class="row">
+            <div class="col-md-6 mb-3 cfg-item">
+                <label for="registers_lista_fecha_default" class="form-label"><?= lang('Config.config_registers_lista_fecha_default') ?></label>
+                <?php
+                $listaFechaDefault = \App\Services\ConfigService::normalizeRegistersListaFechaDefault(
+                    (string) ($config['registers_lista_fecha_default'] ?? 'hoy')
+                );
+                $listaFechaOpts = [
+                    'hoy'    => lang('Config.config_registers_lista_fecha_hoy'),
+                    'semana' => lang('Config.config_registers_lista_fecha_semana'),
+                    'mes'    => lang('Config.config_registers_lista_fecha_mes'),
+                    'todos'  => lang('Config.config_registers_lista_fecha_todos'),
+                ];
+                ?>
+                <?= form_dropdown(
+                    'registers_lista_fecha_default',
+                    $listaFechaOpts,
+                    $listaFechaDefault,
+                    'id="registers_lista_fecha_default" class="form-select" autocomplete="off"'
+                ) ?>
+                <small class="text-muted d-block mt-1"><?= lang('Config.config_registers_lista_fecha_default_help') ?></small>
+            </div>
+            <div class="col-md-6 mb-3 cfg-item">
                 <label for="label_sin_doctor" class="form-label"><?= lang('Config.config_label_sin_doctor') ?></label>
                 <?= form_input([
                     'name'        => 'label_sin_doctor',
@@ -234,212 +342,8 @@
                 <small class="text-muted"><?= lang('Config.config_label_sin_doctor_help') ?></small>
             </div>
         </div>
-        <div class="mb-3">
-            <?= form_label(lang('Config.config_return_policy'), 'return_policy', ['class' => 'form-label']) ?>
-            <?= form_textarea(['name' => 'return_policy', 'id' => 'return_policy', 'class' => 'form-control', 'rows' => 4, 'autocomplete' => 'off', 'value' => $config['return_policy'] ?? '']) ?>
-        </div>
-        <div class="row">
-            <div class="col-md-4 mb-3">
-                <?= form_label(lang('Config.config_decimales_sugerencia'), 'decimales_sugerencia', ['class' => 'form-label']) ?>
-                <?= form_input(['name' => 'decimales_sugerencia', 'id' => 'decimales_sugerencia', 'type' => 'number', 'min' => 0, 'max' => 10, 'class' => 'form-control', 'value' => $config['decimales_sugerencia'] ?? '2', 'autocomplete' => 'off']) ?>
-                <small class="text-muted"><?= lang('Config.config_decimales_sugerencia_help') ?></small>
-            </div>
-            <div class="col-md-4 mb-3">
-                <label for="dias_alerta_vencimiento" class="form-label">Días de alerta para vencimiento de insumos</label>
-                <?= form_input(['name' => 'dias_alerta_vencimiento', 'id' => 'dias_alerta_vencimiento', 'type' => 'number', 'min' => 1, 'max' => 365, 'class' => 'form-control', 'value' => $config['dias_alerta_vencimiento'] ?? '40', 'autocomplete' => 'off']) ?>
-                <small class="text-muted">Los lotes que venzan en los próximos X días se marcarán en amarillo en el reporte de insumos por vencimiento.</small>
-            </div>
-            <div class="col-md-4 mb-3">
-                <label for="stock_alerta_factor" class="form-label">Factor alerta de stock bajo</label>
-                <?= form_input(['name' => 'stock_alerta_factor', 'id' => 'stock_alerta_factor', 'type' => 'number', 'min' => '0.5', 'max' => '3', 'step' => '0.1', 'class' => 'form-control', 'value' => $config['stock_alerta_factor'] ?? '1', 'autocomplete' => 'off']) ?>
-                <small class="text-muted">1.0 = alerta al llegar al stock mínimo. Ejemplo: 1.5 alerta antes del mínimo.</small>
-            </div>
-        </div>
-        <div class="row">
-            <div class="col-md-8 mb-3">
-                <?= form_label(lang('Config.config_pdf_template'), 'pdf_result_template_id', ['class' => 'form-label']) ?>
-                <div class="mb-2">
-                    <a href="<?= site_url('config/pdf-templates') ?>" class="btn btn-outline-primary btn-sm"><i class="fa-solid fa-file-pdf me-1"></i><?= lang('Config.config_pdf_templates_link') ?></a>
-                </div>
-                <?php if (!empty($pdf_templates)): ?>
-                <?php
-                $tplOpts = [];
-                foreach ($pdf_templates as $pt) {
-                    $tplOpts[(string) $pt->id] = $pt->name ?? ('Plantilla #' . $pt->id);
-                }
-                $selTpl = (int) ($config['pdf_result_template_id'] ?? 1);
-                if ($selTpl < 1 || ! array_key_exists((string) $selTpl, $tplOpts)) {
-                    $selTpl = (int) (array_key_first($tplOpts) ?: 1);
-                }
-                ?>
-                <?= form_dropdown('pdf_result_template_id', $tplOpts, $selTpl, 'id="pdf_result_template_id" class="form-select" autocomplete="off"') ?>
-                <small class="text-muted d-block mt-1"><?= lang('Config.config_pdf_template_help') ?></small>
-                <label class="form-label mt-3" for="print_result_template_id"><?= lang('Config.config_print_template') ?></label>
-                <?php
-                $selPrint = (int) ($config['print_result_template_id'] ?? $selTpl);
-                if ($selPrint < 1 || ! array_key_exists((string) $selPrint, $tplOpts)) {
-                    $selPrint = $selTpl;
-                }
-                ?>
-                <?= form_dropdown('print_result_template_id', $tplOpts, $selPrint, 'id="print_result_template_id" class="form-select" autocomplete="off"') ?>
-                <small class="text-muted d-block mt-1"><?= lang('Config.config_print_template_help') ?></small>
-                <?php else: ?>
-                <div class="alert alert-warning mb-0">
-                    <?= lang('Config.config_pdf_template_missing') ?>
-                </div>
-                <?php endif; ?>
-            </div>
-        </div>
-        <div class="mb-3">
-            <div class="form-check">
-                <?= form_checkbox('print_after_sale', '1', ($config['print_after_sale'] ?? '') ? true : false, 'id="print_after_sale" class="form-check-input" autocomplete="off"') ?>
-                <?= form_label(lang('Config.config_print_after_sale'), 'print_after_sale', ['class' => 'form-check-label']) ?>
-            </div>
-        </div>
-        <div class="mb-3">
-            <input type="hidden" name="show_order_barcode" value="0">
-            <div class="form-check">
-                <?= form_checkbox('show_order_barcode', '1', (($config['show_order_barcode'] ?? '1') === '1'), 'id="show_order_barcode" class="form-check-input" autocomplete="off"') ?>
-                <?= form_label('Mostrar código de barras en orden registrada', 'show_order_barcode', ['class' => 'form-check-label']) ?>
-            </div>
-            <small class="text-muted">Si se desactiva, la orden se imprimirá sin código de barras.</small>
-        </div>
-        <div class="mb-3">
-            <input type="hidden" name="show_order_costs" value="0">
-            <div class="form-check">
-                <?= form_checkbox('show_order_costs', '1', (($config['show_order_costs'] ?? '0') === '1'), 'id="show_order_costs" class="form-check-input" autocomplete="off"') ?>
-                <?= form_label(lang('Config.config_show_order_costs'), 'show_order_costs', ['class' => 'form-check-label']) ?>
-            </div>
-            <small class="text-muted d-block mt-1"><?= lang('Config.config_show_order_costs_help') ?></small>
-        </div>
-        <div class="mb-3">
-            <label for="registers_lista_fecha_default" class="form-label"><?= lang('Config.config_registers_lista_fecha_default') ?></label>
-            <?php
-            $listaFechaDefault = \App\Services\ConfigService::normalizeRegistersListaFechaDefault(
-                (string) ($config['registers_lista_fecha_default'] ?? 'hoy')
-            );
-            $listaFechaOpts = [
-                'hoy'    => lang('Config.config_registers_lista_fecha_hoy'),
-                'semana' => lang('Config.config_registers_lista_fecha_semana'),
-                'mes'    => lang('Config.config_registers_lista_fecha_mes'),
-                'todos'  => lang('Config.config_registers_lista_fecha_todos'),
-            ];
-            ?>
-            <?= form_dropdown(
-                'registers_lista_fecha_default',
-                $listaFechaOpts,
-                $listaFechaDefault,
-                'id="registers_lista_fecha_default" class="form-select" style="max-width: 28rem;" autocomplete="off"'
-            ) ?>
-            <small class="text-muted d-block mt-1"><?= lang('Config.config_registers_lista_fecha_default_help') ?></small>
-        </div>
-        <div class="mb-3">
-            <label for="order_barcode_print_layout" class="form-label"><?= lang('Config.config_order_barcode_print_layout') ?></label>
-            <?php
-            $barcodeLayout = strtolower((string) ($config['order_barcode_print_layout'] ?? 'vertical'));
-            if ($barcodeLayout !== 'horizontal') {
-                $barcodeLayout = 'vertical';
-            }
-            $layoutOpts = [
-                'vertical'   => lang('Config.config_order_barcode_layout_vertical'),
-                'horizontal' => lang('Config.config_order_barcode_layout_horizontal'),
-            ];
-            ?>
-            <?= form_dropdown('order_barcode_print_layout', $layoutOpts, $barcodeLayout, 'id="order_barcode_print_layout" class="form-select" style="max-width: 22rem;" autocomplete="off"') ?>
-            <small class="text-muted d-block mt-1"><?= lang('Config.config_order_barcode_print_layout_help') ?></small>
-        </div>
-        <div class="mb-3">
-            <label for="order_barcode_print_size_percent" class="form-label"><?= lang('Config.config_order_barcode_size_percent') ?></label>
-            <?php
-            $bcSize = (int) ($config['order_barcode_print_size_percent'] ?? 100);
-            if ($bcSize < 1) {
-                $bcSize = 100;
-            }
-            $bcSize = max(30, min(250, $bcSize));
-            ?>
-            <input type="number" name="order_barcode_print_size_percent" id="order_barcode_print_size_percent" class="form-control" style="max-width: 10rem;" min="30" max="250" step="1" value="<?= $bcSize ?>" autocomplete="off">
-            <small class="text-muted d-block mt-1"><?= lang('Config.config_order_barcode_size_percent_help') ?></small>
-        </div>
-        <div class="mb-3">
-            <label for="print_paper_size" class="form-label"><?= lang('Config.config_print_paper_size') ?></label>
-            <?php
-            $printPaper = strtolower((string) ($config['print_paper_size'] ?? 'letter'));
-            if (! in_array($printPaper, ['letter', 'a4', 'legal', 'custom'], true)) {
-                $printPaper = 'letter';
-            }
-            $printPaperOpts = [
-                'letter' => lang('Config.config_print_paper_letter'),
-                'a4'     => lang('Config.config_print_paper_a4'),
-                'legal'  => lang('Config.config_print_paper_legal'),
-                'custom' => lang('Config.config_print_paper_custom'),
-            ];
-            $ppW = (float) ($config['print_paper_width_mm'] ?? 210);
-            $ppH = (float) ($config['print_paper_height_mm'] ?? 297);
-            $ppW = max(50.0, min(999.0, $ppW > 0 ? $ppW : 210.0));
-            $ppH = max(50.0, min(999.0, $ppH > 0 ? $ppH : 297.0));
-            ?>
-            <?= form_dropdown('print_paper_size', $printPaperOpts, $printPaper, 'id="print_paper_size" class="form-select" style="max-width: 16rem;" autocomplete="off"') ?>
-            <div id="print_paper_custom_wrap" class="mt-2" style="display: none;">
-                <div class="row g-2 align-items-end" style="max-width: 22rem;">
-                    <div class="col-6">
-                        <label for="print_paper_width_mm" class="form-label small mb-0"><?= lang('Config.config_print_paper_width_mm') ?></label>
-                        <input type="number" name="print_paper_width_mm" id="print_paper_width_mm" class="form-control" min="50" max="999" step="0.1" value="<?= esc((string) $ppW) ?>" autocomplete="off">
-                    </div>
-                    <div class="col-6">
-                        <label for="print_paper_height_mm" class="form-label small mb-0"><?= lang('Config.config_print_paper_height_mm') ?></label>
-                        <input type="number" name="print_paper_height_mm" id="print_paper_height_mm" class="form-control" min="50" max="999" step="0.1" value="<?= esc((string) $ppH) ?>" autocomplete="off">
-                    </div>
-                </div>
-                <small class="text-muted d-block mt-1"><?= lang('Config.config_print_paper_custom_dims_help') ?></small>
-            </div>
-            <small class="text-muted d-block mt-1"><?= lang('Config.config_print_paper_size_help') ?></small>
-        </div>
-        <div class="mb-3">
-            <input type="hidden" name="pdf_order_sheet_header_enabled" value="0">
-            <div class="form-check">
-                <?= form_checkbox('pdf_order_sheet_header_enabled', '1', (($config['pdf_order_sheet_header_enabled'] ?? '0') === '1'), 'id="pdf_order_sheet_header_enabled" class="form-check-input" autocomplete="off"') ?>
-                <?= form_label(lang('Config.config_pdf_order_sheet_header_enabled'), 'pdf_order_sheet_header_enabled', ['class' => 'form-check-label']) ?>
-            </div>
-            <small class="text-muted d-block mt-1"><?= lang('Config.config_pdf_order_sheet_header_enabled_help') ?></small>
-        </div>
-        <div class="mb-3">
-            <input type="hidden" name="print_pagination_enabled" value="0">
-            <div class="form-check">
-                <?= form_checkbox('print_pagination_enabled', '1', (($config['print_pagination_enabled'] ?? '0') === '1'), 'id="print_pagination_enabled" class="form-check-input" autocomplete="off"') ?>
-                <?= form_label(lang('Config.config_print_pagination_enabled'), 'print_pagination_enabled', ['class' => 'form-check-label']) ?>
-            </div>
-        </div>
-        <div class="mb-3">
-            <label for="print_pagination_position" class="form-label"><?= lang('Config.config_print_pagination_position') ?></label>
-            <?php
-            $printPos = strtolower((string) ($config['print_pagination_position'] ?? 'bottom-right'));
-            $allowedPrintPos = ['top-left', 'top-center', 'top-right', 'bottom-left', 'bottom-center', 'bottom-right'];
-            if (!in_array($printPos, $allowedPrintPos, true)) {
-                $printPos = 'bottom-right';
-            }
-            $printPosOpts = [
-                'top-left'      => lang('Config.config_print_pagination_top_left'),
-                'top-center'    => lang('Config.config_print_pagination_top_center'),
-                'top-right'     => lang('Config.config_print_pagination_top_right'),
-                'bottom-left'   => lang('Config.config_print_pagination_bottom_left'),
-                'bottom-center' => lang('Config.config_print_pagination_bottom_center'),
-                'bottom-right'  => lang('Config.config_print_pagination_bottom_right'),
-            ];
-            ?>
-            <?= form_dropdown('print_pagination_position', $printPosOpts, $printPos, 'id="print_pagination_position" class="form-select" style="max-width: 16rem;" autocomplete="off"') ?>
-            <small class="text-muted d-block mt-1"><?= lang('Config.config_print_pagination_position_help') ?></small>
-        </div>
-        <div class="mb-3">
-            <input type="hidden" name="leyendas_enabled" value="0">
-            <div class="form-check">
-                <?= form_checkbox('leyendas_enabled', '1', (($config['leyendas_enabled'] ?? '0') === '1'), 'id="leyendas_enabled" class="form-check-input" autocomplete="off"') ?>
-                <?= form_label('Habilitar leyendas en pruebas', 'leyendas_enabled', ['class' => 'form-check-label']) ?>
-            </div>
-            <small class="text-muted">Si se activa, se mostrará un campo de comentarios/leyendas al registrar resultados de pruebas.</small>
-        </div>
-
         <hr class="my-3">
-        <div class="mb-3">
+        <div class="mb-3 cfg-item">
             <label for="registro_folio_format" class="form-label fw-bold">Formato del número de orden (recepción)</label>
             <textarea name="registro_folio_format" id="registro_folio_format" class="form-control font-monospace" rows="2" maxlength="128" placeholder="Ej: LAB-%yyyy-%mm-%dd-%i"><?= esc($config['registro_folio_format'] ?? '') ?></textarea>
             <?php
@@ -492,17 +396,282 @@
                 <p class="mb-0">Puede mezclar <strong>texto fijo</strong> (letras, guiones, etc.) con las variables. Ejemplo: <code>ORD-%yyyy-%mm-%dd-%i</code> o <code>%m%dd%yyyy-%i</code>. Máximo 128 caracteres en la plantilla; el número generado no puede superar 64 caracteres.</p>
             </div>
         </div>
-        
-        <button type="submit" id="config_save_btn" name="config_save_btn" class="btn btn-primary"><?= lang('Config.config_save_btn') ?></button>
+                    </div>
+                </div>
+            </div>
+            <!-- Sección: Impresión y PDF -->
+            <div class="accordion-item">
+                <h2 class="accordion-header">
+                    <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#cfgsec-impresion" aria-expanded="false" aria-controls="cfgsec-impresion">
+                        <i class="fa-solid fa-print me-2 text-primary"></i>
+                        <span class="fw-semibold">Impresión y PDF</span>
+                        <span class="cfg-sec-hint small text-muted ms-2 d-none d-md-inline">Plantillas, papel, paginación y código de barras</span>
+                    </button>
+                </h2>
+                <div id="cfgsec-impresion" class="accordion-collapse collapse">
+                    <div class="accordion-body">
+        <h6 class="cfg-sub-title text-muted fw-bold mb-3">Plantillas de resultados</h6>
+        <div class="row">
+            <div class="col-md-8 mb-3 cfg-item">
+                <?= form_label(lang('Config.config_pdf_template'), 'pdf_result_template_id', ['class' => 'form-label']) ?>
+                <div class="mb-2">
+                    <a href="<?= site_url('config/pdf-templates') ?>" class="btn btn-outline-primary btn-sm"><i class="fa-solid fa-file-pdf me-1"></i><?= lang('Config.config_pdf_templates_link') ?></a>
+                </div>
+                <?php if (!empty($pdf_templates)): ?>
+                <?php
+                $tplOpts = [];
+                foreach ($pdf_templates as $pt) {
+                    $tplOpts[(string) $pt->id] = $pt->name ?? ('Plantilla #' . $pt->id);
+                }
+                $selTpl = (int) ($config['pdf_result_template_id'] ?? 1);
+                if ($selTpl < 1 || ! array_key_exists((string) $selTpl, $tplOpts)) {
+                    $selTpl = (int) (array_key_first($tplOpts) ?: 1);
+                }
+                ?>
+                <?= form_dropdown('pdf_result_template_id', $tplOpts, $selTpl, 'id="pdf_result_template_id" class="form-select" autocomplete="off"') ?>
+                <small class="text-muted d-block mt-1"><?= lang('Config.config_pdf_template_help') ?></small>
+                <label class="form-label mt-3" for="print_result_template_id"><?= lang('Config.config_print_template') ?></label>
+                <?php
+                $selPrint = (int) ($config['print_result_template_id'] ?? $selTpl);
+                if ($selPrint < 1 || ! array_key_exists((string) $selPrint, $tplOpts)) {
+                    $selPrint = $selTpl;
+                }
+                ?>
+                <?= form_dropdown('print_result_template_id', $tplOpts, $selPrint, 'id="print_result_template_id" class="form-select" autocomplete="off"') ?>
+                <small class="text-muted d-block mt-1"><?= lang('Config.config_print_template_help') ?></small>
+                <?php else: ?>
+                <div class="alert alert-warning mb-0">
+                    <?= lang('Config.config_pdf_template_missing') ?>
+                </div>
+                <?php endif; ?>
+            </div>
+        </div>
+        <hr class="my-3">
+        <h6 class="cfg-sub-title text-muted fw-bold mb-3">Papel y paginación</h6>
+        <div class="mb-3 cfg-item">
+            <label for="print_paper_size" class="form-label"><?= lang('Config.config_print_paper_size') ?></label>
+            <?php
+            $printPaper = strtolower((string) ($config['print_paper_size'] ?? 'letter'));
+            if (! in_array($printPaper, ['letter', 'a4', 'legal', 'custom'], true)) {
+                $printPaper = 'letter';
+            }
+            $printPaperOpts = [
+                'letter' => lang('Config.config_print_paper_letter'),
+                'a4'     => lang('Config.config_print_paper_a4'),
+                'legal'  => lang('Config.config_print_paper_legal'),
+                'custom' => lang('Config.config_print_paper_custom'),
+            ];
+            $ppW = (float) ($config['print_paper_width_mm'] ?? 210);
+            $ppH = (float) ($config['print_paper_height_mm'] ?? 297);
+            $ppW = max(50.0, min(999.0, $ppW > 0 ? $ppW : 210.0));
+            $ppH = max(50.0, min(999.0, $ppH > 0 ? $ppH : 297.0));
+            ?>
+            <?= form_dropdown('print_paper_size', $printPaperOpts, $printPaper, 'id="print_paper_size" class="form-select" style="max-width: 16rem;" autocomplete="off"') ?>
+            <div id="print_paper_custom_wrap" class="mt-2" style="display: none;">
+                <div class="row g-2 align-items-end" style="max-width: 22rem;">
+                    <div class="col-6">
+                        <label for="print_paper_width_mm" class="form-label small mb-0"><?= lang('Config.config_print_paper_width_mm') ?></label>
+                        <input type="number" name="print_paper_width_mm" id="print_paper_width_mm" class="form-control" min="50" max="999" step="0.1" value="<?= esc((string) $ppW) ?>" autocomplete="off">
+                    </div>
+                    <div class="col-6">
+                        <label for="print_paper_height_mm" class="form-label small mb-0"><?= lang('Config.config_print_paper_height_mm') ?></label>
+                        <input type="number" name="print_paper_height_mm" id="print_paper_height_mm" class="form-control" min="50" max="999" step="0.1" value="<?= esc((string) $ppH) ?>" autocomplete="off">
+                    </div>
+                </div>
+                <small class="text-muted d-block mt-1"><?= lang('Config.config_print_paper_custom_dims_help') ?></small>
+            </div>
+            <small class="text-muted d-block mt-1"><?= lang('Config.config_print_paper_size_help') ?></small>
+        </div>
+        <div class="mb-3 cfg-item">
+            <input type="hidden" name="print_pagination_enabled" value="0">
+            <div class="form-check">
+                <?= form_checkbox('print_pagination_enabled', '1', (($config['print_pagination_enabled'] ?? '0') === '1'), 'id="print_pagination_enabled" class="form-check-input" autocomplete="off"') ?>
+                <?= form_label(lang('Config.config_print_pagination_enabled'), 'print_pagination_enabled', ['class' => 'form-check-label']) ?>
+            </div>
+        </div>
+        <div class="mb-3 cfg-item">
+            <label for="print_pagination_position" class="form-label"><?= lang('Config.config_print_pagination_position') ?></label>
+            <?php
+            $printPos = strtolower((string) ($config['print_pagination_position'] ?? 'bottom-right'));
+            $allowedPrintPos = ['top-left', 'top-center', 'top-right', 'bottom-left', 'bottom-center', 'bottom-right'];
+            if (!in_array($printPos, $allowedPrintPos, true)) {
+                $printPos = 'bottom-right';
+            }
+            $printPosOpts = [
+                'top-left'      => lang('Config.config_print_pagination_top_left'),
+                'top-center'    => lang('Config.config_print_pagination_top_center'),
+                'top-right'     => lang('Config.config_print_pagination_top_right'),
+                'bottom-left'   => lang('Config.config_print_pagination_bottom_left'),
+                'bottom-center' => lang('Config.config_print_pagination_bottom_center'),
+                'bottom-right'  => lang('Config.config_print_pagination_bottom_right'),
+            ];
+            ?>
+            <?= form_dropdown('print_pagination_position', $printPosOpts, $printPos, 'id="print_pagination_position" class="form-select" style="max-width: 16rem;" autocomplete="off"') ?>
+            <small class="text-muted d-block mt-1"><?= lang('Config.config_print_pagination_position_help') ?></small>
+        </div>
+        <hr class="my-3">
+        <h6 class="cfg-sub-title text-muted fw-bold mb-3">Hoja de la orden y código de barras</h6>
+        <div class="mb-3 cfg-item">
+            <div class="form-check">
+                <?= form_checkbox('print_after_sale', '1', ($config['print_after_sale'] ?? '') ? true : false, 'id="print_after_sale" class="form-check-input" autocomplete="off"') ?>
+                <?= form_label(lang('Config.config_print_after_sale'), 'print_after_sale', ['class' => 'form-check-label']) ?>
+            </div>
+        </div>
+        <div class="mb-3 cfg-item">
+            <input type="hidden" name="pdf_order_sheet_header_enabled" value="0">
+            <div class="form-check">
+                <?= form_checkbox('pdf_order_sheet_header_enabled', '1', (($config['pdf_order_sheet_header_enabled'] ?? '0') === '1'), 'id="pdf_order_sheet_header_enabled" class="form-check-input" autocomplete="off"') ?>
+                <?= form_label(lang('Config.config_pdf_order_sheet_header_enabled'), 'pdf_order_sheet_header_enabled', ['class' => 'form-check-label']) ?>
+            </div>
+            <small class="text-muted d-block mt-1"><?= lang('Config.config_pdf_order_sheet_header_enabled_help') ?></small>
+        </div>
+        <div class="mb-3 cfg-item">
+            <input type="hidden" name="show_order_costs" value="0">
+            <div class="form-check">
+                <?= form_checkbox('show_order_costs', '1', (($config['show_order_costs'] ?? '0') === '1'), 'id="show_order_costs" class="form-check-input" autocomplete="off"') ?>
+                <?= form_label(lang('Config.config_show_order_costs'), 'show_order_costs', ['class' => 'form-check-label']) ?>
+            </div>
+            <small class="text-muted d-block mt-1"><?= lang('Config.config_show_order_costs_help') ?></small>
+        </div>
+        <div class="mb-3 cfg-item">
+            <input type="hidden" name="show_order_barcode" value="0">
+            <div class="form-check">
+                <?= form_checkbox('show_order_barcode', '1', (($config['show_order_barcode'] ?? '1') === '1'), 'id="show_order_barcode" class="form-check-input" autocomplete="off"') ?>
+                <?= form_label('Mostrar código de barras en orden registrada', 'show_order_barcode', ['class' => 'form-check-label']) ?>
+            </div>
+            <small class="text-muted">Si se desactiva, la orden se imprimirá sin código de barras.</small>
+        </div>
+        <div class="row">
+            <div class="col-md-6 mb-3 cfg-item">
+                <label for="order_barcode_print_layout" class="form-label"><?= lang('Config.config_order_barcode_print_layout') ?></label>
+                <?php
+                $barcodeLayout = strtolower((string) ($config['order_barcode_print_layout'] ?? 'vertical'));
+                if ($barcodeLayout !== 'horizontal') {
+                    $barcodeLayout = 'vertical';
+                }
+                $layoutOpts = [
+                    'vertical'   => lang('Config.config_order_barcode_layout_vertical'),
+                    'horizontal' => lang('Config.config_order_barcode_layout_horizontal'),
+                ];
+                ?>
+                <?= form_dropdown('order_barcode_print_layout', $layoutOpts, $barcodeLayout, 'id="order_barcode_print_layout" class="form-select" autocomplete="off"') ?>
+                <small class="text-muted d-block mt-1"><?= lang('Config.config_order_barcode_print_layout_help') ?></small>
+            </div>
+            <div class="col-md-6 mb-3 cfg-item">
+                <label for="order_barcode_print_size_percent" class="form-label"><?= lang('Config.config_order_barcode_size_percent') ?></label>
+                <?php
+                $bcSize = (int) ($config['order_barcode_print_size_percent'] ?? 100);
+                if ($bcSize < 1) {
+                    $bcSize = 100;
+                }
+                $bcSize = max(30, min(250, $bcSize));
+                ?>
+                <input type="number" name="order_barcode_print_size_percent" id="order_barcode_print_size_percent" class="form-control" style="max-width: 10rem;" min="30" max="250" step="1" value="<?= $bcSize ?>" autocomplete="off">
+                <small class="text-muted d-block mt-1"><?= lang('Config.config_order_barcode_size_percent_help') ?></small>
+            </div>
+        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Sección: Resultados y registro -->
+            <div class="accordion-item">
+                <h2 class="accordion-header">
+                    <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#cfgsec-resultados" aria-expanded="false" aria-controls="cfgsec-resultados">
+                        <i class="fa-solid fa-flask me-2 text-primary"></i>
+                        <span class="fw-semibold">Resultados y registro de pruebas</span>
+                        <span class="cfg-sec-hint small text-muted ms-2 d-none d-md-inline">Decimales y leyendas/comentarios</span>
+                    </button>
+                </h2>
+                <div id="cfgsec-resultados" class="accordion-collapse collapse">
+                    <div class="accordion-body">
+        <div class="row">
+            <div class="col-md-6 mb-3 cfg-item">
+                <?= form_label(lang('Config.config_decimales_sugerencia'), 'decimales_sugerencia', ['class' => 'form-label']) ?>
+                <?= form_input(['name' => 'decimales_sugerencia', 'id' => 'decimales_sugerencia', 'type' => 'number', 'min' => 0, 'max' => 10, 'class' => 'form-control', 'value' => $config['decimales_sugerencia'] ?? '2', 'autocomplete' => 'off']) ?>
+                <small class="text-muted"><?= lang('Config.config_decimales_sugerencia_help') ?></small>
+            </div>
+        </div>
+        <div class="mb-3 cfg-item">
+            <input type="hidden" name="leyendas_enabled" value="0">
+            <div class="form-check">
+                <?= form_checkbox('leyendas_enabled', '1', (($config['leyendas_enabled'] ?? '0') === '1'), 'id="leyendas_enabled" class="form-check-input" autocomplete="off"') ?>
+                <?= form_label('Habilitar leyendas en pruebas', 'leyendas_enabled', ['class' => 'form-check-label']) ?>
+            </div>
+            <small class="text-muted">Si se activa, se mostrará un campo de comentarios/leyendas al registrar resultados de pruebas.</small>
+        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Sección: Inventario e insumos -->
+            <div class="accordion-item">
+                <h2 class="accordion-header">
+                    <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#cfgsec-inventario" aria-expanded="false" aria-controls="cfgsec-inventario">
+                        <i class="fa-solid fa-boxes-stacked me-2 text-primary"></i>
+                        <span class="fw-semibold">Inventario e insumos</span>
+                        <span class="cfg-sec-hint small text-muted ms-2 d-none d-md-inline">Alertas de vencimiento y stock bajo</span>
+                    </button>
+                </h2>
+                <div id="cfgsec-inventario" class="accordion-collapse collapse">
+                    <div class="accordion-body">
+        <div class="row">
+            <div class="col-md-6 mb-3 cfg-item">
+                <label for="dias_alerta_vencimiento" class="form-label">Días de alerta para vencimiento de insumos</label>
+                <?= form_input(['name' => 'dias_alerta_vencimiento', 'id' => 'dias_alerta_vencimiento', 'type' => 'number', 'min' => 1, 'max' => 365, 'class' => 'form-control', 'value' => $config['dias_alerta_vencimiento'] ?? '40', 'autocomplete' => 'off']) ?>
+                <small class="text-muted">Los lotes que venzan en los próximos X días se marcarán en amarillo en el reporte de insumos por vencimiento.</small>
+            </div>
+            <div class="col-md-6 mb-3 cfg-item">
+                <label for="stock_alerta_factor" class="form-label">Factor alerta de stock bajo</label>
+                <?= form_input(['name' => 'stock_alerta_factor', 'id' => 'stock_alerta_factor', 'type' => 'number', 'min' => '0.5', 'max' => '3', 'step' => '0.1', 'class' => 'form-control', 'value' => $config['stock_alerta_factor'] ?? '1', 'autocomplete' => 'off']) ?>
+                <small class="text-muted">1.0 = alerta al llegar al stock mínimo. Ejemplo: 1.5 alerta antes del mínimo.</small>
+            </div>
+        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Sección: Políticas y textos -->
+            <div class="accordion-item">
+                <h2 class="accordion-header">
+                    <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#cfgsec-politicas" aria-expanded="false" aria-controls="cfgsec-politicas">
+                        <i class="fa-solid fa-file-lines me-2 text-primary"></i>
+                        <span class="fw-semibold">Políticas y textos</span>
+                        <span class="cfg-sec-hint small text-muted ms-2 d-none d-md-inline">Política de devolución</span>
+                    </button>
+                </h2>
+                <div id="cfgsec-politicas" class="accordion-collapse collapse">
+                    <div class="accordion-body">
+        <div class="mb-3 cfg-item">
+            <?= form_label(lang('Config.config_return_policy'), 'return_policy', ['class' => 'form-label']) ?>
+            <?= form_textarea(['name' => 'return_policy', 'id' => 'return_policy', 'class' => 'form-control', 'rows' => 4, 'autocomplete' => 'off', 'value' => $config['return_policy'] ?? '']) ?>
+        </div>
+                    </div>
+                </div>
+            </div>
+
+        </div><!-- /configSistemaAccordion -->
+
+        <div id="config_sistema_no_results" class="alert alert-light border text-center text-muted my-3" style="display: none;">
+            <i class="fa-solid fa-magnifying-glass me-1"></i>No se encontró ninguna configuración con ese texto.
+        </div>
+
+        <div class="config-sistema-savebar position-sticky bottom-0 bg-white border-top mt-3 py-2 d-flex flex-wrap align-items-center gap-3">
+            <button type="submit" id="config_save_btn" name="config_save_btn" class="btn btn-primary"><i class="fa-solid fa-floppy-disk me-1"></i><?= lang('Config.config_save_btn') ?></button>
+            <span class="small text-muted">Guarda los cambios de todas las secciones de esta pestaña.</span>
+        </div>
         <?= form_close() ?>
             </div>
         </div>
     </div>
 
     <?= view('config/tab_lab_validacion', [
-        'activeTab'      => $activeTab,
-        'lab_validators' => $lab_validators ?? [],
-        'lab_approvers'  => $lab_approvers ?? [],
+        'activeTab'           => $activeTab,
+        'lab_validators'      => $lab_validators ?? [],
+        'lab_approvers'       => $lab_approvers ?? [],
+        'lab_validation_mode' => \App\Services\ConfigService::normalizeLabValidationMode(
+            (string) ($config['lab_validation_mode'] ?? 'area')
+        ),
     ]) ?>
 
     <?= view('config/tab_estilo', ['config' => $config, 'activeTab' => $activeTab, 'theme_palette' => $theme_palette ?? []]) ?>
@@ -1800,6 +1969,73 @@ $(document).ready(function() {
         }
         sel.addEventListener('change', sync);
         sync();
+    })();
+
+    // Buscador de configuraciones (pestaña Configuración del sistema)
+    (function initConfigSistemaSearch() {
+        var input = document.getElementById('config_sistema_search');
+        var acc = document.getElementById('configSistemaAccordion');
+        if (!input || !acc) {
+            return;
+        }
+        var counter = document.getElementById('config_sistema_search_count');
+        var noResults = document.getElementById('config_sistema_no_results');
+        var sections = Array.prototype.slice.call(acc.querySelectorAll('.accordion-item'));
+        function norm(s) {
+            s = (s || '').toLowerCase();
+            try {
+                s = s.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+            } catch (e) {}
+            return s;
+        }
+        function setOpen(sec, open) {
+            var col = sec.querySelector('.accordion-collapse');
+            var btn = sec.querySelector('.accordion-button');
+            if (!col || !btn) {
+                return;
+            }
+            col.classList.toggle('show', open);
+            btn.classList.toggle('collapsed', !open);
+            btn.setAttribute('aria-expanded', open ? 'true' : 'false');
+        }
+        function apply() {
+            var q = norm(input.value.trim());
+            var total = 0;
+            sections.forEach(function (sec) {
+                var items = sec.querySelectorAll('.cfg-item');
+                if (!q) {
+                    sec.classList.remove('d-none');
+                    items.forEach(function (el) {
+                        el.classList.remove('d-none', 'cfg-hit');
+                    });
+                    var col = sec.querySelector('.accordion-collapse');
+                    setOpen(sec, !!(col && col.hasAttribute('data-cfg-default-open')));
+                    return;
+                }
+                var any = false;
+                items.forEach(function (el) {
+                    var hit = norm(el.textContent).indexOf(q) !== -1;
+                    el.classList.toggle('d-none', !hit);
+                    el.classList.toggle('cfg-hit', hit);
+                    if (hit) {
+                        any = true;
+                        total++;
+                    }
+                });
+                sec.classList.toggle('d-none', !any);
+                if (any) {
+                    setOpen(sec, true);
+                }
+            });
+            if (counter) {
+                counter.textContent = q ? (total + (total === 1 ? ' coincidencia' : ' coincidencias')) : '';
+            }
+            if (noResults) {
+                noResults.style.display = (q && total === 0) ? 'block' : 'none';
+            }
+        }
+        input.addEventListener('input', apply);
+        input.addEventListener('search', apply);
     })();
 
     // SIN Billing Toggle

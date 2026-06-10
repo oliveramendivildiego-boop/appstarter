@@ -578,7 +578,9 @@ class Registers extends SecureArea
         (new PrianacategoriaReferenceService())->repairRegvaluesForRegistro($id);
         $analisis = $this->registerModel->getInfoAnalisis($id);
 
-        $labValState = (new ConfigService())->getLabValidationStateForView();
+        $configService = new ConfigService();
+        $labValState = $configService->getLabValidationStateForView();
+        $labValidationMode = $configService->getLabValidationMode();
         $poblacionesCatalogo = $this->labotestModel->getPoblaciones();
 
         return view('registers/formfill', [
@@ -593,6 +595,7 @@ class Registers extends SecureArea
             'analisis'          => $analisis,
             'lab_validators'    => $labValState['validators'],
             'lab_approvers'     => $labValState['approvers'],
+            'lab_validation_mode' => $labValidationMode,
             'poblaciones_catalogo' => $poblacionesCatalogo,
             'labotests_namecate' => $id,
             'registerModel'     => $this->registerModel,
