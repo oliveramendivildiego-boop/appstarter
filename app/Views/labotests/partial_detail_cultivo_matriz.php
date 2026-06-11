@@ -10,6 +10,9 @@
  */
 $matrizTipo = ($matriz_tipo ?? 'cultivo') === 'personalizado' ? 'personalizado' : 'cultivo';
 $esPersonalizado = $matrizTipo === 'personalizado';
+if ($esPersonalizado) {
+    helper('registro');
+}
 $secciones = \App\Models\LabotestModel::CULTIVO_SECCION_LABELS;
 $bloquesMatriz = $esPersonalizado
     ? \App\Models\LabotestModel::resolvePersonalizadoMatrizBloques($cultivo_matriz ?? [])
@@ -69,7 +72,7 @@ $parsePersonalizadoCelda = static function (array $celdaRaw): array {
         $ali = 'izquierda';
     }
     $fuente = trim((string) ($celdaRaw['fuente'] ?? 'normal'));
-    if (! in_array($fuente, ['normal', 'negrita', 'titulo'], true)) {
+    if (! in_array($fuente, ['normal', 'negrita', 'titulo', 'enriquecido'], true)) {
         $fuente = 'normal';
     }
     $rol = trim((string) ($celdaRaw['rol'] ?? 'input'));
@@ -77,6 +80,7 @@ $parsePersonalizadoCelda = static function (array $celdaRaw): array {
         $rol = 'input';
     }
     $rowspan = max(1, min(50, (int) ($celdaRaw['rowspan'] ?? 1)));
+    $colspan = max(1, min(20, (int) ($celdaRaw['colspan'] ?? 1)));
     $textoFijo = trim((string) ($celdaRaw['texto_fijo'] ?? ''));
 
     return [
@@ -84,11 +88,16 @@ $parsePersonalizadoCelda = static function (array $celdaRaw): array {
         'fuente'     => $fuente,
         'rol'        => $rol,
         'rowspan'    => $rowspan,
+        'colspan'    => $colspan,
         'texto_fijo' => $textoFijo,
     ];
 };
 ?>
 <script src="<?= base_url('js/vendor/sortable.min.js') ?>"></script>
+<?php if ($esPersonalizado): ?>
+<link href="https://cdn.jsdelivr.net/npm/summernote@0.8.18/dist/summernote-lite.min.css" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/summernote@0.8.18/dist/summernote-lite.min.js"></script>
+<?php endif; ?>
 <style>
 .cultivo-columnas-grid {
     display: grid;
@@ -357,9 +366,33 @@ $parsePersonalizadoCelda = static function (array $celdaRaw): array {
     margin-bottom: 0.1rem;
     color: #6c757d;
 }
+.cultivo-celda-unir-panel {
+    border-top: 1px dashed #dee2e6;
+    margin-top: 0.25rem;
+    padding-top: 0.35rem;
+}
+.cultivo-celda-unir-panel > .form-label {
+    font-size: 0.7rem;
+    font-weight: 600;
+    color: #495057;
+}
+.cultivo-celda-config.cultivo-fuente-enriquecido .cultivo-celda-titulo-drop,
+.cultivo-celda-config.cultivo-fuente-enriquecido .btn-cultivo-add-titulo-en-celda {
+    display: none !important;
+}
+.cultivo-celda-texto-fijo-wrap .note-editor.note-frame {
+    width: 100% !important;
+}
+.cultivo-celda-texto-fijo-wrap .note-toolbar {
+    padding: 0.15rem 0.25rem;
+}
 .cultivo-celda-cubierta-rowspan {
     background: #f8f9fa;
     opacity: 0.65;
+}
+.cultivo-matriz-grid-personalizado > tbody > tr > td.cultivo-grid-data-cell[rowspan],
+.cultivo-matriz-grid-personalizado > tbody > tr > td.cultivo-grid-data-cell[colspan] {
+    vertical-align: top;
 }
 .cultivo-celda-titulo-drop {
     min-height: 2.1rem;
@@ -506,7 +539,7 @@ $parsePersonalizadoCelda = static function (array $celdaRaw): array {
         <strong><?= $esPersonalizado ? 'Matriz personalizada' : 'Valores de sub-clases (prueba cultivo)' ?></strong>
         <span class="badge bg-info text-dark"><?= $esPersonalizado ? 'Personalizado' : 'Matriz' ?></span>
         <span class="text-muted small"><?= $esPersonalizado
-            ? 'Configure filas y columnas como en cultivo. Por celda puede definir alineación, fuente, rol (título/input) y unir filas.'
+            ? 'Configure filas y columnas como en cultivo. Por celda puede definir alineación, fuente (incl. formato mixto), rol (título/input) y unir columnas/filas.'
             : 'Apile títulos por columna; use el panel «Orden de secciones» arriba para reordenar, duplicar o agregar bloques.' ?></span>
         <a href="<?= site_url('labotests/opciones') ?>" class="btn btn-sm btn-outline-primary" target="_blank" rel="noopener">
             <i class="fa-solid fa-list-check me-1"></i>Tipos de resultado
@@ -881,10 +914,29 @@ $parsePersonalizadoCelda = static function (array $celdaRaw): array {
                             <td colspan="<?= $columnas + 1 ?>" class="text-muted small text-center py-2">Sin filas de datos (solo títulos de columna)</td>
                         </tr>
                         <?php else: ?>
-                        <?php for ($r = 0; $r < $filas; $r++): ?>
+                        <?php
+                        $coveredRowspanGrid = [];
+                        $skipColsGrid = [];
+                        for ($r = 0; $r < $filas; $r++):
+                            if ($esPersonalizado) {
+                                $filaVisibleGrid = false;
+                                for ($cVis = 0; $cVis < $columnas; $cVis++) {
+                                    if (! isset($coveredRowspanGrid[$r . ',' . $cVis])) {
+                                        $filaVisibleGrid = true;
+                                        break;
+                                    }
+                                }
+                                if (! $filaVisibleGrid) {
+                                    continue;
+                                }
+                            }
+                        ?>
                         <tr>
                             <th class="cultivo-grid-row-head" scope="row">F<?= $r + 1 ?></th>
                             <?php for ($c = 0; $c < $columnas; $c++):
+                                if ($esPersonalizado && (isset($coveredRowspanGrid[$r . ',' . $c]) || isset($skipColsGrid[$r . ',' . $c]))) {
+                                    continue;
+                                }
                                 $celdaRaw = $celdas[$r][$c] ?? ['modo' => 'texto'];
                                 $celdaModo = 'texto';
                                 $celdaOpcion = 0;
@@ -907,15 +959,47 @@ $parsePersonalizadoCelda = static function (array $celdaRaw): array {
                                     $celdaModo = $celdaOpcion > 0 ? 'opcion' : 'texto';
                                 }
                                 $persTituloCelda = $esPersonalizado ? $parsePersonalizadoCelda(is_array($celdaRaw) ? $celdaRaw : []) : [];
-                                $rolTituloCelda = $esPersonalizado && in_array($persTituloCelda['rol'] ?? '', ['titulo', 'etiqueta'], true);
-                                $tituloEnCelda = $esPersonalizado ? (string) ($persTituloCelda['texto_fijo'] ?? '') : '';
-                                $tieneTituloCelda = $esPersonalizado && ($rolTituloCelda || $tituloEnCelda !== '');
+                                $rolCeldaPers = $esPersonalizado ? (string) ($persTituloCelda['rol'] ?? 'input') : 'input';
+                                $rolTituloCelda = $esPersonalizado && in_array($rolCeldaPers, ['titulo', 'etiqueta'], true);
+                                $tituloEnCelda = $esPersonalizado && $rolTituloCelda
+                                    ? (string) ($persTituloCelda['texto_fijo'] ?? '')
+                                    : '';
+                                $tieneTituloCelda = $rolTituloCelda;
                                 $persCelda = $esPersonalizado ? $persTituloCelda : [];
+                                $fuenteEnriquecida = $esPersonalizado && ($persCelda['fuente'] ?? '') === 'enriquecido';
+                                $mostrarTextoFijoWrap = $esPersonalizado && (
+                                    $fuenteEnriquecida
+                                    || $tieneTituloCelda
+                                    || in_array($persCelda['rol'] ?? '', ['titulo', 'etiqueta'], true)
+                                );
                                 $maxRowspan = $esPersonalizado ? max(1, $filas - $r) : 1;
+                                $maxColspan = $esPersonalizado ? max(1, $columnas - $c) : 1;
+                                $rowspanVal = 1;
+                                $colspanVal = 1;
+                                $tdRowspanAttr = '';
+                                $tdColspanAttr = '';
+                                if ($esPersonalizado) {
+                                    $rowspanVal = max(1, min((int) ($persCelda['rowspan'] ?? 1), $maxRowspan, 50));
+                                    $colspanVal = max(1, min((int) ($persCelda['colspan'] ?? 1), $maxColspan, 20));
+                                    if ($colspanVal > 1) {
+                                        $tdColspanAttr = ' colspan="' . (int) $colspanVal . '"';
+                                        for ($cc = $c + 1; $cc < $c + $colspanVal; $cc++) {
+                                            $skipColsGrid[$r . ',' . $cc] = true;
+                                        }
+                                    }
+                                    if ($rowspanVal > 1) {
+                                        $tdRowspanAttr = ' rowspan="' . (int) $rowspanVal . '"';
+                                        for ($rr = $r + 1; $rr < $r + $rowspanVal && $rr < $filas; $rr++) {
+                                            for ($cc = $c; $cc < $c + $colspanVal; $cc++) {
+                                                $coveredRowspanGrid[$rr . ',' . $cc] = true;
+                                            }
+                                        }
+                                    }
+                                }
                             ?>
-                            <td class="cultivo-grid-data-cell<?= ($c % 2 === 1) ? ' cultivo-grid-col-par' : '' ?>">
+                            <td class="cultivo-grid-data-cell<?= ($c % 2 === 1) ? ' cultivo-grid-col-par' : '' ?>"<?= $tdColspanAttr ?><?= $tdRowspanAttr ?>>
                                 <div class="cultivo-celda-slot" data-fila="<?= $r ?>" data-columna="<?= $c ?>">
-                                <div class="cultivo-celda-config<?= $tieneTituloCelda ? ' cultivo-celda-es-titulo' : '' ?>">
+                                <div class="cultivo-celda-config<?= $tieneTituloCelda ? ' cultivo-celda-es-titulo' : '' ?><?= $fuenteEnriquecida ? ' cultivo-fuente-enriquecido' : '' ?>">
                                     <?php if ($esPersonalizado): ?>
                                     <span class="cultivo-celda-drag-handle" title="Arrastrar celda"><i class="fa-solid fa-grip"></i></span>
                                     <?php endif; ?>
@@ -1042,11 +1126,12 @@ $parsePersonalizadoCelda = static function (array $celdaRaw): array {
                                                         data-bloque-id="<?= esc($bloqueId, 'attr') ?>"
                                                         data-fila="<?= $r ?>" data-columna="<?= $c ?>">
                                                     <option value="normal" <?= $persCelda['fuente'] === 'normal' ? 'selected' : '' ?>>Normal</option>
-                                                    <option value="negrita" <?= $persCelda['fuente'] === 'negrita' ? 'selected' : '' ?>>Negrita</option>
-                                                    <option value="titulo" <?= $persCelda['fuente'] === 'titulo' ? 'selected' : '' ?>>Título</option>
+                                                    <option value="negrita" <?= $persCelda['fuente'] === 'negrita' ? 'selected' : '' ?>>Negrita (toda la celda)</option>
+                                                    <option value="titulo" <?= $persCelda['fuente'] === 'titulo' ? 'selected' : '' ?>>Título (toda la celda)</option>
+                                                    <option value="enriquecido" <?= $persCelda['fuente'] === 'enriquecido' ? 'selected' : '' ?>>Mixto (selección)</option>
                                                 </select>
                                             </div>
-                                            <div class="col-6 cultivo-celda-rol-wrap<?= $tieneTituloCelda ? ' d-none' : '' ?>">
+                                            <div class="col-6 cultivo-celda-rol-wrap">
                                                 <label class="form-label">Rol celda</label>
                                                 <select class="form-select form-select-sm cultivo-celda-rol"
                                                         data-bloque-id="<?= esc($bloqueId, 'attr') ?>"
@@ -1056,25 +1141,39 @@ $parsePersonalizadoCelda = static function (array $celdaRaw): array {
                                                     <option value="etiqueta" <?= $persCelda['rol'] === 'etiqueta' ? 'selected' : '' ?>>Etiqueta</option>
                                                 </select>
                                             </div>
-                                            <div class="col-6">
-                                                <label class="form-label">Unir filas</label>
-                                                <select class="form-select form-select-sm cultivo-celda-rowspan"
-                                                        data-bloque-id="<?= esc($bloqueId, 'attr') ?>"
-                                                        data-fila="<?= $r ?>" data-columna="<?= $c ?>">
-                                                    <?php for ($rs = 1; $rs <= $maxRowspan; $rs++): ?>
-                                                    <option value="<?= $rs ?>" <?= $persCelda['rowspan'] === $rs ? 'selected' : '' ?>><?= $rs ?></option>
-                                                    <?php endfor; ?>
-                                                </select>
+                                            <div class="col-12 cultivo-celda-unir-panel">
+                                                <label class="form-label mb-1">Unir celdas</label>
+                                                <div class="row g-1">
+                                                    <div class="col-6">
+                                                        <label class="form-label">Unir columnas</label>
+                                                        <select class="form-select form-select-sm cultivo-celda-colspan"
+                                                                data-bloque-id="<?= esc($bloqueId, 'attr') ?>"
+                                                                data-fila="<?= $r ?>" data-columna="<?= $c ?>">
+                                                            <?php for ($cs = 1; $cs <= $maxColspan; $cs++): ?>
+                                                            <option value="<?= $cs ?>" <?= $persCelda['colspan'] === $cs ? 'selected' : '' ?>><?= $cs ?></option>
+                                                            <?php endfor; ?>
+                                                        </select>
+                                                    </div>
+                                                    <div class="col-6">
+                                                        <label class="form-label">Unir filas</label>
+                                                        <select class="form-select form-select-sm cultivo-celda-rowspan"
+                                                                data-bloque-id="<?= esc($bloqueId, 'attr') ?>"
+                                                                data-fila="<?= $r ?>" data-columna="<?= $c ?>">
+                                                            <?php for ($rs = 1; $rs <= $maxRowspan; $rs++): ?>
+                                                            <option value="<?= $rs ?>" <?= $persCelda['rowspan'] === $rs ? 'selected' : '' ?>><?= $rs ?></option>
+                                                            <?php endfor; ?>
+                                                        </select>
+                                                    </div>
+                                                </div>
                                             </div>
-                                            <div class="col-12 cultivo-celda-texto-fijo-wrap d-none">
-                                                <label class="form-label">Texto fijo</label>
-                                                <input type="text"
-                                                       class="form-control form-control-sm cultivo-celda-texto-fijo"
-                                                       data-bloque-id="<?= esc($bloqueId, 'attr') ?>"
-                                                       data-fila="<?= $r ?>"
-                                                       data-columna="<?= $c ?>"
-                                                       value="<?= esc($persCelda['texto_fijo']) ?>"
-                                                       placeholder="Texto que se muestra en reporte">
+                                            <div class="col-12 cultivo-celda-texto-fijo-wrap<?= $mostrarTextoFijoWrap ? '' : ' d-none' ?>">
+                                                <label class="form-label"><?= $fuenteEnriquecida ? 'Texto con formato' : 'Texto fijo' ?></label>
+                                                <textarea class="form-control form-control-sm cultivo-celda-texto-fijo<?= $fuenteEnriquecida ? ' cultivo-celda-texto-fijo-rico' : '' ?>"
+                                                          rows="<?= $fuenteEnriquecida ? 3 : 2 ?>"
+                                                          data-bloque-id="<?= esc($bloqueId, 'attr') ?>"
+                                                          data-fila="<?= $r ?>"
+                                                          data-columna="<?= $c ?>"
+                                                          placeholder="<?= $fuenteEnriquecida ? 'Seleccione texto y use negrita, cursiva…' : 'Texto que se muestra en reporte' ?>"><?= registro_textarea_body_safe((string) ($persCelda['texto_fijo'] ?? '')) ?></textarea>
                                             </div>
                                         </div>
                                     </div>
@@ -1273,8 +1372,40 @@ $parsePersonalizadoCelda = static function (array $celdaRaw): array {
             base.fuente = 'normal';
             base.rol = 'input';
             base.rowspan = 1;
+            base.colspan = 1;
         }
         return base;
+    }
+
+    function calcRowspanPersonalizado(celda, fila, totalFilas) {
+        if (!esPersonalizado) return 1;
+        var rowspan = parseInt(celda && celda.rowspan !== undefined ? celda.rowspan : 1, 10);
+        if (isNaN(rowspan) || rowspan < 1) rowspan = 1;
+        var maxRowspan = Math.max(1, (totalFilas || 1) - fila);
+        return Math.min(50, maxRowspan, rowspan);
+    }
+
+    function calcColspanPersonalizado(celda, col, totalCols) {
+        if (!esPersonalizado) return 1;
+        var colspan = parseInt(celda && celda.colspan !== undefined ? celda.colspan : 1, 10);
+        if (isNaN(colspan) || colspan < 1) colspan = 1;
+        var maxColspan = Math.max(1, (totalCols || 1) - col);
+        return Math.min(20, maxColspan, colspan);
+    }
+
+    function marcarCoberturaSpanPersonalizado(coveredRowspan, skipCols, fila, col, rowspan, colspan) {
+        if (colspan > 1) {
+            for (var cc = col + 1; cc < col + colspan; cc++) {
+                skipCols[fila + ',' + cc] = true;
+            }
+        }
+        if (rowspan > 1) {
+            for (var rr = fila + 1; rr < fila + rowspan; rr++) {
+                for (var cc2 = col; cc2 < col + colspan; cc2++) {
+                    coveredRowspan[rr + ',' + cc2] = true;
+                }
+            }
+        }
     }
 
     function withPersonalizadoExtras(out, raw) {
@@ -1283,15 +1414,19 @@ $parsePersonalizadoCelda = static function (array $celdaRaw): array {
         if (['izquierda', 'centro', 'derecha'].indexOf(ali) < 0) ali = 'izquierda';
         out.alineacion = ali;
         var fuente = raw && raw.fuente ? String(raw.fuente) : 'normal';
-        if (['normal', 'negrita', 'titulo'].indexOf(fuente) < 0) fuente = 'normal';
+        if (['normal', 'negrita', 'titulo', 'enriquecido'].indexOf(fuente) < 0) fuente = 'normal';
         out.fuente = fuente;
         var rol = raw && raw.rol ? String(raw.rol) : 'input';
         if (['input', 'titulo', 'etiqueta'].indexOf(rol) < 0) rol = 'input';
         out.rol = rol;
         var rowspan = parseInt(raw && raw.rowspan !== undefined ? raw.rowspan : 1, 10);
         out.rowspan = (isNaN(rowspan) || rowspan < 1) ? 1 : Math.min(50, rowspan);
+        var colspan = parseInt(raw && raw.colspan !== undefined ? raw.colspan : 1, 10);
+        out.colspan = (isNaN(colspan) || colspan < 1) ? 1 : Math.min(20, colspan);
         var textoFijo = raw && raw.texto_fijo !== undefined ? String(raw.texto_fijo || '') : '';
-        if (textoFijo.trim() !== '' || rol === 'titulo' || rol === 'etiqueta') {
+        if (rol === 'input') {
+            delete out.texto_fijo;
+        } else if (textoFijo.trim() !== '' || rol === 'titulo' || rol === 'etiqueta') {
             out.texto_fijo = textoFijo.trim();
         }
         return out;
@@ -1470,21 +1605,32 @@ $parsePersonalizadoCelda = static function (array $celdaRaw): array {
         var rolSel = config.querySelector('.cultivo-celda-rol');
         var textoWrap = config.querySelector('.cultivo-celda-texto-fijo-wrap');
         var textoInp = config.querySelector('.cultivo-celda-texto-fijo');
+        var fuenteSel = config.querySelector('.cultivo-celda-fuente');
+        var esEnriquecido = fuenteSel && fuenteSel.value === 'enriquecido';
         var textoDrop = inp ? String(inp.value || '') : '';
-        var textoFijo = textoInp ? String(textoInp.value || '') : '';
-        var texto = textoDrop.trim() !== '' ? textoDrop : textoFijo;
-        if (inp && textoDrop.trim() === '' && texto.trim() !== '') {
+        var textoFijo = leerTextoFijoCeldaDom(textoInp);
+        var texto = (esEnriquecido || textoDrop.trim() === '') ? textoFijo : textoDrop;
+        if (inp && textoDrop.trim() === '' && texto.trim() !== '' && !esEnriquecido) {
             inp.value = texto;
         }
         var tieneItem = drop.querySelector('.cultivo-titulo-item');
+        if (tieneItem && rolSel && rolSel.value === 'input') {
+            tieneItem.remove();
+            drop.classList.add('is-empty');
+            tieneItem = null;
+        }
         if (tieneItem) {
-            if (rolSel) rolSel.value = 'titulo';
-            if (textoWrap) textoWrap.classList.remove('d-none');
-            if (textoInp) textoInp.value = texto;
-        } else {
+            if (rolSel && rolSel.value !== 'input') rolSel.value = 'titulo';
+            if (textoInp) {
+                if (esEnriquecido && typeof jQuery !== 'undefined' && jQuery(textoInp).data('summernote')) {
+                    jQuery(textoInp).summernote('code', texto);
+                } else {
+                    textoInp.value = texto;
+                }
+            }
+        } else if (!esEnriquecido) {
             if (textoInp) textoInp.value = '';
             if (rolSel && rolSel.value === 'titulo') rolSel.value = 'input';
-            if (textoWrap) textoWrap.classList.add('d-none');
         }
         actualizarVisibilidadPanelCelda(config);
     }
@@ -1504,9 +1650,12 @@ $parsePersonalizadoCelda = static function (array $celdaRaw): array {
     function leerTextoTituloCelda(wrap, fila, col) {
         var drop = wrap.querySelector('.cultivo-celda-titulo-drop[data-fila="' + fila + '"][data-columna="' + col + '"]');
         var inpDrop = drop ? drop.querySelector('.cultivo-titulo-input') : null;
+        var fuenteSel = wrap.querySelector('.cultivo-celda-fuente[data-fila="' + fila + '"][data-columna="' + col + '"]');
+        var esEnriquecido = fuenteSel && fuenteSel.value === 'enriquecido';
         var textoDrop = inpDrop ? String(inpDrop.value || '') : '';
         var textoFijoInp = wrap.querySelector('.cultivo-celda-texto-fijo[data-fila="' + fila + '"][data-columna="' + col + '"]');
-        var textoFijo = textoFijoInp ? String(textoFijoInp.value || '') : '';
+        var textoFijo = leerTextoFijoCeldaDom(textoFijoInp);
+        if (esEnriquecido) return textoFijo;
         return textoDrop.trim() !== '' ? textoDrop : textoFijo;
     }
 
@@ -1518,10 +1667,11 @@ $parsePersonalizadoCelda = static function (array $celdaRaw): array {
                 var item = drop ? drop.querySelector('.cultivo-titulo-item') : null;
                 var rolSel = wrap.querySelector('.cultivo-celda-rol[data-fila="' + r + '"][data-columna="' + c + '"]');
                 var rolDom = rolSel ? rolSel.value : 'input';
+                if (rolDom === 'input') continue;
                 var texto = leerTextoTituloCelda(wrap, r, c);
-                var esTitulo = !!item
-                    || rolDom === 'titulo'
+                var esTitulo = rolDom === 'titulo'
                     || rolDom === 'etiqueta'
+                    || !!item
                     || String(texto).trim() !== '';
                 if (!esTitulo) continue;
                 if (!celdas[r]) celdas[r] = [];
@@ -1529,12 +1679,14 @@ $parsePersonalizadoCelda = static function (array $celdaRaw): array {
                 var aliSel = wrap.querySelector('.cultivo-celda-alineacion[data-fila="' + r + '"][data-columna="' + c + '"]');
                 var fuenteSel = wrap.querySelector('.cultivo-celda-fuente[data-fila="' + r + '"][data-columna="' + c + '"]');
                 var rowspanSel = wrap.querySelector('.cultivo-celda-rowspan[data-fila="' + r + '"][data-columna="' + c + '"]');
+                var colspanSel = wrap.querySelector('.cultivo-celda-colspan[data-fila="' + r + '"][data-columna="' + c + '"]');
                 var rolFinal = rolDom === 'etiqueta' ? 'etiqueta' : 'titulo';
                 celdas[r][c] = withPersonalizadoExtras(base, {
                     alineacion: aliSel ? aliSel.value : (base.alineacion || 'izquierda'),
                     fuente: fuenteSel ? fuenteSel.value : (base.fuente || 'normal'),
                     rol: rolFinal,
                     rowspan: rowspanSel ? rowspanSel.value : (base.rowspan || 1),
+                    colspan: colspanSel ? colspanSel.value : (base.colspan || 1),
                     texto_fijo: texto
                 });
             }
@@ -1644,24 +1796,120 @@ $parsePersonalizadoCelda = static function (array $celdaRaw): array {
     function celdaTieneTitulo(celda) {
         if (!esPersonalizado || !celda) return false;
         var rol = celda.rol || 'input';
+        if (rol === 'input') return false;
         if (rol === 'titulo' || rol === 'etiqueta') return true;
         return String(celda.texto_fijo || '').trim() !== '';
     }
 
+    function textareaBodySafe(str) {
+        return String(str || '').replace(/<\/textarea>/gi, '&lt;/textarea&gt;');
+    }
+
+    function leerTextoFijoCeldaDom(textoInp) {
+        if (!textoInp) return '';
+        if (typeof jQuery !== 'undefined' && jQuery(textoInp).data('summernote')) {
+            return jQuery(textoInp).summernote('code');
+        }
+        return textoInp.value || '';
+    }
+
+    function syncCeldaTextoFijoRico(textoInp) {
+        if (!textoInp || typeof jQuery === 'undefined' || !jQuery(textoInp).data('summernote')) return;
+        textoInp.value = jQuery(textoInp).summernote('code');
+    }
+
+    function destroyCeldaTextoFijoRico(textoInp) {
+        if (!textoInp || typeof jQuery === 'undefined' || !jQuery(textoInp).data('summernote')) return;
+        jQuery(textoInp).summernote('destroy');
+    }
+
+    function initCeldaTextoFijoRico(textoInp) {
+        if (!textoInp || typeof jQuery === 'undefined' || !jQuery.fn.summernote) return;
+        if (jQuery(textoInp).data('summernote')) return;
+        jQuery(textoInp).summernote({
+            height: 90,
+            toolbar: [
+                ['style', ['bold', 'italic', 'underline']],
+                ['view', ['codeview']]
+            ]
+        });
+    }
+
+    function actualizarEditorTextoFijoCelda(configEl) {
+        if (!configEl || !esPersonalizado) return;
+        var fuenteSel = configEl.querySelector('.cultivo-celda-fuente');
+        var textoWrap = configEl.querySelector('.cultivo-celda-texto-fijo-wrap');
+        var textoInp = configEl.querySelector('.cultivo-celda-texto-fijo');
+        var rolSel = configEl.querySelector('.cultivo-celda-rol');
+        var drop = configEl.querySelector('.cultivo-celda-titulo-drop');
+        var tieneItem = drop ? drop.querySelector('.cultivo-titulo-item') : null;
+        var esEnriquecido = fuenteSel && fuenteSel.value === 'enriquecido';
+        var rol = rolSel ? rolSel.value : 'input';
+        var mostrarWrap = esEnriquecido || !!tieneItem || rol === 'titulo' || rol === 'etiqueta';
+        if (esEnriquecido && rolSel && rol === 'input') {
+            rolSel.value = 'titulo';
+            rol = 'titulo';
+            mostrarWrap = true;
+        }
+        if (textoWrap) textoWrap.classList.toggle('d-none', !mostrarWrap);
+        configEl.classList.toggle('cultivo-fuente-enriquecido', !!esEnriquecido);
+        if (!textoInp) return;
+        if (esEnriquecido) {
+            textoInp.classList.add('cultivo-celda-texto-fijo-rico');
+            initCeldaTextoFijoRico(textoInp);
+        } else {
+            syncCeldaTextoFijoRico(textoInp);
+            destroyCeldaTextoFijoRico(textoInp);
+            textoInp.classList.remove('cultivo-celda-texto-fijo-rico');
+        }
+    }
+
+    function syncTodosTextoFijoRicoEnWrap(wrap) {
+        if (!wrap || !esPersonalizado) return;
+        wrap.querySelectorAll('.cultivo-celda-texto-fijo').forEach(function(inp) {
+            syncCeldaTextoFijoRico(inp);
+        });
+    }
+
+    function limpiarTituloFijoCelda(configEl) {
+        if (!configEl) return;
+        var drop = configEl.querySelector('.cultivo-celda-titulo-drop');
+        if (drop) {
+            drop.querySelectorAll('.cultivo-titulo-item').forEach(function(item) { item.remove(); });
+            drop.classList.add('is-empty');
+        }
+        var textoInp = configEl.querySelector('.cultivo-celda-texto-fijo');
+        if (textoInp) {
+            syncCeldaTextoFijoRico(textoInp);
+            destroyCeldaTextoFijoRico(textoInp);
+            textoInp.value = '';
+        }
+        var fuenteSel = configEl.querySelector('.cultivo-celda-fuente');
+        if (fuenteSel && fuenteSel.value === 'enriquecido') {
+            fuenteSel.value = 'normal';
+        }
+    }
+
+    function aplicarRolCeldaEnDom(configEl) {
+        if (!configEl || !esPersonalizado) return;
+        var rolSel = configEl.querySelector('.cultivo-celda-rol');
+        if (rolSel && rolSel.value === 'input') {
+            limpiarTituloFijoCelda(configEl);
+        }
+        actualizarVisibilidadPanelCelda(configEl);
+    }
+
     function actualizarVisibilidadPanelCelda(configEl) {
         if (!configEl || !esPersonalizado) return;
-        var drop = configEl.querySelector('.cultivo-celda-titulo-drop');
-        var item = drop ? drop.querySelector('.cultivo-titulo-item') : null;
         var rolSel = configEl.querySelector('.cultivo-celda-rol');
         var rol = rolSel ? rolSel.value : 'input';
-        var esTitulo = !!item || rol === 'titulo' || rol === 'etiqueta';
+        var esTitulo = rol === 'titulo' || rol === 'etiqueta';
         var inputPanel = configEl.querySelector('.cultivo-celda-input-panel');
         var btnAdd = configEl.querySelector('.btn-cultivo-add-titulo-en-celda');
-        var rolWrap = configEl.querySelector('.cultivo-celda-rol-wrap');
         if (inputPanel) inputPanel.classList.toggle('d-none', esTitulo);
         if (btnAdd) btnAdd.classList.toggle('d-none', esTitulo);
-        if (rolWrap) rolWrap.classList.toggle('d-none', esTitulo);
         configEl.classList.toggle('cultivo-celda-es-titulo', esTitulo);
+        actualizarEditorTextoFijoCelda(configEl);
     }
 
     function refrescarVisibilidadCeldas(secId) {
@@ -1673,12 +1921,14 @@ $parsePersonalizadoCelda = static function (array $celdaRaw): array {
         });
     }
 
-    function buildCeldaCell(secId, fila, col, celdaRaw, mostrarValor, totalFilas) {
+    function buildCeldaCell(secId, fila, col, celdaRaw, mostrarValor, totalFilas, totalColumnas) {
         var celda = normalizeCelda(celdaRaw);
         var modo = celda.modo || 'texto';
         var esTitulo = celdaTieneTitulo(celda);
         var html = '<div class="cultivo-celda-slot" data-fila="' + fila + '" data-columna="' + col + '">';
-        html += '<div class="cultivo-celda-config' + (esTitulo ? ' cultivo-celda-es-titulo' : '') + '">';
+        var fuenteCelda = celda.fuente || 'normal';
+        var esFuenteEnriquecida = fuenteCelda === 'enriquecido';
+        html += '<div class="cultivo-celda-config' + (esTitulo ? ' cultivo-celda-es-titulo' : '') + (esFuenteEnriquecida ? ' cultivo-fuente-enriquecido' : '') + '">';
         if (esPersonalizado) {
             html += '<span class="cultivo-celda-drag-handle" title="Arrastrar celda"><i class="fa-solid fa-grip"></i></span>';
         }
@@ -1725,12 +1975,16 @@ $parsePersonalizadoCelda = static function (array $celdaRaw): array {
         html += '</div>';
         if (esPersonalizado) {
             var ali = celda.alineacion || 'izquierda';
-            var fuente = celda.fuente || 'normal';
+            var fuente = fuenteCelda;
             var rol = celda.rol || 'input';
             var rowspan = parseInt(celda.rowspan || 1, 10);
             if (isNaN(rowspan) || rowspan < 1) rowspan = 1;
             var maxRowspan = Math.max(1, (totalFilas || 50) - fila);
             if (rowspan > maxRowspan) rowspan = maxRowspan;
+            var colspan = parseInt(celda.colspan || 1, 10);
+            if (isNaN(colspan) || colspan < 1) colspan = 1;
+            var maxColspan = Math.max(1, (totalColumnas || 20) - col);
+            if (colspan > maxColspan) colspan = maxColspan;
             html += '<div class="cultivo-celda-extras-personalizado"><div class="row g-1">';
             html += '<div class="col-6"><label class="form-label">Alineación</label>';
             html += '<select class="form-select form-select-sm cultivo-celda-alineacion" data-bloque-id="' + secId + '" data-fila="' + fila + '" data-columna="' + col + '">';
@@ -1741,27 +1995,38 @@ $parsePersonalizadoCelda = static function (array $celdaRaw): array {
             html += '</select></div>';
             html += '<div class="col-6"><label class="form-label">Fuente</label>';
             html += '<select class="form-select form-select-sm cultivo-celda-fuente" data-bloque-id="' + secId + '" data-fila="' + fila + '" data-columna="' + col + '">';
-            [['normal', 'Normal'], ['negrita', 'Negrita'], ['titulo', 'Título']].forEach(function(pair) {
+            [['normal', 'Normal'], ['negrita', 'Negrita (toda la celda)'], ['titulo', 'Título (toda la celda)'], ['enriquecido', 'Mixto (selección)']].forEach(function(pair) {
                 html += '<option value="' + pair[0] + '"' + (fuente === pair[0] ? ' selected' : '') + '>' + pair[1] + '</option>';
             });
             html += '</select></div>';
-            html += '<div class="col-6 cultivo-celda-rol-wrap' + (esTitulo ? ' d-none' : '') + '"><label class="form-label">Rol celda</label>';
+            html += '<div class="col-6 cultivo-celda-rol-wrap"><label class="form-label">Rol celda</label>';
             html += '<select class="form-select form-select-sm cultivo-celda-rol" data-bloque-id="' + secId + '" data-fila="' + fila + '" data-columna="' + col + '">';
             [['input', 'Input (captura)'], ['titulo', 'Título fijo'], ['etiqueta', 'Etiqueta']].forEach(function(pair) {
                 html += '<option value="' + pair[0] + '"' + (rol === pair[0] ? ' selected' : '') + '>' + pair[1] + '</option>';
             });
+            html += '</select></div>';
+            html += '<div class="col-12 cultivo-celda-unir-panel">';
+            html += '<label class="form-label mb-1">Unir celdas</label><div class="row g-1">';
+            html += '<div class="col-6"><label class="form-label">Unir columnas</label>';
+            html += '<select class="form-select form-select-sm cultivo-celda-colspan" data-bloque-id="' + secId + '" data-fila="' + fila + '" data-columna="' + col + '">';
+            for (var cs = 1; cs <= maxColspan; cs++) {
+                html += '<option value="' + cs + '"' + (colspan === cs ? ' selected' : '') + '>' + cs + '</option>';
+            }
             html += '</select></div>';
             html += '<div class="col-6"><label class="form-label">Unir filas</label>';
             html += '<select class="form-select form-select-sm cultivo-celda-rowspan" data-bloque-id="' + secId + '" data-fila="' + fila + '" data-columna="' + col + '">';
             for (var rs = 1; rs <= maxRowspan; rs++) {
                 html += '<option value="' + rs + '"' + (rowspan === rs ? ' selected' : '') + '>' + rs + '</option>';
             }
-            html += '</select></div>';
-            html += '<div class="col-12 cultivo-celda-texto-fijo-wrap d-none">';
-            html += '<label class="form-label">Texto fijo</label>';
-            html += '<input type="text" class="form-control form-control-sm cultivo-celda-texto-fijo"'
+            html += '</select></div></div></div>';
+            var mostrarTextoFijo = esFuenteEnriquecida || esTitulo || rol === 'titulo' || rol === 'etiqueta';
+            html += '<div class="col-12 cultivo-celda-texto-fijo-wrap' + (mostrarTextoFijo ? '' : ' d-none') + '">';
+            html += '<label class="form-label">' + (esFuenteEnriquecida ? 'Texto con formato' : 'Texto fijo') + '</label>';
+            html += '<textarea class="form-control form-control-sm cultivo-celda-texto-fijo' + (esFuenteEnriquecida ? ' cultivo-celda-texto-fijo-rico' : '') + '"'
+                + ' rows="' + (esFuenteEnriquecida ? '3' : '2') + '"'
                 + ' data-bloque-id="' + secId + '" data-fila="' + fila + '" data-columna="' + col + '"'
-                + ' value="' + escAttr(String(celda.texto_fijo || '')) + '" placeholder="Texto que se muestra en reporte">';
+                + ' placeholder="' + (esFuenteEnriquecida ? 'Seleccione texto y use negrita, cursiva…' : 'Texto que se muestra en reporte') + '">'
+                + textareaBodySafe(String(celda.texto_fijo || '')) + '</textarea>';
             html += '</div></div></div>';
         }
         html += '</div></div>';
@@ -2042,6 +2307,10 @@ $parsePersonalizadoCelda = static function (array $celdaRaw): array {
         });
         while (titulos.length < columnas) titulos.push([]);
 
+        if (esPersonalizado) {
+            syncTodosTextoFijoRicoEnWrap(wrap);
+        }
+
         var celdas = [];
         var fallbackCeldas = [];
         var storedCells = wrap.getAttribute('data-celdas-json');
@@ -2094,25 +2363,32 @@ $parsePersonalizadoCelda = static function (array $celdaRaw): array {
                     var fuenteSel = wrap.querySelector('.cultivo-celda-fuente[data-fila="' + r + '"][data-columna="' + c + '"]');
                     var rolSel = wrap.querySelector('.cultivo-celda-rol[data-fila="' + r + '"][data-columna="' + c + '"]');
                     var rowspanSel = wrap.querySelector('.cultivo-celda-rowspan[data-fila="' + r + '"][data-columna="' + c + '"]');
+                    var colspanSel = wrap.querySelector('.cultivo-celda-colspan[data-fila="' + r + '"][data-columna="' + c + '"]');
                     var textoFijoInp = wrap.querySelector('.cultivo-celda-texto-fijo[data-fila="' + r + '"][data-columna="' + c + '"]');
                     var rolVal = rolSel ? rolSel.value : 'input';
-                    var textoFijoVal = textoFijoInp ? textoFijoInp.value : '';
-                    var tieneItemTitulo = cellDrop && cellDrop.querySelector('.cultivo-titulo-item');
-                    if (tieneItemTitulo || textoDesdeDrop !== '' || rolVal === 'titulo' || rolVal === 'etiqueta') {
-                        if (textoDesdeDrop !== '') {
-                            textoFijoVal = textoDesdeDrop;
-                        }
-                        if (tieneItemTitulo || textoDesdeDrop !== '' || rolVal === 'titulo') {
-                            rolVal = (rolSel && rolSel.value === 'etiqueta') ? 'etiqueta' : 'titulo';
-                        }
-                    }
-                    celdas[r][c] = withPersonalizadoExtras(celdas[r][c], {
+                    var fuenteVal = fuenteSel ? fuenteSel.value : 'normal';
+                    var extrasPers = {
                         alineacion: aliSel ? aliSel.value : 'izquierda',
                         fuente: fuenteSel ? fuenteSel.value : 'normal',
                         rol: rolVal,
                         rowspan: rowspanSel ? rowspanSel.value : 1,
-                        texto_fijo: textoFijoVal
-                    });
+                        colspan: colspanSel ? colspanSel.value : 1
+                    };
+                    if (rolVal === 'input') {
+                        extrasPers.texto_fijo = '';
+                    } else {
+                        var textoFijoVal = leerTextoFijoCeldaDom(textoFijoInp);
+                        var tieneItemTitulo = cellDrop && cellDrop.querySelector('.cultivo-titulo-item');
+                        if (textoDesdeDrop !== '' && fuenteVal !== 'enriquecido') {
+                            textoFijoVal = textoDesdeDrop;
+                        }
+                        if (tieneItemTitulo || textoDesdeDrop !== '' || rolVal === 'titulo') {
+                            rolVal = (rolSel && rolSel.value === 'etiqueta') ? 'etiqueta' : 'titulo';
+                            extrasPers.rol = rolVal;
+                        }
+                        extrasPers.texto_fijo = textoFijoVal;
+                    }
+                    celdas[r][c] = withPersonalizadoExtras(celdas[r][c], extrasPers);
                 }
             }
         }
@@ -2604,14 +2880,34 @@ $parsePersonalizadoCelda = static function (array $celdaRaw): array {
                     + '" class="text-muted small text-center py-2">Sin filas de datos (solo títulos de columna)</td></tr>';
             } else {
                 var mostrarValorCelda = isCuerpoBloque(secId) && actual.valores_habilitado;
+                var coveredRowspanGrid = {};
+                var skipColsGrid = {};
                 for (var r = 0; r < actual.filas; r++) {
+                    if (esPersonalizado) {
+                        var filaVisibleGrid = false;
+                        for (var cVis = 0; cVis < actual.columnas; cVis++) {
+                            if (!coveredRowspanGrid[r + ',' + cVis]) {
+                                filaVisibleGrid = true;
+                                break;
+                            }
+                        }
+                        if (!filaVisibleGrid) continue;
+                    }
                     bodyHtml += '<tr>';
                     bodyHtml += '<th class="cultivo-grid-row-head" scope="row">F' + (r + 1) + '</th>';
                     for (var c2 = 0; c2 < actual.columnas; c2++) {
+                        if (esPersonalizado && (coveredRowspanGrid[r + ',' + c2] || skipColsGrid[r + ',' + c2])) continue;
                         var val = (actual.celdas[r] && actual.celdas[r][c2] !== undefined) ? actual.celdas[r][c2] : celdaDefault();
                         var colParClass = (c2 % 2 === 1) ? ' cultivo-grid-col-par' : '';
-                        bodyHtml += '<td class="cultivo-grid-data-cell' + colParClass + '">'
-                            + buildCeldaCell(secId, r, c2, val, mostrarValorCelda, actual.filas) + '</td>';
+                        var rowspanVal = calcRowspanPersonalizado(val, r, actual.filas);
+                        var colspanVal = calcColspanPersonalizado(val, c2, actual.columnas);
+                        var tdRowspanAttr = (esPersonalizado && rowspanVal > 1) ? ' rowspan="' + rowspanVal + '"' : '';
+                        var tdColspanAttr = (esPersonalizado && colspanVal > 1) ? ' colspan="' + colspanVal + '"' : '';
+                        if (esPersonalizado) {
+                            marcarCoberturaSpanPersonalizado(coveredRowspanGrid, skipColsGrid, r, c2, rowspanVal, colspanVal);
+                        }
+                        bodyHtml += '<td class="cultivo-grid-data-cell' + colParClass + '"' + tdColspanAttr + tdRowspanAttr + '>'
+                            + buildCeldaCell(secId, r, c2, val, mostrarValorCelda, actual.filas, actual.columnas) + '</td>';
                     }
                     bodyHtml += '</tr>';
                 }
@@ -2957,11 +3253,25 @@ $parsePersonalizadoCelda = static function (array $celdaRaw): array {
         if (e.target.classList.contains('cultivo-celda-rol')) {
             var configRol = e.target.closest('.cultivo-celda-config');
             if (configRol) {
-                var textoWrap = configRol.querySelector('.cultivo-celda-texto-fijo-wrap');
-                if (textoWrap) {
-                    var rolVal = e.target.value;
-                    textoWrap.classList.toggle('d-none', rolVal !== 'titulo' && rolVal !== 'etiqueta');
+                aplicarRolCeldaEnDom(configRol);
+                var wrapRol = configRol.closest('.cultivo-matriz-seccion');
+                if (wrapRol) {
+                    var secRol = attrBloqueId(wrapRol);
+                    if (secRol) persistirCeldasEnWrap(secRol);
                 }
+            }
+            return;
+        }
+        if (e.target.classList.contains('cultivo-celda-fuente')) {
+            var configFuente = e.target.closest('.cultivo-celda-config');
+            if (configFuente) actualizarEditorTextoFijoCelda(configFuente);
+            return;
+        }
+        if (e.target.classList.contains('cultivo-celda-rowspan') || e.target.classList.contains('cultivo-celda-colspan')) {
+            var secSpan = attrBloqueId(e.target);
+            if (secSpan) {
+                var dataSpan = capturarSeccion(secSpan);
+                if (dataSpan) renderSeccion(secSpan, dataSpan);
             }
             return;
         }
@@ -3060,6 +3370,8 @@ $parsePersonalizadoCelda = static function (array $celdaRaw): array {
             }
             if (esPersonalizado) {
                 syncTodosTitulosCeldaEnSeccion(secId);
+                var wrapSubmit = getWrap(secId);
+                if (wrapSubmit) syncTodosTextoFijoRicoEnWrap(wrapSubmit);
             }
         });
 

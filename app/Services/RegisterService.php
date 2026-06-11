@@ -474,6 +474,7 @@ class RegisterService
         ?string $unidadGlobalRegistro = null,
         bool $esPersonalizado = false
     ): array {
+        helper('registro');
         $bloques = $esPersonalizado
             ? LabotestModel::resolvePersonalizadoMatrizBloques($matriz)
             : LabotestModel::resolveCultivoMatrizBloques($matriz);
@@ -528,7 +529,7 @@ class RegisterService
                     $out['alineacion'] = $ali;
 
                     $fuente = trim((string) ($raw['fuente'] ?? 'normal'));
-                    if (! in_array($fuente, ['normal', 'negrita', 'titulo'], true)) {
+                    if (! in_array($fuente, ['normal', 'negrita', 'titulo', 'enriquecido'], true)) {
                         $fuente = 'normal';
                     }
                     $out['fuente'] = $fuente;
@@ -576,6 +577,9 @@ class RegisterService
             }
             if (($celdaCfg['modo'] ?? '') === 'opcion'
                 && registro_opcion_es_texto_rico((int) ($celdaCfg['opcion_id'] ?? 0))) {
+                return registro_sanitizar_html_rico($raw);
+            }
+            if (($celdaCfg['fuente'] ?? '') === 'enriquecido' || $raw !== strip_tags($raw)) {
                 return registro_sanitizar_html_rico($raw);
             }
 

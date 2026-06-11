@@ -126,6 +126,24 @@ if (! function_exists('registro_opcion_es_select')) {
     }
 }
 
+if (! function_exists('registro_personalizado_texto_fijo_html')) {
+    /**
+     * Muestra texto fijo de celda personalizada (plano o HTML enriquecido).
+     */
+    function registro_personalizado_texto_fijo_html(string $texto, string $fuente = 'normal'): string
+    {
+        $texto = trim($texto);
+        if ($texto === '') {
+            return '';
+        }
+        if ($fuente === 'enriquecido' || $texto !== strip_tags($texto)) {
+            return registro_sanitizar_html_rico($texto);
+        }
+
+        return esc($texto);
+    }
+}
+
 if (! function_exists('registro_sanitizar_html_rico')) {
     /**
      * Limpia HTML de resultados enriquecidos (negrita, cursiva, listas, etc.).

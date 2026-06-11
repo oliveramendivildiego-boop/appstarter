@@ -22,6 +22,8 @@ use App\Models\LeyendaCultivoModel;
 
 
 
+helper('registro');
+
 $prianacategoriaId = (int) ($prianacategoria_id ?? 0);
 
 $tituloPrueba = (string) ($titulo_prueba ?? '');
@@ -147,7 +149,7 @@ $normalizeCeldaCfg = static function ($raw) use ($esPersonalizado): array {
         }
         $out['alineacion'] = $ali;
         $fuente = trim((string) ($raw['fuente'] ?? 'normal'));
-        if (! in_array($fuente, ['normal', 'negrita', 'titulo'], true)) {
+        if (! in_array($fuente, ['normal', 'negrita', 'titulo', 'enriquecido'], true)) {
             $fuente = 'normal';
         }
         $out['fuente'] = $fuente;
@@ -157,6 +159,7 @@ $normalizeCeldaCfg = static function ($raw) use ($esPersonalizado): array {
         }
         $out['rol'] = $rol;
         $out['rowspan'] = max(1, min(50, (int) ($raw['rowspan'] ?? 1)));
+        $out['colspan'] = max(1, min(20, (int) ($raw['colspan'] ?? 1)));
         $textoFijo = trim((string) ($raw['texto_fijo'] ?? ''));
         if ($textoFijo !== '') {
             $out['texto_fijo'] = $textoFijo;
@@ -423,6 +426,46 @@ foreach ($leyendasPorId as $lid => $lcRow) {
     margin-top: 0.35rem;
 }
 
+.cultivo-fill-wrap.cultivo-fill-personalizado td[rowspan],
+.cultivo-fill-wrap.cultivo-fill-personalizado td[colspan] {
+    vertical-align: top;
+}
+
+.cultivo-fill-wrap.cultivo-fill-personalizado td[colspan] .cultivo-fill-celda-row,
+.cultivo-fill-wrap.cultivo-fill-personalizado td.cultivo-fill-ali-centro .cultivo-fill-celda-row,
+.cultivo-fill-wrap.cultivo-fill-personalizado td.cultivo-fill-ali-derecha .cultivo-fill-celda-row {
+    width: 100%;
+}
+
+.cultivo-fill-wrap.cultivo-fill-personalizado td.cultivo-fill-ali-centro .cultivo-fill-celda-row {
+    justify-content: center;
+}
+
+.cultivo-fill-wrap.cultivo-fill-personalizado td.cultivo-fill-ali-derecha .cultivo-fill-celda-row {
+    justify-content: flex-end;
+}
+
+.cultivo-fill-wrap.cultivo-fill-personalizado td.cultivo-fill-ali-centro .cultivo-fill-main,
+.cultivo-fill-wrap.cultivo-fill-personalizado td.cultivo-fill-ali-derecha .cultivo-fill-main {
+    flex: 0 1 auto;
+    max-width: 100%;
+}
+
+.cultivo-fill-wrap.cultivo-fill-personalizado td.cultivo-fill-ali-centro .cultivo-fill-texto-fijo {
+    text-align: center;
+    width: 100%;
+}
+
+.cultivo-fill-wrap.cultivo-fill-personalizado td.cultivo-fill-ali-derecha .cultivo-fill-texto-fijo {
+    text-align: right;
+    width: 100%;
+}
+
+.cultivo-fill-wrap.cultivo-fill-personalizado td.cultivo-fill-ali-centro .cultivo-celda-valor-fill,
+.cultivo-fill-wrap.cultivo-fill-personalizado td.cultivo-fill-ali-derecha .cultivo-celda-valor-fill {
+    flex: 0 1 auto;
+}
+
 </style>
 
 <div class="col-12 mb-3 cultivo-fill-wrap<?= $esPersonalizado ? ' cultivo-fill-personalizado' : '' ?>" data-prianacategoria-id="<?= $prianacategoriaId ?>">
@@ -525,6 +568,18 @@ foreach ($leyendasPorId as $lid => $lcRow) {
                         $coveredRowspan = [];
                         $skipCols = [];
                         for ($r = 0; $r < $filas; $r++):
+                            if ($esPersonalizado) {
+                                $filaVisibleFill = false;
+                                for ($cVis = 0; $cVis < $columnas; $cVis++) {
+                                    if (! isset($coveredRowspan[$r . ',' . $cVis])) {
+                                        $filaVisibleFill = true;
+                                        break;
+                                    }
+                                }
+                                if (! $filaVisibleFill) {
+                                    continue;
+                                }
+                            }
                         ?>
 
                         <tr>
@@ -542,7 +597,28 @@ foreach ($leyendasPorId as $lid => $lcRow) {
                                         && registro_opcion_es_texto_rico((int) ($celdaCfg['opcion_id'] ?? 0)));
                                 $tdColspanAttr = '';
                                 $tdClass = 'p-1';
-                                if ($esPersonalizado && $esTextoRicoFill && $celdaEsInputFill($celdaCfg)) {
+                                $colspan = $esPersonalizado ? max(1, (int) ($celdaCfg['colspan'] ?? 1)) : 1;
+                                if ($esPersonalizado) {
+                                    $maxColspanFill = max(1, $columnas - $c);
+                                    if ($colspan > $maxColspanFill) {
+                                        $colspan = $maxColspanFill;
+                                    }
+                                }
+                                if ($esPersonalizado) {
+                                    $aliTd = (string) ($celdaCfg['alineacion'] ?? 'izquierda');
+                                    if (in_array($aliTd, ['izquierda', 'centro', 'derecha'], true)) {
+                                        $tdClass .= ' cultivo-fill-ali-' . $aliTd;
+                                    }
+                                }
+                                if ($esPersonalizado && $colspan > 1) {
+                                    $tdColspanAttr = ' colspan="' . (int) $colspan . '"';
+                                    for ($cc = $c + 1; $cc < $c + $colspan; $cc++) {
+                                        $skipCols[$r . ',' . $cc] = true;
+                                    }
+                                    if ($esTextoRicoFill) {
+                                        $tdClass .= ' cultivo-fill-td-texto-rico';
+                                    }
+                                } elseif ($esPersonalizado && $esTextoRicoFill && $celdaEsInputFill($celdaCfg)) {
                                     $ricoColspan = $calcColspanTextoRicoPersonalizado(
                                         $r,
                                         $c,
@@ -561,9 +637,17 @@ foreach ($leyendasPorId as $lid => $lcRow) {
                                     $tdClass .= ' cultivo-fill-td-texto-rico';
                                 }
                                 $rowspan = $esPersonalizado ? max(1, (int) ($celdaCfg['rowspan'] ?? 1)) : 1;
+                                if ($esPersonalizado) {
+                                    $maxRowspanFill = max(1, $filas - $r);
+                                    if ($rowspan > $maxRowspanFill) {
+                                        $rowspan = $maxRowspanFill;
+                                    }
+                                }
                                 if ($rowspan > 1) {
                                     for ($rr = $r + 1; $rr < $r + $rowspan && $rr < $filas; $rr++) {
-                                        $coveredRowspan[$rr . ',' . $c] = true;
+                                        for ($cc = $c; $cc < $c + $colspan; $cc++) {
+                                            $coveredRowspan[$rr . ',' . $cc] = true;
+                                        }
                                     }
                                 }
                                 $tdStyle = $esPersonalizado ? $estiloCeldaPersonalizado($celdaCfg) : '';
@@ -617,9 +701,10 @@ foreach ($leyendasPorId as $lid => $lcRow) {
 
                                 <?php if ($esPersonalizado && $celdaEsTituloFill($celdaCfg)):
                                     $textoMostrar = trim((string) ($celdaCfg['texto_fijo'] ?? ''));
+                                    $fuenteMostrar = (string) ($celdaCfg['fuente'] ?? 'normal');
                                 ?>
                                     <div class="cultivo-fill-celda-row">
-                                        <span class="cultivo-fill-texto-fijo"><?= esc($textoMostrar) ?></span>
+                                        <span class="cultivo-fill-texto-fijo"><?= registro_personalizado_texto_fijo_html($textoMostrar, $fuenteMostrar) ?></span>
                                     </div>
                                 <?php elseif ($celdaCfg['modo'] === 'texto_rico'
                                     || ($celdaCfg['modo'] === 'opcion' && registro_opcion_es_texto_rico((int) ($celdaCfg['opcion_id'] ?? 0)))): ?>

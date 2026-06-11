@@ -454,7 +454,7 @@ class LabotestModel extends Model
             $out['alineacion'] = $ali;
 
             $fuente = trim((string) ($raw['fuente'] ?? 'normal'));
-            if (! in_array($fuente, ['normal', 'negrita', 'titulo'], true)) {
+            if (! in_array($fuente, ['normal', 'negrita', 'titulo', 'enriquecido'], true)) {
                 $fuente = 'normal';
             }
             $out['fuente'] = $fuente;
@@ -468,8 +468,15 @@ class LabotestModel extends Model
             $rowspan = max(1, min(50, (int) ($raw['rowspan'] ?? 1)));
             $out['rowspan'] = $rowspan;
 
+            $colspan = max(1, min(20, (int) ($raw['colspan'] ?? 1)));
+            $out['colspan'] = $colspan;
+
             $textoFijo = trim((string) ($raw['texto_fijo'] ?? ''));
-            if ($textoFijo !== '' || in_array($rol, ['titulo', 'etiqueta'], true)) {
+            if ($textoFijo !== '' && ($fuente === 'enriquecido' || $textoFijo !== strip_tags($textoFijo))) {
+                helper('registro');
+                $textoFijo = registro_sanitizar_html_rico($textoFijo);
+            }
+            if ($textoFijo !== '' || in_array($rol, ['titulo', 'etiqueta'], true) || $fuente === 'enriquecido') {
                 $out['texto_fijo'] = $textoFijo;
             }
         }
