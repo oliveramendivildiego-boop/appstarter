@@ -121,6 +121,7 @@ class BillingDocumentService
         $ordenNum = registro_orden_display($reg);
         $empresa  = trim((string) ($layout['company'] ?? 'Laboratorio'));
         $reciboNumeroSvc = new ComprobanteReciboNumeroService($this->appConfigModel, $this->registerModel);
+        $numeroRecibo = $reciboNumeroSvc->resolveNumeroRecibo($registroId, $reg, $pago);
 
         if ($comoFactura) {
             $razon = trim((string) $this->appConfigModel->getValue('sin_business_name'));
@@ -132,6 +133,7 @@ class BillingDocumentService
             return new FacturaComprobanteModel(
                 $nombreFactura,
                 $ordenNum,
+                $numeroRecibo,
                 $fechaEmision,
                 $pacienteNombre,
                 trim((string) ($reg->ci ?? '')),
@@ -154,8 +156,6 @@ class BillingDocumentService
                 $caen,
             );
         }
-
-        $numeroRecibo = $reciboNumeroSvc->resolveNumeroRecibo($registroId, $reg, $pago);
 
         return new ReciboComprobanteModel(
             $empresa,

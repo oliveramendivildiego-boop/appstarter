@@ -14,6 +14,7 @@ class FacturaComprobanteModel extends ReciboComprobanteModel
     public function __construct(
         string $empresaNombre,
         string $ordenNumero,
+        string $numeroRecibo,
         string $fechaEmision,
         string $pacienteNombre,
         string $pacienteCi,
@@ -38,6 +39,7 @@ class FacturaComprobanteModel extends ReciboComprobanteModel
         parent::__construct(
             $empresaNombre,
             $ordenNumero,
+            $numeroRecibo,
             $fechaEmision,
             $pacienteNombre,
             $pacienteCi,
