@@ -49,6 +49,34 @@ $renderCultivoCelda = static function (string $cellHtml, string $tdClass = 'text
     }
     echo '</td>';
 };
+$renderCultivoCeldaGrilla = static function (array $celda, string $tdBorderPersonalizado = '') use ($renderCultivoCelda): void {
+    $cellHtml = (string) ($celda['html'] ?? '');
+    $colspan = max(1, (int) ($celda['colspan'] ?? 1));
+    $rowspan = max(1, (int) ($celda['rowspan'] ?? 1));
+    $estilo = trim((string) ($celda['estilo'] ?? ''));
+    $tdStyle = trim($estilo . ($estilo !== '' && $tdBorderPersonalizado !== '' ? ';' : '') . $tdBorderPersonalizado);
+    $isBordesHtml = str_contains($cellHtml, 'cultivo-celda-bordes');
+    $isHtml = $isBordesHtml || str_contains($cellHtml, 'pers-celda-reporte')
+        || ($cellHtml !== '' && $cellHtml !== strip_tags($cellHtml));
+    $classes = 'align-middle' . ($isHtml ? ' cultivo-celda-html' : '');
+    $attrs = ' class="' . esc($classes, 'attr') . '"';
+    if ($colspan > 1) {
+        $attrs .= ' colspan="' . (int) $colspan . '"';
+    }
+    if ($rowspan > 1) {
+        $attrs .= ' rowspan="' . (int) $rowspan . '"';
+    }
+    if ($tdStyle !== '') {
+        $attrs .= ' style="' . esc($tdStyle, 'attr') . '"';
+    }
+    echo '<td' . $attrs . '>';
+    if ($isHtml) {
+        echo $cellHtml;
+    } else {
+        echo esc($cellHtml);
+    }
+    echo '</td>';
+};
 ?>
 <?php if (! $usePdfChrome): ?>
 <style>
@@ -96,6 +124,17 @@ $renderCultivoCelda = static function (string $cellHtml, string $tdClass = 'text
 }
 .report-cultivo-seccion.report-cultivo-personalizado .pers-celda-reporte {
     width: 100%;
+}
+.report-cultivo-grilla-personalizado {
+    width: 100%;
+    table-layout: fixed;
+}
+.report-cultivo-grilla-personalizado td {
+    vertical-align: middle;
+}
+.report-cultivo-grilla-personalizado .pers-celda-reporte {
+    width: 100%;
+    box-sizing: border-box;
 }
 .cultivo-celda-bordes {
     display: flex;
@@ -156,6 +195,66 @@ $subgrupoCultivoStyle = $subIdxCultivo > 0
 <?php endif; ?>
 
 <?php foreach ($secciones as $sec):
+    $grillaReporte = ($esPersonalizadoMatriz && is_array($sec['grilla_reporte'] ?? null))
+        ? $sec['grilla_reporte']
+        : null;
+    if ($grillaReporte !== null) {
+        $titulosFilasGrilla = is_array($grillaReporte['titulos_filas'] ?? null) ? $grillaReporte['titulos_filas'] : [];
+        $filasGrilla = is_array($grillaReporte['filas'] ?? null) ? $grillaReporte['filas'] : [];
+        if ($titulosFilasGrilla === [] && $filasGrilla === []) {
+            continue;
+        }
+        $reporteEstiloGrilla = is_array($sec['reporte_estilo'] ?? null) ? $sec['reporte_estilo'] : null;
+        $tableStyleGrilla = $reporteEstiloGrilla !== null
+            ? \App\Models\LabotestModel::buildPersonalizadoReporteTableStyleAttr($reporteEstiloGrilla)
+            : '';
+        $thStyleGrilla = $reporteEstiloGrilla !== null
+            ? \App\Models\LabotestModel::buildPersonalizadoReporteThStyleAttr($reporteEstiloGrilla)
+            : '';
+        $tdBorderGrilla = $reporteEstiloGrilla !== null
+            ? \App\Models\LabotestModel::buildPersonalizadoReporteTdBorderStyleAttr($reporteEstiloGrilla)
+            : '';
+        $tableGrillaStyleAttr = $tableStyleGrilla !== '' ? ' style="' . esc($tableStyleGrilla, 'attr') . '"' : '';
+        ?>
+<div class="report-cultivo-seccion mb-3 report-cultivo-personalizado">
+    <div class="report-segment-table-wrap"<?= $segmentWrapStyleAttr ?>>
+        <table class="<?= esc($mainTableClass, 'attr') ?> report-cultivo-grilla-personalizado w-100"<?= $tableGrillaStyleAttr ?>>
+            <?php if ($titulosFilasGrilla !== []): ?>
+            <thead>
+                <?php foreach ($titulosFilasGrilla as $filaTitulos): ?>
+                <tr>
+                    <?php foreach ($filaTitulos as $thCell):
+                        $thTexto = (string) ($thCell['texto'] ?? '');
+                        $thColspan = max(1, (int) ($thCell['colspan'] ?? 1));
+                        $thAttrs = $thStyleGrilla !== '' ? ' style="' . esc($thStyleGrilla, 'attr') . '"' : '';
+                    ?>
+                    <th<?= $thColspan > 1 ? ' colspan="' . (int) $thColspan . '"' : '' ?><?= $thAttrs ?>><?= esc($thTexto) ?></th>
+                    <?php endforeach; ?>
+                </tr>
+                <?php endforeach; ?>
+            </thead>
+            <?php endif; ?>
+            <?php if ($filasGrilla !== []): ?>
+            <tbody>
+                <?php foreach ($filasGrilla as $filaCeldas): ?>
+                <tr>
+                    <?php foreach ($filaCeldas as $celdaGrilla):
+                        if (! is_array($celdaGrilla)) {
+                            continue;
+                        }
+                        $renderCultivoCeldaGrilla($celdaGrilla, $tdBorderGrilla);
+                    endforeach; ?>
+                </tr>
+                <?php endforeach; ?>
+            </tbody>
+            <?php endif; ?>
+        </table>
+    </div>
+</div>
+        <?php
+        continue;
+    }
+
     $columnasDetalle = is_array($sec['columnas_detalle'] ?? null) ? $sec['columnas_detalle'] : [];
     $titulosBanda = is_array($sec['titulos_banda'] ?? null) ? $sec['titulos_banda'] : [];
     if ($columnasDetalle === []) {

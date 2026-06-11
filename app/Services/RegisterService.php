@@ -533,6 +533,14 @@ class RegisterService
                         $fuente = 'normal';
                     }
                     $out['fuente'] = $fuente;
+
+                    $out['colspan'] = max(1, min(20, (int) ($raw['colspan'] ?? 1)));
+                    $out['rowspan'] = max(1, min(50, (int) ($raw['rowspan'] ?? 1)));
+
+                    $textoFijoCfg = trim((string) ($raw['texto_fijo'] ?? ''));
+                    if ($textoFijoCfg !== '') {
+                        $out['texto_fijo'] = $textoFijoCfg;
+                    }
                 }
             }
 
@@ -688,6 +696,101 @@ class RegisterService
                     $alineacionSec = 'centro';
                 }
             }
+            if ($esPersonalizado) {
+                $titulosFilasGrilla = LabotestModel::buildCultivoTituloFilasTabla($titulosPorCol, $columnas);
+                $grillaFilas = [];
+                $coveredRowspan = [];
+                $skipCols = [];
+
+                for ($r = 0; $r < $filas; $r++) {
+                    $filaVisibleGrilla = false;
+                    for ($cVis = 0; $cVis < $columnas; $cVis++) {
+                        if (! isset($coveredRowspan[$r . ',' . $cVis])) {
+                            $filaVisibleGrilla = true;
+                            break;
+                        }
+                    }
+                    if (! $filaVisibleGrilla) {
+                        continue;
+                    }
+
+                    $rowCells = [];
+                    for ($c = 0; $c < $columnas; $c++) {
+                        if (isset($coveredRowspan[$r . ',' . $c]) || isset($skipCols[$r . ',' . $c])) {
+                            continue;
+                        }
+
+                        $cfg = $normalizeCeldaCfg($celdasCfg[$r][$c] ?? ['modo' => 'texto']);
+                        $colspan = max(1, min((int) ($cfg['colspan'] ?? 1), $columnas - $c));
+                        $rowspan = max(1, min((int) ($cfg['rowspan'] ?? 1), $filas - $r));
+
+                        for ($rr = $r + 1; $rr < $r + $rowspan && $rr < $filas; $rr++) {
+                            for ($cc = $c; $cc < $c + $colspan; $cc++) {
+                                $coveredRowspan[$rr . ',' . $cc] = true;
+                            }
+                        }
+                        for ($cc = $c + 1; $cc < $c + $colspan; $cc++) {
+                            $skipCols[$r . ',' . $cc] = true;
+                        }
+
+                        $rolCelda = (string) ($cfg['rol'] ?? 'input');
+                        if (in_array($rolCelda, ['titulo', 'etiqueta'], true)) {
+                            $celdaHtml = registro_personalizado_texto_fijo_html(
+                                (string) ($cfg['texto_fijo'] ?? ''),
+                                (string) ($cfg['fuente'] ?? 'normal')
+                            );
+                            if ($celdaHtml !== '') {
+                                $celdaHtml = $wrapPersonalizadoCelda($celdaHtml, $cfg);
+                            }
+                        } else {
+                            $rawVal = (string) ($cellValues[$blockId][$r][$c] ?? '');
+                            $principal = $resolvePrincipal($cfg, $rawVal);
+                            $medida = $resolveMedida($blockId, $r, $c);
+                            $celdaHtml = $buildCeldaReporte($principal, $medida, $bloqueTipo, $alineacionSec);
+                            $celdaHtml = $wrapPersonalizadoCelda($celdaHtml, $cfg);
+                        }
+
+                        $rowCells[] = [
+                            'html'    => $celdaHtml,
+                            'colspan' => $colspan,
+                            'rowspan' => $rowspan,
+                            'estilo'  => LabotestModel::buildPersonalizadoCeldaReporteStyle($cfg),
+                        ];
+                    }
+
+                    if ($rowCells !== []) {
+                        $grillaFilas[] = $rowCells;
+                    }
+                }
+
+                if ($titulosFilasGrilla === [] && $grillaFilas === []) {
+                    continue;
+                }
+
+                $secOut = [
+                    'seccion'           => $blockId,
+                    'tipo'              => $bloqueTipo,
+                    'label'             => $secLabel,
+                    'columnas'          => $columnas,
+                    'titulos_por_col'   => $titulosPorCol,
+                    'titulos_filas'     => $titulosFilasGrilla,
+                    'titulos_banda'     => [],
+                    'columnas_detalle'  => [],
+                    'max_titulo_filas'  => count($titulosFilasGrilla),
+                    'filas'             => $grillaFilas,
+                    'alineacion_filas'  => $alineacionSec,
+                    'grilla_reporte'    => [
+                        'columnas'      => $columnas,
+                        'titulos_filas' => $titulosFilasGrilla,
+                        'filas'         => $grillaFilas,
+                    ],
+                    'reporte_estilo'    => LabotestModel::normalizePersonalizadoReporteEstiloBloque($bloque),
+                ];
+                $out[] = $secOut;
+
+                continue;
+            }
+
             $filasRaw = [];
             for ($r = 0; $r < $filas; $r++) {
                 $rowOut = [];
@@ -723,9 +826,6 @@ class RegisterService
                 'filas'             => $compacto['filas'],
                 'alineacion_filas'  => $alineacionSec,
             ];
-            if ($esPersonalizado) {
-                $secOut['reporte_estilo'] = LabotestModel::normalizePersonalizadoReporteEstiloBloque($bloque);
-            }
             $out[] = $secOut;
         }
 

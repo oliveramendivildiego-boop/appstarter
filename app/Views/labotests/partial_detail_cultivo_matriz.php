@@ -258,6 +258,33 @@ $parsePersonalizadoCelda = static function (array $celdaRaw): array {
     font-size: 0.75rem;
     color: #6c757d;
 }
+.cultivo-matriz-grid > tbody > tr > th.cultivo-grid-row-head {
+    cursor: grab;
+    user-select: none;
+}
+.cultivo-matriz-grid > tbody > tr.sortable-chosen > th.cultivo-grid-row-head {
+    cursor: grabbing;
+}
+.cultivo-row-drag-icon {
+    color: rgba(255, 255, 255, 0.8);
+    margin-right: 0.2rem;
+    display: inline-block;
+    vertical-align: middle;
+    pointer-events: none;
+}
+.cultivo-grid-data-row.sortable-ghost { opacity: 0.45; }
+.cultivo-grid-data-row.sortable-chosen > th.cultivo-grid-row-head,
+.cultivo-grid-data-row.sortable-chosen > td.cultivo-grid-data-cell {
+    background: #e7f1ff !important;
+}
+.cultivo-matriz-grid .sortable-fallback {
+    display: table;
+    table-layout: fixed;
+    pointer-events: none;
+    opacity: 0.9;
+    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.18);
+    z-index: 10000;
+}
 .cultivo-col-drag-handle,
 .cultivo-titulo-drag-handle {
     cursor: grab;
@@ -893,6 +920,7 @@ $parsePersonalizadoCelda = static function (array $celdaRaw): array {
                 <span class="badge bg-dark me-1">Columna (C#)</span>
                 <span class="badge <?= $esPersonalizado ? 'bg-primary' : 'bg-info text-dark' ?> me-1">Celda F# · C#</span>
                 <span class="ms-1">Cada recuadro con borde es una celda distinta.</span>
+                <span class="ms-2"><i class="fa-solid fa-grip-vertical me-1"></i>Arrastre la celda F1, F2… (columna izquierda) para reordenar filas.</span>
                 <?php if ($esPersonalizado): ?>
                 <span class="ms-2"><i class="fa-solid fa-grip me-1"></i>Arrastre el icono de la celda para intercambiar su contenido con otra.</span>
                 <?php endif; ?>
@@ -908,7 +936,7 @@ $parsePersonalizadoCelda = static function (array $celdaRaw): array {
                             <?php endfor; ?>
                         </tr>
                     </thead>
-                    <tbody>
+                    <tbody class="cultivo-grid-rows-sortable">
                         <?php if ($filas < 1): ?>
                         <tr class="cultivo-sin-filas">
                             <td colspan="<?= $columnas + 1 ?>" class="text-muted small text-center py-2">Sin filas de datos (solo títulos de columna)</td>
@@ -931,8 +959,10 @@ $parsePersonalizadoCelda = static function (array $celdaRaw): array {
                                 }
                             }
                         ?>
-                        <tr>
-                            <th class="cultivo-grid-row-head" scope="row">F<?= $r + 1 ?></th>
+                        <?php ob_start(); ?>
+                            <th class="cultivo-grid-row-head" scope="row" title="Arrastrar para reordenar fila">
+                                <i class="fa-solid fa-grip-vertical cultivo-row-drag-icon"></i>F<?= $r + 1 ?>
+                            </th>
                             <?php for ($c = 0; $c < $columnas; $c++):
                                 if ($esPersonalizado && (isset($coveredRowspanGrid[$r . ',' . $c]) || isset($skipColsGrid[$r . ',' . $c]))) {
                                     continue;
@@ -1182,7 +1212,29 @@ $parsePersonalizadoCelda = static function (array $celdaRaw): array {
                                 </div>
                             </td>
                             <?php endfor; ?>
-                        </tr>
+                        <?php
+                            $rowInnerHtml = ob_get_clean();
+                            $filaSpan = 1;
+                            if ($esPersonalizado) {
+                                for ($k = 1; $r + $k < $filas; $k++) {
+                                    $todaCubierta = true;
+                                    for ($cv = 0; $cv < $columnas; $cv++) {
+                                        if (! isset($coveredRowspanGrid[($r + $k) . ',' . $cv])) {
+                                            $todaCubierta = false;
+                                            break;
+                                        }
+                                    }
+                                    if (! $todaCubierta) {
+                                        break;
+                                    }
+                                    $filaSpan++;
+                                }
+                            }
+                            $filaTrTitle = $filaSpan > 1
+                                ? ' title="Bloque F' . ($r + 1) . '–F' . ($r + $filaSpan) . '"'
+                                : '';
+                        ?>
+                        <tr class="cultivo-grid-data-row" data-fila="<?= $r ?>" data-fila-span="<?= $filaSpan ?>"<?= $filaTrTitle ?>><?= $rowInnerHtml ?></tr>
                         <?php endfor; ?>
                         <?php endif; ?>
                     </tbody>
@@ -1213,6 +1265,8 @@ $parsePersonalizadoCelda = static function (array $celdaRaw): array {
     var esPersonalizado = <?= $esPersonalizado ? 'true' : 'false' ?>;
     var sortableInstances = {};
     var dragCellSnapshot = {};
+    var dragRowSnapshot = {};
+    var dragRowBlocksSnapshot = {};
     var bloquesSortable = null;
     var bloqueTemplates = {};
     var ordenTemplates = {};
@@ -2528,8 +2582,124 @@ $parsePersonalizadoCelda = static function (array $celdaRaw): array {
         syncReporteEstiloPanelVisibility(wrap);
     }
 
+    function capturarBloquesFilasVisibles(tbody) {
+        var blocks = [];
+        if (!tbody) return blocks;
+        tbody.querySelectorAll('tr.cultivo-grid-data-row').forEach(function(tr) {
+            var start = parseInt(tr.getAttribute('data-fila'), 10);
+            var span = parseInt(tr.getAttribute('data-fila-span'), 10) || 1;
+            if (!isNaN(start)) {
+                blocks.push({ start: start, span: span });
+            }
+        });
+        return blocks;
+    }
+
+    function aplicarAnchosFilaFallback(tr) {
+        if (!tr) return;
+        setTimeout(function() {
+            var fallback = document.querySelector('tr.sortable-fallback');
+            if (!fallback) return;
+            var srcCells = tr.children;
+            var fallbackCells = fallback.children;
+            for (var i = 0; i < srcCells.length && i < fallbackCells.length; i++) {
+                var w = srcCells[i].offsetWidth;
+                if (w > 0) {
+                    fallbackCells[i].style.width = w + 'px';
+                    fallbackCells[i].style.minWidth = w + 'px';
+                    fallbackCells[i].style.maxWidth = w + 'px';
+                }
+            }
+            fallback.style.width = tr.offsetWidth + 'px';
+        }, 0);
+    }
+
+    function reorderFilasPorBloques(data, blocks, oldIndex, newIndex) {
+        if (!data || !Array.isArray(data.celdas) || !Array.isArray(blocks) || blocks.length < 2) {
+            return false;
+        }
+        if (oldIndex === newIndex || oldIndex < 0 || newIndex < 0
+            || oldIndex >= blocks.length || newIndex >= blocks.length) {
+            return false;
+        }
+        var orden = blocks.slice();
+        var moved = orden.splice(oldIndex, 1)[0];
+        orden.splice(newIndex, 0, moved);
+
+        var newCeldas = [];
+        orden.forEach(function(block) {
+            for (var i = 0; i < block.span; i++) {
+                var srcIdx = block.start + i;
+                if (Array.isArray(data.celdas[srcIdx])) {
+                    newCeldas.push(data.celdas[srcIdx].slice());
+                } else {
+                    var emptyRow = [];
+                    for (var ci = 0; ci < data.columnas; ci++) {
+                        emptyRow.push(celdaDefault());
+                    }
+                    newCeldas.push(emptyRow);
+                }
+            }
+        });
+        if (newCeldas.length !== data.celdas.length) return false;
+        data.celdas = newCeldas;
+        return true;
+    }
+
+    function initFilasSortable(secId) {
+        if (typeof Sortable === 'undefined') return;
+        var wrap = getWrap(secId);
+        if (!wrap) return;
+        var table = wrap.querySelector('.cultivo-matriz-grid');
+        var tbody = table ? table.querySelector('tbody.cultivo-grid-rows-sortable') : null;
+        if (!tbody || tbody.querySelector('.cultivo-sin-filas')) return;
+        if (tbody.querySelectorAll('tr.cultivo-grid-data-row').length < 2) return;
+
+        sortableInstances[secId + '-filas'] = new Sortable(tbody, {
+            handle: '.cultivo-grid-row-head',
+            draggable: 'tr.cultivo-grid-data-row',
+            animation: 150,
+            ghostClass: 'sortable-ghost',
+            chosenClass: 'sortable-chosen',
+            dragClass: 'sortable-drag',
+            direction: 'vertical',
+            forceFallback: true,
+            fallbackOnBody: true,
+            fallbackTolerance: 3,
+            swapThreshold: 0.65,
+            onStart: function(evt) {
+                dragRowSnapshot[secId] = capturarSeccion(secId);
+                dragRowBlocksSnapshot[secId] = capturarBloquesFilasVisibles(tbody);
+                aplicarAnchosFilaFallback(evt.item);
+            },
+            onEnd: function(evt) {
+                var data = dragRowSnapshot[secId];
+                var blocks = dragRowBlocksSnapshot[secId];
+                delete dragRowSnapshot[secId];
+                delete dragRowBlocksSnapshot[secId];
+                if (!data || !blocks || !blocks.length) {
+                    renderSeccion(secId);
+                    return;
+                }
+                var oldIndex = evt.oldDraggableIndex;
+                var newIndex = evt.newDraggableIndex;
+                if (oldIndex == null || isNaN(oldIndex)) oldIndex = evt.oldIndex;
+                if (newIndex == null || isNaN(newIndex)) newIndex = evt.newIndex;
+                if (oldIndex === newIndex) {
+                    renderSeccion(secId, data);
+                    return;
+                }
+                if (!reorderFilasPorBloques(data, blocks, oldIndex, newIndex)) {
+                    renderSeccion(secId, data);
+                    return;
+                }
+                renderSeccion(secId, data);
+            }
+        });
+    }
+
     function destruirSortable(secId) {
-        ['cols', 'trash', 'palette'].forEach(function(key) {
+        ['cols', 'trash', 'palette', 'filas'].forEach(function(key) {
             var inst = sortableInstances[secId + '-' + key];
             if (inst && typeof inst.destroy === 'function') {
                 inst.destroy();
@@ -2551,6 +2721,8 @@ $parsePersonalizadoCelda = static function (array $celdaRaw): array {
         }
         delete sortableInstances[secId + '-celdas'];
         delete dragCellSnapshot[secId];
+        delete dragRowSnapshot[secId];
+        delete dragRowBlocksSnapshot[secId];
     }
 
     function intercambiarCeldasMatriz(data, fr, fc, tr, tc) {
@@ -2649,6 +2821,8 @@ $parsePersonalizadoCelda = static function (array $celdaRaw): array {
         var colGrid = wrap.querySelector('.cultivo-columnas-grid');
         var trash = wrap.querySelector('.cultivo-trash-zone');
         var palette = wrap.querySelector('.cultivo-titulo-palette ul');
+        initFilasSortable(secId);
+
         if (!colGrid || !trash) return;
 
         var groupCols = 'cultivo-cols-' + secId;
@@ -2869,11 +3043,15 @@ $parsePersonalizadoCelda = static function (array $celdaRaw): array {
             var thead = table.querySelector('thead');
             if (thead) thead.innerHTML = refHtml;
 
-            var tbody = table.querySelector('tbody');
+            var tbody = table.querySelector('tbody.cultivo-grid-rows-sortable');
+            if (!tbody) {
+                tbody = table.querySelector('tbody');
+            }
             if (!tbody) {
                 tbody = document.createElement('tbody');
                 table.appendChild(tbody);
             }
+            tbody.classList.add('cultivo-grid-rows-sortable');
             var bodyHtml = '';
             if (actual.filas < 1) {
                 bodyHtml = '<tr class="cultivo-sin-filas"><td colspan="' + (actual.columnas + 1)
@@ -2893,8 +3071,9 @@ $parsePersonalizadoCelda = static function (array $celdaRaw): array {
                         }
                         if (!filaVisibleGrid) continue;
                     }
-                    bodyHtml += '<tr>';
-                    bodyHtml += '<th class="cultivo-grid-row-head" scope="row">F' + (r + 1) + '</th>';
+                    var rowInner = '';
+                    rowInner += '<th class="cultivo-grid-row-head" scope="row" title="Arrastrar para reordenar fila">'
+                        + '<i class="fa-solid fa-grip-vertical cultivo-row-drag-icon"></i>F' + (r + 1) + '</th>';
                     for (var c2 = 0; c2 < actual.columnas; c2++) {
                         if (esPersonalizado && (coveredRowspanGrid[r + ',' + c2] || skipColsGrid[r + ',' + c2])) continue;
                         var val = (actual.celdas[r] && actual.celdas[r][c2] !== undefined) ? actual.celdas[r][c2] : celdaDefault();
@@ -2906,10 +3085,28 @@ $parsePersonalizadoCelda = static function (array $celdaRaw): array {
                         if (esPersonalizado) {
                             marcarCoberturaSpanPersonalizado(coveredRowspanGrid, skipColsGrid, r, c2, rowspanVal, colspanVal);
                         }
-                        bodyHtml += '<td class="cultivo-grid-data-cell' + colParClass + '"' + tdColspanAttr + tdRowspanAttr + '>'
+                        rowInner += '<td class="cultivo-grid-data-cell' + colParClass + '"' + tdColspanAttr + tdRowspanAttr + '>'
                             + buildCeldaCell(secId, r, c2, val, mostrarValorCelda, actual.filas, actual.columnas) + '</td>';
                     }
-                    bodyHtml += '</tr>';
+                    var filaSpan = 1;
+                    if (esPersonalizado) {
+                        for (var k = 1; r + k < actual.filas; k++) {
+                            var todaCubierta = true;
+                            for (var cv = 0; cv < actual.columnas; cv++) {
+                                if (!coveredRowspanGrid[(r + k) + ',' + cv]) {
+                                    todaCubierta = false;
+                                    break;
+                                }
+                            }
+                            if (!todaCubierta) break;
+                            filaSpan++;
+                        }
+                    }
+                    var trTitle = filaSpan > 1
+                        ? ' title="Bloque F' + (r + 1) + '–F' + (r + filaSpan) + '"'
+                        : '';
+                    bodyHtml += '<tr class="cultivo-grid-data-row" data-fila="' + r + '" data-fila-span="' + filaSpan + '"' + trTitle + '>'
+                        + rowInner + '</tr>';
                 }
             }
             tbody.innerHTML = bodyHtml;
