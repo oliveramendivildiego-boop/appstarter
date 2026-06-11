@@ -1058,6 +1058,7 @@ class Reports extends SecureArea
      */
     private function normalizeAuditoriaCambios(array $items, bool $soloAgregado = false, bool $soloEliminado = false): array
     {
+        $registerModel = model(RegisterModel::class);
         $out = [];
         foreach ($items as $item) {
             if (! is_array($item)) {
@@ -1065,6 +1066,9 @@ class Reports extends SecureArea
             }
             $campo  = trim((string) ($item['campo'] ?? ''));
             $prueba = trim((string) ($item['prueba'] ?? ''));
+            if ($campo !== '' && $registerModel->isLabFirmaRegvalueKey($campo)) {
+                continue;
+            }
             $row    = [
                 'campo'  => $campo !== '' ? $campo : '—',
                 'prueba' => $prueba,

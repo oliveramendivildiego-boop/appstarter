@@ -1865,6 +1865,9 @@ class Registers extends SecureArea
         };
 
         foreach ($valoresNuevos as $clave => $valorNuevo) {
+            if (! $this->registerModel->isResultadoPruebaRegvalueKey($clave)) {
+                continue;
+            }
             $campo = $this->registerModel->getRegvalueDisplayLabel($clave);
             $prueba = $resolverPrueba($clave);
             if ($prueba !== '') {
@@ -1890,6 +1893,9 @@ class Registers extends SecureArea
 
         foreach ($valoresAnteriores as $clave => $valorAnterior) {
             if (array_key_exists($clave, $valoresNuevos)) {
+                continue;
+            }
+            if (! $this->registerModel->isResultadoPruebaRegvalueKey($clave)) {
                 continue;
             }
             $campo = $this->registerModel->getRegvalueDisplayLabel($clave);

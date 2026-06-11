@@ -2178,7 +2178,7 @@ class RegisterModel extends Model
         return $rows;
     }
 
-    private function isResultadoPruebaRegvalueKey(string $rawKey): bool
+    public function isResultadoPruebaRegvalueKey(string $rawKey): bool
     {
         $rawKey = trim($rawKey);
         if ($rawKey === '') {
@@ -2192,6 +2192,19 @@ class RegisterModel extends Model
         return str_starts_with($rawKey, 'c_')
             || str_starts_with($rawKey, 'noc_')
             || strpos($rawKey, '|') !== false;
+    }
+
+    /**
+     * Claves internas de validación/aprobación del laboratorio (no son resultados de prueba).
+     */
+    public function isLabFirmaRegvalueKey(string $rawKey): bool
+    {
+        $rawKey = trim($rawKey);
+        if ($rawKey === '') {
+            return false;
+        }
+
+        return preg_match('/^lab_(val|app)_(grp_[a-f0-9]{16}|pri_\d+)$/', $rawKey) === 1;
     }
 
     /**
