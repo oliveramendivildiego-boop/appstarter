@@ -289,6 +289,8 @@ body {
     --pdf-results-table-margin-top: <?= (int) ($rs['table_margin_top_px'] ?? 15) ?>px;
     --pdf-results-table-margin-bottom: <?= (int) ($rs['table_margin_bottom_px'] ?? 15) ?>px;
     --pdf-results-grupo-gap: <?= (int) ($rs['grupo_prueba_gap_px'] ?? 10) ?>px;
+    --pdf-grupo-area-separator-margin-top: <?= (int) ($rs['grupo_area_separator_margin_top_px'] ?? 10) ?>px;
+    --pdf-grupo-area-separator-margin-bottom: <?= (int) ($rs['grupo_area_separator_margin_bottom_px'] ?? 10) ?>px;
             --pdf-gpb-compact-scale: <?= esc((string) $gpbCompactScale, 'attr') ?>;
             --pdf-gpb-compact-cell-padding-v: <?= (int) ($gpb['compact_cell_padding_px'] ?? 0) ?>px;
     --pdf-results-matrix-align: <?= esc((string) ($rs['matrix_text_align'] ?? 'center')) ?>;

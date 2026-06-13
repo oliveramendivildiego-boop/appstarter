@@ -282,6 +282,55 @@ $footerEnabled = ! empty($footer_enabled);
         grupo.style.removeProperty('--pdf-gpb-compact-cell-padding-v');
     }
 
+    function areaSeparatorForGrupo(grupo) {
+        if (!grupo || !grupo.querySelector) {
+            return null;
+        }
+        var first = grupo.firstElementChild;
+        if (first && first.classList && first.classList.contains('report-pdf-grupo-area-separator')) {
+            return first;
+        }
+        return null;
+    }
+
+    function clearGrupoStartBreakMarks(grupo) {
+        if (!grupo) {
+            return;
+        }
+        grupo.classList.remove('report-pdf-grupo-prueba-force-break-before');
+        var separator = areaSeparatorForGrupo(grupo);
+        if (separator) {
+            separator.classList.remove('report-area-separator-force-break-before');
+        }
+    }
+
+    function markGrupoStartBreakBefore(grupo) {
+        if (!grupo) {
+            return;
+        }
+        var separator = areaSeparatorForGrupo(grupo);
+        clearGrupoStartBreakMarks(grupo);
+        if (separator) {
+            separator.classList.add('report-area-separator-force-break-before');
+            return;
+        }
+        grupo.classList.add('report-pdf-grupo-prueba-force-break-before');
+    }
+
+        if (!grupo) {
+            return;
+        }
+        grupo.querySelectorAll(SEGMENT_SELECTOR).forEach(function(seg) {
+            seg.classList.remove('report-segment-force-break-before', 'report-segment-allow-split');
+        });
+        grupo.querySelectorAll('.report-pdf-grupo-cabecera').forEach(function(cabecera) {
+            cabecera.classList.remove('report-cabecera-force-break-before');
+        });
+        grupo.querySelectorAll('.report-pdf-subgrupo-block').forEach(function(subgrupo) {
+            subgrupo.classList.remove('report-subgrupo-force-break-before');
+        });
+    }
+
     function applyCompactToGrupo(grupo) {
         var scale = cfg.compactMinScale / 100;
         grupo.classList.add('report-pdf-grupo-prueba-compact');
@@ -292,6 +341,17 @@ $footerEnabled = ! empty($footer_enabled);
         if (cfg.compactAggressive) {
             grupo.classList.add('report-pdf-grupo-prueba-compact-aggressive');
         }
+    }
+
+    function measureGrupoHeight(grupo, withCompact) {
+        if (cfg.mode === 'keep_together_compact') {
+            if (withCompact) {
+                applyCompactToGrupo(grupo);
+            } else {
+                clearGrupoCompact(grupo);
+            }
+        }
+        return grupo.offsetHeight || 0;
     }
 
     function restoreGrupoDomOrder() {
@@ -501,6 +561,9 @@ $footerEnabled = ! empty($footer_enabled);
         document.querySelectorAll('.report-pdf-subgrupo-block').forEach(function(subgrupo) {
             subgrupo.classList.remove('report-subgrupo-force-break-before');
         });
+        document.querySelectorAll('.report-pdf-grupo-area-separator').forEach(function(separator) {
+            separator.classList.remove('report-area-separator-force-break-before');
+        });
         document.querySelectorAll('.report-pdf-grupo-prueba').forEach(function(grupo) {
             grupo.classList.remove(
                 'report-pdf-grupo-prueba-force-break-before',
@@ -634,7 +697,8 @@ $footerEnabled = ! empty($footer_enabled);
     }
 
     function fallbackFillGrupo(grupo, container, layoutCtx) {
-        grupo.classList.remove('report-pdf-grupo-prueba-force-break-before', 'report-pdf-grupo-prueba-keep-on-page');
+        clearGrupoStartBreakMarks(grupo);
+        grupo.classList.remove('report-pdf-grupo-prueba-keep-on-page');
         clearGrupoCompact(grupo);
         grupo.classList.add('report-pdf-grupo-prueba-allow-split');
         applySegmentPageBreaks(container, layoutCtx, grupo);
@@ -645,47 +709,50 @@ $footerEnabled = ! empty($footer_enabled);
         var boundarySet = layoutCtx.boundarySet;
         var metrics = layoutCtx.metrics;
         var pureIntact = usesPureGrupoIntact();
+        var compactMode = cfg.mode === 'keep_together_compact';
+        var intactMode = usesGrupoIntactMode();
 
         container.querySelectorAll('.report-pdf-grupo-prueba').forEach(function(grupo, idx) {
-            var top = topWithinContainer(grupo, container);
-            var remaining = remainingOnPage(top, boundarySet);
-            var height = grupo.offsetHeight;
-            var isFirstGrupo = idx === 0 || grupo.classList.contains('report-pdf-grupo-prueba-first');
+            clearSegmentBreaksInGrupo(grupo);
 
-            if (usesGrupoIntactMode() && !isFirstGrupo) {
-                grupo.classList.add('report-pdf-grupo-prueba-force-break-before');
+            var isFirstGrupo = idx === 0 || grupo.classList.contains('report-pdf-grupo-prueba-first');
+            if (intactMode && !isFirstGrupo) {
+                markGrupoStartBreakBefore(grupo);
             }
 
-            if (height > maxSlicePx) {
+            var top = topWithinContainer(grupo, container);
+            var remaining = remainingOnPage(top, boundarySet);
+            var height = measureGrupoHeight(grupo, false);
+            var effectiveHeight = height;
+
+            if (height <= remaining) {
+                if (pureIntact || compactMode) {
+                    grupo.classList.add('report-pdf-grupo-prueba-keep-on-page');
+                }
+                return;
+            }
+
+            if (compactMode) {
+                effectiveHeight = measureGrupoHeight(grupo, true);
+                if (effectiveHeight <= remaining) {
+                    grupo.classList.add('report-pdf-grupo-prueba-keep-on-page');
+                    return;
+                }
+            }
+
+            if (effectiveHeight > maxSlicePx) {
                 grupo.classList.add('report-pdf-grupo-prueba-allow-split');
                 applySegmentPageBreaks(container, layoutCtx, grupo);
                 return;
             }
 
-            if (height <= remaining) {
-                if (pureIntact) {
-                    grupo.classList.add('report-pdf-grupo-prueba-keep-on-page');
-                }
-                return;
-            }
-
-            if (cfg.mode === 'keep_together_compact') {
-                applyCompactToGrupo(grupo);
-                height = grupo.offsetHeight;
-                if (height <= remaining) {
-                    grupo.classList.add('report-pdf-grupo-prueba-keep-on-page');
-                    return;
-                }
-                clearGrupoCompact(grupo);
-            }
-
-            if (pureIntact) {
-                grupo.classList.add('report-pdf-grupo-prueba-force-break-before');
+            if (pureIntact || compactMode) {
+                markGrupoStartBreakBefore(grupo);
                 return;
             }
 
             if (shouldForceBreakBefore(remaining) && hasResultContentAboveOnCurrentPage(top, boundarySet, metrics)) {
-                grupo.classList.add('report-pdf-grupo-prueba-force-break-before');
+                markGrupoStartBreakBefore(grupo);
             } else {
                 fallbackFillGrupo(grupo, container, layoutCtx);
             }
@@ -724,7 +791,9 @@ $footerEnabled = ! empty($footer_enabled);
             return;
         }
 
-        applyCabeceraSegmentIntegrity(container, layoutCtx);
+        if (!usesGrupoIntactMode()) {
+            applyCabeceraSegmentIntegrity(container, layoutCtx);
+        }
         applyGrupoPageBreaks(container, layoutCtx);
     }
 

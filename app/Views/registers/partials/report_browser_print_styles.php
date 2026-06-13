@@ -210,12 +210,35 @@ body.js-total-pages-ready .pdf-counter-pages::before {
         page-break-inside: avoid !important;
     }
     body.report-browser-print.pdf-gpb-grupo-intact .report-pdf-grupo-prueba:not(.report-pdf-grupo-prueba-first) {
-        break-before: page !important;
-        page-break-before: always !important;
+        break-before: auto !important;
+        page-break-before: auto !important;
+        margin-top: 0 !important;
     }
-    body.report-browser-print.pdf-gpb-grupo-intact .report-pdf-grupo-prueba.report-pdf-grupo-prueba-force-break-before {
+    body.report-browser-print.pdf-gpb-grupo-intact .report-pdf-grupo-prueba:not(.report-pdf-grupo-prueba-first) > .report-pdf-grupo-area-separator,
+    body.report-browser-print.pdf-gpb-grupo-intact .report-area-separator-force-break-before {
         break-before: page !important;
         page-break-before: always !important;
+        break-after: avoid-page !important;
+        page-break-after: avoid !important;
+        break-inside: avoid-page !important;
+        page-break-inside: avoid !important;
+        margin-top: 0 !important;
+        padding-top: calc(var(--pdf-results-grupo-gap, 10px) + var(--pdf-grupo-area-separator-margin-top, 10px)) !important;
+        margin-bottom: var(--pdf-grupo-area-separator-margin-bottom, 10px) !important;
+    }
+    body.report-browser-print.pdf-gpb-grupo-intact .report-pdf-grupo-prueba:not(.report-pdf-grupo-prueba-first):not(:has(> .report-pdf-grupo-area-separator)),
+    body.report-browser-print.pdf-gpb-grupo-intact .report-pdf-grupo-prueba.report-pdf-grupo-prueba-force-break-before:not(:has(> .report-pdf-grupo-area-separator)) {
+        break-before: page !important;
+        page-break-before: always !important;
+        margin-top: 0 !important;
+        padding-top: var(--pdf-results-grupo-gap, 10px) !important;
+    }
+    body.report-browser-print.pdf-gpb-grupo-intact .report-pdf-grupo-prueba:not(.report-pdf-grupo-prueba-allow-split) .report-segment-table-wrap.report-segment-force-break-before,
+    body.report-browser-print.pdf-gpb-grupo-intact .report-pdf-grupo-prueba:not(.report-pdf-grupo-prueba-allow-split) .report-refs-matrix-wrap.report-segment-force-break-before,
+    body.report-browser-print.pdf-gpb-grupo-intact .report-pdf-grupo-prueba:not(.report-pdf-grupo-prueba-allow-split) .report-pdf-grupo-cabecera.report-cabecera-force-break-before,
+    body.report-browser-print.pdf-gpb-grupo-intact .report-pdf-grupo-prueba:not(.report-pdf-grupo-prueba-allow-split) .report-pdf-subgrupo-block.report-subgrupo-force-break-before {
+        break-before: auto !important;
+        page-break-before: auto !important;
     }
     body.report-browser-print.pdf-gpb-grupo-intact .report-pdf-grupo-prueba.report-pdf-grupo-prueba-allow-split {
         break-inside: auto !important;
