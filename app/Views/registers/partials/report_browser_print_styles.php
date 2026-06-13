@@ -199,11 +199,17 @@ body.js-total-pages-ready .pdf-counter-pages::before {
         break-before: page !important;
         page-break-before: always !important;
     }
+    body.report-browser-print.pdf-gpb-grupo-intact .report-pdf-grupo-prueba.report-pdf-grupo-browser-print-area:not(.report-pdf-grupo-prueba-first) {
+        page-break-before: always !important;
+        break-before: page !important;
+        margin-top: 0 !important;
+        padding-top: 0 !important;
+    }
     body.report-browser-print.pdf-gpb-grupo-intact .report-pdf-grupo-area-start-table {
         width: 100% !important;
         border-collapse: collapse !important;
-        page-break-before: always !important;
-        break-before: page !important;
+        page-break-before: avoid !important;
+        break-before: avoid !important;
         break-inside: avoid !important;
         page-break-inside: avoid !important;
         break-after: avoid !important;
@@ -229,7 +235,8 @@ body.js-total-pages-ready .pdf-counter-pages::before {
         page-break-inside: avoid !important;
         box-shadow: none !important;
     }
-    body.report-browser-print.pdf-gpb-grupo-intact .report-pdf-grupo-area-start-table + .report-pdf-grupo-prueba {
+    body.report-browser-print.pdf-gpb-grupo-intact .report-pdf-grupo-browser-print-area .report-pdf-grupo-area-start-table + .report-pdf-subgrupo-block,
+    body.report-browser-print.pdf-gpb-grupo-intact .report-pdf-grupo-browser-print-area .report-pdf-grupo-area-start-table + .report-segment-table-wrap {
         break-before: avoid !important;
         page-break-before: avoid !important;
         margin-top: 0 !important;
@@ -245,7 +252,7 @@ body.js-total-pages-ready .pdf-counter-pages::before {
         break-inside: avoid-page !important;
         page-break-inside: avoid !important;
     }
-    body.report-browser-print.pdf-gpb-grupo-intact .report-pdf-grupo-prueba:not(.report-pdf-grupo-prueba-first) {
+    body.report-browser-print.pdf-gpb-grupo-intact .report-pdf-grupo-prueba:not(.report-pdf-grupo-prueba-first):not(.report-pdf-grupo-browser-print-area) {
         break-before: auto !important;
         page-break-before: auto !important;
         margin-top: 0 !important;

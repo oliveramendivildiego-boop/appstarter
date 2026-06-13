@@ -3216,6 +3216,20 @@ class ReportPdfLayoutService
     }
 
     /**
+     * Salto de hoja en el contenedor del área (impresión navegador, título + resultados juntos).
+     *
+     * @param array<string, mixed> $layout
+     */
+    public static function grupoPruebaBrowserPrintAreaStyleAttr(array $layout, bool $isFirstGrupo, string $variant = 'pdf'): string
+    {
+        if ($variant !== 'browser_print' || $isFirstGrupo || ! self::shouldRenderGrupoAreaPageLeader($layout, $isFirstGrupo)) {
+            return '';
+        }
+
+        return 'page-break-before:always;break-before:page;';
+    }
+
+    /**
      * ¿Insertar líder de hoja antes del área (salto sin cortar el título)?
      *
      * @param array<string, mixed> $layout

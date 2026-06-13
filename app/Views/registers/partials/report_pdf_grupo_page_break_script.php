@@ -809,11 +809,18 @@ $footerEnabled = ! empty($footer_enabled);
             return;
         }
 
+        document.querySelectorAll('.report-pdf-grupo-prueba.report-pdf-grupo-browser-print-area:not(.report-pdf-grupo-prueba-first)').forEach(function(grupo) {
+            grupo.style.setProperty('page-break-before', 'always', 'important');
+            grupo.style.setProperty('break-before', 'page', 'important');
+        });
+
         document.querySelectorAll('.report-pdf-grupo-area-start-table').forEach(function(table) {
-            table.style.setProperty('page-break-before', 'always', 'important');
-            table.style.setProperty('break-before', 'page', 'important');
+            table.style.setProperty('page-break-before', 'avoid', 'important');
+            table.style.setProperty('break-before', 'avoid', 'important');
             table.style.setProperty('break-inside', 'avoid', 'important');
             table.style.setProperty('page-break-inside', 'avoid', 'important');
+            table.style.setProperty('break-after', 'avoid', 'important');
+            table.style.setProperty('page-break-after', 'avoid', 'important');
         });
 
         document.querySelectorAll('.report-pdf-grupo-area-start-table .report-pdf-grupo-area-separator').forEach(function(sep) {
@@ -840,11 +847,17 @@ $footerEnabled = ! empty($footer_enabled);
     }
 
     function clearBrowserPrintAreaSeparatorFix() {
+        document.querySelectorAll('.report-pdf-grupo-prueba.report-pdf-grupo-browser-print-area:not(.report-pdf-grupo-prueba-first)').forEach(function(grupo) {
+            grupo.style.removeProperty('page-break-before');
+            grupo.style.removeProperty('break-before');
+        });
         document.querySelectorAll('.report-pdf-grupo-area-start-table').forEach(function(table) {
             table.style.removeProperty('page-break-before');
             table.style.removeProperty('break-before');
             table.style.removeProperty('break-inside');
             table.style.removeProperty('page-break-inside');
+            table.style.removeProperty('break-after');
+            table.style.removeProperty('page-break-after');
         });
         document.querySelectorAll('.report-pdf-grupo-area-start-table .report-pdf-grupo-area-separator').forEach(function(sep) {
             sep.style.removeProperty('margin-top');
@@ -898,8 +911,8 @@ $footerEnabled = ! empty($footer_enabled);
             applyGrupoPageBreaks(container, layoutCtx);
             return;
         }
-        // Impresión navegador + grupo íntegro: el HTML (.report-pdf-grupo-area-start-table) y CSS
-        // controlan el salto; applyGrupoPageBreaks rompía el título del área en la hoja 2.
+        // Impresión navegador + grupo íntegro: salto en .report-pdf-grupo-browser-print-area;
+        // título y resultados van dentro del mismo contenedor.
         applyBrowserPrintAreaSeparatorFix();
     }
 

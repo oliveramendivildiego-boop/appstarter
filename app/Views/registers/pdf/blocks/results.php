@@ -32,16 +32,15 @@ foreach ($grupos ?? [] as $padre => $items) {
     }
     $useBrowserPrintAreaStart = ($av === 'browser_print')
         && \App\Services\ReportPdfLayoutService::shouldRenderGrupoAreaPageLeader($layoutForLf, $isFirstGrupo);
+    if ($useBrowserPrintAreaStart) {
+        $grupoClass .= ' report-pdf-grupo-browser-print-area';
+    }
     $grupoStyle = \App\Services\ReportPdfLayoutService::mergePdfInlineStyleAttrs(
         \App\Services\ReportPdfLayoutService::grupoPruebaGrupoIntactStyleAttr($layoutForLf, $isFirstGrupo),
-        \App\Services\ReportPdfLayoutService::grupoPruebaGapMarginStyleAttr($layoutForLf, $isFirstGrupo)
+        \App\Services\ReportPdfLayoutService::grupoPruebaGapMarginStyleAttr($layoutForLf, $isFirstGrupo),
+        \App\Services\ReportPdfLayoutService::grupoPruebaBrowserPrintAreaStyleAttr($layoutForLf, $isFirstGrupo, $av)
     );
-    if ($useBrowserPrintAreaStart) {
-        echo view('registers/analisis/partials/report_grupo_area_browser_print_start', [
-            'padre'      => $padre,
-            'pdf_layout' => $layoutForLf,
-        ]);
-    } elseif (\App\Services\ReportPdfLayoutService::shouldRenderGrupoAreaPageLeader($layoutForLf, $isFirstGrupo)) {
+    if (! $useBrowserPrintAreaStart && \App\Services\ReportPdfLayoutService::shouldRenderGrupoAreaPageLeader($layoutForLf, $isFirstGrupo)) {
         $leaderStyle = \App\Services\ReportPdfLayoutService::grupoAreaPageLeaderStyleAttr($layoutForLf, $isFirstGrupo);
         echo '<div class="report-pdf-grupo-area-page-leader" aria-hidden="true"'
             . ($leaderStyle !== '' ? ' style="' . esc($leaderStyle, 'attr') . '"' : '')
@@ -50,7 +49,12 @@ foreach ($grupos ?? [] as $padre => $items) {
     echo '<div class="' . esc($grupoClass, 'attr') . '"'
         . ($grupoStyle !== '' ? ' style="' . esc($grupoStyle, 'attr') . '"' : '')
         . '>';
-    if (! $useBrowserPrintAreaStart) {
+    if ($useBrowserPrintAreaStart) {
+        echo view('registers/analisis/partials/report_grupo_area_browser_print_start', [
+            'padre'      => $padre,
+            'pdf_layout' => $layoutForLf,
+        ]);
+    } else {
         echo view('registers/analisis/partials/report_grupo_area_separator', [
             'padre'            => $padre,
             'pdf_layout'       => $layoutForLf,

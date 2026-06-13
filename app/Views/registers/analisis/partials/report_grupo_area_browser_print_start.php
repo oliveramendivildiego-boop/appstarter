@@ -1,7 +1,7 @@
 <?php
 /**
- * Inicio de área para impresión directa (navegador): tabla con salto de hoja + título visible.
- * Chrome recorta mal div+padding al inicio de hoja 2; la tabla es fiable (Dompdf no usa esto).
+ * Inicio de área para impresión directa (navegador): título dentro del grupo (sin salto propio).
+ * El salto de hoja va en .report-pdf-grupo-browser-print-area; la tabla evita recorte del título en Chrome.
  *
  * @var string               $padre
  * @var array<string,mixed>  $pdf_layout
@@ -19,7 +19,7 @@ $titulo = $hasSeparator
     : '';
 ?>
 <table class="report-pdf-grupo-area-start-table" role="presentation" width="100%" cellpadding="0" cellspacing="0"
-    style="width:100%;border-collapse:collapse;page-break-before:always;break-before:page;margin:0;padding:0;border:0;">
+    style="width:100%;border-collapse:collapse;margin:0;padding:0;border:0;">
 <tbody>
 <?php if ($spacerPx > 0): ?>
 <tr class="report-pdf-grupo-area-start-spacer" aria-hidden="true">
