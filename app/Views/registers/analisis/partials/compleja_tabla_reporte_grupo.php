@@ -248,7 +248,7 @@ foreach ($ordenPriaKeys as $subIdx => $priaKey) :
                     $mostrarMedidaSoloRef = registro_mostrar_medida_solo_en_referencia($item);
                     $resMostrarHtml = registro_resultado_celda_html($item->regvalues ?? '', $item->umedida ?? '', $opcionIdItem, $mostrarMedidaSoloRef);
                     $refMostrar = registro_rango_referencial_texto($item->valor_min ?? '', $item->valor_max ?? '', $item->umedida ?? '');
-                    $celdaRicoClass = registro_opcion_es_texto_rico($opcionIdItem) ? ' resultado-texto-rico-cell' : '';
+                    $celdaRicoClass = (registro_opcion_es_texto_rico($opcionIdItem) || registro_opcion_es_texto_fijo($opcionIdItem) || registro_valor_contiene_html_rico((string) ($item->regvalues ?? ''))) ? ' resultado-texto-rico-cell' : '';
                     ?>
                     <?php if (is_object($item)): ?>
                         <?php $itemConRef = registro_tiene_rango_referencial($item->valor_min ?? '', $item->valor_max ?? ''); ?>

@@ -1759,6 +1759,20 @@ class LabotestModel extends Model
     }
 
     /**
+     * Normaliza HTML permitido para texto fijo (negrita, cursiva, listas, etc.).
+     */
+    private function sanitizeTextoFijoForSave(?string $raw): ?string
+    {
+        $texto = trim((string) ($raw ?? ''));
+        if ($texto === '') {
+            return null;
+        }
+        helper('registro');
+
+        return registro_sanitizar_html_rico($texto);
+    }
+
+    /**
      * Comprueba si una columna existe en una tabla
      */
     private function hasColumn(string $table, string $column, bool $refresh = false): bool
@@ -1985,6 +1999,12 @@ class LabotestModel extends Model
         if ($this->hasColumn('secanacategoria', 'mostrar_medida', true)) {
             $save['mostrar_medida'] = ! empty($data['mostrar_medida']) ? 1 : 0;
         }
+        if ($this->hasColumn('secanacategoria', 'texto_fijo')) {
+            $opcionId = (int) ($save['opcion_id'] ?? 3);
+            $save['texto_fijo'] = \App\Models\OpcionModel::isTextoFijo($opcionId)
+                ? $this->sanitizeTextoFijoForSave($data['texto_fijo'] ?? '')
+                : null;
+        }
         if ($this->hasColumn('secanacategoria', 'orden')) {
             if ($id && $id > 0) {
                 // mantener orden al editar
@@ -2162,6 +2182,12 @@ class LabotestModel extends Model
         }
         if ($this->hasColumn('priresultados', 'mostrar_medida', true)) {
             $save['mostrar_medida'] = ! empty($data['mostrar_medida']) ? 1 : 0;
+        }
+        if ($this->hasColumn('priresultados', 'texto_fijo')) {
+            $opcionId = (int) ($save['opcion_id'] ?? 3);
+            $save['texto_fijo'] = \App\Models\OpcionModel::isTextoFijo($opcionId)
+                ? $this->sanitizeTextoFijoForSave($data['texto_fijo'] ?? '')
+                : null;
         }
         if ($id && $id > 0) {
             return $this->db->table('priresultados')->where('priresultados_id', $id)->update($save);
@@ -2425,6 +2451,9 @@ class LabotestModel extends Model
             if (array_key_exists('opcion_id', $row)) {
                 $update['opcion_id'] = max(1, (int) $row['opcion_id']);
             }
+            if (array_key_exists('texto_fijo', $row) && $this->hasColumn('secanacategoria', 'texto_fijo')) {
+                $update['texto_fijo'] = $this->sanitizeTextoFijoForSave($row['texto_fijo'] ?? '') ?? '';
+            }
 
             if ($update === []) {
                 $skipped++;
@@ -2500,6 +2529,9 @@ class LabotestModel extends Model
             }
             if (array_key_exists('opcion_id', $row)) {
                 $update['opcion_id'] = max(1, (int) $row['opcion_id']);
+            }
+            if (array_key_exists('texto_fijo', $row) && $this->hasColumn('priresultados', 'texto_fijo')) {
+                $update['texto_fijo'] = $this->sanitizeTextoFijoForSave($row['texto_fijo'] ?? '') ?? '';
             }
 
             if ($update === []) {
@@ -2969,6 +3001,7 @@ class LabotestModel extends Model
                     'mostrar_medida' => (int) ($r['mostrar_medida'] ?? 0) === 1 ? 1 : 0,
                     'formulas_id'  => (int) ($r['formulas_id'] ?? 1),
                     'opcion_id'    => (int) ($r['opcion_id'] ?? 3),
+                    'texto_fijo'   => (string) ($r['texto_fijo'] ?? ''),
                     'es_separador' => (int) ($r['es_separador'] ?? 0) === 1 ? 1 : 0,
                     'orden'        => (int) ($r['orden'] ?? 0),
                 ];
@@ -2987,6 +3020,7 @@ class LabotestModel extends Model
                     'mostrar_medida' => (int) ($r['mostrar_medida'] ?? 0) === 1 ? 1 : 0,
                     'formulas_id'  => (int) ($r['formulas_id'] ?? 1),
                     'opcion_id'    => (int) ($r['opcion_id'] ?? 3),
+                    'texto_fijo'   => (string) ($r['texto_fijo'] ?? ''),
                 ];
             }, $rows);
         }
@@ -3186,6 +3220,11 @@ class LabotestModel extends Model
                 if ($this->hasColumn('secanacategoria', 'orden')) {
                     $insert['orden'] = (int) ($raw['orden'] ?? $idx);
                 }
+                if ($this->hasColumn('secanacategoria', 'texto_fijo')) {
+                    $insert['texto_fijo'] = \App\Models\OpcionModel::isTextoFijo((int) ($insert['opcion_id'] ?? 0))
+                        ? $this->sanitizeTextoFijoForSave($raw['texto_fijo'] ?? '')
+                        : null;
+                }
                 $ok = $this->db->table('secanacategoria')->insert($insert);
                 if ($ok !== false) {
                     $imported++;
@@ -3222,6 +3261,11 @@ class LabotestModel extends Model
                 }
                 if ($this->hasColumn('priresultados', 'mostrar_medida')) {
                     $insert['mostrar_medida'] = ! empty($raw['mostrar_medida']) ? 1 : 0;
+                }
+                if ($this->hasColumn('priresultados', 'texto_fijo')) {
+                    $insert['texto_fijo'] = \App\Models\OpcionModel::isTextoFijo((int) ($insert['opcion_id'] ?? 0))
+                        ? $this->sanitizeTextoFijoForSave($raw['texto_fijo'] ?? '')
+                        : null;
                 }
                 $ok = $this->db->table('priresultados')->insert($insert);
                 if ($ok !== false) {

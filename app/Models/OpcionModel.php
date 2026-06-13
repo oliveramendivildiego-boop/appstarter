@@ -12,9 +12,13 @@ class OpcionModel extends Model
 {
     public const OPCION_TEXTO      = 3;
     public const TABLA_TEXTO_RICO  = 'texto_rico';
+    public const TABLA_TEXTO_FIJO  = 'texto_fijo';
 
     /** @var int|null ID resuelto de la opción sistema "Texto enriquecido" */
     private static ?int $textoRicoOpcionIdCache = null;
+
+    /** @var int|null ID resuelto de la opción sistema "Texto fijo" */
+    private static ?int $textoFijoOpcionIdCache = null;
 
     protected $table            = 'opciones';
     protected $primaryKey       = 'opciones_id';
@@ -28,18 +32,23 @@ class OpcionModel extends Model
      */
     public function ensureSystemOpciones(): void
     {
-        $exists = $this->db->table($this->table)
-            ->where('tabla', self::TABLA_TEXTO_RICO)
-            ->countAllResults();
-        if ($exists > 0) {
-            return;
+        $systemRows = [
+            ['opciones' => 'Texto enriquecido', 'tabla' => self::TABLA_TEXTO_RICO],
+            ['opciones' => 'Texto fijo', 'tabla' => self::TABLA_TEXTO_FIJO],
+        ];
+
+        foreach ($systemRows as $row) {
+            $exists = $this->db->table($this->table)
+                ->where('tabla', $row['tabla'])
+                ->countAllResults();
+            if ($exists > 0) {
+                continue;
+            }
+            $this->db->table($this->table)->insert($row);
         }
 
-        $this->db->table($this->table)->insert([
-            'opciones' => 'Texto enriquecido',
-            'tabla'    => self::TABLA_TEXTO_RICO,
-        ]);
         self::$textoRicoOpcionIdCache = null;
+        self::$textoFijoOpcionIdCache = null;
     }
 
     /**
@@ -64,13 +73,38 @@ class OpcionModel extends Model
         return self::$textoRicoOpcionIdCache;
     }
 
+    /**
+     * ID de la opción "Texto fijo" (texto predefinido en sub-clases y referencias).
+     */
+    public function getTextoFijoOpcionId(): int
+    {
+        if (self::$textoFijoOpcionIdCache !== null && self::$textoFijoOpcionIdCache > 0) {
+            return self::$textoFijoOpcionIdCache;
+        }
+
+        $this->ensureSystemOpciones();
+        $row = $this->db->table($this->table)
+            ->select('opciones_id')
+            ->where('tabla', self::TABLA_TEXTO_FIJO)
+            ->orderBy('opciones_id', 'ASC')
+            ->get()
+            ->getRowArray();
+
+        self::$textoFijoOpcionIdCache = (int) ($row['opciones_id'] ?? 0);
+
+        return self::$textoFijoOpcionIdCache;
+    }
+
     public function isSystemOpcion(int $opcionesId): bool
     {
         if ($opcionesId <= self::OPCION_TEXTO) {
             return true;
         }
 
-        return $opcionesId > 0 && $opcionesId === $this->getTextoRicoOpcionId();
+        return $opcionesId > 0 && (
+            $opcionesId === $this->getTextoRicoOpcionId()
+            || $opcionesId === $this->getTextoFijoOpcionId()
+        );
     }
 
     /**
@@ -339,6 +373,15 @@ class OpcionModel extends Model
         return $opcionesId === model(self::class)->getTextoRicoOpcionId();
     }
 
+    public static function isTextoFijo(int $opcionesId): bool
+    {
+        if ($opcionesId < 1) {
+            return false;
+        }
+
+        return $opcionesId === model(self::class)->getTextoFijoOpcionId();
+    }
+
     public static function isTextoLibre(int $opcionesId): bool
     {
         return $opcionesId === self::OPCION_TEXTO || self::isTextoRico($opcionesId);
@@ -346,6 +389,6 @@ class OpcionModel extends Model
 
     public static function isSelect(int $opcionesId): bool
     {
-        return $opcionesId > 0 && ! self::isTextoLibre($opcionesId);
+        return $opcionesId > 0 && ! self::isTextoLibre($opcionesId) && ! self::isTextoFijo($opcionesId);
     }
 }

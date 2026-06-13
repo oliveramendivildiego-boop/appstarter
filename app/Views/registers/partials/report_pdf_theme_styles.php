@@ -335,6 +335,19 @@ table.results td {
     text-transform: <?= esc($rs['text_transform']) ?> !important;
     line-height: <?= esc((string) $rs['line_height']) ?> !important;
 }
+table.results td.resultado-texto-rico-cell .resultado-texto-rico em,
+table.results td.resultado-texto-rico-cell .resultado-texto-rico i,
+table.results td.resultado-texto-rico-cell .resultado-texto-rico span[style*="italic"],
+table.results td.resultado-texto-rico-cell .resultado-texto-rico span[style*="oblique"] {
+    font-style: italic !important;
+}
+table.results td.resultado-texto-rico-cell .resultado-texto-rico strong,
+table.results td.resultado-texto-rico-cell .resultado-texto-rico b {
+    font-weight: 700 !important;
+}
+table.results td.resultado-texto-rico-cell .resultado-texto-rico u {
+    text-decoration: underline !important;
+}
 table.results:not(.pdf-notes-table) th,
 table.results:not(.pdf-notes-table) td {
     padding-top: <?= (int) ($rs['cell_padding_v_px'] ?? 6) ?>px !important;

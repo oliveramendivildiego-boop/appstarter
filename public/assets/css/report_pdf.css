@@ -491,6 +491,46 @@ table.results td {
     background: var(--pdf-results-body-bg, #fff);
     color: var(--pdf-results-body-color, #333);
 }
+/* Texto enriquecido / texto fijo: la plantilla fija font-weight en td; restaurar formato inline */
+table.results td.resultado-texto-rico-cell .resultado-texto-rico strong,
+table.results td.resultado-texto-rico-cell .resultado-texto-rico b {
+    font-weight: 700 !important;
+}
+table.results td.resultado-texto-rico-cell .resultado-texto-rico em,
+table.results td.resultado-texto-rico-cell .resultado-texto-rico i,
+.table td.resultado-texto-rico-cell .resultado-texto-rico em,
+.table td.resultado-texto-rico-cell .resultado-texto-rico i,
+table.results td.resultado-texto-rico-cell .resultado-texto-rico span[style*="italic"],
+table.results td.resultado-texto-rico-cell .resultado-texto-rico span[style*="oblique"],
+.table td.resultado-texto-rico-cell .resultado-texto-rico span[style*="italic"] {
+    font-style: italic !important;
+}
+table.results td.resultado-texto-rico-cell .resultado-texto-rico u {
+    text-decoration: underline !important;
+}
+table.results td.resultado-texto-rico-cell .resultado-texto-rico p {
+    margin: 0 0 0.35em 0;
+}
+table.results td.resultado-texto-rico-cell .resultado-texto-rico p:last-child {
+    margin-bottom: 0;
+}
+table.results td.resultado-texto-rico-cell .resultado-texto-rico ul,
+table.results td.resultado-texto-rico-cell .resultado-texto-rico ol {
+    margin: 0.25em 0;
+    padding-left: 1.25em;
+    text-align: left;
+}
+.table td.resultado-texto-rico-cell .resultado-texto-rico strong,
+.table td.resultado-texto-rico-cell .resultado-texto-rico b {
+    font-weight: 700 !important;
+}
+.table td.resultado-texto-rico-cell .resultado-texto-rico em,
+.table td.resultado-texto-rico-cell .resultado-texto-rico i {
+    font-style: italic !important;
+}
+.table td.resultado-texto-rico-cell .resultado-texto-rico u {
+    text-decoration: underline !important;
+}
 .group-title {
     font-weight: bold;
     font-size: 11pt;

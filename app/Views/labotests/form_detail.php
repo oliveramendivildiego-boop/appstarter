@@ -297,6 +297,7 @@ if ($feRaw !== '' && !empty($formulas_con_expresion ?? [])) {
                         'mostrar_medida' => (int) ($s['mostrar_medida'] ?? 0),
                         'formulas_id' => (int)($s['formulas_id'] ?? 1),
                         'opcion_id' => (int)($s['opcion_id'] ?? 3),
+                        'texto_fijo' => (string)($s['texto_fijo'] ?? ''),
                         'formula_para_textarea' => $rowFormulaTextarea,
                         'formula_nombre' => $rowFormulaNombre,
                         'es_separador' => ! empty($s['es_separador']) ? 1 : 0,
@@ -568,11 +569,16 @@ if ($fe !== '') {
             </div>
             <div class="col-md-3 mb-2">
                 <label class="form-label">Tipo resultado</label>
-                <select name="opcion_id" class="form-control form-control-sm">
+                <select name="opcion_id" id="sec_opcion_id" class="form-control form-control-sm">
                     <?php foreach ($opciones ?? [] as $oid => $oname): ?>
                     <option value="<?= $oid ?>" <?= ((int)($editar_sec_data['opcion_id'] ?? 3) === $oid) ? 'selected' : '' ?>><?= esc($oname) ?></option>
                     <?php endforeach; ?>
                 </select>
+            </div>
+            <div class="col-12 mb-2 d-none" id="wrap_sec_texto_fijo">
+                <label class="form-label">Texto fijo</label>
+                <textarea name="texto_fijo" id="sec_texto_fijo" class="form-control form-control-sm input-texto-fijo-config" rows="4" placeholder="Escriba el texto con negrita, cursiva, listas…"><?= registro_textarea_body_safe((string) ($editar_sec_data['texto_fijo'] ?? '')) ?></textarea>
+                <small class="text-muted">Use la barra de herramientas para negrita, cursiva, subrayado y listas. Este texto aparecerá predefinido al capturar resultados y en el reporte.</small>
             </div>
         </div>
         </div>
@@ -1026,9 +1032,12 @@ if ($fe !== '') {
             </div>
         </div>
 
+        <link href="https://cdn.jsdelivr.net/npm/summernote@0.8.18/dist/summernote-lite.min.css" rel="stylesheet">
+        <script src="https://cdn.jsdelivr.net/npm/summernote@0.8.18/dist/summernote-lite.min.js"></script>
         <script>
         (function() {
             var prianacategoriaId = <?= (int)($labotests_info->prianacategoria_id ?? 0) ?>;
+            var textoFijoOpcionId = <?= (int) (model(\App\Models\OpcionModel::class)->getTextoFijoOpcionId()) ?>;
             var modalEl = document.getElementById('modalEditarSec');
             var modalTitle = document.getElementById('modalEditarSecTitle');
             var btnSubmit = document.getElementById('btn_submit_sec');
@@ -1037,6 +1046,42 @@ if ($fe !== '') {
             function openModal() {
                 if (modal) modal.show();
             }
+            function syncTextoFijoConfigEditor(el) {
+                if (!el || typeof jQuery === 'undefined' || !jQuery(el).data('summernote')) return;
+                el.value = jQuery(el).summernote('code');
+            }
+            function destroyTextoFijoConfigEditor(el) {
+                if (!el || typeof jQuery === 'undefined' || !jQuery(el).data('summernote')) return;
+                syncTextoFijoConfigEditor(el);
+                jQuery(el).summernote('destroy');
+            }
+            function initTextoFijoConfigEditor(el) {
+                if (!el || typeof jQuery === 'undefined' || !jQuery.fn.summernote) return;
+                if (jQuery(el).data('summernote')) return;
+                jQuery(el).summernote({
+                    height: 140,
+                    toolbar: [
+                        ['style', ['bold', 'italic', 'underline']],
+                        ['para', ['ul', 'ol']],
+                        ['view', ['codeview']]
+                    ]
+                });
+            }
+            function setTextoFijoConfigValue(el, html) {
+                if (!el) return;
+                var val = (html !== undefined && html !== null) ? String(html) : '';
+                if (typeof jQuery !== 'undefined' && jQuery(el).data('summernote')) {
+                    jQuery(el).summernote('code', val);
+                } else {
+                    el.value = val;
+                }
+            }
+            document.getElementById('form_secitem')?.addEventListener('submit', function() {
+                syncTextoFijoConfigEditor(document.getElementById('sec_texto_fijo'));
+            });
+            modalEl.addEventListener('hidden.bs.modal', function() {
+                destroyTextoFijoConfigEditor(document.getElementById('sec_texto_fijo'));
+            });
             function toggleCamposSeparador(on) {
                 var w = document.getElementById('wrap_campos_analito_subclase');
                 if (w) w.classList.toggle('d-none', !!on);
@@ -1044,6 +1089,20 @@ if ($fe !== '') {
             document.getElementById('es_separador_cb')?.addEventListener('change', function() {
                 toggleCamposSeparador(this.checked);
             });
+            function toggleTextoFijoSec() {
+                var wrap = document.getElementById('wrap_sec_texto_fijo');
+                var sel = document.getElementById('sec_opcion_id');
+                var textoFijoEl = document.getElementById('sec_texto_fijo');
+                if (!wrap || !sel) return;
+                var esTextoFijo = (parseInt(String(sel.value || '0'), 10) === textoFijoOpcionId);
+                wrap.classList.toggle('d-none', !esTextoFijo);
+                if (esTextoFijo) {
+                    initTextoFijoConfigEditor(textoFijoEl);
+                } else {
+                    destroyTextoFijoConfigEditor(textoFijoEl);
+                }
+            }
+            document.getElementById('sec_opcion_id')?.addEventListener('change', toggleTextoFijoSec);
             function fillFormSec(data) {
                 data = data || {};
                 var esSep = !!(data.es_separador && (parseInt(String(data.es_separador), 10) === 1));
@@ -1063,6 +1122,8 @@ if ($fe !== '') {
                 var mostrarMedidaCb = document.getElementById('sec_mostrar_medida');
                 if (mostrarMedidaCb) mostrarMedidaCb.checked = !!(parseInt(String(data.mostrar_medida || 0), 10) === 1);
                 set('opcion_id', data.opcion_id);
+                toggleTextoFijoSec();
+                setTextoFijoConfigValue(document.getElementById('sec_texto_fijo'), data.texto_fijo || '');
                 var calc = document.getElementById('es_calculada');
                 var fid = esSep ? 1 : ((data.formulas_id || 1) | 0);
                 if (calc) calc.checked = !esSep && fid > 1;
@@ -1103,6 +1164,7 @@ if ($fe !== '') {
                 if (formulaPredefSelect) formulaPredefSelect.selectedIndex = 0;
                 document.dispatchEvent(new CustomEvent('secModalFormFilled'));
             }
+            toggleTextoFijoSec();
             function clearFormSec() {
                 fillFormSec({
                     secanacategoria_id: 0,
@@ -1115,6 +1177,7 @@ if ($fe !== '') {
                     mostrar_medida: 0,
                     formulas_id: 1,
                     opcion_id: 3,
+                    texto_fijo: '',
                     formula_para_textarea: '',
                     formula_nombre: '',
                     es_separador: 0

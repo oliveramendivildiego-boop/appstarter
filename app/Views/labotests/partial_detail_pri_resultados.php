@@ -41,6 +41,7 @@ $sexoMap = ['ambos' => 'Ambos', 'masculino' => 'Masculino', 'femenino' => 'Femen
                     'mostrar_medida' => (int) ($pr['mostrar_medida'] ?? 0),
                     'formulas_id' => (int) ($pr['formulas_id'] ?? 1),
                     'opcion_id' => (int) ($pr['opcion_id'] ?? 3),
+                    'texto_fijo' => (string) ($pr['texto_fijo'] ?? ''),
                 ];
                 ?>
                 <tr>
@@ -181,11 +182,16 @@ $sexoMap = ['ambos' => 'Ambos', 'masculino' => 'Masculino', 'femenino' => 'Femen
                             </div>
                             <div class="col-md-3 mb-2">
                                 <label class="form-label">Tipo resultado</label>
-                                <select name="opcion_id" class="form-control form-control-sm">
+                                <select name="opcion_id" id="pri_opcion_id" class="form-control form-control-sm">
                                     <?php foreach ($opciones ?? [] as $oid => $oname): ?>
                                     <option value="<?= $oid ?>"><?= esc($oname) ?></option>
                                     <?php endforeach; ?>
                                 </select>
+                            </div>
+                            <div class="col-12 mb-2 d-none" id="wrap_pri_texto_fijo">
+                                <label class="form-label">Texto fijo</label>
+                                <textarea name="texto_fijo" id="pri_texto_fijo" class="form-control form-control-sm input-texto-fijo-config" rows="4" placeholder="Escriba el texto con negrita, cursiva, listas…"></textarea>
+                                <small class="text-muted">Use la barra de herramientas para negrita, cursiva, subrayado y listas. Este texto aparecerá predefinido al capturar resultados y en el reporte.</small>
                             </div>
                         </div>
                         <div class="mt-2">
@@ -199,8 +205,11 @@ $sexoMap = ['ambos' => 'Ambos', 'masculino' => 'Masculino', 'femenino' => 'Femen
         </div>
     </div>
 </div>
+<link href="https://cdn.jsdelivr.net/npm/summernote@0.8.18/dist/summernote-lite.min.css" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/summernote@0.8.18/dist/summernote-lite.min.js"></script>
 <script>
 (function() {
+    var textoFijoOpcionId = <?= (int) (model(\App\Models\OpcionModel::class)->getTextoFijoOpcionId()) ?>;
     var modalEl = document.getElementById('modalEditarPri');
     if (!modalEl) return;
     var modal = (typeof bootstrap !== 'undefined') ? new bootstrap.Modal(modalEl) : null;
@@ -253,6 +262,54 @@ $sexoMap = ['ambos' => 'Ambos', 'masculino' => 'Masculino', 'femenino' => 'Femen
         syncFormulaExpr();
     }
 
+    function syncTextoFijoConfigEditor(el) {
+        if (!el || typeof jQuery === 'undefined' || !jQuery(el).data('summernote')) return;
+        el.value = jQuery(el).summernote('code');
+    }
+    function destroyTextoFijoConfigEditor(el) {
+        if (!el || typeof jQuery === 'undefined' || !jQuery(el).data('summernote')) return;
+        syncTextoFijoConfigEditor(el);
+        jQuery(el).summernote('destroy');
+    }
+    function initTextoFijoConfigEditor(el) {
+        if (!el || typeof jQuery === 'undefined' || !jQuery.fn.summernote) return;
+        if (jQuery(el).data('summernote')) return;
+        jQuery(el).summernote({
+            height: 140,
+            toolbar: [
+                ['style', ['bold', 'italic', 'underline']],
+                ['para', ['ul', 'ol']],
+                ['view', ['codeview']]
+            ]
+        });
+    }
+    function setTextoFijoConfigValue(el, html) {
+        if (!el) return;
+        var val = (html !== undefined && html !== null) ? String(html) : '';
+        if (typeof jQuery !== 'undefined' && jQuery(el).data('summernote')) {
+            jQuery(el).summernote('code', val);
+        } else {
+            el.value = val;
+        }
+    }
+    modalEl?.addEventListener('hidden.bs.modal', function() {
+        destroyTextoFijoConfigEditor(document.getElementById('pri_texto_fijo'));
+    });
+
+    function toggleTextoFijoPri() {
+        var wrap = document.getElementById('wrap_pri_texto_fijo');
+        var sel = document.getElementById('pri_opcion_id');
+        var textoFijoEl = document.getElementById('pri_texto_fijo');
+        if (!wrap || !sel) return;
+        var esTextoFijo = (parseInt(String(sel.value || '0'), 10) === textoFijoOpcionId);
+        wrap.classList.toggle('d-none', !esTextoFijo);
+        if (esTextoFijo) {
+            initTextoFijoConfigEditor(textoFijoEl);
+        } else {
+            destroyTextoFijoConfigEditor(textoFijoEl);
+        }
+    }
+
     function fillFormPri(data) {
         data = data || {};
         if (inputId) inputId.value = String((data.priresultados_id || 0) | 0);
@@ -263,6 +320,8 @@ $sexoMap = ['ambos' => 'Ambos', 'masculino' => 'Masculino', 'femenino' => 'Femen
         setField('umedida', data.umedida || '');
         if (mostrarMedidaCb) mostrarMedidaCb.checked = !!(parseInt(String(data.mostrar_medida || 0), 10) === 1);
         setField('opcion_id', (data.opcion_id || 3) | 0);
+        toggleTextoFijoPri();
+        setTextoFijoConfigValue(document.getElementById('pri_texto_fijo'), data.texto_fijo || '');
 
         var fid = (data.formulas_id || 1) | 0;
         if (calcCb) calcCb.checked = fid > 1;
@@ -296,7 +355,8 @@ $sexoMap = ['ambos' => 'Ambos', 'masculino' => 'Masculino', 'femenino' => 'Femen
             umedida: '',
             mostrar_medida: 0,
             formulas_id: 1,
-            opcion_id: 3
+            opcion_id: 3,
+            texto_fijo: ''
         });
     }
 
@@ -424,6 +484,7 @@ $sexoMap = ['ambos' => 'Ambos', 'masculino' => 'Masculino', 'femenino' => 'Femen
     });
 
     calcCb?.addEventListener('change', toggleFormulaWrappers);
+    document.getElementById('pri_opcion_id')?.addEventListener('change', toggleTextoFijoPri);
     formulasSelect?.addEventListener('change', syncFormulaHidden);
     predefSelect?.addEventListener('change', function() {
         var opt = predefSelect.options[predefSelect.selectedIndex];
@@ -440,6 +501,7 @@ $sexoMap = ['ambos' => 'Ambos', 'masculino' => 'Masculino', 'femenino' => 'Femen
     });
     form?.addEventListener('submit', function() {
         syncFormulaHidden();
+        syncTextoFijoConfigEditor(document.getElementById('pri_texto_fijo'));
     });
     formulaArea?.addEventListener('input', syncFormulaExpr);
     document.querySelectorAll('.pri-formula-ref').forEach(function(el) {

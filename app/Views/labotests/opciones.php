@@ -27,7 +27,7 @@
     <div class="card-body">
         <p class="text-muted mb-4">
             Estos tipos definen las opciones del select "Tipo resultado" al agregar valores en análisis simples y compuestos.
-            <strong>Texto</strong> usa un campo de una línea; <strong>Texto enriquecido</strong> usa un área de texto con negrita, cursiva y listas al capturar resultados.
+            <strong>Texto</strong> usa un campo de una línea; <strong>Texto enriquecido</strong> y <strong>Texto fijo</strong> permiten negrita, cursiva y listas (texto fijo se define en la configuración y aparece prellenado al capturar).
             Puede crear tipos personalizados (ej: Color, Consistencia) y definir sus valores.
         </p>
 

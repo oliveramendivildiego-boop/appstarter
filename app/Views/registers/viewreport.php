@@ -10,6 +10,19 @@
 .viewreport-pdf-shell { width: 100%; overflow-x: auto; }
 .viewreport-pdf-shell .pdf-watermark-layer { z-index: 0; }
 .viewreport-pdf-shell .pdf-main-stack { position: relative; z-index: 1; }
+table.results td.resultado-texto-rico-cell .resultado-texto-rico strong,
+table.results td.resultado-texto-rico-cell .resultado-texto-rico b {
+    font-weight: 700 !important;
+}
+table.results td.resultado-texto-rico-cell .resultado-texto-rico em,
+table.results td.resultado-texto-rico-cell .resultado-texto-rico i,
+table.results td.resultado-texto-rico-cell .resultado-texto-rico span[style*="italic"],
+table.results td.resultado-texto-rico-cell .resultado-texto-rico span[style*="oblique"] {
+    font-style: italic !important;
+}
+table.results td.resultado-texto-rico-cell .resultado-texto-rico u {
+    text-decoration: underline !important;
+}
 body.js-total-pages-ready .pdf-counter-pages::before {
     content: '' !important;
 }

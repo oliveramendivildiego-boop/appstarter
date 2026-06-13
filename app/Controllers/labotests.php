@@ -457,6 +457,7 @@ class Labotests extends SecureArea
             'formulas_id'        => $formulasId,
             'formula_expresion'  => $formulaExpresion,
             'opcion_id'          => $esSeparador ? 3 : (int) ($this->request->getPost('opcion_id') ?? 3),
+            'texto_fijo'         => trim($this->request->getPost('texto_fijo') ?? ''),
             'es_separador'       => $esSeparador ? 1 : 0,
         ];
         $this->labotestModel->saveSecItem($data, $id > 0 ? $id : null);
@@ -1347,6 +1348,7 @@ class Labotests extends SecureArea
             'mostrar_medida'    => (int) ($this->request->getPost('mostrar_medida') ?? 0) === 1 ? 1 : 0,
             'formulas_id'       => (int) ($this->request->getPost('formulas_id') ?? 1),
             'opcion_id'         => (int) ($this->request->getPost('opcion_id') ?? 3),
+            'texto_fijo'        => trim($this->request->getPost('texto_fijo') ?? ''),
         ];
         $this->labotestModel->savePriResultado($data, $id > 0 ? $id : null);
         return redirect()->to("labotests/detail/{$prianacategoriaId}")->with('success', 'Valores de referencia guardados correctamente');

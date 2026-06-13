@@ -244,6 +244,7 @@ class RegisterService
                 }
                 $formId = (int) ($item->formulas_id ?? 0);
                 $item->regvalues = $this->resolveRegvalue($formId, $regvalue, $registroId);
+                $this->applyTextoFijoRegvalueForReport($item);
                 $grupos[$padre][] = $item;
                 continue;
             }
@@ -277,6 +278,7 @@ class RegisterService
                 }
                 $formId = (int) ($item->formulas_id ?? 0);
                 $item->regvalues = $this->resolveRegvalue($formId, $regvalue, $registroId);
+                $this->applyTextoFijoRegvalueForReport($item);
                 $grupos[$padre][] = $item;
             }
         }
@@ -1077,6 +1079,7 @@ class RegisterService
                 $item->regvalues = ((int)($ref['es_separador'] ?? 0) === 1)
                     ? '-'
                     : (($val === '') ? '-' : $val);
+                $this->applyTextoFijoRegvalueForReport($item);
                 $item->show_reference = true;
                 $reconstruidos[] = $item;
                 unset($itemPorKey[$key]);
@@ -1204,6 +1207,23 @@ class RegisterService
             return $formulaName($rawValue, $registroId);
         }
         return $rawValue;
+    }
+
+    /**
+     * Si el parámetro es texto fijo y no hay valor guardado, usa el HTML definido en configuración.
+     */
+    protected function applyTextoFijoRegvalueForReport(object $item): void
+    {
+        if (! registro_opcion_es_texto_fijo((int) ($item->opcion_id ?? 0))) {
+            return;
+        }
+        $resolved = registro_texto_fijo_para_mostrar(
+            (string) ($item->regvalues ?? ''),
+            (string) ($item->texto_fijo ?? '')
+        );
+        if ($resolved !== '') {
+            $item->regvalues = $resolved;
+        }
     }
 
     /**

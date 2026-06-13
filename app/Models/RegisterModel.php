@@ -1502,7 +1502,7 @@ class RegisterModel extends Model
 
         $sql = "SELECT pt.name as hijo, pt.compleja, pt.prianacategoria_id, {$mostrarValoresSelect}, ac.name as padre,
                 pr.opcion_id, pr.priresultados_id, pr.id_poblacion, pr.valor_min, pr.valor_max, pr.umedida,
-                pr.formulas_id, f.formula_expresion AS formula_expresion,
+                pr.formulas_id, pr.texto_fijo, f.formula_expresion AS formula_expresion,
                 (SELECT prfb.opcion_id FROM {$pr} prfb
                  WHERE prfb.prianacategoria_id = pt.prianacategoria_id
                    AND pt.compleja = 0 AND (prfb.deleted = 0 OR prfb.deleted IS NULL)
@@ -1586,7 +1586,7 @@ class RegisterModel extends Model
             $prIds = array_unique(array_column($needFallbackData, 'priresultados_id'));
             $f = $this->db->prefixTable('formulas');
             $fallbackRows = $this->db->table('priresultados')
-                ->select("priresultados.priresultados_id, priresultados.prianacategoria_id, priresultados.opcion_id, priresultados.valor_min, priresultados.valor_max, priresultados.umedida, priresultados.id_poblacion, priresultados.formulas_id, {$f}.formula_expresion AS formula_expresion")
+                ->select("priresultados.priresultados_id, priresultados.prianacategoria_id, priresultados.opcion_id, priresultados.valor_min, priresultados.valor_max, priresultados.umedida, priresultados.id_poblacion, priresultados.formulas_id, priresultados.texto_fijo, {$f}.formula_expresion AS formula_expresion")
                 ->join('formulas', "{$f}.formulas_id = priresultados.formulas_id", 'left')
                 ->whereIn('priresultados_id', $prIds)
                 ->get()
@@ -1608,6 +1608,7 @@ class RegisterModel extends Model
                 $r['formulas_id'] = $fr['formulas_id'] ?? 1;
                 $r['formula_expresion'] = $fr['formula_expresion'] ?? '';
                 $r['id_poblacion'] = $fr['id_poblacion'] ?? 15;
+                $r['texto_fijo'] = $fr['texto_fijo'] ?? '';
                 unset($r['opcion_id_fallback'], $r['priresultados_id_fallback'], $r['priresultados_id_filtered']);
                 $byPria[$pid] = $r;
             }

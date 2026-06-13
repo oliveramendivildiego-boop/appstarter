@@ -112,6 +112,13 @@ if (! function_exists('registro_opcion_es_texto_rico')) {
     }
 }
 
+if (! function_exists('registro_opcion_es_texto_fijo')) {
+    function registro_opcion_es_texto_fijo(int $opcionId): bool
+    {
+        return \App\Models\OpcionModel::isTextoFijo($opcionId);
+    }
+}
+
 if (! function_exists('registro_opcion_es_texto_libre')) {
     function registro_opcion_es_texto_libre(int $opcionId): bool
     {
@@ -144,6 +151,56 @@ if (! function_exists('registro_personalizado_texto_fijo_html')) {
     }
 }
 
+if (! function_exists('registro_normalizar_estilos_inline_html')) {
+    /**
+     * Convierte estilos inline de Summernote (span style=...) a etiquetas semánticas
+     * para que sobrevivan al CSS del reporte (font-style: normal !important en td).
+     */
+    function registro_normalizar_estilos_inline_html(string $html): string
+    {
+        $html = trim($html);
+        if ($html === '') {
+            return '';
+        }
+
+        $prev = '';
+        $guard = 0;
+        while ($html !== $prev && $guard < 20) {
+            $prev = $html;
+            $guard++;
+            $html = preg_replace_callback(
+                '/<span\b([^>]*)>(.*?)<\/span>/is',
+                static function (array $m): string {
+                    $attrs = $m[1];
+                    $inner = $m[2];
+                    if (! preg_match('/style=(["\'])(.*?)\1/is', $attrs, $sm)) {
+                        return $inner;
+                    }
+                    $style = strtolower(preg_replace('/\s+/', '', $sm[2]) ?? $sm[2]);
+                    $out = $inner;
+                    if (str_contains($style, 'font-style:italic') || str_contains($style, 'font-style:oblique')) {
+                        $out = '<em>' . $out . '</em>';
+                    }
+                    if (preg_match('/font-weight:(bold|[6-9]00)/', $style)) {
+                        $out = '<strong>' . $out . '</strong>';
+                    }
+                    if (str_contains($style, 'text-decoration:underline') || str_contains($style, 'text-decoration-line:underline')) {
+                        $out = '<u>' . $out . '</u>';
+                    }
+                    if ($out === $inner) {
+                        return $inner;
+                    }
+
+                    return $out;
+                },
+                $html
+            ) ?? $html;
+        }
+
+        return $html;
+    }
+}
+
 if (! function_exists('registro_sanitizar_html_rico')) {
     /**
      * Limpia HTML de resultados enriquecidos (negrita, cursiva, listas, etc.).
@@ -155,12 +212,39 @@ if (! function_exists('registro_sanitizar_html_rico')) {
             return '';
         }
 
+        if (str_contains($html, '&lt;') || str_contains($html, '&gt;')) {
+            $html = html_entity_decode($html, ENT_QUOTES | ENT_HTML5, 'UTF-8');
+        }
+
+        $html = registro_normalizar_estilos_inline_html($html);
+
         $allowed = '<p><br><strong><b><em><i><u><ul><ol><li><a><span><div>';
         $clean = strip_tags($html, $allowed);
         $clean = preg_replace('/\s+on\w+\s*=\s*(["\']).*?\1/i', '', $clean) ?? $clean;
         $clean = preg_replace('/javascript\s*:/i', '', $clean) ?? $clean;
+        // Quitar style= residual en span (ya convertidos los formatos comunes a em/strong/u).
+        $clean = preg_replace('/<span\b[^>]*\bstyle=(["\']).*?\1[^>]*>/i', '<span>', $clean) ?? $clean;
 
         return trim($clean);
+    }
+}
+
+if (! function_exists('registro_texto_fijo_para_mostrar')) {
+    /**
+     * Valor a mostrar en captura/reporte para tipo texto fijo: prioriza la configuración del análisis.
+     */
+    function registro_texto_fijo_para_mostrar(string $valorGuardado, string $textoConfig): string
+    {
+        $cfg = trim($textoConfig);
+        if ($cfg !== '') {
+            return registro_sanitizar_html_rico($cfg);
+        }
+        $raw = trim($valorGuardado);
+        if ($raw === '' || $raw === '-') {
+            return '';
+        }
+
+        return registro_sanitizar_html_rico($raw);
     }
 }
 
@@ -209,6 +293,21 @@ if (! function_exists('registro_unidad_para_resultado')) {
     }
 }
 
+if (! function_exists('registro_valor_contiene_html_rico')) {
+    function registro_valor_contiene_html_rico(string $valor): bool
+    {
+        $valor = trim($valor);
+        if ($valor === '') {
+            return false;
+        }
+        if (str_contains($valor, '&lt;') || str_contains($valor, '&gt;')) {
+            $valor = html_entity_decode($valor, ENT_QUOTES | ENT_HTML5, 'UTF-8');
+        }
+
+        return $valor !== strip_tags($valor);
+    }
+}
+
 if (! function_exists('registro_resultado_celda_html')) {
     /**
      * HTML seguro para mostrar un resultado en reportes (texto plano escapado o HTML enriquecido).
@@ -219,15 +318,17 @@ if (! function_exists('registro_resultado_celda_html')) {
     function registro_resultado_celda_html($valor, $unidad, int $opcionId = 3, bool $mostrarMedidaSoloEnReferencia = false): string
     {
         $u = registro_unidad_para_resultado($unidad, $mostrarMedidaSoloEnReferencia);
+        $valorStr = (string) ($valor ?? '');
 
-        if (registro_opcion_es_texto_rico($opcionId)) {
-            $html = registro_sanitizar_html_rico((string) ($valor ?? ''));
+        if (registro_opcion_es_texto_rico($opcionId) || registro_opcion_es_texto_fijo($opcionId) || registro_valor_contiene_html_rico($valorStr)) {
+            $html = registro_sanitizar_html_rico($valorStr);
             if ($html === '') {
                 return esc('-');
             }
             $suffix = $u !== '' ? ' <span class="text-muted">' . esc($u) . '</span>' : '';
+            $class = registro_opcion_es_texto_fijo($opcionId) ? 'resultado-texto-fijo resultado-texto-rico' : 'resultado-texto-rico';
 
-            return '<div class="resultado-texto-rico text-start d-inline-block">' . $html . $suffix . '</div>';
+            return '<div class="' . $class . ' text-start d-inline-block">' . $html . $suffix . '</div>';
         }
 
         return esc(registro_resultado_con_unidad($valor, $u));
