@@ -352,8 +352,25 @@ body {
     break-inside: avoid-page !important;
 }
 .pdf-gpb-grupo-intact .report-pdf-grupo-prueba:not(.report-pdf-grupo-prueba-first) {
+    page-break-before: auto;
+    break-before: auto;
+    margin-top: 0;
+}
+.pdf-gpb-grupo-intact .report-pdf-grupo-area-page-leader,
+.pdf-gpb-grupo-intact .report-area-page-leader-force-break-before {
     page-break-before: always !important;
     break-before: page !important;
+    height: 0;
+    margin: 0;
+    padding: 0;
+    border: 0;
+    line-height: 0;
+    font-size: 0;
+    overflow: hidden;
+}
+.pdf-gpb-grupo-intact .report-pdf-grupo-area-separator {
+    page-break-before: auto;
+    break-before: auto;
 }
 .pdf-gpb-grupo-intact .report-pdf-grupo-prueba.report-pdf-grupo-prueba-force-break-before {
     page-break-before: always !important;

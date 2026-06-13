@@ -3211,12 +3211,38 @@ class ReportPdfLayoutService
             $parts[] = 'page-break-inside:avoid';
             $parts[] = 'break-inside:avoid-page';
         }
-        if (! $isFirstGrupo) {
-            $parts[] = 'page-break-before:always';
-            $parts[] = 'break-before:page';
-        }
 
         return $parts !== [] ? implode(';', $parts) . ';' : '';
+    }
+
+    /**
+     * ¿Insertar líder de hoja antes del área (salto sin cortar el título)?
+     *
+     * @param array<string, mixed> $layout
+     */
+    public static function shouldRenderGrupoAreaPageLeader(array $layout, bool $isFirstGrupo): bool
+    {
+        if ($isFirstGrupo) {
+            return false;
+        }
+        $ps  = is_array($layout['page_style'] ?? null) ? $layout['page_style'] : [];
+        $gpb = self::normalizeGrupoPruebaPageBreakStyle($ps['grupo_prueba_page_break'] ?? []);
+
+        return self::grupoPruebaPageBreakUsesGrupoIntactCss($gpb);
+    }
+
+    /**
+     * Estilo inline del líder de hoja (.report-pdf-grupo-area-page-leader) — Dompdf + impresión.
+     *
+     * @param array<string, mixed> $layout
+     */
+    public static function grupoAreaPageLeaderStyleAttr(array $layout, bool $isFirstGrupo): string
+    {
+        if (! self::shouldRenderGrupoAreaPageLeader($layout, $isFirstGrupo)) {
+            return '';
+        }
+
+        return 'page-break-before:always;break-before:page;height:0;margin:0;padding:0;border:0;line-height:0;font-size:0;overflow:hidden;';
     }
 
     /**
@@ -3231,7 +3257,15 @@ class ReportPdfLayoutService
         }
         $ps  = is_array($layout['page_style'] ?? null) ? $layout['page_style'] : [];
         $rs  = self::normalizeResultsTableStyle($ps['results_table'] ?? []);
+        $gpb = self::normalizeGrupoPruebaPageBreakStyle($ps['grupo_prueba_page_break'] ?? []);
         $gap = max(0, min(80, (int) ($rs['grupo_prueba_gap_px'] ?? 10)));
+        if (self::grupoPruebaPageBreakUsesGrupoIntactCss($gpb)) {
+            if (self::grupoAreaSeparatorEnabled($layout)) {
+                return '';
+            }
+
+            return 'padding-top:' . $gap . 'px;';
+        }
 
         return 'margin-top:' . $gap . 'px;';
     }
@@ -3300,12 +3334,15 @@ class ReportPdfLayoutService
     /**
      * @param array<string, mixed> $layout
      */
-    public static function grupoAreaSeparatorMarginStyleAttr(array $layout): string
+    public static function grupoAreaSeparatorMarginStyleAttr(array $layout, string $variant = 'pdf'): string
     {
         $ps = is_array($layout['page_style'] ?? null) ? $layout['page_style'] : [];
         $rs = self::normalizeResultsTableStyle($ps['results_table'] ?? []);
         $marginTop    = max(0, min(80, (int) ($rs['grupo_area_separator_margin_top_px'] ?? 10)));
         $marginBottom = max(0, min(80, (int) ($rs['grupo_area_separator_margin_bottom_px'] ?? 10)));
+        if ($variant === 'browser_print') {
+            return sprintf('margin-bottom:%dpx;', $marginBottom);
+        }
 
         return sprintf('margin-top:%dpx;margin-bottom:%dpx;', $marginTop, $marginBottom);
     }

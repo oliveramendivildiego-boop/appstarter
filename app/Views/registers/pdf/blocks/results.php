@@ -34,6 +34,12 @@ foreach ($grupos ?? [] as $padre => $items) {
         \App\Services\ReportPdfLayoutService::grupoPruebaGrupoIntactStyleAttr($layoutForLf, $isFirstGrupo),
         \App\Services\ReportPdfLayoutService::grupoPruebaGapMarginStyleAttr($layoutForLf, $isFirstGrupo)
     );
+    if (\App\Services\ReportPdfLayoutService::shouldRenderGrupoAreaPageLeader($layoutForLf, $isFirstGrupo)) {
+        $leaderStyle = \App\Services\ReportPdfLayoutService::grupoAreaPageLeaderStyleAttr($layoutForLf, $isFirstGrupo);
+        echo '<div class="report-pdf-grupo-area-page-leader" aria-hidden="true"'
+            . ($leaderStyle !== '' ? ' style="' . esc($leaderStyle, 'attr') . '"' : '')
+            . '></div>';
+    }
     echo '<div class="' . esc($grupoClass, 'attr') . '"'
         . ($grupoStyle !== '' ? ' style="' . esc($grupoStyle, 'attr') . '"' : '')
         . '>';

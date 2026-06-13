@@ -282,15 +282,22 @@ $footerEnabled = ! empty($footer_enabled);
         grupo.style.removeProperty('--pdf-gpb-compact-cell-padding-v');
     }
 
+    function pageLeaderForGrupo(grupo) {
+        if (!grupo) {
+            return null;
+        }
+        var prev = grupo.previousElementSibling;
+        if (prev && prev.classList && prev.classList.contains('report-pdf-grupo-area-page-leader')) {
+            return prev;
+        }
+        return null;
+    }
+
     function areaSeparatorForGrupo(grupo) {
         if (!grupo || !grupo.querySelector) {
             return null;
         }
-        var first = grupo.firstElementChild;
-        if (first && first.classList && first.classList.contains('report-pdf-grupo-area-separator')) {
-            return first;
-        }
-        return null;
+        return grupo.querySelector('.report-pdf-grupo-area-separator');
     }
 
     function clearGrupoStartBreakMarks(grupo) {
@@ -298,18 +305,39 @@ $footerEnabled = ! empty($footer_enabled);
             return;
         }
         grupo.classList.remove('report-pdf-grupo-prueba-force-break-before');
+        var leader = pageLeaderForGrupo(grupo);
+        if (leader) {
+            leader.classList.remove('report-area-page-leader-force-break-before');
+        }
         var separator = areaSeparatorForGrupo(grupo);
         if (separator) {
             separator.classList.remove('report-area-separator-force-break-before');
         }
     }
 
+    function ensurePageLeaderBefore(grupo) {
+        var leader = pageLeaderForGrupo(grupo);
+        if (leader || !grupo || !grupo.parentNode) {
+            return leader;
+        }
+        leader = document.createElement('div');
+        leader.className = 'report-pdf-grupo-area-page-leader';
+        leader.setAttribute('aria-hidden', 'true');
+        grupo.parentNode.insertBefore(leader, grupo);
+        return leader;
+    }
+
     function markGrupoStartBreakBefore(grupo) {
         if (!grupo) {
             return;
         }
-        var separator = areaSeparatorForGrupo(grupo);
         clearGrupoStartBreakMarks(grupo);
+        var leader = ensurePageLeaderBefore(grupo);
+        if (leader) {
+            leader.classList.add('report-area-page-leader-force-break-before');
+            return;
+        }
+        var separator = areaSeparatorForGrupo(grupo);
         if (separator) {
             separator.classList.add('report-area-separator-force-break-before');
             return;
@@ -317,6 +345,7 @@ $footerEnabled = ! empty($footer_enabled);
         grupo.classList.add('report-pdf-grupo-prueba-force-break-before');
     }
 
+    function clearSegmentBreaksInGrupo(grupo) {
         if (!grupo) {
             return;
         }
@@ -381,6 +410,14 @@ $footerEnabled = ! empty($footer_enabled);
     function captureGrupoDomOrder(container) {
         var entries = [];
         container.querySelectorAll('.report-pdf-grupo-prueba').forEach(function(grupo) {
+            var leader = pageLeaderForGrupo(grupo);
+            if (leader) {
+                entries.push({
+                    el: leader,
+                    parent: leader.parentNode,
+                    nextSibling: leader.nextSibling
+                });
+            }
             entries.push({
                 el: grupo,
                 parent: grupo.parentNode,
@@ -548,6 +585,10 @@ $footerEnabled = ! empty($footer_enabled);
         }
 
         ordered.forEach(function(item) {
+            var leader = pageLeaderForGrupo(item.el);
+            if (leader) {
+                parent.appendChild(leader);
+            }
             parent.appendChild(item.el);
         });
         syncFirstGrupoClass(container);
@@ -560,6 +601,9 @@ $footerEnabled = ! empty($footer_enabled);
         });
         document.querySelectorAll('.report-pdf-subgrupo-block').forEach(function(subgrupo) {
             subgrupo.classList.remove('report-subgrupo-force-break-before');
+        });
+        document.querySelectorAll('.report-pdf-grupo-area-page-leader').forEach(function(leader) {
+            leader.classList.remove('report-area-page-leader-force-break-before');
         });
         document.querySelectorAll('.report-pdf-grupo-area-separator').forEach(function(separator) {
             separator.classList.remove('report-area-separator-force-break-before');

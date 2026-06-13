@@ -445,17 +445,43 @@ table.results.pdf-notes-table td.pdf-notes-cell {
     break-inside: avoid-page !important;
 }
 .pdf-gpb-grupo-intact .report-pdf-grupo-prueba:not(.report-pdf-grupo-prueba-first) {
+    page-break-before: auto !important;
+    break-before: auto !important;
+    margin-top: 0 !important;
+}
+.pdf-gpb-grupo-intact .report-pdf-grupo-area-page-leader,
+.pdf-gpb-grupo-intact .report-area-page-leader-force-break-before {
     page-break-before: always !important;
     break-before: page !important;
+    height: 0 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    border: 0 !important;
+    line-height: 0 !important;
+    font-size: 0 !important;
+    overflow: hidden !important;
+}
+.pdf-gpb-grupo-intact .report-pdf-grupo-area-separator {
+    page-break-before: auto !important;
+    break-before: auto !important;
 }
 .pdf-gpb-grupo-intact .report-pdf-grupo-prueba.report-pdf-grupo-prueba-force-break-before {
     page-break-before: always !important;
     break-before: page !important;
 }
+.pdf-gpb-grupo-intact .report-pdf-grupo-area-page-leader + .report-pdf-grupo-prueba > .report-pdf-grupo-area-separator {
+    page-break-before: auto !important;
+    break-before: auto !important;
+}
 <?php endif; ?>
 <?php if (\App\Services\ReportPdfLayoutService::grupoPruebaPageBreakUsesGrupoIntactCss($gpb)
     && ! \App\Services\ReportPdfLayoutService::grupoPruebaPageBreakUsesPureGrupoIntact($gpb)): ?>
 .pdf-gpb-grupo-intact .report-pdf-grupo-prueba:not(.report-pdf-grupo-prueba-first) {
+    page-break-before: auto !important;
+    break-before: auto !important;
+    margin-top: 0 !important;
+}
+.pdf-gpb-grupo-intact .report-pdf-grupo-area-page-leader {
     page-break-before: always !important;
     break-before: page !important;
 }
