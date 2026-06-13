@@ -442,7 +442,18 @@ table.results.pdf-notes-table td.pdf-notes-cell {
     page-break-inside: avoid !important;
     break-inside: avoid-page !important;
 }
+.pdf-gpb-grupo-intact .report-pdf-grupo-prueba:not(.report-pdf-grupo-prueba-first) {
+    page-break-before: always !important;
+    break-before: page !important;
+}
 .pdf-gpb-grupo-intact .report-pdf-grupo-prueba.report-pdf-grupo-prueba-force-break-before {
+    page-break-before: always !important;
+    break-before: page !important;
+}
+<?php endif; ?>
+<?php if (\App\Services\ReportPdfLayoutService::grupoPruebaPageBreakUsesGrupoIntactCss($gpb)
+    && ! \App\Services\ReportPdfLayoutService::grupoPruebaPageBreakUsesPureGrupoIntact($gpb)): ?>
+.pdf-gpb-grupo-intact .report-pdf-grupo-prueba:not(.report-pdf-grupo-prueba-first) {
     page-break-before: always !important;
     break-before: page !important;
 }

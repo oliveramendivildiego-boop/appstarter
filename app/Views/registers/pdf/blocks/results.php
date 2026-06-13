@@ -31,7 +31,7 @@ foreach ($grupos ?? [] as $padre => $items) {
         $grupoClass .= ' report-pdf-grupo-prueba-first';
     }
     $grupoStyle = \App\Services\ReportPdfLayoutService::mergePdfInlineStyleAttrs(
-        \App\Services\ReportPdfLayoutService::grupoPruebaGrupoIntactStyleAttr($layoutForLf),
+        \App\Services\ReportPdfLayoutService::grupoPruebaGrupoIntactStyleAttr($layoutForLf, $isFirstGrupo),
         \App\Services\ReportPdfLayoutService::grupoPruebaGapMarginStyleAttr($layoutForLf, $isFirstGrupo)
     );
     echo '<div class="' . esc($grupoClass, 'attr') . '"'

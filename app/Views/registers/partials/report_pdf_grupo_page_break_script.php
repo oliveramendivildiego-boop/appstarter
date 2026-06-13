@@ -644,11 +644,17 @@ $footerEnabled = ! empty($footer_enabled);
         var maxSlicePx = layoutCtx.maxSlicePx;
         var boundarySet = layoutCtx.boundarySet;
         var metrics = layoutCtx.metrics;
+        var pureIntact = usesPureGrupoIntact();
 
-        container.querySelectorAll('.report-pdf-grupo-prueba').forEach(function(grupo) {
+        container.querySelectorAll('.report-pdf-grupo-prueba').forEach(function(grupo, idx) {
             var top = topWithinContainer(grupo, container);
             var remaining = remainingOnPage(top, boundarySet);
             var height = grupo.offsetHeight;
+            var isFirstGrupo = idx === 0 || grupo.classList.contains('report-pdf-grupo-prueba-first');
+
+            if (usesGrupoIntactMode() && !isFirstGrupo) {
+                grupo.classList.add('report-pdf-grupo-prueba-force-break-before');
+            }
 
             if (height > maxSlicePx) {
                 grupo.classList.add('report-pdf-grupo-prueba-allow-split');
@@ -657,7 +663,7 @@ $footerEnabled = ! empty($footer_enabled);
             }
 
             if (height <= remaining) {
-                if (usesPureGrupoIntact()) {
+                if (pureIntact) {
                     grupo.classList.add('report-pdf-grupo-prueba-keep-on-page');
                 }
                 return;
@@ -671,6 +677,11 @@ $footerEnabled = ! empty($footer_enabled);
                     return;
                 }
                 clearGrupoCompact(grupo);
+            }
+
+            if (pureIntact) {
+                grupo.classList.add('report-pdf-grupo-prueba-force-break-before');
+                return;
             }
 
             if (shouldForceBreakBefore(remaining) && hasResultContentAboveOnCurrentPage(top, boundarySet, metrics)) {

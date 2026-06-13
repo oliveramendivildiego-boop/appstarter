@@ -3198,15 +3198,25 @@ class ReportPdfLayoutService
      *
      * @param array<string, mixed> $layout
      */
-    public static function grupoPruebaGrupoIntactStyleAttr(array $layout): string
+    public static function grupoPruebaGrupoIntactStyleAttr(array $layout, bool $isFirstGrupo = true): string
     {
         $ps  = is_array($layout['page_style'] ?? null) ? $layout['page_style'] : [];
         $gpb = self::normalizeGrupoPruebaPageBreakStyle($ps['grupo_prueba_page_break'] ?? []);
-        if (! self::grupoPruebaPageBreakUsesPureGrupoIntact($gpb)) {
+        if (! self::grupoPruebaPageBreakUsesGrupoIntactCss($gpb)) {
             return '';
         }
 
-        return 'page-break-inside:avoid;break-inside:avoid-page;';
+        $parts = [];
+        if (self::grupoPruebaPageBreakUsesPureGrupoIntact($gpb)) {
+            $parts[] = 'page-break-inside:avoid';
+            $parts[] = 'break-inside:avoid-page';
+        }
+        if (! $isFirstGrupo) {
+            $parts[] = 'page-break-before:always';
+            $parts[] = 'break-before:page';
+        }
+
+        return $parts !== [] ? implode(';', $parts) . ';' : '';
     }
 
     /**

@@ -209,6 +209,10 @@ body.js-total-pages-ready .pdf-counter-pages::before {
         break-inside: avoid-page !important;
         page-break-inside: avoid !important;
     }
+    body.report-browser-print.pdf-gpb-grupo-intact .report-pdf-grupo-prueba:not(.report-pdf-grupo-prueba-first) {
+        break-before: page !important;
+        page-break-before: always !important;
+    }
     body.report-browser-print.pdf-gpb-grupo-intact .report-pdf-grupo-prueba.report-pdf-grupo-prueba-force-break-before {
         break-before: page !important;
         page-break-before: always !important;
