@@ -68,27 +68,6 @@ $orderSheetBandMm = \App\Services\ReportPdfLayoutService::ORDER_SHEET_HEADER_HEI
         return 1;
     }
 
-    function resolveFooterZonePx(metrics) {
-        var mmToPx = window.reportPrintPagination && window.reportPrintPagination.mmToPx
-            ? window.reportPrintPagination.mmToPx
-            : function(mm) { return mm * (96 / 25.4); };
-        var footerReserveMm = metrics && metrics.footerReserveMM ? metrics.footerReserveMM : 0;
-        return mmToPx(footerReserveMm + ORDER_SHEET_GAP_MM + ORDER_SHEET_BAND_MM);
-    }
-
-    function insertPageOneCover(container, pageOneEndY, footerZonePx) {
-        if (!container || !isFinite(pageOneEndY) || pageOneEndY <= 0) {
-            return;
-        }
-
-        var cover = document.createElement('div');
-        cover.className = 'pdf-osh-page1-cover';
-        cover.setAttribute('aria-hidden', 'true');
-        cover.style.top = Math.round(pageOneEndY) + 'px';
-        cover.style.height = Math.round(Math.max(footerZonePx, 12)) + 'px';
-        container.appendChild(cover);
-    }
-
     window.injectOrderSheetHeadersFromPageTwo = function() {
         var tpl = document.getElementById('pdf-order-sheet-header-template');
         if (!tpl || !window.reportPrintPagination) {
@@ -112,16 +91,8 @@ $orderSheetBandMm = \App\Services\ReportPdfLayoutService::ORDER_SHEET_HEADER_HEI
             return;
         }
 
-        var boundarySet = window.reportPrintPagination.buildBoundaries(container, metrics);
-        var boundaries = boundarySet && boundarySet.boundaries ? boundarySet.boundaries : [];
-        if (!boundaries.length) {
-            return;
-        }
-
         document.body.classList.add('js-order-sheet-header-print');
         document.body.appendChild(buildOrderSheetHeaderNode(tpl));
-
-        insertPageOneCover(container, boundaries[0], resolveFooterZonePx(metrics));
     };
 })();
 </script>

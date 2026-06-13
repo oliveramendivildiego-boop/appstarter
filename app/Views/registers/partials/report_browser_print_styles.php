@@ -199,6 +199,42 @@ body.js-total-pages-ready .pdf-counter-pages::before {
         break-before: page !important;
         page-break-before: always !important;
     }
+    body.report-browser-print.pdf-gpb-grupo-intact .report-pdf-grupo-area-start-table {
+        width: 100% !important;
+        border-collapse: collapse !important;
+        page-break-before: always !important;
+        break-before: page !important;
+        break-inside: avoid !important;
+        page-break-inside: avoid !important;
+        break-after: avoid !important;
+        page-break-after: avoid !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        border: 0 !important;
+    }
+    body.report-browser-print.pdf-gpb-grupo-intact .report-pdf-grupo-area-start-table td {
+        padding: 0 !important;
+        margin: 0 !important;
+        border: 0 !important;
+        vertical-align: top !important;
+    }
+    body.report-browser-print.pdf-gpb-grupo-intact .report-pdf-grupo-area-start-table .report-pdf-grupo-area-separator {
+        display: block !important;
+        visibility: visible !important;
+        opacity: 1 !important;
+        margin-top: 0 !important;
+        padding-top: 6px !important;
+        padding-bottom: 6px !important;
+        break-inside: avoid !important;
+        page-break-inside: avoid !important;
+        box-shadow: none !important;
+    }
+    body.report-browser-print.pdf-gpb-grupo-intact .report-pdf-grupo-area-start-table + .report-pdf-grupo-prueba {
+        break-before: avoid !important;
+        page-break-before: avoid !important;
+        margin-top: 0 !important;
+        padding-top: 0 !important;
+    }
     body.report-browser-print.pdf-gpb-grupo-intact .report-pdf-grupo-prueba:not(.report-pdf-grupo-prueba-allow-split) {
         break-inside: avoid-page !important;
         page-break-inside: avoid !important;
@@ -218,34 +254,43 @@ body.js-total-pages-ready .pdf-counter-pages::before {
     body.report-browser-print.pdf-gpb-grupo-intact .report-pdf-grupo-area-page-leader,
     body.report-browser-print.pdf-gpb-grupo-intact .report-area-page-leader-force-break-before {
         display: block !important;
-        height: 0 !important;
+        /* Altura real (no padding en el título): Chrome recorta padding-top al inicio de hoja. */
+        height: calc(var(--pdf-results-grupo-gap, 10px) + var(--pdf-grupo-area-separator-margin-top, 10px)) !important;
+        min-height: calc(var(--pdf-results-grupo-gap, 10px) + var(--pdf-grupo-area-separator-margin-top, 10px)) !important;
         margin: 0 !important;
         padding: 0 !important;
         border: 0 !important;
         line-height: 0 !important;
         font-size: 0 !important;
-        overflow: hidden !important;
+        overflow: visible !important;
         break-before: page !important;
         page-break-before: always !important;
+        break-after: avoid !important;
+        page-break-after: avoid !important;
     }
     body.report-browser-print.pdf-gpb-grupo-intact .report-pdf-grupo-area-separator,
     body.report-browser-print.pdf-gpb-grupo-intact .report-area-separator-force-break-before {
-        break-before: auto !important;
-        page-break-before: auto !important;
+        break-before: avoid !important;
+        page-break-before: avoid !important;
         break-after: avoid-page !important;
         page-break-after: avoid !important;
         break-inside: avoid-page !important;
         page-break-inside: avoid !important;
         margin-top: 0 !important;
-        padding-top: calc(var(--pdf-results-grupo-gap, 10px) + var(--pdf-grupo-area-separator-margin-top, 10px)) !important;
+        padding-top: 6px !important;
+        padding-bottom: 6px !important;
         margin-bottom: var(--pdf-grupo-area-separator-margin-bottom, 10px) !important;
         overflow: visible !important;
+        box-shadow: none !important;
+        -webkit-box-decoration-break: clone;
+        box-decoration-break: clone;
     }
     body.report-browser-print.pdf-gpb-grupo-intact .report-pdf-grupo-area-page-leader + .report-pdf-grupo-prueba > .report-pdf-grupo-area-separator {
-        padding-top: calc(var(--pdf-results-grupo-gap, 10px) + var(--pdf-grupo-area-separator-margin-top, 10px)) !important;
+        padding-top: 6px !important;
+        margin-top: 0 !important;
     }
     body.report-browser-print.pdf-gpb-grupo-intact .report-pdf-grupo-prueba:not(.report-pdf-grupo-prueba-first):not(:has(> .report-pdf-grupo-area-separator)),
-    body.report-browser-print.pdf-gpb-grupo-intact .report-pdf-grupo-prueba.report-pdf-grupo-prueba-force-break-before:not(:has(+ .report-pdf-grupo-area-page-leader)):not(:has(> .report-pdf-grupo-area-separator)) {
+    body.report-browser-print.pdf-gpb-grupo-intact .report-pdf-grupo-prueba.report-pdf-grupo-prueba-force-break-before:not(:has(> .report-pdf-grupo-area-separator)) {
         break-before: page !important;
         page-break-before: always !important;
         margin-top: 0 !important;
@@ -320,13 +365,17 @@ body.js-total-pages-ready .pdf-counter-pages::before {
         left: 0 !important;
         right: 0 !important;
         width: 100% !important;
-        z-index: 5 !important;
+        z-index: 4 !important;
         margin: 0 !important;
         padding: 0 !important;
         background: #ffffff !important;
         pointer-events: none !important;
         -webkit-print-color-adjust: exact !important;
         print-color-adjust: exact !important;
+    }
+    body.report-browser-print.pdf-gpb-grupo-intact .report-pdf-grupo-area-page-leader + .report-pdf-grupo-prueba > .report-pdf-grupo-area-separator {
+        position: relative !important;
+        z-index: 6 !important;
     }
     body,
     table.results th,

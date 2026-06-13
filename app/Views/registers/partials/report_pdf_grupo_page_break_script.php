@@ -596,6 +596,7 @@ $footerEnabled = ! empty($footer_enabled);
 
     function clearPageBreakAdjustments() {
         restoreGrupoDomOrder();
+        clearBrowserPrintAreaSeparatorFix();
         document.querySelectorAll('.report-pdf-grupo-cabecera').forEach(function(cabecera) {
             cabecera.classList.remove('report-cabecera-force-break-before');
         });
@@ -803,6 +804,60 @@ $footerEnabled = ! empty($footer_enabled);
         });
     }
 
+    function applyBrowserPrintAreaSeparatorFix() {
+        if (!usesGrupoIntactMode()) {
+            return;
+        }
+
+        document.querySelectorAll('.report-pdf-grupo-area-start-table').forEach(function(table) {
+            table.style.setProperty('page-break-before', 'always', 'important');
+            table.style.setProperty('break-before', 'page', 'important');
+            table.style.setProperty('break-inside', 'avoid', 'important');
+            table.style.setProperty('page-break-inside', 'avoid', 'important');
+        });
+
+        document.querySelectorAll('.report-pdf-grupo-area-start-table .report-pdf-grupo-area-separator').forEach(function(sep) {
+            sep.style.setProperty('margin-top', '0', 'important');
+            sep.style.setProperty('padding-top', '6px', 'important');
+            sep.style.setProperty('padding-bottom', '6px', 'important');
+            sep.style.setProperty('break-inside', 'avoid', 'important');
+            sep.style.setProperty('page-break-inside', 'avoid', 'important');
+            sep.style.setProperty('box-shadow', 'none', 'important');
+            sep.style.setProperty('visibility', 'visible', 'important');
+            sep.style.setProperty('opacity', '1', 'important');
+        });
+
+        document.querySelectorAll('.report-pdf-grupo-area-page-leader').forEach(function(leader) {
+            leader.style.setProperty('page-break-before', 'always', 'important');
+            leader.style.setProperty('break-before', 'page', 'important');
+        });
+
+        document.querySelectorAll('.report-pdf-grupo-prueba:not(.report-pdf-grupo-prueba-first) > .report-pdf-grupo-area-separator').forEach(function(sep) {
+            sep.style.setProperty('margin-top', '0', 'important');
+            sep.style.setProperty('padding-top', '6px', 'important');
+            sep.style.setProperty('box-shadow', 'none', 'important');
+        });
+    }
+
+    function clearBrowserPrintAreaSeparatorFix() {
+        document.querySelectorAll('.report-pdf-grupo-area-start-table').forEach(function(table) {
+            table.style.removeProperty('page-break-before');
+            table.style.removeProperty('break-before');
+            table.style.removeProperty('break-inside');
+            table.style.removeProperty('page-break-inside');
+        });
+        document.querySelectorAll('.report-pdf-grupo-area-start-table .report-pdf-grupo-area-separator').forEach(function(sep) {
+            sep.style.removeProperty('margin-top');
+            sep.style.removeProperty('padding-top');
+            sep.style.removeProperty('padding-bottom');
+            sep.style.removeProperty('break-inside');
+            sep.style.removeProperty('page-break-inside');
+            sep.style.removeProperty('box-shadow');
+            sep.style.removeProperty('visibility');
+            sep.style.removeProperty('opacity');
+        });
+    }
+
     function applyPageBreakRules() {
         clearPageBreakAdjustments();
         var container = (paginationApi() && paginationApi().getPrintContainer)
@@ -811,6 +866,9 @@ $footerEnabled = ! empty($footer_enabled);
 
         var layoutCtx = getLayoutContext(container);
         if (!layoutCtx || !isFinite(layoutCtx.maxSlicePx) || layoutCtx.maxSlicePx <= 0) {
+            if (usesGrupoIntactMode()) {
+                applyBrowserPrintAreaSeparatorFix();
+            }
             return;
         }
 
@@ -837,8 +895,12 @@ $footerEnabled = ! empty($footer_enabled);
 
         if (!usesGrupoIntactMode()) {
             applyCabeceraSegmentIntegrity(container, layoutCtx);
+            applyGrupoPageBreaks(container, layoutCtx);
+            return;
         }
-        applyGrupoPageBreaks(container, layoutCtx);
+        // Impresión navegador + grupo íntegro: el HTML (.report-pdf-grupo-area-start-table) y CSS
+        // controlan el salto; applyGrupoPageBreaks rompía el título del área en la hoja 2.
+        applyBrowserPrintAreaSeparatorFix();
     }
 
     window.updateReportPrintPageBreakMetrics = function(metrics) {
