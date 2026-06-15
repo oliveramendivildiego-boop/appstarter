@@ -151,6 +151,8 @@ $normalizeCeldaCfg = static function ($raw) use ($esPersonalizado): array {
             $out = ['modo' => 'opcion', 'opcion_id' => max(0, (int) ($raw['opcion_id'] ?? 0))];
         } elseif ($modo === 'texto_rico') {
             $out = ['modo' => 'texto_rico'];
+        } elseif ($modo === 'texto_fijo') {
+            $out = ['modo' => 'texto_fijo'];
         } elseif ($modo === 'leyenda') {
             $out = [
                 'modo'                         => 'leyenda',
@@ -180,6 +182,9 @@ $normalizeCeldaCfg = static function ($raw) use ($esPersonalizado): array {
         $out['rowspan'] = max(1, min(50, (int) ($raw['rowspan'] ?? 1)));
         $out['colspan'] = max(1, min(20, (int) ($raw['colspan'] ?? 1)));
         $textoFijo = trim((string) ($raw['texto_fijo'] ?? ''));
+        if (($out['modo'] ?? '') === 'texto_fijo') {
+            $out['rol'] = 'titulo';
+        }
         if ($textoFijo !== '') {
             $out['texto_fijo'] = $textoFijo;
         }
@@ -205,6 +210,9 @@ $estiloCeldaPersonalizado = static function (array $celdaCfg): string {
 
 $celdaEsTituloFill = static function (array $cfg): bool {
     $rol = $cfg['rol'] ?? 'input';
+    if (($cfg['modo'] ?? '') === 'texto_fijo') {
+        return true;
+    }
 
     return in_array($rol, ['titulo', 'etiqueta'], true);
 };
@@ -485,6 +493,26 @@ foreach ($leyendasPorId as $lid => $lcRow) {
     flex: 0 1 auto;
 }
 
+.cultivo-fill-texto-fijo p:last-child {
+    margin-bottom: 0;
+}
+
+.cultivo-fill-texto-fijo ul,
+.cultivo-fill-texto-fijo ol {
+    margin-bottom: 0.35rem;
+    padding-left: 1.25rem;
+}
+
+.cultivo-fill-texto-fijo strong,
+.cultivo-fill-texto-fijo b {
+    font-weight: 700;
+}
+
+.cultivo-fill-texto-fijo em,
+.cultivo-fill-texto-fijo i {
+    font-style: italic;
+}
+
 </style>
 
 <div class="col-12 mb-3 cultivo-fill-wrap<?= $esPersonalizado ? ' cultivo-fill-personalizado' : '' ?>" data-prianacategoria-id="<?= $prianacategoriaId ?>">
@@ -683,6 +711,10 @@ foreach ($leyendasPorId as $lid => $lcRow) {
                                 }
 
                                 $inputId = $buildCellKey('cv_', $prianacategoriaId, $bloqueId, $r, $c);
+
+                                if ($esTextoRicoFill && $valorActual !== '') {
+                                    $valorActual = registro_sanitizar_html_rico($valorActual);
+                                }
 
                                 $dataAttrs = ' data-prianacategoria-id="' . $prianacategoriaId . '"'
 

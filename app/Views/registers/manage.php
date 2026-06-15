@@ -109,6 +109,28 @@
     #modalFichaClinica .modal-body {
         max-height: calc(90vh - 160px);
         overflow-y: auto;
+        overflow-x: auto;
+    }
+    #modalFichaClinica .note-editor.note-frame {
+        width: 100% !important;
+        max-width: 100%;
+    }
+    #modalFichaClinica .note-editing-area,
+    #modalFichaClinica .note-editable {
+        min-height: 120px;
+    }
+    .note-popover,
+    .note-dropdown-menu,
+    .note-modal {
+        z-index: 1085 !important;
+    }
+    .cultivo-fill-texto-fijo p:last-child {
+        margin-bottom: 0;
+    }
+    .cultivo-fill-texto-fijo ul,
+    .cultivo-fill-texto-fijo ol {
+        margin-bottom: 0.35rem;
+        padding-left: 1.25rem;
     }
 </style>
 <link href="https://cdn.jsdelivr.net/npm/summernote@0.8.18/dist/summernote-lite.min.css" rel="stylesheet">
@@ -578,10 +600,54 @@ document.addEventListener('DOMContentLoaded', function() {
         if (typeof jQuery === 'undefined' || !jQuery.fn.summernote || !fichaClinicaFormWrap) return;
         fichaClinicaFormWrap.querySelectorAll('.input-texto-rico').forEach(function(el) {
             if (jQuery(el).data('summernote')) return;
+            var initialHtml = el.value || el.textContent || '';
+            var enPersonalizado = !!el.closest('.cultivo-fill-personalizado');
+            jQuery(el).summernote({
+                height: enPersonalizado ? 200 : 160,
+                width: '100%',
+                tooltip: false,
+                toolbar: [
+                    ['style', ['bold', 'italic', 'underline']],
+                    ['para', ['ul', 'ol']],
+                    ['insert', ['link']],
+                    ['view', ['codeview']]
+                ],
+                callbacks: {
+                    onInit: function() {
+                        if (initialHtml && initialHtml.trim() !== '') {
+                            jQuery(el).summernote('code', initialHtml);
+                        }
+                    }
+                }
+            });
+        });
+        fichaClinicaFormWrap.querySelectorAll('.input-texto-fijo').forEach(function(el) {
+            if (jQuery(el).data('summernote')) return;
+            var initialHtml = el.value || el.textContent || '';
             jQuery(el).summernote({
                 height: 120,
-                toolbar: [['style', ['bold', 'italic', 'underline']], ['para', ['ul', 'ol']]]
+                toolbar: false
             });
+            jQuery(el).summernote('disable');
+            if (initialHtml && initialHtml.trim() !== '') {
+                jQuery(el).summernote('code', initialHtml);
+            }
+        });
+    }
+
+    function refreshFichaClinicaRichEditors() {
+        if (!fichaClinicaFormWrap) return;
+        initFichaClinicaEditors();
+        if (typeof jQuery === 'undefined' || !jQuery.fn.summernote) return;
+        fichaClinicaFormWrap.querySelectorAll('.input-texto-rico, .input-texto-fijo').forEach(function(el) {
+            if (!jQuery(el).data('summernote')) return;
+            var html = el.getAttribute('data-initial-html');
+            if (!html) {
+                html = el.value || '';
+            }
+            if (html && html.trim() !== '') {
+                jQuery(el).summernote('code', html);
+            }
         });
     }
 
@@ -601,7 +667,12 @@ document.addEventListener('DOMContentLoaded', function() {
         fichaClinicaFormWrap.querySelectorAll('.cultivo-celda-input, .cultivo-celda-valor-fill').forEach(function(el) {
             var id = el.id || '';
             if (!id) return;
-            var valor = (el.value || '').trim();
+            var valor = '';
+            if (typeof jQuery !== 'undefined' && jQuery(el).data('summernote')) {
+                valor = (jQuery(el).summernote('code') || '').trim();
+            } else {
+                valor = (el.value || '').trim();
+            }
             if (el.classList.contains('input-texto-rico') || el.classList.contains('input-texto-fijo')) {
                 valor = valor.replace(/^<p><br><\/p>$/i, '').replace(/^<p><\/p>$/i, '').trim();
             }
@@ -680,11 +751,13 @@ document.addEventListener('DOMContentLoaded', function() {
                 }
             }
             fichaClinicaFormWrap.innerHTML = res.html || '';
-            initFichaClinicaEditors();
-            var draft = fichasClinicasDraft[String(priaId)] || fichasClinicasDraft[parseInt(priaId, 10)];
-            if (draft && draft.valores && Object.keys(draft.valores).length) {
-                applyFichaClinicaDraftValores(draft.valores);
-            }
+            requestAnimationFrame(function() {
+                refreshFichaClinicaRichEditors();
+                var draft = fichasClinicasDraft[String(priaId)] || fichasClinicasDraft[parseInt(priaId, 10)];
+                if (draft && draft.valores && Object.keys(draft.valores).length) {
+                    applyFichaClinicaDraftValores(draft.valores);
+                }
+            });
         })
         .catch(function() {
             fichaClinicaLoading.style.display = 'none';
@@ -1505,6 +1578,9 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     if (fichaClinicaModalEl) {
+        fichaClinicaModalEl.addEventListener('shown.bs.modal', function() {
+            refreshFichaClinicaRichEditors();
+        });
         fichaClinicaModalEl.addEventListener('hidden.bs.modal', function() {
             syncFichaModalToDraft();
             renderPruebasLista();

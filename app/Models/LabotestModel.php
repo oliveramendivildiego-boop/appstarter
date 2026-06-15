@@ -429,6 +429,8 @@ class LabotestModel extends Model
                 ];
             } elseif ($modoRaw === 'texto_rico') {
                 $out = ['modo' => 'texto_rico'];
+            } elseif ($modoRaw === 'texto_fijo') {
+                $out = ['modo' => 'texto_fijo', 'rol' => 'titulo'];
             } elseif ($modoRaw === 'leyenda') {
                 $out = [
                     'modo'                         => 'leyenda',
@@ -476,8 +478,11 @@ class LabotestModel extends Model
                 helper('registro');
                 $textoFijo = registro_sanitizar_html_rico($textoFijo);
             }
-            if ($textoFijo !== '' || in_array($rol, ['titulo', 'etiqueta'], true) || $fuente === 'enriquecido') {
+            if ($textoFijo !== '' || in_array($rol, ['titulo', 'etiqueta'], true) || $fuente === 'enriquecido' || ($out['modo'] ?? '') === 'texto_fijo') {
                 $out['texto_fijo'] = $textoFijo;
+            }
+            if (($out['modo'] ?? '') === 'texto_fijo') {
+                $out['rol'] = 'titulo';
             }
         }
 
