@@ -95,7 +95,24 @@
         opacity: 0.45;
         background: #cfe2ff;
     }
+    #pruebas_lista .btn-ficha-clinica.ficha-con-datos {
+        border-color: #198754;
+        color: #198754;
+    }
+    #pruebas_lista .pruebaitem.prueba-ficha-pendiente {
+        background: #fff3cd;
+        border-left: 3px solid #ffc107;
+    }
+    #modalFichaClinica .modal-dialog {
+        max-width: 96vw;
+    }
+    #modalFichaClinica .modal-body {
+        max-height: calc(90vh - 160px);
+        overflow-y: auto;
+    }
 </style>
+<link href="https://cdn.jsdelivr.net/npm/summernote@0.8.18/dist/summernote-lite.min.css" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/summernote@0.8.18/dist/summernote-lite.min.js"></script>
 <script src="<?= base_url('js/vendor/sortable.min.js') ?>"></script>
 <?= $this->endSection() ?>
 <?= $this->section('content') ?>
@@ -114,6 +131,9 @@ foreach ($categories ?? [] as $cat) {
 ?>
 <script>window.PRUEBAS_LOOKUP = <?= json_encode($pruebasLookup, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP) ?>;</script>
 <script>window.PRUEBAS_CATEGORIES = <?= json_encode($categories ?? [], JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP) ?>;</script>
+<script>window.FICHA_CLINICA_MAP = <?= json_encode($ficha_clinica_map ?? [], JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP) ?>;</script>
+<script>window.FICHAS_CLINICAS_FILLED = <?= json_encode($fichas_clinicas_filled ?? [], JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP) ?>;</script>
+<script>window.FICHAS_CLINICAS_DATA = <?= json_encode($fichas_clinicas_data ?? [], JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP) ?>;</script>
 <?php
 $editPayload = null;
 if (!empty($edit_registro)) {
@@ -192,6 +212,33 @@ if (!empty($edit_registro)) {
                 <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
                 <button type="button" id="btn_agregar_pruebas_modal" class="btn btn-primary">
                     <i class="fa-solid fa-plus me-1"></i>Agregar
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="modalFichaClinica" tabindex="-1" aria-labelledby="modalFichaClinicaLabel" aria-hidden="true">
+    <div class="modal-dialog modal-xl modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="modalFichaClinicaLabel"><i class="fa-solid fa-file-medical me-2"></i>Ficha clínica</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+            </div>
+            <div class="modal-body">
+                <div id="ficha_clinica_alert" class="alert" style="display:none;"></div>
+                <div id="ficha_clinica_meta" class="mb-2 small text-muted"></div>
+                <div id="ficha_clinica_selector_wrap" class="mb-3" style="display:none;">
+                    <label for="ficha_clinica_selector" class="form-label">Ficha clínica</label>
+                    <select id="ficha_clinica_selector" class="form-select form-select-sm"></select>
+                </div>
+                <div id="ficha_clinica_loading" class="text-muted py-3" style="display:none;">Cargando formulario...</div>
+                <div id="ficha_clinica_form_wrap"></div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cerrar</button>
+                <button type="button" id="btn_guardar_ficha_clinica" class="btn btn-primary">
+                    <i class="fa-solid fa-floppy-disk me-1"></i>Guardar ficha
                 </button>
             </div>
         </div>
@@ -352,6 +399,32 @@ document.addEventListener('DOMContentLoaded', function() {
     var pruebasSeleccionadas = []; // {id, name, padre, cost}
     var pruebasSortable = null;
     var editInfo = (typeof window.EDIT_REGISTRO !== 'undefined') ? window.EDIT_REGISTRO : null;
+    var fichaClinicaMap = (typeof window.FICHA_CLINICA_MAP === 'object' && window.FICHA_CLINICA_MAP) ? window.FICHA_CLINICA_MAP : {};
+    var fichasClinicasFilledState = (typeof window.FICHAS_CLINICAS_FILLED === 'object' && window.FICHAS_CLINICAS_FILLED) ? window.FICHAS_CLINICAS_FILLED : {};
+    var fichasClinicasDraft = {};
+    var fichaClinicaModalEl = document.getElementById('modalFichaClinica');
+    var fichaClinicaModal = (typeof bootstrap !== 'undefined' && fichaClinicaModalEl) ? bootstrap.Modal.getOrCreateInstance(fichaClinicaModalEl) : null;
+    var fichaClinicaFormWrap = document.getElementById('ficha_clinica_form_wrap');
+    var fichaClinicaLoading = document.getElementById('ficha_clinica_loading');
+    var fichaClinicaSelectorWrap = document.getElementById('ficha_clinica_selector_wrap');
+    var fichaClinicaSelector = document.getElementById('ficha_clinica_selector');
+    var fichaClinicaMeta = document.getElementById('ficha_clinica_meta');
+    var fichaClinicaAlert = document.getElementById('ficha_clinica_alert');
+    var btnGuardarFichaClinica = document.getElementById('btn_guardar_ficha_clinica');
+    var fichaClinicaContext = { prianacategoriaId: 0, pruebaNombre: '', fichaClinicaId: 0, fichas: [] };
+
+    if (typeof window.FICHAS_CLINICAS_DATA === 'object' && window.FICHAS_CLINICAS_DATA) {
+        Object.keys(window.FICHAS_CLINICAS_DATA).forEach(function(priaKey) {
+            var row = window.FICHAS_CLINICAS_DATA[priaKey];
+            if (!row || !row.has_data) return;
+            fichasClinicasDraft[String(priaKey)] = {
+                prianacategoria_id: parseInt(priaKey, 10) || parseInt(row.prianacategoria_id, 10) || 0,
+                ficha_clinica_id: parseInt(row.ficha_clinica_id, 10) || 0,
+                valores: row.valores || {},
+                has_data: true
+            };
+        });
+    }
 
     function getCsrfPair() {
         if (typeof window.CI_CSRF_TOKEN_NAME === 'undefined' || typeof window.CI_CSRF_TOKEN === 'undefined') {
@@ -467,6 +540,371 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
+    function pruebaTieneFichaClinica(pruebaId) {
+        var key = String(pruebaId);
+        var fichas = fichaClinicaMap[key] || fichaClinicaMap[parseInt(pruebaId, 10)];
+        return Array.isArray(fichas) && fichas.length > 0;
+    }
+
+    function fichaClinicaTieneDatos(pruebaId) {
+        var key = String(pruebaId);
+        var draft = fichasClinicasDraft[key] || fichasClinicasDraft[parseInt(pruebaId, 10)];
+        if (draft && draft.has_data) return true;
+        var filled = fichasClinicasFilledState[key] || fichasClinicasFilledState[parseInt(pruebaId, 10)];
+        return !!(filled && filled.has_data);
+    }
+
+    function getFichaClinicaIdParaPrueba(pruebaId) {
+        var key = String(pruebaId);
+        var draft = fichasClinicasDraft[key] || fichasClinicasDraft[parseInt(pruebaId, 10)];
+        if (draft && draft.ficha_clinica_id) return parseInt(draft.ficha_clinica_id, 10);
+        var filled = fichasClinicasFilledState[key] || fichasClinicasFilledState[parseInt(pruebaId, 10)];
+        if (filled && filled.ficha_clinica_id) return parseInt(filled.ficha_clinica_id, 10);
+        var fichas = fichaClinicaMap[key] || fichaClinicaMap[parseInt(pruebaId, 10)];
+        if (Array.isArray(fichas) && fichas[0]) return parseInt(fichas[0].ficha_clinica_id, 10) || 0;
+        return 0;
+    }
+
+    function destroyFichaClinicaEditors() {
+        if (typeof jQuery === 'undefined' || !jQuery.fn.summernote || !fichaClinicaFormWrap) return;
+        fichaClinicaFormWrap.querySelectorAll('.input-texto-rico, .input-texto-fijo').forEach(function(el) {
+            if (jQuery(el).data('summernote')) {
+                jQuery(el).summernote('destroy');
+            }
+        });
+    }
+
+    function initFichaClinicaEditors() {
+        if (typeof jQuery === 'undefined' || !jQuery.fn.summernote || !fichaClinicaFormWrap) return;
+        fichaClinicaFormWrap.querySelectorAll('.input-texto-rico').forEach(function(el) {
+            if (jQuery(el).data('summernote')) return;
+            jQuery(el).summernote({
+                height: 120,
+                toolbar: [['style', ['bold', 'italic', 'underline']], ['para', ['ul', 'ol']]]
+            });
+        });
+    }
+
+    function syncFichaClinicaEditors() {
+        if (typeof jQuery === 'undefined' || !jQuery.fn.summernote || !fichaClinicaFormWrap) return;
+        fichaClinicaFormWrap.querySelectorAll('.input-texto-rico, .input-texto-fijo').forEach(function(el) {
+            if (jQuery(el).data('summernote')) {
+                el.value = jQuery(el).summernote('code');
+            }
+        });
+    }
+
+    function collectFichaClinicaValores() {
+        var valores = {};
+        if (!fichaClinicaFormWrap) return valores;
+        syncFichaClinicaEditors();
+        fichaClinicaFormWrap.querySelectorAll('.cultivo-celda-input, .cultivo-celda-valor-fill').forEach(function(el) {
+            var id = el.id || '';
+            if (!id) return;
+            var valor = (el.value || '').trim();
+            if (el.classList.contains('input-texto-rico') || el.classList.contains('input-texto-fijo')) {
+                valor = valor.replace(/^<p><br><\/p>$/i, '').replace(/^<p><\/p>$/i, '').trim();
+            }
+            if (valor !== '') valores[id] = valor;
+        });
+        return valores;
+    }
+
+    function applyFichaClinicaDraftValores(valores) {
+        if (!fichaClinicaFormWrap || !valores || typeof valores !== 'object') return;
+        Object.keys(valores).forEach(function(fieldId) {
+            var el = fichaClinicaFormWrap.querySelector('#' + CSS.escape(fieldId));
+            if (!el) return;
+            var val = valores[fieldId];
+            if (typeof jQuery !== 'undefined' && jQuery(el).data('summernote')) {
+                jQuery(el).summernote('code', val);
+            } else {
+                el.value = val;
+            }
+        });
+        fichaClinicaFormWrap.querySelectorAll('.cultivo-leyenda-fill-select').forEach(function(sel) {
+            sel.dispatchEvent(new Event('change'));
+        });
+    }
+
+    function hideFichaClinicaAlert() {
+        if (!fichaClinicaAlert) return;
+        fichaClinicaAlert.style.display = 'none';
+        fichaClinicaAlert.textContent = '';
+    }
+
+    function showFichaClinicaAlert(ok, msg) {
+        if (!fichaClinicaAlert) return;
+        fichaClinicaAlert.className = 'alert alert-' + (ok ? 'success' : 'danger');
+        fichaClinicaAlert.textContent = msg || '';
+        fichaClinicaAlert.style.display = msg ? 'block' : 'none';
+    }
+
+    function loadFichaClinicaForm(priaId, fichaId) {
+        if (!fichaClinicaFormWrap || !fichaClinicaLoading) return;
+        hideFichaClinicaAlert();
+        destroyFichaClinicaEditors();
+        fichaClinicaFormWrap.innerHTML = '';
+        fichaClinicaLoading.style.display = 'block';
+        var registroId = (editInfo && editInfo.registro_id) ? parseInt(editInfo.registro_id, 10) : 0;
+        var qs = 'prianacategoria_id=' + encodeURIComponent(String(priaId)) +
+            '&ficha_clinica_id=' + encodeURIComponent(String(fichaId || 0)) +
+            '&registro_id=' + encodeURIComponent(String(registroId)) +
+            '&titulo_prueba=' + encodeURIComponent(String(fichaClinicaContext.pruebaNombre || ''));
+        fetch('<?= site_url('registers/fichaClinicaForm') ?>?' + qs, {
+            headers: { 'X-Requested-With': 'XMLHttpRequest' }
+        })
+        .then(function(r) { return r.json().catch(function() { return {}; }); })
+        .then(function(res) {
+            fichaClinicaLoading.style.display = 'none';
+            if (!res.success) {
+                showFichaClinicaAlert(false, res.message || 'No se pudo cargar la ficha.');
+                return;
+            }
+            fichaClinicaContext.fichaClinicaId = parseInt(res.ficha_clinica_id, 10) || 0;
+            fichaClinicaContext.fichas = Array.isArray(res.fichas) ? res.fichas : [];
+            if (fichaClinicaSelector && fichaClinicaSelectorWrap) {
+                var fichas = fichaClinicaContext.fichas;
+                if (fichas.length > 1) {
+                    fichaClinicaSelector.innerHTML = '';
+                    fichas.forEach(function(f) {
+                        var opt = document.createElement('option');
+                        opt.value = String(f.ficha_clinica_id);
+                        opt.textContent = f.nombre || ('Ficha #' + f.ficha_clinica_id);
+                        if (parseInt(f.ficha_clinica_id, 10) === fichaClinicaContext.fichaClinicaId) opt.selected = true;
+                        fichaClinicaSelector.appendChild(opt);
+                    });
+                    fichaClinicaSelectorWrap.style.display = 'block';
+                } else {
+                    fichaClinicaSelectorWrap.style.display = 'none';
+                }
+            }
+            fichaClinicaFormWrap.innerHTML = res.html || '';
+            initFichaClinicaEditors();
+            var draft = fichasClinicasDraft[String(priaId)] || fichasClinicasDraft[parseInt(priaId, 10)];
+            if (draft && draft.valores && Object.keys(draft.valores).length) {
+                applyFichaClinicaDraftValores(draft.valores);
+            }
+        })
+        .catch(function() {
+            fichaClinicaLoading.style.display = 'none';
+            showFichaClinicaAlert(false, 'Error de red al cargar la ficha.');
+        });
+    }
+
+    function abrirFichaClinicaModal(pruebaId, pruebaNombre) {
+        if (!pruebaTieneFichaClinica(pruebaId)) return;
+        fichaClinicaContext.prianacategoriaId = parseInt(pruebaId, 10);
+        fichaClinicaContext.pruebaNombre = pruebaNombre || '';
+        var fichaId = getFichaClinicaIdParaPrueba(pruebaId);
+        if (fichaClinicaMeta) {
+            fichaClinicaMeta.textContent = 'Prueba: ' + (pruebaNombre || ('#' + pruebaId));
+        }
+        hideFichaClinicaAlert();
+        loadFichaClinicaForm(pruebaId, fichaId);
+        if (fichaClinicaModal) fichaClinicaModal.show();
+    }
+
+    function syncFichaModalToDraft() {
+        var priaId = fichaClinicaContext.prianacategoriaId;
+        var fichaId = fichaClinicaContext.fichaClinicaId;
+        if (priaId < 1 || fichaId < 1 || !fichaClinicaFormWrap) return false;
+        if (!fichaClinicaFormWrap.querySelector('.cultivo-celda-input, .cultivo-celda-valor-fill')) return false;
+        var valores = collectFichaClinicaValores();
+        var hasData = Object.keys(valores).length > 0;
+        if (!hasData) return false;
+        fichasClinicasDraft[String(priaId)] = {
+            prianacategoria_id: priaId,
+            ficha_clinica_id: fichaId,
+            valores: valores,
+            has_data: true
+        };
+        fichasClinicasFilledState[String(priaId)] = { ficha_clinica_id: fichaId, has_data: true };
+        return true;
+    }
+
+    function guardarFichaClinicaModal() {
+        var priaId = fichaClinicaContext.prianacategoriaId;
+        var fichaId = fichaClinicaContext.fichaClinicaId;
+        if (priaId < 1 || fichaId < 1) return;
+        if (!syncFichaModalToDraft()) {
+            fichasClinicasDraft[String(priaId)] = {
+                prianacategoria_id: priaId,
+                ficha_clinica_id: fichaId,
+                valores: {},
+                has_data: false
+            };
+            delete fichasClinicasFilledState[String(priaId)];
+            renderPruebasLista();
+            showFichaClinicaAlert(true, 'Borrador actualizado.');
+            return;
+        }
+        renderPruebasLista();
+        var valores = fichasClinicasDraft[String(priaId)].valores || {};
+        var hasData = Object.keys(valores).length > 0;
+        var registroId = (editInfo && editInfo.registro_id) ? parseInt(editInfo.registro_id, 10) : 0;
+        if (registroId < 1) {
+            showFichaClinicaAlert(true, hasData ? 'Datos guardados en borrador (se guardarán con la orden).' : 'Borrador actualizado.');
+            return;
+        }
+        var csrf = getCsrfPair();
+        var body = 'registro_id=' + encodeURIComponent(String(registroId)) +
+            '&prianacategoria_id=' + encodeURIComponent(String(priaId)) +
+            '&ficha_clinica_id=' + encodeURIComponent(String(fichaId)) +
+            '&valores=' + encodeURIComponent(JSON.stringify(valores));
+        if (csrf) body += '&' + encodeURIComponent(csrf.name) + '=' + encodeURIComponent(csrf.value);
+        if (btnGuardarFichaClinica) btnGuardarFichaClinica.disabled = true;
+        fetch('<?= site_url('registers/saveFichaClinica') ?>', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8',
+                'X-Requested-With': 'XMLHttpRequest'
+            },
+            body: body
+        })
+        .then(function(r) { return r.json().catch(function() { return {}; }); })
+        .then(function(res) {
+            updateCsrfFromResponse(res);
+            if (!res.success) {
+                showFichaClinicaAlert(false, res.message || 'No se pudo guardar.');
+                return;
+            }
+            showFichaClinicaAlert(true, res.message || 'Ficha clínica guardada.');
+        })
+        .catch(function() {
+            showFichaClinicaAlert(false, 'Error de red al guardar.');
+        })
+        .finally(function() {
+            if (btnGuardarFichaClinica) btnGuardarFichaClinica.disabled = false;
+        });
+    }
+
+    function buildFichasClinicasPostPayload() {
+        var items = [];
+        Object.keys(fichasClinicasDraft).forEach(function(key) {
+            var d = fichasClinicasDraft[key];
+            if (!d || !d.has_data) return;
+            var valores = d.valores || {};
+            if (!Object.keys(valores).length) return;
+            items.push({
+                prianacategoria_id: parseInt(d.prianacategoria_id || key, 10),
+                ficha_clinica_id: parseInt(d.ficha_clinica_id, 10),
+                valores: d.valores || {}
+            });
+        });
+        return items.length ? JSON.stringify(items) : '';
+    }
+
+    function getPruebasConFichaSinDatos() {
+        var pendientes = [];
+        pruebasSeleccionadas.forEach(function(p) {
+            if (!pruebaTieneFichaClinica(p.id)) return;
+            if (fichaClinicaTieneDatos(p.id)) return;
+            var nombre = (p.name || '').trim() || ('Prueba #' + p.id);
+            if (p.padre) nombre += ' (' + p.padre + ')';
+            pendientes.push({ id: String(p.id), nombre: nombre });
+        });
+        return pendientes;
+    }
+
+    function marcarPruebasFichaPendiente(pendientes) {
+        if (!pruebaListaContainer) return;
+        pruebaListaContainer.querySelectorAll('.pruebaitem').forEach(function(row) {
+            row.classList.remove('prueba-ficha-pendiente');
+        });
+        var ids = {};
+        (pendientes || []).forEach(function(p) { ids[String(p.id)] = true; });
+        pruebaListaContainer.querySelectorAll('.pruebaitem').forEach(function(row) {
+            if (ids[String(row.dataset.id || '')]) {
+                row.classList.add('prueba-ficha-pendiente');
+            }
+        });
+        var pe = document.getElementById('pruebas_error');
+        if (pe && pendientes && pendientes.length) {
+            pe.textContent = 'Complete la ficha clínica de las pruebas marcadas (icono de ficha) antes de guardar, o confirme para continuar sin esos datos.';
+            pe.className = 'text-warning small mb-2';
+            pe.style.display = 'block';
+            pe.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+    }
+
+    function limpiarAvisoFichasPendientes() {
+        if (!pruebaListaContainer) return;
+        pruebaListaContainer.querySelectorAll('.prueba-ficha-pendiente').forEach(function(row) {
+            row.classList.remove('prueba-ficha-pendiente');
+        });
+        if (getPruebasConFichaSinDatos().length === 0) {
+            var pe = document.getElementById('pruebas_error');
+            if (pe && pe.classList.contains('text-warning')) {
+                pe.textContent = '';
+                pe.style.display = 'none';
+            }
+        }
+    }
+
+    function confirmarGuardarConFichasPendientes(pendientes) {
+        if (!pendientes || pendientes.length === 0) {
+            return Promise.resolve(true);
+        }
+        var lista = pendientes.map(function(p) { return '• ' + p.nombre; }).join('\n');
+        var msg = 'Las siguientes pruebas tienen ficha clínica sin completar:\n\n' + lista +
+            '\n\n¿Desea guardar la orden de todos modos?';
+        if (typeof uiConfirm === 'function') {
+            return uiConfirm(msg, 'Fichas clínicas pendientes');
+        }
+        return Promise.resolve(window.confirm(msg));
+    }
+
+    function ejecutarGuardarOrden(registroData, pagosData, esNuevaOrden) {
+        var csrf = (typeof CI_CSRF_TOKEN !== 'undefined' && typeof CI_CSRF_TOKEN_NAME !== 'undefined')
+            ? '&' + CI_CSRF_TOKEN_NAME + '=' + encodeURIComponent(CI_CSRF_TOKEN) : '';
+        var urlGuardar = editInfo && editInfo.registro_id ? ('<?= site_url('registers/update') ?>/' + editInfo.registro_id) : '<?= site_url('registers/save') ?>';
+        guardandoOrden = true;
+        guardarBtn.disabled = true;
+        var guardarBtnLabel = guardarBtn.textContent;
+        guardarBtn.textContent = 'Guardando...';
+        fetch(urlGuardar, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'X-Requested-With': 'XMLHttpRequest' },
+            body: 'registro[person_id]=' + encodeURIComponent(registroData.person_id) +
+                '&registro[doctor_id]=' + encodeURIComponent(registroData.doctor_id) +
+                '&registro[pruebas]=' + encodeURIComponent(registroData.pruebas) +
+                '&registro[prioridad]=' + encodeURIComponent(registroData.prioridad) +
+                '&registro[diagnostico_presuntivo]=' + encodeURIComponent(registroData.diagnostico_presuntivo) +
+                '&registro[motivo_estudio]=' + encodeURIComponent(registroData.motivo_estudio) +
+                '&pagos[total_reco]=' + encodeURIComponent(pagosData.total_reco) +
+                '&pagos[total]=' + encodeURIComponent(pagosData.total) +
+                '&pagos[monto_pagar]=' + encodeURIComponent(pagosData.monto_pagar) +
+                '&pagos[tipopago]=' + encodeURIComponent(pagosData.tipopago) +
+                '&pagos[saldo]=' + encodeURIComponent(pagosData.saldo) +
+                '&pagos[comentarios]=' + encodeURIComponent(pagosData.comentarios) +
+                (function() {
+                    var fc = buildFichasClinicasPostPayload();
+                    return fc ? ('&fichas_clinicas=' + encodeURIComponent(fc)) : '';
+                })() +
+                (esNuevaOrden ? ('&submit_token=' + encodeURIComponent(submitToken)) : '') + csrf
+        })
+        .then(function(r) { return r.json(); })
+        .then(function(res) {
+            if (res.success) {
+                window.location.href = '<?= site_url('registers/view') ?>/' + res.id;
+                return;
+            }
+            guardandoOrden = false;
+            guardarBtn.disabled = false;
+            guardarBtn.textContent = guardarBtnLabel;
+            var errDiv = document.getElementById('registers_form_error');
+            if (errDiv) { errDiv.textContent = (res.message || 'Error al guardar.'); errDiv.className = 'alert alert-danger'; errDiv.style.display = 'block'; errDiv.scrollIntoView({ behavior: 'smooth', block: 'center' }); }
+        })
+        .catch(function() {
+            guardandoOrden = false;
+            guardarBtn.disabled = false;
+            guardarBtn.textContent = guardarBtnLabel;
+            var errDiv = document.getElementById('registers_form_error');
+            if (errDiv) { errDiv.textContent = 'Error en la petición.'; errDiv.className = 'alert alert-danger'; errDiv.style.display = 'block'; }
+        });
+    }
+
     function renderPruebasLista() {
         if (!pruebaListaContainer) return;
         if (pruebasSortable) {
@@ -483,15 +921,24 @@ document.addEventListener('DOMContentLoaded', function() {
                 row.dataset.id = String(p.id);
                 var displayName = (p.name || '');
                 if (p.padre) displayName += ' <span class="text-muted small">(' + p.padre + ')</span>';
+                var fichaBtn = '';
+                if (pruebaTieneFichaClinica(p.id)) {
+                    var fichaFilled = fichaClinicaTieneDatos(p.id);
+                    var fichaClass = 'btn-outline-info btn-ficha-clinica' + (fichaFilled ? ' ficha-con-datos' : '');
+                    var fichaTitle = fichaFilled ? 'Ficha clínica (con datos)' : 'Completar ficha clínica';
+                    fichaBtn = '<button type="button" class="btn ' + fichaClass + ' btn-sm me-1" data-ficha-id="' + String(p.id) + '" data-ficha-name="' + String(p.name || '').replace(/"/g, '&quot;') + '" title="' + fichaTitle + '"><i class="fa-solid fa-file-medical"></i></button>';
+                }
                 var removeButton = '<button type="button" class="btn btn-outline-danger btn-sm quitar-prueba" data-id="' + String(p.id) + '" title="Eliminar"><i class="fa-solid fa-times"></i></button>';
                 row.innerHTML = '<span class="prueba-drag-handle" title="Arrastrar para reordenar"><i class="fa-solid fa-grip-vertical"></i></span>' +
                     '<span class="flex-grow-1">' + displayName + '</span>' +
                     '<span class="badge bg-secondary me-2">' + formatCurrencyAmount(p.cost || 0, 0) + '</span>' +
+                    fichaBtn +
                     removeButton;
                 pruebaListaContainer.appendChild(row);
             });
             initPruebasSortable();
         }
+        limpiarAvisoFichasPendientes();
         recalcular();
     }
 
@@ -508,6 +955,13 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     function quitarPrueba(idx) {
+        var removed = pruebasSeleccionadas[idx];
+        if (removed && removed.id) {
+            delete fichasClinicasDraft[String(removed.id)];
+            delete fichasClinicasDraft[parseInt(removed.id, 10)];
+            delete fichasClinicasFilledState[String(removed.id)];
+            delete fichasClinicasFilledState[parseInt(removed.id, 10)];
+        }
         pruebasSeleccionadas.splice(idx, 1);
         renderPruebasLista();
     }
@@ -756,49 +1210,16 @@ document.addEventListener('DOMContentLoaded', function() {
                 primero.scrollIntoView({ behavior: 'smooth', block: 'center' });
                 return;
             }
-            var csrf = (typeof CI_CSRF_TOKEN !== 'undefined' && typeof CI_CSRF_TOKEN_NAME !== 'undefined')
-                ? '&' + CI_CSRF_TOKEN_NAME + '=' + encodeURIComponent(CI_CSRF_TOKEN) : '';
-            var urlGuardar = editInfo && editInfo.registro_id ? ('<?= site_url('registers/update') ?>/' + editInfo.registro_id) : '<?= site_url('registers/save') ?>';
+            syncFichaModalToDraft();
             var esNuevaOrden = !(editInfo && editInfo.registro_id);
-            guardandoOrden = true;
-            guardarBtn.disabled = true;
-            var guardarBtnLabel = guardarBtn.textContent;
-            guardarBtn.textContent = 'Guardando...';
-            fetch(urlGuardar, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'X-Requested-With': 'XMLHttpRequest' },
-                body: 'registro[person_id]=' + encodeURIComponent(registroData.person_id) +
-                    '&registro[doctor_id]=' + encodeURIComponent(registroData.doctor_id) +
-                    '&registro[pruebas]=' + encodeURIComponent(registroData.pruebas) +
-                    '&registro[prioridad]=' + encodeURIComponent(registroData.prioridad) +
-                    '&registro[diagnostico_presuntivo]=' + encodeURIComponent(registroData.diagnostico_presuntivo) +
-                    '&registro[motivo_estudio]=' + encodeURIComponent(registroData.motivo_estudio) +
-                    '&pagos[total_reco]=' + encodeURIComponent(pagosData.total_reco) +
-                    '&pagos[total]=' + encodeURIComponent(pagosData.total) +
-                    '&pagos[monto_pagar]=' + encodeURIComponent(pagosData.monto_pagar) +
-                    '&pagos[tipopago]=' + encodeURIComponent(pagosData.tipopago) +
-                    '&pagos[saldo]=' + encodeURIComponent(pagosData.saldo) +
-                    '&pagos[comentarios]=' + encodeURIComponent(pagosData.comentarios) +
-                    (esNuevaOrden ? ('&submit_token=' + encodeURIComponent(submitToken)) : '') + csrf
-            })
-            .then(function(r) { return r.json(); })
-            .then(function(res) {
-                if (res.success) {
-                    window.location.href = '<?= site_url('registers/view') ?>/' + res.id;
+            var pendientesFicha = getPruebasConFichaSinDatos();
+            confirmarGuardarConFichasPendientes(pendientesFicha).then(function(ok) {
+                if (!ok) {
+                    marcarPruebasFichaPendiente(pendientesFicha);
                     return;
                 }
-                guardandoOrden = false;
-                guardarBtn.disabled = false;
-                guardarBtn.textContent = guardarBtnLabel;
-                var errDiv = document.getElementById('registers_form_error');
-                if (errDiv) { errDiv.textContent = (res.message || 'Error al guardar.'); errDiv.className = 'alert alert-danger'; errDiv.style.display = 'block'; errDiv.scrollIntoView({ behavior: 'smooth', block: 'center' }); }
-            })
-            .catch(function() {
-                guardandoOrden = false;
-                guardarBtn.disabled = false;
-                guardarBtn.textContent = guardarBtnLabel;
-                var errDiv = document.getElementById('registers_form_error');
-                if (errDiv) { errDiv.textContent = 'Error en la petición.'; errDiv.className = 'alert alert-danger'; errDiv.style.display = 'block'; }
+                limpiarAvisoFichasPendientes();
+                ejecutarGuardarOrden(registroData, pagosData, esNuevaOrden);
             });
         });
     }
@@ -1054,14 +1475,42 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
-    // Delegación para botones eliminar
+    // Delegación para botones eliminar y ficha clínica
     if (pruebaListaContainer) {
         pruebaListaContainer.addEventListener('click', function(e) {
+            var fichaBtn = e.target.closest('.btn-ficha-clinica');
+            if (fichaBtn) {
+                abrirFichaClinicaModal(fichaBtn.getAttribute('data-ficha-id'), fichaBtn.getAttribute('data-ficha-name'));
+                return;
+            }
             var btn = e.target.closest('.quitar-prueba');
             if (!btn) return;
             var id = btn.getAttribute('data-id');
             var idx = pruebasSeleccionadas.findIndex(function(p) { return String(p.id) === String(id); });
             if (idx >= 0) quitarPrueba(idx);
+        });
+    }
+
+    if (fichaClinicaSelector) {
+        fichaClinicaSelector.addEventListener('change', function() {
+            var fichaId = parseInt(fichaClinicaSelector.value, 10);
+            if (fichaId > 0 && fichaClinicaContext.prianacategoriaId > 0) {
+                loadFichaClinicaForm(fichaClinicaContext.prianacategoriaId, fichaId);
+            }
+        });
+    }
+
+    if (btnGuardarFichaClinica) {
+        btnGuardarFichaClinica.addEventListener('click', guardarFichaClinicaModal);
+    }
+
+    if (fichaClinicaModalEl) {
+        fichaClinicaModalEl.addEventListener('hidden.bs.modal', function() {
+            syncFichaModalToDraft();
+            renderPruebasLista();
+            destroyFichaClinicaEditors();
+            if (fichaClinicaFormWrap) fichaClinicaFormWrap.innerHTML = '';
+            hideFichaClinicaAlert();
         });
     }
 

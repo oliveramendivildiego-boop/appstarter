@@ -9,6 +9,7 @@ use App\Models\ReportPdfTemplateModel;
 use App\Models\EnvelopeTemplateModel;
 use App\Models\LeyendaCultivoModel;
 use App\Models\LeyendaCultivoCategoriaModel;
+use App\Models\FichaClinicaModel;
 use App\Models\MetodoModel;
 use App\Models\TipoMuestraModel;
 use App\Models\CustomerModel;
@@ -38,6 +39,7 @@ class Config extends SecureArea
     protected MetodoModel $metodoModel;
     protected LeyendaCultivoModel $leyendaCultivoModel;
     protected LeyendaCultivoCategoriaModel $leyendaCultivoCategoriaModel;
+    protected FichaClinicaModel $fichaClinicaModel;
     protected CustomerModel $customerModel;
     protected TenantResolver $tenantResolver;
 
@@ -53,6 +55,7 @@ class Config extends SecureArea
         $this->metodoModel        = model(MetodoModel::class);
         $this->leyendaCultivoModel = model(LeyendaCultivoModel::class);
         $this->leyendaCultivoCategoriaModel = model(LeyendaCultivoCategoriaModel::class);
+        $this->fichaClinicaModel = model(FichaClinicaModel::class);
         $this->customerModel      = model(CustomerModel::class);
     }
 
@@ -207,6 +210,48 @@ class Config extends SecureArea
         if (($this->request->getGet('tab') ?: '') === 'leyendas_cultivo') {
             $tab = 'leyendas_cultivo';
         }
+
+        $editarFichaClinicaId = (int) ($this->request->getGet('editar_ficha_clinica') ?? 0);
+        $editarFichaClinicaData = [];
+        $fichasClinicasLista = [];
+        $fichaClinicaPruebasCatalog = [];
+        $fichaClinicaPruebasLinked = [];
+        $fichaClinicaPruebasCounts = [];
+        try {
+            $this->fichaClinicaModel->ensureTable();
+            $this->fichaClinicaModel->ensurePruebasTable();
+            $fichasClinicasLista = $this->fichaClinicaModel->getAll();
+            $fichaClinicaPruebasCounts = $this->fichaClinicaModel->getPruebasCountByFicha();
+        } catch (\Throwable $e) {
+            $fichasClinicasLista = [];
+            $fichaClinicaPruebasCounts = [];
+        }
+        if ($editarFichaClinicaId > 0) {
+            $rowFc = $this->fichaClinicaModel->getById($editarFichaClinicaId);
+            if (is_array($rowFc)) {
+                $editarFichaClinicaData = $rowFc;
+                $tab = 'ficha_clinica';
+                try {
+                    $fichaClinicaPruebasCatalog = model(\App\Models\LabotestModel::class)->getGroupedByCategory();
+                    $fichaClinicaPruebasLinked = $this->fichaClinicaModel->getLinkedPruebas($editarFichaClinicaId);
+                } catch (\Throwable $e) {
+                    $fichaClinicaPruebasCatalog = [];
+                    $fichaClinicaPruebasLinked = [];
+                }
+            } else {
+                $editarFichaClinicaId = 0;
+            }
+        }
+        if (($this->request->getGet('tab') ?: '') === 'ficha_clinica') {
+            $tab = 'ficha_clinica';
+        }
+
+        $opcionesMap = [];
+        try {
+            $opcionesMap = model(\App\Models\LabotestModel::class)->getOpciones();
+        } catch (\Throwable $e) {
+            $opcionesMap = [];
+        }
         if (($this->request->getGet('tab') ?: '') === 'tenant-subscriptions') {
             $tab = 'tenant_subscriptions';
         }
@@ -302,6 +347,13 @@ class Config extends SecureArea
             'editar_leyenda_cultivo_data' => $editarLeyendaCultivoData,
             'editar_leyenda_cultivo_categoria' => $editarLeyendaCultivoCategoriaId,
             'editar_leyenda_cultivo_categoria_data' => $editarLeyendaCultivoCategoriaData,
+            'fichas_clinicas'      => $fichasClinicasLista,
+            'editar_ficha_clinica' => $editarFichaClinicaId,
+            'editar_ficha_clinica_data' => $editarFichaClinicaData,
+            'ficha_clinica_pruebas_catalog' => $fichaClinicaPruebasCatalog,
+            'ficha_clinica_pruebas_linked'  => $fichaClinicaPruebasLinked,
+            'ficha_clinica_pruebas_counts'  => $fichaClinicaPruebasCounts,
+            'opciones_map'         => $opcionesMap,
             'opciones'             => $opciones,
             'opciones_pagination'  => $opcionesPageData['pagination'],
             'tenants'              => $tenants,
@@ -921,6 +973,290 @@ class Config extends SecureArea
         }
 
         return redirect()->to('config?tab=leyendas_cultivo')->with('error', 'No se pudo eliminar.');
+    }
+
+    public function saveFichaClinica()
+    {
+        $id = (int) ($this->request->getPost('ficha_clinica_id') ?? 0);
+        $nombre = trim((string) ($this->request->getPost('nombre') ?? ''));
+        if ($nombre === '') {
+            return redirect()->to('config?tab=ficha_clinica' . ($id > 0 ? '&editar_ficha_clinica=' . $id : ''))
+                ->with('error', 'El nombre es obligatorio.');
+        }
+
+        $data = [
+            'nombre' => $nombre,
+            'activo' => (int) ($this->request->getPost('activo') ?? 1),
+        ];
+
+        try {
+            if (! $this->fichaClinicaModel->ensureTable()) {
+                return redirect()->to('config?tab=ficha_clinica' . ($id > 0 ? '&editar_ficha_clinica=' . $id : ''))
+                    ->with('error', 'No se pudo preparar la tabla fichas_clinicas. Ejecute php spark migrate.');
+            }
+            $savedId = $this->fichaClinicaModel->saveFicha($data, $id > 0 ? $id : null);
+        } catch (\Throwable $e) {
+            log_message('error', 'saveFichaClinica: {err}', ['err' => $e->getMessage()]);
+
+            return redirect()->to('config?tab=ficha_clinica' . ($id > 0 ? '&editar_ficha_clinica=' . $id : ''))
+                ->with('error', 'Error al guardar: ' . $e->getMessage());
+        }
+
+        if ($savedId === false) {
+            return redirect()->to('config?tab=ficha_clinica' . ($id > 0 ? '&editar_ficha_clinica=' . $id : ''))
+                ->with('error', 'No se pudo guardar la ficha clínica.');
+        }
+
+        $finalId = is_int($savedId) ? $savedId : $id;
+        \App\Models\AuditoriaModel::log('config', $id > 0 ? 'ficha_clinica_actualizar' : 'ficha_clinica_crear', (string) $finalId);
+
+        return redirect()->to('config?tab=ficha_clinica&editar_ficha_clinica=' . $finalId)
+            ->with('success', $id > 0 ? 'Ficha clínica actualizada.' : 'Ficha clínica creada. Configure la matriz abajo.');
+    }
+
+    public function deleteFichaClinica($id = 0)
+    {
+        $id = (int) $id;
+        if ($id < 1) {
+            return redirect()->to('config?tab=ficha_clinica')->with('error', 'ID inválido.');
+        }
+
+        try {
+            $ok = $this->fichaClinicaModel->softDelete($id);
+        } catch (\Throwable $e) {
+            return redirect()->to('config?tab=ficha_clinica')->with('error', 'No se pudo eliminar.');
+        }
+
+        if ($ok) {
+            \App\Models\AuditoriaModel::log('config', 'ficha_clinica_eliminar', (string) $id);
+
+            return redirect()->to('config?tab=ficha_clinica')->with('success', 'Ficha clínica eliminada.');
+        }
+
+        return redirect()->to('config?tab=ficha_clinica')->with('error', 'No se pudo eliminar.');
+    }
+
+    public function saveFichaClinicaMatriz()
+    {
+        $fichaClinicaId = (int) ($this->request->getPost('ficha_clinica_id') ?? 0);
+        $isAjax = $this->request->isAJAX();
+
+        $respond = static function (bool $success, string $message, int $status = 200) use ($isAjax, $fichaClinicaId) {
+            if ($isAjax) {
+                return service('response')->setJSON([
+                    'success'    => $success,
+                    'message'    => $message,
+                    'csrf_token' => csrf_hash(),
+                    'csrf_name'  => csrf_token(),
+                    'reload'     => $success,
+                ])->setStatusCode($status);
+            }
+
+            return redirect()->to('config?tab=ficha_clinica&editar_ficha_clinica=' . $fichaClinicaId)
+                ->with($success ? 'success' : 'error', $message);
+        };
+
+        if ($fichaClinicaId < 1 || $this->fichaClinicaModel->getById($fichaClinicaId) === null) {
+            return $respond(false, 'Ficha clínica no encontrada', 400);
+        }
+
+        $json = $this->request->getPost('cultivo_matriz_json');
+        if (! is_string($json) || trim($json) === '') {
+            $json = (string) ($_POST['cultivo_matriz_json'] ?? '');
+        }
+        if (trim($json) === '') {
+            $rawBody = (string) $this->request->getBody();
+            if ($rawBody !== '' && str_contains($rawBody, 'cultivo_matriz_json=')) {
+                parse_str($rawBody, $parsedBody);
+                $json = (string) ($parsedBody['cultivo_matriz_json'] ?? '');
+            }
+        }
+
+        $config = is_string($json) && trim($json) !== '' ? json_decode($json, true) : null;
+        if (! is_array($config)) {
+            $detail = json_last_error_msg();
+            $msg = 'Configuración de matriz inválida';
+            if (trim($json) === '') {
+                $msg = 'No se recibió la configuración. Si la matriz es muy grande, aumente max_input_vars y post_max_size en PHP.';
+            } elseif ($detail !== '' && $detail !== 'No error') {
+                $msg .= ': ' . $detail;
+            }
+
+            return $respond(false, $msg, 400);
+        }
+
+        if (! $this->fichaClinicaModel->saveMatrizConfig($fichaClinicaId, $config)) {
+            return $respond(false, 'No se pudo guardar la matriz de la ficha clínica', 500);
+        }
+
+        \App\Models\AuditoriaModel::log('config', 'ficha_clinica_matriz_guardar', (string) $fichaClinicaId);
+
+        return $respond(true, 'Matriz de ficha clínica guardada correctamente');
+    }
+
+    public function exportFichaClinica($id): ResponseInterface
+    {
+        $id = (int) $id;
+        $payload = $this->fichaClinicaModel->buildExportPayload($id);
+        if ($payload === null) {
+            return redirect()->to('config?tab=ficha_clinica')->with('error', 'Ficha clínica no encontrada');
+        }
+
+        $json = json_encode($payload, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_INVALID_UTF8_SUBSTITUTE);
+        if ($json === false) {
+            return redirect()->to('config?tab=ficha_clinica&editar_ficha_clinica=' . $id)
+                ->with('error', 'No se pudo generar el archivo de exportación');
+        }
+
+        $slug = FichaClinicaModel::slugifyNombre((string) ($payload['nombre'] ?? 'ficha'));
+        $filename = 'ficha_clinica_' . $id . '_' . $slug . '_' . date('Ymd_His') . '.json';
+
+        return $this->response
+            ->download($filename, $json)
+            ->setContentType('application/json');
+    }
+
+    public function exportFichaClinicaMatriz($id): ResponseInterface
+    {
+        $id = (int) $id;
+        $payload = $this->fichaClinicaModel->buildMatrizExportPayload($id);
+        if ($payload === null) {
+            return redirect()->to('config?tab=ficha_clinica')->with('error', 'Ficha clínica no encontrada');
+        }
+
+        $json = json_encode($payload, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_INVALID_UTF8_SUBSTITUTE);
+        if ($json === false) {
+            return redirect()->to('config?tab=ficha_clinica&editar_ficha_clinica=' . $id)
+                ->with('error', 'No se pudo generar el archivo de exportación');
+        }
+
+        $row = $this->fichaClinicaModel->getById($id);
+        $slug = FichaClinicaModel::slugifyNombre((string) ($row['nombre'] ?? 'ficha'));
+        $filename = 'ficha_clinica_matriz_' . $id . '_' . $slug . '_' . date('Ymd_His') . '.json';
+
+        return $this->response
+            ->download($filename, $json)
+            ->setContentType('application/json');
+    }
+
+    public function importFichaClinica()
+    {
+        $file = $this->request->getFile('config_file');
+        if (! $file || ! $file->isValid()) {
+            return redirect()->to('config?tab=ficha_clinica')->with('error', 'Debe seleccionar un archivo JSON válido');
+        }
+
+        if (strtolower((string) $file->getExtension()) !== 'json') {
+            return redirect()->to('config?tab=ficha_clinica')->with('error', 'El archivo debe ser .json');
+        }
+
+        $payload = $this->parseFichaClinicaJsonFile($file);
+        if ($payload === null) {
+            return redirect()->to('config?tab=ficha_clinica')->with('error', 'JSON inválido o archivo vacío');
+        }
+
+        $result = $this->fichaClinicaModel->importFichaFromPayload($payload);
+        if (! ($result['success'] ?? false)) {
+            return redirect()->to('config?tab=ficha_clinica')
+                ->with('error', (string) ($result['message'] ?? 'No se pudo importar la ficha clínica'));
+        }
+
+        $fichaId = (int) ($result['ficha_clinica_id'] ?? 0);
+        \App\Models\AuditoriaModel::log('config', 'ficha_clinica_importar', $fichaId > 0 ? (string) $fichaId : null);
+
+        return redirect()->to('config?tab=ficha_clinica&editar_ficha_clinica=' . $fichaId)
+            ->with('success', (string) ($result['message'] ?? 'Ficha clínica importada correctamente'));
+    }
+
+    public function importFichaClinicaMatriz($id)
+    {
+        $id = (int) $id;
+        if ($id < 1) {
+            return redirect()->to('config?tab=ficha_clinica')->with('error', 'Ficha clínica inválida');
+        }
+
+        $file = $this->request->getFile('config_file');
+        if (! $file || ! $file->isValid()) {
+            return redirect()->to('config?tab=ficha_clinica&editar_ficha_clinica=' . $id)
+                ->with('error', 'Debe seleccionar un archivo JSON válido');
+        }
+
+        if (strtolower((string) $file->getExtension()) !== 'json') {
+            return redirect()->to('config?tab=ficha_clinica&editar_ficha_clinica=' . $id)
+                ->with('error', 'El archivo debe ser .json');
+        }
+
+        $payload = $this->parseFichaClinicaJsonFile($file);
+        if ($payload === null) {
+            return redirect()->to('config?tab=ficha_clinica&editar_ficha_clinica=' . $id)
+                ->with('error', 'JSON inválido o archivo vacío');
+        }
+
+        $result = $this->fichaClinicaModel->importMatrizFromPayload($id, $payload);
+        if (! ($result['success'] ?? false)) {
+            return redirect()->to('config?tab=ficha_clinica&editar_ficha_clinica=' . $id)
+                ->with('error', (string) ($result['message'] ?? 'No se pudo importar la matriz'));
+        }
+
+        \App\Models\AuditoriaModel::log('config', 'ficha_clinica_matriz_importar', (string) $id);
+
+        return redirect()->to('config?tab=ficha_clinica&editar_ficha_clinica=' . $id)
+            ->with('success', (string) ($result['message'] ?? 'Matriz importada correctamente'));
+    }
+
+    /**
+     * @return array<string, mixed>|null
+     */
+    private function parseFichaClinicaJsonFile($file): ?array
+    {
+        $tmpPath = $file->getTempName();
+        $content = is_string($tmpPath) && $tmpPath !== '' ? @file_get_contents($tmpPath) : false;
+        if (! is_string($content) || trim($content) === '') {
+            return null;
+        }
+
+        $payload = json_decode($content, true);
+
+        return is_array($payload) ? $payload : null;
+    }
+
+    public function saveFichaClinicaPruebas()
+    {
+        $fichaId = (int) ($this->request->getPost('ficha_clinica_id') ?? 0);
+        if ($fichaId < 1) {
+            return redirect()->to('config?tab=ficha_clinica')->with('error', 'Ficha clínica inválida.');
+        }
+
+        $rawIds = $this->request->getPost('prianacategoria_ids');
+        $ids = is_array($rawIds) ? $rawIds : [];
+        $ids = array_values(array_unique(array_filter(array_map('intval', $ids), static fn (int $v): bool => $v > 0)));
+
+        try {
+            if (! $this->fichaClinicaModel->ensurePruebasTable()) {
+                return redirect()->to('config?tab=ficha_clinica&editar_ficha_clinica=' . $fichaId)
+                    ->with('error', 'No se pudo preparar la tabla de enlaces. Ejecute php spark migrate.');
+            }
+            $ok = $this->fichaClinicaModel->saveLinkedPruebas($fichaId, $ids);
+        } catch (\Throwable $e) {
+            log_message('error', 'saveFichaClinicaPruebas: {err}', ['err' => $e->getMessage()]);
+
+            return redirect()->to('config?tab=ficha_clinica&editar_ficha_clinica=' . $fichaId)
+                ->with('error', 'Error al guardar: ' . $e->getMessage());
+        }
+
+        if (! $ok) {
+            return redirect()->to('config?tab=ficha_clinica&editar_ficha_clinica=' . $fichaId)
+                ->with('error', 'No se pudieron guardar las pruebas enlazadas.');
+        }
+
+        \App\Models\AuditoriaModel::log('config', 'ficha_clinica_pruebas_guardar', (string) $fichaId, \App\Models\AuditoriaModel::detail([
+            'total_pruebas' => count($ids),
+        ]));
+
+        return redirect()->to('config?tab=ficha_clinica&editar_ficha_clinica=' . $fichaId)
+            ->with('success', count($ids) > 0
+                ? 'Se enlazaron ' . count($ids) . ' prueba(s) a la ficha clínica.'
+                : 'Se quitaron todas las pruebas enlazadas.');
     }
 
     /**

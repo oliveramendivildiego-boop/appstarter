@@ -20,6 +20,8 @@ use App\Models\AppConfigModel;
 use App\Models\DoctorModel;
 use App\Models\DoctorCommissionModel;
 use App\Models\LeyendaModel;
+use App\Models\FichaClinicaModel;
+use App\Models\RegistroFichaClinicaModel;
 use CodeIgniter\HTTP\ResponseInterface;
 use Endroid\QrCode\Builder\Builder;
 use Endroid\QrCode\Color\Color;
@@ -125,7 +127,7 @@ class Registers extends SecureArea
         $categories = $this->labotestModel->getGroupedByCategory();
         $perfiles = (model(PerfilExamenModel::class))->getAll();
 
-        return view('registers/manage', [
+        return view('registers/manage', array_merge([
             'current_module'  => 'registers',
             'categories'      => $categories,
             'perfiles'        => $perfiles ?? [],
@@ -136,7 +138,7 @@ class Registers extends SecureArea
             'edit_pago'       => null,
             'edit_discount_info' => ['institucion' => '', 'descuento' => 0.0],
             'label_sin_doctor' => $this->getLabelSinDoctorConfig(),
-        ]);
+        ], $this->buildFichaClinicaViewExtras()));
     }
 
     /**
@@ -163,7 +165,7 @@ class Registers extends SecureArea
         $regvaluesCount = count($this->registerModel->getInfoAnalisis($id));
         $discountInfo = $this->resolveInstitutionDiscountByPersonId((int) ($info->person_id ?? 0));
 
-        return view('registers/manage', [
+        return view('registers/manage', array_merge([
             'current_module'  => 'registers',
             'categories'      => $categories,
             'perfiles'        => $perfiles ?? [],
@@ -175,7 +177,7 @@ class Registers extends SecureArea
             'edit_regvalues_count' => $regvaluesCount,
             'edit_discount_info' => $discountInfo,
             'label_sin_doctor' => $this->getLabelSinDoctorConfig(),
-        ]);
+        ], $this->buildFichaClinicaViewExtras($id)));
     }
 
     public function lista()
@@ -1299,6 +1301,8 @@ class Registers extends SecureArea
             if ($submitToken !== '' && strlen($submitToken) >= 16) {
                 $cached = \Config\Services::cache()->get('reg_submit_' . $submitToken);
                 if (is_array($cached) && ! empty($cached['id'])) {
+                    $this->persistFichasClinicasFromPost((int) $cached['id']);
+
                     return $this->response->setJSON([
                         'success' => true,
                         'message' => 'Datos guardados correctamente',
@@ -1385,6 +1389,8 @@ class Registers extends SecureArea
                 \Config\Services::cache()->save('reg_submit_' . $submitToken, ['id' => $registroId], 600);
             }
 
+            $this->persistFichasClinicasFromPost($registroId);
+
             return $this->response->setJSON([
                 'success' => true,
                 'message' => 'Datos guardados correctamente',
@@ -1448,6 +1454,7 @@ class Registers extends SecureArea
             $removedPruebas = array_values(array_diff($currentPruebas, $postedPruebas));
             if ($removedPruebas !== []) {
                 $this->registerModel->deleteRegvaluesForRemovedPruebas($id, $removedPruebas);
+                model(RegistroFichaClinicaModel::class)->deleteByRegistroAndPruebas($id, $removedPruebas);
             }
 
             $registroData = [
@@ -1484,6 +1491,8 @@ class Registers extends SecureArea
                 $doctorId,
                 (float) ($pagosNormalizados['total'] ?? 0)
             );
+
+            $this->persistFichasClinicasFromPost($id);
 
             return $this->response->setJSON([
                 'success' => true,
@@ -2099,6 +2108,158 @@ class Registers extends SecureArea
             'message' => $msg,
             'results' => $results,
         ]);
+    }
+
+    public function fichaClinicaForm(): ResponseInterface
+    {
+        $priaId = (int) ($this->request->getGet('prianacategoria_id') ?? 0);
+        $fichaId = (int) ($this->request->getGet('ficha_clinica_id') ?? 0);
+        $registroId = (int) ($this->request->getGet('registro_id') ?? 0);
+        $tituloPrueba = trim((string) ($this->request->getGet('titulo_prueba') ?? ''));
+
+        if ($priaId < 1) {
+            return $this->response->setJSON(['success' => false, 'message' => 'Prueba no válida'])->setStatusCode(400);
+        }
+
+        $fichaModel = model(FichaClinicaModel::class);
+        $fichas = $fichaModel->getFichasByPruebaId($priaId);
+        if ($fichas === []) {
+            return $this->response->setJSON(['success' => false, 'message' => 'Esta prueba no tiene ficha clínica enlazada'])->setStatusCode(404);
+        }
+
+        if ($fichaId < 1) {
+            $fichaId = (int) ($fichas[0]['ficha_clinica_id'] ?? 0);
+        }
+
+        if ($registroId > 0 && ! $this->registerModel->existsRegistro($registroId)) {
+            return $this->response->setJSON(['success' => false, 'message' => 'Registro no encontrado'])->setStatusCode(404);
+        }
+
+        $regFichaModel = model(RegistroFichaClinicaModel::class);
+        $existentes = [];
+        if ($registroId > 0) {
+            $savedRow = $regFichaModel->getByRegistroAndPrueba($registroId, $priaId);
+            if ($savedRow !== null) {
+                $savedFichaId = (int) ($savedRow['ficha_clinica_id'] ?? 0);
+                if ($savedFichaId > 0) {
+                    $fichaId = $savedFichaId;
+                }
+                $existentes = $regFichaModel->getExistentesFlat($registroId, $priaId);
+            }
+        }
+
+        $fichaValida = false;
+        foreach ($fichas as $fichaRow) {
+            if ((int) ($fichaRow['ficha_clinica_id'] ?? 0) === $fichaId) {
+                $fichaValida = true;
+                break;
+            }
+        }
+        if (! $fichaValida) {
+            $fichaId = (int) ($fichas[0]['ficha_clinica_id'] ?? 0);
+        }
+
+        $matriz = $fichaModel->getMatrizConfig($fichaId);
+        $html = view('registers/partial_ficha_clinica_fill', [
+            'prianacategoria_id' => $priaId,
+            'ficha_clinica_id'   => $fichaId,
+            'titulo_prueba'      => $tituloPrueba,
+            'existentes'         => $existentes,
+            'matriz_config'      => $matriz,
+            'registerModel'      => $this->registerModel,
+        ]);
+
+        return $this->response->setJSON([
+            'success'          => true,
+            'html'             => $html,
+            'fichas'           => $fichas,
+            'ficha_clinica_id' => $fichaId,
+        ]);
+    }
+
+    public function saveFichaClinica(): ResponseInterface
+    {
+        $registroId = (int) ($this->request->getPost('registro_id') ?? 0);
+        $priaId = (int) ($this->request->getPost('prianacategoria_id') ?? 0);
+        $fichaId = (int) ($this->request->getPost('ficha_clinica_id') ?? 0);
+        $valoresRaw = $this->request->getPost('valores');
+        $valores = is_string($valoresRaw) ? json_decode($valoresRaw, true) : $valoresRaw;
+        $valores = is_array($valores) ? $valores : [];
+
+        if ($priaId < 1 || $fichaId < 1) {
+            return $this->response->setJSON(['success' => false, 'message' => 'Datos incompletos'])->setStatusCode(400);
+        }
+
+        $fichaModel = model(FichaClinicaModel::class);
+        $fichaOk = false;
+        foreach ($fichaModel->getFichasByPruebaId($priaId) as $fichaRow) {
+            if ((int) ($fichaRow['ficha_clinica_id'] ?? 0) === $fichaId) {
+                $fichaOk = true;
+                break;
+            }
+        }
+        if (! $fichaOk) {
+            return $this->response->setJSON(['success' => false, 'message' => 'Ficha no válida para esta prueba'])->setStatusCode(400);
+        }
+
+        if ($registroId < 1) {
+            return $this->response->setJSON([
+                'success'    => true,
+                'message'    => 'Datos guardados en borrador',
+                'draft_only' => true,
+            ]);
+        }
+
+        if (! $this->registerModel->existsRegistro($registroId)) {
+            return $this->response->setJSON(['success' => false, 'message' => 'Registro no encontrado'])->setStatusCode(404);
+        }
+        $blocked = $this->bloquearSiRegistroAnuladoJson($registroId);
+        if ($blocked !== null) {
+            return $blocked;
+        }
+
+        $saved = model(RegistroFichaClinicaModel::class)->saveFill($registroId, $priaId, $fichaId, $valores);
+        if (! $saved) {
+            return $this->response->setJSON(['success' => false, 'message' => 'No se pudo guardar'])->setStatusCode(500);
+        }
+
+        return $this->response->setJSON(['success' => true, 'message' => 'Ficha clínica guardada']);
+    }
+
+    /**
+     * @return array{ficha_clinica_map: array<int, list<array<string, mixed>>>, fichas_clinicas_filled: array<int, array<string, mixed>>, fichas_clinicas_data: array<int, array<string, mixed>>}
+     */
+    private function buildFichaClinicaViewExtras(?int $registroId = null): array
+    {
+        $fichaModel = model(FichaClinicaModel::class);
+        $extras = [
+            'ficha_clinica_map'      => $fichaModel->getFichasMapForRegisters(),
+            'fichas_clinicas_filled' => [],
+            'fichas_clinicas_data'   => [],
+        ];
+        if ($registroId !== null && $registroId > 0) {
+            $regFichaModel = model(RegistroFichaClinicaModel::class);
+            $extras['fichas_clinicas_filled'] = $regFichaModel->getFilledMapByRegistro($registroId);
+            $extras['fichas_clinicas_data'] = $regFichaModel->getAllDataByRegistro($registroId);
+        }
+
+        return $extras;
+    }
+
+    private function persistFichasClinicasFromPost(int $registroId): void
+    {
+        if ($registroId < 1) {
+            return;
+        }
+        $raw = $this->request->getPost('fichas_clinicas');
+        if (! is_string($raw) || trim($raw) === '') {
+            return;
+        }
+        $decoded = json_decode($raw, true);
+        if (! is_array($decoded)) {
+            return;
+        }
+        model(RegistroFichaClinicaModel::class)->saveBatch($registroId, $decoded);
     }
 
     /**

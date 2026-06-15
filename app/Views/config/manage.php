@@ -141,6 +141,9 @@
         <button class="nav-link <?= $activeTab === 'leyendas_cultivo' ? 'active' : '' ?>" id="tab-leyendas_cultivo-btn" data-bs-toggle="tab" data-bs-target="#tab-leyendas_cultivo" type="button" role="tab">Leyendas cultivo</button>
     </li>
     <li class="nav-item" role="presentation">
+        <button class="nav-link <?= $activeTab === 'ficha_clinica' ? 'active' : '' ?>" id="tab-ficha_clinica-btn" data-bs-toggle="tab" data-bs-target="#tab-ficha_clinica" type="button" role="tab"><i class="fa-solid fa-file-medical me-1"></i>Ficha clínica</button>
+    </li>
+    <li class="nav-item" role="presentation">
         <button class="nav-link <?= $activeTab === 'whatsapp' ? 'active' : '' ?>" id="tab-whatsapp-btn" data-bs-toggle="tab" data-bs-target="#tab-whatsapp" type="button" role="tab">WhatsApp</button>
     </li>
 </ul>
@@ -1891,6 +1894,18 @@
         'editar_leyenda_cultivo_categoria' => $editar_leyenda_cultivo_categoria ?? 0,
         'editar_leyenda_cultivo_categoria_data' => $editar_leyenda_cultivo_categoria_data ?? [],
         'activeTab'                   => $activeTab,
+    ]) ?>
+
+    <?= view('config/tab_ficha_clinica', [
+        'fichas_clinicas'           => $fichas_clinicas ?? [],
+        'editar_ficha_clinica'      => $editar_ficha_clinica ?? 0,
+        'editar_ficha_clinica_data' => $editar_ficha_clinica_data ?? [],
+        'ficha_clinica_pruebas_catalog' => $ficha_clinica_pruebas_catalog ?? [],
+        'ficha_clinica_pruebas_linked'  => $ficha_clinica_pruebas_linked ?? [],
+        'ficha_clinica_pruebas_counts'  => $ficha_clinica_pruebas_counts ?? [],
+        'opciones_map'              => $opciones_map ?? [],
+        'leyendas_cultivo'          => $leyendas_cultivo ?? [],
+        'activeTab'                 => $activeTab,
     ]) ?>
 </div>
 

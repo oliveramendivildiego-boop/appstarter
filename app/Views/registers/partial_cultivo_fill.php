@@ -52,10 +52,27 @@ $labotestModel = model(LabotestModel::class);
 
 $leyendaCultivoModel = model(LeyendaCultivoModel::class);
 
-$esPersonalizado = ! empty($es_personalizado);
-$matriz = $esPersonalizado
-    ? $labotestModel->getPersonalizadoMatrizConfig($prianacategoriaId)
-    : $labotestModel->getCultivoMatrizConfig($prianacategoriaId);
+$matrizConfigOverride = is_array($matriz_config_override ?? null) ? $matriz_config_override : null;
+$valorKeyPrefix = trim((string) ($valor_key_prefix ?? 'cv'));
+$fichaClinicaIdFill = max(0, (int) ($ficha_clinica_id ?? 0));
+$buildCellKey = static function (string $suffix, int $priaId, string $bloqueId, int $r, int $c) use ($valorKeyPrefix, $fichaClinicaIdFill): string {
+    if ($valorKeyPrefix === 'fc' && $fichaClinicaIdFill > 0) {
+        $keyPrefix = ($suffix === 'cvn_') ? 'fcn_' : 'fc_';
+
+        return $keyPrefix . $fichaClinicaIdFill . '_' . $priaId . '_' . $bloqueId . '_' . $r . '_' . $c;
+    }
+
+    return $suffix . $priaId . '_' . $bloqueId . '_' . $r . '_' . $c;
+};
+
+$esPersonalizado = ! empty($es_personalizado) || $matrizConfigOverride !== null;
+if ($matrizConfigOverride !== null) {
+    $matriz = $matrizConfigOverride;
+} else {
+    $matriz = $esPersonalizado
+        ? $labotestModel->getPersonalizadoMatrizConfig($prianacategoriaId)
+        : $labotestModel->getCultivoMatrizConfig($prianacategoriaId);
+}
 
 $bloquesMatriz = $esPersonalizado
     ? \App\Models\LabotestModel::resolvePersonalizadoMatrizBloques($matriz)
@@ -77,7 +94,9 @@ foreach ($leyendasActivas as $lcRow) {
 
 }
 
-$cultivoKey = 'cultivo_' . $prianacategoriaId;
+$cultivoKey = ($valorKeyPrefix === 'fc' && $fichaClinicaIdFill > 0)
+    ? ('ficha_clinica_' . $fichaClinicaIdFill . '_' . $prianacategoriaId)
+    : ('cultivo_' . $prianacategoriaId);
 
 $valoresGuardados = [];
 
@@ -236,7 +255,7 @@ $renderExtrasFill = static function (
 
     string $placeholderValor = ''
 
-): string {
+) use ($buildCellKey): string {
 
     if ($bloqueTipo !== 'cuerpo' || ! $mostrarValor) {
 
@@ -254,7 +273,7 @@ $renderExtrasFill = static function (
 
         . ' data-columna="' . $c . '"';
 
-    $idValor = 'cvn_' . $priaId . '_' . $bloqueId . '_' . $r . '_' . $c;
+    $idValor = $buildCellKey('cvn_', $priaId, $bloqueId, $r, $c);
 
     $valValor = trim((string) ($existentes[$idValor] ?? ''));
 
@@ -655,7 +674,7 @@ foreach ($leyendasPorId as $lid => $lcRow) {
 
                                 $valorPlaceholder = is_array($celdaRaw) ? trim((string) ($celdaRaw['valor'] ?? '')) : '';
 
-                                $valorActual = (string) ($existentes['cv_' . $prianacategoriaId . '_' . $bloqueId . '_' . $r . '_' . $c] ?? '');
+                                $valorActual = (string) ($existentes[$buildCellKey('cv_', $prianacategoriaId, $bloqueId, $r, $c)] ?? '');
 
                                 if ($valorActual === '') {
 
@@ -663,7 +682,7 @@ foreach ($leyendasPorId as $lid => $lcRow) {
 
                                 }
 
-                                $inputId = 'cv_' . $prianacategoriaId . '_' . $bloqueId . '_' . $r . '_' . $c;
+                                $inputId = $buildCellKey('cv_', $prianacategoriaId, $bloqueId, $r, $c);
 
                                 $dataAttrs = ' data-prianacategoria-id="' . $prianacategoriaId . '"'
 

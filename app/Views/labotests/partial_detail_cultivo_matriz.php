@@ -10,6 +10,11 @@
  */
 $matrizTipo = ($matriz_tipo ?? 'cultivo') === 'personalizado' ? 'personalizado' : 'cultivo';
 $esPersonalizado = $matrizTipo === 'personalizado';
+$matrizSaveUrl = $matriz_save_url ?? ($esPersonalizado ? 'labotests/savepersonalizadomatriz' : 'labotests/savecultivomatriz');
+$matrizEntityField = $matriz_entity_field ?? 'prianacategoria_id';
+$matrizEntityId = (int) ($matriz_entity_id ?? ($labotests_info->prianacategoria_id ?? 0));
+$matrizShowExportImport = ($matriz_show_export_import ?? true) !== false;
+$matrizContextLabel = trim((string) ($matriz_context_label ?? ''));
 if ($esPersonalizado) {
     helper('registro');
 }
@@ -563,7 +568,9 @@ $parsePersonalizadoCelda = static function (array $celdaRaw): array {
 </style>
 <div class="card card-tabla-sub-items mt-3">
     <div class="card-header d-flex flex-wrap align-items-center gap-2">
-        <strong><?= $esPersonalizado ? 'Matriz personalizada' : 'Valores de sub-clases (prueba cultivo)' ?></strong>
+        <strong><?= $matrizContextLabel !== ''
+            ? esc($matrizContextLabel)
+            : ($esPersonalizado ? 'Matriz personalizada' : 'Valores de sub-clases (prueba cultivo)') ?></strong>
         <span class="badge bg-info text-dark"><?= $esPersonalizado ? 'Personalizado' : 'Matriz' ?></span>
         <span class="text-muted small"><?= $esPersonalizado
             ? 'Configure filas y columnas como en cultivo. Por celda puede definir alineación, fuente (incl. formato mixto), rol (título/input) y unir columnas/filas.'
@@ -576,12 +583,24 @@ $parsePersonalizadoCelda = static function (array $celdaRaw): array {
         </a>
     </div>
     <div class="card-body">
-        <?= view('labotests/partial_detail_matriz_export_import', [
+        <?php if ($matrizShowExportImport): ?>
+        <?= view('labotests/partial_detail_matriz_export_import', array_merge([
             'labotests_info' => $labotests_info,
             'matriz_tipo'    => $matrizTipo,
+        ], array_intersect_key(get_defined_vars(), array_flip([
+            'matriz_export_url',
+            'matriz_import_url',
+            'matriz_import_confirm_message',
+            'matriz_export_import_description',
+            'matriz_export_import_badge',
+        ])))) ?>
+        <?php endif; ?>
+        <?= form_open($matrizSaveUrl, [
+            'id'                       => 'form_cultivo_matriz',
+            'novalidate'               => 'novalidate',
+            'data-matriz-entity-field' => $matrizEntityField,
         ]) ?>
-        <?= form_open($esPersonalizado ? 'labotests/savepersonalizadomatriz' : 'labotests/savecultivomatriz', ['id' => 'form_cultivo_matriz', 'novalidate' => 'novalidate']) ?>
-        <input type="hidden" name="prianacategoria_id" value="<?= (int) ($labotests_info->prianacategoria_id ?? 0) ?>">
+        <input type="hidden" name="<?= esc($matrizEntityField, 'attr') ?>" value="<?= $matrizEntityId ?>">
         <input type="hidden" name="cultivo_matriz_json" id="cultivo_matriz_json" value="">
 
         <div class="cultivo-orden-panel">
@@ -1617,11 +1636,16 @@ $parsePersonalizadoCelda = static function (array $celdaRaw): array {
         if (!wrap) return;
         var drop = wrap.querySelector('.cultivo-celda-titulo-drop[data-fila="' + fila + '"][data-columna="' + col + '"]');
         if (!drop) return;
+        var config = drop.closest('.cultivo-celda-config');
         var existente = drop.querySelector('.cultivo-titulo-item');
         if (existente) {
             var inpExist = existente.querySelector('.cultivo-titulo-input');
             if (inpExist) inpExist.focus();
             return;
+        }
+        if (config) {
+            var rolInput = config.querySelector('.cultivo-celda-rol');
+            if (rolInput) rolInput.value = 'titulo';
         }
         var temp = document.createElement('div');
         temp.innerHTML = buildTituloItem(secId, col, '', 0, 1);
@@ -1629,18 +1653,23 @@ $parsePersonalizadoCelda = static function (array $celdaRaw): array {
         if (!item) return;
         drop.appendChild(item);
         drop.classList.remove('is-empty');
+        if (config) actualizarVisibilidadPanelCelda(config);
         syncTituloDropACelda(secId, fila, col);
-        var rolSel = drop.closest('.cultivo-celda-config');
-        if (rolSel) {
-            var rolInput = rolSel.querySelector('.cultivo-celda-rol');
-            if (rolInput) rolInput.value = 'titulo';
-            var textoWrap = rolSel.querySelector('.cultivo-celda-texto-fijo-wrap');
-            if (textoWrap) textoWrap.classList.remove('d-none');
-        }
         var inp = drop.querySelector('.cultivo-titulo-input');
         if (inp) inp.focus();
         initSortableSeccion(secId);
         persistirCeldasEnWrap(secId);
+    }
+
+    function celdaTextoFijoTieneFoco(textoInp) {
+        if (!textoInp) return false;
+        var active = document.activeElement;
+        if (active === textoInp) return true;
+        if (typeof jQuery !== 'undefined' && jQuery(textoInp).data('summernote')) {
+            var note = jQuery(textoInp).next('.note-editor')[0];
+            if (note && note.contains(active)) return true;
+        }
+        return false;
     }
 
     function syncTituloDropACelda(secId, fila, col) {
@@ -1657,15 +1686,27 @@ $parsePersonalizadoCelda = static function (array $celdaRaw): array {
         var config = drop.closest('.cultivo-celda-config');
         if (!config) return;
         var rolSel = config.querySelector('.cultivo-celda-rol');
-        var textoWrap = config.querySelector('.cultivo-celda-texto-fijo-wrap');
         var textoInp = config.querySelector('.cultivo-celda-texto-fijo');
         var fuenteSel = config.querySelector('.cultivo-celda-fuente');
         var esEnriquecido = fuenteSel && fuenteSel.value === 'enriquecido';
+        var editingDrop = !!(inp && document.activeElement === inp);
+        var editingFijo = celdaTextoFijoTieneFoco(textoInp);
         var textoDrop = inp ? String(inp.value || '') : '';
         var textoFijo = leerTextoFijoCeldaDom(textoInp);
-        var texto = (esEnriquecido || textoDrop.trim() === '') ? textoFijo : textoDrop;
-        if (inp && textoDrop.trim() === '' && texto.trim() !== '' && !esEnriquecido) {
-            inp.value = texto;
+        var texto;
+        if (esEnriquecido) {
+            texto = textoFijo;
+        } else if (editingDrop) {
+            texto = textoDrop;
+        } else if (editingFijo) {
+            texto = textoFijo;
+        } else if (textoDrop.trim() !== '') {
+            texto = textoDrop;
+        } else if (textoFijo.trim() !== '') {
+            texto = textoFijo;
+            if (inp) inp.value = textoFijo;
+        } else {
+            texto = '';
         }
         var tieneItem = drop.querySelector('.cultivo-titulo-item');
         if (tieneItem && rolSel && rolSel.value === 'input') {
@@ -1677,10 +1718,13 @@ $parsePersonalizadoCelda = static function (array $celdaRaw): array {
             if (rolSel && rolSel.value !== 'input') rolSel.value = 'titulo';
             if (textoInp) {
                 if (esEnriquecido && typeof jQuery !== 'undefined' && jQuery(textoInp).data('summernote')) {
-                    jQuery(textoInp).summernote('code', texto);
-                } else {
+                    if (!editingFijo) jQuery(textoInp).summernote('code', texto);
+                } else if (!editingFijo) {
                     textoInp.value = texto;
                 }
+            }
+            if (inp && !editingDrop && !esEnriquecido && editingFijo) {
+                inp.value = texto;
             }
         } else if (!esEnriquecido) {
             if (textoInp) textoInp.value = '';
@@ -1898,8 +1942,9 @@ $parsePersonalizadoCelda = static function (array $celdaRaw): array {
         var drop = configEl.querySelector('.cultivo-celda-titulo-drop');
         var tieneItem = drop ? drop.querySelector('.cultivo-titulo-item') : null;
         var esEnriquecido = fuenteSel && fuenteSel.value === 'enriquecido';
+        var fuenteTitulo = fuenteSel && fuenteSel.value === 'titulo';
         var rol = rolSel ? rolSel.value : 'input';
-        var mostrarWrap = esEnriquecido || !!tieneItem || rol === 'titulo' || rol === 'etiqueta';
+        var mostrarWrap = esEnriquecido || !!tieneItem || rol === 'titulo' || rol === 'etiqueta' || fuenteTitulo;
         if (esEnriquecido && rolSel && rol === 'input') {
             rolSel.value = 'titulo';
             rol = 'titulo';
@@ -3599,11 +3644,12 @@ $parsePersonalizadoCelda = static function (array $celdaRaw): array {
             submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Guardando...';
         }
 
-        var priaInp = form.querySelector('input[name="prianacategoria_id"]');
-        var priaId = priaInp ? priaInp.value : '';
+        var entityField = form.getAttribute('data-matriz-entity-field') || 'prianacategoria_id';
+        var entityInp = form.querySelector('input[name="' + entityField + '"]');
+        var entityId = entityInp ? entityInp.value : '';
         var csrfInp = form.querySelector('input[name*="csrf"]');
         var fd = new FormData();
-        fd.append('prianacategoria_id', priaId);
+        fd.append(entityField, entityId);
         fd.append('cultivo_matriz_json', jsonStr);
         if (csrfInp) {
             fd.append(csrfInp.name, csrfInp.value);
