@@ -34,7 +34,8 @@ if ($usePdfChrome) {
 }
 $segmentWrapStyleAttr = $segmentWrapStyle !== '' ? ' style="' . esc($segmentWrapStyle, 'attr') . '"' : '';
 $mainTableClass = $usePdfChrome ? 'results' : 'table table-bordered table-sm mb-0';
-$webTitleMt = ($sub_idx ?? 0) > 0 ? 'mt-5' : 'mt-4';
+$subIdxCultivo = (int) ($sub_idx ?? 0);
+$webTitleMt = $subIdxCultivo > 0 ? 'mt-5' : 'mt-4';
 $renderCultivoCelda = static function (string $cellHtml, string $tdClass = 'text-center', string $tdStyleExtra = ''): void {
     $isBordesHtml = str_contains($cellHtml, 'cultivo-celda-bordes');
     $isHtml = $isBordesHtml || str_contains($cellHtml, 'pers-celda-reporte')
@@ -157,7 +158,6 @@ $renderCultivoCeldaGrilla = static function (array $celda, string $tdBorderPerso
 <?php endif; ?>
 <?php if ($usePdfChrome): ?>
 <?php
-$subIdxCultivo = (int) ($sub_idx ?? 0);
 $subgrupoCultivoClass = 'report-pdf-subgrupo-block' . ($subIdxCultivo > 0 ? ' report-pdf-subgrupo-prueba' : '');
 $subgrupoCultivoStyle = $subIdxCultivo > 0
     ? \App\Services\ReportPdfLayoutService::subgrupoPruebaGapStyleAttr(

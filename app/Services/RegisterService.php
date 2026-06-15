@@ -856,6 +856,172 @@ class RegisterService
     }
 
     /**
+     * Fichas clínicas con datos guardados, listas para mostrar en la hoja de trabajo.
+     *
+     * @param list<array<string, mixed>> $pruebasEnOrden
+     * @return array<int, array{ficha_clinica_id: int, nombre: string, cultivo_item: object}>
+     */
+    public function buildFichasClinicasOrdenMap(int $registroId, array $pruebasEnOrden): array
+    {
+        if ($registroId < 1 || $pruebasEnOrden === []) {
+            return [];
+        }
+
+        $regFichaModel = model(\App\Models\RegistroFichaClinicaModel::class);
+        $fichaModel = model(\App\Models\FichaClinicaModel::class);
+        $allData = $regFichaModel->getAllDataByRegistro($registroId);
+        if ($allData === []) {
+            return [];
+        }
+
+        $out = [];
+        foreach ($pruebasEnOrden as $prueba) {
+            $pid = (int) ($prueba['prianacategoria_id'] ?? 0);
+            if ($pid < 1) {
+                continue;
+            }
+            $data = $allData[$pid] ?? null;
+            if ($data === null || empty($data['has_data'])) {
+                continue;
+            }
+
+            $fichaId = (int) ($data['ficha_clinica_id'] ?? 0);
+            if ($fichaId < 1) {
+                continue;
+            }
+
+            $cultivoItem = $this->buildFichaClinicaOrdenItem(
+                $pid,
+                $fichaId,
+                is_array($data['valores'] ?? null) ? $data['valores'] : []
+            );
+            if ($cultivoItem === null) {
+                continue;
+            }
+
+            $fichaRow = $fichaModel->getById($fichaId);
+            $out[$pid] = [
+                'ficha_clinica_id' => $fichaId,
+                'nombre'           => trim((string) ($fichaRow['nombre'] ?? 'Ficha clínica')),
+                'cultivo_item'     => $cultivoItem,
+            ];
+        }
+
+        return $out;
+    }
+
+    /**
+     * @param array<string, string> $valoresFlat
+     */
+    public function buildFichaClinicaOrdenItem(int $prianacategoriaId, int $fichaClinicaId, array $valoresFlat): ?object
+    {
+        if ($prianacategoriaId < 1 || $fichaClinicaId < 1) {
+            return null;
+        }
+
+        $extracted = $this->extractFichaCellValuesFromFlat($valoresFlat, $fichaClinicaId, $prianacategoriaId);
+        $cellValues = $extracted['cv'];
+        if (! $this->cultivoMatrizTieneValores($cellValues)) {
+            return null;
+        }
+
+        $matriz = model(\App\Models\FichaClinicaModel::class)->getMatrizConfig($fichaClinicaId);
+        $display = $this->formatCultivoMatrizForReport(
+            $matriz,
+            $cellValues,
+            $extracted['cvn'],
+            null,
+            true
+        );
+
+        return (object) [
+            'es_cultivo_matriz'       => true,
+            'es_personalizado_matriz' => true,
+            'prianacategoria_id'      => $prianacategoriaId,
+            'padre'                   => '',
+            'hijo'                    => '',
+            'tipo_muestra_nombre'     => '',
+            'metodo_nombre'           => '',
+            'cultivo_display'         => $display,
+        ];
+    }
+
+    /**
+     * @param array<string, string> $valoresFlat
+     * @return array{cv: array<string, array<int, array<int, string>>>, cvn: array<string, array<int, array<int, string>>>}
+     */
+    protected function extractFichaCellValuesFromFlat(array $valoresFlat, int $fichaClinicaId, int $prianacategoriaId): array
+    {
+        $out = [];
+        $outNum = [];
+
+        $mergeSection = static function (array &$target, string $sec, int $fila, int $col, string $val): void {
+            if ($val === '') {
+                return;
+            }
+            if (! isset($target[$sec])) {
+                $target[$sec] = [];
+            }
+            if (! isset($target[$sec][$fila])) {
+                $target[$sec][$fila] = [];
+            }
+            $target[$sec][$fila][$col] = $val;
+        };
+
+        foreach ($valoresFlat as $key => $val) {
+            if (! is_string($key)) {
+                continue;
+            }
+            $val = trim(is_scalar($val) ? (string) $val : '');
+            if ($val === '') {
+                continue;
+            }
+            if (preg_match('/^fc_(\d+)_(\d+)_([a-z][a-z0-9_]*)_(\d+)_(\d+)$/', $key, $m)) {
+                if ((int) $m[1] !== $fichaClinicaId || (int) $m[2] !== $prianacategoriaId) {
+                    continue;
+                }
+                $mergeSection($out, (string) $m[3], (int) $m[4], (int) $m[5], $val);
+                continue;
+            }
+            if (preg_match('/^fcn_(\d+)_(\d+)_([a-z][a-z0-9_]*)_(\d+)_(\d+)$/', $key, $m)) {
+                if ((int) $m[1] !== $fichaClinicaId || (int) $m[2] !== $prianacategoriaId) {
+                    continue;
+                }
+                $mergeSection($outNum, (string) $m[3], (int) $m[4], (int) $m[5], $val);
+            }
+        }
+
+        $blobKey = 'ficha_clinica_' . $fichaClinicaId . '_' . $prianacategoriaId;
+        $blob = $valoresFlat[$blobKey] ?? null;
+        if ($blob !== null && $blob !== '') {
+            $decoded = is_array($blob) ? $blob : json_decode((string) $blob, true);
+            if (is_array($decoded)) {
+                foreach ($decoded as $sec => $filas) {
+                    if (! is_array($filas)) {
+                        continue;
+                    }
+                    foreach ($filas as $fila => $cols) {
+                        if (! is_array($cols)) {
+                            continue;
+                        }
+                        foreach ($cols as $col => $cellVal) {
+                            $mergeSection(
+                                $out,
+                                (string) $sec,
+                                (int) $fila,
+                                (int) $col,
+                                trim(is_scalar($cellVal) ? (string) $cellVal : '')
+                            );
+                        }
+                    }
+                }
+            }
+        }
+
+        return ['cv' => $out, 'cvn' => $outNum];
+    }
+
+    /**
      * Los separadores (es_separador) no se guardan en regvalues; el reporte solo ve filas c_* con valor.
      * Reconstruye el orden completo de cada prueba compuesta desde secanacategoria e inserta títulos.
      *

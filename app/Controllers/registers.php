@@ -81,8 +81,9 @@ class Registers extends SecureArea
         $totalPruebas = count($pruebasInfo);
 
         $extras = [
-            'total_pruebas'    => $totalPruebas,
-            'show_order_costs' => ($this->configModel->getValue('show_order_costs') === '1'),
+            'total_pruebas'         => $totalPruebas,
+            'show_order_costs'      => ($this->configModel->getValue('show_order_costs') === '1'),
+            'fichas_clinicas_orden' => $this->registerService->buildFichasClinicasOrdenMap($registroId, $pruebasInfo),
         ];
 
         if (!$extras['show_order_costs']) {

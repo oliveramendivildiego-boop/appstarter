@@ -11,11 +11,13 @@
  * @var list<array<string, mixed>> $abonos
  * @var string $tipo_pago_nombre
  * @var bool $for_pdf
+ * @var array<int, array{ficha_clinica_id: int, nombre: string, cultivo_item: object}> $fichas_clinicas_orden
  */
 helper('layout');
 $forPdf = !empty($for_pdf);
 $showCosts = !empty($show_order_costs);
 $costosMap = is_array($costos_por_id ?? null) ? $costos_por_id : [];
+$fichasOrdenMap = is_array($fichas_clinicas_orden ?? null) ? $fichas_clinicas_orden : [];
 $numPrueba = 0;
 
 $filasOrden = [];
@@ -48,12 +50,22 @@ if (! empty($pruebas_en_orden) && is_array($pruebas_en_orden)) {
                 if ($padreLabel !== '' && stripos($nombrePrueba, $padreLabel) === false) {
                     $nombrePrueba .= ' (' . $padreLabel . ')';
                 }
+                $fichaOrden = $fichasOrdenMap[$pid] ?? null;
                 ?>
-                <li class="orden-prueba-item"<?= $forPdf ? ' style="display:flex;align-items:baseline;margin:0 0 2px;padding:0;text-align:left;"' : '' ?>>
-                    <span class="orden-prueba-num<?= !$forPdf && !$showCosts ? ' text-muted' : '' ?>"><?= $numPrueba ?>.</span>
-                    <span class="orden-prueba-nombre"><?= esc($nombrePrueba) ?></span>
-                    <?php if ($showCosts): ?>
-                        <span class="orden-prueba-costo"<?= $forPdf ? ' style="margin-left:auto;text-align:right;white-space:nowrap;"' : '' ?>><?= format_currency($costo) ?></span>
+                <li class="orden-prueba-block"<?= $forPdf ? ' style="margin:0 0 6px;padding:0;list-style:none;"' : '' ?>>
+                    <div class="orden-prueba-item"<?= $forPdf ? ' style="display:flex;align-items:baseline;margin:0 0 2px;padding:0;text-align:left;"' : '' ?>>
+                        <span class="orden-prueba-num<?= !$forPdf && !$showCosts ? ' text-muted' : '' ?>"><?= $numPrueba ?>.</span>
+                        <span class="orden-prueba-nombre"><?= esc($nombrePrueba) ?></span>
+                        <?php if ($showCosts): ?>
+                            <span class="orden-prueba-costo"<?= $forPdf ? ' style="margin-left:auto;text-align:right;white-space:nowrap;"' : '' ?>><?= format_currency($costo) ?></span>
+                        <?php endif; ?>
+                    </div>
+                    <?php if (is_array($fichaOrden) && ! empty($fichaOrden['cultivo_item'])): ?>
+                        <?= view('registers/partial_ficha_clinica_orden', [
+                            'cultivo_item' => $fichaOrden['cultivo_item'],
+                            'ficha_nombre' => (string) ($fichaOrden['nombre'] ?? ''),
+                            'for_pdf'      => $forPdf,
+                        ]) ?>
                     <?php endif; ?>
                 </li>
             <?php endforeach; ?>

@@ -19,6 +19,10 @@
         .orden-prueba-num { flex: 0 0 auto; margin-right: 0.2em; }
         .orden-prueba-nombre { flex: 1 1 auto; min-width: 0; }
         .orden-prueba-costo { flex: 0 0 auto; margin-left: auto; white-space: nowrap; text-align: right; }
+        .orden-prueba-block { margin: 0 0 6px; padding: 0; list-style: none; }
+        .orden-prueba-ficha { margin: 2px 0 0 14px; padding: 4px 6px; border-left: 2px solid #0aa2c0; background: #f7fcfd; font-size: 10px; }
+        .orden-prueba-ficha-titulo { font-weight: 700; font-size: 9px; color: #0a6ebd; margin-bottom: 3px; }
+        .orden-prueba-ficha-body .report-cultivo-seccion { margin-bottom: 4px !important; }
         .orden-header { width: 100%; margin-bottom: 14px; border-collapse: collapse; }
         .orden-header td { vertical-align: top; padding: 0; }
         .orden-header .lab-info { width: 38%; font-size: 11px; line-height: 1.4; }
@@ -85,14 +89,15 @@
     </div>
 
     <?= view('registers/orden_pruebas_block', [
-        'pruebas_en_orden'   => $pruebas_en_orden ?? [],
-        'total_pruebas'      => (int) ($total_pruebas ?? 0),
-        'show_order_costs'   => !empty($show_order_costs),
-        'costos_por_id'      => $costos_por_id ?? [],
-        'pago'               => $pago ?? null,
-        'abonos'             => $abonos ?? [],
-        'tipo_pago_nombre'   => $tipo_pago_nombre ?? '-',
-        'for_pdf'            => true,
+        'pruebas_en_orden'      => $pruebas_en_orden ?? [],
+        'total_pruebas'         => (int) ($total_pruebas ?? 0),
+        'show_order_costs'      => !empty($show_order_costs),
+        'costos_por_id'         => $costos_por_id ?? [],
+        'pago'                  => $pago ?? null,
+        'abonos'                => $abonos ?? [],
+        'tipo_pago_nombre'      => $tipo_pago_nombre ?? '-',
+        'fichas_clinicas_orden' => $fichas_clinicas_orden ?? [],
+        'for_pdf'               => true,
     ]) ?>
 </body>
 </html>
