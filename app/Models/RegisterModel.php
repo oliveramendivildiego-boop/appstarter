@@ -1543,7 +1543,7 @@ class RegisterModel extends Model
             $r0 = $groupRows[0];
             $compleja = (int) ($r0['compleja'] ?? 0);
 
-            if ($compleja === 1 || $compleja === 2) {
+            if ($compleja === LabotestModel::COMPLEJA_COMPOUESTA || LabotestModel::esMatrizConfigurable($compleja)) {
                 $r = $r0;
                 if (((int) ($r['opcion_id'] ?? 0)) <= 0 && ((int) ($r['opcion_id_fallback'] ?? 0)) > 0) {
                     $r['opcion_id'] = $r['opcion_id_fallback'];
@@ -1611,6 +1611,29 @@ class RegisterModel extends Model
                 $r['texto_fijo'] = $fr['texto_fijo'] ?? '';
                 unset($r['opcion_id_fallback'], $r['priresultados_id_fallback'], $r['priresultados_id_filtered']);
                 $byPria[$pid] = $r;
+            }
+        }
+
+        $missingSinFiltroPoblacion = array_values(array_filter(
+            $ids,
+            static fn(int $pid): bool => ! isset($byPria[$pid])
+        ));
+        if ($missingSinFiltroPoblacion !== []) {
+            $recoveryRows = $this->db->table('prianacategoria')
+                ->select("{$pt}.name as hijo, {$pt}.compleja, {$pt}.prianacategoria_id, {$mostrarValoresSelect}, {$ac}.name as padre")
+                ->join('anacategoria', "{$ac}.anacategoria_id = {$pt}.anacategoria_id", 'left')
+                ->whereIn("{$pt}.prianacategoria_id", $missingSinFiltroPoblacion)
+                ->get()
+                ->getResultArray();
+            foreach ($recoveryRows as $r) {
+                $compleja = (int) ($r['compleja'] ?? 0);
+                if ($compleja !== LabotestModel::COMPLEJA_COMPOUESTA && ! LabotestModel::esMatrizConfigurable($compleja)) {
+                    continue;
+                }
+                $pid = (int) ($r['prianacategoria_id'] ?? 0);
+                if ($pid > 0) {
+                    $byPria[$pid] = $r;
+                }
             }
         }
 
