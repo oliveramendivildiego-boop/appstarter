@@ -275,12 +275,17 @@ $sexoMap = ['ambos' => 'Ambos', 'masculino' => 'Masculino', 'femenino' => 'Femen
         if (!el || typeof jQuery === 'undefined' || !jQuery.fn.summernote) return;
         if (jQuery(el).data('summernote')) return;
         jQuery(el).summernote({
-            height: 140,
+            height: 180,
             toolbar: [
                 ['style', ['bold', 'italic', 'underline']],
                 ['para', ['ul', 'ol']],
                 ['view', ['codeview']]
-            ]
+            ],
+            callbacks: {
+                onChange: function() {
+                    syncTextoFijoConfigEditor(el);
+                }
+            }
         });
     }
     function setTextoFijoConfigValue(el, html) {

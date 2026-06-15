@@ -851,10 +851,16 @@ if ($fe !== '') {
                     messages: { nombre: { required: "El nombre de la sub-clase es obligatorio" }, paciente_id: { required: "La población es obligatoria" }, sexo: { required: "El sexo es obligatorio" } }
                 }));
             }
+            function syncSecTextoFijoBeforeSubmit() {
+                var el = document.getElementById('sec_texto_fijo');
+                if (!el || typeof jQuery === 'undefined' || !jQuery(el).data('summernote')) return;
+                el.value = jQuery(el).summernote('code');
+            }
             (formSecItem || formulaInput?.closest('form'))?.addEventListener('submit', function(e) {
                 e.preventDefault();
                 var f = this;
                 if (typeof $ !== 'undefined' && $(f).data('validator') && !$(f).validate().form()) return;
+                syncSecTextoFijoBeforeSubmit();
                 var sepOn = document.getElementById('es_separador_cb') && document.getElementById('es_separador_cb').checked;
                 if (sepOn) {
                     var c0 = document.getElementById('es_calculada');
@@ -1059,12 +1065,17 @@ if ($fe !== '') {
                 if (!el || typeof jQuery === 'undefined' || !jQuery.fn.summernote) return;
                 if (jQuery(el).data('summernote')) return;
                 jQuery(el).summernote({
-                    height: 140,
+                    height: 180,
                     toolbar: [
                         ['style', ['bold', 'italic', 'underline']],
                         ['para', ['ul', 'ol']],
                         ['view', ['codeview']]
-                    ]
+                    ],
+                    callbacks: {
+                        onChange: function() {
+                            syncTextoFijoConfigEditor(el);
+                        }
+                    }
                 });
             }
             function setTextoFijoConfigValue(el, html) {
@@ -1596,6 +1607,7 @@ if ($fe !== '') {
                 'mostrar_medida' => (int) ($editar_sec_data['mostrar_medida'] ?? 0),
                 'formulas_id' => (int)($editar_sec_data['formulas_id'] ?? 1),
                 'opcion_id' => (int)($editar_sec_data['opcion_id'] ?? 3),
+                'texto_fijo' => (string) ($editar_sec_data['texto_fijo'] ?? ''),
                 'formula_para_textarea' => $formulaParaTextarea ?? '',
                 'formula_nombre' => $formulaNombreInicial ?? '',
                 'es_separador' => ! empty($editar_sec_data['es_separador']) ? 1 : 0,
