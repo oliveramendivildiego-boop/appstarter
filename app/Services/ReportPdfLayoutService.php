@@ -236,7 +236,7 @@ class ReportPdfLayoutService
     ];
 
     /** @var list<string> */
-    public const ALLOWED_GRUPO_CABECERA_TITLE_MODES = ['grupo_analisis', 'solo_analisis'];
+    public const ALLOWED_GRUPO_CABECERA_TITLE_MODES = ['grupo_analisis', 'solo_analisis', 'grupo_analisis_sin_cabecera_tabla'];
 
     public const DEFAULT_HEADER_SECTION_STYLE = [
         'separator_color'   => '#0066CC',
@@ -3998,6 +3998,16 @@ class ReportPdfLayoutService
         $cfg = self::grupoCabeceraDisplayFromLayout($layout);
 
         return ! empty($cfg['show_metodo']) && trim($linea) !== '';
+    }
+
+    /**
+     * @param array<string, mixed> $layout
+     */
+    public static function grupoCabeceraOcultarTheadResultsTabla(array $layout): bool
+    {
+        $cfg = self::grupoCabeceraDisplayFromLayout($layout);
+
+        return ($cfg['title_mode'] ?? '') === 'grupo_analisis_sin_cabecera_tabla';
     }
 
     /**

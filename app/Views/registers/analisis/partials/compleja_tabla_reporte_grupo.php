@@ -23,6 +23,8 @@ $segmentWrapStyleAttr = $segmentWrapStyle !== '' ? ' style="' . esc($segmentWrap
 $nombresTipoPorPria = $report_pria_tipo_muestra_nombre ?? [];
 $nombresMetodoPorPria = $report_pria_metodo_nombre ?? [];
 $refsMatrixAll = $report_pria_refs_consolidada ?? [];
+$pdfLayout = is_array($pdf_layout ?? null) ? $pdf_layout : [];
+$ocultarTheadResults = \App\Services\ReportPdfLayoutService::grupoCabeceraOcultarTheadResultsTabla($pdfLayout);
 
 $subgruposPorPria = [];
 $ordenPriaKeys = [];
@@ -203,6 +205,7 @@ foreach ($ordenPriaKeys as $subIdx => $priaKey) :
             <?php endif; ?>
         <?php endif; ?>
         <table class="<?= esc($mainTableClass) ?>">
+            <?php if (! $ocultarTheadResults): ?>
             <thead<?= $usePdfChrome ? '' : ' class="thead-dark"' ?>>
                 <tr>
                     <th>ANÁLISIS</th>
@@ -212,6 +215,7 @@ foreach ($ordenPriaKeys as $subIdx => $priaKey) :
                     <?php endif; ?>
                 </tr>
             </thead>
+            <?php endif; ?>
             <tbody>
                 <?php foreach ($segItems as $item): ?>
                     <?php

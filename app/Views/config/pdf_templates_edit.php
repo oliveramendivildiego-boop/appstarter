@@ -680,6 +680,7 @@ $labelsShort = [
                                 <select class="form-select" id="rs_grupo_cabecera_title_mode">
                                     <option value="grupo_analisis" <?= ($rs['grupo_cabecera_title_mode'] ?? 'grupo_analisis') === 'grupo_analisis' ? 'selected' : '' ?>>Área (grupo) — Análisis clínico</option>
                                     <option value="solo_analisis" <?= ($rs['grupo_cabecera_title_mode'] ?? '') === 'solo_analisis' ? 'selected' : '' ?>>Solo análisis clínico</option>
+                                    <option value="grupo_analisis_sin_cabecera_tabla" <?= ($rs['grupo_cabecera_title_mode'] ?? '') === 'grupo_analisis_sin_cabecera_tabla' ? 'selected' : '' ?>>Análisis tipo de grupo sin cabecera de tabla</option>
                                 </select>
                             </div>
                             <div class="col-12 col-md-6 d-flex align-items-end">
