@@ -251,7 +251,7 @@ foreach ($ordenPriaKeys as $subIdx => $priaKey) :
                     $opcionIdItem = (int) ($item->opcion_id ?? 3);
                     $mostrarMedidaSoloRef = registro_mostrar_medida_solo_en_referencia($item);
                     $resMostrarHtml = registro_resultado_celda_html($item->regvalues ?? '', $item->umedida ?? '', $opcionIdItem, $mostrarMedidaSoloRef);
-                    $refMostrar = registro_rango_referencial_texto($item->valor_min ?? '', $item->valor_max ?? '', $item->umedida ?? '');
+                    $refMostrar = registro_rango_referencial_html($item->valor_min ?? '', $item->valor_max ?? '', $item->umedida ?? '');
                     $celdaRicoClass = (registro_opcion_es_texto_rico($opcionIdItem) || registro_opcion_es_texto_fijo($opcionIdItem) || registro_valor_contiene_html_rico((string) ($item->regvalues ?? ''))) ? ' resultado-texto-rico-cell' : '';
                     ?>
                     <?php if (is_object($item)): ?>
@@ -262,7 +262,7 @@ foreach ($ordenPriaKeys as $subIdx => $priaKey) :
                             <td class="text-center<?= $celdaRicoClass ?> <?= $class ?><?= $usePdfChrome && $isOutPdf ? ' out-range' : '' ?>"><?= $resMostrarHtml ?></td>
                             <?php elseif ($itemConRef): ?>
                             <td class="text-center<?= $celdaRicoClass ?> <?= $class ?><?= $usePdfChrome && $isOutPdf ? ' out-range' : '' ?>"><?= $resMostrarHtml ?></td>
-                            <td class="text-center<?= $usePdfChrome ? ' ref-range' : '' ?>"><?= esc($refMostrar) ?></td>
+                            <td class="text-center<?= $usePdfChrome ? ' ref-range' : '' ?>"><?= $refMostrar ?></td>
                             <?php else: ?>
                             <td class="text-center<?= $celdaRicoClass ?> <?= $class ?><?= $usePdfChrome && $isOutPdf ? ' out-range' : '' ?>" colspan="2"><?= $resMostrarHtml ?></td>
                             <?php endif; ?>
@@ -319,7 +319,7 @@ if ($priaIdTitulo > 0 && ! empty($refsMatrixAll[$priaIdTitulo])) :
                 } else {
                     $sexoTxt = esc($sexoTxt);
                 }
-                $refTxt = registro_rango_referencial_texto($mrow['valor_min'] ?? '', $mrow['valor_max'] ?? '', $mrow['umedida'] ?? '');
+                $refTxt = registro_rango_referencial_html($mrow['valor_min'] ?? '', $mrow['valor_max'] ?? '', $mrow['umedida'] ?? '');
                 ?>
             <tr>
                 <td class="matrix-col-population"><?= esc(trim((string) ($mrow['poblacion_nombre'] ?? ''))) ?></td>
@@ -327,7 +327,7 @@ if ($priaIdTitulo > 0 && ! empty($refsMatrixAll[$priaIdTitulo])) :
                 <?php if ($showSexoCol): ?>
                 <td class="text-center matrix-col-sex"><?= $sexoTxt ?></td>
                 <?php endif; ?>
-                <td class="text-center matrix-col-reference"><?= esc($refTxt) ?></td>
+                <td class="text-center matrix-col-reference"><?= $refTxt ?></td>
             </tr>
             <?php endforeach; ?>
         </tbody>

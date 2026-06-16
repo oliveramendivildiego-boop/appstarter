@@ -145,6 +145,63 @@ if (! function_exists('registro_rango_referencial_texto')) {
     }
 }
 
+if (! function_exists('registro_rango_referencial_html')) {
+    /**
+     * HTML seguro para rango referencial: unidad y guion entre mín./máx. en negrita.
+     *
+     * @param mixed      $min
+     * @param mixed      $max
+     * @param mixed|null $unidad
+     */
+    function registro_rango_referencial_html($min, $max, $unidad = null): string
+    {
+        $min = trim((string) ($min ?? ''));
+        $max = trim((string) ($max ?? ''));
+        $u   = trim((string) ($unidad ?? ''));
+
+        if ($min === '' && $max === '') {
+            return esc('-');
+        }
+
+        if ($min !== '' && $max !== '') {
+            $rangePart = esc($min) . ' <strong>-</strong> ' . esc($max);
+        } else {
+            $rangePart = esc($min !== '' ? $min : $max);
+        }
+
+        if ($u === '') {
+            return $rangePart;
+        }
+
+        return $rangePart . ' <strong>' . esc($u) . '</strong>';
+    }
+}
+
+if (! function_exists('registro_resultado_con_unidad_html')) {
+    /**
+     * Resultado con unidad en HTML seguro (unidad en negrita).
+     *
+     * @param mixed $valor
+     * @param mixed $unidad
+     */
+    function registro_resultado_con_unidad_html($valor, $unidad): string
+    {
+        $v = trim((string) ($valor ?? ''));
+        $u = trim((string) ($unidad ?? ''));
+        if ($v === '' || $v === '-') {
+            return esc('-');
+        }
+
+        [$v, $u] = registro_normalizar_valor_y_unidad_para_mostrar($v, $u);
+
+        if ($u === '') {
+            return esc($v);
+        }
+
+        return esc($v) . ' <strong>' . esc($u) . '</strong>';
+    }
+}
+
 if (! function_exists('registro_opcion_es_texto_rico')) {
     function registro_opcion_es_texto_rico(int $opcionId): bool
     {
@@ -365,13 +422,13 @@ if (! function_exists('registro_resultado_celda_html')) {
             if ($html === '') {
                 return esc('-');
             }
-            $suffix = $u !== '' ? ' <span class="text-muted">' . esc($u) . '</span>' : '';
+            $suffix = $u !== '' ? ' <strong>' . esc($u) . '</strong>' : '';
             $class = registro_opcion_es_texto_fijo($opcionId) ? 'resultado-texto-fijo resultado-texto-rico' : 'resultado-texto-rico';
 
             return '<div class="' . $class . ' text-start d-inline-block">' . $html . $suffix . '</div>';
         }
 
-        return esc(registro_resultado_con_unidad($valor, $u));
+        return registro_resultado_con_unidad_html($valor, $u);
     }
 }
 

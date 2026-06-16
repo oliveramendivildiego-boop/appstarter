@@ -839,6 +839,13 @@ table.results td.resultado-texto-rico-cell .resultado-texto-rico ol {
     font-size: 8pt;
     color: #666;
 }
+table.results td.text-center strong,
+table.results td.ref-range strong,
+table.results td.matrix-col-reference strong,
+.table td.text-center strong,
+.table td.matrix-col-reference strong {
+    font-weight: 700 !important;
+}
 .footer-grid {
     display: block;
     width: 100%;
