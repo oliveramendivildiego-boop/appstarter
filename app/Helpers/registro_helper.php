@@ -53,6 +53,43 @@ if (! function_exists('registro_orden_display')) {
     }
 }
 
+if (! function_exists('registro_normalizar_valor_y_unidad_para_mostrar')) {
+    /**
+     * Evita duplicar número o unidad al armar el texto del reporte (p. ej. "60 60 ml").
+     *
+     * @return array{0: string, 1: string} [valor, unidad]
+     */
+    function registro_normalizar_valor_y_unidad_para_mostrar(string $valor, string $unidad): array
+    {
+        $v = trim($valor);
+        $u = trim($unidad);
+        if ($v === '' || $v === '-') {
+            return [$v, $u];
+        }
+
+        if (preg_match('/^([\d]+(?:[.,]\d+)?)\s+\1$/u', $v, $m)) {
+            $v = $m[1];
+        }
+
+        if ($u !== '') {
+            $uPattern = preg_quote($u, '/');
+            if (preg_match('/\s' . $uPattern . '$/iu', $v)) {
+                return [$v, ''];
+            }
+
+            $vPattern = preg_quote($v, '/');
+            if (preg_match('/^' . $vPattern . '\s+(.+)$/u', $u, $m)) {
+                $u = trim($m[1]);
+                if (preg_match('/\s' . preg_quote($u, '/') . '$/iu', $v)) {
+                    return [$v, ''];
+                }
+            }
+        }
+
+        return [$v, $u];
+    }
+}
+
 if (! function_exists('registro_resultado_con_unidad')) {
     /**
      * Resultado y unidad en un solo texto (ej. "80 mg/dl").
@@ -67,6 +104,9 @@ if (! function_exists('registro_resultado_con_unidad')) {
         if ($v === '' || $v === '-') {
             return '-';
         }
+
+        [$v, $u] = registro_normalizar_valor_y_unidad_para_mostrar($v, $u);
+
         if ($u === '') {
             return $v;
         }

@@ -1792,7 +1792,18 @@ class Registers extends SecureArea
         }
 
         $valCount = 0;
+        $dedupedSave = [];
         foreach ($data as $item) {
+            if (! is_array($item)) {
+                continue;
+            }
+            $id = trim((string) ($item['id'] ?? ''));
+            if ($id === '') {
+                continue;
+            }
+            $dedupedSave[$id] = $item;
+        }
+        foreach ($dedupedSave as $item) {
             $this->registerModel->saveRegvalues([
                 'regvalues'   => $item['valor'] ?? null,
                 'registro_id' => $item['registro_id'] ?? null,

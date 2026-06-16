@@ -200,10 +200,137 @@ class RegisterService
     }
 
     /**
+     * Elimina filas duplicadas de regvalues que apuntan al mismo parámetro.
+     * Prioriza claves c_* / noc_* sobre el formato legacy prianacategoria_id|nombre.
+     *
+     * @param list<array<string,mixed>> $analisis
+     * @return list<array<string,mixed>>
+     */
+    protected function deduplicateAnalisisForReport(array $analisis, array $matchingPoblacionIds = [], ?int $gender = null): array
+    {
+        $indexed = [];
+
+        foreach ($analisis as $prueba) {
+            if (! is_array($prueba)) {
+                continue;
+            }
+            $name = trim((string) ($prueba['name'] ?? ''));
+            if ($name === '') {
+                continue;
+            }
+
+            $val = trim((string) ($prueba['regvalues'] ?? $prueba['value'] ?? ''));
+            $priority = 0;
+            $canonicalKey = 'raw:' . $name;
+
+            if (preg_match('/^(c|noc)_(\d+)$/', $name, $m) === 1) {
+                $canonicalKey = $m[1] . ':' . $m[2];
+                $priority = 3;
+            } elseif (strpos($name, '|') !== false) {
+                [$priaStr, $nombreParam] = explode('|', $name, 2);
+                $priaId = (int) trim($priaStr);
+                $nombreParam = trim($nombreParam);
+                if ($priaId > 0 && $nombreParam !== '') {
+                    $item = $this->registerModel->getSecItemByPrianacategoriaYNombre(
+                        $priaId,
+                        $nombreParam,
+                        $matchingPoblacionIds,
+                        $gender
+                    );
+                    $secId = $item ? (int) ($item->secanacategoria_id ?? 0) : 0;
+                    if ($secId > 0) {
+                        $canonicalKey = 'c:' . $secId;
+                    } else {
+                        $canonicalKey = 'pipe:' . $priaId . '|' . mb_strtolower($nombreParam);
+                    }
+                }
+                $priority = 1;
+            } elseif (str_starts_with($name, 'cv_') || str_starts_with($name, 'cvn_') || str_starts_with($name, 'cvu_')) {
+                $priority = 2;
+            } elseif (preg_match('/^lab_(val|app)_pri_\d+$/', $name) === 1) {
+                $priority = 2;
+            }
+
+            $existing = $indexed[$canonicalKey] ?? null;
+            if ($existing === null || $priority > (int) ($existing['priority'] ?? 0)) {
+                $indexed[$canonicalKey] = [
+                    'row'      => $prueba,
+                    'priority' => $priority,
+                    'name'     => $name,
+                    'value'    => $val,
+                ];
+                continue;
+            }
+
+            if ($priority === (int) ($existing['priority'] ?? 0) && $val !== '' && $val !== ($existing['value'] ?? '')) {
+                if (preg_match('/^(c|noc)_/', $name) === 1) {
+                    $indexed[$canonicalKey] = [
+                        'row'      => $prueba,
+                        'priority' => $priority,
+                        'name'     => $name,
+                        'value'    => $val,
+                    ];
+                }
+            }
+        }
+
+        $out = [];
+        foreach ($indexed as $entry) {
+            $row = $entry['row'];
+            if (is_array($row)) {
+                $out[] = $row;
+            }
+        }
+
+        return $out;
+    }
+
+    /**
+     * @param array<string, list<object>> $grupos
+     * @return array<string, list<object>>
+     */
+    protected function deduplicateGrupoItemsByParametro(array $grupos): array
+    {
+        foreach ($grupos as $padre => $items) {
+            $seen = [];
+            $deduped = [];
+            foreach ($items as $it) {
+                $it = is_array($it) ? (object) $it : $it;
+                $secId = (int) ($it->secanacategoria_id ?? 0);
+                $nocId = (int) ($it->priresultados_id ?? 0);
+                $isSep = (int) ($it->es_separador ?? 0) === 1;
+                if ($isSep) {
+                    $key = 'sep:' . $secId;
+                } elseif ($secId > 0) {
+                    $key = 'sec:' . $secId;
+                } elseif ($nocId > 0) {
+                    $key = 'noc:' . $nocId;
+                } else {
+                    $key = 'raw:' . md5(json_encode([
+                        (string) ($it->nombre ?? ''),
+                        (string) ($it->hijo ?? ''),
+                        (string) ($it->regvalues ?? ''),
+                    ], JSON_UNESCAPED_UNICODE));
+                }
+
+                if (isset($seen[$key])) {
+                    continue;
+                }
+                $seen[$key] = true;
+                $deduped[] = $it;
+            }
+            $grupos[$padre] = $deduped;
+        }
+
+        return $grupos;
+    }
+
+    /**
      * Construye los grupos de análisis para la vista de reporte/PDF
      */
     public function buildGruposParaReporte(int $registroId, array $analisis, array $matchingPoblacionIds = [], ?int $gender = null): array
     {
+        $analisis = $this->deduplicateAnalisisForReport($analisis, $matchingPoblacionIds, $gender);
         $grupos = [];
         $cultivoExtracted = $this->extractCultivoCellValuesFromAnalisis($analisis);
         $cultivoValoresPorPria = $cultivoExtracted['cv'];
@@ -317,7 +444,7 @@ class RegisterService
             $grupos[$padre] = $items;
         }
 
-        return $grupos;
+        return $this->deduplicateGrupoItemsByParametro($grupos);
     }
 
     /**
@@ -1254,7 +1381,24 @@ class RegisterService
             // Mantener cualquier fila realmente cargada por el usuario aunque no
             // esté en la plantilla de referencias filtrada por población.
             foreach ($itemPorKey as $leftover) {
-                $reconstruidos[] = $leftover;
+                $leftSec = (int) ($leftover->secanacategoria_id ?? 0);
+                $leftNom = mb_strtolower(trim((string) ($leftover->nombre ?? '')));
+                $duplicado = false;
+                foreach ($reconstruidos as $ya) {
+                    $yaSec = (int) ($ya->secanacategoria_id ?? 0);
+                    $yaNom = mb_strtolower(trim((string) ($ya->nombre ?? '')));
+                    if ($leftSec > 0 && $leftSec === $yaSec) {
+                        $duplicado = true;
+                        break;
+                    }
+                    if ($leftNom !== '' && $leftNom === $yaNom) {
+                        $duplicado = true;
+                        break;
+                    }
+                }
+                if (! $duplicado) {
+                    $reconstruidos[] = $leftover;
+                }
             }
 
             usort($reconstruidos, static function ($a, $b) {
@@ -1989,6 +2133,7 @@ class RegisterService
         }
         $grupos = $this->appendMissingReferenceRows($grupos, $registerInfo, $eligiblePriaConfig, $matchingPoblacionIds, $patientGender);
         $grupos = $this->applyReferenceVisibility($grupos, $eligiblePriaIds);
+        $grupos = $this->deduplicateGrupoItemsByParametro($grupos);
         $grupos = $this->dropGruposSinValorIngresado($grupos);
         $grupos = $this->sortGruposByRegistroPruebasOrder($grupos, (string) ($registerInfo->pruebas ?? ''));
 
