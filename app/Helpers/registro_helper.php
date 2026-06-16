@@ -442,6 +442,57 @@ if (! function_exists('registro_tiene_rango_referencial')) {
     }
 }
 
+if (! function_exists('registro_interpretacion_referencial_etiqueta')) {
+    /**
+     * Etiqueta Alto / Normal / Bajo para viewreport según valor numérico vs rango referencial.
+     * Solo aplica con valor numérico y ambos límites definidos (misma regla que el coloreado en reporte).
+     *
+     * @return array{label: string, nivel: 'alto'|'normal'|'bajo'}|null
+     */
+    function registro_interpretacion_referencial_etiqueta($valor, $min, $max): ?array
+    {
+        if (! is_numeric($valor)) {
+            return null;
+        }
+        $minStr = trim((string) ($min ?? ''));
+        $maxStr = trim((string) ($max ?? ''));
+        if ($minStr === '' || $maxStr === '') {
+            return null;
+        }
+
+        $v = (float) $valor;
+        $minNum = (float) $minStr;
+        $maxNum = (float) $maxStr;
+
+        if ($v > $maxNum) {
+            return ['label' => 'Alto', 'nivel' => 'alto'];
+        }
+        if ($v < $minNum) {
+            return ['label' => 'Bajo', 'nivel' => 'bajo'];
+        }
+
+        return ['label' => 'Normal', 'nivel' => 'normal'];
+    }
+}
+
+if (! function_exists('registro_interpretacion_referencial_clase_resultado')) {
+    /**
+     * Clase CSS del resultado en viewreport cuando la columna Interpretación está activa.
+     */
+    function registro_interpretacion_referencial_clase_resultado(?array $interpretacion): string
+    {
+        if ($interpretacion === null) {
+            return 'normal';
+        }
+
+        return match ($interpretacion['nivel']) {
+            'alto' => 'report-interpretacion-alto',
+            'bajo' => 'report-interpretacion-bajo',
+            default => 'normal',
+        };
+    }
+}
+
 if (! function_exists('paciente_nombre_display')) {
     /**
      * Nombre del paciente: apellido paterno, apellido materno, nombres.

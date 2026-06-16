@@ -1000,7 +1000,7 @@ class ConfigService
             'print_after_sale', 'logo', 'theme_color', 'header_brand',
             'decimales_sugerencia', 'dias_alerta_vencimiento', 'stock_alerta_factor', 'show_order_barcode', 'show_order_costs', 'order_barcode_print_layout', 'order_barcode_print_size_percent',
             self::REGISTERS_LISTA_FECHA_DEFAULT_KEY,
-            'print_paper_size', 'print_pagination_enabled', 'print_pagination_position', 'leyendas_enabled',
+            'print_paper_size', 'print_pagination_enabled', 'print_pagination_position', 'leyendas_enabled', 'interpretacion_enabled',
             'custom1_name', 'custom2_name', 'custom3_name', 'custom4_name', 'custom5_name',
             'custom6_name', 'custom7_name', 'custom8_name', 'custom9_name', 'custom10_name',
         ];
@@ -1075,6 +1075,9 @@ class ConfigService
         }
         if (array_key_exists('leyendas_enabled', $postData)) {
             $batch['leyendas_enabled'] = ($postData['leyendas_enabled'] === '1') ? '1' : '0';
+        }
+        if (array_key_exists('interpretacion_enabled', $postData)) {
+            $batch['interpretacion_enabled'] = ($postData['interpretacion_enabled'] === '1') ? '1' : '0';
         }
         if (array_key_exists('lab_datetime_storage', $postData)) {
             $batch['lab_datetime_storage'] = ($postData['lab_datetime_storage'] === '1') ? '1' : '0';

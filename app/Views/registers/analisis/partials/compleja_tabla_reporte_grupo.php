@@ -25,6 +25,9 @@ $nombresMetodoPorPria = $report_pria_metodo_nombre ?? [];
 $refsMatrixAll = $report_pria_refs_consolidada ?? [];
 $pdfLayout = is_array($pdf_layout ?? null) ? $pdf_layout : [];
 $ocultarTheadResults = \App\Services\ReportPdfLayoutService::grupoCabeceraOcultarTheadResultsTabla($pdfLayout);
+$labConfigLocal = is_array($lab_config ?? null) ? $lab_config : [];
+$showInterpretacionCol = $variant === 'screen_pdf'
+    && (($labConfigLocal['interpretacion_enabled'] ?? '0') === '1');
 
 $subgruposPorPria = [];
 $ordenPriaKeys = [];
@@ -182,6 +185,7 @@ foreach ($ordenPriaKeys as $subIdx => $priaKey) :
             break;
         }
     }
+    $mostrarColInterpretacion = $showInterpretacionCol && $conRefEnSeg;
     $mainTableClass = $usePdfChrome ? 'results' : 'table mb-0';
     $wrapOpen = ! $usePdfChrome ? '<div class="table-responsive mb-3">' : '<div class="report-segment-table-wrap"' . $segmentWrapStyleAttr . '>';
     $wrapClose = '</div>';
@@ -213,6 +217,9 @@ foreach ($ordenPriaKeys as $subIdx => $priaKey) :
                     <?php if ($conRefEnSeg): ?>
                     <th class="text-center">RANGO REFERENCIAL</th>
                     <?php endif; ?>
+                    <?php if ($mostrarColInterpretacion): ?>
+                    <th class="text-center">INTERPRETACIÓN</th>
+                    <?php endif; ?>
                 </tr>
             </thead>
             <?php endif; ?>
@@ -237,7 +244,14 @@ foreach ($ordenPriaKeys as $subIdx => $priaKey) :
                         $val = '-';
                     }
                     $valNorm = trim(strtolower((string) $val));
-                    if (in_array($valNorm, ['positivo', 'reactivo'], true)) {
+                    $itemConRef = registro_tiene_rango_referencial($item->valor_min ?? '', $item->valor_max ?? '');
+                    $interpretacionRef = ($mostrarColInterpretacion && $itemConRef)
+                        ? registro_interpretacion_referencial_etiqueta($val, $item->valor_min ?? '', $item->valor_max ?? '')
+                        : null;
+                    if ($mostrarColInterpretacion && $interpretacionRef !== null) {
+                        $class = registro_interpretacion_referencial_clase_resultado($interpretacionRef);
+                        $isOutPdf = $interpretacionRef['nivel'] !== 'normal';
+                    } elseif (in_array($valNorm, ['positivo', 'reactivo'], true)) {
                         $class = 'text-danger font-weight-bold';
                         $isOutPdf = true;
                     } elseif (is_numeric($val) && ($item->valor_min ?? '') !== '' && ($item->valor_max ?? '') !== '') {
@@ -255,7 +269,6 @@ foreach ($ordenPriaKeys as $subIdx => $priaKey) :
                     $celdaRicoClass = (registro_opcion_es_texto_rico($opcionIdItem) || registro_opcion_es_texto_fijo($opcionIdItem) || registro_valor_contiene_html_rico((string) ($item->regvalues ?? ''))) ? ' resultado-texto-rico-cell' : '';
                     ?>
                     <?php if (is_object($item)): ?>
-                        <?php $itemConRef = registro_tiene_rango_referencial($item->valor_min ?? '', $item->valor_max ?? ''); ?>
                         <tr>
                             <td><?= esc($item->nombre ?? '') ?></td>
                             <?php if (! $conRefEnSeg): ?>
@@ -265,6 +278,9 @@ foreach ($ordenPriaKeys as $subIdx => $priaKey) :
                             <td class="text-center<?= $usePdfChrome ? ' ref-range' : '' ?>"><?= $refMostrar ?></td>
                             <?php else: ?>
                             <td class="text-center<?= $celdaRicoClass ?> <?= $class ?><?= $usePdfChrome && $isOutPdf ? ' out-range' : '' ?>" colspan="2"><?= $resMostrarHtml ?></td>
+                            <?php endif; ?>
+                            <?php if ($mostrarColInterpretacion): ?>
+                            <td class="text-center<?= $interpretacionRef !== null ? ' ' . esc(registro_interpretacion_referencial_clase_resultado($interpretacionRef), 'attr') : '' ?>"><?= $interpretacionRef !== null ? esc($interpretacionRef['label']) : '' ?></td>
                             <?php endif; ?>
                         </tr>
                     <?php endif; ?>

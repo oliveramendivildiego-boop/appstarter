@@ -68,6 +68,7 @@ foreach ($grupos ?? [] as $padre => $items) {
         'variant' => $av,
         'pdf_layout' => $layoutForLf,
         'grupo_es_primero' => $isFirstGrupo,
+        'lab_config' => $lab_config ?? [],
         'report_pria_tipo_muestra_nombre' => $report_pria_tipo_muestra_nombre ?? [],
         'report_pria_metodo_nombre'       => $report_pria_metodo_nombre ?? [],
         'report_pria_refs_consolidada'    => $report_pria_refs_consolidada ?? [],
