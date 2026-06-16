@@ -244,9 +244,16 @@ foreach ($ordenPriaKeys as $subIdx => $priaKey) :
                         $val = '-';
                     }
                     $valNorm = trim(strtolower((string) $val));
+                    $opcionIdItem = (int) ($item->opcion_id ?? 3);
                     $itemConRef = registro_tiene_rango_referencial($item->valor_min ?? '', $item->valor_max ?? '');
                     $interpretacionRef = ($mostrarColInterpretacion && $itemConRef)
-                        ? registro_interpretacion_referencial_etiqueta($val, $item->valor_min ?? '', $item->valor_max ?? '')
+                        ? registro_interpretacion_referencial_etiqueta_viewreport(
+                            $val,
+                            $item->valor_min ?? '',
+                            $item->valor_max ?? '',
+                            $item->umedida ?? '',
+                            $opcionIdItem
+                        )
                         : null;
                     if ($mostrarColInterpretacion && $interpretacionRef !== null) {
                         $class = registro_interpretacion_referencial_clase_resultado($interpretacionRef);
@@ -262,7 +269,6 @@ foreach ($ordenPriaKeys as $subIdx => $priaKey) :
                         $class = 'normal';
                         $isOutPdf = false;
                     }
-                    $opcionIdItem = (int) ($item->opcion_id ?? 3);
                     $mostrarMedidaSoloRef = registro_mostrar_medida_solo_en_referencia($item);
                     $resMostrarHtml = registro_resultado_celda_html($item->regvalues ?? '', $item->umedida ?? '', $opcionIdItem, $mostrarMedidaSoloRef);
                     $refMostrar = registro_rango_referencial_html($item->valor_min ?? '', $item->valor_max ?? '', $item->umedida ?? '');

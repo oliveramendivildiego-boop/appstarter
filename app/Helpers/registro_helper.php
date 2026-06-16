@@ -442,6 +442,59 @@ if (! function_exists('registro_tiene_rango_referencial')) {
     }
 }
 
+if (! function_exists('registro_extraer_rango_numerico_de_valor')) {
+    /**
+     * Extrae mín./máx. de un valor de select tipo rango (ej. "0 - 1" o "0 - 1 P.C.M").
+     *
+     * @return array{min: float, max: float}|null
+     */
+    function registro_extraer_rango_numerico_de_valor(string $valor, string $unidad = ''): ?array
+    {
+        $v = trim($valor);
+        if ($v === '' || $v === '-') {
+            return null;
+        }
+
+        $u = trim($unidad);
+        if ($u !== '' && preg_match('/\s' . preg_quote($u, '/') . '$/iu', $v)) {
+            $v = trim((string) preg_replace('/\s' . preg_quote($u, '/') . '$/iu', '', $v));
+        }
+
+        if (preg_match('/^([\d]+(?:[.,]\d+)?)\s*[-–—]\s*([\d]+(?:[.,]\d+)?)$/u', $v, $m)) {
+            $selMin = (float) str_replace(',', '.', $m[1]);
+            $selMax = (float) str_replace(',', '.', $m[2]);
+
+            return ['min' => min($selMin, $selMax), 'max' => max($selMin, $selMax)];
+        }
+
+        $vNorm = str_replace(',', '.', $v);
+        if (is_numeric($vNorm)) {
+            $n = (float) $vNorm;
+
+            return ['min' => $n, 'max' => $n];
+        }
+
+        return null;
+    }
+}
+
+if (! function_exists('registro_interpretacion_referencial_desde_rango')) {
+    /**
+     * @return array{label: string, nivel: 'alto'|'normal'|'bajo'}
+     */
+    function registro_interpretacion_referencial_desde_rango(float $valMin, float $valMax, float $refMin, float $refMax): array
+    {
+        if ($valMax > $refMax) {
+            return ['label' => 'Alto', 'nivel' => 'alto'];
+        }
+        if ($valMin < $refMin) {
+            return ['label' => 'Bajo', 'nivel' => 'bajo'];
+        }
+
+        return ['label' => 'Normal', 'nivel' => 'normal'];
+    }
+}
+
 if (! function_exists('registro_interpretacion_referencial_etiqueta')) {
     /**
      * Etiqueta Alto / Normal / Bajo para viewreport según valor numérico vs rango referencial.
@@ -451,27 +504,57 @@ if (! function_exists('registro_interpretacion_referencial_etiqueta')) {
      */
     function registro_interpretacion_referencial_etiqueta($valor, $min, $max): ?array
     {
-        if (! is_numeric($valor)) {
-            return null;
-        }
         $minStr = trim((string) ($min ?? ''));
         $maxStr = trim((string) ($max ?? ''));
         if ($minStr === '' || $maxStr === '') {
             return null;
         }
 
-        $v = (float) $valor;
-        $minNum = (float) $minStr;
-        $maxNum = (float) $maxStr;
-
-        if ($v > $maxNum) {
-            return ['label' => 'Alto', 'nivel' => 'alto'];
-        }
-        if ($v < $minNum) {
-            return ['label' => 'Bajo', 'nivel' => 'bajo'];
+        $valorStr = trim((string) ($valor ?? ''));
+        if ($valorStr === '' || $valorStr === '-') {
+            return null;
         }
 
-        return ['label' => 'Normal', 'nivel' => 'normal'];
+        $valorNorm = str_replace(',', '.', $valorStr);
+        if (! is_numeric($valorNorm)) {
+            return null;
+        }
+
+        $refMin = (float) str_replace(',', '.', $minStr);
+        $refMax = (float) str_replace(',', '.', $maxStr);
+        $v = (float) $valorNorm;
+
+        return registro_interpretacion_referencial_desde_rango($v, $v, $refMin, $refMax);
+    }
+}
+
+if (! function_exists('registro_interpretacion_referencial_etiqueta_viewreport')) {
+    /**
+     * Interpretación para viewreport: numérico directo o rango de un select (sin unidad de medida).
+     *
+     * @return array{label: string, nivel: 'alto'|'normal'|'bajo'}|null
+     */
+    function registro_interpretacion_referencial_etiqueta_viewreport($valor, $min, $max, $unidad = null, int $opcionId = 3): ?array
+    {
+        $minStr = trim((string) ($min ?? ''));
+        $maxStr = trim((string) ($max ?? ''));
+        if ($minStr === '' || $maxStr === '') {
+            return null;
+        }
+
+        $refMin = (float) str_replace(',', '.', $minStr);
+        $refMax = (float) str_replace(',', '.', $maxStr);
+
+        if (registro_opcion_es_select($opcionId)) {
+            $rango = registro_extraer_rango_numerico_de_valor((string) ($valor ?? ''), (string) ($unidad ?? ''));
+            if ($rango === null) {
+                return null;
+            }
+
+            return registro_interpretacion_referencial_desde_rango($rango['min'], $rango['max'], $refMin, $refMax);
+        }
+
+        return registro_interpretacion_referencial_etiqueta($valor, $min, $max);
     }
 }
 
