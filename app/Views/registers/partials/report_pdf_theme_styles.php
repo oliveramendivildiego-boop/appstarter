@@ -449,11 +449,13 @@ table.results.pdf-notes-table td.pdf-notes-cell {
     page-break-inside: avoid !important;
     break-inside: avoid-page !important;
 }
+<?php if (! $browserPrintMode): ?>
 .pdf-gpb-grupo-intact .report-pdf-grupo-prueba:not(.report-pdf-grupo-prueba-first) {
     page-break-before: auto !important;
     break-before: auto !important;
     margin-top: 0 !important;
 }
+<?php endif; ?>
 .pdf-gpb-grupo-intact .report-pdf-grupo-area-page-leader,
 .pdf-gpb-grupo-intact .report-area-page-leader-force-break-before {
     page-break-before: always !important;
@@ -481,11 +483,13 @@ table.results.pdf-notes-table td.pdf-notes-cell {
 <?php endif; ?>
 <?php if (\App\Services\ReportPdfLayoutService::grupoPruebaPageBreakUsesGrupoIntactCss($gpb)
     && ! \App\Services\ReportPdfLayoutService::grupoPruebaPageBreakUsesPureGrupoIntact($gpb)): ?>
+<?php if (! $browserPrintMode): ?>
 .pdf-gpb-grupo-intact .report-pdf-grupo-prueba:not(.report-pdf-grupo-prueba-first) {
     page-break-before: auto !important;
     break-before: auto !important;
     margin-top: 0 !important;
 }
+<?php endif; ?>
 .pdf-gpb-grupo-intact .report-pdf-grupo-area-page-leader {
     page-break-before: always !important;
     break-before: page !important;

@@ -35,7 +35,7 @@ $footerEnabled = ! empty($footer_enabled);
     };
 
     var SEGMENT_SELECTOR = '.report-segment-table-wrap, .report-refs-matrix-wrap';
-    var LAB_FIRMA_SELECTOR = '.report-lab-firma-grupo-inline';
+    var LAB_FIRMA_SELECTOR = '.report-lab-firma-grupo-inline, .lab-firmas-pdf-block-global';
     var savedGrupoDomOrder = null;
 
     function paginationApi() {
@@ -598,6 +598,7 @@ $footerEnabled = ! empty($footer_enabled);
     function clearPageBreakAdjustments() {
         restoreGrupoDomOrder();
         clearBrowserPrintAreaSeparatorFix();
+        clearInterGrupoPageBreaks();
         document.querySelectorAll('.report-pdf-grupo-cabecera').forEach(function(cabecera) {
             cabecera.classList.remove('report-cabecera-force-break-before');
         });
@@ -606,6 +607,14 @@ $footerEnabled = ! empty($footer_enabled);
         });
         document.querySelectorAll('.report-pdf-grupo-area-page-leader').forEach(function(leader) {
             leader.classList.remove('report-area-page-leader-force-break-before');
+            leader.style.removeProperty('break-before');
+            leader.style.removeProperty('page-break-before');
+            leader.style.removeProperty('height');
+            leader.style.removeProperty('min-height');
+            leader.style.removeProperty('display');
+            leader.style.removeProperty('width');
+            leader.style.removeProperty('margin');
+            leader.style.removeProperty('padding');
         });
         document.querySelectorAll('.report-pdf-grupo-area-separator').forEach(function(separator) {
             separator.classList.remove('report-area-separator-force-break-before');
@@ -614,8 +623,14 @@ $footerEnabled = ! empty($footer_enabled);
             grupo.classList.remove(
                 'report-pdf-grupo-prueba-force-break-before',
                 'report-pdf-grupo-prueba-allow-split',
-                'report-pdf-grupo-prueba-keep-on-page'
+                'report-pdf-grupo-prueba-keep-on-page',
+                'report-pdf-grupo-prueba-new-page-start',
+                'report-pdf-grupo-prueba-split-segments-only'
             );
+            grupo.style.removeProperty('break-before');
+            grupo.style.removeProperty('page-break-before');
+            grupo.style.removeProperty('break-inside');
+            grupo.style.removeProperty('page-break-inside');
             clearGrupoCompact(grupo);
             grupo.querySelectorAll('.report-pdf-grupo-cabecera-continuacion-injected').forEach(function(node) {
                 node.remove();
@@ -626,6 +641,14 @@ $footerEnabled = ! empty($footer_enabled);
         });
         document.querySelectorAll(LAB_FIRMA_SELECTOR).forEach(function(block) {
             clearLabFirmaPageLeader(block);
+            block.classList.remove('report-pdf-grupo-page-end-seal');
+            block.style.removeProperty('break-after');
+            block.style.removeProperty('page-break-after');
+        });
+        document.querySelectorAll('.report-pdf-grupo-page-end-seal').forEach(function(node) {
+            node.classList.remove('report-pdf-grupo-page-end-seal');
+            node.style.removeProperty('break-after');
+            node.style.removeProperty('page-break-after');
         });
     }
 
@@ -681,7 +704,21 @@ $footerEnabled = ! empty($footer_enabled);
                 return;
             }
 
-            if (height > remaining) {
+            if (height <= remaining) {
+                return;
+            }
+
+            var lastSeg = findLastSegmentBeforeNode(container, block);
+            var pulled = false;
+            if (lastSeg) {
+                var unit = segmentUnitMetrics(lastSeg, container);
+                if ((unit.height + height) <= maxSlicePx) {
+                    markForceBreakBeforeSegmentUnit(lastSeg, container);
+                    pulled = true;
+                }
+            }
+
+            if (!pulled) {
                 ensureLabFirmaPageLeaderBefore(block);
             }
         });
@@ -694,10 +731,64 @@ $footerEnabled = ! empty($footer_enabled);
         });
     }
 
+    function labFirmaBlockInGrupo(grupo) {
+        if (!grupo || !grupo.querySelector) {
+            return null;
+        }
+        return grupo.querySelector('.report-lab-firma-grupo-inline');
+    }
+
+    function findLastSegmentBeforeNode(container, beforeNode) {
+        if (!beforeNode) {
+            return null;
+        }
+        var beforeTop = topWithinContainer(beforeNode, container);
+        var lastSeg = null;
+        var lastTop = -1;
+        container.querySelectorAll(SEGMENT_SELECTOR).forEach(function(seg) {
+            var t = topWithinContainer(seg, container);
+            if (t < beforeTop - 0.5 && t >= lastTop) {
+                lastTop = t;
+                lastSeg = seg;
+            }
+        });
+        return lastSeg;
+    }
+
+    function markForceBreakBeforeSegmentUnit(seg, container) {
+        if (!seg) {
+            return;
+        }
+        var unit = segmentUnitMetrics(seg, container);
+        if (unit.cabecera) {
+            markForceBreakBeforeCabecera(unit.cabecera);
+        } else {
+            seg.classList.add('report-segment-force-break-before');
+        }
+    }
+
     function applySegmentPageBreaks(container, layoutCtx, root) {
         var scope = root || container;
-        scope.querySelectorAll(SEGMENT_SELECTOR).forEach(function(seg) {
+        var firmaEl = (root && root.classList && root.classList.contains('report-pdf-grupo-prueba'))
+            ? labFirmaBlockInGrupo(root)
+            : null;
+        var firmaH = firmaEl ? (firmaEl.offsetHeight || 0) : 0;
+        var maxSlicePx = layoutCtx.maxSlicePx;
+        var segs = Array.from(scope.querySelectorAll(SEGMENT_SELECTOR));
+
+        segs.forEach(function(seg, idx) {
             var unit = segmentUnitMetrics(seg, container);
+            var isLastInScope = idx === segs.length - 1;
+
+            if (isLastInScope && firmaH > 0 && (unit.height + firmaH) <= maxSlicePx) {
+                applyForceBreakForUnit({
+                    cabecera: unit.cabecera,
+                    top: unit.top,
+                    height: unit.height + firmaH
+                }, seg, container, layoutCtx);
+                return;
+            }
+
             applyForceBreakForUnit(unit, seg, container, layoutCtx);
         });
     }
@@ -866,6 +957,183 @@ $footerEnabled = ! empty($footer_enabled);
         });
     }
 
+    function isNearPageStart(topPx, boundarySet) {
+        var boundaries = boundarySet && boundarySet.boundaries ? boundarySet.boundaries : [];
+        var epsilon = 18;
+        if (topPx <= epsilon) {
+            return true;
+        }
+        for (var i = 0; i < boundaries.length; i++) {
+            var pageStart = i === 0 ? 0 : boundaries[i - 1];
+            if (Math.abs(topPx - pageStart) <= epsilon) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    function allowSplitGrupoWithSegments(grupo, container, layoutCtx) {
+        if (!grupo) {
+            return;
+        }
+        if (usesGrupoIntactMode()) {
+            grupo.classList.add('report-pdf-grupo-prueba-split-segments-only');
+            grupo.classList.remove('report-pdf-grupo-prueba-allow-split');
+            applySegmentPageBreaks(container, layoutCtx, grupo);
+            return;
+        }
+        grupo.classList.add('report-pdf-grupo-prueba-allow-split');
+        applySegmentPageBreaks(container, layoutCtx, grupo);
+    }
+
+    function strengthenInterPageBreakNode(breaker) {
+        if (!breaker) {
+            return;
+        }
+        breaker.style.setProperty('display', 'block', 'important');
+        breaker.style.setProperty('width', '100%', 'important');
+        breaker.style.setProperty('height', '1px', 'important');
+        breaker.style.setProperty('min-height', '1px', 'important');
+        breaker.style.setProperty('margin', '0', 'important');
+        breaker.style.setProperty('padding', '0', 'important');
+        breaker.style.setProperty('border', '0', 'important');
+        breaker.style.setProperty('line-height', '0', 'important');
+        breaker.style.setProperty('font-size', '0', 'important');
+        breaker.style.setProperty('overflow', 'hidden', 'important');
+        breaker.style.setProperty('clear', 'both', 'important');
+        breaker.style.setProperty('break-before', 'page', 'important');
+        breaker.style.setProperty('page-break-before', 'always', 'important');
+        breaker.style.setProperty('break-after', 'avoid', 'important');
+        breaker.style.setProperty('page-break-after', 'avoid', 'important');
+    }
+
+    function sealGrupoPageEndsBeforeNext(container) {
+        var grupos = container.querySelectorAll('.report-pdf-grupo-prueba');
+        for (var i = 0; i < grupos.length - 1; i++) {
+            var grupo = grupos[i];
+            var tail = labFirmaBlockInGrupo(grupo);
+            if (!tail) {
+                var segs = grupo.querySelectorAll(SEGMENT_SELECTOR);
+                tail = segs.length ? segs[segs.length - 1] : grupo.lastElementChild;
+            }
+            if (!tail) {
+                continue;
+            }
+            tail.classList.add('report-pdf-grupo-page-end-seal');
+            tail.style.setProperty('break-after', 'page', 'important');
+            tail.style.setProperty('page-break-after', 'always', 'important');
+        }
+    }
+
+    function clearInterGrupoPageBreaks(container) {
+        var root = container || document;
+        root.querySelectorAll('.report-grupo-inter-page-break:not(.report-grupo-inter-page-break-server)').forEach(function(node) {
+            node.remove();
+        });
+    }
+
+    function applyGrupoInterPageBreaks(container) {
+        var grupos = container.querySelectorAll('.report-pdf-grupo-prueba');
+        grupos.forEach(function(grupo, idx) {
+            var isFirstGrupo = idx === 0 || grupo.classList.contains('report-pdf-grupo-prueba-first');
+            if (isFirstGrupo || !grupo.parentNode) {
+                return;
+            }
+
+            clearGrupoStartBreakMarks(grupo);
+            var oldLeader = pageLeaderForGrupo(grupo);
+            if (oldLeader && oldLeader.parentNode) {
+                oldLeader.parentNode.removeChild(oldLeader);
+            }
+
+            var breaker = grupo.previousElementSibling;
+            if (!breaker || !breaker.classList || !breaker.classList.contains('report-grupo-inter-page-break')) {
+                breaker = document.createElement('div');
+                breaker.className = 'report-grupo-inter-page-break';
+                breaker.setAttribute('aria-hidden', 'true');
+                grupo.parentNode.insertBefore(breaker, grupo);
+            }
+            strengthenInterPageBreakNode(breaker);
+
+            grupo.classList.add('report-pdf-grupo-prueba-new-page-start');
+            grupo.classList.remove('report-pdf-grupo-prueba-allow-split');
+            grupo.style.setProperty('break-before', 'page', 'important');
+            grupo.style.setProperty('page-break-before', 'always', 'important');
+            grupo.style.setProperty('margin-top', '0', 'important');
+            grupo.style.setProperty('padding-top', '0', 'important');
+            grupo.style.setProperty('break-inside', 'avoid-page', 'important');
+            grupo.style.setProperty('page-break-inside', 'avoid', 'important');
+        });
+
+        sealGrupoPageEndsBeforeNext(container);
+    }
+
+    function applyBrowserPrintGrupoIntactPageBreaks(container, layoutCtx) {
+        var maxSlicePx = layoutCtx.maxSlicePx;
+        var boundarySet = layoutCtx.boundarySet;
+        var compactMode = cfg.mode === 'keep_together_compact';
+
+        container.querySelectorAll('.report-pdf-grupo-prueba').forEach(function(grupo, idx) {
+            clearSegmentBreaksInGrupo(grupo);
+            clearGrupoStartBreakMarks(grupo);
+            clearGrupoCompact(grupo);
+            grupo.classList.remove(
+                'report-pdf-grupo-prueba-allow-split',
+                'report-pdf-grupo-prueba-keep-on-page',
+                'report-pdf-grupo-prueba-split-segments-only'
+            );
+
+            var isFirstGrupo = idx === 0 || grupo.classList.contains('report-pdf-grupo-prueba-first');
+
+            var height = measureGrupoHeight(grupo, false);
+            var effectiveHeight = height;
+
+            if (!isFirstGrupo) {
+                if (compactMode && height > maxSlicePx) {
+                    effectiveHeight = measureGrupoHeight(grupo, true);
+                    if (effectiveHeight <= maxSlicePx) {
+                        grupo.classList.add('report-pdf-grupo-prueba-keep-on-page');
+                        return;
+                    }
+                    clearGrupoCompact(grupo);
+                    effectiveHeight = height;
+                }
+
+                if (effectiveHeight > maxSlicePx) {
+                    allowSplitGrupoWithSegments(grupo, container, layoutCtx);
+                } else {
+                    grupo.classList.add('report-pdf-grupo-prueba-keep-on-page');
+                }
+                return;
+            }
+
+            var top = topWithinContainer(grupo, container);
+            var remaining = remainingOnPage(top, boundarySet);
+
+            if (compactMode) {
+                effectiveHeight = measureGrupoHeight(grupo, true);
+                if (effectiveHeight <= remaining) {
+                    grupo.classList.add('report-pdf-grupo-prueba-keep-on-page');
+                    return;
+                }
+                clearGrupoCompact(grupo);
+                effectiveHeight = measureGrupoHeight(grupo, false);
+            }
+
+            if (effectiveHeight <= remaining) {
+                grupo.classList.add('report-pdf-grupo-prueba-keep-on-page');
+                return;
+            }
+
+            if (effectiveHeight > maxSlicePx) {
+                allowSplitGrupoWithSegments(grupo, container, layoutCtx);
+                return;
+            }
+
+            grupo.classList.add('report-pdf-grupo-prueba-keep-on-page');
+        });
+    }
+
     function applyBrowserPrintAreaSeparatorFix() {
         if (!usesGrupoIntactMode()) {
             return;
@@ -874,9 +1142,13 @@ $footerEnabled = ! empty($footer_enabled);
         document.querySelectorAll('.report-pdf-grupo-prueba.report-pdf-grupo-browser-print-area:not(.report-pdf-grupo-prueba-first)').forEach(function(grupo) {
             grupo.style.setProperty('page-break-before', 'always', 'important');
             grupo.style.setProperty('break-before', 'page', 'important');
+            grupo.style.setProperty('margin-top', '0', 'important');
+            grupo.style.setProperty('padding-top', '0', 'important');
+            grupo.style.setProperty('break-inside', 'avoid-page', 'important');
+            grupo.style.setProperty('page-break-inside', 'avoid', 'important');
         });
 
-        document.querySelectorAll('.report-pdf-grupo-area-start-table').forEach(function(table) {
+        document.querySelectorAll('.report-pdf-grupo-prueba-first .report-pdf-grupo-area-start-table').forEach(function(table) {
             table.style.setProperty('page-break-before', 'avoid', 'important');
             table.style.setProperty('break-before', 'avoid', 'important');
             table.style.setProperty('break-inside', 'avoid', 'important');
@@ -942,6 +1214,7 @@ $footerEnabled = ! empty($footer_enabled);
         var layoutCtx = getLayoutContext(container);
         if (!layoutCtx || !isFinite(layoutCtx.maxSlicePx) || layoutCtx.maxSlicePx <= 0) {
             if (usesGrupoIntactMode()) {
+                applyGrupoInterPageBreaks(container);
                 applyBrowserPrintAreaSeparatorFix();
             }
             return;
@@ -960,12 +1233,16 @@ $footerEnabled = ! empty($footer_enabled);
             applyCabeceraSegmentIntegrity(container, layoutCtx);
             applyGrupoPageBreaks(container, layoutCtx);
         } else {
-            // Impresión navegador + grupo íntegro: salto en .report-pdf-grupo-browser-print-area;
-            // título y resultados van dentro del mismo contenedor.
-            applyBrowserPrintAreaSeparatorFix();
+            // Impresión navegador + grupo íntegro: salto por área + medición para no dejar título huérfano.
+            applyBrowserPrintGrupoIntactPageBreaks(container, layoutCtx);
         }
 
         applyLabFirmasPageBreaks(container, layoutCtx);
+
+        if (usesGrupoIntactMode()) {
+            applyGrupoInterPageBreaks(container);
+            applyBrowserPrintAreaSeparatorFix();
+        }
     }
 
     window.updateReportPrintPageBreakMetrics = function(metrics) {

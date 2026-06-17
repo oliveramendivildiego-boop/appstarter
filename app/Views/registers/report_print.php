@@ -260,6 +260,21 @@
         document.body.classList.add('js-total-pages-ready');
     }
 
+    function ensureBrowserPrintFooter() {
+        if (!footerEnabled) {
+            document.body.classList.remove('js-print-footer-fixed');
+            return;
+        }
+        var footer = document.querySelector('.pdf-ft-block.footer-grid');
+        if (!footer) {
+            return;
+        }
+        if (footer.parentNode !== document.body) {
+            document.body.appendChild(footer);
+        }
+        document.body.classList.add('js-print-footer-fixed');
+    }
+
     function preparePrintLayout() {
         syncReportPrintLayoutMetrics();
         if (typeof window.applyReportPdfGrupoPageBreaks === 'function') {
@@ -272,6 +287,8 @@
         if (orderSheetInjected && typeof window.applyReportPdfGrupoPageBreaks === 'function') {
             window.applyReportPdfGrupoPageBreaks();
         }
+        ensureBrowserPrintFooter();
+        syncReportPrintLayoutMetrics();
         applyBrowserTotalPages();
     }
 
