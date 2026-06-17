@@ -141,15 +141,20 @@ body.report-browser-print .pdf-main-stack {
 }
 <?php if ($pdfFooterEnabled): ?>
 body.report-browser-print .pdf-ft-block.footer-grid {
+    display: block;
+    visibility: visible;
     position: fixed;
+    bottom: calc(var(--print-margin-bottom-mm, <?= esc((string) $mb) ?>) * 1mm);
     left: 0;
     right: 0;
     width: 100%;
-    z-index: 2;
+    z-index: 5;
     margin-top: 0 !important;
     margin-left: 0 !important;
     margin-right: 0 !important;
     padding-top: 6px;
+    padding-left: calc(var(--print-margin-left-mm, <?= esc((string) $ml) ?>) * 1mm);
+    padding-right: calc(var(--print-margin-right-mm, <?= esc((string) $mr) ?>) * 1mm);
     background: <?= esc($pdfFooterStripBg) ?>;
     box-sizing: border-box;
 }

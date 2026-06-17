@@ -124,10 +124,12 @@ body.js-total-pages-ready .pdf-counter-pages::before {
         width: 100% !important;
         margin-left: 0 !important;
         margin-right: 0 !important;
-        padding-left: 0 !important;
-        padding-right: 0 !important;
+        padding-left: calc(var(--print-margin-left-mm, <?= esc((string) $ml) ?>) * 1mm) !important;
+        padding-right: calc(var(--print-margin-right-mm, <?= esc((string) $mr) ?>) * 1mm) !important;
         box-sizing: border-box !important;
         z-index: 5 !important;
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
     }
     html,
     body.report-browser-print,
@@ -379,13 +381,15 @@ body.js-total-pages-ready .pdf-counter-pages::before {
     }
     body.report-browser-print.js-order-sheet-header-print .pdf-order-sheet-header-print-fixed {
         display: block !important;
+        visibility: visible !important;
+        opacity: 1 !important;
         position: fixed !important;
         left: 0 !important;
         right: 0 !important;
         width: 100% !important;
         margin: 0 !important;
-        padding: 0 !important;
-        z-index: 3 !important;
+        padding: 0 calc(var(--print-margin-right-mm, <?= esc((string) $mr) ?>) * 1mm) 0 calc(var(--print-margin-left-mm, <?= esc((string) $ml) ?>) * 1mm) !important;
+        z-index: 6 !important;
         bottom: calc(
             (var(--print-margin-bottom-mm, <?= esc((string) $mb) ?>)
             + var(--print-footer-reserve-mm, <?= esc((string) $pdfFooterReserveMm) ?>)

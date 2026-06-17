@@ -261,12 +261,12 @@
     }
 
     function preparePrintLayout() {
-        if (typeof window.injectOrderSheetHeadersFromPageTwo === 'function') {
-            window.injectOrderSheetHeadersFromPageTwo();
-        }
         syncReportPrintLayoutMetrics();
         if (typeof window.applyReportPdfGrupoPageBreaks === 'function') {
             window.applyReportPdfGrupoPageBreaks();
+        }
+        if (typeof window.injectOrderSheetHeadersFromPageTwo === 'function') {
+            window.injectOrderSheetHeadersFromPageTwo();
         }
         applyBrowserTotalPages();
     }

@@ -94,7 +94,9 @@ $orderSheetBandMm = \App\Services\ReportPdfLayoutService::ORDER_SHEET_HEADER_HEI
         document.body.classList.add('js-order-sheet-header-print');
         document.body.appendChild(buildOrderSheetHeaderNode(tpl));
 
-        // Recalcular reserva con la altura real de la banda inyectada (paginación / saltos de página).
+        if (typeof window.syncReportPrintLayoutMetrics === 'function') {
+            window.syncReportPrintLayoutMetrics();
+        }
         if (typeof window.reportPrintPagination.buildMetrics === 'function') {
             window.reportPrintPagination.buildMetrics(container);
         }
