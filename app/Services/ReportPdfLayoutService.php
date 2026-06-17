@@ -454,14 +454,35 @@ class ReportPdfLayoutService
     }
 
     /**
-     * @return array{uri: string, opacity: float, size_percent: int}|null
+     * @return array{uri: string, path: ?string, opacity: float, size_percent: int}|null
      */
-    public static function watermarkRenderPayloadForLayout(array $layout, ?string $fallbackLogoDataUri = null): ?array
-    {
-        $w   = is_array($layout['watermark'] ?? null) ? $layout['watermark'] : [];
+    public static function watermarkRenderPayloadForLayout(
+        array $layout,
+        ?string $fallbackLogoDataUri = null,
+        ?string $fallbackLogoPath = null
+    ): ?array {
+        $w = is_array($layout['watermark'] ?? null) ? $layout['watermark'] : [];
         $uri = self::getWatermarkDataUriForLayout($layout, $fallbackLogoDataUri);
         if ($uri === null || $uri === '') {
             return null;
+        }
+
+        $path = null;
+        $fileRaw = isset($w['file']) ? (string) $w['file'] : '';
+        if ($fileRaw !== '') {
+            $rel = self::sanitizeWatermarkRelativePath($fileRaw);
+            if ($rel !== null) {
+                $full = WRITEPATH . str_replace('/', DIRECTORY_SEPARATOR, $rel);
+                if (is_file($full) && is_readable($full)) {
+                    $path = $full;
+                }
+            }
+        }
+        if ($path === null) {
+            $fallbackLogoPath = trim((string) $fallbackLogoPath);
+            if ($fallbackLogoPath !== '' && is_file($fallbackLogoPath) && is_readable($fallbackLogoPath)) {
+                $path = $fallbackLogoPath;
+            }
         }
 
         $opacity = isset($w['opacity']) ? (float) $w['opacity'] : 0.12;
@@ -471,6 +492,7 @@ class ReportPdfLayoutService
 
         return [
             'uri'          => $uri,
+            'path'         => $path,
             'opacity'      => $opacity,
             'size_percent' => $size,
         ];

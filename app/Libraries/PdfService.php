@@ -88,9 +88,62 @@ class PdfService
 
         return [
             'uri'          => $uri,
+            'path'         => trim((string) ($data['path'] ?? '')),
             'opacity'      => (float) ($data['opacity'] ?? 0.12),
             'size_percent' => (int) ($data['size_percent'] ?? 45),
         ];
+    }
+
+    /**
+     * Dompdf/Imagick requieren ruta de archivo real; los data URI fallan en Cpdf::addPngFromFile.
+     */
+    protected function resolveDompdfImagePath(string $uri, string $path = '', ?string $tempDir = null): ?string
+    {
+        $path = trim($path);
+        if ($path !== '' && is_file($path) && is_readable($path)) {
+            return $path;
+        }
+
+        $uri = trim($uri);
+        if ($uri === '') {
+            return null;
+        }
+
+        if (! str_starts_with($uri, 'data:') && is_file($uri) && is_readable($uri)) {
+            return $uri;
+        }
+
+        if (preg_match('#^data:([^;]+);base64,(.+)$#i', $uri, $matches)) {
+            $binary = base64_decode($matches[2], true);
+            if ($binary === false || $binary === '') {
+                return null;
+            }
+
+            $tempDir = $tempDir ?: sys_get_temp_dir();
+            $mime    = strtolower($matches[1]);
+            $ext     = 'png';
+            if (str_contains($mime, 'jpeg') || str_contains($mime, 'jpg')) {
+                $ext = 'jpg';
+            } elseif (str_contains($mime, 'gif')) {
+                $ext = 'gif';
+            } elseif (str_contains($mime, 'webp')) {
+                $ext = 'webp';
+            }
+
+            $base = tempnam($tempDir, 'pdf_wm_');
+            if ($base === false) {
+                return null;
+            }
+            $file = $base . '.' . $ext;
+            @unlink($base);
+            if (file_put_contents($file, $binary) === false) {
+                return null;
+            }
+
+            return $file;
+        }
+
+        return $uri;
     }
 
     /**
@@ -107,36 +160,43 @@ class PdfService
         if (is_array($watermarkData)) {
             $uri = trim((string) ($watermarkData['uri'] ?? ''));
             if ($uri !== '') {
-                $opacity = max(0.05, min(0.9, (float) ($watermarkData['opacity'] ?? 0.12)));
-                $sizePct = max(10, min(95, (int) ($watermarkData['size_percent'] ?? 45)));
-                $callbacks[] = [
-                    'event' => 'begin_page_render',
-                    'f'     => static function ($frame, $canvas, FontMetrics $fontMetrics) use ($uri, $opacity, $sizePct): void {
-                        unset($frame, $fontMetrics);
-                        try {
-                            $info = Helpers::dompdf_getimagesize($uri, $canvas->get_dompdf()->getHttpContext());
-                        } catch (\Throwable $e) {
-                            return;
-                        }
-                        if (! is_array($info) || count($info) < 2) {
-                            return;
-                        }
-                        $srcW = (float) ($info[0] ?? 0);
-                        $srcH = (float) ($info[1] ?? 0);
-                        if ($srcW <= 0 || $srcH <= 0) {
-                            return;
-                        }
-                        $pageW   = (float) $canvas->get_width();
-                        $pageH   = (float) $canvas->get_height();
-                        $targetW = $pageW * ($sizePct / 100);
-                        $targetH = $targetW * ($srcH / $srcW);
-                        $x       = ($pageW - $targetW) / 2;
-                        $y       = ($pageH - $targetH) / 2;
-                        $canvas->set_opacity($opacity);
-                        $canvas->image($uri, $x, $y, $targetW, $targetH);
-                        $canvas->set_opacity(1.0);
-                    },
-                ];
+                $imagePath = $this->resolveDompdfImagePath(
+                    $uri,
+                    (string) ($watermarkData['path'] ?? ''),
+                    $dompdf->getOptions()->getTempDir()
+                );
+                if ($imagePath !== null && $imagePath !== '') {
+                    $opacity = max(0.05, min(0.9, (float) ($watermarkData['opacity'] ?? 0.12)));
+                    $sizePct = max(10, min(95, (int) ($watermarkData['size_percent'] ?? 45)));
+                    $callbacks[] = [
+                        'event' => 'begin_page_render',
+                        'f'     => static function ($frame, $canvas, FontMetrics $fontMetrics) use ($imagePath, $opacity, $sizePct): void {
+                            unset($frame, $fontMetrics);
+                            try {
+                                $info = Helpers::dompdf_getimagesize($imagePath, $canvas->get_dompdf()->getHttpContext());
+                            } catch (\Throwable $e) {
+                                return;
+                            }
+                            if (! is_array($info) || count($info) < 2) {
+                                return;
+                            }
+                            $srcW = (float) ($info[0] ?? 0);
+                            $srcH = (float) ($info[1] ?? 0);
+                            if ($srcW <= 0 || $srcH <= 0) {
+                                return;
+                            }
+                            $pageW   = (float) $canvas->get_width();
+                            $pageH   = (float) $canvas->get_height();
+                            $targetW = $pageW * ($sizePct / 100);
+                            $targetH = $targetW * ($srcH / $srcW);
+                            $x       = ($pageW - $targetW) / 2;
+                            $y       = ($pageH - $targetH) / 2;
+                            $canvas->set_opacity($opacity);
+                            $canvas->image($imagePath, $x, $y, $targetW, $targetH);
+                            $canvas->set_opacity(1.0);
+                        },
+                    ];
+                }
             }
         }
 

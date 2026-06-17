@@ -24,7 +24,11 @@ if ($pdf_logo_data_uri === '') {
     }
 }
 
-$wmPayload = \App\Services\ReportPdfLayoutService::watermarkRenderPayloadForLayout($pl, $pdf_logo_data_uri);
+$wmPayload = \App\Services\ReportPdfLayoutService::watermarkRenderPayloadForLayout(
+    $pl,
+    $pdf_logo_data_uri,
+    file_exists($logoPath) ? $logoPath : null
+);
 $wmUri = $pdf_watermark_uri ?? ($wmPayload['uri'] ?? null);
 
 $pdfBlockViews = [
@@ -73,6 +77,7 @@ if ($wmUri !== null && $wmUri !== ''):
             ? $wmPayload
             : [
                 'uri'          => (string) $wmUri,
+                'path'         => file_exists($logoPath) ? $logoPath : null,
                 'opacity'      => round(max(0.05, min(0.9, $opacityW)), 2),
                 'size_percent' => max(10, min(95, (int) $sizeW)),
             ];
