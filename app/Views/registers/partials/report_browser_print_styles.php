@@ -111,6 +111,9 @@ body.js-total-pages-ready .pdf-counter-pages::before {
      * La reserva de pie para paginación se calcula en JS, no se suma a @page.
      */
     body.report-browser-print .pdf-ft-block.footer-grid {
+        display: block !important;
+        visibility: visible !important;
+        opacity: 1 !important;
         position: fixed !important;
         bottom: calc(var(--print-margin-bottom-mm, <?= esc((string) $mb) ?>) * 1mm) !important;
         left: 0 !important;
@@ -121,6 +124,7 @@ body.js-total-pages-ready .pdf-counter-pages::before {
         padding-left: 0 !important;
         padding-right: 0 !important;
         box-sizing: border-box !important;
+        z-index: 5 !important;
     }
     html,
     body.report-browser-print,
@@ -344,6 +348,28 @@ body.js-total-pages-ready .pdf-counter-pages::before {
     body.report-browser-print.pdf-gpb-keep-together-if-fits-auto-order .report-pdf-grupo-prueba-first .report-subgrupo-force-break-before {
         break-before: auto !important;
         page-break-before: auto !important;
+    }
+    body.report-browser-print .report-lab-firma-grupo-inline {
+        break-inside: avoid-page !important;
+        page-break-inside: avoid !important;
+    }
+    body.report-browser-print .lab-firmas-pdf-block .lab-firmas-title-grid,
+    body.report-browser-print .lab-firmas-pdf-block .lab-firmas-body-grid,
+    body.report-browser-print .lab-firmas-pdf-block .pdf-section-table {
+        break-inside: avoid !important;
+        page-break-inside: avoid !important;
+    }
+    body.report-browser-print .report-lab-firma-page-leader {
+        display: block !important;
+        break-before: page !important;
+        page-break-before: always !important;
+        height: 0 !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        border: 0 !important;
+        line-height: 0 !important;
+        font-size: 0 !important;
+        overflow: hidden !important;
     }
     .report-print-toolbar {
         display: none !important;

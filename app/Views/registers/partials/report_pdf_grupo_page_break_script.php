@@ -35,6 +35,7 @@ $footerEnabled = ! empty($footer_enabled);
     };
 
     var SEGMENT_SELECTOR = '.report-segment-table-wrap, .report-refs-matrix-wrap';
+    var LAB_FIRMA_SELECTOR = '.report-lab-firma-grupo-inline';
     var savedGrupoDomOrder = null;
 
     function paginationApi() {
@@ -623,6 +624,85 @@ $footerEnabled = ! empty($footer_enabled);
         document.querySelectorAll(SEGMENT_SELECTOR).forEach(function(seg) {
             seg.classList.remove('report-segment-force-break-before', 'report-segment-allow-split');
         });
+        document.querySelectorAll(LAB_FIRMA_SELECTOR).forEach(function(block) {
+            clearLabFirmaPageLeader(block);
+        });
+    }
+
+    function labFirmaPageLeaderFor(block) {
+        if (!block) {
+            return null;
+        }
+        var prev = block.previousElementSibling;
+        if (prev && prev.classList && prev.classList.contains('report-lab-firma-page-leader')) {
+            return prev;
+        }
+        return null;
+    }
+
+    function clearLabFirmaPageLeader(block) {
+        var leader = labFirmaPageLeaderFor(block);
+        if (leader && leader.parentNode) {
+            leader.parentNode.removeChild(leader);
+        }
+    }
+
+    function ensureLabFirmaPageLeaderBefore(block) {
+        var leader = labFirmaPageLeaderFor(block);
+        if (leader || !block || !block.parentNode) {
+            return leader;
+        }
+        leader = document.createElement('div');
+        leader.className = 'report-lab-firma-page-leader';
+        leader.setAttribute('aria-hidden', 'true');
+        block.parentNode.insertBefore(leader, block);
+        return leader;
+    }
+
+    function footerReservePx() {
+        if (!cfg.footerEnabled) {
+            return 0;
+        }
+        var api = paginationApi();
+        if (api && typeof api.mmToPx === 'function') {
+            return api.mmToPx(cfg.footerReserveMm || 0);
+        }
+        return (cfg.footerReserveMm || 0) * (96 / 25.4);
+    }
+
+    function applyLabFirmasPageBreaks(container, layoutCtx) {
+        var maxSlicePx = layoutCtx.maxSlicePx;
+        var boundarySet = layoutCtx.boundarySet;
+        var footerPx = footerReservePx();
+
+        container.querySelectorAll(LAB_FIRMA_SELECTOR).forEach(function(block) {
+            clearLabFirmaPageLeader(block);
+
+            var height = block.offsetHeight || 0;
+            if (!isFinite(height) || height <= 0) {
+                return;
+            }
+
+            if (height > maxSlicePx) {
+                return;
+            }
+
+            var top = topWithinContainer(block, container);
+            var remaining = remainingOnPage(top, boundarySet);
+            if (!isFinite(remaining) || remaining <= 0) {
+                return;
+            }
+
+            // Reservar espacio del pie fijo para no empujar la validación encima del footer.
+            var remainingAboveFooter = remaining - footerPx;
+            if (!isFinite(remainingAboveFooter)) {
+                remainingAboveFooter = remaining;
+            }
+
+            if (height > remainingAboveFooter) {
+                ensureLabFirmaPageLeaderBefore(block);
+            }
+        });
     }
 
     function applyCabeceraSegmentIntegrity(container, layoutCtx) {
@@ -887,33 +967,23 @@ $footerEnabled = ! empty($footer_enabled);
 
         if (!cfg.mode || cfg.mode === 'flow') {
             applyCabeceraSegmentIntegrity(container, layoutCtx);
-            return;
-        }
-
-        if (cfg.mode === 'keep_segment') {
+        } else if (cfg.mode === 'keep_segment') {
             applySegmentPageBreaks(container, layoutCtx);
-            return;
-        }
-
-        if (cfg.mode === 'keep_together_if_fits') {
+        } else if (cfg.mode === 'keep_together_if_fits') {
             applyIfFitsMode(container, layoutCtx);
-            return;
-        }
-
-        if (cfg.mode === 'keep_together_if_fits_auto_order') {
+        } else if (cfg.mode === 'keep_together_if_fits_auto_order') {
             reorderGruposForAutoPack(container, layoutCtx);
             applyIfFitsMode(container, layoutCtx);
-            return;
-        }
-
-        if (!usesGrupoIntactMode()) {
+        } else if (!usesGrupoIntactMode()) {
             applyCabeceraSegmentIntegrity(container, layoutCtx);
             applyGrupoPageBreaks(container, layoutCtx);
-            return;
+        } else {
+            // Impresión navegador + grupo íntegro: salto en .report-pdf-grupo-browser-print-area;
+            // título y resultados van dentro del mismo contenedor.
+            applyBrowserPrintAreaSeparatorFix();
         }
-        // Impresión navegador + grupo íntegro: salto en .report-pdf-grupo-browser-print-area;
-        // título y resultados van dentro del mismo contenedor.
-        applyBrowserPrintAreaSeparatorFix();
+
+        applyLabFirmasPageBreaks(container, layoutCtx);
     }
 
     window.updateReportPrintPageBreakMetrics = function(metrics) {

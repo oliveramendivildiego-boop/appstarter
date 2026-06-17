@@ -876,3 +876,31 @@ table.results td.matrix-col-reference strong,
 .text-center {
     text-align: center;
 }
+@media print {
+    /* Validación / firmas: no partir la cuadrícula; el salto previo lo inserta JS (page-leader). */
+    .report-lab-firma-grupo-inline {
+        page-break-inside: avoid;
+        break-inside: avoid-page;
+    }
+    .lab-firmas-pdf-block .lab-firmas-title-grid,
+    .lab-firmas-pdf-block .lab-firmas-body-grid,
+    .lab-firmas-pdf-block .pdf-section-table {
+        page-break-inside: avoid;
+        break-inside: avoid-page;
+    }
+    .report-lab-firma-page-leader {
+        page-break-before: always;
+        break-before: page;
+        height: 0;
+        margin: 0;
+        padding: 0;
+        border: 0;
+        line-height: 0;
+        font-size: 0;
+        overflow: hidden;
+    }
+    .pdf-ft-block.footer-grid {
+        page-break-inside: avoid;
+        break-inside: avoid-page;
+    }
+}
