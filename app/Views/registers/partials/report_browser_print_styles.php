@@ -379,39 +379,40 @@ body.js-total-pages-ready .pdf-counter-pages::before {
     .report-print-toolbar {
         display: none !important;
     }
-    body.report-browser-print.js-order-sheet-header-print .pdf-order-sheet-header-print-fixed {
+    body.report-browser-print .report-order-sheet-page-leader {
+        display: block !important;
+        break-before: page !important;
+        page-break-before: always !important;
+        height: 0 !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        border: 0 !important;
+        line-height: 0 !important;
+        font-size: 0 !important;
+        overflow: hidden !important;
+    }
+    body.report-browser-print.js-order-sheet-header-in-flow .pdf-order-sheet-header-injected {
         display: block !important;
         visibility: visible !important;
         opacity: 1 !important;
-        position: fixed !important;
-        left: 0 !important;
-        right: 0 !important;
         width: 100% !important;
-        margin: 0 !important;
-        padding: 0 calc(var(--print-margin-right-mm, <?= esc((string) $mr) ?>) * 1mm) 0 calc(var(--print-margin-left-mm, <?= esc((string) $ml) ?>) * 1mm) !important;
-        z-index: 6 !important;
-        bottom: calc(
-            (var(--print-margin-bottom-mm, <?= esc((string) $mb) ?>)
-            + var(--print-footer-reserve-mm, <?= esc((string) $pdfFooterReserveMm) ?>)
-            + var(--print-order-sheet-gap-mm, <?= esc((string) $orderSheetGapMm) ?>)) * 1mm
-        ) !important;
+        margin: 0 0 4px 0 !important;
+        padding: 2px 0 4px 0 !important;
         background: #ffffff !important;
         box-sizing: border-box !important;
+        break-after: avoid-page !important;
+        page-break-after: avoid !important;
+        break-inside: avoid-page !important;
+        page-break-inside: avoid !important;
         -webkit-print-color-adjust: exact !important;
         print-color-adjust: exact !important;
     }
-    body.report-browser-print.js-order-sheet-header-print .pdf-osh-page1-cover {
-        position: absolute !important;
-        left: 0 !important;
-        right: 0 !important;
-        width: 100% !important;
-        z-index: 4 !important;
-        margin: 0 !important;
-        padding: 0 !important;
-        background: #ffffff !important;
-        pointer-events: none !important;
-        -webkit-print-color-adjust: exact !important;
-        print-color-adjust: exact !important;
+    body.report-browser-print.js-order-sheet-header-in-flow .pdf-order-sheet-header-injected + .report-pdf-grupo-prueba,
+    body.report-browser-print.js-order-sheet-header-in-flow .pdf-order-sheet-header-injected + .report-segment-table-wrap,
+    body.report-browser-print.js-order-sheet-header-in-flow .pdf-order-sheet-header-injected + .report-refs-matrix-wrap,
+    body.report-browser-print.js-order-sheet-header-in-flow .pdf-order-sheet-header-injected + .report-lab-firma-grupo-inline {
+        break-before: avoid !important;
+        page-break-before: avoid !important;
     }
     body.report-browser-print.pdf-gpb-grupo-intact .report-pdf-grupo-area-page-leader + .report-pdf-grupo-prueba > .report-pdf-grupo-area-separator {
         position: relative !important;

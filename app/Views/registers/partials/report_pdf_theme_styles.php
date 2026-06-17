@@ -614,5 +614,10 @@ table.results.pdf-notes-table td.pdf-notes-cell {
     background: #ffffff;
     box-sizing: border-box;
 }
+<?php if ($browserPrintMode): ?>
+body.report-browser-print.js-order-sheet-header-in-flow .pdf-order-sheet-header-injected {
+    display: block;
+}
+<?php endif; ?>
 <?php endif; ?>
 </style>

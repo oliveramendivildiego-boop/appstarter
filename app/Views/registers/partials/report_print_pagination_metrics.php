@@ -99,8 +99,8 @@ $orderSheetBufferMm = 0.5;
             return 0;
         }
 
-        var bandNode = document.querySelector('.pdf-order-sheet-header-print-fixed .pdf-order-sheet-header')
-            || document.querySelector('.pdf-order-sheet-header-print-fixed');
+        var bandNode = document.querySelector('.pdf-order-sheet-header-injected .pdf-order-sheet-header')
+            || document.querySelector('.pdf-order-sheet-header-injected');
         if (bandNode) {
             var measuredMm = pxToMm(bandNode.offsetHeight || bandNode.scrollHeight || 0);
             if (isFinite(measuredMm) && measuredMm > 0) {
@@ -114,7 +114,7 @@ $orderSheetBufferMm = 0.5;
     /**
      * Reserva de pie para paginación: altura medida + colchón (sin duplicar margen inferior).
      * El margen inferior de plantilla ya se descuenta aparte en basePageContentMm.
-     * Hojas 2+: además se descuenta la banda fija Paciente / No. Orden (orderSheetBandReserveMm).
+     * Hojas 2+: se descuenta la banda en flujo al inicio de cada continuación (orderSheetBandReserveMm).
      */
     function buildReportPrintPaginationMetrics(container) {
         var root = container || getPrintContainer();
@@ -124,7 +124,7 @@ $orderSheetBufferMm = 0.5;
 
         var footerReserveMm = resolveFooterReserveMm();
         var orderSheetBandReserveMm = 0;
-        if (cfg.orderSheetHeaderEnabled && document.body.classList.contains('js-order-sheet-header-print')) {
+        if (cfg.orderSheetHeaderEnabled) {
             orderSheetBandReserveMm = resolveOrderSheetBandReserveMm();
         }
         var footerHeightMm = roundMm(pxToMm(measureFooterHeightPx()));

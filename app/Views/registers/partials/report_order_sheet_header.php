@@ -1,7 +1,7 @@
 <?php
 /**
- * Cabecera por hoja (desde la 2.ª): Paciente izquierda, No. Orden derecha, encima del pie.
- * PDF: metadatos + page_script (PdfService). Impresión: plantilla JS (inyección al pie de hojas 2+).
+ * Cabecera por hoja (desde la 2.ª): Paciente izquierda, No. Orden derecha.
+ * PDF: metadatos + page_script (PdfService). Impresión: inyección en flujo (hojas 2+).
  *
  * @var array<string,mixed> $pdf_layout
  * @var object|null         $paciente
