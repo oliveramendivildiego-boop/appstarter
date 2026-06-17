@@ -575,6 +575,7 @@ table.results.pdf-notes-table td.pdf-notes-cell {
 }
 <?php if ($orderSheetHeaderEnabled && $browserPrintMode): ?>
 .pdf-order-sheet-header,
+.pdf-order-sheet-footer-band .pdf-order-sheet-header,
 .pdf-order-sheet-header-print-fixed .pdf-order-sheet-header,
 .pdf-order-sheet-header-injected .pdf-order-sheet-header {
     width: 100%;
@@ -587,6 +588,7 @@ table.results.pdf-notes-table td.pdf-notes-cell {
     color: #333333;
 }
 .pdf-order-sheet-header td,
+.pdf-order-sheet-footer-band .pdf-order-sheet-header td,
 .pdf-order-sheet-header-print-fixed .pdf-order-sheet-header td,
 .pdf-order-sheet-header-injected .pdf-order-sheet-header td {
     padding: 0;
@@ -594,28 +596,30 @@ table.results.pdf-notes-table td.pdf-notes-cell {
     white-space: nowrap;
 }
 .pdf-order-sheet-header-patient,
+.pdf-order-sheet-footer-band .pdf-order-sheet-header-patient,
 .pdf-order-sheet-header-print-fixed .pdf-order-sheet-header-patient,
 .pdf-order-sheet-header-injected .pdf-order-sheet-header-patient {
     width: 50%;
     text-align: left;
 }
 .pdf-order-sheet-header-orden,
+.pdf-order-sheet-footer-band .pdf-order-sheet-header-orden,
 .pdf-order-sheet-header-print-fixed .pdf-order-sheet-header-orden,
 .pdf-order-sheet-header-injected .pdf-order-sheet-header-orden {
     width: 50%;
     text-align: right;
 }
 .pdf-order-sheet-header-print-fixed,
-.pdf-order-sheet-header-injected {
+.pdf-order-sheet-header-injected,
+.pdf-order-sheet-footer-band {
     display: none;
     width: 100%;
     margin: 0;
     padding: 0;
-    background: #ffffff;
     box-sizing: border-box;
 }
 <?php if ($browserPrintMode): ?>
-body.report-browser-print.js-order-sheet-header-in-flow .pdf-order-sheet-header-injected {
+body.report-browser-print.js-order-sheet-footer-band .pdf-ft-block.footer-grid .pdf-order-sheet-footer-band {
     display: block;
 }
 <?php endif; ?>

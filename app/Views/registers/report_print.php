@@ -265,8 +265,12 @@
         if (typeof window.applyReportPdfGrupoPageBreaks === 'function') {
             window.applyReportPdfGrupoPageBreaks();
         }
+        var orderSheetInjected = false;
         if (typeof window.injectOrderSheetHeadersFromPageTwo === 'function') {
-            window.injectOrderSheetHeadersFromPageTwo();
+            orderSheetInjected = window.injectOrderSheetHeadersFromPageTwo() === true;
+        }
+        if (orderSheetInjected && typeof window.applyReportPdfGrupoPageBreaks === 'function') {
+            window.applyReportPdfGrupoPageBreaks();
         }
         applyBrowserTotalPages();
     }

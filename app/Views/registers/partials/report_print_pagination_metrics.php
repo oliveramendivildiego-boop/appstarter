@@ -114,7 +114,8 @@ $orderSheetBufferMm = 0.5;
     /**
      * Reserva de pie para paginación: altura medida + colchón (sin duplicar margen inferior).
      * El margen inferior de plantilla ya se descuenta aparte en basePageContentMm.
-     * Hojas 2+: se descuenta la banda en flujo al inicio de cada continuación (orderSheetBandReserveMm).
+     * La banda Paciente/Orden va en flujo al inicio de hoja 2+; no se descuenta de nextPageContentMm
+     * (evita cortar grupos de pruebas en segmentos sueltos).
      */
     function buildReportPrintPaginationMetrics(container) {
         var root = container || getPrintContainer();
@@ -136,10 +137,9 @@ $orderSheetBufferMm = 0.5;
         }
         basePageContentMm = roundMm(basePageContentMm);
 
-        // Hoja 1: sin banda. Hojas 2+ (con banda inyectada): menos alto solo en métricas JS, sin tocar @page.
         var firstPageContentMm = roundMm(Math.max(0, basePageContentMm - headerHeightMm));
         var firstPageFlowCapacityMm = roundMm(basePageContentMm);
-        var nextPageContentMm = roundMm(Math.max(0, basePageContentMm - orderSheetBandReserveMm));
+        var nextPageContentMm = roundMm(basePageContentMm);
 
         var totalContentPx = root.scrollHeight || 0;
         var totalContentMm = roundMm(pxToMm(totalContentPx));
