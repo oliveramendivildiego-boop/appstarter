@@ -4,6 +4,7 @@ namespace App\Libraries;
 
 use Dompdf\Dompdf;
 use Dompdf\FontMetrics;
+use Dompdf\Helpers;
 use Dompdf\Options;
 
 /**
@@ -15,6 +16,8 @@ class PdfService
 
     private const ORDER_SHEET_HEADER_MARKER = 'pdf-order-sheet-header-dompdf';
 
+    private const WATERMARK_MARKER = 'pdf-watermark-dompdf';
+
     protected function makeDompdf(Options $options): Dompdf
     {
         $dompdf = new Dompdf($options);
@@ -25,12 +28,15 @@ class PdfService
 
     /**
      * @param array<string, mixed>|null $orderSheetHeaderData
+     * @param array<string, mixed>|null $watermarkData
      */
-    protected function renderHtmlToDompdf(Dompdf $dompdf, string $html, ?array $orderSheetHeaderData = null): void
-    {
-        if ($orderSheetHeaderData !== null) {
-            $this->registerOrderSheetHeaderCallback($dompdf, $orderSheetHeaderData);
-        }
+    protected function renderHtmlToDompdf(
+        Dompdf $dompdf,
+        string $html,
+        ?array $orderSheetHeaderData = null,
+        ?array $watermarkData = null
+    ): void {
+        $this->registerDompdfCallbacks($dompdf, $orderSheetHeaderData, $watermarkData);
 
         $dompdf->loadHtml($html, 'UTF-8');
         $dompdf->render();
@@ -57,74 +63,147 @@ class PdfService
     }
 
     /**
-     * Una sola línea Paciente / No. Orden encima del pie, solo desde la 2.ª hoja.
-     *
-     * @param array<string, mixed> $data
+     * @return array<string, mixed>|null
      */
-    protected function registerOrderSheetHeaderCallback(Dompdf $dompdf, array $data): void
+    protected function extractWatermarkData(string $html): ?array
     {
-        $patientLine = trim((string) ($data['patient'] ?? ''));
-        $orderLine   = trim((string) ($data['order'] ?? ''));
-        if ($patientLine === '' && $orderLine === '') {
-            return;
+        if (strpos($html, self::WATERMARK_MARKER) === false) {
+            return null;
+        }
+        if (! preg_match('/<!--\s*pdf-watermark-dompdf:([A-Za-z0-9+\/=_-]+)\s*-->/', $html, $matches)) {
+            return null;
+        }
+        $json = base64_decode($matches[1], true);
+        if ($json === false) {
+            return null;
+        }
+        $data = json_decode($json, true);
+        if (! is_array($data)) {
+            return null;
+        }
+        $uri = trim((string) ($data['uri'] ?? ''));
+        if ($uri === '') {
+            return null;
         }
 
-        $marginBottomMm   = (float) ($data['margin_bottom_mm'] ?? 15);
-        $marginLeftMm     = (float) ($data['margin_left_mm'] ?? 15);
-        $marginRightMm    = (float) ($data['margin_right_mm'] ?? 15);
-        $footerReserveMm  = ! empty($data['footer_enabled'])
-            ? (float) ($data['footer_reserve_mm'] ?? 22)
-            : 0.0;
-        $gapAboveFooterMm = (float) ($data['gap_above_footer_mm'] ?? 1.5);
-        $mmToPt           = 72 / 25.4;
+        return [
+            'uri'          => $uri,
+            'opacity'      => (float) ($data['opacity'] ?? 0.12),
+            'size_percent' => (int) ($data['size_percent'] ?? 45),
+        ];
+    }
 
-        $dompdf->setCallbacks([
-            [
-                'event' => 'end_document',
-                'f'     => static function (
-                    int $pageNumber,
-                    int $pageCount,
-                    $pdf,
-                    FontMetrics $fontMetrics
-                ) use (
-                    $patientLine,
-                    $orderLine,
-                    $marginBottomMm,
-                    $marginLeftMm,
-                    $marginRightMm,
-                    $footerReserveMm,
-                    $gapAboveFooterMm,
-                    $mmToPt
-                ): void {
-                    if ($pageNumber <= 1) {
-                        return;
-                    }
+    /**
+     * @param array<string, mixed>|null $orderSheetHeaderData
+     * @param array<string, mixed>|null $watermarkData
+     */
+    protected function registerDompdfCallbacks(
+        Dompdf $dompdf,
+        ?array $orderSheetHeaderData,
+        ?array $watermarkData
+    ): void {
+        $callbacks = [];
 
-                    try {
-                        $font = $fontMetrics->getFont('DejaVu Sans', 'bold');
-                    } catch (\Throwable $e) {
-                        $font = $fontMetrics->getFont('DejaVu Sans', 'normal');
-                    }
+        if (is_array($watermarkData)) {
+            $uri = trim((string) ($watermarkData['uri'] ?? ''));
+            if ($uri !== '') {
+                $opacity = max(0.05, min(0.9, (float) ($watermarkData['opacity'] ?? 0.12)));
+                $sizePct = max(10, min(95, (int) ($watermarkData['size_percent'] ?? 45)));
+                $callbacks[] = [
+                    'event' => 'begin_page_render',
+                    'f'     => static function ($frame, $canvas, FontMetrics $fontMetrics) use ($uri, $opacity, $sizePct): void {
+                        unset($frame, $fontMetrics);
+                        try {
+                            $info = Helpers::dompdf_getimagesize($uri, $canvas->get_dompdf()->getHttpContext());
+                        } catch (\Throwable $e) {
+                            return;
+                        }
+                        if (! is_array($info) || count($info) < 2) {
+                            return;
+                        }
+                        $srcW = (float) ($info[0] ?? 0);
+                        $srcH = (float) ($info[1] ?? 0);
+                        if ($srcW <= 0 || $srcH <= 0) {
+                            return;
+                        }
+                        $pageW   = (float) $canvas->get_width();
+                        $pageH   = (float) $canvas->get_height();
+                        $targetW = $pageW * ($sizePct / 100);
+                        $targetH = $targetW * ($srcH / $srcW);
+                        $x       = ($pageW - $targetW) / 2;
+                        $y       = ($pageH - $targetH) / 2;
+                        $canvas->set_opacity($opacity);
+                        $canvas->image($uri, $x, $y, $targetW, $targetH);
+                        $canvas->set_opacity(1.0);
+                    },
+                ];
+            }
+        }
 
-                    $size  = 9.0;
-                    $color = [0.15, 0.15, 0.15];
-                    // Borde inferior físico de la hoja → encima del bloque de pie fijo.
-                    $offsetFromBottomMm = $marginBottomMm + $footerReserveMm + $gapAboveFooterMm;
-                    $y                  = $pdf->get_height() - ($offsetFromBottomMm * $mmToPt);
-                    $xLeft              = $marginLeftMm * $mmToPt;
-                    $xPad               = $marginRightMm * $mmToPt;
+        if (is_array($orderSheetHeaderData)) {
+            $patientLine = trim((string) ($orderSheetHeaderData['patient'] ?? ''));
+            $orderLine   = trim((string) ($orderSheetHeaderData['order'] ?? ''));
+            if ($patientLine !== '' || $orderLine !== '') {
+                $marginBottomMm   = (float) ($orderSheetHeaderData['margin_bottom_mm'] ?? 15);
+                $marginLeftMm     = (float) ($orderSheetHeaderData['margin_left_mm'] ?? 15);
+                $marginRightMm    = (float) ($orderSheetHeaderData['margin_right_mm'] ?? 15);
+                $footerReserveMm  = ! empty($orderSheetHeaderData['footer_enabled'])
+                    ? (float) ($orderSheetHeaderData['footer_reserve_mm'] ?? 22)
+                    : 0.0;
+                $gapAboveFooterMm = (float) ($orderSheetHeaderData['gap_above_footer_mm'] ?? 1.5);
+                $mmToPt           = 72 / 25.4;
 
-                    if ($patientLine !== '') {
-                        $pdf->text($xLeft, $y, $patientLine, $font, $size, $color);
-                    }
-                    if ($orderLine !== '') {
-                        $orderWidth = $fontMetrics->getTextWidth($orderLine, $font, $size);
-                        $xOrder     = $pdf->get_width() - $xPad - $orderWidth;
-                        $pdf->text($xOrder, $y, $orderLine, $font, $size, $color);
-                    }
-                },
-            ],
-        ]);
+                $callbacks[] = [
+                    'event' => 'end_document',
+                    'f'     => static function (
+                        int $pageNumber,
+                        int $pageCount,
+                        $pdf,
+                        FontMetrics $fontMetrics
+                    ) use (
+                        $patientLine,
+                        $orderLine,
+                        $marginBottomMm,
+                        $marginLeftMm,
+                        $marginRightMm,
+                        $footerReserveMm,
+                        $gapAboveFooterMm,
+                        $mmToPt
+                    ): void {
+                        unset($pageCount);
+                        if ($pageNumber <= 1) {
+                            return;
+                        }
+
+                        try {
+                            $font = $fontMetrics->getFont('DejaVu Sans', 'bold');
+                        } catch (\Throwable $e) {
+                            $font = $fontMetrics->getFont('DejaVu Sans', 'normal');
+                        }
+
+                        $size  = 9.0;
+                        $color = [0.15, 0.15, 0.15];
+                        $offsetFromBottomMm = $marginBottomMm + $footerReserveMm + $gapAboveFooterMm;
+                        $y                  = $pdf->get_height() - ($offsetFromBottomMm * $mmToPt);
+                        $xLeft              = $marginLeftMm * $mmToPt;
+                        $xPad               = $marginRightMm * $mmToPt;
+
+                        if ($patientLine !== '') {
+                            $pdf->text($xLeft, $y, $patientLine, $font, $size, $color);
+                        }
+                        if ($orderLine !== '') {
+                            $orderWidth = $fontMetrics->getTextWidth($orderLine, $font, $size);
+                            $xOrder     = $pdf->get_width() - $xPad - $orderWidth;
+                            $pdf->text($xOrder, $y, $orderLine, $font, $size, $color);
+                        }
+                    },
+                ];
+            }
+        }
+
+        if ($callbacks !== []) {
+            $dompdf->setCallbacks($callbacks);
+        }
     }
 
     /**
@@ -138,20 +217,22 @@ class PdfService
         $options->set('defaultFont', 'DejaVu Sans');
 
         $orderSheetHeaderData = $this->extractOrderSheetHeaderData($html);
+        $watermarkData        = $this->extractWatermarkData($html);
 
         if (strpos($html, self::TOTAL_PAGES_TOKEN) !== false) {
             $probe = $this->makeDompdf($options);
-            $this->renderHtmlToDompdf($probe, $html, null);
+            $this->renderHtmlToDompdf($probe, $html, null, null);
             $pageCount = (int) $probe->getCanvas()->get_page_count();
             if ($pageCount < 1) {
                 $pageCount = 1;
             }
             $html = str_replace(self::TOTAL_PAGES_TOKEN, (string) $pageCount, $html);
             $orderSheetHeaderData = $this->extractOrderSheetHeaderData($html);
+            $watermarkData        = $this->extractWatermarkData($html);
         }
 
         $dompdf = $this->makeDompdf($options);
-        $this->renderHtmlToDompdf($dompdf, $html, $orderSheetHeaderData);
+        $this->renderHtmlToDompdf($dompdf, $html, $orderSheetHeaderData, $watermarkData);
 
         return $dompdf->output();
     }

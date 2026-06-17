@@ -419,32 +419,61 @@ class ReportPdfLayoutService
 
     /**
      * Data URI para CSS/HTML (dompdf y navegador).
+     * Si la marca de agua está activa y no hay archivo válido, usa el logo del laboratorio.
      */
-    public static function getWatermarkDataUriForLayout(array $layout): ?string
+    public static function getWatermarkDataUriForLayout(array $layout, ?string $fallbackLogoDataUri = null): ?string
     {
-        $w = $layout['watermark'] ?? [];
-        if (empty($w['enabled']) || empty($w['file'])) {
+        $w = is_array($layout['watermark'] ?? null) ? $layout['watermark'] : [];
+        if (empty($w['enabled'])) {
             return null;
-        }
-        $rel = self::sanitizeWatermarkRelativePath((string) $w['file']);
-        if ($rel === null) {
-            return null;
-        }
-        $full = WRITEPATH . str_replace('/', DIRECTORY_SEPARATOR, $rel);
-        if (! is_file($full) || ! is_readable($full)) {
-            return null;
-        }
-        $data = @file_get_contents($full);
-        if ($data === false) {
-            return null;
-        }
-        $finfo = finfo_open(FILEINFO_MIME_TYPE);
-        $mime  = $finfo ? finfo_file($finfo, $full) : false;
-        if ($finfo) {
-            finfo_close($finfo);
         }
 
-        return 'data:' . ($mime ?: 'image/png') . ';base64,' . base64_encode($data);
+        $fileRaw = isset($w['file']) ? (string) $w['file'] : '';
+        if ($fileRaw !== '') {
+            $rel = self::sanitizeWatermarkRelativePath($fileRaw);
+            if ($rel !== null) {
+                $full = WRITEPATH . str_replace('/', DIRECTORY_SEPARATOR, $rel);
+                if (is_file($full) && is_readable($full)) {
+                    $data = @file_get_contents($full);
+                    if ($data !== false) {
+                        $finfo = finfo_open(FILEINFO_MIME_TYPE);
+                        $mime  = $finfo ? finfo_file($finfo, $full) : false;
+                        if ($finfo) {
+                            finfo_close($finfo);
+                        }
+
+                        return 'data:' . ($mime ?: 'image/png') . ';base64,' . base64_encode($data);
+                    }
+                }
+            }
+        }
+
+        $fallbackLogoDataUri = trim((string) $fallbackLogoDataUri);
+
+        return $fallbackLogoDataUri !== '' ? $fallbackLogoDataUri : null;
+    }
+
+    /**
+     * @return array{uri: string, opacity: float, size_percent: int}|null
+     */
+    public static function watermarkRenderPayloadForLayout(array $layout, ?string $fallbackLogoDataUri = null): ?array
+    {
+        $w   = is_array($layout['watermark'] ?? null) ? $layout['watermark'] : [];
+        $uri = self::getWatermarkDataUriForLayout($layout, $fallbackLogoDataUri);
+        if ($uri === null || $uri === '') {
+            return null;
+        }
+
+        $opacity = isset($w['opacity']) ? (float) $w['opacity'] : 0.12;
+        $opacity = round(max(0.05, min(0.9, $opacity)), 2);
+        $size    = isset($w['size_percent']) ? (int) $w['size_percent'] : 45;
+        $size    = max(10, min(95, $size));
+
+        return [
+            'uri'          => $uri,
+            'opacity'      => $opacity,
+            'size_percent' => $size,
+        ];
     }
 
     public static function defaultColumnForPatientField(string $id): int
@@ -4348,7 +4377,7 @@ class ReportPdfLayoutService
             $file = null;
         }
         $wants   = ! empty($raw['enabled']);
-        $enabled = $wants && $file !== null;
+        $enabled = $wants;
         $opacity = isset($raw['opacity']) ? (float) $raw['opacity'] : $def['opacity'];
         $opacity = round(max(0.05, min(0.9, $opacity)), 2);
         $size    = isset($raw['size_percent']) ? (int) $raw['size_percent'] : $def['size_percent'];

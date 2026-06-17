@@ -60,7 +60,6 @@ body {
 .pdf-main-stack {
     position: relative;
     z-index: 1;
-    isolation: isolate;
 }
 /* Contadores de paginación (Dompdf / CSS Paged Media).
  * Si el motor no soporta `counter(pages)`, el valor puede venir vacío.

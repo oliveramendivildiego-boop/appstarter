@@ -5,7 +5,6 @@ helper('registro');
 
 $pl = is_array($pdf_layout ?? null) ? $pdf_layout : [];
 $wm = is_array($pl['watermark'] ?? null) ? $pl['watermark'] : \App\Services\ReportPdfLayoutService::defaultWatermarkStatic();
-$wmUri = $pdf_watermark_uri ?? \App\Services\ReportPdfLayoutService::getWatermarkDataUriForLayout($pl);
 $opacityW = (float) ($wm['opacity'] ?? 0.12);
 $sizeW    = (int) ($wm['size_percent'] ?? 45);
 
@@ -24,6 +23,9 @@ if ($pdf_logo_data_uri === '') {
         $pdf_logo_data_uri = 'data:' . ($mime ?: 'image/png') . ';base64,' . $logoData;
     }
 }
+
+$wmPayload = \App\Services\ReportPdfLayoutService::watermarkRenderPayloadForLayout($pl, $pdf_logo_data_uri);
+$wmUri = $pdf_watermark_uri ?? ($wmPayload['uri'] ?? null);
 
 $pdfBlockViews = [
     'header'         => 'registers/pdf/blocks/header',
@@ -60,11 +62,27 @@ $ctx = [
     'analisis_variant'                => $analisis_variant ?? 'pdf',
 ];
 ?>
-<?php if ($wmUri !== null && $wmUri !== ''): ?>
 <?php
-// <img> con transform suele no pintarse en Dompdf; la opacidad en el propio img a veces no se aplica: usar contenedor + tabla centrada.
-$wmSize     = max(10, min(95, (int) $sizeW));
-$opacityCss = number_format(max(0.05, min(0.9, $opacityW)), 2, '.', '');
+$analisisVariant = (string) ($analisis_variant ?? 'pdf');
+$useDompdfWatermarkCallback = $analisisVariant === 'pdf';
+if ($wmUri !== null && $wmUri !== ''):
+    $wmSize     = max(10, min(95, (int) $sizeW));
+    $opacityCss = number_format(max(0.05, min(0.9, $opacityW)), 2, '.', '');
+    if ($useDompdfWatermarkCallback):
+        $wmDompdfData = is_array($wmPayload)
+            ? $wmPayload
+            : [
+                'uri'          => (string) $wmUri,
+                'opacity'      => round(max(0.05, min(0.9, $opacityW)), 2),
+                'size_percent' => max(10, min(95, (int) $sizeW)),
+            ];
+        $wmDompdfJson = json_encode($wmDompdfData, JSON_UNESCAPED_UNICODE);
+        if ($wmDompdfJson !== false):
+?>
+<!-- pdf-watermark-dompdf:<?= base64_encode($wmDompdfJson) ?> -->
+<?php
+        endif;
+    else:
 ?>
 <div class="pdf-watermark-layer" aria-hidden="true">
     <div class="pdf-watermark-inner" style="opacity:<?= esc($opacityCss, 'attr') ?>;">
@@ -77,7 +95,10 @@ $opacityCss = number_format(max(0.05, min(0.9, $opacityW)), 2, '.', '');
         </table>
     </div>
 </div>
-<?php endif; ?>
+<?php
+    endif;
+endif;
+?>
 <div class="pdf-main-stack">
 <?php foreach (($pl['blocks'] ?? []) as $block):
     if (empty($block['enabled'])) {

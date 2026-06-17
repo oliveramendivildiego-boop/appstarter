@@ -1,13 +1,50 @@
 <?= $this->extend('layouts/main') ?>
+<?php
+$plViewHead = is_array($pdf_layout ?? null) ? $pdf_layout : [];
+$mmViewHead = is_array($plViewHead['margins_mm'] ?? null)
+    ? $plViewHead['margins_mm']
+    : \App\Services\ReportPdfLayoutService::defaultMarginsMmStatic();
+$mtViewHead = (float) ($mmViewHead['top'] ?? 15);
+$mrViewHead = (float) ($mmViewHead['right'] ?? 15);
+$mbViewHead = (float) ($mmViewHead['bottom'] ?? 15);
+$mlViewHead = (float) ($mmViewHead['left'] ?? 15);
+$printPaperViewHead = strtolower((string) (($lab_config ?? [])['print_paper_size'] ?? 'letter'));
+if (! in_array($printPaperViewHead, ['letter', 'a4', 'legal', 'custom'], true)) {
+    $printPaperViewHead = 'letter';
+}
+$printPaperCustomWHead = max(50.0, min(999.0, (float) (($lab_config ?? [])['print_paper_width_mm'] ?? 210)));
+$printPaperCustomHHead = max(50.0, min(999.0, (float) (($lab_config ?? [])['print_paper_height_mm'] ?? 297)));
+$printPageHeightMmHead = $printPaperViewHead === 'a4'
+    ? 297.0
+    : ($printPaperViewHead === 'legal' ? 355.6 : ($printPaperViewHead === 'custom' ? $printPaperCustomHHead : 279.4));
+$printPageWidthMmHead = $printPaperViewHead === 'a4'
+    ? 210.0
+    : ($printPaperViewHead === 'custom' ? $printPaperCustomWHead : 215.9);
+$pdfFooterEnabledView = false;
+foreach (is_array($plViewHead['blocks'] ?? null) ? $plViewHead['blocks'] : [] as $fbView) {
+    if (! empty($fbView['enabled']) && (string) ($fbView['id'] ?? '') === 'footer') {
+        $pdfFooterEnabledView = true;
+        break;
+    }
+}
+?>
 <?= $this->section('title') ?>Reporte<?= $this->endSection() ?>
 
 <?= $this->section('head_extra') ?>
 <?= view('registers/partials/report_pdf_theme_styles', [
     'pdf_layout'                     => $pdf_layout ?? [],
-    'use_sheet_padding_for_margins' => true,
+    'use_sheet_padding_for_margins' => false,
+]) ?>
+<?= view('registers/partials/report_viewreport_page_styles', [
+    'mt'                 => $mtViewHead,
+    'mr'                 => $mrViewHead,
+    'mb'                 => $mbViewHead,
+    'ml'                 => $mlViewHead,
+    'page_width_mm'      => $printPageWidthMmHead,
+    'page_height_mm'     => $printPageHeightMmHead,
+    'pdf_footer_enabled' => $pdfFooterEnabledView,
 ]) ?>
 <style>
-.viewreport-pdf-shell { width: 100%; overflow-x: auto; }
 .viewreport-pdf-shell .pdf-watermark-layer { z-index: 0; }
 .viewreport-pdf-shell .pdf-main-stack { position: relative; z-index: 1; }
 table.results td.resultado-texto-rico-cell .resultado-texto-rico strong,
@@ -67,7 +104,9 @@ $reportUrl = ! empty($public_resultados_token)
 $qrPx = \App\Services\ReportPdfLayoutService::qrImagePixelSizeFromLayout(is_array($pdf_layout ?? null) ? $pdf_layout : []);
 $qr_data_uri = qr_base64($reportUrl, $qrPx);
 ?>
-<div class="viewreport-pdf-shell">
+<div class="viewreport-pdf-shell viewreport-pdf-shell--paginated">
+    <div class="viewreport-pdf-pages" aria-live="polite"></div>
+    <div class="viewreport-pdf-source">
     <div class="viewreport-pdf-sheet">
         <?php
         ob_start();
@@ -91,6 +130,7 @@ $qr_data_uri = qr_base64($reportUrl, $qrPx);
         ]);
         echo \App\Services\RegisterService::replaceTotalPagesTokenForBrowser(ob_get_clean());
         ?>
+    </div>
     </div>
 </div>
 <?php endif; ?>
@@ -136,54 +176,16 @@ $qr_data_uri = qr_base64($reportUrl, $qrPx);
 <?= $this->endSection() ?>
 
 <?= $this->section('scripts') ?>
-<?php
-$plView = is_array($pdf_layout ?? null) ? $pdf_layout : [];
-$mmView = is_array($plView['margins_mm'] ?? null)
-    ? $plView['margins_mm']
-    : \App\Services\ReportPdfLayoutService::defaultMarginsMmStatic();
-$mtView = (float) ($mmView['top'] ?? 15);
-$mbView = (float) ($mmView['bottom'] ?? 15);
-$printPaperView = strtolower((string) (($lab_config ?? [])['print_paper_size'] ?? 'letter'));
-if (! in_array($printPaperView, ['letter', 'a4', 'legal', 'custom'], true)) {
-    $printPaperView = 'letter';
-}
-$printPaperCustomHView = max(50.0, min(999.0, (float) (($lab_config ?? [])['print_paper_height_mm'] ?? 297)));
-$printPageHeightMmView = $printPaperView === 'a4'
-    ? 297.0
-    : ($printPaperView === 'legal' ? 355.6 : ($printPaperView === 'custom' ? $printPaperCustomHView : 279.4));
-?>
+<?= view('registers/partials/report_viewreport_pagination_script', [
+    'pdf_layout'         => $pdf_layout ?? [],
+    'page_height_mm'     => $printPageHeightMmHead,
+    'margin_top_mm'      => $mtViewHead,
+    'margin_bottom_mm'   => $mbViewHead,
+    'footer_reserve_mm'  => 22.0,
+    'footer_enabled'     => $pdfFooterEnabledView,
+]) ?>
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-    var MM_TO_PX = 96 / 25.4;
-    var PAGE_HEIGHT_MM = <?= json_encode($printPageHeightMmView) ?>;
-    var marginTopMm = <?= json_encode($mtView) ?>;
-    var marginBottomMm = <?= json_encode($mbView) ?>;
-
-    function estimateTotalPagesForView() {
-        var content = document.querySelector('.viewreport-pdf-sheet .pdf-main-stack') || document.querySelector('.pdf-main-stack');
-        if (!content) {
-            return 1;
-        }
-        var printableHeightMm = PAGE_HEIGHT_MM - marginTopMm - marginBottomMm;
-        if (!isFinite(printableHeightMm) || printableHeightMm <= 0) printableHeightMm = 240;
-        var printablePx = printableHeightMm * MM_TO_PX;
-        if (!isFinite(printablePx) || printablePx <= 0) printablePx = 900;
-        var total = Math.ceil(content.scrollHeight / printablePx);
-        if (!isFinite(total) || total < 1) total = 1;
-        return total;
-    }
-
-    function applyBrowserTotalPages() {
-        var total = estimateTotalPagesForView();
-        document.querySelectorAll('.pdf-counter-pages').forEach(function(el) {
-            el.textContent = String(total);
-        });
-        document.body.classList.add('js-total-pages-ready');
-    }
-
-    applyBrowserTotalPages();
-    window.addEventListener('resize', applyBrowserTotalPages);
-
     function bindPrintWindow(btnId, windowName) {
         var btn = document.getElementById(btnId);
         if (!btn) {
