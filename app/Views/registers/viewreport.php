@@ -5,9 +5,7 @@ $mmViewHead = is_array($plViewHead['margins_mm'] ?? null)
     ? $plViewHead['margins_mm']
     : \App\Services\ReportPdfLayoutService::defaultMarginsMmStatic();
 $mtViewHead = (float) ($mmViewHead['top'] ?? 15);
-$mrViewHead = (float) ($mmViewHead['right'] ?? 15);
 $mbViewHead = (float) ($mmViewHead['bottom'] ?? 15);
-$mlViewHead = (float) ($mmViewHead['left'] ?? 15);
 $printPaperViewHead = strtolower((string) (($lab_config ?? [])['print_paper_size'] ?? 'letter'));
 if (! in_array($printPaperViewHead, ['letter', 'a4', 'legal', 'custom'], true)) {
     $printPaperViewHead = 'letter';
@@ -20,33 +18,71 @@ $printPageHeightMmHead = $printPaperViewHead === 'a4'
 $printPageWidthMmHead = $printPaperViewHead === 'a4'
     ? 210.0
     : ($printPaperViewHead === 'custom' ? $printPaperCustomWHead : 215.9);
-$pdfFooterEnabledView = false;
-foreach (is_array($plViewHead['blocks'] ?? null) ? $plViewHead['blocks'] : [] as $fbView) {
-    if (! empty($fbView['enabled']) && (string) ($fbView['id'] ?? '') === 'footer') {
-        $pdfFooterEnabledView = true;
-        break;
-    }
-}
 ?>
 <?= $this->section('title') ?>Reporte<?= $this->endSection() ?>
 
 <?= $this->section('head_extra') ?>
 <?= view('registers/partials/report_pdf_theme_styles', [
     'pdf_layout'                     => $pdf_layout ?? [],
-    'use_sheet_padding_for_margins' => false,
-]) ?>
-<?= view('registers/partials/report_viewreport_page_styles', [
-    'mt'                 => $mtViewHead,
-    'mr'                 => $mrViewHead,
-    'mb'                 => $mbViewHead,
-    'ml'                 => $mlViewHead,
-    'page_width_mm'      => $printPageWidthMmHead,
-    'page_height_mm'     => $printPageHeightMmHead,
-    'pdf_footer_enabled' => $pdfFooterEnabledView,
+    'use_sheet_padding_for_margins' => true,
 ]) ?>
 <style>
-.viewreport-pdf-shell .pdf-watermark-layer { z-index: 0; }
-.viewreport-pdf-shell .pdf-main-stack { position: relative; z-index: 1; }
+.viewreport-actions-bar {
+    background: #f8f9fa;
+    border: 1px solid #dee2e6;
+    border-radius: 8px;
+    padding: 12px 16px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+}
+.viewreport-actions-bar--sticky {
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    margin-bottom: 16px;
+}
+.viewreport-actions-bar--bottom {
+    margin-top: 16px;
+}
+.viewreport-pdf-shell {
+    width: 100%;
+    overflow-x: auto;
+    padding: 8px 0 24px;
+    background: #e9ecef;
+}
+.viewreport-pdf-sheet {
+    position: relative;
+    width: <?= esc((string) $printPageWidthMmHead) ?>mm;
+    max-width: 100%;
+    margin-left: auto;
+    margin-right: auto;
+    background: #fff;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.14);
+    box-sizing: border-box;
+}
+.viewreport-pdf-sheet .pdf-watermark-layer {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    max-height: none;
+    z-index: 0;
+    pointer-events: none;
+}
+.viewreport-pdf-sheet .pdf-watermark-inner,
+.viewreport-pdf-sheet .pdf-watermark-table,
+.viewreport-pdf-sheet .pdf-watermark-td {
+    height: 100% !important;
+    min-height: <?= esc((string) $printPageHeightMmHead) ?>mm;
+}
+.viewreport-pdf-sheet .pdf-main-stack {
+    position: relative;
+    z-index: 1;
+}
+.viewreport-pdf-sheet .pdf-ft-block.footer-grid {
+    position: relative;
+    z-index: 2;
+}
 table.results td.resultado-texto-rico-cell .resultado-texto-rico strong,
 table.results td.resultado-texto-rico-cell .resultado-texto-rico b {
     font-weight: 700 !important;
@@ -91,22 +127,32 @@ body.js-total-pages-ready .pdf-counter-pages::before {
 
 <?php
 $grupos = $grupos ?? [];
-if (empty($grupos)): ?>
+$ridPdf = (int) ($labotests_namecate ?? 0);
+$compOk = ! empty($comprobante_pdf_disponible ?? false);
+$lblComp = ! empty($sin_billing_enabled ?? false) ? 'Factura (PDF)' : 'Recibo (PDF)';
+?>
+
+<?= view('registers/partials/report_viewreport_actions_bar', [
+    'ridPdf'                   => $ridPdf,
+    'compOk'                   => $compOk,
+    'lblComp'                  => $lblComp,
+    'envelope_print_available' => $envelope_print_available ?? false,
+    'sticky'                   => true,
+]) ?>
+
+<?php if (empty($grupos)): ?>
 <div class="alert alert-info mt-3">
-    <i class="fa-solid fa-info-circle me-2"></i>No hay resultados cargados para esta orden. Complete los resultados en <a href="<?= site_url('registers/view/' . (int)($labotests_namecate ?? 0)) ?>">Editar registro</a>.
+    <i class="fa-solid fa-info-circle me-2"></i>No hay resultados cargados para esta orden. Complete los resultados en <a href="<?= site_url('registers/view/' . $ridPdf) ?>">Editar registro</a>.
 </div>
 <?php else:
 helper(['qr', 'registro']);
-$rid = (int) ($labotests_namecate ?? 0);
 $reportUrl = ! empty($public_resultados_token)
     ? site_url('resultados/' . $public_resultados_token)
-    : site_url('registers/viewreport/' . $rid);
+    : site_url('registers/viewreport/' . $ridPdf);
 $qrPx = \App\Services\ReportPdfLayoutService::qrImagePixelSizeFromLayout(is_array($pdf_layout ?? null) ? $pdf_layout : []);
 $qr_data_uri = qr_base64($reportUrl, $qrPx);
 ?>
-<div class="viewreport-pdf-shell viewreport-pdf-shell--paginated">
-    <div class="viewreport-pdf-pages" aria-live="polite"></div>
-    <div class="viewreport-pdf-source">
+<div class="viewreport-pdf-shell">
     <div class="viewreport-pdf-sheet">
         <?php
         ob_start();
@@ -131,82 +177,87 @@ $qr_data_uri = qr_base64($reportUrl, $qrPx);
         echo \App\Services\RegisterService::replaceTotalPagesTokenForBrowser(ob_get_clean());
         ?>
     </div>
-    </div>
 </div>
+<?= view('registers/partials/report_viewreport_actions_bar', [
+    'ridPdf'                   => $ridPdf,
+    'compOk'                   => $compOk,
+    'lblComp'                  => $lblComp,
+    'envelope_print_available' => $envelope_print_available ?? false,
+    'sticky'                   => false,
+]) ?>
 <?php endif; ?>
 
-<div class="text-center mt-3">
-    <button id="guardaranalisis" name="guardaranalisis" class="btn btn-primary">Guardar</button>
-    <a href="<?= site_url('registers/printreport/' . (int) ($labotests_namecate ?? 0)) ?>" class="btn btn-outline-primary" id="btn_print_report">Imprimir</a>
-    <?php if (! empty($envelope_print_available)): ?>
-    <a href="<?= site_url('registers/printEnvelope/' . (int) ($labotests_namecate ?? 0)) ?>"
-       class="btn btn-outline-secondary"
-       id="btn_print_envelope"
-       title="Imprimir sobre con la plantilla de impresión en Configuración → Sobres">
-        <i class="fa-solid fa-envelope me-1"></i> Imprimir sobre
-    </a>
-    <?php endif; ?>
-    <a href="<?= site_url('registers/pdf/' . ($labotests_namecate ?? 0)) ?>" class="btn btn-success" target="_blank">
-        <i class="fa-solid fa-file-pdf me-1"></i> Descargar PDF
-    </a>
-    <?php
-    $ridPdf = (int) ($labotests_namecate ?? 0);
-    $compOk = !empty($comprobante_pdf_disponible ?? false);
-    $lblComp  = !empty($sin_billing_enabled ?? false) ? 'Factura (PDF)' : 'Recibo (PDF)';
-    ?>
-    <a href="<?= site_url('registers/comprobantePdf/' . $ridPdf) ?>"
-       class="btn btn-outline-dark"
-       target="_blank"
-       title="<?= $compOk ? 'Descargar comprobante de pago' : 'Si la orden no está saldada, se mostrará un aviso al intentar descargar' ?>">
-        <i class="fa-solid fa-file-invoice-dollar me-1"></i> <?= esc($lblComp) ?>
-    </a>
-    <?php if (!$compOk): ?>
-    <div class="small text-muted mt-2 w-100">
-        <?php if (!empty($comprobante_pdf_sin_registro_pago ?? false)): ?>
-            <i class="fa-solid fa-triangle-exclamation me-1 text-warning"></i>Sin registro de pago en base de datos: cree o vincule el pago desde la lista de registros.
-        <?php elseif (!empty($comprobante_pdf_pendiente_pago ?? false)): ?>
-            <i class="fa-solid fa-circle-info me-1"></i>La descarga del comprobante queda disponible cuando el saldo sea 0 o el monto pagado cubra el total (revise en lista de registros → historial de pagos).
-        <?php else: ?>
-            <i class="fa-solid fa-circle-info me-1"></i>Si no puede descargar el comprobante, verifique el pago de la orden.
-        <?php endif; ?>
-    </div>
+<?php if (! $compOk && ! empty($grupos)): ?>
+<div class="small text-muted text-center mt-2 w-100">
+    <?php if (! empty($comprobante_pdf_sin_registro_pago ?? false)): ?>
+        <i class="fa-solid fa-triangle-exclamation me-1 text-warning"></i>Sin registro de pago en base de datos: cree o vincule el pago desde la lista de registros.
+    <?php elseif (! empty($comprobante_pdf_pendiente_pago ?? false)): ?>
+        <i class="fa-solid fa-circle-info me-1"></i>La descarga del comprobante queda disponible cuando el saldo sea 0 o el monto pagado cubra el total (revise en lista de registros → historial de pagos).
+    <?php else: ?>
+        <i class="fa-solid fa-circle-info me-1"></i>Si no puede descargar el comprobante, verifique el pago de la orden.
     <?php endif; ?>
 </div>
+<?php endif; ?>
 </fieldset>
 <?= $this->endSection() ?>
 
 <?= $this->section('scripts') ?>
-<?= view('registers/partials/report_viewreport_pagination_script', [
-    'pdf_layout'         => $pdf_layout ?? [],
-    'page_height_mm'     => $printPageHeightMmHead,
-    'margin_top_mm'      => $mtViewHead,
-    'margin_bottom_mm'   => $mbViewHead,
-    'footer_reserve_mm'  => 22.0,
-    'footer_enabled'     => $pdfFooterEnabledView,
-]) ?>
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-    function bindPrintWindow(btnId, windowName) {
-        var btn = document.getElementById(btnId);
-        if (!btn) {
-            return;
+    var MM_TO_PX = 96 / 25.4;
+    var PAGE_HEIGHT_MM = <?= json_encode($printPageHeightMmHead) ?>;
+    var marginTopMm = <?= json_encode($mtViewHead) ?>;
+    var marginBottomMm = <?= json_encode($mbViewHead) ?>;
+
+    function estimateTotalPagesForView() {
+        var content = document.querySelector('.viewreport-pdf-sheet .pdf-main-stack');
+        if (!content) {
+            return 1;
         }
-        btn.addEventListener('click', function (e) {
-            e.preventDefault();
-            var url = btn.getAttribute('href');
-            if (url.indexOf('auto=1') === -1) {
-                url += (url.indexOf('?') >= 0 ? '&' : '?') + 'auto=1';
-            }
-            var w = window.open(url, windowName, 'width=960,height=900');
-            if (!w) {
-                window.location.href = url;
-            }
+        var printableHeightMm = PAGE_HEIGHT_MM - marginTopMm - marginBottomMm;
+        if (!isFinite(printableHeightMm) || printableHeightMm <= 0) {
+            printableHeightMm = 240;
+        }
+        var printablePx = printableHeightMm * MM_TO_PX;
+        if (!isFinite(printablePx) || printablePx <= 0) {
+            printablePx = 900;
+        }
+        var total = Math.ceil(content.scrollHeight / printablePx);
+        if (!isFinite(total) || total < 1) {
+            total = 1;
+        }
+        return total;
+    }
+
+    function applyBrowserTotalPages() {
+        var total = estimateTotalPagesForView();
+        document.querySelectorAll('.pdf-counter-pages').forEach(function(el) {
+            el.textContent = String(total);
+        });
+        document.body.classList.add('js-total-pages-ready');
+    }
+
+    applyBrowserTotalPages();
+
+    function bindPrintWindow(selector, windowName) {
+        document.querySelectorAll(selector).forEach(function(btn) {
+            btn.addEventListener('click', function (e) {
+                e.preventDefault();
+                var url = btn.getAttribute('href');
+                if (url.indexOf('auto=1') === -1) {
+                    url += (url.indexOf('?') >= 0 ? '&' : '?') + 'auto=1';
+                }
+                var w = window.open(url, windowName, 'width=960,height=900');
+                if (!w) {
+                    window.location.href = url;
+                }
+            });
         });
     }
-    bindPrintWindow('btn_print_report', 'reportPrint');
-    bindPrintWindow('btn_print_envelope', 'envelopePrint');
-    var btn = document.getElementById('guardaranalisis');
-    if (btn) {
+    bindPrintWindow('.js-viewreport-print', 'reportPrint');
+    bindPrintWindow('.js-viewreport-envelope', 'envelopePrint');
+
+    document.querySelectorAll('.js-viewreport-save').forEach(function(btn) {
         btn.addEventListener('click', function() {
             var datos = [];
             document.querySelectorAll('.analisis').forEach(function(el) {
@@ -227,12 +278,12 @@ document.addEventListener('DOMContentLoaded', function() {
                 body: 'data=' + encodeURIComponent(JSON.stringify(datos))
             })
             .then(function(r) { return r.json(); })
-            .then(function(res) {
+            .then(function() {
                 window.location.href = '<?= site_url('registers') ?>';
             })
             .catch(function() { uiAlert('Error al guardar', 'Error'); });
         });
-    }
+    });
 });
 </script>
 <?= $this->endSection() ?>
