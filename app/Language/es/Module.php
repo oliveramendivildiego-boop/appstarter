@@ -45,7 +45,7 @@ return [
     'module_equipos_desc'      => 'Registro y mantenimiento de equipos',
     'module_leyendas'          => 'Leyendas',
     'module_leyendas_desc'     => 'Crear y administrar mensajes o leyendas',
-    'module_egresos'           => 'Egresos',
+    'module_egresos'           => 'Egresos / Ingresos',
     'module_egresos_desc'      => 'Registrar egresos con monto, tipo de pago y desglose',
     'module_auditoria'         => 'Auditoría',
     'module_auditoria_desc'    => 'Registro de acciones del sistema',
