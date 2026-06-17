@@ -100,6 +100,7 @@
         'printSegmentBreakInside' => $printSegmentBreakInside,
         'printPagLabelCssPos'          => $printPagLabelCssPos,
         'printPagValueCssPos'          => $printPagValueCssPos,
+        'order_sheet_header_enabled'   => $orderSheetHeaderEnabled,
     ]) ?>
 </head>
 <body class="report-browser-print<?= $gpbBodyClass !== '' ? ' ' . esc($gpbBodyClass, 'attr') : '' ?><?= $layoutReportMode ? ' report-print-layout-report-mode' : '' ?>">
@@ -208,7 +209,7 @@
     }
     window.measureReportPrintFooterReserveMm = measureFooterReserveMm;
 
-    function applyPageMarginsStyle(footerHeightMm) {
+    function applyPageMarginsStyle() {
         var styleEl = document.getElementById('report-print-page-margins');
         if (!styleEl) {
             styleEl = document.createElement('style');
@@ -221,13 +222,6 @@
             + 'margin-right: ' + marginRightMm + 'mm; '
             + 'margin-bottom: ' + marginBottomMm + 'mm; '
             + 'margin-left: ' + marginLeftMm + 'mm; }';
-        console.log('[report-print-margins]', {
-            marginTopMM: marginTopMm,
-            marginRightMM: marginRightMm,
-            marginBottomMM: marginBottomMm,
-            marginLeftMM: marginLeftMm,
-            source: 'plantilla margins_mm + #report-print-page-margins'
-        });
     }
 
     function syncReportPrintLayoutMetrics() {
@@ -235,7 +229,7 @@
         var footerReserveMm = measureFooterReserveMm();
         document.documentElement.style.setProperty('--print-footer-height-mm', String(footerHeightMm));
         document.documentElement.style.setProperty('--print-footer-reserve-mm', String(footerReserveMm));
-        applyPageMarginsStyle(footerHeightMm);
+        applyPageMarginsStyle();
         if (typeof window.updateReportPrintPageBreakMetrics === 'function') {
             window.updateReportPrintPageBreakMetrics({
                 footerReserveMm: footerReserveMm
@@ -267,10 +261,10 @@
     }
 
     function preparePrintLayout() {
-        syncReportPrintLayoutMetrics();
         if (typeof window.injectOrderSheetHeadersFromPageTwo === 'function') {
             window.injectOrderSheetHeadersFromPageTwo();
         }
+        syncReportPrintLayoutMetrics();
         if (typeof window.applyReportPdfGrupoPageBreaks === 'function') {
             window.applyReportPdfGrupoPageBreaks();
         }

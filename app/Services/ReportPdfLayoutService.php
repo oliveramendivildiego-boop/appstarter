@@ -3138,7 +3138,7 @@ class ReportPdfLayoutService
      */
     public static function orderSheetHeaderPaginationReserveMm(): float
     {
-        return self::ORDER_SHEET_HEADER_HEIGHT_MM + 1.5;
+        return self::ORDER_SHEET_HEADER_HEIGHT_MM + 0.5;
     }
 
     /**

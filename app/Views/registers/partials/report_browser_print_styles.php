@@ -13,6 +13,7 @@
  * @var string $printSegmentBreakInside
  * @var string $printPagLabelCssPos
  * @var string $printPagValueCssPos
+ * @var bool   $order_sheet_header_enabled
  */
 $mt = (float) ($mt ?? 15);
 $mr = (float) ($mr ?? 15);
@@ -27,6 +28,7 @@ $printSegmentBreakInside = (string) ($printSegmentBreakInside ?? 'auto');
 $printPagLabelCssPos = (string) ($printPagLabelCssPos ?? '');
 $printPagValueCssPos = (string) ($printPagValueCssPos ?? '');
 $orderSheetGapMm = \App\Services\ReportPdfLayoutService::ORDER_SHEET_HEADER_GAP_ABOVE_FOOTER_MM;
+$orderSheetBandReserveMm = \App\Services\ReportPdfLayoutService::orderSheetHeaderPaginationReserveMm();
 ?>
 <style>
 :root {
@@ -36,7 +38,7 @@ $orderSheetGapMm = \App\Services\ReportPdfLayoutService::ORDER_SHEET_HEADER_GAP_
     --print-margin-left-mm: <?= esc((string) $ml) ?>;
     --print-footer-reserve-mm: <?= esc((string) $pdfFooterReserveMm) ?>;
     --print-order-sheet-gap-mm: <?= esc((string) $orderSheetGapMm) ?>;
-    --print-order-sheet-band-reserve-mm: <?= esc((string) \App\Services\ReportPdfLayoutService::orderSheetHeaderPaginationReserveMm()) ?>;
+    --print-order-sheet-band-reserve-mm: <?= esc((string) $orderSheetBandReserveMm) ?>;
 }
 @page {
     size: <?= esc($printPageCssSize) ?>;

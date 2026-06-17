@@ -659,21 +659,9 @@ $footerEnabled = ! empty($footer_enabled);
         return leader;
     }
 
-    function footerReservePx() {
-        if (!cfg.footerEnabled) {
-            return 0;
-        }
-        var api = paginationApi();
-        if (api && typeof api.mmToPx === 'function') {
-            return api.mmToPx(cfg.footerReserveMm || 0);
-        }
-        return (cfg.footerReserveMm || 0) * (96 / 25.4);
-    }
-
     function applyLabFirmasPageBreaks(container, layoutCtx) {
         var maxSlicePx = layoutCtx.maxSlicePx;
         var boundarySet = layoutCtx.boundarySet;
-        var footerPx = footerReservePx();
 
         container.querySelectorAll(LAB_FIRMA_SELECTOR).forEach(function(block) {
             clearLabFirmaPageLeader(block);
@@ -693,13 +681,7 @@ $footerEnabled = ! empty($footer_enabled);
                 return;
             }
 
-            // Reservar espacio del pie fijo para no empujar la validación encima del footer.
-            var remainingAboveFooter = remaining - footerPx;
-            if (!isFinite(remainingAboveFooter)) {
-                remainingAboveFooter = remaining;
-            }
-
-            if (height > remainingAboveFooter) {
+            if (height > remaining) {
                 ensureLabFirmaPageLeaderBefore(block);
             }
         });

@@ -99,5 +99,7 @@ $orderSheetBandMm = \App\Services\ReportPdfLayoutService::ORDER_SHEET_HEADER_HEI
             window.reportPrintPagination.buildMetrics(container);
         }
     };
+
+    window.addEventListener('afterprint', clearOrderSheetHeaderPrintArtifacts);
 })();
 </script>

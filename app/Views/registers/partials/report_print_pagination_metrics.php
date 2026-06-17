@@ -21,7 +21,7 @@ $orderSheetBandDefaultMm = isset($order_sheet_band_default_mm)
     ? (float) $order_sheet_band_default_mm
     : \App\Services\ReportPdfLayoutService::orderSheetHeaderPaginationReserveMm();
 $orderSheetBandMinMm = \App\Services\ReportPdfLayoutService::ORDER_SHEET_HEADER_HEIGHT_MM;
-$orderSheetBufferMm = 1.5;
+$orderSheetBufferMm = 0.5;
 ?>
 <script>
 (function() {
@@ -123,7 +123,10 @@ $orderSheetBufferMm = 1.5;
         }
 
         var footerReserveMm = resolveFooterReserveMm();
-        var orderSheetBandReserveMm = resolveOrderSheetBandReserveMm();
+        var orderSheetBandReserveMm = 0;
+        if (cfg.orderSheetHeaderEnabled && document.body.classList.contains('js-order-sheet-header-print')) {
+            orderSheetBandReserveMm = resolveOrderSheetBandReserveMm();
+        }
         var footerHeightMm = roundMm(pxToMm(measureFooterHeightPx()));
         var headerHeightMm = roundMm(pxToMm(measureHeaderHeightPx(root)));
 
@@ -133,7 +136,7 @@ $orderSheetBufferMm = 1.5;
         }
         basePageContentMm = roundMm(basePageContentMm);
 
-        // Hoja 1: sin banda Paciente/Orden. Hojas 2+: menos alto por la franja fija.
+        // Hoja 1: sin banda. Hojas 2+ (con banda inyectada): menos alto solo en métricas JS, sin tocar @page.
         var firstPageContentMm = roundMm(Math.max(0, basePageContentMm - headerHeightMm));
         var firstPageFlowCapacityMm = roundMm(basePageContentMm);
         var nextPageContentMm = roundMm(Math.max(0, basePageContentMm - orderSheetBandReserveMm));
