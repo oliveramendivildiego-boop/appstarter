@@ -146,11 +146,13 @@
     'order_sheet_header_enabled' => $orderSheetHeaderEnabled,
 ]) ?>
 <?= view('registers/partials/report_print_pagination_metrics', [
-    'page_height_mm'    => $printPageHeightMm,
-    'margin_top_mm'     => (float) $mt,
-    'margin_bottom_mm'  => (float) $mb,
-    'footer_reserve_mm' => (float) $pdfFooterReserveMm,
-    'footer_enabled'    => $pdfFooterEnabled,
+    'page_height_mm'               => $printPageHeightMm,
+    'margin_top_mm'                => (float) $mt,
+    'margin_bottom_mm'             => (float) $mb,
+    'footer_reserve_mm'            => (float) $pdfFooterReserveMm,
+    'footer_enabled'               => $pdfFooterEnabled,
+    'order_sheet_header_enabled'   => $orderSheetHeaderEnabled,
+    'order_sheet_band_default_mm'  => \App\Services\ReportPdfLayoutService::orderSheetHeaderPaginationReserveMm(),
 ]) ?>
 <?= view('registers/partials/report_pdf_grupo_page_break_script', [
     'pdf_layout'         => $pdf_layout ?? [],
@@ -266,11 +268,11 @@
 
     function preparePrintLayout() {
         syncReportPrintLayoutMetrics();
-        if (typeof window.applyReportPdfGrupoPageBreaks === 'function') {
-            window.applyReportPdfGrupoPageBreaks();
-        }
         if (typeof window.injectOrderSheetHeadersFromPageTwo === 'function') {
             window.injectOrderSheetHeadersFromPageTwo();
+        }
+        if (typeof window.applyReportPdfGrupoPageBreaks === 'function') {
+            window.applyReportPdfGrupoPageBreaks();
         }
         applyBrowserTotalPages();
     }

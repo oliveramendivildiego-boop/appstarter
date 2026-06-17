@@ -3133,6 +3133,15 @@ class ReportPdfLayoutService
     }
 
     /**
+     * Espacio extra a descontar del área imprimible en hojas 2+ (impresión navegador)
+     * para que el contenido no quede bajo la banda fija Paciente / No. Orden.
+     */
+    public static function orderSheetHeaderPaginationReserveMm(): float
+    {
+        return self::ORDER_SHEET_HEADER_HEIGHT_MM + 1.5;
+    }
+
+    /**
      * @param array<string, mixed> $layout
      */
     public static function orderSheetHeaderDompdfFixedStyleAttr(array $layout): string

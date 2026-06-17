@@ -36,6 +36,7 @@ $orderSheetGapMm = \App\Services\ReportPdfLayoutService::ORDER_SHEET_HEADER_GAP_
     --print-margin-left-mm: <?= esc((string) $ml) ?>;
     --print-footer-reserve-mm: <?= esc((string) $pdfFooterReserveMm) ?>;
     --print-order-sheet-gap-mm: <?= esc((string) $orderSheetGapMm) ?>;
+    --print-order-sheet-band-reserve-mm: <?= esc((string) \App\Services\ReportPdfLayoutService::orderSheetHeaderPaginationReserveMm()) ?>;
 }
 @page {
     size: <?= esc($printPageCssSize) ?>;

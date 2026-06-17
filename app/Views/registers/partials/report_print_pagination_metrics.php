@@ -8,12 +8,20 @@
  * @var float  $margin_bottom_mm
  * @var float  $footer_reserve_mm
  * @var bool   $footer_enabled
+ * @var bool   $order_sheet_header_enabled
+ * @var float  $order_sheet_band_default_mm
  */
 $pageHeightMm = isset($page_height_mm) ? (float) $page_height_mm : 279.4;
 $marginTopMm = isset($margin_top_mm) ? (float) $margin_top_mm : 15.0;
 $marginBottomMm = isset($margin_bottom_mm) ? (float) $margin_bottom_mm : 15.0;
 $defaultFooterReserveMm = isset($footer_reserve_mm) ? (float) $footer_reserve_mm : 22.0;
 $footerEnabled = ! empty($footer_enabled);
+$orderSheetHeaderEnabled = ! empty($order_sheet_header_enabled);
+$orderSheetBandDefaultMm = isset($order_sheet_band_default_mm)
+    ? (float) $order_sheet_band_default_mm
+    : \App\Services\ReportPdfLayoutService::orderSheetHeaderPaginationReserveMm();
+$orderSheetBandMinMm = \App\Services\ReportPdfLayoutService::ORDER_SHEET_HEADER_HEIGHT_MM;
+$orderSheetBufferMm = 1.5;
 ?>
 <script>
 (function() {
@@ -22,7 +30,11 @@ $footerEnabled = ! empty($footer_enabled);
         marginTopMm: <?= json_encode($marginTopMm) ?>,
         marginBottomMm: <?= json_encode($marginBottomMm) ?>,
         defaultFooterReserveMm: <?= json_encode($defaultFooterReserveMm) ?>,
-        footerEnabled: <?= $footerEnabled ? 'true' : 'false' ?>
+        footerEnabled: <?= $footerEnabled ? 'true' : 'false' ?>,
+        orderSheetHeaderEnabled: <?= $orderSheetHeaderEnabled ? 'true' : 'false' ?>,
+        orderSheetBandDefaultMm: <?= json_encode($orderSheetBandDefaultMm) ?>,
+        orderSheetBandMinMm: <?= json_encode((float) $orderSheetBandMinMm) ?>,
+        orderSheetBufferMm: <?= json_encode((float) $orderSheetBufferMm) ?>
     };
 
     var MM_TO_PX = 96 / 25.4;
@@ -82,9 +94,27 @@ $footerEnabled = ! empty($footer_enabled);
         return cfg.defaultFooterReserveMm;
     }
 
+    function resolveOrderSheetBandReserveMm() {
+        if (!cfg.orderSheetHeaderEnabled) {
+            return 0;
+        }
+
+        var bandNode = document.querySelector('.pdf-order-sheet-header-print-fixed .pdf-order-sheet-header')
+            || document.querySelector('.pdf-order-sheet-header-print-fixed');
+        if (bandNode) {
+            var measuredMm = pxToMm(bandNode.offsetHeight || bandNode.scrollHeight || 0);
+            if (isFinite(measuredMm) && measuredMm > 0) {
+                return roundMm(Math.max(cfg.orderSheetBandMinMm, measuredMm + cfg.orderSheetBufferMm));
+            }
+        }
+
+        return roundMm(cfg.orderSheetBandDefaultMm);
+    }
+
     /**
      * Reserva de pie para paginación: altura medida + colchón (sin duplicar margen inferior).
-     * El margen inferior de plantilla ya se descuenta aparte en nextPageContentMm.
+     * El margen inferior de plantilla ya se descuenta aparte en basePageContentMm.
+     * Hojas 2+: además se descuenta la banda fija Paciente / No. Orden (orderSheetBandReserveMm).
      */
     function buildReportPrintPaginationMetrics(container) {
         var root = container || getPrintContainer();
@@ -93,21 +123,29 @@ $footerEnabled = ! empty($footer_enabled);
         }
 
         var footerReserveMm = resolveFooterReserveMm();
+        var orderSheetBandReserveMm = resolveOrderSheetBandReserveMm();
         var footerHeightMm = roundMm(pxToMm(measureFooterHeightPx()));
         var headerHeightMm = roundMm(pxToMm(measureHeaderHeightPx(root)));
 
-        var nextPageContentMm = cfg.pageHeightMm - cfg.marginTopMm - cfg.marginBottomMm - footerReserveMm;
-        if (!isFinite(nextPageContentMm) || nextPageContentMm <= 0) {
-            nextPageContentMm = 240;
+        var basePageContentMm = cfg.pageHeightMm - cfg.marginTopMm - cfg.marginBottomMm - footerReserveMm;
+        if (!isFinite(basePageContentMm) || basePageContentMm <= 0) {
+            basePageContentMm = 240;
         }
-        nextPageContentMm = roundMm(nextPageContentMm);
+        basePageContentMm = roundMm(basePageContentMm);
 
-        var firstPageContentMm = roundMm(Math.max(0, nextPageContentMm - headerHeightMm));
+        // Hoja 1: sin banda Paciente/Orden. Hojas 2+: menos alto por la franja fija.
+        var firstPageContentMm = roundMm(Math.max(0, basePageContentMm - headerHeightMm));
+        var firstPageFlowCapacityMm = roundMm(basePageContentMm);
+        var nextPageContentMm = roundMm(Math.max(0, basePageContentMm - orderSheetBandReserveMm));
 
         var totalContentPx = root.scrollHeight || 0;
         var totalContentMm = roundMm(pxToMm(totalContentPx));
 
-        var estimatedPages = estimatePagesFromMetrics(totalContentMm, firstPageContentMm, nextPageContentMm);
+        var estimatedPages = estimatePagesFromMetrics(
+            totalContentMm,
+            firstPageFlowCapacityMm,
+            nextPageContentMm
+        );
 
         var metrics = {
             pageHeightMM: roundMm(cfg.pageHeightMm),
@@ -116,7 +154,10 @@ $footerEnabled = ! empty($footer_enabled);
             headerHeightMM: headerHeightMm,
             footerHeightMM: footerHeightMm,
             footerReserveMM: roundMm(footerReserveMm),
+            orderSheetBandReserveMM: roundMm(orderSheetBandReserveMm),
+            basePageContentMM: basePageContentMm,
             firstPageContentMM: firstPageContentMm,
+            firstPageFlowCapacityMM: firstPageFlowCapacityMm,
             nextPageContentMM: nextPageContentMm,
             totalContentMM: totalContentMm,
             estimatedPages: estimatedPages,
@@ -125,12 +166,18 @@ $footerEnabled = ! empty($footer_enabled);
             nextPageContentPx: mmToPx(nextPageContentMm)
         };
 
+        document.documentElement.style.setProperty(
+            '--print-order-sheet-band-reserve-mm',
+            String(metrics.orderSheetBandReserveMM)
+        );
+
         console.log('[report-print-pagination]', {
             pageHeightMM: metrics.pageHeightMM,
             marginTopMM: metrics.marginTopMM,
             marginBottomMM: metrics.marginBottomMM,
             headerHeightMM: metrics.headerHeightMM,
             footerHeightMM: metrics.footerHeightMM,
+            orderSheetBandReserveMM: metrics.orderSheetBandReserveMM,
             firstPageContentMM: metrics.firstPageContentMM,
             nextPageContentMM: metrics.nextPageContentMM,
             totalContentMM: metrics.totalContentMM,
@@ -140,20 +187,22 @@ $footerEnabled = ! empty($footer_enabled);
         return metrics;
     }
 
-    function estimatePagesFromMetrics(totalContentMm, firstPageContentMm, nextPageContentMm) {
+    function estimatePagesFromMetrics(totalContentMm, firstPageFlowCapacityMm, nextPageContentMm) {
         if (!isFinite(totalContentMm) || totalContentMm <= 0) {
+            return 1;
+        }
+        var firstCap = firstPageFlowCapacityMm;
+        if (!isFinite(firstCap) || firstCap <= 0) {
+            firstCap = nextPageContentMm;
+        }
+        if (totalContentMm <= firstCap) {
             return 1;
         }
         if (!isFinite(nextPageContentMm) || nextPageContentMm <= 0) {
             return 1;
         }
-        // La hoja 1 admite header + resultados = nextPageContentMm en coordenadas del flujo.
-        if (totalContentMm <= nextPageContentMm) {
-            return 1;
-        }
-        var remaining = totalContentMm - nextPageContentMm;
-        var extra = Math.ceil(remaining / nextPageContentMm);
-        return 1 + extra;
+        var remaining = totalContentMm - firstCap;
+        return 1 + Math.ceil(remaining / nextPageContentMm);
     }
 
     /**
@@ -232,7 +281,8 @@ $footerEnabled = ! empty($footer_enabled);
         buildMetrics: buildReportPrintPaginationMetrics,
         buildBoundaries: buildVariablePageBoundaries,
         remainingOnPage: remainingOnVariablePage,
-        estimatePages: estimatePagesFromMetrics
+        estimatePages: estimatePagesFromMetrics,
+        resolveOrderSheetBandReserveMm: resolveOrderSheetBandReserveMm
     };
 })();
 </script>
