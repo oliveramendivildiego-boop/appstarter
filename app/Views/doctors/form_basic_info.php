@@ -9,18 +9,18 @@ $doctor_info = $doctor_info ?? new stdClass();
         <?= form_input(['name' => 'name', 'id' => 'name', 'class' => 'form-control', 'value' => $doctor_info->name ?? '', 'autocomplete' => 'off']) ?>
     </div>
     <div class="col-md-6 mb-3">
-        <?= form_label(lang('Doctors.doctors_phone') . ':', 'phone_number', ['class' => 'form-label required']) ?>
+        <?= form_label(lang('Doctors.doctors_phone') . ':', 'phone_number', ['class' => 'form-label']) ?>
         <?= form_input(['name' => 'phone_number', 'id' => 'phone_number', 'class' => 'form-control', 'value' => $doctor_info->phone_number ?? '', 'autocomplete' => 'off']) ?>
     </div>
 </div>
 
 <div class="row">
     <div class="col-md-6 mb-3">
-        <?= form_label(lang('Doctors.doctors_speciality') . ':', 'speciality', ['class' => 'form-label required']) ?>
+        <?= form_label(lang('Doctors.doctors_speciality') . ':', 'speciality', ['class' => 'form-label']) ?>
         <?= form_input(['name' => 'speciality', 'id' => 'speciality', 'class' => 'form-control', 'value' => $doctor_info->speciality ?? '', 'autocomplete' => 'off']) ?>
     </div>
     <div class="col-md-6 mb-3">
-        <?= form_label(lang('Doctors.doctors_address') . ':', 'address', ['class' => 'form-label required']) ?>
+        <?= form_label(lang('Doctors.doctors_address') . ':', 'address', ['class' => 'form-label']) ?>
         <?= form_input(['name' => 'address', 'id' => 'address', 'class' => 'form-control', 'value' => $doctor_info->address ?? '', 'autocomplete' => 'off']) ?>
     </div>
 </div>

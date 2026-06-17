@@ -83,18 +83,15 @@ $(document).ready(function() {
     $("#doctor_form").validate($.extend(true, {}, window.VALIDATE_COMMON_OPTIONS, {
         rules: {
             name: { required: true, minlength: 2 },
-            phone_number: { required: true, maxlength: 50 },
+            phone_number: { maxlength: 50 },
             gender: { required: true },
-            speciality: { required: true, maxlength: 255 },
-            address: { required: true, maxlength: 255 },
+            speciality: { maxlength: 255 },
+            address: { maxlength: 255 },
             commission_percent: { number: true, min: 0, max: 100 }
         },
         messages: {
             name: { required: "Por favor ingrese nombre(s) y apellido(s)", minlength: "El nombre debe tener al menos 2 caracteres" },
-            phone_number: { required: "El teléfono es obligatorio" },
             gender: { required: "Seleccione su género" },
-            speciality: { required: "La especialidad es obligatoria" },
-            address: { required: "La dirección es obligatoria" },
             commission_percent: { number: "Ingrese un número válido", min: "La comisión no puede ser negativa", max: "La comisión no puede ser mayor a 100%" }
         }
     }));

@@ -92,9 +92,8 @@ class Validation extends BaseConfig
             ],
         ],
         'phone_number' => [
-            'rules'  => 'required|max_length[50]',
+            'rules'  => 'permit_empty|max_length[50]',
             'errors' => [
-                'required'   => 'El teléfono es obligatorio.',
                 'max_length' => 'El teléfono no puede superar 50 caracteres.',
             ],
         ],
@@ -103,16 +102,14 @@ class Validation extends BaseConfig
             'errors' => ['required' => 'Seleccione el género.'],
         ],
         'speciality' => [
-            'rules'  => 'required|max_length[255]',
+            'rules'  => 'permit_empty|max_length[255]',
             'errors' => [
-                'required'   => 'La especialidad es obligatoria.',
                 'max_length' => 'La especialidad no puede superar 255 caracteres.',
             ],
         ],
         'address' => [
-            'rules'  => 'required|max_length[255]',
+            'rules'  => 'permit_empty|max_length[255]',
             'errors' => [
-                'required'   => 'La dirección es obligatoria.',
                 'max_length' => 'La dirección no puede superar 255 caracteres.',
             ],
         ],
