@@ -73,6 +73,10 @@ $badgeNuevo = static fn (string $reportKey): string => in_array($reportKey, $ana
                     <i class="fas fa-clock me-2"></i> Pendientes de pago
                 </a>
                 <p class="list-group-item small text-muted mb-0">Solo órdenes con saldo por cobrar en el rango; total pendiente resumido.</p>
+                <a href="<?= site_url('reports/ingresosPorTipoProcesamiento') ?>" class="list-group-item list-group-item-action">
+                    <i class="fas fa-chart-pie me-2"></i> Ingresos por tipo de procesamiento
+                </a>
+                <p class="list-group-item small text-muted mb-0">Ingresos de pruebas internas vs derivadas a laboratorios externos; gráficos y exportación.</p>
                 <a href="<?= site_url('reports/pagosCierres') ?>" class="list-group-item list-group-item-action">
                     <i class="fas fa-file-invoice me-2"></i> Cierres de pagos
                 </a>

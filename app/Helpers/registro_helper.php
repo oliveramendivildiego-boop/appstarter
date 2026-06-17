@@ -576,6 +576,35 @@ if (! function_exists('registro_interpretacion_referencial_clase_resultado')) {
     }
 }
 
+if (! function_exists('registro_origen_prueba_es_derivacion')) {
+    /**
+     * Indica si la orden usa precios de derivación (origen_prueba = 1).
+     *
+     * @param object|array<string,mixed>|null $row
+     */
+    function registro_origen_prueba_es_derivacion(object|array|null $row): bool
+    {
+        if ($row === null) {
+            return false;
+        }
+        $val = is_object($row) ? ($row->origen_prueba ?? 0) : ($row['origen_prueba'] ?? 0);
+
+        return (int) $val === 1;
+    }
+}
+
+if (! function_exists('registro_origen_prueba_label')) {
+    /**
+     * Etiqueta de origen de la orden para listados (propio vs derivación).
+     *
+     * @param object|array<string,mixed>|null $row
+     */
+    function registro_origen_prueba_label(object|array|null $row): string
+    {
+        return registro_origen_prueba_es_derivacion($row) ? 'Derivación' : 'Propio';
+    }
+}
+
 if (! function_exists('paciente_nombre_display')) {
     /**
      * Nombre del paciente: apellido paterno, apellido materno, nombres.

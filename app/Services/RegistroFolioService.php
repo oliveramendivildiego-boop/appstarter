@@ -19,6 +19,79 @@ class RegistroFolioService
     }
 
     /**
+     * Vista previa del siguiente folio sin reservar ni incrementar la secuencia.
+     */
+    public function previewNextFolio(?\DateTimeInterface $at = null): ?string
+    {
+        $format = trim((string) $this->appConfigModel->getValue('registro_folio_format'));
+        if ($format === '' || strpos($format, '%i') === false) {
+            return null;
+        }
+
+        $tz = RegisterService::reportDisplayTimezone();
+        if ($at === null) {
+            $at = new \DateTimeImmutable('now', new \DateTimeZone($tz));
+        } elseif ($at instanceof \DateTime) {
+            $at = \DateTimeImmutable::createFromMutable($at)->setTimezone(new \DateTimeZone($tz));
+        } else {
+            $at = $at->setTimezone(new \DateTimeZone($tz));
+        }
+
+        $seqKey = $this->sequenceKey($format, $at, $this->counterResetMode());
+        $db = Database::connect();
+
+        $row = $db->query(
+            'SELECT last_num FROM ' . $db->prefixTable('registro_folio_secuencia') . ' WHERE seq_key = ?',
+            [$seqKey]
+        )->getRowArray();
+
+        $seqLast = $row ? (int) $row['last_num'] : 0;
+        $dbMax = $this->maxIncrementFromExisting($db, $format, $at, $seqKey);
+        $i = max($seqLast, $dbMax) + 1;
+
+        $candidate = $this->applyFormat($format, $at, $i, $this->counterPadWidth());
+        if ($candidate === '' || strlen($candidate) > 64) {
+            return null;
+        }
+
+        return $candidate;
+    }
+
+    /**
+     * Código de orden visible para una orden nueva o existente (solo lectura).
+     */
+    public function previewCodigoOrden(?int $editRegistroId = null, ?string $numeroOrden = null): string
+    {
+        if ($editRegistroId !== null && $editRegistroId > 0) {
+            $num = trim((string) ($numeroOrden ?? ''));
+            if ($num !== '') {
+                return $num;
+            }
+
+            return (string) $editRegistroId;
+        }
+
+        $folio = $this->previewNextFolio();
+        if ($folio !== null && $folio !== '') {
+            return $folio;
+        }
+
+        return $this->previewNextRegistroId();
+    }
+
+    /**
+     * Siguiente registro_id interno estimado cuando no hay plantilla de folio.
+     */
+    public function previewNextRegistroId(): string
+    {
+        $db = Database::connect();
+        $row = $db->table('registro')->selectMax('registro_id')->get()->getRowArray();
+        $max = (int) ($row['registro_id'] ?? 0);
+
+        return (string) ($max + 1);
+    }
+
+    /**
      * Obtiene el siguiente folio único o null si no hay plantilla configurada.
      */
     public function generateNextFolio(?\DateTimeInterface $at = null): ?string

@@ -185,6 +185,108 @@ $cierreEnd   = $endDate ?? lab_today_ymd();
     </table>
 </div>
 
+<h5 class="mt-4">Resumen por Procesamiento (cobros del período)</h5>
+<p class="small text-muted">Haga clic en un procesamiento para ver el detalle de órdenes y pruebas.</p>
+<div class="table-responsive mb-4">
+    <table class="table table-bordered table-striped" id="tabla_resumen_pagos_procesamiento">
+        <thead class="table-primary">
+            <tr>
+                <th>Procesamiento</th>
+                <th class="text-end">Cantidad</th>
+                <th class="text-end">Total facturado</th>
+                <th class="text-end">Total cobrado</th>
+                <th class="text-end">Total pendiente</th>
+            </tr>
+        </thead>
+        <tbody>
+            <?php foreach ($resumenPagosPorProcesamiento ?? [] as $row): ?>
+                <?php
+                $procKey = (string) ($row['procesamiento'] ?? '');
+                $procLabel = $procesamientoMap[$procKey] ?? $procKey ?: '-';
+                $cantidadProc = (int) ($row['cantidad'] ?? 0);
+                $puedeDetalleProc = $procKey !== '' && (
+                    $cantidadProc > 0
+                    || (float) ($row['total_pendiente'] ?? 0) > 0.02
+                );
+                ?>
+                <tr>
+                    <td>
+                        <?php if ($puedeDetalleProc): ?>
+                            <a href="#"
+                               class="pagos-proc-enlace"
+                               role="button"
+                               data-procesamiento="<?= esc($procKey, 'attr') ?>"
+                               data-proc-label="<?= esc($procLabel, 'attr') ?>"
+                               title="Ver detalle de órdenes y pruebas"><?= esc($procLabel) ?></a>
+                        <?php else: ?>
+                            <?= esc($procLabel) ?>
+                        <?php endif; ?>
+                    </td>
+                    <td class="text-end"><?= $cantidadProc ?></td>
+                    <td class="text-end"><?= format_currency((float) ($row['total_facturado'] ?? 0)) ?></td>
+                    <td class="text-end"><?= format_currency((float) ($row['total_cobrado'] ?? 0)) ?></td>
+                    <td class="text-end <?= ((float) ($row['total_pendiente'] ?? 0)) > 0 ? 'text-danger fw-bold' : '' ?>">
+                        <?= format_currency((float) ($row['total_pendiente'] ?? 0)) ?>
+                    </td>
+                </tr>
+            <?php endforeach; ?>
+            <?php if (empty($resumenPagosPorProcesamiento ?? [])): ?>
+                <tr><td colspan="5" class="text-muted text-center">No hay datos en el período.</td></tr>
+            <?php endif; ?>
+        </tbody>
+    </table>
+</div>
+
+<div class="modal fade" id="modalPagosPorProcesamiento" tabindex="-1" aria-labelledby="modalPagosPorProcesamientoLabel" aria-hidden="true">
+    <div class="modal-dialog modal-xl modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="modalPagosPorProcesamientoLabel">Detalle por procesamiento</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+            </div>
+            <div class="modal-body">
+                <p class="text-muted small mb-3" id="modalPagosPorProcesamientoSubtitulo"></p>
+                <div id="modalPagosPorProcesamientoCargando" class="text-center py-4 d-none">
+                    <div class="spinner-border text-primary" role="status"><span class="visually-hidden">Cargando…</span></div>
+                </div>
+                <div id="modalPagosPorProcesamientoError" class="alert alert-danger d-none" role="alert"></div>
+                <div class="table-responsive d-none" id="modalPagosPorProcesamientoTablaWrap">
+                    <table class="table table-sm table-bordered table-striped mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Orden</th>
+                                <th>Fecha cobro</th>
+                                <th>Paciente</th>
+                                <th>Pruebas</th>
+                                <th>Doctor</th>
+                                <th class="text-end">Total cobrado</th>
+                                <th class="text-end">Monto pendiente</th>
+                            </tr>
+                        </thead>
+                        <tbody id="modalPagosPorProcesamientoBody"></tbody>
+                        <tfoot>
+                            <tr class="table-primary">
+                                <th colspan="5" class="text-end">Total cobrado</th>
+                                <th class="text-end" id="modalPagosPorProcesamientoTotalCobrado"></th>
+                                <th></th>
+                            </tr>
+                            <tr class="table-primary">
+                                <th colspan="5" class="text-end">Total pendiente (órdenes únicas)</th>
+                                <th></th>
+                                <th class="text-end" id="modalPagosPorProcesamientoTotal"></th>
+                            </tr>
+                        </tfoot>
+                    </table>
+                </div>
+                <p id="modalPagosPorProcesamientoVacio" class="text-muted text-center mb-0 d-none">No hay registros de este procesamiento en el período.</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
+            </div>
+        </div>
+    </div>
+</div>
+
 <div class="modal fade" id="modalPagosPorTipo" tabindex="-1" aria-labelledby="modalPagosPorTipoLabel" aria-hidden="true">
     <div class="modal-dialog modal-lg modal-dialog-scrollable">
         <div class="modal-content">
@@ -206,13 +308,20 @@ $cierreEnd   = $endDate ?? lab_today_ymd();
                                 <th>Fecha cobro</th>
                                 <th>Paciente</th>
                                 <th>Doctor</th>
+                                <th class="text-end">Total cobrado</th>
                                 <th class="text-end">Monto pendiente</th>
                             </tr>
                         </thead>
                         <tbody id="modalPagosPorTipoBody"></tbody>
                         <tfoot>
                             <tr class="table-primary">
-                                <th colspan="4" class="text-end">Total</th>
+                                <th colspan="4" class="text-end">Total cobrado</th>
+                                <th class="text-end" id="modalPagosPorTipoTotalCobrado"></th>
+                                <th></th>
+                            </tr>
+                            <tr class="table-primary">
+                                <th colspan="4" class="text-end">Total pendiente (órdenes únicas)</th>
+                                <th></th>
                                 <th class="text-end" id="modalPagosPorTipoTotal"></th>
                             </tr>
                         </tfoot>
@@ -570,6 +679,17 @@ $totTodosTieneSaldo = $totTodosSaldoOrden > 0.02;
 #tabla_resumen_pagos_tipo tr:has(.pagos-tipo-enlace:hover) {
     background-color: color-mix(in srgb, var(--ui-link-color, #0d6efd) 8%, transparent);
 }
+#tabla_resumen_pagos_procesamiento .pagos-proc-enlace {
+    color: var(--ui-link-color, #0d6efd);
+    font-weight: var(--ui-link-font-weight, 400);
+    font-style: var(--ui-link-font-style, normal);
+    text-decoration: underline;
+    text-underline-offset: 0.15em;
+    cursor: pointer;
+}
+#tabla_resumen_pagos_procesamiento tr:has(.pagos-proc-enlace:hover) {
+    background-color: color-mix(in srgb, var(--ui-link-color, #0d6efd) 8%, transparent);
+}
 </style>
 <script>
 document.addEventListener('DOMContentLoaded', function() {
@@ -579,7 +699,9 @@ document.addEventListener('DOMContentLoaded', function() {
     const reportStart = <?= json_encode($startDate ?? '') ?>;
     const reportEnd = <?= json_encode($endDate ?? '') ?>;
     const detalleUrl = <?= json_encode(site_url('reports/pagosDetallePorTipo')) ?>;
+    const detalleProcesamientoUrl = <?= json_encode(site_url('reports/pagosDetallePorProcesamiento')) ?>;
     const modalEl = document.getElementById('modalPagosPorTipo');
+    const modalProcEl = document.getElementById('modalPagosPorProcesamiento');
 
     function escHtml(s) {
         const d = document.createElement('div');
@@ -593,6 +715,7 @@ document.addEventListener('DOMContentLoaded', function() {
         document.getElementById('modalPagosPorTipoTablaWrap').classList.add('d-none');
         document.getElementById('modalPagosPorTipoVacio').classList.add('d-none');
         document.getElementById('modalPagosPorTipoBody').innerHTML = '';
+        document.getElementById('modalPagosPorTipoTotalCobrado').textContent = '';
         document.getElementById('modalPagosPorTipoTotal').textContent = '';
     }
 
@@ -644,11 +767,13 @@ document.addEventListener('DOMContentLoaded', function() {
                     + '<td>' + escHtml(row.fecha_cobro) + '</td>'
                     + '<td>' + escHtml(row.paciente || '—') + '</td>'
                     + '<td>' + escHtml(row.doctor || '—') + '</td>'
+                    + '<td class="text-end fw-semibold">' + escHtml(row.monto_cobrado_fmt || '') + '</td>'
                     + '<td class="text-end fw-semibold ' + pendienteClass + '">' + escHtml(row.monto_pendiente_fmt) + '</td>'
                     + '</tr>';
             }).join('');
 
-            document.getElementById('modalPagosPorTipoTotal').textContent = data.total_fmt || '';
+            document.getElementById('modalPagosPorTipoTotalCobrado').textContent = data.total_cobrado_fmt || '';
+            document.getElementById('modalPagosPorTipoTotal').textContent = data.total_pendiente_fmt || data.total_fmt || '';
             document.getElementById('modalPagosPorTipoTablaWrap').classList.remove('d-none');
         } catch (e) {
             document.getElementById('modalPagosPorTipoCargando').classList.add('d-none');
@@ -662,6 +787,86 @@ document.addEventListener('DOMContentLoaded', function() {
         link.addEventListener('click', function(ev) {
             ev.preventDefault();
             abrirDetalleTipo(link.getAttribute('data-tipopago'), link.getAttribute('data-tipo-label') || '');
+        });
+    });
+
+    function resetModalProcEstado() {
+        document.getElementById('modalPagosPorProcesamientoCargando').classList.add('d-none');
+        document.getElementById('modalPagosPorProcesamientoError').classList.add('d-none');
+        document.getElementById('modalPagosPorProcesamientoTablaWrap').classList.add('d-none');
+        document.getElementById('modalPagosPorProcesamientoVacio').classList.add('d-none');
+        document.getElementById('modalPagosPorProcesamientoBody').innerHTML = '';
+        document.getElementById('modalPagosPorProcesamientoTotalCobrado').textContent = '';
+        document.getElementById('modalPagosPorProcesamientoTotal').textContent = '';
+    }
+
+    async function abrirDetalleProcesamiento(procesamiento, procLabel) {
+        if (!modalProcEl || typeof bootstrap === 'undefined') return;
+
+        resetModalProcEstado();
+        document.getElementById('modalPagosPorProcesamientoLabel').textContent =
+            'Cobros: ' + procLabel;
+        document.getElementById('modalPagosPorProcesamientoSubtitulo').textContent = 'Período del reporte · cargando…';
+        document.getElementById('modalPagosPorProcesamientoCargando').classList.remove('d-none');
+        bootstrap.Modal.getOrCreateInstance(modalProcEl).show();
+
+        const params = new URLSearchParams({ start: reportStart, end: reportEnd, procesamiento: procesamiento });
+        try {
+            const res = await fetch(detalleProcesamientoUrl + '?' + params.toString(), {
+                headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' }
+            });
+            const data = await res.json();
+            document.getElementById('modalPagosPorProcesamientoCargando').classList.add('d-none');
+
+            if (!res.ok || !data.success) {
+                const err = document.getElementById('modalPagosPorProcesamientoError');
+                err.textContent = data.message || 'No se pudo cargar el detalle.';
+                err.classList.remove('d-none');
+                return;
+            }
+
+            document.getElementById('modalPagosPorProcesamientoSubtitulo').textContent =
+                (data.periodo || '') + ' · ' + (data.count || 0) + ' registro(s)';
+
+            const items = data.items || [];
+            if (items.length === 0) {
+                document.getElementById('modalPagosPorProcesamientoVacio').classList.remove('d-none');
+                return;
+            }
+
+            const tbody = document.getElementById('modalPagosPorProcesamientoBody');
+            tbody.innerHTML = items.map(function(row) {
+                const pendiente = parseFloat(row.monto_pendiente) || 0;
+                const pendienteClass = pendiente > 0.02 ? 'text-danger fw-bold' : '';
+                return '<tr>'
+                    + '<td>' + escHtml(row.orden) + '</td>'
+                    + '<td>' + escHtml(row.fecha_cobro) + '</td>'
+                    + '<td>' + escHtml(row.paciente || '—') + '</td>'
+                    + '<td class="small">' + escHtml(row.pruebas || '—') + '</td>'
+                    + '<td>' + escHtml(row.doctor || '—') + '</td>'
+                    + '<td class="text-end fw-semibold">' + escHtml(row.monto_cobrado_fmt || '') + '</td>'
+                    + '<td class="text-end fw-semibold ' + pendienteClass + '">' + escHtml(row.monto_pendiente_fmt) + '</td>'
+                    + '</tr>';
+            }).join('');
+
+            document.getElementById('modalPagosPorProcesamientoTotalCobrado').textContent = data.total_cobrado_fmt || '';
+            document.getElementById('modalPagosPorProcesamientoTotal').textContent = data.total_pendiente_fmt || data.total_fmt || '';
+            document.getElementById('modalPagosPorProcesamientoTablaWrap').classList.remove('d-none');
+        } catch (e) {
+            document.getElementById('modalPagosPorProcesamientoCargando').classList.add('d-none');
+            const err = document.getElementById('modalPagosPorProcesamientoError');
+            err.textContent = 'Error de conexión al cargar el detalle.';
+            err.classList.remove('d-none');
+        }
+    }
+
+    document.querySelectorAll('#tabla_resumen_pagos_procesamiento .pagos-proc-enlace').forEach(function(link) {
+        link.addEventListener('click', function(ev) {
+            ev.preventDefault();
+            abrirDetalleProcesamiento(
+                link.getAttribute('data-procesamiento'),
+                link.getAttribute('data-proc-label') || ''
+            );
         });
     });
 });

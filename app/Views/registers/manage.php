@@ -146,7 +146,8 @@ foreach ($categories ?? [] as $cat) {
         $pruebasLookup[(string)($item['id'] ?? '')] = [
             'name' => $item['name'] ?? '',
             'padre' => $padreName,
-            'cost' => (float)($item['cost'] ?? 0)
+            'cost' => (float)($item['cost'] ?? 0),
+            'cost_deriv' => (float)($item['cost_deriv'] ?? 0),
         ];
     }
 }
@@ -166,6 +167,7 @@ if (!empty($edit_registro)) {
         'paciente'    => trim((string)(($edit_registro->first_name ?? '') . ' ' . ($edit_registro->last_name_fa ?? ''))),
         'doctor'      => trim((string)($edit_registro->doctor_name ?? '')),
         'prioridad'   => (int)($edit_registro->prioridad ?? 0),
+        'origen_prueba' => (int)($edit_registro->origen_prueba ?? 0),
         'diagnostico_presuntivo' => (string)($edit_registro->diagnostico_presuntivo ?? ''),
         'motivo_estudio' => (string)($edit_registro->motivo_estudio ?? ''),
         'pruebas'     => (string)($edit_registro->pruebas ?? ''),
@@ -400,6 +402,13 @@ document.addEventListener('DOMContentLoaded', function() {
     var pruebaListaContainer = document.getElementById('pruebas_lista');
     var guardarBtn = document.getElementById('guardar');
     var guardandoOrden = false;
+    function renewSubmitToken() {
+        if (window.crypto && typeof window.crypto.randomUUID === 'function') {
+            submitToken = window.crypto.randomUUID();
+        } else {
+            submitToken = 'st_' + Date.now() + '_' + Math.random().toString(36).slice(2, 12);
+        }
+    }
     var submitToken = (function() {
         if (window.crypto && typeof window.crypto.randomUUID === 'function') {
             return window.crypto.randomUUID();
@@ -421,6 +430,13 @@ document.addEventListener('DOMContentLoaded', function() {
     var pruebasSeleccionadas = []; // {id, name, padre, cost}
     var pruebasSortable = null;
     var editInfo = (typeof window.EDIT_REGISTRO !== 'undefined') ? window.EDIT_REGISTRO : null;
+    if (!editInfo || !editInfo.registro_id) {
+        window.addEventListener('pageshow', function(ev) {
+            if (ev.persisted) {
+                renewSubmitToken();
+            }
+        });
+    }
     var fichaClinicaMap = (typeof window.FICHA_CLINICA_MAP === 'object' && window.FICHA_CLINICA_MAP) ? window.FICHA_CLINICA_MAP : {};
     var fichasClinicasFilledState = (typeof window.FICHAS_CLINICAS_FILLED === 'object' && window.FICHAS_CLINICAS_FILLED) ? window.FICHAS_CLINICAS_FILLED : {};
     var fichasClinicasDraft = {};
@@ -463,6 +479,35 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
 
+    var csrfRefreshUrl = <?= json_encode(site_url('registers/csrfRefresh')) ?>;
+
+    function refreshCsrfToken() {
+        return fetch(csrfRefreshUrl, {
+            method: 'GET',
+            headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+            credentials: 'same-origin'
+        }).then(function(r) {
+            return r.json().then(function(data) {
+                updateCsrfFromResponse(data);
+                if (!r.ok || !data.success) {
+                    throw new Error('csrf_refresh_failed');
+                }
+                return data;
+            });
+        });
+    }
+
+    // Renovar CSRF en segundo plano (cookie expira ~2 h; sesión de trabajo larga en recepción).
+    setInterval(function() {
+        refreshCsrfToken().catch(function() {});
+    }, 45 * 60 * 1000);
+
+    document.addEventListener('visibilitychange', function() {
+        if (document.visibilityState === 'visible') {
+            refreshCsrfToken().catch(function() {});
+        }
+    });
+
     function showInlineAlert(alertEl, isSuccess, message) {
         if (!alertEl) return;
         alertEl.className = 'alert ' + (isSuccess ? 'alert-success' : 'alert-danger');
@@ -485,6 +530,29 @@ document.addEventListener('DOMContentLoaded', function() {
         var csrf = getCsrfPair();
         if (csrf) params.append(csrf.name, csrf.value);
         return params.toString();
+    }
+
+    function esProcesamientoDerivacion() {
+        var el = document.getElementById('prioridad');
+        return el && String(el.value) === '2';
+    }
+
+    function costoParaPrueba(info) {
+        if (!info) return 0;
+        if (esProcesamientoDerivacion()) {
+            return parseFloat(info.cost_deriv != null ? info.cost_deriv : (info.refe || 0));
+        }
+        return parseFloat(info.cost != null ? info.cost : 0);
+    }
+
+    function actualizarPreciosSegunProcesamiento() {
+        pruebasSeleccionadas.forEach(function(p) {
+            var info = (window.PRUEBAS_LOOKUP || {})[String(p.id)];
+            if (info) {
+                p.cost = costoParaPrueba(info);
+            }
+        });
+        renderPruebasLista();
     }
 
     function recalcular() {
@@ -929,20 +997,20 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     function ejecutarGuardarOrden(registroData, pagosData, esNuevaOrden) {
-        var csrf = (typeof CI_CSRF_TOKEN !== 'undefined' && typeof CI_CSRF_TOKEN_NAME !== 'undefined')
-            ? '&' + CI_CSRF_TOKEN_NAME + '=' + encodeURIComponent(CI_CSRF_TOKEN) : '';
         var urlGuardar = editInfo && editInfo.registro_id ? ('<?= site_url('registers/update') ?>/' + editInfo.registro_id) : '<?= site_url('registers/save') ?>';
         guardandoOrden = true;
         guardarBtn.disabled = true;
         var guardarBtnLabel = guardarBtn.textContent;
         guardarBtn.textContent = 'Guardando...';
-        fetch(urlGuardar, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'X-Requested-With': 'XMLHttpRequest' },
-            body: 'registro[person_id]=' + encodeURIComponent(registroData.person_id) +
+
+        function buildSaveBody() {
+            var csrf = getCsrfPair();
+            var csrfSuffix = csrf ? ('&' + encodeURIComponent(csrf.name) + '=' + encodeURIComponent(csrf.value)) : '';
+            return 'registro[person_id]=' + encodeURIComponent(registroData.person_id) +
                 '&registro[doctor_id]=' + encodeURIComponent(registroData.doctor_id) +
                 '&registro[pruebas]=' + encodeURIComponent(registroData.pruebas) +
                 '&registro[prioridad]=' + encodeURIComponent(registroData.prioridad) +
+                '&registro[origen_prueba]=' + encodeURIComponent(registroData.origen_prueba) +
                 '&registro[diagnostico_presuntivo]=' + encodeURIComponent(registroData.diagnostico_presuntivo) +
                 '&registro[motivo_estudio]=' + encodeURIComponent(registroData.motivo_estudio) +
                 '&pagos[total_reco]=' + encodeURIComponent(pagosData.total_reco) +
@@ -955,26 +1023,67 @@ document.addEventListener('DOMContentLoaded', function() {
                     var fc = buildFichasClinicasPostPayload();
                     return fc ? ('&fichas_clinicas=' + encodeURIComponent(fc)) : '';
                 })() +
-                (esNuevaOrden ? ('&submit_token=' + encodeURIComponent(submitToken)) : '') + csrf
+                (esNuevaOrden ? ('&submit_token=' + encodeURIComponent(submitToken)) : '') + csrfSuffix;
+        }
+
+        function resetGuardarBtn() {
+            guardandoOrden = false;
+            guardarBtn.disabled = false;
+            guardarBtn.textContent = guardarBtnLabel;
+        }
+
+        function showGuardarError(message) {
+            var errDiv = document.getElementById('registers_form_error');
+            if (errDiv) {
+                errDiv.textContent = message || 'Error al guardar.';
+                errDiv.className = 'alert alert-danger';
+                errDiv.style.display = 'block';
+                errDiv.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }
+        }
+
+        refreshCsrfToken()
+        .then(function() {
+            return fetch(urlGuardar, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'X-Requested-With': 'XMLHttpRequest' },
+                credentials: 'same-origin',
+                body: buildSaveBody()
+            });
         })
-        .then(function(r) { return r.json(); })
+        .then(function(r) {
+            return r.text().then(function(text) {
+                var res = null;
+                try {
+                    res = text ? JSON.parse(text) : null;
+                } catch (e) {
+                    if (r.status === 403) {
+                        throw new Error('csrf_expired');
+                    }
+                    throw new Error('invalid_response');
+                }
+                updateCsrfFromResponse(res);
+                if (!r.ok || !res || !res.success) {
+                    if (r.status === 403) {
+                        throw new Error('csrf_expired');
+                    }
+                    var msg = (res && res.message) ? res.message : 'Error al guardar.';
+                    throw new Error(msg);
+                }
+                return res;
+            });
+        })
         .then(function(res) {
-            if (res.success) {
-                window.location.href = '<?= site_url('registers/view') ?>/' + res.id;
+            window.location.href = '<?= site_url('registers/view') ?>/' + res.id;
+        })
+        .catch(function(err) {
+            resetGuardarBtn();
+            if (err && err.message === 'csrf_expired') {
+                showGuardarError('La sesión de seguridad expiró. Espere un momento y pulse Guardar de nuevo, o recargue la página (F5).');
+                refreshCsrfToken().catch(function() {});
                 return;
             }
-            guardandoOrden = false;
-            guardarBtn.disabled = false;
-            guardarBtn.textContent = guardarBtnLabel;
-            var errDiv = document.getElementById('registers_form_error');
-            if (errDiv) { errDiv.textContent = (res.message || 'Error al guardar.'); errDiv.className = 'alert alert-danger'; errDiv.style.display = 'block'; errDiv.scrollIntoView({ behavior: 'smooth', block: 'center' }); }
-        })
-        .catch(function() {
-            guardandoOrden = false;
-            guardarBtn.disabled = false;
-            guardarBtn.textContent = guardarBtnLabel;
-            var errDiv = document.getElementById('registers_form_error');
-            if (errDiv) { errDiv.textContent = 'Error en la petición.'; errDiv.className = 'alert alert-danger'; errDiv.style.display = 'block'; }
+            showGuardarError(err && err.message ? err.message : 'Error en la petición.');
         });
     }
 
@@ -1022,7 +1131,10 @@ document.addEventListener('DOMContentLoaded', function() {
             id: item.data,
             name: item.value || '',
             padre: item.padre || '',
-            cost: parseFloat(item.cost || 0)
+            cost: costoParaPrueba({
+                cost: item.cost,
+                cost_deriv: item.cost_deriv != null ? item.cost_deriv : item.refe
+            })
         });
         renderPruebasLista();
     }
@@ -1118,13 +1230,14 @@ document.addEventListener('DOMContentLoaded', function() {
                 chk.dataset.name = item.name || '';
                 chk.dataset.padre = catName;
                 chk.dataset.cost = item.cost || 0;
+                chk.dataset.costDeriv = item.cost_deriv || 0;
                 var label = document.createElement('label');
                 label.className = 'form-check-label flex-grow-1 lh-sm';
                 label.htmlFor = checkId;
                 label.textContent = item.name || ('Prueba #' + itemId);
                 var badge = document.createElement('span');
                 badge.className = 'badge bg-secondary';
-                badge.textContent = formatCurrencyAmount(item.cost || 0, 0);
+                badge.textContent = formatCurrencyAmount(costoParaPrueba(item), 0);
                 row.appendChild(chk);
                 row.appendChild(label);
                 row.appendChild(badge);
@@ -1151,7 +1264,8 @@ document.addEventListener('DOMContentLoaded', function() {
                     data: id,
                     value: info.name || '',
                     padre: info.padre || '',
-                    cost: info.cost || 0
+                    cost: info.cost || 0,
+                    cost_deriv: info.cost_deriv || 0
                 });
             }
         });
@@ -1221,12 +1335,13 @@ document.addEventListener('DOMContentLoaded', function() {
             quitarInvalid();
             var pruebas = pruebasSeleccionadas.map(function(p) { return p.id; });
             var pruebasStr = pruebas.join(',');
-            var prioridad = (document.getElementById('prioridad') && document.getElementById('prioridad').value) || '0';
+            var procVal = (document.getElementById('prioridad') && document.getElementById('prioridad').value) || '0';
             var registroData = {
                 person_id: (document.getElementById('person_id') || {}).value || '',
                 doctor_id: (document.getElementById('doctor_id') || {}).value || '',
                 pruebas: pruebasStr,
-                prioridad: prioridad,
+                prioridad: procVal === '1' ? '1' : '0',
+                origen_prueba: procVal === '2' ? '1' : '0',
                 diagnostico_presuntivo: (document.getElementById('diagnostico_presuntivo') || {}).value || '',
                 motivo_estudio: (document.getElementById('motivo_estudio') || {}).value || ''
             };
@@ -1473,7 +1588,15 @@ document.addEventListener('DOMContentLoaded', function() {
             if (doctorIdEl) doctorIdEl.value = String(editInfo.doctor_id || '');
             if (pacienteEl) pacienteEl.value = String(editInfo.paciente || '');
             if (doctorEl) doctorEl.value = String(editInfo.doctor || '');
-            if (prioridadEl) prioridadEl.value = String(editInfo.prioridad || '0');
+            if (prioridadEl) {
+                var procEdit = '0';
+                if (parseInt(editInfo.origen_prueba, 10) === 1) {
+                    procEdit = '2';
+                } else if (parseInt(editInfo.prioridad, 10) === 1) {
+                    procEdit = '1';
+                }
+                prioridadEl.value = procEdit;
+            }
             if (diagnosticoEl) diagnosticoEl.value = String(editInfo.diagnostico_presuntivo || '');
             if (motivoEl) motivoEl.value = String(editInfo.motivo_estudio || '');
             var institucionEl = document.getElementById('customer_institucion');
@@ -1507,7 +1630,8 @@ document.addEventListener('DOMContentLoaded', function() {
                                 value: info.name,
                                 padre: info.padre,
                                 data: id,
-                                cost: info.cost
+                                cost: info.cost,
+                                cost_deriv: info.cost_deriv
                             });
                             return;
                         }
@@ -1534,6 +1658,16 @@ document.addEventListener('DOMContentLoaded', function() {
         } catch (e) {}
     }
 
+    var prioridadSelect = document.getElementById('prioridad');
+    if (prioridadSelect) {
+        prioridadSelect.addEventListener('change', function() {
+            actualizarPreciosSegunProcesamiento();
+            if (modalPruebasLista && modalPruebasLista.children.length) {
+                renderModalPruebasLista(modalPruebasSearch ? modalPruebasSearch.value : '');
+            }
+        });
+    }
+
     // Perfil rápido: agregar pruebas del perfil a la lista
     var perfilSel = document.getElementById('perfil_rapido');
     if (perfilSel && typeof window.PRUEBAS_LOOKUP !== 'undefined') {
@@ -1543,7 +1677,7 @@ document.addEventListener('DOMContentLoaded', function() {
             var ids = pruebasStr.split(',').map(function(x) { return String(parseInt(x, 10)); }).filter(function(x) { return x !== 'NaN'; });
             ids.forEach(function(id) {
                 var info = window.PRUEBAS_LOOKUP[id];
-                if (info) agregarPrueba({ value: info.name, padre: info.padre, data: id, cost: info.cost });
+                if (info) agregarPrueba({ value: info.name, padre: info.padre, data: id, cost: info.cost, cost_deriv: info.cost_deriv });
             });
         });
     }
@@ -1624,7 +1758,8 @@ document.addEventListener('DOMContentLoaded', function() {
                         li.style.cursor = 'pointer';
                         var label = item.value;
                         if (item.padre) label += ' <span class="text-muted small">(' + item.padre + ')</span>';
-                        li.innerHTML = label + ' <span class="badge bg-secondary float-end">' + formatCurrencyAmount(item.cost || 0, 0) + '</span>';
+                        var precioItem = costoParaPrueba({ cost: item.cost, cost_deriv: item.refe });
+                        li.innerHTML = label + ' <span class="badge bg-secondary float-end">' + formatCurrencyAmount(precioItem, 0) + '</span>';
                         li.addEventListener('click', function() {
                             agregarPrueba(item);
                             searchInput.value = '';

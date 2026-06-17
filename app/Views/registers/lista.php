@@ -28,13 +28,16 @@
 ]) ?>
 
 <?php
-$listaQueryBase = static function (array $extra = []) use ($search, $estado, $fecha_desde, $fecha_hasta, $fecha_todos): string {
+$listaQueryBase = static function (array $extra = []) use ($search, $estado, $origen, $fecha_desde, $fecha_hasta, $fecha_todos): string {
     $params = [];
     if (! empty($search)) {
         $params['q'] = $search;
     }
     if (! empty($estado ?? '')) {
         $params['estado'] = $estado;
+    }
+    if (! empty($origen ?? '')) {
+        $params['origen'] = $origen;
     }
     if (! empty($fecha_todos)) {
         $params['fecha_todos'] = '1';
@@ -80,7 +83,7 @@ $listaBtnClass = static fn (bool $active): string => 'btn btn-sm ' . ($active ? 
                     <label for="lista_q" class="form-label small mb-0">Buscar</label>
                     <input type="text" id="lista_q" name="q" class="form-control form-control-sm" placeholder="Código, nombre, apellidos o CI..." value="<?= esc($search ?? '') ?>">
                 </div>
-                <div class="col-xl-3 col-lg-4 col-md-6">
+                <div class="col-xl-2 col-lg-3 col-md-4">
                     <label for="lista_estado" class="form-label small mb-0">Estado</label>
                     <select id="lista_estado" name="estado" class="form-select form-select-sm">
                         <option value="">Todos</option>
@@ -90,6 +93,16 @@ $listaBtnClass = static fn (bool $active): string => 'btn btn-sm ' . ($active ? 
                         <option value="anulado" <?= ($estado ?? '') === 'anulado' ? 'selected' : '' ?>>Solo anuladas</option>
                     </select>
                 </div>
+                <?php if (! empty($has_origen_column)): ?>
+                <div class="col-xl-2 col-lg-3 col-md-4">
+                    <label for="lista_origen" class="form-label small mb-0">Origen prueba</label>
+                    <select id="lista_origen" name="origen" class="form-select form-select-sm">
+                        <option value="">Todos</option>
+                        <option value="propio" <?= ($origen ?? '') === 'propio' ? 'selected' : '' ?>>Propio</option>
+                        <option value="derivacion" <?= ($origen ?? '') === 'derivacion' ? 'selected' : '' ?>>Derivación</option>
+                    </select>
+                </div>
+                <?php endif; ?>
                 <div class="col-xl-2 col-lg-3 col-md-4">
                     <label for="lista_fecha_desde" class="form-label small mb-0">Desde</label>
                     <input type="text" id="lista_fecha_desde" name="fecha_desde" class="form-control form-control-sm flatpickr-input" autocomplete="off"
@@ -116,7 +129,7 @@ $listaBtnClass = static fn (bool $active): string => 'btn btn-sm ' . ($active ? 
                 <?php if (! $esPresetFecha && empty($fecha_todos)): ?>
                 <a href="<?= esc($listaQueryBase(['fecha_todos' => '1', 'fecha_desde' => null, 'fecha_hasta' => null, 'page' => null]), 'attr') ?>" class="btn btn-outline-secondary btn-sm">Todas las fechas</a>
                 <?php endif; ?>
-                <?php if (! empty($search) || ! empty($estado ?? '') || ! ($es_lista_default ?? false)): ?>
+                <?php if (! empty($search) || ! empty($estado ?? '') || ! empty($origen ?? '') || ! ($es_lista_default ?? false)): ?>
                 <a href="<?= site_url('registers/lista') ?>" class="btn btn-outline-secondary btn-sm">Limpiar</a>
                 <?php endif; ?>
             </div>

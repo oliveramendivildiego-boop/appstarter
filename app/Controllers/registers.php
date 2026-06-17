@@ -8,6 +8,7 @@ use App\Services\AutoReactivoConsumptionService;
 use App\Services\ConfigService;
 use App\Services\PrianacategoriaReferenceService;
 use App\Services\RegisterService;
+use App\Services\RegistroFolioService;
 use App\Services\EnvelopeRenderService;
 use App\Services\ReportPdfLayoutService;
 use App\Services\WhatsAppService;
@@ -91,7 +92,10 @@ class Registers extends SecureArea
         }
 
         $costosPorId = [];
-        foreach ($this->registerModel->getPruebasLineasComerciales((string) ($registerInfo->pruebas ?? '')) as $linea) {
+        foreach ($this->registerModel->getPruebasLineasComerciales(
+            (string) ($registerInfo->pruebas ?? ''),
+            (int) ($registerInfo->origen_prueba ?? 0)
+        ) as $linea) {
             $pid = (int) ($linea['prianacategoria_id'] ?? 0);
             if ($pid > 0) {
                 $costosPorId[$pid] = (float) ($linea['importe'] ?? 0);
@@ -123,6 +127,25 @@ class Registers extends SecureArea
         return $extras;
     }
 
+    /**
+     * @param array<string, mixed> $payload
+     */
+    private function jsonWithCsrf(array $payload, int $status = 200): ResponseInterface
+    {
+        return $this->response->setJSON(array_merge($payload, [
+            'csrf_token' => csrf_hash(),
+            'csrf_name'  => csrf_token(),
+        ]))->setStatusCode($status);
+    }
+
+    /**
+     * Renueva el token CSRF para formularios abiertos mucho tiempo (p. ej. recepción).
+     */
+    public function csrfRefresh(): ResponseInterface
+    {
+        return $this->jsonWithCsrf(['success' => true]);
+    }
+
     public function index()
     {
         $categories = $this->labotestModel->getGroupedByCategory();
@@ -139,6 +162,7 @@ class Registers extends SecureArea
             'edit_pago'       => null,
             'edit_discount_info' => ['institucion' => '', 'descuento' => 0.0],
             'label_sin_doctor' => $this->getLabelSinDoctorConfig(),
+            'codigo_orden'    => (new RegistroFolioService())->previewCodigoOrden(),
         ], $this->buildFichaClinicaViewExtras()));
     }
 
@@ -178,6 +202,10 @@ class Registers extends SecureArea
             'edit_regvalues_count' => $regvaluesCount,
             'edit_discount_info' => $discountInfo,
             'label_sin_doctor' => $this->getLabelSinDoctorConfig(),
+            'codigo_orden'    => (new RegistroFolioService())->previewCodigoOrden(
+                (int) ($info->registro_id ?? 0),
+                (string) ($info->numero_orden ?? '')
+            ),
         ], $this->buildFichaClinicaViewExtras($id)));
     }
 
@@ -193,6 +221,11 @@ class Registers extends SecureArea
         if (!in_array($estado, ['completo', 'incompleto', 'anulado', 'activo', ''], true)) {
             $estado = '';
         }
+        $origen = trim((string) ($this->request->getGet('origen') ?? ''));
+        if (! in_array($origen, ['propio', 'derivacion', ''], true)) {
+            $origen = '';
+        }
+        $hasOrigenColumn = $this->registerModel->hasRegistroColumn('origen_prueba');
 
         $hasExplicitFechaFilter = $this->request->getGet('fecha_todos') !== null
             || $this->request->getGet('fecha_desde') !== null
@@ -232,11 +265,11 @@ class Registers extends SecureArea
         }
 
         if ($search !== '') {
-            $registros  = $this->registerModel->getAllAnalisisWithSearch($search, $perPage, $offset, $estado, $filterFrom, $filterTo);
-            $total      = $this->registerModel->countWithSearch($search, $estado, $filterFrom, $filterTo);
+            $registros  = $this->registerModel->getAllAnalisisWithSearch($search, $perPage, $offset, $estado, $filterFrom, $filterTo, $origen);
+            $total      = $this->registerModel->countWithSearch($search, $estado, $filterFrom, $filterTo, $origen);
         } else {
-            $registros  = $this->registerModel->getAllAnalisis($perPage, $offset, $estado, $filterFrom, $filterTo);
-            $total      = $this->registerModel->countAll($estado, $filterFrom, $filterTo);
+            $registros  = $this->registerModel->getAllAnalisis($perPage, $offset, $estado, $filterFrom, $filterTo, $origen);
+            $total      = $this->registerModel->countAll($estado, $filterFrom, $filterTo, $origen);
         }
 
         foreach ($registros as $i => $row) {
@@ -244,10 +277,10 @@ class Registers extends SecureArea
         }
 
         $whatsappOk  = (new WhatsAppService())->isConfigured();
-        $manageTable = $this->buildRegistrosTable($registros, $whatsappOk);
+        $manageTable = $this->buildRegistrosTable($registros, $whatsappOk, $hasOrigenColumn);
         $totalPages  = $total > 0 ? (int) ceil($total / $perPage) : 1;
 
-        $esListaDefault = $search === '' && $estado === ''
+        $esListaDefault = $search === '' && $estado === '' && $origen === ''
             && $fechaTodos === $defaultFechaFilter['fecha_todos']
             && (
                 $fechaTodos
@@ -269,6 +302,8 @@ class Registers extends SecureArea
             'perPage'         => $perPage,
             'search'          => $search,
             'estado'          => $estado,
+            'origen'          => $origen,
+            'has_origen_column' => $hasOrigenColumn,
             'fecha_desde'     => $fechaDesde,
             'fecha_hasta'     => $fechaHasta,
             'fecha_todos'         => $fechaTodos,
@@ -345,12 +380,13 @@ class Registers extends SecureArea
         return null;
     }
 
-    private function buildRegistrosTable(array $registros, bool $whatsappConfigured = false): string
+    private function buildRegistrosTable(array $registros, bool $whatsappConfigured = false, bool $hasOrigenColumn = false): string
     {
         $labelSinDoctor = $this->getLabelSinDoctorConfig();
 
         $html = '<div class="table-responsive lab-grid-enhanced registros-table-responsive"><table class="table table-bordered table-striped registros-table"><thead><tr>';
-        $html .= '<th>Código</th><th>Paciente</th><th>Doctor</th><th>Total</th><th>Saldo</th><th class="text-end">Acciones</th>';
+        $html .= '<th>Código</th><th>Paciente</th><th>Doctor</th>';
+        $html .= '<th>Total</th><th>Saldo</th><th class="text-end">Acciones</th>';
         $html .= '</tr></thead><tbody>';
 
         $sumTotal = 0;
@@ -363,6 +399,7 @@ class Registers extends SecureArea
             $saldoNum = (float) ($r->saldo ?? 0);
             $isAnulado = isset($r->anulado) && (int) $r->anulado === 1;
             $isPrioridad = !$isAnulado && isset($r->prioridad) && (int) $r->prioridad === 1;
+            $isDerivacion = ! $isAnulado && $hasOrigenColumn && registro_origen_prueba_es_derivacion($r);
             $hasDoctor = (int) ($r->doctor_id ?? 0) > 0;
 
             if (!$isAnulado) {
@@ -370,15 +407,20 @@ class Registers extends SecureArea
                 $sumSaldo += $saldoNum;
             }
 
-            $rowClass = $isAnulado ? 'table-secondary' : ($isPrioridad ? 'registro-prioridad table-danger fw-semibold' : '');
+            $rowClass = $isAnulado ? 'table-secondary' : ($isPrioridad ? 'registro-prioridad table-danger fw-semibold' : ($isDerivacion ? 'registro-derivacion table-info' : ''));
             $html .= '<tr' . ($rowClass !== '' ? ' class="' . $rowClass . '"' : '') . '>';
             $ordenDisp = registro_orden_display($r);
             $codigoTdClass = $isPrioridad ? ' class="registro-prioridad-codigo"' : '';
             $html .= '<td' . $codigoTdClass . ' title="ID interno: ' . esc((string) $rid) . '">' . esc($ordenDisp);
             if ($isAnulado) {
                 $html .= ' <span class="badge bg-dark ms-1">Anulada</span>';
-            } elseif ($isPrioridad) {
-                $html .= ' <span class="badge bg-danger ms-1"><i class="fa-solid fa-triangle-exclamation me-1"></i>Urgente</span>';
+            } else {
+                if ($isPrioridad) {
+                    $html .= ' <span class="badge bg-danger ms-1"><i class="fa-solid fa-triangle-exclamation me-1"></i>Urgente</span>';
+                }
+                if ($isDerivacion) {
+                    $html .= ' <span class="badge bg-info text-dark ms-1">Derivación</span>';
+                }
             }
             $html .= '</td>';
             $html .= '<td>' . esc(paciente_nombre_display($r)) . '</td>';
@@ -447,10 +489,12 @@ class Registers extends SecureArea
             $html .= '</td>';
             $html .= '</tr>';
         }
+        $colCount = 6;
+        $labelColspan = 3;
         if (empty($registros)) {
-            $html .= '<tr><td colspan="6">No hay registros.</td></tr>';
+            $html .= '<tr><td colspan="' . $colCount . '">No hay registros.</td></tr>';
         } else {
-            $html .= '<tr class="table-secondary fw-bold lab-grid-skip"><td colspan="3">Total</td>';
+            $html .= '<tr class="table-secondary fw-bold lab-grid-skip"><td colspan="' . $labelColspan . '">Total</td>';
             $html .= '<td>' . number_format($sumTotal, 2) . '</td>';
             $html .= '<td>' . number_format($sumSaldo, 2) . '</td>';
             $html .= '<td></td></tr>';
@@ -1134,7 +1178,10 @@ class Registers extends SecureArea
      */
     private function buildNormalizedPagoData(array $registro, array $pagos): array
     {
-        $lineas = $this->registerModel->getPruebasLineasComerciales((string) ($registro['pruebas'] ?? ''));
+        $lineas = $this->registerModel->getPruebasLineasComerciales(
+            (string) ($registro['pruebas'] ?? ''),
+            (int) ($registro['origen_prueba'] ?? 0)
+        );
         $totalBruto = 0.0;
         foreach ($lineas as $ln) {
             $totalBruto += (float) ($ln['importe'] ?? 0);
@@ -1208,8 +1255,9 @@ class Registers extends SecureArea
             'tipopago'    => (string) ($registroRow->tipopago ?? ''),
         ];
         $normalized = $this->buildNormalizedPagoData([
-            'pruebas'   => $registroRow->pruebas ?? '',
-            'person_id' => $registroRow->person_id ?? 0,
+            'pruebas'       => $registroRow->pruebas ?? '',
+            'person_id'     => $registroRow->person_id ?? 0,
+            'origen_prueba' => (int) ($registroRow->origen_prueba ?? 0),
         ], $pagos);
         $nuevoTotal = (float) ($normalized['total'] ?? 0);
         if ($nuevoTotal <= 0.02) {
@@ -1272,8 +1320,45 @@ class Registers extends SecureArea
                 $registroData[$field] = $value !== '' ? $value : null;
             }
         }
+        if ($this->registerModel->hasRegistroColumn('origen_prueba')) {
+            $registroData['origen_prueba'] = (int) ($registroPost['origen_prueba'] ?? 0) === 1 ? 1 : 0;
+        }
 
         return $registroData;
+    }
+
+    /** Segundos en que el mismo submit_token evita un segundo guardado (doble clic). */
+    private const SUBMIT_TOKEN_REPLAY_SECONDS = 20;
+
+    private function getSubmitTokenReplayRegistroId(string $submitToken): ?int
+    {
+        if ($submitToken === '' || strlen($submitToken) < 16) {
+            return null;
+        }
+
+        $cached = \Config\Services::cache()->get('reg_submit_' . $submitToken);
+        if (! is_array($cached) || empty($cached['id'])) {
+            return null;
+        }
+
+        $savedAt = (int) ($cached['saved_at'] ?? 0);
+        if ($savedAt < 1 || (time() - $savedAt) > self::SUBMIT_TOKEN_REPLAY_SECONDS) {
+            return null;
+        }
+
+        return (int) $cached['id'];
+    }
+
+    private function rememberSubmitTokenRegistroId(string $submitToken, int $registroId): void
+    {
+        if ($submitToken === '' || strlen($submitToken) < 16 || $registroId < 1) {
+            return;
+        }
+
+        \Config\Services::cache()->save('reg_submit_' . $submitToken, [
+            'id'       => $registroId,
+            'saved_at' => time(),
+        ], 120);
     }
 
     public function save(): ResponseInterface
@@ -1299,17 +1384,15 @@ class Registers extends SecureArea
             $sessionId = (int) session()->get('person_id');
             $submitToken = preg_replace('/[^a-zA-Z0-9_-]/', '', trim((string) $this->request->getPost('submit_token')));
 
-            if ($submitToken !== '' && strlen($submitToken) >= 16) {
-                $cached = \Config\Services::cache()->get('reg_submit_' . $submitToken);
-                if (is_array($cached) && ! empty($cached['id'])) {
-                    $this->persistFichasClinicasFromPost((int) $cached['id']);
+            $replayId = $this->getSubmitTokenReplayRegistroId($submitToken);
+            if ($replayId !== null) {
+                $this->persistFichasClinicasFromPost($replayId);
 
-                    return $this->response->setJSON([
-                        'success' => true,
-                        'message' => 'Datos guardados correctamente',
-                        'id'      => (int) $cached['id'],
-                    ]);
-                }
+                return $this->jsonWithCsrf([
+                    'success' => true,
+                    'message' => 'Datos guardados correctamente',
+                    'id'      => $replayId,
+                ]);
             }
 
             $registroData = [
@@ -1321,44 +1404,37 @@ class Registers extends SecureArea
             ];
             $registroData = $this->withClinicalContextFields($registroData, $registro);
 
-            $saveResult = $this->registerModel->withRegistroInsertLock(
-                $personId,
-                $doctorId,
-                (string) ($registro['pruebas'] ?? ''),
-                $sessionId,
-                function () use ($registroData, $personId, $doctorId, $sessionId, $registro) {
-                    $existingId = $this->registerModel->findRecentDuplicateRegistro(
-                        $personId,
-                        $doctorId,
-                        (string) ($registro['pruebas'] ?? ''),
-                        $sessionId
-                    );
-                    if ($existingId !== null) {
-                        log_message('info', 'Registers::save orden duplicada evitada, registro_id=' . $existingId);
+            $lockKey = $submitToken !== '' ? $submitToken : ('orden_' . $personId . '_' . $doctorId . '_' . microtime(true));
 
-                        return ['id' => $existingId, 'duplicate' => true];
+            $saveResult = $this->registerModel->withRegistroInsertLock(
+                $lockKey,
+                function () use ($registroData, $submitToken) {
+                    $replayId = $this->getSubmitTokenReplayRegistroId($submitToken);
+                    if ($replayId !== null) {
+                        return ['id' => $replayId, 'replay' => true];
                     }
 
                     $newId = $this->registerModel->saveRegistro($registroData);
 
-                    return ['id' => $newId, 'duplicate' => false];
+                    return ['id' => $newId, 'replay' => false];
                 }
             );
 
             $registroId = (int) ($saveResult['id'] ?? 0);
-            $isDuplicate = ! empty($saveResult['duplicate']);
+            $isReplay = ! empty($saveResult['replay']);
 
             if ($registroId < 1) {
                 throw new \RuntimeException('No se pudo crear la orden.');
             }
 
-            if (! $isDuplicate) {
+            if (! $isReplay) {
                 $pagosNormalizados = $this->buildNormalizedPagoData($registroData, $pagos);
                 \App\Models\AuditoriaModel::log('registers', 'crear', (string) $registroId, \App\Models\AuditoriaModel::detail([
                     'paciente_id' => $registro['person_id'] ?? null,
                     'doctor_id' => $doctorId,
                     'pruebas' => $registro['pruebas'] ?? null,
                     'prioridad' => (int)($registro['prioridad'] ?? 0),
+                    'origen_prueba' => (int)($registro['origen_prueba'] ?? 0),
                     'total' => $pagosNormalizados['total'] ?? null,
                     'monto_pagar' => $pagosNormalizados['monto_pagar'] ?? null,
                     'descuento_institucion' => $pagosNormalizados['descuento_institucion'] ?? null,
@@ -1386,23 +1462,23 @@ class Registers extends SecureArea
                 );
             }
 
-            if ($submitToken !== '' && strlen($submitToken) >= 16) {
-                \Config\Services::cache()->save('reg_submit_' . $submitToken, ['id' => $registroId], 600);
+            if (! $isReplay) {
+                $this->rememberSubmitTokenRegistroId($submitToken, $registroId);
             }
 
             $this->persistFichasClinicasFromPost($registroId);
 
-            return $this->response->setJSON([
+            return $this->jsonWithCsrf([
                 'success' => true,
                 'message' => 'Datos guardados correctamente',
                 'id'      => $registroId,
             ]);
         } catch (\Throwable $e) {
             log_message('error', 'Registers::save ' . $e->getMessage());
-            return $this->response->setJSON([
+            return $this->jsonWithCsrf([
                 'success' => false,
                 'message' => 'Error al guardar. Intente nuevamente.',
-            ])->setStatusCode(500);
+            ], 500);
         }
     }
 
@@ -1473,6 +1549,7 @@ class Registers extends SecureArea
                 'doctor_id' => $doctorId,
                 'pruebas' => $registro['pruebas'] ?? null,
                 'prioridad' => (int)($registro['prioridad'] ?? 0),
+                'origen_prueba' => (int)($registro['origen_prueba'] ?? 0),
                 'total' => $pagosNormalizados['total'] ?? null,
                 'monto_pagar' => $pagosNormalizados['monto_pagar'] ?? null,
                 'descuento_institucion' => $pagosNormalizados['descuento_institucion'] ?? null,
@@ -1495,17 +1572,17 @@ class Registers extends SecureArea
 
             $this->persistFichasClinicasFromPost($id);
 
-            return $this->response->setJSON([
+            return $this->jsonWithCsrf([
                 'success' => true,
                 'message' => 'Registro actualizado',
                 'id'      => $id,
             ]);
         } catch (\Throwable $e) {
             log_message('error', 'Registers::update ' . $e->getMessage());
-            return $this->response->setJSON([
+            return $this->jsonWithCsrf([
                 'success' => false,
                 'message' => 'Error al actualizar. Intente nuevamente.',
-            ])->setStatusCode(500);
+            ], 500);
         }
     }
 

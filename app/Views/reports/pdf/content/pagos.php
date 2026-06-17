@@ -90,6 +90,37 @@ $cajaPorTipoTotales      = $cajaPorTipoTotales ?? ['ingresos' => 0, 'egresos' =>
     </tbody>
 </table>
 
+<h2>Resumen por Procesamiento</h2>
+<table class="pdf-t">
+    <thead>
+        <tr>
+            <th>Procesamiento</th>
+            <th class="text-end">Cant.</th>
+            <th class="text-end">Fact.</th>
+            <th class="text-end">Cobr.</th>
+            <th class="text-end">Pend.</th>
+        </tr>
+    </thead>
+    <tbody>
+        <?php foreach ($resumenPagosPorProcesamiento ?? [] as $row): ?>
+            <?php
+            $procKey = (string) ($row['procesamiento'] ?? '');
+            $procLabel = $procesamientoMap[$procKey] ?? $procKey ?: '-';
+            ?>
+            <tr>
+                <td><?= esc($procLabel) ?></td>
+                <td class="text-end"><?= (int) ($row['cantidad'] ?? 0) ?></td>
+                <td class="text-end"><?= number_format((float) ($row['total_facturado'] ?? 0), 2) ?></td>
+                <td class="text-end"><?= number_format((float) ($row['total_cobrado'] ?? 0), 2) ?></td>
+                <td class="text-end"><?= number_format((float) ($row['total_pendiente'] ?? 0), 2) ?></td>
+            </tr>
+        <?php endforeach; ?>
+        <?php if (empty($resumenPagosPorProcesamiento ?? [])): ?>
+            <tr><td colspan="5" class="small">Sin datos.</td></tr>
+        <?php endif; ?>
+    </tbody>
+</table>
+
 <h2>Resumen de ingresos de caja por tipo</h2>
 <table class="pdf-t">
     <thead>

@@ -158,10 +158,11 @@ document.addEventListener('DOMContentLoaded', function() {
     </div>
     <div class="col-12 col-md-6" id="prioridad_container">
         <div class="mb-3">
-            <label class="form-label">Prioridad:</label>
+            <label class="form-label">Procesamiento:</label>
             <select id="prioridad" name="prioridad" class="form-select">
                 <option value="0" selected>Rutina</option>
                 <option value="1">Urgente</option>
+                <option value="2">Derivación</option>
             </select>
         </div>
     </div>

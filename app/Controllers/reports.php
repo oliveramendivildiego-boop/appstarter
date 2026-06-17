@@ -3,6 +3,8 @@
 namespace App\Controllers;
 
 use App\Models\ReportModel;
+use App\Models\ReportAnalyticsModel;
+use App\Models\CustomerModel;
 use App\Models\ReactivoModel;
 use App\Models\AppConfigModel;
 use App\Models\ToquoteModel;
@@ -187,8 +189,10 @@ class Reports extends SecureArea
         $pendientes = $this->reportModel->getCobrosParcialesEnPeriodo($startDate, $endDate);
         $pagosPagados = $this->reportModel->getPagosPagadosDetalle($startDate, $endDate);
         $tipoPagoMap = ['1' => 'Efectivo', '2' => 'QR', '3' => 'Transferencia', '4' => 'Pendiente'];
+        $procesamientoMap = ['rutina' => 'Rutina', 'urgente' => 'Urgente', 'derivacion' => 'Derivación'];
         $totales   = $this->reportModel->getTotalesPagos($startDate, $endDate);
         $resumenPagosPorTipo = $this->reportModel->getResumenPagosPorTipo($startDate, $endDate);
+        $resumenPagosPorProcesamiento = $this->reportModel->getResumenPagosPorProcesamiento($startDate, $endDate);
         $resumenPagosPorDia = $this->reportModel->getResumenPagosPorDia($startDate, $endDate);
         $resumenPagosPorDoctor = $this->reportModel->getResumenPagosPorDoctor($startDate, $endDate);
         $egresos = $this->reportModel->getEgresosByDateRange($startDate, $endDate);
@@ -217,7 +221,9 @@ class Reports extends SecureArea
             'pagosPagados'   => $pagosPagados,
             'totales'         => $totales,
             'tipoPagoMap'     => $tipoPagoMap,
+            'procesamientoMap' => $procesamientoMap,
             'resumenPagosPorTipo' => $resumenPagosPorTipo,
+            'resumenPagosPorProcesamiento' => $resumenPagosPorProcesamiento,
             'resumenPagosPorDia' => $resumenPagosPorDia,
             'resumenPagosPorDoctor' => $resumenPagosPorDoctor,
             'egresos'         => $egresos,
@@ -234,6 +240,63 @@ class Reports extends SecureArea
             'allowed_modules' => $this->allowed_modules,
             'user_info'       => $this->user_info,
         ]);
+    }
+
+    /**
+     * @param list<array<string, mixed>> $rows
+     *
+     * @return array{items: list<array<string, mixed>>, count: int, total_pendiente: float, total_pendiente_fmt: string, total_cobrado: float, total_cobrado_fmt: string, total: float, total_fmt: string}
+     */
+    private function buildPagosCobrosDetalleModalPayload(array $rows, bool $incluirPruebas = false): array
+    {
+        $items          = [];
+        $totalPendiente = 0.0;
+        $totalCobrado   = 0.0;
+        $ordenesVistas  = [];
+
+        foreach ($rows as $row) {
+            $saldo = (float) ($row['saldo'] ?? 0);
+            $cobro = (float) ($row['monto_cobro'] ?? 0);
+            $rid   = (string) ($row['registro_id'] ?? '');
+
+            $totalCobrado += $cobro;
+
+            if ($rid !== '' && ! isset($ordenesVistas[$rid])) {
+                $ordenesVistas[$rid] = true;
+                $totalPendiente += $saldo;
+            }
+
+            $item = [
+                'orden'               => registro_orden_display($row),
+                'paciente'            => trim((string) ($row['paciente'] ?? '')),
+                'doctor'              => trim((string) ($row['doctor'] ?? '')),
+                'monto_cobrado'       => round($cobro, 2),
+                'monto_cobrado_fmt'   => format_currency($cobro),
+                'monto_pendiente'     => round($saldo, 2),
+                'monto_pendiente_fmt' => format_currency($saldo),
+                'fecha_cobro'         => RegisterService::formatStoredReporteFechaCorta($row['fecha_cobro'] ?? $row['ingreso'] ?? ''),
+            ];
+
+            if ($incluirPruebas) {
+                $item['pruebas'] = trim((string) ($row['pruebas_nombres'] ?? ''));
+            }
+
+            $items[] = $item;
+        }
+
+        $totalPendiente = round($totalPendiente, 2);
+        $totalCobrado   = round($totalCobrado, 2);
+
+        return [
+            'items'               => $items,
+            'count'               => count($items),
+            'total_pendiente'     => $totalPendiente,
+            'total_pendiente_fmt' => format_currency($totalPendiente),
+            'total_cobrado'       => $totalCobrado,
+            'total_cobrado_fmt'   => format_currency($totalCobrado),
+            'total'               => $totalPendiente,
+            'total_fmt'           => format_currency($totalPendiente),
+        ];
     }
 
     /**
@@ -256,36 +319,42 @@ class Reports extends SecureArea
 
         $tipoPagoMap = ['1' => 'Efectivo', '2' => 'QR', '3' => 'Transferencia', '4' => 'Pendiente'];
         $rows        = $this->reportModel->getCobrosDetallePorFecha($startDate, $endDate, null, $tipopago);
+        $payload     = $this->buildPagosCobrosDetalleModalPayload($rows);
 
-        $items = [];
-        $totalPendiente = 0.0;
-        $ordenesVistas  = [];
-        foreach ($rows as $row) {
-            $saldo = (float) ($row['saldo'] ?? 0);
-            $rid   = (string) ($row['registro_id'] ?? '');
-            if ($rid !== '' && !isset($ordenesVistas[$rid])) {
-                $ordenesVistas[$rid] = true;
-                $totalPendiente += $saldo;
-            }
-            $items[] = [
-                'orden'              => registro_orden_display($row),
-                'paciente'           => trim((string) ($row['paciente'] ?? '')),
-                'doctor'             => trim((string) ($row['doctor'] ?? '')),
-                'monto_pendiente'    => round($saldo, 2),
-                'monto_pendiente_fmt'=> format_currency($saldo),
-                'fecha_cobro'        => RegisterService::formatStoredReporteFechaCorta($row['fecha_cobro'] ?? $row['ingreso'] ?? ''),
-            ];
-        }
-
-        return $this->response->setJSON([
+        return $this->response->setJSON(array_merge([
             'success'    => true,
             'tipo_label' => $tipoPagoMap[$tipopago] ?? $tipopago,
             'periodo'    => RegisterService::formatReportDateRangeSubtitle($startDate, $endDate),
-            'items'      => $items,
-            'count'      => count($items),
-            'total'      => round($totalPendiente, 2),
-            'total_fmt'  => format_currency($totalPendiente),
-        ]);
+        ], $payload));
+    }
+
+    /**
+     * Detalle JSON de cobros del período filtrados por procesamiento (modal en reporte de pagos).
+     */
+    public function pagosDetallePorProcesamiento(): ResponseInterface
+    {
+        helper(['layout', 'registro']);
+
+        $startDate      = $this->request->getGet('start') ?? RegisterService::todayForReport();
+        $endDate        = $this->request->getGet('end') ?? RegisterService::todayForReport();
+        $procesamiento  = trim((string) $this->request->getGet('procesamiento'));
+
+        if (! in_array($procesamiento, ['rutina', 'urgente', 'derivacion'], true)) {
+            return $this->response->setJSON([
+                'success' => false,
+                'message' => 'Procesamiento no indicado.',
+            ])->setStatusCode(400);
+        }
+
+        $procesamientoMap = ['rutina' => 'Rutina', 'urgente' => 'Urgente', 'derivacion' => 'Derivación'];
+        $rows             = $this->reportModel->getCobrosDetallePorProcesamiento($startDate, $endDate, $procesamiento);
+        $payload          = $this->buildPagosCobrosDetalleModalPayload($rows, true);
+
+        return $this->response->setJSON(array_merge([
+            'success'             => true,
+            'procesamiento_label' => $procesamientoMap[$procesamiento] ?? $procesamiento,
+            'periodo'             => RegisterService::formatReportDateRangeSubtitle($startDate, $endDate),
+        ], $payload));
     }
 
     /**
@@ -312,6 +381,131 @@ class Reports extends SecureArea
             'allowed_modules'   => $this->allowed_modules,
             'user_info'         => $this->user_info,
         ]);
+    }
+
+    /**
+     * Reporte de ingresos por tipo de procesamiento (Interno / Derivado).
+     *
+     * @return array<string, mixed>
+     */
+    private function collectIngresosTipoProcesamientoPayload(): array
+    {
+        $startDate         = trim((string) ($this->request->getGet('start') ?? '')) ?: RegisterService::reportDateFromModifier('-1 month');
+        $endDate           = trim((string) ($this->request->getGet('end') ?? '')) ?: RegisterService::todayForReport();
+        $tipoProcesamiento = trim((string) ($this->request->getGet('tipo_procesamiento') ?? ''));
+        $estadoPago        = trim((string) ($this->request->getGet('estado_pago') ?? ''));
+        $doctorId          = (int) ($this->request->getGet('doctor_id') ?? 0);
+        $institucion       = trim((string) ($this->request->getGet('institucion') ?? ''));
+
+        $reporte = $this->reportModel->getIngresosPorTipoProcesamientoReport(
+            $startDate,
+            $endDate,
+            $tipoProcesamiento,
+            $estadoPago,
+            $doctorId,
+            $institucion
+        );
+
+        return [
+            'startDate'         => $startDate,
+            'endDate'           => $endDate,
+            'tipoProcesamiento' => $tipoProcesamiento,
+            'estadoPago'        => $estadoPago,
+            'doctorId'          => $doctorId,
+            'institucion'       => $institucion,
+            'detalle'           => $reporte['detalle'],
+            'resumen'           => $reporte['resumen'],
+            'subtotales'        => $reporte['subtotales'],
+            'top_derivadas'     => $reporte['top_derivadas'],
+            'evolucion_mensual' => $reporte['evolucion_mensual'],
+            'chart_ingresos'    => $reporte['chart_ingresos'],
+            'chart_cantidad'    => $reporte['chart_cantidad'],
+        ];
+    }
+
+    public function ingresosPorTipoProcesamiento()
+    {
+        $payload = $this->collectIngresosTipoProcesamientoPayload();
+        $analytics = model(ReportAnalyticsModel::class);
+        $customerModel = model(CustomerModel::class);
+        $instituciones = $customerModel->getInstituciones();
+
+        return view('reports/ingresos_por_tipo_procesamiento', array_merge([
+            'title'             => 'Reporte de Ingresos por Tipo de Procesamiento',
+            'current_module'    => 'reports',
+            'subtitle'          => RegisterService::formatReportDateRangeSubtitle($payload['startDate'], $payload['endDate']),
+            'allowed_modules'   => $this->allowed_modules,
+            'user_info'         => $this->user_info,
+            'doctores'          => $analytics->getDoctores(),
+            'instituciones'     => $instituciones,
+        ], $payload));
+    }
+
+    public function ingresosPorTipoProcesamientoPdf()
+    {
+        $payload = $this->collectIngresosTipoProcesamientoPayload();
+        ReportPdfDocument::download(
+            $this->safeReportPdfFilename('ingresos_tipo_procesamiento'),
+            'Reporte de Ingresos por Tipo de Procesamiento',
+            RegisterService::formatReportDateRangeSubtitle($payload['startDate'], $payload['endDate']),
+            'reports/pdf/content/ingresos_por_tipo_procesamiento',
+            $payload
+        );
+    }
+
+    public function ingresosPorTipoProcesamientoExcel()
+    {
+        $payload = $this->collectIngresosTipoProcesamientoPayload();
+        $rows    = [];
+        foreach (['interno' => 'Interno', 'derivado' => 'Derivado'] as $tipoKey => $tipoLabel) {
+            $lineas = array_values(array_filter(
+                $payload['detalle'],
+                static fn (array $line): bool => (string) ($line['tipo_procesamiento'] ?? '') === $tipoKey
+            ));
+            if ($lineas === []) {
+                continue;
+            }
+            $rows[] = [$tipoLabel, '', '', '', '', '', '', '', '', ''];
+            foreach ($lineas as $line) {
+                $rows[] = [
+                    $line['fecha'] ?? '',
+                    $line['codigo_orden'] ?? '',
+                    $line['paciente'] ?? '',
+                    $line['prueba'] ?? '',
+                    $line['tipo_label'] ?? '',
+                    $line['laboratorio_derivado'] ?? '—',
+                    number_format((float) ($line['importe'] ?? 0), 2, '.', ''),
+                    number_format((float) ($line['monto_cobrado'] ?? 0), 2, '.', ''),
+                    number_format((float) ($line['saldo_pendiente'] ?? 0), 2, '.', ''),
+                    $line['estado_label'] ?? '',
+                ];
+            }
+            $st = $payload['subtotales'][$tipoKey] ?? [];
+            $rows[] = [
+                'Subtotal ' . $tipoLabel, '', '', '', (int) ($st['cantidad'] ?? 0), '', '',
+                number_format((float) ($st['importe'] ?? 0), 2, '.', ''),
+                number_format((float) ($st['cobrado'] ?? 0), 2, '.', ''),
+                number_format((float) ($st['pendiente'] ?? 0), 2, '.', ''),
+                '',
+            ];
+        }
+        $res = $payload['resumen'];
+        $rows[] = [];
+        $rows[] = ['TOTAL GENERAL', '', '', '', (int) ($res['total_pruebas'] ?? 0), '', '', number_format((float) ($res['total_facturado'] ?? 0), 2, '.', ''), number_format((float) ($res['total_cobrado'] ?? 0), 2, '.', ''), number_format((float) ($res['total_pendiente'] ?? 0), 2, '.', ''), ''];
+
+        $filename = 'ingresos_tipo_procesamiento_' . lab_filename_datetime() . '.csv';
+        header('Content-Type: text/csv; charset=UTF-8');
+        header('Content-Disposition: attachment; filename="' . $filename . '"');
+        header('Cache-Control: no-cache, must-revalidate');
+        header('Expires: 0');
+        $output = fopen('php://output', 'w');
+        fwrite($output, "\xEF\xBB\xBF");
+        fputcsv($output, ['Fecha', 'Código orden', 'Paciente', 'Prueba', 'Tipo procesamiento', 'Laboratorio derivado', 'Importe', 'Monto cobrado', 'Saldo pendiente', 'Estado pago']);
+        foreach ($rows as $row) {
+            fputcsv($output, $row);
+        }
+        fclose($output);
+        exit;
     }
 
     /**
@@ -2638,6 +2832,7 @@ class Reports extends SecureArea
         $totalesIngresosCaja   = $this->reportModel->getTotalesIngresosCajaByDateRange($startDate, $endDate);
         $resumenIngresosCajaPorTipo = $this->reportModel->getResumenIngresosCajaPorTipo($startDate, $endDate);
         $tipoPagoMap           = ['1' => 'Efectivo', '2' => 'QR', '3' => 'Transferencia', '4' => 'Pendiente'];
+        $procesamientoMap      = ['rutina' => 'Rutina', 'urgente' => 'Urgente', 'derivacion' => 'Derivación'];
         $sub                   = RegisterService::formatReportDateRangeSubtitle($startDate, $endDate);
         $cajaCuadre            = $this->buildCuadreCajaPagos(
             $startDate,
@@ -2648,6 +2843,7 @@ class Reports extends SecureArea
             $totalesIngresosCaja,
             $totalesEgresos
         );
+        $resumenPagosPorProcesamiento = $this->reportModel->getResumenPagosPorProcesamiento($startDate, $endDate);
 
         ReportPdfDocument::download(
             $this->safeReportPdfFilename('pagos'),
@@ -2656,8 +2852,10 @@ class Reports extends SecureArea
             'reports/pdf/content/pagos',
             [
                 'tipoPagoMap'             => $tipoPagoMap,
+                'procesamientoMap'        => $procesamientoMap,
                 'totales'                 => $totales,
                 'resumenPagosPorTipo'     => $resumenPagosPorTipo,
+                'resumenPagosPorProcesamiento' => $resumenPagosPorProcesamiento,
                 'pagosPagados'            => $pagosPagados,
                 'pendientes'              => $pendientes,
                 'resumenPagosPorDia'      => $resumenPagosPorDia,

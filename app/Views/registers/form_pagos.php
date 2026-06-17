@@ -55,7 +55,49 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 </script>
 
+<style>
+.codigo-orden-preview-wrap {
+    background: linear-gradient(135deg, #e8f1ff 0%, #f4f9ff 100%);
+    border: 2px solid #0d6efd;
+    border-radius: 0.5rem;
+    box-shadow: 0 0.15rem 0.5rem rgba(13, 110, 253, 0.1);
+    margin-bottom: 0.85rem;
+    padding: 0.65rem 0.5rem;
+    text-align: center;
+}
+.codigo-orden-preview-label {
+    color: #5c6f8a;
+    font-size: 0.68rem;
+    font-weight: 600;
+    letter-spacing: 0.03em;
+    margin-bottom: 0.2rem;
+    text-transform: uppercase;
+}
+.codigo-orden-preview-value {
+    color: #0a58ca;
+    font-size: clamp(1rem, 3vw, 1.25rem);
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    line-height: 1.2;
+    word-break: break-word;
+}
+.codigo-orden-preview-hint {
+    color: #6c757d;
+    font-size: 0.68rem;
+    margin-top: 0.3rem;
+}
+</style>
+
 <div class="row">
+    <div class="col-12">
+        <div class="codigo-orden-preview-wrap">
+            <div class="codigo-orden-preview-label"><?= !empty($edit_registro) ? 'Código de orden' : 'Código que se asignará' ?></div>
+            <div id="codigo_orden_preview" class="codigo-orden-preview-value"><?= esc($codigo_orden ?? '') ?></div>
+            <?php if (empty($edit_registro)): ?>
+                <div class="codigo-orden-preview-hint">Vista previa; se confirma al guardar.</div>
+            <?php endif; ?>
+        </div>
+    </div>
     <div class="col-12">
         <div class="mb-3">
             <label for="total_reco" class="form-label">Total Recomendado: <span class="text-danger">*</span></label>

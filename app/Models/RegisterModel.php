@@ -362,7 +362,7 @@ class RegisterModel extends Model
     /**
      * Obtiene todos los registros de análisis con paciente, doctor y pago
      */
-    public function getAllAnalisis(int $limit = 10000, int $offset = 0, string $estado = '', ?string $dateFrom = null, ?string $dateTo = null): array
+    public function getAllAnalisis(int $limit = 10000, int $offset = 0, string $estado = '', ?string $dateFrom = null, ?string $dateTo = null, string $origen = ''): array
     {
         $r  = $this->getRegistroTable();
         $p  = $this->db->prefixTable('people');
@@ -383,6 +383,7 @@ class RegisterModel extends Model
             ->orderBy("{$r}.registro_id", 'DESC');
         $builder = $this->applyIngresoDateRange($builder, $dateFrom, $dateTo);
         $builder = $this->applyEstadoFilter($builder, $estado, $r, $rv);
+        $builder = $this->applyOrigenFilter($builder, $origen, $r);
         return $builder->limit($limit, $offset)->get()->getResult();
     }
 
@@ -405,20 +406,21 @@ class RegisterModel extends Model
             ->getResult();
     }
 
-    public function countAll(string $estado = '', ?string $dateFrom = null, ?string $dateTo = null): int
+    public function countAll(string $estado = '', ?string $dateFrom = null, ?string $dateTo = null, string $origen = ''): int
     {
         $r  = $this->getRegistroTable();
         $rv = $this->db->prefixTable('regvalues');
         $builder = $this->db->table('registro');
         $builder = $this->applyIngresoDateRange($builder, $dateFrom, $dateTo);
         $builder = $this->applyEstadoFilter($builder, $estado, $r, $rv);
+        $builder = $this->applyOrigenFilter($builder, $origen, $r);
         return $builder->countAllResults();
     }
 
     /**
      * Cuenta registros con filtro de búsqueda (código prueba, nombre, apellidos, CI)
      */
-    public function countWithSearch(string $q, string $estado = '', ?string $dateFrom = null, ?string $dateTo = null): int
+    public function countWithSearch(string $q, string $estado = '', ?string $dateFrom = null, ?string $dateTo = null, string $origen = ''): int
     {
         $q = trim($q);
         $r  = $this->getRegistroTable();
@@ -433,13 +435,14 @@ class RegisterModel extends Model
         $builder = $this->applySearchBuilder($builder, $q);
         $builder = $this->applyIngresoDateRange($builder, $dateFrom, $dateTo);
         $builder = $this->applyEstadoFilter($builder, $estado, $r, $rv);
+        $builder = $this->applyOrigenFilter($builder, $origen, $r);
         return $builder->countAllResults();
     }
 
     /**
      * Obtiene registros con búsqueda (código prueba, nombre, apellidos, CI) y paginación
      */
-    public function getAllAnalisisWithSearch(string $q, int $limit = 50, int $offset = 0, string $estado = '', ?string $dateFrom = null, ?string $dateTo = null): array
+    public function getAllAnalisisWithSearch(string $q, int $limit = 50, int $offset = 0, string $estado = '', ?string $dateFrom = null, ?string $dateTo = null, string $origen = ''): array
     {
         $r  = $this->getRegistroTable();
         $p  = $this->db->prefixTable('people');
@@ -462,6 +465,7 @@ class RegisterModel extends Model
         $builder = $this->applySearchBuilder($builder, $q);
         $builder = $this->applyIngresoDateRange($builder, $dateFrom, $dateTo);
         $builder = $this->applyEstadoFilter($builder, $estado, $r, $rv);
+        $builder = $this->applyOrigenFilter($builder, $origen, $r);
         return $builder->limit($limit, $offset)->get()->getResult();
     }
 
@@ -509,6 +513,21 @@ class RegisterModel extends Model
         }
 
         return RegistroIngresoDateRange::apply($builder, $this->getRegistroTable(), $from, $to);
+    }
+
+    private function applyOrigenFilter($builder, string $origen, string $r)
+    {
+        $origen = trim($origen);
+        if ($origen === '' || ! $this->hasRegistroColumn('origen_prueba')) {
+            return $builder;
+        }
+        if ($origen === 'derivacion') {
+            $builder->where("{$r}.origen_prueba", 1);
+        } elseif ($origen === 'propio') {
+            $builder->where("COALESCE({$r}.origen_prueba, 0) = 0", null, false);
+        }
+
+        return $builder;
     }
 
     /**
@@ -2333,12 +2352,13 @@ class RegisterModel extends Model
      *
      * @return list<array{descripcion: string, importe: float}>
      */
-    public function getPruebasLineasComerciales(?string $pruebasCsv): array
+    public function getPruebasLineasComerciales(?string $pruebasCsv, int $origenPrueba = 0): array
     {
         $csv = trim((string) $pruebasCsv);
         if ($csv === '') {
             return [];
         }
+        $usarDerivado = (int) $origenPrueba === 1;
         $ids = [];
         foreach (explode(',', $csv) as $part) {
             $part = trim($part);
@@ -2356,7 +2376,7 @@ class RegisterModel extends Model
         }
         $pt = $this->db->prefixTable('prianacategoria');
         $rows = $this->db->table('prianacategoria')
-            ->select("{$pt}.prianacategoria_id, {$pt}.name, {$pt}.cost, {$pt}.deleted")
+            ->select("{$pt}.prianacategoria_id, {$pt}.name, {$pt}.cost, {$pt}.cost_deriv, {$pt}.deleted")
             ->whereIn("{$pt}.prianacategoria_id", $ids)
             ->get()
             ->getResult();
@@ -2370,7 +2390,7 @@ class RegisterModel extends Model
             $byId[$pid] = [
                 'prianacategoria_id' => $pid,
                 'descripcion'        => $nombre !== '' ? $nombre : ('Prueba #' . $pid),
-                'importe'            => (float) ($r->cost ?? 0),
+                'importe'            => (float) ($usarDerivado ? ($r->cost_deriv ?? 0) : ($r->cost ?? 0)),
             ];
         }
         $ordered = [];
@@ -2441,14 +2461,17 @@ class RegisterModel extends Model
     }
 
     /**
-     * Busca una orden reciente idéntica (mismo paciente, médico, pruebas y usuario).
+     * Busca una orden idéntica creada hace instantes (evita doble clic al guardar).
+     * Ventana corta: recepciones repetidas del mismo análisis son válidas tras ~30 s.
      */
     public function findRecentDuplicateRegistro(
         int $personId,
         int $doctorId,
         ?string $pruebas,
         int $sessionId,
-        int $windowSeconds = 180
+        int $windowSeconds = 30,
+        int $prioridad = 0,
+        int $origenPrueba = 0
     ): ?int {
         if ($personId < 1 || $sessionId < 1) {
             return null;
@@ -2460,10 +2483,19 @@ class RegisterModel extends Model
         }
 
         RegisterService::applyRequestTimezone();
-        $since = RegisterService::reportNow()->modify('-' . max(30, $windowSeconds) . ' seconds')->format('Y-m-d H:i:s');
+        $windowSeconds = max(15, min(60, $windowSeconds));
+        $since = RegisterService::reportNow()->modify('-' . $windowSeconds . ' seconds')->format('Y-m-d H:i:s');
+
+        $select = 'registro_id, pruebas';
+        if ($this->hasRegistroColumn('prioridad')) {
+            $select .= ', prioridad';
+        }
+        if ($this->hasRegistroColumn('origen_prueba')) {
+            $select .= ', origen_prueba';
+        }
 
         $builder = $this->db->table('registro')
-            ->select('registro_id, pruebas')
+            ->select($select)
             ->where('person_id', $personId)
             ->where('doctor_id', $doctorId)
             ->where('id_session', $sessionId)
@@ -2475,24 +2507,30 @@ class RegisterModel extends Model
         }
 
         foreach ($builder->get()->getResult() as $row) {
-            if (self::normalizePruebasCsv($row->pruebas ?? '') === $normalized) {
-                return (int) $row->registro_id;
+            if (self::normalizePruebasCsv($row->pruebas ?? '') !== $normalized) {
+                continue;
             }
+            if ($this->hasRegistroColumn('prioridad') && (int) ($row->prioridad ?? 0) !== $prioridad) {
+                continue;
+            }
+            if ($this->hasRegistroColumn('origen_prueba') && (int) ($row->origen_prueba ?? 0) !== $origenPrueba) {
+                continue;
+            }
+
+            return (int) $row->registro_id;
         }
 
         return null;
     }
 
     /**
-     * Bloqueo MySQL para serializar inserciones concurrentes de la misma orden.
+     * Bloqueo MySQL para serializar guardados concurrentes con el mismo token de envío.
      *
      * @return mixed
      */
-    public function withRegistroInsertLock(int $personId, int $doctorId, ?string $pruebas, int $sessionId, callable $callback)
+    public function withRegistroInsertLock(string $lockKey, callable $callback)
     {
-        $lockKey = 'reg_ins_' . substr(md5(
-            $personId . '|' . $doctorId . '|' . self::normalizePruebasCsv($pruebas) . '|' . $sessionId
-        ), 0, 32);
+        $lockKey = 'reg_ins_' . substr(md5($lockKey), 0, 32);
 
         $row = $this->db->query('SELECT GET_LOCK(?, 10) AS acquired', [$lockKey])->getRow();
         if ($row === null || (int) ($row->acquired ?? 0) !== 1) {

@@ -19,6 +19,10 @@ class ReportModel extends Model
     /** @var bool|null */
     private static $registroTieneCampoMotivoAnulacion = null;
     /** @var bool|null */
+    private static $registroTieneCampoPrioridad = null;
+    /** @var bool|null */
+    private static $registroTieneCampoOrigenPrueba = null;
+    /** @var bool|null */
     private static $egresosTieneTipoMovimiento = null;
 
     private function registroTieneCampoAnulado(): bool
@@ -63,6 +67,76 @@ class ReportModel extends Model
         return self::$registroTieneCampoMotivoAnulacion;
     }
 
+    private function registroTieneCampoPrioridad(): bool
+    {
+        if (self::$registroTieneCampoPrioridad === null) {
+            try {
+                $t = $this->db->prefixTable('registro');
+                self::$registroTieneCampoPrioridad = in_array('prioridad', $this->db->getFieldNames($t), true);
+            } catch (\Throwable $e) {
+                self::$registroTieneCampoPrioridad = false;
+            }
+        }
+
+        return self::$registroTieneCampoPrioridad;
+    }
+
+    private function registroTieneCampoOrigenPrueba(): bool
+    {
+        if (self::$registroTieneCampoOrigenPrueba === null) {
+            try {
+                $t = $this->db->prefixTable('registro');
+                self::$registroTieneCampoOrigenPrueba = in_array('origen_prueba', $this->db->getFieldNames($t), true);
+            } catch (\Throwable $e) {
+                self::$registroTieneCampoOrigenPrueba = false;
+            }
+        }
+
+        return self::$registroTieneCampoOrigenPrueba;
+    }
+
+    /**
+     * Clave de procesamiento (rutina|urgente|derivacion) según columnas de dom_registro.
+     */
+    private function sqlProcesamientoRegistroExpr(string $rAlias): string
+    {
+        $hasOrigen = $this->registroTieneCampoOrigenPrueba();
+        $hasPrioridad = $this->registroTieneCampoPrioridad();
+
+        if ($hasOrigen && $hasPrioridad) {
+            return "CASE WHEN COALESCE({$rAlias}.origen_prueba, 0) = 1 THEN 'derivacion' "
+                . "WHEN COALESCE({$rAlias}.prioridad, 0) = 1 THEN 'urgente' "
+                . "ELSE 'rutina' END";
+        }
+        if ($hasOrigen) {
+            return "CASE WHEN COALESCE({$rAlias}.origen_prueba, 0) = 1 THEN 'derivacion' ELSE 'rutina' END";
+        }
+        if ($hasPrioridad) {
+            return "CASE WHEN COALESCE({$rAlias}.prioridad, 0) = 1 THEN 'urgente' ELSE 'rutina' END";
+        }
+
+        return "'rutina'";
+    }
+
+    /**
+     * @return array<string, array<string, mixed>>
+     */
+    private function emptyResumenPagosPorProcesamiento(): array
+    {
+        $resumen = [];
+        foreach (['rutina', 'urgente', 'derivacion'] as $key) {
+            $resumen[$key] = [
+                'procesamiento'   => $key,
+                'cantidad'        => 0,
+                'total_facturado' => 0.0,
+                'total_cobrado'   => 0.0,
+                'total_pendiente' => 0.0,
+            ];
+        }
+
+        return $resumen;
+    }
+
     private function egresosTieneTipoMovimiento(): bool
     {
         if (self::$egresosTieneTipoMovimiento === null) {
@@ -78,9 +152,49 @@ class ReportModel extends Model
     }
 
     /**
-     * Excluye órdenes anuladas: no se facturan ni cuentan en cobros (devolución).
-     * Usar en todo agregado de importes (reportes, ingresos, pagos por doctor, etc.).
+     * Filtra órdenes por procesamiento (rutina|urgente|derivacion).
      *
+     * @param \CodeIgniter\Database\BaseBuilder $builder
+     */
+    private function applyFiltroProcesamientoRegistro($builder, string $r, string $procesamiento): void
+    {
+        if (! in_array($procesamiento, ['rutina', 'urgente', 'derivacion'], true)) {
+            return;
+        }
+
+        $hasOrigen = $this->registroTieneCampoOrigenPrueba();
+        $hasPrioridad = $this->registroTieneCampoPrioridad();
+
+        if ($procesamiento === 'derivacion') {
+            if ($hasOrigen) {
+                $builder->where("COALESCE({$r}.origen_prueba, 0) = 1", null, false);
+            } else {
+                $builder->where('1 = 0', null, false);
+            }
+
+            return;
+        }
+
+        if ($hasOrigen) {
+            $builder->where("COALESCE({$r}.origen_prueba, 0) = 0", null, false);
+        }
+
+        if ($procesamiento === 'urgente') {
+            if ($hasPrioridad) {
+                $builder->where("COALESCE({$r}.prioridad, 0) = 1", null, false);
+            } else {
+                $builder->where('1 = 0', null, false);
+            }
+
+            return;
+        }
+
+        if ($hasPrioridad) {
+            $builder->where("COALESCE({$r}.prioridad, 0) = 0", null, false);
+        }
+    }
+
+    /**
      * @param \CodeIgniter\Database\BaseBuilder $builder
      * @return \CodeIgniter\Database\BaseBuilder
      */
@@ -518,12 +632,49 @@ class ReportModel extends Model
     }
 
     /**
+     * Cobros del período filtrados por procesamiento de la orden.
+     *
+     * @return list<array<string, mixed>>
+     */
+    public function getCobrosDetallePorProcesamiento(string $startDate, string $endDate, string $procesamiento): array
+    {
+        if (! in_array($procesamiento, ['rutina', 'urgente', 'derivacion'], true)) {
+            return [];
+        }
+
+        if ($this->db->tableExists('pago_abono')) {
+            $rows = $this->fetchCobrosAbonoPorFecha($startDate, $endDate, null, null, $procesamiento);
+            $legacy = $this->fetchCobrosLegacySinAbono($startDate, $endDate, null, null, $procesamiento);
+            $pending = $this->fetchOrdenesPendienteProcesamientoDetalle($startDate, $endDate, null, $procesamiento);
+            $merged = array_merge($rows, $legacy, $pending);
+            if ($merged !== []) {
+                usort($merged, static function (array $a, array $b): int {
+                    return strcmp((string) ($b['fecha_cobro'] ?? ''), (string) ($a['fecha_cobro'] ?? ''));
+                });
+            }
+
+            return $this->attachPruebasNombresListado($merged);
+        }
+
+        $rows = $this->fetchCobrosLegacySinAbono($startDate, $endDate, null, null, $procesamiento);
+        $pending = $this->fetchOrdenesPendienteProcesamientoDetalle($startDate, $endDate, null, $procesamiento);
+        $merged = array_merge($rows, $pending);
+
+        return $this->attachPruebasNombresListado($merged);
+    }
+
+    /**
      * @param 'pendiente'|'pagado'|null $saldoFiltro
      *
      * @return list<array<string, mixed>>
      */
-    protected function fetchCobrosAbonoPorFecha(string $startDate, string $endDate, ?string $saldoFiltro = null, ?string $tipopago = null): array
-    {
+    protected function fetchCobrosAbonoPorFecha(
+        string $startDate,
+        string $endDate,
+        ?string $saldoFiltro = null,
+        ?string $tipopago = null,
+        ?string $procesamiento = null
+    ): array {
         $r  = $this->db->prefixTable('registro');
         $p  = $this->db->prefixTable('people');
         $d  = $this->db->prefixTable('doctors');
@@ -537,7 +688,7 @@ class ReportModel extends Model
             ->select("{$ab}.pago_abono_id, {$ab}.fecha_abono as fecha_cobro,
                 CAST({$ab}.monto AS DECIMAL(12,2)) as monto_cobro,
                 {$ab}.tipopago,
-                {$r}.registro_id, {$r}.numero_orden, {$r}.ingreso,
+                {$r}.registro_id, {$r}.numero_orden, {$r}.ingreso, {$r}.pruebas,
                 {$pacienteSql} AS paciente,
                 COALESCE({$d}.name, '') as doctor,
                 CAST({$pa}.total AS DECIMAL(12,2)) as total,
@@ -553,6 +704,10 @@ class ReportModel extends Model
 
         if ($tipopago !== null && $tipopago !== '') {
             $b->where("{$ab}.tipopago", $tipopago);
+        }
+
+        if ($procesamiento !== null && $procesamiento !== '') {
+            $this->applyFiltroProcesamientoRegistro($b, $r, $procesamiento);
         }
 
         if ($saldoFiltro === 'pendiente') {
@@ -571,8 +726,13 @@ class ReportModel extends Model
      *
      * @return list<array<string, mixed>>
      */
-    protected function fetchCobrosLegacySinAbono(string $startDate, string $endDate, ?string $saldoFiltro = null, ?string $tipopago = null): array
-    {
+    protected function fetchCobrosLegacySinAbono(
+        string $startDate,
+        string $endDate,
+        ?string $saldoFiltro = null,
+        ?string $tipopago = null,
+        ?string $procesamiento = null
+    ): array {
         $r  = $this->db->prefixTable('registro');
         $p  = $this->db->prefixTable('people');
         $d  = $this->db->prefixTable('doctors');
@@ -586,7 +746,7 @@ class ReportModel extends Model
             ->select("NULL as pago_abono_id, {$r}.ingreso as fecha_cobro,
                 CAST({$pa}.monto_pagar AS DECIMAL(12,2)) as monto_cobro,
                 {$pa}.tipopago,
-                {$r}.registro_id, {$r}.numero_orden, {$r}.ingreso,
+                {$r}.registro_id, {$r}.numero_orden, {$r}.ingreso, {$r}.pruebas,
                 {$pacienteSql} AS paciente,
                 COALESCE({$d}.name, '') as doctor,
                 CAST({$pa}.total AS DECIMAL(12,2)) as total,
@@ -609,6 +769,10 @@ class ReportModel extends Model
             $b->where("{$pa}.tipopago", $tipopago);
         }
 
+        if ($procesamiento !== null && $procesamiento !== '') {
+            $this->applyFiltroProcesamientoRegistro($b, $r, $procesamiento);
+        }
+
         if ($saldoFiltro === 'pendiente') {
             $b->where("NOT {$ordenSaldada}", null, false);
         } elseif ($saldoFiltro === 'pagado') {
@@ -616,6 +780,54 @@ class ReportModel extends Model
         }
 
         return $b->orderBy("{$r}.ingreso", 'DESC')
+            ->get()
+            ->getResultArray();
+    }
+
+    /**
+     * Órdenes Pendiente (tipopago=4) con saldo en el período, filtradas por procesamiento.
+     *
+     * @param 'pendiente'|'pagado'|null $saldoFiltro
+     *
+     * @return list<array<string, mixed>>
+     */
+    protected function fetchOrdenesPendienteProcesamientoDetalle(
+        string $startDate,
+        string $endDate,
+        ?string $saldoFiltro = null,
+        ?string $procesamiento = null
+    ): array {
+        if ($saldoFiltro === 'pagado' || $procesamiento === null || $procesamiento === '') {
+            return [];
+        }
+
+        $r              = $this->db->prefixTable('registro');
+        $p              = $this->db->prefixTable('people');
+        $d              = $this->db->prefixTable('doctors');
+        $pa             = $this->db->prefixTable('pago');
+        $saldoPendiente = $this->sqlSaldoPendienteEfectivo($pa);
+        $pacienteSql    = $this->sqlPacienteNombreReporte($p);
+
+        $b = $this->db->table('registro')
+            ->select("NULL as pago_abono_id, {$r}.ingreso as fecha_cobro,
+                0.00 as monto_cobro,
+                {$pa}.tipopago,
+                {$r}.registro_id, {$r}.numero_orden, {$r}.ingreso, {$r}.pruebas,
+                {$pacienteSql} AS paciente,
+                COALESCE({$d}.name, '') as doctor,
+                CAST({$pa}.total AS DECIMAL(12,2)) as total,
+                CAST({$pa}.monto_pagar AS DECIMAL(12,2)) as monto_pagado,
+                {$saldoPendiente} as saldo", false)
+            ->join('people', "{$p}.person_id = {$r}.person_id", 'left')
+            ->join('doctors', "{$d}.doctor_id = {$r}.doctor_id", 'left')
+            ->join('pago', "{$r}.registro_id = {$pa}.registro_id")
+            ->where("{$pa}.tipopago", '4')
+            ->where("{$saldoPendiente} >", 0.02, false);
+        $b = $this->applySinRegistrosAnulados($b, $r);
+        $this->applyFiltroProcesamientoRegistro($b, $r, $procesamiento);
+
+        return RegistroIngresoDateRange::apply($b, $r, $startDate, $endDate)
+            ->orderBy("{$r}.ingreso", 'DESC')
             ->get()
             ->getResultArray();
     }
@@ -644,7 +856,7 @@ class ReportModel extends Model
             ->select("NULL as pago_abono_id, {$r}.ingreso as fecha_cobro,
                 0.00 as monto_cobro,
                 {$pa}.tipopago,
-                {$r}.registro_id, {$r}.numero_orden, {$r}.ingreso,
+                {$r}.registro_id, {$r}.numero_orden, {$r}.ingreso, {$r}.pruebas,
                 {$pacienteSql} AS paciente,
                 COALESCE({$d}.name, '') as doctor,
                 CAST({$pa}.total AS DECIMAL(12,2)) as total,
@@ -1031,6 +1243,206 @@ class ReportModel extends Model
             ->orderBy("{$pa}.tipopago", 'ASC')
             ->get()
             ->getResultArray();
+    }
+
+    /**
+     * Facturado y saldo pendiente por procesamiento (órdenes únicas con cobro en el período).
+     *
+     * @param array<string, array<string, mixed>> $resumen
+     */
+    private function enrichResumenPagosPorProcesamientoFacturadoPendiente(array &$resumen, string $startDate, string $endDate): void
+    {
+        if ($resumen === []) {
+            return;
+        }
+
+        $r             = $this->db->prefixTable('registro');
+        $pa            = $this->db->prefixTable('pago');
+        $ab            = $this->db->prefixTable('pago_abono');
+        $procExpr      = $this->sqlProcesamientoRegistroExpr($r);
+        $saldoEfectivo = $this->sqlSaldoPendienteEfectivo($pa);
+
+        $b = $this->db->table('pago_abono')
+            ->select("{$procExpr} as procesamiento, {$ab}.registro_id,
+                CAST({$pa}.total AS DECIMAL(12,2)) as total,
+                {$saldoEfectivo} as saldo", false)
+            ->join('registro', "{$r}.registro_id = {$ab}.registro_id")
+            ->join('pago', "{$r}.registro_id = {$pa}.registro_id")
+            ->where("{$ab}.tipopago !=", '4');
+        $b = $this->applySinRegistrosAnulados($b, $r);
+        $rows = LabNaiveDateRange::apply($b, $ab, 'fecha_abono', $startDate, $endDate)
+            ->get()
+            ->getResultArray();
+
+        $vistos = [];
+        foreach ($rows as $row) {
+            $proc = (string) ($row['procesamiento'] ?? '');
+            $rid  = (int) ($row['registro_id'] ?? 0);
+            if ($proc === '' || $rid === 0 || !isset($resumen[$proc])) {
+                continue;
+            }
+            if (isset($vistos[$proc][$rid])) {
+                continue;
+            }
+            $vistos[$proc][$rid] = true;
+            $resumen[$proc]['total_facturado'] = (float) ($resumen[$proc]['total_facturado'] ?? 0) + (float) ($row['total'] ?? 0);
+            $resumen[$proc]['total_pendiente'] = (float) ($resumen[$proc]['total_pendiente'] ?? 0) + (float) ($row['saldo'] ?? 0);
+        }
+
+        foreach ($resumen as &$row) {
+            $row['total_facturado'] = round((float) ($row['total_facturado'] ?? 0), 2);
+            $row['total_pendiente'] = round((float) ($row['total_pendiente'] ?? 0), 2);
+        }
+        unset($row);
+    }
+
+    /**
+     * Órdenes con pago pendiente (tipopago=4) en el período, agrupadas por procesamiento.
+     *
+     * @param array<string, array<string, mixed>> $resumen
+     */
+    private function mergeResumenProcesamientoPendienteRegistro(array &$resumen, string $startDate, string $endDate): void
+    {
+        $r             = $this->db->prefixTable('registro');
+        $pa            = $this->db->prefixTable('pago');
+        $procExpr      = $this->sqlProcesamientoRegistroExpr($r);
+        $saldoEfectivo = $this->sqlSaldoPendienteEfectivo($pa);
+
+        $b = $this->db->table('registro')
+            ->select("{$procExpr} as procesamiento,
+                COUNT(*) as cantidad,
+                SUM(CAST({$pa}.total AS DECIMAL(12,2))) as total_facturado,
+                SUM(CAST({$pa}.monto_pagar AS DECIMAL(12,2))) as total_cobrado,
+                SUM({$saldoEfectivo}) as total_pendiente", false)
+            ->join('pago', "{$r}.registro_id = {$pa}.registro_id")
+            ->where("{$pa}.tipopago", '4')
+            ->where("{$saldoEfectivo} >", 0.02, false);
+        $b = $this->applySinRegistrosAnulados($b, $r);
+        $rows = RegistroIngresoDateRange::apply($b, $r, $startDate, $endDate)
+            ->groupBy($procExpr, false)
+            ->get()
+            ->getResultArray();
+
+        foreach ($rows as $row) {
+            $proc = (string) ($row['procesamiento'] ?? '');
+            if ($proc === '' || !isset($resumen[$proc])) {
+                continue;
+            }
+            $resumen[$proc]['cantidad'] += (int) ($row['cantidad'] ?? 0);
+            $resumen[$proc]['total_facturado'] += (float) ($row['total_facturado'] ?? 0);
+            $resumen[$proc]['total_cobrado'] += (float) ($row['total_cobrado'] ?? 0);
+            $resumen[$proc]['total_pendiente'] += (float) ($row['total_pendiente'] ?? 0);
+        }
+    }
+
+    /**
+     * Resumen de cobros del período por procesamiento (Rutina / Urgente / Derivación).
+     *
+     * @return list<array<string, mixed>>
+     */
+    public function getResumenPagosPorProcesamiento(string $startDate, string $endDate): array
+    {
+        $r        = $this->db->prefixTable('registro');
+        $pa       = $this->db->prefixTable('pago');
+        $ab       = $this->db->prefixTable('pago_abono');
+        $procExpr = $this->sqlProcesamientoRegistroExpr($r);
+        $resumen  = $this->emptyResumenPagosPorProcesamiento();
+        $saldoEfectivo = $this->sqlSaldoPendienteEfectivo($pa);
+
+        if ($this->db->tableExists('pago_abono')) {
+            $bAbonos = $this->db->table('pago_abono')
+                ->select("{$procExpr} as procesamiento,
+                    COUNT(DISTINCT {$ab}.registro_id) as cantidad,
+                    0.00 as total_facturado,
+                    SUM(CAST({$ab}.monto AS DECIMAL(12,2))) as total_cobrado,
+                    0.00 as total_pendiente", false)
+                ->join('registro', "{$r}.registro_id = {$ab}.registro_id")
+                ->where("{$ab}.tipopago !=", '4');
+            $bAbonos = $this->applySinRegistrosAnulados($bAbonos, $r);
+            $rowsAbonos = LabNaiveDateRange::apply($bAbonos, $ab, 'fecha_abono', $startDate, $endDate)
+                ->groupBy($procExpr, false)
+                ->get()
+                ->getResultArray();
+
+            foreach ($rowsAbonos as $row) {
+                $proc = (string) ($row['procesamiento'] ?? '');
+                if ($proc === '' || !isset($resumen[$proc])) {
+                    continue;
+                }
+                $resumen[$proc]['cantidad'] = (int) ($row['cantidad'] ?? 0);
+                $resumen[$proc]['total_cobrado'] = (float) ($row['total_cobrado'] ?? 0);
+            }
+
+            $this->enrichResumenPagosPorProcesamientoFacturadoPendiente($resumen, $startDate, $endDate);
+
+            $bLegacy = $this->db->table('registro')
+                ->select("{$procExpr} as procesamiento,
+                    COUNT(*) as cantidad,
+                    SUM(CAST({$pa}.total AS DECIMAL(12,2))) as total_facturado,
+                    SUM(CAST({$pa}.monto_pagar AS DECIMAL(12,2))) as total_cobrado,
+                    SUM({$saldoEfectivo}) as total_pendiente", false)
+                ->join('pago', "{$r}.registro_id = {$pa}.registro_id")
+                ->join('pago_abono', "{$ab}.registro_id = {$r}.registro_id", 'left')
+                ->where("{$ab}.registro_id IS NULL", null, false)
+                ->where("{$pa}.tipopago !=", '4');
+            $bLegacy = $this->applySinRegistrosAnulados($bLegacy, $r);
+            $rowsLegacy = RegistroIngresoDateRange::apply($bLegacy, $r, $startDate, $endDate)
+                ->groupBy($procExpr, false)
+                ->get()
+                ->getResultArray();
+
+            foreach ($rowsLegacy as $row) {
+                $proc = (string) ($row['procesamiento'] ?? '');
+                if ($proc === '' || !isset($resumen[$proc])) {
+                    continue;
+                }
+                $resumen[$proc]['cantidad'] += (int) ($row['cantidad'] ?? 0);
+                $resumen[$proc]['total_facturado'] += (float) ($row['total_facturado'] ?? 0);
+                $resumen[$proc]['total_cobrado'] += (float) ($row['total_cobrado'] ?? 0);
+                $resumen[$proc]['total_pendiente'] += (float) ($row['total_pendiente'] ?? 0);
+            }
+
+            $this->mergeResumenProcesamientoPendienteRegistro($resumen, $startDate, $endDate);
+
+            foreach ($resumen as &$row) {
+                $row['total_facturado'] = round((float) ($row['total_facturado'] ?? 0), 2);
+                $row['total_cobrado'] = round((float) ($row['total_cobrado'] ?? 0), 2);
+                $row['total_pendiente'] = round((float) ($row['total_pendiente'] ?? 0), 2);
+            }
+            unset($row);
+
+            return array_values($resumen);
+        }
+
+        $b = $this->db->table('registro')
+            ->select("{$procExpr} as procesamiento,
+                COUNT(*) as cantidad,
+                SUM(CAST({$pa}.total AS DECIMAL(12,2))) as total_facturado,
+                SUM(CAST({$pa}.monto_pagar AS DECIMAL(12,2))) as total_cobrado,
+                SUM(CAST({$pa}.saldo AS DECIMAL(12,2))) as total_pendiente", false)
+            ->join('pago', "{$r}.registro_id = {$pa}.registro_id");
+        $b = $this->applySinRegistrosAnulados($b, $r);
+        $rows = RegistroIngresoDateRange::apply($b, $r, $startDate, $endDate)
+            ->groupBy($procExpr, false)
+            ->orderBy($procExpr, 'ASC', false)
+            ->get()
+            ->getResultArray();
+
+        foreach ($rows as $row) {
+            $proc = (string) ($row['procesamiento'] ?? '');
+            if ($proc === '' || !isset($resumen[$proc])) {
+                continue;
+            }
+            $resumen[$proc] = [
+                'procesamiento'   => $proc,
+                'cantidad'        => (int) ($row['cantidad'] ?? 0),
+                'total_facturado' => round((float) ($row['total_facturado'] ?? 0), 2),
+                'total_cobrado'   => round((float) ($row['total_cobrado'] ?? 0), 2),
+                'total_pendiente' => round((float) ($row['total_pendiente'] ?? 0), 2),
+            ];
+        }
+
+        return array_values($resumen);
     }
 
     /**
@@ -1898,6 +2310,317 @@ class ReportModel extends Model
         $row = $b->get()->getRow();
 
         return (int) ($row->total ?? 0);
+    }
+
+    /**
+     * Expresión SQL: tipo de procesamiento comercial (interno|derivado) según origen_prueba.
+     */
+    private function sqlTipoProcesamientoIngresoExpr(string $rAlias): string
+    {
+        if ($this->registroTieneCampoOrigenPrueba()) {
+            return "CASE WHEN COALESCE({$rAlias}.origen_prueba, 0) = 1 THEN 'derivado' ELSE 'interno' END";
+        }
+
+        return "'interno'";
+    }
+
+    /**
+     * @return 'pagado'|'pendiente'|'parcial'
+     */
+    private function resolveEstadoPagoIngreso(float $total, float $montoPagar, float $saldo): string
+    {
+        if ($total <= 0.02) {
+            return 'pagado';
+        }
+        $saldoEf = max($saldo, $total - $montoPagar);
+        if ($montoPagar <= 0.02 && $saldoEf > 0.02) {
+            return 'pendiente';
+        }
+        if ($montoPagar + 0.02 >= $total) {
+            return 'pagado';
+        }
+
+        return 'parcial';
+    }
+
+    /**
+     * @return array<int, array{name: string, cost: float, cost_deriv: float}>
+     */
+    private function buildPruebasCostosMapIngresos(): array
+    {
+        $pri = $this->db->prefixTable('prianacategoria');
+        $rows = $this->db->table('prianacategoria')
+            ->select("{$pri}.prianacategoria_id, {$pri}.name, {$pri}.cost, {$pri}.cost_deriv")
+            ->get()
+            ->getResultArray();
+
+        $map = [];
+        foreach ($rows as $row) {
+            $id = (int) ($row['prianacategoria_id'] ?? 0);
+            if ($id < 1) {
+                continue;
+            }
+            $map[$id] = [
+                'name'       => trim((string) ($row['name'] ?? '')) ?: ('Prueba #' . $id),
+                'cost'       => (float) ($row['cost'] ?? 0),
+                'cost_deriv' => (float) ($row['cost_deriv'] ?? 0),
+            ];
+        }
+
+        return $map;
+    }
+
+    /**
+     * @return list<int>
+     */
+    private function parsePruebasCsvIds(?string $csv): array
+    {
+        $csv = trim((string) $csv);
+        if ($csv === '') {
+            return [];
+        }
+        $ids = [];
+        foreach (explode(',', $csv) as $part) {
+            $part = trim($part);
+            if ($part === '') {
+                continue;
+            }
+            $id = preg_match('/contador_(\d+)/', $part, $m) ? (int) $m[1] : (int) $part;
+            if ($id > 0) {
+                $ids[] = $id;
+            }
+        }
+
+        return $ids;
+    }
+
+    /**
+     * Reporte de ingresos por tipo de procesamiento (Interno / Derivado), detalle por prueba.
+     *
+     * @return array{
+     *   detalle: list<array<string,mixed>>,
+     *   resumen: array<string,mixed>,
+     *   subtotales: array<string,array<string,mixed>>,
+     *   top_derivadas: list<array<string,mixed>>,
+     *   evolucion_mensual: list<array<string,mixed>>,
+     *   chart_ingresos: array{interno: float, derivado: float},
+     *   chart_cantidad: array{interno: int, derivado: int},
+     * }
+     */
+    public function getIngresosPorTipoProcesamientoReport(
+        string $startDate,
+        string $endDate,
+        string $tipoProcesamiento = '',
+        string $estadoPago = '',
+        int $doctorId = 0,
+        string $institucion = ''
+    ): array {
+        $r        = $this->db->prefixTable('registro');
+        $pa       = $this->db->prefixTable('pago');
+        $p        = $this->db->prefixTable('people');
+        $c        = $this->db->prefixTable('customers');
+        $saldoEf  = $this->sqlSaldoPendienteEfectivo($pa);
+        $paciente = $this->sqlPacienteNombreReporte($p);
+
+        $select = "{$r}.registro_id, {$r}.ingreso, {$r}.numero_orden, {$r}.pruebas,
+            {$this->sqlTipoProcesamientoIngresoExpr($r)} AS tipo_procesamiento,
+            CAST({$pa}.total AS DECIMAL(12,2)) AS pago_total,
+            CAST({$pa}.monto_pagar AS DECIMAL(12,2)) AS monto_pagar,
+            {$saldoEf} AS saldo,
+            {$paciente} AS paciente,
+            COALESCE({$c}.institucion, '') AS institucion";
+
+        $b = $this->db->table('registro')
+            ->select($select, false)
+            ->join('pago', "{$r}.registro_id = {$pa}.registro_id")
+            ->join('people', "{$p}.person_id = {$r}.person_id", 'left')
+            ->join('customers', "{$c}.person_id = {$r}.person_id AND COALESCE({$c}.deleted, 0) = 0", 'left')
+            ->where("{$r}.pruebas != '' AND {$r}.pruebas IS NOT NULL");
+        $b = $this->applySinRegistrosAnulados($b, $r);
+
+        if ($doctorId > 0) {
+            $b->where("{$r}.doctor_id", $doctorId);
+        }
+        if ($institucion !== '') {
+            $b->where("{$c}.institucion", $institucion);
+        }
+
+        $ordenes = RegistroIngresoDateRange::apply($b, $r, $startDate, $endDate)
+            ->orderBy("{$r}.ingreso", 'ASC')
+            ->get()
+            ->getResultArray();
+
+        $catalogo   = $this->buildPruebasCostosMapIngresos();
+        $tipoFiltro = in_array($tipoProcesamiento, ['interno', 'derivado'], true) ? $tipoProcesamiento : '';
+        $estadoFiltro = in_array($estadoPago, ['pagado', 'pendiente', 'parcial'], true) ? $estadoPago : '';
+
+        $detalle          = [];
+        $topDerivadas     = [];
+        $evolucion        = [];
+        $subtotales       = [
+            'interno'  => ['tipo' => 'interno', 'label' => 'Interno', 'cantidad' => 0, 'importe' => 0.0, 'cobrado' => 0.0, 'pendiente' => 0.0],
+            'derivado' => ['tipo' => 'derivado', 'label' => 'Derivado', 'cantidad' => 0, 'importe' => 0.0, 'cobrado' => 0.0, 'pendiente' => 0.0],
+        ];
+
+        foreach ($ordenes as $orden) {
+            $tipoOrden = (string) ($orden['tipo_procesamiento'] ?? 'interno');
+            if ($tipoFiltro !== '' && $tipoOrden !== $tipoFiltro) {
+                continue;
+            }
+
+            $pagoTotal  = (float) ($orden['pago_total'] ?? 0);
+            $montoPagar = (float) ($orden['monto_pagar'] ?? 0);
+            $saldoOrden = (float) ($orden['saldo'] ?? 0);
+            $estado     = $this->resolveEstadoPagoIngreso($pagoTotal, $montoPagar, $saldoOrden);
+            if ($estadoFiltro !== '' && $estado !== $estadoFiltro) {
+                continue;
+            }
+
+            $pruebaIds = $this->parsePruebasCsvIds($orden['pruebas'] ?? '');
+            if ($pruebaIds === []) {
+                continue;
+            }
+
+            $esDerivado   = $tipoOrden === 'derivado';
+            $catalogSum   = 0.0;
+            $lineCatalog  = [];
+            foreach ($pruebaIds as $pid) {
+                $cat = $catalogo[$pid] ?? null;
+                $importeCat = $cat !== null
+                    ? ($esDerivado ? $cat['cost_deriv'] : $cat['cost'])
+                    : 0.0;
+                $catalogSum += $importeCat;
+                $lineCatalog[] = [
+                    'prueba_id' => $pid,
+                    'prueba'    => $cat['name'] ?? ('Prueba #' . $pid),
+                    'importe_cat' => $importeCat,
+                ];
+            }
+
+            $ratioFact = $catalogSum > 0 ? ($pagoTotal / $catalogSum) : (count($lineCatalog) > 0 ? ($pagoTotal / count($lineCatalog)) : 0);
+            $ratioCob  = $pagoTotal > 0 ? ($montoPagar / $pagoTotal) : 0.0;
+            $fecha     = substr((string) ($orden['ingreso'] ?? ''), 0, 10);
+            $mesKey    = $fecha !== '' ? substr($fecha, 0, 7) : '';
+
+            foreach ($lineCatalog as $line) {
+                $importe = round($line['importe_cat'] * $ratioFact, 2);
+                $cobrado = round($importe * $ratioCob, 2);
+                $saldo   = round(max(0, $importe - $cobrado), 2);
+
+                $detalle[] = [
+                    'fecha'                => $fecha,
+                    'codigo_orden'         => trim((string) ($orden['numero_orden'] ?? '')),
+                    'registro_id'          => (int) ($orden['registro_id'] ?? 0),
+                    'paciente'             => trim((string) ($orden['paciente'] ?? '')),
+                    'prueba'               => $line['prueba'],
+                    'prueba_id'            => $line['prueba_id'],
+                    'tipo_procesamiento'   => $tipoOrden,
+                    'tipo_label'           => $esDerivado ? 'Derivado' : 'Interno',
+                    'laboratorio_derivado' => $esDerivado ? '—' : '—',
+                    'importe'              => $importe,
+                    'monto_cobrado'        => $cobrado,
+                    'saldo_pendiente'      => $saldo,
+                    'estado_pago'          => $estado,
+                    'estado_label'         => match ($estado) {
+                        'pagado'    => 'Pagado',
+                        'pendiente' => 'Pendiente',
+                        default     => 'Parcial',
+                    },
+                ];
+
+                $subtotales[$tipoOrden]['cantidad']++;
+                $subtotales[$tipoOrden]['importe'] += $importe;
+                $subtotales[$tipoOrden]['cobrado'] += $cobrado;
+                $subtotales[$tipoOrden]['pendiente'] += $saldo;
+
+                if ($esDerivado) {
+                    $pid = $line['prueba_id'];
+                    if (!isset($topDerivadas[$pid])) {
+                        $topDerivadas[$pid] = [
+                            'prueba_id' => $pid,
+                            'prueba'    => $line['prueba'],
+                            'cantidad'  => 0,
+                        ];
+                    }
+                    $topDerivadas[$pid]['cantidad']++;
+                }
+
+                if ($mesKey !== '') {
+                    if (!isset($evolucion[$mesKey])) {
+                        $evolucion[$mesKey] = [
+                            'mes'               => $mesKey,
+                            'interno_importe'   => 0.0,
+                            'derivado_importe'  => 0.0,
+                            'interno_cantidad'  => 0,
+                            'derivado_cantidad' => 0,
+                        ];
+                    }
+                    if ($esDerivado) {
+                        $evolucion[$mesKey]['derivado_importe'] += $importe;
+                        $evolucion[$mesKey]['derivado_cantidad']++;
+                    } else {
+                        $evolucion[$mesKey]['interno_importe'] += $importe;
+                        $evolucion[$mesKey]['interno_cantidad']++;
+                    }
+                }
+            }
+        }
+
+        foreach ($subtotales as &$st) {
+            $st['importe']   = round((float) $st['importe'], 2);
+            $st['cobrado']   = round((float) $st['cobrado'], 2);
+            $st['pendiente'] = round((float) $st['pendiente'], 2);
+        }
+        unset($st);
+
+        $totalPruebas   = count($detalle);
+        $totalFacturado = round($subtotales['interno']['importe'] + $subtotales['derivado']['importe'], 2);
+        $totalCobrado   = round($subtotales['interno']['cobrado'] + $subtotales['derivado']['cobrado'], 2);
+        $totalPendiente = round($subtotales['interno']['pendiente'] + $subtotales['derivado']['pendiente'], 2);
+        $cantInternas   = (int) $subtotales['interno']['cantidad'];
+        $cantDerivadas  = (int) $subtotales['derivado']['cantidad'];
+        $pctDerivadas   = $totalPruebas > 0 ? round(($cantDerivadas / $totalPruebas) * 100, 2) : 0.0;
+        $pctIngresoDeriv = $totalFacturado > 0
+            ? round(($subtotales['derivado']['importe'] / $totalFacturado) * 100, 2)
+            : 0.0;
+
+        usort($topDerivadas, static fn (array $a, array $b): int => ($b['cantidad'] <=> $a['cantidad']) ?: strcmp($a['prueba'], $b['prueba']));
+        $topDerivadas = array_slice(array_values($topDerivadas), 0, 10);
+        foreach ($topDerivadas as $i => &$row) {
+            $row['ranking'] = $i + 1;
+            $row['porcentaje'] = $cantDerivadas > 0
+                ? round(((int) $row['cantidad'] / $cantDerivadas) * 100, 2)
+                : 0.0;
+        }
+        unset($row);
+
+        ksort($evolucion);
+        $evolucionMensual = array_values($evolucion);
+
+        return [
+            'detalle' => $detalle,
+            'resumen' => [
+                'total_pruebas'            => $totalPruebas,
+                'total_facturado'          => $totalFacturado,
+                'total_cobrado'            => $totalCobrado,
+                'total_pendiente'          => $totalPendiente,
+                'total_pruebas_internas'   => $cantInternas,
+                'total_pruebas_derivadas'  => $cantDerivadas,
+                'pct_pruebas_derivadas'    => $pctDerivadas,
+                'pct_ingresos_derivados'   => $pctIngresoDeriv,
+            ],
+            'subtotales'        => $subtotales,
+            'top_derivadas'     => $topDerivadas,
+            'evolucion_mensual' => $evolucionMensual,
+            'chart_ingresos'    => [
+                'interno'  => $subtotales['interno']['importe'],
+                'derivado' => $subtotales['derivado']['importe'],
+            ],
+            'chart_cantidad' => [
+                'interno'  => $cantInternas,
+                'derivado' => $cantDerivadas,
+            ],
+        ];
     }
 
     /**
