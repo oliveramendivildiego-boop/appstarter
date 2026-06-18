@@ -24,11 +24,26 @@ if ($showFirmaPerGroup) {
 }
 
 $grupoPruebaIdx = 0;
+$dompdfGpb = ($dompdf_gpb ?? null) instanceof \App\Services\ReportPdfDompdfGrupoPageBreakService
+    ? $dompdf_gpb
+    : null;
 foreach ($grupos ?? [] as $padre => $items) {
     $isFirstGrupo = ($grupoPruebaIdx === 0);
+    $padreKey = trim((string) $padre);
+    $grupoHasFirma = $showFirmaPerGroup && $padreKey !== '' && isset($firmasPorPadre[$padreKey]);
     $grupoClass = 'report-pdf-grupo-prueba';
     if ($isFirstGrupo) {
         $grupoClass .= ' report-pdf-grupo-prueba-first';
+    }
+    $grupoExtraStyle = '';
+    if ($dompdfGpb !== null) {
+        $grupoMeta = $dompdfGpb->beginGrupo($isFirstGrupo, is_array($items) ? $items : [], $grupoHasFirma);
+        if ($grupoMeta['classes'] !== '') {
+            $grupoClass .= ' ' . $grupoMeta['classes'];
+        }
+        if ($grupoMeta['grupo_style'] !== '') {
+            $grupoExtraStyle = $grupoMeta['grupo_style'];
+        }
     }
     $useBrowserPrintAreaStart = ($av === 'browser_print')
         && \App\Services\ReportPdfLayoutService::shouldRenderGrupoAreaPageLeader($layoutForLf, $isFirstGrupo);
@@ -38,7 +53,8 @@ foreach ($grupos ?? [] as $padre => $items) {
     $grupoStyle = \App\Services\ReportPdfLayoutService::mergePdfInlineStyleAttrs(
         \App\Services\ReportPdfLayoutService::grupoPruebaGrupoIntactStyleAttr($layoutForLf, $isFirstGrupo),
         \App\Services\ReportPdfLayoutService::grupoPruebaGapMarginStyleAttr($layoutForLf, $isFirstGrupo),
-        \App\Services\ReportPdfLayoutService::grupoPruebaBrowserPrintAreaStyleAttr($layoutForLf, $isFirstGrupo, $av)
+        \App\Services\ReportPdfLayoutService::grupoPruebaBrowserPrintAreaStyleAttr($layoutForLf, $isFirstGrupo, $av),
+        $grupoExtraStyle
     );
     if (! $useBrowserPrintAreaStart && \App\Services\ReportPdfLayoutService::shouldRenderGrupoAreaPageLeader($layoutForLf, $isFirstGrupo)) {
         $leaderStyle = \App\Services\ReportPdfLayoutService::grupoAreaPageLeaderStyleAttr($layoutForLf, $isFirstGrupo);
@@ -46,11 +62,16 @@ foreach ($grupos ?? [] as $padre => $items) {
             . ($leaderStyle !== '' ? ' style="' . esc($leaderStyle, 'attr') . '"' : '')
             . '></div>';
     }
-    if ($av === 'browser_print'
+    if (($av === 'browser_print' || ($av === 'pdf' && $dompdfGpb !== null))
         && ! $isFirstGrupo
         && \App\Services\ReportPdfLayoutService::shouldRenderGrupoInterPageBreak($layoutForLf, $isFirstGrupo)
         && empty($pb_diag_no_separators)) {
-        echo '<div class="report-grupo-inter-page-break report-grupo-inter-page-break-server" aria-hidden="true"></div>';
+        $interBreakStyle = $av === 'pdf'
+            ? \App\Services\ReportPdfLayoutService::grupoInterPageBreakStyleAttr()
+            : '';
+        echo '<div class="report-grupo-inter-page-break report-grupo-inter-page-break-server" aria-hidden="true"'
+            . ($interBreakStyle !== '' ? ' style="' . esc($interBreakStyle, 'attr') . '"' : '')
+            . '></div>';
     }
     echo '<div class="' . esc($grupoClass, 'attr') . '"'
         . ($grupoStyle !== '' ? ' style="' . esc($grupoStyle, 'attr') . '"' : '')
@@ -78,6 +99,8 @@ foreach ($grupos ?? [] as $padre => $items) {
         'report_pria_tipo_muestra_nombre' => $report_pria_tipo_muestra_nombre ?? [],
         'report_pria_metodo_nombre'       => $report_pria_metodo_nombre ?? [],
         'report_pria_refs_consolidada'    => $report_pria_refs_consolidada ?? [],
+        'dompdf_gpb'                      => $dompdfGpb,
+        'grupo_has_firma'                 => $grupoHasFirma,
     ]);
     $padreKey = trim((string) $padre);
     if ($showFirmaPerGroup && $padreKey !== '' && isset($firmasPorPadre[$padreKey])) {

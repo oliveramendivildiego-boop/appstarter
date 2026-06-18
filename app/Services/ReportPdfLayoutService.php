@@ -3338,6 +3338,17 @@ class ReportPdfLayoutService
     }
 
     /**
+     * Estilo inline del separador inter-área (.report-grupo-inter-page-break) para Dompdf.
+     */
+    public static function grupoInterPageBreakStyleAttr(): string
+    {
+        return 'display:block;width:100%;height:1px;min-height:1px;margin:0;padding:0;border:0;'
+            . 'line-height:0;font-size:0;overflow:hidden;clear:both;'
+            . 'page-break-before:always;break-before:page;'
+            . 'page-break-after:avoid;break-after:avoid;';
+    }
+
+    /**
      * margin-top entre áreas (.report-pdf-grupo-prueba). Dompdf aplica mal reglas de hoja externa y var().
      *
      * @param array<string, mixed> $layout

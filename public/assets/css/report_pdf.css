@@ -387,6 +387,40 @@ body {
     page-break-inside: auto;
     break-inside: auto;
 }
+.report-grupo-inter-page-break {
+    display: block;
+    width: 100%;
+    height: 1px;
+    min-height: 1px;
+    margin: 0;
+    padding: 0;
+    border: 0;
+    line-height: 0;
+    font-size: 0;
+    overflow: hidden;
+    clear: both;
+    page-break-before: always;
+    break-before: page;
+    page-break-after: avoid;
+    break-after: avoid;
+}
+.report-grupo-inter-page-break + .report-pdf-grupo-prueba {
+    page-break-before: avoid;
+    break-before: avoid;
+    margin-top: 0;
+    padding-top: 0;
+}
+.pdf-gpb-keep-together-if-fits .report-pdf-grupo-prueba.report-pdf-grupo-prueba-allow-split .report-segment-table-wrap.report-segment-force-break-before,
+.pdf-gpb-keep-together-if-fits .report-pdf-grupo-prueba.report-pdf-grupo-prueba-allow-split .report-refs-matrix-wrap.report-segment-force-break-before,
+.pdf-gpb-keep-together-if-fits-auto-order .report-pdf-grupo-prueba.report-pdf-grupo-prueba-allow-split .report-segment-table-wrap.report-segment-force-break-before,
+.pdf-gpb-keep-together-if-fits-auto-order .report-pdf-grupo-prueba.report-pdf-grupo-prueba-allow-split .report-refs-matrix-wrap.report-segment-force-break-before,
+.pdf-gpb-keep-together-if-fits .report-pdf-grupo-prueba.report-pdf-grupo-prueba-allow-split .report-pdf-subgrupo-block.report-subgrupo-force-break-before,
+.pdf-gpb-keep-together-if-fits-auto-order .report-pdf-grupo-prueba.report-pdf-grupo-prueba-allow-split .report-pdf-subgrupo-block.report-subgrupo-force-break-before,
+.pdf-gpb-keep-together-if-fits .report-pdf-grupo-prueba.report-pdf-grupo-prueba-allow-split .report-pdf-grupo-cabecera.report-cabecera-force-break-before,
+.pdf-gpb-keep-together-if-fits-auto-order .report-pdf-grupo-prueba.report-pdf-grupo-prueba-allow-split .report-pdf-grupo-cabecera.report-cabecera-force-break-before {
+    page-break-before: always;
+    break-before: page;
+}
 .pdf-gpb-keep-together-if-fits .report-pdf-grupo-prueba.report-pdf-grupo-prueba-keep-on-page,
 .pdf-gpb-keep-together-if-fits-auto-order .report-pdf-grupo-prueba.report-pdf-grupo-prueba-keep-on-page {
     page-break-inside: avoid;

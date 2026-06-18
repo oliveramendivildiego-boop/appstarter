@@ -31,6 +31,10 @@ $showInterpretacionCol = $variant === 'screen_pdf'
 
 $subgruposPorPria = [];
 $ordenPriaKeys = [];
+$dompdfGpb = ($dompdf_gpb ?? null) instanceof \App\Services\ReportPdfDompdfGrupoPageBreakService
+    ? $dompdf_gpb
+    : null;
+$grupoHasFirma = ! empty($grupo_has_firma);
 foreach ($items as $raw) {
     $it = is_array($raw) ? (object) $raw : $raw;
     $pid = (int) ($it->prianacategoria_id ?? 0);
@@ -42,6 +46,7 @@ foreach ($items as $raw) {
 }
 
 foreach ($ordenPriaKeys as $subIdx => $priaKey) :
+    $isLastSubgrupo = ($subIdx === count($ordenPriaKeys) - 1);
     $subItems = $subgruposPorPria[$priaKey];
 
     $cultivoItem = null;
@@ -171,10 +176,34 @@ foreach ($ordenPriaKeys as $subIdx => $priaKey) :
     'grupo_es_primero'   => ! empty($grupo_es_primero),
 ]) ?>
 <?php endif; ?>
-<?php foreach ($segments as $seg): ?>
+<?php foreach ($segments as $segIdx => $seg): ?>
     <?php
     $titleObj = $seg['title'];
     $segItems = $seg['items'];
+    $hasMatrixAfter = $priaIdTitulo > 0 && ! empty($refsMatrixAll[$priaIdTitulo]);
+    $isLastBeforeFirma = $grupoHasFirma && $isLastSubgrupo
+        && ($segIdx === count($segments) - 1)
+        && ! $hasMatrixAfter;
+    $segmentWrapClass = '';
+    if ($dompdfGpb !== null && $variant === 'pdf') {
+        $visibleRows = 0;
+        foreach ($segItems as $itCount) {
+            $itCount = is_array($itCount) ? (object) $itCount : $itCount;
+            $valTmp = trim((string) ($itCount->regvalues ?? ''));
+            if (($valTmp !== '' && $valTmp !== '-') || ! empty($itCount->show_reference)) {
+                $visibleRows++;
+            }
+        }
+        $segAttrs = $dompdfGpb->segmentWrapAttrs(
+            $visibleRows,
+            $titleObj !== null,
+            $segIdx === 0,
+            $isLastBeforeFirma
+        );
+        if ($segAttrs['class'] !== '') {
+            $segmentWrapClass = ' ' . $segAttrs['class'];
+        }
+    }
     $conRefEnSeg = false;
     foreach ($segItems as $it) {
         $it = is_array($it) ? (object) $it : $it;
@@ -187,7 +216,7 @@ foreach ($ordenPriaKeys as $subIdx => $priaKey) :
     }
     $mostrarColInterpretacion = $showInterpretacionCol && $conRefEnSeg;
     $mainTableClass = $usePdfChrome ? 'results' : 'table mb-0';
-    $wrapOpen = ! $usePdfChrome ? '<div class="table-responsive mb-3">' : '<div class="report-segment-table-wrap"' . $segmentWrapStyleAttr . '>';
+    $wrapOpen = ! $usePdfChrome ? '<div class="table-responsive mb-3">' : '<div class="report-segment-table-wrap' . $segmentWrapClass . '"' . $segmentWrapStyleAttr . '>';
     $wrapClose = '</div>';
     $tieneConResultado = false;
     foreach ($segItems as $itChk) {
@@ -307,8 +336,21 @@ if ($priaIdTitulo > 0 && ! empty($refsMatrixAll[$priaIdTitulo])) :
             break;
         }
     }
-    $matrixWrapOpen = ! $usePdfChrome ? '<div class="table-responsive mb-3">' : '<div class="report-segment-table-wrap report-refs-matrix-wrap"' . $segmentWrapStyleAttr . '>';
+    $matrixWrapClass = '';
     $matrixTableClass = $usePdfChrome ? 'results report-refs-matrix' : 'table table-sm table-bordered mb-0';
+    if ($dompdfGpb !== null && $variant === 'pdf') {
+        $matrixRowCount = count($matrixRows);
+        $matrixAttrs = $dompdfGpb->segmentWrapAttrs(
+            $matrixRowCount,
+            true,
+            false,
+            $grupoHasFirma && $isLastSubgrupo
+        );
+        if ($matrixAttrs['class'] !== '') {
+            $matrixWrapClass = ' ' . $matrixAttrs['class'];
+        }
+    }
+    $matrixWrapOpen = ! $usePdfChrome ? '<div class="table-responsive mb-3">' : '<div class="report-segment-table-wrap report-refs-matrix-wrap' . $matrixWrapClass . '"' . $segmentWrapStyleAttr . '>';
     ?>
 <?= $matrixWrapOpen ?>
     <?php if ($usePdfChrome): ?>
