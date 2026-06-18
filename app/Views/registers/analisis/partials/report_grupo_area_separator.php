@@ -27,5 +27,13 @@ if ($titulo === '') {
 }
 
 $wrapStyle = \App\Services\ReportPdfLayoutService::grupoAreaSeparatorMarginStyleAttr($pdfLayout, (string) $variant);
+$separatorClass = 'report-segment-title pdf-card-header report-pdf-grupo-area-separator';
+if (! empty($grupo_inicia_nueva_pagina) && $variant === 'pdf') {
+    $separatorClass .= ' report-pdf-grupo-area-new-page';
+    $wrapStyle = \App\Services\ReportPdfLayoutService::mergePdfInlineStyleAttrs(
+        $wrapStyle,
+        'page-break-before:always;break-before:page;'
+    );
+}
 ?>
-<div class="report-segment-title pdf-card-header report-pdf-grupo-area-separator"<?= $wrapStyle !== '' ? ' style="' . esc($wrapStyle, 'attr') . '"' : '' ?>><?= esc($titulo) ?></div>
+<div class="<?= esc($separatorClass, 'attr') ?>"<?= $wrapStyle !== '' ? ' style="' . esc($wrapStyle, 'attr') . '"' : '' ?>><?= esc($titulo) ?></div>

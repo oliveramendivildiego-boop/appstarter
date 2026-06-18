@@ -297,6 +297,8 @@
     function preparePrintLayout() {
         console.log('POST_PROCESO', 'preparePrintLayout');
         syncReportPrintLayoutMetrics();
+        ensureBrowserPrintFooter();
+        syncReportPrintLayoutMetrics();
         if (typeof window.applyReportPdfGrupoPageBreaks === 'function') {
             window.applyReportPdfGrupoPageBreaks();
         }
@@ -304,11 +306,12 @@
         if (typeof window.injectOrderSheetHeadersFromPageTwo === 'function') {
             orderSheetInjected = window.injectOrderSheetHeadersFromPageTwo() === true;
         }
-        if (orderSheetInjected && typeof window.applyReportPdfGrupoPageBreaks === 'function') {
-            window.applyReportPdfGrupoPageBreaks();
+        if (orderSheetInjected) {
+            syncReportPrintLayoutMetrics();
+            if (typeof window.applyReportPdfGrupoPageBreaks === 'function') {
+                window.applyReportPdfGrupoPageBreaks();
+            }
         }
-        ensureBrowserPrintFooter();
-        syncReportPrintLayoutMetrics();
         applyBrowserTotalPages();
         var footerHint = document.getElementById('report-print-footer-reserve-hint');
         if (footerHint && footerEnabled && typeof window.measureReportPrintFooterReserveMm === 'function') {

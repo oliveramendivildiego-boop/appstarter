@@ -29,9 +29,28 @@ $footerWrapperStyle = ! empty($footer_dompdf_fixed)
     ? \App\Services\ReportPdfLayoutService::footerDompdfFixedStyleAttr($layout)
     : '';
 
+$orderSheetBandHtml = '';
+if (! empty($footer_dompdf_fixed)
+    && \App\Services\ReportPdfLayoutService::isOrderSheetHeaderEnabledForLayout($layout)) {
+    $mm = is_array($layout['margins_mm'] ?? null)
+        ? $layout['margins_mm']
+        : \App\Services\ReportPdfLayoutService::defaultMarginsMmStatic();
+    $lines = \App\Services\ReportPdfLayoutService::buildOrderSheetHeaderDisplayLines(
+        is_object($paciente ?? null) ? $paciente : null,
+        is_object($register_info ?? null) ? $register_info : null
+    );
+    $orderSheetBandHtml = view('registers/partials/report_order_sheet_header_band', [
+        'patient_line'    => $lines['patient'],
+        'order_line'      => $lines['order'],
+        'margin_left_mm'  => (float) ($mm['left'] ?? 15),
+        'margin_right_mm' => (float) ($mm['right'] ?? 15),
+    ]);
+}
+
 echo view('registers/pdf/section_layout_grid', [
     'section_wrapper_class' => 'footer footer-grid pdf-ft-block',
     'section_wrapper_style'   => $footerWrapperStyle,
+    'section_prepend_markup' => $orderSheetBandHtml,
     'n_columns'             => $n,
     'grid_items'            => $gridItems,
     'element_ctx'           => $elementCtx,

@@ -3,7 +3,7 @@ declare(strict_types=1);
 
 $av = $analisis_variant ?? 'pdf';
 if ($av === 'pdf') {
-    echo '<!-- pdf-results-build:2026-06-18-v5 -->';
+    echo '<!-- pdf-results-build:2026-06-18-v23 -->';
 }
 
 $layoutForLf = is_array($pdf_layout ?? null) ? $pdf_layout : [];
@@ -26,23 +26,61 @@ if ($showFirmaPerGroup) {
     }
 }
 
+$pdfPbService = in_array($av, ['pdf', 'screen_pdf'], true)
+    ? \App\Services\ReportPdfDompdfGrupoPageBreakService::create(
+        $layoutForLf,
+        \App\Services\ReportPdfLayoutService::estimatePdfHeaderBeforeResultsMm($layoutForLf)
+    )
+    : null;
+$usePdfPbService = $pdfPbService !== null && $pdfPbService->isActive();
+if ($usePdfPbService) {
+    $pdfPbService->setRefsConsolidada(
+        is_array($report_pria_refs_consolidada ?? null) ? $report_pria_refs_consolidada : []
+    );
+}
+
 $grupoPruebaIdx = 0;
-foreach ($grupos ?? [] as $padre => $items) {
+$gruposList = is_array($grupos ?? null) ? $grupos : [];
+$totalGrupos = count($gruposList);
+$reportForzarColRef = in_array($av, ['pdf', 'screen_pdf', 'browser_print'], true)
+    && \App\Services\ReportPdfLayoutService::reportGruposTienenRangoReferencial($gruposList);
+foreach ($gruposList as $padre => $items) {
     $isFirstGrupo = ($grupoPruebaIdx === 0);
+    $isLastGrupo  = ($grupoPruebaIdx >= $totalGrupos - 1);
     $padreKey = trim((string) $padre);
+    $itemsList = is_array($items) ? $items : [];
     $useInterPageBreak = ! $isFirstGrupo
         && \App\Services\ReportPdfLayoutService::shouldRenderGrupoInterPageBreak($layoutForLf, $isFirstGrupo)
         && empty($pb_diag_no_separators);
-    $pdfNewAreaTable = $av === 'pdf' && $useInterPageBreak;
+    $hasFirmaEnGrupo = $showFirmaPerGroup && $padreKey !== '' && isset($firmasPorPadre[$padreKey]);
 
-    if ($pdfNewAreaTable) {
-        echo \App\Services\ReportPdfLayoutService::grupoPruebaPdfAreaTableWrapOpenHtml();
+    $pbMeta = [
+        'classes'            => '',
+        'grupo_style'        => '',
+        'separator_new_page' => $av === 'pdf' && $useInterPageBreak,
+        'apply_compact'      => false,
+    ];
+    if ($usePdfPbService) {
+        $pbMeta = array_merge($pbMeta, $pdfPbService->beginGrupo($isFirstGrupo, $itemsList, $hasFirmaEnGrupo));
     }
 
     $grupoClass = 'report-pdf-grupo-prueba';
     if ($isFirstGrupo) {
         $grupoClass .= ' report-pdf-grupo-prueba-first';
     }
+    if ($pbMeta['classes'] !== '') {
+        $grupoClass .= ' ' . $pbMeta['classes'];
+    }
+
+    $applyCompactPdf = ! empty($pbMeta['apply_compact']);
+    $compactAttrs = \App\Services\ReportPdfLayoutService::grupoPruebaCompactPdfAttrs(
+        $layoutForLf,
+        $applyCompactPdf
+    );
+    if ($compactAttrs['class'] !== '') {
+        $grupoClass .= ' ' . $compactAttrs['class'];
+    }
+
     $grupoExtraStyle = '';
     if ($useInterPageBreak && $av !== 'pdf') {
         $grupoClass .= ' report-pdf-grupo-prueba-new-page-start';
@@ -54,14 +92,15 @@ foreach ($grupos ?? [] as $padre => $items) {
         $grupoClass .= ' report-pdf-grupo-browser-print-area';
     }
     $grupoStyle = \App\Services\ReportPdfLayoutService::mergePdfInlineStyleAttrs(
-        \App\Services\ReportPdfLayoutService::grupoPruebaGrupoIntactStyleAttr($layoutForLf, $isFirstGrupo),
         ($av === 'pdf' && ! $isFirstGrupo && $useInterPageBreak)
             ? ''
             : \App\Services\ReportPdfLayoutService::grupoPruebaGapMarginStyleAttr($layoutForLf, $isFirstGrupo),
         \App\Services\ReportPdfLayoutService::grupoPruebaBrowserPrintAreaStyleAttr($layoutForLf, $isFirstGrupo, $av),
+        $pbMeta['grupo_style'] ?? '',
+        $compactAttrs['style'] ?? '',
         $grupoExtraStyle
     );
-    if (! $useBrowserPrintAreaStart && \App\Services\ReportPdfLayoutService::shouldRenderGrupoAreaPageLeader($layoutForLf, $isFirstGrupo)) {
+    if (! $useBrowserPrintAreaStart && $av !== 'pdf' && \App\Services\ReportPdfLayoutService::shouldRenderGrupoAreaPageLeader($layoutForLf, $isFirstGrupo)) {
         $leaderStyle = \App\Services\ReportPdfLayoutService::grupoAreaPageLeaderStyleAttr($layoutForLf, $isFirstGrupo);
         echo '<div class="report-pdf-grupo-area-page-leader" aria-hidden="true"'
             . ($leaderStyle !== '' ? ' style="' . esc($leaderStyle, 'attr') . '"' : '')
@@ -70,7 +109,12 @@ foreach ($grupos ?? [] as $padre => $items) {
     if ($av === 'browser_print' && $useInterPageBreak) {
         echo '<div class="report-grupo-inter-page-break report-grupo-inter-page-break-server" aria-hidden="true"></div>';
     }
-    echo '<div class="' . esc($grupoClass, 'attr') . '"'
+    if ($av === 'pdf' && $useInterPageBreak) {
+        echo '<div class="report-grupo-inter-page-break report-grupo-inter-page-break-server report-grupo-inter-page-break-pdf" aria-hidden="true" style="'
+            . esc(\App\Services\ReportPdfLayoutService::grupoInterPageBreakStyleAttr(), 'attr')
+            . '"></div>';
+    }
+    echo '<div class="' . esc(trim($grupoClass), 'attr') . '"'
         . ($grupoStyle !== '' ? ' style="' . esc($grupoStyle, 'attr') . '"' : '')
         . '>';
     if ($useBrowserPrintAreaStart) {
@@ -84,6 +128,7 @@ foreach ($grupos ?? [] as $padre => $items) {
             'pdf_layout'       => $layoutForLf,
             'grupo_es_primero' => $isFirstGrupo,
             'variant'          => $av,
+            'grupo_inicia_nueva_pagina' => false,
         ]);
     }
     echo view('registers/analisis/partials/compleja_tabla_reporte_grupo', [
@@ -96,9 +141,10 @@ foreach ($grupos ?? [] as $padre => $items) {
         'report_pria_tipo_muestra_nombre' => $report_pria_tipo_muestra_nombre ?? [],
         'report_pria_metodo_nombre'       => $report_pria_metodo_nombre ?? [],
         'report_pria_refs_consolidada'    => $report_pria_refs_consolidada ?? [],
+        'pdf_grupo_pb_service'            => $usePdfPbService ? $pdfPbService : null,
+        'report_forzar_col_ref'           => $reportForzarColRef,
     ]);
-    $padreKey = trim((string) $padre);
-    if ($showFirmaPerGroup && $padreKey !== '' && isset($firmasPorPadre[$padreKey])) {
+    if ($hasFirmaEnGrupo) {
         echo view('registers/partials/report_lab_firma_grupo_inline', [
             'firma'             => $firmasPorPadre[$padreKey],
             'area_label'        => $padreKey,
@@ -109,8 +155,5 @@ foreach ($grupos ?? [] as $padre => $items) {
         ]);
     }
     echo '</div>';
-    if ($pdfNewAreaTable) {
-        echo \App\Services\ReportPdfLayoutService::grupoPruebaPdfAreaTableWrapCloseHtml();
-    }
     $grupoPruebaIdx++;
 }

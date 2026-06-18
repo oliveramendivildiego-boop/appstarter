@@ -1,7 +1,7 @@
 <?php
 /**
- * Cabecera por hoja (desde la 2.ª): Paciente izquierda, No. Orden derecha.
- * PDF: metadatos + page_script (PdfService). Impresión: fila extra dentro del pie fijo.
+ * Cabecera por hoja: Paciente izquierda, No. Orden derecha (banda en pie fijo).
+ * Impresión: plantilla JS. PDF: HTML dentro del pie (footer.php).
  *
  * @var array<string,mixed> $pdf_layout
  * @var object|null         $paciente
@@ -11,56 +11,21 @@
 
 declare(strict_types=1);
 
-helper('registro');
-
 $pl = is_array($pdf_layout ?? null) ? $pdf_layout : [];
 if (! \App\Services\ReportPdfLayoutService::isOrderSheetHeaderEnabledForLayout($pl)) {
     return;
 }
 
-$pacienteNombre = '';
-if (is_object($paciente ?? null)) {
-    $pacienteNombre = trim(
-        ($paciente->first_name ?? '') . ' '
-        . ($paciente->last_name_fa ?? '') . ' '
-        . ($paciente->last_name_mom ?? '')
-    );
-}
-if ($pacienteNombre === '' && is_object($register_info ?? null)) {
-    $pacienteNombre = trim(
-        ($register_info->first_name ?? '') . ' '
-        . ($register_info->last_name_fa ?? '') . ' '
-        . ($register_info->last_name_mom ?? '')
-    );
-}
-if ($pacienteNombre === '') {
-    $pacienteNombre = '—';
-}
-
-$numeroOrden = registro_orden_display($register_info ?? null);
-if ($numeroOrden === '') {
-    $numeroOrden = '—';
-}
-
-$patientLine = 'Paciente: ' . $pacienteNombre;
-$orderLine   = 'No. Orden: ' . $numeroOrden;
-$variant     = (string) ($analisis_variant ?? 'pdf');
-$mm          = is_array($pl['margins_mm'] ?? null)
-    ? $pl['margins_mm']
-    : \App\Services\ReportPdfLayoutService::defaultMarginsMmStatic();
-$marginBottomMm = (float) ($mm['bottom'] ?? 15);
-$marginLeftMm   = (float) ($mm['left'] ?? 15);
-$marginRightMm  = (float) ($mm['right'] ?? 15);
-$pdfFooterEnabled = \App\Services\ReportPdfLayoutService::isPdfFooterBlockEnabledForLayout($pl);
-$footerReserveMm = $pdfFooterEnabled
-    ? \App\Services\ReportPdfLayoutService::estimatePdfFooterReserveMm($pl)
-    : 0.0;
-$gapAboveFooterMm = \App\Services\ReportPdfLayoutService::ORDER_SHEET_HEADER_GAP_ABOVE_FOOTER_MM;
+$lines   = \App\Services\ReportPdfLayoutService::buildOrderSheetHeaderDisplayLines(
+    is_object($paciente ?? null) ? $paciente : null,
+    is_object($register_info ?? null) ? $register_info : null
+);
+$variant = (string) ($analisis_variant ?? 'pdf');
 
 if ($variant === 'browser_print'): ?>
 <div id="pdf-order-sheet-header-template" class="pdf-order-sheet-header-template" hidden
-     data-patient-line="<?= esc($patientLine, 'attr') ?>"
-     data-order-line="<?= esc($orderLine, 'attr') ?>"></div>
+     data-patient-line="<?= esc($lines['patient'], 'attr') ?>"
+     data-order-line="<?= esc($lines['order'], 'attr') ?>"></div>
 <?php
     return;
 endif;
@@ -69,16 +34,4 @@ if ($variant !== 'pdf') {
     return;
 }
 
-$headerPayload = base64_encode((string) json_encode([
-    'patient'             => $patientLine,
-    'order'               => $orderLine,
-    'margin_bottom_mm'    => $marginBottomMm,
-    'margin_left_mm'      => $marginLeftMm,
-    'margin_right_mm'     => $marginRightMm,
-    'footer_enabled'      => $pdfFooterEnabled,
-    'footer_reserve_mm'   => $footerReserveMm,
-    'gap_above_footer_mm' => $gapAboveFooterMm,
-], JSON_UNESCAPED_UNICODE));
-?>
-<!-- pdf-order-sheet-header-dompdf -->
-<!-- pdf-order-sheet-header-data:<?= $headerPayload ?> -->
+// PDF: la banda visible se renderiza dentro de footer.php (pie fijo Dompdf).

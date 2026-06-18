@@ -492,13 +492,21 @@ body.js-total-pages-ready .pdf-counter-pages::before {
         break-inside: avoid-page !important;
         page-break-inside: avoid !important;
     }
+    body.report-browser-print.pdf-gpb-keep-together-if-fits .report-pdf-subgrupo-block.report-subgrupo-keep-intact.report-subgrupo-force-break-before + .report-lab-firma-grupo-inline,
+    body.report-browser-print.pdf-gpb-keep-together-if-fits-auto-order .report-pdf-subgrupo-block.report-subgrupo-keep-intact.report-subgrupo-force-break-before + .report-lab-firma-grupo-inline,
+    body.report-browser-print.pdf-gpb-keep-together-if-fits .report-pdf-subgrupo-block.report-subgrupo-keep-intact.report-subgrupo-force-break-before + .lab-firmas-pdf-block-inline.report-lab-firma-grupo-inline,
+    body.report-browser-print.pdf-gpb-keep-together-if-fits-auto-order .report-pdf-subgrupo-block.report-subgrupo-keep-intact.report-subgrupo-force-break-before + .lab-firmas-pdf-block-inline.report-lab-firma-grupo-inline {
+        break-before: avoid-page !important;
+        page-break-before: avoid !important;
+    }
     body.report-browser-print .lab-firmas-pdf-block .lab-firmas-title-grid,
     body.report-browser-print .lab-firmas-pdf-block .lab-firmas-body-grid,
     body.report-browser-print .lab-firmas-pdf-block .pdf-section-table {
         break-inside: avoid !important;
         page-break-inside: avoid !important;
     }
-    body.report-browser-print .report-lab-firma-page-leader {
+    body.report-browser-print .report-lab-firma-page-leader,
+    body.report-browser-print .report-analysis-firma-page-leader {
         display: block !important;
         break-before: page !important;
         page-break-before: always !important;

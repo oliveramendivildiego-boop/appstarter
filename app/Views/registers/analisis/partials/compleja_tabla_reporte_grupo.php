@@ -10,11 +10,16 @@
  * @var array<int,string> $report_pria_tipo_muestra_nombre prianacategoria_id => nombre (config. en análisis clínico)
  * @var array<int,string> $report_pria_metodo_nombre prianacategoria_id => nombre del método (config.)
  * @var array<int,list<array<string,mixed>>> $report_pria_refs_consolidada tabla consolidada de refs. por población (pruebas compuestas)
+ * @var bool $report_forzar_col_ref Si el reporte tiene refs., alinear 3 columnas en todas las tablas PDF
  */
 $variant = $variant ?? 'web';
 $usePdfChrome = in_array($variant, ['pdf', 'screen_pdf', 'browser_print'], true);
+$reportForzarColRef = ! empty($report_forzar_col_ref) && $usePdfChrome;
+$pdfGrupoPbService = (in_array($variant, ['pdf', 'screen_pdf'], true) && ($pdf_grupo_pb_service ?? null) instanceof \App\Services\ReportPdfDompdfGrupoPageBreakService)
+    ? $pdf_grupo_pb_service
+    : null;
 $segmentWrapStyle = '';
-if ($usePdfChrome && $variant !== 'pdf') {
+if ($usePdfChrome && $variant === 'browser_print') {
     $segmentWrapStyle = \App\Services\ReportPdfLayoutService::grupoPruebaSegmentIntactStyleAttr(
         is_array($pdf_layout ?? null) ? $pdf_layout : []
     );
@@ -120,13 +125,22 @@ foreach ($ordenPriaKeys as $subIdx => $priaKey) :
     }));
 
     $groupTieneAlgunResultado = false;
+    $subgrupoTotalFilas = 0;
     foreach ($segments as $segTmp) {
         foreach ($segTmp['items'] as $rawIt) {
             $itTmp = is_array($rawIt) ? (object) $rawIt : $rawIt;
             $vTmp = trim((string) ($itTmp->regvalues ?? ''));
             if (($vTmp !== '' && $vTmp !== '-') || ! empty($itTmp->show_reference)) {
                 $groupTieneAlgunResultado = true;
-                break 2;
+                $subgrupoTotalFilas++;
+            }
+        }
+    }
+    if ($priaIdTitulo > 0 && ! empty($refsMatrixAll[$priaIdTitulo])) {
+        foreach ($refsMatrixAll[$priaIdTitulo] as $mrowTmp) {
+            $mrowTmp = is_array($mrowTmp) ? $mrowTmp : [];
+            if (registro_tiene_rango_referencial($mrowTmp['valor_min'] ?? '', $mrowTmp['valor_max'] ?? '')) {
+                $subgrupoTotalFilas++;
             }
         }
     }
@@ -134,6 +148,10 @@ foreach ($ordenPriaKeys as $subIdx => $priaKey) :
     if (! $groupTieneAlgunResultado) {
         continue;
     }
+
+    $subgrupoKeepIntact = $usePdfChrome
+        && $subgrupoTotalFilas > 0
+        && $subgrupoTotalFilas <= \App\Services\ReportPdfLayoutService::subgrupoKeepIntactMaxRows();
 
     $subgrupoWrapClass = $subIdx > 0 ? ' report-pdf-subgrupo-prueba' : '';
     $webTitleMt = $subIdx > 0 ? 'mt-5' : 'mt-4';
@@ -143,10 +161,18 @@ foreach ($ordenPriaKeys as $subIdx => $priaKey) :
             true
         )
         : '';
+    $subgrupoPbPeek = $pdfGrupoPbService ? $pdfGrupoPbService->peekNextPlacementAttrs() : ['segment_class' => '', 'cabecera_class' => '', 'subgrupo_class' => ''];
+    $subgrupoPbClass = trim(
+        'report-pdf-subgrupo-block'
+        . $subgrupoWrapClass
+        . ($subgrupoKeepIntact ? ' report-subgrupo-keep-intact' : '')
+        . ($subgrupoPbPeek['subgrupo_class'] !== '' ? ' ' . $subgrupoPbPeek['subgrupo_class'] : '')
+    );
+    $cabeceraPbClass = trim('report-pdf-grupo-cabecera' . ($subgrupoPbPeek['cabecera_class'] !== '' ? ' ' . $subgrupoPbPeek['cabecera_class'] : ''));
 ?>
 <?php if ($usePdfChrome): ?>
-<div class="report-pdf-subgrupo-block<?= esc($subgrupoWrapClass, 'attr') ?>"<?= $subgrupoGapStyle !== '' ? ' style="' . esc($subgrupoGapStyle, 'attr') . '"' : '' ?>>
-<div class="report-pdf-grupo-cabecera">
+<div class="<?= esc($subgrupoPbClass, 'attr') ?>"<?= $subgrupoGapStyle !== '' ? ' style="' . esc($subgrupoGapStyle, 'attr') . '"' : '' ?>>
+<div class="<?= esc($cabeceraPbClass, 'attr') ?>">
 <?= view('registers/analisis/partials/report_grupo_cabecera_content', [
     'padre'              => $padre,
     'hijo'               => $hijo,
@@ -178,6 +204,10 @@ foreach ($ordenPriaKeys as $subIdx => $priaKey) :
     $segItems = $seg['items'];
     $hasMatrixAfter = $priaIdTitulo > 0 && ! empty($refsMatrixAll[$priaIdTitulo]);
     $segmentWrapClass = '';
+    if ($pdfGrupoPbService) {
+        $segmentPb = $pdfGrupoPbService->consumePlacementAttrs();
+        $segmentWrapClass = trim($segmentPb['segment_class']);
+    }
     $conRefEnSeg = false;
     foreach ($segItems as $it) {
         $it = is_array($it) ? (object) $it : $it;
@@ -189,8 +219,22 @@ foreach ($ordenPriaKeys as $subIdx => $priaKey) :
         }
     }
     $mostrarColInterpretacion = $showInterpretacionCol && $conRefEnSeg;
-    $mainTableClass = $usePdfChrome ? 'results' : 'table mb-0';
-    $wrapOpen = ! $usePdfChrome ? '<div class="table-responsive mb-3">' : '<div class="report-segment-table-wrap' . $segmentWrapClass . '"' . $segmentWrapStyleAttr . '>';
+    $mostrarColRef = $conRefEnSeg || $reportForzarColRef;
+    $resultsColCount = 2 + ($mostrarColRef ? 1 : 0) + ($mostrarColInterpretacion ? 1 : 0);
+    $resultsColClass = $usePdfChrome && $resultsColCount >= 3
+        ? ' results-cols-' . $resultsColCount
+        : '';
+    $mainTableClass = ($usePdfChrome ? 'results' : 'table mb-0') . $resultsColClass;
+    $resultsTableLayoutAttrs = ($usePdfChrome && $resultsColCount >= 3)
+        ? \App\Services\ReportPdfLayoutService::resultsTableFixedLayoutAttrs($resultsColCount)
+        : '';
+    $resultsColgroupHtml = ($usePdfChrome && $resultsColCount >= 3)
+        ? \App\Services\ReportPdfLayoutService::resultsTableColgroupHtml($resultsColCount)
+        : '';
+    $thWidth = static function (int $colIdx) use ($usePdfChrome, $resultsColCount): string {
+        return \App\Services\ReportPdfLayoutService::resultsTableThWidthStyleAttr($colIdx, $resultsColCount, $usePdfChrome);
+    };
+    $wrapOpen = ! $usePdfChrome ? '<div class="table-responsive mb-3">' : '<div class="report-segment-table-wrap' . ($segmentWrapClass !== '' ? ' ' . esc($segmentWrapClass, 'attr') : '') . '"' . $segmentWrapStyleAttr . '>';
     $wrapClose = '</div>';
     $tieneConResultado = false;
     foreach ($segItems as $itChk) {
@@ -211,17 +255,18 @@ foreach ($ordenPriaKeys as $subIdx => $priaKey) :
             <div class="report-segment-title-web px-2 py-2 mb-2 bg-secondary bg-opacity-10 border-start border-4 border-secondary rounded-end fw-semibold text-uppercase small"><?= esc($titleObj->nombre ?? '') ?></div>
             <?php endif; ?>
         <?php endif; ?>
-        <table class="<?= esc($mainTableClass) ?>">
+        <table class="<?= esc($mainTableClass) ?>"<?= $resultsTableLayoutAttrs ?>>
+            <?= $resultsColgroupHtml ?>
             <?php if (! $ocultarTheadResults): ?>
             <thead<?= $usePdfChrome ? '' : ' class="thead-dark"' ?>>
                 <tr>
-                    <th>ANÁLISIS</th>
-                    <th class="text-center">RESULTADO</th>
-                    <?php if ($conRefEnSeg): ?>
-                    <th class="text-center">RANGO REFERENCIAL</th>
+                    <th<?= $thWidth(0) ?>>ANÁLISIS</th>
+                    <th class="text-center"<?= $thWidth(1) ?>>RESULTADO</th>
+                    <?php if ($mostrarColRef): ?>
+                    <th class="text-center"<?= $thWidth(2) ?>>RANGO REFERENCIAL</th>
                     <?php endif; ?>
                     <?php if ($mostrarColInterpretacion): ?>
-                    <th class="text-center">INTERPRETACIÓN</th>
+                    <th class="text-center"<?= $thWidth($mostrarColRef ? 3 : 2) ?>>INTERPRETACIÓN</th>
                     <?php endif; ?>
                 </tr>
             </thead>
@@ -280,13 +325,11 @@ foreach ($ordenPriaKeys as $subIdx => $priaKey) :
                     <?php if (is_object($item)): ?>
                         <tr>
                             <td><?= esc($item->nombre ?? '') ?></td>
-                            <?php if (! $conRefEnSeg): ?>
+                            <?php if (! $mostrarColRef): ?>
                             <td class="text-center<?= $celdaRicoClass ?> <?= $class ?><?= $usePdfChrome && $isOutPdf ? ' out-range' : '' ?>"><?= $resMostrarHtml ?></td>
-                            <?php elseif ($itemConRef): ?>
-                            <td class="text-center<?= $celdaRicoClass ?> <?= $class ?><?= $usePdfChrome && $isOutPdf ? ' out-range' : '' ?>"><?= $resMostrarHtml ?></td>
-                            <td class="text-center<?= $usePdfChrome ? ' ref-range' : '' ?>"><?= $refMostrar ?></td>
                             <?php else: ?>
-                            <td class="text-center<?= $celdaRicoClass ?> <?= $class ?><?= $usePdfChrome && $isOutPdf ? ' out-range' : '' ?>" colspan="2"><?= $resMostrarHtml ?></td>
+                            <td class="text-center<?= $celdaRicoClass ?> <?= $class ?><?= $usePdfChrome && $isOutPdf ? ' out-range' : '' ?>"><?= $resMostrarHtml ?></td>
+                            <td class="text-center<?= $usePdfChrome ? ' ref-range' : '' ?>"><?= $itemConRef ? $refMostrar : '' ?></td>
                             <?php endif; ?>
                             <?php if ($mostrarColInterpretacion): ?>
                             <td class="text-center<?= $interpretacionRef !== null ? ' ' . esc(registro_interpretacion_referencial_clase_resultado($interpretacionRef), 'attr') : '' ?>"><?= $interpretacionRef !== null ? esc($interpretacionRef['label']) : '' ?></td>
@@ -311,8 +354,12 @@ if ($priaIdTitulo > 0 && ! empty($refsMatrixAll[$priaIdTitulo])) :
         }
     }
     $matrixWrapClass = '';
+    if ($pdfGrupoPbService) {
+        $matrixPb = $pdfGrupoPbService->consumePlacementAttrs();
+        $matrixWrapClass = trim($matrixPb['segment_class']);
+    }
     $matrixTableClass = $usePdfChrome ? 'results report-refs-matrix' : 'table table-sm table-bordered mb-0';
-    $matrixWrapOpen = ! $usePdfChrome ? '<div class="table-responsive mb-3">' : '<div class="report-segment-table-wrap report-refs-matrix-wrap' . $matrixWrapClass . '"' . $segmentWrapStyleAttr . '>';
+    $matrixWrapOpen = ! $usePdfChrome ? '<div class="table-responsive mb-3">' : '<div class="report-segment-table-wrap report-refs-matrix-wrap' . ($matrixWrapClass !== '' ? ' ' . esc($matrixWrapClass, 'attr') : '') . '"' . $segmentWrapStyleAttr . '>';
     ?>
 <?= $matrixWrapOpen ?>
     <?php if ($usePdfChrome): ?>

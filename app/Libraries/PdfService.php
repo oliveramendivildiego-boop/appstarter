@@ -14,8 +14,6 @@ class PdfService
 {
     private const TOTAL_PAGES_TOKEN = '__PDF_TOTAL_PAGES__';
 
-    private const ORDER_SHEET_HEADER_MARKER = 'pdf-order-sheet-header-dompdf';
-
     private const WATERMARK_MARKER = 'pdf-watermark-dompdf';
 
     protected function makeDompdf(Options $options): Dompdf
@@ -27,39 +25,17 @@ class PdfService
     }
 
     /**
-     * @param array<string, mixed>|null $orderSheetHeaderData
      * @param array<string, mixed>|null $watermarkData
      */
     protected function renderHtmlToDompdf(
         Dompdf $dompdf,
         string $html,
-        ?array $orderSheetHeaderData = null,
         ?array $watermarkData = null
     ): void {
-        $this->registerDompdfCallbacks($dompdf, $orderSheetHeaderData, $watermarkData);
+        $this->registerDompdfCallbacks($dompdf, $watermarkData);
 
         $dompdf->loadHtml($html, 'UTF-8');
         $dompdf->render();
-    }
-
-    /**
-     * @return array<string, mixed>|null
-     */
-    protected function extractOrderSheetHeaderData(string $html): ?array
-    {
-        if (strpos($html, self::ORDER_SHEET_HEADER_MARKER) === false) {
-            return null;
-        }
-        if (! preg_match('/<!--\s*pdf-order-sheet-header-data:([A-Za-z0-9+\/=_-]+)\s*-->/', $html, $matches)) {
-            return null;
-        }
-        $json = base64_decode($matches[1], true);
-        if ($json === false) {
-            return null;
-        }
-        $data = json_decode($json, true);
-
-        return is_array($data) ? $data : null;
     }
 
     /**
@@ -147,12 +123,10 @@ class PdfService
     }
 
     /**
-     * @param array<string, mixed>|null $orderSheetHeaderData
      * @param array<string, mixed>|null $watermarkData
      */
     protected function registerDompdfCallbacks(
         Dompdf $dompdf,
-        ?array $orderSheetHeaderData,
         ?array $watermarkData
     ): void {
         $callbacks = [];
@@ -200,67 +174,6 @@ class PdfService
             }
         }
 
-        if (is_array($orderSheetHeaderData)) {
-            $patientLine = trim((string) ($orderSheetHeaderData['patient'] ?? ''));
-            $orderLine   = trim((string) ($orderSheetHeaderData['order'] ?? ''));
-            if ($patientLine !== '' || $orderLine !== '') {
-                $marginBottomMm   = (float) ($orderSheetHeaderData['margin_bottom_mm'] ?? 15);
-                $marginLeftMm     = (float) ($orderSheetHeaderData['margin_left_mm'] ?? 15);
-                $marginRightMm    = (float) ($orderSheetHeaderData['margin_right_mm'] ?? 15);
-                $footerReserveMm  = ! empty($orderSheetHeaderData['footer_enabled'])
-                    ? (float) ($orderSheetHeaderData['footer_reserve_mm'] ?? 22)
-                    : 0.0;
-                $gapAboveFooterMm = (float) ($orderSheetHeaderData['gap_above_footer_mm'] ?? 1.5);
-                $mmToPt           = 72 / 25.4;
-
-                $callbacks[] = [
-                    'event' => 'end_document',
-                    'f'     => static function (
-                        int $pageNumber,
-                        int $pageCount,
-                        $pdf,
-                        FontMetrics $fontMetrics
-                    ) use (
-                        $patientLine,
-                        $orderLine,
-                        $marginBottomMm,
-                        $marginLeftMm,
-                        $marginRightMm,
-                        $footerReserveMm,
-                        $gapAboveFooterMm,
-                        $mmToPt
-                    ): void {
-                        unset($pageCount);
-                        if ($pageNumber <= 1) {
-                            return;
-                        }
-
-                        try {
-                            $font = $fontMetrics->getFont('DejaVu Sans', 'bold');
-                        } catch (\Throwable $e) {
-                            $font = $fontMetrics->getFont('DejaVu Sans', 'normal');
-                        }
-
-                        $size  = 9.0;
-                        $color = [0.15, 0.15, 0.15];
-                        $offsetFromBottomMm = $marginBottomMm + $footerReserveMm + $gapAboveFooterMm;
-                        $y                  = $pdf->get_height() - ($offsetFromBottomMm * $mmToPt);
-                        $xLeft              = $marginLeftMm * $mmToPt;
-                        $xPad               = $marginRightMm * $mmToPt;
-
-                        if ($patientLine !== '') {
-                            $pdf->text($xLeft, $y, $patientLine, $font, $size, $color);
-                        }
-                        if ($orderLine !== '') {
-                            $orderWidth = $fontMetrics->getTextWidth($orderLine, $font, $size);
-                            $xOrder     = $pdf->get_width() - $xPad - $orderWidth;
-                            $pdf->text($xOrder, $y, $orderLine, $font, $size, $color);
-                        }
-                    },
-                ];
-            }
-        }
-
         if ($callbacks !== []) {
             $dompdf->setCallbacks($callbacks);
         }
@@ -296,23 +209,21 @@ class PdfService
     {
         unset($filename);
 
-        $orderSheetHeaderData = $this->extractOrderSheetHeaderData($html);
-        $watermarkData        = $this->extractWatermarkData($html);
+        $watermarkData = $this->extractWatermarkData($html);
 
         if (strpos($html, self::TOTAL_PAGES_TOKEN) !== false) {
             $probe = $this->makeDompdf($this->makeDompdfOptions(true));
-            $this->renderHtmlToDompdf($probe, $html, null, null);
+            $this->renderHtmlToDompdf($probe, $html, null);
             $pageCount = (int) $probe->getCanvas()->get_page_count();
             if ($pageCount < 1) {
                 $pageCount = 1;
             }
-            $html = str_replace(self::TOTAL_PAGES_TOKEN, (string) $pageCount, $html);
-            $orderSheetHeaderData = $this->extractOrderSheetHeaderData($html);
-            $watermarkData        = $this->extractWatermarkData($html);
+            $html          = str_replace(self::TOTAL_PAGES_TOKEN, (string) $pageCount, $html);
+            $watermarkData = $this->extractWatermarkData($html);
         }
 
         $dompdf = $this->makeDompdf($this->makeDompdfOptions(false));
-        $this->renderHtmlToDompdf($dompdf, $html, $orderSheetHeaderData, $watermarkData);
+        $this->renderHtmlToDompdf($dompdf, $html, $watermarkData);
 
         return $dompdf->output();
     }

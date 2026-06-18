@@ -283,6 +283,9 @@ $pdfEmptyTdStyle = static function (int $colIdx, float $pctUnit) use ($n, $colAl
 $sectionWrapperStyle = trim((string) ($section_wrapper_style ?? ''));
 echo $sectionWrapperStyle !== '' ? ' style="' . esc($sectionWrapperStyle, 'attr') . '"' : '';
 ?>>
+<?php if (trim((string) ($section_prepend_markup ?? '')) !== ''): ?>
+<?= $section_prepend_markup ?>
+<?php endif; ?>
 <?php foreach ($rows as $row): ?>
 <table class="pdf-section-table" width="100%" data-pdf-lh="1" style="table-layout:fixed;border-collapse:collapse;line-height:<?= esc((string) $lineHeight, 'attr') ?>;">
     <tr>

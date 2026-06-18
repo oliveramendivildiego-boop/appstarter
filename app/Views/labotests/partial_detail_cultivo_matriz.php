@@ -1326,6 +1326,38 @@ $parsePersonalizadoCelda = static function (array $celdaRaw): array {
     var bloquesSortable = null;
     var bloqueTemplates = {};
     var ordenTemplates = {};
+    var depthSyncTituloCelda = 0;
+
+    function celdaSummernoteInicializado(el) {
+        if (!el) return false;
+        if (typeof jQuery !== 'undefined' && jQuery.fn.summernote) {
+            if (jQuery(el).next('.note-editor').length) return true;
+        }
+        var next = el.nextElementSibling;
+        return !!(next && next.classList && next.classList.contains('note-editor'));
+    }
+
+    function celdaTextoFijoPanelRicoVisible(textoInp) {
+        if (!textoInp || !textoInp.classList.contains('cultivo-celda-texto-fijo-rico')) return false;
+        var wrap = textoInp.closest('.cultivo-celda-texto-fijo-wrap');
+        return !!(wrap && !wrap.classList.contains('d-none'));
+    }
+
+    function prepararDomParaCaptura(wrap) {
+        if (!wrap || !esPersonalizado) return;
+        if (typeof jQuery !== 'undefined' && document.activeElement) {
+            var ae = document.activeElement;
+            wrap.querySelectorAll('.cultivo-celda-texto-fijo').forEach(function(inp) {
+                if (!celdaSummernoteInicializado(inp)) return;
+                var note = jQuery(inp).next('.note-editor')[0];
+                if (note && note.contains(ae)) {
+                    ae.blur();
+                }
+            });
+        }
+        aplicarDropATextoFijoAntesCaptura(wrap);
+        syncTodosTextoFijoRicoEnWrap(wrap);
+    }
 
     function cacheBloqueTemplates() {
         form.querySelectorAll('#cultivo_bloques_list .cultivo-bloque-item').forEach(function(item) {
@@ -1744,7 +1776,7 @@ $parsePersonalizadoCelda = static function (array $celdaRaw): array {
     }
 
     function celdaTextoFijoUsaEditorRico(textoInp) {
-        return !!(textoInp && typeof jQuery !== 'undefined' && jQuery(textoInp).data('summernote'));
+        return celdaSummernoteInicializado(textoInp) || celdaTextoFijoPanelRicoVisible(textoInp);
     }
 
     function textoFijoTieneFormatoHtml(str) {
@@ -1759,14 +1791,18 @@ $parsePersonalizadoCelda = static function (array $celdaRaw): array {
         if (!textoInp) return false;
         var active = document.activeElement;
         if (active === textoInp) return true;
-        if (typeof jQuery !== 'undefined' && jQuery(textoInp).data('summernote')) {
-            var note = jQuery(textoInp).next('.note-editor')[0];
-            if (note && note.contains(active)) return true;
+        if (celdaSummernoteInicializado(textoInp)) {
+            var noteEl = (typeof jQuery !== 'undefined')
+                ? jQuery(textoInp).next('.note-editor')[0]
+                : textoInp.nextElementSibling;
+            if (noteEl && noteEl.contains(active)) return true;
         }
         return false;
     }
 
     function syncTituloDropACelda(secId, fila, col) {
+        depthSyncTituloCelda++;
+        try {
         var wrap = getWrap(secId);
         if (!wrap) return;
         var drop = wrap.querySelector('.cultivo-celda-titulo-drop[data-fila="' + fila + '"][data-columna="' + col + '"]');
@@ -1788,12 +1824,17 @@ $parsePersonalizadoCelda = static function (array $celdaRaw): array {
         var editingFijo = celdaTextoFijoTieneFoco(textoInp);
         var textoDrop = inp ? String(inp.value || '') : '';
         var textoFijo = leerTextoFijoCeldaDom(textoInp);
+        var ultimaFuente = leerUltimaFuenteTextoCelda(config);
         var texto;
-        if (esEnriquecido || usaEditorRico) {
-            texto = textoFijo;
-        } else if (editingDrop) {
+        if (editingDrop) {
             texto = textoDrop;
         } else if (editingFijo) {
+            texto = textoFijo;
+        } else if (ultimaFuente === 'drop' && textoDrop.trim() !== '') {
+            texto = textoDrop;
+        } else if (ultimaFuente === 'fijo') {
+            texto = textoFijo;
+        } else if (esEnriquecido || usaEditorRico) {
             texto = textoFijo;
         } else if (textoDrop.trim() !== '') {
             texto = textoDrop;
@@ -1819,18 +1860,33 @@ $parsePersonalizadoCelda = static function (array $celdaRaw): array {
             if (rolSel && rolSel.value === 'input') rolSel.value = 'titulo';
             if (textoInp) {
                 if (usaEditorRico) {
-                    if (!editingFijo) jQuery(textoInp).summernote('code', texto);
+                    if (!editingFijo && typeof jQuery !== 'undefined' && celdaSummernoteInicializado(textoInp)) {
+                        var codigoActual = jQuery(textoInp).summernote('code');
+                        var textoSync = texto;
+                        if (String(textoSync || '').trim() === '' && String(codigoActual || '').trim() !== '') {
+                            textoSync = codigoActual;
+                        }
+                        if (codigoActual !== textoSync) {
+                            jQuery(textoInp).summernote('code', textoSync);
+                        }
+                    }
                 } else if (!editingFijo) {
-                    textoInp.value = texto;
+                    var valorActual = textoInp.value || '';
+                    if (!(String(texto || '').trim() === '' && String(valorActual).trim() !== '')) {
+                        textoInp.value = texto;
+                    }
                 }
             }
-            if (inp && !editingDrop && !esEnriquecido && !usaEditorRico && editingFijo) {
+            if (inp && !editingDrop) {
                 inp.value = texto;
             }
         } else if (!esEnriquecido && rolSel && rolSel.value === 'input') {
             if (textoInp) textoInp.value = '';
         }
         actualizarVisibilidadPanelCelda(config);
+        } finally {
+            depthSyncTituloCelda = Math.max(0, depthSyncTituloCelda - 1);
+        }
     }
 
     function syncTodosTitulosCeldaEnSeccion(secId) {
@@ -1845,16 +1901,74 @@ $parsePersonalizadoCelda = static function (array $celdaRaw): array {
         });
     }
 
+    function marcarUltimaFuenteTextoCelda(configEl, fuente) {
+        if (!configEl) return;
+        configEl.setAttribute('data-texto-ultima-fuente', fuente === 'drop' ? 'drop' : 'fijo');
+    }
+
+    function leerUltimaFuenteTextoCelda(configEl) {
+        if (!configEl) return '';
+        return configEl.getAttribute('data-texto-ultima-fuente') || '';
+    }
+
+    function textoFijoWrapVisible(textoInp) {
+        if (!textoInp) return false;
+        var wrapTf = textoInp.closest('.cultivo-celda-texto-fijo-wrap');
+        return !!(wrapTf && !wrapTf.classList.contains('d-none'));
+    }
+
+    function resolverTextoFijoCeldaParaGuardar(textoFijoInp, textoDesdeDrop, fuenteVal, configEl) {
+        var textoDrop = String(textoDesdeDrop || '');
+        var textoFijoVal = String(leerTextoFijoCeldaDom(textoFijoInp) || '');
+        if (celdaTextoFijoTieneFoco(textoFijoInp)) {
+            return textoFijoVal;
+        }
+        var active = document.activeElement;
+        if (active && active.classList.contains('cultivo-titulo-input') && configEl && configEl.contains(active)) {
+            return textoDrop;
+        }
+        var ultimaFuente = leerUltimaFuenteTextoCelda(configEl);
+        if (ultimaFuente === 'drop') {
+            return textoDrop;
+        }
+        if (ultimaFuente === 'fijo') {
+            return textoFijoVal;
+        }
+        if (fuenteVal === 'enriquecido' || celdaTextoFijoUsaEditorRico(textoFijoInp)) {
+            return textoFijoVal;
+        }
+        if (textoDrop.trim() !== '') {
+            return textoDrop;
+        }
+        return textoFijoVal;
+    }
+
+    function aplicarDropATextoFijoAntesCaptura(wrap) {
+        if (!wrap) return;
+        wrap.querySelectorAll('.cultivo-celda-config').forEach(function(configEl) {
+            if (leerUltimaFuenteTextoCelda(configEl) !== 'drop') return;
+            var drop = configEl.querySelector('.cultivo-celda-titulo-drop');
+            var inp = drop ? drop.querySelector('.cultivo-titulo-input') : null;
+            var textoInp = configEl.querySelector('.cultivo-celda-texto-fijo');
+            if (!inp || !textoInp) return;
+            var textoDrop = String(inp.value || '');
+            if (celdaSummernoteInicializado(textoInp) && typeof jQuery !== 'undefined') {
+                jQuery(textoInp).summernote('code', textoDrop);
+            } else {
+                textoInp.value = textoDrop;
+            }
+        });
+    }
+
     function leerTextoTituloCelda(wrap, fila, col) {
         var drop = wrap.querySelector('.cultivo-celda-titulo-drop[data-fila="' + fila + '"][data-columna="' + col + '"]');
         var inpDrop = drop ? drop.querySelector('.cultivo-titulo-input') : null;
+        var configEl = drop ? drop.closest('.cultivo-celda-config') : null;
         var fuenteSel = wrap.querySelector('.cultivo-celda-fuente[data-fila="' + fila + '"][data-columna="' + col + '"]');
-        var esEnriquecido = fuenteSel && fuenteSel.value === 'enriquecido';
+        var fuenteVal = fuenteSel ? fuenteSel.value : 'normal';
         var textoDrop = inpDrop ? String(inpDrop.value || '') : '';
         var textoFijoInp = wrap.querySelector('.cultivo-celda-texto-fijo[data-fila="' + fila + '"][data-columna="' + col + '"]');
-        var textoFijo = leerTextoFijoCeldaDom(textoFijoInp);
-        if (esEnriquecido || celdaTextoFijoUsaEditorRico(textoFijoInp)) return textoFijo;
-        return textoDrop.trim() !== '' ? textoDrop : textoFijo;
+        return resolverTextoFijoCeldaParaGuardar(textoFijoInp, textoDrop, fuenteVal, configEl);
     }
 
     function aplicarTitulosCeldaDesdeDom(wrap, celdas, filas, columnas) {
@@ -1893,7 +2007,6 @@ $parsePersonalizadoCelda = static function (array $celdaRaw): array {
 
     function persistirCeldasEnWrap(secId) {
         if (!esPersonalizado) return;
-        syncTodosTitulosCeldaEnSeccion(secId);
         var data = capturarSeccion(secId);
         if (!data) return;
         var wrap = getWrap(secId);
@@ -2007,25 +2120,25 @@ $parsePersonalizadoCelda = static function (array $celdaRaw): array {
 
     function leerTextoFijoCeldaDom(textoInp) {
         if (!textoInp) return '';
-        if (typeof jQuery !== 'undefined' && jQuery(textoInp).data('summernote')) {
+        if (typeof jQuery !== 'undefined' && jQuery.fn.summernote && celdaSummernoteInicializado(textoInp)) {
             return jQuery(textoInp).summernote('code');
         }
         return textoInp.value || '';
     }
 
     function syncCeldaTextoFijoRico(textoInp) {
-        if (!textoInp || typeof jQuery === 'undefined' || !jQuery(textoInp).data('summernote')) return;
+        if (!textoInp || typeof jQuery === 'undefined' || !celdaSummernoteInicializado(textoInp)) return;
         textoInp.value = jQuery(textoInp).summernote('code');
     }
 
     function destroyCeldaTextoFijoRico(textoInp) {
-        if (!textoInp || typeof jQuery === 'undefined' || !jQuery(textoInp).data('summernote')) return;
+        if (!textoInp || typeof jQuery === 'undefined' || !celdaSummernoteInicializado(textoInp)) return;
         jQuery(textoInp).summernote('destroy');
     }
 
     function initCeldaTextoFijoRico(textoInp) {
         if (!textoInp || typeof jQuery === 'undefined' || !jQuery.fn.summernote) return;
-        if (jQuery(textoInp).data('summernote')) return;
+        if (celdaSummernoteInicializado(textoInp)) return;
         var initialHtml = textoInp.value || textoInp.textContent || '';
         jQuery(textoInp).summernote({
             height: 120,
@@ -2044,7 +2157,9 @@ $parsePersonalizadoCelda = static function (array $celdaRaw): array {
                     }
                 },
                 onChange: function() {
+                    if (depthSyncTituloCelda > 0) return;
                     var config = textoInp.closest('.cultivo-celda-config');
+                    marcarUltimaFuenteTextoCelda(config, 'fijo');
                     var wrap = textoInp.closest('.cultivo-matriz-seccion');
                     if (!config || !wrap) return;
                     var sec = attrBloqueId(wrap);
@@ -2060,7 +2175,7 @@ $parsePersonalizadoCelda = static function (array $celdaRaw): array {
         if (!wrap || wrap.classList.contains('d-none')) return;
         var ta = wrap.querySelector('textarea');
         if (!ta || typeof jQuery === 'undefined' || !jQuery.fn.summernote) return;
-        if (jQuery(ta).data('summernote')) return;
+        if (celdaSummernoteInicializado(ta)) return;
         jQuery(ta).summernote({
             height: 100,
             width: '100%',
@@ -2079,7 +2194,7 @@ $parsePersonalizadoCelda = static function (array $celdaRaw): array {
         var wrap = configEl.querySelector('.cultivo-celda-texto-rico-wrap');
         if (!wrap) return;
         var ta = wrap.querySelector('textarea');
-        if (!ta || typeof jQuery === 'undefined' || !jQuery(ta).data('summernote')) return;
+        if (!ta || typeof jQuery === 'undefined' || !celdaSummernoteInicializado(ta)) return;
         jQuery(ta).summernote('destroy');
     }
 
@@ -2574,6 +2689,9 @@ $parsePersonalizadoCelda = static function (array $celdaRaw): array {
 
         var wrap = dims.wrap;
         var filas = dims.filas;
+        if (esPersonalizado) {
+            prepararDomParaCaptura(wrap);
+        }
         var stacks = wrap.querySelectorAll('.cultivo-columnas-grid .cultivo-col-stack');
         var columnas = clampColumnas(stacks.length || dims.columnas);
 
@@ -2593,10 +2711,6 @@ $parsePersonalizadoCelda = static function (array $celdaRaw): array {
             titulos[colIdx] = colTitulos;
         });
         while (titulos.length < columnas) titulos.push([]);
-
-        if (esPersonalizado) {
-            syncTodosTextoFijoRicoEnWrap(wrap);
-        }
 
         var celdas = [];
         var fallbackCeldas = [];
@@ -2666,12 +2780,10 @@ $parsePersonalizadoCelda = static function (array $celdaRaw): array {
                     if (rolVal === 'input' && modo !== 'texto_fijo') {
                         extrasPers.texto_fijo = '';
                     } else {
-                        var textoFijoVal = leerTextoFijoCeldaDom(textoFijoInp);
                         var tieneItemTitulo = cellDrop && cellDrop.querySelector('.cultivo-titulo-item');
+                        var configCelda = cellDrop ? cellDrop.closest('.cultivo-celda-config') : (textoFijoInp ? textoFijoInp.closest('.cultivo-celda-config') : null);
+                        var textoFijoVal = resolverTextoFijoCeldaParaGuardar(textoFijoInp, textoDesdeDrop, fuenteVal, configCelda);
                         var usaEditorRico = celdaTextoFijoUsaEditorRico(textoFijoInp);
-                        if (textoDesdeDrop !== '' && fuenteVal !== 'enriquecido' && !usaEditorRico) {
-                            textoFijoVal = textoDesdeDrop;
-                        }
                         if (usaEditorRico && textoFijoTieneFormatoHtml(textoFijoVal) && fuenteVal === 'normal') {
                             extrasPers.fuente = 'enriquecido';
                         }
@@ -3597,6 +3709,7 @@ $parsePersonalizadoCelda = static function (array $celdaRaw): array {
     form.addEventListener('input', function(e) {
         if (e.target.classList.contains('cultivo-celda-texto-fijo') && esPersonalizado) {
             var configTf = e.target.closest('.cultivo-celda-config');
+            marcarUltimaFuenteTextoCelda(configTf, 'fijo');
             var wrapTf = e.target.closest('.cultivo-matriz-seccion');
             if (configTf && wrapTf) {
                 var secTf = attrBloqueId(wrapTf);
@@ -3612,6 +3725,8 @@ $parsePersonalizadoCelda = static function (array $celdaRaw): array {
         if (e.target.classList.contains('cultivo-titulo-input')) {
             var cellDropInp = e.target.closest('.cultivo-celda-titulo-drop');
             if (cellDropInp && esPersonalizado) {
+                var configDropInp = cellDropInp.closest('.cultivo-celda-config');
+                marcarUltimaFuenteTextoCelda(configDropInp, 'drop');
                 var secCell = attrBloqueId(cellDropInp);
                 var filaCell = parseInt(cellDropInp.getAttribute('data-fila'), 10);
                 var colCell = parseInt(cellDropInp.getAttribute('data-columna'), 10);
@@ -3685,6 +3800,11 @@ $parsePersonalizadoCelda = static function (array $celdaRaw): array {
         if (e.target.classList.contains('cultivo-celda-modo')) {
             var config = e.target.closest('.cultivo-celda-config');
             aplicarModoCeldaEnDom(config);
+            var wrapModo = config ? config.closest('.cultivo-matriz-seccion') : null;
+            if (wrapModo) {
+                var secModo = attrBloqueId(wrapModo);
+                if (secModo) persistirCeldasEnWrap(secModo);
+            }
             return;
         }
         if (e.target.classList.contains('cultivo-celda-rol')) {
@@ -3694,8 +3814,29 @@ $parsePersonalizadoCelda = static function (array $celdaRaw): array {
                 var wrapRol = configRol.closest('.cultivo-matriz-seccion');
                 if (wrapRol) {
                     var secRol = attrBloqueId(wrapRol);
+                    var filaRol = parseInt(e.target.getAttribute('data-fila'), 10);
+                    var colRol = parseInt(e.target.getAttribute('data-columna'), 10);
+                    if (secRol && !isNaN(filaRol) && !isNaN(colRol)) {
+                        syncTituloDropACelda(secRol, filaRol, colRol);
+                    }
                     if (secRol) persistirCeldasEnWrap(secRol);
                 }
+            }
+            return;
+        }
+        if (e.target.classList.contains('cultivo-celda-alineacion')) {
+            var wrapAli = e.target.closest('.cultivo-matriz-seccion');
+            if (wrapAli) {
+                var secAli = attrBloqueId(wrapAli);
+                if (secAli) persistirCeldasEnWrap(secAli);
+            }
+            return;
+        }
+        if (e.target.classList.contains('cultivo-opcion-input') || e.target.classList.contains('cultivo-leyenda-categoria-input')) {
+            var wrapOpc = e.target.closest('.cultivo-matriz-seccion');
+            if (wrapOpc) {
+                var secOpc = attrBloqueId(wrapOpc);
+                if (secOpc) persistirCeldasEnWrap(secOpc);
             }
             return;
         }
@@ -3814,9 +3955,8 @@ $parsePersonalizadoCelda = static function (array $celdaRaw): array {
                 delete debounceTimers[secId];
             }
             if (esPersonalizado) {
-                syncTodosTitulosCeldaEnSeccion(secId);
                 var wrapSubmit = getWrap(secId);
-                if (wrapSubmit) syncTodosTextoFijoRicoEnWrap(wrapSubmit);
+                if (wrapSubmit) prepararDomParaCaptura(wrapSubmit);
             }
         });
 

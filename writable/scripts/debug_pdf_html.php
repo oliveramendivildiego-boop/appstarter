@@ -48,10 +48,12 @@ if (! is_dir($outDir)) {
 $htmlFile = $outDir . DIRECTORY_SEPARATOR . "report_{$registroId}.html";
 file_put_contents($htmlFile, $html);
 
-$interCount      = substr_count($html, 'report-grupo-inter-page-break');
-$newAreaCount    = substr_count($html, 'report-pdf-grupo-pdf-new-area');
-$afterBreakCount = substr_count($html, 'report-pdf-grupo-pdf-area-end-break');
-$markerCount     = substr_count($html, 'report-pdf-area-break:v3');
+$interCount      = substr_count($html, 'report-grupo-inter-page-break-pdf');
+$newAreaCount    = substr_count($html, 'report-pdf-grupo-prueba-new-page-start');
+$forceBreakCount = substr_count($html, 'report-segment-force-break-before')
+    + substr_count($html, 'report-subgrupo-force-break-before')
+    + substr_count($html, 'report-cabecera-force-break-before');
+$markerCount     = substr_count($html, 'pdf-results-build:2026-06-18-v16');
 
 $pdfFile = $outDir . DIRECTORY_SEPARATOR . "report_{$registroId}.pdf";
 $pdfService = new \App\Libraries\PdfService();
@@ -65,8 +67,8 @@ if (preg_match_all('/\/Type\s*\/Page[^s]/', $pdfBinary, $m)) {
 
 echo "HTML: {$htmlFile}\n";
 echo "PDF:  {$pdfFile}\n";
-echo "Marcador v3: {$markerCount}\n";
-echo "Separadores inter-page-break: {$interCount}\n";
-echo "Clase pdf-new-area (break-before): {$newAreaCount}\n";
-echo "Fin de area break-after: {$afterBreakCount}\n";
+echo "Marcador v16: {$markerCount}\n";
+echo "Separadores inter-area PDF: {$interCount}\n";
+echo "Grupos new-page-start: {$newAreaCount}\n";
+echo "Marcas force-break-before: {$forceBreakCount}\n";
 echo "Paginas PDF (aprox): {$pageCount}\n";

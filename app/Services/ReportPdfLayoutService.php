@@ -667,7 +667,87 @@ class ReportPdfLayoutService
 
         $estimate = $padMm + ($rows * $lineMm) + (max(0, $rows - 1) * $gapMm);
 
+        if (self::isOrderSheetHeaderEnabledForLayout($layout)) {
+            $estimate += self::ORDER_SHEET_HEADER_HEIGHT_MM
+                + self::ORDER_SHEET_HEADER_GAP_ABOVE_FOOTER_MM
+                + 1.5;
+        }
+
         return max(self::DEFAULT_PDF_FOOTER_RESERVE_MM, min(40.0, round($estimate + 2.0, 1)));
+    }
+
+    /**
+     * Altura estimada (mm) de bloques antes del primer grupo de resultados (página 1).
+     * Equivalente a measureHeaderHeightPx() en impresión navegador.
+     *
+     * @param array<string, mixed> $layout
+     */
+    public static function estimatePdfHeaderBeforeResultsMm(array $layout): float
+    {
+        $totalMm = 0.0;
+        foreach (is_array($layout['blocks'] ?? null) ? $layout['blocks'] : [] as $block) {
+            $id = (string) ($block['id'] ?? '');
+            if ($id === 'results') {
+                break;
+            }
+            if (empty($block['enabled'])) {
+                continue;
+            }
+            if (in_array($id, ['header', 'patient_doctor', 'notes'], true)) {
+                $totalMm += self::estimatePdfSectionGridHeightMm($layout, $id);
+            }
+        }
+
+        return round(max(0.0, $totalMm), 1);
+    }
+
+    /**
+     * @param array<string, mixed> $layout
+     */
+    private static function estimatePdfSectionGridHeightMm(array $layout, string $section): float
+    {
+        $ps         = is_array($layout['page_style'] ?? null) ? $layout['page_style'] : [];
+        $secLayouts = is_array($layout['section_layouts'] ?? null) ? $layout['section_layouts'] : [];
+        $sec        = is_array($secLayouts[$section] ?? null) ? $secLayouts[$section] : [];
+        $rowGapPx   = max(0, min(40, (int) ($sec['row_gap_px'] ?? 6)));
+
+        $fontPt     = 9.0;
+        $lineHeight = 1.35;
+        if ($section === 'header') {
+            $hg = self::normalizeHeaderGridStyle($ps['header_grid'] ?? []);
+            $fontPt     = max(6.0, (float) ($hg['font_size_pt'] ?? 9.0));
+            $lineHeight = max(1.0, (float) ($hg['line_height'] ?? 1.35));
+        } elseif ($section === 'patient_doctor') {
+            $pd = self::normalizePatientDoctorGridStyle($ps['patient_doctor_grid'] ?? []);
+            $fontPt     = max(6.0, (float) ($pd['font_size_pt'] ?? 9.0));
+            $lineHeight = max(1.0, (float) ($pd['line_height'] ?? 1.35));
+        } elseif ($section === 'notes') {
+            $ns = self::normalizeNotesStyle($ps['notes'] ?? []);
+            $fontPt     = max(6.0, (float) ($ns['font_size_pt'] ?? 9.0));
+            $lineHeight = max(1.0, (float) ($ns['line_height'] ?? 1.35));
+        }
+
+        $maxRow   = 0;
+        $maxStack = 0;
+        $enabled  = 0;
+        foreach ($layout['instances'] ?? [] as $inst) {
+            if (! is_array($inst) || ($inst['section'] ?? '') !== $section || empty($inst['enabled'])) {
+                continue;
+            }
+            $enabled++;
+            $maxRow   = max($maxRow, max(0, (int) ($inst['grid_row'] ?? 0)));
+            $maxStack = max($maxStack, max(0, (int) ($inst['grid_stack'] ?? 0)));
+        }
+        if ($enabled < 1) {
+            return 0.0;
+        }
+
+        $rows   = max(1, $maxRow + 1, $maxStack + 1);
+        $lineMm = $fontPt * $lineHeight * 0.352778;
+        $gapMm  = $rowGapPx * 0.264583;
+        $padMm  = ($section === 'header' ? 8.0 : 4.0) * 0.264583;
+
+        return $padMm + ($rows * $lineMm) + (max(0, $rows - 1) * $gapMm) + 2.0;
     }
 
     /**
@@ -3101,6 +3181,43 @@ class ReportPdfLayoutService
     }
 
     /**
+     * @return array{patient: string, order: string}
+     */
+    public static function buildOrderSheetHeaderDisplayLines(?object $paciente, ?object $registerInfo): array
+    {
+        helper('registro');
+
+        $pacienteNombre = '';
+        if (is_object($paciente)) {
+            $pacienteNombre = trim(
+                ($paciente->first_name ?? '') . ' '
+                . ($paciente->last_name_fa ?? '') . ' '
+                . ($paciente->last_name_mom ?? '')
+            );
+        }
+        if ($pacienteNombre === '' && is_object($registerInfo)) {
+            $pacienteNombre = trim(
+                ($registerInfo->first_name ?? '') . ' '
+                . ($registerInfo->last_name_fa ?? '') . ' '
+                . ($registerInfo->last_name_mom ?? '')
+            );
+        }
+        if ($pacienteNombre === '') {
+            $pacienteNombre = '—';
+        }
+
+        $numeroOrden = registro_orden_display($registerInfo);
+        if ($numeroOrden === '') {
+            $numeroOrden = '—';
+        }
+
+        return [
+            'patient' => 'Paciente: ' . $pacienteNombre,
+            'order'   => 'No. Orden: ' . $numeroOrden,
+        ];
+    }
+
+    /**
      * @param array<string, mixed> $layout
      */
     public static function isPdfFooterBlockEnabledForLayout(array $layout): bool
@@ -3260,19 +3377,10 @@ class ReportPdfLayoutService
      */
     public static function grupoPruebaGrupoIntactStyleAttr(array $layout, bool $isFirstGrupo = true): string
     {
-        $ps  = is_array($layout['page_style'] ?? null) ? $layout['page_style'] : [];
-        $gpb = self::normalizeGrupoPruebaPageBreakStyle($ps['grupo_prueba_page_break'] ?? []);
-        if (! self::grupoPruebaPageBreakUsesGrupoIntactCss($gpb)) {
-            return '';
-        }
-
-        $parts = [];
-        if (self::grupoPruebaPageBreakUsesPureGrupoIntact($gpb)) {
-            $parts[] = 'page-break-inside:avoid';
-            $parts[] = 'break-inside:avoid-page';
-        }
-
-        return $parts !== [] ? implode(';', $parts) . ';' : '';
+        // La paginación la resuelven las clases del motor PHP (split-segments-only, keep-on-page)
+        // y las reglas CSS; el inline break-inside:avoid en el contenedor del área dejaba huecos
+        // cuando los subgrupos internos debían seguir fluyendo.
+        return '';
     }
 
     /**
@@ -3374,7 +3482,7 @@ class ReportPdfLayoutService
      */
     public static function grupoInterPageBreakStyleAttr(): string
     {
-        return 'display:block;width:100%;height:0;min-height:0;margin:0;padding:0;border:0;'
+        return 'display:block;width:100%;height:1px;min-height:1px;margin:0;padding:0;border:0;'
             . 'line-height:0;font-size:0;overflow:hidden;clear:both;'
             . 'page-break-before:always;break-before:page;'
             . 'page-break-after:avoid;break-after:avoid;';
@@ -3408,6 +3516,83 @@ class ReportPdfLayoutService
     /**
      * @param array<string, mixed> $layout
      */
+    /** Máx. filas de resultado en un subgrupo para mantenerlo íntegro en PDF (sin partir entre páginas). */
+    public const SUBGRUPO_KEEP_INTACT_MAX_ROWS = 4;
+
+    public static function subgrupoKeepIntactMaxRows(): int
+    {
+        return self::SUBGRUPO_KEEP_INTACT_MAX_ROWS;
+    }
+
+    /**
+     * @param list<array{rows: int, has_title: bool, subgrupo_key: int, is_matrix: bool}> $units
+     */
+    public static function subgrupoShouldKeepIntact(array $units, int $subgrupoKey): bool
+    {
+        $total = 0;
+        foreach ($units as $unit) {
+            if ((int) ($unit['subgrupo_key'] ?? -1) !== $subgrupoKey) {
+                continue;
+            }
+            $total += max(0, (int) ($unit['rows'] ?? 0));
+        }
+
+        return $total > 0 && $total <= self::SUBGRUPO_KEEP_INTACT_MAX_ROWS;
+    }
+
+    /**
+     * Anchos de columna (%) para tablas de resultados; suman 100.
+     *
+     * @return list<int>
+     */
+    public static function resultsTableColumnWidthsPct(int $colCount): array
+    {
+        return match ($colCount) {
+            4       => [34, 18, 28, 20],
+            3       => [42, 25, 33],
+            2       => [58, 42],
+            default => [100],
+        };
+    }
+
+    public static function resultsTableFixedLayoutAttrs(int $colCount): string
+    {
+        if ($colCount < 3) {
+            return ' width="100%"';
+        }
+
+        return ' width="100%" style="table-layout:fixed;width:100%;"';
+    }
+
+    public static function resultsTableColgroupHtml(int $colCount): string
+    {
+        if ($colCount < 3) {
+            return '';
+        }
+        $widths = self::resultsTableColumnWidthsPct($colCount);
+        $html   = '<colgroup>';
+        foreach ($widths as $w) {
+            $html .= '<col width="' . (int) $w . '%" style="width:' . (int) $w . '%;">';
+        }
+        $html .= '</colgroup>';
+
+        return $html;
+    }
+
+    public static function resultsTableThWidthStyleAttr(int $colIndex, int $colCount, bool $forPdf = true): string
+    {
+        if (! $forPdf || $colCount < 3) {
+            return '';
+        }
+        $widths = self::resultsTableColumnWidthsPct($colCount);
+        $w      = $widths[$colIndex] ?? null;
+        if ($w === null) {
+            return '';
+        }
+
+        return ' style="width:' . (int) $w . '%;"';
+    }
+
     public static function subgrupoPruebaGapPx(array $layout): int
     {
         $ps = is_array($layout['page_style'] ?? null) ? $layout['page_style'] : [];
@@ -3451,6 +3636,33 @@ class ReportPdfLayoutService
         }
 
         return sprintf('margin-top:%dpx;margin-bottom:%dpx;', $marginTop, $marginBottom);
+    }
+
+    /**
+     * Indica si algún ítem del reporte tiene rango referencial configurado.
+     * Sirve para alinear columnas (ANÁLISIS / RESULTADO / RANGO) en todas las tablas del PDF.
+     *
+     * @param array<mixed, list<object|array<string, mixed>>> $grupos
+     */
+    public static function reportGruposTienenRangoReferencial(array $grupos): bool
+    {
+        helper('registro');
+        foreach ($grupos as $items) {
+            if (! is_array($items)) {
+                continue;
+            }
+            foreach ($items as $raw) {
+                $it = is_array($raw) ? (object) $raw : $raw;
+                if (! is_object($it)) {
+                    continue;
+                }
+                if (registro_tiene_rango_referencial($it->valor_min ?? '', $it->valor_max ?? '')) {
+                    return true;
+                }
+            }
+        }
+
+        return false;
     }
 
     /**
@@ -3546,6 +3758,51 @@ class ReportPdfLayoutService
         }
 
         return $out;
+    }
+
+    /**
+     * ¿Modo «grupo íntegro con compactación»?
+     *
+     * @param array<string, mixed> $layout
+     */
+    public static function grupoPruebaUsesCompactMode(array $layout): bool
+    {
+        $ps  = is_array($layout['page_style'] ?? null) ? $layout['page_style'] : [];
+        $gpb = self::normalizeGrupoPruebaPageBreakStyle($ps['grupo_prueba_page_break'] ?? []);
+
+        return ($gpb['mode'] ?? '') === 'keep_together_compact';
+    }
+
+    /**
+     * Clases y variables CSS de compactación para Dompdf (réplica de applyCompactToGrupo en JS).
+     *
+     * @param array<string, mixed> $layout
+     *
+     * @return array{class: string, style: string}
+     */
+    public static function grupoPruebaCompactPdfAttrs(array $layout, bool $applyCompact): array
+    {
+        if (! $applyCompact || ! self::grupoPruebaUsesCompactMode($layout)) {
+            return ['class' => '', 'style' => ''];
+        }
+
+        $ps  = is_array($layout['page_style'] ?? null) ? $layout['page_style'] : [];
+        $gpb = self::normalizeGrupoPruebaPageBreakStyle($ps['grupo_prueba_page_break'] ?? []);
+        $scale = max(75, min(100, (int) ($gpb['compact_min_scale_percent'] ?? 85))) / 100;
+        $classes = ['report-pdf-grupo-prueba-compact'];
+        if (! empty($gpb['compact_aggressive'])) {
+            $classes[] = 'report-pdf-grupo-prueba-compact-aggressive';
+        }
+        $styleParts = ['--pdf-gpb-compact-scale:' . rtrim(rtrim(number_format($scale, 3, '.', ''), '0'), '.')];
+        $cellPad = max(0, min(20, (int) ($gpb['compact_cell_padding_px'] ?? 0)));
+        if ($cellPad > 0) {
+            $styleParts[] = '--pdf-gpb-compact-cell-padding-v:' . $cellPad . 'px';
+        }
+
+        return [
+            'class' => implode(' ', $classes),
+            'style' => implode(';', $styleParts) . ';',
+        ];
     }
 
     /**

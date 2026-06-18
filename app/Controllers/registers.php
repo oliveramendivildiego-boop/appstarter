@@ -945,7 +945,10 @@ class Registers extends SecureArea
             foreach ([
                 APPPATH . 'Views/registers/pdf/blocks/results.php',
                 APPPATH . 'Views/registers/analisis/partials/report_grupo_area_separator.php',
-                APPPATH . 'Views/registers/report_pdf.php',
+                APPPATH . 'Services/ReportPdfDompdfGrupoPageBreakService.php',
+                APPPATH . 'Services/ReportPdfLayoutService.php',
+                APPPATH . 'Views/registers/partials/report_pdf_theme_styles.php',
+                APPPATH . 'Views/registers/analisis/partials/compleja_tabla_reporte_grupo.php',
                 FCPATH . 'assets/css/report_pdf.css',
             ] as $invalidatePath) {
                 if (is_file($invalidatePath)) {
