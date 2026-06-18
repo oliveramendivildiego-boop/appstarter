@@ -15,7 +15,7 @@ $pdfGrupoPageBreakBodyClass = \App\Services\ReportPdfLayoutService::grupoPruebaP
         'embed_stylesheet_for_pdf'      => true,
     ]) ?>
 </head>
-<body class="<?= esc(trim($pdfGrupoPageBreakBodyClass), 'attr') ?>">
+<body class="<?= esc(trim($pdfGrupoPageBreakBodyClass . ' pdf-dompdf-download'), 'attr') ?>">
 <?= view('registers/pdf/report_document', [
     'pdf_layout'          => $pdf_layout ?? [],
     'register_info'       => $register_info,

@@ -14,7 +14,7 @@
 $variant = $variant ?? 'web';
 $usePdfChrome = in_array($variant, ['pdf', 'screen_pdf', 'browser_print'], true);
 $segmentWrapStyle = '';
-if ($usePdfChrome) {
+if ($usePdfChrome && $variant !== 'pdf') {
     $segmentWrapStyle = \App\Services\ReportPdfLayoutService::grupoPruebaSegmentIntactStyleAttr(
         is_array($pdf_layout ?? null) ? $pdf_layout : []
     );

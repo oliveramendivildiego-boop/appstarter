@@ -3349,7 +3349,20 @@ class ReportPdfLayoutService
     }
 
     /**
-     * Salto de hoja en el contenedor del área (Dompdf). Sin div separador vacío (evita hojas en blanco).
+     * Apertura de envoltorio tabla para nueva área en Dompdf (evita hojas en blanco de break-before en divs).
+     */
+    public static function grupoPruebaPdfAreaTableWrapOpenHtml(): string
+    {
+        return '<table class="report-pdf-grupo-page-table" style="width:100%;border-collapse:collapse;border-spacing:0;border:0;margin:0;padding:0;page-break-before:always;break-before:page;"><tbody><tr><td class="report-pdf-grupo-page-table-cell" style="border:0;margin:0;padding:0;vertical-align:top;">';
+    }
+
+    public static function grupoPruebaPdfAreaTableWrapCloseHtml(): string
+    {
+        return '</td></tr></tbody></table>';
+    }
+
+    /**
+     * @deprecated Usar grupoPruebaPdfAreaTableWrapOpenHtml() para Dompdf.
      */
     public static function grupoPruebaPdfNewAreaStyleAttr(): string
     {

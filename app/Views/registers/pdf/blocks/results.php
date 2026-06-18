@@ -3,7 +3,7 @@ declare(strict_types=1);
 
 $av = $analisis_variant ?? 'pdf';
 if ($av === 'pdf') {
-    echo '<!-- pdf-results-build:2026-06-18-v4 -->';
+    echo '<!-- pdf-results-build:2026-06-18-v5 -->';
 }
 
 $layoutForLf = is_array($pdf_layout ?? null) ? $pdf_layout : [];
@@ -30,15 +30,20 @@ $grupoPruebaIdx = 0;
 foreach ($grupos ?? [] as $padre => $items) {
     $isFirstGrupo = ($grupoPruebaIdx === 0);
     $padreKey = trim((string) $padre);
-    $grupoHasFirma = $showFirmaPerGroup && $padreKey !== '' && isset($firmasPorPadre[$padreKey]);
+    $useInterPageBreak = ! $isFirstGrupo
+        && \App\Services\ReportPdfLayoutService::shouldRenderGrupoInterPageBreak($layoutForLf, $isFirstGrupo)
+        && empty($pb_diag_no_separators);
+    $pdfNewAreaTable = $av === 'pdf' && $useInterPageBreak;
+
+    if ($pdfNewAreaTable) {
+        echo \App\Services\ReportPdfLayoutService::grupoPruebaPdfAreaTableWrapOpenHtml();
+    }
+
     $grupoClass = 'report-pdf-grupo-prueba';
     if ($isFirstGrupo) {
         $grupoClass .= ' report-pdf-grupo-prueba-first';
     }
     $grupoExtraStyle = '';
-    $useInterPageBreak = ! $isFirstGrupo
-        && \App\Services\ReportPdfLayoutService::shouldRenderGrupoInterPageBreak($layoutForLf, $isFirstGrupo)
-        && empty($pb_diag_no_separators);
     if ($useInterPageBreak && $av !== 'pdf') {
         $grupoClass .= ' report-pdf-grupo-prueba-new-page-start';
         $grupoExtraStyle = 'page-break-before:avoid;break-before:avoid;margin-top:0;padding-top:0;';
@@ -94,9 +99,6 @@ foreach ($grupos ?? [] as $padre => $items) {
     ]);
     $padreKey = trim((string) $padre);
     if ($showFirmaPerGroup && $padreKey !== '' && isset($firmasPorPadre[$padreKey])) {
-        if ($av === 'pdf') {
-            echo '<div class="report-pdf-grupo-firma-tail">';
-        }
         echo view('registers/partials/report_lab_firma_grupo_inline', [
             'firma'             => $firmasPorPadre[$padreKey],
             'area_label'        => $padreKey,
@@ -105,10 +107,10 @@ foreach ($grupos ?? [] as $padre => $items) {
             'lab_config'        => $lab_config ?? [],
             'lab_firmas_style'  => $lfStyle,
         ]);
-        if ($av === 'pdf') {
-            echo '</div>';
-        }
     }
     echo '</div>';
+    if ($pdfNewAreaTable) {
+        echo \App\Services\ReportPdfLayoutService::grupoPruebaPdfAreaTableWrapCloseHtml();
+    }
     $grupoPruebaIdx++;
 }

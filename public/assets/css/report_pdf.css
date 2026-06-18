@@ -382,19 +382,45 @@ body {
     break-inside: auto !important;
 }
 /* Grupo íntegro solo si cabe en el espacio restante (Dompdf: segmentos; JS añade keep-on-page). */
+.pdf-gpb-keep-together-if-fits .report-pdf-grupo-page-table,
+.pdf-gpb-keep-together-if-fits-auto-order .report-pdf-grupo-page-table {
+    width: 100%;
+    border-collapse: collapse;
+    border-spacing: 0;
+    border: 0;
+    margin: 0;
+    padding: 0;
+    page-break-before: always;
+    break-before: page;
+}
+.pdf-gpb-keep-together-if-fits .report-pdf-grupo-page-table .report-pdf-grupo-page-table-cell,
+.pdf-gpb-keep-together-if-fits-auto-order .report-pdf-grupo-page-table .report-pdf-grupo-page-table-cell {
+    border: 0;
+    margin: 0;
+    padding: 0;
+    vertical-align: top;
+}
+/* Dompdf: sin reglas de salto en título/firma que generan hojas vacías (el salto va en .report-pdf-grupo-page-table). */
+body.pdf-dompdf-download.pdf-gpb-keep-together-if-fits .report-pdf-grupo-area-separator,
+body.pdf-dompdf-download.pdf-gpb-keep-together-if-fits-auto-order .report-pdf-grupo-area-separator,
+body.pdf-dompdf-download.pdf-gpb-keep-together-if-fits .report-pdf-grupo-prueba .report-segment-table-wrap:last-of-type,
+body.pdf-dompdf-download.pdf-gpb-keep-together-if-fits-auto-order .report-pdf-grupo-prueba .report-segment-table-wrap:last-of-type,
+body.pdf-dompdf-download.pdf-gpb-keep-together-if-fits .report-pdf-grupo-prueba .report-refs-matrix-wrap:last-of-type,
+body.pdf-dompdf-download.pdf-gpb-keep-together-if-fits-auto-order .report-pdf-grupo-prueba .report-refs-matrix-wrap:last-of-type,
+body.pdf-dompdf-download.pdf-gpb-keep-together-if-fits .report-lab-firma-grupo-inline,
+body.pdf-dompdf-download.pdf-gpb-keep-together-if-fits-auto-order .report-lab-firma-grupo-inline {
+    page-break-before: auto;
+    break-before: auto;
+    page-break-after: auto;
+    break-after: auto;
+}
 .pdf-gpb-keep-together-if-fits .report-pdf-grupo-prueba,
 .pdf-gpb-keep-together-if-fits-auto-order .report-pdf-grupo-prueba {
     page-break-inside: auto;
     break-inside: auto;
 }
-.pdf-gpb-keep-together-if-fits .report-pdf-grupo-area-separator.report-pdf-grupo-area-separator-new-page,
-.pdf-gpb-keep-together-if-fits-auto-order .report-pdf-grupo-area-separator.report-pdf-grupo-area-separator-new-page {
-    page-break-before: always;
-    break-before: page;
-    margin-top: 0;
-    padding-top: 0;
-}
-/* Separador inter-área vacío: solo impresión navegador. PDF usa título de área (.report-pdf-grupo-area-separator-new-page). */
+/* Separador inter-área vacío: solo impresión navegador (PDF usa .report-pdf-grupo-page-table). */
+body.report-browser-print .report-grupo-inter-page-break,
 .report-grupo-inter-page-break {
     display: block;
     width: 100%;
@@ -425,16 +451,16 @@ body {
     margin-top: 0;
     padding-top: 0;
 }
-/* Dompdf: último bloque de resultados + firma del área sin separar en otra hoja si caben juntas. */
-.pdf-gpb-keep-together-if-fits .report-pdf-grupo-prueba .report-segment-table-wrap:last-of-type,
-.pdf-gpb-keep-together-if-fits-auto-order .report-pdf-grupo-prueba .report-segment-table-wrap:last-of-type,
-.pdf-gpb-keep-together-if-fits .report-pdf-grupo-prueba .report-refs-matrix-wrap:last-of-type,
-.pdf-gpb-keep-together-if-fits-auto-order .report-pdf-grupo-prueba .report-refs-matrix-wrap:last-of-type {
+/* Dompdf: último bloque + firma (solo impresión navegador; en PDF desactivado arriba). */
+body:not(.pdf-dompdf-download).pdf-gpb-keep-together-if-fits .report-pdf-grupo-prueba .report-segment-table-wrap:last-of-type,
+body:not(.pdf-dompdf-download).pdf-gpb-keep-together-if-fits-auto-order .report-pdf-grupo-prueba .report-segment-table-wrap:last-of-type,
+body:not(.pdf-dompdf-download).pdf-gpb-keep-together-if-fits .report-pdf-grupo-prueba .report-refs-matrix-wrap:last-of-type,
+body:not(.pdf-dompdf-download).pdf-gpb-keep-together-if-fits-auto-order .report-pdf-grupo-prueba .report-refs-matrix-wrap:last-of-type {
     page-break-after: avoid;
     break-after: avoid-page;
 }
-.pdf-gpb-keep-together-if-fits .report-pdf-grupo-firma-tail,
-.pdf-gpb-keep-together-if-fits-auto-order .report-pdf-grupo-firma-tail {
+body:not(.pdf-dompdf-download).pdf-gpb-keep-together-if-fits .report-pdf-grupo-firma-tail,
+body:not(.pdf-dompdf-download).pdf-gpb-keep-together-if-fits-auto-order .report-pdf-grupo-firma-tail {
     page-break-before: avoid;
     break-before: avoid-page;
     page-break-inside: avoid;

@@ -27,16 +27,5 @@ if ($titulo === '') {
 }
 
 $wrapStyle = \App\Services\ReportPdfLayoutService::grupoAreaSeparatorMarginStyleAttr($pdfLayout, (string) $variant);
-$separatorClass = 'report-segment-title pdf-card-header report-pdf-grupo-area-separator';
-$isFirstGrupo = ! empty($grupo_es_primero);
-if ($variant === 'pdf'
-    && ! $isFirstGrupo
-    && \App\Services\ReportPdfLayoutService::shouldRenderGrupoInterPageBreak($pdfLayout, false)) {
-    $separatorClass .= ' report-pdf-grupo-area-separator-new-page';
-    $wrapStyle = \App\Services\ReportPdfLayoutService::mergePdfInlineStyleAttrs(
-        $wrapStyle,
-        \App\Services\ReportPdfLayoutService::grupoPruebaPdfNewAreaStyleAttr()
-    );
-}
 ?>
-<div class="<?= esc($separatorClass, 'attr') ?>"<?= $wrapStyle !== '' ? ' style="' . esc($wrapStyle, 'attr') . '"' : '' ?>><?= esc($titulo) ?></div><!-- report-pdf-area-break:v4 -->
+<div class="report-segment-title pdf-card-header report-pdf-grupo-area-separator"<?= $wrapStyle !== '' ? ' style="' . esc($wrapStyle, 'attr') . '"' : '' ?>><?= esc($titulo) ?></div>

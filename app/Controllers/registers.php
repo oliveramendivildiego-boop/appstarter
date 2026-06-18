@@ -941,6 +941,18 @@ class Registers extends SecureArea
     public function pdf($id = -1)
     {
         $id = (int) $id;
+        if (function_exists('opcache_invalidate')) {
+            foreach ([
+                APPPATH . 'Views/registers/pdf/blocks/results.php',
+                APPPATH . 'Views/registers/analisis/partials/report_grupo_area_separator.php',
+                APPPATH . 'Views/registers/report_pdf.php',
+                FCPATH . 'assets/css/report_pdf.css',
+            ] as $invalidatePath) {
+                if (is_file($invalidatePath)) {
+                    opcache_invalidate($invalidatePath, true);
+                }
+            }
+        }
         if ($id < 1) {
             return redirect()->to('registers')->with('error', 'Registro no válido');
         }

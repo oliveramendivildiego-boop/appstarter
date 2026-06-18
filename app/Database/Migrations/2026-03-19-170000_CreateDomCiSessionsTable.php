@@ -19,10 +19,8 @@ class CreateDomCiSessionsTable extends Migration
                 'default'    => '0',
             ],
             'timestamp' => [
-                'type'       => 'INT',
-                'constraint' => 10,
-                'unsigned'   => true,
-                'default'    => 0,
+                'type' => 'TIMESTAMP',
+                'null' => false,
             ],
             'data' => [
                 'type' => 'BLOB',
