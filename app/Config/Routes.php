@@ -350,6 +350,8 @@ $routes->get('registers/printreport/(:num)', 'Registers::printreport/$1');
 $routes->get('registers/printEnvelope/(:num)', 'Registers::printEnvelope/$1');
 $routes->get('registers/pdf/(:num)', 'Registers::pdf/$1');
 $routes->get('registers/qrResultadosPng/(:num)', 'Registers::qrResultadosPng/$1');
+$routes->get('registers/viewcomprobante/(:num)', 'Registers::viewcomprobante/$1');
+$routes->get('registers/printcomprobante/(:num)', 'Registers::printcomprobante/$1');
 $routes->get('registers/comprobantePdf/(:num)', 'Registers::comprobantePdf/$1');
 $routes->post('registers/save', 'Registers::save');
 $routes->post('registers/update/(:num)', 'Registers::update/$1');

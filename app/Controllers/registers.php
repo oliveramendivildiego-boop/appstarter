@@ -1071,6 +1071,87 @@ class Registers extends SecureArea
     }
 
     /**
+     * @return array{doc: object, factura: bool, html: string, register_info: object, pago_completo: bool}|null
+     */
+    private function buildComprobanteRenderContext(int $id): ?array
+    {
+        if ($id < 1 || $this->registerModel->isRegistroAnulado($id)) {
+            return null;
+        }
+
+        $registerInfo = $this->registerModel->getInfoRefill($id);
+        if (! $registerInfo) {
+            return null;
+        }
+
+        $billing = new BillingDocumentService();
+        $factura = $billing->isSinBillingEnabled();
+        $doc     = $billing->buildComprobante($id, $factura);
+        if ($doc === null) {
+            return null;
+        }
+
+        return [
+            'doc'            => $doc,
+            'factura'        => $factura,
+            'html'           => $billing->renderComprobanteHtml($doc, $factura),
+            'register_info'  => $registerInfo,
+            'pago_completo'  => $this->registerModel->isPagoCompletoPorRegistroId($id),
+        ];
+    }
+
+    /**
+     * Vista previa del comprobante de pago (recibo o factura de respaldo).
+     */
+    public function viewcomprobante($id = -1)
+    {
+        $id = (int) $id;
+        if ($id < 1) {
+            return redirect()->to('registers')->with('error', 'Registro no válido');
+        }
+        if ($this->registerModel->isRegistroAnulado($id)) {
+            return redirect()->to('registers/lista')->with('error', 'La orden está anulada; no se puede generar el comprobante.');
+        }
+
+        $ctx = $this->buildComprobanteRenderContext($id);
+        if ($ctx === null) {
+            return redirect()->to('registers/lista')->with('error', 'No hay datos de pago para esta orden; no se puede generar el comprobante.');
+        }
+
+        $factura = (bool) $ctx['factura'];
+
+        return view('registers/viewcomprobante', [
+            'current_module'    => 'registers',
+            'controller_name'   => 'registers',
+            'registro_id'       => $id,
+            'register_info'     => $ctx['register_info'],
+            'sin_billing_enabled' => $factura,
+            'pago_completo'     => (bool) $ctx['pago_completo'],
+            'recien_creado'     => $this->request->getGet('nuevo') === '1',
+            'allowed_modules'   => $this->allowed_modules,
+            'user_info'         => $this->user_info,
+        ]);
+    }
+
+    /**
+     * HTML del comprobante para vista previa e impresión en navegador.
+     */
+    public function printcomprobante($id = -1)
+    {
+        $id = (int) $id;
+        if ($id < 1) {
+            return redirect()->to('registers')->with('error', 'Registro no válido');
+        }
+
+        $ctx = $this->buildComprobanteRenderContext($id);
+        if ($ctx === null) {
+            return redirect()->to('registers/lista')->with('error', 'No hay datos de pago para esta orden; no se puede generar el comprobante.');
+        }
+
+        return $this->response->setBody($ctx['html'])->setContentType('text/html', 'UTF-8');
+    }
+
+    /**
      * PDF de recibo (SIN deshabilitado) o factura de respaldo (SIN habilitado), según configuración.
      */
     public function comprobantePdf($id = -1)
@@ -1083,14 +1164,14 @@ class Registers extends SecureArea
             return redirect()->to('registers/lista')->with('error', 'La orden está anulada; no se puede generar el comprobante.');
         }
 
-        $billing = new BillingDocumentService();
-        $factura = $billing->isSinBillingEnabled();
-        $doc     = $billing->buildComprobante($id, $factura);
-        if ($doc === null) {
+        $ctx = $this->buildComprobanteRenderContext($id);
+        if ($ctx === null) {
             return redirect()->to('registers/viewreport/' . $id)->with('error', 'No hay datos de pago para esta orden; no se puede generar el comprobante.');
         }
 
-        $html       = $billing->renderComprobanteHtml($doc, $factura);
+        $doc        = $ctx['doc'];
+        $factura    = (bool) $ctx['factura'];
+        $html       = $ctx['html'];
         $pdfService = new PdfService();
         $tipo       = $factura ? 'Factura' : 'Recibo';
         $numArchivo = $factura

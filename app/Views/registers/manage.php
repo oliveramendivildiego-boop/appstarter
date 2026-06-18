@@ -1074,7 +1074,11 @@ document.addEventListener('DOMContentLoaded', function() {
             });
         })
         .then(function(res) {
-            window.location.href = '<?= site_url('registers/view') ?>/' + res.id;
+            if (esNuevaOrden) {
+                window.location.href = '<?= site_url('registers/viewcomprobante') ?>/' + res.id + '?nuevo=1';
+            } else {
+                window.location.href = '<?= site_url('registers/view') ?>/' + res.id;
+            }
         })
         .catch(function(err) {
             resetGuardarBtn();
