@@ -424,6 +424,11 @@ $footerEnabled = ! empty($footer_enabled);
         if (!unit) {
             return;
         }
+        if (grupo
+            && grupo.classList.contains('report-pdf-grupo-prueba-keep-on-page')
+            && !grupo.classList.contains('report-pdf-grupo-prueba-split-segments-only')) {
+            return;
+        }
         ensureGrupoAllowsFirmaSegmentBreak(grupo, 'pullAnalysisAndFirmaToNextPage');
 
         var isSubgrupo = unit.classList && unit.classList.contains('report-pdf-subgrupo-block');
@@ -474,6 +479,35 @@ $footerEnabled = ! empty($footer_enabled);
         }
         grupo.querySelectorAll(ANALYSIS_UNIT_SELECTOR).forEach(function(unit) {
             unit.classList.remove('report-subgrupo-force-break-before');
+        });
+        grupo.querySelectorAll('.report-pdf-grupo-cabecera').forEach(function(cabecera) {
+            cabecera.classList.remove('report-cabecera-force-break-before');
+        });
+    }
+
+    function sealKeepOnPageGrupoIntact(grupo) {
+        if (!grupo
+            || !grupo.classList.contains('report-pdf-grupo-prueba-keep-on-page')
+            || grupo.classList.contains('report-pdf-grupo-prueba-split-segments-only')
+            || grupo.classList.contains('report-pdf-grupo-prueba-allow-split')) {
+            return;
+        }
+        clearSegmentBreaksInGrupo(grupo);
+        var inlineFirma = labFirmaBlockInGrupo(grupo);
+        if (inlineFirma) {
+            clearLabFirmaPageLeader(inlineFirma);
+        }
+        grupo.querySelectorAll('.report-pdf-subgrupo-block').forEach(function(subgrupo) {
+            subgrupo.style.setProperty('break-before', 'avoid', 'important');
+            subgrupo.style.setProperty('page-break-before', 'avoid', 'important');
+            subgrupo.style.setProperty('break-inside', 'avoid', 'important');
+            subgrupo.style.setProperty('page-break-inside', 'avoid', 'important');
+        });
+        grupo.querySelectorAll('.report-lab-firma-grupo-inline').forEach(function(firma) {
+            firma.style.setProperty('break-before', 'avoid', 'important');
+            firma.style.setProperty('page-break-before', 'avoid', 'important');
+            firma.style.setProperty('break-inside', 'avoid', 'important');
+            firma.style.setProperty('page-break-inside', 'avoid', 'important');
         });
     }
 
@@ -928,7 +962,6 @@ $footerEnabled = ! empty($footer_enabled);
     }
 
     function clearPageBreakAdjustments() {
-        console.log('POST_PROCESO', 'clearPageBreakAdjustments');
         restoreGrupoDomOrder();
         clearBrowserPrintAreaSeparatorFix();
         clearInterGrupoPageBreaks();
@@ -937,6 +970,10 @@ $footerEnabled = ! empty($footer_enabled);
         });
         document.querySelectorAll('.report-pdf-subgrupo-block').forEach(function(subgrupo) {
             subgrupo.classList.remove('report-subgrupo-force-break-before');
+            subgrupo.style.removeProperty('break-before');
+            subgrupo.style.removeProperty('page-break-before');
+            subgrupo.style.removeProperty('break-inside');
+            subgrupo.style.removeProperty('page-break-inside');
         });
         document.querySelectorAll('.report-pdf-grupo-area-page-leader').forEach(function(leader) {
             leader.classList.remove('report-area-page-leader-force-break-before');
@@ -978,6 +1015,10 @@ $footerEnabled = ! empty($footer_enabled);
             block.classList.remove('report-pdf-grupo-page-end-seal');
             block.style.removeProperty('break-after');
             block.style.removeProperty('page-break-after');
+            block.style.removeProperty('break-before');
+            block.style.removeProperty('page-break-before');
+            block.style.removeProperty('break-inside');
+            block.style.removeProperty('page-break-inside');
         });
         document.querySelectorAll('.report-pdf-grupo-page-end-seal').forEach(function(node) {
             node.classList.remove('report-pdf-grupo-page-end-seal');
@@ -1081,23 +1122,7 @@ $footerEnabled = ! empty($footer_enabled);
         return makePlacementCursor(cursor.page + 1, pageStartPx(cursor.page + 1, boundarySet));
     }
 
-    function logGrupoFirmaDecision(grupoNombre, ultimoAnalisisHeight, firmaHeight, espacioRestante, decision) {
-        console.log('[GRUPO]', grupoNombre);
-        console.log('[ULTIMO_ANALISIS]', Math.round(ultimoAnalisisHeight));
-        console.log('[FIRMA]', Math.round(firmaHeight));
-        console.log('[ESPACIO_RESTANTE]', Math.round(espacioRestante));
-        console.log('[DECISION]', decision);
-        console.log({
-            grupo: grupoNombre,
-            ultimoAnalisisHeight: Math.round(ultimoAnalisisHeight),
-            firmaHeight: Math.round(firmaHeight),
-            espacioRestante: Math.round(espacioRestante),
-            decision: decision
-        });
-    }
-
     function markGrupoAllowSplit(grupo, origen) {
-        console.trace('allow-split agregado', origen);
         if (grupo && grupo.classList) {
             grupo.classList.add('report-pdf-grupo-prueba-allow-split');
         }
@@ -1105,6 +1130,10 @@ $footerEnabled = ! empty($footer_enabled);
 
     function ensureGrupoAllowsFirmaSegmentBreak(grupo, origen) {
         if (!grupo || !grupo.classList) {
+            return;
+        }
+        if (grupo.classList.contains('report-pdf-grupo-prueba-keep-on-page')
+            && !grupo.classList.contains('report-pdf-grupo-prueba-split-segments-only')) {
             return;
         }
         if (grupo.classList.contains('report-pdf-grupo-prueba-keep-on-page')) {
@@ -1118,6 +1147,7 @@ $footerEnabled = ! empty($footer_enabled);
         var boundarySet = layoutCtx.boundarySet;
         var maxSlicePx = layoutCtx.maxSlicePx;
         var markBreaks = state.markBreaks !== false;
+        var container = state.container || null;
         var page = cursor.page;
         var y = cursor.y;
 
@@ -1262,9 +1292,6 @@ $footerEnabled = ! empty($footer_enabled);
                     nextCursor = bumpCursorAfterPlace(
                         nuevaPaginaDom.page, nuevaPaginaDom.y, bloqueConFirma, boundarySet, metrics
                     );
-                    if (markBreaks) {
-                        logGrupoFirmaDecision(grupoNombre, measureUnitH, firmaOuterH, espacioRestante, decision);
-                    }
                     return nextCursor;
                 }
             }
@@ -1288,20 +1315,7 @@ $footerEnabled = ! empty($footer_enabled);
                 nextCursor = bumpCursorAfterPlace(nuevaPagina.page, nuevaPagina.y, bloqueConFirma, boundarySet, metrics);
             }
 
-            if (markBreaks) {
-                logGrupoFirmaDecision(grupoNombre, measureUnitH, firmaOuterH, espacioRestante, decision);
-            }
             return nextCursor;
-        }
-
-        if (isLast && markBreaks && firmaH <= 0) {
-            console.log({
-                grupo: grupoNombre,
-                ultimoAnalisisHeight: Math.round(unitH),
-                firmaHeight: 0,
-                espacioRestante: Math.round(espacioRestanteEnPaginaActual(cursor, layoutCtx)),
-                decision: 'sin_firma_inline'
-            });
         }
 
         var placementH = unitH;
@@ -1451,8 +1465,26 @@ $footerEnabled = ! empty($footer_enabled);
         pullAnalysisAndFirmaToNextPage(grupoEl, tail.target, container);
     }
 
+    function lastGrupoInContainer(container) {
+        var grupos = container ? container.querySelectorAll('.report-pdf-grupo-prueba') : [];
+        return grupos.length ? grupos[grupos.length - 1] : null;
+    }
+
+    function lastGrupoIsKeepOnPageOnly(container) {
+        var last = lastGrupoInContainer(container);
+        return !!(last
+            && last.classList.contains('report-pdf-grupo-prueba-keep-on-page')
+            && !last.classList.contains('report-pdf-grupo-prueba-split-segments-only'));
+    }
+
+    function segmentInKeepOnPageGrupo(seg) {
+        var grupo = seg && seg.closest ? seg.closest('.report-pdf-grupo-prueba') : null;
+        return !!(grupo
+            && grupo.classList.contains('report-pdf-grupo-prueba-keep-on-page')
+            && !grupo.classList.contains('report-pdf-grupo-prueba-split-segments-only'));
+    }
+
     function applyLabFirmasPageBreaks(container, layoutCtx) {
-        console.log('POST_PROCESO', 'applyLabFirmasPageBreaks');
         var maxSlicePx = layoutCtx.maxSlicePx;
         var boundarySet = layoutCtx.boundarySet;
 
@@ -1464,7 +1496,17 @@ $footerEnabled = ! empty($footer_enabled);
 
             clearLabFirmaPageLeader(block);
 
+            if (!grupoEl && block.classList.contains('lab-firmas-pdf-block-global')
+                && lastGrupoIsKeepOnPageOnly(container)) {
+                return;
+            }
+
             if (grupoEl && block.classList.contains('report-lab-firma-grupo-inline')) {
+                if (grupoEl.classList.contains('report-pdf-grupo-prueba-keep-on-page')
+                    && !grupoEl.classList.contains('report-pdf-grupo-prueba-split-segments-only')) {
+                    clearLabFirmaPageLeader(block);
+                    return;
+                }
                 if (!usesGrupoIntactMode()) {
                     applyInlineGrupoFirmaPageBreak(block, grupoEl, container, layoutCtx);
                 }
@@ -1499,7 +1541,7 @@ $footerEnabled = ! empty($footer_enabled);
 
             var lastSeg = findLastSegmentBeforeNode(container, block);
             var pulled = false;
-            if (lastSeg) {
+            if (lastSeg && !segmentInKeepOnPageGrupo(lastSeg)) {
                 var unit = segmentUnitMetrics(lastSeg, container);
                 if ((unit.height + height) <= maxSlicePx) {
                     markForceBreakBeforeSegmentUnit(lastSeg, container);
@@ -1507,7 +1549,7 @@ $footerEnabled = ! empty($footer_enabled);
                 }
             }
 
-            if (!pulled) {
+            if (!pulled && !segmentInKeepOnPageGrupo(lastSeg)) {
                 ensureLabFirmaPageLeaderBefore(block);
             }
         });
@@ -1556,6 +1598,112 @@ $footerEnabled = ! empty($footer_enabled);
         }
     }
 
+    function usesUnifiedCursorPlacement() {
+        var mode = cfg.mode || '';
+        return mode === 'keep_together'
+            || mode === 'keep_together_compact'
+            || mode === 'keep_together_if_fits'
+            || mode === 'keep_together_if_fits_auto_order';
+    }
+
+    function remainingForGrupoPlacement(grupo, container, layoutCtx, cursor, isFirstGrupo) {
+        var buffer = layoutFooterSafetyBufferPx(layoutCtx);
+        if (isFirstGrupo) {
+            return Math.max(0, espacioRestanteEnPaginaActual(cursor, layoutCtx) - buffer);
+        }
+        var top = topWithinContainer(grupo, container);
+        return Math.max(0, remainingOnPage(top, layoutCtx.boundarySet) - buffer);
+    }
+
+    /**
+     * Regla base: cada área (grupo prueba) empieza en hoja nueva salvo la primera.
+     * Respeta .report-grupo-inter-page-break si ya existe (evita doble salto).
+     */
+    function forceGrupoToNewPageStart(grupo, cursor, layoutCtx) {
+        if (grupo) {
+            var breaker = grupo.previousElementSibling;
+            if (breaker && breaker.classList && breaker.classList.contains('report-grupo-inter-page-break')) {
+                strengthenInterPageBreakNode(breaker);
+            } else {
+                markGrupoStartBreakBefore(grupo);
+            }
+            grupo.classList.add('report-pdf-grupo-prueba-new-page-start');
+        }
+        return forceCursorToNextPage(cursor, layoutCtx);
+    }
+
+    function measureGrupoHeightForPlacement(grupo, layoutCtx) {
+        var maxSlicePx = layoutCtx.maxSlicePx;
+        var compactMode = cfg.mode === 'keep_together_compact';
+        clearGrupoCompact(grupo);
+        var height = grupo.offsetHeight || 0;
+        if (compactMode && height > maxSlicePx) {
+            applyCompactToGrupo(grupo);
+            var compactH = grupo.offsetHeight || 0;
+            if (compactH <= maxSlicePx * 1.02) {
+                return { height: compactH, compact: true };
+            }
+            clearGrupoCompact(grupo);
+            height = grupo.offsetHeight || 0;
+        }
+        return { height: height, compact: false };
+    }
+
+    function applyUnifiedCursorPlacement(container, layoutCtx) {
+        var metrics = layoutCtx.metrics;
+        var maxSlicePx = layoutCtx.maxSlicePx;
+        var cursor = makePlacementCursor(0, metrics.headerHeightPx || 0);
+
+        container.querySelectorAll('.report-pdf-grupo-prueba').forEach(function(grupo, idx) {
+            clearSegmentBreaksInGrupo(grupo);
+            clearGrupoStartBreakMarks(grupo);
+            grupo.classList.remove(
+                'report-pdf-grupo-prueba-allow-split',
+                'report-pdf-grupo-prueba-keep-on-page',
+                'report-pdf-grupo-prueba-split-segments-only',
+                'report-pdf-grupo-prueba-new-page-start',
+                'report-pdf-grupo-prueba-force-break-before'
+            );
+            clearGrupoCompact(grupo);
+
+            var isFirstGrupo = idx === 0 || grupo.classList.contains('report-pdf-grupo-prueba-first');
+            var measured = measureGrupoHeightForPlacement(grupo, layoutCtx);
+            if (measured.compact) {
+                applyCompactToGrupo(grupo);
+            }
+            var grupoH = measured.height;
+
+            if (!isFirstGrupo) {
+                cursor = forceGrupoToNewPageStart(grupo, cursor, layoutCtx);
+            }
+
+            if (grupoH <= maxSlicePx) {
+                grupo.classList.add('report-pdf-grupo-prueba-keep-on-page');
+                clearAnalysisUnitBreaksInGrupo(grupo);
+                var placedPage = cursor.page;
+                var placedY = cursor.y;
+                cursor = bumpCursorAfterPlace(
+                    placedPage,
+                    placedY,
+                    grupo.offsetHeight || 0,
+                    layoutCtx.boundarySet,
+                    layoutCtx.metrics
+                );
+                sealKeepOnPageGrupoIntact(grupo);
+                applyGrupoFirmaPageBreaks(grupo);
+                return;
+            }
+
+            if (measured.compact) {
+                clearGrupoCompact(grupo);
+            }
+            grupo.classList.add('report-pdf-grupo-prueba-split-segments-only');
+            cursor = placeGrupoTitleOnCursor(cursor, grupo, layoutCtx);
+            cursor = applyAnalysisUnitPageBreaks(grupo, container, layoutCtx, cursor);
+            applyGrupoFirmaPageBreaks(grupo);
+        });
+    }
+
     function applyAnalysisUnitPageBreaks(grupo, container, layoutCtx, cursor) {
         var nodes = placementNodesInGrupo(grupo);
         if (!nodes.length) {
@@ -1568,7 +1716,8 @@ $footerEnabled = ! empty($footer_enabled);
         var state = {
             lastSubgrupo: null,
             cabeceraCounted: false,
-            markBreaks: true
+            markBreaks: true,
+            container: container
         };
 
         nodes.forEach(function(node, idx) {
@@ -1639,7 +1788,8 @@ $footerEnabled = ! empty($footer_enabled);
         var state = {
             lastSubgrupo: null,
             cabeceraCounted: false,
-            markBreaks: true
+            markBreaks: true,
+            container: null
         };
 
         grupo.querySelectorAll(SEGMENT_SELECTOR).forEach(function(seg) {
@@ -1690,7 +1840,8 @@ $footerEnabled = ! empty($footer_enabled);
         var state = {
             lastSubgrupo: null,
             cabeceraCounted: false,
-            markBreaks: true
+            markBreaks: false,
+            container: container
         };
         var grupoNombre = grupoNombreFromGrupo(grupo);
 
@@ -1711,18 +1862,6 @@ $footerEnabled = ! empty($footer_enabled);
         return cursor;
     }
 
-    function logIfFitsGrupoDecision(grupoNombre, remaining, grupoHeight, firmaHeight, ultimoAnalisisHeight, decision) {
-        console.log({
-            branch: 'keep_together_if_fits',
-            grupo: grupoNombre,
-            remaining: Math.round(remaining),
-            grupoHeight: Math.round(grupoHeight),
-            firmaHeight: Math.round(firmaHeight),
-            ultimoAnalisisHeight: Math.round(ultimoAnalisisHeight),
-            decision: decision
-        });
-    }
-
     function applyIfFitsMode(container, layoutCtx) {
         var metrics = layoutCtx.metrics;
         var boundarySet = layoutCtx.boundarySet;
@@ -1739,11 +1878,6 @@ $footerEnabled = ! empty($footer_enabled);
                 cursorY = forcedStart.y;
             }
 
-            var grupoNombre = grupoNombreFromGrupo(grupo);
-            var firma = labFirmaBlockInGrupo(grupo);
-            var firmaHeight = firma ? elementHeight(firma) : 0;
-            var ultimoUnit = lastAnalysisUnitInGrupo(grupo);
-            var ultimoAnalisisHeight = ultimoUnit ? analysisUnitHeight(ultimoUnit, container) : 0;
             var grupoHeight = grupo.offsetHeight || 0;
             var remaining = pageEndPx(cursorPage, boundarySet, metrics) - cursorY;
 
@@ -1754,9 +1888,6 @@ $footerEnabled = ! empty($footer_enabled);
             );
 
             if (grupoHeight > maxSlicePx) {
-                logIfFitsGrupoDecision(
-                    grupoNombre, remaining, grupoHeight, firmaHeight, ultimoAnalisisHeight, 'split_grupo_too_tall'
-                );
                 markGrupoAllowSplit(grupo, 'applyIfFitsMode:grupoHeight>maxSlicePx');
                 var placedHuge = placeGrupoIfFitsSplit(grupo, container, layoutCtx, cursorPage, cursorY);
                 cursorPage = placedHuge.page;
@@ -1765,9 +1896,6 @@ $footerEnabled = ! empty($footer_enabled);
             }
 
             if (grupoHeight <= remaining) {
-                logIfFitsGrupoDecision(
-                    grupoNombre, remaining, grupoHeight, firmaHeight, ultimoAnalisisHeight, 'keep_on_page'
-                );
                 grupo.classList.add('report-pdf-grupo-prueba-keep-on-page');
                 var placedKeep = placementCursorAfterKeepOnPageFirmaCheck(
                     grupo, container, layoutCtx, cursorPage, cursorY
@@ -1777,9 +1905,6 @@ $footerEnabled = ! empty($footer_enabled);
                 return;
             }
 
-            logIfFitsGrupoDecision(
-                grupoNombre, remaining, grupoHeight, firmaHeight, ultimoAnalisisHeight, 'split_grupo_exceeds_remaining'
-            );
             markGrupoAllowSplit(grupo, 'applyIfFitsMode:grupoHeight>remaining');
             var placedSplit = placeGrupoIfFitsSplit(grupo, container, layoutCtx, cursorPage, cursorY);
             cursorPage = placedSplit.page;
@@ -1901,7 +2026,6 @@ $footerEnabled = ! empty($footer_enabled);
     }
 
     function applyGrupoInterPageBreaks(container) {
-        console.log('POST_PROCESO', 'applyGrupoInterPageBreaks');
         if (window.REPORT_PAGE_BREAK_DIAG) {
             return;
         }
@@ -1937,10 +2061,6 @@ $footerEnabled = ! empty($footer_enabled);
     }
 
     function applyBrowserPrintGrupoIntactPageBreaks(container, layoutCtx) {
-        console.log('ENTER applyBrowserPrintGrupoIntactPageBreaks', {
-            mode: cfg.mode,
-            compactMode: cfg.mode === 'keep_together_compact'
-        });
         var maxSlicePx = layoutCtx.maxSlicePx;
         var compactMode = cfg.mode === 'keep_together_compact';
         var cursor = makePlacementCursor(0, layoutCtx.metrics.headerHeightPx || 0);
@@ -1977,6 +2097,17 @@ $footerEnabled = ! empty($footer_enabled);
 
             if (height <= espacioAntesGrupo && height <= maxSlicePx) {
                 grupo.classList.add('report-pdf-grupo-prueba-keep-on-page');
+                clearAnalysisUnitBreaksInGrupo(grupo);
+                cursor = placeGrupoTitleOnCursor(cursor, grupo, layoutCtx);
+                cursor = bumpCursorAfterPlace(
+                    cursor.page,
+                    cursor.y,
+                    grupo.offsetHeight || 0,
+                    layoutCtx.boundarySet,
+                    layoutCtx.metrics
+                );
+                applyGrupoFirmaPageBreaks(grupo);
+                return;
             } else if (height <= maxSlicePx) {
                 grupo.classList.add('report-pdf-grupo-prueba-keep-on-page');
                 grupo.classList.add('report-pdf-grupo-prueba-split-segments-only');
@@ -1987,10 +2118,6 @@ $footerEnabled = ! empty($footer_enabled);
             cursor = placeGrupoTitleOnCursor(cursor, grupo, layoutCtx);
             cursor = applyAnalysisUnitPageBreaks(grupo, container, layoutCtx, cursor);
             applyGrupoFirmaPageBreaks(grupo);
-            console.log('applyBrowserPrintGrupoIntactPageBreaks grupo finalizado', {
-                grupo: grupoNombreFromGrupo(grupo),
-                classes: Array.from(grupo.classList)
-            });
         });
     }
 
@@ -2000,6 +2127,14 @@ $footerEnabled = ! empty($footer_enabled);
         }
 
         document.querySelectorAll('.report-pdf-grupo-prueba.report-pdf-grupo-browser-print-area:not(.report-pdf-grupo-prueba-first)').forEach(function(grupo) {
+            if (grupo.classList.contains('report-pdf-grupo-prueba-keep-on-page')
+                && !grupo.classList.contains('report-pdf-grupo-prueba-split-segments-only')) {
+                grupo.style.setProperty('page-break-before', 'avoid', 'important');
+                grupo.style.setProperty('break-before', 'avoid', 'important');
+                grupo.style.setProperty('margin-top', '0', 'important');
+                grupo.style.setProperty('padding-top', '0', 'important');
+                return;
+            }
             grupo.style.setProperty('page-break-before', 'always', 'important');
             grupo.style.setProperty('break-before', 'page', 'important');
             grupo.style.setProperty('margin-top', '0', 'important');
@@ -2027,6 +2162,12 @@ $footerEnabled = ! empty($footer_enabled);
         });
 
         document.querySelectorAll('.report-pdf-grupo-area-page-leader').forEach(function(leader) {
+            if (!leader.classList.contains('report-area-page-leader-force-break-before')) {
+                leader.style.setProperty('page-break-before', 'auto', 'important');
+                leader.style.setProperty('break-before', 'auto', 'important');
+                leader.style.setProperty('height', '0', 'important');
+                return;
+            }
             leader.style.setProperty('page-break-before', 'always', 'important');
             leader.style.setProperty('break-before', 'page', 'important');
         });
@@ -2064,10 +2205,6 @@ $footerEnabled = ! empty($footer_enabled);
     }
 
     function applyPageBreakRules() {
-        console.log('ENTER applyPageBreakRules', {
-            mode: cfg.mode,
-            usesGrupoIntactMode: usesGrupoIntactMode()
-        });
         clearPageBreakAdjustments();
         var container = (paginationApi() && paginationApi().getPrintContainer)
             ? paginationApi().getPrintContainer()
@@ -2075,10 +2212,6 @@ $footerEnabled = ! empty($footer_enabled);
 
         var layoutCtx = getLayoutContext(container);
         if (!layoutCtx || !isFinite(layoutCtx.maxSlicePx) || layoutCtx.maxSlicePx <= 0) {
-            console.log('applyPageBreakRules: sin layoutCtx válido', {
-                layoutCtx: layoutCtx,
-                maxSlicePx: layoutCtx ? layoutCtx.maxSlicePx : null
-            });
             if (usesGrupoInterPageBreakMode()) {
                 applyGrupoInterPageBreaks(container);
                 if (usesGrupoIntactMode()) {
@@ -2088,41 +2221,30 @@ $footerEnabled = ! empty($footer_enabled);
             return;
         }
 
-        var branch = 'unknown';
         if (!cfg.mode || cfg.mode === 'flow') {
-            branch = 'flow';
             applyCabeceraSegmentIntegrity(container, layoutCtx);
         } else if (cfg.mode === 'keep_segment') {
-            branch = 'keep_segment';
             applySegmentPageBreaks(container, layoutCtx);
-        } else if (cfg.mode === 'keep_together_if_fits') {
-            branch = 'keep_together_if_fits';
+        } else if (usesUnifiedCursorPlacement()) {
             applyGrupoInterPageBreaks(container);
-            applyIfFitsMode(container, layoutCtx);
-        } else if (cfg.mode === 'keep_together_if_fits_auto_order') {
-            branch = 'keep_together_if_fits_auto_order';
-            reorderGruposForAutoPack(container, layoutCtx);
-            applyGrupoInterPageBreaks(container);
-            applyIfFitsMode(container, layoutCtx);
+            applyUnifiedCursorPlacement(container, layoutCtx);
         } else if (!usesGrupoIntactMode()) {
-            branch = 'applyGrupoPageBreaks';
             applyCabeceraSegmentIntegrity(container, layoutCtx);
             applyGrupoPageBreaks(container, layoutCtx);
         } else {
-            branch = 'grupo_intact';
             applyGrupoInterPageBreaks(container);
-            applyBrowserPrintGrupoIntactPageBreaks(container, layoutCtx);
+            applyUnifiedCursorPlacement(container, layoutCtx);
         }
-        console.log('applyPageBreakRules branch ejecutada', branch);
 
         applyLabFirmasPageBreaks(container, layoutCtx);
-        console.log('applyPageBreakRules: post applyLabFirmasPageBreaks');
+
+        container.querySelectorAll('.report-pdf-grupo-prueba.report-pdf-grupo-prueba-keep-on-page:not(.report-pdf-grupo-prueba-split-segments-only)').forEach(function(grupo) {
+            sealKeepOnPageGrupoIntact(grupo);
+        });
 
         if (usesGrupoIntactMode()) {
             applyBrowserPrintAreaSeparatorFix();
-            console.log('applyPageBreakRules: post applyBrowserPrintAreaSeparatorFix');
         }
-        console.log('POST_PROCESO', 'applyPageBreakRules');
     }
 
     window.updateReportPrintPageBreakMetrics = function(metrics) {
@@ -2136,11 +2258,9 @@ $footerEnabled = ! empty($footer_enabled);
 
     window.applyReportPdfGrupoPageBreaks = applyPageBreakRules;
     window.addEventListener('beforeprint', function() {
-        console.log('POST_PROCESO', 'beforeprint:applyPageBreakRules');
         applyPageBreakRules();
     });
     window.addEventListener('afterprint', function() {
-        console.log('POST_PROCESO', 'afterprint:clearPageBreakAdjustments');
         clearPageBreakAdjustments();
     });
 })();

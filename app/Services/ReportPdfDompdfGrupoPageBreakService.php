@@ -156,6 +156,7 @@ class ReportPdfDompdfGrupoPageBreakService
      * @return array{
      *   classes: string,
      *   inter_break: bool,
+     *   area_page_leader: bool,
      *   grupo_style: string,
      *   separator_new_page: bool,
      *   apply_compact: bool
@@ -174,14 +175,6 @@ class ReportPdfDompdfGrupoPageBreakService
         $interBreak   = false;
         $applyCompact = false;
 
-        if (! $isFirstGrupo && ReportPdfLayoutService::shouldRenderGrupoInterPageBreak($this->layout, false)) {
-            $this->forceNextPage();
-            $this->grupoOnFreshPage = true;
-            $classes[]              = 'report-pdf-grupo-prueba-new-page-start';
-            $interBreak             = true;
-            $grupoStyle             = 'page-break-before:avoid;break-before:avoid;margin-top:0;padding-top:0;';
-        }
-
         if (! $this->usesGrupoIntactMode && ! $this->usesIfFitsMode) {
             $this->bumpCursor($this->areaSeparatorMm);
 
@@ -190,7 +183,7 @@ class ReportPdfDompdfGrupoPageBreakService
 
         $height = $this->estimateGrupoHeightFast($items, $hasFirma, false);
 
-        if (! $isFirstGrupo) {
+        if (! $isFirstGrupo && ! $this->usesGrupoIntactMode) {
             $headMin = $this->estimateGrupoHeadMinHeight($items);
             if ($headMin > 0 && $headMin <= $this->maxSliceMm && $headMin > $this->espacioRestanteMm()) {
                 $this->forceNextPage();
@@ -199,46 +192,21 @@ class ReportPdfDompdfGrupoPageBreakService
         }
 
         if ($this->usesGrupoIntactMode) {
-            if ($this->usesCompactMode && $height > $this->maxSliceMm) {
-                $compactH = $this->estimateGrupoHeightFast($items, $hasFirma, true);
-                if ($compactH <= $this->maxSliceMm * 1.06) {
-                    $applyCompact           = true;
-                    $this->applyCompactActive = true;
-                    $classes[]              = 'report-pdf-grupo-prueba-keep-on-page';
-                    $this->bumpCursor($this->areaSeparatorMm);
-                    $this->placementPlan = $this->buildPlacementPlan($items);
-
-                    return $this->buildResult($classes, $interBreak, $grupoStyle, $applyCompact);
+            if (! $isFirstGrupo) {
+                $headMin = $this->estimateGrupoHeadMinHeight($items);
+                if ($headMin > 0 && $headMin <= $this->maxSliceMm && $headMin > $this->espacioRestanteMm()) {
+                    $this->forceNextPage();
+                    $this->grupoOnFreshPage = true;
+                    $interBreak = true;
+                    $grupoStyle = 'page-break-before:avoid;break-before:avoid;margin-top:0;padding-top:0;';
+                    $classes[]  = 'report-pdf-grupo-prueba-new-page-start';
                 }
-                $height = $this->estimateGrupoHeightFast($items, $hasFirma, false);
-            }
-
-            $espacioAntes = $this->espacioRestanteMm();
-            // Dompdf renderiza más alto que la estimación PHP: reservar hueco de firma compactando si el bloque queda justo.
-            if ($this->usesCompactMode && $hasFirma && ! $applyCompact) {
-                $firmaReserveMm = max(24.0, $this->firmaHeightMm * 0.85);
-                if ($height > ($espacioAntes - $firmaReserveMm) && $height <= $espacioAntes) {
-                    $compactH = $this->estimateGrupoHeightFast($items, $hasFirma, true);
-                    if ($compactH <= $espacioAntes && $compactH <= $this->maxSliceMm * 1.06) {
-                        $applyCompact             = true;
-                        $this->applyCompactActive = true;
-                        $height                   = $compactH;
-                    }
-                }
-            }
-            if ($height <= $espacioAntes && $height <= $this->maxSliceMm) {
-                $classes[] = 'report-pdf-grupo-prueba-keep-on-page';
-            } elseif ($height <= $this->maxSliceMm) {
-                $classes[] = 'report-pdf-grupo-prueba-keep-on-page';
-                $classes[] = 'report-pdf-grupo-prueba-split-segments-only';
-            } else {
-                $classes[] = 'report-pdf-grupo-prueba-split-segments-only';
             }
 
             $this->bumpCursor($this->areaSeparatorMm);
             $this->placementPlan = $this->buildPlacementPlan($items);
 
-            return $this->buildResult($classes, $interBreak, $grupoStyle, $applyCompact);
+            return $this->buildResult($classes, $interBreak, $grupoStyle, false);
         }
 
         $remaining = $this->espacioRestanteMm();
@@ -306,13 +274,14 @@ class ReportPdfDompdfGrupoPageBreakService
     /**
      * @param list<string> $classes
      *
-     * @return array{classes: string, inter_break: bool, grupo_style: string, separator_new_page: bool, apply_compact: bool}
+     * @return array{classes: string, inter_break: bool, area_page_leader: bool, grupo_style: string, separator_new_page: bool, apply_compact: bool}
      */
     private function buildResult(array $classes, bool $interBreak, string $grupoStyle, bool $applyCompact): array
     {
         return [
             'classes'            => trim(implode(' ', array_unique($classes))),
             'inter_break'        => $interBreak,
+            'area_page_leader'   => $interBreak,
             'grupo_style'        => $grupoStyle,
             'separator_new_page' => $interBreak,
             'apply_compact'      => $applyCompact,

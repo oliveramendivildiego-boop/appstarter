@@ -18,6 +18,21 @@ $printPageHeightMmHead = $printPaperViewHead === 'a4'
 $printPageWidthMmHead = $printPaperViewHead === 'a4'
     ? 210.0
     : ($printPaperViewHead === 'custom' ? $printPaperCustomWHead : 215.9);
+$pdfFooterEnabledView = false;
+foreach (is_array($plViewHead['blocks'] ?? null) ? $plViewHead['blocks'] : [] as $fbView) {
+    if (! empty($fbView['enabled']) && (string) ($fbView['id'] ?? '') === 'footer') {
+        $pdfFooterEnabledView = true;
+        break;
+    }
+}
+$pdfFooterReserveMmView = $pdfFooterEnabledView
+    ? \App\Services\ReportPdfLayoutService::estimatePdfFooterReserveMm($plViewHead)
+    : 22.0;
+$gpbBodyClassView = \App\Services\ReportPdfLayoutService::grupoPruebaPageBreakBodyClass($plViewHead);
+$orderSheetHeaderEnabledView = \App\Services\ReportPdfLayoutService::isOrderSheetHeaderEnabledForLayout($plViewHead);
+$printPageCssSizeView = $printPaperViewHead === 'custom'
+    ? ((string) $printPaperCustomWHead . 'mm ' . (string) $printPaperCustomHHead . 'mm')
+    : (($printPaperViewHead === 'a4') ? 'A4 portrait' : (($printPaperViewHead === 'legal') ? 'legal portrait' : 'letter portrait'));
 ?>
 <?= $this->section('title') ?>Reporte<?= $this->endSection() ?>
 
@@ -108,6 +123,21 @@ body.js-total-pages-ready .pdf-counter-pages::before {
     content: '' !important;
 }
 </style>
+<?php if ($gpbBodyClassView !== ''): ?>
+<?= view('registers/partials/report_browser_print_styles', [
+    'mt'                          => (float) ($mmViewHead['top'] ?? 15),
+    'mr'                          => (float) ($mmViewHead['right'] ?? 15),
+    'mb'                          => (float) ($mmViewHead['bottom'] ?? 15),
+    'ml'                          => (float) ($mmViewHead['left'] ?? 15),
+    'printPageCssSize'            => $printPageCssSizeView,
+    'pdfFooterEnabled'            => $pdfFooterEnabledView,
+    'pdfFooterReserveMm'          => (float) $pdfFooterReserveMmView,
+    'printSegmentBreakInside'     => 'auto',
+    'printPagLabelCssPos'         => '',
+    'printPagValueCssPos'         => '',
+    'order_sheet_header_enabled'  => $orderSheetHeaderEnabledView,
+]) ?>
+<?php endif; ?>
 <?= $this->endSection() ?>
 
 <?= $this->section('content') ?>
@@ -202,8 +232,43 @@ $qr_data_uri = qr_base64($reportUrl, $qrPx);
 <?= $this->endSection() ?>
 
 <?= $this->section('scripts') ?>
+<?php if (! empty($grupos) && ($gpbBodyClassView ?? '') !== ''): ?>
+<?php
+$mmViewScripts = is_array($plViewHead['margins_mm'] ?? null)
+    ? $plViewHead['margins_mm']
+    : \App\Services\ReportPdfLayoutService::defaultMarginsMmStatic();
+?>
+<?= view('registers/partials/report_print_pagination_metrics', [
+    'page_height_mm'              => $printPageHeightMmHead,
+    'margin_top_mm'               => (float) ($mmViewScripts['top'] ?? 15),
+    'margin_bottom_mm'            => (float) ($mmViewScripts['bottom'] ?? 15),
+    'footer_reserve_mm'           => (float) $pdfFooterReserveMmView,
+    'footer_enabled'              => $pdfFooterEnabledView,
+    'order_sheet_header_enabled'  => $orderSheetHeaderEnabledView,
+    'order_sheet_band_default_mm' => \App\Services\ReportPdfLayoutService::orderSheetHeaderPaginationReserveMm(),
+]) ?>
+<?= view('registers/partials/report_pdf_grupo_page_break_script', [
+    'pdf_layout'        => $pdf_layout ?? [],
+    'page_height_mm'    => $printPageHeightMmHead,
+    'margin_top_mm'     => (float) ($mmViewScripts['top'] ?? 15),
+    'margin_bottom_mm'  => (float) ($mmViewScripts['bottom'] ?? 15),
+    'footer_reserve_mm' => (float) $pdfFooterReserveMmView,
+    'footer_enabled'    => $pdfFooterEnabledView,
+]) ?>
+<?php endif; ?>
 <script>
 document.addEventListener('DOMContentLoaded', function() {
+    var gpbBodyClasses = <?= json_encode(array_values(array_filter(explode(' ', (string) ($gpbBodyClassView ?? ''))))) ?>;
+    if (gpbBodyClasses.length) {
+        document.body.classList.add('viewreport-pdf-pagination', 'report-browser-print');
+        gpbBodyClasses.forEach(function(cls) {
+            document.body.classList.add(cls);
+        });
+        if (typeof window.applyReportPdfGrupoPageBreaks === 'function') {
+            window.applyReportPdfGrupoPageBreaks();
+        }
+    }
+
     var MM_TO_PX = 96 / 25.4;
     var PAGE_HEIGHT_MM = <?= json_encode($printPageHeightMmHead) ?>;
     var marginTopMm = <?= json_encode($mtViewHead) ?>;

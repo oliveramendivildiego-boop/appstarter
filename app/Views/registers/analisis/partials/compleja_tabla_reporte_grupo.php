@@ -15,7 +15,7 @@
 $variant = $variant ?? 'web';
 $usePdfChrome = in_array($variant, ['pdf', 'screen_pdf', 'browser_print'], true);
 $reportForzarColRef = ! empty($report_forzar_col_ref) && $usePdfChrome;
-$pdfGrupoPbService = (in_array($variant, ['pdf', 'screen_pdf'], true) && ($pdf_grupo_pb_service ?? null) instanceof \App\Services\ReportPdfDompdfGrupoPageBreakService)
+$pdfGrupoPbService = ($variant === 'pdf' && ($pdf_grupo_pb_service ?? null) instanceof \App\Services\ReportPdfDompdfGrupoPageBreakService)
     ? $pdf_grupo_pb_service
     : null;
 $segmentWrapStyle = '';

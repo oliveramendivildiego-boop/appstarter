@@ -116,19 +116,12 @@
     'pdf_footer_enabled'       => $pdfFooterEnabled,
 ]) ?>
 <?php endif; ?>
-<div class="report-print-toolbar">
+<div class="report-print-toolbar no-print">
     <button type="button" class="report-print-btn-primary" onclick="window.print()">Imprimir de nuevo</button>
     <?php if ($rid > 0): ?>
     <a href="<?= site_url('registers/printreport/' . $rid . '?layout_report=1') ?>" class="report-print-btn-secondary">Informe de maquetación</a>
     <a href="<?= site_url('registers/viewreport/' . $rid) ?>" class="report-print-btn-secondary">Volver al reporte</a>
     <?php endif; ?>
-    <p class="report-print-browser-hint small text-muted mb-0 w-100">
-        Si ves margen arriba/abajo con la plantilla en 0&nbsp;mm: en el diálogo de impresión use <strong>Márgenes → Ninguno</strong>
-        (o Mínimo) y desactive <strong>Encabezados y pies de página</strong> del navegador.
-        <?php if ($pdfFooterEnabled): ?>
-        El bloque pie fijo reserva espacio abajo (~<span id="report-print-footer-reserve-hint">—</span>) aparte del margen de hoja.
-        <?php endif; ?>
-    </p>
 </div>
 <?php if ($renderFixedPrintPagination): ?>
 <div class="print-pagination-fixed print-pagination-label-fixed" aria-hidden="true">
@@ -295,7 +288,6 @@
     }
 
     function preparePrintLayout() {
-        console.log('POST_PROCESO', 'preparePrintLayout');
         syncReportPrintLayoutMetrics();
         ensureBrowserPrintFooter();
         syncReportPrintLayoutMetrics();
@@ -317,18 +309,15 @@
         if (footerHint && footerEnabled && typeof window.measureReportPrintFooterReserveMm === 'function') {
             footerHint.textContent = window.measureReportPrintFooterReserveMm() + ' mm';
         }
-        console.log('DOM_FINAL_PRE_PRINT', document.body.innerHTML);
     }
 
     function openPrintDialog() {
         preparePrintLayout();
-        console.log('DOM_FINAL_PRE_PRINT', document.body.innerHTML);
         window.print();
     }
 
     window.syncReportPrintLayoutMetrics = syncReportPrintLayoutMetrics;
     window.addEventListener('beforeprint', function() {
-        console.log('POST_PROCESO', 'beforeprint:preparePrintLayout');
         preparePrintLayout();
         if (typeof window.renderReportPrintLayoutReport === 'function') {
             window.renderReportPrintLayoutReport();

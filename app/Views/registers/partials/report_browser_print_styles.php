@@ -249,12 +249,6 @@ body.js-total-pages-ready .pdf-counter-pages::before {
         break-inside: avoid-page !important;
         page-break-inside: avoid !important;
     }
-    body.report-browser-print.pdf-gpb-grupo-intact .report-pdf-grupo-prueba:not(.report-pdf-grupo-prueba-first):not(.report-pdf-grupo-prueba-new-page-start),
-        break-before: page !important;
-        page-break-before: always !important;
-        margin-top: 0 !important;
-        padding-top: 0 !important;
-    }
     body.report-browser-print.pdf-gpb-grupo-intact .report-pdf-grupo-prueba.report-pdf-grupo-prueba-keep-on-page {
         break-inside: avoid-page !important;
         page-break-inside: avoid !important;
@@ -281,7 +275,7 @@ body.js-total-pages-ready .pdf-counter-pages::before {
         break-after: avoid-page !important;
         page-break-after: avoid !important;
     }
-    body.report-browser-print.pdf-gpb-grupo-intact .report-pdf-grupo-prueba.report-pdf-grupo-browser-print-area:not(.report-pdf-grupo-prueba-first) {
+    body.report-browser-print.pdf-gpb-grupo-intact .report-pdf-grupo-prueba.report-pdf-grupo-browser-print-area:not(.report-pdf-grupo-prueba-first):not(.report-pdf-grupo-prueba-keep-on-page) {
         page-break-before: always !important;
         break-before: page !important;
         margin-top: 0 !important;
@@ -333,15 +327,34 @@ body.js-total-pages-ready .pdf-counter-pages::before {
         margin-top: 0 !important;
         padding-top: 0 !important;
     }
-    body.report-browser-print.pdf-gpb-grupo-intact .report-pdf-grupo-prueba:not(.report-pdf-grupo-prueba-allow-split) {
+    body.report-browser-print.pdf-gpb-grupo-intact .report-pdf-grupo-prueba:not(.report-pdf-grupo-prueba-keep-on-page):not(.report-pdf-grupo-prueba-split-segments-only) {
+        break-inside: auto !important;
+        page-break-inside: auto !important;
+    }
+    body.report-browser-print.pdf-gpb-grupo-intact .report-pdf-grupo-prueba.report-pdf-grupo-prueba-keep-on-page {
         break-inside: avoid-page !important;
         page-break-inside: avoid !important;
     }
-    body.report-browser-print.pdf-gpb-grupo-intact .report-pdf-grupo-prueba:not(.report-pdf-grupo-prueba-allow-split) .report-segment-table-wrap,
-    body.report-browser-print.pdf-gpb-grupo-intact .report-pdf-grupo-prueba:not(.report-pdf-grupo-prueba-allow-split) .report-refs-matrix-wrap,
-    body.report-browser-print.pdf-gpb-grupo-intact .report-pdf-grupo-prueba:not(.report-pdf-grupo-prueba-allow-split) table.results {
+    body.report-browser-print.pdf-gpb-grupo-intact .report-pdf-grupo-prueba.report-pdf-grupo-prueba-keep-on-page .report-segment-table-wrap,
+    body.report-browser-print.pdf-gpb-grupo-intact .report-pdf-grupo-prueba.report-pdf-grupo-prueba-keep-on-page .report-refs-matrix-wrap,
+    body.report-browser-print.pdf-gpb-grupo-intact .report-pdf-grupo-prueba.report-pdf-grupo-prueba-keep-on-page table.results,
+    body.report-browser-print.pdf-gpb-grupo-intact .report-pdf-grupo-prueba.report-pdf-grupo-prueba-keep-on-page .report-lab-firma-grupo-inline {
         break-inside: avoid-page !important;
         page-break-inside: avoid !important;
+    }
+    body.report-browser-print.pdf-gpb-grupo-intact .report-segment-table-wrap:not(.report-segment-allow-split),
+    body.report-browser-print.pdf-gpb-grupo-intact .report-refs-matrix-wrap:not(.report-segment-allow-split),
+    body.report-browser-print.pdf-gpb-grupo-intact .report-pdf-subgrupo-block.report-subgrupo-keep-intact {
+        break-inside: avoid-page !important;
+        page-break-inside: avoid !important;
+    }
+    body.report-browser-print.pdf-gpb-grupo-intact .report-segment-table-wrap.report-segment-force-break-before,
+    body.report-browser-print.pdf-gpb-grupo-intact .report-refs-matrix-wrap.report-segment-force-break-before,
+    body.report-browser-print.pdf-gpb-grupo-intact .report-pdf-grupo-cabecera.report-cabecera-force-break-before,
+    body.report-browser-print.pdf-gpb-grupo-intact .report-pdf-subgrupo-block.report-subgrupo-force-break-before,
+    body.report-browser-print.pdf-gpb-grupo-intact .report-area-separator-force-break-before {
+        break-before: page !important;
+        page-break-before: always !important;
     }
     body.report-browser-print.pdf-gpb-grupo-intact .report-pdf-grupo-prueba:not(.report-pdf-grupo-prueba-first):not(.report-pdf-grupo-browser-print-area) {
         break-before: auto !important;
@@ -349,10 +362,8 @@ body.js-total-pages-ready .pdf-counter-pages::before {
         margin-top: 0 !important;
         padding-top: 0 !important;
     }
-    body.report-browser-print.pdf-gpb-grupo-intact .report-pdf-grupo-area-page-leader,
-    body.report-browser-print.pdf-gpb-grupo-intact .report-area-page-leader-force-break-before {
+    body.report-browser-print.pdf-gpb-grupo-intact .report-pdf-grupo-area-page-leader.report-area-page-leader-force-break-before {
         display: block !important;
-        /* Altura real (no padding en el título): Chrome recorta padding-top al inicio de hoja. */
         height: calc(var(--pdf-results-grupo-gap, 10px) + var(--pdf-grupo-area-separator-margin-top, 10px)) !important;
         min-height: calc(var(--pdf-results-grupo-gap, 10px) + var(--pdf-grupo-area-separator-margin-top, 10px)) !important;
         margin: 0 !important;
@@ -365,6 +376,16 @@ body.js-total-pages-ready .pdf-counter-pages::before {
         page-break-before: always !important;
         break-after: avoid !important;
         page-break-after: avoid !important;
+    }
+    body.report-browser-print.pdf-gpb-grupo-intact .report-pdf-grupo-area-page-leader:not(.report-area-page-leader-force-break-before) {
+        display: none !important;
+        height: 0 !important;
+        min-height: 0 !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        border: 0 !important;
+        break-before: auto !important;
+        page-break-before: auto !important;
     }
     body.report-browser-print.pdf-gpb-grupo-intact .report-pdf-grupo-area-separator,
     body.report-browser-print.pdf-gpb-grupo-intact .report-area-separator-force-break-before {
@@ -450,6 +471,28 @@ body.js-total-pages-ready .pdf-counter-pages::before {
         break-inside: avoid-page !important;
         page-break-inside: avoid !important;
     }
+    body.report-browser-print .report-pdf-grupo-prueba.report-pdf-grupo-prueba-keep-on-page:not(.report-pdf-grupo-prueba-split-segments-only) {
+        break-inside: avoid-page !important;
+        page-break-inside: avoid !important;
+    }
+    body.report-browser-print .report-pdf-grupo-prueba.report-pdf-grupo-prueba-keep-on-page:not(.report-pdf-grupo-prueba-split-segments-only) .report-pdf-subgrupo-block,
+    body.report-browser-print .report-pdf-grupo-prueba.report-pdf-grupo-prueba-keep-on-page:not(.report-pdf-grupo-prueba-split-segments-only) .report-pdf-subgrupo-block.report-pdf-subgrupo-prueba {
+        break-before: avoid !important;
+        page-break-before: avoid !important;
+        break-inside: avoid-page !important;
+        page-break-inside: avoid !important;
+    }
+    body.report-browser-print .report-pdf-grupo-prueba.report-pdf-grupo-prueba-keep-on-page:not(.report-pdf-grupo-prueba-split-segments-only) .report-segment-table-wrap,
+    body.report-browser-print .report-pdf-grupo-prueba.report-pdf-grupo-prueba-keep-on-page:not(.report-pdf-grupo-prueba-split-segments-only) .report-refs-matrix-wrap,
+    body.report-browser-print .report-pdf-grupo-prueba.report-pdf-grupo-prueba-keep-on-page:not(.report-pdf-grupo-prueba-split-segments-only) .report-lab-firma-grupo-inline,
+    body.report-browser-print .report-pdf-grupo-prueba.report-pdf-grupo-prueba-keep-on-page:not(.report-pdf-grupo-prueba-split-segments-only) table.results {
+        break-inside: avoid-page !important;
+        page-break-inside: avoid !important;
+    }
+    body.report-browser-print .report-pdf-grupo-prueba.report-pdf-grupo-prueba-keep-on-page:not(.report-pdf-grupo-prueba-split-segments-only) .report-segment-force-break-before {
+        break-before: avoid !important;
+        page-break-before: avoid !important;
+    }
     body.report-browser-print.pdf-gpb-keep-together-if-fits .report-pdf-grupo-prueba.report-pdf-grupo-prueba-allow-split,
     body.report-browser-print.pdf-gpb-keep-together-if-fits-auto-order .report-pdf-grupo-prueba.report-pdf-grupo-prueba-allow-split {
         break-inside: auto !important;
@@ -518,8 +561,17 @@ body.js-total-pages-ready .pdf-counter-pages::before {
         font-size: 0 !important;
         overflow: hidden !important;
     }
-    .report-print-toolbar {
+    .no-print,
+    .report-print-toolbar,
+    .report-print-browser-hint {
         display: none !important;
+        visibility: hidden !important;
+        height: 0 !important;
+        max-height: 0 !important;
+        overflow: hidden !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        border: 0 !important;
     }
     /* Banda Paciente / No. Orden integrada en el pie fijo (hojas 2+; el bloque se repite en cada hoja). */
     body.report-browser-print.js-order-sheet-footer-band .pdf-ft-block.footer-grid .pdf-order-sheet-footer-band {

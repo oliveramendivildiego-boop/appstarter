@@ -174,19 +174,6 @@ $orderSheetBufferMm = 0.5;
             String(metrics.orderSheetBandReserveMM)
         );
 
-        console.log('[report-print-pagination]', {
-            pageHeightMM: metrics.pageHeightMM,
-            marginTopMM: metrics.marginTopMM,
-            marginBottomMM: metrics.marginBottomMM,
-            headerHeightMM: metrics.headerHeightMM,
-            footerHeightMM: metrics.footerHeightMM,
-            orderSheetBandReserveMM: metrics.orderSheetBandReserveMM,
-            firstPageContentMM: metrics.firstPageContentMM,
-            nextPageContentMM: metrics.nextPageContentMM,
-            totalContentMM: metrics.totalContentMM,
-            estimatedPages: metrics.estimatedPages
-        });
-
         return metrics;
     }
 

@@ -2,9 +2,6 @@
 declare(strict_types=1);
 
 $av = $analisis_variant ?? 'pdf';
-if ($av === 'pdf') {
-    echo '<!-- pdf-results-build:2026-06-18-v23 -->';
-}
 
 $layoutForLf = is_array($pdf_layout ?? null) ? $pdf_layout : [];
 $lfStyle = \App\Services\ReportPdfLayoutService::normalizeLabFirmasStyle(
@@ -26,7 +23,7 @@ if ($showFirmaPerGroup) {
     }
 }
 
-$pdfPbService = in_array($av, ['pdf', 'screen_pdf'], true)
+$pdfPbService = ($av === 'pdf')
     ? \App\Services\ReportPdfDompdfGrupoPageBreakService::create(
         $layoutForLf,
         \App\Services\ReportPdfLayoutService::estimatePdfHeaderBeforeResultsMm($layoutForLf)
@@ -49,20 +46,22 @@ foreach ($gruposList as $padre => $items) {
     $isLastGrupo  = ($grupoPruebaIdx >= $totalGrupos - 1);
     $padreKey = trim((string) $padre);
     $itemsList = is_array($items) ? $items : [];
-    $useInterPageBreak = ! $isFirstGrupo
-        && \App\Services\ReportPdfLayoutService::shouldRenderGrupoInterPageBreak($layoutForLf, $isFirstGrupo)
-        && empty($pb_diag_no_separators);
     $hasFirmaEnGrupo = $showFirmaPerGroup && $padreKey !== '' && isset($firmasPorPadre[$padreKey]);
 
     $pbMeta = [
         'classes'            => '',
         'grupo_style'        => '',
-        'separator_new_page' => $av === 'pdf' && $useInterPageBreak,
+        'inter_break'        => false,
+        'area_page_leader'   => false,
+        'separator_new_page' => false,
         'apply_compact'      => false,
     ];
     if ($usePdfPbService) {
         $pbMeta = array_merge($pbMeta, $pdfPbService->beginGrupo($isFirstGrupo, $itemsList, $hasFirmaEnGrupo));
     }
+
+    $useInterPageBreak = ! empty($pbMeta['inter_break']) && empty($pb_diag_no_separators);
+    $useAreaPageLeader = ! empty($pbMeta['area_page_leader']) && empty($pb_diag_no_separators);
 
     $grupoClass = 'report-pdf-grupo-prueba';
     if ($isFirstGrupo) {
@@ -83,11 +82,12 @@ foreach ($gruposList as $padre => $items) {
 
     $grupoExtraStyle = '';
     if ($useInterPageBreak && $av !== 'pdf') {
-        $grupoClass .= ' report-pdf-grupo-prueba-new-page-start';
+        if (! str_contains($grupoClass, 'report-pdf-grupo-prueba-new-page-start')) {
+            $grupoClass .= ' report-pdf-grupo-prueba-new-page-start';
+        }
         $grupoExtraStyle = 'page-break-before:avoid;break-before:avoid;margin-top:0;padding-top:0;';
     }
-    $useBrowserPrintAreaStart = ($av === 'browser_print')
-        && \App\Services\ReportPdfLayoutService::shouldRenderGrupoAreaPageLeader($layoutForLf, $isFirstGrupo);
+    $useBrowserPrintAreaStart = false;
     if ($useBrowserPrintAreaStart) {
         $grupoClass .= ' report-pdf-grupo-browser-print-area';
     }
@@ -100,7 +100,7 @@ foreach ($gruposList as $padre => $items) {
         $compactAttrs['style'] ?? '',
         $grupoExtraStyle
     );
-    if (! $useBrowserPrintAreaStart && $av !== 'pdf' && \App\Services\ReportPdfLayoutService::shouldRenderGrupoAreaPageLeader($layoutForLf, $isFirstGrupo)) {
+    if (! $useBrowserPrintAreaStart && $av !== 'pdf' && $useAreaPageLeader) {
         $leaderStyle = \App\Services\ReportPdfLayoutService::grupoAreaPageLeaderStyleAttr($layoutForLf, $isFirstGrupo);
         echo '<div class="report-pdf-grupo-area-page-leader" aria-hidden="true"'
             . ($leaderStyle !== '' ? ' style="' . esc($leaderStyle, 'attr') . '"' : '')
