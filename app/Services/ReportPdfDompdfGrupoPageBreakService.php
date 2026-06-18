@@ -39,11 +39,19 @@ class ReportPdfDompdfGrupoPageBreakService
 
     private float $firmaHeightMm;
 
+    private float $contentStartMm = 0.0;
+
+    private bool $grupoOnFreshPage = false;
+
     private int $cursorPage = 0;
 
     private float $cursorY = 0.0;
 
     private bool $grupoAllowSplit = false;
+
+    private bool $grupoHasFirma = false;
+
+    private bool $usesIfFitsMode = false;
 
     public static function create(array $layout, float $contentStartMm = 0.0): self
     {
@@ -54,7 +62,8 @@ class ReportPdfDompdfGrupoPageBreakService
     {
         $this->layout = $layout;
         $ps           = is_array($layout['page_style'] ?? null) ? $layout['page_style'] : [];
-        $this->gpb    = ReportPdfLayoutService::normalizeGrupoPruebaPageBreakStyle($ps['grupo_prueba_page_break'] ?? []);
+        $this->gpb           = ReportPdfLayoutService::normalizeGrupoPruebaPageBreakStyle($ps['grupo_prueba_page_break'] ?? []);
+        $this->usesIfFitsMode = ReportPdfLayoutService::grupoPruebaPageBreakUsesIfFitsMode($this->gpb);
 
         $mm = is_array($layout['margins_mm'] ?? null)
             ? $layout['margins_mm']
@@ -99,7 +108,8 @@ class ReportPdfDompdfGrupoPageBreakService
         $marginFirmaMm = ((float) ($lf['inline_margin_top_pt'] ?? 8) + (float) ($lf['inline_margin_bottom_pt'] ?? 6)) * 25.4 / 72;
         $this->firmaHeightMm = $marginFirmaMm + max($sealMm, $sigMm) + 18.0;
 
-        $this->cursorY = max(0.0, $contentStartMm);
+        $this->contentStartMm = max(0.0, $contentStartMm);
+        $this->cursorY        = $this->contentStartMm;
     }
 
     public function isActive(): bool
@@ -119,18 +129,22 @@ class ReportPdfDompdfGrupoPageBreakService
         $grupoStyle = '';
         $interBreak = false;
 
+        $this->grupoHasFirma   = $hasFirma;
+        $this->grupoAllowSplit = false;
+        $this->grupoOnFreshPage = false;
+
         if (! $isFirstGrupo && ReportPdfLayoutService::shouldRenderGrupoInterPageBreak($this->layout, false)) {
             $this->forceNextPage();
+            $this->grupoOnFreshPage = true;
             $classes[]  = 'report-pdf-grupo-prueba-new-page-start';
             $interBreak = true;
             $grupoStyle = 'page-break-before:avoid;break-before:avoid;margin-top:0;padding-top:0;';
         }
 
-        $this->grupoAllowSplit = false;
-        $estHeight             = $this->estimateGrupoHeightMm($items, $hasFirma);
-        $remaining             = $this->espacioRestanteMm();
+        if ($this->usesIfFitsMode) {
+            $estHeight = $this->estimateGrupoHeightFast($items, $hasFirma);
+            $remaining = $this->espacioRestanteMm();
 
-        if (ReportPdfLayoutService::grupoPruebaPageBreakUsesIfFitsMode($this->gpb)) {
             if ($estHeight > $this->maxSliceMm) {
                 $this->grupoAllowSplit = true;
                 $classes[]             = 'report-pdf-grupo-prueba-allow-split';
@@ -142,11 +156,7 @@ class ReportPdfDompdfGrupoPageBreakService
             }
         }
 
-        if (! $this->grupoAllowSplit && ! in_array('report-pdf-grupo-prueba-keep-on-page', $classes, true)) {
-            $this->bumpCursor($this->areaSeparatorMm);
-        } elseif ($this->grupoAllowSplit || in_array('report-pdf-grupo-prueba-keep-on-page', $classes, true)) {
-            $this->bumpCursor($this->areaSeparatorMm);
-        }
+        $this->bumpCursor($this->areaSeparatorMm);
 
         return [
             'classes'     => trim(implode(' ', array_unique($classes))),
@@ -164,6 +174,11 @@ class ReportPdfDompdfGrupoPageBreakService
         bool $countSubgrupoCabecera,
         bool $isLastBeforeFirma
     ): array {
+        if (! $this->usesIfFitsMode
+            || (! $this->grupoAllowSplit && ! ($isLastBeforeFirma && $this->grupoHasFirma))) {
+            return ['class' => '', 'style' => ''];
+        }
+
         $classes = [];
         $heightMm = $this->estimateSegmentHeightMm($visibleRowCount, $hasSegmentTitle, $countSubgrupoCabecera);
 
@@ -185,6 +200,8 @@ class ReportPdfDompdfGrupoPageBreakService
             $this->bumpCursor($heightMm);
         } elseif ($heightMm <= $remaining) {
             $this->bumpCursor($heightMm);
+        } elseif ($this->shouldPlaceWithoutForceBreak()) {
+            $this->bumpCursor($heightMm);
         } else {
             $classes[] = 'report-segment-force-break-before';
             $this->forceNextPage();
@@ -195,94 +212,70 @@ class ReportPdfDompdfGrupoPageBreakService
     }
 
     /**
+     * Estimación O(n) para decidir keep/split en beginGrupo (sin armar segmentos).
+     *
      * @param list<mixed> $items
      */
-    public function estimateGrupoHeightMm(array $items, bool $withFirma): float
+    private function estimateGrupoHeightFast(array $items, bool $withFirma): float
     {
-        $height = $this->areaSeparatorMm;
-        $subgrupos = $this->groupItemsByPria($items);
+        $rowCount       = 0;
+        $subgrupoCount  = 0;
+        $segmentCount   = 0;
+        $segmentTitleCount = 0;
+        $lastPriaId     = null;
+        $hasRowsInSegment = false;
 
-        foreach ($subgrupos as $idx => $subItems) {
-            if ($idx > 0) {
-                $height += 5.0;
-            }
-            $height += $this->subgrupoCabeceraMm;
-            foreach ($this->buildSegments($subItems) as $segment) {
-                $rows = $this->countVisibleRows($segment['items']);
-                if ($rows === 0) {
-                    continue;
+        foreach ($items as $raw) {
+            $it = is_array($raw) ? (object) $raw : $raw;
+            if ((int) ($it->es_separador ?? 0) === 1) {
+                if ($hasRowsInSegment) {
+                    $segmentCount++;
+                    $hasRowsInSegment = false;
                 }
-                $height += $this->estimateSegmentHeightMm($rows, $segment['title'] !== null, false);
+                $segmentTitleCount++;
+                continue;
+            }
+
+            $priaId = (int) ($it->prianacategoria_id ?? 0);
+            if ($lastPriaId !== $priaId) {
+                if ($hasRowsInSegment) {
+                    $segmentCount++;
+                    $hasRowsInSegment = false;
+                }
+                $subgrupoCount++;
+                $lastPriaId = $priaId;
+            }
+
+            $val = trim((string) ($it->regvalues ?? ''));
+            if (($val !== '' && $val !== '-') || ! empty($it->show_reference)) {
+                $rowCount++;
+                $hasRowsInSegment = true;
             }
         }
+
+        if ($hasRowsInSegment) {
+            $segmentCount++;
+        }
+
+        if ($subgrupoCount < 1) {
+            $subgrupoCount = $rowCount > 0 ? 1 : 0;
+        }
+        if ($segmentCount < 1 && $rowCount > 0) {
+            $segmentCount = 1;
+        }
+
+        $height = $this->areaSeparatorMm
+            + max(0, $subgrupoCount - 1) * 5.0
+            + ($subgrupoCount * $this->subgrupoCabeceraMm)
+            + ($segmentCount * $this->theadHeightMm)
+            + ($rowCount * $this->rowHeightMm)
+            + ($segmentTitleCount * $this->segmentTitleHeightMm);
 
         if ($withFirma) {
             $height += $this->firmaHeightMm;
         }
 
         return $height;
-    }
-
-    /**
-     * @param list<mixed> $items
-     *
-     * @return list<list<mixed>>
-     */
-    private function groupItemsByPria(array $items): array
-    {
-        $groups = [];
-        foreach ($items as $raw) {
-            $it  = is_array($raw) ? (object) $raw : $raw;
-            $pid = (int) ($it->prianacategoria_id ?? 0);
-            if (! isset($groups[$pid])) {
-                $groups[$pid] = [];
-            }
-            $groups[$pid][] = $raw;
-        }
-
-        return array_values($groups);
-    }
-
-    /**
-     * @param list<mixed> $subItems
-     *
-     * @return list<array{title: object|null, items: list<mixed>}>
-     */
-    private function buildSegments(array $subItems): array
-    {
-        $segments = [];
-        $cur      = ['title' => null, 'items' => []];
-        foreach ($subItems as $raw) {
-            $it = is_array($raw) ? (object) $raw : $raw;
-            if ((int) ($it->es_separador ?? 0) === 1) {
-                $segments[] = $cur;
-                $cur        = ['title' => $it, 'items' => []];
-                continue;
-            }
-            $cur['items'][] = $it;
-        }
-        $segments[] = $cur;
-
-        return array_values(array_filter($segments, static function (array $s): bool {
-            return $s['title'] !== null || $s['items'] !== [];
-        }));
-    }
-
-    /**
-     * @param list<mixed> $items
-     */
-    private function countVisibleRows(array $items): int
-    {
-        $count = 0;
-        foreach ($items as $raw) {
-            $it = is_array($raw) ? (object) $raw : $raw;
-            $val = trim((string) ($it->regvalues ?? ''));
-            if (($val !== '' && $val !== '-') || ! empty($it->show_reference)) {
-                $count++;
-            }
-        }
-
-        return $count;
     }
 
     private function estimateSegmentHeightMm(int $visibleRowCount, bool $hasSegmentTitle, bool $countSubgrupoCabecera): float
@@ -316,6 +309,8 @@ class ReportPdfDompdfGrupoPageBreakService
             $this->bumpCursor($unitHeightMm);
         } elseif ($bloque <= $remaining) {
             $this->bumpCursor($bloque);
+        } elseif ($this->shouldPlaceWithoutForceBreak()) {
+            $this->bumpCursor($bloque);
         } else {
             $classes[] = 'report-segment-force-break-before';
             $this->forceNextPage();
@@ -328,6 +323,33 @@ class ReportPdfDompdfGrupoPageBreakService
     private function espacioRestanteMm(): float
     {
         return max(0.0, $this->pageEndMm($this->cursorPage) - $this->cursorY);
+    }
+
+    /**
+     * Equivalente a atPageResultsStart() del JS: ya estamos al inicio útil de la hoja;
+     * no aplicar break-before (Dompdf generaría una hoja en blanco).
+     */
+    private function shouldPlaceWithoutForceBreak(): bool
+    {
+        if ($this->grupoOnFreshPage) {
+            $this->grupoOnFreshPage = false;
+
+            return true;
+        }
+
+        return $this->atPageStart();
+    }
+
+    private function atPageStart(): bool
+    {
+        $epsilon   = 2.0;
+        $pageStart = $this->pageStartMm($this->cursorPage);
+
+        if ($this->cursorPage === 0) {
+            return $this->cursorY <= $this->contentStartMm + $this->areaSeparatorMm + $epsilon;
+        }
+
+        return $this->cursorY <= $pageStart + $this->areaSeparatorMm + $epsilon;
     }
 
     private function pageEndMm(int $pageIndex): float

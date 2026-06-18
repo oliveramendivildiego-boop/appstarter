@@ -267,20 +267,40 @@ class PdfService
     }
 
     /**
+     * Opciones Dompdf compartidas (render principal y sondeo de páginas).
+     */
+    protected function makeDompdfOptions(bool $forPageCountProbe = false): Options
+    {
+        $options = new Options();
+        $options->set('isHtml5ParserEnabled', true);
+        $options->set('isRemoteEnabled', ! $forPageCountProbe);
+        $options->set('defaultFont', 'DejaVu Sans');
+        $options->set('isFontSubsettingEnabled', true);
+
+        $tempDir = WRITEPATH . 'cache' . DIRECTORY_SEPARATOR . 'dompdf';
+        if (! is_dir($tempDir)) {
+            @mkdir($tempDir, 0755, true);
+        }
+        if (is_dir($tempDir) && is_writable($tempDir)) {
+            $options->set('tempDir', $tempDir);
+            $options->set('fontCache', $tempDir);
+        }
+
+        return $options;
+    }
+
+    /**
      * Genera PDF desde HTML
      */
     public function generate(string $html, string $filename = 'resultados.pdf'): string
     {
-        $options = new Options();
-        $options->set('isHtml5ParserEnabled', true);
-        $options->set('isRemoteEnabled', true);
-        $options->set('defaultFont', 'DejaVu Sans');
+        unset($filename);
 
         $orderSheetHeaderData = $this->extractOrderSheetHeaderData($html);
         $watermarkData        = $this->extractWatermarkData($html);
 
         if (strpos($html, self::TOTAL_PAGES_TOKEN) !== false) {
-            $probe = $this->makeDompdf($options);
+            $probe = $this->makeDompdf($this->makeDompdfOptions(true));
             $this->renderHtmlToDompdf($probe, $html, null, null);
             $pageCount = (int) $probe->getCanvas()->get_page_count();
             if ($pageCount < 1) {
@@ -291,7 +311,7 @@ class PdfService
             $watermarkData        = $this->extractWatermarkData($html);
         }
 
-        $dompdf = $this->makeDompdf($options);
+        $dompdf = $this->makeDompdf($this->makeDompdfOptions(false));
         $this->renderHtmlToDompdf($dompdf, $html, $orderSheetHeaderData, $watermarkData);
 
         return $dompdf->output();

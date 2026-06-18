@@ -17,7 +17,14 @@ $reportPdfCssRel = 'assets/css/report_pdf.css';
 $reportPdfCssFs  = FCPATH . str_replace('/', DIRECTORY_SEPARATOR, $reportPdfCssRel);
 $reportPdfCssVer = is_file($reportPdfCssFs) ? (int) filemtime($reportPdfCssFs) : (int) time();
 if ($embedStylesheetForPdf && is_file($reportPdfCssFs)) {
-    echo '<style>' . "\n" . (string) file_get_contents($reportPdfCssFs) . "\n" . '</style>' . "\n";
+    static $reportPdfEmbeddedCss = null;
+    static $reportPdfEmbeddedCssMtime = 0;
+    $cssMtime = (int) filemtime($reportPdfCssFs);
+    if ($reportPdfEmbeddedCss === null || $reportPdfEmbeddedCssMtime !== $cssMtime) {
+        $reportPdfEmbeddedCss       = (string) file_get_contents($reportPdfCssFs);
+        $reportPdfEmbeddedCssMtime  = $cssMtime;
+    }
+    echo '<style>' . "\n" . $reportPdfEmbeddedCss . "\n" . '</style>' . "\n";
 } else {
     echo '<link rel="stylesheet" href="' . esc(base_url($reportPdfCssRel) . '?v=' . $reportPdfCssVer, 'attr') . '" />' . "\n";
 }
