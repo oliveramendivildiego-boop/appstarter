@@ -24,9 +24,6 @@ if ($showFirmaPerGroup) {
 }
 
 $grupoPruebaIdx = 0;
-$dompdfGpb = ($dompdf_gpb ?? null) instanceof \App\Services\ReportPdfDompdfGrupoPageBreakService
-    ? $dompdf_gpb
-    : null;
 foreach ($grupos ?? [] as $padre => $items) {
     $isFirstGrupo = ($grupoPruebaIdx === 0);
     $padreKey = trim((string) $padre);
@@ -36,14 +33,12 @@ foreach ($grupos ?? [] as $padre => $items) {
         $grupoClass .= ' report-pdf-grupo-prueba-first';
     }
     $grupoExtraStyle = '';
-    if ($dompdfGpb !== null) {
-        $grupoMeta = $dompdfGpb->beginGrupo($isFirstGrupo, is_array($items) ? $items : [], $grupoHasFirma);
-        if ($grupoMeta['classes'] !== '') {
-            $grupoClass .= ' ' . $grupoMeta['classes'];
-        }
-        if ($grupoMeta['grupo_style'] !== '') {
-            $grupoExtraStyle = $grupoMeta['grupo_style'];
-        }
+    $useInterPageBreak = ! $isFirstGrupo
+        && \App\Services\ReportPdfLayoutService::shouldRenderGrupoInterPageBreak($layoutForLf, $isFirstGrupo)
+        && empty($pb_diag_no_separators);
+    if ($useInterPageBreak && ! $isFirstGrupo) {
+        $grupoClass .= ' report-pdf-grupo-prueba-new-page-start';
+        $grupoExtraStyle = 'page-break-before:avoid;break-before:avoid;margin-top:0;padding-top:0;';
     }
     $useBrowserPrintAreaStart = ($av === 'browser_print')
         && \App\Services\ReportPdfLayoutService::shouldRenderGrupoAreaPageLeader($layoutForLf, $isFirstGrupo);
@@ -62,10 +57,7 @@ foreach ($grupos ?? [] as $padre => $items) {
             . ($leaderStyle !== '' ? ' style="' . esc($leaderStyle, 'attr') . '"' : '')
             . '></div>';
     }
-    if (($av === 'browser_print' || ($av === 'pdf' && $dompdfGpb !== null))
-        && ! $isFirstGrupo
-        && \App\Services\ReportPdfLayoutService::shouldRenderGrupoInterPageBreak($layoutForLf, $isFirstGrupo)
-        && empty($pb_diag_no_separators)) {
+    if (($av === 'browser_print' || $av === 'pdf') && $useInterPageBreak) {
         $interBreakStyle = $av === 'pdf'
             ? \App\Services\ReportPdfLayoutService::grupoInterPageBreakStyleAttr()
             : '';
@@ -99,11 +91,12 @@ foreach ($grupos ?? [] as $padre => $items) {
         'report_pria_tipo_muestra_nombre' => $report_pria_tipo_muestra_nombre ?? [],
         'report_pria_metodo_nombre'       => $report_pria_metodo_nombre ?? [],
         'report_pria_refs_consolidada'    => $report_pria_refs_consolidada ?? [],
-        'dompdf_gpb'                      => $dompdfGpb,
-        'grupo_has_firma'                 => $grupoHasFirma,
     ]);
     $padreKey = trim((string) $padre);
     if ($showFirmaPerGroup && $padreKey !== '' && isset($firmasPorPadre[$padreKey])) {
+        if ($av === 'pdf') {
+            echo '<div class="report-pdf-grupo-firma-tail">';
+        }
         echo view('registers/partials/report_lab_firma_grupo_inline', [
             'firma'             => $firmasPorPadre[$padreKey],
             'area_label'        => $padreKey,
@@ -112,6 +105,9 @@ foreach ($grupos ?? [] as $padre => $items) {
             'lab_config'        => $lab_config ?? [],
             'lab_firmas_style'  => $lfStyle,
         ]);
+        if ($av === 'pdf') {
+            echo '</div>';
+        }
     }
     echo '</div>';
     $grupoPruebaIdx++;

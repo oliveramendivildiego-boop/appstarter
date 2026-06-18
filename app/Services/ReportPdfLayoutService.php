@@ -3342,7 +3342,7 @@ class ReportPdfLayoutService
      */
     public static function grupoInterPageBreakStyleAttr(): string
     {
-        return 'display:block;width:100%;height:1px;min-height:1px;margin:0;padding:0;border:0;'
+        return 'display:block;width:100%;height:0;min-height:0;margin:0;padding:0;border:0;'
             . 'line-height:0;font-size:0;overflow:hidden;clear:both;'
             . 'page-break-before:always;break-before:page;'
             . 'page-break-after:avoid;break-after:avoid;';

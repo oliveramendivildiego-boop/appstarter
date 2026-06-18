@@ -48,27 +48,6 @@ foreach (is_array($pl['blocks'] ?? null) ? $pl['blocks'] : [] as $fb) {
     }
 }
 
-$dompdfGpb = null;
-$analisisVariantForDoc = (string) ($analisis_variant ?? 'pdf');
-if ($analisisVariantForDoc === 'pdf') {
-    $contentStartMm = 0.0;
-    foreach (is_array($pl['blocks'] ?? null) ? $pl['blocks'] : [] as $block) {
-        if (empty($block['enabled'])) {
-            continue;
-        }
-        $bid = (string) ($block['id'] ?? '');
-        if ($bid === 'header') {
-            $contentStartMm += 28.0;
-        } elseif ($bid === 'patient_doctor') {
-            $contentStartMm += 32.0;
-        }
-    }
-    $dompdfGpb = \App\Services\ReportPdfDompdfGrupoPageBreakService::create($pl, $contentStartMm);
-    if (! $dompdfGpb->isActive()) {
-        $dompdfGpb = null;
-    }
-}
-
 $ctx = [
     'register_info'     => $register_info,
     'paciente'          => $paciente,
@@ -86,7 +65,6 @@ $ctx = [
     'report_pria_refs_consolidada'    => $report_pria_refs_consolidada ?? [],
     'analisis_variant'                => $analisis_variant ?? 'pdf',
     'pb_diag_no_separators'           => $pb_diag_no_separators ?? false,
-    'dompdf_gpb'                      => $dompdfGpb,
 ];
 ?>
 <?php
