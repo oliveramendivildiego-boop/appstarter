@@ -3338,6 +3338,25 @@ class ReportPdfLayoutService
     }
 
     /**
+     * Salto de hoja al cerrar un área (Dompdf). break-after evita hojas en blanco vs break-before.
+     */
+    public static function grupoPruebaPdfAreaEndBreakStyleAttr(): string
+    {
+        return 'display:block;width:100%;height:0;min-height:0;margin:0;padding:0;border:0;'
+            . 'line-height:0;font-size:0;overflow:hidden;clear:both;'
+            . 'page-break-after:always;break-after:page;'
+            . 'page-break-before:avoid;break-before:avoid;';
+    }
+
+    /**
+     * Salto de hoja en el contenedor del área (Dompdf). Sin div separador vacío (evita hojas en blanco).
+     */
+    public static function grupoPruebaPdfNewAreaStyleAttr(): string
+    {
+        return 'page-break-before:always;break-before:page;margin-top:0;padding-top:0;';
+    }
+
+    /**
      * Estilo inline del separador inter-área (.report-grupo-inter-page-break) para Dompdf.
      */
     public static function grupoInterPageBreakStyleAttr(): string

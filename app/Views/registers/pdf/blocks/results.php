@@ -2,6 +2,9 @@
 declare(strict_types=1);
 
 $av = $analisis_variant ?? 'pdf';
+if ($av === 'pdf') {
+    echo '<!-- pdf-results-build:2026-06-18-v4 -->';
+}
 
 $layoutForLf = is_array($pdf_layout ?? null) ? $pdf_layout : [];
 $lfStyle = \App\Services\ReportPdfLayoutService::normalizeLabFirmasStyle(
@@ -36,7 +39,7 @@ foreach ($grupos ?? [] as $padre => $items) {
     $useInterPageBreak = ! $isFirstGrupo
         && \App\Services\ReportPdfLayoutService::shouldRenderGrupoInterPageBreak($layoutForLf, $isFirstGrupo)
         && empty($pb_diag_no_separators);
-    if ($useInterPageBreak && ! $isFirstGrupo) {
+    if ($useInterPageBreak && $av !== 'pdf') {
         $grupoClass .= ' report-pdf-grupo-prueba-new-page-start';
         $grupoExtraStyle = 'page-break-before:avoid;break-before:avoid;margin-top:0;padding-top:0;';
     }
@@ -47,7 +50,9 @@ foreach ($grupos ?? [] as $padre => $items) {
     }
     $grupoStyle = \App\Services\ReportPdfLayoutService::mergePdfInlineStyleAttrs(
         \App\Services\ReportPdfLayoutService::grupoPruebaGrupoIntactStyleAttr($layoutForLf, $isFirstGrupo),
-        \App\Services\ReportPdfLayoutService::grupoPruebaGapMarginStyleAttr($layoutForLf, $isFirstGrupo),
+        ($av === 'pdf' && ! $isFirstGrupo && $useInterPageBreak)
+            ? ''
+            : \App\Services\ReportPdfLayoutService::grupoPruebaGapMarginStyleAttr($layoutForLf, $isFirstGrupo),
         \App\Services\ReportPdfLayoutService::grupoPruebaBrowserPrintAreaStyleAttr($layoutForLf, $isFirstGrupo, $av),
         $grupoExtraStyle
     );
@@ -57,13 +62,8 @@ foreach ($grupos ?? [] as $padre => $items) {
             . ($leaderStyle !== '' ? ' style="' . esc($leaderStyle, 'attr') . '"' : '')
             . '></div>';
     }
-    if (($av === 'browser_print' || $av === 'pdf') && $useInterPageBreak) {
-        $interBreakStyle = $av === 'pdf'
-            ? \App\Services\ReportPdfLayoutService::grupoInterPageBreakStyleAttr()
-            : '';
-        echo '<div class="report-grupo-inter-page-break report-grupo-inter-page-break-server" aria-hidden="true"'
-            . ($interBreakStyle !== '' ? ' style="' . esc($interBreakStyle, 'attr') . '"' : '')
-            . '></div>';
+    if ($av === 'browser_print' && $useInterPageBreak) {
+        echo '<div class="report-grupo-inter-page-break report-grupo-inter-page-break-server" aria-hidden="true"></div>';
     }
     echo '<div class="' . esc($grupoClass, 'attr') . '"'
         . ($grupoStyle !== '' ? ' style="' . esc($grupoStyle, 'attr') . '"' : '')

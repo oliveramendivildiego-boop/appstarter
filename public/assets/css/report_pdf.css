@@ -387,6 +387,14 @@ body {
     page-break-inside: auto;
     break-inside: auto;
 }
+.pdf-gpb-keep-together-if-fits .report-pdf-grupo-area-separator.report-pdf-grupo-area-separator-new-page,
+.pdf-gpb-keep-together-if-fits-auto-order .report-pdf-grupo-area-separator.report-pdf-grupo-area-separator-new-page {
+    page-break-before: always;
+    break-before: page;
+    margin-top: 0;
+    padding-top: 0;
+}
+/* Separador inter-área vacío: solo impresión navegador. PDF usa título de área (.report-pdf-grupo-area-separator-new-page). */
 .report-grupo-inter-page-break {
     display: block;
     width: 100%;
