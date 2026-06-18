@@ -13,6 +13,8 @@ $printBinding = is_array($bindings['print'] ?? null) ? $bindings['print'] : [];
 $pdfBinding = is_array($bindings['pdf'] ?? null) ? $bindings['pdf'] : [];
 $printTplId = (int) ($printBinding['resolved_template_id'] ?? 0);
 $pdfTplId = (int) ($pdfBinding['resolved_template_id'] ?? 0);
+$printMarginTopMm = (float) ($printBinding['margins_mm']['top'] ?? 0);
+$printFooterEnabled = ! empty($pdf_footer_enabled);
 $sameTemplate = $printTplId > 0 && $printTplId === $pdfTplId;
 $printUsesPdfFallback = ! empty($printBinding['used_pdf_fallback']);
 ?>
@@ -143,6 +145,16 @@ $printUsesPdfFallback = ! empty($printBinding['used_pdf_fallback']);
             </tr>
         </tbody>
     </table>
+    <h3 class="report-print-layout-report-subtitle">¿Margen extra al imprimir?</h3>
+    <ul class="report-print-layout-report-tips small text-muted mb-0">
+        <li><strong>@page</strong> ya lleva arriba/abajo en <strong><?= esc((string) $printMarginTopMm) ?> mm</strong> según la plantilla #<?= esc((string) $printTplId) ?>; el navegador puede añadir más si en el diálogo tiene <em>Márgenes: Predeterminado</em>.</li>
+        <li>Desactive <strong>Encabezados y pies de página</strong> del navegador (fecha, título, URL); ocupan espacio arriba y abajo.</li>
+        <?php if ($pdfFooterEnabled): ?>
+        <li>La <strong>reserva de pie</strong> (<span id="lr_footer_reserve_tip">—</span>) no es margen de hoja: evita que el contenido tape el pie fijo.</li>
+        <?php endif; ?>
+        <li>En la hoja 1, el <strong>header</strong> (<span id="lr_header_height_tip">—</span>) es contenido (logo, paciente, etc.), no margen de plantilla.</li>
+        <li>La impresora física puede tener zona no imprimible de unos milímetros en los bordes.</li>
+    </ul>
 </div>
 <style>
 .report-print-layout-report {
@@ -210,6 +222,13 @@ $printUsesPdfFallback = ! empty($printBinding['used_pdf_fallback']);
 }
 .report-print-layout-report-table-secondary td:first-child {
     width: 28%;
+}
+.report-print-layout-report-tips {
+    margin: 0;
+    padding-left: 1.2rem;
+}
+.report-print-layout-report-tips li + li {
+    margin-top: 6px;
 }
 @media print {
     .report-print-layout-report {

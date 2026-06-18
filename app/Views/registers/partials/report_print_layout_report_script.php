@@ -203,6 +203,13 @@ $bindingsForJs = is_array($result_template_bindings ?? null) ? $result_template_
         setText('lr_pages_estimated_detail', 'Hoja 1: ' + mmFmt(data.firstPageContentMm)
             + ' · siguientes: ' + mmFmt(data.nextPageContentMm));
         setText('lr_measured_at', data.measuredAt);
+        setText('lr_footer_reserve_tip', cfg.footerEnabled ? mmFmt(data.footerReserveMm) : '0 mm');
+        setText('lr_header_height_tip', mmFmt(data.headerHeightMm));
+
+        var footerHint = document.getElementById('report-print-footer-reserve-hint');
+        if (footerHint && cfg.footerEnabled) {
+            footerHint.textContent = mmFmt(data.footerReserveMm);
+        }
 
         return data;
     }
