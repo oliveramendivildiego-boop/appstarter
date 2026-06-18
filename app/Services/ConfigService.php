@@ -2087,6 +2087,76 @@ class ConfigService
     }
 
     /**
+     * Datos exportables del estilo del comprobante (colores, textos, matriz y numeración).
+     *
+     * @return array<string, mixed>
+     */
+    public function buildComprobanteStyleExportData(): array
+    {
+        $cfg = $this->getAllAsArray();
+        $layoutSvc = new \App\Services\ComprobanteLayoutService();
+
+        return [
+            'primary_color'           => trim((string) ($cfg['comprobante_primary_color'] ?? '#0f766e')) ?: '#0f766e',
+            'secondary_color'         => trim((string) ($cfg['comprobante_secondary_color'] ?? '#134e4a')) ?: '#134e4a',
+            'text_color'              => trim((string) ($cfg['comprobante_text_color'] ?? '#1e293b')) ?: '#1e293b',
+            'tagline'                 => trim((string) ($cfg['comprobante_tagline'] ?? 'Constancia de pago')) ?: 'Constancia de pago',
+            'footer_note'             => trim((string) ($cfg['comprobante_footer_note'] ?? '')),
+            'show_doctor'             => ((string) ($cfg['comprobante_show_doctor'] ?? '1')) !== '0',
+            'recibo_num_rango_activo' => ((string) ($cfg['comprobante_recibo_num_rango_activo'] ?? '0')) === '1',
+            'recibo_num_inicio'       => (string) ($cfg['comprobante_recibo_num_inicio'] ?? ''),
+            'recibo_num_fin'          => (string) ($cfg['comprobante_recibo_num_fin'] ?? ''),
+            'layout'                  => $layoutSvc->layoutFromConfig($cfg),
+        ];
+    }
+
+    /**
+     * Aplica un paquete importado de estilo de comprobante.
+     *
+     * @param array<string, mixed> $payload
+     */
+    public function importComprobanteStyleFromPayload(array $payload): bool
+    {
+        $pick = static function (array $src, string $key, string $legacyKey, mixed $default = ''): mixed {
+            if (array_key_exists($key, $src)) {
+                return $src[$key];
+            }
+            if ($legacyKey !== '' && array_key_exists($legacyKey, $src)) {
+                return $src[$legacyKey];
+            }
+
+            return $default;
+        };
+
+        $truthy = static function (mixed $value): bool {
+            return $value === true || $value === 1 || $value === '1';
+        };
+
+        $post = [
+            'comprobante_primary_color'           => (string) $pick($payload, 'primary_color', 'comprobante_primary_color', '#0f766e'),
+            'comprobante_secondary_color'         => (string) $pick($payload, 'secondary_color', 'comprobante_secondary_color', '#134e4a'),
+            'comprobante_text_color'              => (string) $pick($payload, 'text_color', 'comprobante_text_color', '#1e293b'),
+            'comprobante_tagline'                 => (string) $pick($payload, 'tagline', 'comprobante_tagline', 'Constancia de pago'),
+            'comprobante_footer_note'             => (string) $pick($payload, 'footer_note', 'comprobante_footer_note', ''),
+            'comprobante_show_doctor'             => $truthy($pick($payload, 'show_doctor', 'comprobante_show_doctor', true)) ? '1' : '0',
+            'comprobante_recibo_num_rango_activo' => $truthy($pick($payload, 'recibo_num_rango_activo', 'comprobante_recibo_num_rango_activo', false)) ? '1' : '0',
+            'comprobante_recibo_num_inicio'       => (string) $pick($payload, 'recibo_num_inicio', 'comprobante_recibo_num_inicio', ''),
+            'comprobante_recibo_num_fin'          => (string) $pick($payload, 'recibo_num_fin', 'comprobante_recibo_num_fin', ''),
+        ];
+
+        if (array_key_exists('layout', $payload) || array_key_exists('comprobante_layout_json', $payload)) {
+            $layoutRaw = $pick($payload, 'layout', 'comprobante_layout_json', []);
+            $layoutSvc = new \App\Services\ComprobanteLayoutService();
+            $layoutJson = json_encode($layoutSvc->normalizeLayout($layoutRaw), JSON_UNESCAPED_UNICODE);
+            if ($layoutJson !== false) {
+                $post['comprobante_layout_json'] = $layoutJson;
+            }
+        }
+
+        return $this->saveComprobanteStyleFromRequest($post);
+    }
+
+    /**
      * Guarda estilo/contenido del comprobante PDF.
      */
     public function saveComprobanteStyleFromRequest(array $post): bool

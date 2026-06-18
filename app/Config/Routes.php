@@ -173,6 +173,8 @@ $routes->post('config/deleteLabApproverSeal', 'Config::deleteLabApproverSeal');
 $routes->post('config/deleteLabApproverSignature', 'Config::deleteLabApproverSignature');
 $routes->post('config/saveUiStyle', 'Config::saveUiStyle');
 $routes->post('config/saveComprobanteStyle', 'Config::saveComprobanteStyle');
+$routes->get('config/exportComprobanteStyle', 'Config::exportComprobanteStyle');
+$routes->post('config/importComprobanteStyle', 'Config::importComprobanteStyle');
 $routes->post('config/saveWhatsapp', 'Config::saveWhatsapp');
 $routes->post('config/saveSin', 'Config::saveSin');
 $routes->post('config/saveInstitucionDescuento', 'Config::saveInstitucionDescuento');

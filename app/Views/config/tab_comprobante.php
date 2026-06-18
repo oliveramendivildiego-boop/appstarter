@@ -53,6 +53,24 @@ foreach (array_keys($matrixSections) as $sid) {
             <h5 class="mb-0"><i class="fa-solid fa-file-invoice me-2"></i>Personalización de comprobante PDF</h5>
         </div>
         <div class="card-body">
+            <div class="border rounded p-3 mb-4 bg-light">
+                <div class="d-flex flex-wrap align-items-center gap-2">
+                    <a href="<?= site_url('config/exportComprobanteStyle') ?>" class="btn btn-outline-secondary btn-sm">
+                        <i class="fa-solid fa-file-export me-1"></i> Exportar JSON
+                    </a>
+                    <?= form_open_multipart(site_url('config/importComprobanteStyle'), ['class' => 'd-flex flex-wrap align-items-center gap-2', 'id' => 'form_import_comprobante_style']) ?>
+                    <input type="file" name="comprobante_file" class="form-control form-control-sm" accept="application/json,.json" required style="max-width: 320px;">
+                    <button type="submit" class="btn btn-outline-primary btn-sm" onclick="return confirm('¿Importar el JSON? Se reemplazará la configuración actual del comprobante.');">
+                        <i class="fa-solid fa-file-import me-1"></i> Importar JSON
+                    </button>
+                    <?= form_close() ?>
+                </div>
+                <small class="text-muted d-block mt-2">
+                    Exporta o restaura colores, textos, matriz del comprobante y numeración de recibo.
+                    La importación reemplaza la configuración actual del comprobante (no afecta el último número de recibo emitido).
+                </small>
+            </div>
+
             <p class="text-muted small mb-4">
                 Configure colores globales, tipografía por sección y la matriz completa del comprobante.
                 Arrastre elementos desde la paleta o entre celdas; haga clic en un elemento para cambiar el nombre, ocultarlo o quitarlo.

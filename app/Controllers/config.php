@@ -649,6 +649,84 @@ class Config extends SecureArea
     }
 
     /**
+     * Exporta el estilo del comprobante (colores, textos, matriz y numeración) como JSON.
+     */
+    public function exportComprobanteStyle(): ResponseInterface
+    {
+        $payload = [
+            'schema'       => 'lab-config-comprobante-v1',
+            'generated_at' => date('c'),
+            'comprobante'  => $this->configService->buildComprobanteStyleExportData(),
+        ];
+        $json = json_encode($payload, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+        if ($json === false) {
+            return redirect()->to('config?tab=comprobante')->with('error', 'No se pudo generar el archivo de exportación.');
+        }
+
+        \App\Models\AuditoriaModel::log('config', 'comprobante_estilo_exportar', null);
+        $filename = 'comprobante_config_' . date('Ymd_His') . '.json';
+
+        return $this->response
+            ->setHeader('Content-Type', 'application/json; charset=utf-8')
+            ->setHeader('Content-Disposition', 'attachment; filename="' . $filename . '"')
+            ->setBody($json);
+    }
+
+    /**
+     * Importa estilo del comprobante desde un JSON exportado previamente.
+     */
+    public function importComprobanteStyle(): ResponseInterface
+    {
+        $file = $this->request->getFile('comprobante_file');
+        if ($file === null || $file->getError() === UPLOAD_ERR_NO_FILE) {
+            return redirect()->to('config?tab=comprobante')->with('error', 'Seleccione un archivo JSON para importar.');
+        }
+        if (! $file->isValid()) {
+            return redirect()->to('config?tab=comprobante')->with('error', 'El archivo no se subió correctamente.');
+        }
+        if (strtolower((string) $file->getExtension()) !== 'json') {
+            return redirect()->to('config?tab=comprobante')->with('error', 'Formato inválido. Debe ser un archivo .json.');
+        }
+
+        $raw = @file_get_contents($file->getTempName());
+        if ($raw === false || trim($raw) === '') {
+            return redirect()->to('config?tab=comprobante')->with('error', 'El archivo está vacío o no se pudo leer.');
+        }
+
+        $data = json_decode($raw, true);
+        if (! is_array($data)) {
+            return redirect()->to('config?tab=comprobante')->with('error', 'Archivo JSON inválido para importación del comprobante.');
+        }
+
+        $comprobante = null;
+        if (isset($data['comprobante']) && is_array($data['comprobante'])) {
+            $comprobante = $data['comprobante'];
+        } elseif (isset($data['primary_color']) || isset($data['comprobante_primary_color']) || isset($data['layout'])) {
+            $comprobante = $data;
+        }
+
+        if ($comprobante === null) {
+            return redirect()->to('config?tab=comprobante')->with('error', 'El JSON no contiene datos de comprobante reconocibles.');
+        }
+
+        $schema = trim((string) ($data['schema'] ?? ''));
+        if ($schema !== '' && $schema !== 'lab-config-comprobante-v1') {
+            return redirect()->to('config?tab=comprobante')->with(
+                'error',
+                'Versión de archivo no compatible (' . $schema . '). Use un export generado por este sistema.'
+            );
+        }
+
+        if (! $this->configService->importComprobanteStyleFromPayload($comprobante)) {
+            return redirect()->to('config?tab=comprobante')->with('error', lang('Config.config_error'));
+        }
+
+        \App\Models\AuditoriaModel::log('config', 'comprobante_estilo_importar', null, 'comprobante_style');
+
+        return redirect()->to('config?tab=comprobante')->with('success', 'Estilo de comprobante importado correctamente.');
+    }
+
+    /**
      * Genera respaldo SQL de la base de datos (solo para usuarios con permiso config)
      */
     public function backup()
