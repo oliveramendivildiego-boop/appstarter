@@ -64,6 +64,7 @@ $ctx = [
     'report_lab_firmas'               => $report_lab_firmas ?? [],
     'report_pria_refs_consolidada'    => $report_pria_refs_consolidada ?? [],
     'analisis_variant'                => $analisis_variant ?? 'pdf',
+    'pb_diag_no_separators'           => $pb_diag_no_separators ?? false,
 ];
 ?>
 <?php

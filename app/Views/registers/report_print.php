@@ -54,6 +54,10 @@
     ];
     $printPaperLabel = $printPaperLabels[$printPaper] ?? 'Carta (Letter)';
     $layoutReportMode = ! empty($layout_report_mode);
+    $pbDiagEnabled = ! empty($_GET['pb_diag']);
+    $resultTemplateBindings = is_array($result_template_bindings ?? null)
+        ? $result_template_bindings
+        : (new \App\Services\ReportPdfLayoutService())->getResultTemplateBindingsForReport();
 
     $gpbCfg = \App\Services\ReportPdfLayoutService::normalizeGrupoPruebaPageBreakStyle($ps['grupo_prueba_page_break'] ?? []);
     $gpbBodyClass = \App\Services\ReportPdfLayoutService::grupoPruebaPageBreakBodyClass($pl);
@@ -106,8 +110,9 @@
 <body class="report-browser-print<?= $gpbBodyClass !== '' ? ' ' . esc($gpbBodyClass, 'attr') : '' ?><?= $layoutReportMode ? ' report-print-layout-report-mode' : '' ?>">
 <?php if ($layoutReportMode): ?>
 <?= view('registers/partials/report_print_layout_report', [
-    'registro_id'        => $rid,
-    'layout_report_mode' => true,
+    'registro_id'              => $rid,
+    'layout_report_mode'       => true,
+    'result_template_bindings' => $resultTemplateBindings,
 ]) ?>
 <?php endif; ?>
 <div class="report-print-toolbar">
@@ -142,6 +147,7 @@
     'report_lab_firmas'               => $report_lab_firmas ?? [],
     'report_pria_refs_consolidada'    => $report_pria_refs_consolidada ?? [],
     'analisis_variant'                => 'browser_print',
+    'pb_diag_no_separators'           => $pbDiagEnabled,
 ]) ?>
 <?= view('registers/partials/report_order_sheet_header_print_script', [
     'order_sheet_header_enabled' => $orderSheetHeaderEnabled,
@@ -163,6 +169,11 @@
     'footer_reserve_mm'  => (float) $pdfFooterReserveMm,
     'footer_enabled'     => $pdfFooterEnabled,
 ]) ?>
+<?php if ($pbDiagEnabled): ?>
+<?= view('registers/partials/report_print_page_break_diagnostic', [
+    'pb_diag_enabled' => true,
+]) ?>
+<?php endif; ?>
 <script>
 (function() {
     var MM_TO_PX = 96 / 25.4;
@@ -276,6 +287,7 @@
     }
 
     function preparePrintLayout() {
+        console.log('POST_PROCESO', 'preparePrintLayout');
         syncReportPrintLayoutMetrics();
         if (typeof window.applyReportPdfGrupoPageBreaks === 'function') {
             window.applyReportPdfGrupoPageBreaks();
@@ -290,15 +302,18 @@
         ensureBrowserPrintFooter();
         syncReportPrintLayoutMetrics();
         applyBrowserTotalPages();
+        console.log('DOM_FINAL_PRE_PRINT', document.body.innerHTML);
     }
 
     function openPrintDialog() {
         preparePrintLayout();
+        console.log('DOM_FINAL_PRE_PRINT', document.body.innerHTML);
         window.print();
     }
 
     window.syncReportPrintLayoutMetrics = syncReportPrintLayoutMetrics;
     window.addEventListener('beforeprint', function() {
+        console.log('POST_PROCESO', 'beforeprint:preparePrintLayout');
         preparePrintLayout();
         if (typeof window.renderReportPrintLayoutReport === 'function') {
             window.renderReportPrintLayoutReport();
@@ -322,16 +337,17 @@
 </script>
 <?php if ($layoutReportMode): ?>
 <?= view('registers/partials/report_print_layout_report_script', [
-    'print_page_height_mm' => $printPageHeightMm,
-    'print_page_width_mm'  => $printPageWidthMm,
-    'print_page_css_size'  => $printPageCssSize,
-    'print_paper_label'    => $printPaperLabel,
-    'mt'                   => $mt,
-    'mr'                   => $mr,
-    'mb'                   => $mb,
-    'ml'                   => $ml,
-    'pdf_footer_enabled'   => $pdfFooterEnabled,
-    'layout_report_mode'   => true,
+    'print_page_height_mm'     => $printPageHeightMm,
+    'print_page_width_mm'      => $printPageWidthMm,
+    'print_page_css_size'      => $printPageCssSize,
+    'print_paper_label'        => $printPaperLabel,
+    'mt'                       => $mt,
+    'mr'                       => $mr,
+    'mb'                       => $mb,
+    'ml'                       => $ml,
+    'pdf_footer_enabled'       => $pdfFooterEnabled,
+    'layout_report_mode'       => true,
+    'result_template_bindings' => $resultTemplateBindings,
 ]) ?>
 <?php endif; ?>
 </body>

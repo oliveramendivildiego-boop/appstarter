@@ -12,7 +12,9 @@
  * @var float  $ml
  * @var bool   $pdf_footer_enabled
  * @var bool   $layout_report_mode
+ * @var array  $result_template_bindings
  */
+$bindingsForJs = is_array($result_template_bindings ?? null) ? $result_template_bindings : [];
 ?>
 <script>
 (function() {
@@ -26,8 +28,48 @@
         marginBottomMm: <?= json_encode((float) ($mb ?? 15)) ?>,
         marginLeftMm: <?= json_encode((float) ($ml ?? 15)) ?>,
         footerEnabled: <?= ! empty($pdf_footer_enabled) ? 'true' : 'false' ?>,
-        layoutReportMode: <?= ! empty($layout_report_mode) ? 'true' : 'false' ?>
+        layoutReportMode: <?= ! empty($layout_report_mode) ? 'true' : 'false' ?>,
+        templateBindings: <?= json_encode($bindingsForJs, JSON_UNESCAPED_UNICODE) ?>
     };
+
+    function templateLabel(binding) {
+        if (!binding || typeof binding !== 'object') {
+            return '—';
+        }
+        var id = parseInt(binding.resolved_template_id, 10) || 0;
+        var name = String(binding.name || '').trim();
+        if (id < 1) {
+            return 'Sin asignar';
+        }
+        return '#' + id + (name !== '' ? ' — ' + name : '');
+    }
+
+    function marginsLabel(binding) {
+        if (!binding || !binding.margins_mm) {
+            return '—';
+        }
+        var mm = binding.margins_mm;
+        return '↑' + mm.top + ' ↓' + mm.bottom + ' ←' + mm.left + ' →' + mm.right + ' mm';
+    }
+
+    function templateDetail(binding, configKey) {
+        if (!binding || typeof binding !== 'object') {
+            return configKey;
+        }
+        var parts = [configKey];
+        var configId = parseInt(binding.config_template_id, 10) || 0;
+        var resolvedId = parseInt(binding.resolved_template_id, 10) || 0;
+        if (configId > 0 && configId !== resolvedId) {
+            parts.push('config ID ' + configId + ', resuelto ID ' + resolvedId);
+        } else if (resolvedId > 0) {
+            parts.push('ID ' + resolvedId);
+        }
+        if (binding.used_pdf_fallback) {
+            parts.push('respaldo desde plantilla PDF');
+        }
+        parts.push('márgenes en BD: ' + marginsLabel(binding));
+        return parts.join(' · ');
+    }
 
     function mmFmt(value) {
         if (!isFinite(value)) {
@@ -120,13 +162,26 @@
 
     function renderReportPrintLayoutReport() {
         var data = collectReportPrintLayoutReport();
+        var printBinding = cfg.templateBindings && cfg.templateBindings.print ? cfg.templateBindings.print : null;
+        var pdfBinding = cfg.templateBindings && cfg.templateBindings.pdf ? cfg.templateBindings.pdf : null;
+
+        setText('lr_print_template_label', templateLabel(printBinding));
+        setText('lr_print_template_detail', templateDetail(printBinding, 'print_result_template_id'));
+        setText('lr_pdf_template_label', templateLabel(pdfBinding));
+        setText('lr_pdf_template_detail', templateDetail(pdfBinding, 'pdf_result_template_id') + ' — no se usa en esta vista');
 
         setText('lr_sheet_size', data.sheetSizeText);
-        setText('lr_sheet_size_detail', data.sheetSizeDetail);
+        setText('lr_sheet_size_detail', data.sheetSizeDetail + ' (Configuración → Sistema → Papel y paginación)');
         setText('lr_margin_top', mmFmt(data.marginTopMm));
         setText('lr_margin_bottom', mmFmt(data.marginBottomMm));
         setText('lr_margin_left', mmFmt(data.marginLeftMm));
         setText('lr_margin_right', mmFmt(data.marginRightMm));
+        if (printBinding && printBinding.margins_mm) {
+            setText('lr_margin_top_detail', 'Aplicado en @page · BD impresión: ' + marginsLabel(printBinding));
+            setText('lr_margin_bottom_detail', 'Aplicado en @page · BD impresión: ' + marginsLabel(printBinding));
+            setText('lr_margin_left_detail', 'Aplicado en @page · BD impresión: ' + marginsLabel(printBinding));
+            setText('lr_margin_right_detail', 'Aplicado en @page · BD impresión: ' + marginsLabel(printBinding));
+        }
         setText('lr_header_height', mmFmt(data.headerHeightMm) + ' (' + pxFmt(data.headerHeightPx) + ')');
         setText('lr_footer_height', cfg.footerEnabled ? mmFmt(data.footerHeightMm) : 'N/A (pie deshabilitado)');
         setText('lr_footer_height_detail', cfg.footerEnabled

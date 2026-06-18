@@ -48,7 +48,8 @@ foreach ($grupos ?? [] as $padre => $items) {
     }
     if ($av === 'browser_print'
         && ! $isFirstGrupo
-        && \App\Services\ReportPdfLayoutService::shouldRenderGrupoAreaPageLeader($layoutForLf, $isFirstGrupo)) {
+        && \App\Services\ReportPdfLayoutService::shouldRenderGrupoInterPageBreak($layoutForLf, $isFirstGrupo)
+        && empty($pb_diag_no_separators)) {
         echo '<div class="report-grupo-inter-page-break report-grupo-inter-page-break-server" aria-hidden="true"></div>';
     }
     echo '<div class="' . esc($grupoClass, 'attr') . '"'

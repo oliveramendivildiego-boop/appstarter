@@ -2,11 +2,19 @@
 /**
  * Panel de informe de maquetación para impresión directa (navegador).
  *
- * @var int  $registro_id
- * @var bool $layout_report_mode
+ * @var int   $registro_id
+ * @var bool  $layout_report_mode
+ * @var array $result_template_bindings
  */
 $rid = (int) ($registro_id ?? 0);
 $layoutReportMode = ! empty($layout_report_mode);
+$bindings = is_array($result_template_bindings ?? null) ? $result_template_bindings : [];
+$printBinding = is_array($bindings['print'] ?? null) ? $bindings['print'] : [];
+$pdfBinding = is_array($bindings['pdf'] ?? null) ? $bindings['pdf'] : [];
+$printTplId = (int) ($printBinding['resolved_template_id'] ?? 0);
+$pdfTplId = (int) ($pdfBinding['resolved_template_id'] ?? 0);
+$sameTemplate = $printTplId > 0 && $printTplId === $pdfTplId;
+$printUsesPdfFallback = ! empty($printBinding['used_pdf_fallback']);
 ?>
 <div id="report-print-layout-report" class="report-print-layout-report no-print" aria-live="polite">
     <div class="report-print-layout-report-header">
@@ -21,10 +29,20 @@ $layoutReportMode = ! empty($layout_report_mode);
     </div>
     <p class="report-print-layout-report-note">
         Medidas tomadas en el navegador sobre el documento cargado (96 DPI CSS).
+        Los márgenes aplicados provienen de la <strong>plantilla para imprimir (navegador)</strong> en Configuración → Sistema, no de la plantilla del PDF.
         <?php if ($layoutReportMode): ?>
         Modo informe: no se abrirá el diálogo de impresión automáticamente.
         <?php endif; ?>
     </p>
+    <?php if ($printUsesPdfFallback): ?>
+    <div class="alert alert-warning py-2 small mb-3">
+        No hay plantilla de impresión asignada en Sistema; se está usando la plantilla del PDF como respaldo.
+    </div>
+    <?php elseif ($sameTemplate): ?>
+    <div class="alert alert-info py-2 small mb-3">
+        La plantilla de impresión y la del PDF apuntan al mismo diseño (ID <?= esc((string) $printTplId) ?>).
+    </div>
+    <?php endif; ?>
     <table class="report-print-layout-report-table">
         <thead>
             <tr>
@@ -35,29 +53,39 @@ $layoutReportMode = ! empty($layout_report_mode);
         </thead>
         <tbody>
             <tr>
+                <td>Plantilla impresión (activa)</td>
+                <td id="lr_print_template_label">—</td>
+                <td id="lr_print_template_detail">Config: <code>print_result_template_id</code></td>
+            </tr>
+            <tr>
+                <td>Plantilla PDF (referencia)</td>
+                <td id="lr_pdf_template_label">—</td>
+                <td id="lr_pdf_template_detail">Config: <code>pdf_result_template_id</code> — no se usa en esta vista</td>
+            </tr>
+            <tr>
                 <td>Tamaño hoja configurado</td>
                 <td id="lr_sheet_size">—</td>
                 <td id="lr_sheet_size_detail">—</td>
             </tr>
             <tr>
-                <td>Margen superior</td>
+                <td>Margen superior (aplicado)</td>
                 <td id="lr_margin_top">—</td>
-                <td>Plantilla de impresión (<code>margins_mm.top</code>)</td>
+                <td id="lr_margin_top_detail">Plantilla impresión (<code>margins_mm.top</code>)</td>
             </tr>
             <tr>
-                <td>Margen inferior</td>
+                <td>Margen inferior (aplicado)</td>
                 <td id="lr_margin_bottom">—</td>
-                <td>Plantilla de impresión (<code>margins_mm.bottom</code>)</td>
+                <td id="lr_margin_bottom_detail">Plantilla impresión (<code>margins_mm.bottom</code>)</td>
             </tr>
             <tr>
-                <td>Margen izquierdo</td>
+                <td>Margen izquierdo (aplicado)</td>
                 <td id="lr_margin_left">—</td>
-                <td>Plantilla de impresión (<code>margins_mm.left</code>)</td>
+                <td id="lr_margin_left_detail">Plantilla impresión (<code>margins_mm.left</code>)</td>
             </tr>
             <tr>
-                <td>Margen derecho</td>
+                <td>Margen derecho (aplicado)</td>
                 <td id="lr_margin_right">—</td>
-                <td>Plantilla de impresión (<code>margins_mm.right</code>)</td>
+                <td id="lr_margin_right_detail">Plantilla impresión (<code>margins_mm.right</code>)</td>
             </tr>
             <tr>
                 <td>Altura header</td>

@@ -2506,6 +2506,7 @@ class RegisterService
     ): string {
         $layoutService = new ReportPdfLayoutService();
         $pdf_layout    = $layoutService->getPrintLayoutForRender();
+        $templateBindings = $layoutService->getResultTemplateBindingsForReport();
         if ($reportEmitidoEn === '') {
             $reportEmitidoEn = self::formatNowForReport();
         }
@@ -2518,7 +2519,8 @@ class RegisterService
             'lab_config'    => $this->getLabConfig(),
             'report_url'    => $reportUrl,
             'qr_data_uri'   => $qrDataUri,
-            'pdf_layout'    => $pdf_layout,
+            'pdf_layout'              => $pdf_layout,
+            'result_template_bindings' => $templateBindings,
             'registro_id'   => $registroId,
             'report_emitido_en' => $reportEmitidoEn,
             'layout_report_mode' => $layoutReportMode,

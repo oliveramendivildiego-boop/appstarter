@@ -3306,6 +3306,24 @@ class ReportPdfLayoutService
     }
 
     /**
+     * ¿Insertar separador de salto entre áreas (2.º grupo en adelante)?
+     * Aplica a modos íntegros y a keep_together_if_fits (+ auto_order).
+     *
+     * @param array<string, mixed> $layout
+     */
+    public static function shouldRenderGrupoInterPageBreak(array $layout, bool $isFirstGrupo): bool
+    {
+        if ($isFirstGrupo) {
+            return false;
+        }
+        $ps  = is_array($layout['page_style'] ?? null) ? $layout['page_style'] : [];
+        $gpb = self::normalizeGrupoPruebaPageBreakStyle($ps['grupo_prueba_page_break'] ?? []);
+
+        return self::grupoPruebaPageBreakUsesGrupoIntactCss($gpb)
+            || self::grupoPruebaPageBreakUsesIfFitsMode($gpb);
+    }
+
+    /**
      * Estilo inline del líder de hoja (.report-pdf-grupo-area-page-leader) — Dompdf + impresión.
      *
      * @param array<string, mixed> $layout
@@ -4439,6 +4457,104 @@ class ReportPdfLayoutService
     }
 
     /**
+     * Metadatos de las plantillas PDF e impresión configuradas en Sistema (informe de maquetación).
+     *
+     * @return array{
+     *     print: array{config_key: string, config_template_id: int, resolved_template_id: int, name: string, margins_mm: array{top: float, right: float, bottom: float, left: float}, used_pdf_fallback: bool},
+     *     pdf: array{config_key: string, config_template_id: int, resolved_template_id: int, name: string, margins_mm: array{top: float, right: float, bottom: float, left: float}, used_pdf_fallback: bool}
+     * }
+     */
+    public function getResultTemplateBindingsForReport(): array
+    {
+        return [
+            'print' => $this->resolveTemplateBindingForConfigKey('print_result_template_id'),
+            'pdf'   => $this->resolveTemplateBindingForConfigKey('pdf_result_template_id'),
+        ];
+    }
+
+    /**
+     * @return array{
+     *     config_key: string,
+     *     config_template_id: int,
+     *     resolved_template_id: int,
+     *     name: string,
+     *     margins_mm: array{top: float, right: float, bottom: float, left: float},
+     *     used_pdf_fallback: bool
+     * }
+     */
+    protected function resolveTemplateBindingForConfigKey(string $configKey): array
+    {
+        $defaults = self::defaultMarginsMmStatic();
+        $empty    = [
+            'config_key'           => $configKey,
+            'config_template_id'   => 0,
+            'resolved_template_id' => 0,
+            'name'                 => '',
+            'margins_mm'           => $defaults,
+            'used_pdf_fallback'    => false,
+        ];
+
+        try {
+            $configModel   = model(AppConfigModel::class);
+            $templateModel = model(ReportPdfTemplateModel::class);
+            $resolution    = $this->resolveTemplateIdForConfigKey($configKey, $configModel);
+            $resolvedId    = (int) ($resolution['resolved_template_id'] ?? 0);
+            if ($resolvedId < 1) {
+                return array_merge($empty, [
+                    'config_template_id'   => (int) ($resolution['config_template_id'] ?? 0),
+                    'used_pdf_fallback'    => ! empty($resolution['used_pdf_fallback']),
+                ]);
+            }
+
+            $row = $templateModel->find($resolvedId);
+            if (! $row) {
+                return array_merge($empty, [
+                    'config_template_id'   => (int) ($resolution['config_template_id'] ?? 0),
+                    'resolved_template_id' => $resolvedId,
+                    'used_pdf_fallback'    => ! empty($resolution['used_pdf_fallback']),
+                ]);
+            }
+
+            $layout  = ! empty($row->layout_json)
+                ? $this->normalizeLayout((string) $row->layout_json)
+                : $this->getDefaultLayout();
+            $margins = is_array($layout['margins_mm'] ?? null) ? $layout['margins_mm'] : $defaults;
+
+            return [
+                'config_key'           => $configKey,
+                'config_template_id'   => (int) ($resolution['config_template_id'] ?? 0),
+                'resolved_template_id' => $resolvedId,
+                'name'                 => (string) ($row->name ?? ''),
+                'margins_mm'           => $margins,
+                'used_pdf_fallback'    => ! empty($resolution['used_pdf_fallback']),
+            ];
+        } catch (\Throwable $e) {
+            return $empty;
+        }
+    }
+
+    /**
+     * @return array{config_template_id: int, resolved_template_id: int, used_pdf_fallback: bool}
+     */
+    protected function resolveTemplateIdForConfigKey(string $configKey, ?AppConfigModel $configModel = null): array
+    {
+        $configModel   = $configModel ?? model(AppConfigModel::class);
+        $configId      = (int) $configModel->getValue($configKey);
+        $resolvedId    = $configId;
+        $usedFallback  = false;
+        if ($resolvedId < 1 && $configKey !== 'pdf_result_template_id') {
+            $resolvedId = (int) $configModel->getValue('pdf_result_template_id');
+            $usedFallback = $resolvedId > 0;
+        }
+
+        return [
+            'config_template_id'   => $configId,
+            'resolved_template_id' => $resolvedId,
+            'used_pdf_fallback'    => $usedFallback,
+        ];
+    }
+
+    /**
      * @return array{version: int, blocks: list<array{id: string, enabled: bool}>, section_layouts: array, instances: list<array{uid: string, element_type: string, section: string, enabled: bool, column: int}>, margins_mm: array, watermark: array}
      */
     protected function resolveLayoutForConfigKey(string $configKey): array
@@ -4446,10 +4562,8 @@ class ReportPdfLayoutService
         try {
             $configModel   = model(AppConfigModel::class);
             $templateModel = model(ReportPdfTemplateModel::class);
-            $id            = (int) $configModel->getValue($configKey);
-            if ($id < 1 && $configKey !== 'pdf_result_template_id') {
-                $id = (int) $configModel->getValue('pdf_result_template_id');
-            }
+            $resolution    = $this->resolveTemplateIdForConfigKey($configKey, $configModel);
+            $id            = (int) ($resolution['resolved_template_id'] ?? 0);
             if ($id > 0) {
                 $row = $templateModel->find($id);
                 if ($row && ! empty($row->layout_json)) {
