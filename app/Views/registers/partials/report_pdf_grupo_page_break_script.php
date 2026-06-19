@@ -1844,11 +1844,9 @@ $footerEnabled = ! empty($footer_enabled);
 
     function remainingForGrupoPlacement(grupo, container, layoutCtx, cursor, isFirstGrupo) {
         var buffer = layoutFooterSafetyBufferPx(layoutCtx);
-        if (isFirstGrupo) {
-            return Math.max(0, espacioRestanteEnPaginaActual(cursor, layoutCtx) - buffer);
-        }
-        var top = topWithinContainer(grupo, container);
-        return Math.max(0, remainingOnPage(top, layoutCtx.boundarySet) - buffer);
+        // Tras forceGrupoToNewPageStart el cursor ya refleja la hoja nueva; no usar top DOM
+        // (sigue apuntando a la hoja anterior antes del reflow y rompe ORINA vs INMUNOLOGÍA).
+        return Math.max(0, espacioRestanteEnPaginaActual(cursor, layoutCtx) - buffer);
     }
 
     /**
@@ -1934,15 +1932,12 @@ $footerEnabled = ! empty($footer_enabled);
 
             if (grupoH <= maxSlicePx) {
                 grupo.classList.add('report-pdf-grupo-prueba-keep-on-page');
-                clearAnalysisUnitBreaksInGrupo(grupo);
-                cursor = bumpCursorAfterPlace(
-                    cursor.page,
-                    cursor.y,
-                    grupo.offsetHeight || 0,
-                    layoutCtx.boundarySet,
-                    layoutCtx.metrics
-                );
-                sealKeepOnPageGrupoIntact(grupo);
+                grupo.classList.add('report-pdf-grupo-prueba-split-segments-only');
+                if (measured.compact) {
+                    clearGrupoCompact(grupo);
+                }
+                cursor = placeGrupoTitleOnCursor(cursor, grupo, layoutCtx);
+                cursor = applyAnalysisUnitPageBreaks(grupo, container, layoutCtx, cursor);
                 applyGrupoFirmaPageBreaks(grupo);
                 return;
             }
@@ -2362,21 +2357,12 @@ $footerEnabled = ! empty($footer_enabled);
                 return;
             } else if (height <= maxSlicePx) {
                 grupo.classList.add('report-pdf-grupo-prueba-keep-on-page');
-                clearAnalysisUnitBreaksInGrupo(grupo);
-                cursor = placeGrupoTitleOnCursor(cursor, grupo, layoutCtx);
-                cursor = bumpCursorAfterPlace(
-                    cursor.page,
-                    cursor.y,
-                    grupo.offsetHeight || 0,
-                    layoutCtx.boundarySet,
-                    layoutCtx.metrics
-                );
-                sealKeepOnPageGrupoIntact(grupo);
-                applyGrupoFirmaPageBreaks(grupo);
-                return;
+                grupo.classList.add('report-pdf-grupo-prueba-split-segments-only');
+            } else {
+                grupo.classList.add('report-pdf-grupo-prueba-split-segments-only');
             }
 
-            grupo.classList.add('report-pdf-grupo-prueba-split-segments-only');
+            cursor = placeGrupoTitleOnCursor(cursor, grupo, layoutCtx);
             cursor = placeGrupoTitleOnCursor(cursor, grupo, layoutCtx);
             cursor = applyAnalysisUnitPageBreaks(grupo, container, layoutCtx, cursor);
             applyGrupoFirmaPageBreaks(grupo);
