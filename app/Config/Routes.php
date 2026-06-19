@@ -325,6 +325,7 @@ $routes->post('interpretacion-clinica/save', 'InterpretacionClinica::save');
 $routes->post('labotests/deletesecitem/(:num)', 'Labotests::deletesecitem/$1');
 $routes->get('labotests/deletesecitem/(:num)', 'Labotests::deletesecitem/$1');
 $routes->post('labotests/deletesecitemsbulk', 'Labotests::deletesecitemsbulk');
+$routes->post('labotests/duplicatesecitemsbulk', 'Labotests::duplicatesecitemsbulk');
 $routes->post('labotests/savepriresultado', 'Labotests::savepriresultado');
 $routes->post('labotests/deletepriresultado/(:num)', 'Labotests::deletepriresultado/$1');
 $routes->get('labotests/deletepriresultado/(:num)', 'Labotests::deletepriresultado/$1');

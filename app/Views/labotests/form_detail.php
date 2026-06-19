@@ -227,6 +227,9 @@ if ($feRaw !== '' && !empty($formulas_con_expresion ?? [])) {
         <button type="button" class="btn btn-sm btn-outline-primary ms-auto" id="btn_abrir_modal_orden_sec" title="Lista compacta para reordenar más rápido">
             <i class="fa-solid fa-list-ol me-1"></i> Orden rápido
         </button>
+        <button type="button" class="btn btn-sm btn-outline-secondary" id="btn_duplicar_sec_seleccionadas" disabled>
+            <i class="fa-solid fa-copy me-1"></i>Duplicar seleccionadas
+        </button>
         <button type="button" class="btn btn-sm btn-outline-danger" id="btn_eliminar_sec_seleccionadas" disabled>
             <i class="fa-solid fa-trash me-1"></i>Eliminar seleccionadas
         </button>
@@ -1205,6 +1208,8 @@ if ($fe !== '') {
             if (tablaSub) {
                 var secCheckAll = document.getElementById('sec_check_all');
                 var btnEliminarSeleccionadas = document.getElementById('btn_eliminar_sec_seleccionadas');
+                var btnDuplicarSeleccionadas = document.getElementById('btn_duplicar_sec_seleccionadas');
+                var duplicarSecBulkMode = false;
                 var modalDuplicarSecEl = document.getElementById('modalDuplicarSecItem');
                 var modalDuplicarSecInst = (modalDuplicarSecEl && typeof bootstrap !== 'undefined')
                     ? (bootstrap.Modal.getInstance(modalDuplicarSecEl) || new bootstrap.Modal(modalDuplicarSecEl))
@@ -1257,7 +1262,27 @@ if ($fe !== '') {
                             ? '<i class="fa-solid fa-trash me-1"></i>Eliminar seleccionadas (' + selected.length + ')'
                             : '<i class="fa-solid fa-trash me-1"></i>Eliminar seleccionadas';
                     }
+                    if (btnDuplicarSeleccionadas) {
+                        btnDuplicarSeleccionadas.disabled = selected.length === 0;
+                        btnDuplicarSeleccionadas.innerHTML = selected.length > 0
+                            ? '<i class="fa-solid fa-copy me-1"></i>Duplicar seleccionadas (' + selected.length + ')'
+                            : '<i class="fa-solid fa-copy me-1"></i>Duplicar seleccionadas';
+                    }
                     syncSecCheckAllState();
+                }
+                function abrirModalDuplicarSec(opts) {
+                    opts = opts || {};
+                    duplicarSecBulkMode = !!opts.bulk;
+                    if (duplicarSecUrlInput) {
+                        duplicarSecUrlInput.value = opts.bulk ? '' : (opts.url || '');
+                    }
+                    if (duplicarSecCopiasInput) duplicarSecCopiasInput.value = '1';
+                    var defaultMode = document.getElementById('duplicar_sec_name_mode_copy');
+                    if (defaultMode) defaultMode.checked = true;
+                    if (modalDuplicarSecInst) {
+                        modalDuplicarSecInst.show();
+                        setTimeout(function() { if (duplicarSecCopiasInput) duplicarSecCopiasInput.focus(); }, 200);
+                    }
                 }
                 function refrescarTablaDesdeRespuesta(htmlText) {
                     var parser = new DOMParser();
@@ -1455,6 +1480,13 @@ if ($fe !== '') {
                         actualizarEstadoSeleccion();
                     }
                 });
+                if (btnDuplicarSeleccionadas) {
+                    btnDuplicarSeleccionadas.addEventListener('click', function() {
+                        var ids = getSelectedSecIds();
+                        if (ids.length < 1) return;
+                        abrirModalDuplicarSec({ bulk: true });
+                    });
+                }
                 if (btnEliminarSeleccionadas) {
                     btnEliminarSeleccionadas.addEventListener('click', function() {
                         var ids = getSelectedSecIds();
@@ -1496,19 +1528,28 @@ if ($fe !== '') {
                         var copies = parseInt((duplicarSecCopiasInput && duplicarSecCopiasInput.value) ? duplicarSecCopiasInput.value : '1', 10);
                         var modeInput = document.querySelector('input[name="duplicar_sec_name_mode"]:checked');
                         var nameMode = modeInput ? String(modeInput.value || '') : 'copia_numerada';
-                        if (!url) return;
                         copies = isNaN(copies) ? 1 : Math.max(1, Math.min(100, copies));
+                        var normalizedMode = nameMode === 'same' ? 'same' : 'copia_numerada';
                         var fd = new FormData();
                         fd.append('copies', String(copies));
-                        var normalizedMode = nameMode === 'same' ? 'same' : 'copia_numerada';
                         fd.append('name_mode', normalizedMode);
                         fd.append('duplicar_sec_name_mode', normalizedMode);
-                        var targetUrl = url + (url.indexOf('?') >= 0 ? '&' : '?') + 'name_mode=' + encodeURIComponent(normalizedMode);
                         var csrfData = getCsrfData();
                         if (csrfData.value) fd.append(csrfData.name, csrfData.value);
                         var headers = { 'X-Requested-With': 'XMLHttpRequest' };
                         headers['X-Name-Mode'] = normalizedMode;
                         if (csrfData.value) headers['X-CSRF-TOKEN'] = csrfData.value;
+                        var targetUrl;
+                        if (duplicarSecBulkMode) {
+                            var bulkIds = getSelectedSecIds();
+                            if (bulkIds.length < 1) return;
+                            targetUrl = '<?= site_url('labotests/duplicatesecitemsbulk') ?>';
+                            fd.append('prianacategoria_id', String(prianacategoriaId));
+                            bulkIds.forEach(function(id) { fd.append('secanacategoria_ids[]', String(id)); });
+                        } else {
+                            if (!url) return;
+                            targetUrl = url + (url.indexOf('?') >= 0 ? '&' : '?') + 'name_mode=' + encodeURIComponent(normalizedMode);
+                        }
                         btnConfirmarDuplicarSec.disabled = true;
                         fetch(targetUrl, {
                             method: 'POST',
@@ -1526,7 +1567,9 @@ if ($fe !== '') {
                             }
                         }).catch(function() {
                             btnConfirmarDuplicarSec.disabled = false;
-                            if (typeof showToast === 'function') showToast('No se pudo duplicar la sub-clase', 'error');
+                            if (typeof showToast === 'function') {
+                                showToast(duplicarSecBulkMode ? 'No se pudo duplicar las sub-clases seleccionadas' : 'No se pudo duplicar la sub-clase', 'error');
+                            }
                         });
                     });
                 }
@@ -1548,13 +1591,8 @@ if ($fe !== '') {
                     var duplicar = e.target.closest('.btn-sec-duplicar');
                     if (duplicar) {
                         e.preventDefault();
-                        if (duplicarSecUrlInput) duplicarSecUrlInput.value = duplicar.getAttribute('href') || '';
-                        if (duplicarSecCopiasInput) duplicarSecCopiasInput.value = '1';
-                        var defaultMode = document.getElementById('duplicar_sec_name_mode_copy');
-                        if (defaultMode) defaultMode.checked = true;
                         if (modalDuplicarSecInst) {
-                            modalDuplicarSecInst.show();
-                            setTimeout(function() { if (duplicarSecCopiasInput) duplicarSecCopiasInput.focus(); }, 200);
+                            abrirModalDuplicarSec({ bulk: false, url: duplicar.getAttribute('href') || '' });
                         } else {
                             ejecutarAccionFila(duplicar.getAttribute('href'), 'Sub-clase duplicada correctamente');
                         }

@@ -1327,6 +1327,94 @@ class Labotests extends SecureArea
     }
 
     /**
+     * Duplicar sub-clases en lote
+     */
+    public function duplicatesecitemsbulk(): ResponseInterface
+    {
+        $prianacategoriaId = (int) ($this->request->getPost('prianacategoria_id') ?? 0);
+        $ids = $this->request->getPost('secanacategoria_ids');
+        $ids = is_array($ids) ? $ids : [];
+        $ids = array_values(array_unique(array_filter(array_map('intval', $ids), static fn(int $v): bool => $v > 0)));
+
+        $copies = (int) ($this->request->getPost('copies') ?? 1);
+        $copies = max(1, min(100, $copies));
+
+        $nameModeRaw = $this->request->getPost('name_mode');
+        if ($nameModeRaw === null || $nameModeRaw === '') {
+            $nameModeRaw = $this->request->getPost('duplicar_sec_name_mode');
+        }
+        if ($nameModeRaw === null || $nameModeRaw === '') {
+            $nameModeRaw = $this->request->getHeaderLine('X-Name-Mode');
+        }
+        $nameMode = strtolower(trim((string) ($nameModeRaw ?? 'copia_numerada')));
+        if (! in_array($nameMode, ['same', 'copia_numerada'], true)) {
+            $nameMode = 'copia_numerada';
+        }
+
+        if ($prianacategoriaId < 1 || $ids === []) {
+            return $this->response->setJSON([
+                'success' => false,
+                'message' => 'Debe seleccionar al menos una sub-clase',
+            ])->setStatusCode(400);
+        }
+
+        $result = $this->labotestModel->duplicateSecItemsBulk($prianacategoriaId, $ids, $copies, $nameMode);
+        $inserted = (int) ($result['inserted'] ?? 0);
+        $items = (int) ($result['items'] ?? 0);
+
+        if ($items > 0) {
+            \App\Models\AuditoriaModel::log(
+                'labotests',
+                'duplicar_subclases_masivo',
+                (string) $prianacategoriaId,
+                \App\Models\AuditoriaModel::detail([
+                    'total_copias' => $inserted,
+                    'subclases' => $items,
+                    'copias_por_subclase' => $copies,
+                    'name_mode' => $nameMode,
+                    'ids' => $ids,
+                ])
+            );
+        }
+
+        if ($inserted < 1) {
+            $json = [
+                'success' => false,
+                'message' => 'No se pudo duplicar las sub-clases seleccionadas',
+                'inserted' => 0,
+                'items' => 0,
+            ];
+        } elseif ($copies === 1) {
+            $message = $items === 1
+                ? 'Sub-clase duplicada correctamente'
+                : ('Se duplicaron ' . $items . ' sub-clases correctamente');
+            $json = [
+                'success' => true,
+                'message' => $message,
+                'inserted' => $inserted,
+                'items' => $items,
+            ];
+        } else {
+            $message = $items === 1
+                ? ('Sub-clase duplicada ' . $copies . ' veces correctamente')
+                : ('Se duplicaron ' . $items . ' sub-clases (' . $inserted . ' copias creadas)');
+            $json = [
+                'success' => true,
+                'message' => $message,
+                'inserted' => $inserted,
+                'items' => $items,
+            ];
+        }
+
+        if (function_exists('csrf_hash')) {
+            $json['csrf_token'] = csrf_hash();
+            $json['csrf_name'] = csrf_token();
+        }
+
+        return $this->response->setJSON($json)->setStatusCode($inserted > 0 ? 200 : 400);
+    }
+
+    /**
      * Guardar resultado (priresultados) - prueba no compuesta
      */
     public function savepriresultado()

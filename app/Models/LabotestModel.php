@@ -2115,6 +2115,39 @@ class LabotestModel extends Model
     }
 
     /**
+     * Duplica varias sub-clases, cada una N veces.
+     *
+     * @return array{inserted:int, items:int}
+     */
+    public function duplicateSecItemsBulk(int $prianacategoriaId, array $ids, int $copies = 1, string $nameMode = 'copia_numerada'): array
+    {
+        $ids = array_values(array_unique(array_filter(array_map('intval', $ids), static fn(int $v): bool => $v > 0)));
+        $copies = max(1, min(100, $copies));
+        $nameMode = in_array($nameMode, ['same', 'copia_numerada'], true) ? $nameMode : 'copia_numerada';
+
+        if ($prianacategoriaId < 1 || $ids === []) {
+            return ['inserted' => 0, 'items' => 0];
+        }
+
+        $totalInserted = 0;
+        $itemsProcessed = 0;
+        foreach ($ids as $id) {
+            $sec = $this->getSecItemInfo($id);
+            if (! $sec || (int) ($sec->prianacategoria_id ?? 0) !== $prianacategoriaId) {
+                continue;
+            }
+            $result = $this->duplicateSecItemMany($id, $copies, $nameMode);
+            $inserted = (int) ($result['inserted'] ?? 0);
+            if ($inserted > 0) {
+                $totalInserted += $inserted;
+                $itemsProcessed++;
+            }
+        }
+
+        return ['inserted' => $totalInserted, 'items' => $itemsProcessed];
+    }
+
+    /**
      * Obtiene info de una sub-clase (para redirección tras borrar)
      */
     public function getSecItemInfo(int $id): ?object
