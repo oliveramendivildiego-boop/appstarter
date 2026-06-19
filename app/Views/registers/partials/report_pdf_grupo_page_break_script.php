@@ -157,15 +157,120 @@ $footerEnabled = ! empty($footer_enabled);
         return false;
     }
 
+    function orderedSubgrupoBlocksInGrupo(grupo) {
+        if (!grupo) {
+            return [];
+        }
+        return Array.from(grupo.querySelectorAll(':scope > .report-pdf-subgrupo-block'));
+    }
+
+    function keepIntactSubgrupoBlocksInGrupo(grupo) {
+        return orderedSubgrupoBlocksInGrupo(grupo).filter(function(block) {
+            return block.classList && block.classList.contains('report-subgrupo-keep-intact');
+        });
+    }
+
+    function isSubgrupoAtOrAfterInGrupo(subgrupo, anchor, grupo) {
+        var blocks = orderedSubgrupoBlocksInGrupo(grupo);
+        var subIdx = blocks.indexOf(subgrupo);
+        var anchorIdx = blocks.indexOf(anchor);
+        return subIdx >= 0 && anchorIdx >= 0 && subIdx >= anchorIdx;
+    }
+
+    /**
+     * Primer subgrupo keep-intact del bloque final (p. ej. GGT antes de FOSFATASA + firma).
+     */
+    function tailBreakAnchorSubgrupo(grupo) {
+        if (!grupo) {
+            return null;
+        }
+        var keepIntactBlocks = keepIntactSubgrupoBlocksInGrupo(grupo);
+        if (!keepIntactBlocks.length) {
+            return null;
+        }
+
+        var lastUnit = lastAnalysisUnitInGrupo(grupo);
+        if (!lastUnit) {
+            return keepIntactBlocks[keepIntactBlocks.length - 1];
+        }
+
+        var lastSub = lastUnit.classList && lastUnit.classList.contains('report-pdf-subgrupo-block')
+            ? lastUnit
+            : subgrupoBlockForNode(lastUnit);
+        if (!lastSub || !lastSub.classList.contains('report-subgrupo-keep-intact')) {
+            return keepIntactBlocks[keepIntactBlocks.length - 1];
+        }
+
+        var idx = keepIntactBlocks.indexOf(lastSub);
+        if (idx < 0) {
+            return keepIntactBlocks[keepIntactBlocks.length - 1];
+        }
+        if (idx === 0) {
+            return keepIntactBlocks[0];
+        }
+
+        if (labFirmaBlockInGrupo(grupo)) {
+            return keepIntactBlocks[idx - 1];
+        }
+
+        return lastSub;
+    }
+
+    function previousKeepIntactSubgrupoSibling(subgrupo) {
+        if (!subgrupo || !subgrupo.parentNode) {
+            return null;
+        }
+        var prev = subgrupo.previousElementSibling;
+        while (prev) {
+            if (prev.classList && prev.classList.contains('report-pdf-subgrupo-block')) {
+                return prev.classList.contains('report-subgrupo-keep-intact') ? prev : null;
+            }
+            prev = prev.previousElementSibling;
+        }
+        return null;
+    }
+
+    function markForceBreakBeforeSubgrupoBlock(subgrupo) {
+        if (!subgrupo) {
+            return;
+        }
+        var grupo = subgrupo.closest('.report-pdf-grupo-prueba');
+        var target = subgrupo;
+
+        if (grupo) {
+            var anchor = tailBreakAnchorSubgrupo(grupo);
+            if (anchor) {
+                if (isSubgrupoAtOrAfterInGrupo(subgrupo, anchor, grupo)) {
+                    target = anchor;
+                }
+            } else {
+                var prevKi = previousKeepIntactSubgrupoSibling(subgrupo);
+                if (prevKi) {
+                    target = prevKi;
+                }
+            }
+        }
+
+        if (target.classList.contains('report-subgrupo-force-break-before')) {
+            return;
+        }
+        target.classList.add('report-subgrupo-force-break-before');
+        var cabecera = target.querySelector('.report-pdf-grupo-cabecera');
+        if (cabecera) {
+            cabecera.classList.add('report-cabecera-force-break-before');
+        }
+    }
+
     function markForceBreakBeforeCabecera(cabecera) {
         if (!cabecera) {
             return;
         }
-        cabecera.classList.add('report-cabecera-force-break-before');
         var subgrupo = subgrupoBlockForNode(cabecera);
         if (subgrupo) {
-            subgrupo.classList.add('report-subgrupo-force-break-before');
+            markForceBreakBeforeSubgrupoBlock(subgrupo);
+            return;
         }
+        cabecera.classList.add('report-cabecera-force-break-before');
     }
 
     function elementHeight(el) {
@@ -463,11 +568,7 @@ $footerEnabled = ! empty($footer_enabled);
             return;
         }
         if (unit.classList && unit.classList.contains('report-pdf-subgrupo-block')) {
-            unit.classList.add('report-subgrupo-force-break-before');
-            var cabecera = unit.querySelector('.report-pdf-grupo-cabecera');
-            if (cabecera) {
-                cabecera.classList.add('report-cabecera-force-break-before');
-            }
+            markForceBreakBeforeSubgrupoBlock(unit);
             return;
         }
         markForceBreakBeforeSegmentUnit(unit, container);

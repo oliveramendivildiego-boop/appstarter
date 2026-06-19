@@ -349,7 +349,151 @@ class ReportPdfDompdfGrupoPageBreakService
 
         $this->grupoOnFreshPage = false;
 
+        return $this->consolidateTailBreaks($plan, $units);
+    }
+
+    /**
+     * Consolida saltos del bloque final del grupo en un único ancla (p. ej. GGT + FOSFATASA + firma).
+     *
+     * @param list<array{segment_class: string, cabecera_class: string, subgrupo_class: string}> $plan
+     * @param list<array{rows: int, has_title: bool, subgrupo_key: int, is_matrix: bool}>       $units
+     *
+     * @return list<array{segment_class: string, cabecera_class: string, subgrupo_class: string}>
+     */
+    private function consolidateTailBreaks(array $plan, array $units): array
+    {
+        if ($plan === [] || $units === []) {
+            return $plan;
+        }
+
+        $firstIdxByKey = [];
+        $orderedKeys   = [];
+        $seenKeys      = [];
+        foreach ($units as $idx => $unit) {
+            $sk = (int) ($unit['subgrupo_key'] ?? -1);
+            if (! isset($firstIdxByKey[$sk])) {
+                $firstIdxByKey[$sk] = $idx;
+            }
+            if (! isset($seenKeys[$sk])) {
+                $orderedKeys[] = $sk;
+                $seenKeys[$sk]  = true;
+            }
+        }
+
+        $keyOrder = array_flip($orderedKeys);
+        $anchorSk = $this->tailBreakAnchorSubgrupoKey($units, $orderedKeys);
+
+        if ($anchorSk === null) {
+            return $this->pullKeepIntactBreakOneStep($plan, $units, $firstIdxByKey, $orderedKeys, $keyOrder);
+        }
+
+        $anchorIdx    = $firstIdxByKey[$anchorSk];
+        $anchorOrder  = $keyOrder[$anchorSk];
+        $needsAnchor  = false;
+
+        foreach ($units as $idx => $unit) {
+            if (($plan[$idx]['subgrupo_class'] ?? '') !== 'report-subgrupo-force-break-before') {
+                continue;
+            }
+
+            $sk  = (int) ($unit['subgrupo_key'] ?? -1);
+            $pos = $keyOrder[$sk] ?? -1;
+            if ($pos >= $anchorOrder) {
+                $needsAnchor = true;
+                $plan[$idx]['subgrupo_class'] = '';
+                $plan[$idx]['cabecera_class'] = '';
+            }
+        }
+
+        if ($needsAnchor && ($plan[$anchorIdx]['subgrupo_class'] ?? '') !== 'report-subgrupo-force-break-before') {
+            $plan[$anchorIdx]['subgrupo_class'] = 'report-subgrupo-force-break-before';
+            $plan[$anchorIdx]['cabecera_class'] = 'report-cabecera-force-break-before';
+        }
+
         return $plan;
+    }
+
+    /**
+     * @param list<int> $orderedKeys
+     * @param array<int, int> $keyOrder
+     * @param array<int, int> $firstIdxByKey
+     *
+     * @param list<array{segment_class: string, cabecera_class: string, subgrupo_class: string}> $plan
+     * @param list<array{rows: int, has_title: bool, subgrupo_key: int, is_matrix: bool}>       $units
+     *
+     * @return list<array{segment_class: string, cabecera_class: string, subgrupo_class: string}>
+     */
+    private function pullKeepIntactBreakOneStep(
+        array $plan,
+        array $units,
+        array $firstIdxByKey,
+        array $orderedKeys,
+        array $keyOrder
+    ): array {
+        foreach ($units as $idx => $unit) {
+            if (($plan[$idx]['subgrupo_class'] ?? '') !== 'report-subgrupo-force-break-before') {
+                continue;
+            }
+
+            $sk  = (int) ($unit['subgrupo_key'] ?? -1);
+            $pos = $keyOrder[$sk] ?? -1;
+            if ($pos <= 0) {
+                continue;
+            }
+
+            $prevSk = $orderedKeys[$pos - 1];
+            if (! ReportPdfLayoutService::subgrupoShouldKeepIntact($units, $prevSk)) {
+                continue;
+            }
+
+            $prevIdx = $firstIdxByKey[$prevSk];
+            if (($plan[$prevIdx]['subgrupo_class'] ?? '') !== 'report-subgrupo-force-break-before') {
+                $plan[$prevIdx]['subgrupo_class'] = 'report-subgrupo-force-break-before';
+                $plan[$prevIdx]['cabecera_class'] = 'report-cabecera-force-break-before';
+            }
+
+            $plan[$idx]['subgrupo_class'] = '';
+            $plan[$idx]['cabecera_class'] = '';
+        }
+
+        return $plan;
+    }
+
+    /**
+     * @param list<array{rows: int, has_title: bool, subgrupo_key: int, is_matrix: bool}> $units
+     * @param list<int>                                                                     $orderedKeys
+     */
+    private function tailBreakAnchorSubgrupoKey(array $units, array $orderedKeys): ?int
+    {
+        $keepIntactKeys = [];
+        foreach ($orderedKeys as $sk) {
+            if (ReportPdfLayoutService::subgrupoShouldKeepIntact($units, $sk)) {
+                $keepIntactKeys[] = $sk;
+            }
+        }
+
+        if ($keepIntactKeys === []) {
+            return null;
+        }
+
+        $lastSk = $orderedKeys[count($orderedKeys) - 1] ?? null;
+        if ($lastSk === null) {
+            return $keepIntactKeys[count($keepIntactKeys) - 1];
+        }
+
+        if (! $this->grupoHasFirma || ! ReportPdfLayoutService::subgrupoShouldKeepIntact($units, $lastSk)) {
+            return $keepIntactKeys[count($keepIntactKeys) - 1];
+        }
+
+        $idx = array_search($lastSk, $keepIntactKeys, true);
+        if ($idx === false) {
+            return $keepIntactKeys[count($keepIntactKeys) - 1];
+        }
+        if ($idx === 0) {
+            return $keepIntactKeys[0];
+        }
+
+        return $keepIntactKeys[$idx - 1];
     }
 
     /**
