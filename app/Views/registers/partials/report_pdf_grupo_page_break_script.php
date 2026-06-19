@@ -1932,15 +1932,24 @@ $footerEnabled = ! empty($footer_enabled);
                 return;
             }
 
+            if (grupoH <= maxSlicePx) {
+                grupo.classList.add('report-pdf-grupo-prueba-keep-on-page');
+                clearAnalysisUnitBreaksInGrupo(grupo);
+                cursor = bumpCursorAfterPlace(
+                    cursor.page,
+                    cursor.y,
+                    grupo.offsetHeight || 0,
+                    layoutCtx.boundarySet,
+                    layoutCtx.metrics
+                );
+                sealKeepOnPageGrupoIntact(grupo);
+                applyGrupoFirmaPageBreaks(grupo);
+                return;
+            }
             if (measured.compact) {
                 clearGrupoCompact(grupo);
             }
-            if (grupoH <= maxSlicePx) {
-                grupo.classList.add('report-pdf-grupo-prueba-keep-on-page');
-                grupo.classList.add('report-pdf-grupo-prueba-split-segments-only');
-            } else {
-                grupo.classList.add('report-pdf-grupo-prueba-split-segments-only');
-            }
+            grupo.classList.add('report-pdf-grupo-prueba-split-segments-only');
             cursor = placeGrupoTitleOnCursor(cursor, grupo, layoutCtx);
             cursor = applyAnalysisUnitPageBreaks(grupo, container, layoutCtx, cursor);
             applyGrupoFirmaPageBreaks(grupo);
@@ -2353,11 +2362,21 @@ $footerEnabled = ! empty($footer_enabled);
                 return;
             } else if (height <= maxSlicePx) {
                 grupo.classList.add('report-pdf-grupo-prueba-keep-on-page');
-                grupo.classList.add('report-pdf-grupo-prueba-split-segments-only');
-            } else {
-                grupo.classList.add('report-pdf-grupo-prueba-split-segments-only');
+                clearAnalysisUnitBreaksInGrupo(grupo);
+                cursor = placeGrupoTitleOnCursor(cursor, grupo, layoutCtx);
+                cursor = bumpCursorAfterPlace(
+                    cursor.page,
+                    cursor.y,
+                    grupo.offsetHeight || 0,
+                    layoutCtx.boundarySet,
+                    layoutCtx.metrics
+                );
+                sealKeepOnPageGrupoIntact(grupo);
+                applyGrupoFirmaPageBreaks(grupo);
+                return;
             }
 
+            grupo.classList.add('report-pdf-grupo-prueba-split-segments-only');
             cursor = placeGrupoTitleOnCursor(cursor, grupo, layoutCtx);
             cursor = applyAnalysisUnitPageBreaks(grupo, container, layoutCtx, cursor);
             applyGrupoFirmaPageBreaks(grupo);
