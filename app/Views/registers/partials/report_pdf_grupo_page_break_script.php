@@ -348,15 +348,21 @@ $footerEnabled = ! empty($footer_enabled);
             return null;
         }
         var subgrupo = subgrupoBlockForNode(node);
-        if (!subgrupo || !subgrupo.classList.contains('report-subgrupo-keep-intact')) {
+        if (!subgrupo) {
             return node;
         }
-        var firmaOuterH = block ? elementOuterHeight(block) : 0;
-        var subH = analysisUnitHeight(subgrupo, container);
-        if (firmaOuterH <= 0 || subH + firmaOuterH > layoutCtx.maxSlicePx) {
-            return node;
+        if (subgrupo.classList.contains('report-subgrupo-keep-intact')) {
+            var firmaOuterH = block ? elementOuterHeight(block) : 0;
+            var subH = analysisUnitHeight(subgrupo, container);
+            if (firmaOuterH <= 0 || subH + firmaOuterH > layoutCtx.maxSlicePx) {
+                return node;
+            }
+            return subgrupo;
         }
-        return subgrupo;
+        if (subgrupo.querySelector('.report-pdf-grupo-cabecera')) {
+            return subgrupo;
+        }
+        return node;
     }
 
     function firmaTailMetrics(grupoEl, block, container, layoutCtx) {
@@ -548,6 +554,11 @@ $footerEnabled = ! empty($footer_enabled);
 
         if (isSubgrupo) {
             markForceBreakBeforeAnalysisUnit(unit, container);
+            return;
+        }
+
+        if (subgrupo && subgrupo.querySelector('.report-pdf-grupo-cabecera')) {
+            markForceBreakBeforeSubgrupoBlock(subgrupo);
             return;
         }
 
@@ -1512,6 +1523,12 @@ $footerEnabled = ! empty($footer_enabled);
             if (bloqueConFirma > maxSlicePx) {
                 decision = 'mantener';
                 if (markBreaks) {
+                    var subBlk = subgrupoBlockForNode(unit);
+                    if (subBlk && subBlk.querySelector('.report-pdf-grupo-cabecera')
+                        && !atPageResultsStart(cursor.page, cursor.y, boundarySet, metrics)) {
+                        markForceBreakBeforeSubgrupoBlock(subBlk);
+                        cursor = forceCursorToNextPage(cursor, layoutCtx);
+                    }
                     nextCursor = placeOversizedAnalysisUnitOnCursor(cursor, unit, container, layoutCtx, true);
                 } else {
                     nextCursor = bumpCursorAfterPlace(cursor.page, cursor.y, unitH, boundarySet, metrics);
@@ -1559,7 +1576,13 @@ $footerEnabled = ! empty($footer_enabled);
         }
 
         if (markBreaks) {
-            markForceBreakBeforeAnalysisUnit(unit, container);
+            var subForBreak = subgrupoBlockForNode(unit);
+            if (subForBreak && subForBreak.querySelector('.report-pdf-grupo-cabecera')
+                && !(unit.classList && unit.classList.contains('report-pdf-subgrupo-block'))) {
+                markForceBreakBeforeSubgrupoBlock(subForBreak);
+            } else {
+                markForceBreakBeforeAnalysisUnit(unit, container);
+            }
         }
         var paginaNueva = forceCursorToNextPage(cursor, layoutCtx);
         return bumpCursorAfterPlace(paginaNueva.page, paginaNueva.y, placementH, boundarySet, metrics);
