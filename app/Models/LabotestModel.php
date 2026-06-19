@@ -17,6 +17,21 @@ class LabotestModel extends Model
     public const COMPLEJA_CULTIVO      = 2;
     public const COMPLEJA_PERSONALIZADO = 3;
 
+    /** Sin gráfica de comparación seriada en reporte. */
+    public const GRAFICAR_NO = 0;
+    /** Solo tabla heatmap de comparación (M1/M2/M3). */
+    public const GRAFICAR_SI = 1;
+    /** Tabla seriada habitual y, al final, heatmap de comparación. */
+    public const GRAFICAR_AMBOS = 2;
+
+    public static function normalizeGraficar(int $value): int
+    {
+        return match ($value) {
+            self::GRAFICAR_SI, self::GRAFICAR_AMBOS => $value,
+            default => self::GRAFICAR_NO,
+        };
+    }
+
     /** Slug para exportación JSON según tipo de análisis. */
     public static function tipoAnalisisSlug(int $compleja): string
     {
@@ -2632,7 +2647,7 @@ class LabotestModel extends Model
             $save['mostrar_valores'] = (int) ($data['mostrar_valores'] ?? 0);
         }
         if ($this->hasColumn('prianacategoria', 'graficar')) {
-            $save['graficar'] = (int) ($data['graficar'] ?? 0);
+            $save['graficar'] = self::normalizeGraficar((int) ($data['graficar'] ?? 0));
         }
         if ($this->hasColumn('prianacategoria', 'tipo_muestra_id')) {
             $tid = (int) ($data['tipo_muestra_id'] ?? 0);

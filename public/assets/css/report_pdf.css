@@ -1220,3 +1220,109 @@ body.pdf-dompdf-download .report-pdf-grupo-area-separator:not(.report-pdf-grupo-
     page-break-inside: avoid !important;
     break-inside: avoid-page !important;
 }
+
+/* Comparación seriada categórica (heatmap clínico M1/M2/M3) */
+.catcmp-wrap {
+    margin-bottom: 12px;
+}
+.catcmp-subsection-title {
+    font-size: 9pt;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    color: #495057;
+    margin: 10px 0 6px;
+}
+.catcmp-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+.catcmp-table th,
+.catcmp-table td {
+    vertical-align: middle;
+    padding: 5px 6px;
+}
+.catcmp-col-param {
+    width: 22%;
+    font-weight: 600;
+}
+.catcmp-col-sample {
+    width: 18%;
+}
+.catcmp-col-trend {
+    width: 8%;
+    white-space: nowrap;
+}
+.catcmp-badge {
+    display: inline-block;
+    min-width: 4.5rem;
+    padding: 0.18rem 0.45rem;
+    border-radius: 999px;
+    font-size: 8.5pt;
+    font-weight: 600;
+    line-height: 1.25;
+    text-align: center;
+    border: 1px solid transparent;
+    color: #212529;
+}
+.catcmp-badge--neutral {
+    background: #e9ecef;
+    border-color: #ced4da;
+    color: #495057;
+}
+.catcmp-badge--escaso {
+    background: #fff3bf;
+    border-color: #f1d03a;
+    color: #7c6a00;
+}
+.catcmp-badge--moderado {
+    background: #ffd8a8;
+    border-color: #fd9843;
+    color: #8a3b00;
+}
+.catcmp-badge--abundante,
+.catcmp-badge--presente,
+.catcmp-badge--descriptivo {
+    background: #ffc9c9;
+    border-color: #fa5252;
+    color: #8b0000;
+}
+.catcmp-badge--default {
+    background: #f8f9fa;
+    border-color: #dee2e6;
+    color: #343a40;
+}
+.catcmp-trend-symbol {
+    display: inline-block;
+    font-size: 12pt;
+    font-weight: 700;
+    line-height: 1;
+}
+.catcmp-trend-label {
+    margin-top: 2px;
+    font-size: 7pt;
+    color: #6c757d;
+    line-height: 1.2;
+}
+.catcmp-legend {
+    margin-top: 10px;
+    padding-top: 8px;
+    border-top: 1px solid #dee2e6;
+}
+.catcmp-legend-title {
+    font-size: 8pt;
+    font-weight: 700;
+    text-transform: uppercase;
+    color: #6c757d;
+    margin-bottom: 6px;
+}
+.catcmp-legend-items {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px 10px;
+}
+.catcmp-legend-item .catcmp-badge {
+    min-width: auto;
+    font-size: 7.5pt;
+    font-weight: 600;
+}

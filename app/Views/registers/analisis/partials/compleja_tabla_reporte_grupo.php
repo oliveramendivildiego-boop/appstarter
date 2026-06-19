@@ -196,6 +196,23 @@ foreach ($ordenPriaKeys as $subIdx => $priaKey) :
     'grupo_es_primero'   => ! empty($grupo_es_primero),
 ]) ?>
 <?php endif; ?>
+<?php
+$cmpService = new \App\Services\CategoricalSerialComparisonService();
+$graficarModo = $priaIdTitulo > 0
+    ? $cmpService->getGraficarModo($priaIdTitulo)
+    : \App\Models\LabotestModel::GRAFICAR_NO;
+$heatmapData = $priaIdTitulo > 0
+    ? $cmpService->buildFromReportItems($subItems, $priaIdTitulo)
+    : null;
+$tieneHeatmap = is_array($heatmapData) && ! empty($heatmapData['sections']);
+$mostrarTablaSeriada = ! ($graficarModo === \App\Models\LabotestModel::GRAFICAR_SI && $tieneHeatmap);
+$mostrarHeatmap = $tieneHeatmap && in_array(
+    $graficarModo,
+    [\App\Models\LabotestModel::GRAFICAR_SI, \App\Models\LabotestModel::GRAFICAR_AMBOS],
+    true
+);
+?>
+<?php if ($mostrarTablaSeriada): ?>
 <?php foreach ($segments as $segIdx => $seg): ?>
     <?php
     $titleObj = $seg['title'];
@@ -343,6 +360,14 @@ foreach ($ordenPriaKeys as $subIdx => $priaKey) :
     <?= $wrapClose ?>
     <?php endif; ?>
 <?php endforeach; ?>
+<?php endif; ?>
+<?php if ($mostrarHeatmap): ?>
+    <?= view('registers/analisis/partials/comparacion_seriada_heatmap', [
+        'heatmap'        => $heatmapData,
+        'variant'        => $variant,
+        'use_pdf_chrome' => $usePdfChrome,
+    ]) ?>
+<?php endif; ?>
 <?php
 if ($priaIdTitulo > 0 && ! empty($refsMatrixAll[$priaIdTitulo])) :
     $matrixRows = $refsMatrixAll[$priaIdTitulo];

@@ -43,8 +43,10 @@
             <div class="col-md-6 mb-3">
                 <label for="graficar" class="form-label"><?= lang('Labotests.labotests_graficar') ?></label>
                 <select name="graficar" id="graficar" class="form-control">
-                    <option value="0" <?= ((int)($labotests_info->graficar ?? 0) === 0 ? 'selected' : '') ?>>NO</option>
-                    <option value="1" <?= ((int)($labotests_info->graficar ?? 0) === 1 ? 'selected' : '') ?>>SI</option>
+                    <?php $graficarVal = \App\Models\LabotestModel::normalizeGraficar((int) ($labotests_info->graficar ?? 0)); ?>
+                    <option value="0" <?= $graficarVal === \App\Models\LabotestModel::GRAFICAR_NO ? 'selected' : '' ?>><?= lang('Labotests.labotests_graficar_no') ?></option>
+                    <option value="1" <?= $graficarVal === \App\Models\LabotestModel::GRAFICAR_SI ? 'selected' : '' ?>><?= lang('Labotests.labotests_graficar_si') ?></option>
+                    <option value="2" <?= $graficarVal === \App\Models\LabotestModel::GRAFICAR_AMBOS ? 'selected' : '' ?>><?= lang('Labotests.labotests_graficar_ambos') ?></option>
                 </select>
             </div>
             <div class="col-md-6 mb-3">

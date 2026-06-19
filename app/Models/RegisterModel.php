@@ -1232,7 +1232,7 @@ class RegisterModel extends Model
         if ($this->hasColumn('secanacategoria', 'orden')) {
             $builder->orderBy("{$sec}.orden", 'ASC');
         }
-        $rows = $builder->orderBy("{$sec}.nombre", 'ASC')->orderBy("{$sec}.paciente_id", 'ASC')->get()->getResultArray();
+        $rows = $builder->orderBy("{$sec}.secanacategoria_id", 'ASC')->get()->getResultArray();
 
         return $rows;
     }
@@ -1348,6 +1348,27 @@ class RegisterModel extends Model
     public function hasRegistroColumn(string $column): bool
     {
         return $this->hasColumn('registro', $column);
+    }
+
+    /**
+     * Elimina claves que no existen en la tabla registro (BD sin migrar).
+     *
+     * @param array<string, mixed> $data
+     * @return array<string, mixed>
+     */
+    private function filterRegistroSaveData(array $data): array
+    {
+        if ($data === []) {
+            return [];
+        }
+
+        try {
+            $allowed = array_flip($this->db->getFieldNames($this->getRegistroTable()));
+        } catch (\Throwable $e) {
+            return $data;
+        }
+
+        return array_intersect_key($data, $allowed);
     }
 
     /**
@@ -1506,6 +1527,9 @@ class RegisterModel extends Model
         $mostrarValoresSelect = $this->hasColumn('prianacategoria', 'mostrar_valores')
             ? 'pt.mostrar_valores'
             : '0 AS mostrar_valores';
+        $textoFijoSelect = $this->hasColumn('priresultados', 'texto_fijo')
+            ? 'pr.texto_fijo'
+            : "'' AS texto_fijo";
 
         $poblacionIn = empty($matchingPoblacionIds) ? "(-1)" : "(" . implode(",", array_map('intval', $matchingPoblacionIds)) . ")";
 
@@ -1521,7 +1545,7 @@ class RegisterModel extends Model
 
         $sql = "SELECT pt.name as hijo, pt.compleja, pt.prianacategoria_id, {$mostrarValoresSelect}, ac.name as padre,
                 pr.opcion_id, pr.priresultados_id, pr.id_poblacion, pr.valor_min, pr.valor_max, pr.umedida,
-                pr.formulas_id, pr.texto_fijo, f.formula_expresion AS formula_expresion,
+                pr.formulas_id, {$textoFijoSelect}, f.formula_expresion AS formula_expresion,
                 (SELECT prfb.opcion_id FROM {$pr} prfb
                  WHERE prfb.prianacategoria_id = pt.prianacategoria_id
                    AND pt.compleja = 0 AND (prfb.deleted = 0 OR prfb.deleted IS NULL)
@@ -1604,8 +1628,11 @@ class RegisterModel extends Model
         if (!empty($needFallbackData)) {
             $prIds = array_unique(array_column($needFallbackData, 'priresultados_id'));
             $f = $this->db->prefixTable('formulas');
+            $textoFijoFallbackSelect = $this->hasColumn('priresultados', 'texto_fijo')
+                ? 'priresultados.texto_fijo'
+                : "'' AS texto_fijo";
             $fallbackRows = $this->db->table('priresultados')
-                ->select("priresultados.priresultados_id, priresultados.prianacategoria_id, priresultados.opcion_id, priresultados.valor_min, priresultados.valor_max, priresultados.umedida, priresultados.id_poblacion, priresultados.formulas_id, priresultados.texto_fijo, {$f}.formula_expresion AS formula_expresion")
+                ->select("priresultados.priresultados_id, priresultados.prianacategoria_id, priresultados.opcion_id, priresultados.valor_min, priresultados.valor_max, priresultados.umedida, priresultados.id_poblacion, priresultados.formulas_id, {$textoFijoFallbackSelect}, {$f}.formula_expresion AS formula_expresion")
                 ->join('formulas', "{$f}.formulas_id = priresultados.formulas_id", 'left')
                 ->whereIn('priresultados_id', $prIds)
                 ->get()
@@ -2546,6 +2573,11 @@ class RegisterModel extends Model
 
     public function saveRegistro(array $data, $id = null)
     {
+        $data = $this->filterRegistroSaveData($data);
+        if ($data === []) {
+            return $id !== null ? (int) $id : 0;
+        }
+
         if ($id === null || !$this->existsRegistro((int) $id)) {
             $needFolio = !array_key_exists('numero_orden', $data)
                 || $data['numero_orden'] === null
