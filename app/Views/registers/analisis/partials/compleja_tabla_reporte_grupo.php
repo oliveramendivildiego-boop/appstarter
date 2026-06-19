@@ -31,7 +31,7 @@ $refsMatrixAll = $report_pria_refs_consolidada ?? [];
 $pdfLayout = is_array($pdf_layout ?? null) ? $pdf_layout : [];
 $ocultarTheadResults = \App\Services\ReportPdfLayoutService::grupoCabeceraOcultarTheadResultsTabla($pdfLayout);
 $labConfigLocal = is_array($lab_config ?? null) ? $lab_config : [];
-$showInterpretacionCol = $variant === 'screen_pdf'
+$showInterpretacionCol = in_array($variant, ['screen_pdf', 'pdf', 'browser_print'], true)
     && (($labConfigLocal['interpretacion_enabled'] ?? '0') === '1');
 
 $subgruposPorPria = [];

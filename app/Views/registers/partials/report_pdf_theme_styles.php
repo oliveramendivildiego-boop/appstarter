@@ -394,6 +394,14 @@ table.results .out-range {
     color: #c00 !important;
     font-weight: 700 !important;
 }
+table.results td.report-interpretacion-alto {
+    color: #dc3545 !important;
+    font-weight: 700 !important;
+}
+table.results td.report-interpretacion-bajo {
+    color: #0d6efd !important;
+    font-weight: 700 !important;
+}
 .report-refs-matrix th,
 .report-refs-matrix td {
     vertical-align: var(--pdf-results-matrix-vertical-align) !important;
