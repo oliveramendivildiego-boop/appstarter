@@ -389,6 +389,14 @@ table.results.results-cols-3 td:nth-child(3) {
     width: 33% !important;
     max-width: 33% !important;
 }
+table.results.results-cols-3 td.resultado-colspan-rest[colspan="2"] {
+    width: 58% !important;
+    max-width: 58% !important;
+}
+table.results.results-cols-4 td.resultado-colspan-rest[colspan="3"] {
+    width: 66% !important;
+    max-width: 66% !important;
+}
 table.results td.out-range,
 table.results .out-range {
     color: #c00 !important;

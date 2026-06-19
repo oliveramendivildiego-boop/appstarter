@@ -679,6 +679,14 @@ table.results:not(.pdf-notes-table):not(.report-refs-matrix).results-cols-4 td:n
     width: 20% !important;
     max-width: 20% !important;
 }
+table.results:not(.pdf-notes-table):not(.report-refs-matrix).results-cols-3 td.resultado-colspan-rest[colspan="2"] {
+    width: 58% !important;
+    max-width: 58% !important;
+}
+table.results:not(.pdf-notes-table):not(.report-refs-matrix).results-cols-4 td.resultado-colspan-rest[colspan="3"] {
+    width: 66% !important;
+    max-width: 66% !important;
+}
 /*
  * Dompdf: si el salto cae justo después del thead, la siguiente página puede mostrar filas
  * sin repetir cabecera (issue #2518). Evitar corte tras la última fila del thead para que

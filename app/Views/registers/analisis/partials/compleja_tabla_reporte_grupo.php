@@ -10,11 +10,9 @@
  * @var array<int,string> $report_pria_tipo_muestra_nombre prianacategoria_id => nombre (config. en análisis clínico)
  * @var array<int,string> $report_pria_metodo_nombre prianacategoria_id => nombre del método (config.)
  * @var array<int,list<array<string,mixed>>> $report_pria_refs_consolidada tabla consolidada de refs. por población (pruebas compuestas)
- * @var bool $report_forzar_col_ref Si el reporte tiene refs., alinear 3 columnas en todas las tablas PDF
  */
 $variant = $variant ?? 'web';
 $usePdfChrome = in_array($variant, ['pdf', 'screen_pdf', 'browser_print'], true);
-$reportForzarColRef = ! empty($report_forzar_col_ref) && $usePdfChrome;
 $pdfGrupoPbService = ($variant === 'pdf' && ($pdf_grupo_pb_service ?? null) instanceof \App\Services\ReportPdfDompdfGrupoPageBreakService)
     ? $pdf_grupo_pb_service
     : null;
@@ -219,7 +217,8 @@ foreach ($ordenPriaKeys as $subIdx => $priaKey) :
         }
     }
     $mostrarColInterpretacion = $showInterpretacionCol && $conRefEnSeg;
-    $mostrarColRef = $conRefEnSeg || $reportForzarColRef;
+    $mostrarColRef = $conRefEnSeg;
+    $colsExtraResultado = ($mostrarColRef ? 1 : 0) + ($mostrarColInterpretacion ? 1 : 0);
     $resultsColCount = 2 + ($mostrarColRef ? 1 : 0) + ($mostrarColInterpretacion ? 1 : 0);
     $resultsColClass = $usePdfChrome && $resultsColCount >= 3
         ? ' results-cols-' . $resultsColCount
@@ -321,17 +320,19 @@ foreach ($ordenPriaKeys as $subIdx => $priaKey) :
                     $resMostrarHtml = registro_resultado_celda_html($item->regvalues ?? '', $item->umedida ?? '', $opcionIdItem, $mostrarMedidaSoloRef);
                     $refMostrar = registro_rango_referencial_html($item->valor_min ?? '', $item->valor_max ?? '', $item->umedida ?? '');
                     $celdaRicoClass = (registro_opcion_es_texto_rico($opcionIdItem) || registro_opcion_es_texto_fijo($opcionIdItem) || registro_valor_contiene_html_rico((string) ($item->regvalues ?? ''))) ? ' resultado-texto-rico-cell' : '';
+                    $itemSinRefNiInterp = ! $itemConRef && $interpretacionRef === null;
+                    $resultadoColspan = ($colsExtraResultado > 0 && $itemSinRefNiInterp) ? (1 + $colsExtraResultado) : 1;
+                    $resultadoColspanAttr = $resultadoColspan > 1 ? ' colspan="' . (int) $resultadoColspan . '"' : '';
+                    $resultadoColspanClass = $resultadoColspan > 1 ? ' resultado-colspan-rest' : '';
                     ?>
                     <?php if (is_object($item)): ?>
                         <tr>
                             <td><?= esc($item->nombre ?? '') ?></td>
-                            <?php if (! $mostrarColRef): ?>
-                            <td class="text-center<?= $celdaRicoClass ?> <?= $class ?><?= $usePdfChrome && $isOutPdf ? ' out-range' : '' ?>"><?= $resMostrarHtml ?></td>
-                            <?php else: ?>
-                            <td class="text-center<?= $celdaRicoClass ?> <?= $class ?><?= $usePdfChrome && $isOutPdf ? ' out-range' : '' ?>"><?= $resMostrarHtml ?></td>
+                            <td class="text-center<?= $celdaRicoClass ?><?= $resultadoColspanClass ?> <?= $class ?><?= $usePdfChrome && $isOutPdf ? ' out-range' : '' ?>"<?= $resultadoColspanAttr ?>><?= $resMostrarHtml ?></td>
+                            <?php if ($resultadoColspan === 1 && $mostrarColRef): ?>
                             <td class="text-center<?= $usePdfChrome ? ' ref-range' : '' ?>"><?= $itemConRef ? $refMostrar : '' ?></td>
                             <?php endif; ?>
-                            <?php if ($mostrarColInterpretacion): ?>
+                            <?php if ($resultadoColspan === 1 && $mostrarColInterpretacion): ?>
                             <td class="text-center<?= $interpretacionRef !== null ? ' ' . esc(registro_interpretacion_referencial_clase_resultado($interpretacionRef), 'attr') : '' ?>"><?= $interpretacionRef !== null ? esc($interpretacionRef['label']) : '' ?></td>
                             <?php endif; ?>
                         </tr>
