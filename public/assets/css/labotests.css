@@ -218,3 +218,55 @@
     font-weight: var(--ui-labotests-card-header-font-weight, 600) !important;
     font-style: var(--ui-labotests-card-header-font-style, normal) !important;
 }
+
+/* Navegación rápida vertical en labotests/detail */
+.labotests-scroll-nav {
+    position: fixed;
+    right: 1rem;
+    top: 50%;
+    transform: translateY(-50%);
+    z-index: 1030;
+    display: flex;
+    flex-direction: column;
+    gap: 0.45rem;
+}
+.labotests-scroll-nav[hidden] {
+    display: none !important;
+}
+.labotests-scroll-nav__btn {
+    width: 2.5rem;
+    height: 2.5rem;
+    padding: 0;
+    border: 1px solid rgba(0, 0, 0, 0.08);
+    border-radius: 50%;
+    background: #fff;
+    color: var(--primary-color, #FF7218);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: background-color 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease;
+}
+.labotests-scroll-nav__btn:hover {
+    background: var(--primary-color, #FF7218);
+    color: #fff;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.16);
+    transform: scale(1.05);
+}
+.labotests-scroll-nav__btn:focus-visible {
+    outline: 2px solid var(--primary-color, #FF7218);
+    outline-offset: 2px;
+}
+.labotests-scroll-nav__btn[hidden] {
+    display: none !important;
+}
+@media (max-width: 575.98px) {
+    .labotests-scroll-nav {
+        right: 0.5rem;
+    }
+    .labotests-scroll-nav__btn {
+        width: 2.25rem;
+        height: 2.25rem;
+    }
+}
