@@ -204,6 +204,17 @@ class ReportPdfDompdfGrupoPageBreakService
             }
 
             $this->bumpCursor($this->areaSeparatorMm);
+            $remaining = $this->espacioRestanteMm();
+
+            if ($height <= $remaining && $height <= $this->maxSliceMm) {
+                $classes[] = 'report-pdf-grupo-prueba-keep-on-page';
+            } elseif ($height <= $this->maxSliceMm) {
+                $classes[] = 'report-pdf-grupo-prueba-keep-on-page';
+                $classes[] = 'report-pdf-grupo-prueba-split-segments-only';
+            } else {
+                $classes[] = 'report-pdf-grupo-prueba-split-segments-only';
+            }
+
             $this->placementPlan = $this->buildPlacementPlan($items);
 
             return $this->buildResult($classes, $interBreak, $grupoStyle, false);

@@ -698,6 +698,30 @@ table.results thead {
     page-break-inside: avoid;
     break-inside: avoid;
 }
+tr.report-results-thead-continuation-injected {
+    page-break-inside: avoid;
+    break-inside: avoid;
+    page-break-after: avoid;
+    break-after: avoid-page;
+}
+tr.report-results-thead-continuation-injected th {
+    background: var(--pdf-results-header-bg, #0066cc);
+    color: var(--pdf-results-header-color, #fff);
+    border: 1px solid var(--pdf-results-border-color, #ddd);
+    padding-left: 8px;
+    padding-right: 8px;
+    text-align: left;
+    vertical-align: middle;
+    font-family: var(--pdf-results-font-family, "DejaVu Sans"), sans-serif;
+    font-size: var(--pdf-results-font-size, 9pt);
+    font-weight: var(--pdf-results-font-weight, normal);
+}
+tr.report-results-thead-continuation-injected th.text-center {
+    text-align: center;
+}
+.pdf-gpb-repeat-header table.results thead {
+    display: table-header-group !important;
+}
 table.results > thead:first-of-type > tr:last-child {
     page-break-after: avoid;
     break-after: avoid;

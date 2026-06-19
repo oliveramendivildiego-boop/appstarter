@@ -200,13 +200,48 @@ body.js-total-pages-ready .pdf-counter-pages::before {
         break-before: page !important;
         page-break-before: always !important;
     }
+    body.report-browser-print table.results thead {
+        display: table-header-group !important;
+    }
+    body.report-browser-print table.results tbody {
+        display: table-row-group !important;
+    }
     body.report-browser-print table.results tbody tr {
         break-inside: avoid !important;
         page-break-inside: avoid !important;
     }
-    body.report-browser-print table.results > thead:first-of-type + tbody > tr:first-child {
+    body.report-browser-print table.results > thead:first-of-type + tbody > tr:first-child:not(.report-results-thead-continuation-injected) {
         break-before: avoid !important;
         page-break-before: avoid !important;
+    }
+    body.report-browser-print tr.report-results-thead-continuation-injected {
+        break-inside: avoid !important;
+        page-break-inside: avoid !important;
+        break-after: avoid !important;
+        page-break-after: avoid !important;
+    }
+    body.report-browser-print tr.report-results-thead-continuation-injected + tr {
+        break-before: avoid !important;
+        page-break-before: avoid !important;
+    }
+    body.report-browser-print tr.report-results-thead-continuation-injected th {
+        background: var(--pdf-results-header-bg, #0066cc) !important;
+        color: var(--pdf-results-header-color, #fff) !important;
+        border: 1px solid var(--pdf-results-border-color, #ddd) !important;
+        font-family: var(--pdf-results-font-family, "DejaVu Sans"), sans-serif !important;
+        font-size: var(--pdf-results-font-size, 9pt) !important;
+        font-weight: var(--pdf-results-font-weight, normal) !important;
+        vertical-align: middle !important;
+    }
+    body.report-browser-print table.results.report-results-split-active thead {
+        display: table-row-group !important;
+    }
+    body.report-browser-print.pdf-gpb-repeat-header .report-segment-table-wrap.report-segment-allow-split table.results,
+    body.report-browser-print.pdf-gpb-repeat-header .report-refs-matrix-wrap.report-segment-allow-split table.results,
+    body.report-browser-print.pdf-gpb-repeat-header .report-pdf-grupo-prueba.report-pdf-grupo-prueba-split-segments-only table.results,
+    body.report-browser-print.pdf-gpb-repeat-header .report-pdf-grupo-prueba.report-pdf-grupo-prueba-allow-split table.results {
+        break-inside: auto !important;
+        page-break-inside: auto !important;
     }
     body.report-browser-print .report-pdf-grupo-cabecera + .report-segment-table-wrap,
     body.report-browser-print .report-pdf-grupo-cabecera + .report-refs-matrix-wrap {
