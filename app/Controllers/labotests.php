@@ -338,6 +338,7 @@ class Labotests extends SecureArea
         $cost     = (int) ($this->request->getPost('cost') ?? 0);
         $costDeriv= (int) ($this->request->getPost('cost_deriv') ?? 0);
         $mostrarValores = (int) ($this->request->getPost('mostrar_valores') ?? 0);
+        $graficar = (int) ($this->request->getPost('graficar') ?? 0);
         $prianacategoriaId = (int) ($this->request->getPost('prianacategoria_id') ?? 0);
 
         if (trim($name) === '') {
@@ -351,6 +352,7 @@ class Labotests extends SecureArea
             'cost_deriv'     => $costDeriv,
             'compleja'       => $compleja,
             'mostrar_valores'=> $mostrarValores ? 1 : 0,
+            'graficar'       => $graficar ? 1 : 0,
             'anacategoria_id'=> $anacategoriaId,
             'tipo_muestra_id'=> (int) ($this->request->getPost('tipo_muestra_id') ?? 0),
             'metodo_id'      => (int) ($this->request->getPost('metodo_id') ?? 0),
@@ -369,6 +371,7 @@ class Labotests extends SecureArea
         $costDeriv= (int) ($this->request->getPost('cost_deriv') ?? 0);
         $compleja = (int) ($this->request->getPost('compleja') ?? 0);
         $mostrarValores = (int) ($this->request->getPost('mostrar_valores') ?? 0);
+        $graficar = (int) ($this->request->getPost('graficar') ?? 0);
         $anacategoriaId = (int) ($this->request->getPost('anacategoria_id') ?? 0);
 
         if (trim($name) === '' || $prianacategoriaId < 1) {
@@ -390,6 +393,7 @@ class Labotests extends SecureArea
             'cost_deriv' => $costDeriv,
             'compleja'   => $compleja,
             'mostrar_valores' => $mostrarValores ? 1 : 0,
+            'graficar'        => $graficar ? 1 : 0,
             'anacategoria_id' => $anacategoriaId,
             'tipo_muestra_id' => (int) ($this->request->getPost('tipo_muestra_id') ?? 0),
             'metodo_id'       => (int) ($this->request->getPost('metodo_id') ?? 0),

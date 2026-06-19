@@ -229,6 +229,7 @@ $qr_data_uri = qr_base64($reportUrl, $qrPx);
 </div>
 <?php endif; ?>
 </fieldset>
+<?= view('partial/page_scroll_nav', ['scroll_nav_id' => 'viewreport-scroll-nav']) ?>
 <?= $this->endSection() ?>
 
 <?= $this->section('scripts') ?>
@@ -303,6 +304,7 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     applyBrowserTotalPages();
+    window.dispatchEvent(new Event('page-scroll-nav-refresh'));
 
     function bindPrintWindow(selector, windowName) {
         document.querySelectorAll(selector).forEach(function(btn) {

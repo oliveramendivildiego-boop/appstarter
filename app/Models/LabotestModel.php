@@ -205,6 +205,7 @@ class LabotestModel extends Model
                 'order'             => 0,
                 'compleja'          => 0,
                 'mostrar_valores'   => 0,
+                'graficar'          => 0,
                 'tipo_muestra_id'   => null,
                 'metodo_id'         => null,
             ];
@@ -214,7 +215,7 @@ class LabotestModel extends Model
             ->where('(deleted = 0 OR deleted IS NULL)')
             ->get()
             ->getRow();
-        return $row ?? (object) ['prianacategoria_id' => null, 'anacategoria_id' => $anacategoriaId, 'name' => '', 'order' => 0, 'compleja' => 0, 'mostrar_valores' => 0, 'tipo_muestra_id' => null, 'metodo_id' => null];
+        return $row ?? (object) ['prianacategoria_id' => null, 'anacategoria_id' => $anacategoriaId, 'name' => '', 'order' => 0, 'compleja' => 0, 'mostrar_valores' => 0, 'graficar' => 0, 'tipo_muestra_id' => null, 'metodo_id' => null];
     }
 
     /** @var array<string, string> */
@@ -2630,6 +2631,9 @@ class LabotestModel extends Model
         if ($this->hasColumn('prianacategoria', 'mostrar_valores')) {
             $save['mostrar_valores'] = (int) ($data['mostrar_valores'] ?? 0);
         }
+        if ($this->hasColumn('prianacategoria', 'graficar')) {
+            $save['graficar'] = (int) ($data['graficar'] ?? 0);
+        }
         if ($this->hasColumn('prianacategoria', 'tipo_muestra_id')) {
             $tid = (int) ($data['tipo_muestra_id'] ?? 0);
             $save['tipo_muestra_id'] = $tid > 0 ? $tid : null;
@@ -3012,6 +3016,7 @@ class LabotestModel extends Model
             'prueba_nombre'     => (string) ($subInfo->name ?? ''),
             'compleja'          => $isCompleja ? 1 : 0,
             'mostrar_valores'   => (int) ($subInfo->mostrar_valores ?? 0),
+            'graficar'          => (int) ($subInfo->graficar ?? 0),
         ];
 
         if ($complejaVal === self::COMPLEJA_CULTIVO) {

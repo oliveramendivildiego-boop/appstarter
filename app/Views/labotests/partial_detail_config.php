@@ -41,6 +41,13 @@
                 </select>
             </div>
             <div class="col-md-6 mb-3">
+                <label for="graficar" class="form-label"><?= lang('Labotests.labotests_graficar') ?></label>
+                <select name="graficar" id="graficar" class="form-control">
+                    <option value="0" <?= ((int)($labotests_info->graficar ?? 0) === 0 ? 'selected' : '') ?>>NO</option>
+                    <option value="1" <?= ((int)($labotests_info->graficar ?? 0) === 1 ? 'selected' : '') ?>>SI</option>
+                </select>
+            </div>
+            <div class="col-md-6 mb-3">
                 <label for="tipo_muestra_id" class="form-label">Tipo de muestra</label>
                 <select name="tipo_muestra_id" id="tipo_muestra_id" class="form-select">
                     <option value="">— Sin especificar —</option>
