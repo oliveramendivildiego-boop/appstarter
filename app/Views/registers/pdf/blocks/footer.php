@@ -30,7 +30,7 @@ $footerWrapperStyle = ! empty($footer_dompdf_fixed)
     : '';
 
 $orderSheetBandHtml = '';
-if (! empty($footer_dompdf_fixed)
+if (! empty($footer_order_sheet_band)
     && \App\Services\ReportPdfLayoutService::isOrderSheetHeaderEnabledForLayout($layout)) {
     $mm = is_array($layout['margins_mm'] ?? null)
         ? $layout['margins_mm']

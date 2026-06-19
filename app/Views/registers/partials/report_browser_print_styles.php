@@ -573,8 +573,9 @@ body.js-total-pages-ready .pdf-counter-pages::before {
         padding: 0 !important;
         border: 0 !important;
     }
-    /* Banda Paciente / No. Orden integrada en el pie fijo (hojas 2+; el bloque se repite en cada hoja). */
-    body.report-browser-print.js-order-sheet-footer-band .pdf-ft-block.footer-grid .pdf-order-sheet-footer-band {
+    /* Banda Paciente / No. Orden integrada en el pie fijo (todas las hojas). */
+    body.report-browser-print.js-order-sheet-footer-band .pdf-ft-block.footer-grid .pdf-order-sheet-footer-band,
+    body.report-browser-print .pdf-ft-block.footer-grid .pdf-order-sheet-footer-band-dompdf {
         display: block !important;
         visibility: visible !important;
         opacity: 1 !important;
@@ -588,8 +589,36 @@ body.js-total-pages-ready .pdf-counter-pages::before {
         -webkit-print-color-adjust: exact !important;
         print-color-adjust: exact !important;
     }
-    body.report-browser-print.js-order-sheet-footer-band .pdf-ft-block.footer-grid .pdf-order-sheet-footer-band .pdf-order-sheet-header {
+    body.report-browser-print.js-order-sheet-footer-band .pdf-ft-block.footer-grid .pdf-order-sheet-footer-band .pdf-order-sheet-header,
+    body.report-browser-print .pdf-ft-block.footer-grid .pdf-order-sheet-footer-band-dompdf .pdf-order-sheet-header {
         width: 100% !important;
+    }
+    /* Sin bloque de pie en plantilla: banda fija directamente sobre el margen inferior. */
+    body.report-browser-print.js-order-sheet-footer-band-standalone > .pdf-order-sheet-footer-band-standalone {
+        display: block !important;
+        visibility: visible !important;
+        opacity: 1 !important;
+        position: fixed !important;
+        bottom: calc(var(--print-margin-bottom-mm, <?= esc((string) $mb) ?>) * 1mm) !important;
+        left: 0 !important;
+        right: 0 !important;
+        width: 100% !important;
+        margin: 0 !important;
+        padding: 0 0 5px 0 !important;
+        padding-left: calc(var(--print-margin-left-mm, <?= esc((string) $ml) ?>) * 1mm) !important;
+        padding-right: calc(var(--print-margin-right-mm, <?= esc((string) $mr) ?>) * 1mm) !important;
+        border-bottom: 1px solid rgba(0, 0, 0, 0.12) !important;
+        box-sizing: border-box !important;
+        z-index: 100 !important;
+        break-inside: avoid-page !important;
+        page-break-inside: avoid !important;
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
+    }
+    body.report-browser-print.js-order-sheet-footer-band-standalone .pdf-main-stack {
+        padding-bottom: calc(
+            var(--print-order-sheet-band-reserve-mm, <?= esc((string) $orderSheetBandReserveMm) ?>) * 1mm
+        ) !important;
     }
     body.report-browser-print.pdf-gpb-grupo-intact .report-pdf-grupo-area-page-leader + .report-pdf-grupo-prueba > .report-pdf-grupo-area-separator {
         position: relative !important;

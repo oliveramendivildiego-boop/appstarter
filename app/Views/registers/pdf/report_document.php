@@ -126,7 +126,8 @@ endforeach; ?>
 <?php if ($footerBlockEnabled): ?>
 <?php
 echo view($pdfBlockViews['footer'], array_merge($ctx, [
-    'footer_dompdf_fixed' => ($ctx['analisis_variant'] ?? 'pdf') === 'pdf',
+    'footer_dompdf_fixed'       => ($ctx['analisis_variant'] ?? 'pdf') === 'pdf',
+    'footer_order_sheet_band'   => in_array($ctx['analisis_variant'] ?? 'pdf', ['pdf', 'browser_print'], true),
 ]));
 ?>
 <?php endif; ?>
