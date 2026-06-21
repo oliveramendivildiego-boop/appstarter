@@ -13,9 +13,12 @@
  */
 $variant = $variant ?? 'web';
 $usePdfChrome = in_array($variant, ['pdf', 'screen_pdf', 'browser_print'], true);
-$pdfGrupoPbService = ($variant === 'pdf' && ($pdf_grupo_pb_service ?? null) instanceof \App\Services\ReportPdfDompdfGrupoPageBreakService)
-    ? $pdf_grupo_pb_service
+/** @var \App\Services\ReportLayout\LayoutPlanApplier|null $layoutPlanApplier */
+$layoutPlanApplier = ($layout_plan_applier ?? null) instanceof \App\Services\ReportLayout\LayoutPlanApplier
+    ? $layout_plan_applier
     : null;
+$layoutAreaIndex = (int) ($layout_area_index ?? 0);
+$layoutBlockIndex = 0;
 $segmentWrapStyle = '';
 if ($usePdfChrome && $variant === 'browser_print') {
     $segmentWrapStyle = \App\Services\ReportPdfLayoutService::grupoPruebaSegmentIntactStyleAttr(
@@ -68,7 +71,13 @@ foreach ($ordenPriaKeys as $subIdx => $priaKey) :
             'report_pria_metodo_nombre'       => $nombresMetodoPorPria,
             'sub_idx'                         => $subIdx,
             'grupo_es_primero'                => ! empty($grupo_es_primero),
+            'layout_plan_applier'             => $layoutPlanApplier,
+            'layout_area_index'               => $layoutAreaIndex,
+            'layout_block_index'              => $layoutBlockIndex,
+            'is_last_subgrupo'                => $isLastSubgrupo,
+            'area_firma_bundle'               => $isLastSubgrupo ? ($area_firma_bundle ?? null) : null,
         ]);
+        $layoutBlockIndex++;
         continue;
     }
 
@@ -149,17 +158,32 @@ foreach ($ordenPriaKeys as $subIdx => $priaKey) :
 
     $subgrupoKeepIntact = $usePdfChrome
         && $subgrupoTotalFilas > 0
-        && $subgrupoTotalFilas <= \App\Services\ReportPdfLayoutService::subgrupoKeepIntactMaxRows();
+        && $subgrupoTotalFilas <= \App\Services\ReportPdfLayoutService::subgrupoKeepIntactMaxRows()
+        && (
+            $layoutPlanApplier === null
+            || \App\Services\ReportLayout\ReportPaginationMode::usesSubgrupoKeepIntactInHtml(
+                $layoutPlanApplier->mode()
+            )
+        );
 
     $subgrupoWrapClass = $subIdx > 0 ? ' report-pdf-subgrupo-prueba' : '';
     $webTitleMt = $subIdx > 0 ? 'mt-5' : 'mt-4';
-    $subgrupoGapStyle = $subIdx > 0
-        ? \App\Services\ReportPdfLayoutService::subgrupoPruebaGapStyleAttr(
-            is_array($pdf_layout ?? null) ? $pdf_layout : [],
-            true
-        )
-        : '';
-    $subgrupoPbPeek = $pdfGrupoPbService ? $pdfGrupoPbService->peekNextPlacementAttrs() : ['segment_class' => '', 'cabecera_class' => '', 'subgrupo_class' => ''];
+    $subgrupoGapStyle = '';
+    if ($subIdx > 0) {
+        $flowMode = $layoutPlanApplier !== null
+            && \App\Services\ReportLayout\ReportPaginationMode::usesFlowContinuousPagination(
+                $layoutPlanApplier->mode()
+            );
+        if (! $flowMode) {
+            $subgrupoGapStyle = \App\Services\ReportPdfLayoutService::subgrupoPruebaGapStyleAttr(
+                is_array($pdf_layout ?? null) ? $pdf_layout : [],
+                true
+            );
+        }
+    }
+    $subgrupoPbPeek = $layoutPlanApplier
+        ? $layoutPlanApplier->blockMarkers($layoutAreaIndex, $layoutBlockIndex)
+        : ['segment_class' => '', 'cabecera_class' => '', 'subgrupo_class' => '', 'segment_classes' => []];
     $subgrupoPbClass = trim(
         'report-pdf-subgrupo-block'
         . $subgrupoWrapClass
@@ -167,9 +191,21 @@ foreach ($ordenPriaKeys as $subIdx => $priaKey) :
         . ($subgrupoPbPeek['subgrupo_class'] !== '' ? ' ' . $subgrupoPbPeek['subgrupo_class'] : '')
     );
     $cabeceraPbClass = trim('report-pdf-grupo-cabecera' . ($subgrupoPbPeek['cabecera_class'] !== '' ? ' ' . $subgrupoPbPeek['cabecera_class'] : ''));
+    $subgrupoTailBundleAtStart = $usePdfChrome
+        && $layoutPlanApplier !== null
+        && $isLastSubgrupo
+        && $layoutPlanApplier->shouldOpenSignatureTailBundleBeforeSubgrupo($layoutAreaIndex, $layoutBlockIndex);
 ?>
 <?php if ($usePdfChrome): ?>
-<div class="<?= esc($subgrupoPbClass, 'attr') ?>"<?= $subgrupoGapStyle !== '' ? ' style="' . esc($subgrupoGapStyle, 'attr') . '"' : '' ?>>
+<?php if ($variant === 'browser_print' && $layoutPlanApplier !== null && $layoutPlanApplier->browserPrintPageBreakBeforeAnalysisBlock($layoutAreaIndex, $layoutBlockIndex)): ?>
+<?= view('registers/partials/report_browser_print_plan_page_break', [
+    'plan_page_index' => $layoutPlanApplier->analysisBlockPlanPageIndex($layoutAreaIndex, $layoutBlockIndex),
+]) ?>
+<?php endif; ?>
+<div class="<?= esc($subgrupoPbClass, 'attr') ?>" data-layout-block-id="<?= esc(\App\Services\ReportLayout\ReportTreeBuilder::analysisBlockId($layoutAreaIndex, $layoutBlockIndex), 'attr') ?>"<?= $subgrupoGapStyle !== '' ? ' style="' . esc($subgrupoGapStyle, 'attr') . '"' : '' ?>>
+<?php if ($subgrupoTailBundleAtStart): ?>
+<?= $layoutPlanApplier->beginSignatureTailBundleMarkup() ?>
+<?php endif; ?>
 <div class="<?= esc($cabeceraPbClass, 'attr') ?>">
 <?= view('registers/analisis/partials/report_grupo_cabecera_content', [
     'padre'              => $padre,
@@ -212,6 +248,7 @@ $mostrarHeatmap = $tieneHeatmap && in_array(
     true
 );
 ?>
+<?php $layoutSectionIndex = 0; ?>
 <?php if ($mostrarTablaSeriada): ?>
 <?php foreach ($segments as $segIdx => $seg): ?>
     <?php
@@ -219,9 +256,8 @@ $mostrarHeatmap = $tieneHeatmap && in_array(
     $segItems = $seg['items'];
     $hasMatrixAfter = $priaIdTitulo > 0 && ! empty($refsMatrixAll[$priaIdTitulo]);
     $segmentWrapClass = '';
-    if ($pdfGrupoPbService) {
-        $segmentPb = $pdfGrupoPbService->consumePlacementAttrs();
-        $segmentWrapClass = trim($segmentPb['segment_class']);
+    if ($layoutPlanApplier) {
+        $segmentWrapClass = trim($layoutPlanApplier->segmentClass($layoutAreaIndex, $layoutBlockIndex, $layoutSectionIndex));
     }
     $conRefEnSeg = false;
     foreach ($segItems as $it) {
@@ -261,10 +297,33 @@ $mostrarHeatmap = $tieneHeatmap && in_array(
             break;
         }
     }
+    $tailSplit = $layoutPlanApplier
+        ? $layoutPlanApplier->sectionSignatureTailSplit($layoutAreaIndex, $layoutBlockIndex, $layoutSectionIndex)
+        : null;
+    $tailSplitAt = is_array($tailSplit) ? (int) ($tailSplit['splitAt'] ?? 0) : null;
+    $tailFullInTail = is_array($tailSplit) && ! empty($tailSplit['fullInTail']);
+    $visibleRowIdx = 0;
+    $tailTableOpened = false;
+    if ($tailFullInTail) {
+        $segmentWrapClass = trim(preg_replace('/\breport-segment-allow-split\b/', '', $segmentWrapClass));
+        $segmentWrapClass = trim($segmentWrapClass . ' report-segment-tail-with-signature');
+        $wrapOpen = ! $usePdfChrome
+            ? '<div class="table-responsive mb-3">'
+            : '<div class="report-segment-table-wrap' . ($segmentWrapClass !== '' ? ' ' . esc($segmentWrapClass, 'attr') : '') . '"' . $segmentWrapStyleAttr . '>';
+    }
+    $signatureTailBundleOpen = '';
+    if ($usePdfChrome && $layoutPlanApplier !== null && $tailFullInTail && empty($subgrupoTailBundleAtStart)) {
+        $signatureTailBundleOpen = $layoutPlanApplier->beginSignatureTailBundleMarkup();
+    }
+    $titleInTailOnly = $tailSplitAt !== null && $tailSplitAt > 0 && $titleObj !== null;
     ?>
     <?php if ($tieneConResultado): ?>
+    <?php if ($tailFullInTail): ?>
+    <?php $tailTableOpened = true; ?>
+    <?php endif; ?>
+    <?= $signatureTailBundleOpen ?>
     <?= $wrapOpen ?>
-        <?php if ($titleObj !== null): ?>
+        <?php if ($titleObj !== null && ! $titleInTailOnly): ?>
             <?php if ($usePdfChrome): ?>
             <div class="report-segment-title pdf-card-header"><?= esc($titleObj->nombre ?? '') ?></div>
             <?php else: ?>
@@ -296,6 +355,46 @@ $mostrarHeatmap = $tieneHeatmap && in_array(
                     if (($valTmp === '' || $valTmp === '-') && ! $mustShowRef) {
                         continue;
                     }
+                    if ($tailSplitAt !== null && $tailSplitAt > 0 && $visibleRowIdx === $tailSplitAt && ! $tailTableOpened): ?>
+            </tbody>
+        </table>
+    <?= $wrapClose ?>
+    <?php
+                    if ($usePdfChrome && $layoutPlanApplier !== null && $signatureTailBundleOpen === '') {
+                        echo $layoutPlanApplier->beginSignatureTailBundleMarkup();
+                    }
+                    $tailWrapClass = trim('report-segment-table-wrap report-segment-tail-with-signature report-signature-tail-continuation' . ($segmentWrapClass !== '' ? ' ' . preg_replace('/\breport-segment-allow-split\b/', '', $segmentWrapClass) : ''));
+                    $tailWrapOpen = ! $usePdfChrome
+                        ? '<div class="table-responsive mb-3">'
+                        : '<div class="' . esc($tailWrapClass, 'attr') . '"' . $segmentWrapStyleAttr . '>';
+                    echo $tailWrapOpen;
+                    if ($titleInTailOnly): ?>
+            <?php if ($usePdfChrome): ?>
+            <div class="report-segment-title pdf-card-header"><?= esc($titleObj->nombre ?? '') ?></div>
+            <?php else: ?>
+            <div class="report-segment-title-web px-2 py-2 mb-2 bg-secondary bg-opacity-10 border-start border-4 border-secondary rounded-end fw-semibold text-uppercase small"><?= esc($titleObj->nombre ?? '') ?></div>
+            <?php endif; ?>
+                    <?php endif; ?>
+        <table class="<?= esc($mainTableClass) ?> report-segment-thead-continuation"<?= $resultsTableLayoutAttrs ?>>
+            <?= $resultsColgroupHtml ?>
+            <?php if (! $ocultarTheadResults): ?>
+            <thead<?= $usePdfChrome ? '' : ' class="thead-dark"' ?>>
+                <tr>
+                    <th<?= $thWidth(0) ?>>ANÁLISIS</th>
+                    <th class="text-center"<?= $thWidth(1) ?>>RESULTADO</th>
+                    <?php if ($mostrarColRef): ?>
+                    <th class="text-center"<?= $thWidth(2) ?>>RANGO REFERENCIAL</th>
+                    <?php endif; ?>
+                    <?php if ($mostrarColInterpretacion): ?>
+                    <th class="text-center"<?= $thWidth($mostrarColRef ? 3 : 2) ?>>INTERPRETACIÓN</th>
+                    <?php endif; ?>
+                </tr>
+            </thead>
+            <?php endif; ?>
+            <tbody>
+                    <?php
+                        $tailTableOpened = true;
+                    endif;
                     $aid = $item->secanacategoria_id ?? uniqid();
                     ?>
                     <?php if ($variant === 'screen_pdf' || $variant === 'web'): ?>
@@ -354,10 +453,12 @@ $mostrarHeatmap = $tieneHeatmap && in_array(
                             <?php endif; ?>
                         </tr>
                     <?php endif; ?>
+                    <?php $visibleRowIdx++; ?>
                 <?php endforeach; ?>
             </tbody>
         </table>
     <?= $wrapClose ?>
+    <?php $layoutSectionIndex++; ?>
     <?php endif; ?>
 <?php endforeach; ?>
 <?php endif; ?>
@@ -380,9 +481,8 @@ if ($priaIdTitulo > 0 && ! empty($refsMatrixAll[$priaIdTitulo])) :
         }
     }
     $matrixWrapClass = '';
-    if ($pdfGrupoPbService) {
-        $matrixPb = $pdfGrupoPbService->consumePlacementAttrs();
-        $matrixWrapClass = trim($matrixPb['segment_class']);
+    if ($layoutPlanApplier) {
+        $matrixWrapClass = trim($layoutPlanApplier->segmentClass($layoutAreaIndex, $layoutBlockIndex, $layoutSectionIndex));
     }
     $matrixTableClass = $usePdfChrome ? 'results report-refs-matrix' : 'table table-sm table-bordered mb-0';
     $matrixWrapOpen = ! $usePdfChrome ? '<div class="table-responsive mb-3">' : '<div class="report-segment-table-wrap report-refs-matrix-wrap' . ($matrixWrapClass !== '' ? ' ' . esc($matrixWrapClass, 'attr') : '') . '"' . $segmentWrapStyleAttr . '>';
@@ -433,7 +533,17 @@ if ($priaIdTitulo > 0 && ! empty($refsMatrixAll[$priaIdTitulo])) :
     </table>
 </div>
 <?php endif; ?>
+<?php if ($usePdfChrome && ! empty($isLastSubgrupo) && $layoutPlanApplier !== null && $layoutPlanApplier->isSignatureTailBundleOpen()): ?>
+    <?php
+    $firmaBundle = is_array($area_firma_bundle ?? null) ? $area_firma_bundle : null;
+    if ($firmaBundle !== null && ($firmaBundle['firma'] ?? []) !== []):
+        echo view('registers/partials/report_lab_firma_grupo_inline', $firmaBundle);
+    endif;
+    echo $layoutPlanApplier->endSignatureTailBundleMarkup();
+    ?>
+<?php endif; ?>
 <?php if ($usePdfChrome): ?>
 </div>
 <?php endif; ?>
+<?php $layoutBlockIndex++; ?>
 <?php endforeach; ?>

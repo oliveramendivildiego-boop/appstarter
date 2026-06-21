@@ -43,6 +43,13 @@ $hg = \App\Services\ReportPdfLayoutService::normalizeHeaderGridStyle($ps['header
 $pd = \App\Services\ReportPdfLayoutService::normalizePatientDoctorGridStyle($ps['patient_doctor_grid'] ?? []);
 $ft = \App\Services\ReportPdfLayoutService::normalizeFooterGridStyle($ps['footer_grid'] ?? []);
 $pp = \App\Services\ReportPdfLayoutService::normalizePrintPaginationStyle($ps['print_pagination'] ?? []);
+$paginationMode = \App\Services\ReportPdfLayoutService::resolvePaginationModeFromLayout(['page_style' => $ps]);
+$paginationModeLabels = [
+    \App\Services\ReportLayout\ReportPaginationMode::FLOW_CONTINUOUS_SIGNATURE_LAST_PAGE => 'MODE 1 — Flujo continuo; optimiza firma solo en última página',
+    \App\Services\ReportLayout\ReportPaginationMode::FLOW_NO_LONE_SIGNATURE => 'MODE 2 — Flujo continuo; nunca firma sola',
+    \App\Services\ReportLayout\ReportPaginationMode::AREA_HARD_PAGE_BREAK => 'MODE 3 — Cada área en página nueva',
+    \App\Services\ReportLayout\ReportPaginationMode::AREA_SOFT_FIT_SIGNATURE => 'MODE 4 — Cada área en página nueva; evita firma sola si es posible',
+];
 $gpb = \App\Services\ReportPdfLayoutService::normalizeGrupoPruebaPageBreakStyle($ps['grupo_prueba_page_break'] ?? []);
 $osh = \App\Services\ReportPdfLayoutService::normalizeOrderSheetHeaderStyle($ps['order_sheet_header'] ?? []);
 // En el editor se muestra el valor guardado en la plantilla (sin override global).
@@ -1022,57 +1029,26 @@ $labelsShort = [
 
 <div class="card shadow-sm mb-4 pdf-config-panel" data-config-panels="general">
     <div class="card-header bg-info text-white">
-        <h5 class="mb-0">Saltos de página en grupos de prueba</h5>
+        <h5 class="mb-0">Comportamiento de salto de página (LayoutEngine)</h5>
     </div>
     <div class="card-body">
-        <p class="small text-muted mb-3">Controla los saltos de página al generar PDF o imprimir. Puede aplicarse al área completa (<code>.report-pdf-grupo-prueba</code>) o a cada segmento de resultados (<code>.report-segment-table-wrap</code>).</p>
+        <p class="small text-muted mb-3">Define cómo el motor único de paginación distribuye áreas, bloques de análisis y firmas en PDF e impresión. La decisión es determinista en PHP; el navegador solo aplica el plan.</p>
         <div class="row g-3">
-            <div class="col-12 col-lg-6">
-                <label class="form-label small" for="gpb_mode">Comportamiento de salto de página</label>
-                <select class="form-select" id="gpb_mode">
-                    <option value="flow" <?= ($gpb['mode'] ?? 'flow') === 'flow' ? 'selected' : '' ?>>Flujo libre — sin reglas extra; el contenido puede partirse en cualquier punto</option>
-                    <option value="keep_segment" <?= ($gpb['mode'] ?? '') === 'keep_segment' ? 'selected' : '' ?>>Flujo por segmentos — cada segmento de tabla va entero a la página siguiente si no cabe</option>
-                    <option value="keep_together_if_fits" <?= ($gpb['mode'] ?? '') === 'keep_together_if_fits' ? 'selected' : '' ?>>Grupo íntegro solo si cabe — mantiene el área junta solo si entra en el espacio restante; si no, rellena la hoja actual</option>
-                    <option value="keep_together_if_fits_auto_order" <?= ($gpb['mode'] ?? '') === 'keep_together_if_fits_auto_order' ? 'selected' : '' ?>>Grupo íntegro solo si cabe con orden automático — reordena las pruebas para llenar cada hoja; si no caben enteras, rellena la hoja actual y continúa en la siguiente</option>
-                    <option value="keep_together" <?= ($gpb['mode'] ?? '') === 'keep_together' ? 'selected' : '' ?>>Grupo íntegro — todo el área se mueve junta a la página siguiente</option>
-                    <option value="keep_together_compact" <?= ($gpb['mode'] ?? '') === 'keep_together_compact' ? 'selected' : '' ?>>Grupo íntegro con compactación — reduce fuentes/espaciado antes de mover el área completa</option>
+            <div class="col-12 col-lg-8">
+                <label class="form-label small" for="pagination_mode">Modo de paginación</label>
+                <select class="form-select" id="pagination_mode">
+                    <?php foreach (\App\Services\ReportLayout\ReportPaginationMode::ALL as $modeOpt): ?>
+                    <option value="<?= esc($modeOpt, 'attr') ?>" <?= $paginationMode === $modeOpt ? 'selected' : '' ?>><?= esc($paginationModeLabels[$modeOpt] ?? $modeOpt) ?></option>
+                    <?php endforeach; ?>
                 </select>
             </div>
-            <div class="col-6 col-md-3">
-                <label class="form-label small" for="gpb_min_remaining_mm" title="Solo aplica a «Grupo íntegro» y «Grupo íntegro con compactación». Si el espacio libre en la hoja es menor que este valor (mm), no se mueve todo el bloque: se rellena la hoja actual por segmentos.">Umbral espacio restante (mm)</label>
-                <input type="number" class="form-control" id="gpb_min_remaining_mm" min="0" max="120" step="1" value="<?= esc((string) (float) ($gpb['min_remaining_mm_to_force_break'] ?? 0), 'attr') ?>">
-                <span class="form-text small text-muted">0 = mover siempre el bloque entero; 30–50 = rellenar hoja si queda poco espacio</span>
-            </div>
-            <div class="col-6 col-md-3">
-                <label class="form-label small" for="gpb_compact_min_scale" title="Porcentaje mínimo al compactar el grupo para que quepa en el espacio restante">Escala mínima compactación (%)</label>
-                <input type="number" class="form-control" id="gpb_compact_min_scale" min="75" max="100" step="1" value="<?= esc((string) (int) ($gpb['compact_min_scale_percent'] ?? 85), 'attr') ?>">
-                <span class="form-text small text-muted">75–100 % (modo compactación)</span>
-            </div>
-            <div class="col-6 col-md-3">
-                <label class="form-label small" for="gpb_compact_cell_padding" title="Relleno vertical de filas al compactar. 0 = automático según escala">Relleno filas al compactar (px)</label>
-                <input type="number" class="form-control" id="gpb_compact_cell_padding" min="0" max="20" step="1" value="<?= esc((string) (int) ($gpb['compact_cell_padding_px'] ?? 0), 'attr') ?>">
-                <span class="form-text small text-muted">0 = auto; 1–20 = fijo al compactar</span>
-            </div>
-            <div class="col-6 col-md-3 d-flex align-items-end">
-                <div class="form-check mb-2">
-                    <input class="form-check-input" type="checkbox" id="gpb_compact_aggressive" <?= ! empty($gpb['compact_aggressive']) ? 'checked' : '' ?>>
-                    <label class="form-check-label small" for="gpb_compact_aggressive">Compactación agresiva (menos interlineado y márgenes)</label>
-                </div>
-            </div>
-            <div class="col-12 col-md-3 d-flex align-items-end">
-                <div class="form-check mb-2">
-                    <input class="form-check-input" type="checkbox" id="gpb_repeat_header" <?= ! empty($gpb['repeat_header_on_split']) ? 'checked' : '' ?>>
-                    <label class="form-check-label small" for="gpb_repeat_header">Repetir encabezado del examen al continuar en otra página</label>
-                </div>
-            </div>
         </div>
-        <ul class="small text-muted mb-0 mt-2 ps-3">
-            <li><strong>Grupo íntegro solo si cabe:</strong> ideal para hemogramas; si el área no cabe tras la cabecera, empieza en la hoja 1 y continúa en la 2 (por segmentos), sin dejar la primera hoja vacía.</li>
-            <li><strong>Grupo íntegro solo si cabe con orden automático:</strong> igual que el anterior, pero reordena las áreas de prueba para aprovechar cada hoja completa antes de partir contenido.</li>
-            <li><strong>Grupo íntegro:</strong> mueve todo el área a la siguiente hoja si no cabe entera. Deje el <strong>umbral en 0 mm</strong> para este comportamiento puro.</li>
-            <li><strong>Umbral &gt; 0 mm:</strong> solo en «Grupo íntegro» / «con compactación»; si queda poco espacio libre, rellena la hoja actual por segmentos en lugar de mover el bloque.</li>
-            <li><strong>Con compactación:</strong> reduce fuentes, relleno e interlineado (escala, relleno fijo y/o compactación agresiva) antes de mover el bloque.</li>
-            <li><strong>Flujo por segmentos:</strong> cada <code>report-segment-table-wrap</code> no se parte; si no cabe, va entero a la página siguiente.</li>
+        <ul class="small text-muted mb-0 mt-3 ps-3">
+            <li><strong>MODE 1:</strong> flujo continuo; el bloque de análisis es atómico; si la firma queda sola en la última página, mueve el último bloque.</li>
+            <li><strong>MODE 2:</strong> flujo continuo; nunca permite firma sola (backtracking del último bloque).</li>
+            <li><strong>MODE 3:</strong> cada área inicia en página nueva; la firma puede quedar sola.</li>
+            <li><strong>MODE 4:</strong> igual que MODE 3, pero intenta evitar firma sola moviendo el último bloque del área.</li>
+            <li>Las tablas largas pueden partirse con repetición automática de encabezado (THEAD).</li>
         </ul>
     </div>
 </div>
@@ -2694,6 +2670,13 @@ document.addEventListener('DOMContentLoaded', function() {
         if (type === 'pdf_pages_total') {
             return '<div class="header-preview-pages-total">' + labeledBlock('pdf_pages_total', escapeHtml(sample)) + '</div>';
         }
+        if (type === 'pdf_pagination') {
+            var pagPreview = '1 de 3';
+            var lblPag = String(hg.label_pdf_pagination != null ? hg.label_pdf_pagination : 'Página').trim();
+            var showPagL = !!hg.show_label_pdf_pagination && lblPag !== '';
+            var prefixPag = showPagL ? lblPag + ' ' : '';
+            return '<div class="header-preview-pagination"><span class="pdf-pagination-line" style="' + escapeHtml(stI) + '">' + escapeHtml(prefixPag + pagPreview) + '</span></div>';
+        }
         if (type === 'qr') {
             var hint = String(hg.label_qr_hint != null ? hg.label_qr_hint : '').trim();
             var showH = !!hg.show_label_qr_hint && hint !== '';
@@ -2758,7 +2741,7 @@ document.addEventListener('DOMContentLoaded', function() {
             } else {
                 var styleWrap = textStyleToInlineCss(readInstanceTextStyle(li));
                 var rawLine;
-                var headerLikeTypes = ['logo', 'lab_company', 'lab_address', 'paciente_institucion', 'lab_phone', 'lab_email', 'lab_website', 'pdf_pages_total', 'qr'];
+                var headerLikeTypes = ['logo', 'lab_company', 'lab_address', 'paciente_institucion', 'lab_phone', 'lab_email', 'lab_website', 'pdf_pages_total', 'pdf_pagination', 'qr'];
                 if (sectionKey === 'patient_doctor' && ['paciente_nombre','paciente_genero','paciente_edad','paciente_telefono','diagnostico_presuntivo','medico','fecha_recepcion','fecha_reporte','numero_orden'].indexOf(type) >= 0 && pdHeader) {
                     var showLpd = !!pdHeader['show_label_' + type];
                     var lblPd = String(pdHeader['label_' + type] != null ? pdHeader['label_' + type] : '').trim();
@@ -3768,17 +3751,19 @@ document.addEventListener('DOMContentLoaded', function() {
                 label_position: pickPaginationPos('pp_label_position', 'bottom-left'),
                 value_position: pickPaginationPos('pp_value_position', 'bottom-right')
             },
+            pagination_mode: (function() {
+                var el = document.getElementById('pagination_mode');
+                var v = el ? String(el.value || '').trim() : '<?= \App\Services\ReportLayout\ReportPaginationMode::default() ?>';
+                var allowed = <?= json_encode(\App\Services\ReportLayout\ReportPaginationMode::ALL, JSON_UNESCAPED_UNICODE) ?>;
+                return allowed.indexOf(v) >= 0 ? v : '<?= \App\Services\ReportLayout\ReportPaginationMode::default() ?>';
+            })(),
             grupo_prueba_page_break: {
-                mode: (function() {
-                    var el = document.getElementById('gpb_mode');
-                    var v = el ? el.value : 'keep_together_compact';
-                    return (v === 'flow' || v === 'keep_segment' || v === 'keep_together_if_fits' || v === 'keep_together_if_fits_auto_order' || v === 'keep_together' || v === 'keep_together_compact') ? v : 'keep_together_if_fits';
-                })(),
-                repeat_header_on_split: pickChk('gpb_repeat_header', true),
-                compact_min_scale_percent: Math.round(pickNum('gpb_compact_min_scale', 75, 100, 85)),
-                compact_cell_padding_px: Math.round(pickNum('gpb_compact_cell_padding', 0, 20, 0)),
-                compact_aggressive: pickChk('gpb_compact_aggressive', false),
-                min_remaining_mm_to_force_break: Math.round(pickNum('gpb_min_remaining_mm', 0, 120, 0) * 10) / 10
+                mode: 'flow',
+                repeat_header_on_split: true,
+                compact_min_scale_percent: 85,
+                compact_cell_padding_px: 0,
+                compact_aggressive: false,
+                min_remaining_mm_to_force_break: 0
             },
             order_sheet_header: {
                 enabled: pickChk('osh_enabled', false)
@@ -4012,16 +3997,13 @@ document.addEventListener('DOMContentLoaded', function() {
                 errs.push('Posición inválida en paginación (' + id + ').');
             }
         });
-        var gpbModeEl = document.getElementById('gpb_mode');
-        if (gpbModeEl) {
-            var gpbMode = String(gpbModeEl.value || '').trim();
-            if (['flow', 'keep_segment', 'keep_together_if_fits', 'keep_together_if_fits_auto_order', 'keep_together', 'keep_together_compact'].indexOf(gpbMode) < 0) {
-                errs.push('Modo de salto de página en grupos de prueba no válido.');
+        var paginationModeEl = document.getElementById('pagination_mode');
+        if (paginationModeEl) {
+            var paginationMode = String(paginationModeEl.value || '').trim();
+            if (<?= json_encode(\App\Services\ReportLayout\ReportPaginationMode::ALL, JSON_UNESCAPED_UNICODE) ?>.indexOf(paginationMode) < 0) {
+                errs.push('Modo de paginación no válido.');
             }
         }
-        pushIfBadNum('gpb_min_remaining_mm', 0, 120, 'Umbral de espacio restante: entre 0 y 120 mm.');
-        pushIfBadNum('gpb_compact_min_scale', 75, 100, 'Escala mínima de compactación: entre 75 y 100 %.');
-        pushIfBadNum('gpb_compact_cell_padding', 0, 20, 'Relleno de filas al compactar: entre 0 y 20 px.');
         (window._headerLabelFieldIds || []).forEach(function(fid) {
             var el = document.getElementById('hg_label_' + fid);
             if (el && String(el.value || '').length > 120) errs.push('Etiqueta demasiado larga en encabezado: ' + fid + '.');

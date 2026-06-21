@@ -357,13 +357,14 @@ class DoctorHome extends BaseController
         $html      = $this->registerService->renderReportPdfHtml($data, $reportUrl, $qrDataUri, $emitidoEn);
 
         $pdfService = new PdfService();
+        $pageSize   = \App\Services\ReportPdfLayoutService::resolveGlobalPageSizeMm($this->registerService->getLabConfig());
         $pacienteNombre = trim(($data['paciente']->first_name ?? '') . '_' . ($data['paciente']->last_name_fa ?? ''));
         $filename = 'Resultados_' . ($pacienteNombre ?: 'paciente') . '_' . $id . '_' . lab_filename_date() . '.pdf';
 
         return $this->response
             ->setHeader('Content-Type', 'application/pdf')
             ->setHeader('Content-Disposition', 'attachment; filename="' . $filename . '"')
-            ->setBody($pdfService->generate($html, $filename));
+            ->setBody($pdfService->generate($html, $filename, $pageSize));
     }
 
     /**

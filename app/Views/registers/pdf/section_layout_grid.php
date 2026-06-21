@@ -314,6 +314,9 @@ echo $sectionWrapperStyle !== '' ? ' style="' . esc($sectionWrapperStyle, 'attr'
                 $inlineStyle  = $isCustomText ? '' : $textStyleCss(is_array($cellItem['text_style'] ?? null) ? $cellItem['text_style'] : []);
                 $elCtx        = array_merge($element_ctx, [
                     'pdf_element_type' => $cellItem['element_type'],
+                    'pdf_instance_uid' => (string) ($cellItem['uid'] ?? ''),
+                    'pdf_section_key'  => (string) ($section_key ?? ''),
+                    'pdf_cell_align'   => (string) ($tdInfo['alignCls'] ?? 'left'),
                     'pdf_text_style'   => is_array($cellItem['text_style'] ?? null) ? $cellItem['text_style'] : [],
                     'pdf_label_value_gap_px' => array_key_exists('label_value_gap_px', $cellItem) ? (int) ($cellItem['label_value_gap_px'] ?? 0) : null,
                     'pdf_label_space_above_px' => array_key_exists('label_space_above_px', $cellItem) ? (int) ($cellItem['label_space_above_px'] ?? 0) : null,
@@ -345,6 +348,9 @@ echo $sectionWrapperStyle !== '' ? ' style="' . esc($sectionWrapperStyle, 'attr'
                 $inlineStyle  = $isCustomText ? '' : $textStyleCss(is_array($stackItem['text_style'] ?? null) ? $stackItem['text_style'] : []);
                 $elCtx        = array_merge($element_ctx, [
                     'pdf_element_type' => $stackItem['element_type'],
+                    'pdf_instance_uid' => (string) ($stackItem['uid'] ?? ''),
+                    'pdf_section_key'  => (string) ($section_key ?? ''),
+                    'pdf_cell_align'   => (string) ($tdInfo['alignCls'] ?? 'left'),
                     'pdf_text_style'   => is_array($stackItem['text_style'] ?? null) ? $stackItem['text_style'] : [],
                     'pdf_label_value_gap_px' => array_key_exists('label_value_gap_px', $stackItem) ? (int) ($stackItem['label_value_gap_px'] ?? 0) : null,
                     'pdf_label_space_above_px' => array_key_exists('label_space_above_px', $stackItem) ? (int) ($stackItem['label_space_above_px'] ?? 0) : null,

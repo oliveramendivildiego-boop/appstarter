@@ -6,18 +6,10 @@ $mmViewHead = is_array($plViewHead['margins_mm'] ?? null)
     : \App\Services\ReportPdfLayoutService::defaultMarginsMmStatic();
 $mtViewHead = (float) ($mmViewHead['top'] ?? 15);
 $mbViewHead = (float) ($mmViewHead['bottom'] ?? 15);
-$printPaperViewHead = strtolower((string) (($lab_config ?? [])['print_paper_size'] ?? 'letter'));
-if (! in_array($printPaperViewHead, ['letter', 'a4', 'legal', 'custom'], true)) {
-    $printPaperViewHead = 'letter';
-}
-$printPaperCustomWHead = max(50.0, min(999.0, (float) (($lab_config ?? [])['print_paper_width_mm'] ?? 210)));
-$printPaperCustomHHead = max(50.0, min(999.0, (float) (($lab_config ?? [])['print_paper_height_mm'] ?? 297)));
-$printPageHeightMmHead = $printPaperViewHead === 'a4'
-    ? 297.0
-    : ($printPaperViewHead === 'legal' ? 355.6 : ($printPaperViewHead === 'custom' ? $printPaperCustomHHead : 279.4));
-$printPageWidthMmHead = $printPaperViewHead === 'a4'
-    ? 210.0
-    : ($printPaperViewHead === 'custom' ? $printPaperCustomWHead : 215.9);
+$pageSizeViewHead = \App\Services\ReportPdfLayoutService::resolveGlobalPageSizeMm(is_array($lab_config ?? null) ? $lab_config : []);
+$printPageHeightMmHead = (float) $pageSizeViewHead['height_mm'];
+$printPageWidthMmHead = (float) $pageSizeViewHead['width_mm'];
+$printPageCssSizeView = (string) $pageSizeViewHead['css_size'];
 $pdfFooterEnabledView = false;
 foreach (is_array($plViewHead['blocks'] ?? null) ? $plViewHead['blocks'] : [] as $fbView) {
     if (! empty($fbView['enabled']) && (string) ($fbView['id'] ?? '') === 'footer') {
@@ -30,9 +22,6 @@ $pdfFooterReserveMmView = $pdfFooterEnabledView
     : 22.0;
 $gpbBodyClassView = \App\Services\ReportPdfLayoutService::grupoPruebaPageBreakBodyClass($plViewHead);
 $orderSheetHeaderEnabledView = \App\Services\ReportPdfLayoutService::isOrderSheetHeaderEnabledForLayout($plViewHead);
-$printPageCssSizeView = $printPaperViewHead === 'custom'
-    ? ((string) $printPaperCustomWHead . 'mm ' . (string) $printPaperCustomHHead . 'mm')
-    : (($printPaperViewHead === 'a4') ? 'A4 portrait' : (($printPaperViewHead === 'legal') ? 'legal portrait' : 'letter portrait'));
 ?>
 <?= $this->section('title') ?>Reporte<?= $this->endSection() ?>
 
@@ -203,6 +192,8 @@ $qr_data_uri = qr_base64($reportUrl, $qrPx);
             'report_lab_firmas'               => $report_lab_firmas ?? [],
             'report_pria_refs_consolidada'    => $report_pria_refs_consolidada ?? [],
             'analisis_variant'                => 'screen_pdf',
+            'report_layout_plan'              => $report_layout_plan ?? null,
+            'report_layout_applier'           => $report_layout_applier ?? null,
         ]);
         echo \App\Services\RegisterService::replaceTotalPagesTokenForBrowser(ob_get_clean());
         ?>
@@ -233,7 +224,7 @@ $qr_data_uri = qr_base64($reportUrl, $qrPx);
 <?= $this->endSection() ?>
 
 <?= $this->section('scripts') ?>
-<?php if (! empty($grupos) && ($gpbBodyClassView ?? '') !== ''): ?>
+<?php if (! empty($grupos)): ?>
 <?php
 $mmViewScripts = is_array($plViewHead['margins_mm'] ?? null)
     ? $plViewHead['margins_mm']
@@ -248,13 +239,8 @@ $mmViewScripts = is_array($plViewHead['margins_mm'] ?? null)
     'order_sheet_header_enabled'  => $orderSheetHeaderEnabledView,
     'order_sheet_band_default_mm' => \App\Services\ReportPdfLayoutService::orderSheetHeaderPaginationReserveMm(),
 ]) ?>
-<?= view('registers/partials/report_pdf_grupo_page_break_script', [
-    'pdf_layout'        => $pdf_layout ?? [],
-    'page_height_mm'    => $printPageHeightMmHead,
-    'margin_top_mm'     => (float) ($mmViewScripts['top'] ?? 15),
-    'margin_bottom_mm'  => (float) ($mmViewScripts['bottom'] ?? 15),
-    'footer_reserve_mm' => (float) $pdfFooterReserveMmView,
-    'footer_enabled'    => $pdfFooterEnabledView,
+<?= view('registers/partials/report_layout_plan_apply_script', [
+    'report_layout_applier' => $report_layout_applier ?? null,
 ]) ?>
 <?php endif; ?>
 <script>
@@ -265,45 +251,12 @@ document.addEventListener('DOMContentLoaded', function() {
         gpbBodyClasses.forEach(function(cls) {
             document.body.classList.add(cls);
         });
-        if (typeof window.applyReportPdfGrupoPageBreaks === 'function') {
-            window.applyReportPdfGrupoPageBreaks();
-        }
     }
-
-    var MM_TO_PX = 96 / 25.4;
-    var PAGE_HEIGHT_MM = <?= json_encode($printPageHeightMmHead) ?>;
-    var marginTopMm = <?= json_encode($mtViewHead) ?>;
-    var marginBottomMm = <?= json_encode($mbViewHead) ?>;
-
-    function estimateTotalPagesForView() {
-        var content = document.querySelector('.viewreport-pdf-sheet .pdf-main-stack');
-        if (!content) {
-            return 1;
-        }
-        var printableHeightMm = PAGE_HEIGHT_MM - marginTopMm - marginBottomMm;
-        if (!isFinite(printableHeightMm) || printableHeightMm <= 0) {
-            printableHeightMm = 240;
-        }
-        var printablePx = printableHeightMm * MM_TO_PX;
-        if (!isFinite(printablePx) || printablePx <= 0) {
-            printablePx = 900;
-        }
-        var total = Math.ceil(content.scrollHeight / printablePx);
-        if (!isFinite(total) || total < 1) {
-            total = 1;
-        }
-        return total;
+    if (typeof window.applyReportLayoutPlan === 'function') {
+        window.applyReportLayoutPlan();
+    } else if (window.reportPrintPagination && typeof window.reportPrintPagination.applyPaginationLineTotals === 'function') {
+        window.reportPrintPagination.applyPaginationLineTotals();
     }
-
-    function applyBrowserTotalPages() {
-        var total = estimateTotalPagesForView();
-        document.querySelectorAll('.pdf-counter-pages').forEach(function(el) {
-            el.textContent = String(total);
-        });
-        document.body.classList.add('js-total-pages-ready');
-    }
-
-    applyBrowserTotalPages();
     window.dispatchEvent(new Event('page-scroll-nav-refresh'));
 
     function bindPrintWindow(selector, windowName) {

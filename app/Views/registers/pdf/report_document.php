@@ -12,7 +12,8 @@ $labForLogo = is_array($lab_config ?? null) ? $lab_config : [];
 $logoRel    = $labForLogo['logo'] ?? 'images/logo-john.png';
 $logoPath   = FCPATH . str_replace('/', DIRECTORY_SEPARATOR, $logoRel);
 $pdf_logo_data_uri = $pdf_logo_data_uri ?? '';
-if ($pdf_logo_data_uri === '') {
+$analisisVariantForAssets = (string) ($analisis_variant ?? 'pdf');
+if ($pdf_logo_data_uri === '' && $analisisVariantForAssets !== 'pdf') {
     if (file_exists($logoPath)) {
         $logoData = base64_encode((string) file_get_contents($logoPath));
         $finfo    = finfo_open(FILEINFO_MIME_TYPE);
@@ -65,6 +66,8 @@ $ctx = [
     'report_pria_refs_consolidada'    => $report_pria_refs_consolidada ?? [],
     'analisis_variant'                => $analisis_variant ?? 'pdf',
     'pb_diag_no_separators'           => $pb_diag_no_separators ?? false,
+    'report_layout_plan'              => $report_layout_plan ?? null,
+    'report_layout_applier'           => $report_layout_applier ?? null,
 ];
 ?>
 <?php
@@ -127,7 +130,7 @@ endforeach; ?>
 <?php
 echo view($pdfBlockViews['footer'], array_merge($ctx, [
     'footer_dompdf_fixed'       => ($ctx['analisis_variant'] ?? 'pdf') === 'pdf',
-    'footer_order_sheet_band'   => in_array($ctx['analisis_variant'] ?? 'pdf', ['pdf', 'browser_print'], true),
+    'footer_order_sheet_band'   => in_array($ctx['analisis_variant'] ?? 'pdf', ['pdf', 'browser_print', 'screen_pdf'], true),
 ]));
 ?>
 <?php endif; ?>

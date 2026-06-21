@@ -673,3 +673,55 @@ if (! function_exists('report_image_data_uri')) {
         return 'data:' . ($mime ?: 'image/png') . ';base64,' . base64_encode($data);
     }
 }
+
+if (! function_exists('report_image_dompdf_src')) {
+    /**
+     * Ruta absoluta de imagen para Dompdf (evita base64 en el HTML).
+     */
+    function report_image_dompdf_src(string $relativePath): string
+    {
+        $relativePath = str_replace('\\', '/', trim($relativePath));
+        if ($relativePath === '' || str_contains($relativePath, '..')) {
+            return '';
+        }
+        $full = FCPATH . str_replace('/', DIRECTORY_SEPARATOR, $relativePath);
+        if (! is_file($full) || ! is_readable($full)) {
+            return '';
+        }
+        $resolved = realpath($full);
+
+        return str_replace('\\', '/', $resolved !== false ? $resolved : $full);
+    }
+}
+
+if (! function_exists('report_image_src_for_variant')) {
+    /**
+     * PDF Dompdf: ruta de archivo. Impresión HTML: data URI.
+     */
+    function report_image_src_for_variant(string $relativePath, string $variant = 'pdf'): string
+    {
+        $relativePath = trim($relativePath);
+        if ($relativePath === '') {
+            return '';
+        }
+
+        return ($variant === 'pdf')
+            ? report_image_dompdf_src($relativePath)
+            : report_image_data_uri($relativePath);
+    }
+}
+
+if (! function_exists('report_pdf_img_src_attr')) {
+    /**
+     * Valor seguro para src="" sin codificar la ruta (Dompdf no lee &#x2F; en file paths).
+     */
+    function report_pdf_img_src_attr(string $src): string
+    {
+        $src = trim($src);
+        if ($src === '') {
+            return '';
+        }
+
+        return str_replace('"', '&quot;', $src);
+    }
+}

@@ -22,10 +22,15 @@ $elementCtx = [
     'pdf_logo_data_uri' => $pdf_logo_data_uri ?? '',
     'report_emitido_en' => $report_emitido_en ?? \App\Services\RegisterService::formatNowForReport(),
     'pdf_header_grid_style' => \App\Services\ReportPdfLayoutService::normalizeHeaderGridStyle($ps['header_grid'] ?? []),
+    'pdf_analisis_variant'  => (string) ($analisis_variant ?? 'pdf'),
+    'pdf_margins_mm'        => is_array($layout['margins_mm'] ?? null)
+        ? $layout['margins_mm']
+        : \App\Services\ReportPdfLayoutService::defaultMarginsMmStatic(),
 ];
 
 echo view('registers/pdf/section_layout_grid', [
     'section_wrapper_class' => 'header header-grid pdf-hg-block',
+    'section_key'           => 'header',
     'n_columns'             => $n,
     'grid_items'            => $gridItems,
     'element_ctx'           => $elementCtx,

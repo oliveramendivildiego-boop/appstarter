@@ -158,16 +158,44 @@ $renderCultivoCeldaGrilla = static function (array $celda, string $tdBorderPerso
 <?php endif; ?>
 <?php if ($usePdfChrome): ?>
 <?php
-$subgrupoCultivoClass = 'report-pdf-subgrupo-block' . ($subIdxCultivo > 0 ? ' report-pdf-subgrupo-prueba' : '');
+/** @var \App\Services\ReportLayout\LayoutPlanApplier|null $layoutPlanApplier */
+$layoutPlanApplier = ($layout_plan_applier ?? null) instanceof \App\Services\ReportLayout\LayoutPlanApplier
+    ? $layout_plan_applier
+    : null;
+$layoutAreaIndexCultivo = (int) ($layout_area_index ?? 0);
+$layoutBlockIndexCultivo = (int) ($layout_block_index ?? 0);
+$cultivoPb = $layoutPlanApplier
+    ? $layoutPlanApplier->blockMarkers($layoutAreaIndexCultivo, $layoutBlockIndexCultivo)
+    : ['segment_class' => '', 'cabecera_class' => '', 'subgrupo_class' => ''];
+$subgrupoCultivoClass = trim(
+    'report-pdf-subgrupo-block'
+    . ($subIdxCultivo > 0 ? ' report-pdf-subgrupo-prueba' : '')
+    . ($cultivoPb['subgrupo_class'] !== '' ? ' ' . $cultivoPb['subgrupo_class'] : '')
+);
+$cabeceraCultivoClass = trim('report-pdf-grupo-cabecera' . ($cultivoPb['cabecera_class'] !== '' ? ' ' . $cultivoPb['cabecera_class'] : ''));
 $subgrupoCultivoStyle = $subIdxCultivo > 0
     ? \App\Services\ReportPdfLayoutService::subgrupoPruebaGapStyleAttr(
         is_array($pdf_layout ?? null) ? $pdf_layout : [],
         true
     )
     : '';
+$blockIdCultivo = \App\Services\ReportLayout\ReportTreeBuilder::analysisBlockId($layoutAreaIndexCultivo, $layoutBlockIndexCultivo);
+$isLastSubgrupoCultivo = ! empty($is_last_subgrupo);
+$subgrupoTailBundleAtStart = $usePdfChrome
+    && $layoutPlanApplier !== null
+    && $isLastSubgrupoCultivo
+    && $layoutPlanApplier->shouldOpenSignatureTailBundleBeforeSubgrupo($layoutAreaIndexCultivo, $layoutBlockIndexCultivo);
 ?>
-<div class="<?= esc($subgrupoCultivoClass, 'attr') ?>"<?= $subgrupoCultivoStyle !== '' ? ' style="' . esc($subgrupoCultivoStyle, 'attr') . '"' : '' ?>>
-<div class="report-pdf-grupo-cabecera">
+<?php if ($variant === 'browser_print' && $layoutPlanApplier !== null && $layoutPlanApplier->browserPrintPageBreakBeforeAnalysisBlock($layoutAreaIndexCultivo, $layoutBlockIndexCultivo)): ?>
+<?= view('registers/partials/report_browser_print_plan_page_break', [
+    'plan_page_index' => $layoutPlanApplier->analysisBlockPlanPageIndex($layoutAreaIndexCultivo, $layoutBlockIndexCultivo),
+]) ?>
+<?php endif; ?>
+<div class="<?= esc($subgrupoCultivoClass, 'attr') ?>" data-layout-block-id="<?= esc($blockIdCultivo, 'attr') ?>"<?= $subgrupoCultivoStyle !== '' ? ' style="' . esc($subgrupoCultivoStyle, 'attr') . '"' : '' ?>>
+<?php if ($subgrupoTailBundleAtStart): ?>
+<?= $layoutPlanApplier->beginSignatureTailBundleMarkup() ?>
+<?php endif; ?>
+<div class="<?= esc($cabeceraCultivoClass, 'attr') ?>">
 <?= view('registers/analisis/partials/report_grupo_cabecera_content', [
     'padre'              => $padreTitulo,
     'hijo'               => $hijoTitulo,
@@ -430,6 +458,16 @@ $subgrupoCultivoStyle = $subIdxCultivo > 0
     </div>
 </div>
 <?php endforeach; ?>
+
+<?php if ($usePdfChrome && $isLastSubgrupoCultivo && $layoutPlanApplier !== null && $layoutPlanApplier->isSignatureTailBundleOpen()): ?>
+    <?php
+    $firmaBundle = is_array($area_firma_bundle ?? null) ? $area_firma_bundle : null;
+    if ($firmaBundle !== null && ($firmaBundle['firma'] ?? []) !== []):
+        echo view('registers/partials/report_lab_firma_grupo_inline', $firmaBundle);
+    endif;
+    echo $layoutPlanApplier->endSignatureTailBundleMarkup();
+    ?>
+<?php endif; ?>
 
 <?php if ($usePdfChrome): ?>
 </div>

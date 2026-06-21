@@ -23,11 +23,16 @@ $elementCtx = [
     'report_emitido_en' => $report_emitido_en ?? \App\Services\RegisterService::formatNowForReport(),
     'pdf_patient_doctor_grid_style' => \App\Services\ReportPdfLayoutService::normalizePatientDoctorGridStyle($ps['patient_doctor_grid'] ?? []),
     'pdf_header_grid_style' => \App\Services\ReportPdfLayoutService::normalizeHeaderGridStyle($ps['header_grid'] ?? []),
+    'pdf_analisis_variant'  => (string) ($analisis_variant ?? 'pdf'),
+    'pdf_margins_mm'        => is_array($layout['margins_mm'] ?? null)
+        ? $layout['margins_mm']
+        : \App\Services\ReportPdfLayoutService::defaultMarginsMmStatic(),
 ];
 ?>
 <div class="patient-section pdf-pd-block">
 <?= view('registers/pdf/section_layout_grid', [
     'section_wrapper_class' => 'patient-columns patient-columns-grid',
+    'section_key'           => 'patient_doctor',
     'n_columns'             => $n,
     'grid_items'            => $gridItems,
     'element_ctx'           => $elementCtx,

@@ -678,6 +678,7 @@ class Registers extends SecureArea
         $publicToken    = $this->registerModel->ensurePublicAccessToken($id);
         $pdfLayout      = (new ReportPdfLayoutService())->getActiveLayoutForRender();
         $labConfig      = $this->registerService->getLabConfig();
+        $layoutCtx      = $this->registerService->buildReportLayoutContext($data, $pdfLayout, $labConfig);
         $envelopeRender = new EnvelopeRenderService();
 
         return view('registers/viewreport', [
@@ -704,6 +705,8 @@ class Registers extends SecureArea
             'comprobante_pdf_sin_registro_pago' => $pago === null,
             'pdf_layout'        => $pdfLayout,
             'lab_config'        => $labConfig,
+            'report_layout_plan'    => $layoutCtx['plan'],
+            'report_layout_applier' => $layoutCtx['applier'],
             'envelope_print_available' => $envelopeRender->getPrintTemplate() !== null,
         ]);
     }
@@ -749,7 +752,8 @@ class Registers extends SecureArea
     }
 
     /**
-     * Vista lista para imprimir con la plantilla configurada para impresión (no la del PDF).
+     * Impresión del reporte: por defecto el mismo PDF de descarga (paridad Dompdf).
+     * HTML legacy: ?layout_report=1 | ?pb_diag=1 | ?html=1
      */
     public function printreport($id = -1)
     {
@@ -768,19 +772,52 @@ class Registers extends SecureArea
 
         helper('qr');
         $reportUrl = $this->publicReportViewerUrlForQr($id);
-        $qrLayout  = (new \App\Services\ReportPdfLayoutService())->getPrintLayoutForRender();
-        $qrPx      = \App\Services\ReportPdfLayoutService::qrImagePixelSizeFromLayout($qrLayout);
-        $qrDataUri = qr_base64($reportUrl, $qrPx);
         $emitidoEn = $this->registerService->lockReportEmitidoEnForPrintOrPdf($id);
         $layoutReportMode = $this->request->getGet('layout_report') === '1';
-        $html      = $this->registerService->renderReportPrintHtml(
+        $pbDiagEnabled = $this->request->getGet('pb_diag') === '1';
+        $forceHtmlPrint = $this->request->getGet('html') === '1';
+
+        if ($layoutReportMode || $pbDiagEnabled || $forceHtmlPrint) {
+            $qrLayout  = (new \App\Services\ReportPdfLayoutService())->getPrintLayoutForRender();
+            $qrPx      = \App\Services\ReportPdfLayoutService::qrImagePixelSizeFromLayout($qrLayout);
+            $qrDataUri = qr_base64($reportUrl, $qrPx);
+            $html      = $this->registerService->renderReportPrintHtml(
+                $data,
+                $reportUrl,
+                $qrDataUri,
+                $id,
+                $emitidoEn,
+                $layoutReportMode
+            );
+
+            return $this->response->setBody($html)->setContentType('text/html', 'UTF-8');
+        }
+
+        $qrLayout  = (new \App\Services\ReportPdfLayoutService())->getActiveLayoutForRender();
+        $qrPx      = \App\Services\ReportPdfLayoutService::qrImagePixelSizeFromLayout($qrLayout);
+        $qrDataUri = qr_base64($reportUrl, $qrPx);
+        $pdfBinary = $this->registerService->generateReportPdfBinary(
             $data,
             $reportUrl,
             $qrDataUri,
-            $id,
             $emitidoEn,
-            $layoutReportMode
         );
+
+        $paciente = $data['paciente'] ?? null;
+        unset($data, $qrDataUri);
+        $pacienteNombre = trim(
+            (is_object($paciente) ? ($paciente->first_name ?? '') : '')
+            . ' '
+            . (is_object($paciente) ? ($paciente->last_name_fa ?? '') : '')
+        );
+
+        $html = view('registers/report_print_via_pdf', [
+            'pdf_base64'     => base64_encode($pdfBinary),
+            'registro_id'    => $id,
+            'paciente_nombre' => $pacienteNombre !== '' ? $pacienteNombre : 'Paciente',
+            'auto_print'     => $this->request->getGet('auto') !== '0',
+        ]);
+        unset($pdfBinary);
 
         return $this->response->setBody($html)->setContentType('text/html', 'UTF-8');
     }
@@ -945,7 +982,8 @@ class Registers extends SecureArea
             foreach ([
                 APPPATH . 'Views/registers/pdf/blocks/results.php',
                 APPPATH . 'Views/registers/analisis/partials/report_grupo_area_separator.php',
-                APPPATH . 'Services/ReportPdfDompdfGrupoPageBreakService.php',
+                APPPATH . 'Services/ReportLayout/ReportLayoutPlanService.php',
+                APPPATH . 'Services/ReportLayout/LayoutPlanApplier.php',
                 APPPATH . 'Services/ReportPdfLayoutService.php',
                 APPPATH . 'Views/registers/partials/report_pdf_theme_styles.php',
                 APPPATH . 'Views/registers/analisis/partials/compleja_tabla_reporte_grupo.php',
@@ -977,13 +1015,14 @@ class Registers extends SecureArea
         $html      = $this->registerService->renderReportPdfHtml($data, $reportUrl, $qrDataUri, $emitidoEn);
 
         $pdfService    = new PdfService();
+        $pageSize      = \App\Services\ReportPdfLayoutService::resolveGlobalPageSizeMm($this->registerService->getLabConfig());
         $pacienteNombre = trim(($data['paciente']->first_name ?? '') . '_' . ($data['paciente']->last_name_fa ?? ''));
         $filename      = 'Resultados_' . ($pacienteNombre ?: 'paciente') . '_' . $id . '_' . lab_filename_date() . '.pdf';
 
         return $this->response
             ->setHeader('Content-Type', 'application/pdf')
             ->setHeader('Content-Disposition', 'attachment; filename="' . $filename . '"')
-            ->setBody($pdfService->generate($html, $filename));
+            ->setBody($pdfService->generate($html, $filename, $pageSize));
     }
 
     /**

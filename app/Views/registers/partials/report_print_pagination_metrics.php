@@ -261,6 +261,36 @@ $orderSheetBufferMm = 0.5;
         return boundarySet.metrics ? boundarySet.metrics.nextPageContentPx : 0;
     }
 
+    function estimateTotalPagesForDocument() {
+        var fromPlan = null;
+        if (window.reportLayoutPlan && isFinite(window.reportLayoutPlan.totalPages)) {
+            fromPlan = Math.max(1, parseInt(window.reportLayoutPlan.totalPages, 10));
+        }
+        var fromMetrics = null;
+        var metrics = buildReportPrintPaginationMetrics(getPrintContainer());
+        if (metrics && isFinite(metrics.estimatedPages) && metrics.estimatedPages >= 1) {
+            fromMetrics = Math.max(1, parseInt(metrics.estimatedPages, 10));
+        }
+        if (fromPlan !== null && fromMetrics !== null) {
+            return Math.max(fromPlan, fromMetrics);
+        }
+        if (fromMetrics !== null) {
+            return fromMetrics;
+        }
+        if (fromPlan !== null) {
+            return fromPlan;
+        }
+        return 1;
+    }
+
+    function applyPaginationLineTotals() {
+        var total = estimateTotalPagesForDocument();
+        document.querySelectorAll('.pdf-pagination-line').forEach(function(el) {
+            el.setAttribute('data-total', String(total));
+        });
+        document.body.classList.add('js-pagination-total-ready');
+    }
+
     window.reportPrintPagination = {
         MM_TO_PX: MM_TO_PX,
         pxToMm: pxToMm,
@@ -272,7 +302,9 @@ $orderSheetBufferMm = 0.5;
         buildBoundaries: buildVariablePageBoundaries,
         remainingOnPage: remainingOnVariablePage,
         estimatePages: estimatePagesFromMetrics,
-        resolveOrderSheetBandReserveMm: resolveOrderSheetBandReserveMm
+        resolveOrderSheetBandReserveMm: resolveOrderSheetBandReserveMm,
+        estimateTotalPages: estimateTotalPagesForDocument,
+        applyPaginationLineTotals: applyPaginationLineTotals
     };
 })();
 </script>

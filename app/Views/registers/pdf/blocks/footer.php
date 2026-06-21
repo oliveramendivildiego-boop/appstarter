@@ -23,6 +23,10 @@ $elementCtx = [
     'report_emitido_en' => $report_emitido_en ?? \App\Services\RegisterService::formatNowForReport(),
     'pdf_footer_grid_style' => \App\Services\ReportPdfLayoutService::normalizeFooterGridStyle($ps['footer_grid'] ?? []),
     'pdf_header_grid_style' => \App\Services\ReportPdfLayoutService::normalizeHeaderGridStyle($ps['header_grid'] ?? []),
+    'pdf_analisis_variant'  => (string) ($analisis_variant ?? 'pdf'),
+    'pdf_margins_mm'        => is_array($layout['margins_mm'] ?? null)
+        ? $layout['margins_mm']
+        : \App\Services\ReportPdfLayoutService::defaultMarginsMmStatic(),
 ];
 
 $footerWrapperStyle = ! empty($footer_dompdf_fixed)
@@ -49,6 +53,7 @@ if (! empty($footer_order_sheet_band)
 
 echo view('registers/pdf/section_layout_grid', [
     'section_wrapper_class' => 'footer footer-grid pdf-ft-block',
+    'section_key'           => 'footer',
     'section_wrapper_style'   => $footerWrapperStyle,
     'section_prepend_markup' => $orderSheetBandHtml,
     'n_columns'             => $n,

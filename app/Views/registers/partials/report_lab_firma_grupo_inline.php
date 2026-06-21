@@ -41,6 +41,11 @@ $hasSigFile  = $sig !== '' && is_file(FCPATH . str_replace('/', DIRECTORY_SEPARA
 $imgNone = 'border: none; outline: none; box-shadow: none; background: transparent;';
 
 $wrapStyle = 'margin-top:' . esc((string) $marginTop, 'attr') . 'pt;margin-bottom:' . esc((string) $marginBottom, 'attr') . 'pt;';
+if (! empty($in_results_table)) {
+    $wrapStyle = 'margin-top:4pt;margin-bottom:0;';
+}
+$inlineWrapClass = 'lab-firmas-pdf-block lab-firmas-pdf-block-inline report-lab-firma-grupo-inline'
+    . (! empty($in_results_table) ? ' report-lab-firma-in-results-table' : '');
 
 if ($isLegacyScreen):
 ?>
@@ -119,7 +124,7 @@ $areaHeadingStyle = 'color:' . esc((string) ($lfTxt['area_heading_color'] ?? '#6
     . ';text-transform:' . esc((string) ($lfTxt['area_heading_text_transform'] ?? 'uppercase'), 'attr')
     . ';border-bottom:1px solid #dee2e6;padding-bottom:4px;margin-bottom:6px;';
 ?>
-<div class="lab-firmas-pdf-block lab-firmas-pdf-block-inline report-lab-firma-grupo-inline" style="<?= $wrapStyle ?>">
+<div class="<?= esc($inlineWrapClass, 'attr') ?>" style="<?= $wrapStyle ?>">
 <?php if ($showAreaHeading): ?>
     <div class="pdf-lab-f-area-heading" style="<?= $areaHeadingStyle ?>"><?= esc($areaLabel) ?></div>
 <?php endif; ?>
@@ -132,6 +137,7 @@ $areaHeadingStyle = 'color:' . esc((string) ($lfTxt['area_heading_color'] ?? '#6
             'lab_config'       => $lab_config ?? [],
             'lab_firmas_style' => $lfTxt,
             'pdf_firma_row'    => [],
+            'pdf_analisis_variant' => (string) ($analisis_variant ?? 'pdf'),
         ],
         'section_layout'        => $sectionLayout,
     ]) ?>
@@ -145,6 +151,7 @@ $areaHeadingStyle = 'color:' . esc((string) ($lfTxt['area_heading_color'] ?? '#6
             'lab_config'       => $lab_config ?? [],
             'lab_firmas_style' => $lfTxt,
             'pdf_firma_row'    => $firma,
+            'pdf_analisis_variant' => (string) ($analisis_variant ?? 'pdf'),
         ],
         'section_layout'      => $sectionLayout,
     ]) ?>

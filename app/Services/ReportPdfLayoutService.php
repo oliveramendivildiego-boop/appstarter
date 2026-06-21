@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\AppConfigModel;
 use App\Models\ReportPdfTemplateModel;
+use App\Services\ReportLayout\ReportPaginationMode;
 
 /**
  * Plantillas de orden de bloques para el PDF de resultados de registro.
@@ -102,6 +103,9 @@ class ReportPdfLayoutService
         'keep_together_compact',
     ];
 
+    /** @var list<string> */
+    public const REPORT_PAGINATION_MODES = ReportPaginationMode::ALL;
+
     /** @var array{mode: string, repeat_header_on_split: bool, compact_min_scale_percent: int, compact_cell_padding_px: int, compact_aggressive: bool, min_remaining_mm_to_force_break: float} */
     public const DEFAULT_GRUPO_PRUEBA_PAGE_BREAK = [
         'mode'                              => 'keep_together_if_fits',
@@ -177,6 +181,7 @@ class ReportPdfLayoutService
         'lab_website' => '',
         'paciente_institucion' => 'Institución:',
         'pdf_pages_total'      => 'Páginas:',
+        'pdf_pagination'       => 'Página',
     ];
 
     public const DEFAULT_RESULTS_TABLE_STYLE = [
@@ -268,6 +273,7 @@ class ReportPdfLayoutService
         'lab_email',
         'lab_website',
         'pdf_pages_total',
+        'pdf_pagination',
         'qr',
     ];
 
@@ -292,6 +298,7 @@ class ReportPdfLayoutService
         'lab_website',
         'paciente_institucion',
         'pdf_pages_total',
+        'pdf_pagination',
         'qr',
         'custom_text',
         'paciente_nombre',
@@ -396,6 +403,7 @@ class ReportPdfLayoutService
             'patient_doctor_grid' => self::normalizePatientDoctorGridStyle([]),
             'footer_grid'         => self::normalizeFooterGridStyle([]),
             'print_pagination'        => self::normalizePrintPaginationStyle([]),
+            'pagination_mode'         => ReportPaginationMode::default(),
             'grupo_prueba_page_break' => self::normalizeGrupoPruebaPageBreakStyle([]),
             'order_sheet_header'      => self::normalizeOrderSheetHeaderStyle([]),
         ];
@@ -511,7 +519,7 @@ class ReportPdfLayoutService
         if ($id === 'qr') {
             return 2;
         }
-        if ($id === 'pdf_pages_total') {
+        if ($id === 'pdf_pages_total' || $id === 'pdf_pagination') {
             return 2;
         }
 
@@ -549,6 +557,7 @@ class ReportPdfLayoutService
             'lab_website'  => 'Sitio web',
             'paciente_institucion' => 'Institución del paciente',
             'pdf_pages_total'      => 'Número de páginas (total)',
+            'pdf_pagination'       => 'Paginación (Página X de Y)',
             'qr'           => 'Código QR (enlace al reporte en línea)',
         ];
     }
@@ -567,6 +576,7 @@ class ReportPdfLayoutService
             'lab_email'    => 'contacto@lab.ejemplo',
             'lab_website'  => 'www.lab.ejemplo',
             'pdf_pages_total' => '12',
+            'pdf_pagination' => '1 de 3',
             'qr'           => '[QR]',
         ];
     }
@@ -2957,6 +2967,11 @@ class ReportPdfLayoutService
             $base['label_' . $id . '_text_transform'] = $pickPieceTt('label_' . $id . '_text_transform');
         }
 
+        if (! array_key_exists('label_pdf_pagination_line_mode', $s)) {
+            $base['label_pdf_pagination_line_mode'] = 'inline';
+        }
+        $base['label_pdf_pagination_line_mode'] = 'inline';
+
         return $base;
     }
 
@@ -3318,6 +3333,83 @@ class ReportPdfLayoutService
      *
      * @return array{mode: string, repeat_header_on_split: bool, compact_min_scale_percent: int, compact_cell_padding_px: int, compact_aggressive: bool, min_remaining_mm_to_force_break: float}
      */
+    /**
+     * Modo de paginación del LayoutEngine (plantilla PDF).
+     *
+     * @param mixed $raw
+     */
+    public static function normalizePaginationMode($raw): string
+    {
+        $mode = strtolower(trim((string) $raw));
+        if (ReportPaginationMode::isValid($mode)) {
+            return $mode;
+        }
+
+        return ReportPaginationMode::migrateFromLegacy($mode);
+    }
+
+    /**
+     * Resuelve pagination_mode desde layout_json (migra modos legacy si falta).
+     *
+     * @param array<string, mixed> $layout
+     */
+    public static function resolvePaginationModeFromLayout(array $layout): string
+    {
+        $ps = is_array($layout['page_style'] ?? null) ? $layout['page_style'] : [];
+        if (isset($ps['pagination_mode']) && trim((string) $ps['pagination_mode']) !== '') {
+            return self::normalizePaginationMode($ps['pagination_mode']);
+        }
+
+        $gpb = is_array($ps['grupo_prueba_page_break'] ?? null) ? $ps['grupo_prueba_page_break'] : [];
+
+        return self::normalizePaginationMode($gpb['mode'] ?? ReportPaginationMode::default());
+    }
+
+    /**
+     * Tamaño de hoja global (/config): aplica a PDF y PRINT.
+     *
+     * @param array<string, mixed> $labConfig
+     *
+     * @return array{key: string, width_mm: float, height_mm: float, css_size: string}
+     */
+    public static function resolveGlobalPageSizeMm(array $labConfig): array
+    {
+        $paper = strtolower(trim((string) ($labConfig['print_paper_size'] ?? 'letter')));
+        if (! in_array($paper, ['letter', 'a4', 'legal', 'custom'], true)) {
+            $paper = 'letter';
+        }
+
+        $customW = max(50.0, min(999.0, (float) ($labConfig['print_paper_width_mm'] ?? 210)));
+        $customH = max(50.0, min(999.0, (float) ($labConfig['print_paper_height_mm'] ?? 297)));
+
+        return match ($paper) {
+            'a4' => [
+                'key' => 'a4',
+                'width_mm' => 210.0,
+                'height_mm' => 297.0,
+                'css_size' => 'A4 portrait',
+            ],
+            'legal' => [
+                'key' => 'legal',
+                'width_mm' => 215.9,
+                'height_mm' => 355.6,
+                'css_size' => 'legal portrait',
+            ],
+            'custom' => [
+                'key' => 'custom',
+                'width_mm' => $customW,
+                'height_mm' => $customH,
+                'css_size' => $customW . 'mm ' . $customH . 'mm',
+            ],
+            default => [
+                'key' => 'letter',
+                'width_mm' => 215.9,
+                'height_mm' => 279.4,
+                'css_size' => 'letter portrait',
+            ],
+        };
+    }
+
     public static function normalizeGrupoPruebaPageBreakStyle($raw): array
     {
         $def = self::DEFAULT_GRUPO_PRUEBA_PAGE_BREAK;
@@ -3881,26 +3973,9 @@ class ReportPdfLayoutService
      */
     public static function grupoPruebaPageBreakBodyClass(array $layout): string
     {
-        $ps  = is_array($layout['page_style'] ?? null) ? $layout['page_style'] : [];
-        $gpb = self::normalizeGrupoPruebaPageBreakStyle($ps['grupo_prueba_page_break'] ?? []);
-        if ($gpb['mode'] === 'flow') {
-            return '';
-        }
-        $classes = ['pdf-gpb-' . str_replace('_', '-', $gpb['mode'])];
-        if (self::grupoPruebaPageBreakUsesGrupoIntactCss($gpb)) {
-            $classes[] = 'pdf-gpb-grupo-intact';
-        }
-        if (self::grupoPruebaPageBreakUsesSegmentCss($gpb)) {
-            $classes[] = 'pdf-gpb-segment-rules';
-        }
-        if ($gpb['mode'] === 'keep_together_compact' && ! empty($gpb['compact_aggressive'])) {
-            $classes[] = 'pdf-gpb-compact-aggressive';
-        }
-        if (! empty($gpb['repeat_header_on_split'])) {
-            $classes[] = 'pdf-gpb-repeat-header';
-        }
+        $mode = self::resolvePaginationModeFromLayout($layout);
 
-        return implode(' ', $classes);
+        return 'pdf-layout-engine pdf-pagination-' . str_replace('_', '-', $mode);
     }
 
     /**
@@ -4697,6 +4772,11 @@ class ReportPdfLayoutService
             'patient_doctor_grid' => self::normalizePatientDoctorGridStyle($pageStyleRaw['patient_doctor_grid'] ?? []),
             'footer_grid'         => self::normalizeFooterGridStyle($pageStyleRaw['footer_grid'] ?? []),
             'print_pagination'        => self::normalizePrintPaginationStyle($pageStyleRaw['print_pagination'] ?? []),
+            'pagination_mode'         => self::normalizePaginationMode($pageStyleRaw['pagination_mode'] ?? (
+                is_array($pageStyleRaw['grupo_prueba_page_break'] ?? null)
+                    ? ($pageStyleRaw['grupo_prueba_page_break']['mode'] ?? ReportPaginationMode::default())
+                    : ReportPaginationMode::default()
+            )),
             'grupo_prueba_page_break' => self::normalizeGrupoPruebaPageBreakStyle($pageStyleRaw['grupo_prueba_page_break'] ?? []),
             'order_sheet_header'      => self::normalizeOrderSheetHeaderStyle($pageStyleRaw['order_sheet_header'] ?? []),
         ];

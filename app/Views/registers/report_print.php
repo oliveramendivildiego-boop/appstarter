@@ -31,21 +31,10 @@
     if (! in_array($printPaper, ['letter', 'a4', 'legal', 'custom'], true)) {
         $printPaper = 'letter';
     }
-    $printPaperCustomW = max(50.0, min(999.0, (float) ($lab_config['print_paper_width_mm'] ?? 210)));
-    $printPaperCustomH = max(50.0, min(999.0, (float) ($lab_config['print_paper_height_mm'] ?? 297)));
-    if ($printPaperCustomW <= 0) {
-        $printPaperCustomW = 210.0;
-    }
-    if ($printPaperCustomH <= 0) {
-        $printPaperCustomH = 297.0;
-    }
-    if ($printPaper === 'custom') {
-        $printPageCssSize = (string) $printPaperCustomW . 'mm ' . (string) $printPaperCustomH . 'mm';
-    } else {
-        $printPageCssSize = ($printPaper === 'a4') ? 'A4 portrait' : (($printPaper === 'legal') ? 'legal portrait' : 'letter portrait');
-    }
-    $printPageHeightMm = $printPaper === 'a4' ? 297.0 : ($printPaper === 'legal' ? 355.6 : ($printPaper === 'custom' ? $printPaperCustomH : 279.4));
-    $printPageWidthMm  = $printPaper === 'a4' ? 210.0 : ($printPaper === 'custom' ? $printPaperCustomW : 215.9);
+    $pageSizeResolved = \App\Services\ReportPdfLayoutService::resolveGlobalPageSizeMm(is_array($lab_config ?? null) ? $lab_config : []);
+    $printPageHeightMm = (float) $pageSizeResolved['height_mm'];
+    $printPageWidthMm  = (float) $pageSizeResolved['width_mm'];
+    $printPageCssSize  = (string) $pageSizeResolved['css_size'];
     $printPaperLabels  = [
         'letter' => 'Carta (Letter)',
         'a4'     => 'A4',
@@ -59,11 +48,9 @@
         ? $result_template_bindings
         : (new \App\Services\ReportPdfLayoutService())->getResultTemplateBindingsForReport();
 
-    $gpbCfg = \App\Services\ReportPdfLayoutService::normalizeGrupoPruebaPageBreakStyle($ps['grupo_prueba_page_break'] ?? []);
+    $gpbCfg = \App\Services\ReportPdfLayoutService::resolvePaginationModeFromLayout($pl);
     $gpbBodyClass = \App\Services\ReportPdfLayoutService::grupoPruebaPageBreakBodyClass($pl);
-    $printSegmentBreakInside = \App\Services\ReportPdfLayoutService::grupoPruebaPageBreakUsesIfFitsMode($gpbCfg)
-        ? 'auto'
-        : \App\Services\ReportPdfLayoutService::grupoPruebaPrintSegmentBreakInside($gpbCfg);
+    $printSegmentBreakInside = 'auto';
     $pp = \App\Services\ReportPdfLayoutService::normalizePrintPaginationStyle($ps['print_pagination'] ?? []);
     $printPaginationEnabled = ! empty($pp['enabled']);
     $renderFixedPrintPagination = $printPaginationEnabled && ! $pdfFooterEnabled;
@@ -92,6 +79,7 @@
         'pdf_layout'                     => $pdf_layout ?? [],
         'use_sheet_padding_for_margins' => false,
         'browser_print_mode'            => true,
+        'embed_stylesheet_for_pdf'      => true,
     ]) ?>
     <?= view('registers/partials/report_browser_print_styles', [
         'mt'                      => $mt,
@@ -149,6 +137,8 @@
     'report_pria_refs_consolidada'    => $report_pria_refs_consolidada ?? [],
     'analisis_variant'                => 'browser_print',
     'pb_diag_no_separators'           => $pbDiagEnabled,
+    'report_layout_plan'              => $report_layout_plan ?? null,
+    'report_layout_applier'           => $report_layout_applier ?? null,
 ]) ?>
 <?= view('registers/partials/report_order_sheet_header_print_script', [
     'order_sheet_header_enabled' => $orderSheetHeaderEnabled,
@@ -162,14 +152,10 @@
     'order_sheet_header_enabled'   => $orderSheetHeaderEnabled,
     'order_sheet_band_default_mm'  => \App\Services\ReportPdfLayoutService::orderSheetHeaderPaginationReserveMm(),
 ]) ?>
-<?= view('registers/partials/report_pdf_grupo_page_break_script', [
-    'pdf_layout'         => $pdf_layout ?? [],
-    'page_height_mm'     => $printPageHeightMm,
-    'margin_top_mm'      => (float) $mt,
-    'margin_bottom_mm'   => (float) $mb,
-    'footer_reserve_mm'  => (float) $pdfFooterReserveMm,
-    'footer_enabled'     => $pdfFooterEnabled,
+<?= view('registers/partials/report_layout_plan_apply_script', [
+    'report_layout_applier' => $report_layout_applier ?? null,
 ]) ?>
+<?= view('registers/partials/report_browser_print_plan_page_break_script') ?>
 <?php if ($pbDiagEnabled): ?>
 <?= view('registers/partials/report_print_page_break_diagnostic', [
     'pb_diag_enabled' => true,
@@ -251,17 +237,19 @@
     }
 
     function estimateTotalPagesForPrint() {
-        if (window.reportPrintPagination && typeof window.reportPrintPagination.buildMetrics === 'function') {
-            var container = window.reportPrintPagination.getPrintContainer();
-            var metrics = window.reportPrintPagination.buildMetrics(container);
-            if (metrics && isFinite(metrics.estimatedPages) && metrics.estimatedPages >= 1) {
-                return metrics.estimatedPages;
-            }
+        if (window.reportPrintPagination && typeof window.reportPrintPagination.estimateTotalPages === 'function') {
+            return window.reportPrintPagination.estimateTotalPages();
+        }
+        if (window.reportLayoutPlan && isFinite(window.reportLayoutPlan.totalPages)) {
+            return Math.max(1, parseInt(window.reportLayoutPlan.totalPages, 10));
         }
         return 1;
     }
 
     function applyBrowserTotalPages() {
+        if (window.reportPrintPagination && typeof window.reportPrintPagination.applyPaginationLineTotals === 'function') {
+            window.reportPrintPagination.applyPaginationLineTotals();
+        }
         var total = estimateTotalPagesForPrint();
         document.querySelectorAll('.pdf-counter-pages').forEach(function(el) {
             el.textContent = String(total);
@@ -291,8 +279,11 @@
         syncReportPrintLayoutMetrics();
         ensureBrowserPrintFooter();
         syncReportPrintLayoutMetrics();
-        if (typeof window.applyReportPdfGrupoPageBreaks === 'function') {
-            window.applyReportPdfGrupoPageBreaks();
+        if (typeof window.applyReportLayoutPlan === 'function') {
+            window.applyReportLayoutPlan();
+        }
+        if (typeof window.syncBrowserPrintPlanPageBreaks === 'function') {
+            window.syncBrowserPrintPlanPageBreaks();
         }
         var orderSheetInjected = false;
         if (typeof window.injectOrderSheetHeadersFromPageTwo === 'function') {
@@ -300,8 +291,11 @@
         }
         if (orderSheetInjected) {
             syncReportPrintLayoutMetrics();
-            if (typeof window.applyReportPdfGrupoPageBreaks === 'function') {
-                window.applyReportPdfGrupoPageBreaks();
+            if (typeof window.applyReportLayoutPlan === 'function') {
+                window.applyReportLayoutPlan();
+            }
+            if (typeof window.syncBrowserPrintPlanPageBreaks === 'function') {
+                window.syncBrowserPrintPlanPageBreaks();
             }
         }
         applyBrowserTotalPages();

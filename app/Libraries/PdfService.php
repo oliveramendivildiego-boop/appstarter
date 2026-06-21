@@ -16,10 +16,21 @@ class PdfService
 
     private const WATERMARK_MARKER = 'pdf-watermark-dompdf';
 
-    protected function makeDompdf(Options $options): Dompdf
+    protected function makeDompdf(Options $options, ?array $pageSize = null): Dompdf
     {
         $dompdf = new Dompdf($options);
-        $dompdf->setPaper('letter', 'portrait');
+        if (is_array($pageSize) && isset($pageSize['key'])) {
+            $key = (string) $pageSize['key'];
+            if ($key === 'custom' && isset($pageSize['width_mm'], $pageSize['height_mm'])) {
+                $dompdf->setPaper([(float) $pageSize['width_mm'], (float) $pageSize['height_mm']], 'portrait');
+            } elseif (in_array($key, ['letter', 'a4', 'legal'], true)) {
+                $dompdf->setPaper($key, 'portrait');
+            } else {
+                $dompdf->setPaper('letter', 'portrait');
+            }
+        } else {
+            $dompdf->setPaper('letter', 'portrait');
+        }
 
         return $dompdf;
     }
@@ -30,9 +41,10 @@ class PdfService
     protected function renderHtmlToDompdf(
         Dompdf $dompdf,
         string $html,
-        ?array $watermarkData = null
+        ?array $watermarkData = null,
+        array $paginationSlots = [],
     ): void {
-        $this->registerDompdfCallbacks($dompdf, $watermarkData);
+        $this->registerDompdfCallbacks($dompdf, $watermarkData, $paginationSlots);
 
         $dompdf->loadHtml($html, 'UTF-8');
         $dompdf->render();
@@ -127,7 +139,8 @@ class PdfService
      */
     protected function registerDompdfCallbacks(
         Dompdf $dompdf,
-        ?array $watermarkData
+        ?array $watermarkData,
+        array $paginationSlots = [],
     ): void {
         $callbacks = [];
 
@@ -174,9 +187,163 @@ class PdfService
             }
         }
 
+        $callbacks = array_merge($callbacks, $this->buildPaginationCallbacks($paginationSlots));
+
         if ($callbacks !== []) {
             $dompdf->setCallbacks($callbacks);
         }
+    }
+
+    /**
+     * @return list<array{0: string, 1: string, 2: float, 3: float, 4: string, 5: float, 6: string, 7: float, 8: float, 9: float, 10: float, 11: string}>
+     */
+    protected function extractPaginationSlots(string $html): array
+    {
+        if (! preg_match_all('/<!--\s*pdf-pagination:([A-Za-z0-9+\/=_-]+)\s*-->/', $html, $matches)) {
+            return [];
+        }
+
+        $slots = [];
+        foreach ($matches[1] as $encoded) {
+            $json = base64_decode($encoded, true);
+            if ($json === false) {
+                continue;
+            }
+            $data = json_decode($json, true);
+            if (! is_array($data)) {
+                continue;
+            }
+            $slots[] = $this->normalizePaginationSlot($data);
+        }
+
+        return $slots;
+    }
+
+    /**
+     * @param array<string, mixed> $data
+     *
+     * @return array{prefix: string, zone: string, align: string, fontSize: float, fontFamily: string, color: string, mt: float, mr: float, mb: float, ml: float}
+     */
+    protected function normalizePaginationSlot(array $data): array
+    {
+        $zone = strtolower(trim((string) ($data['zone'] ?? 'header')));
+        if (! in_array($zone, ['header', 'footer'], true)) {
+            $zone = 'header';
+        }
+        $align = strtolower(trim((string) ($data['align'] ?? 'left')));
+        if (! in_array($align, ['left', 'center', 'right'], true)) {
+            $align = 'left';
+        }
+
+        return [
+            'prefix'     => (string) ($data['prefix'] ?? ''),
+            'zone'       => $zone,
+            'align'      => $align,
+            'fontSize'   => round(max(7.0, min(20.0, (float) ($data['fontSize'] ?? 10))), 2),
+            'fontFamily' => trim((string) ($data['fontFamily'] ?? 'DejaVu Sans')) ?: 'DejaVu Sans',
+            'color'      => trim((string) ($data['color'] ?? '#333333')) ?: '#333333',
+            'mt'         => max(0.0, (float) ($data['mt'] ?? 15)),
+            'mr'         => max(0.0, (float) ($data['mr'] ?? 15)),
+            'mb'         => max(0.0, (float) ($data['mb'] ?? 15)),
+            'ml'         => max(0.0, (float) ($data['ml'] ?? 15)),
+        ];
+    }
+
+    /**
+     * @param list<array{prefix: string, zone: string, align: string, fontSize: float, fontFamily: string, color: string, mt: float, mr: float, mb: float, ml: float}> $slots
+     *
+     * @return list<array{event: string, f: callable}>
+     */
+    protected function buildPaginationCallbacks(array $slots): array
+    {
+        if ($slots === []) {
+            return [];
+        }
+
+        return [[
+            'event' => 'end_document',
+            'f'     => function (int $pageNumber, int $pageCount, $canvas, FontMetrics $fontMetrics) use ($slots): void {
+                foreach ($slots as $slot) {
+                    $this->paintPaginationOnPage($canvas, $fontMetrics, $slot, $pageNumber, $pageCount);
+                }
+            },
+        ]];
+    }
+
+    /**
+     * @param array{prefix: string, zone: string, align: string, fontSize: float, fontFamily: string, color: string, mt: float, mr: float, mb: float, ml: float} $slot
+     */
+    protected function paintPaginationOnPage(
+        $canvas,
+        FontMetrics $fontMetrics,
+        array $slot,
+        int $pageNumber,
+        int $pageCount,
+    ): void {
+        if (! method_exists($canvas, 'get_cpdf')) {
+            return;
+        }
+
+        try {
+            $cpdf   = $canvas->get_cpdf();
+            $pageW  = (float) $canvas->get_width();
+            $pageH  = (float) $canvas->get_height();
+            $mmToPt = 72 / 25.4;
+            $mt     = $slot['mt'] * $mmToPt;
+            $mr     = $slot['mr'] * $mmToPt;
+            $mb     = $slot['mb'] * $mmToPt;
+            $ml     = $slot['ml'] * $mmToPt;
+
+            $fontSize   = $slot['fontSize'];
+            $fontFamily = $slot['fontFamily'];
+            $font       = $fontMetrics->getFont($fontFamily, 'normal');
+            $text       = $slot['prefix'] . $pageNumber . ' de ' . $pageCount;
+
+            $subset = $canvas->get_dompdf()->getOptions()->getIsFontSubsettingEnabled();
+            $cpdf->selectFont($font, '', true, $subset);
+            $textWidth = (float) $cpdf->getTextWidth($fontSize, $text);
+
+            $y = ($slot['zone'] === 'footer')
+                ? $mb + ($fontSize * 0.85)
+                : $pageH - $mt - ($fontSize * 0.15);
+
+            $x = match ($slot['align']) {
+                'right'  => max($ml, $pageW - $mr - $textWidth),
+                'center' => max($ml, ($pageW - $textWidth) / 2),
+                default  => $ml,
+            };
+
+            $cpdf->setColor($this->hexColorToRgb($slot['color']), true);
+            $cpdf->addText($x, $y, $fontSize, $text, 0);
+        } catch (\Throwable $e) {
+            // Sin paginación si la fuente o el canvas no están disponibles.
+        }
+    }
+
+    /**
+     * @return array{0: float, 1: float, 2: float}
+     */
+    protected function hexColorToRgb(string $hex): array
+    {
+        $hex = trim($hex);
+        if ($hex === '') {
+            return [0.2, 0.2, 0.2];
+        }
+        if ($hex[0] === '#') {
+            $hex = substr($hex, 1);
+        }
+        if (strlen($hex) === 3) {
+            $hex = $hex[0] . $hex[0] . $hex[1] . $hex[1] . $hex[2] . $hex[2];
+        }
+        if (strlen($hex) !== 6 || ! ctype_xdigit($hex)) {
+            return [0.2, 0.2, 0.2];
+        }
+
+        return [
+            hexdec(substr($hex, 0, 2)) / 255,
+            hexdec(substr($hex, 2, 2)) / 255,
+            hexdec(substr($hex, 4, 2)) / 255,
+        ];
     }
 
     /**
@@ -185,10 +352,23 @@ class PdfService
     protected function makeDompdfOptions(bool $forPageCountProbe = false): Options
     {
         $options = new Options();
-        $options->set('isHtml5ParserEnabled', true);
+        $options->set('isHtml5ParserEnabled', false);
         $options->set('isRemoteEnabled', ! $forPageCountProbe);
         $options->set('defaultFont', 'DejaVu Sans');
         $options->set('isFontSubsettingEnabled', true);
+
+        $chroot = [];
+        $publicRoot = realpath(FCPATH);
+        if ($publicRoot !== false) {
+            $chroot[] = $publicRoot;
+        }
+        $writableRoot = realpath(WRITEPATH);
+        if ($writableRoot !== false) {
+            $chroot[] = $writableRoot;
+        }
+        if ($chroot !== []) {
+            $options->setChroot($chroot);
+        }
 
         $tempDir = WRITEPATH . 'cache' . DIRECTORY_SEPARATOR . 'dompdf';
         if (! is_dir($tempDir)) {
@@ -203,18 +383,39 @@ class PdfService
     }
 
     /**
+     * El token en data-total de pdf_pagination es solo para impresión en navegador.
+     */
+    protected function htmlNeedsPageCountProbe(string $html): bool
+    {
+        if (! str_contains($html, self::TOTAL_PAGES_TOKEN)) {
+            return false;
+        }
+
+        $withoutPaginationDataTotal = preg_replace(
+            '/\sdata-total="' . preg_quote(self::TOTAL_PAGES_TOKEN, '/') . '"/',
+            '',
+            $html
+        );
+
+        return is_string($withoutPaginationDataTotal)
+            && str_contains($withoutPaginationDataTotal, self::TOTAL_PAGES_TOKEN);
+    }
+
+    /**
      * Genera PDF desde HTML
      */
-    public function generate(string $html, string $filename = 'resultados.pdf'): string
+    public function generate(string $html, string $filename = 'resultados.pdf', ?array $pageSize = null): string
     {
         unset($filename);
 
-        $watermarkData = $this->extractWatermarkData($html);
+        $watermarkData   = $this->extractWatermarkData($html);
+        $paginationSlots = $this->extractPaginationSlots($html);
 
-        if (strpos($html, self::TOTAL_PAGES_TOKEN) !== false) {
-            $probe = $this->makeDompdf($this->makeDompdfOptions(true));
-            $this->renderHtmlToDompdf($probe, $html, null);
+        if ($this->htmlNeedsPageCountProbe($html)) {
+            $probe = $this->makeDompdf($this->makeDompdfOptions(true), $pageSize);
+            $this->renderHtmlToDompdf($probe, $html, null, []);
             $pageCount = (int) $probe->getCanvas()->get_page_count();
+            unset($probe);
             if ($pageCount < 1) {
                 $pageCount = 1;
             }
@@ -222,10 +423,13 @@ class PdfService
             $watermarkData = $this->extractWatermarkData($html);
         }
 
-        $dompdf = $this->makeDompdf($this->makeDompdfOptions(false));
-        $this->renderHtmlToDompdf($dompdf, $html, $watermarkData);
+        $dompdf = $this->makeDompdf($this->makeDompdfOptions(false), $pageSize);
+        $this->renderHtmlToDompdf($dompdf, $html, $watermarkData, $paginationSlots);
 
-        return $dompdf->output();
+        $output = $dompdf->output();
+        unset($dompdf);
+
+        return $output;
     }
 
     /**

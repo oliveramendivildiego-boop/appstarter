@@ -8,7 +8,6 @@ $pdfGrupoPageBreakBodyClass = \App\Services\ReportPdfLayoutService::grupoPruebaP
 <head>
     <meta charset="UTF-8">
     <title>Resultados - <?= esc($paciente->first_name ?? '') ?> <?= esc($paciente->last_name_fa ?? '') ?></title>
-    <base href="<?= base_url() ?>" />
     <?= view('registers/partials/report_pdf_theme_styles', [
         'pdf_layout'                     => $pdf_layout ?? [],
         'use_sheet_padding_for_margins' => false,
@@ -32,6 +31,8 @@ $pdfGrupoPageBreakBodyClass = \App\Services\ReportPdfLayoutService::grupoPruebaP
     'report_pria_metodo_nombre'       => $report_pria_metodo_nombre ?? [],
     'report_lab_firmas'               => $report_lab_firmas ?? [],
     'report_pria_refs_consolidada'    => $report_pria_refs_consolidada ?? [],
+    'report_layout_plan'              => $report_layout_plan ?? null,
+    'report_layout_applier'           => $report_layout_applier ?? null,
 ]) ?>
 </body>
 </html>

@@ -2,12 +2,15 @@
 
 namespace App\Services;
 
+use App\Libraries\PdfService;
 use App\Models\AppConfigModel;
 use App\Models\LabotestModel;
 use App\Models\LeyendaCultivoModel;
 use App\Models\PoblacionModel;
 use App\Models\RegisterModel;
 use App\Services\ConfigService;
+use App\Services\ReportLayout\LayoutPlanApplier;
+use App\Services\ReportLayout\ReportLayoutPlanService;
 use Config\App as AppConfig;
 
 /**
@@ -2460,25 +2463,65 @@ class RegisterService
     }
 
     /**
+     * LayoutPlan determinista para PDF/PRINT (ReportTree → LayoutEngine → Applier).
+     *
+     * @param array<string, mixed> $reportData
+     * @param array<string, mixed> $pdfLayout
+     *
+     * @return array{plan: \App\Services\ReportLayout\LayoutPlan, tree: \App\Services\ReportLayout\ReportTree, applier: LayoutPlanApplier}
+     */
+    public function buildReportLayoutContext(array $reportData, array $pdfLayout, ?array $labConfig = null): array
+    {
+        $labConfig = $labConfig ?? $this->getLabConfig();
+        $grupos = is_array($reportData['grupos'] ?? null) ? $reportData['grupos'] : [];
+
+        return (new ReportLayoutPlanService())->buildContext(
+            $grupos,
+            is_array($reportData['report_pria_tipo_muestra_nombre'] ?? null)
+                ? $reportData['report_pria_tipo_muestra_nombre']
+                : [],
+            is_array($reportData['report_pria_metodo_nombre'] ?? null)
+                ? $reportData['report_pria_metodo_nombre']
+                : [],
+            is_array($reportData['report_pria_refs_consolidada'] ?? null)
+                ? $reportData['report_pria_refs_consolidada']
+                : [],
+            is_array($reportData['report_lab_firmas'] ?? null)
+                ? $reportData['report_lab_firmas']
+                : [],
+            $pdfLayout,
+            $labConfig,
+        );
+    }
+
+    /**
      * HTML del PDF de resultados según la plantilla activa (orden y visibilidad de bloques).
      *
      * @param array<string, mixed> $reportData Retorno de prepareReportData()
      * @param string               $reportEmitidoEn Fecha/hora de generación del PDF (d/m/Y H:i:s)
      */
-    public function renderReportPdfHtml(array $reportData, string $reportUrl, string $qrDataUri, string $reportEmitidoEn = ''): string
-    {
+    public function renderReportPdfHtml(
+        array $reportData,
+        string $reportUrl,
+        string $qrDataUri,
+        string $reportEmitidoEn = '',
+        ?array $pdfLayoutOverride = null,
+    ): string {
         $layoutService = new ReportPdfLayoutService();
-        $pdf_layout    = $layoutService->getActiveLayoutForRender();
+        $pdf_layout    = $pdfLayoutOverride ?? $layoutService->getActiveLayoutForRender();
         if ($reportEmitidoEn === '') {
             $reportEmitidoEn = self::formatNowForReport();
         }
 
-        return view('registers/report_pdf', [
+        $labConfig = $this->getLabConfig();
+        $layoutCtx = $this->buildReportLayoutContext($reportData, $pdf_layout, $labConfig);
+
+        $html = view('registers/report_pdf', [
             'register_info' => $reportData['register_info'],
             'paciente'      => $reportData['paciente'],
             'doctor'        => $reportData['doctor'],
             'grupos'        => $reportData['grupos'],
-            'lab_config'    => $this->getLabConfig(),
+            'lab_config'    => $labConfig,
             'report_url'    => $reportUrl,
             'qr_data_uri'   => $qrDataUri,
             'pdf_layout'    => $pdf_layout,
@@ -2487,7 +2530,29 @@ class RegisterService
             'report_pria_metodo_nombre'       => $reportData['report_pria_metodo_nombre'] ?? [],
             'report_lab_firmas'               => $reportData['report_lab_firmas'] ?? [],
             'report_pria_refs_consolidada'    => $reportData['report_pria_refs_consolidada'] ?? [],
+            'report_layout_plan'              => $layoutCtx['plan'],
+            'report_layout_applier'           => $layoutCtx['applier'],
         ]);
+
+        return $html;
+    }
+
+    /**
+     * PDF binario idéntico al de descarga (Dompdf + plantilla PDF activa).
+     *
+     * @param array<string, mixed> $reportData
+     */
+    public function generateReportPdfBinary(
+        array $reportData,
+        string $reportUrl,
+        string $qrDataUri,
+        string $reportEmitidoEn = '',
+        ?array $pdfLayoutOverride = null,
+    ): string {
+        $html = $this->renderReportPdfHtml($reportData, $reportUrl, $qrDataUri, $reportEmitidoEn, $pdfLayoutOverride);
+        $pageSize = ReportPdfLayoutService::resolveGlobalPageSizeMm($this->getLabConfig());
+
+        return (new PdfService())->generate($html, 'resultados.pdf', $pageSize);
     }
 
     /**
@@ -2502,21 +2567,25 @@ class RegisterService
         string $qrDataUri,
         int $registroId,
         string $reportEmitidoEn = '',
-        bool $layoutReportMode = false
+        bool $layoutReportMode = false,
+        ?array $pdfLayoutOverride = null,
     ): string {
         $layoutService = new ReportPdfLayoutService();
-        $pdf_layout    = $layoutService->getPrintLayoutForRender();
+        $pdf_layout    = $pdfLayoutOverride ?? $layoutService->getPrintLayoutForRender();
         $templateBindings = $layoutService->getResultTemplateBindingsForReport();
         if ($reportEmitidoEn === '') {
             $reportEmitidoEn = self::formatNowForReport();
         }
+
+        $labConfig = $this->getLabConfig();
+        $layoutCtx = $this->buildReportLayoutContext($reportData, $pdf_layout, $labConfig);
 
         $html = view('registers/report_print', [
             'register_info' => $reportData['register_info'],
             'paciente'      => $reportData['paciente'],
             'doctor'        => $reportData['doctor'],
             'grupos'        => $reportData['grupos'],
-            'lab_config'    => $this->getLabConfig(),
+            'lab_config'    => $labConfig,
             'report_url'    => $reportUrl,
             'qr_data_uri'   => $qrDataUri,
             'pdf_layout'              => $pdf_layout,
@@ -2528,6 +2597,8 @@ class RegisterService
             'report_pria_metodo_nombre'       => $reportData['report_pria_metodo_nombre'] ?? [],
             'report_lab_firmas'               => $reportData['report_lab_firmas'] ?? [],
             'report_pria_refs_consolidada'    => $reportData['report_pria_refs_consolidada'] ?? [],
+            'report_layout_plan'              => $layoutCtx['plan'],
+            'report_layout_applier'           => $layoutCtx['applier'],
         ]);
 
         return self::replaceTotalPagesTokenForBrowser($html);
@@ -2539,6 +2610,12 @@ class RegisterService
      */
     public static function replaceTotalPagesTokenForBrowser(string $html): string
     {
+        $html = str_replace(
+            'data-total="' . self::TOTAL_PAGES_TOKEN . '"',
+            'data-total="1"',
+            $html,
+        );
+
         return str_replace(self::TOTAL_PAGES_TOKEN, '<span class="pdf-counter-pages"></span>', $html);
     }
 }

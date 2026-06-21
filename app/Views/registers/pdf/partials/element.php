@@ -49,7 +49,8 @@ $valueOf = static function (string $id) use ($paciente, $doctor, $register_info,
 };
 
 $logoDataUri = (string) ($pdf_logo_data_uri ?? '');
-if ($logoDataUri === '' && $type === 'logo') {
+$pdfVariant  = (string) ($pdf_analisis_variant ?? 'pdf');
+if ($logoDataUri === '' && $type === 'logo' && $pdfVariant !== 'pdf') {
     $logoRel  = $lab['logo'] ?? 'images/logo-john.png';
     $logoPath = FCPATH . str_replace('/', DIRECTORY_SEPARATOR, $logoRel);
     if (file_exists($logoPath)) {
@@ -149,13 +150,15 @@ switch ($type) {
         $inlineLogo  = (($hgLogo['label_logo_line_mode'] ?? 'stacked') === 'inline');
         $showLblLogo = $showLogoL && $lblLogo !== '';
         $stLogoLbl   = \App\Services\ReportPdfLayoutService::headerGridLabelPieceStyleAttr($hgLogo, 'logo');
+        $logoRel     = $lab['logo'] ?? 'images/logo-john.png';
+        $logoSrc     = $logoDataUri !== '' ? $logoDataUri : report_image_src_for_variant($logoRel, $pdfVariant);
         ?>
                 <div class="header-piece header-piece-logo">
                     <?php if ($inlineLogo && $showLblLogo): ?>
                     <div style="display:flex;flex-wrap:wrap;align-items:center;gap:8px;">
                         <span style="<?= esc($stLogoLbl, 'attr') ?>"><?= esc($lblLogo) ?></span>
-                        <?php if ($logoDataUri !== ''): ?>
-                        <img src="<?= $logoDataUri ?>" alt="Logo">
+                        <?php if ($logoSrc !== ''): ?>
+                        <img src="<?= report_pdf_img_src_attr($logoSrc) ?>" alt="Logo">
                         <?php else: ?>
                         <strong style="<?= esc($stInst, 'attr') ?>"><?= esc($lab['company'] ?? 'Laboratorio') ?></strong>
                         <?php endif; ?>
@@ -164,8 +167,8 @@ switch ($type) {
                     <?php if ($showLblLogo): ?>
                     <div style="margin-bottom:6px;"><span style="<?= esc($stLogoLbl, 'attr') ?>"><?= esc($lblLogo) ?></span></div>
                     <?php endif; ?>
-                    <?php if ($logoDataUri !== ''): ?>
-                    <img src="<?= $logoDataUri ?>" alt="Logo">
+                    <?php if ($logoSrc !== ''): ?>
+                    <img src="<?= report_pdf_img_src_attr($logoSrc) ?>" alt="Logo">
                     <?php else: ?>
                     <strong style="<?= esc($stInst, 'attr') ?>"><?= esc($lab['company'] ?? 'Laboratorio') ?></strong>
                     <?php endif; ?>
@@ -353,6 +356,45 @@ switch ($type) {
         <?php
         break;
 
+    case 'pdf_pagination':
+        $hgPag = is_array($pdf_header_grid_style ?? null)
+            ? $pdf_header_grid_style
+            : \App\Services\ReportPdfLayoutService::normalizeHeaderGridStyle([]);
+        $lblPag     = trim((string) ($hgPag['label_pdf_pagination'] ?? ''));
+        $showPagL   = \App\Services\ReportPdfLayoutService::labFirmasBool($hgPag, 'show_label_pdf_pagination', true);
+        $prefixPag  = ($showPagL && $lblPag !== '') ? $lblPag . ' ' : '';
+        $variant    = (string) ($pdf_analisis_variant ?? 'pdf');
+        $isDompdf   = ($variant === 'pdf');
+        $instUid    = trim((string) ($pdf_instance_uid ?? ''));
+        $pagUid     = 'pdf-pag-' . substr(sha1($instUid . '|' . $prefixPag . '|' . $stInst), 0, 10);
+        $pageToken  = \App\Services\RegisterService::TOTAL_PAGES_TOKEN;
+        if ($isDompdf) {
+            $mm = is_array($pdf_margins_mm ?? null)
+                ? $pdf_margins_mm
+                : \App\Services\ReportPdfLayoutService::defaultMarginsMmStatic();
+            $sectionKey = (string) ($pdf_section_key ?? 'header');
+            $pagConfig  = [
+                'prefix'     => $prefixPag,
+                'zone'       => ($sectionKey === 'footer') ? 'footer' : 'header',
+                'align'      => (string) ($pdf_cell_align ?? 'left'),
+                'fontSize'   => (float) ($ts['font_size_pt'] ?? 10),
+                'fontFamily' => (string) ($ts['font_family'] ?? 'DejaVu Sans'),
+                'color'      => (string) ($ts['font_color'] ?? '#333333'),
+                'mt'         => (float) ($mm['top'] ?? 15),
+                'mr'         => (float) ($mm['right'] ?? 15),
+                'mb'         => (float) ($mm['bottom'] ?? 15),
+                'ml'         => (float) ($mm['left'] ?? 15),
+            ];
+            echo '<!-- pdf-pagination:' . base64_encode(json_encode($pagConfig, JSON_UNESCAPED_UNICODE)) . ' -->';
+        }
+        $dataTotalAttr = $isDompdf ? '1' : $pageToken;
+        ?>
+                <div class="header-piece header-piece-pagination"<?= $isDompdf ? ' style="visibility:hidden;height:0;overflow:hidden;margin:0;padding:0;"' : '' ?>>
+                    <span id="<?= esc($pagUid, 'attr') ?>" class="pdf-pagination-line" style="<?= esc($stInst, 'attr') ?>" data-prefix="<?= esc($prefixPag, 'attr') ?>" data-total="<?= esc($dataTotalAttr, 'attr') ?>"></span>
+                </div>
+        <?php
+        break;
+
     case 'qr':
         if (! empty($report_url) && ! empty($qr_data_uri)) {
             $hgS = is_array($pdf_header_grid_style ?? null)
@@ -473,7 +515,7 @@ switch ($type) {
         $fr     = is_array($pdf_firma_row ?? null) ? $pdf_firma_row : [];
         $sealMaxH = max(40, min(200, (int) ($lfS['seal_max_height_px'] ?? 110)));
         $seal   = trim((string) ($fr['approver_seal'] ?? ''));
-        $sealUri = ($seal !== '') ? report_image_data_uri($seal) : '';
+        $sealUri = ($seal !== '') ? report_image_src_for_variant($seal, $pdfVariant) : '';
         $showL = \App\Services\ReportPdfLayoutService::labFirmasBool($lfS, 'show_label_seal', true);
         $inline = (($lfS['label_seal_line_mode'] ?? 'stacked') === 'inline');
         $lblSeal = trim((string) ($lfS['label_seal'] ?? ''));
@@ -485,7 +527,7 @@ switch ($type) {
                     <span class="pdf-lab-f-sublabel" style="opacity:0.75;font-size:0.92em;"><?= esc($lblSeal) ?></span>
                     <?php endif; ?>
                     <?php if ($sealUri !== ''): ?>
-                    <img src="<?= esc($sealUri, 'attr') ?>" alt="" class="pdf-lab-f-img" style="max-height:<?= (int) $sealMaxH ?>px;max-width:100%;">
+                    <img src="<?= report_pdf_img_src_attr($sealUri) ?>" alt="" class="pdf-lab-f-img" style="max-height:<?= (int) $sealMaxH ?>px;max-width:100%;">
                     <?php else: ?>
                     <div style="opacity:0.6;">—</div>
                     <?php endif; ?>
@@ -495,7 +537,7 @@ switch ($type) {
                 <div class="pdf-lab-f-sublabel" style="opacity:0.75;font-size:0.92em;margin-bottom:6px;"><?= esc($lblSeal) ?></div>
                 <?php endif; ?>
                 <?php if ($sealUri !== ''): ?>
-                    <img src="<?= esc($sealUri, 'attr') ?>" alt="" class="pdf-lab-f-img" style="max-height:<?= (int) $sealMaxH ?>px;max-width:100%;">
+                    <img src="<?= report_pdf_img_src_attr($sealUri) ?>" alt="" class="pdf-lab-f-img" style="max-height:<?= (int) $sealMaxH ?>px;max-width:100%;">
                 <?php else: ?>
                     <div style="opacity:0.6;">—</div>
                 <?php endif; ?>
@@ -509,7 +551,7 @@ switch ($type) {
         $sigMaxH = max(30, min(160, (int) ($lfS['signature_max_height_px'] ?? 72)));
         $sigMaxW = max(80, min(400, (int) ($lfS['signature_max_width_px'] ?? 220)));
         $sig    = trim((string) ($fr['approver_signature'] ?? ''));
-        $sigUri = ($sig !== '') ? report_image_data_uri($sig) : '';
+        $sigUri = ($sig !== '') ? report_image_src_for_variant($sig, $pdfVariant) : '';
         $showL = \App\Services\ReportPdfLayoutService::labFirmasBool($lfS, 'show_label_firma', true);
         $inline = (($lfS['label_firma_line_mode'] ?? 'stacked') === 'inline');
         $lblFirma = trim((string) ($lfS['label_firma'] ?? ''));
@@ -521,7 +563,7 @@ switch ($type) {
                     <span class="pdf-lab-f-sublabel" style="opacity:0.75;font-size:0.92em;"><?= esc($lblFirma) ?></span>
                     <?php endif; ?>
                     <?php if ($sigUri !== ''): ?>
-                    <img src="<?= esc($sigUri, 'attr') ?>" alt="" class="pdf-lab-f-img" style="max-height:<?= (int) $sigMaxH ?>px;max-width:<?= (int) $sigMaxW ?>px;">
+                    <img src="<?= report_pdf_img_src_attr($sigUri) ?>" alt="" class="pdf-lab-f-img" style="max-height:<?= (int) $sigMaxH ?>px;max-width:<?= (int) $sigMaxW ?>px;">
                     <?php else: ?>
                     <div style="opacity:0.6;">—</div>
                     <?php endif; ?>
@@ -532,7 +574,7 @@ switch ($type) {
                 <?php endif; ?>
                 <?php if ($sigUri !== ''): ?>
                     <div style="margin-bottom:4px;">
-                        <img src="<?= esc($sigUri, 'attr') ?>" alt="" class="pdf-lab-f-img" style="max-height:<?= (int) $sigMaxH ?>px;max-width:<?= (int) $sigMaxW ?>px;">
+                        <img src="<?= report_pdf_img_src_attr($sigUri) ?>" alt="" class="pdf-lab-f-img" style="max-height:<?= (int) $sigMaxH ?>px;max-width:<?= (int) $sigMaxW ?>px;">
                     </div>
                 <?php else: ?>
                     <div style="opacity:0.6;">—</div>
