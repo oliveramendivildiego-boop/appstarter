@@ -16,21 +16,38 @@ class PdfService
 
     private const WATERMARK_MARKER = 'pdf-watermark-dompdf';
 
+    /**
+     * Dompdf espera nombre estándar o [x0, y0, ancho_pt, alto_pt]; no [mm, mm].
+     *
+     * @param array<string, mixed>|null $pageSize
+     *
+     * @return string|array{0: float, 1: float, 2: float, 3: float}
+     */
+    protected function dompdfPaperFromPageSize(?array $pageSize): string|array
+    {
+        if (! is_array($pageSize) || ! isset($pageSize['key'])) {
+            return 'letter';
+        }
+
+        $key = (string) $pageSize['key'];
+        if (in_array($key, ['letter', 'a4', 'legal'], true)) {
+            return $key;
+        }
+
+        if ($key === 'custom' && isset($pageSize['width_mm'], $pageSize['height_mm'])) {
+            $widthPt  = (float) $pageSize['width_mm'] * 72 / 25.4;
+            $heightPt = (float) $pageSize['height_mm'] * 72 / 25.4;
+
+            return [0.0, 0.0, $widthPt, $heightPt];
+        }
+
+        return 'letter';
+    }
+
     protected function makeDompdf(Options $options, ?array $pageSize = null): Dompdf
     {
         $dompdf = new Dompdf($options);
-        if (is_array($pageSize) && isset($pageSize['key'])) {
-            $key = (string) $pageSize['key'];
-            if ($key === 'custom' && isset($pageSize['width_mm'], $pageSize['height_mm'])) {
-                $dompdf->setPaper([(float) $pageSize['width_mm'], (float) $pageSize['height_mm']], 'portrait');
-            } elseif (in_array($key, ['letter', 'a4', 'legal'], true)) {
-                $dompdf->setPaper($key, 'portrait');
-            } else {
-                $dompdf->setPaper('letter', 'portrait');
-            }
-        } else {
-            $dompdf->setPaper('letter', 'portrait');
-        }
+        $dompdf->setPaper($this->dompdfPaperFromPageSize($pageSize), 'portrait');
 
         return $dompdf;
     }
