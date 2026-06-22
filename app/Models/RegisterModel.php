@@ -1524,8 +1524,13 @@ class RegisterModel extends Model
         $ac = $this->db->prefixTable('anacategoria');
         $pr = $this->db->prefixTable('priresultados');
         $f  = $this->db->prefixTable('formulas');
-        $mostrarValoresSelect = $this->hasColumn('prianacategoria', 'mostrar_valores')
+        $hasMostrarValores = $this->hasColumn('prianacategoria', 'mostrar_valores');
+        $mostrarValoresSelect = $hasMostrarValores
             ? 'pt.mostrar_valores'
+            : '0 AS mostrar_valores';
+        // Query builder sin alias `pt`: CI4 prefija el alias y genera dom_pt.* inválido.
+        $mostrarValoresSelectQb = $hasMostrarValores
+            ? "{$pt}.mostrar_valores"
             : '0 AS mostrar_valores';
         $textoFijoSelect = $this->hasColumn('priresultados', 'texto_fijo')
             ? 'pr.texto_fijo'
@@ -1666,7 +1671,7 @@ class RegisterModel extends Model
         ));
         if ($missingSinFiltroPoblacion !== []) {
             $recoveryRows = $this->db->table('prianacategoria')
-                ->select("{$pt}.name as hijo, {$pt}.compleja, {$pt}.prianacategoria_id, {$mostrarValoresSelect}, {$ac}.name as padre")
+                ->select("{$pt}.name as hijo, {$pt}.compleja, {$pt}.prianacategoria_id, {$mostrarValoresSelectQb}, {$ac}.name as padre")
                 ->join('anacategoria', "{$ac}.anacategoria_id = {$pt}.anacategoria_id", 'left')
                 ->whereIn("{$pt}.prianacategoria_id", $missingSinFiltroPoblacion)
                 ->get()
