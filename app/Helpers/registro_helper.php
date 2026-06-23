@@ -474,6 +474,14 @@ if (! function_exists('registro_extraer_rango_numerico_de_valor')) {
             return ['min' => $n, 'max' => $n];
         }
 
+        // Soportar valores cualitativos numéricos con prefijos: ">30", ">=30", "<5", "<=5"
+        if (preg_match('/^[<>]\s*=?\s*([\d]+(?:[.,]\d+)?)$/u', $v, $m)) {
+            $n = (float) str_replace(',', '.', $m[1]);
+
+            // Tratar como valor numérico puntual (min === max) para poder comparar
+            return ['min' => $n, 'max' => $n];
+        }
+
         return null;
     }
 }
