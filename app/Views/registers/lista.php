@@ -169,6 +169,42 @@ $listaBtnClass = static fn (bool $active): string => 'btn btn-sm ' . ($active ? 
         <p class="text-muted small mb-1">Mostrando <?= $desde ?>–<?= $hasta ?> de <?= $totalReg ?> registro(s)</p>
         <p class="text-muted small d-md-none mb-2"><i class="fa-solid fa-arrows-left-right me-1"></i>Desliza horizontalmente para ver todas las columnas.</p>
         <?= $manage_table ?? '' ?>
+        <?php if ((int)($totalPages ?? 1) > 1): ?>
+        <?php
+            $totalReg   = (int)($total ?? 0);
+            $pageNum    = (int)($page ?? 1);
+            $perPage    = (int)($perPage ?? 20);
+            $start = max(1, $pageNum - 3);
+            $end   = min((int)$totalPages, $pageNum + 3);
+        ?>
+        <nav class="mt-2 mb-3" aria-label="Paginación">
+            <ul class="pagination justify-content-center flex-wrap mb-0">
+                <?php if ($pageNum > 1): ?>
+                <li class="page-item"><a class="page-link" href="<?= esc($listaQueryBase(['page' => $pageNum - 1]), 'attr') ?>">&laquo; Anterior</a></li>
+                <?php endif; ?>
+
+                <?php if ($start > 1): ?>
+                <li class="page-item"><a class="page-link" href="<?= esc($listaQueryBase(['page' => 1]), 'attr') ?>">1</a></li>
+                <?php if ($start > 2): ?><li class="page-item disabled"><span class="page-link">...</span></li><?php endif; ?>
+                <?php endif; ?>
+
+                <?php for ($i = $start; $i <= $end; $i++): ?>
+                <li class="page-item <?= ($i === $pageNum) ? 'active' : '' ?>">
+                    <a class="page-link" href="<?= esc($listaQueryBase(['page' => $i]), 'attr') ?>"><?= $i ?></a>
+                </li>
+                <?php endfor; ?>
+
+                <?php if ($end < $totalPages): ?>
+                <?php if ($end < $totalPages - 1): ?><li class="page-item disabled"><span class="page-link">...</span></li><?php endif; ?>
+                <li class="page-item"><a class="page-link" href="<?= esc($listaQueryBase(['page' => $totalPages]), 'attr') ?>"><?= $totalPages ?></a></li>
+                <?php endif; ?>
+
+                <?php if ($pageNum < (int)$totalPages): ?>
+                <li class="page-item"><a class="page-link" href="<?= esc($listaQueryBase(['page' => $pageNum + 1]), 'attr') ?>">Siguiente &raquo;</a></li>
+                <?php endif; ?>
+            </ul>
+        </nav>
+        <?php endif; ?>
     </div>
 </div>
 
@@ -299,20 +335,7 @@ $listaBtnClass = static fn (bool $active): string => 'btn btn-sm ' . ($active ? 
     </div>
 </div>
 
-<?php if (($totalPages ?? 1) > 1): ?>
-<nav class="mt-3">
-    <ul class="pagination justify-content-center">
-        <?php
-        $pageNum = (int)($page ?? 1);
-        for ($i = 1; $i <= ($totalPages ?? 1); $i++):
-        ?>
-        <li class="page-item <?= ($i === $pageNum) ? 'active' : '' ?>">
-            <a class="page-link" href="<?= esc($listaQueryBase(['page' => (string) $i]), 'attr') ?>"><?= $i ?></a>
-        </li>
-        <?php endfor; ?>
-    </ul>
-</nav>
-<?php endif; ?>
+
 <!-- Modal Editar pago (historial) -->
 <div class="modal fade" id="modalEditarTipoPago" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">

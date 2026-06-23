@@ -70,4 +70,42 @@
     <p class="text-muted">Aún no hay cierres. En <a href="<?= site_url('reports/pagos') ?>">Reporte de pagos</a> filtre el período y pulse <strong>Registrar cierre</strong>.</p>
 <?php endif; ?>
 
+<?php if (! empty($totalPages) && (int) $totalPages > 1): ?>
+    <?php
+        $totalReg   = (int) ($total ?? 0);
+        $pageNum    = (int) ($page ?? 1);
+        $perPage    = (int) ($perPage ?? 15);
+        $start = max(1, $pageNum - 3);
+        $end   = min((int) $totalPages, $pageNum + 3);
+        $base = site_url('reports/pagosCierres');
+    ?>
+    <nav class="mt-3 d-print-none" aria-label="Paginación">
+        <ul class="pagination justify-content-center flex-wrap mb-0">
+            <?php if ($pageNum > 1): ?>
+            <li class="page-item"><a class="page-link" href="<?= $base . '?page=' . ($pageNum - 1) ?>">&laquo; Anterior</a></li>
+            <?php endif; ?>
+
+            <?php if ($start > 1): ?>
+            <li class="page-item"><a class="page-link" href="<?= $base . '?page=1' ?>">1</a></li>
+            <?php if ($start > 2): ?><li class="page-item disabled"><span class="page-link">...</span></li><?php endif; ?>
+            <?php endif; ?>
+
+            <?php for ($p = $start; $p <= $end; $p++): ?>
+            <li class="page-item <?= ($p === $pageNum) ? 'active' : '' ?>">
+                <a class="page-link" href="<?= $base . '?page=' . $p ?>"><?= $p ?></a>
+            </li>
+            <?php endfor; ?>
+
+            <?php if ($end < $totalPages): ?>
+            <?php if ($end < $totalPages - 1): ?><li class="page-item disabled"><span class="page-link">...</span></li><?php endif; ?>
+            <li class="page-item"><a class="page-link" href="<?= $base . '?page=' . $totalPages ?>"><?= $totalPages ?></a></li>
+            <?php endif; ?>
+
+            <?php if ($pageNum < (int) $totalPages): ?>
+            <li class="page-item"><a class="page-link" href="<?= $base . '?page=' . ($pageNum + 1) ?>">Siguiente &raquo;</a></li>
+            <?php endif; ?>
+        </ul>
+    </nav>
+<?php endif; ?>
+
 <?= $this->endSection() ?>

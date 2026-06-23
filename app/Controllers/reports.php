@@ -513,16 +513,28 @@ class Reports extends SecureArea
      */
     public function pagosCierres()
     {
+        $perPage = 15;
+        $page = max(1, (int) ($this->request->getGet('page') ?? 1));
+        $offset = ($page - 1) * $perPage;
+
         $rows = [];
+        $total = 0;
         try {
-            $rows = $this->pagosCierreModel->getListado(500);
+            $rows = $this->pagosCierreModel->orderBy('cierre_id', 'DESC')->findAll($perPage, $offset);
+            $total = (int) $this->pagosCierreModel->countAll();
         } catch (\Throwable $e) {
         }
+
+        $totalPages = $total > 0 ? (int) ceil($total / $perPage) : 1;
 
         return view('reports/pagos_cierres', [
             'title'             => 'Cierres de pagos',
             'current_module'    => 'reports',
             'cierres'           => $rows,
+            'page'              => $page,
+            'perPage'           => $perPage,
+            'total'             => $total,
+            'totalPages'        => $totalPages,
             'allowed_modules'   => $this->allowed_modules,
             'user_info'         => $this->user_info,
         ]);
