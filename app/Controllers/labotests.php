@@ -61,6 +61,19 @@ class Labotests extends SecureArea
         }
     }
 
+    /**
+     * Construye la URL base para volver al listado preservando el parámetro `page` si existe.
+     */
+    private function listUrl(string $path = 'labotests'): string
+    {
+        $page = $this->request->getGet('page') ?? $this->request->getPost('page');
+        if (is_array($page)) {
+            $page = reset($page);
+        }
+        $page = (string) ($page ?? '');
+        return $path . ($page !== '' ? ('?page=' . urlencode($page)) : '');
+    }
+
     public function index()
     {
         $page   = max(1, (int) ($this->request->getGet('page') ?? 1));
@@ -116,7 +129,7 @@ class Labotests extends SecureArea
         $anacategoriaId = (int) $anacategoriaId;
         $catInfo = $this->labotestModel->getCategoryInfo($anacategoriaId);
         if (!$catInfo->anacategoria_id) {
-            return redirect()->to('labotests')->with('error', 'Categoría no encontrada');
+            return redirect()->to($this->listUrl())->with('error', 'Categoría no encontrada');
         }
         $subInfo = $this->labotestModel->getSubInfo(-1, $anacategoriaId);
 
@@ -141,7 +154,7 @@ class Labotests extends SecureArea
         $prianacategoriaId = (int) $prianacategoriaId;
         $subInfo = $this->labotestModel->getSubInfo($prianacategoriaId);
         if (!$subInfo->prianacategoria_id) {
-            return redirect()->to('labotests')->with('error', 'Análisis no encontrado');
+            return redirect()->to($this->listUrl())->with('error', 'Análisis no encontrado');
         }
         $catInfo = $this->labotestModel->getCategoryInfo($subInfo->anacategoria_id ?? 0);
 
@@ -326,7 +339,7 @@ class Labotests extends SecureArea
 
         $this->labotestModel->saveCategory(['name' => $name, 'order' => $order], $id > 0 ? $id : null);
         \App\Models\AuditoriaModel::log('labotests', $id > 0 ? 'actualizar_categoria' : 'crear_categoria', (string)($id ?: ''), \App\Models\AuditoriaModel::detail(['nombre' => $name]));
-        return redirect()->to('labotests')->with('success', 'Guardado correctamente');
+        return redirect()->to($this->listUrl())->with('success', 'Guardado correctamente');
     }
 
     public function savesubmain($anacategoriaId)
@@ -359,7 +372,7 @@ class Labotests extends SecureArea
         ];
         $this->labotestModel->saveSubCategory($data, $prianacategoriaId > 0 ? $prianacategoriaId : null);
         \App\Models\AuditoriaModel::log('labotests', $prianacategoriaId > 0 ? 'actualizar_analisis' : 'crear_analisis', (string)($prianacategoriaId ?: ''), \App\Models\AuditoriaModel::detail(['nombre' => $name, 'compleja' => $compleja]));
-        return redirect()->to('labotests')->with('success', 'Análisis guardado correctamente');
+        return redirect()->to($this->listUrl())->with('success', 'Análisis guardado correctamente');
     }
 
     public function savesub()
@@ -826,21 +839,21 @@ class Labotests extends SecureArea
         $targetParentId = (int) ($this->request->getPost('target_anacategoria_id') ?? 0);
 
         if ($sourceId < 1 || $targetParentId < 1) {
-            return redirect()->to('labotests')->with('error', 'Debe seleccionar la prueba y el padre destino');
+            return redirect()->to($this->listUrl())->with('error', 'Debe seleccionar la prueba y el padre destino');
         }
 
         $source = $this->labotestModel->getSubInfo($sourceId, null);
         if (! $source || ! ($source->prianacategoria_id ?? null)) {
-            return redirect()->to('labotests')->with('error', 'Prueba no encontrada');
+            return redirect()->to($this->listUrl())->with('error', 'Prueba no encontrada');
         }
 
         if ((int) ($source->anacategoria_id ?? 0) === $targetParentId) {
-            return redirect()->to('labotests')->with('error', 'Seleccione un padre diferente para duplicar la prueba');
+            return redirect()->to($this->listUrl())->with('error', 'Seleccione un padre diferente para duplicar la prueba');
         }
 
         $newId = $this->labotestModel->duplicateAnalysisToParent($sourceId, $targetParentId);
         if (! $newId) {
-            return redirect()->to('labotests')->with('error', 'No se pudo duplicar la prueba');
+            return redirect()->to($this->listUrl())->with('error', 'No se pudo duplicar la prueba');
         }
 
         \App\Models\AuditoriaModel::log(
@@ -854,7 +867,7 @@ class Labotests extends SecureArea
             ])
         );
 
-        return redirect()->to('labotests')->with('success', 'Prueba duplicada correctamente');
+        return redirect()->to($this->listUrl())->with('success', 'Prueba duplicada correctamente');
     }
 
     /**
@@ -901,12 +914,12 @@ class Labotests extends SecureArea
         $id = (int) $id;
         $cat = $this->labotestModel->getCategoryInfo($id);
         if (!$cat || !$cat->anacategoria_id) {
-            return redirect()->to('labotests')->with('error', 'Categoría no encontrada');
+            return redirect()->to($this->listUrl())->with('error', 'Categoría no encontrada');
         }
         $catName = $cat->name ?? '';
         $this->labotestModel->deleteCategoryWithAll($id);
         \App\Models\AuditoriaModel::log('labotests', 'eliminar_categoria', (string)$id, \App\Models\AuditoriaModel::detail(['nombre' => $catName]));
-        return redirect()->to('labotests')->with('success', 'Categoría y todos sus análisis eliminados correctamente');
+        return redirect()->to($this->listUrl())->with('success', 'Categoría y todos sus análisis eliminados correctamente');
     }
 
     /**
@@ -935,7 +948,10 @@ class Labotests extends SecureArea
         $id = (int) $id;
         $sub = $this->labotestModel->getSubInfo($id, null);
         if (! $sub || ! $sub->prianacategoria_id) {
-            return redirect()->to('labotests')->with('error', 'Análisis no encontrado');
+            if ($this->request->isAJAX()) {
+                return $this->response->setJSON(['success' => false, 'message' => 'Análisis no encontrado'])->setStatusCode(404);
+            }
+            return redirect()->to($this->listUrl())->with('error', 'Análisis no encontrado');
         }
 
         $subName = (string) ($sub->name ?? '');
@@ -950,7 +966,10 @@ class Labotests extends SecureArea
         $migrationStats = null;
         if ($migrateTo > 0) {
             if (! $referenceService->isValidMigrationTarget($id, $migrateTo)) {
-                return redirect()->to('labotests')->with('error', 'No se pudo migrar: el análisis destino no es un duplicado válido');
+                if ($this->request->isAJAX()) {
+                    return $this->response->setJSON(['success' => false, 'message' => 'No se pudo migrar: el análisis destino no es un duplicado válido'])->setStatusCode(400);
+                }
+                return redirect()->to($this->listUrl())->with('error', 'No se pudo migrar: el análisis destino no es un duplicado válido');
             }
             $migrationStats = $referenceService->migrateReferences($id, $migrateTo);
             $this->labotestModel->deletePrianacategoriaWithAll($id);
@@ -981,17 +1000,26 @@ class Labotests extends SecureArea
             $values = (int) ($migrationStats['regvalues_updated'] ?? 0);
             $message = 'Análisis eliminado. Se actualizaron ' . $orders . ' orden(es) y ' . $values . ' valor(es) hacia "' . $targetName . '" (#' . $migrateTo . ').';
 
-            return redirect()->to('labotests')->with('success', $message);
+            if ($this->request->isAJAX()) {
+                return $this->response->setJSON(['success' => true, 'message' => $message, 'redirect' => site_url($this->listUrl())])->setStatusCode(200);
+            }
+            return redirect()->to($this->listUrl())->with('success', $message);
         }
 
         if ($impact['has_registered_values'] ?? false) {
             $orders = (int) ($impact['registros_count'] ?? 0);
             $message = 'Análisis retirado del catálogo. Se conservan ' . $orders . ' orden(es) histórica(s) con sus resultados (solo lectura).';
 
-            return redirect()->to('labotests')->with('success', $message);
+            if ($this->request->isAJAX()) {
+                return $this->response->setJSON(['success' => true, 'message' => $message, 'redirect' => site_url($this->listUrl())])->setStatusCode(200);
+            }
+            return redirect()->to($this->listUrl())->with('success', $message);
         }
 
-        return redirect()->to('labotests')->with('success', 'Análisis retirado del catálogo correctamente');
+        if ($this->request->isAJAX()) {
+            return $this->response->setJSON(['success' => true, 'message' => 'Análisis retirado del catálogo correctamente', 'redirect' => site_url($this->listUrl())])->setStatusCode(200);
+        }
+        return redirect()->to($this->listUrl())->with('success', 'Análisis retirado del catálogo correctamente');
     }
 
     /**
@@ -1039,7 +1067,7 @@ class Labotests extends SecureArea
         $id = (int) $id;
         $sub = $this->labotestModel->getSubInfo($id, null);
         if (!$sub || !$sub->prianacategoria_id) {
-            return redirect()->to('labotests')->with('error', 'Análisis no encontrado');
+            return redirect()->to($this->listUrl())->with('error', 'Análisis no encontrado');
         }
         $manuals = $this->labotestModel->getManualsByPrianacategoria($id);
         return view('labotests/manuales', [
@@ -1082,7 +1110,7 @@ class Labotests extends SecureArea
         $id = (int) $id;
         $m = $this->labotestModel->getManualById($id);
         if (!$m) {
-            return redirect()->to('labotests')->with('error', 'Manual no encontrado');
+            return redirect()->to($this->listUrl())->with('error', 'Manual no encontrado');
         }
         $prianacategoriaId = (int) ($m['prianacategoria_id'] ?? 0);
         $this->labotestModel->deleteManual($id);
@@ -1097,7 +1125,7 @@ class Labotests extends SecureArea
         $id = (int) $id;
         $sub = $this->labotestModel->getSubInfo($id, null);
         if (!$sub || !$sub->prianacategoria_id) {
-            return redirect()->to('labotests')->with('error', 'Análisis no encontrado');
+            return redirect()->to($this->listUrl())->with('error', 'Análisis no encontrado');
         }
         return view('labotests/recomendaciones_previas', [
             'labotests_info'         => $sub,
@@ -1121,7 +1149,7 @@ class Labotests extends SecureArea
         }
         $sub = $this->labotestModel->getSubInfo($prianacategoriaId, null);
         if (!$sub || !$sub->prianacategoria_id) {
-            return redirect()->to('labotests')->with('error', 'Análisis no encontrado');
+            return redirect()->to($this->listUrl())->with('error', 'Análisis no encontrado');
         }
         $ok = $this->labotestModel->saveRecomendacionesPrevias($prianacategoriaId, $contenido);
         return redirect()->to("labotests/recomendacionesprevias/{$prianacategoriaId}")
@@ -1195,7 +1223,7 @@ class Labotests extends SecureArea
         $id = (int) $id;
         $payload = $this->labotestModel->buildDetailConfigExport($id);
         if (! $payload) {
-            return redirect()->to('labotests')->with('error', 'Prueba no encontrada');
+            return redirect()->to($this->listUrl())->with('error', 'Prueba no encontrada');
         }
 
         $json = json_encode($payload, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_INVALID_UTF8_SUBSTITUTE);
@@ -1218,7 +1246,7 @@ class Labotests extends SecureArea
     {
         $id = (int) $id;
         if ($id < 1) {
-            return redirect()->to('labotests')->with('error', 'Prueba inválida');
+            return redirect()->to($this->listUrl())->with('error', 'Prueba inválida');
         }
 
         $file = $this->request->getFile('config_file');

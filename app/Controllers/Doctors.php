@@ -112,6 +112,8 @@ class Doctors extends SecureArea
             'username'     => $this->request->getPost('username'),
             'password'     => $this->request->getPost('password'),
             'email'        => $this->request->getPost('email'),
+            'display_mode' => $this->request->getPost('display_mode') ?? 'clinico',
+            'interpretacion_enabled' => (int) ($this->request->getPost('interpretacion_enabled') ?? 0),
             'commission_percent' => $this->request->getPost('commission_percent') ?? 0.00,
             'has_commission' => $this->request->getPost('has_commission') ?? 0,
             'hide_commission_details' => $this->request->getPost('hide_commission_details') ?? 0,
@@ -141,6 +143,14 @@ class Doctors extends SecureArea
                 ])->setStatusCode(400);
             }
             return redirect()->back()->withInput()->with('error', $msg);
+        }
+
+        // Debug: log incoming display_mode and if the DB column exists
+        try {
+            log_message('debug', 'Doctors::saves incoming display_mode => ' . (string) ($doctor_data['display_mode'] ?? ''));
+            log_message('debug', 'Doctors::saves doctorModel hasColumn(display_mode) => ' . (int) $this->doctorModel->hasColumn('display_mode'));
+        } catch (\Throwable $e) {
+            // ignore logging errors
         }
 
         $result = $this->doctorModel->saveDoctor($doctor_data, $id);

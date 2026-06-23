@@ -32,8 +32,24 @@ $refsMatrixAll = $report_pria_refs_consolidada ?? [];
 $pdfLayout = is_array($pdf_layout ?? null) ? $pdf_layout : [];
 $ocultarTheadResults = \App\Services\ReportPdfLayoutService::grupoCabeceraOcultarTheadResultsTabla($pdfLayout);
 $labConfigLocal = is_array($lab_config ?? null) ? $lab_config : [];
-$showInterpretacionCol = in_array($variant, ['screen_pdf', 'pdf', 'browser_print'], true)
-    && (($labConfigLocal['interpretacion_enabled'] ?? '0') === '1');
+$showInterpretacionCol = false;
+// Interpretación: preferencia por doctor si está definida, si no usar configuración global del laboratorio
+if (in_array($variant, ['screen_pdf', 'pdf', 'browser_print'], true)) {
+    $doctorPref = null;
+    if (! empty($doctor)) {
+        if (is_object($doctor) && property_exists($doctor, 'interpretacion_enabled')) {
+            $doctorPref = (int) ($doctor->interpretacion_enabled ?? null);
+        } elseif (is_array($doctor) && array_key_exists('interpretacion_enabled', $doctor)) {
+            $doctorPref = (int) ($doctor['interpretacion_enabled'] ?? null);
+        }
+    }
+    if ($doctorPref !== null) {
+        $showInterpretacionCol = $doctorPref === 1;
+    } else {
+        // Fall back to global config if present, otherwise default to enabled
+        $showInterpretacionCol = (($labConfigLocal['interpretacion_enabled'] ?? '1') === '1');
+    }
+}
 
 $subgruposPorPria = [];
 $ordenPriaKeys = [];
@@ -418,16 +434,75 @@ $mostrarHeatmap = $tieneHeatmap && in_array(
                             $opcionIdItem
                         )
                         : null;
+
+                    // Modo de visualización por doctor (si está presente en el contexto)
+                    $displayMode = 'clinico';
+                    if (! empty($doctor)) {
+                        if (is_object($doctor)) {
+                            $displayMode = trim((string) ($doctor->display_mode ?? $displayMode));
+                        } elseif (is_array($doctor)) {
+                            $displayMode = trim((string) ($doctor['display_mode'] ?? $displayMode));
+                        }
+                    }
+                    if ($displayMode === '') $displayMode = 'clinico';
+
                     if ($mostrarColInterpretacion && $interpretacionRef !== null) {
-                        $class = registro_interpretacion_referencial_clase_resultado($interpretacionRef);
-                        $isOutPdf = $interpretacionRef['nivel'] !== 'normal';
+                        if ($displayMode === 'neutral') {
+                            $class = 'normal';
+                            $isOutPdf = false;
+                        } elseif ($displayMode === 'clinico') {
+                            $nivel = $interpretacionRef['nivel'] ?? 'normal';
+                            if ($nivel === 'alto') {
+                                $class = 'report-interpretacion-alto';
+                            } elseif ($nivel === 'bajo') {
+                                $class = 'report-interpretacion-bajo';
+                            } else {
+                                $class = 'normal';
+                            }
+                            $isOutPdf = $nivel !== 'normal';
+                        } else {
+                            // semaforo u otros modos: mantener comportamiento previo
+                            $class = registro_interpretacion_referencial_clase_resultado($interpretacionRef);
+                            $isOutPdf = $interpretacionRef['nivel'] !== 'normal';
+                        }
+                        if ($displayMode === 'semaforo') {
+                            log_message('debug', 'Render semaforo fila ' . ($item->secanacategoria_id ?? 'n/a') . ' interp=' . ($interpretacionRef['nivel'] ?? 'n/a'));
+                        }
                     } elseif (in_array($valNorm, ['positivo', 'reactivo'], true)) {
-                        $class = 'text-danger font-weight-bold';
-                        $isOutPdf = true;
+                        if ($displayMode === 'neutral') {
+                            $class = 'normal';
+                            $isOutPdf = false;
+                        } else {
+                            if ($displayMode === 'clinico') {
+                                $class = 'report-interpretacion-alto';
+                            } else {
+                                $class = 'text-danger font-weight-bold';
+                            }
+                            $isOutPdf = true;
+                        }
                     } elseif (is_numeric($val) && ($item->valor_min ?? '') !== '' && ($item->valor_max ?? '') !== '') {
                         $inRange = ($val >= $item->valor_min && $val <= $item->valor_max);
-                        $class = $inRange ? 'normal' : 'text-danger font-weight-bold';
-                        $isOutPdf = ! $inRange;
+                        if ($displayMode === 'neutral') {
+                            $class = 'normal';
+                            $isOutPdf = false;
+                        } else {
+                            if ($inRange) {
+                                $class = 'normal';
+                                $isOutPdf = false;
+                            } else {
+                                if ($displayMode === 'clinico') {
+                                    // distinguir bajo vs alto para clinico
+                                    if ($val < $item->valor_min) {
+                                        $class = 'report-interpretacion-bajo';
+                                    } else {
+                                        $class = 'report-interpretacion-alto';
+                                    }
+                                } else {
+                                    $class = 'text-danger font-weight-bold';
+                                }
+                                $isOutPdf = true;
+                            }
+                        }
                     } else {
                         $class = 'normal';
                         $isOutPdf = false;
@@ -444,12 +519,70 @@ $mostrarHeatmap = $tieneHeatmap && in_array(
                     <?php if (is_object($item)): ?>
                         <tr>
                             <td><?= esc($item->nombre ?? '') ?></td>
+                            <?php
+                                // Si el modo es semáforo y la columna Interpretación está desactivada,
+                                // inyectar el icono correspondiente al lado del resultado.
+                                if ($displayMode === 'semaforo' && empty($mostrarColInterpretacion)) {
+                                    // Asegurar que tenemos la interpretación calculada si hay rango referencial
+                                    if ($itemConRef && $interpretacionRef === null) {
+                                        $interpretacionRef = registro_interpretacion_referencial_etiqueta_viewreport(
+                                            $val,
+                                            $item->valor_min ?? '',
+                                            $item->valor_max ?? '',
+                                            $item->umedida ?? '',
+                                            $opcionIdItem
+                                        );
+                                    }
+                                    $iconHtml = '';
+                                    $iconClass = '';
+                                    $lvl = $interpretacionRef['nivel'] ?? null;
+                                    if ($lvl === null) {
+                                        // Fallback heuristics: positivos/reactivos o rango numérico
+                                        if (in_array($valNorm, ['positivo', 'reactivo'], true)) {
+                                            $lvl = 'alto';
+                                        } elseif (is_numeric($val) && ($item->valor_min ?? '') !== '' && ($item->valor_max ?? '') !== '') {
+                                            $lvl = ($val >= $item->valor_min && $val <= $item->valor_max) ? 'normal' : 'alto';
+                                        } else {
+                                            $lvl = 'normal';
+                                        }
+                                    }
+                                    if ($lvl === 'alto') {
+                                        $iconHtml = '<i class="fa-solid fa-arrow-up report-interpretacion-icon text-danger" aria-hidden="true"></i>';
+                                        $class = 'report-interpretacion-alto';
+                                    } elseif ($lvl === 'bajo') {
+                                        $iconHtml = '<i class="fa-solid fa-arrow-down report-interpretacion-icon text-primary" aria-hidden="true"></i>';
+                                        $class = 'report-interpretacion-bajo';
+                                    } else {
+                                        // nivel 'normal' -> no mostrar icono y clase normal
+                                        $iconHtml = '';
+                                        $class = 'normal';
+                                    }
+                                    if ($iconHtml !== '') {
+                                        // colocar el icono a la derecha del resultado
+                                        $resMostrarHtml = $resMostrarHtml . ' ' . $iconHtml;
+                                    }
+                                }
+                            ?>
                             <td class="text-center<?= $celdaRicoClass ?><?= $resultadoColspanClass ?> <?= $class ?><?= $usePdfChrome && $isOutPdf ? ' out-range' : '' ?>"<?= $resultadoColspanAttr ?>><?= $resMostrarHtml ?></td>
                             <?php if ($resultadoColspan === 1 && $mostrarColRef): ?>
                             <td class="text-center<?= $usePdfChrome ? ' ref-range' : '' ?>"><?= $itemConRef ? $refMostrar : '' ?></td>
                             <?php endif; ?>
                             <?php if ($resultadoColspan === 1 && $mostrarColInterpretacion): ?>
-                            <td class="text-center<?= $interpretacionRef !== null ? ' ' . esc(registro_interpretacion_referencial_clase_resultado($interpretacionRef), 'attr') : '' ?>"><?= $interpretacionRef !== null ? esc($interpretacionRef['label']) : '' ?></td>
+                            <?php
+                                $interpHtml = $interpretacionRef !== null ? esc($interpretacionRef['label']) : '';
+                                if ($displayMode === 'semaforo' && $interpretacionRef !== null) {
+                                    $ico = '';
+                                    if ($interpretacionRef['nivel'] === 'alto') {
+                                        $ico = '<i class="fa-solid fa-arrow-up report-interpretacion-icon" aria-hidden="true"></i>';
+                                    } elseif ($interpretacionRef['nivel'] === 'bajo') {
+                                        $ico = '<i class="fa-solid fa-arrow-down report-interpretacion-icon" aria-hidden="true"></i>';
+                                    } else {
+                                        $ico = '<i class="fa-solid fa-minus report-interpretacion-icon" aria-hidden="true"></i>';
+                                    }
+                                    $interpHtml = $ico . ' ' . $interpHtml;
+                                }
+                            ?>
+                            <td class="text-center<?= $interpretacionRef !== null ? ' ' . esc($class, 'attr') : '' ?>"><?= $interpHtml !== '' ? $interpHtml : '' ?></td>
                             <?php endif; ?>
                         </tr>
                     <?php endif; ?>

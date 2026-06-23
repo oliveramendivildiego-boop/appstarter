@@ -131,6 +131,25 @@ $showAntecedentes = $totalAntecedentesCount > 0;
                 <p class="mb-1"><strong>Teléfono:</strong> <?= esc(isset($paciente->phone_number) ? $paciente->phone_number : '-') ?></p>
             </div>
             <div class="col-md-6">
+                <?php if (!empty($paciente->person_id) && (int)$paciente->person_id > 0): ?>
+                <div class="d-flex justify-content-end align-items-center mb-2">
+                    <div class="me-3 text-end">
+                        <div class="small text-muted">ID: <?= (int)$paciente->person_id ?></div>
+                        <?php if (!empty($paciente->account_number)): ?>
+                        <div class="fw-semibold">Código paciente: <?= esc($paciente->account_number) ?></div>
+                        <?php endif; ?>
+                        <div class="mt-1">
+                            <a href="<?= base_url('qr/generate?data=' . urlencode('P' . (int)$paciente->person_id) . '&size=300') ?>" target="_blank" class="btn btn-sm btn-outline-secondary">
+                                <i class="fa-solid fa-expand me-1"></i> Abrir QR
+                            </a>
+                        </div>
+                    </div>
+                    <div>
+                        <img src="<?= base_url('qr/generate?data=' . urlencode('P' . (int)$paciente->person_id) . '&size=120') ?>" alt="QR paciente" style="width:72px;height:72px;" class="img-thumbnail" />
+                    </div>
+                </div>
+                <?php endif; ?>
+
                 <p class="mb-1"><strong>Correo:</strong> <?= esc(isset($paciente->email) ? $paciente->email : '-') ?></p>
                 <p class="mb-1"><strong>Dirección:</strong> <?= esc(isset($paciente->address_1) ? $paciente->address_1 : '-') ?></p>
                 <p class="mb-0"><strong>Total de estudios:</strong> <?= (int) $totalRegistrosCount ?></p>

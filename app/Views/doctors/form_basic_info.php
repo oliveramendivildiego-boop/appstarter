@@ -27,6 +27,33 @@ $doctor_info = $doctor_info ?? new stdClass();
 
 <div class="row">
     <div class="col-md-6 mb-3">
+        <?= form_label('Modo de reporte' . ':', 'display_mode', ['class' => 'form-label']) ?>
+        <?php
+        $modeVal = $doctor_info->display_mode ?? 'clinico';
+        $modes = [
+            'clinico' => 'Clínico (texto Bajo/Alto) — recomendado (colores)',
+            'neutral' => 'Neutral (sin color) — sin colores en resultados',
+            'semaforo' => 'Semáforo suave (colores + iconos) — visual rápida',
+        ];
+        ?>
+        <?= form_dropdown('display_mode', $modes, $modeVal, 'id="display_mode" class="form-select"') ?>
+        <small class="form-text text-muted">Selecciona cómo se mostrarán los resultados en el reporte para este doctor.</small>
+    </div>
+</div>
+
+<div class="row mt-2">
+    <div class="col-md-6 mb-3">
+        <?= form_label('Mostrar interpretación en reportes' . ':', 'interpretacion_enabled', ['class' => 'form-label']) ?>
+        <div class="form-check mt-2">
+            <?= form_checkbox(['name' => 'interpretacion_enabled', 'id' => 'interpretacion_enabled', 'class' => 'form-check-input', 'value' => '1', 'checked' => (($doctor_info->interpretacion_enabled ?? 1) == 1)]) ?>
+            <?= form_label('Mostrar columna Interpretación para este doctor', 'interpretacion_enabled', ['class' => 'form-check-label']) ?>
+        </div>
+        <small class="form-text text-muted">Si está desactivado, la columna Interpretación no se mostrará en los reportes para este doctor.</small>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-md-6 mb-3">
         <?= form_label(lang('Doctors.doctors_gender') . ':', 'gender', ['class' => 'form-label required']) ?>
         <?= form_dropdown('gender', ['' => '-- Seleccione --', '1' => 'Masculino', '2' => 'Femenino'], $doctor_info->gender ?? '', 'id="gender" class="form-select"') ?>
     </div>

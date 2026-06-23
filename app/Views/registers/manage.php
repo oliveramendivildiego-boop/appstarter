@@ -316,13 +316,17 @@ if (!empty($edit_registro)) {
                                 <option value="2">Femenino</option>
                             </select>
                         </div>
-                        <div class="col-12 col-md-4">
+                        <div class="col-12 col-md-6">
                             <label for="np_institucion" class="form-label">Institución</label>
                             <input type="text" class="form-control" id="np_institucion" name="institucion">
                         </div>
-                        <div class="col-12 col-md-4">
+                        <div class="col-12 col-md-6">
                             <label for="np_seguro" class="form-label">Seguro</label>
                             <input type="text" class="form-control" id="np_seguro" name="seguro">
+                        </div>
+                        <div class="col-12 mb-3">
+                            <label for="np_address" class="form-label">Dirección</label>
+                            <input type="text" class="form-control" id="np_address" name="address_1" placeholder="Ej: Av. Principal #123, Zona Centro">
                         </div>
                         <div class="col-12">
                             <label for="np_comments" class="form-label">Comentarios</label>
@@ -357,8 +361,8 @@ if (!empty($edit_registro)) {
                             <input type="text" class="form-control" id="nd_name" name="name" required>
                         </div>
                         <div class="col-12 col-md-6">
-                            <label for="nd_phone_number" class="form-label">Teléfono <span class="text-danger">*</span></label>
-                            <input type="text" class="form-control" id="nd_phone_number" name="phone_number" required>
+                            <label for="nd_phone_number" class="form-label">Teléfono</label>
+                            <input type="text" class="form-control" id="nd_phone_number" name="phone_number">
                         </div>
                         <div class="col-12 col-md-4">
                             <label for="nd_gender" class="form-label">Género <span class="text-danger">*</span></label>
@@ -369,13 +373,69 @@ if (!empty($edit_registro)) {
                             </select>
                         </div>
                         <div class="col-12 col-md-8">
-                            <label for="nd_speciality" class="form-label">Especialidad <span class="text-danger">*</span></label>
-                            <input type="text" class="form-control" id="nd_speciality" name="speciality" required>
+                            <label for="nd_speciality" class="form-label">Especialidad</label>
+                            <input type="text" class="form-control" id="nd_speciality" name="speciality">
                         </div>
                         <div class="col-12">
-                            <label for="nd_address" class="form-label">Dirección <span class="text-danger">*</span></label>
-                            <input type="text" class="form-control" id="nd_address" name="address" required>
+                            <label for="nd_address" class="form-label">Dirección</label>
+                            <input type="text" class="form-control" id="nd_address" name="address">
                         </div>
+
+                        <div class="col-12 col-md-6">
+                            <label for="nd_display_mode" class="form-label">Modo de reporte</label>
+                            <select id="nd_display_mode" name="display_mode" class="form-select">
+                                <option value="clinico">Clínico (texto Bajo/Alto)</option>
+                                <option value="neutral">Neutral (sin color)</option>
+                                <option value="semaforo">Semáforo suave (colores + iconos)</option>
+                            </select>
+                        </div>
+                        <div class="col-12 col-md-6">
+                            <label class="form-label">Mostrar interpretación</label>
+                            <div class="form-check mt-2">
+                                <input class="form-check-input" type="checkbox" id="nd_interpretacion_enabled" name="interpretacion_enabled" value="1" checked>
+                                <label class="form-check-label" for="nd_interpretacion_enabled">Mostrar interpretación en reportes</label>
+                            </div>
+                        </div>
+
+                        <div class="col-12 col-md-6">
+                            <div class="form-check mt-2">
+                                <input class="form-check-input" type="checkbox" id="nd_has_commission" name="has_commission" value="1">
+                                <label class="form-check-label" for="nd_has_commission">¿Este doctor usa comisiones?</label>
+                            </div>
+                        </div>
+
+                        <div id="nd_commission_field" style="display:none;" class="col-12">
+                            <div class="row g-3">
+                                <div class="col-md-6">
+                                    <label for="nd_commission_percent" class="form-label">Comisión (%)</label>
+                                    <div class="input-group">
+                                        <input type="number" step="0.01" min="0" max="100" class="form-control" id="nd_commission_percent" name="commission_percent" placeholder="0.00">
+                                        <span class="input-group-text">%</span>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="form-check mt-4">
+                                        <input class="form-check-input" type="checkbox" id="nd_hide_commission_details" name="hide_commission_details" value="1">
+                                        <label class="form-check-label" for="nd_hide_commission_details">Ocultar detalle de comisiones</label>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <hr class="my-2">
+                        <div class="col-12 col-md-4">
+                            <label for="nd_username" class="form-label">Usuario (opcional)</label>
+                            <input type="text" class="form-control" id="nd_username" name="username" placeholder="Ej: dr.garcia">
+                        </div>
+                        <div class="col-12 col-md-4">
+                            <label for="nd_password" class="form-label">Contraseña (opcional)</label>
+                            <input type="password" class="form-control" id="nd_password" name="password" placeholder="Dejar vacío para no cambiar">
+                        </div>
+                        <div class="col-12 col-md-4">
+                            <label for="nd_email" class="form-label">Correo</label>
+                            <input type="email" class="form-control" id="nd_email" name="email" placeholder="Para login con correo">
+                        </div>
+
                         <div class="col-12">
                             <label for="nd_comments" class="form-label">Comentarios</label>
                             <textarea class="form-control" id="nd_comments" name="comments" rows="2"></textarea>
@@ -1460,20 +1520,38 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         }));
 
+        // Toggle comisión field en modal de crear doctor
+        (function() {
+            var ndHas = document.getElementById('nd_has_commission');
+            var ndField = document.getElementById('nd_commission_field');
+            if (ndHas && ndField) {
+                ndHas.addEventListener('change', function() {
+                    if (this.checked) {
+                        ndField.style.display = '';
+                    } else {
+                        ndField.style.display = 'none';
+                        var pct = document.getElementById('nd_commission_percent');
+                        var hide = document.getElementById('nd_hide_commission_details');
+                        if (pct) pct.value = '';
+                        if (hide) hide.checked = false;
+                    }
+                });
+            }
+        })();
+
         doctorValidator = window.jQuery('#form_crear_doctor').validate(window.jQuery.extend(true, {}, window.VALIDATE_COMMON_OPTIONS || {}, {
             rules: {
                 name: { required: true, minlength: 2 },
-                phone_number: { required: true, maxlength: 50 },
+                phone_number: { maxlength: 50 },
                 gender: { required: true },
-                speciality: { required: true, maxlength: 255 },
-                address: { required: true, maxlength: 255 }
+                speciality: { maxlength: 255 },
+                address: { maxlength: 255 },
+                commission_percent: { number: true, min: 0, max: 100 }
             },
             messages: {
                 name: { required: 'Por favor ingrese nombre(s) y apellido(s)', minlength: 'El nombre debe tener al menos 2 caracteres' },
-                phone_number: { required: 'El teléfono es obligatorio' },
                 gender: { required: 'Seleccione su género' },
-                speciality: { required: 'La especialidad es obligatoria' },
-                address: { required: 'La dirección es obligatoria' }
+                commission_percent: { number: 'Ingrese un número válido', min: 'La comisión no puede ser negativa', max: 'La comisión no puede ser mayor a 100%' }
             }
         }));
     }

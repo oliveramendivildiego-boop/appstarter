@@ -14,7 +14,6 @@ return [
     'customers_cannot_be_deleted'     => 'No se pudo borrar los pacientes seleccionados.',
     'customers_basic_information'    => 'Información de Pacientes',
     'customers_account_number'        => 'Cuenta #',
-    'customers_taxable'               => 'Gravable',
     'customers_gender'                => 'Género',
     'customers_address'               => 'Dirección',
 ];

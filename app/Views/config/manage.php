@@ -603,14 +603,7 @@
             </div>
             <small class="text-muted">Si se activa, se mostrará un campo de comentarios/leyendas al registrar resultados de pruebas.</small>
         </div>
-        <div class="mb-3 cfg-item">
-            <input type="hidden" name="interpretacion_enabled" value="0">
-            <div class="form-check">
-                <?= form_checkbox('interpretacion_enabled', '1', (($config['interpretacion_enabled'] ?? '0') === '1'), 'id="interpretacion_enabled" class="form-check-input" autocomplete="off"') ?>
-                <?= form_label('Interpretación', 'interpretacion_enabled', ['class' => 'form-check-label']) ?>
-            </div>
-            <small class="text-muted">Si se activa, en Ver reporte se mostrará la columna Interpretación (Alto / Normal / Bajo) en tablas con rango referencial.</small>
-        </div>
+        <!-- Interpretación moved to per-doctor preference; removed global toggle -->
                     </div>
                 </div>
             </div>

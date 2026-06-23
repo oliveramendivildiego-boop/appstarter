@@ -681,6 +681,12 @@ class Registers extends SecureArea
         $layoutCtx      = $this->registerService->buildReportLayoutContext($data, $pdfLayout, $labConfig);
         $envelopeRender = new EnvelopeRenderService();
 
+        // Debug: log doctor display_mode passed to view
+        try {
+            log_message('debug', 'Registers::viewreport doctor display_mode => ' . (string) ($data['doctor']->display_mode ?? 'NULL'));
+        } catch (\Throwable $e) {
+        }
+
         return view('registers/viewreport', [
             'current_module'    => 'registers',
             'controller_name'  => 'registers',
@@ -793,14 +799,17 @@ class Registers extends SecureArea
             return $this->response->setBody($html)->setContentType('text/html', 'UTF-8');
         }
 
-        $qrLayout  = (new \App\Services\ReportPdfLayoutService())->getActiveLayoutForRender();
-        $qrPx      = \App\Services\ReportPdfLayoutService::qrImagePixelSizeFromLayout($qrLayout);
+        // Use the "print" template (Quantum Printer) when generating the PDF for printing.
+        $layoutService = new \App\Services\ReportPdfLayoutService();
+        $pdfLayoutForPrint = $layoutService->getPrintLayoutForRender();
+        $qrPx      = \App\Services\ReportPdfLayoutService::qrImagePixelSizeFromLayout($pdfLayoutForPrint);
         $qrDataUri = qr_base64($reportUrl, $qrPx);
         $pdfBinary = $this->registerService->generateReportPdfBinary(
             $data,
             $reportUrl,
             $qrDataUri,
             $emitidoEn,
+            $pdfLayoutForPrint,
         );
 
         $paciente = $data['paciente'] ?? null;

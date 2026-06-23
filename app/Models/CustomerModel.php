@@ -9,7 +9,7 @@ class CustomerModel extends Model
     protected $table            = 'customers';
     protected $primaryKey       = 'person_id';
     protected $useAutoIncrement = false;
-    protected $allowedFields    = ['person_id', 'account_number', 'taxable', 'seguro', 'institucion', 'deleted'];
+    protected $allowedFields    = ['person_id', 'account_number', 'seguro', 'institucion', 'deleted'];
 
     private function usesSplitNames(): bool
     {

@@ -9,6 +9,22 @@
 ]]) ?>
 <div id="title_bar">
     <div id="title" class="float-start"><?= lang('Customers.customers_basic_information') ?></div>
+    <?php if (!empty($person_info->person_id) && (int)$person_info->person_id > 0): ?>
+    <div class="float-end text-end d-flex align-items-center gap-3">
+        <div>
+            <img src="<?= base_url('qr/generate?data=' . urlencode('P' . (int)$person_info->person_id) . '&size=120') ?>" alt="QR paciente" style="width:72px;height:72px;" class="img-thumbnail" />
+        </div>
+        <div class="text-end">
+            <div class="small text-muted">ID: <?= (int) $person_info->person_id ?></div>
+            <div class="fw-semibold">Código cliente: <?= esc($person_info->account_number ?? '-') ?></div>
+            <div class="mt-1">
+                <a href="<?= base_url('qr/generate?data=' . urlencode('P' . (int)$person_info->person_id) . '&size=300') ?>" target="_blank" class="btn btn-sm btn-outline-secondary">
+                    <i class="fa-solid fa-expand me-1"></i> Abrir QR
+                </a>
+            </div>
+        </div>
+    </div>
+    <?php endif; ?>
 </div>
 <div id="required_fields_message"><?= lang('Common.common_fields_required_message') ?></div>
 <?php if (session()->getFlashdata('error')): ?>
@@ -56,10 +72,6 @@
         </div>
     </div>
     <div class="row mb-3">
-        <div class="col-md-6">
-            <?= form_label(lang('Customers.customers_taxable') . ':', 'taxable', ['class' => 'form-label']) ?>
-            <?= form_checkbox('taxable', '1', ($person_info->taxable ?? '') == '' ? true : (bool) $person_info->taxable, 'id="taxable" class="form-check-input"') ?>
-        </div>
         <?php if (!empty($person_info->person_id) && (int)$person_info->person_id > 0): ?>
         <div class="col-md-6">
             <label class="form-label">Código QR paciente</label>

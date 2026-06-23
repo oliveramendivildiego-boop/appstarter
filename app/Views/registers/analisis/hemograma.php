@@ -7,6 +7,7 @@
                 'report_pria_tipo_muestra_nombre' => $report_pria_tipo_muestra_nombre ?? [],
                 'report_pria_metodo_nombre'       => $report_pria_metodo_nombre ?? [],
                 'report_pria_refs_consolidada'    => $report_pria_refs_consolidada ?? [],
+                'doctor' => $doctor ?? null,
             ]) ?>
         <?php endforeach; ?>
     </div>

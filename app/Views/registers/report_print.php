@@ -107,7 +107,6 @@
 <div class="report-print-toolbar no-print">
     <button type="button" class="report-print-btn-primary" onclick="window.print()">Imprimir de nuevo</button>
     <?php if ($rid > 0): ?>
-    <a href="<?= site_url('registers/printreport/' . $rid . '?layout_report=1') ?>" class="report-print-btn-secondary">Informe de maquetación</a>
     <a href="<?= site_url('registers/viewreport/' . $rid) ?>" class="report-print-btn-secondary">Volver al reporte</a>
     <?php endif; ?>
 </div>

@@ -10,7 +10,7 @@ class DoctorModel extends Model
     protected $primaryKey       = 'doctor_id';
     protected $useAutoIncrement = true;
     protected $returnType       = 'object';
-    protected $allowedFields    = ['name', 'phone_number', 'gender', 'speciality', 'address', 'deleted', 'comments', 'username', 'password', 'email', 'commission_percent', 'has_commission', 'hide_commission_details'];
+    protected $allowedFields    = ['name', 'phone_number', 'gender', 'speciality', 'address', 'deleted', 'comments', 'username', 'password', 'email', 'commission_percent', 'has_commission', 'hide_commission_details', 'display_mode', 'interpretacion_enabled'];
     /** @var array<string,bool>|null */
     private ?array $columnCache = null;
 
@@ -76,6 +76,8 @@ class DoctorModel extends Model
             'commission_percent' => 0.00,
             'has_commission' => 0,
             'hide_commission_details' => 0,
+            'display_mode' => 'clinico',
+            'interpretacion_enabled' => 1,
         ];
     }
 
@@ -106,6 +108,28 @@ class DoctorModel extends Model
 
         if ($this->hasColumn('hide_commission_details')) {
             $payload['hide_commission_details'] = (int) ($data['hide_commission_details'] ?? 0);
+        }
+
+        if ($this->hasColumn('display_mode')) {
+            $mode = trim((string) ($data['display_mode'] ?? ''));
+            if ($mode === '') {
+                $mode = 'clinico';
+            }
+            $payload['display_mode'] = $mode;
+        }
+
+            if ($this->hasColumn('interpretacion_enabled')) {
+                $payload['interpretacion_enabled'] = (int) ($data['interpretacion_enabled'] ?? 0);
+            }
+
+        // Debug: log payload and current table fields to help trace why display_mode may not persist
+        try {
+            $fields = $this->db->getFieldNames($this->table);
+            log_message('debug', 'DoctorModel::saveDoctor payload keys => ' . implode(',', array_keys($payload)));
+            log_message('debug', 'DoctorModel::saveDoctor table fields => ' . implode(',', $fields));
+            log_message('debug', 'DoctorModel::saveDoctor payload display_mode => ' . ($payload['display_mode'] ?? 'NULL'));
+        } catch (\Throwable $e) {
+            // ignore logging errors
         }
 
         if ($this->supportsLoginColumns()) {

@@ -284,7 +284,8 @@ foreach ($gruposList as $padre => $items) {
 
         'layout_plan_applier'             => $useLayoutApplier ? $layoutApplier : null,
 
-        'layout_area_index'               => $grupoPruebaIdx,
+            'layout_area_index'               => $grupoPruebaIdx,
+            'doctor'                          => $doctor ?? null,
 
         'report_forzar_col_ref'           => $reportForzarColRef,
 

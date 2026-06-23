@@ -155,7 +155,6 @@ class Customers extends PersonController
 
         $customer_data = [
             'account_number' => $this->request->getPost('account_number') ?: null,
-            'taxable'        => $this->request->getPost('taxable') ? 1 : 0,
             'seguro'         => trim($this->request->getPost('seguro') ?? '') ?: null,
             'institucion'    => trim($this->request->getPost('institucion') ?? '') ?: null,
         ];

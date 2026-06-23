@@ -10,6 +10,7 @@
 <?= form_open('labotests/savesubmain/' . $labotests_namecate, ['id' => 'subgroup_form']) ?>
 <input type="hidden" id="prianacategoria_id" name="prianacategoria_id" value="<?= (int)($labotests_info->prianacategoria_id ?? 0) ?>">
 <input type="hidden" id="anacategoria_id" name="anacategoria_id" value="<?= (int)$labotests_namecate ?>">
+<input type="hidden" name="page" value="<?= esc(service('request')->getGet('page') ?? '') ?>">
 
 <div class="card">
     <div class="card-body">

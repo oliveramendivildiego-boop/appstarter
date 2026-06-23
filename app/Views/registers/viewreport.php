@@ -108,6 +108,47 @@ table.results td.report-interpretacion-bajo {
     color: #0d6efd !important;
     font-weight: 700;
 }
+<?php
+// Ajustes visuales según modo de reporte del doctor (por defecto 'clinico')
+$report_display_mode = 'clinico';
+if (! empty($doctor)) {
+    if (is_object($doctor)) {
+        $report_display_mode = trim((string) ($doctor->display_mode ?? $report_display_mode));
+    } elseif (is_array($doctor)) {
+        $report_display_mode = trim((string) ($doctor['display_mode'] ?? $report_display_mode));
+    }
+}
+if ($report_display_mode === '') {
+    $report_display_mode = 'clinico';
+}
+?>
+<?php if ($report_display_mode === 'neutral'): ?>
+/* Modo Neutral: quitar colores y peso fuerte */
+table.results td.report-interpretacion-alto,
+table.results td.report-interpretacion-bajo,
+.results td.text-danger,
+.results td.out-range {
+    color: inherit !important;
+    font-weight: normal !important;
+}
+<?php elseif ($report_display_mode === 'clinico'): ?>
+/* Modo Clínico: colores clásicos por interpretación */
+table.results td.report-interpretacion-alto { color: #dc3545 !important; font-weight: 700; }
+table.results td.report-interpretacion-bajo { color: #0d6efd !important; font-weight: 700; }
+/* Asegurar iconos siguen el mismo color */
+.report-interpretacion-icon.text-danger { color: #dc3545 !important; }
+.report-interpretacion-icon.text-primary { color: #0d6efd !important; }
+
+<?php elseif ($report_display_mode === 'semaforo'): ?>
+/* Modo Semáforo suave: colores más suaves e iconos (iconos se inyectan desde la plantilla) */
+table.results td.report-interpretacion-alto { color: #c44b4b !important; font-weight: 600; }
+table.results td.report-interpretacion-bajo { color: #3b82f6 !important; font-weight: 600; }
+.report-interpretacion-icon { margin-right: 6px; opacity: 0.95; }
+/* Forzar color en iconos incluso si el td padre tiene otra clase */
+.report-interpretacion-icon.text-danger { color: #c44b4b !important; }
+.report-interpretacion-icon.text-primary { color: #0d6efd !important; }
+.report-interpretacion-icon.text-dark { color: #212529 !important; }
+<?php endif; ?>
 body.js-total-pages-ready .pdf-counter-pages::before {
     content: '' !important;
 }

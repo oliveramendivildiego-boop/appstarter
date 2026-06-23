@@ -13,6 +13,7 @@
                 'report_pria_metodo_nombre'       => $report_pria_metodo_nombre ?? [],
                 'report_pria_refs_consolidada'    => $report_pria_refs_consolidada ?? [],
                 'report_forzar_col_ref'           => $reportForzarColRefDefault,
+                'doctor' => $doctor ?? null,
             ]) ?>
         <?php endforeach; ?>
     </div>

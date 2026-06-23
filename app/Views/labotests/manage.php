@@ -108,7 +108,7 @@ $labRight = '<a href="' . site_url('labotests/perfiles') . '" class="btn btn-out
                         </a>
                     </h6>
                     <div class="btn-group btn-group-sm">
-                        <a href="<?= site_url('labotests/subview/' . $cat['id']) ?>" class="btn btn-light" title="<?= lang('Labotests.labotests_new_analysis') ?>">
+                        <a href="<?= site_url('labotests/subview/' . $cat['id'] . ($page ? ('?page=' . $page) : '')) ?>" class="btn btn-light" title="<?= lang('Labotests.labotests_new_analysis') ?>">
                             <i class="fa-solid fa-plus"></i>
                         </a>
                         <?php if (! empty($cat['items'])): ?>
@@ -394,6 +394,8 @@ document.addEventListener('DOMContentLoaded', function() {
         if (csrf.value) {
             fd.append(csrf.name, csrf.value);
         }
+        // Preserve current pagination page
+        fd.append('page', String(<?= (int)($page ?? 1) ?>));
 
         return fetch('<?= site_url('labotests/reordercategories') ?>', {
             method: 'POST',
@@ -951,6 +953,8 @@ document.addEventListener('DOMContentLoaded', function() {
         if (csrf.value) {
             fd.append(csrf.name, csrf.value);
         }
+        // Preserve current pagination page when deleting so server can redirect back
+        fd.append('page', String(<?= (int)($page ?? 1) ?>));
 
         fetch('<?= site_url('labotests/deleteprianacategoria/') ?>' + pendingDelete.analysisId, {
             method: 'POST',
@@ -961,12 +965,26 @@ document.addEventListener('DOMContentLoaded', function() {
             body: fd
         })
             .then(function(response) {
-                if (response.redirected) {
-                    window.location.href = response.url;
-                    return null;
-                }
-                return response.text().then(function(text) {
-                    throw new Error(text || 'No se pudo eliminar el análisis');
+                return response.json().then(function(data) {
+                    if (response.ok) {
+                        if (data.redirect) {
+                            window.location.href = data.redirect;
+                            return null;
+                        }
+                        // fallback: reload current page
+                        window.location.reload();
+                        return null;
+                    }
+                    throw new Error(data.message || 'No se pudo eliminar el análisis');
+                }).catch(function() {
+                    // not JSON - fallback to redirect behavior
+                    if (response.redirected) {
+                        window.location.href = response.url;
+                        return null;
+                    }
+                    return response.text().then(function(text) {
+                        throw new Error(text || 'No se pudo eliminar el análisis');
+                    });
                 });
             })
             .catch(function(error) {
