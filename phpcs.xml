@@ -7,5 +7,4 @@
     <exclude-pattern>*/Language/*</exclude-pattern>
     <exclude-pattern>*/ThirdParty/*</exclude-pattern>
     <exclude-pattern>*/Database/Migrations/*</exclude-pattern>
-    <arg name="ignore-annotations" value="true"/>
 </ruleset>
