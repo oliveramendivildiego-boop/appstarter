@@ -34,6 +34,8 @@
         this.renderTask = null;
         this.renderSeq = 0;
         this.uiBound = false;
+        this.renderedPages = {};
+        this.lazyObserver = null;
     }
 
     ReportPdfJsViewer.prototype.setLoading = function (active, message) {
@@ -98,9 +100,50 @@
         }
     };
 
+    ReportPdfJsViewer.prototype.resetRenderedPages = function () {
+        this.renderedPages = {};
+        if (this.lazyObserver) {
+            this.lazyObserver.disconnect();
+            this.lazyObserver = null;
+        }
+    };
+
+    ReportPdfJsViewer.prototype.ensurePagePlaceholder = function (pageNumber) {
+        if (!this.canvasHost) {
+            return null;
+        }
+        var existing = this.canvasHost.querySelector('.report-pdfjs-page[data-page-number="' + pageNumber + '"]');
+        if (existing) {
+            return existing;
+        }
+        var pageWrap = document.createElement('div');
+        pageWrap.className = 'report-pdfjs-page report-pdfjs-page--pending';
+        pageWrap.setAttribute('data-page-number', String(pageNumber));
+        pageWrap.setAttribute('aria-label', 'Página ' + pageNumber);
+
+        var pages = this.canvasHost.querySelectorAll('.report-pdfjs-page');
+        var inserted = false;
+        for (var i = 0; i < pages.length; i++) {
+            var existingNum = parseInt(pages[i].getAttribute('data-page-number') || '0', 10);
+            if (pageNumber < existingNum) {
+                this.canvasHost.insertBefore(pageWrap, pages[i]);
+                inserted = true;
+                break;
+            }
+        }
+        if (!inserted) {
+            this.canvasHost.appendChild(pageWrap);
+        }
+
+        return pageWrap;
+    };
+
     ReportPdfJsViewer.prototype.renderSinglePage = function (pageNumber, seq) {
         var self = this;
         if (!this.pdfDoc || !this.canvasHost || seq !== this.renderSeq) {
+            return Promise.resolve();
+        }
+        if (this.renderedPages[pageNumber]) {
             return Promise.resolve();
         }
 
@@ -109,22 +152,129 @@
                 return;
             }
             var viewport = page.getViewport({ scale: self.scale });
+            var pageWrap = self.ensurePagePlaceholder(pageNumber);
+            if (!pageWrap) {
+                return;
+            }
+            pageWrap.classList.remove('report-pdfjs-page--pending');
+            pageWrap.innerHTML = '';
+
             var canvas = document.createElement('canvas');
             canvas.className = 'report-pdfjs-page-canvas';
             canvas.width = viewport.width;
             canvas.height = viewport.height;
             canvas.setAttribute('data-page-number', String(pageNumber));
             canvas.setAttribute('aria-label', 'Página ' + pageNumber);
-
-            var pageWrap = document.createElement('div');
-            pageWrap.className = 'report-pdfjs-page';
-            pageWrap.setAttribute('data-page-number', String(pageNumber));
             pageWrap.appendChild(canvas);
-            self.canvasHost.appendChild(pageWrap);
 
             var ctx = canvas.getContext('2d', { alpha: false });
             self.renderTask = page.render({ canvasContext: ctx, viewport: viewport });
-            return self.renderTask.promise;
+            return self.renderTask.promise.then(function () {
+                if (seq === self.renderSeq) {
+                    self.renderedPages[pageNumber] = true;
+                }
+            });
+        });
+    };
+
+    ReportPdfJsViewer.prototype.prefetchNearbyPages = function (centerPage, seq) {
+        var self = this;
+        if (!this.pdfDoc) {
+            return;
+        }
+        var total = this.pdfDoc.numPages;
+        var targets = [centerPage, centerPage + 1, centerPage - 1, centerPage + 2];
+        targets.forEach(function (pageNumber) {
+            if (pageNumber < 1 || pageNumber > total || self.renderedPages[pageNumber]) {
+                return;
+            }
+            self.ensurePagePlaceholder(pageNumber);
+            self.renderSinglePage(pageNumber, seq).catch(function () {});
+        });
+    };
+
+    ReportPdfJsViewer.prototype.bindLazyPageObserver = function (seq) {
+        var self = this;
+        if (!this.canvasHost || typeof global.IntersectionObserver !== 'function') {
+            return;
+        }
+        if (this.lazyObserver) {
+            this.lazyObserver.disconnect();
+        }
+        this.lazyObserver = new IntersectionObserver(function (entries) {
+            entries.forEach(function (entry) {
+                if (!entry.isIntersecting || seq !== self.renderSeq) {
+                    return;
+                }
+                var pageNumber = parseInt(entry.target.getAttribute('data-page-number') || '0', 10);
+                if (pageNumber > 0) {
+                    self.renderSinglePage(pageNumber, seq).catch(function () {});
+                }
+            });
+        }, {
+            root: this.canvasHost,
+            rootMargin: '240px 0px',
+            threshold: 0.01
+        });
+
+        var pages = this.canvasHost.querySelectorAll('.report-pdfjs-page');
+        pages.forEach(function (pageEl) {
+            self.lazyObserver.observe(pageEl);
+        });
+    };
+
+    ReportPdfJsViewer.prototype.renderInitialView = function () {
+        var self = this;
+        if (!this.pdfDoc || !this.canvasHost) {
+            return Promise.resolve();
+        }
+
+        if (this.renderTask) {
+            try {
+                this.renderTask.cancel();
+            } catch (e) {}
+            this.renderTask = null;
+        }
+
+        var seq = ++this.renderSeq;
+        var totalPages = this.pdfDoc.numPages;
+        this.resetRenderedPages();
+        this.clearCanvases();
+        this.setLoading(true, 'Renderizando página 1…');
+        this.setStatus('', false);
+
+        for (var placeholderPage = 1; placeholderPage <= totalPages; placeholderPage++) {
+            this.ensurePagePlaceholder(placeholderPage);
+        }
+
+        return this.renderSinglePage(1, seq).then(function () {
+            if (seq !== self.renderSeq) {
+                return;
+            }
+            self.renderTask = null;
+            self.setLoading(false);
+            self.updateControls();
+            var firstCanvas = self.canvasHost.querySelector('.report-pdfjs-page-canvas');
+            if (firstCanvas && firstCanvas.offsetHeight > 0) {
+                var pendingMinHeight = firstCanvas.offsetHeight + 'px';
+                self.canvasHost.querySelectorAll('.report-pdfjs-page--pending').forEach(function (pageEl) {
+                    pageEl.style.minHeight = pendingMinHeight;
+                });
+            }
+            self.bindLazyPageObserver(seq);
+            self.prefetchNearbyPages(1, seq);
+
+            if (totalPages <= 1) {
+                return;
+            }
+
+            self.setStatus('', false);
+        }).catch(function (err) {
+            if (err && err.name === 'RenderingCancelledException') {
+                return;
+            }
+            self.setLoading(false);
+            self.setStatus('No se pudo renderizar el PDF.', true);
         });
     };
 
@@ -143,6 +293,7 @@
 
         var seq = ++this.renderSeq;
         var totalPages = this.pdfDoc.numPages;
+        this.resetRenderedPages();
         this.clearCanvases();
         this.setLoading(true, 'Renderizando página 1…');
         this.setStatus('', false);
@@ -181,6 +332,9 @@
                 self.renderTask = null;
                 self.setStatus('', false);
                 self.updateControls();
+                for (var p = 1; p <= totalPages; p++) {
+                    self.renderedPages[p] = true;
+                }
             });
         }).catch(function (err) {
             if (err && err.name === 'RenderingCancelledException') {
@@ -207,6 +361,7 @@
         }
         this.pageNum = clamp(pageNumber, 1, this.pdfDoc.numPages);
         this.updateControls();
+        this.prefetchNearbyPages(this.pageNum, this.renderSeq);
         this.scrollToPage(this.pageNum);
     };
 
@@ -290,6 +445,7 @@
                 if (bestPage !== self.pageNum) {
                     self.pageNum = bestPage;
                     self.updateControls();
+                    self.prefetchNearbyPages(bestPage, self.renderSeq);
                 }
             });
         }
@@ -339,7 +495,7 @@
                 self.scale = self.initialScale;
                 self.updateControls();
                 self.setLoading(true, 'Renderizando página 1…');
-                return self.renderAllPages();
+                return self.renderInitialView();
             })
             .catch(function () {
                 self.setLoading(false);

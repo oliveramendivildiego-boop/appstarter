@@ -55,6 +55,7 @@ if (! empty($footer_order_sheet_band)
         'margin_right_mm' => (float) ($mm['right'] ?? 15),
         'n_columns'       => $n,
         'line_height'     => (float) ($ftGrid['line_height'] ?? 1.35),
+        'dompdf_from_page_two' => (string) ($elementCtx['pdf_analisis_variant'] ?? $analisis_variant ?? 'pdf') === 'pdf',
     ]);
 }
 

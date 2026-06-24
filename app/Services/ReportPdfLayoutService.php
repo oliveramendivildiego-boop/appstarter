@@ -4966,6 +4966,18 @@ class ReportPdfLayoutService
     }
 
     /**
+     * True si la plantilla de impresión resuelve al mismo id que la plantilla PDF de resultados.
+     */
+    public function printResultTemplateMatchesPdfTemplate(): bool
+    {
+        $bindings = $this->getResultTemplateBindingsForReport();
+        $pdfId    = (int) ($bindings['pdf']['resolved_template_id'] ?? 0);
+        $printId  = (int) ($bindings['print']['resolved_template_id'] ?? 0);
+
+        return $pdfId > 0 && $pdfId === $printId;
+    }
+
+    /**
      * Metadatos de las plantillas PDF e impresión configuradas en Sistema (informe de maquetación).
      *
      * @return array{

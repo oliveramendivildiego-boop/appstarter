@@ -356,6 +356,52 @@ switch ($type) {
         $inlinePg  = (($hgPg['label_pdf_pages_total_line_mode'] ?? 'stacked') === 'inline');
         $showLblPg = $showPgL && $lblPg !== '';
         $stPgLbl   = \App\Services\ReportPdfLayoutService::headerGridLabelPieceStyleAttr($hgPg, 'pdf_pages_total');
+        $variantPg = (string) ($pdf_analisis_variant ?? 'pdf');
+        $isDompdfPg = ($variantPg === 'pdf');
+        $inFooterPg = ($pdfSectionKey === 'footer');
+        if ($isDompdfPg) {
+            $mm = is_array($pdf_margins_mm ?? null)
+                ? $pdf_margins_mm
+                : \App\Services\ReportPdfLayoutService::defaultMarginsMmStatic();
+            $ftGridPg = is_array($pdf_footer_grid_style ?? null)
+                ? $pdf_footer_grid_style
+                : \App\Services\ReportPdfLayoutService::normalizeFooterGridStyle([]);
+            $footerLhPg = max(1.0, (float) ($ftGridPg['line_height'] ?? 1.35));
+            $pagConfig = [
+                'prefix'            => ($inlinePg && $showLblPg) ? $lblPg . ' ' : '',
+                'format'            => 'total_only',
+                'zone'              => $inFooterPg ? 'footer' : 'header',
+                'align'             => (string) ($pdf_cell_align ?? 'left'),
+                'fontSize'          => (float) ($ts['font_size_pt'] ?? 10),
+                'fontFamily'        => (string) ($ts['font_family'] ?? 'DejaVu Sans'),
+                'fontWeight'        => (string) ($ts['font_weight'] ?? 'normal'),
+                'fontStyle'         => (string) ($ts['font_style'] ?? 'normal'),
+                'color'             => (string) ($ts['font_color'] ?? '#333333'),
+                'mt'                => (float) ($mm['top'] ?? 15),
+                'mr'                => (float) ($mm['right'] ?? 15),
+                'mb'                => (float) ($mm['bottom'] ?? 15),
+                'ml'                => (float) ($mm['left'] ?? 15),
+                'footerReserveMm'   => $inFooterPg ? max(0.0, (float) ($pdf_footer_reserve_mm ?? 0)) : 0.0,
+                'gridColumn'        => (int) ($pdf_grid_column ?? 0),
+                'gridColumnSpan'    => max(1, (int) ($pdf_grid_column_span ?? 1)),
+                'gridRow'           => (int) ($pdf_grid_row ?? 0),
+                'gridStack'         => (int) ($pdf_grid_stack ?? 0),
+                'footerColumns'     => max(1, (int) ($pdf_footer_columns ?? 1)),
+                'footerRows'        => max(1, (int) ($pdf_footer_rows ?? 1)),
+                'footerRowGapPx'    => max(0.0, (float) ($pdf_footer_row_gap_px ?? 0)),
+                'lineHeight'        => $inFooterPg ? $footerLhPg : max(1.0, (float) ($ts['line_height'] ?? 1.35)),
+                'labelStacked'      => (! $inlinePg && $showLblPg),
+            ];
+            echo '<!-- pdf-pagination:' . base64_encode(json_encode($pagConfig, JSON_UNESCAPED_UNICODE)) . ' -->';
+            if (! $inlinePg && $showLblPg) {
+                ?>
+                <div class="<?= esc($pdfGridFieldCls, 'attr') ?>">
+                    <p style="margin:0;"><span style="<?= esc($stPgLbl, 'attr') ?>"><?= esc($lblPg) ?></span></p>
+                </div>
+                <?php
+            }
+            break;
+        }
         ?>
                 <div class="<?= esc($pdfGridFieldCls, 'attr') ?>">
                     <?php if ($inlinePg && $showLblPg): ?>
@@ -420,6 +466,44 @@ switch ($type) {
                 'labelStacked'      => false,
             ];
             echo '<!-- pdf-pagination:' . base64_encode(json_encode($pagConfig, JSON_UNESCAPED_UNICODE)) . ' -->';
+            break;
+        }
+        if ($isDompdf && $inFooter) {
+            $mm = is_array($pdf_margins_mm ?? null)
+                ? $pdf_margins_mm
+                : \App\Services\ReportPdfLayoutService::defaultMarginsMmStatic();
+            $pagConfig = [
+                'prefix'            => ($inlinePag && $showLblPag) ? $lblPag . ' ' : '',
+                'zone'              => 'footer',
+                'align'             => (string) ($pdf_cell_align ?? 'left'),
+                'fontSize'          => (float) ($ts['font_size_pt'] ?? 10),
+                'fontFamily'        => (string) ($ts['font_family'] ?? 'DejaVu Sans'),
+                'fontWeight'        => (string) ($ts['font_weight'] ?? 'normal'),
+                'fontStyle'         => (string) ($ts['font_style'] ?? 'normal'),
+                'color'             => (string) ($ts['font_color'] ?? '#333333'),
+                'mt'                => (float) ($mm['top'] ?? 15),
+                'mr'                => (float) ($mm['right'] ?? 15),
+                'mb'                => (float) ($mm['bottom'] ?? 15),
+                'ml'                => (float) ($mm['left'] ?? 15),
+                'footerReserveMm'   => max(0.0, (float) ($pdf_footer_reserve_mm ?? 0)),
+                'gridColumn'        => (int) ($pdf_grid_column ?? 0),
+                'gridColumnSpan'    => max(1, (int) ($pdf_grid_column_span ?? 1)),
+                'gridRow'           => (int) ($pdf_grid_row ?? 0),
+                'gridStack'         => (int) ($pdf_grid_stack ?? 0),
+                'footerColumns'     => max(1, (int) ($pdf_footer_columns ?? 1)),
+                'footerRows'        => max(1, (int) ($pdf_footer_rows ?? 1)),
+                'footerRowGapPx'    => max(0.0, (float) ($pdf_footer_row_gap_px ?? 0)),
+                'lineHeight'        => $footerLh,
+                'labelStacked'      => (! $inlinePag && $showLblPag),
+            ];
+            echo '<!-- pdf-pagination:' . base64_encode(json_encode($pagConfig, JSON_UNESCAPED_UNICODE)) . ' -->';
+            if (! $inlinePag && $showLblPag) {
+                ?>
+                <div class="<?= esc($pagPieceClass, 'attr') ?>">
+                    <p style="margin:0;"><span style="<?= esc($stPagLbl, 'attr') ?>"><?= esc($lblPag) ?></span></p>
+                </div>
+                <?php
+            }
             break;
         }
         $dataTotalAttr     = $pageToken;

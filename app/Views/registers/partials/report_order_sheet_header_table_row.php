@@ -8,6 +8,7 @@
  * @var float  $margin_left_mm
  * @var float  $margin_right_mm
  * @var float  $line_height
+ * @var bool   $dompdf_from_page_two Si true, Dompdf elimina la fila en hoja 1 (begin_page_reflow).
  */
 declare(strict_types=1);
 
@@ -31,8 +32,13 @@ $cellBase = 'line-height:' . esc((string) $lh, 'attr')
     . ';border-bottom:1px solid rgba(0,0,0,0.12);padding-bottom:4px;margin-bottom:2px;';
 $leftStyle  = $cellBase . 'text-align:left !important;padding-left:' . esc((string) $ml, 'attr') . 'mm;padding-right:0;';
 $rightStyle = $cellBase . 'text-align:right !important;padding-right:' . esc((string) $mr, 'attr') . 'mm;padding-left:0;';
+$dompdfFromPageTwo = ! empty($dompdf_from_page_two);
+$rowAttrs = 'class="pdf-section-row pdf-order-sheet-table-row" data-pdf-row="order-sheet"';
+if ($dompdfFromPageTwo) {
+    $rowAttrs .= ' data-order-sheet-from-page-two="1"';
+}
 ?>
-    <tr class="pdf-section-row pdf-order-sheet-table-row" data-pdf-row="order-sheet">
+    <tr <?= $rowAttrs ?>>
         <td class="pdf-order-sheet-header-patient pdf-cell pdf-cell--left" colspan="<?= $leftSpan ?>" style="<?= esc($leftStyle, 'attr') ?>"><?= esc($patientLine) ?></td>
         <td class="pdf-order-sheet-header-orden pdf-cell pdf-cell--right" colspan="<?= $rightSpan ?>" style="<?= esc($rightStyle, 'attr') ?>"><?= esc($orderLine) ?></td>
     </tr>

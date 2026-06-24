@@ -17,7 +17,13 @@ $data = $rs->prepareReportData(262);
 helper(['qr', 'registro']);
 $html = $rs->renderReportPdfHtml($data, 'http://x', qr_base64('http://x', 120));
 
-echo 'table row: ' . (str_contains($html, 'pdf-order-sheet-table-row') ? 'yes' : 'no') . PHP_EOL;
+$hasTableRow = (bool) preg_match('/<tr[^>]*class="[^"]*pdf-order-sheet-table-row/', $html);
+$hasSpacer = str_contains($html, 'pdf-order-sheet-spacer-row');
+$hasPatientText = (bool) preg_match('/pdf-order-sheet-header-patient[^>]*>[^<]*Paciente:/', $html);
+echo 'table row tr: ' . ($hasTableRow ? 'yes' : 'no') . PHP_EOL;
+echo 'spacer row: ' . ($hasSpacer ? 'yes' : 'no') . PHP_EOL;
+echo 'patient text in html: ' . ($hasPatientText ? 'yes' : 'no') . PHP_EOL;
+echo 'marker: ' . (str_contains($html, 'pdf-order-sheet-header:') ? 'yes' : 'no') . PHP_EOL;
 echo 'in section table: ' . (preg_match('/pdf-section-table[^>]*>[\s\S]*?pdf-order-sheet-table-row/', $html) ? 'yes' : 'no') . PHP_EOL;
 echo 'old band div in html: ' . (preg_match('/<div class="pdf-order-sheet-footer-band/', $html) ? 'yes' : 'no') . PHP_EOL;
 

@@ -280,6 +280,7 @@ class PdfService
             'footerRowGapPx'  => max(0.0, (float) ($data['footerRowGapPx'] ?? 0)),
             'lineHeight'      => max(1.0, (float) ($data['lineHeight'] ?? 1.35)),
             'labelStacked'    => ! empty($data['labelStacked']),
+            'format'          => (string) ($data['format'] ?? 'page_of_total'),
         ];
     }
 
@@ -290,11 +291,6 @@ class PdfService
      */
     protected function buildPaginationCallbacks(array $slots): array
     {
-        // Encabezado: canvas. Pie: HTML en la cuadrícula del footer (posición y estilos de plantilla).
-        $slots = array_values(array_filter(
-            $slots,
-            static fn (array $slot): bool => strtolower((string) ($slot['zone'] ?? 'header')) !== 'footer'
-        ));
         if ($slots === []) {
             return [];
         }
@@ -341,7 +337,9 @@ class PdfService
                     (string) ($slot['fontStyle'] ?? 'normal')
                 )
             );
-            $text       = $slot['prefix'] . $pageNumber . ' de ' . $pageCount;
+            $text       = ($slot['format'] ?? 'page_of_total') === 'total_only'
+                ? $slot['prefix'] . $pageCount
+                : $slot['prefix'] . $pageNumber . ' de ' . $pageCount;
             $textWidth  = (float) $canvas->get_text_width($text, $font, $fontSize);
             $lineHeight = max(1.0, (float) ($slot['lineHeight'] ?? 1.35));
             $linePt     = $fontSize * $lineHeight;
@@ -492,45 +490,56 @@ class PdfService
         }
 
         return [[
-            'event' => 'end_document',
-            'f'     => function (int $pageNumber, int $pageCount, $canvas, FontMetrics $fontMetrics) use ($slot): void {
-                unset($pageCount, $fontMetrics);
-                if ($pageNumber !== 1) {
+            'event' => 'begin_page_reflow',
+            'f'     => function ($frame, $canvas, FontMetrics $fontMetrics) use ($slot): void {
+                unset($slot, $fontMetrics);
+                if (! $frame instanceof \Dompdf\Frame) {
                     return;
                 }
-                $this->paintOrderSheetHeaderPage1Cover($canvas, $slot);
+                if ((int) $canvas->get_page_number() >= 2) {
+                    return;
+                }
+                $this->stripOrderSheetRowsForPageOne($frame);
             },
         ]];
     }
 
-    /**
-     * Oculta la fila Paciente / No. Orden en la 1.ª hoja (el HTML del pie se repite en todas).
-     *
-     * @param array{patient: string, order: string, ml: float, mr: float, mb: float, footerReserveMm: float, gapMm: float, footerBg: string, rowHeightMm: float} $slot
-     */
-    protected function paintOrderSheetHeaderPage1Cover($canvas, array $slot): void
+    protected function isOrderSheetRowFrame(\Dompdf\Frame $frame): bool
     {
-        if (! method_exists($canvas, 'get_cpdf')) {
+        $node = $frame->get_node();
+
+        return $node instanceof \DOMElement
+            && $node->hasAttribute('data-order-sheet-from-page-two')
+            && str_contains($node->getAttribute('class'), 'pdf-order-sheet-table-row');
+    }
+
+    /**
+     * Elimina la fila Paciente / No. Orden del árbol en hoja 1 (antes del reflow).
+     */
+    protected function stripOrderSheetRowsForPageOne(\Dompdf\Frame $frame): void
+    {
+        $rows = [];
+        $this->collectOrderSheetRowFrames($frame, $rows);
+        foreach ($rows as $rowFrame) {
+            $rowFrame->dispose(false);
+        }
+    }
+
+    /**
+     * @param list<\Dompdf\Frame> $rows
+     */
+    protected function collectOrderSheetRowFrames(\Dompdf\Frame $frame, array &$rows): void
+    {
+        if ($this->isOrderSheetRowFrame($frame)) {
+            $rows[] = $frame;
+
             return;
         }
 
-        try {
-            $cpdf   = $canvas->get_cpdf();
-            $pageW  = (float) $canvas->get_width();
-            $mmToPt = 72 / 25.4;
-            $ml     = $slot['ml'] * $mmToPt;
-            $mr     = $slot['mr'] * $mmToPt;
-            $mb     = $slot['mb'] * $mmToPt;
-            $gap    = $slot['gapMm'] * $mmToPt;
-            $footer = $slot['footerReserveMm'] * $mmToPt;
-            $rowH   = $slot['rowHeightMm'] * $mmToPt;
-
-            $yBase  = $mb + $footer + $gap;
-            $rgb    = $this->hexColorToRgb($slot['footerBg']);
-            $cpdf->setColor($rgb, true);
-            $cpdf->filledRectangle($ml, $yBase, $pageW - $ml - $mr, $rowH);
-        } catch (\Throwable $e) {
-            // Sin cubierta si el canvas no está disponible.
+        foreach ($frame->get_children() as $child) {
+            if ($child instanceof \Dompdf\Frame) {
+                $this->collectOrderSheetRowFrames($child, $rows);
+            }
         }
     }
 

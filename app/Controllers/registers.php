@@ -665,54 +665,29 @@ class Registers extends SecureArea
             return redirect()->to('registers/anulada/' . $id);
         }
 
-        (new PrianacategoriaReferenceService())->repairRegvaluesForRegistro($id);
-        $data = $this->registerService->prepareReportData($id);
-        
-        if (!$data) {
+        $data = $this->registerService->prepareViewreportPageData($id);
+        if (! $data) {
             return redirect()->to('registers')->with('error', 'Registro no encontrado');
         }
 
-        $pago = $this->registerModel->getPagoByRegistroId($id);
+        $pago           = $this->registerModel->getPagoByRegistroId($id);
         $billingService = new BillingDocumentService();
         $pagoCompleto   = $this->registerModel->isPagoCompletoPorRegistroId($id);
-        $publicToken    = $this->registerModel->ensurePublicAccessToken($id);
-        $pdfLayout      = (new ReportPdfLayoutService())->getActiveLayoutForRender();
-        $labConfig      = $this->registerService->getLabConfig();
-        $layoutCtx      = $this->registerService->buildReportLayoutContext($data, $pdfLayout, $labConfig);
         $envelopeRender = new EnvelopeRenderService();
-
-        // Debug: log doctor display_mode passed to view
-        try {
-            log_message('debug', 'Registers::viewreport doctor display_mode => ' . (string) ($data['doctor']->display_mode ?? 'NULL'));
-        } catch (\Throwable $e) {
-        }
 
         return view('registers/viewreport', [
             'current_module'    => 'registers',
-            'controller_name'  => 'registers',
+            'controller_name'   => 'registers',
             'register_info'     => $data['register_info'],
             'labotests_namecate' => $id,
-            'public_resultados_token' => $publicToken,
-            'paciente'          => $data['paciente'],
-            'doctor'            => $data['doctor'],
-            'analisis'          => $data['analisis'],
             'grupos'            => $data['grupos'],
-            'report_pria_tipo_muestra_nombre' => $data['report_pria_tipo_muestra_nombre'] ?? [],
-            'report_pria_metodo_nombre'       => $data['report_pria_metodo_nombre'] ?? [],
-            'report_lab_firmas'               => $data['report_lab_firmas'] ?? [],
-            'report_pria_refs_consolidada'    => $data['report_pria_refs_consolidada'] ?? [],
             'registerModel'     => $this->registerModel,
             'allowed_modules'   => $this->allowed_modules,
             'user_info'         => $this->user_info,
-            'report_emitido_en' => $this->registerService->reportEmitidoEnForView($id),
             'sin_billing_enabled' => $billingService->isSinBillingEnabled(),
             'comprobante_pdf_disponible' => $pago !== null && $pagoCompleto,
-            'comprobante_pdf_pendiente_pago' => $pago !== null && !$pagoCompleto,
+            'comprobante_pdf_pendiente_pago' => $pago !== null && ! $pagoCompleto,
             'comprobante_pdf_sin_registro_pago' => $pago === null,
-            'pdf_layout'        => $pdfLayout,
-            'lab_config'        => $labConfig,
-            'report_layout_plan'    => $layoutCtx['plan'],
-            'report_layout_applier' => $layoutCtx['applier'],
             'envelope_print_available' => $envelopeRender->getPrintTemplate() !== null,
         ]);
     }
@@ -758,7 +733,8 @@ class Registers extends SecureArea
     }
 
     /**
-     * Impresión del reporte: por defecto el mismo PDF de descarga (paridad Dompdf).
+     * Impresión del reporte: si PDF e impresión usan la misma plantilla, reutiliza el PDF cacheado
+     * de viewreport; si no, regenera con la plantilla de impresión.
      * HTML legacy: ?layout_report=1 | ?pb_diag=1 | ?html=1
      */
     public function printreport($id = -1)
@@ -799,21 +775,26 @@ class Registers extends SecureArea
             return $this->response->setBody($html)->setContentType('text/html', 'UTF-8');
         }
 
-        // Use the "print" template (Quantum Printer) when generating the PDF for printing.
+        // Misma plantilla PDF e impresión: reutilizar caché de viewreport; si no, plantilla de impresión.
         $layoutService = new \App\Services\ReportPdfLayoutService();
-        $pdfLayoutForPrint = $layoutService->getPrintLayoutForRender();
-        $qrPx      = \App\Services\ReportPdfLayoutService::qrImagePixelSizeFromLayout($pdfLayoutForPrint);
-        $qrDataUri = qr_base64($reportUrl, $qrPx);
-        $pdfBinary = $this->registerService->generateReportPdfBinary(
-            $data,
-            $reportUrl,
-            $qrDataUri,
-            $emitidoEn,
-            $pdfLayoutForPrint,
-        );
+
+        if ($layoutService->printResultTemplateMatchesPdfTemplate()) {
+            $pdfBinary = $this->readOrGenerateReportPdfBinary($id, $data, $emitidoEn, $reportUrl)['binary'];
+        } else {
+            $pdfLayoutForPrint = $layoutService->getPrintLayoutForRender();
+            $qrPx      = \App\Services\ReportPdfLayoutService::qrImagePixelSizeFromLayout($pdfLayoutForPrint);
+            $qrDataUri = qr_base64($reportUrl, $qrPx);
+            $pdfBinary = $this->registerService->generateReportPdfBinary(
+                $data,
+                $reportUrl,
+                $qrDataUri,
+                $emitidoEn,
+                $pdfLayoutForPrint,
+            );
+        }
 
         $paciente = $data['paciente'] ?? null;
-        unset($data, $qrDataUri);
+        unset($data);
         $pacienteNombre = trim(
             (is_object($paciente) ? ($paciente->first_name ?? '') : '')
             . ' '
@@ -987,8 +968,9 @@ class Registers extends SecureArea
     public function pdf($id = -1)
     {
         $id = (int) $id;
-        if (function_exists('opcache_invalidate')) {
+        if (ENVIRONMENT === 'development' && function_exists('opcache_invalidate')) {
             foreach ([
+                APPPATH . 'Views/registers/pdf/blocks/footer.php',
                 APPPATH . 'Views/registers/pdf/blocks/results.php',
                 APPPATH . 'Views/registers/pdf/report_document.php',
                 APPPATH . 'Views/registers/pdf/section_layout_grid.php',
@@ -1014,6 +996,23 @@ class Registers extends SecureArea
             return redirect()->to('registers/lista')->with('error', 'La orden está anulada; no se puede generar el PDF de resultados.');
         }
 
+        $inline      = $this->request->getGet('inline') === '1';
+        $disposition = $inline ? 'inline' : 'attachment';
+        $qrLayout    = (new \App\Services\ReportPdfLayoutService())->getActiveLayoutForRender();
+
+        $emitidoEnCache = $this->registerService->reportEmitidoEnForPreviewCache($id);
+        if ($emitidoEnCache !== null) {
+            $fingerprintEarly = $this->registerService->reportPdfPreviewCacheFingerprintLight(
+                $id,
+                $emitidoEnCache,
+                $qrLayout,
+            );
+            $cachedPdfEarly = $this->registerService->readReportPdfPreviewCache($id, $fingerprintEarly);
+            if ($cachedPdfEarly !== null) {
+                return $this->respondReportPdfBinary($id, $cachedPdfEarly, $disposition, 'hit-early', null, $fingerprintEarly);
+            }
+        }
+
         $data = $this->registerService->prepareReportData($id);
         if (!$data) {
             return redirect()->to('registers')->with('error', 'Registro no encontrado');
@@ -1021,46 +1020,110 @@ class Registers extends SecureArea
 
         helper('qr');
         $reportUrl = $this->publicReportViewerUrlForQr($id);
-        $qrLayout  = (new \App\Services\ReportPdfLayoutService())->getActiveLayoutForRender();
-        $qrPx      = \App\Services\ReportPdfLayoutService::qrImagePixelSizeFromLayout($qrLayout);
-        $qrDataUri = qr_base64($reportUrl, $qrPx);
         $emitidoEn = $this->registerService->lockReportEmitidoEnForPrintOrPdf($id);
+        $resolved  = $this->readOrGenerateReportPdfBinary($id, $data, $emitidoEn, $reportUrl);
+
+        return $this->respondReportPdfBinary(
+            $id,
+            $resolved['binary'],
+            $disposition,
+            $resolved['cache'],
+            $data,
+            $resolved['fingerprint'],
+        );
+    }
+
+    /**
+     * PDF con plantilla PDF activa: caché de viewreport o generación Dompdf.
+     *
+     * @param array<string, mixed> $data
+     *
+     * @return array{binary: string, fingerprint: string, cache: string}
+     */
+    private function readOrGenerateReportPdfBinary(
+        int $id,
+        array $data,
+        string $emitidoEn,
+        string $reportUrl,
+    ): array {
+        $qrLayout    = (new \App\Services\ReportPdfLayoutService())->getActiveLayoutForRender();
         $fingerprint = $this->registerService->reportPdfPreviewCacheFingerprint($id, $data, $emitidoEn, $qrLayout);
-        $inline = $this->request->getGet('inline') === '1';
 
-        if ($inline) {
-            $cachedPdf = $this->registerService->readReportPdfPreviewCache($id, $fingerprint);
-            if ($cachedPdf !== null) {
-                $pacienteNombre = trim(($data['paciente']->first_name ?? '') . '_' . ($data['paciente']->last_name_fa ?? ''));
-                $filename = 'Resultados_' . ($pacienteNombre ?: 'paciente') . '_' . $id . '_' . lab_filename_date() . '.pdf';
-
-                return $this->response
-                    ->setHeader('Content-Type', 'application/pdf')
-                    ->setHeader('Content-Disposition', 'inline; filename="' . $filename . '"')
-                    ->setHeader('X-Report-Pdf-Cache', 'hit')
-                    ->setBody($cachedPdf);
-            }
+        $cachedPdf = $this->registerService->readReportPdfPreviewCache($id, $fingerprint);
+        if ($cachedPdf !== null) {
+            return [
+                'binary'      => $cachedPdf,
+                'fingerprint' => $fingerprint,
+                'cache'       => 'hit',
+            ];
         }
 
+        $qrPx      = \App\Services\ReportPdfLayoutService::qrImagePixelSizeFromLayout($qrLayout);
+        $qrDataUri = qr_base64($reportUrl, $qrPx);
         $html      = $this->registerService->renderReportPdfHtml($data, $reportUrl, $qrDataUri, $emitidoEn);
 
-        $pdfService    = new PdfService();
-        $pageSize      = \App\Services\ReportPdfLayoutService::resolveGlobalPageSizeMm($this->registerService->getLabConfig());
-        $pacienteNombre = trim(($data['paciente']->first_name ?? '') . '_' . ($data['paciente']->last_name_fa ?? ''));
-        $filename      = 'Resultados_' . ($pacienteNombre ?: 'paciente') . '_' . $id . '_' . lab_filename_date() . '.pdf';
+        $pdfService = new PdfService();
+        $pageSize   = \App\Services\ReportPdfLayoutService::resolveGlobalPageSizeMm($this->registerService->getLabConfig());
+        $pdfBinary  = $pdfService->generate($html, $this->reportPdfFilename($id, $data), $pageSize);
 
-        $disposition = $inline ? 'inline' : 'attachment';
-        $pdfBinary   = $pdfService->generate($html, $filename, $pageSize);
+        $this->registerService->writeReportPdfPreviewCache($id, $fingerprint, $pdfBinary);
 
-        if ($inline) {
-            $this->registerService->writeReportPdfPreviewCache($id, $fingerprint, $pdfBinary);
+        return [
+            'binary'      => $pdfBinary,
+            'fingerprint' => $fingerprint,
+            'cache'       => 'miss',
+        ];
+    }
+
+    /**
+     * @param array<string, mixed>|null $reportData
+     */
+    private function respondReportPdfBinary(
+        int $registroId,
+        string $pdfBinary,
+        string $disposition,
+        string $cacheHeader,
+        ?array $reportData = null,
+        ?string $cacheFingerprint = null,
+    ) {
+        $filename = $this->reportPdfFilename($registroId, $reportData);
+        $etag     = $cacheFingerprint !== null && $cacheFingerprint !== ''
+            ? '"' . $cacheFingerprint . '"'
+            : '"' . sha1($pdfBinary) . '"';
+
+        $ifNoneMatch = trim((string) $this->request->getHeaderLine('If-None-Match'));
+        if ($ifNoneMatch !== '' && ($ifNoneMatch === $etag || $ifNoneMatch === 'W/' . $etag)) {
+            return $this->response
+                ->setStatusCode(304)
+                ->setHeader('ETag', $etag)
+                ->setHeader('Cache-Control', 'private, max-age=3600, must-revalidate')
+                ->setHeader('X-Report-Pdf-Cache', $cacheHeader);
         }
 
         return $this->response
             ->setHeader('Content-Type', 'application/pdf')
             ->setHeader('Content-Disposition', $disposition . '; filename="' . $filename . '"')
-            ->setHeader('X-Report-Pdf-Cache', $inline ? 'miss' : 'bypass')
+            ->setHeader('Cache-Control', 'private, max-age=3600, must-revalidate')
+            ->setHeader('ETag', $etag)
+            ->setHeader('X-Report-Pdf-Cache', $cacheHeader)
             ->setBody($pdfBinary);
+    }
+
+    /**
+     * @param array<string, mixed>|null $reportData
+     */
+    private function reportPdfFilename(int $registroId, ?array $reportData = null): string
+    {
+        $paciente = is_array($reportData) ? ($reportData['paciente'] ?? null) : null;
+        if ($paciente === null) {
+            $master = $this->registerModel->getInforeport($registroId);
+            $paciente = ($master && (int) ($master->person_id ?? 0) > 0)
+                ? $this->registerModel->getInfoPaciente((int) $master->person_id)
+                : null;
+        }
+        $pacienteNombre = trim(($paciente->first_name ?? '') . '_' . ($paciente->last_name_fa ?? ''));
+
+        return 'Resultados_' . ($pacienteNombre ?: 'paciente') . '_' . $registroId . '_' . lab_filename_date() . '.pdf';
     }
 
     /**

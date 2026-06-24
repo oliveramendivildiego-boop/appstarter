@@ -20,8 +20,23 @@ use Config\App as AppConfig;
 class RegisterService
 {
     public const TOTAL_PAGES_TOKEN = '__PDF_TOTAL_PAGES__';
+
+    /** Invalida caché inline de viewreport al cambiar el pipeline Dompdf (p. ej. banda Paciente/Orden). */
+    private const REPORT_PDF_PREVIEW_CACHE_SALT = 'order-sheet-from-page-2-v10';
     protected RegisterModel $registerModel;
     protected AppConfigModel $appConfigModel;
+
+    /** @var array<int, mixed> */
+    private array $reportBuildComplejaCache = [];
+
+    /** @var array<int, mixed> */
+    private array $reportBuildNocomplejaCache = [];
+
+    /** @var array<string, mixed> */
+    private array $reportBuildSecItemCache = [];
+
+    /** @var array<int, object|null> */
+    private array $reportBuildFormulaCache = [];
 
     public function __construct(?RegisterModel $registerModel = null, ?AppConfigModel $appConfigModel = null)
     {
@@ -360,7 +375,7 @@ class RegisterService
                 if ($prianacategoriaId <= 0 || $nombre === '') {
                     continue;
                 }
-                $item = $this->registerModel->getSecItemByPrianacategoriaYNombre($prianacategoriaId, $nombre, $matchingPoblacionIds, $gender);
+                $item = $this->getSecItemByPrianacategoriaYNombreCached($prianacategoriaId, $nombre, $matchingPoblacionIds, $gender);
                 if (!$item) {
                     continue;
                 }
@@ -386,11 +401,8 @@ class RegisterService
             $analisisId = (int) $analisisIdStr;
 
             $valores = $tipoAnalisis === 'c'
-                // En reporte, si el resultado viene de regvalues c_* debe respetar
-                // exactamente la sub-prueba guardada (secanacategoria_id), sin remap
-                // por nombre/población para no perder resultados cargados.
-                ? $this->registerModel->getAnalisisCompleja($analisisId)
-                : $this->registerModel->getAnalisisNocompleja($analisisId);
+                ? $this->getAnalisisComplejaCached($analisisId)
+                : $this->getAnalisisNocomplejaCached($analisisId);
 
             if (!$valores) {
                 continue;
@@ -448,6 +460,46 @@ class RegisterService
         }
 
         return $this->deduplicateGrupoItemsByParametro($grupos);
+    }
+
+    /**
+     * @param array<int, int> $matchingPoblacionIds
+     */
+    private function getSecItemByPrianacategoriaYNombreCached(
+        int $prianacategoriaId,
+        string $nombre,
+        array $matchingPoblacionIds = [],
+        ?int $gender = null,
+    ): mixed {
+        $cacheKey = $prianacategoriaId . "\0" . $nombre . "\0" . implode(',', $matchingPoblacionIds) . "\0" . (string) ($gender ?? '');
+        if (! array_key_exists($cacheKey, $this->reportBuildSecItemCache)) {
+            $this->reportBuildSecItemCache[$cacheKey] = $this->registerModel->getSecItemByPrianacategoriaYNombre(
+                $prianacategoriaId,
+                $nombre,
+                $matchingPoblacionIds,
+                $gender,
+            );
+        }
+
+        return $this->reportBuildSecItemCache[$cacheKey];
+    }
+
+    private function getAnalisisComplejaCached(int $analisisId): mixed
+    {
+        if (! array_key_exists($analisisId, $this->reportBuildComplejaCache)) {
+            $this->reportBuildComplejaCache[$analisisId] = $this->registerModel->getAnalisisCompleja($analisisId);
+        }
+
+        return $this->reportBuildComplejaCache[$analisisId];
+    }
+
+    private function getAnalisisNocomplejaCached(int $analisisId): mixed
+    {
+        if (! array_key_exists($analisisId, $this->reportBuildNocomplejaCache)) {
+            $this->reportBuildNocomplejaCache[$analisisId] = $this->registerModel->getAnalisisNocompleja($analisisId);
+        }
+
+        return $this->reportBuildNocomplejaCache[$analisisId];
     }
 
     /**
@@ -1514,8 +1566,11 @@ class RegisterService
         if ($formId === 1 || $formId === 0) {
             return $rawValue;
         }
-        $formulaRow  = $this->registerModel->getFormula($formId);
-        $formulaName = $formulaRow->nombre_fun ?? '';
+        if (! array_key_exists($formId, $this->reportBuildFormulaCache)) {
+            $this->reportBuildFormulaCache[$formId] = $this->registerModel->getFormula($formId);
+        }
+        $formulaRow  = $this->reportBuildFormulaCache[$formId];
+        $formulaName = is_object($formulaRow) ? ($formulaRow->nombre_fun ?? '') : '';
         if (is_string($formulaName) && function_exists($formulaName)) {
             return $formulaName($rawValue, $registroId);
         }
@@ -1592,16 +1647,135 @@ class RegisterService
     }
 
     /**
-     * Obtiene configuración del lab como array
+     * Obtiene configuración del lab como array (cacheada vía ConfigService).
      */
     public function getLabConfig(): array
     {
-        $rows = $this->appConfigModel->findAll();
-        $config = [];
-        foreach ($rows as $row) {
-            $config[$row->key] = $row->value;
+        return (new ConfigService())->getAllAsArray();
+    }
+
+    private function resetReportBuildCaches(): void
+    {
+        $this->reportBuildComplejaCache    = [];
+        $this->reportBuildNocomplejaCache  = [];
+        $this->reportBuildSecItemCache     = [];
+        $this->reportBuildFormulaCache     = [];
+    }
+
+    /**
+     * Datos mínimos para la shell de viewreport (visor PDF + campos ocultos Guardar).
+     *
+     * @return array{register_info: object, grupos: array<string, list<object|array<string, mixed>>>}|null
+     */
+    public function prepareViewreportPageData(int $registroId): ?array
+    {
+        $data = $this->prepareReportData($registroId, true);
+        if ($data === null) {
+            return null;
         }
-        return $config;
+
+        return [
+            'register_info' => $data['register_info'],
+            'grupos'        => $data['grupos'],
+        ];
+    }
+
+    /**
+     * Nombres de tipo de muestra por prianacategoria_id (consulta batch).
+     *
+     * @param list<array<string, mixed>> $priasCfg
+     *
+     * @return array<int, string>
+     */
+    private function buildReportPriaTipoMuestraNombreMap(array $priasCfg): array
+    {
+        $tipoIds = [];
+        foreach ($priasCfg as $cfgRow) {
+            $tid = (int) ($cfgRow['tipo_muestra_id'] ?? 0);
+            if ($tid > 0) {
+                $tipoIds[$tid] = $tid;
+            }
+        }
+        if ($tipoIds === []) {
+            return [];
+        }
+
+        $out = [];
+        try {
+            $rows = model(\App\Models\TipoMuestraModel::class)
+                ->whereIn('tipo_muestra_id', array_values($tipoIds))
+                ->where('deleted', 0)
+                ->findAll();
+            foreach ($rows as $tmRow) {
+                $tid = (int) ($tmRow['tipo_muestra_id'] ?? 0);
+                $nom = trim((string) ($tmRow['nombre'] ?? ''));
+                if ($tid > 0 && $nom !== '') {
+                    $out[$tid] = $nom;
+                }
+            }
+        } catch (\Throwable $e) {
+            return [];
+        }
+
+        $mapped = [];
+        foreach ($priasCfg as $cfgRow) {
+            $pId = (int) ($cfgRow['prianacategoria_id'] ?? 0);
+            $tid = (int) ($cfgRow['tipo_muestra_id'] ?? 0);
+            if ($pId > 0 && $tid > 0 && isset($out[$tid])) {
+                $mapped[$pId] = $out[$tid];
+            }
+        }
+
+        return $mapped;
+    }
+
+    /**
+     * Nombres de método por prianacategoria_id (consulta batch).
+     *
+     * @param list<array<string, mixed>> $priasCfg
+     *
+     * @return array<int, string>
+     */
+    private function buildReportPriaMetodoNombreMap(array $priasCfg): array
+    {
+        $metodoIds = [];
+        foreach ($priasCfg as $cfgRow) {
+            $mid = (int) ($cfgRow['metodo_id'] ?? 0);
+            if ($mid > 0) {
+                $metodoIds[$mid] = $mid;
+            }
+        }
+        if ($metodoIds === []) {
+            return [];
+        }
+
+        $out = [];
+        try {
+            $rows = model(\App\Models\MetodoModel::class)
+                ->whereIn('metodo_id', array_values($metodoIds))
+                ->where('deleted', 0)
+                ->findAll();
+            foreach ($rows as $mRow) {
+                $mid = (int) ($mRow['metodo_id'] ?? 0);
+                $nom = trim((string) ($mRow['nombre'] ?? ''));
+                if ($mid > 0 && $nom !== '') {
+                    $out[$mid] = $nom;
+                }
+            }
+        } catch (\Throwable $e) {
+            return [];
+        }
+
+        $mapped = [];
+        foreach ($priasCfg as $cfgRow) {
+            $pId = (int) ($cfgRow['prianacategoria_id'] ?? 0);
+            $mid = (int) ($cfgRow['metodo_id'] ?? 0);
+            if ($pId > 0 && $mid > 0 && isset($out[$mid])) {
+                $mapped[$pId] = $out[$mid];
+            }
+        }
+
+        return $mapped;
     }
 
     /**
@@ -2026,9 +2200,13 @@ class RegisterService
 
     /**
      * Prepara datos para el reporte (viewreport / PDF)
+     *
+     * @param bool $forViewreportShell Si true, omite metadatos solo usados al generar el PDF.
      */
-    public function prepareReportData(int $registroId): ?array
+    public function prepareReportData(int $registroId, bool $forViewreportShell = false): ?array
     {
+        $this->resetReportBuildCaches();
+
         $registerInfo = $this->registerModel->getInfoRefill($registroId);
         if (!$registerInfo) {
             return null;
@@ -2085,44 +2263,10 @@ class RegisterService
         $pruebasIds = array_values(array_unique(array_filter(array_map('intval', $pruebasIds), static fn($x) => $x > 0)));
         $priasCfg = $this->registerModel->getPrianacategoriaConfigByIds($pruebasIds, true);
         $reportPriaTipoMuestraNombre = [];
-        try {
-            $tipoMuestraModel = model(\App\Models\TipoMuestraModel::class);
-            foreach ($priasCfg as $cfgRow) {
-                $pId = (int) ($cfgRow['prianacategoria_id'] ?? 0);
-                $tid = (int) ($cfgRow['tipo_muestra_id'] ?? 0);
-                if ($pId < 1 || $tid < 1) {
-                    continue;
-                }
-                $tmRow = $tipoMuestraModel->find($tid);
-                if (is_array($tmRow) && (int) ($tmRow['deleted'] ?? 0) === 0) {
-                    $nom = trim((string) ($tmRow['nombre'] ?? ''));
-                    if ($nom !== '') {
-                        $reportPriaTipoMuestraNombre[$pId] = $nom;
-                    }
-                }
-            }
-        } catch (\Throwable $e) {
-            $reportPriaTipoMuestraNombre = [];
-        }
-        $reportPriaMetodoNombre = [];
-        try {
-            $metodoModel = model(\App\Models\MetodoModel::class);
-            foreach ($priasCfg as $cfgRow) {
-                $pId = (int) ($cfgRow['prianacategoria_id'] ?? 0);
-                $mid = (int) ($cfgRow['metodo_id'] ?? 0);
-                if ($pId < 1 || $mid < 1) {
-                    continue;
-                }
-                $mRow = $metodoModel->find($mid);
-                if (is_array($mRow) && (int) ($mRow['deleted'] ?? 0) === 0) {
-                    $nomM = trim((string) ($mRow['nombre'] ?? ''));
-                    if ($nomM !== '') {
-                        $reportPriaMetodoNombre[$pId] = $nomM;
-                    }
-                }
-            }
-        } catch (\Throwable $e) {
-            $reportPriaMetodoNombre = [];
+        $reportPriaMetodoNombre      = [];
+        if (! $forViewreportShell) {
+            $reportPriaTipoMuestraNombre = $this->buildReportPriaTipoMuestraNombreMap($priasCfg);
+            $reportPriaMetodoNombre      = $this->buildReportPriaMetodoNombreMap($priasCfg);
         }
         $eligiblePriaIds = [];
         $eligiblePriaConfig = [];
@@ -2140,8 +2284,12 @@ class RegisterService
         $grupos = $this->dropGruposSinValorIngresado($grupos);
         $grupos = $this->sortGruposByRegistroPruebasOrder($grupos, (string) ($registerInfo->pruebas ?? ''));
 
-        $reportLabFirmas = $this->buildLabFirmasParaReporte($analisis, (string) ($registerInfo->pruebas ?? ''), array_keys($grupos));
-        $reportPriaRefsConsolidada = $this->buildReportPriaRefsConsolidada($eligiblePriaConfig);
+        $reportLabFirmas            = [];
+        $reportPriaRefsConsolidada  = [];
+        if (! $forViewreportShell) {
+            $reportLabFirmas           = $this->buildLabFirmasParaReporte($analisis, (string) ($registerInfo->pruebas ?? ''), array_keys($grupos));
+            $reportPriaRefsConsolidada = $this->buildReportPriaRefsConsolidada($eligiblePriaConfig);
+        }
 
         return [
             'register_info' => $registerInfo,
@@ -2640,9 +2788,67 @@ class RegisterService
             $parts[] = trim((string) ($row['name'] ?? '')) . '=' . trim((string) ($row['regvalues'] ?? ''));
         }
 
-        $parts[] = md5(json_encode($pdfLayout, JSON_UNESCAPED_UNICODE) ?: '');
+        $parts[] = $this->hashPdfLayoutForFingerprint($pdfLayout);
+        $parts[] = self::REPORT_PDF_PREVIEW_CACHE_SALT;
 
         return hash('sha256', implode("\n", $parts));
+    }
+
+    /**
+     * Huella ligera para cache hit temprano (sin prepareReportData).
+     *
+     * @param array<string, mixed> $pdfLayout
+     */
+    public function reportPdfPreviewCacheFingerprintLight(
+        int $registroId,
+        string $emitidoEn,
+        array $pdfLayout,
+    ): string {
+        $parts = [(string) $registroId, $emitidoEn];
+
+        foreach ($this->registerModel->getInfoAnalisis($registroId) as $row) {
+            $parts[] = trim((string) ($row['name'] ?? '')) . '=' . trim((string) ($row['regvalues'] ?? ''));
+        }
+
+        $parts[] = $this->hashPdfLayoutForFingerprint($pdfLayout);
+        $parts[] = self::REPORT_PDF_PREVIEW_CACHE_SALT;
+
+        return hash('sha256', implode("\n", $parts));
+    }
+
+    /**
+     * Fecha fijada del reporte para fingerprint; null si aún no se imprimió/exportó PDF.
+     */
+    public function reportEmitidoEnForPreviewCache(int $registroId): ?string
+    {
+        $raw = $this->registerModel->getReporteFechaHoraFijadaMysql($registroId);
+
+        return $raw !== null ? self::formatStoredReporteFechaHora($raw) : null;
+    }
+
+    /**
+     * @param array<string, mixed> $pdfLayout
+     */
+    private function hashPdfLayoutForFingerprint(array $pdfLayout): string
+    {
+        return md5(json_encode($this->sortArrayKeysRecursive($pdfLayout), \JSON_UNESCAPED_UNICODE) ?: '');
+    }
+
+    /**
+     * @param array<string, mixed> $data
+     *
+     * @return array<string, mixed>
+     */
+    private function sortArrayKeysRecursive(array $data): array
+    {
+        ksort($data);
+        foreach ($data as $key => $value) {
+            if (is_array($value)) {
+                $data[$key] = $this->sortArrayKeysRecursive($value);
+            }
+        }
+
+        return $data;
     }
 
     public function readReportPdfPreviewCache(int $registroId, string $fingerprint): ?string
