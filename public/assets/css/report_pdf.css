@@ -85,19 +85,19 @@ body {
 .pdf-ft-pagination {
     white-space: nowrap;
 }
-.pdf-pagination-line {
-    display: inline-block;
-    min-width: 1ch;
+.pdf-ft-pagination-num {
+    display: inline;
     white-space: nowrap;
+    vertical-align: baseline;
+}
+.pdf-pagination-line {
+    display: inline;
+    min-width: 0;
+    white-space: nowrap;
+    vertical-align: baseline;
 }
 .pdf-pagination-line::before {
     content: attr(data-prefix) counter(page) ' de ' attr(data-total);
-}
-/* Pie PDF: paginación con clases propias (no .pdf-pagination-line del encabezado). */
-.pdf-ft-pagination-num {
-    display: inline-block;
-    min-width: 1ch;
-    white-space: nowrap;
 }
 .pdf-ft-pagination-num::before {
     content: attr(data-prefix) counter(page) ' de ' attr(data-total);

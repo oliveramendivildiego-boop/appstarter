@@ -2618,4 +2618,103 @@ class RegisterService
 
         return str_replace(self::TOTAL_PAGES_TOKEN, '<span class="pdf-counter-pages"></span>', $html);
     }
+
+    /**
+     * Huella para caché de vista previa PDF (inline en viewreport).
+     *
+     * @param array<string, mixed> $reportData
+     * @param array<string, mixed> $pdfLayout
+     */
+    public function reportPdfPreviewCacheFingerprint(
+        int $registroId,
+        array $reportData,
+        string $emitidoEn,
+        array $pdfLayout,
+    ): string {
+        $parts = [(string) $registroId, $emitidoEn];
+
+        foreach ($reportData['analisis'] ?? [] as $row) {
+            if (! is_array($row)) {
+                continue;
+            }
+            $parts[] = trim((string) ($row['name'] ?? '')) . '=' . trim((string) ($row['regvalues'] ?? ''));
+        }
+
+        $parts[] = md5(json_encode($pdfLayout, JSON_UNESCAPED_UNICODE) ?: '');
+
+        return hash('sha256', implode("\n", $parts));
+    }
+
+    public function readReportPdfPreviewCache(int $registroId, string $fingerprint): ?string
+    {
+        $path = $this->reportPdfPreviewCachePath($registroId);
+        $metaPath = $path . '.meta';
+
+        if (! is_file($path) || ! is_file($metaPath)) {
+            return null;
+        }
+
+        $stored = trim((string) file_get_contents($metaPath));
+        if ($stored === '' || ! hash_equals($fingerprint, $stored)) {
+            return null;
+        }
+
+        $binary = file_get_contents($path);
+
+        return ($binary !== false && $binary !== '') ? $binary : null;
+    }
+
+    public function writeReportPdfPreviewCache(int $registroId, string $fingerprint, string $binary): void
+    {
+        if ($binary === '') {
+            return;
+        }
+
+        $dir = $this->reportPdfPreviewCacheDir();
+        if (! is_dir($dir)) {
+            return;
+        }
+
+        $path = $this->reportPdfPreviewCachePath($registroId);
+        $tmp  = $path . '.tmp.' . getmypid();
+
+        if (@file_put_contents($tmp, $binary, LOCK_EX) === false) {
+            return;
+        }
+
+        @file_put_contents($tmp . '.meta', $fingerprint, LOCK_EX);
+
+        @rename($tmp, $path);
+        @rename($tmp . '.meta', $path . '.meta');
+    }
+
+    public function clearReportPdfPreviewCache(int $registroId): void
+    {
+        if ($registroId < 1) {
+            return;
+        }
+
+        $path = $this->reportPdfPreviewCachePath($registroId);
+        if (is_file($path)) {
+            @unlink($path);
+        }
+        if (is_file($path . '.meta')) {
+            @unlink($path . '.meta');
+        }
+    }
+
+    private function reportPdfPreviewCacheDir(): string
+    {
+        $dir = WRITEPATH . 'cache' . DIRECTORY_SEPARATOR . 'report_pdf_preview';
+        if (! is_dir($dir)) {
+            @mkdir($dir, 0755, true);
+        }
+
+        return $dir;
+    }
+
+    private function reportPdfPreviewCachePath(int $registroId): string
+    {
+        return $this->reportPdfPreviewCacheDir() . DIRECTORY_SEPARATOR . 'registro_' . $registroId . '.pdf';
+    }
 }

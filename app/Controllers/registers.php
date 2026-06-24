@@ -1025,6 +1025,23 @@ class Registers extends SecureArea
         $qrPx      = \App\Services\ReportPdfLayoutService::qrImagePixelSizeFromLayout($qrLayout);
         $qrDataUri = qr_base64($reportUrl, $qrPx);
         $emitidoEn = $this->registerService->lockReportEmitidoEnForPrintOrPdf($id);
+        $fingerprint = $this->registerService->reportPdfPreviewCacheFingerprint($id, $data, $emitidoEn, $qrLayout);
+        $inline = $this->request->getGet('inline') === '1';
+
+        if ($inline) {
+            $cachedPdf = $this->registerService->readReportPdfPreviewCache($id, $fingerprint);
+            if ($cachedPdf !== null) {
+                $pacienteNombre = trim(($data['paciente']->first_name ?? '') . '_' . ($data['paciente']->last_name_fa ?? ''));
+                $filename = 'Resultados_' . ($pacienteNombre ?: 'paciente') . '_' . $id . '_' . lab_filename_date() . '.pdf';
+
+                return $this->response
+                    ->setHeader('Content-Type', 'application/pdf')
+                    ->setHeader('Content-Disposition', 'inline; filename="' . $filename . '"')
+                    ->setHeader('X-Report-Pdf-Cache', 'hit')
+                    ->setBody($cachedPdf);
+            }
+        }
+
         $html      = $this->registerService->renderReportPdfHtml($data, $reportUrl, $qrDataUri, $emitidoEn);
 
         $pdfService    = new PdfService();
@@ -1032,10 +1049,18 @@ class Registers extends SecureArea
         $pacienteNombre = trim(($data['paciente']->first_name ?? '') . '_' . ($data['paciente']->last_name_fa ?? ''));
         $filename      = 'Resultados_' . ($pacienteNombre ?: 'paciente') . '_' . $id . '_' . lab_filename_date() . '.pdf';
 
+        $disposition = $inline ? 'inline' : 'attachment';
+        $pdfBinary   = $pdfService->generate($html, $filename, $pageSize);
+
+        if ($inline) {
+            $this->registerService->writeReportPdfPreviewCache($id, $fingerprint, $pdfBinary);
+        }
+
         return $this->response
             ->setHeader('Content-Type', 'application/pdf')
-            ->setHeader('Content-Disposition', 'attachment; filename="' . $filename . '"')
-            ->setBody($pdfService->generate($html, $filename, $pageSize));
+            ->setHeader('Content-Disposition', $disposition . '; filename="' . $filename . '"')
+            ->setHeader('X-Report-Pdf-Cache', $inline ? 'miss' : 'bypass')
+            ->setBody($pdfBinary);
     }
 
     /**
@@ -2202,6 +2227,9 @@ class Registers extends SecureArea
                 'estado_id'   => 1,
             ]);
         }
+        if ($ridAn > 0) {
+            $this->registerService->clearReportPdfPreviewCache($ridAn);
+        }
         return $this->response->setJSON(['success' => true, 'message' => 'Guardado exitoso']);
     }
 
@@ -2217,6 +2245,7 @@ class Registers extends SecureArea
             return redirect()->back()->with('error', 'La orden está anulada; no se puede validar.');
         }
         $this->registerModel->validarResultados($registroId, $tipo, $obs);
+        $this->registerService->clearReportPdfPreviewCache($registroId);
         \App\Models\AuditoriaModel::log('registers', 'validar_' . $tipo, (string) $registroId, \App\Models\AuditoriaModel::detail([
             'tipo' => $tipo,
             'observaciones' => $obs,

@@ -401,6 +401,8 @@ switch ($type) {
                 'align'             => (string) ($pdf_cell_align ?? 'left'),
                 'fontSize'          => (float) ($ts['font_size_pt'] ?? 10),
                 'fontFamily'        => (string) ($ts['font_family'] ?? 'DejaVu Sans'),
+                'fontWeight'        => (string) ($ts['font_weight'] ?? 'normal'),
+                'fontStyle'         => (string) ($ts['font_style'] ?? 'normal'),
                 'color'             => (string) ($ts['font_color'] ?? '#333333'),
                 'mt'                => (float) ($mm['top'] ?? 15),
                 'mr'                => (float) ($mm['right'] ?? 15),
@@ -422,7 +424,7 @@ switch ($type) {
             echo '<!-- pdf-pagination:' . base64_encode(json_encode($pagConfig, JSON_UNESCAPED_UNICODE)) . ' -->';
         }
         $dataTotalAttr     = $pageToken;
-        $hideForCanvas     = $isDompdf && ! $inFooter;
+        $hideForCanvas     = $isDompdf;
         $pagPieceClass     = $inFooter ? 'pdf-ft-pagination' : 'header-piece header-piece-pagination';
         $pagNumClass       = $inFooter ? 'pdf-ft-pagination-num' : 'pdf-pagination-line';
         $pagHideStyle      = '';

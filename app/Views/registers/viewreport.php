@@ -1,35 +1,10 @@
 <?= $this->extend('layouts/main') ?>
-<?php
-$plViewHead = is_array($pdf_layout ?? null) ? $pdf_layout : [];
-$mmViewHead = is_array($plViewHead['margins_mm'] ?? null)
-    ? $plViewHead['margins_mm']
-    : \App\Services\ReportPdfLayoutService::defaultMarginsMmStatic();
-$mtViewHead = (float) ($mmViewHead['top'] ?? 15);
-$mbViewHead = (float) ($mmViewHead['bottom'] ?? 15);
-$pageSizeViewHead = \App\Services\ReportPdfLayoutService::resolveGlobalPageSizeMm(is_array($lab_config ?? null) ? $lab_config : []);
-$printPageHeightMmHead = (float) $pageSizeViewHead['height_mm'];
-$printPageWidthMmHead = (float) $pageSizeViewHead['width_mm'];
-$printPageCssSizeView = (string) $pageSizeViewHead['css_size'];
-$pdfFooterEnabledView = false;
-foreach (is_array($plViewHead['blocks'] ?? null) ? $plViewHead['blocks'] : [] as $fbView) {
-    if (! empty($fbView['enabled']) && (string) ($fbView['id'] ?? '') === 'footer') {
-        $pdfFooterEnabledView = true;
-        break;
-    }
-}
-$pdfFooterReserveMmView = $pdfFooterEnabledView
-    ? \App\Services\ReportPdfLayoutService::estimatePdfFooterReserveMm($plViewHead)
-    : 22.0;
-$gpbBodyClassView = \App\Services\ReportPdfLayoutService::grupoPruebaPageBreakBodyClass($plViewHead);
-$orderSheetHeaderEnabledView = \App\Services\ReportPdfLayoutService::isOrderSheetHeaderEnabledForLayout($plViewHead);
-?>
 <?= $this->section('title') ?>Reporte<?= $this->endSection() ?>
 
 <?= $this->section('head_extra') ?>
-<?= view('registers/partials/report_pdf_theme_styles', [
-    'pdf_layout'                     => $pdf_layout ?? [],
-    'use_sheet_padding_for_margins' => true,
-]) ?>
+<?php if (! empty($grupos ?? [])): ?>
+<link rel="preload" href="<?= esc(site_url('registers/pdf/' . (int) ($labotests_namecate ?? 0) . '?inline=1'), 'attr') ?>" as="fetch" crossorigin="use-credentials">
+<?php endif; ?>
 <style>
 .viewreport-actions-bar {
     background: #f8f9fa;
@@ -47,149 +22,122 @@ $orderSheetHeaderEnabledView = \App\Services\ReportPdfLayoutService::isOrderShee
 .viewreport-actions-bar--bottom {
     margin-top: 16px;
 }
-.viewreport-pdf-shell {
-    width: 100%;
-    overflow-x: auto;
-    padding: 8px 0 24px;
-    background: #e9ecef;
-}
-.viewreport-pdf-sheet {
-    position: relative;
-    width: <?= esc((string) $printPageWidthMmHead) ?>mm;
-    max-width: 100%;
-    margin-left: auto;
-    margin-right: auto;
-    background: #fff;
+.report-pdfjs-viewer {
+    border: 1px solid #dee2e6;
+    border-radius: 8px;
+    background: #525659;
+    overflow: hidden;
     box-shadow: 0 2px 10px rgba(0, 0, 0, 0.14);
-    box-sizing: border-box;
 }
-.viewreport-pdf-sheet .pdf-watermark-layer {
+.report-pdfjs-toolbar {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 14px;
+    background: #f8f9fa;
+    border-bottom: 1px solid #dee2e6;
+}
+.report-pdfjs-toolbar-group {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    align-items: center;
+}
+.report-pdfjs-page-indicator,
+.report-pdfjs-zoom-label {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 72px;
+    line-height: 1.2;
+    white-space: nowrap;
+}
+.report-pdfjs-toolbar-note {
+    flex: 1 1 220px;
+    text-align: right;
+}
+.report-pdfjs-status {
+    padding: 8px 14px;
+    background: #f8f9fa;
+    border-bottom: 1px solid #dee2e6;
+}
+.report-pdfjs-canvas-host {
+    position: relative;
+    max-height: calc(100vh - 220px);
+    min-height: 480px;
+    overflow: auto;
+    padding: 16px;
+    background: #525659;
+}
+.report-pdfjs-loading {
     position: absolute;
-    left: 0;
-    top: 0;
-    width: 100%;
-    height: 100%;
-    max-height: none;
-    z-index: 0;
-    pointer-events: none;
-}
-.viewreport-pdf-sheet .pdf-watermark-inner,
-.viewreport-pdf-sheet .pdf-watermark-table,
-.viewreport-pdf-sheet .pdf-watermark-td {
-    height: 100% !important;
-    min-height: <?= esc((string) $printPageHeightMmHead) ?>mm;
-}
-.viewreport-pdf-sheet .pdf-main-stack {
-    position: relative;
-    z-index: 1;
-}
-.viewreport-pdf-sheet .pdf-ft-block.footer-grid {
-    position: relative;
+    inset: 0;
     z-index: 2;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    padding: 24px;
+    text-align: center;
+    background: rgba(45, 47, 49, 0.92);
+    color: #f8f9fa;
 }
-table.results td.resultado-texto-rico-cell .resultado-texto-rico strong,
-table.results td.resultado-texto-rico-cell .resultado-texto-rico b {
-    font-weight: 700 !important;
+.report-pdfjs-viewer.is-loading .report-pdfjs-loading {
+    display: flex;
 }
-table.results td.resultado-texto-rico-cell .resultado-texto-rico em,
-table.results td.resultado-texto-rico-cell .resultado-texto-rico i,
-table.results td.resultado-texto-rico-cell .resultado-texto-rico span[style*="italic"],
-table.results td.resultado-texto-rico-cell .resultado-texto-rico span[style*="oblique"] {
-    font-style: italic !important;
+.report-pdfjs-viewer:not(.is-loading) .report-pdfjs-loading {
+    display: none;
 }
-table.results td.resultado-texto-rico-cell .resultado-texto-rico u {
-    text-decoration: underline !important;
+.report-pdfjs-loading-spinner {
+    width: 42px;
+    height: 42px;
+    border: 3px solid rgba(255, 255, 255, 0.25);
+    border-top-color: #fff;
+    border-radius: 50%;
+    animation: report-pdfjs-spin 0.85s linear infinite;
 }
-table.results td.report-interpretacion-alto {
-    color: #dc3545 !important;
-    font-weight: 700;
+.report-pdfjs-loading-text {
+    margin: 0;
+    font-size: 1rem;
+    font-weight: 600;
+    color: #fff;
 }
-table.results td.report-interpretacion-bajo {
-    color: #0d6efd !important;
-    font-weight: 700;
+.report-pdfjs-loading-hint {
+    margin: 0;
+    font-size: 0.875rem;
+    color: rgba(255, 255, 255, 0.72);
+    max-width: 320px;
 }
-<?php
-// Ajustes visuales según modo de reporte del doctor (por defecto 'clinico')
-$report_display_mode = 'clinico';
-if (! empty($doctor)) {
-    if (is_object($doctor)) {
-        $report_display_mode = trim((string) ($doctor->display_mode ?? $report_display_mode));
-    } elseif (is_array($doctor)) {
-        $report_display_mode = trim((string) ($doctor['display_mode'] ?? $report_display_mode));
+@keyframes report-pdfjs-spin {
+    to { transform: rotate(360deg); }
+}
+.report-pdfjs-page {
+    margin: 0 auto 16px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.35);
+    background: #fff;
+    width: fit-content;
+}
+.report-pdfjs-page:last-child {
+    margin-bottom: 0;
+}
+.report-pdfjs-page-canvas {
+    display: block;
+    width: 100%;
+    height: auto;
+}
+@media (max-width: 767.98px) {
+    .report-pdfjs-toolbar-note {
+        text-align: left;
+        flex-basis: 100%;
     }
-}
-// Determina modo de reporte: preferencia del doctor; si el registro fue creado sin doctor usar config "sin doctor"
-$doctorIsSynthetic = false;
-if (! empty($doctor)) {
-    if (is_object($doctor)) {
-        $report_display_mode = trim((string) ($doctor->display_mode ?? $report_display_mode));
-        if (property_exists($doctor, 'report_sin_prefijo_medico') && $doctor->report_sin_prefijo_medico) {
-            $doctorIsSynthetic = true;
-        }
-    } elseif (is_array($doctor)) {
-        $report_display_mode = trim((string) ($doctor['display_mode'] ?? $report_display_mode));
-        if (! empty($doctor['report_sin_prefijo_medico'])) {
-            $doctorIsSynthetic = true;
-        }
+    .report-pdfjs-canvas-host {
+        min-height: 360px;
     }
-}
-if ($doctorIsSynthetic) {
-    // usar configuración del laboratorio para órdenes sin doctor
-    $cfgMode = is_array($lab_config ?? null) ? trim((string) ($lab_config['sin_doctor_report_mode'] ?? '')) : '';
-    if ($cfgMode !== '' && in_array($cfgMode, ['clinico', 'neutral', 'semaforo'], true)) {
-        $report_display_mode = $cfgMode;
-    }
-}
-if ($report_display_mode === '') {
-    $report_display_mode = 'clinico';
-}
-?>
-<?php if ($report_display_mode === 'neutral'): ?>
-/* Modo Neutral: quitar colores y peso fuerte */
-table.results td.report-interpretacion-alto,
-table.results td.report-interpretacion-bajo,
-.results td.text-danger,
-.results td.out-range {
-    color: inherit !important;
-    font-weight: normal !important;
-}
-<?php elseif ($report_display_mode === 'clinico'): ?>
-/* Modo Clínico: colores clásicos por interpretación */
-table.results td.report-interpretacion-alto { color: #dc3545 !important; font-weight: 700; }
-table.results td.report-interpretacion-bajo { color: #0d6efd !important; font-weight: 700; }
-/* Asegurar iconos siguen el mismo color */
-.report-interpretacion-icon.text-danger { color: #dc3545 !important; }
-.report-interpretacion-icon.text-primary { color: #0d6efd !important; }
-
-<?php elseif ($report_display_mode === 'semaforo'): ?>
-/* Modo Semáforo suave: colores más suaves e iconos (iconos se inyectan desde la plantilla) */
-table.results td.report-interpretacion-alto { color: #c44b4b !important; font-weight: 600; }
-table.results td.report-interpretacion-bajo { color: #3b82f6 !important; font-weight: 600; }
-.report-interpretacion-icon { margin-right: 6px; opacity: 0.95; }
-/* Forzar color en iconos incluso si el td padre tiene otra clase */
-.report-interpretacion-icon.text-danger { color: #c44b4b !important; }
-.report-interpretacion-icon.text-primary { color: #0d6efd !important; }
-.report-interpretacion-icon.text-dark { color: #212529 !important; }
-<?php endif; ?>
-body.js-total-pages-ready .pdf-counter-pages::before {
-    content: '' !important;
 }
 </style>
-<?php if ($gpbBodyClassView !== ''): ?>
-<?= view('registers/partials/report_browser_print_styles', [
-    'mt'                          => (float) ($mmViewHead['top'] ?? 15),
-    'mr'                          => (float) ($mmViewHead['right'] ?? 15),
-    'mb'                          => (float) ($mmViewHead['bottom'] ?? 15),
-    'ml'                          => (float) ($mmViewHead['left'] ?? 15),
-    'printPageCssSize'            => $printPageCssSizeView,
-    'pdfFooterEnabled'            => $pdfFooterEnabledView,
-    'pdfFooterReserveMm'          => (float) $pdfFooterReserveMmView,
-    'printSegmentBreakInside'     => 'auto',
-    'printPagLabelCssPos'         => '',
-    'printPagValueCssPos'         => '',
-    'order_sheet_header_enabled'  => $orderSheetHeaderEnabledView,
-]) ?>
-<?php endif; ?>
 <?= $this->endSection() ?>
 
 <?= $this->section('content') ?>
@@ -226,42 +174,12 @@ $lblComp = ! empty($sin_billing_enabled ?? false) ? 'Factura (PDF)' : 'Recibo (P
 <div class="alert alert-info mt-3">
     <i class="fa-solid fa-info-circle me-2"></i>No hay resultados cargados para esta orden. Complete los resultados en <a href="<?= site_url('registers/view/' . $ridPdf) ?>">Editar registro</a>.
 </div>
-<?php else:
-helper(['qr', 'registro']);
-$reportUrl = ! empty($public_resultados_token)
-    ? site_url('resultados/' . $public_resultados_token)
-    : site_url('registers/viewreport/' . $ridPdf);
-$qrPx = \App\Services\ReportPdfLayoutService::qrImagePixelSizeFromLayout(is_array($pdf_layout ?? null) ? $pdf_layout : []);
-$qr_data_uri = qr_base64($reportUrl, $qrPx);
-?>
-<div class="viewreport-pdf-shell">
-    <div class="viewreport-pdf-sheet">
-        <?php
-        ob_start();
-        echo view('registers/pdf/report_document', [
-            'pdf_layout'                      => $pdf_layout ?? [],
-            'register_info'                   => $register_info,
-            'paciente'                        => $paciente,
-            'doctor'                          => $doctor,
-            'grupos'                          => $grupos,
-            'lab_config'                      => $lab_config ?? [],
-            'report_url'                      => $reportUrl,
-            'qr_data_uri'                     => $qr_data_uri,
-            'report_emitido_en'               => $report_emitido_en ?? \App\Services\RegisterService::formatNowForReport(),
-            'pdf_watermark_uri'               => null,
-            'pdf_logo_data_uri'               => null,
-            'report_pria_tipo_muestra_nombre' => $report_pria_tipo_muestra_nombre ?? [],
-            'report_pria_metodo_nombre'       => $report_pria_metodo_nombre ?? [],
-            'report_lab_firmas'               => $report_lab_firmas ?? [],
-            'report_pria_refs_consolidada'    => $report_pria_refs_consolidada ?? [],
-            'analisis_variant'                => 'screen_pdf',
-            'report_layout_plan'              => $report_layout_plan ?? null,
-            'report_layout_applier'           => $report_layout_applier ?? null,
-        ]);
-        echo \App\Services\RegisterService::replaceTotalPagesTokenForBrowser(ob_get_clean());
-        ?>
-    </div>
-</div>
+<?php else: ?>
+<?= view('registers/partials/report_viewreport_hidden_analisis', ['grupos' => $grupos]) ?>
+<?= view('registers/partials/report_pdfjs_viewer', [
+    'ridPdf'  => $ridPdf,
+    'pdf_url' => site_url('registers/pdf/' . $ridPdf . '?inline=1'),
+]) ?>
 <?= view('registers/partials/report_viewreport_actions_bar', [
     'ridPdf'                   => $ridPdf,
     'compOk'                   => $compOk,
@@ -283,44 +201,18 @@ $qr_data_uri = qr_base64($reportUrl, $qrPx);
 </div>
 <?php endif; ?>
 </fieldset>
-<?= view('partial/page_scroll_nav', ['scroll_nav_id' => 'viewreport-scroll-nav']) ?>
 <?= $this->endSection() ?>
 
 <?= $this->section('scripts') ?>
 <?php if (! empty($grupos)): ?>
-<?php
-$mmViewScripts = is_array($plViewHead['margins_mm'] ?? null)
-    ? $plViewHead['margins_mm']
-    : \App\Services\ReportPdfLayoutService::defaultMarginsMmStatic();
-?>
-<?= view('registers/partials/report_print_pagination_metrics', [
-    'page_height_mm'              => $printPageHeightMmHead,
-    'margin_top_mm'               => (float) ($mmViewScripts['top'] ?? 15),
-    'margin_bottom_mm'            => (float) ($mmViewScripts['bottom'] ?? 15),
-    'footer_reserve_mm'           => (float) $pdfFooterReserveMmView,
-    'footer_enabled'              => $pdfFooterEnabledView,
-    'order_sheet_header_enabled'  => $orderSheetHeaderEnabledView,
-    'order_sheet_band_default_mm' => \App\Services\ReportPdfLayoutService::orderSheetHeaderPaginationReserveMm(),
-]) ?>
-<?= view('registers/partials/report_layout_plan_apply_script', [
-    'report_layout_applier' => $report_layout_applier ?? null,
-]) ?>
+<script src="<?= asset_url('js/vendor/pdfjs/pdf.min.js') ?>"></script>
+<script src="<?= asset_url('js/report-pdfjs-viewer.js') ?>"></script>
 <?php endif; ?>
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-    var gpbBodyClasses = <?= json_encode(array_values(array_filter(explode(' ', (string) ($gpbBodyClassView ?? ''))))) ?>;
-    if (gpbBodyClasses.length) {
-        document.body.classList.add('viewreport-pdf-pagination', 'report-browser-print');
-        gpbBodyClasses.forEach(function(cls) {
-            document.body.classList.add(cls);
-        });
+    if (typeof window.initReportPdfJsViewer === 'function') {
+        window.initReportPdfJsViewer('[data-report-pdfjs-viewer]');
     }
-    if (typeof window.applyReportLayoutPlan === 'function') {
-        window.applyReportLayoutPlan();
-    } else if (window.reportPrintPagination && typeof window.reportPrintPagination.applyPaginationLineTotals === 'function') {
-        window.reportPrintPagination.applyPaginationLineTotals();
-    }
-    window.dispatchEvent(new Event('page-scroll-nav-refresh'));
 
     function bindPrintWindow(selector, windowName) {
         document.querySelectorAll(selector).forEach(function(btn) {

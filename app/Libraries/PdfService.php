@@ -263,6 +263,8 @@ class PdfService
             'align'           => $align,
             'fontSize'        => round(max(7.0, min(20.0, (float) ($data['fontSize'] ?? 10))), 2),
             'fontFamily'      => trim((string) ($data['fontFamily'] ?? 'DejaVu Sans')) ?: 'DejaVu Sans',
+            'fontWeight'      => trim((string) ($data['fontWeight'] ?? 'normal')) ?: 'normal',
+            'fontStyle'       => trim((string) ($data['fontStyle'] ?? 'normal')) ?: 'normal',
             'color'           => trim((string) ($data['color'] ?? '#333333')) ?: '#333333',
             'mt'              => max(0.0, (float) ($data['mt'] ?? 15)),
             'mr'              => max(0.0, (float) ($data['mr'] ?? 15)),
@@ -288,10 +290,6 @@ class PdfService
      */
     protected function buildPaginationCallbacks(array $slots): array
     {
-        $slots = array_values(array_filter(
-            $slots,
-            static fn (array $slot): bool => strtolower((string) ($slot['zone'] ?? 'header')) !== 'footer'
-        ));
         if ($slots === []) {
             return [];
         }
@@ -331,7 +329,13 @@ class PdfService
 
             $fontSize   = $slot['fontSize'];
             $fontFamily = $slot['fontFamily'];
-            $font       = $fontMetrics->getFont($fontFamily, 'normal');
+            $font       = $fontMetrics->getFont(
+                $fontFamily,
+                $this->dompdfFontVariant(
+                    (string) ($slot['fontWeight'] ?? 'normal'),
+                    (string) ($slot['fontStyle'] ?? 'normal')
+                )
+            );
             $text       = $slot['prefix'] . $pageNumber . ' de ' . $pageCount;
             $textWidth  = (float) $canvas->get_text_width($text, $font, $fontSize);
             $lineHeight = max(1.0, (float) ($slot['lineHeight'] ?? 1.35));
@@ -385,6 +389,26 @@ class PdfService
         } catch (\Throwable $e) {
             // Sin paginación si la fuente o el canvas no están disponibles.
         }
+    }
+
+    protected function dompdfFontVariant(string $fontWeight, string $fontStyle): string
+    {
+        $weight = strtolower(trim($fontWeight));
+        $style  = strtolower(trim($fontStyle));
+        $bold   = in_array($weight, ['bold', '600', '700', '800'], true);
+        $italic = in_array($style, ['italic', 'oblique'], true);
+
+        if ($bold && $italic) {
+            return 'bold_italic';
+        }
+        if ($bold) {
+            return 'bold';
+        }
+        if ($italic) {
+            return 'italic';
+        }
+
+        return 'normal';
     }
 
     /**
