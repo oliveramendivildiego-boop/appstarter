@@ -121,7 +121,7 @@ body.pdf-dompdf-download {
     padding-bottom: 8px;
 }
 .pdf-hg-block table.pdf-section-table {
-    margin-bottom: var(--pdf-hg-row-gap, 6px) !important;
+    margin-bottom: 0 !important;
 }
 .pdf-section-table {
     width: 100%;
@@ -748,7 +748,7 @@ table.results td.resultado-texto-rico-cell .resultado-texto-rico ol {
     /* No forzar vertical-align ni text-align: vienen del estilo inline de la plantilla */
 }
 .lab-firmas-pdf-block .pdf-section-table {
-    margin-bottom: var(--pdf-lf-row-gap, 6px) !important;
+    margin-bottom: 0 !important;
 }
 /* Celdas vacías de la cuadrícula no tienen .pdf-cell: sin esto Dompdf pinta blanco y rompe «sin fondo». */
 .lab-firmas-pdf-block .pdf-section-table td:not(.pdf-cell) {
@@ -792,7 +792,7 @@ table.results td.resultado-texto-rico-cell .resultado-texto-rico ol {
  * Dompdf suma márgenes adyacentes; padding evita el doble aire respecto al preview del editor.
  */
 .pdf-pd-block table.pdf-section-table {
-    margin-bottom: var(--pdf-pd-row-gap, 2px) !important;
+    margin-bottom: 0 !important;
 }
 .pdf-pd-block .pdf-section-table .patient-line {
     margin-top: 0 !important;
@@ -879,7 +879,13 @@ table.results td.resultado-texto-rico-cell .resultado-texto-rico ol {
     border-top-color: var(--pdf-ft-section-top-border-color, #dddddd);
 }
 .pdf-ft-block table.pdf-section-table {
-    margin-bottom: var(--pdf-ft-row-gap, 6px) !important;
+    margin-bottom: 0 !important;
+}
+.pdf-ft-block .pdf-section-table td.pdf-cell,
+.pdf-ft-block .pdf-section-table td:not(.pdf-cell) {
+    padding-left: 0 !important;
+    padding-right: 0 !important;
+    padding-bottom: 0 !important;
 }
 /*
  * Respaldo de color vía variables (tema). Sin !important: Dompdf y el motor CSS deben respetar los estilos inline

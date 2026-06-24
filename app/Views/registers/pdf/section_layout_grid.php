@@ -6,7 +6,9 @@ declare(strict_types=1);
 /** @var list<array{element_type: string, column: int, column_span: int, text_style?: array<string, mixed>}> $grid_items */
 /** @var array<string, mixed> $element_ctx */
 /** @var array<string, mixed>|null $section_layout opcional: interlineado y alineación por columna */
-$n_rows_local = isset($n_rows) ? max(1, (int) $n_rows) : 1;
+$secLayoutRawEarly = is_array($section_layout ?? null) ? $section_layout : [];
+$n_rows_config     = max(1, min(50, (int) ($secLayoutRawEarly['rows'] ?? 1)));
+$n_rows_local      = isset($n_rows) ? max(1, (int) $n_rows) : $n_rows_config;
 $n         = max(1, (int) $n_columns);
 $pct       = round(100 / $n, 4);
 $items     = $grid_items;
@@ -231,11 +233,16 @@ if ($explicitGrid) {
     }
 }
 
-$secLayoutRaw = is_array($section_layout ?? null) ? $section_layout : [];
+$secLayoutRaw = $secLayoutRawEarly;
 $secStyle     = \App\Services\ReportPdfLayoutService::resolveSectionLayoutStyle($secLayoutRaw, $n);
 $colAlignH    = $secStyle['column_align_h'];
 $colAlignV    = $secStyle['column_align_v'];
 $lineHeight   = $secStyle['line_height'];
+$sectionKeyStr = (string) ($section_key ?? '');
+$defRowGap     = $sectionKeyStr === 'patient_doctor' ? 2 : ($sectionKeyStr === 'footer' ? 0 : 6);
+$rowGapPx      = max(0, min(40, (int) ($secLayoutRaw['row_gap_px'] ?? $defRowGap)));
+$cellPadCss    = $sectionKeyStr === 'footer' ? '0' : '0 6px';
+$emptyCellPad  = $sectionKeyStr === 'footer' ? '0' : '0 4px';
 $textStyleCss = static function (array $raw): string {
     $ts = \App\Services\ReportPdfLayoutService::normalizeTextStyle($raw);
     $shadowMap = [
@@ -257,7 +264,7 @@ $textStyleCss = static function (array $raw): string {
         . 'text-shadow:' . $shadow . ';';
 };
 
-$pdfTdStyle = static function (int $startCol, int $span, float $pctUnit) use ($n, $colAlignH, $colAlignV, $lineHeight): array {
+$pdfTdStyle = static function (int $startCol, int $span, float $pctUnit, int $rowIndex = 0) use ($n, $colAlignH, $colAlignV, $lineHeight, $cellPadCss, $rowGapPx): array {
     $startCol = max(0, min($n - 1, $startCol));
     $h        = $colAlignH[$startCol] ?? 'left';
     $v        = $colAlignV[$startCol] ?? 'top';
@@ -265,18 +272,20 @@ $pdfTdStyle = static function (int $startCol, int $span, float $pctUnit) use ($n
     $v        = in_array($v, ['top', 'middle', 'bottom'], true) ? $v : 'top';
     $alignCls = $h === 'left' ? 'left' : ($h === 'right' ? 'right' : 'center');
     $spanPct  = round($span * $pctUnit, 4);
+    $rowPad   = ($rowIndex > 0 && $rowGapPx > 0) ? ('padding-top:' . $rowGapPx . 'px;') : '';
     /* !important: dompdf a veces aplica vertical-align:top de hojas de estilo sobre el td sin esto */
-    $style    = 'width:' . $spanPct . '%;line-height:' . $lineHeight . ';text-align:' . $h . ' !important;vertical-align:' . $v . ' !important;padding:0 6px;';
+    $style    = 'width:' . $spanPct . '%;line-height:' . $lineHeight . ';text-align:' . $h . ' !important;vertical-align:' . $v . ' !important;padding:' . $cellPadCss . ';' . $rowPad;
 
     return ['alignCls' => $alignCls, 'style' => $style];
 };
 
-$pdfEmptyTdStyle = static function (int $colIdx, float $pctUnit) use ($n, $colAlignV, $lineHeight): string {
+$pdfEmptyTdStyle = static function (int $colIdx, float $pctUnit, int $rowIndex = 0) use ($n, $colAlignV, $lineHeight, $emptyCellPad, $rowGapPx): string {
     $colIdx = max(0, min($n - 1, $colIdx));
     $v      = $colAlignV[$colIdx] ?? 'top';
     $v      = in_array($v, ['top', 'middle', 'bottom'], true) ? $v : 'top';
+    $rowPad = ($rowIndex > 0 && $rowGapPx > 0) ? ('padding-top:' . $rowGapPx . 'px;') : '';
 
-    return 'width:' . $pctUnit . '%;vertical-align:' . $v . ' !important;padding:0 4px;line-height:' . $lineHeight . ';';
+    return 'width:' . $pctUnit . '%;vertical-align:' . $v . ' !important;padding:' . $emptyCellPad . ';line-height:' . $lineHeight . ';' . $rowPad;
 };
 ?>
 <div class="<?= esc($section_wrapper_class) ?>"<?php
@@ -286,9 +295,10 @@ echo $sectionWrapperStyle !== '' ? ' style="' . esc($sectionWrapperStyle, 'attr'
 <?php if (trim((string) ($section_prepend_markup ?? '')) !== ''): ?>
 <?= $section_prepend_markup ?>
 <?php endif; ?>
-<?php foreach ($rows as $row): ?>
+<?php if (count($rows) > 0): ?>
 <table class="pdf-section-table" width="100%" data-pdf-lh="1" style="table-layout:fixed;border-collapse:collapse;line-height:<?= esc((string) $lineHeight, 'attr') ?>;">
-    <tr>
+<?php foreach ($rows as $rowIndex => $row): ?>
+    <tr class="pdf-section-row" data-pdf-row="<?= (int) $rowIndex ?>">
 <?php
     $colspans = $row['colspans'];
     $stacks   = $row['stacks'];
@@ -305,7 +315,7 @@ echo $sectionWrapperStyle !== '' ? ' style="' . esc($sectionWrapperStyle, 'attr'
             $span     = $block['span'];
             $first    = $block['items'][0];
             $startCol = (int) $first['col'];
-            $tdInfo   = $pdfTdStyle($startCol, $span, $pct);
+            $tdInfo   = $pdfTdStyle($startCol, $span, $pct, (int) $rowIndex);
             ?>
         <td class="pdf-cell pdf-cell--<?= esc($tdInfo['alignCls']) ?>" colspan="<?= $span ?>" style="<?= esc($tdInfo['style'], 'attr') ?>">
             <?php foreach ($block['items'] as $cellItem):
@@ -339,7 +349,7 @@ echo $sectionWrapperStyle !== '' ? ' style="' . esc($sectionWrapperStyle, 'attr'
 <?php
             $c += $span;
         elseif ($stacks[$c] !== null && count($stacks[$c]) > 0):
-            $tdInfo = $pdfTdStyle($c, 1, $pct);
+            $tdInfo = $pdfTdStyle($c, 1, $pct, (int) $rowIndex);
             ?>
         <td class="pdf-cell pdf-cell--<?= esc($tdInfo['alignCls']) ?>" style="<?= esc($tdInfo['style'], 'attr') ?>">
             <?php foreach ($stacks[$c] as $stackItem):
@@ -373,13 +383,14 @@ echo $sectionWrapperStyle !== '' ? ' style="' . esc($sectionWrapperStyle, 'attr'
 <?php
             $c++;
         else: ?>
-        <td style="<?= esc($pdfEmptyTdStyle($c, $pct), 'attr') ?>"></td>
+        <td style="<?= esc($pdfEmptyTdStyle($c, $pct, (int) $rowIndex), 'attr') ?>"></td>
 <?php
             $c++;
         endif;
     endwhile;
     ?>
     </tr>
-</table>
 <?php endforeach; ?>
+</table>
+<?php endif; ?>
 </div>

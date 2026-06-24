@@ -1337,8 +1337,25 @@ $labelsShort = [
 .pdf-preview-scope .pdf-section-table { width: 100%; table-layout: fixed; border-collapse: collapse; }
 .pdf-preview-scope .pdf-section-table td p { margin: 0 !important; }
 .pdf-preview-scope .pdf-el-item:not(:last-child) { margin-bottom: 0.4em; }
+.pdf-preview-scope.pdf-ft-block .pdf-el-item:not(:last-child) { margin-bottom: 0; }
 .pdf-preview-scope .patient-line { margin: 0 !important; }
 .pdf-preview-scope.pdf-hg-block { padding-bottom: 8px; border-bottom: 2px solid var(--pdf-header-separator-color, #0066cc); }
+.pdf-preview-scope.pdf-ft-block.footer-grid {
+    font-size: 8pt;
+    color: #666;
+    padding-top: 8px;
+    padding-bottom: 0;
+    border-top: 1px solid #ddd;
+}
+.pdf-preview-scope.pdf-ft-block .pdf-section-table td.pdf-cell,
+.pdf-preview-scope.pdf-ft-block .pdf-section-table td:not(.pdf-cell) {
+    padding-left: 0;
+    padding-right: 0;
+    padding-bottom: 0;
+}
+.pdf-preview-scope.pdf-ft-block .footer-piece {
+    margin: 0;
+}
 .pdf-preview-lbl { font-weight: 700; color: #333; }
 .pdf-preview-grid-row { display: flex; gap: 8px; border-bottom: 1px solid #dee2e6; padding-bottom: 8px; }
 .pdf-preview-grid-cell { flex: 1; min-width: 0; font-size: 0.75rem; }
@@ -2530,7 +2547,7 @@ document.addEventListener('DOMContentLoaded', function() {
     function readSectionRowGapPx(sectionKey) {
         var idS = sectionIdSafe(sectionKey);
         var rgEl = document.getElementById('sec_row_gap_' + idS);
-        var defRg = sectionKey === 'patient_doctor' ? 2 : 6;
+        var defRg = sectionKey === 'patient_doctor' ? 2 : (sectionKey === 'footer' ? 0 : 6);
         var rg = rgEl ? parseInt(rgEl.value, 10) : defRg;
         if (isNaN(rg)) rg = defRg;
         return Math.max(0, Math.min(40, rg));
@@ -2702,6 +2719,109 @@ document.addEventListener('DOMContentLoaded', function() {
         return escapeHtml(sample);
     }
 
+    function buildMatrixRowFromItems(rowItems, n) {
+        var colspans = [];
+        var stacks = new Array(n).fill(null);
+        var regions = {};
+        rowItems.forEach(function(it) {
+            var key = it.col + ':' + it.span;
+            if (!regions[key]) {
+                regions[key] = { col: it.col, span: it.span, items: [] };
+            }
+            regions[key].items.push({ stack: it.grid_stack || 0, item: it });
+        });
+        var regionsArr = Object.keys(regions).map(function(k) {
+            var p = k.split(':');
+            return { col: parseInt(p[0], 10), span: parseInt(p[1], 10), items: regions[k].items };
+        }).sort(function(a, b) {
+            return (a.col - b.col) || (a.span - b.span);
+        });
+        regionsArr.forEach(function(reg) {
+            reg.items.sort(function(a, b) { return a.stack - b.stack; });
+            var cellItems = reg.items.map(function(x) { return x.item; });
+            if (reg.span > 1) {
+                colspans.push({ col: reg.col, span: reg.span, items: cellItems });
+            } else {
+                stacks[reg.col] = cellItems;
+            }
+        });
+        return { colspans: colspans, stacks: stacks };
+    }
+
+    function appendPreviewRowCells(tr, row, rowIndex, n, secSt, sectionKey, pctNum, rowGapPx) {
+        var colspans = row.colspans;
+        var stk = row.stacks;
+        var cellPad = sectionKey === 'footer' ? '0' : '0 6px';
+        var emptyPad = sectionKey === 'footer' ? '0' : '0 4px';
+        var pct = pctNum.toFixed(2) + '%';
+        var c = 0;
+        while (c < n) {
+            var block = null;
+            for (var cix = 0; cix < colspans.length; cix++) {
+                if (colspans[cix].col === c) {
+                    block = colspans[cix];
+                    break;
+                }
+            }
+            if (block) {
+                var sp = block.span;
+                var first = block.items[0];
+                var sc = first.col;
+                var hAlign = secSt.column_align_h[sc] || 'left';
+                var vAlign = secSt.column_align_v[sc] || 'top';
+                var alignCls = hAlign === 'right' ? 'right' : (hAlign === 'center' ? 'center' : 'left');
+                var tdM = document.createElement('td');
+                tdM.colSpan = sp;
+                tdM.className = 'pdf-cell pdf-cell--' + alignCls;
+                tdM.style.width = ((sp * pctNum) / n).toFixed(2) + '%';
+                tdM.style.lineHeight = String(secSt.line_height);
+                tdM.style.verticalAlign = vAlign;
+                tdM.style.textAlign = hAlign;
+                tdM.style.padding = cellPad;
+                if (rowIndex > 0 && rowGapPx > 0) tdM.style.paddingTop = rowGapPx + 'px';
+                block.items.forEach(function(sit) {
+                    var divM = document.createElement('div');
+                    divM.className = 'pdf-el-item';
+                    divM.style.lineHeight = 'inherit';
+                    divM.innerHTML = sit.html;
+                    tdM.appendChild(divM);
+                });
+                tr.appendChild(tdM);
+                c += sp;
+            } else if (stk[c] !== null && stk[c].length > 0) {
+                var hAlignS = secSt.column_align_h[c] || 'left';
+                var vAlignS = secSt.column_align_v[c] || 'top';
+                var alignClsS = hAlignS === 'right' ? 'right' : (hAlignS === 'center' ? 'center' : 'left');
+                var tdS = document.createElement('td');
+                tdS.className = 'pdf-cell pdf-cell--' + alignClsS;
+                tdS.style.width = pct;
+                tdS.style.lineHeight = String(secSt.line_height);
+                tdS.style.verticalAlign = vAlignS;
+                tdS.style.textAlign = hAlignS;
+                tdS.style.padding = cellPad;
+                if (rowIndex > 0 && rowGapPx > 0) tdS.style.paddingTop = rowGapPx + 'px';
+                stk[c].forEach(function(sit) {
+                    var d = document.createElement('div');
+                    d.className = 'pdf-el-item';
+                    d.style.lineHeight = 'inherit';
+                    d.innerHTML = sit.html;
+                    tdS.appendChild(d);
+                });
+                tr.appendChild(tdS);
+                c++;
+            } else {
+                var tdE = document.createElement('td');
+                tdE.style.width = pct;
+                tdE.style.lineHeight = String(secSt.line_height);
+                tdE.style.verticalAlign = secSt.column_align_v[c] || 'top';
+                tdE.style.padding = emptyPad;
+                if (rowIndex > 0 && rowGapPx > 0) tdE.style.paddingTop = rowGapPx + 'px';
+                tr.appendChild(tdE);
+                c++;
+            }
+        }
+    }
+
     function rebuildGridPreview(ul, previewEl) {
         if (!previewEl || !ul) return;
         var n = colsForList(ul);
@@ -2719,6 +2839,7 @@ document.addEventListener('DOMContentLoaded', function() {
         if (sectionKey === 'patient_doctor') {
             pdHeader = readCardHeaderStyleForJson().patient_doctor_grid;
         }
+        ensureGridPlacementForSection(sectionKey);
         var items = [];
         ul.querySelectorAll('.pdf-instance-item').forEach(function(li) {
             var sel = li.querySelector('.instance-column');
@@ -2793,7 +2914,14 @@ document.addEventListener('DOMContentLoaded', function() {
                     line = '<span style="' + escapeHtml(styleWrap) + '">' + rawLine + '</span>';
                 }
             }
-            items.push({ col: col, span: span, html: line });
+            var placement = readGridPlacement(li, sectionKey);
+            items.push({
+                col: col,
+                span: span,
+                html: line,
+                grid_row: placement.row == null ? 0 : placement.row,
+                grid_stack: placement.stack == null ? 0 : placement.stack
+            });
         });
         previewEl.innerHTML = '';
         var wrap = document.createElement('div');
@@ -2803,7 +2931,7 @@ document.addEventListener('DOMContentLoaded', function() {
         } else if (sectionKey === 'patient_doctor') {
             wrap.classList.add('pdf-pd-block');
         } else if (sectionKey === 'footer') {
-            wrap.classList.add('pdf-ft-block');
+            wrap.classList.add('pdf-ft-block', 'footer-grid');
         } else if (sectionKey === 'lab_firmas') {
             wrap.classList.add('lab-firmas-pdf-block');
         }
@@ -2817,168 +2945,32 @@ document.addEventListener('DOMContentLoaded', function() {
             }
             wrap.style.paddingTop = '8px';
         }
-        if (sectionKey !== 'header') {
+        if (sectionKey !== 'header' && sectionKey !== 'footer') {
             wrap.style.borderBottom = '1px solid #dee2e6';
             wrap.style.paddingBottom = '8px';
         }
         var pctNum = 100 / n;
-        var pct = pctNum.toFixed(2) + '%';
+        var totalRows = rowsForSectionKey(sectionKey);
+        var rowGapPx = readSectionRowGapPx(sectionKey);
 
-        function rangesOverlapPdf(a0, a1, b0, b1) {
-            return a0 < b1 && b0 < a1;
-        }
+        var tbl = document.createElement('table');
+        tbl.className = 'pdf-section-table';
+        tbl.setAttribute('data-pdf-lh', '1');
+        tbl.style.width = '100%';
+        tbl.style.tableLayout = 'fixed';
+        tbl.style.borderCollapse = 'collapse';
+        tbl.style.lineHeight = String(secSt.line_height);
 
-        var rows = [];
-        var ri = 0;
-        while (ri < items.length) {
-            var colspans = [];
-            var stacks = [];
-            for (var sx = 0; sx < n; sx++) {
-                stacks[sx] = null;
-            }
-
-            function canPlacePdf(itj) {
-                var cc = itj.col;
-                var sp = itj.span;
-                if (sp > 1) {
-                    for (var ci = 0; ci < colspans.length; ci++) {
-                        var C = colspans[ci];
-                        if (C.col === cc && C.span === sp) {
-                            return true;
-                        }
-                    }
-                    for (var ciO = 0; ciO < colspans.length; ciO++) {
-                        var Co = colspans[ciO];
-                        if (rangesOverlapPdf(cc, cc + sp, Co.col, Co.col + Co.span)) {
-                            return false;
-                        }
-                    }
-                    for (var k = cc; k < cc + sp; k++) {
-                        if (stacks[k] !== null && stacks[k].length > 0) {
-                            return false;
-                        }
-                    }
-                    return true;
-                }
-                for (var ci2 = 0; ci2 < colspans.length; ci2++) {
-                    var C2 = colspans[ci2];
-                    if (cc >= C2.col && cc < C2.col + C2.span) {
-                        return false;
-                    }
-                }
-                return true;
-            }
-
-            function placePdf(itj) {
-                var cc = itj.col;
-                var sp = itj.span;
-                if (sp > 1) {
-                    var merged = false;
-                    for (var cm = 0; cm < colspans.length; cm++) {
-                        if (colspans[cm].col === cc && colspans[cm].span === sp) {
-                            colspans[cm].items.push(itj);
-                            merged = true;
-                            break;
-                        }
-                    }
-                    if (!merged) {
-                        colspans.push({ col: cc, span: sp, items: [itj] });
-                    }
-                } else {
-                    if (stacks[cc] === null) {
-                        stacks[cc] = [];
-                    }
-                    stacks[cc].push(itj);
-                }
-            }
-
-            var rj = ri;
-            while (rj < items.length) {
-                if (!canPlacePdf(items[rj])) {
-                    break;
-                }
-                placePdf(items[rj]);
-                rj++;
-            }
-            if (rj === ri) {
-                ri++;
-                continue;
-            }
-            rows.push({ colspans: colspans, stacks: stacks });
-            ri = rj;
-        }
-
-        rows.forEach(function(row) {
-            var csp = row.colspans;
-            var stk = row.stacks;
-            var tbl = document.createElement('table');
-            tbl.className = 'pdf-section-table';
-            tbl.setAttribute('data-pdf-lh', '1');
-            tbl.style.width = '100%';
-            tbl.style.tableLayout = 'fixed';
-            tbl.style.borderCollapse = 'collapse';
-            var rowGapPx = readSectionRowGapPx(sectionKey);
-            tbl.style.marginBottom = rowGapPx + 'px';
-            tbl.style.lineHeight = String(secSt.line_height);
+        for (var mr = 0; mr < totalRows; mr++) {
+            var rowItems = items.filter(function(it) { return it.grid_row === mr; });
+            var matrixRow = buildMatrixRowFromItems(rowItems, n);
             var tr = document.createElement('tr');
-            var c = 0;
-            while (c < n) {
-                var block = null;
-                for (var cix = 0; cix < csp.length; cix++) {
-                    if (csp[cix].col === c) {
-                        block = csp[cix];
-                        break;
-                    }
-                }
-                if (block) {
-                    var sp = block.span;
-                    var first = block.items[0];
-                    var sc = first.col;
-                    var tdM = document.createElement('td');
-                    tdM.colSpan = sp;
-                    tdM.style.width = ((sp * pctNum) / n).toFixed(2) + '%';
-                    tdM.style.lineHeight = String(secSt.line_height);
-                    tdM.style.verticalAlign = secSt.column_align_v[sc] || 'top';
-                    tdM.style.textAlign = secSt.column_align_h[sc] || 'left';
-                    tdM.style.padding = '0 6px';
-                    block.items.forEach(function(sit) {
-                        var divM = document.createElement('div');
-                        divM.className = 'pdf-el-item';
-                        divM.style.lineHeight = 'inherit';
-                        divM.innerHTML = sit.html;
-                        tdM.appendChild(divM);
-                    });
-                    tr.appendChild(tdM);
-                    c += sp;
-                } else if (stk[c] !== null && stk[c].length > 0) {
-                    var tdS = document.createElement('td');
-                    tdS.style.width = pct;
-                    tdS.style.lineHeight = String(secSt.line_height);
-                    tdS.style.verticalAlign = secSt.column_align_v[c] || 'top';
-                    tdS.style.textAlign = secSt.column_align_h[c] || 'left';
-                    tdS.style.padding = '0 6px';
-                    stk[c].forEach(function(sit) {
-                        var d = document.createElement('div');
-                        d.className = 'pdf-el-item';
-                        d.style.lineHeight = 'inherit';
-                        d.innerHTML = sit.html;
-                        tdS.appendChild(d);
-                    });
-                    tr.appendChild(tdS);
-                    c++;
-                } else {
-                    var tdE = document.createElement('td');
-                    tdE.style.width = pct;
-                    tdE.style.lineHeight = String(secSt.line_height);
-                    tdE.style.verticalAlign = secSt.column_align_v[c] || 'top';
-                    tdE.style.padding = '0 4px';
-                    tr.appendChild(tdE);
-                    c++;
-                }
-            }
+            tr.className = 'pdf-section-row';
+            tr.setAttribute('data-pdf-row', String(mr));
+            appendPreviewRowCells(tr, matrixRow, mr, n, secSt, sectionKey, pctNum, rowGapPx);
             tbl.appendChild(tr);
-            wrap.appendChild(tbl);
-        });
+        }
+        wrap.appendChild(tbl);
         previewEl.appendChild(wrap);
     }
 

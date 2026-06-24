@@ -653,7 +653,7 @@ class ReportPdfLayoutService
         $lineHeight = max(1.0, (float) ($ft['line_height'] ?? 1.35));
         $secLayouts = is_array($layout['section_layouts'] ?? null) ? $layout['section_layouts'] : [];
         $ftSec      = is_array($secLayouts['footer'] ?? null) ? $secLayouts['footer'] : [];
-        $rowGapPx   = max(0, min(40, (int) ($ftSec['row_gap_px'] ?? 6)));
+        $rowGapPx   = max(0, min(40, (int) ($ftSec['row_gap_px'] ?? 0)));
 
         $maxRow   = 0;
         $maxStack = 0;
@@ -786,7 +786,7 @@ class ReportPdfLayoutService
                 'columns'        => 3,
                 'rows'           => 2,
                 'line_height'    => 1.35,
-                'row_gap_px'     => 6,
+                'row_gap_px'     => 0,
                 'column_align_h' => ['left', 'center', 'right'],
                 'column_align_v' => ['top', 'top', 'top'],
             ],

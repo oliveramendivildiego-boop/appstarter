@@ -7,7 +7,7 @@ declare(strict_types=1);
 $resolved = \App\Services\ReportPdfLayoutService::resolveSectionLayoutStyle($sec_layout, max(1, min(6, (int) $col_count)));
 $lh       = $resolved['line_height'];
 $rows     = max(1, min(50, (int) ($sec_layout['rows'] ?? 3)));
-$defRowGap = ($section_key === 'patient_doctor') ? 2 : 6;
+$defRowGap = ($section_key === 'patient_doctor') ? 2 : (($section_key === 'footer') ? 0 : 6);
 $rowGap    = max(0, min(40, (int) ($sec_layout['row_gap_px'] ?? $defRowGap)));
 $hArr     = $resolved['column_align_h'];
 $vArr     = $resolved['column_align_v'];

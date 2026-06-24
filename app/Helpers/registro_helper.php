@@ -486,16 +486,74 @@ if (! function_exists('registro_extraer_rango_numerico_de_valor')) {
     }
 }
 
+if (! function_exists('registro_extraer_comparacion_numerica')) {
+    /**
+     * Extrae el valor numérico de un límite referencial con operador comparativo.
+     */
+    function registro_extraer_comparacion_numerica(string $valor): ?float
+    {
+        $v = trim(str_replace(',', '.', $valor));
+        if ($v === '') {
+            return null;
+        }
+
+        if (preg_match('/^[<>]\s*=?\s*([\d]+(?:\.[\d]+)?)$/u', $v, $m)) {
+            return (float) $m[1];
+        }
+
+        return is_numeric($v) ? (float) $v : null;
+    }
+}
+
+if (! function_exists('registro_extraer_limite_referencial')) {
+    /**
+     * Extrae los límites numéricos para los valores de referencia con operadores.
+     *
+     * Ejemplos:
+     * - "<=20" en valor mínimo se interpreta como máximo 20.
+     * - ">=10" en valor máximo se interpreta como mínimo 10.
+     *
+     * @return array{min:?float,max:?float}|null
+     */
+    function registro_extraer_limite_referencial(string $valor, bool $isMinSide): ?array
+    {
+        $v = trim(str_replace(',', '.', $valor));
+        if ($v === '' || $v === '-') {
+            return null;
+        }
+
+        if (preg_match('/^([<>])\s*(=?)\s*([\d]+(?:\.[\d]+)?)$/u', $v, $m)) {
+            $operator = $m[1] . $m[2];
+            $n = (float) $m[3];
+
+            if ($operator === '<' || $operator === '<=') {
+                return ['min' => null, 'max' => $n];
+            }
+
+            if ($operator === '>' || $operator === '>=') {
+                return ['min' => $n, 'max' => null];
+            }
+        }
+
+        if (is_numeric($v)) {
+            $n = (float) $v;
+            return $isMinSide ? ['min' => $n, 'max' => null] : ['min' => null, 'max' => $n];
+        }
+
+        return null;
+    }
+}
+
 if (! function_exists('registro_interpretacion_referencial_desde_rango')) {
     /**
      * @return array{label: string, nivel: 'alto'|'normal'|'bajo'}
      */
-    function registro_interpretacion_referencial_desde_rango(float $valMin, float $valMax, float $refMin, float $refMax): array
+    function registro_interpretacion_referencial_desde_rango(float $valMin, float $valMax, ?float $refMin, ?float $refMax): array
     {
-        if ($valMax > $refMax) {
+        if ($refMax !== null && $valMax > $refMax) {
             return ['label' => 'Alto', 'nivel' => 'alto'];
         }
-        if ($valMin < $refMin) {
+        if ($refMin !== null && $valMin < $refMin) {
             return ['label' => 'Bajo', 'nivel' => 'bajo'];
         }
 
@@ -506,7 +564,7 @@ if (! function_exists('registro_interpretacion_referencial_desde_rango')) {
 if (! function_exists('registro_interpretacion_referencial_etiqueta')) {
     /**
      * Etiqueta Alto / Normal / Bajo para viewreport según valor numérico vs rango referencial.
-     * Solo aplica con valor numérico y ambos límites definidos (misma regla que el coloreado en reporte).
+     * Solo aplica con valor numérico y al menos un límite de referencia definido.
      *
      * @return array{label: string, nivel: 'alto'|'normal'|'bajo'}|null
      */
@@ -514,7 +572,7 @@ if (! function_exists('registro_interpretacion_referencial_etiqueta')) {
     {
         $minStr = trim((string) ($min ?? ''));
         $maxStr = trim((string) ($max ?? ''));
-        if ($minStr === '' || $maxStr === '') {
+        if ($minStr === '' && $maxStr === '') {
             return null;
         }
 
@@ -528,8 +586,11 @@ if (! function_exists('registro_interpretacion_referencial_etiqueta')) {
             return null;
         }
 
-        $refMin = (float) str_replace(',', '.', $minStr);
-        $refMax = (float) str_replace(',', '.', $maxStr);
+        $minParsed = $minStr !== '' ? registro_extraer_limite_referencial($minStr, true) : null;
+        $maxParsed = $maxStr !== '' ? registro_extraer_limite_referencial($maxStr, false) : null;
+
+        $refMin = $minParsed['min'] ?? $maxParsed['min'] ?? null;
+        $refMax = $maxParsed['max'] ?? $minParsed['max'] ?? null;
         $v = (float) $valorNorm;
 
         return registro_interpretacion_referencial_desde_rango($v, $v, $refMin, $refMax);
@@ -546,18 +607,21 @@ if (! function_exists('registro_interpretacion_referencial_etiqueta_viewreport')
     {
         $minStr = trim((string) ($min ?? ''));
         $maxStr = trim((string) ($max ?? ''));
-        if ($minStr === '' || $maxStr === '') {
+        if ($minStr === '' && $maxStr === '') {
             return null;
         }
-
-        $refMin = (float) str_replace(',', '.', $minStr);
-        $refMax = (float) str_replace(',', '.', $maxStr);
 
         if (registro_opcion_es_select($opcionId)) {
             $rango = registro_extraer_rango_numerico_de_valor((string) ($valor ?? ''), (string) ($unidad ?? ''));
             if ($rango === null) {
                 return null;
             }
+
+            $minParsed = $minStr !== '' ? registro_extraer_limite_referencial($minStr, true) : null;
+            $maxParsed = $maxStr !== '' ? registro_extraer_limite_referencial($maxStr, false) : null;
+
+            $refMin = $minParsed['min'] ?? $maxParsed['min'] ?? null;
+            $refMax = $maxParsed['max'] ?? $minParsed['max'] ?? null;
 
             return registro_interpretacion_referencial_desde_rango($rango['min'], $rango['max'], $refMin, $refMax);
         }
