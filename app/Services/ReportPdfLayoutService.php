@@ -775,7 +775,7 @@ class ReportPdfLayoutService
                 'rows'           => 3,
                 'line_height'    => 1.35,
                 'row_gap_px'     => 6,
-                'column_align_h' => ['left', 'center', 'right'],
+                'column_align_h' => ['left', 'left', 'left'],
                 'column_align_v' => ['top', 'top', 'top'],
             ],
             'patient_doctor' => [
@@ -783,7 +783,7 @@ class ReportPdfLayoutService
                 'rows'           => 4,
                 'line_height'    => 1.35,
                 'row_gap_px'     => 2,
-                'column_align_h' => ['left', 'right'],
+                'column_align_h' => ['left', 'left'],
                 'column_align_v' => ['top', 'top'],
             ],
             'footer' => [
@@ -791,7 +791,7 @@ class ReportPdfLayoutService
                 'rows'           => 2,
                 'line_height'    => 1.35,
                 'row_gap_px'     => 0,
-                'column_align_h' => ['left', 'center', 'right'],
+                'column_align_h' => ['left', 'left', 'left'],
                 'column_align_v' => ['top', 'top', 'top'],
             ],
             'lab_firmas' => [
@@ -799,7 +799,7 @@ class ReportPdfLayoutService
                 'rows'           => 3,
                 'line_height'    => 1.35,
                 'row_gap_px'     => 6,
-                'column_align_h' => ['left', 'center', 'right'],
+                'column_align_h' => ['left', 'left', 'left'],
                 'column_align_v' => ['top', 'top', 'top'],
             ],
         ];
@@ -837,7 +837,7 @@ class ReportPdfLayoutService
         $raw     = array_values($raw);
         for ($i = 0; $i < $n; $i++) {
             $v = isset($raw[$i]) ? strtolower(trim((string) $raw[$i])) : '';
-            $out[] = in_array($v, $allowed, true) ? $v : self::columnAlign($i, $n);
+            $out[] = in_array($v, $allowed, true) ? $v : 'left';
         }
 
         return $out;
@@ -854,10 +854,8 @@ class ReportPdfLayoutService
                 return $h;
             }
         }
-        $col = max(0, min(max(0, count($colAlignH) - 1), $col));
-        $fallback = $colAlignH[$col] ?? 'left';
 
-        return in_array($fallback, self::ALLOWED_INSTANCE_ALIGN_H, true) ? $fallback : 'left';
+        return 'left';
     }
 
     /**
@@ -871,13 +869,8 @@ class ReportPdfLayoutService
                 return $v;
             }
         }
-        $col = max(0, min(max(0, count($colAlignV) - 1), $col));
-        $fallback = $colAlignV[$col] ?? 'top';
-        if ($fallback === 'middle') {
-            return 'top';
-        }
 
-        return in_array($fallback, self::ALLOWED_INSTANCE_ALIGN_V, true) ? $fallback : 'top';
+        return 'top';
     }
 
     /**

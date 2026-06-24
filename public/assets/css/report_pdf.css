@@ -212,20 +212,6 @@ body.pdf-dompdf-download .pdf-ft-block .pdf-pagination-line--dompdf-footer::befo
 .pdf-grid-cell .patient-line {
     margin-bottom: 8px;
 }
-.header-col {
-    display: table-cell;
-    vertical-align: top;
-    padding: 0 8px;
-}
-.header-col-0 {
-    text-align: left;
-}
-.header-col-1 {
-    text-align: center;
-}
-.header-col-2 {
-    text-align: right;
-}
 .header-piece {
     margin-bottom: 8px;
 }
@@ -281,23 +267,6 @@ body.pdf-dompdf-download .pdf-ft-block .pdf-pagination-line--dompdf-footer::befo
     margin-left: auto;
     margin-right: auto;
     box-sizing: border-box;
-}
-.header-col-2 .header-piece-qr .qr-img,
-.pdf-cell--right .header-piece-qr .qr-img,
-.pdf-grid-cell--right .header-piece-qr .qr-img {
-    margin-left: auto;
-    margin-right: 0;
-}
-.header-col-0 .header-piece-qr .qr-img,
-.pdf-cell--left .header-piece-qr .qr-img,
-.pdf-grid-cell--left .header-piece-qr .qr-img {
-    margin-left: 0;
-    margin-right: auto;
-}
-.pdf-cell--center .header-piece-qr .qr-img,
-.pdf-grid-cell--center .header-piece-qr .qr-img {
-    margin-left: auto;
-    margin-right: auto;
 }
 .header-piece-qr .qr-label {
     margin: 4px 0 0 0;

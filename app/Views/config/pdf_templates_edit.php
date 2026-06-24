@@ -1,6 +1,7 @@
 <?= $this->extend('layouts/main') ?>
 <?= $this->section('title') ?>Editar plantilla PDF<?= $this->endSection() ?>
 <?= $this->section('head_extra') ?>
+<link rel="stylesheet" href="<?= base_url('assets/css/report_pdf.css') ?>">
 <script src="<?= base_url('js/vendor/sortable.min.js') ?>"></script>
 <?= $this->endSection() ?>
 <?php
@@ -1156,12 +1157,8 @@ $labelsShort = [
         </div>
 
         <div class="card border-info mb-4 pdf-section-editor" data-config-section="header">
-            <div class="card-header bg-info text-white d-flex flex-wrap align-items-center justify-content-between gap-2">
+            <div class="card-header bg-info text-white">
                 <span class="fw-semibold">Encabezado</span>
-                <div class="d-flex align-items-center gap-2">
-                    <label class="mb-0 small text-white-50" for="sec_cols_header">Columnas</label>
-                    <input type="number" class="form-control form-control-sm text-dark" id="sec_cols_header" min="1" max="6" value="<?= (int) $hCols ?>" style="width: 4.5rem;">
-                </div>
             </div>
             <div class="card-body">
                 <?= view('config/partials/pdf_section_style_controls', [
@@ -1170,9 +1167,16 @@ $labelsShort = [
                     'sec_layout'  => $secLayouts['header'] ?? [],
                 ]) ?>
                 <div class="pdf-grid-editor-wrap mb-4">
-                    <div class="d-flex justify-content-between align-items-center mb-2">
+                    <div class="d-flex justify-content-between align-items-center mb-2 flex-wrap gap-2">
                         <h6 class="text-uppercase text-muted small mb-0">Matriz editable</h6>
-                        <span class="small text-muted">Drop en la celda: agrega al final del stack. Drop sobre un item: replace.</span>
+                        <div class="d-flex align-items-center gap-3 flex-wrap">
+                            <?= view('config/partials/pdf_matrix_size_controls', [
+                                'section_key' => 'header',
+                                'col_count'   => $hCols,
+                                'sec_layout'  => $secLayouts['header'] ?? [],
+                            ]) ?>
+                            <span class="small text-muted">Drop en la celda: agrega al final del stack. Drop sobre un item: replace.</span>
+                        </div>
                     </div>
                     <div id="grid-editor-header" class="pdf-grid-editor" data-section="header"></div>
                 </div>
@@ -1196,12 +1200,8 @@ $labelsShort = [
         </div>
 
         <div class="card border-primary mb-4 pdf-section-editor" data-config-section="patient_doctor">
-            <div class="card-header bg-primary text-white d-flex flex-wrap align-items-center justify-content-between gap-2">
+            <div class="card-header bg-primary text-white">
                 <span class="fw-semibold">Paciente y médico</span>
-                <div class="d-flex align-items-center gap-2">
-                    <label class="mb-0 small text-white-50" for="sec_cols_patient">Columnas</label>
-                    <input type="number" class="form-control form-control-sm text-dark" id="sec_cols_patient" min="1" max="6" value="<?= (int) $pCols ?>" style="width: 4.5rem;">
-                </div>
             </div>
             <div class="card-body">
                 <?= view('config/partials/pdf_section_style_controls', [
@@ -1210,9 +1210,16 @@ $labelsShort = [
                     'sec_layout'  => $secLayouts['patient_doctor'] ?? [],
                 ]) ?>
                 <div class="pdf-grid-editor-wrap mb-4">
-                    <div class="d-flex justify-content-between align-items-center mb-2">
+                    <div class="d-flex justify-content-between align-items-center mb-2 flex-wrap gap-2">
                         <h6 class="text-uppercase text-muted small mb-0">Matriz editable</h6>
-                        <span class="small text-muted">Los espacios, tipografías y alineaciones se conservan por instancia.</span>
+                        <div class="d-flex align-items-center gap-3 flex-wrap">
+                            <?= view('config/partials/pdf_matrix_size_controls', [
+                                'section_key' => 'patient_doctor',
+                                'col_count'   => $pCols,
+                                'sec_layout'  => $secLayouts['patient_doctor'] ?? [],
+                            ]) ?>
+                            <span class="small text-muted">Los espacios, tipografías y alineaciones se conservan por instancia.</span>
+                        </div>
                     </div>
                     <div id="grid-editor-patient" class="pdf-grid-editor" data-section="patient_doctor"></div>
                 </div>
@@ -1228,7 +1235,7 @@ $labelsShort = [
                         <h6 class="text-uppercase text-muted small">Vista previa</h6>
                         <div class="pdf-preview-sheet border rounded shadow-sm bg-white mx-auto">
                             <div class="pdf-preview-sheet-bar small text-white bg-dark px-2 py-1">Paciente / médico</div>
-                            <div class="pdf-preview-sheet-body p-3" id="pdf-preview-patient-block"></div>
+                            <div class="pdf-preview-sheet-body p-2" id="pdf-preview-patient-block"></div>
                         </div>
                     </div>
                 </div>
@@ -1236,12 +1243,8 @@ $labelsShort = [
         </div>
 
         <div class="card border-warning mb-4 pdf-section-editor" data-config-section="lab_firmas">
-            <div class="card-header bg-warning text-dark d-flex flex-wrap align-items-center justify-content-between gap-2">
+            <div class="card-header bg-warning text-dark">
                 <span class="fw-semibold">Validación y aprobación (firmas)</span>
-                <div class="d-flex align-items-center gap-2">
-                    <label class="mb-0 small text-dark" for="sec_cols_lab_firmas">Columnas</label>
-                    <input type="number" class="form-control form-control-sm" id="sec_cols_lab_firmas" min="1" max="6" value="<?= (int) $lCols ?>" style="width: 4.5rem;">
-                </div>
             </div>
             <div class="card-body">
                 <p class="small text-muted">Con ubicación <strong>por área</strong>, este diseño se repite debajo de cada grupo (Química, Hematología, etc.) según lo registrado. Ordene validador, sello, firma, nombre, cargo y matrícula en columnas. Si elige «al final», esta cuadrícula solo aparece al cierre del PDF.</p>
@@ -1251,9 +1254,16 @@ $labelsShort = [
                     'sec_layout'  => $secLayouts['lab_firmas'] ?? [],
                 ]) ?>
                 <div class="pdf-grid-editor-wrap mb-4">
-                    <div class="d-flex justify-content-between align-items-center mb-2">
+                    <div class="d-flex justify-content-between align-items-center mb-2 flex-wrap gap-2">
                         <h6 class="text-uppercase text-muted small mb-0">Matriz editable</h6>
-                        <span class="small text-muted">Podés apilar varios elementos dentro del mismo espacio.</span>
+                        <div class="d-flex align-items-center gap-3 flex-wrap">
+                            <?= view('config/partials/pdf_matrix_size_controls', [
+                                'section_key' => 'lab_firmas',
+                                'col_count'   => $lCols,
+                                'sec_layout'  => $secLayouts['lab_firmas'] ?? [],
+                            ]) ?>
+                            <span class="small text-muted">Podés apilar varios elementos dentro del mismo espacio.</span>
+                        </div>
                     </div>
                     <div id="grid-editor-lab-firmas" class="pdf-grid-editor" data-section="lab_firmas"></div>
                 </div>
@@ -1277,12 +1287,8 @@ $labelsShort = [
         </div>
 
         <div class="card border-secondary mb-0 pdf-section-editor" data-config-section="footer" style="border-color: #6f42c1 !important;">
-            <div class="card-header text-white d-flex flex-wrap align-items-center justify-content-between gap-2" style="background-color: #6f42c1;">
+            <div class="card-header text-white" style="background-color: #6f42c1;">
                 <span class="fw-semibold">Pie de página</span>
-                <div class="d-flex align-items-center gap-2">
-                    <label class="mb-0 small" for="sec_cols_footer" style="opacity:0.9">Columnas</label>
-                    <input type="number" class="form-control form-control-sm text-dark" id="sec_cols_footer" min="1" max="6" value="<?= (int) $fCols ?>" style="width: 4.5rem;">
-                </div>
             </div>
             <div class="card-body">
                 <p class="small text-muted">Solo se imprime si el bloque «Pie de página» está activo.</p>
@@ -1292,9 +1298,16 @@ $labelsShort = [
                     'sec_layout'  => $secLayouts['footer'] ?? [],
                 ]) ?>
                 <div class="pdf-grid-editor-wrap mb-4">
-                    <div class="d-flex justify-content-between align-items-center mb-2">
+                    <div class="d-flex justify-content-between align-items-center mb-2 flex-wrap gap-2">
                         <h6 class="text-uppercase text-muted small mb-0">Matriz editable</h6>
-                        <span class="small text-muted">El ancho de destino se mantiene en los replace.</span>
+                        <div class="d-flex align-items-center gap-3 flex-wrap">
+                            <?= view('config/partials/pdf_matrix_size_controls', [
+                                'section_key' => 'footer',
+                                'col_count'   => $fCols,
+                                'sec_layout'  => $secLayouts['footer'] ?? [],
+                            ]) ?>
+                            <span class="small text-muted">El ancho de destino se mantiene en los replace.</span>
+                        </div>
                     </div>
                     <div id="grid-editor-footer" class="pdf-grid-editor" data-section="footer"></div>
                 </div>
@@ -1332,10 +1345,21 @@ $labelsShort = [
 .pdf-block-sortable .pdf-block-item.sortable-ghost,
 .pdf-instance-sortable .pdf-instance-item.sortable-ghost { opacity: 0.45; background: #e7f1ff; }
 .pdf-drag-handle:active, .instance-drag-handle:active { cursor: grabbing; }
-.pdf-preview-sheet { max-width: 480px; min-height: 160px; }
+.pdf-preview-sheet { width: 100%; max-width: 100%; min-height: 160px; }
 .pdf-preview-sheet-body { background: #f8f9fa; font-size: 0.85rem; }
+.pdf-preview-scope { width: 100%; }
 .pdf-preview-scope .pdf-section-table { width: 100%; table-layout: fixed; border-collapse: collapse; }
+.pdf-preview-scope .pdf-section-table td { box-sizing: border-box; word-wrap: break-word; overflow-wrap: break-word; }
 .pdf-preview-scope .pdf-section-table td p { margin: 0 !important; }
+.pdf-preview-scope .pdf-section-table td.pdf-cell--empty {
+    background: rgba(0, 0, 0, 0.03);
+    outline: 1px dashed rgba(0, 0, 0, 0.08);
+    outline-offset: -1px;
+}
+.pdf-preview-scope .pdf-preview-empty-ph {
+    display: block;
+    min-height: 1.5rem;
+}
 .pdf-preview-scope .pdf-el-item--h-left { text-align: left !important; }
 .pdf-preview-scope .pdf-el-item--h-center { text-align: center !important; }
 .pdf-preview-scope .pdf-el-item--h-right { text-align: right !important; }
@@ -2283,34 +2307,8 @@ document.addEventListener('DOMContentLoaded', function() {
         ['header', 'patient_doctor', 'lab_firmas', 'footer'].forEach(buildSectionGridEditor);
     }
 
-    function columnAlign(idx, total) {
-        if (total <= 1) return 'center';
-        if (idx === 0) return 'left';
-        if (idx === total - 1) return 'right';
-        return 'center';
-    }
-
-    function columnAlignForSpan(start, span, total) {
-        var end = start + span - 1;
-        if (total <= 1) return 'center';
-        if (start === 0 && end >= total - 1) return 'center';
-        if (start === 0) return 'left';
-        if (end >= total - 1) return 'right';
-        return 'center';
-    }
-
     function sectionIdSafe(sectionKey) {
         return String(sectionKey).replace(/[^a-z0-9_]/g, '_');
-    }
-
-    /** Tbody de alineación por columna (id o data-pdf-section por si el id no coincide). */
-    function sectionStyleColsTbody(sectionKey) {
-        var idS = sectionIdSafe(sectionKey);
-        var tbody = document.getElementById('sec_style_cols_' + idS);
-        if (!tbody) {
-            tbody = document.querySelector('.pdf-sec-col-aligns[data-pdf-section="' + sectionKey + '"]');
-        }
-        return tbody;
     }
 
     function sectionStyleLineHeightEl(sectionKey) {
@@ -2330,38 +2328,33 @@ document.addEventListener('DOMContentLoaded', function() {
         var h = hEl ? String(hEl.value || '').trim() : '';
         var v = vEl ? String(vEl.value || '').trim() : '';
         return {
-            align_h: (h === 'left' || h === 'center' || h === 'right') ? h : null,
-            align_v: (v === 'top' || v === 'bottom') ? v : null
+            align_h: (h === 'left' || h === 'center' || h === 'right') ? h : 'left',
+            align_v: (v === 'top' || v === 'bottom') ? v : 'top'
         };
     }
 
-    function resolveInstanceAlignH(item, colAlignH, col) {
+    function resolveInstanceAlignH(item) {
         if (item && item.align_h && ['left', 'center', 'right'].indexOf(item.align_h) >= 0) {
             return item.align_h;
         }
-        col = Math.max(0, Math.min((colAlignH.length || 1) - 1, col));
-        var fb = colAlignH[col] || 'left';
-        return ['left', 'center', 'right'].indexOf(fb) >= 0 ? fb : 'left';
+        return 'left';
     }
 
-    function resolveInstanceAlignV(item, colAlignV, col) {
+    function resolveInstanceAlignV(item) {
         if (item && item.align_v && ['top', 'bottom'].indexOf(item.align_v) >= 0) {
             return item.align_v;
         }
-        col = Math.max(0, Math.min((colAlignV.length || 1) - 1, col));
-        var fb = colAlignV[col] || 'top';
-        if (fb === 'middle') return 'top';
-        return ['top', 'bottom'].indexOf(fb) >= 0 ? fb : 'top';
+        return 'top';
     }
 
-    function itemWrapperAlignStyle(item, col, colAlignH, colAlignV) {
-        var h = resolveInstanceAlignH(item, colAlignH, col);
-        var v = resolveInstanceAlignV(item, colAlignV, col);
-        return { style: '', align_h: h, align_v: v, classes: 'pdf-el-item--h-' + h + ' pdf-el-item--v-' + v };
+    function itemWrapperAlignStyle(item) {
+        var h = resolveInstanceAlignH(item);
+        var v = resolveInstanceAlignV(item);
+        return { align_h: h, align_v: v, classes: 'pdf-el-item--h-' + h + ' pdf-el-item--v-' + v };
     }
 
-    function applyItemAlign(el, sit, colIdx, colAlignH, colAlignV) {
-        var al = itemWrapperAlignStyle(sit, colIdx, colAlignH, colAlignV);
+    function applyItemAlign(el, sit) {
+        var al = itemWrapperAlignStyle(sit);
         el.classList.add('pdf-el-item--h-' + al.align_h, 'pdf-el-item--v-' + al.align_v);
         el.style.setProperty('text-align', al.align_h, 'important');
         if (al.align_v === 'bottom') {
@@ -2537,69 +2530,12 @@ document.addEventListener('DOMContentLoaded', function() {
             'text-shadow:' + (mapShadow[ts.text_shadow] || 'none') + ';';
     }
 
-    function readSectionStyleFromDom(sectionKey, n) {
+    function readSectionStyleFromDom(sectionKey) {
         var lhEl = sectionStyleLineHeightEl(sectionKey);
         var lh = parseFloat(lhEl && lhEl.value);
         if (isNaN(lh)) lh = 1.35;
         lh = Math.max(1, Math.min(2.5, Math.round(lh * 100) / 100));
-        var tbody = sectionStyleColsTbody(sectionKey);
-        var h = [];
-        var v = [];
-        for (var i = 0; i < n; i++) {
-            var row = tbody ? tbody.querySelector('tr.pdf-sec-col-row[data-col="' + i + '"]') : null;
-            var selH = row ? row.querySelector('.pdf-sec-col-h') : null;
-            var selV = row ? row.querySelector('.pdf-sec-col-v') : null;
-            var hv = selH && ['left', 'center', 'right'].indexOf(selH.value) >= 0 ? selH.value : columnAlign(i, n);
-            var vv = selV && ['top', 'middle', 'bottom'].indexOf(selV.value) >= 0 ? selV.value : 'top';
-            h.push(hv);
-            v.push(vv);
-        }
-        return { line_height: lh, column_align_h: h, column_align_v: v };
-    }
-
-    function rebuildSectionStyleTable(sectionKey) {
-        var tbody = sectionStyleColsTbody(sectionKey);
-        if (!tbody) return;
-        var colsInp = sectionKey === 'header' ? secColsH : (sectionKey === 'patient_doctor' ? secColsP : (sectionKey === 'lab_firmas' ? secColsL : secColsF));
-        if (!colsInp) return;
-        var n = clampCols(colsInp.value);
-        var prevH = [];
-        var prevV = [];
-        tbody.querySelectorAll('tr.pdf-sec-col-row').forEach(function(tr) {
-            var ci = parseInt(tr.getAttribute('data-col'), 10);
-            var sh = tr.querySelector('.pdf-sec-col-h');
-            var sv = tr.querySelector('.pdf-sec-col-v');
-            if (!isNaN(ci) && sh && sv) {
-                prevH[ci] = sh.value;
-                prevV[ci] = sv.value;
-            }
-        });
-        function optsH(sel) {
-            var pairs = [['left', 'Izquierda'], ['center', 'Centro'], ['right', 'Derecha']];
-            return pairs.map(function(p) {
-                return '<option value="' + p[0] + '"' + (sel === p[0] ? ' selected' : '') + '>' + p[1] + '</option>';
-            }).join('');
-        }
-        function optsV(sel) {
-            var pairs = [['top', 'Arriba'], ['middle', 'Centro'], ['bottom', 'Abajo']];
-            return pairs.map(function(p) {
-                return '<option value="' + p[0] + '"' + (sel === p[0] ? ' selected' : '') + '>' + p[1] + '</option>';
-            }).join('');
-        }
-        tbody.innerHTML = '';
-        for (var i = 0; i < n; i++) {
-            var hVal = prevH[i];
-            var vVal = prevV[i];
-            if (!hVal || ['left', 'center', 'right'].indexOf(hVal) < 0) hVal = columnAlign(i, n);
-            if (!vVal || ['top', 'middle', 'bottom'].indexOf(vVal) < 0) vVal = 'top';
-            var tr = document.createElement('tr');
-            tr.className = 'pdf-sec-col-row';
-            tr.setAttribute('data-col', String(i));
-            tr.innerHTML = '<td class="text-muted">' + (i + 1) + '</td>' +
-                '<td><select class="form-select form-select-sm pdf-sec-col-h" data-col="' + i + '">' + optsH(hVal) + '</select></td>' +
-                '<td><select class="form-select form-select-sm pdf-sec-col-v" data-col="' + i + '">' + optsV(vVal) + '</select></td>';
-            tbody.appendChild(tr);
-        }
+        return { line_height: lh };
     }
 
     function readSectionRowGapPx(sectionKey) {
@@ -2614,14 +2550,12 @@ document.addEventListener('DOMContentLoaded', function() {
     function buildSectionLayoutsForJson() {
         function pack(secKey, colsInput, rowsInput) {
             var n = clampCols(colsInput.value);
-            var st = readSectionStyleFromDom(secKey, n);
+            var st = readSectionStyleFromDom(secKey);
             return {
                 columns: n,
                 rows: clampRows(rowsInput && rowsInput.value),
                 line_height: st.line_height,
-                row_gap_px: readSectionRowGapPx(secKey),
-                column_align_h: st.column_align_h,
-                column_align_v: st.column_align_v
+                row_gap_px: readSectionRowGapPx(secKey)
             };
         }
         return {
@@ -2722,7 +2656,7 @@ document.addEventListener('DOMContentLoaded', function() {
             return '<div><span style="' + escapeHtml(stL) + '">' + escapeHtml(lbl) + '</span></div><div>' + wrappedVal + '</div>';
         }
         if (type === 'logo') {
-            return '<div class="header-preview-logo">' + labeledBlock('logo', escapeHtml(sample)) + '</div>';
+            return '<div class="header-piece header-piece-logo">' + labeledBlock('logo', '<span class="pdf-preview-logo-ph" style="display:inline-block;padding:2px 6px;background:#e9ecef;border-radius:3px;">' + escapeHtml(sample) + '</span>') + '</div>';
         }
         if (type === 'lab_company') {
             return '<div class="header-preview-company">' + labeledBlock('lab_company', '<strong>' + escapeHtml(sample) + '</strong>') + '</div>';
@@ -2772,17 +2706,17 @@ document.addEventListener('DOMContentLoaded', function() {
             qrPctPrev = Math.max(50, Math.min(400, qrPctPrev));
             var qrBoxPx = Math.round(36 * qrPctPrev / 100);
             var qrFs = Math.max(8, Math.round(10 * qrPctPrev / 100));
-            var img = '<span style="display:inline-block;width:' + qrBoxPx + 'px;height:' + qrBoxPx + 'px;line-height:' + qrBoxPx + 'px;text-align:center;background:#6c757d;color:#fff;border-radius:4px;font-size:' + qrFs + 'px;font-weight:600;vertical-align:middle">QR</span>';
+            var img = '<span class="qr-img" role="img" aria-label="QR" style="display:block;width:' + qrBoxPx + 'px;height:' + qrBoxPx + 'px;line-height:' + qrBoxPx + 'px;text-align:center;background:#6c757d;color:#fff;border-radius:4px;font-size:' + qrFs + 'px;font-weight:600;">QR</span>';
             if (inlineQ && showH) {
-                return '<div class="text-center"><span style="display:inline-block;vertical-align:middle;margin-right:6px;' + escapeHtml(stQ) + '">' + escapeHtml(hint) + '</span>' + img + '</div>';
+                return '<div class="header-piece header-piece-qr"><p style="margin:0;"><span class="qr-label" style="' + escapeHtml(stQ) + ';display:inline-block;vertical-align:middle;margin-right:6px;">' + escapeHtml(hint) + '</span>' + img + '</p></div>';
             }
             if (inlineQ) {
-                return '<div class="text-center">' + img + '</div>';
+                return '<div class="header-piece header-piece-qr">' + img + '</div>';
             }
             if (showH) {
-                return '<div class="text-center">' + img + '<div style="' + escapeHtml(stQ) + '">' + escapeHtml(hint) + '</div></div>';
+                return '<div class="header-piece header-piece-qr"><div class="qr-label" style="' + escapeHtml(stQ) + '">' + escapeHtml(hint) + '</div>' + img + '</div>';
             }
-            return '<div class="text-center">' + img + '</div>';
+            return '<div class="header-piece header-piece-qr">' + img + '</div>';
         }
         return escapeHtml(sample);
     }
@@ -2839,29 +2773,101 @@ document.addEventListener('DOMContentLoaded', function() {
         td.style.borderLeft = w + 'px solid ' + String(gridStyle.column_border_color || '#DDDDDD');
     }
 
-    function appendPreviewRowCells(tr, row, rowIndex, n, secSt, sectionKey, pctNum, rowGapPx, gridStyle) {
+    function previewRowMinHeightPx(sectionKey) {
+        if (sectionKey === 'footer') return 32;
+        if (sectionKey === 'lab_firmas') return 40;
+        return 48;
+    }
+
+    function applyPreviewSectionTheme(wrap, sectionKey, gridStyle) {
+        if (!wrap) return;
+        var varPrefix = null;
+        if (sectionKey === 'header') varPrefix = 'pdf-hg';
+        else if (sectionKey === 'patient_doctor') varPrefix = 'pdf-pd';
+        else if (sectionKey === 'footer') varPrefix = 'pdf-ft';
+        if (!varPrefix || !gridStyle) return;
+        var bg = gridStyle.body_transparent ? 'transparent' : (gridStyle.body_bg_color || '#ffffff');
+        wrap.style.setProperty('--' + varPrefix + '-body-bg', bg);
+        if (gridStyle.body_text_color) {
+            wrap.style.setProperty('--' + varPrefix + '-body-color', gridStyle.body_text_color);
+        }
+        var colW = parseInt(gridStyle.column_border_width_px, 10);
+        if (isNaN(colW)) colW = 0;
+        wrap.style.setProperty('--' + varPrefix + '-column-border-width', Math.max(0, colW) + 'px');
+        wrap.style.setProperty('--' + varPrefix + '-column-border-color', gridStyle.column_border_color || '#DDDDDD');
+        if (sectionKey === 'footer' && gridStyle.section_top_border_enabled) {
+            var bw = parseInt(gridStyle.section_top_border_width_px, 10);
+            if (isNaN(bw)) bw = 1;
+            wrap.style.setProperty('--pdf-ft-section-top-border-width', Math.max(0, bw) + 'px');
+            wrap.style.setProperty('--pdf-ft-section-top-border-color', gridStyle.section_top_border_color || '#DDDDDD');
+        }
+        if (sectionKey === 'header') {
+            var sepEl = document.getElementById('hs_separator_color');
+            if (sepEl && isValidPdfHexJs(sepEl.value)) {
+                wrap.style.setProperty('--pdf-header-separator-color', sepEl.value.trim());
+            }
+        }
+    }
+
+    function previewCellNeedsFlex(cellItems) {
+        if (!cellItems || cellItems.length === 0) return false;
+        if (cellItems.length > 1) return true;
+        return resolveInstanceAlignV(cellItems[0]) === 'bottom';
+    }
+
+    function applyPreviewTdLayout(td, tdAl, cellItems, rowMinPx) {
+        td.style.minHeight = rowMinPx + 'px';
+        td.style.setProperty('vertical-align', previewCellNeedsFlex(cellItems) ? 'top' : tdAl.v, 'important');
+        td.style.setProperty('text-align', tdAl.h, 'important');
+        if (previewCellNeedsFlex(cellItems)) {
+            td.style.display = 'flex';
+            td.style.flexDirection = 'column';
+            td.style.justifyContent = (cellItems.length === 1 && tdAl.v === 'bottom') ? 'flex-end' : 'flex-start';
+        } else {
+            td.style.display = '';
+            td.style.flexDirection = '';
+            td.style.justifyContent = '';
+        }
+    }
+
+    function appendPreviewItemToTd(td, sit) {
+        var divM = document.createElement('div');
+        divM.className = 'pdf-el-item';
+        divM.style.lineHeight = 'inherit';
+        applyItemAlign(divM, sit);
+        divM.innerHTML = sit.html;
+        td.appendChild(divM);
+    }
+
+    function buildPreviewColgroup(tbl, n, pctNum) {
+        var cg = document.createElement('colgroup');
+        for (var ci = 0; ci < n; ci++) {
+            var colEl = document.createElement('col');
+            colEl.style.width = pctNum.toFixed(4) + '%';
+            cg.appendChild(colEl);
+        }
+        tbl.appendChild(cg);
+    }
+
+    function appendPreviewRowCells(tr, row, rowIndex, n, secSt, sectionKey, pctNum, rowGapPx, gridStyle, rowMinPx) {
         var colspans = row.colspans;
         var stk = row.stacks;
         var cellPad = cellPadCssForSection(sectionKey, rowGapPx);
         var emptyPad = emptyCellPadCssForSection(sectionKey, rowGapPx);
         var pct = pctNum.toFixed(2) + '%';
         var c = 0;
-        function tdAlignForItems(startCol, cellItems) {
-            var h = secSt.column_align_h[startCol] || 'left';
-            var v = secSt.column_align_v[startCol] || 'top';
+        function tdAlignForItems(cellItems) {
             if (cellItems.length === 1) {
-                h = resolveInstanceAlignH(cellItems[0], secSt.column_align_h, startCol);
-                v = resolveInstanceAlignV(cellItems[0], secSt.column_align_v, startCol);
-            } else if (cellItems.length > 1) {
-                h = 'left';
-                v = 'top';
+                return {
+                    h: resolveInstanceAlignH(cellItems[0]),
+                    v: resolveInstanceAlignV(cellItems[0]),
+                    alignCls: (function() {
+                        var h = resolveInstanceAlignH(cellItems[0]);
+                        return h === 'right' ? 'right' : (h === 'center' ? 'center' : 'left');
+                    })()
+                };
             }
-            if (v === 'middle') v = 'top';
-            var alignCls = h === 'right' ? 'right' : (h === 'center' ? 'center' : 'left');
-            return { h: h, v: v, alignCls: alignCls };
-        }
-        function applyPreviewItemAlign(divM, sit, colIdx) {
-            applyItemAlign(divM, sit, colIdx, secSt.column_align_h, secSt.column_align_v);
+            return { h: 'left', v: 'top', alignCls: 'left' };
         }
         while (c < n) {
             var block = null;
@@ -2875,57 +2881,51 @@ document.addEventListener('DOMContentLoaded', function() {
                 var sp = block.span;
                 var first = block.items[0];
                 var sc = first.col;
-                var tdAl = tdAlignForItems(sc, block.items);
+                var tdAl = tdAlignForItems(block.items);
+                var spanPct = (sp * pctNum).toFixed(4) + '%';
                 var tdM = document.createElement('td');
                 tdM.colSpan = sp;
                 tdM.className = 'pdf-cell pdf-cell--' + tdAl.alignCls;
-                tdM.style.width = ((sp * pctNum) / n).toFixed(2) + '%';
+                tdM.style.width = spanPct;
                 tdM.style.lineHeight = String(secSt.line_height);
-                tdM.style.setProperty('vertical-align', tdAl.v, 'important');
-                tdM.style.setProperty('text-align', tdAl.h, 'important');
                 tdM.style.padding = cellPad;
                 if (rowIndex > 0 && rowGapPx > 0) tdM.style.paddingTop = rowGapPx + 'px';
+                applyPreviewTdLayout(tdM, tdAl, block.items, rowMinPx);
                 applyColumnBorderToCell(tdM, sc, gridStyle);
                 block.items.forEach(function(sit) {
-                    var divM = document.createElement('div');
-                    divM.className = 'pdf-el-item';
-                    divM.style.lineHeight = 'inherit';
-                    applyPreviewItemAlign(divM, sit, sit.col != null ? sit.col : sc);
-                    divM.innerHTML = sit.html;
-                    tdM.appendChild(divM);
+                    appendPreviewItemToTd(tdM, sit);
                 });
                 tr.appendChild(tdM);
                 c += sp;
             } else if (stk[c] !== null && stk[c].length > 0) {
                 var stackItems = stk[c];
-                var tdAlS = tdAlignForItems(c, stackItems);
+                var tdAlS = tdAlignForItems(stackItems);
                 var tdS = document.createElement('td');
                 tdS.className = 'pdf-cell pdf-cell--' + tdAlS.alignCls;
                 tdS.style.width = pct;
                 tdS.style.lineHeight = String(secSt.line_height);
-                tdS.style.setProperty('vertical-align', tdAlS.v, 'important');
-                tdS.style.setProperty('text-align', tdAlS.h, 'important');
                 tdS.style.padding = cellPad;
                 if (rowIndex > 0 && rowGapPx > 0) tdS.style.paddingTop = rowGapPx + 'px';
+                applyPreviewTdLayout(tdS, tdAlS, stackItems, rowMinPx);
                 applyColumnBorderToCell(tdS, c, gridStyle);
                 stackItems.forEach(function(sit) {
-                    var d = document.createElement('div');
-                    d.className = 'pdf-el-item';
-                    d.style.lineHeight = 'inherit';
-                    applyPreviewItemAlign(d, sit, sit.col != null ? sit.col : c);
-                    d.innerHTML = sit.html;
-                    tdS.appendChild(d);
+                    appendPreviewItemToTd(tdS, sit);
                 });
                 tr.appendChild(tdS);
                 c++;
             } else {
                 var tdE = document.createElement('td');
+                tdE.className = 'pdf-cell pdf-cell--empty';
                 tdE.style.width = pct;
                 tdE.style.lineHeight = String(secSt.line_height);
-                tdE.style.verticalAlign = secSt.column_align_v[c] || 'top';
                 tdE.style.padding = emptyPad;
                 if (rowIndex > 0 && rowGapPx > 0) tdE.style.paddingTop = rowGapPx + 'px';
+                applyPreviewTdLayout(tdE, { h: 'left', v: 'top', alignCls: 'left' }, [], rowMinPx);
                 applyColumnBorderToCell(tdE, c, gridStyle);
+                var ph = document.createElement('span');
+                ph.className = 'pdf-preview-empty-ph';
+                ph.setAttribute('aria-hidden', 'true');
+                tdE.appendChild(ph);
                 tr.appendChild(tdE);
                 c++;
             }
@@ -2936,7 +2936,7 @@ document.addEventListener('DOMContentLoaded', function() {
         if (!previewEl || !ul) return;
         var n = colsForList(ul);
         var sectionKey = ul.getAttribute('data-section') || 'header';
-        var secSt = readSectionStyleFromDom(sectionKey, n);
+        var secSt = readSectionStyleFromDom(sectionKey);
         var ftFooter = null;
         var hgHeader = null;
         var pdHeader = null;
@@ -3040,9 +3040,9 @@ document.addEventListener('DOMContentLoaded', function() {
         var wrap = document.createElement('div');
         wrap.className = 'pdf-preview-scope';
         if (sectionKey === 'header') {
-            wrap.classList.add('pdf-hg-block');
+            wrap.classList.add('pdf-hg-block', 'header', 'header-grid');
         } else if (sectionKey === 'patient_doctor') {
-            wrap.classList.add('pdf-pd-block');
+            wrap.classList.add('pdf-pd-block', 'patient-columns', 'patient-columns-grid');
         } else if (sectionKey === 'footer') {
             wrap.classList.add('pdf-ft-block', 'footer-grid');
         } else if (sectionKey === 'lab_firmas') {
@@ -3066,6 +3066,8 @@ document.addEventListener('DOMContentLoaded', function() {
         var totalRows = rowsForSectionKey(sectionKey);
         var rowGapPx = readSectionRowGapPx(sectionKey);
         var gridStyle = ftFooter || hgHeader || pdHeader || null;
+        var rowMinPx = previewRowMinHeightPx(sectionKey);
+        applyPreviewSectionTheme(wrap, sectionKey, gridStyle);
 
         var tbl = document.createElement('table');
         tbl.className = 'pdf-section-table';
@@ -3074,6 +3076,7 @@ document.addEventListener('DOMContentLoaded', function() {
         tbl.style.tableLayout = 'fixed';
         tbl.style.borderCollapse = 'collapse';
         tbl.style.lineHeight = String(secSt.line_height);
+        buildPreviewColgroup(tbl, n, pctNum);
 
         for (var mr = 0; mr < totalRows; mr++) {
             var rowItems = items.filter(function(it) { return it.grid_row === mr; });
@@ -3081,7 +3084,8 @@ document.addEventListener('DOMContentLoaded', function() {
             var tr = document.createElement('tr');
             tr.className = 'pdf-section-row';
             tr.setAttribute('data-pdf-row', String(mr));
-            appendPreviewRowCells(tr, matrixRow, mr, n, secSt, sectionKey, pctNum, rowGapPx, gridStyle);
+            tr.style.minHeight = rowMinPx + 'px';
+            appendPreviewRowCells(tr, matrixRow, mr, n, secSt, sectionKey, pctNum, rowGapPx, gridStyle, rowMinPx);
             tbl.appendChild(tr);
         }
         wrap.appendChild(tbl);
@@ -3117,19 +3121,16 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
-    function buildInstanceAlignSelect(className, title, options, defaultLabel) {
+    function buildInstanceAlignSelect(className, title, options, selected) {
         var sel = document.createElement('select');
         sel.className = 'form-select form-select-sm ' + className;
         sel.style.maxWidth = '9rem';
         sel.title = title;
-        var defOpt = document.createElement('option');
-        defOpt.value = '';
-        defOpt.textContent = defaultLabel;
-        sel.appendChild(defOpt);
         options.forEach(function(pair) {
             var o = document.createElement('option');
             o.value = pair[0];
             o.textContent = pair[1];
+            if (selected === pair[0]) o.selected = true;
             sel.appendChild(o);
         });
         return sel;
@@ -3175,8 +3176,8 @@ document.addEventListener('DOMContentLoaded', function() {
         var sp = enabled ? Math.max(1, Math.min(maxS, columnSpan)) : 1;
         fillSpanSelectElement(spanSel, maxS, sp);
         if (!enabled) spanSel.disabled = true;
-        var alignHSel = buildInstanceAlignSelect('instance-align-h', 'Alineación horizontal en la celda', [['left', 'Izquierda'], ['center', 'Centro'], ['right', 'Derecha']], 'Alineación H: col.');
-        var alignVSel = buildInstanceAlignSelect('instance-align-v', 'Alineación vertical en la celda', [['top', 'Arriba'], ['bottom', 'Abajo']], 'Alineación V: col.');
+        var alignHSel = buildInstanceAlignSelect('instance-align-h', 'Alineación horizontal en la celda', [['left', 'Izquierda'], ['center', 'Centro'], ['right', 'Derecha']], 'left');
+        var alignVSel = buildInstanceAlignSelect('instance-align-v', 'Alineación vertical en la celda', [['top', 'Arriba'], ['bottom', 'Abajo']], 'top');
         if (!enabled) {
             alignHSel.disabled = true;
             alignVSel.disabled = true;
@@ -3440,11 +3441,8 @@ document.addEventListener('DOMContentLoaded', function() {
     [secColsH, secColsP, secColsL, secColsF].forEach(function(inp) {
         if (!inp) return;
         inp.addEventListener('change', function() {
+            inp.value = String(clampCols(inp.value));
             rebuildColumnSelects();
-            if (inp === secColsH) rebuildSectionStyleTable('header');
-            else if (inp === secColsP) rebuildSectionStyleTable('patient_doctor');
-            else if (inp === secColsL) rebuildSectionStyleTable('lab_firmas');
-            else if (inp === secColsF) rebuildSectionStyleTable('footer');
             rebuildAllPreviews();
         });
     });
@@ -3460,7 +3458,7 @@ document.addEventListener('DOMContentLoaded', function() {
     if (pdfEditorInst) {
         pdfEditorInst.addEventListener('change', function(e) {
             var t = e.target;
-            if (t && (t.classList.contains('pdf-sec-col-h') || t.classList.contains('pdf-sec-col-v'))) {
+            if (t && (t.classList.contains('pdf-sec-line-height') || t.classList.contains('pdf-sec-row-gap'))) {
                 rebuildAllPreviews();
             } else if (t && (t.classList.contains('instance-align-h') || t.classList.contains('instance-align-v'))) {
                 rebuildAllPreviews();
@@ -3683,13 +3681,13 @@ document.addEventListener('DOMContentLoaded', function() {
 
     document.addEventListener('change', function(e) {
         var t = e.target;
-        if (t && t.id && (t.id.indexOf('ft_') === 0 || t.id.indexOf('hg_') === 0)) {
+        if (t && t.id && (t.id.indexOf('ft_') === 0 || t.id.indexOf('hg_') === 0 || t.id.indexOf('pd_') === 0 || t.id === 'hs_separator_color')) {
             rebuildAllPreviews();
         }
     });
     document.addEventListener('input', function(e) {
         var t = e.target;
-        if (t && t.id && (t.id.indexOf('ft_') === 0 || t.id.indexOf('hg_') === 0)) {
+        if (t && t.id && (t.id.indexOf('ft_') === 0 || t.id.indexOf('hg_') === 0 || t.id.indexOf('pd_') === 0 || t.id === 'hs_separator_color')) {
             rebuildAllPreviews();
         }
     });
@@ -4417,8 +4415,8 @@ document.addEventListener('DOMContentLoaded', function() {
             base.label_space_below_px = readInt('.instance-pd-space-below-px', 0);
         }
         var instAlign = readInstanceAlign(li);
-        if (instAlign.align_h) base.align_h = instAlign.align_h;
-        if (instAlign.align_v) base.align_v = instAlign.align_v;
+        if (instAlign.align_h !== 'left') base.align_h = instAlign.align_h;
+        if (instAlign.align_v !== 'top') base.align_v = instAlign.align_v;
         return base;
     }
 

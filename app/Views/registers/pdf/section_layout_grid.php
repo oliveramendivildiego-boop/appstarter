@@ -319,10 +319,10 @@ $itemWrapperStyle = static function (array $item, int $col, string $typography =
 $itemWrapperClasses = static function (array $item, int $col) use ($colAlignH, $colAlignV): string {
     return \App\Services\ReportPdfLayoutService::instanceAlignItemClasses($item, $colAlignH, $colAlignV, $col);
 };
-$pdfTdStyle = static function (int $startCol, int $span, float $pctUnit, int $rowIndex, array $cellItems = []) use ($n, $colAlignH, $colAlignV, $lineHeight, $cellPadCss, $rowGapPx, $cellBorderCss, $itemAlignH, $itemAlignV): array {
+$pdfTdStyle = static function (int $startCol, int $span, float $pctUnit, int $rowIndex, array $cellItems = []) use ($n, $lineHeight, $cellPadCss, $rowGapPx, $cellBorderCss, $itemAlignH, $itemAlignV): array {
     $startCol = max(0, min($n - 1, $startCol));
-    $h        = $colAlignH[$startCol] ?? 'left';
-    $v        = $colAlignV[$startCol] ?? 'top';
+    $h        = 'left';
+    $v        = 'top';
     if (count($cellItems) === 1) {
         $only = $cellItems[0];
         $h    = $itemAlignH($only, $startCol);
@@ -342,13 +342,10 @@ $pdfTdStyle = static function (int $startCol, int $span, float $pctUnit, int $ro
     return ['alignCls' => $alignCls, 'style' => $style];
 };
 
-$pdfEmptyTdStyle = static function (int $colIdx, float $pctUnit, int $rowIndex = 0) use ($n, $colAlignV, $lineHeight, $emptyCellPad, $rowGapPx, $cellBorderCss): string {
-    $colIdx = max(0, min($n - 1, $colIdx));
-    $v      = $colAlignV[$colIdx] ?? 'top';
-    $v      = in_array($v, ['top', 'middle', 'bottom'], true) ? $v : 'top';
+$pdfEmptyTdStyle = static function (int $colIdx, float $pctUnit, int $rowIndex = 0) use ($lineHeight, $emptyCellPad, $rowGapPx, $cellBorderCss): string {
     $rowPad = ($rowIndex > 0 && $rowGapPx > 0) ? ('padding-top:' . $rowGapPx . 'px;') : '';
 
-    return 'width:' . $pctUnit . '%;vertical-align:' . $v . ' !important;padding:' . $emptyCellPad . ';line-height:' . $lineHeight . ';' . $rowPad . $cellBorderCss($colIdx);
+    return 'width:' . $pctUnit . '%;vertical-align:top !important;padding:' . $emptyCellPad . ';line-height:' . $lineHeight . ';' . $rowPad . $cellBorderCss($colIdx);
 };
 ?>
 <div class="<?= esc($section_wrapper_class) ?>"<?php

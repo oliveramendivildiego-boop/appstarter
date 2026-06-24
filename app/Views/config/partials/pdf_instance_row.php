@@ -59,15 +59,13 @@ $alignVIn = \App\Services\ReportPdfLayoutService::normalizeInstanceAlignV($inst[
             <?php endfor; ?>
         </select>
         <select class="form-select form-select-sm instance-align-h" style="max-width: 9rem;" title="Alineación horizontal en la celda" <?= $selVal === '-1' ? 'disabled' : '' ?>>
-            <option value="" <?= $alignHIn === null ? 'selected' : '' ?>>Alineación H: col.</option>
             <?php foreach (['left' => 'Izquierda', 'center' => 'Centro', 'right' => 'Derecha'] as $ak => $al): ?>
-            <option value="<?= esc($ak, 'attr') ?>" <?= $alignHIn === $ak ? 'selected' : '' ?>><?= esc($al) ?></option>
+            <option value="<?= esc($ak, 'attr') ?>" <?= ($alignHIn ?? 'left') === $ak ? 'selected' : '' ?>><?= esc($al) ?></option>
             <?php endforeach; ?>
         </select>
         <select class="form-select form-select-sm instance-align-v" style="max-width: 9rem;" title="Alineación vertical en la celda" <?= $selVal === '-1' ? 'disabled' : '' ?>>
-            <option value="" <?= $alignVIn === null ? 'selected' : '' ?>>Alineación V: col.</option>
             <?php foreach (['top' => 'Arriba', 'bottom' => 'Abajo'] as $ak => $al): ?>
-            <option value="<?= esc($ak, 'attr') ?>" <?= $alignVIn === $ak ? 'selected' : '' ?>><?= esc($al) ?></option>
+            <option value="<?= esc($ak, 'attr') ?>" <?= ($alignVIn ?? 'top') === $ak ? 'selected' : '' ?>><?= esc($al) ?></option>
             <?php endforeach; ?>
         </select>
         <div class="flex-grow-1"></div>
