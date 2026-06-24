@@ -250,8 +250,32 @@ $lineHeight   = $secStyle['line_height'];
 $sectionKeyStr = (string) ($section_key ?? '');
 $defRowGap     = $sectionKeyStr === 'patient_doctor' ? 2 : ($sectionKeyStr === 'footer' ? 0 : 6);
 $rowGapPx      = max(0, min(40, (int) ($secLayoutRaw['row_gap_px'] ?? $defRowGap)));
-$cellPadCss    = $sectionKeyStr === 'footer' ? '0' : '0 6px';
-$emptyCellPad  = $sectionKeyStr === 'footer' ? '0' : '0 4px';
+$gridStyleRaw  = [];
+if ($sectionKeyStr === 'footer') {
+    $gridStyleRaw = is_array($element_ctx['pdf_footer_grid_style'] ?? null) ? $element_ctx['pdf_footer_grid_style'] : [];
+} elseif ($sectionKeyStr === 'header') {
+    $gridStyleRaw = is_array($element_ctx['pdf_header_grid_style'] ?? null) ? $element_ctx['pdf_header_grid_style'] : [];
+} elseif ($sectionKeyStr === 'patient_doctor') {
+    $gridStyleRaw = is_array($element_ctx['pdf_patient_doctor_grid_style'] ?? null) ? $element_ctx['pdf_patient_doctor_grid_style'] : [];
+}
+$colBorderW    = max(0, min(4, (int) ($gridStyleRaw['column_border_width_px'] ?? 0)));
+$colBorderColor = \App\Services\ReportPdfLayoutService::isValidPdfHexColor((string) ($gridStyleRaw['column_border_color'] ?? ''))
+    ? (string) $gridStyleRaw['column_border_color']
+    : '#DDDDDD';
+$footerHPadPx  = ($sectionKeyStr === 'footer') ? max(0, min(12, (int) round($rowGapPx / 2))) : 0;
+$cellPadCss    = $sectionKeyStr === 'footer'
+    ? ($footerHPadPx > 0 ? ('0 ' . $footerHPadPx . 'px') : '0')
+    : '0 6px';
+$emptyCellPad  = $sectionKeyStr === 'footer'
+    ? ($footerHPadPx > 0 ? ('0 ' . $footerHPadPx . 'px') : '0')
+    : '0 4px';
+$cellBorderCss = static function (int $startCol) use ($colBorderW, $colBorderColor): string {
+    if ($startCol <= 0 || $colBorderW <= 0) {
+        return '';
+    }
+
+    return 'border-left:' . $colBorderW . 'px solid ' . $colBorderColor . ';';
+};
 $textStyleCss = static function (array $raw): string {
     $ts = \App\Services\ReportPdfLayoutService::normalizeTextStyle($raw);
     $shadowMap = [
@@ -273,7 +297,7 @@ $textStyleCss = static function (array $raw): string {
         . 'text-shadow:' . $shadow . ';';
 };
 
-$pdfTdStyle = static function (int $startCol, int $span, float $pctUnit, int $rowIndex = 0) use ($n, $colAlignH, $colAlignV, $lineHeight, $cellPadCss, $rowGapPx): array {
+$pdfTdStyle = static function (int $startCol, int $span, float $pctUnit, int $rowIndex = 0) use ($n, $colAlignH, $colAlignV, $lineHeight, $cellPadCss, $rowGapPx, $cellBorderCss): array {
     $startCol = max(0, min($n - 1, $startCol));
     $h        = $colAlignH[$startCol] ?? 'left';
     $v        = $colAlignV[$startCol] ?? 'top';
@@ -283,18 +307,18 @@ $pdfTdStyle = static function (int $startCol, int $span, float $pctUnit, int $ro
     $spanPct  = round($span * $pctUnit, 4);
     $rowPad   = ($rowIndex > 0 && $rowGapPx > 0) ? ('padding-top:' . $rowGapPx . 'px;') : '';
     /* !important: dompdf a veces aplica vertical-align:top de hojas de estilo sobre el td sin esto */
-    $style    = 'width:' . $spanPct . '%;line-height:' . $lineHeight . ';text-align:' . $h . ' !important;vertical-align:' . $v . ' !important;padding:' . $cellPadCss . ';' . $rowPad;
+    $style    = 'width:' . $spanPct . '%;line-height:' . $lineHeight . ';text-align:' . $h . ' !important;vertical-align:' . $v . ' !important;padding:' . $cellPadCss . ';' . $rowPad . $cellBorderCss($startCol);
 
     return ['alignCls' => $alignCls, 'style' => $style];
 };
 
-$pdfEmptyTdStyle = static function (int $colIdx, float $pctUnit, int $rowIndex = 0) use ($n, $colAlignV, $lineHeight, $emptyCellPad, $rowGapPx): string {
+$pdfEmptyTdStyle = static function (int $colIdx, float $pctUnit, int $rowIndex = 0) use ($n, $colAlignV, $lineHeight, $emptyCellPad, $rowGapPx, $cellBorderCss): string {
     $colIdx = max(0, min($n - 1, $colIdx));
     $v      = $colAlignV[$colIdx] ?? 'top';
     $v      = in_array($v, ['top', 'middle', 'bottom'], true) ? $v : 'top';
     $rowPad = ($rowIndex > 0 && $rowGapPx > 0) ? ('padding-top:' . $rowGapPx . 'px;') : '';
 
-    return 'width:' . $pctUnit . '%;vertical-align:' . $v . ' !important;padding:' . $emptyCellPad . ';line-height:' . $lineHeight . ';' . $rowPad;
+    return 'width:' . $pctUnit . '%;vertical-align:' . $v . ' !important;padding:' . $emptyCellPad . ';line-height:' . $lineHeight . ';' . $rowPad . $cellBorderCss($colIdx);
 };
 ?>
 <div class="<?= esc($section_wrapper_class) ?>"<?php

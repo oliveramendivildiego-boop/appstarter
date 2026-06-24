@@ -884,8 +884,7 @@ table.results td.resultado-texto-rico-cell .resultado-texto-rico ol {
 }
 .pdf-ft-block .pdf-section-table td.pdf-cell,
 .pdf-ft-block .pdf-section-table td:not(.pdf-cell) {
-    padding-left: 0 !important;
-    padding-right: 0 !important;
+    /* No forzar padding horizontal: el PHP define padding/bordes inline (Dompdf ignora variables CSS). */
     padding-bottom: 0 !important;
 }
 /*

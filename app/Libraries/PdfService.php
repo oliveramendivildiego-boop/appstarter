@@ -277,6 +277,7 @@ class PdfService
             'footerRows'      => max(1, (int) ($data['footerRows'] ?? 1)),
             'footerRowGapPx'  => max(0.0, (float) ($data['footerRowGapPx'] ?? 0)),
             'lineHeight'      => max(1.0, (float) ($data['lineHeight'] ?? 1.35)),
+            'labelStacked'    => ! empty($data['labelStacked']),
         ];
     }
 
@@ -348,6 +349,9 @@ class PdfService
                 $footerTopY    = $pageH - $mb - $footerReservePt;
                 $padTopPt      = 6.0 * $pxToPt;
                 $rowOffset     = ($gridRow * ($linePt + $rowGapPt)) + ($gridStack * $linePt);
+                if (! empty($slot['labelStacked'])) {
+                    $rowOffset += $linePt;
+                }
                 $y             = $footerTopY + $padTopPt + $rowOffset + ($fontSize * 0.82);
                 $y             = max($mt + $fontSize, min($pageH - $mb - $fontSize * 0.5, $y));
 

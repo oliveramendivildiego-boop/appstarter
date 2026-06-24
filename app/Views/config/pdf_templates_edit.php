@@ -1349,8 +1349,6 @@ $labelsShort = [
 }
 .pdf-preview-scope.pdf-ft-block .pdf-section-table td.pdf-cell,
 .pdf-preview-scope.pdf-ft-block .pdf-section-table td:not(.pdf-cell) {
-    padding-left: 0;
-    padding-right: 0;
     padding-bottom: 0;
 }
 .pdf-preview-scope.pdf-ft-block .footer-piece {
@@ -2758,11 +2756,34 @@ document.addEventListener('DOMContentLoaded', function() {
         return { colspans: colspans, stacks: stacks };
     }
 
-    function appendPreviewRowCells(tr, row, rowIndex, n, secSt, sectionKey, pctNum, rowGapPx) {
+    function cellPadCssForSection(sectionKey, rowGapPx) {
+        if (sectionKey === 'footer') {
+            var h = Math.max(0, Math.min(12, Math.round(rowGapPx / 2)));
+            return h > 0 ? ('0 ' + h + 'px') : '0';
+        }
+        return '0 6px';
+    }
+
+    function emptyCellPadCssForSection(sectionKey, rowGapPx) {
+        if (sectionKey === 'footer') {
+            var h = Math.max(0, Math.min(12, Math.round(rowGapPx / 2)));
+            return h > 0 ? ('0 ' + h + 'px') : '0';
+        }
+        return '0 4px';
+    }
+
+    function applyColumnBorderToCell(td, colIndex, gridStyle) {
+        if (!td || !gridStyle || colIndex <= 0) return;
+        var w = parseInt(gridStyle.column_border_width_px, 10);
+        if (isNaN(w) || w <= 0) return;
+        td.style.borderLeft = w + 'px solid ' + String(gridStyle.column_border_color || '#DDDDDD');
+    }
+
+    function appendPreviewRowCells(tr, row, rowIndex, n, secSt, sectionKey, pctNum, rowGapPx, gridStyle) {
         var colspans = row.colspans;
         var stk = row.stacks;
-        var cellPad = sectionKey === 'footer' ? '0' : '0 6px';
-        var emptyPad = sectionKey === 'footer' ? '0' : '0 4px';
+        var cellPad = cellPadCssForSection(sectionKey, rowGapPx);
+        var emptyPad = emptyCellPadCssForSection(sectionKey, rowGapPx);
         var pct = pctNum.toFixed(2) + '%';
         var c = 0;
         while (c < n) {
@@ -2789,6 +2810,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 tdM.style.textAlign = hAlign;
                 tdM.style.padding = cellPad;
                 if (rowIndex > 0 && rowGapPx > 0) tdM.style.paddingTop = rowGapPx + 'px';
+                applyColumnBorderToCell(tdM, sc, gridStyle);
                 block.items.forEach(function(sit) {
                     var divM = document.createElement('div');
                     divM.className = 'pdf-el-item';
@@ -2810,6 +2832,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 tdS.style.textAlign = hAlignS;
                 tdS.style.padding = cellPad;
                 if (rowIndex > 0 && rowGapPx > 0) tdS.style.paddingTop = rowGapPx + 'px';
+                applyColumnBorderToCell(tdS, c, gridStyle);
                 stk[c].forEach(function(sit) {
                     var d = document.createElement('div');
                     d.className = 'pdf-el-item';
@@ -2826,6 +2849,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 tdE.style.verticalAlign = secSt.column_align_v[c] || 'top';
                 tdE.style.padding = emptyPad;
                 if (rowIndex > 0 && rowGapPx > 0) tdE.style.paddingTop = rowGapPx + 'px';
+                applyColumnBorderToCell(tdE, c, gridStyle);
                 tr.appendChild(tdE);
                 c++;
             }
@@ -2962,6 +2986,7 @@ document.addEventListener('DOMContentLoaded', function() {
         var pctNum = 100 / n;
         var totalRows = rowsForSectionKey(sectionKey);
         var rowGapPx = readSectionRowGapPx(sectionKey);
+        var gridStyle = ftFooter || hgHeader || pdHeader || null;
 
         var tbl = document.createElement('table');
         tbl.className = 'pdf-section-table';
@@ -2977,7 +3002,7 @@ document.addEventListener('DOMContentLoaded', function() {
             var tr = document.createElement('tr');
             tr.className = 'pdf-section-row';
             tr.setAttribute('data-pdf-row', String(mr));
-            appendPreviewRowCells(tr, matrixRow, mr, n, secSt, sectionKey, pctNum, rowGapPx);
+            appendPreviewRowCells(tr, matrixRow, mr, n, secSt, sectionKey, pctNum, rowGapPx, gridStyle);
             tbl.appendChild(tr);
         }
         wrap.appendChild(tbl);

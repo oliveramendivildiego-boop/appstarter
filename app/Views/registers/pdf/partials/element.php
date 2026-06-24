@@ -403,6 +403,7 @@ switch ($type) {
                 'footerRows'        => max(1, (int) ($pdf_footer_rows ?? 1)),
                 'footerRowGapPx'    => max(0.0, (float) ($pdf_footer_row_gap_px ?? 0)),
                 'lineHeight'        => $inFooter ? $footerLh : max(1.0, (float) ($ts['line_height'] ?? 1.35)),
+                'labelStacked'      => $inFooter && $showLblPag && ! $inlinePag,
             ];
             echo '<!-- pdf-pagination:' . base64_encode(json_encode($pagConfig, JSON_UNESCAPED_UNICODE)) . ' -->';
         }
@@ -410,15 +411,17 @@ switch ($type) {
         $hideForCanvas     = $isDompdf && ! $inFooter;
         $footerDompdfClass = ($isDompdf && $inFooter) ? ' pdf-pagination-line--dompdf-footer' : '';
         $pagPieceClass     = $inFooter ? 'header-piece' : 'header-piece header-piece-pagination';
+        $footerCanvasOnly  = $isDompdf && $inFooter;
+        $pagHideStyle      = $footerCanvasOnly ? 'visibility:hidden;' : '';
         ?>
                 <div class="<?= esc($pagPieceClass, 'attr') ?>"<?= $hideForCanvas ? ' style="visibility:hidden;height:0;overflow:hidden;margin:0;padding:0;"' : '' ?>>
                     <?php if ($inlinePag && $showLblPag): ?>
-                    <p style="margin:0;"><span style="<?= esc($stPagLbl, 'attr') ?>"><?= esc($lblPag) ?></span> <span id="<?= esc($pagUid, 'attr') ?>" class="pdf-pagination-line<?= esc($footerDompdfClass, 'attr') ?>" style="<?= esc($stInst, 'attr') ?>" data-prefix="" data-total="<?= esc($dataTotalAttr, 'attr') ?>"></span></p>
+                    <p style="margin:0;<?= esc($pagHideStyle, 'attr') ?>"><span style="<?= esc($stPagLbl, 'attr') ?>"><?= esc($lblPag) ?></span> <span id="<?= esc($pagUid, 'attr') ?>" class="pdf-pagination-line<?= esc($footerDompdfClass, 'attr') ?>" style="<?= esc($stInst, 'attr') ?>" data-prefix="" data-total="<?= esc($dataTotalAttr, 'attr') ?>"></span></p>
                     <?php elseif ($showLblPag): ?>
-                    <p style="margin:0;"><span style="<?= esc($stPagLbl, 'attr') ?>"><?= esc($lblPag) ?></span></p>
-                    <p style="margin:0;"><span id="<?= esc($pagUid, 'attr') ?>" class="pdf-pagination-line<?= esc($footerDompdfClass, 'attr') ?>" style="<?= esc($stInst, 'attr') ?>" data-prefix="" data-total="<?= esc($dataTotalAttr, 'attr') ?>"></span></p>
+                    <p style="margin:0;<?= esc($pagHideStyle, 'attr') ?>"><span style="<?= esc($stPagLbl, 'attr') ?>"><?= esc($lblPag) ?></span></p>
+                    <p style="margin:0;<?= esc($pagHideStyle, 'attr') ?>"><span id="<?= esc($pagUid, 'attr') ?>" class="pdf-pagination-line<?= esc($footerDompdfClass, 'attr') ?>" style="<?= esc($stInst, 'attr') ?>" data-prefix="" data-total="<?= esc($dataTotalAttr, 'attr') ?>"></span></p>
                     <?php else: ?>
-                    <p style="margin:0;"><span id="<?= esc($pagUid, 'attr') ?>" class="pdf-pagination-line<?= esc($footerDompdfClass, 'attr') ?>" style="<?= esc($stInst, 'attr') ?>" data-prefix="" data-total="<?= esc($dataTotalAttr, 'attr') ?>"></span></p>
+                    <p style="margin:0;<?= esc($pagHideStyle, 'attr') ?>"><span id="<?= esc($pagUid, 'attr') ?>" class="pdf-pagination-line<?= esc($footerDompdfClass, 'attr') ?>" style="<?= esc($stInst, 'attr') ?>" data-prefix="" data-total="<?= esc($dataTotalAttr, 'attr') ?>"></span></p>
                     <?php endif; ?>
                 </div>
         <?php

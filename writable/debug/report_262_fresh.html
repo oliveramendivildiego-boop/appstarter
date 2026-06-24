@@ -890,8 +890,7 @@ table.results td.resultado-texto-rico-cell .resultado-texto-rico ol {
 }
 .pdf-ft-block .pdf-section-table td.pdf-cell,
 .pdf-ft-block .pdf-section-table td:not(.pdf-cell) {
-    padding-left: 0 !important;
-    padding-right: 0 !important;
+    /* No forzar padding horizontal: el PHP define padding/bordes inline (Dompdf ignora variables CSS). */
     padding-bottom: 0 !important;
 }
 /*
@@ -1951,7 +1950,7 @@ body.pdf-dompdf-download .pdf-cell--right .header-piece-pagination {
                         <div class="pdf-el-item" style="font-family&#x3A;DejaVu&#x20;Sans&#x3B;font-size&#x3A;10pt&#x3B;font-weight&#x3A;normal&#x3B;color&#x3A;&#x23;333333&#x3B;font-style&#x3A;normal&#x3B;text-transform&#x3A;none&#x3B;letter-spacing&#x3A;0em&#x3B;line-height&#x3A;1.35&#x3B;text-shadow&#x3A;none&#x3B;">
                                 <div class="patient-line" style="padding-top:0px;padding-bottom:0px;">
                                             <span class="label" style="margin-right:0px;color&#x3A;&#x23;333333&#x3B;font-family&#x3A;&quot;DejaVu&#x20;Sans&quot;,&#x20;sans-serif&#x3B;font-size&#x3A;9.5pt&#x3B;font-weight&#x3A;bold&#x3B;font-style&#x3A;normal&#x3B;text-transform&#x3A;none&#x3B;line-height&#x3A;1.35">Fecha Reporte:</span>
-                                        <span style="">24/06/2026 13:22:58</span>
+                                        <span style="">24/06/2026 13:31:12</span>
                 </div>
                     </div>
                         <div class="pdf-el-item" style="font-family&#x3A;DejaVu&#x20;Sans&#x3B;font-size&#x3A;10pt&#x3B;font-weight&#x3A;normal&#x3B;color&#x3A;&#x23;333333&#x3B;font-style&#x3A;normal&#x3B;text-transform&#x3A;none&#x3B;letter-spacing&#x3A;0em&#x3B;line-height&#x3A;1.35&#x3B;text-shadow&#x3A;none&#x3B;">
@@ -2489,14 +2488,14 @@ body.pdf-dompdf-download .pdf-cell--right .header-piece-pagination {
 <div class="footer footer-grid pdf-ft-block" style="position&#x3A;fixed&#x3B;left&#x3A;0&#x3B;right&#x3A;0&#x3B;bottom&#x3A;-22mm&#x3B;min-height&#x3A;22mm&#x3B;z-index&#x3A;2&#x3B;margin&#x3A;0&#x3B;padding-top&#x3A;6px&#x3B;padding-bottom&#x3A;0&#x3B;background&#x3A;&#x23;ffffff&#x3B;box-sizing&#x3A;border-box&#x3B;width&#x3A;100&#x25;&#x3B;">
 <table class="pdf-section-table" width="100%" data-pdf-lh="1" style="table-layout:fixed;border-collapse:collapse;line-height:1.35;">
     <tr class="pdf-section-row" data-pdf-row="0">
-        <td class="pdf-cell pdf-cell--center" colspan="2" style="width&#x3A;40&#x25;&#x3B;line-height&#x3A;1.35&#x3B;text-align&#x3A;center&#x20;&#x21;important&#x3B;vertical-align&#x3A;top&#x20;&#x21;important&#x3B;padding&#x3A;0&#x3B;">
+        <td class="pdf-cell pdf-cell--center" colspan="2" style="width&#x3A;40&#x25;&#x3B;line-height&#x3A;1.35&#x3B;text-align&#x3A;center&#x20;&#x21;important&#x3B;vertical-align&#x3A;top&#x20;&#x21;important&#x3B;padding&#x3A;0&#x20;3px&#x3B;">
                         <div class="pdf-el-item" style="font-family&#x3A;DejaVu&#x20;Sans&#x3B;font-size&#x3A;8pt&#x3B;font-weight&#x3A;normal&#x3B;color&#x3A;&#x23;333333&#x3B;font-style&#x3A;normal&#x3B;text-transform&#x3A;none&#x3B;letter-spacing&#x3A;0em&#x3B;line-height&#x3A;1.1&#x3B;text-shadow&#x3A;none&#x3B;">
                                 <div class="header-piece">
                                         <p style="margin:0;"><span style="color&#x3A;&#x23;2B624A&#x3B;font-family&#x3A;&quot;DejaVu&#x20;Sans&quot;,&#x20;sans-serif&#x3B;font-size&#x3A;7pt&#x3B;font-weight&#x3A;800&#x3B;font-style&#x3A;normal&#x3B;text-transform&#x3A;none&#x3B;line-height&#x3A;1.35">Direccion:</span> <span style="font-family&#x3A;DejaVu&#x20;Sans&#x3B;font-size&#x3A;8pt&#x3B;font-weight&#x3A;normal&#x3B;color&#x3A;&#x23;333333&#x3B;font-style&#x3A;normal&#x3B;text-transform&#x3A;none&#x3B;letter-spacing&#x3A;0em&#x3B;line-height&#x3A;1.1&#x3B;text-shadow&#x3A;none&#x3B;">C/Méndez entre Av. Las Américas y C. Avaroa</span></p>
                                     </div>
                         </div>
                     </td>
-        <td class="pdf-cell pdf-cell--center" style="width&#x3A;20&#x25;&#x3B;line-height&#x3A;1.35&#x3B;text-align&#x3A;center&#x20;&#x21;important&#x3B;vertical-align&#x3A;top&#x20;&#x21;important&#x3B;padding&#x3A;0&#x3B;">
+        <td class="pdf-cell pdf-cell--center" style="width&#x3A;20&#x25;&#x3B;line-height&#x3A;1.35&#x3B;text-align&#x3A;center&#x20;&#x21;important&#x3B;vertical-align&#x3A;top&#x20;&#x21;important&#x3B;padding&#x3A;0&#x20;3px&#x3B;">
                         <div class="pdf-el-item" style="font-family&#x3A;DejaVu&#x20;Sans&#x3B;font-size&#x3A;8pt&#x3B;font-weight&#x3A;normal&#x3B;color&#x3A;&#x23;333333&#x3B;font-style&#x3A;normal&#x3B;text-transform&#x3A;none&#x3B;letter-spacing&#x3A;0em&#x3B;line-height&#x3A;1.1&#x3B;text-shadow&#x3A;none&#x3B;">
                                 <div class="header-piece">
                                         <p style="margin:0;"><span style="color&#x3A;&#x23;31634B&#x3B;font-family&#x3A;&quot;DejaVu&#x20;Sans&quot;,&#x20;sans-serif&#x3B;font-size&#x3A;7pt&#x3B;font-weight&#x3A;800&#x3B;font-style&#x3A;normal&#x3B;text-transform&#x3A;none&#x3B;line-height&#x3A;1.35">Celular:</span> <span style="font-family&#x3A;DejaVu&#x20;Sans&#x3B;font-size&#x3A;8pt&#x3B;font-weight&#x3A;normal&#x3B;color&#x3A;&#x23;333333&#x3B;font-style&#x3A;normal&#x3B;text-transform&#x3A;none&#x3B;letter-spacing&#x3A;0em&#x3B;line-height&#x3A;1.1&#x3B;text-shadow&#x3A;none&#x3B;">68724938</span></p>
@@ -2508,15 +2507,15 @@ body.pdf-dompdf-download .pdf-cell--right .header-piece-pagination {
                                 </div>
                 </div>
                     </td>
-        <td class="pdf-cell pdf-cell--right" colspan="2" style="width&#x3A;40&#x25;&#x3B;line-height&#x3A;1.35&#x3B;text-align&#x3A;right&#x20;&#x21;important&#x3B;vertical-align&#x3A;top&#x20;&#x21;important&#x3B;padding&#x3A;0&#x3B;">
+        <td class="pdf-cell pdf-cell--right" colspan="2" style="width&#x3A;40&#x25;&#x3B;line-height&#x3A;1.35&#x3B;text-align&#x3A;right&#x20;&#x21;important&#x3B;vertical-align&#x3A;top&#x20;&#x21;important&#x3B;padding&#x3A;0&#x20;3px&#x3B;">
                         <div class="pdf-el-item" style="font-family&#x3A;DejaVu&#x20;Sans&#x3B;font-size&#x3A;8pt&#x3B;font-weight&#x3A;normal&#x3B;color&#x3A;&#x23;333333&#x3B;font-style&#x3A;normal&#x3B;text-transform&#x3A;none&#x3B;letter-spacing&#x3A;0em&#x3B;line-height&#x3A;1.1&#x3B;text-shadow&#x3A;none&#x3B;">
                                 <div class="header-piece">
                                         <p style="margin:0;"><span style="color&#x3A;&#x23;36644C&#x3B;font-family&#x3A;&quot;DejaVu&#x20;Sans&quot;,&#x20;sans-serif&#x3B;font-size&#x3A;7pt&#x3B;font-weight&#x3A;800&#x3B;font-style&#x3A;normal&#x3B;text-transform&#x3A;none&#x3B;line-height&#x3A;1.35">Correo:</span> <span style="font-family&#x3A;DejaVu&#x20;Sans&#x3B;font-size&#x3A;8pt&#x3B;font-weight&#x3A;normal&#x3B;color&#x3A;&#x23;333333&#x3B;font-style&#x3A;normal&#x3B;text-transform&#x3A;none&#x3B;letter-spacing&#x3A;0em&#x3B;line-height&#x3A;1.1&#x3B;text-shadow&#x3A;none&#x3B;">quantumlaboratorio26@gmail.com</span></p>
                                     </div>
                         </div>
                         <div class="pdf-el-item" style="font-family&#x3A;DejaVu&#x20;Sans&#x3B;font-size&#x3A;10pt&#x3B;font-weight&#x3A;normal&#x3B;color&#x3A;&#x23;333333&#x3B;font-style&#x3A;normal&#x3B;text-transform&#x3A;none&#x3B;letter-spacing&#x3A;0em&#x3B;line-height&#x3A;1.35&#x3B;text-shadow&#x3A;none&#x3B;">
-                <!-- pdf-pagination:eyJwcmVmaXgiOiJQw6FnaW5hICIsInpvbmUiOiJmb290ZXIiLCJhbGlnbiI6InJpZ2h0IiwiZm9udFNpemUiOjEwLCJmb250RmFtaWx5IjoiRGVqYVZ1IFNhbnMiLCJjb2xvciI6IiMzMzMzMzMiLCJtdCI6MiwibXIiOjEwLCJtYiI6NSwibWwiOjI1LCJmb290ZXJSZXNlcnZlTW0iOjIyLCJncmlkQ29sdW1uIjozLCJncmlkQ29sdW1uU3BhbiI6MiwiZ3JpZFJvdyI6MCwiZ3JpZFN0YWNrIjoxLCJmb290ZXJDb2x1bW5zIjo1LCJmb290ZXJSb3dzIjoxLCJmb290ZXJSb3dHYXBQeCI6NiwibGluZUhlaWdodCI6MS4zNX0= -->                <div class="header-piece">
-                                        <p style="margin:0;"><span style="color&#x3A;&#x23;333333&#x3B;font-family&#x3A;&quot;DejaVu&#x20;Sans&quot;,&#x20;sans-serif&#x3B;font-size&#x3A;7pt&#x3B;font-weight&#x3A;normal&#x3B;font-style&#x3A;normal&#x3B;text-transform&#x3A;none&#x3B;line-height&#x3A;1.35">Página</span> <span id="pdf-pag-2a33a2e804" class="pdf-pagination-line&#x20;pdf-pagination-line--dompdf-footer" style="font-family&#x3A;DejaVu&#x20;Sans&#x3B;font-size&#x3A;10pt&#x3B;font-weight&#x3A;normal&#x3B;color&#x3A;&#x23;333333&#x3B;font-style&#x3A;normal&#x3B;text-transform&#x3A;none&#x3B;letter-spacing&#x3A;0em&#x3B;line-height&#x3A;1.35&#x3B;text-shadow&#x3A;none&#x3B;" data-prefix="" data-total="__PDF_TOTAL_PAGES__"></span></p>
+                <!-- pdf-pagination:eyJwcmVmaXgiOiJQw6FnaW5hICIsInpvbmUiOiJmb290ZXIiLCJhbGlnbiI6InJpZ2h0IiwiZm9udFNpemUiOjEwLCJmb250RmFtaWx5IjoiRGVqYVZ1IFNhbnMiLCJjb2xvciI6IiMzMzMzMzMiLCJtdCI6MiwibXIiOjEwLCJtYiI6NSwibWwiOjI1LCJmb290ZXJSZXNlcnZlTW0iOjIyLCJncmlkQ29sdW1uIjozLCJncmlkQ29sdW1uU3BhbiI6MiwiZ3JpZFJvdyI6MCwiZ3JpZFN0YWNrIjoxLCJmb290ZXJDb2x1bW5zIjo1LCJmb290ZXJSb3dzIjoxLCJmb290ZXJSb3dHYXBQeCI6NiwibGluZUhlaWdodCI6MS4zNSwibGFiZWxTdGFja2VkIjpmYWxzZX0= -->                <div class="header-piece">
+                                        <p style="margin:0;visibility&#x3A;hidden&#x3B;"><span style="color&#x3A;&#x23;333333&#x3B;font-family&#x3A;&quot;DejaVu&#x20;Sans&quot;,&#x20;sans-serif&#x3B;font-size&#x3A;7pt&#x3B;font-weight&#x3A;normal&#x3B;font-style&#x3A;normal&#x3B;text-transform&#x3A;none&#x3B;line-height&#x3A;1.35">Página</span> <span id="pdf-pag-2a33a2e804" class="pdf-pagination-line&#x20;pdf-pagination-line--dompdf-footer" style="font-family&#x3A;DejaVu&#x20;Sans&#x3B;font-size&#x3A;10pt&#x3B;font-weight&#x3A;normal&#x3B;color&#x3A;&#x23;333333&#x3B;font-style&#x3A;normal&#x3B;text-transform&#x3A;none&#x3B;letter-spacing&#x3A;0em&#x3B;line-height&#x3A;1.35&#x3B;text-shadow&#x3A;none&#x3B;" data-prefix="" data-total="__PDF_TOTAL_PAGES__"></span></p>
                                     </div>
                     </div>
                     </td>
