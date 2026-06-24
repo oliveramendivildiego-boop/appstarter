@@ -118,6 +118,28 @@ if (! empty($doctor)) {
         $report_display_mode = trim((string) ($doctor['display_mode'] ?? $report_display_mode));
     }
 }
+// Determina modo de reporte: preferencia del doctor; si el registro fue creado sin doctor usar config "sin doctor"
+$doctorIsSynthetic = false;
+if (! empty($doctor)) {
+    if (is_object($doctor)) {
+        $report_display_mode = trim((string) ($doctor->display_mode ?? $report_display_mode));
+        if (property_exists($doctor, 'report_sin_prefijo_medico') && $doctor->report_sin_prefijo_medico) {
+            $doctorIsSynthetic = true;
+        }
+    } elseif (is_array($doctor)) {
+        $report_display_mode = trim((string) ($doctor['display_mode'] ?? $report_display_mode));
+        if (! empty($doctor['report_sin_prefijo_medico'])) {
+            $doctorIsSynthetic = true;
+        }
+    }
+}
+if ($doctorIsSynthetic) {
+    // usar configuración del laboratorio para órdenes sin doctor
+    $cfgMode = is_array($lab_config ?? null) ? trim((string) ($lab_config['sin_doctor_report_mode'] ?? '')) : '';
+    if ($cfgMode !== '' && in_array($cfgMode, ['clinico', 'neutral', 'semaforo'], true)) {
+        $report_display_mode = $cfgMode;
+    }
+}
 if ($report_display_mode === '') {
     $report_display_mode = 'clinico';
 }

@@ -344,6 +344,26 @@
                 ]) ?>
                 <small class="text-muted"><?= lang('Config.config_label_sin_doctor_help') ?></small>
             </div>
+            <div class="col-md-6 mb-3 cfg-item">
+                <label for="sin_doctor_report_mode" class="form-label">Modo de reporte</label>
+                <?= form_dropdown('sin_doctor_report_mode', [
+                    'clinico' => 'Clínico',
+                    'neutral' => 'Neutral',
+                    'semaforo' => 'Semáforo',
+                ], $config['sin_doctor_report_mode'] ?? 'clinico', 'id="sin_doctor_report_mode" class="form-select" autocomplete="off"') ?>
+                <small class="text-muted d-block mt-1">Modo visual por defecto para informes sin médico.</small>
+            </div>
+        </div>
+        <div class="row">
+            <div class="col-md-6 mb-3 cfg-item">
+                <div class="form-check">
+                    <input type="hidden" name="sin_doctor_show_interpretation" value="0">
+                    <input class="form-check-input" type="checkbox" name="sin_doctor_show_interpretation" id="sin_doctor_show_interpretation" value="1"
+                        <?= (($config['sin_doctor_show_interpretation'] ?? '1') === '1') ? 'checked' : '' ?>>
+                    <label class="form-check-label small" for="sin_doctor_show_interpretation">Mostrar interpretación en reportes</label>
+                </div>
+                <small class="text-muted d-block mt-1">Habilita o deshabilita la columna de interpretación cuando no hay doctor asignado.</small>
+            </div>
         </div>
         <hr class="my-3">
         <div class="mb-3 cfg-item">

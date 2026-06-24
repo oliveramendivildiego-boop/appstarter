@@ -107,6 +107,8 @@ class ConfigService
         $data['comprobante_recibo_num_fin'] ??= '';
         $data['comprobante_recibo_ultimo_num'] ??= '';
         $data['label_sin_doctor'] ??= 'Sin doctor';
+        $data['sin_doctor_report_mode'] ??= 'clinico';
+        $data['sin_doctor_show_interpretation'] ??= '1';
         $data[self::REGISTERS_LISTA_FECHA_DEFAULT_KEY] ??= 'hoy';
         $cache->save($cacheKey, $data, self::CACHE_TTL);
         return $data;
@@ -1003,6 +1005,8 @@ class ConfigService
             'print_paper_size', 'print_pagination_enabled', 'print_pagination_position', 'leyendas_enabled',
             'custom1_name', 'custom2_name', 'custom3_name', 'custom4_name', 'custom5_name',
             'custom6_name', 'custom7_name', 'custom8_name', 'custom9_name', 'custom10_name',
+            // opciones para órdenes sin doctor
+            'sin_doctor_report_mode', 'sin_doctor_show_interpretation',
         ];
 
         $batch = array_filter(
@@ -1086,6 +1090,13 @@ class ConfigService
                 $t = mb_substr($t, 0, 160);
             }
             $batch['label_sin_doctor'] = $t;
+        }
+        if (array_key_exists('sin_doctor_report_mode', $postData)) {
+            $m = strtolower(trim((string) ($postData['sin_doctor_report_mode'] ?? '')));
+            $batch['sin_doctor_report_mode'] = in_array($m, ['clinico', 'neutral', 'semaforo'], true) ? $m : 'clinico';
+        }
+        if (array_key_exists('sin_doctor_show_interpretation', $postData)) {
+            $batch['sin_doctor_show_interpretation'] = ($postData['sin_doctor_show_interpretation'] === '1') ? '1' : '0';
         }
         if (array_key_exists('registro_folio_format', $postData)) {
             $fmt = trim((string) $postData['registro_folio_format']);

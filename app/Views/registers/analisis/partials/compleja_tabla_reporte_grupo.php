@@ -46,8 +46,12 @@ if (in_array($variant, ['screen_pdf', 'pdf', 'browser_print'], true)) {
     if ($doctorPref !== null) {
         $showInterpretacionCol = $doctorPref === 1;
     } else {
-        // Fall back to global config if present, otherwise default to enabled
-        $showInterpretacionCol = (($labConfigLocal['interpretacion_enabled'] ?? '1') === '1');
+        // Si no hay doctor, usar la preferencia específica para "sin doctor" si está, luego fallback global
+        if (array_key_exists('sin_doctor_show_interpretation', $labConfigLocal)) {
+            $showInterpretacionCol = ($labConfigLocal['sin_doctor_show_interpretation'] === '1');
+        } else {
+            $showInterpretacionCol = (($labConfigLocal['interpretacion_enabled'] ?? '1') === '1');
+        }
     }
 }
 
@@ -437,11 +441,25 @@ $mostrarHeatmap = $tieneHeatmap && in_array(
 
                     // Modo de visualización por doctor (si está presente en el contexto)
                     $displayMode = 'clinico';
+                    $doctorIsSynthetic = false;
                     if (! empty($doctor)) {
                         if (is_object($doctor)) {
                             $displayMode = trim((string) ($doctor->display_mode ?? $displayMode));
+                            if (property_exists($doctor, 'report_sin_prefijo_medico') && $doctor->report_sin_prefijo_medico) {
+                                $doctorIsSynthetic = true;
+                            }
                         } elseif (is_array($doctor)) {
                             $displayMode = trim((string) ($doctor['display_mode'] ?? $displayMode));
+                            if (! empty($doctor['report_sin_prefijo_medico'])) {
+                                $doctorIsSynthetic = true;
+                            }
+                        }
+                    }
+                    // Si el doctor es el objeto sintético creado para "Sin doctor", usar la config de laboratorio
+                    if ($doctorIsSynthetic) {
+                        $cfgMode = is_array($labConfigLocal) ? trim((string) ($labConfigLocal['sin_doctor_report_mode'] ?? '')) : '';
+                        if ($cfgMode !== '' && in_array($cfgMode, ['clinico', 'neutral', 'semaforo'], true)) {
+                            $displayMode = $cfgMode;
                         }
                     }
                     if ($displayMode === '') $displayMode = 'clinico';
@@ -573,11 +591,11 @@ $mostrarHeatmap = $tieneHeatmap && in_array(
                                 if ($displayMode === 'semaforo' && $interpretacionRef !== null) {
                                     $ico = '';
                                     if ($interpretacionRef['nivel'] === 'alto') {
-                                        $ico = '<i class="fa-solid fa-arrow-up report-interpretacion-icon" aria-hidden="true"></i>';
+                                        $ico = '<i class="fa-solid fa-arrow-up report-interpretacion-icon text-danger" aria-hidden="true"></i>';
                                     } elseif ($interpretacionRef['nivel'] === 'bajo') {
-                                        $ico = '<i class="fa-solid fa-arrow-down report-interpretacion-icon" aria-hidden="true"></i>';
+                                        $ico = '<i class="fa-solid fa-arrow-down report-interpretacion-icon text-primary" aria-hidden="true"></i>';
                                     } else {
-                                        $ico = '<i class="fa-solid fa-minus report-interpretacion-icon" aria-hidden="true"></i>';
+                                        $ico = '<i class="fa-solid fa-minus report-interpretacion-icon text-dark" aria-hidden="true"></i>';
                                     }
                                     $interpHtml = $ico . ' ' . $interpHtml;
                                 }
