@@ -136,8 +136,27 @@ body.pdf-dompdf-download .pdf-ft-block .pdf-pagination-line--dompdf-footer::befo
 .pdf-section-table td:not(.pdf-cell) {
     vertical-align: top;
 }
-.pdf-section-table td.pdf-cell > .pdf-el-item {
-    text-align: inherit;
+.pdf-el-item--h-left { text-align: left !important; }
+.pdf-el-item--h-center { text-align: center !important; }
+.pdf-el-item--h-right { text-align: right !important; }
+.pdf-el-item--v-bottom { margin-top: auto !important; }
+.pdf-el-item--h-left .header-piece-logo img,
+.pdf-el-item--h-left .header-piece-qr .qr-img,
+.pdf-el-item--h-left .pdf-lab-f-img {
+    margin-left: 0 !important;
+    margin-right: auto !important;
+}
+.pdf-el-item--h-center .header-piece-logo img,
+.pdf-el-item--h-center .header-piece-qr .qr-img,
+.pdf-el-item--h-center .pdf-lab-f-img {
+    margin-left: auto !important;
+    margin-right: auto !important;
+}
+.pdf-el-item--h-right .header-piece-logo img,
+.pdf-el-item--h-right .header-piece-qr .qr-img,
+.pdf-el-item--h-right .pdf-lab-f-img {
+    margin-left: auto !important;
+    margin-right: 0 !important;
 }
 .pdf-section-table .header-piece,
 .pdf-section-table .footer-piece,

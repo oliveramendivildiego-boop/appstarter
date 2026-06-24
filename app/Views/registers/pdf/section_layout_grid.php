@@ -34,6 +34,11 @@ $normalizeItem = static function (array $it, int $n): array {
             $out[$k] = (int) ($it[$k] ?? 0);
         }
     }
+    foreach (['align_h', 'align_v'] as $ak) {
+        if (array_key_exists($ak, $it) && $it[$ak] !== null && $it[$ak] !== '') {
+            $out[$ak] = (string) $it[$ak];
+        }
+    }
 
     return $out;
 };
@@ -89,6 +94,11 @@ if ($explicitGrid) {
         foreach (['label_value_gap_px', 'label_space_above_px', 'label_space_below_px'] as $k) {
             if (array_key_exists($k, $it)) {
                 $out[$k] = (int) ($it[$k] ?? 0);
+            }
+        }
+        foreach (['align_h', 'align_v'] as $ak) {
+            if (array_key_exists($ak, $it) && $it[$ak] !== null && $it[$ak] !== '') {
+                $out[$ak] = (string) $it[$ak];
             }
         }
         if ($type === 'custom_text' && is_array($it['custom_text'] ?? null)) {
@@ -297,10 +307,30 @@ $textStyleCss = static function (array $raw): string {
         . 'text-shadow:' . $shadow . ';';
 };
 
-$pdfTdStyle = static function (int $startCol, int $span, float $pctUnit, int $rowIndex = 0) use ($n, $colAlignH, $colAlignV, $lineHeight, $cellPadCss, $rowGapPx, $cellBorderCss): array {
+$itemAlignH = static function (array $item, int $col) use ($colAlignH): string {
+    return \App\Services\ReportPdfLayoutService::resolveInstanceAlignH($item, $colAlignH, $col);
+};
+$itemAlignV = static function (array $item, int $col) use ($colAlignV): string {
+    return \App\Services\ReportPdfLayoutService::resolveInstanceAlignV($item, $colAlignV, $col);
+};
+$itemWrapperStyle = static function (array $item, int $col, string $typography = '') use ($colAlignH, $colAlignV): string {
+    return \App\Services\ReportPdfLayoutService::instanceAlignInlineStyle($item, $colAlignH, $colAlignV, $col, $typography);
+};
+$itemWrapperClasses = static function (array $item, int $col) use ($colAlignH, $colAlignV): string {
+    return \App\Services\ReportPdfLayoutService::instanceAlignItemClasses($item, $colAlignH, $colAlignV, $col);
+};
+$pdfTdStyle = static function (int $startCol, int $span, float $pctUnit, int $rowIndex, array $cellItems = []) use ($n, $colAlignH, $colAlignV, $lineHeight, $cellPadCss, $rowGapPx, $cellBorderCss, $itemAlignH, $itemAlignV): array {
     $startCol = max(0, min($n - 1, $startCol));
     $h        = $colAlignH[$startCol] ?? 'left';
     $v        = $colAlignV[$startCol] ?? 'top';
+    if (count($cellItems) === 1) {
+        $only = $cellItems[0];
+        $h    = $itemAlignH($only, $startCol);
+        $v    = $itemAlignV($only, $startCol);
+    } elseif (count($cellItems) > 1) {
+        $h = 'left';
+        $v = 'top';
+    }
     $h        = in_array($h, ['left', 'center', 'right'], true) ? $h : 'left';
     $v        = in_array($v, ['top', 'middle', 'bottom'], true) ? $v : 'top';
     $alignCls = $h === 'left' ? 'left' : ($h === 'right' ? 'right' : 'center');
@@ -348,18 +378,22 @@ echo $sectionWrapperStyle !== '' ? ' style="' . esc($sectionWrapperStyle, 'attr'
             $span     = $block['span'];
             $first    = $block['items'][0];
             $startCol = (int) $first['col'];
-            $tdInfo   = $pdfTdStyle($startCol, $span, $pct, (int) $rowIndex);
+            $tdInfo   = $pdfTdStyle($startCol, $span, $pct, (int) $rowIndex, $block['items']);
             ?>
         <td class="pdf-cell pdf-cell--<?= esc($tdInfo['alignCls']) ?>" colspan="<?= $span ?>" style="<?= esc($tdInfo['style'], 'attr') ?>">
             <?php foreach ($block['items'] as $cellItem):
                 $elType = (string) ($cellItem['element_type'] ?? '');
                 $isCustomText = ($elType === 'custom_text');
-                $inlineStyle  = $isCustomText ? '' : $textStyleCss(is_array($cellItem['text_style'] ?? null) ? $cellItem['text_style'] : []);
+                $typography   = $isCustomText ? '' : $textStyleCss(is_array($cellItem['text_style'] ?? null) ? $cellItem['text_style'] : []);
+                $itemCol      = (int) ($cellItem['col'] ?? $startCol);
+                $wrapStyle    = $itemWrapperStyle($cellItem, $itemCol, $typography !== '' ? $typography . ';' : '');
+                $wrapClasses  = $itemWrapperClasses($cellItem, $itemCol);
+                $itemAlignCls = $itemAlignH($cellItem, $itemCol);
                 $elCtx        = array_merge($element_ctx, [
                     'pdf_element_type' => $cellItem['element_type'],
                     'pdf_instance_uid' => (string) ($cellItem['uid'] ?? ''),
                     'pdf_section_key'  => (string) ($section_key ?? ''),
-                    'pdf_cell_align'   => (string) ($tdInfo['alignCls'] ?? 'left'),
+                    'pdf_cell_align'   => $itemAlignCls,
                     'pdf_grid_row'     => (int) $rowIndex,
                     'pdf_grid_column'  => (int) ($cellItem['col'] ?? 0),
                     'pdf_grid_column_span' => (int) ($cellItem['span'] ?? 1),
@@ -376,7 +410,7 @@ echo $sectionWrapperStyle !== '' ? ' style="' . esc($sectionWrapperStyle, 'attr'
                     echo view('registers/pdf/partials/element', $elCtx);
                 } else {
                     ?>
-            <div class="pdf-el-item"<?= $isCustomText ? '' : ' style="' . esc($inlineStyle, 'attr') . '"' ?>>
+            <div class="pdf-el-item <?= esc($wrapClasses, 'attr') ?>" style="<?= esc($wrapStyle, 'attr') ?>">
                 <?= view('registers/pdf/partials/element', $elCtx) ?>
             </div>
             <?php
@@ -386,18 +420,23 @@ echo $sectionWrapperStyle !== '' ? ' style="' . esc($sectionWrapperStyle, 'attr'
 <?php
             $c += $span;
         elseif ($stacks[$c] !== null && count($stacks[$c]) > 0):
-            $tdInfo = $pdfTdStyle($c, 1, $pct, (int) $rowIndex);
+            $stackItems = $stacks[$c];
+            $tdInfo = $pdfTdStyle($c, 1, $pct, (int) $rowIndex, $stackItems);
             ?>
         <td class="pdf-cell pdf-cell--<?= esc($tdInfo['alignCls']) ?>" style="<?= esc($tdInfo['style'], 'attr') ?>">
-            <?php foreach ($stacks[$c] as $stackItem):
+            <?php foreach ($stackItems as $stackItem):
                 $elType = (string) ($stackItem['element_type'] ?? '');
                 $isCustomText = ($elType === 'custom_text');
-                $inlineStyle  = $isCustomText ? '' : $textStyleCss(is_array($stackItem['text_style'] ?? null) ? $stackItem['text_style'] : []);
+                $typography   = $isCustomText ? '' : $textStyleCss(is_array($stackItem['text_style'] ?? null) ? $stackItem['text_style'] : []);
+                $itemCol      = (int) ($stackItem['col'] ?? $c);
+                $wrapStyle    = $itemWrapperStyle($stackItem, $itemCol, $typography !== '' ? $typography . ';' : '');
+                $wrapClasses  = $itemWrapperClasses($stackItem, $itemCol);
+                $itemAlignCls = $itemAlignH($stackItem, $itemCol);
                 $elCtx        = array_merge($element_ctx, [
                     'pdf_element_type' => $stackItem['element_type'],
                     'pdf_instance_uid' => (string) ($stackItem['uid'] ?? ''),
                     'pdf_section_key'  => (string) ($section_key ?? ''),
-                    'pdf_cell_align'   => (string) ($tdInfo['alignCls'] ?? 'left'),
+                    'pdf_cell_align'   => $itemAlignCls,
                     'pdf_grid_row'     => (int) $rowIndex,
                     'pdf_grid_column'  => (int) ($stackItem['col'] ?? $c),
                     'pdf_grid_column_span' => (int) ($stackItem['span'] ?? 1),
@@ -414,7 +453,7 @@ echo $sectionWrapperStyle !== '' ? ' style="' . esc($sectionWrapperStyle, 'attr'
                     echo view('registers/pdf/partials/element', $elCtx);
                 } else {
                     ?>
-            <div class="pdf-el-item"<?= $isCustomText ? '' : ' style="' . esc($inlineStyle, 'attr') . '"' ?>>
+            <div class="pdf-el-item <?= esc($wrapClasses, 'attr') ?>" style="<?= esc($wrapStyle, 'attr') ?>">
                 <?= view('registers/pdf/partials/element', $elCtx) ?>
             </div>
             <?php

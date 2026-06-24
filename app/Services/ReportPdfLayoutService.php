@@ -351,6 +351,10 @@ class ReportPdfLayoutService
     public const ALLOWED_PDF_TEXT_ALIGNS = ['left', 'center', 'right', 'justify'];
     /** @var list<string> */
     public const ALLOWED_PDF_VERTICAL_ALIGNS = ['top', 'middle', 'bottom'];
+    /** @var list<string> */
+    public const ALLOWED_INSTANCE_ALIGN_H = ['left', 'center', 'right'];
+    /** @var list<string> */
+    public const ALLOWED_INSTANCE_ALIGN_V = ['top', 'bottom'];
 
     public const SECTION_COLUMN_MIN = 1;
 
@@ -840,6 +844,99 @@ class ReportPdfLayoutService
     }
 
     /**
+     * @param array<string, mixed>|null $inst
+     */
+    public static function resolveInstanceAlignH(?array $inst, array $colAlignH, int $col): string
+    {
+        if (is_array($inst) && array_key_exists('align_h', $inst)) {
+            $h = strtolower(trim((string) $inst['align_h']));
+            if (in_array($h, self::ALLOWED_INSTANCE_ALIGN_H, true)) {
+                return $h;
+            }
+        }
+        $col = max(0, min(max(0, count($colAlignH) - 1), $col));
+        $fallback = $colAlignH[$col] ?? 'left';
+
+        return in_array($fallback, self::ALLOWED_INSTANCE_ALIGN_H, true) ? $fallback : 'left';
+    }
+
+    /**
+     * @param array<string, mixed>|null $inst
+     */
+    public static function resolveInstanceAlignV(?array $inst, array $colAlignV, int $col): string
+    {
+        if (is_array($inst) && array_key_exists('align_v', $inst)) {
+            $v = strtolower(trim((string) $inst['align_v']));
+            if (in_array($v, self::ALLOWED_INSTANCE_ALIGN_V, true)) {
+                return $v;
+            }
+        }
+        $col = max(0, min(max(0, count($colAlignV) - 1), $col));
+        $fallback = $colAlignV[$col] ?? 'top';
+        if ($fallback === 'middle') {
+            return 'top';
+        }
+
+        return in_array($fallback, self::ALLOWED_INSTANCE_ALIGN_V, true) ? $fallback : 'top';
+    }
+
+    /**
+     * @return string|null left|center|right o null si no está definido
+     */
+    public static function normalizeInstanceAlignH(mixed $raw): ?string
+    {
+        if ($raw === null || $raw === '') {
+            return null;
+        }
+        $h = strtolower(trim((string) $raw));
+
+        return in_array($h, self::ALLOWED_INSTANCE_ALIGN_H, true) ? $h : null;
+    }
+
+    /**
+     * @return string|null top|bottom o null si no está definido
+     */
+    public static function normalizeInstanceAlignV(mixed $raw): ?string
+    {
+        if ($raw === null || $raw === '') {
+            return null;
+        }
+        $v = strtolower(trim((string) $raw));
+
+        return in_array($v, self::ALLOWED_INSTANCE_ALIGN_V, true) ? $v : null;
+    }
+
+    /**
+     * @param array<string, mixed> $item
+     * @param list<string>         $colAlignH
+     * @param list<string>         $colAlignV
+     */
+    public static function instanceAlignItemClasses(array $item, array $colAlignH, array $colAlignV, int $col): string
+    {
+        $h = self::resolveInstanceAlignH($item, $colAlignH, $col);
+        $v = self::resolveInstanceAlignV($item, $colAlignV, $col);
+
+        return 'pdf-el-item--h-' . $h . ' pdf-el-item--v-' . $v;
+    }
+
+    /**
+     * @param array<string, mixed> $item
+     * @param list<string>         $colAlignH
+     * @param list<string>         $colAlignV
+     */
+    public static function instanceAlignInlineStyle(array $item, array $colAlignH, array $colAlignV, int $col, string $typography = ''): string
+    {
+        $h = self::resolveInstanceAlignH($item, $colAlignH, $col);
+        $v = self::resolveInstanceAlignV($item, $colAlignV, $col);
+        $style = 'text-align:' . $h . ' !important;';
+        if ($v === 'bottom') {
+            $style .= 'margin-top:auto !important;';
+        }
+
+        return $style . $typography;
+    }
+
+    /**
      * @param list<mixed> $raw
      *
      * @return list<string>
@@ -1092,6 +1189,14 @@ class ReportPdfLayoutService
             if ($type === 'custom_text') {
                 $item['custom_text'] = self::normalizeCustomTextPayload($inst['custom_text'] ?? []);
             }
+            $alignH = self::normalizeInstanceAlignH($inst['align_h'] ?? null);
+            $alignV = self::normalizeInstanceAlignV($inst['align_v'] ?? null);
+            if ($alignH !== null) {
+                $item['align_h'] = $alignH;
+            }
+            if ($alignV !== null) {
+                $item['align_v'] = $alignV;
+            }
             $items[] = $item;
         }
 
@@ -1221,6 +1326,8 @@ class ReportPdfLayoutService
             $customTextPayload = ($type === 'custom_text')
                 ? self::normalizeCustomTextPayload($row['custom_text'] ?? [])
                 : null;
+            $alignH = self::normalizeInstanceAlignH($row['align_h'] ?? null);
+            $alignV = self::normalizeInstanceAlignV($row['align_v'] ?? null);
 
             foreach ($typesToEmit as $emitType) {
                 $uid = (string) ($row['uid'] ?? '');
@@ -1252,6 +1359,12 @@ class ReportPdfLayoutService
                 }
                 if ($emitType === 'custom_text') {
                     $entry['custom_text'] = $customTextPayload ?? self::normalizeCustomTextPayload([]);
+                }
+                if ($alignH !== null) {
+                    $entry['align_h'] = $alignH;
+                }
+                if ($alignV !== null) {
+                    $entry['align_v'] = $alignV;
                 }
                 $out[] = $entry;
             }

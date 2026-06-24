@@ -37,6 +37,8 @@ $canPdSpacing = ($sectionKey === 'patient_doctor' && in_array($type, $pdTypes, t
 $gapDef = $canPdSpacing ? ((int) ($inst['label_value_gap_px'] ?? $pdGrid['label_' . $type . '_value_gap_px'] ?? 0)) : 0;
 $mtDef = $canPdSpacing ? ((int) ($inst['label_space_above_px'] ?? $pdGrid['label_' . $type . '_space_above_px'] ?? 0)) : 0;
 $mbDef = $canPdSpacing ? ((int) ($inst['label_space_below_px'] ?? $pdGrid['label_' . $type . '_space_below_px'] ?? 0)) : 0;
+$alignHIn = \App\Services\ReportPdfLayoutService::normalizeInstanceAlignH($inst['align_h'] ?? null);
+$alignVIn = \App\Services\ReportPdfLayoutService::normalizeInstanceAlignV($inst['align_v'] ?? null);
 ?>
 <li class="list-group-item pdf-instance-item" data-uid="<?= esc($uid) ?>" data-element-type="<?= esc($type, 'attr') ?>" data-grid-row="<?= esc((string) $gridRow, 'attr') ?>" data-grid-stack="<?= esc((string) $gridStack, 'attr') ?>">
     <div class="pdf-instance-head mb-2 pb-2 border-bottom">
@@ -55,6 +57,18 @@ $mbDef = $canPdSpacing ? ((int) ($inst['label_space_below_px'] ?? $pdGrid['label
             <?php for ($s = 1; $s <= $maxSpan; $s++): ?>
             <option value="<?= $s ?>" <?= $spanIn === $s ? 'selected' : '' ?>><?= $s === 1 ? 'Ancho: 1 col.' : 'Ancho: ' . $s . ' cols.' ?></option>
             <?php endfor; ?>
+        </select>
+        <select class="form-select form-select-sm instance-align-h" style="max-width: 9rem;" title="Alineación horizontal en la celda" <?= $selVal === '-1' ? 'disabled' : '' ?>>
+            <option value="" <?= $alignHIn === null ? 'selected' : '' ?>>Alineación H: col.</option>
+            <?php foreach (['left' => 'Izquierda', 'center' => 'Centro', 'right' => 'Derecha'] as $ak => $al): ?>
+            <option value="<?= esc($ak, 'attr') ?>" <?= $alignHIn === $ak ? 'selected' : '' ?>><?= esc($al) ?></option>
+            <?php endforeach; ?>
+        </select>
+        <select class="form-select form-select-sm instance-align-v" style="max-width: 9rem;" title="Alineación vertical en la celda" <?= $selVal === '-1' ? 'disabled' : '' ?>>
+            <option value="" <?= $alignVIn === null ? 'selected' : '' ?>>Alineación V: col.</option>
+            <?php foreach (['top' => 'Arriba', 'bottom' => 'Abajo'] as $ak => $al): ?>
+            <option value="<?= esc($ak, 'attr') ?>" <?= $alignVIn === $ak ? 'selected' : '' ?>><?= esc($al) ?></option>
+            <?php endforeach; ?>
         </select>
         <div class="flex-grow-1"></div>
         <button type="button" class="btn btn-sm btn-outline-secondary btn-dup-instance" title="Duplicar en esta sección"><i class="fa-regular fa-copy"></i></button>

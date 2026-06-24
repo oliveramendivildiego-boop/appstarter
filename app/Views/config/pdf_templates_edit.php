@@ -1336,6 +1336,10 @@ $labelsShort = [
 .pdf-preview-sheet-body { background: #f8f9fa; font-size: 0.85rem; }
 .pdf-preview-scope .pdf-section-table { width: 100%; table-layout: fixed; border-collapse: collapse; }
 .pdf-preview-scope .pdf-section-table td p { margin: 0 !important; }
+.pdf-preview-scope .pdf-el-item--h-left { text-align: left !important; }
+.pdf-preview-scope .pdf-el-item--h-center { text-align: center !important; }
+.pdf-preview-scope .pdf-el-item--h-right { text-align: right !important; }
+.pdf-preview-scope .pdf-el-item--v-bottom { margin-top: auto !important; }
 .pdf-preview-scope .pdf-el-item:not(:last-child) { margin-bottom: 0.4em; }
 .pdf-preview-scope.pdf-ft-block .pdf-el-item:not(:last-child) { margin-bottom: 0; }
 .pdf-preview-scope .patient-line { margin: 0 !important; }
@@ -1837,9 +1841,17 @@ document.addEventListener('DOMContentLoaded', function() {
         var cv = parseInt(colSel.value, 10);
         if (cv < 0) {
             spanSel.disabled = true;
+            ['.instance-align-h', '.instance-align-v'].forEach(function(q) {
+                var al = li.querySelector(q);
+                if (al) al.disabled = true;
+            });
             return;
         }
         spanSel.disabled = false;
+        ['.instance-align-h', '.instance-align-v'].forEach(function(q) {
+            var al = li.querySelector(q);
+            if (al) al.disabled = false;
+        });
         var maxS = Math.max(1, n - cv);
         fillSpanSelectElement(spanSel, maxS, spanSel.value);
     }
@@ -2309,6 +2321,54 @@ document.addEventListener('DOMContentLoaded', function() {
             if (box) el = box.querySelector('.pdf-sec-line-height');
         }
         return el;
+    }
+
+    function readInstanceAlign(li) {
+        if (!li) return { align_h: null, align_v: null };
+        var hEl = li.querySelector('.instance-align-h');
+        var vEl = li.querySelector('.instance-align-v');
+        var h = hEl ? String(hEl.value || '').trim() : '';
+        var v = vEl ? String(vEl.value || '').trim() : '';
+        return {
+            align_h: (h === 'left' || h === 'center' || h === 'right') ? h : null,
+            align_v: (v === 'top' || v === 'bottom') ? v : null
+        };
+    }
+
+    function resolveInstanceAlignH(item, colAlignH, col) {
+        if (item && item.align_h && ['left', 'center', 'right'].indexOf(item.align_h) >= 0) {
+            return item.align_h;
+        }
+        col = Math.max(0, Math.min((colAlignH.length || 1) - 1, col));
+        var fb = colAlignH[col] || 'left';
+        return ['left', 'center', 'right'].indexOf(fb) >= 0 ? fb : 'left';
+    }
+
+    function resolveInstanceAlignV(item, colAlignV, col) {
+        if (item && item.align_v && ['top', 'bottom'].indexOf(item.align_v) >= 0) {
+            return item.align_v;
+        }
+        col = Math.max(0, Math.min((colAlignV.length || 1) - 1, col));
+        var fb = colAlignV[col] || 'top';
+        if (fb === 'middle') return 'top';
+        return ['top', 'bottom'].indexOf(fb) >= 0 ? fb : 'top';
+    }
+
+    function itemWrapperAlignStyle(item, col, colAlignH, colAlignV) {
+        var h = resolveInstanceAlignH(item, colAlignH, col);
+        var v = resolveInstanceAlignV(item, colAlignV, col);
+        return { style: '', align_h: h, align_v: v, classes: 'pdf-el-item--h-' + h + ' pdf-el-item--v-' + v };
+    }
+
+    function applyItemAlign(el, sit, colIdx, colAlignH, colAlignV) {
+        var al = itemWrapperAlignStyle(sit, colIdx, colAlignH, colAlignV);
+        el.classList.add('pdf-el-item--h-' + al.align_h, 'pdf-el-item--v-' + al.align_v);
+        el.style.setProperty('text-align', al.align_h, 'important');
+        if (al.align_v === 'bottom') {
+            el.style.setProperty('margin-top', 'auto', 'important');
+        } else {
+            el.style.removeProperty('margin-top');
+        }
     }
 
     function readInstanceTextStyle(li) {
@@ -2786,6 +2846,23 @@ document.addEventListener('DOMContentLoaded', function() {
         var emptyPad = emptyCellPadCssForSection(sectionKey, rowGapPx);
         var pct = pctNum.toFixed(2) + '%';
         var c = 0;
+        function tdAlignForItems(startCol, cellItems) {
+            var h = secSt.column_align_h[startCol] || 'left';
+            var v = secSt.column_align_v[startCol] || 'top';
+            if (cellItems.length === 1) {
+                h = resolveInstanceAlignH(cellItems[0], secSt.column_align_h, startCol);
+                v = resolveInstanceAlignV(cellItems[0], secSt.column_align_v, startCol);
+            } else if (cellItems.length > 1) {
+                h = 'left';
+                v = 'top';
+            }
+            if (v === 'middle') v = 'top';
+            var alignCls = h === 'right' ? 'right' : (h === 'center' ? 'center' : 'left');
+            return { h: h, v: v, alignCls: alignCls };
+        }
+        function applyPreviewItemAlign(divM, sit, colIdx) {
+            applyItemAlign(divM, sit, colIdx, secSt.column_align_h, secSt.column_align_v);
+        }
         while (c < n) {
             var block = null;
             for (var cix = 0; cix < colspans.length; cix++) {
@@ -2798,16 +2875,14 @@ document.addEventListener('DOMContentLoaded', function() {
                 var sp = block.span;
                 var first = block.items[0];
                 var sc = first.col;
-                var hAlign = secSt.column_align_h[sc] || 'left';
-                var vAlign = secSt.column_align_v[sc] || 'top';
-                var alignCls = hAlign === 'right' ? 'right' : (hAlign === 'center' ? 'center' : 'left');
+                var tdAl = tdAlignForItems(sc, block.items);
                 var tdM = document.createElement('td');
                 tdM.colSpan = sp;
-                tdM.className = 'pdf-cell pdf-cell--' + alignCls;
+                tdM.className = 'pdf-cell pdf-cell--' + tdAl.alignCls;
                 tdM.style.width = ((sp * pctNum) / n).toFixed(2) + '%';
                 tdM.style.lineHeight = String(secSt.line_height);
-                tdM.style.verticalAlign = vAlign;
-                tdM.style.textAlign = hAlign;
+                tdM.style.setProperty('vertical-align', tdAl.v, 'important');
+                tdM.style.setProperty('text-align', tdAl.h, 'important');
                 tdM.style.padding = cellPad;
                 if (rowIndex > 0 && rowGapPx > 0) tdM.style.paddingTop = rowGapPx + 'px';
                 applyColumnBorderToCell(tdM, sc, gridStyle);
@@ -2815,28 +2890,29 @@ document.addEventListener('DOMContentLoaded', function() {
                     var divM = document.createElement('div');
                     divM.className = 'pdf-el-item';
                     divM.style.lineHeight = 'inherit';
+                    applyPreviewItemAlign(divM, sit, sit.col != null ? sit.col : sc);
                     divM.innerHTML = sit.html;
                     tdM.appendChild(divM);
                 });
                 tr.appendChild(tdM);
                 c += sp;
             } else if (stk[c] !== null && stk[c].length > 0) {
-                var hAlignS = secSt.column_align_h[c] || 'left';
-                var vAlignS = secSt.column_align_v[c] || 'top';
-                var alignClsS = hAlignS === 'right' ? 'right' : (hAlignS === 'center' ? 'center' : 'left');
+                var stackItems = stk[c];
+                var tdAlS = tdAlignForItems(c, stackItems);
                 var tdS = document.createElement('td');
-                tdS.className = 'pdf-cell pdf-cell--' + alignClsS;
+                tdS.className = 'pdf-cell pdf-cell--' + tdAlS.alignCls;
                 tdS.style.width = pct;
                 tdS.style.lineHeight = String(secSt.line_height);
-                tdS.style.verticalAlign = vAlignS;
-                tdS.style.textAlign = hAlignS;
+                tdS.style.setProperty('vertical-align', tdAlS.v, 'important');
+                tdS.style.setProperty('text-align', tdAlS.h, 'important');
                 tdS.style.padding = cellPad;
                 if (rowIndex > 0 && rowGapPx > 0) tdS.style.paddingTop = rowGapPx + 'px';
                 applyColumnBorderToCell(tdS, c, gridStyle);
-                stk[c].forEach(function(sit) {
+                stackItems.forEach(function(sit) {
                     var d = document.createElement('div');
                     d.className = 'pdf-el-item';
                     d.style.lineHeight = 'inherit';
+                    applyPreviewItemAlign(d, sit, sit.col != null ? sit.col : c);
                     d.innerHTML = sit.html;
                     tdS.appendChild(d);
                 });
@@ -2949,12 +3025,15 @@ document.addEventListener('DOMContentLoaded', function() {
                 }
             }
             var placement = readGridPlacement(li, sectionKey);
+            var instAlign = readInstanceAlign(li);
             items.push({
                 col: col,
                 span: span,
                 html: line,
                 grid_row: placement.row == null ? 0 : placement.row,
-                grid_stack: placement.stack == null ? 0 : placement.stack
+                grid_stack: placement.stack == null ? 0 : placement.stack,
+                align_h: instAlign.align_h,
+                align_v: instAlign.align_v
             });
         });
         previewEl.innerHTML = '';
@@ -3032,6 +3111,28 @@ document.addEventListener('DOMContentLoaded', function() {
             el.removeEventListener('change', rebuildAllPreviews);
             el.addEventListener('change', rebuildAllPreviews);
         });
+        document.querySelectorAll('.instance-align-h, .instance-align-v').forEach(function(el) {
+            el.removeEventListener('change', rebuildAllPreviews);
+            el.addEventListener('change', rebuildAllPreviews);
+        });
+    }
+
+    function buildInstanceAlignSelect(className, title, options, defaultLabel) {
+        var sel = document.createElement('select');
+        sel.className = 'form-select form-select-sm ' + className;
+        sel.style.maxWidth = '9rem';
+        sel.title = title;
+        var defOpt = document.createElement('option');
+        defOpt.value = '';
+        defOpt.textContent = defaultLabel;
+        sel.appendChild(defOpt);
+        options.forEach(function(pair) {
+            var o = document.createElement('option');
+            o.value = pair[0];
+            o.textContent = pair[1];
+            sel.appendChild(o);
+        });
+        return sel;
     }
 
     function createInstanceRow(uid, elementType, colCount, enabled, column, columnSpan, sectionKey) {
@@ -3074,6 +3175,12 @@ document.addEventListener('DOMContentLoaded', function() {
         var sp = enabled ? Math.max(1, Math.min(maxS, columnSpan)) : 1;
         fillSpanSelectElement(spanSel, maxS, sp);
         if (!enabled) spanSel.disabled = true;
+        var alignHSel = buildInstanceAlignSelect('instance-align-h', 'Alineación horizontal en la celda', [['left', 'Izquierda'], ['center', 'Centro'], ['right', 'Derecha']], 'Alineación H: col.');
+        var alignVSel = buildInstanceAlignSelect('instance-align-v', 'Alineación vertical en la celda', [['top', 'Arriba'], ['bottom', 'Abajo']], 'Alineación V: col.');
+        if (!enabled) {
+            alignHSel.disabled = true;
+            alignVSel.disabled = true;
+        }
         var wrap = document.createElement('div');
         wrap.className = 'd-flex flex-wrap align-items-center gap-2';
         var h = document.createElement('span');
@@ -3097,6 +3204,8 @@ document.addEventListener('DOMContentLoaded', function() {
         wrap.appendChild(h);
         wrap.appendChild(sel);
         wrap.appendChild(spanSel);
+        wrap.appendChild(alignHSel);
+        wrap.appendChild(alignVSel);
         wrap.appendChild(lab);
         wrap.appendChild(bDup);
         wrap.appendChild(bDel);
@@ -3210,9 +3319,16 @@ document.addEventListener('DOMContentLoaded', function() {
         var srcType = fromLi.getAttribute('data-element-type') || '';
         if (srcType === 'custom_text') {
             applyInstanceCustomText(toLi, readInstanceCustomText(fromLi));
-            return;
+        } else {
+            copyStandardStyleIfPossible(fromLi, toLi);
         }
-        copyStandardStyleIfPossible(fromLi, toLi);
+        var srcAlign = readInstanceAlign(fromLi);
+        function setAlign(q, v) {
+            var el = toLi.querySelector(q);
+            if (el) el.value = v == null ? '' : String(v);
+        }
+        setAlign('.instance-align-h', srcAlign.align_h);
+        setAlign('.instance-align-v', srcAlign.align_v);
     }
 
     function cloneInstanceRowWithValues(fromLi, sectionKey, colCount, enabled, col, span) {
@@ -3301,6 +3417,9 @@ document.addEventListener('DOMContentLoaded', function() {
                 setIf('.instance-letter-spacing', ts.letter_spacing_em);
                 setIf('.instance-line-height', ts.line_height);
                 setIf('.instance-text-shadow', ts.text_shadow);
+                var srcAlign = readInstanceAlign(li);
+                setIf('.instance-align-h', srcAlign.align_h || '');
+                setIf('.instance-align-v', srcAlign.align_v || '');
                 // Espacios opcionales label/valor (paciente/médico) por instancia.
                 ['.instance-pd-label-value-gap-px', '.instance-pd-space-above-px', '.instance-pd-space-below-px'].forEach(function(q) {
                     var src = li.querySelector(q);
@@ -3342,6 +3461,8 @@ document.addEventListener('DOMContentLoaded', function() {
         pdfEditorInst.addEventListener('change', function(e) {
             var t = e.target;
             if (t && (t.classList.contains('pdf-sec-col-h') || t.classList.contains('pdf-sec-col-v'))) {
+                rebuildAllPreviews();
+            } else if (t && (t.classList.contains('instance-align-h') || t.classList.contains('instance-align-v'))) {
                 rebuildAllPreviews();
             } else if (t && (t.closest('.pdf-text-style-controls') || t.closest('.custom-text-editor-root'))) {
                 rebuildAllPreviews();
@@ -4204,6 +4325,19 @@ document.addEventListener('DOMContentLoaded', function() {
                 var bV = parseInt(bEl.value, 10);
                 if (isNaN(bV) || bV < 0 || bV > 40) errs.push('«' + label + '»: Espacio abajo (px): entre 0 y 40.');
             }
+            var ahEl = li.querySelector('.instance-align-h');
+            if (ahEl) {
+                var ah = String(ahEl.value || '').trim();
+                if (ah) {
+                    var ta = pdfAllow('text_aligns');
+                    if (ta.indexOf(ah) < 0) errs.push('«' + label + '»: alineación horizontal no permitida.');
+                }
+            }
+            var avEl = li.querySelector('.instance-align-v');
+            if (avEl) {
+                var av = String(avEl.value || '').trim();
+                if (av && av !== 'top' && av !== 'bottom') errs.push('«' + label + '»: alineación vertical no permitida.');
+            }
         });
         return errs;
     }
@@ -4282,6 +4416,9 @@ document.addEventListener('DOMContentLoaded', function() {
             base.label_space_above_px = readInt('.instance-pd-space-above-px', 0);
             base.label_space_below_px = readInt('.instance-pd-space-below-px', 0);
         }
+        var instAlign = readInstanceAlign(li);
+        if (instAlign.align_h) base.align_h = instAlign.align_h;
+        if (instAlign.align_v) base.align_v = instAlign.align_v;
         return base;
     }
 
