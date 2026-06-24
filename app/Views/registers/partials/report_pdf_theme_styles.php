@@ -133,9 +133,9 @@ $ftTopWpx           = ($ftTopOn && $ftTopW > 0) ? $ftTopW : 0;
 }
 <?php if ($orderSheetHeaderEnabled): ?>
 .viewreport-pdf-sheet .pdf-ft-block.footer-grid .pdf-order-sheet-footer-band-dompdf {
-    display: block;
-    visibility: visible;
-    opacity: 1;
+    display: none;
+    visibility: hidden;
+    opacity: 0;
     width: 100%;
     margin: 0 0 4px 0;
     padding: 0 0 5px 0;
@@ -699,9 +699,17 @@ body.pdf-dompdf-download .lab-firmas-pdf-block .header-piece-pagination {
     position: fixed;
 }
 body.pdf-dompdf-download .pdf-ft-block .header-piece-pagination {
-    position: fixed;
-    top: auto;
-    bottom: <?= esc((string) $mb) ?>mm;
+    position: static !important;
+    top: auto !important;
+    bottom: auto !important;
+    left: auto !important;
+    right: auto !important;
+    visibility: visible !important;
+    height: auto !important;
+    overflow: visible !important;
+}
+body.pdf-dompdf-download .pdf-ft-block .pdf-pagination-line--dompdf-footer::before {
+    content: none !important;
 }
 body.pdf-dompdf-download .pdf-hg-block .header-piece-pagination,
 body.pdf-dompdf-download .pdf-pd-block .header-piece-pagination {

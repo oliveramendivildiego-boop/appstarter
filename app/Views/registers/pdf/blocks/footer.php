@@ -27,6 +27,7 @@ $elementCtx = [
     'pdf_margins_mm'        => is_array($layout['margins_mm'] ?? null)
         ? $layout['margins_mm']
         : \App\Services\ReportPdfLayoutService::defaultMarginsMmStatic(),
+    'pdf_footer_reserve_mm' => \App\Services\ReportPdfLayoutService::estimatePdfFooterReserveMm($layout),
 ];
 
 $footerWrapperStyle = ! empty($footer_dompdf_fixed)
@@ -34,7 +35,9 @@ $footerWrapperStyle = ! empty($footer_dompdf_fixed)
     : '';
 
 $orderSheetBandHtml = '';
+$pdfVariant = (string) ($elementCtx['pdf_analisis_variant'] ?? $analisis_variant ?? 'pdf');
 if (! empty($footer_order_sheet_band)
+    && $pdfVariant !== 'pdf'
     && \App\Services\ReportPdfLayoutService::isOrderSheetHeaderEnabledForLayout($layout)) {
     $mm = is_array($layout['margins_mm'] ?? null)
         ? $layout['margins_mm']

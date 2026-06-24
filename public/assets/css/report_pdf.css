@@ -64,11 +64,9 @@ body {
 /* Contadores de paginación (Dompdf / CSS Paged Media).
  * Legacy: .pdf-counter-page / .pdf-counter-pages (paginación fija de impresión).
  * Elemento de plantilla: .pdf-pagination-line (un solo span, texto vía ::before).
+ * Nota: no resetear counter(page) en body.pdf-dompdf-download; Dompdf usa html/body
+ * según su hoja html.css (counter-reset en html, counter-increment en body por página).
  */
-body.pdf-dompdf-download {
-    counter-reset: page 0;
-    counter-increment: page 1;
-}
 .pdf-counter-page::before {
     content: counter(page);
 }
@@ -91,6 +89,9 @@ body.pdf-dompdf-download {
 }
 .pdf-pagination-line::before {
     content: attr(data-prefix) counter(page) ' de ' attr(data-total);
+}
+body.pdf-dompdf-download .pdf-ft-block .pdf-pagination-line--dompdf-footer::before {
+    content: none !important;
 }
 @media screen {
     .pdf-counter-page::before {

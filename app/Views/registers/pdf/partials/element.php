@@ -368,29 +368,35 @@ switch ($type) {
         $instUid    = trim((string) ($pdf_instance_uid ?? ''));
         $pagUid     = 'pdf-pag-' . substr(sha1($instUid . '|' . $prefixPag . '|' . $stInst), 0, 10);
         $pageToken  = \App\Services\RegisterService::TOTAL_PAGES_TOKEN;
+        $sectionKey = (string) ($pdf_section_key ?? 'header');
+        $inFooter   = ($sectionKey === 'footer');
         if ($isDompdf) {
             $mm = is_array($pdf_margins_mm ?? null)
                 ? $pdf_margins_mm
                 : \App\Services\ReportPdfLayoutService::defaultMarginsMmStatic();
-            $sectionKey = (string) ($pdf_section_key ?? 'header');
             $pagConfig  = [
-                'prefix'     => $prefixPag,
-                'zone'       => ($sectionKey === 'footer') ? 'footer' : 'header',
-                'align'      => (string) ($pdf_cell_align ?? 'left'),
-                'fontSize'   => (float) ($ts['font_size_pt'] ?? 10),
-                'fontFamily' => (string) ($ts['font_family'] ?? 'DejaVu Sans'),
-                'color'      => (string) ($ts['font_color'] ?? '#333333'),
-                'mt'         => (float) ($mm['top'] ?? 15),
-                'mr'         => (float) ($mm['right'] ?? 15),
-                'mb'         => (float) ($mm['bottom'] ?? 15),
-                'ml'         => (float) ($mm['left'] ?? 15),
+                'prefix'           => $prefixPag,
+                'zone'             => $inFooter ? 'footer' : 'header',
+                'align'            => (string) ($pdf_cell_align ?? 'left'),
+                'fontSize'         => (float) ($ts['font_size_pt'] ?? 10),
+                'fontFamily'       => (string) ($ts['font_family'] ?? 'DejaVu Sans'),
+                'color'            => (string) ($ts['font_color'] ?? '#333333'),
+                'mt'               => (float) ($mm['top'] ?? 15),
+                'mr'               => (float) ($mm['right'] ?? 15),
+                'mb'               => (float) ($mm['bottom'] ?? 15),
+                'ml'               => (float) ($mm['left'] ?? 15),
+                'footerReserveMm'  => $inFooter
+                    ? max(0.0, (float) ($pdf_footer_reserve_mm ?? 0))
+                    : 0.0,
             ];
             echo '<!-- pdf-pagination:' . base64_encode(json_encode($pagConfig, JSON_UNESCAPED_UNICODE)) . ' -->';
         }
-        $dataTotalAttr = $isDompdf ? '1' : $pageToken;
+        $dataTotalAttr = $pageToken;
+        $hideForCanvas = $isDompdf && ! $inFooter;
+        $footerDompdfClass = ($isDompdf && $inFooter) ? ' pdf-pagination-line--dompdf-footer' : '';
         ?>
-                <div class="header-piece header-piece-pagination"<?= $isDompdf ? ' style="visibility:hidden;height:0;overflow:hidden;margin:0;padding:0;"' : '' ?>>
-                    <span id="<?= esc($pagUid, 'attr') ?>" class="pdf-pagination-line" style="<?= esc($stInst, 'attr') ?>" data-prefix="<?= esc($prefixPag, 'attr') ?>" data-total="<?= esc($dataTotalAttr, 'attr') ?>"></span>
+                <div class="header-piece header-piece-pagination"<?= $hideForCanvas ? ' style="visibility:hidden;height:0;overflow:hidden;margin:0;padding:0;"' : '' ?>>
+                    <span id="<?= esc($pagUid, 'attr') ?>" class="pdf-pagination-line<?= esc($footerDompdfClass, 'attr') ?>" style="<?= esc($stInst, 'attr') ?>" data-prefix="<?= esc($prefixPag, 'attr') ?>" data-total="<?= esc($dataTotalAttr, 'attr') ?>"></span>
                 </div>
         <?php
         break;

@@ -1,0 +1,8 @@
+paint page 1/4 get_cpdf=yes canvas=Dompdf\Adapter\CPDF
+paint ok page 1
+paint page 2/4 get_cpdf=yes canvas=Dompdf\Adapter\CPDF
+paint ok page 2
+paint page 3/4 get_cpdf=yes canvas=Dompdf\Adapter\CPDF
+paint ok page 3
+paint page 4/4 get_cpdf=yes canvas=Dompdf\Adapter\CPDF
+paint ok page 4

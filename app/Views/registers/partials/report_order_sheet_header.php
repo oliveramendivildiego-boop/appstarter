@@ -1,7 +1,7 @@
 <?php
 /**
- * Cabecera por hoja: Paciente izquierda, No. Orden derecha (banda en pie fijo).
- * Impresión: plantilla JS. PDF: HTML dentro del pie (footer.php).
+ * Cabecera por hoja: Paciente izquierda, No. Orden derecha (desde hoja 2).
+ * Impresión: plantilla JS + bandas en flujo. PDF: callback Dompdf (hojas 2+).
  *
  * @var array<string,mixed> $pdf_layout
  * @var object|null         $paciente
@@ -34,4 +34,21 @@ if ($variant !== 'pdf') {
     return;
 }
 
-// PDF: la banda visible se renderiza dentro de footer.php (pie fijo Dompdf).
+$mm = is_array($pl['margins_mm'] ?? null)
+    ? $pl['margins_mm']
+    : \App\Services\ReportPdfLayoutService::defaultMarginsMmStatic();
+$footerReserveMm = \App\Services\ReportPdfLayoutService::isPdfFooterBlockEnabledForLayout($pl)
+    ? \App\Services\ReportPdfLayoutService::estimatePdfFooterReserveMm($pl)
+    : 0.0;
+$markerPayload = json_encode([
+    'patient'         => $lines['patient'],
+    'order'           => $lines['order'],
+    'ml'              => (float) ($mm['left'] ?? 15),
+    'mr'              => (float) ($mm['right'] ?? 15),
+    'mb'              => (float) ($mm['bottom'] ?? 15),
+    'footerReserveMm' => $footerReserveMm,
+    'gapMm'           => \App\Services\ReportPdfLayoutService::ORDER_SHEET_HEADER_GAP_ABOVE_FOOTER_MM,
+], JSON_UNESCAPED_UNICODE);
+if (is_string($markerPayload) && $markerPayload !== ''): ?>
+<!-- pdf-order-sheet-header:<?= base64_encode($markerPayload) ?> -->
+<?php endif;

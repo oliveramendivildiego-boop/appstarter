@@ -266,6 +266,32 @@ body.js-total-pages-ready .pdf-counter-pages::before {
         -webkit-print-color-adjust: exact !important;
         print-color-adjust: exact !important;
     }
+    body.report-browser-print.js-order-sheet-header-in-flow .pdf-ft-block.footer-grid .pdf-order-sheet-footer-band,
+    body.report-browser-print.js-order-sheet-header-in-flow .pdf-ft-block.footer-grid .pdf-order-sheet-footer-band-dompdf {
+        display: none !important;
+        visibility: hidden !important;
+        height: 0 !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        border: 0 !important;
+        overflow: hidden !important;
+    }
+    body.report-browser-print.js-order-sheet-header-in-flow .pdf-order-sheet-header-injected {
+        display: block !important;
+        visibility: visible !important;
+        opacity: 1 !important;
+        width: 100% !important;
+        margin: 0 0 4px 0 !important;
+        padding: 0 0 5px 0 !important;
+        border-bottom: 1px solid rgba(0, 0, 0, 0.12) !important;
+        box-sizing: border-box !important;
+        break-after: avoid-page !important;
+        page-break-after: avoid !important;
+        break-inside: avoid-page !important;
+        page-break-inside: avoid !important;
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
+    }
     body.report-browser-print.js-order-sheet-footer-band .pdf-ft-block.footer-grid .pdf-order-sheet-footer-band .pdf-order-sheet-header,
     body.report-browser-print .pdf-ft-block.footer-grid .pdf-order-sheet-footer-band-dompdf .pdf-order-sheet-header {
         width: 100% !important;

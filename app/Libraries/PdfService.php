@@ -16,6 +16,8 @@ class PdfService
 
     private const WATERMARK_MARKER = 'pdf-watermark-dompdf';
 
+    private const ORDER_SHEET_HEADER_MARKER = 'pdf-order-sheet-header';
+
     /**
      * Dompdf espera nombre estándar o [x0, y0, ancho_pt, alto_pt]; no [mm, mm].
      *
@@ -60,8 +62,9 @@ class PdfService
         string $html,
         ?array $watermarkData = null,
         array $paginationSlots = [],
+        ?array $orderSheetSlot = null,
     ): void {
-        $this->registerDompdfCallbacks($dompdf, $watermarkData, $paginationSlots);
+        $this->registerDompdfCallbacks($dompdf, $watermarkData, $paginationSlots, $orderSheetSlot);
 
         $dompdf->loadHtml($html, 'UTF-8');
         $dompdf->render();
@@ -158,6 +161,7 @@ class PdfService
         Dompdf $dompdf,
         ?array $watermarkData,
         array $paginationSlots = [],
+        ?array $orderSheetSlot = null,
     ): void {
         $callbacks = [];
 
@@ -205,6 +209,7 @@ class PdfService
         }
 
         $callbacks = array_merge($callbacks, $this->buildPaginationCallbacks($paginationSlots));
+        $callbacks = array_merge($callbacks, $this->buildOrderSheetHeaderCallbacks($orderSheetSlot));
 
         if ($callbacks !== []) {
             $dompdf->setCallbacks($callbacks);
@@ -239,7 +244,7 @@ class PdfService
     /**
      * @param array<string, mixed> $data
      *
-     * @return array{prefix: string, zone: string, align: string, fontSize: float, fontFamily: string, color: string, mt: float, mr: float, mb: float, ml: float}
+     * @return array{prefix: string, zone: string, align: string, fontSize: float, fontFamily: string, color: string, mt: float, mr: float, mb: float, ml: float, footerReserveMm: float}
      */
     protected function normalizePaginationSlot(array $data): array
     {
@@ -253,16 +258,17 @@ class PdfService
         }
 
         return [
-            'prefix'     => (string) ($data['prefix'] ?? ''),
-            'zone'       => $zone,
-            'align'      => $align,
-            'fontSize'   => round(max(7.0, min(20.0, (float) ($data['fontSize'] ?? 10))), 2),
-            'fontFamily' => trim((string) ($data['fontFamily'] ?? 'DejaVu Sans')) ?: 'DejaVu Sans',
-            'color'      => trim((string) ($data['color'] ?? '#333333')) ?: '#333333',
-            'mt'         => max(0.0, (float) ($data['mt'] ?? 15)),
-            'mr'         => max(0.0, (float) ($data['mr'] ?? 15)),
-            'mb'         => max(0.0, (float) ($data['mb'] ?? 15)),
-            'ml'         => max(0.0, (float) ($data['ml'] ?? 15)),
+            'prefix'          => (string) ($data['prefix'] ?? ''),
+            'zone'            => $zone,
+            'align'           => $align,
+            'fontSize'        => round(max(7.0, min(20.0, (float) ($data['fontSize'] ?? 10))), 2),
+            'fontFamily'      => trim((string) ($data['fontFamily'] ?? 'DejaVu Sans')) ?: 'DejaVu Sans',
+            'color'           => trim((string) ($data['color'] ?? '#333333')) ?: '#333333',
+            'mt'              => max(0.0, (float) ($data['mt'] ?? 15)),
+            'mr'              => max(0.0, (float) ($data['mr'] ?? 15)),
+            'mb'              => max(0.0, (float) ($data['mb'] ?? 15)),
+            'ml'              => max(0.0, (float) ($data['ml'] ?? 15)),
+            'footerReserveMm' => max(0.0, (float) ($data['footerReserveMm'] ?? 0)),
         ];
     }
 
@@ -288,7 +294,7 @@ class PdfService
     }
 
     /**
-     * @param array{prefix: string, zone: string, align: string, fontSize: float, fontFamily: string, color: string, mt: float, mr: float, mb: float, ml: float} $slot
+     * @param array{prefix: string, zone: string, align: string, fontSize: float, fontFamily: string, color: string, mt: float, mr: float, mb: float, ml: float, footerReserveMm: float} $slot
      */
     protected function paintPaginationOnPage(
         $canvas,
@@ -297,12 +303,11 @@ class PdfService
         int $pageNumber,
         int $pageCount,
     ): void {
-        if (! method_exists($canvas, 'get_cpdf')) {
+        if (! method_exists($canvas, 'text') || ! method_exists($canvas, 'get_text_width')) {
             return;
         }
 
         try {
-            $cpdf   = $canvas->get_cpdf();
             $pageW  = (float) $canvas->get_width();
             $pageH  = (float) $canvas->get_height();
             $mmToPt = 72 / 25.4;
@@ -315,14 +320,7 @@ class PdfService
             $fontFamily = $slot['fontFamily'];
             $font       = $fontMetrics->getFont($fontFamily, 'normal');
             $text       = $slot['prefix'] . $pageNumber . ' de ' . $pageCount;
-
-            $subset = $canvas->get_dompdf()->getOptions()->getIsFontSubsettingEnabled();
-            $cpdf->selectFont($font, '', true, $subset);
-            $textWidth = (float) $cpdf->getTextWidth($fontSize, $text);
-
-            $y = ($slot['zone'] === 'footer')
-                ? $mb + ($fontSize * 0.85)
-                : $pageH - $mt - ($fontSize * 0.15);
+            $textWidth  = (float) $canvas->get_text_width($text, $font, $fontSize);
 
             $x = match ($slot['align']) {
                 'right'  => max($ml, $pageW - $mr - $textWidth),
@@ -330,8 +328,17 @@ class PdfService
                 default  => $ml,
             };
 
-            $cpdf->setColor($this->hexColorToRgb($slot['color']), true);
-            $cpdf->addText($x, $y, $fontSize, $text, 0);
+            if ($slot['zone'] === 'footer') {
+                $footerReservePt = max(0.0, (float) ($slot['footerReserveMm'] ?? 0)) * $mmToPt;
+                $bandPt          = $footerReservePt > 0 ? $footerReservePt : ($fontSize * 2.4);
+                // Coordenadas desde arriba (API de Canvas); ubicar en la franja del pie fijo.
+                $y = $pageH - $mb - ($bandPt * 0.42) - ($fontSize * 0.15);
+                $y = max($mt + $fontSize, min($pageH - $mb - $fontSize * 0.5, $y));
+            } else {
+                $y = $mt + ($fontSize * 0.85);
+            }
+
+            $canvas->text($x, $y, $text, $font, $fontSize, $this->hexColorToRgb($slot['color']));
         } catch (\Throwable $e) {
             // Sin paginación si la fuente o el canvas no están disponibles.
         }
@@ -361,6 +368,110 @@ class PdfService
             hexdec(substr($hex, 2, 2)) / 255,
             hexdec(substr($hex, 4, 2)) / 255,
         ];
+    }
+
+    /**
+     * @return array{patient: string, order: string, ml: float, mr: float, mb: float, footerReserveMm: float, gapMm: float}|null
+     */
+    protected function extractOrderSheetHeaderSlot(string $html): ?array
+    {
+        $pattern = '/<!--\s*' . preg_quote(self::ORDER_SHEET_HEADER_MARKER, '/') . ':([A-Za-z0-9+\/=_-]+)\s*-->/';
+        if (! preg_match($pattern, $html, $matches)) {
+            return null;
+        }
+
+        $json = base64_decode($matches[1], true);
+        if ($json === false) {
+            return null;
+        }
+        $data = json_decode($json, true);
+        if (! is_array($data)) {
+            return null;
+        }
+
+        $patient = trim((string) ($data['patient'] ?? ''));
+        $order   = trim((string) ($data['order'] ?? ''));
+        if ($patient === '' && $order === '') {
+            return null;
+        }
+
+        return [
+            'patient'         => $patient,
+            'order'           => $order,
+            'ml'              => max(0.0, (float) ($data['ml'] ?? 15)),
+            'mr'              => max(0.0, (float) ($data['mr'] ?? 15)),
+            'mb'              => max(0.0, (float) ($data['mb'] ?? 15)),
+            'footerReserveMm' => max(0.0, (float) ($data['footerReserveMm'] ?? 0)),
+            'gapMm'           => max(0.0, (float) ($data['gapMm'] ?? 1.5)),
+        ];
+    }
+
+    /**
+     * @param array{patient: string, order: string, ml: float, mr: float, mb: float, footerReserveMm: float, gapMm: float}|null $slot
+     *
+     * @return list<array{event: string, f: callable}>
+     */
+    protected function buildOrderSheetHeaderCallbacks(?array $slot): array
+    {
+        if ($slot === null) {
+            return [];
+        }
+
+        return [[
+            'event' => 'end_document',
+            'f'     => function (int $pageNumber, int $pageCount, $canvas, FontMetrics $fontMetrics) use ($slot): void {
+                unset($pageCount);
+                if ($pageNumber < 2) {
+                    return;
+                }
+                $this->paintOrderSheetHeaderOnPage($canvas, $fontMetrics, $slot);
+            },
+        ]];
+    }
+
+    /**
+     * @param array{patient: string, order: string, ml: float, mr: float, mb: float, footerReserveMm: float, gapMm: float} $slot
+     */
+    protected function paintOrderSheetHeaderOnPage($canvas, FontMetrics $fontMetrics, array $slot): void
+    {
+        if (! method_exists($canvas, 'get_cpdf')) {
+            return;
+        }
+
+        try {
+            $cpdf   = $canvas->get_cpdf();
+            $pageW  = (float) $canvas->get_width();
+            $mmToPt = 72 / 25.4;
+            $ml     = $slot['ml'] * $mmToPt;
+            $mr     = $slot['mr'] * $mmToPt;
+            $mb     = $slot['mb'] * $mmToPt;
+            $gap    = $slot['gapMm'] * $mmToPt;
+            $footer = $slot['footerReserveMm'] * $mmToPt;
+
+            $fontSize   = 9.0;
+            $fontFamily = 'DejaVu Sans';
+            $font       = $fontMetrics->getFont($fontFamily, 'normal');
+            $subset     = $canvas->get_dompdf()->getOptions()->getIsFontSubsettingEnabled();
+            $cpdf->selectFont($font, '', true, $subset);
+
+            $y = $mb + $footer + $gap + ($fontSize * 0.85);
+
+            $cpdf->setColor($this->hexColorToRgb('#333333'), true);
+
+            $patient = $slot['patient'];
+            if ($patient !== '') {
+                $cpdf->addText($ml, $y, $fontSize, $patient, 0);
+            }
+
+            $order = $slot['order'];
+            if ($order !== '') {
+                $orderWidth = (float) $cpdf->getTextWidth($fontSize, $order);
+                $orderX     = max($ml, $pageW - $mr - $orderWidth);
+                $cpdf->addText($orderX, $y, $fontSize, $order, 0);
+            }
+        } catch (\Throwable $e) {
+            // Sin banda si la fuente o el canvas no están disponibles.
+        }
     }
 
     /**
@@ -404,6 +515,10 @@ class PdfService
      */
     protected function htmlNeedsPageCountProbe(string $html): bool
     {
+        if (str_contains($html, 'data-total="' . self::TOTAL_PAGES_TOKEN . '"')) {
+            return true;
+        }
+
         if (! str_contains($html, self::TOTAL_PAGES_TOKEN)) {
             return false;
         }
@@ -427,6 +542,7 @@ class PdfService
 
         $watermarkData   = $this->extractWatermarkData($html);
         $paginationSlots = $this->extractPaginationSlots($html);
+        $orderSheetSlot  = $this->extractOrderSheetHeaderSlot($html);
 
         if ($this->htmlNeedsPageCountProbe($html)) {
             $probe = $this->makeDompdf($this->makeDompdfOptions(true), $pageSize);
@@ -437,11 +553,18 @@ class PdfService
                 $pageCount = 1;
             }
             $html          = str_replace(self::TOTAL_PAGES_TOKEN, (string) $pageCount, $html);
-            $watermarkData = $this->extractWatermarkData($html);
+            $html          = str_replace(
+                'data-total="' . self::TOTAL_PAGES_TOKEN . '"',
+                'data-total="' . $pageCount . '"',
+                $html
+            );
+            $watermarkData   = $this->extractWatermarkData($html);
+            $paginationSlots = $this->extractPaginationSlots($html);
+            $orderSheetSlot  = $this->extractOrderSheetHeaderSlot($html);
         }
 
         $dompdf = $this->makeDompdf($this->makeDompdfOptions(false), $pageSize);
-        $this->renderHtmlToDompdf($dompdf, $html, $watermarkData, $paginationSlots);
+        $this->renderHtmlToDompdf($dompdf, $html, $watermarkData, $paginationSlots, $orderSheetSlot);
 
         $output = $dompdf->output();
         unset($dompdf);
