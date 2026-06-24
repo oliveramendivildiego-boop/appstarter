@@ -391,13 +391,13 @@ switch ($type) {
             ? $pdf_footer_grid_style
             : \App\Services\ReportPdfLayoutService::normalizeFooterGridStyle([]);
         $footerLh     = max(1.0, (float) ($ftGrid['line_height'] ?? 1.35));
-        if ($isDompdf) {
+        if ($isDompdf && ! $inFooter) {
             $mm = is_array($pdf_margins_mm ?? null)
                 ? $pdf_margins_mm
                 : \App\Services\ReportPdfLayoutService::defaultMarginsMmStatic();
             $pagConfig  = [
                 'prefix'            => $canvasPrefix,
-                'zone'              => $inFooter ? 'footer' : 'header',
+                'zone'              => 'header',
                 'align'             => (string) ($pdf_cell_align ?? 'left'),
                 'fontSize'          => (float) ($ts['font_size_pt'] ?? 10),
                 'fontFamily'        => (string) ($ts['font_family'] ?? 'DejaVu Sans'),
@@ -408,9 +408,7 @@ switch ($type) {
                 'mr'                => (float) ($mm['right'] ?? 15),
                 'mb'                => (float) ($mm['bottom'] ?? 15),
                 'ml'                => (float) ($mm['left'] ?? 15),
-                'footerReserveMm'   => $inFooter
-                    ? max(0.0, (float) ($pdf_footer_reserve_mm ?? 0))
-                    : 0.0,
+                'footerReserveMm'   => 0.0,
                 'gridColumn'        => (int) ($pdf_grid_column ?? 0),
                 'gridColumnSpan'    => max(1, (int) ($pdf_grid_column_span ?? 1)),
                 'gridRow'           => (int) ($pdf_grid_row ?? 0),
@@ -418,25 +416,25 @@ switch ($type) {
                 'footerColumns'     => max(1, (int) ($pdf_footer_columns ?? 1)),
                 'footerRows'        => max(1, (int) ($pdf_footer_rows ?? 1)),
                 'footerRowGapPx'    => max(0.0, (float) ($pdf_footer_row_gap_px ?? 0)),
-                'lineHeight'        => $inFooter ? $footerLh : max(1.0, (float) ($ts['line_height'] ?? 1.35)),
-                'labelStacked'      => $inFooter && $showLblPag && ! $inlinePag,
+                'lineHeight'        => max(1.0, (float) ($ts['line_height'] ?? 1.35)),
+                'labelStacked'      => false,
             ];
             echo '<!-- pdf-pagination:' . base64_encode(json_encode($pagConfig, JSON_UNESCAPED_UNICODE)) . ' -->';
+            break;
         }
         $dataTotalAttr     = $pageToken;
-        $hideForCanvas     = $isDompdf;
         $pagPieceClass     = $inFooter ? 'pdf-ft-pagination' : 'header-piece header-piece-pagination';
         $pagNumClass       = $inFooter ? 'pdf-ft-pagination-num' : 'pdf-pagination-line';
-        $pagHideStyle      = '';
+        $pagLineStyle      = $inFooter && $isDompdf ? $stInst : '';
         ?>
-                <div class="<?= esc($pagPieceClass, 'attr') ?>"<?= $hideForCanvas ? ' style="visibility:hidden;height:0;overflow:hidden;margin:0;padding:0;"' : '' ?>>
+                <div class="<?= esc($pagPieceClass, 'attr') ?>">
                     <?php if ($inlinePag && $showLblPag): ?>
-                    <p style="margin:0;<?= esc($pagHideStyle, 'attr') ?>"><span style="<?= esc($stPagLbl, 'attr') ?>"><?= esc($lblPag) ?></span> <span id="<?= esc($pagUid, 'attr') ?>" class="<?= esc($pagNumClass, 'attr') ?>" style="<?= esc($stInst, 'attr') ?>" data-prefix="" data-total="<?= esc($dataTotalAttr, 'attr') ?>"></span></p>
+                    <p style="margin:0;<?= esc($pagLineStyle, 'attr') ?>"><span style="<?= esc($stPagLbl, 'attr') ?>"><?= esc($lblPag) ?></span> <span id="<?= esc($pagUid, 'attr') ?>" class="<?= esc($pagNumClass, 'attr') ?>"<?= ($inFooter && $isDompdf) ? '' : ' style="' . esc($stInst, 'attr') . '"' ?> data-prefix="" data-total="<?= esc($dataTotalAttr, 'attr') ?>"></span></p>
                     <?php elseif ($showLblPag): ?>
-                    <p style="margin:0;<?= esc($pagHideStyle, 'attr') ?>"><span style="<?= esc($stPagLbl, 'attr') ?>"><?= esc($lblPag) ?></span></p>
-                    <p style="margin:0;<?= esc($pagHideStyle, 'attr') ?>"><span id="<?= esc($pagUid, 'attr') ?>" class="<?= esc($pagNumClass, 'attr') ?>" style="<?= esc($stInst, 'attr') ?>" data-prefix="" data-total="<?= esc($dataTotalAttr, 'attr') ?>"></span></p>
+                    <p style="margin:0;"><span style="<?= esc($stPagLbl, 'attr') ?>"><?= esc($lblPag) ?></span></p>
+                    <p style="margin:0;<?= esc($pagLineStyle, 'attr') ?>"><span id="<?= esc($pagUid, 'attr') ?>" class="<?= esc($pagNumClass, 'attr') ?>"<?= ($inFooter && $isDompdf) ? '' : ' style="' . esc($stInst, 'attr') . '"' ?> data-prefix="" data-total="<?= esc($dataTotalAttr, 'attr') ?>"></span></p>
                     <?php else: ?>
-                    <p style="margin:0;<?= esc($pagHideStyle, 'attr') ?>"><span id="<?= esc($pagUid, 'attr') ?>" class="<?= esc($pagNumClass, 'attr') ?>" style="<?= esc($stInst, 'attr') ?>" data-prefix="" data-total="<?= esc($dataTotalAttr, 'attr') ?>"></span></p>
+                    <p style="margin:0;<?= esc($pagLineStyle, 'attr') ?>"><span id="<?= esc($pagUid, 'attr') ?>" class="<?= esc($pagNumClass, 'attr') ?>"<?= ($inFooter && $isDompdf) ? '' : ' style="' . esc($stInst, 'attr') . '"' ?> data-prefix="" data-total="<?= esc($dataTotalAttr, 'attr') ?>"></span></p>
                     <?php endif; ?>
                 </div>
         <?php

@@ -290,6 +290,11 @@ class PdfService
      */
     protected function buildPaginationCallbacks(array $slots): array
     {
+        // Encabezado: canvas. Pie: HTML en la cuadrícula del footer (posición y estilos de plantilla).
+        $slots = array_values(array_filter(
+            $slots,
+            static fn (array $slot): bool => strtolower((string) ($slot['zone'] ?? 'header')) !== 'footer'
+        ));
         if ($slots === []) {
             return [];
         }
