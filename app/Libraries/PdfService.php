@@ -244,7 +244,7 @@ class PdfService
     /**
      * @param array<string, mixed> $data
      *
-     * @return array{prefix: string, zone: string, align: string, fontSize: float, fontFamily: string, color: string, mt: float, mr: float, mb: float, ml: float, footerReserveMm: float}
+     * @return array{prefix: string, zone: string, align: string, fontSize: float, fontFamily: string, color: string, mt: float, mr: float, mb: float, ml: float, footerReserveMm: float, gridColumn: int, gridColumnSpan: int, gridRow: int, gridStack: int, footerColumns: int, footerRows: int, footerRowGapPx: float, lineHeight: float}
      */
     protected function normalizePaginationSlot(array $data): array
     {
@@ -269,6 +269,14 @@ class PdfService
             'mb'              => max(0.0, (float) ($data['mb'] ?? 15)),
             'ml'              => max(0.0, (float) ($data['ml'] ?? 15)),
             'footerReserveMm' => max(0.0, (float) ($data['footerReserveMm'] ?? 0)),
+            'gridColumn'      => max(0, (int) ($data['gridColumn'] ?? 0)),
+            'gridColumnSpan'  => max(1, (int) ($data['gridColumnSpan'] ?? 1)),
+            'gridRow'         => max(0, (int) ($data['gridRow'] ?? 0)),
+            'gridStack'       => max(0, (int) ($data['gridStack'] ?? 0)),
+            'footerColumns'   => max(0, (int) ($data['footerColumns'] ?? 0)),
+            'footerRows'      => max(1, (int) ($data['footerRows'] ?? 1)),
+            'footerRowGapPx'  => max(0.0, (float) ($data['footerRowGapPx'] ?? 0)),
+            'lineHeight'      => max(1.0, (float) ($data['lineHeight'] ?? 1.35)),
         ];
     }
 
@@ -321,21 +329,48 @@ class PdfService
             $font       = $fontMetrics->getFont($fontFamily, 'normal');
             $text       = $slot['prefix'] . $pageNumber . ' de ' . $pageCount;
             $textWidth  = (float) $canvas->get_text_width($text, $font, $fontSize);
+            $lineHeight = max(1.0, (float) ($slot['lineHeight'] ?? 1.35));
+            $linePt     = $fontSize * $lineHeight;
+            $pxToPt     = 72.0 / 96.0;
 
-            $x = match ($slot['align']) {
-                'right'  => max($ml, $pageW - $mr - $textWidth),
-                'center' => max($ml, ($pageW - $textWidth) / 2),
-                default  => $ml,
-            };
-
-            if ($slot['zone'] === 'footer') {
+            if ($slot['zone'] === 'footer' && ($slot['footerColumns'] ?? 0) > 0) {
+                $footerCols    = max(1, (int) $slot['footerColumns']);
+                $gridCol       = min(max(0, (int) ($slot['gridColumn'] ?? 0)), $footerCols - 1);
+                $gridColSpan   = max(1, min((int) ($slot['gridColumnSpan'] ?? 1), $footerCols - $gridCol));
+                $gridRow       = max(0, (int) ($slot['gridRow'] ?? 0));
+                $gridStack     = max(0, (int) ($slot['gridStack'] ?? 0));
+                $rowGapPt      = max(0.0, (float) ($slot['footerRowGapPx'] ?? 0)) * $pxToPt;
+                $contentW      = max(1.0, $pageW - $ml - $mr);
+                $colW          = $contentW / $footerCols;
+                $cellX0        = $ml + ($gridCol * $colW);
+                $cellW         = $colW * $gridColSpan;
                 $footerReservePt = max(0.0, (float) ($slot['footerReserveMm'] ?? 0)) * $mmToPt;
-                $bandPt          = $footerReservePt > 0 ? $footerReservePt : ($fontSize * 2.4);
-                // Coordenadas desde arriba (API de Canvas); ubicar en la franja del pie fijo.
-                $y = $pageH - $mb - ($bandPt * 0.42) - ($fontSize * 0.15);
-                $y = max($mt + $fontSize, min($pageH - $mb - $fontSize * 0.5, $y));
+                $footerTopY    = $pageH - $mb - $footerReservePt;
+                $padTopPt      = 6.0 * $pxToPt;
+                $rowOffset     = ($gridRow * ($linePt + $rowGapPt)) + ($gridStack * $linePt);
+                $y             = $footerTopY + $padTopPt + $rowOffset + ($fontSize * 0.82);
+                $y             = max($mt + $fontSize, min($pageH - $mb - $fontSize * 0.5, $y));
+
+                $x = match ($slot['align']) {
+                    'right'  => $cellX0 + max(0.0, $cellW - $textWidth),
+                    'center' => $cellX0 + max(0.0, ($cellW - $textWidth) / 2),
+                    default  => $cellX0,
+                };
             } else {
-                $y = $mt + ($fontSize * 0.85);
+                $x = match ($slot['align']) {
+                    'right'  => max($ml, $pageW - $mr - $textWidth),
+                    'center' => max($ml, ($pageW - $textWidth) / 2),
+                    default  => $ml,
+                };
+
+                if ($slot['zone'] === 'footer') {
+                    $footerReservePt = max(0.0, (float) ($slot['footerReserveMm'] ?? 0)) * $mmToPt;
+                    $bandPt          = $footerReservePt > 0 ? $footerReservePt : ($fontSize * 2.4);
+                    $y               = $pageH - $mb - ($bandPt * 0.42) - ($fontSize * 0.15);
+                    $y               = max($mt + $fontSize, min($pageH - $mb - $fontSize * 0.5, $y));
+                } else {
+                    $y = $mt + ($fontSize * 0.85);
+                }
             }
 
             $canvas->text($x, $y, $text, $font, $fontSize, $this->hexColorToRgb($slot['color']));

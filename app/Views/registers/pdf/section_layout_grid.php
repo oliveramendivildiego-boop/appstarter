@@ -22,6 +22,9 @@ $normalizeItem = static function (array $it, int $n): array {
     $textStyle = is_array($it['text_style'] ?? null) ? $it['text_style'] : [];
 
     $out = ['element_type' => $type, 'col' => $col, 'span' => $span, 'text_style' => $textStyle];
+    if (! empty($it['uid'])) {
+        $out['uid'] = (string) $it['uid'];
+    }
     if ($type === 'custom_text' && is_array($it['custom_text'] ?? null)) {
         $out['custom_text'] = $it['custom_text'];
     }
@@ -77,6 +80,12 @@ if ($explicitGrid) {
         $type = (string) ($it['element_type'] ?? '');
         $ts   = is_array($it['text_style'] ?? null) ? $it['text_style'] : [];
         $out  = ['element_type' => $type, 'col' => $col, 'span' => $span, 'text_style' => $ts];
+        if (! empty($it['uid'])) {
+            $out['uid'] = (string) $it['uid'];
+        }
+        if (array_key_exists('grid_stack', $it)) {
+            $out['grid_stack'] = (int) ($it['grid_stack'] ?? 0);
+        }
         foreach (['label_value_gap_px', 'label_space_above_px', 'label_space_below_px'] as $k) {
             if (array_key_exists($k, $it)) {
                 $out[$k] = (int) ($it[$k] ?? 0);
@@ -327,6 +336,10 @@ echo $sectionWrapperStyle !== '' ? ' style="' . esc($sectionWrapperStyle, 'attr'
                     'pdf_instance_uid' => (string) ($cellItem['uid'] ?? ''),
                     'pdf_section_key'  => (string) ($section_key ?? ''),
                     'pdf_cell_align'   => (string) ($tdInfo['alignCls'] ?? 'left'),
+                    'pdf_grid_row'     => (int) $rowIndex,
+                    'pdf_grid_column'  => (int) ($cellItem['col'] ?? 0),
+                    'pdf_grid_column_span' => (int) ($cellItem['span'] ?? 1),
+                    'pdf_grid_stack'   => array_key_exists('grid_stack', $cellItem) ? (int) ($cellItem['grid_stack'] ?? 0) : 0,
                     'pdf_text_style'   => is_array($cellItem['text_style'] ?? null) ? $cellItem['text_style'] : [],
                     'pdf_label_value_gap_px' => array_key_exists('label_value_gap_px', $cellItem) ? (int) ($cellItem['label_value_gap_px'] ?? 0) : null,
                     'pdf_label_space_above_px' => array_key_exists('label_space_above_px', $cellItem) ? (int) ($cellItem['label_space_above_px'] ?? 0) : null,
@@ -361,6 +374,10 @@ echo $sectionWrapperStyle !== '' ? ' style="' . esc($sectionWrapperStyle, 'attr'
                     'pdf_instance_uid' => (string) ($stackItem['uid'] ?? ''),
                     'pdf_section_key'  => (string) ($section_key ?? ''),
                     'pdf_cell_align'   => (string) ($tdInfo['alignCls'] ?? 'left'),
+                    'pdf_grid_row'     => (int) $rowIndex,
+                    'pdf_grid_column'  => (int) ($stackItem['col'] ?? $c),
+                    'pdf_grid_column_span' => (int) ($stackItem['span'] ?? 1),
+                    'pdf_grid_stack'   => array_key_exists('grid_stack', $stackItem) ? (int) ($stackItem['grid_stack'] ?? 0) : 0,
                     'pdf_text_style'   => is_array($stackItem['text_style'] ?? null) ? $stackItem['text_style'] : [],
                     'pdf_label_value_gap_px' => array_key_exists('label_value_gap_px', $stackItem) ? (int) ($stackItem['label_value_gap_px'] ?? 0) : null,
                     'pdf_label_space_above_px' => array_key_exists('label_space_above_px', $stackItem) ? (int) ($stackItem['label_space_above_px'] ?? 0) : null,

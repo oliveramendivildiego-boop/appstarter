@@ -1069,6 +1069,7 @@ class ReportPdfLayoutService
             $maxSpan = max(1, $n - $col);
             $span = max(1, min($maxSpan, $span));
             $item = [
+                'uid'          => (string) ($inst['uid'] ?? ''),
                 'element_type' => $type,
                 'column'       => $col,
                 'column_span'  => $span,

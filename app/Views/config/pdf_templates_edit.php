@@ -2691,8 +2691,18 @@ document.addEventListener('DOMContentLoaded', function() {
             var pagPreview = '1 de 3';
             var lblPag = String(hg.label_pdf_pagination != null ? hg.label_pdf_pagination : 'Página').trim();
             var showPagL = !!hg.show_label_pdf_pagination && lblPag !== '';
-            var prefixPag = showPagL ? lblPag + ' ' : '';
-            return '<div class="header-preview-pagination"><span class="pdf-pagination-line" style="' + escapeHtml(stI) + '">' + escapeHtml(prefixPag + pagPreview) + '</span></div>';
+            var inlinePag = (hg.label_pdf_pagination_line_mode === 'inline');
+            var stL = st(hg, 'pdf_pagination');
+            var pagLine = '<span class="pdf-pagination-line" style="' + escapeHtml(stI) + '">' + escapeHtml(pagPreview) + '</span>';
+            var inner = pagLine;
+            if (showPagL && inlinePag) {
+                inner = '<span style="' + escapeHtml(stL) + '">' + escapeHtml(lblPag) + '</span> ' + pagLine;
+                return '<div class="header-preview-pagination"><div class="header-piece"><p style="margin:0;">' + inner + '</p></div></div>';
+            }
+            if (showPagL) {
+                return '<div class="header-preview-pagination"><div class="header-piece"><p style="margin:0;"><span style="' + escapeHtml(stL) + '">' + escapeHtml(lblPag) + '</span></p><p style="margin:0;">' + pagLine + '</p></div></div>';
+            }
+            return '<div class="header-preview-pagination"><div class="header-piece"><p style="margin:0;">' + inner + '</p></div></div>';
         }
         if (type === 'qr') {
             var hint = String(hg.label_qr_hint != null ? hg.label_qr_hint : '').trim();

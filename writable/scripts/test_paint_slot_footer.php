@@ -17,6 +17,14 @@ $slot = [
     'mb' => 5,
     'ml' => 25,
     'footerReserveMm' => 22,
+    'gridColumn' => 3,
+    'gridColumnSpan' => 2,
+    'gridRow' => 0,
+    'gridStack' => 1,
+    'footerColumns' => 5,
+    'footerRows' => 1,
+    'footerRowGapPx' => 6,
+    'lineHeight' => 1.35,
 ];
 
 $html = '<!DOCTYPE html><html><body><p>One</p><p style="page-break-before:always">Two</p></body></html>';

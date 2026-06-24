@@ -360,43 +360,66 @@ switch ($type) {
         $hgPag = is_array($pdf_header_grid_style ?? null)
             ? $pdf_header_grid_style
             : \App\Services\ReportPdfLayoutService::normalizeHeaderGridStyle([]);
-        $lblPag     = trim((string) ($hgPag['label_pdf_pagination'] ?? ''));
-        $showPagL   = \App\Services\ReportPdfLayoutService::labFirmasBool($hgPag, 'show_label_pdf_pagination', true);
-        $prefixPag  = ($showPagL && $lblPag !== '') ? $lblPag . ' ' : '';
-        $variant    = (string) ($pdf_analisis_variant ?? 'pdf');
-        $isDompdf   = ($variant === 'pdf');
-        $instUid    = trim((string) ($pdf_instance_uid ?? ''));
-        $pagUid     = 'pdf-pag-' . substr(sha1($instUid . '|' . $prefixPag . '|' . $stInst), 0, 10);
-        $pageToken  = \App\Services\RegisterService::TOTAL_PAGES_TOKEN;
-        $sectionKey = (string) ($pdf_section_key ?? 'header');
-        $inFooter   = ($sectionKey === 'footer');
+        $lblPag       = trim((string) ($hgPag['label_pdf_pagination'] ?? ''));
+        $showPagL     = \App\Services\ReportPdfLayoutService::labFirmasBool($hgPag, 'show_label_pdf_pagination', true);
+        $inlinePag    = (($hgPag['label_pdf_pagination_line_mode'] ?? 'inline') === 'inline');
+        $showLblPag   = $showPagL && $lblPag !== '';
+        $stPagLbl     = \App\Services\ReportPdfLayoutService::headerGridLabelPieceStyleAttr($hgPag, 'pdf_pagination');
+        $canvasPrefix = $showLblPag ? $lblPag . ' ' : '';
+        $variant      = (string) ($pdf_analisis_variant ?? 'pdf');
+        $isDompdf     = ($variant === 'pdf');
+        $instUid      = trim((string) ($pdf_instance_uid ?? ''));
+        $pagUid       = 'pdf-pag-' . substr(sha1($instUid . '|' . $canvasPrefix . '|' . $stInst), 0, 10);
+        $pageToken    = \App\Services\RegisterService::TOTAL_PAGES_TOKEN;
+        $sectionKey   = (string) ($pdf_section_key ?? 'header');
+        $inFooter     = ($sectionKey === 'footer');
+        $ftGrid       = is_array($pdf_footer_grid_style ?? null)
+            ? $pdf_footer_grid_style
+            : \App\Services\ReportPdfLayoutService::normalizeFooterGridStyle([]);
+        $footerLh     = max(1.0, (float) ($ftGrid['line_height'] ?? 1.35));
         if ($isDompdf) {
             $mm = is_array($pdf_margins_mm ?? null)
                 ? $pdf_margins_mm
                 : \App\Services\ReportPdfLayoutService::defaultMarginsMmStatic();
             $pagConfig  = [
-                'prefix'           => $prefixPag,
-                'zone'             => $inFooter ? 'footer' : 'header',
-                'align'            => (string) ($pdf_cell_align ?? 'left'),
-                'fontSize'         => (float) ($ts['font_size_pt'] ?? 10),
-                'fontFamily'       => (string) ($ts['font_family'] ?? 'DejaVu Sans'),
-                'color'            => (string) ($ts['font_color'] ?? '#333333'),
-                'mt'               => (float) ($mm['top'] ?? 15),
-                'mr'               => (float) ($mm['right'] ?? 15),
-                'mb'               => (float) ($mm['bottom'] ?? 15),
-                'ml'               => (float) ($mm['left'] ?? 15),
-                'footerReserveMm'  => $inFooter
+                'prefix'            => $canvasPrefix,
+                'zone'              => $inFooter ? 'footer' : 'header',
+                'align'             => (string) ($pdf_cell_align ?? 'left'),
+                'fontSize'          => (float) ($ts['font_size_pt'] ?? 10),
+                'fontFamily'        => (string) ($ts['font_family'] ?? 'DejaVu Sans'),
+                'color'             => (string) ($ts['font_color'] ?? '#333333'),
+                'mt'                => (float) ($mm['top'] ?? 15),
+                'mr'                => (float) ($mm['right'] ?? 15),
+                'mb'                => (float) ($mm['bottom'] ?? 15),
+                'ml'                => (float) ($mm['left'] ?? 15),
+                'footerReserveMm'   => $inFooter
                     ? max(0.0, (float) ($pdf_footer_reserve_mm ?? 0))
                     : 0.0,
+                'gridColumn'        => (int) ($pdf_grid_column ?? 0),
+                'gridColumnSpan'    => max(1, (int) ($pdf_grid_column_span ?? 1)),
+                'gridRow'           => (int) ($pdf_grid_row ?? 0),
+                'gridStack'         => (int) ($pdf_grid_stack ?? 0),
+                'footerColumns'     => max(1, (int) ($pdf_footer_columns ?? 1)),
+                'footerRows'        => max(1, (int) ($pdf_footer_rows ?? 1)),
+                'footerRowGapPx'    => max(0.0, (float) ($pdf_footer_row_gap_px ?? 0)),
+                'lineHeight'        => $inFooter ? $footerLh : max(1.0, (float) ($ts['line_height'] ?? 1.35)),
             ];
             echo '<!-- pdf-pagination:' . base64_encode(json_encode($pagConfig, JSON_UNESCAPED_UNICODE)) . ' -->';
         }
-        $dataTotalAttr = $pageToken;
-        $hideForCanvas = $isDompdf && ! $inFooter;
+        $dataTotalAttr     = $pageToken;
+        $hideForCanvas     = $isDompdf && ! $inFooter;
         $footerDompdfClass = ($isDompdf && $inFooter) ? ' pdf-pagination-line--dompdf-footer' : '';
+        $pagPieceClass     = $inFooter ? 'header-piece' : 'header-piece header-piece-pagination';
         ?>
-                <div class="header-piece header-piece-pagination"<?= $hideForCanvas ? ' style="visibility:hidden;height:0;overflow:hidden;margin:0;padding:0;"' : '' ?>>
-                    <span id="<?= esc($pagUid, 'attr') ?>" class="pdf-pagination-line<?= esc($footerDompdfClass, 'attr') ?>" style="<?= esc($stInst, 'attr') ?>" data-prefix="<?= esc($prefixPag, 'attr') ?>" data-total="<?= esc($dataTotalAttr, 'attr') ?>"></span>
+                <div class="<?= esc($pagPieceClass, 'attr') ?>"<?= $hideForCanvas ? ' style="visibility:hidden;height:0;overflow:hidden;margin:0;padding:0;"' : '' ?>>
+                    <?php if ($inlinePag && $showLblPag): ?>
+                    <p style="margin:0;"><span style="<?= esc($stPagLbl, 'attr') ?>"><?= esc($lblPag) ?></span> <span id="<?= esc($pagUid, 'attr') ?>" class="pdf-pagination-line<?= esc($footerDompdfClass, 'attr') ?>" style="<?= esc($stInst, 'attr') ?>" data-prefix="" data-total="<?= esc($dataTotalAttr, 'attr') ?>"></span></p>
+                    <?php elseif ($showLblPag): ?>
+                    <p style="margin:0;"><span style="<?= esc($stPagLbl, 'attr') ?>"><?= esc($lblPag) ?></span></p>
+                    <p style="margin:0;"><span id="<?= esc($pagUid, 'attr') ?>" class="pdf-pagination-line<?= esc($footerDompdfClass, 'attr') ?>" style="<?= esc($stInst, 'attr') ?>" data-prefix="" data-total="<?= esc($dataTotalAttr, 'attr') ?>"></span></p>
+                    <?php else: ?>
+                    <p style="margin:0;"><span id="<?= esc($pagUid, 'attr') ?>" class="pdf-pagination-line<?= esc($footerDompdfClass, 'attr') ?>" style="<?= esc($stInst, 'attr') ?>" data-prefix="" data-total="<?= esc($dataTotalAttr, 'attr') ?>"></span></p>
+                    <?php endif; ?>
                 </div>
         <?php
         break;
