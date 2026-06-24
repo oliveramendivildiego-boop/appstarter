@@ -82,6 +82,9 @@ body {
 .header-piece-pagination {
     white-space: nowrap;
 }
+.pdf-ft-pagination {
+    white-space: nowrap;
+}
 .pdf-pagination-line {
     display: inline-block;
     min-width: 1ch;
@@ -90,14 +93,26 @@ body {
 .pdf-pagination-line::before {
     content: attr(data-prefix) counter(page) ' de ' attr(data-total);
 }
-body.pdf-dompdf-download .pdf-ft-block .pdf-pagination-line--dompdf-footer::before {
-    content: none !important;
+/* Pie PDF: paginación con clases propias (no .pdf-pagination-line del encabezado). */
+.pdf-ft-pagination-num {
+    display: inline-block;
+    min-width: 1ch;
+    white-space: nowrap;
+}
+.pdf-ft-pagination-num::before {
+    content: attr(data-prefix) counter(page) ' de ' attr(data-total);
+}
+body.pdf-dompdf-download .pdf-ft-block .pdf-ft-pagination-num::before {
+    content: attr(data-prefix) counter(page) ' de ' attr(data-total);
 }
 @media screen {
     .pdf-counter-page::before {
         content: '1';
     }
     .pdf-pagination-line::before {
+        content: attr(data-prefix) '1 de ' attr(data-total);
+    }
+    .pdf-ft-block .pdf-ft-pagination-num::before {
         content: attr(data-prefix) '1 de ' attr(data-total);
     }
 }
@@ -172,6 +187,9 @@ body.pdf-dompdf-download .pdf-ft-block .pdf-pagination-line--dompdf-footer::befo
  */
 .pdf-hg-block .pdf-section-table .header-piece,
 .pdf-ft-block .pdf-section-table .footer-piece,
+.pdf-ft-block .pdf-section-table .pdf-ft-piece,
+.pdf-ft-block .pdf-section-table .pdf-ft-custom-text,
+.pdf-ft-block .pdf-section-table .pdf-ft-pagination,
 .pdf-pd-block .pdf-section-table .patient-line,
 .lab-firmas-pdf-block .pdf-section-table .patient-line {
     margin-top: 0 !important;
@@ -181,7 +199,7 @@ body.pdf-dompdf-download .pdf-ft-block .pdf-pagination-line--dompdf-footer::befo
 .pdf-pd-block .pdf-section-table td.pdf-cell > .pdf-el-item:not(:last-child),
 .pdf-ft-block .pdf-section-table td.pdf-cell > .pdf-el-item:not(:last-child),
 .lab-firmas-pdf-block .pdf-section-table td.pdf-cell > .pdf-el-item:not(:last-child) {
-    margin-bottom: 0.4em;
+    margin-bottom: 0;
 }
 .pdf-hg-block .pdf-section-table td p,
 .pdf-pd-block .pdf-section-table td p,
@@ -224,9 +242,16 @@ body.pdf-dompdf-download .pdf-ft-block .pdf-pagination-line--dompdf-footer::befo
     font-size: inherit;
     color: inherit;
 }
+/* Pie PDF: tipografía solo inline del PHP (clases .pdf-ft-*). */
+.pdf-ft-block .pdf-ft-piece p,
+.pdf-ft-block .pdf-ft-custom-text p,
+.pdf-ft-block .pdf-ft-pagination p {
+    font-size: inherit;
+    color: inherit;
+    font-weight: inherit;
+}
 .pdf-hg-block .pdf-custom-text p,
 .pdf-pd-block .pdf-custom-text p,
-.pdf-ft-block .pdf-custom-text p,
 .lab-firmas-pdf-block .pdf-custom-text p {
     font-size: inherit;
     color: inherit;
@@ -876,21 +901,24 @@ table.results td.resultado-texto-rico-cell .resultado-texto-rico ol {
     padding-bottom: 0 !important;
 }
 /*
- * Respaldo de color vía variables (tema). Sin !important: Dompdf y el motor CSS deben respetar los estilos inline
- * del PHP (footerGridPieceStyleAttr); con !important aquí se anulaban color/tamaño al descargar el PDF.
+ * Pie PDF (.pdf-ft-piece, .pdf-ft-custom-text, .pdf-ft-pagination): solo layout;
+ * color/tamaño/fuente vienen del style inline del PHP.
  */
-.pdf-ft-block .footer-piece-company {
-    color: var(--pdf-ft-company-color, var(--pdf-ft-body-color, #666666));
+.pdf-ft-block .pdf-ft-piece,
+.pdf-ft-block .pdf-ft-custom-text,
+.pdf-ft-block .pdf-ft-pagination,
+.pdf-ft-block .pdf-section-table .pdf-ft-piece,
+.pdf-ft-block .pdf-section-table .pdf-ft-custom-text,
+.pdf-ft-block .pdf-section-table .pdf-ft-pagination {
+    margin-top: 0;
+    margin-bottom: 0;
+    line-height: inherit;
+    max-width: 100%;
+    box-sizing: border-box;
 }
-.pdf-ft-block .footer-generated-label {
-    color: var(--pdf-ft-label-generated-color, var(--pdf-ft-body-color, #666666));
-}
-.pdf-ft-block .footer-generated-datetime {
-    color: var(--pdf-ft-datetime-color, var(--pdf-ft-body-color, #666666));
-}
-.pdf-ft-block .footer-piece-policy,
-.pdf-ft-block .footer-piece-policy small.footer-policy-text {
-    color: var(--pdf-ft-policy-color, var(--pdf-ft-body-color, #666666));
+.pdf-ft-block .pdf-ft-piece--policy-text,
+.pdf-ft-block .footer-piece-policy small.pdf-ft-piece--policy-text {
+    font-size: inherit;
 }
 .report-segment-table-wrap {
     margin: 0;
@@ -931,7 +959,7 @@ table.results td.matrix-col-reference strong,
 .table td.matrix-col-reference strong {
     font-weight: 700 !important;
 }
-.footer-grid {
+.footer-grid:not(.pdf-ft-block) {
     display: block;
     width: 100%;
     margin-top: 20px;
@@ -948,14 +976,15 @@ table.results td.matrix-col-reference strong,
 .footer-col-0 { text-align: left; }
 .footer-col-1 { text-align: center; }
 .footer-col-2 { text-align: right; }
-.footer-piece {
+.footer-piece:not(.pdf-ft-piece) {
     margin-bottom: 6px;
     line-height: 1.35;
 }
-.footer-piece-policy small {
+.footer-piece-policy small:not(.pdf-ft-piece--policy-text) {
     font-size: 7pt;
 }
-.pdf-ft-block .footer-piece-policy small.footer-policy-text {
+.pdf-ft-block .footer-piece-policy small.footer-policy-text,
+.pdf-ft-block .pdf-ft-piece--policy-text {
     font-size: inherit;
 }
 .text-center {

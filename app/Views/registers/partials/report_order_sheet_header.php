@@ -40,6 +40,10 @@ $mm = is_array($pl['margins_mm'] ?? null)
 $footerReserveMm = \App\Services\ReportPdfLayoutService::isPdfFooterBlockEnabledForLayout($pl)
     ? \App\Services\ReportPdfLayoutService::estimatePdfFooterReserveMm($pl)
     : 0.0;
+$ftGrid = \App\Services\ReportPdfLayoutService::normalizeFooterGridStyle(
+    is_array($pl['page_style'] ?? null) ? ($pl['page_style']['footer_grid'] ?? []) : []
+);
+$footerBg = ! empty($ftGrid['body_transparent']) ? '#ffffff' : (string) ($ftGrid['body_bg_color'] ?? '#ffffff');
 $markerPayload = json_encode([
     'patient'         => $lines['patient'],
     'order'           => $lines['order'],
@@ -48,6 +52,8 @@ $markerPayload = json_encode([
     'mb'              => (float) ($mm['bottom'] ?? 15),
     'footerReserveMm' => $footerReserveMm,
     'gapMm'           => \App\Services\ReportPdfLayoutService::ORDER_SHEET_HEADER_GAP_ABOVE_FOOTER_MM,
+    'footerBg'        => $footerBg,
+    'rowHeightMm'     => \App\Services\ReportPdfLayoutService::ORDER_SHEET_HEADER_HEIGHT_MM,
 ], JSON_UNESCAPED_UNICODE);
 if (is_string($markerPayload) && $markerPayload !== ''): ?>
 <!-- pdf-order-sheet-header:<?= base64_encode($markerPayload) ?> -->

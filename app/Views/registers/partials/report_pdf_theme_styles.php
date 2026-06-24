@@ -132,18 +132,15 @@ $ftTopWpx           = ($ftTopOn && $ftTopW > 0) ? $ftTopW : 0;
     box-sizing: border-box;
 }
 <?php if ($orderSheetHeaderEnabled): ?>
-.viewreport-pdf-sheet .pdf-ft-block.footer-grid .pdf-order-sheet-footer-band-dompdf {
-    display: none;
-    visibility: hidden;
-    opacity: 0;
-    width: 100%;
-    margin: 0 0 4px 0;
-    padding: 0 0 5px 0;
-    border-bottom: 1px solid rgba(0, 0, 0, 0.12);
-    box-sizing: border-box;
+.viewreport-pdf-sheet .pdf-ft-block.footer-grid .pdf-order-sheet-table-row {
+    display: table-row;
 }
-.viewreport-pdf-sheet .pdf-ft-block.footer-grid .pdf-order-sheet-footer-band-dompdf .pdf-order-sheet-header {
-    width: 100%;
+.viewreport-pdf-sheet .pdf-ft-block.footer-grid .pdf-order-sheet-table-row td {
+    font-family: "DejaVu Sans", Helvetica, Arial, sans-serif;
+    font-size: 9pt;
+    font-weight: 600;
+    line-height: 1.2;
+    color: #333333;
 }
 <?php endif; ?>
 <?php endif; ?>
@@ -263,12 +260,6 @@ body {
     --pdf-pd-column-border-color: <?= esc((string) ($pd['column_border_color'] ?? '#DDDDDD')) ?>;
     --pdf-ft-body-bg: <?= esc($ftBodyBg) ?>;
     --pdf-ft-body-color: <?= esc($ft['body_text_color']) ?>;
-    --pdf-ft-font-family: "<?= esc($ft['font_family']) ?>";
-    --pdf-ft-font-size: <?= esc((string) $ft['font_size_pt']) ?>pt;
-    --pdf-ft-font-weight: <?= esc($ft['font_weight']) ?>;
-    --pdf-ft-font-style: <?= esc($ft['font_style']) ?>;
-    --pdf-ft-transform: <?= esc($ft['text_transform']) ?>;
-    --pdf-ft-line-height: <?= esc((string) $ft['line_height']) ?>;
     --pdf-ft-row-gap: <?= esc((string) $ftRowGapPx) ?>px;
     --pdf-ft-column-border-width: <?= esc((string) $ftColW) ?>px;
     --pdf-ft-column-border-color: <?= esc((string) ($ft['column_border_color'] ?? '#DDDDDD')) ?>;
@@ -559,6 +550,16 @@ table.results.pdf-notes-table td.pdf-notes-cell {
     white-space: nowrap;
 }
 <?php if ($orderSheetHeaderEnabled): ?>
+.pdf-order-sheet-table-row td {
+    padding: 0;
+    vertical-align: middle;
+    white-space: nowrap;
+    font-family: "DejaVu Sans", Helvetica, Arial, sans-serif;
+    font-size: 9pt;
+    font-weight: 600;
+    line-height: 1.2;
+    color: #333333;
+}
 .pdf-order-sheet-header,
 .pdf-order-sheet-footer-band .pdf-order-sheet-header,
 .pdf-order-sheet-header-print-fixed .pdf-order-sheet-header,
@@ -582,6 +583,7 @@ table.results.pdf-notes-table td.pdf-notes-cell {
     vertical-align: middle;
     white-space: nowrap;
 }
+.pdf-order-sheet-table-row .pdf-order-sheet-header-patient,
 .pdf-order-sheet-header-patient,
 .pdf-order-sheet-footer-band .pdf-order-sheet-header-patient,
 .pdf-order-sheet-header-print-fixed .pdf-order-sheet-header-patient,
@@ -590,6 +592,7 @@ table.results.pdf-notes-table td.pdf-notes-cell {
     width: 50%;
     text-align: left;
 }
+.pdf-order-sheet-table-row .pdf-order-sheet-header-orden,
 .pdf-order-sheet-header-orden,
 .pdf-order-sheet-footer-band .pdf-order-sheet-header-orden,
 .pdf-order-sheet-header-print-fixed .pdf-order-sheet-header-orden,
@@ -608,25 +611,30 @@ table.results.pdf-notes-table td.pdf-notes-cell {
     box-sizing: border-box;
 }
 <?php if ($browserPrintMode): ?>
+body.report-browser-print.js-order-sheet-footer-table-row .pdf-ft-block.footer-grid .pdf-order-sheet-table-row,
 body.report-browser-print.js-order-sheet-footer-band .pdf-ft-block.footer-grid .pdf-order-sheet-footer-band {
-    display: block;
+    display: table-row !important;
+}
+body.report-browser-print.js-order-sheet-footer-table-row .pdf-ft-block.footer-grid .pdf-order-sheet-table-row td {
+    display: table-cell !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+    break-inside: avoid-page !important;
+    page-break-inside: avoid !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
 }
 <?php endif; ?>
 <?php if ($embedStylesheetForPdf && ! $browserPrintMode): ?>
-body.pdf-dompdf-download .pdf-ft-block.footer-grid .pdf-order-sheet-footer-band-dompdf {
-    display: block !important;
+body.pdf-dompdf-download .pdf-ft-block.footer-grid .pdf-order-sheet-table-row {
+    display: table-row !important;
     visibility: visible !important;
-    opacity: 1 !important;
-    width: 100% !important;
-    margin: 0 0 4px 0 !important;
-    padding: 0 0 5px 0 !important;
-    border-bottom: 1px solid rgba(0, 0, 0, 0.12) !important;
-    box-sizing: border-box !important;
     page-break-inside: avoid !important;
     break-inside: avoid-page !important;
 }
-body.pdf-dompdf-download .pdf-ft-block.footer-grid .pdf-order-sheet-footer-band-dompdf .pdf-order-sheet-header {
-    width: 100% !important;
+body.pdf-dompdf-download .pdf-ft-block.footer-grid .pdf-order-sheet-table-row td {
+    padding-top: 0 !important;
+    background: transparent !important;
 }
 <?php endif; ?>
 <?php endif; ?>
@@ -688,7 +696,9 @@ body.pdf-dompdf-download .pdf-pd-block .pdf-section-table .patient-line .label {
     font-size: <?= esc((string) $dompdfPdLblFs) ?>pt !important;
     line-height: inherit !important;
 }
-body.pdf-dompdf-download .header-piece-pagination {
+body.pdf-dompdf-download .pdf-hg-block .header-piece-pagination,
+body.pdf-dompdf-download .pdf-pd-block .header-piece-pagination,
+body.pdf-dompdf-download .lab-firmas-pdf-block .header-piece-pagination {
     z-index: 120;
     margin: 0;
     padding: 0;
@@ -697,19 +707,6 @@ body.pdf-dompdf-download .pdf-hg-block .header-piece-pagination,
 body.pdf-dompdf-download .pdf-pd-block .header-piece-pagination,
 body.pdf-dompdf-download .lab-firmas-pdf-block .header-piece-pagination {
     position: fixed;
-}
-body.pdf-dompdf-download .pdf-ft-block .header-piece-pagination {
-    position: static !important;
-    top: auto !important;
-    bottom: auto !important;
-    left: auto !important;
-    right: auto !important;
-    visibility: visible !important;
-    height: auto !important;
-    overflow: visible !important;
-}
-body.pdf-dompdf-download .pdf-ft-block .pdf-pagination-line--dompdf-footer::before {
-    content: none !important;
 }
 body.pdf-dompdf-download .pdf-hg-block .header-piece-pagination,
 body.pdf-dompdf-download .pdf-pd-block .header-piece-pagination {
@@ -720,17 +717,23 @@ body.pdf-dompdf-download .lab-firmas-pdf-block .header-piece-pagination {
     top: auto;
     bottom: <?= esc((string) $mb) ?>mm;
 }
-body.pdf-dompdf-download .pdf-cell--left .header-piece-pagination {
+body.pdf-dompdf-download .pdf-hg-block .pdf-cell--left .header-piece-pagination,
+body.pdf-dompdf-download .pdf-pd-block .pdf-cell--left .header-piece-pagination,
+body.pdf-dompdf-download .lab-firmas-pdf-block .pdf-cell--left .header-piece-pagination {
     left: <?= esc((string) $ml) ?>mm;
     right: auto;
     text-align: left;
 }
-body.pdf-dompdf-download .pdf-cell--center .header-piece-pagination {
+body.pdf-dompdf-download .pdf-hg-block .pdf-cell--center .header-piece-pagination,
+body.pdf-dompdf-download .pdf-pd-block .pdf-cell--center .header-piece-pagination,
+body.pdf-dompdf-download .lab-firmas-pdf-block .pdf-cell--center .header-piece-pagination {
     left: <?= esc((string) $ml) ?>mm;
     right: <?= esc((string) $mr) ?>mm;
     text-align: center;
 }
-body.pdf-dompdf-download .pdf-cell--right .header-piece-pagination {
+body.pdf-dompdf-download .pdf-hg-block .pdf-cell--right .header-piece-pagination,
+body.pdf-dompdf-download .pdf-pd-block .pdf-cell--right .header-piece-pagination,
+body.pdf-dompdf-download .lab-firmas-pdf-block .pdf-cell--right .header-piece-pagination {
     left: auto;
     right: <?= esc((string) $mr) ?>mm;
     text-align: right;

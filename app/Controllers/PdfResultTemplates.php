@@ -14,6 +14,35 @@ class PdfResultTemplates extends SecureArea
 {
     protected ?string $moduleId = 'config';
 
+    /** @var list<string> */
+    private const PDF_TEMPLATE_EDIT_TABS = [
+        'general',
+        'header',
+        'patient_doctor',
+        'results',
+        'notes',
+        'lab_firmas',
+        'footer',
+    ];
+
+    private function sanitizePdfTemplateEditTab(?string $tab): string
+    {
+        $tab = trim((string) $tab);
+
+        return in_array($tab, self::PDF_TEMPLATE_EDIT_TABS, true) ? $tab : 'general';
+    }
+
+    private function pdfTemplateEditUrl(int $id, ?string $tab = null): string
+    {
+        $url = 'config/pdf-templates/edit/' . $id;
+        $tab = $this->sanitizePdfTemplateEditTab($tab);
+        if ($tab !== 'general') {
+            $url .= '?tab=' . rawurlencode($tab);
+        }
+
+        return $url;
+    }
+
     public function index()
     {
         $templates = [];
@@ -63,6 +92,7 @@ class PdfResultTemplates extends SecureArea
         return view('config/pdf_templates_edit', [
             'template'                 => $template,
             'layout'                   => $layout,
+            'config_tab'               => $this->sanitizePdfTemplateEditTab($this->request->getGet('tab')),
             'active_pdf_template_id'   => $activePdfTplId,
             'active_print_template_id' => $activePrintTplId,
             'pdf_order_sheet_header_global' => \App\Services\ReportPdfLayoutService::isTenantOrderSheetHeaderGloballyEnabled(),
@@ -81,12 +111,13 @@ class PdfResultTemplates extends SecureArea
         $id = (int) $this->request->getPost('id');
         $name = trim((string) $this->request->getPost('name'));
         $layoutJson = (string) $this->request->getPost('layout_json');
+        $configTab = $this->sanitizePdfTemplateEditTab($this->request->getPost('config_tab'));
 
         if ($id < 1 || $name === '') {
             return redirect()->to('config/pdf-templates')->with('error', 'Datos inválidos.');
         }
         if (strlen($layoutJson) > 60000) {
-            return redirect()->to('config/pdf-templates/edit/' . $id)->with('error', 'El diseño es demasiado grande.');
+            return redirect()->to($this->pdfTemplateEditUrl($id, $configTab))->with('error', 'El diseño es demasiado grande.');
         }
 
         $model = model(ReportPdfTemplateModel::class);
@@ -96,12 +127,12 @@ class PdfResultTemplates extends SecureArea
 
         $decoded = json_decode($layoutJson, true);
         if (! is_array($decoded) || empty($decoded['blocks']) || ! is_array($decoded['blocks'])) {
-            return redirect()->to('config/pdf-templates/edit/' . $id)->with('error', 'Diseño JSON inválido.');
+            return redirect()->to($this->pdfTemplateEditUrl($id, $configTab))->with('error', 'Diseño JSON inválido.');
         }
 
         $styleErr = ReportPdfLayoutService::validateLayoutDecodedStyles($decoded);
         if ($styleErr !== null) {
-            return redirect()->to('config/pdf-templates/edit/' . $id)->with('error', $styleErr);
+            return redirect()->to($this->pdfTemplateEditUrl($id, $configTab))->with('error', $styleErr);
         }
 
         if ($this->request->getPost('watermark_remove') === '1') {
@@ -129,10 +160,10 @@ class PdfResultTemplates extends SecureArea
             $ext = strtolower((string) $upload->getClientExtension());
             $allowed = ['jpg', 'jpeg', 'png', 'gif', 'webp'];
             if (! in_array($ext, $allowed, true)) {
-                return redirect()->to('config/pdf-templates/edit/' . $id)->with('error', 'Marca de agua: use PNG, JPG, GIF o WebP.');
+                return redirect()->to($this->pdfTemplateEditUrl($id, $configTab))->with('error', 'Marca de agua: use PNG, JPG, GIF o WebP.');
             }
             if ($upload->getSize() > 2097152) {
-                return redirect()->to('config/pdf-templates/edit/' . $id)->with('error', 'La imagen de marca de agua no debe superar 2 MB.');
+                return redirect()->to($this->pdfTemplateEditUrl($id, $configTab))->with('error', 'La imagen de marca de agua no debe superar 2 MB.');
             }
 
             $dir = WRITEPATH . 'uploads' . DIRECTORY_SEPARATOR . 'report_pdf_templates' . DIRECTORY_SEPARATOR . $id;
@@ -142,7 +173,7 @@ class PdfResultTemplates extends SecureArea
             $newName = 'wm_' . bin2hex(random_bytes(8)) . '.' . $ext;
             $upload->move($dir, $newName);
             if (! is_file($dir . DIRECTORY_SEPARATOR . $newName)) {
-                return redirect()->to('config/pdf-templates/edit/' . $id)->with('error', 'No se pudo guardar la marca de agua.');
+                return redirect()->to($this->pdfTemplateEditUrl($id, $configTab))->with('error', 'No se pudo guardar la marca de agua.');
             }
             $rel = 'uploads/report_pdf_templates/' . $id . '/' . $newName;
             $decoded['watermark'] = array_merge(
@@ -165,7 +196,7 @@ class PdfResultTemplates extends SecureArea
 
         (new ConfigService())->invalidateCache();
 
-        return redirect()->to('config/pdf-templates/edit/' . $id)->with('success', 'Plantilla guardada.');
+        return redirect()->to($this->pdfTemplateEditUrl($id, $configTab))->with('success', 'Plantilla guardada.');
     }
 
     public function create(): ResponseInterface

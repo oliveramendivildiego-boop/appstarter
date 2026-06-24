@@ -319,7 +319,19 @@ $itemWrapperStyle = static function (array $item, int $col, string $typography =
 $itemWrapperClasses = static function (array $item, int $col) use ($colAlignH, $colAlignV): string {
     return \App\Services\ReportPdfLayoutService::instanceAlignItemClasses($item, $colAlignH, $colAlignV, $col);
 };
-$pdfTdStyle = static function (int $startCol, int $span, float $pctUnit, int $rowIndex, array $cellItems = []) use ($n, $lineHeight, $cellPadCss, $rowGapPx, $cellBorderCss, $itemAlignH, $itemAlignV): array {
+$resolveGridStack = static function (array $item, int $indexInCell): int {
+    return $indexInCell;
+};
+$itemTypographyCss = static function (array $item, string $elType) use ($textStyleCss, $lineHeight): string {
+    if ($elType === 'custom_text' && is_array($item['custom_text'] ?? null)) {
+        $ct = \App\Services\ReportPdfLayoutService::normalizeCustomTextPayload($item['custom_text']);
+
+        return \App\Services\ReportPdfLayoutService::textStyleArrayToInlineCss($ct['value_style']);
+    }
+
+    return $textStyleCss(is_array($item['text_style'] ?? null) ? $item['text_style'] : []);
+};
+$pdfTdStyle = static function (int $startCol, int $span, float $pctUnit, int $rowIndex, array $cellItems = []) use ($n, $lineHeight, $cellPadCss, $rowGapPx, $cellBorderCss, $itemAlignH, $itemAlignV, $sectionKeyStr): array {
     $startCol = max(0, min($n - 1, $startCol));
     $h        = 'left';
     $v        = 'top';
@@ -327,6 +339,10 @@ $pdfTdStyle = static function (int $startCol, int $span, float $pctUnit, int $ro
         $only = $cellItems[0];
         $h    = $itemAlignH($only, $startCol);
         $v    = $itemAlignV($only, $startCol);
+    } elseif (count($cellItems) > 1 && $sectionKeyStr === 'footer') {
+        $first = $cellItems[0];
+        $h     = $itemAlignH($first, $startCol);
+        $v     = 'top';
     } elseif (count($cellItems) > 1) {
         $h = 'left';
         $v = 'top';
@@ -357,6 +373,9 @@ echo $sectionWrapperStyle !== '' ? ' style="' . esc($sectionWrapperStyle, 'attr'
 <?php endif; ?>
 <?php if (count($rows) > 0): ?>
 <table class="pdf-section-table" width="100%" data-pdf-lh="1" style="table-layout:fixed;border-collapse:collapse;line-height:<?= esc((string) $lineHeight, 'attr') ?>;">
+<?php if (trim((string) ($section_table_prepend_rows ?? '')) !== ''): ?>
+<?= $section_table_prepend_rows ?>
+<?php endif; ?>
 <?php foreach ($rows as $rowIndex => $row): ?>
     <tr class="pdf-section-row" data-pdf-row="<?= (int) $rowIndex ?>">
 <?php
@@ -378,10 +397,10 @@ echo $sectionWrapperStyle !== '' ? ' style="' . esc($sectionWrapperStyle, 'attr'
             $tdInfo   = $pdfTdStyle($startCol, $span, $pct, (int) $rowIndex, $block['items']);
             ?>
         <td class="pdf-cell pdf-cell--<?= esc($tdInfo['alignCls']) ?>" colspan="<?= $span ?>" style="<?= esc($tdInfo['style'], 'attr') ?>">
-            <?php foreach ($block['items'] as $cellItem):
+            <?php foreach ($block['items'] as $stackIndex => $cellItem):
                 $elType = (string) ($cellItem['element_type'] ?? '');
                 $isCustomText = ($elType === 'custom_text');
-                $typography   = $isCustomText ? '' : $textStyleCss(is_array($cellItem['text_style'] ?? null) ? $cellItem['text_style'] : []);
+                $typography   = $itemTypographyCss($cellItem, $elType);
                 $itemCol      = (int) ($cellItem['col'] ?? $startCol);
                 $wrapStyle    = $itemWrapperStyle($cellItem, $itemCol, $typography !== '' ? $typography . ';' : '');
                 $wrapClasses  = $itemWrapperClasses($cellItem, $itemCol);
@@ -394,7 +413,7 @@ echo $sectionWrapperStyle !== '' ? ' style="' . esc($sectionWrapperStyle, 'attr'
                     'pdf_grid_row'     => (int) $rowIndex,
                     'pdf_grid_column'  => (int) ($cellItem['col'] ?? 0),
                     'pdf_grid_column_span' => (int) ($cellItem['span'] ?? 1),
-                    'pdf_grid_stack'   => array_key_exists('grid_stack', $cellItem) ? (int) ($cellItem['grid_stack'] ?? 0) : 0,
+                    'pdf_grid_stack'   => $resolveGridStack($cellItem, (int) $stackIndex),
                     'pdf_text_style'   => is_array($cellItem['text_style'] ?? null) ? $cellItem['text_style'] : [],
                     'pdf_label_value_gap_px' => array_key_exists('label_value_gap_px', $cellItem) ? (int) ($cellItem['label_value_gap_px'] ?? 0) : null,
                     'pdf_label_space_above_px' => array_key_exists('label_space_above_px', $cellItem) ? (int) ($cellItem['label_space_above_px'] ?? 0) : null,
@@ -421,10 +440,10 @@ echo $sectionWrapperStyle !== '' ? ' style="' . esc($sectionWrapperStyle, 'attr'
             $tdInfo = $pdfTdStyle($c, 1, $pct, (int) $rowIndex, $stackItems);
             ?>
         <td class="pdf-cell pdf-cell--<?= esc($tdInfo['alignCls']) ?>" style="<?= esc($tdInfo['style'], 'attr') ?>">
-            <?php foreach ($stackItems as $stackItem):
+            <?php foreach ($stackItems as $stackIndex => $stackItem):
                 $elType = (string) ($stackItem['element_type'] ?? '');
                 $isCustomText = ($elType === 'custom_text');
-                $typography   = $isCustomText ? '' : $textStyleCss(is_array($stackItem['text_style'] ?? null) ? $stackItem['text_style'] : []);
+                $typography   = $itemTypographyCss($stackItem, $elType);
                 $itemCol      = (int) ($stackItem['col'] ?? $c);
                 $wrapStyle    = $itemWrapperStyle($stackItem, $itemCol, $typography !== '' ? $typography . ';' : '');
                 $wrapClasses  = $itemWrapperClasses($stackItem, $itemCol);
@@ -437,7 +456,7 @@ echo $sectionWrapperStyle !== '' ? ' style="' . esc($sectionWrapperStyle, 'attr'
                     'pdf_grid_row'     => (int) $rowIndex,
                     'pdf_grid_column'  => (int) ($stackItem['col'] ?? $c),
                     'pdf_grid_column_span' => (int) ($stackItem['span'] ?? 1),
-                    'pdf_grid_stack'   => array_key_exists('grid_stack', $stackItem) ? (int) ($stackItem['grid_stack'] ?? 0) : 0,
+                    'pdf_grid_stack'   => $resolveGridStack($stackItem, (int) $stackIndex),
                     'pdf_text_style'   => is_array($stackItem['text_style'] ?? null) ? $stackItem['text_style'] : [],
                     'pdf_label_value_gap_px' => array_key_exists('label_value_gap_px', $stackItem) ? (int) ($stackItem['label_value_gap_px'] ?? 0) : null,
                     'pdf_label_space_above_px' => array_key_exists('label_space_above_px', $stackItem) ? (int) ($stackItem['label_space_above_px'] ?? 0) : null,

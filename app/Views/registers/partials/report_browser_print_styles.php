@@ -251,23 +251,25 @@ body.js-total-pages-ready .pdf-counter-pages::before {
         padding: 0 !important;
         border: 0 !important;
     }
+    body.report-browser-print.js-order-sheet-footer-table-row .pdf-ft-block.footer-grid .pdf-order-sheet-table-row,
     body.report-browser-print.js-order-sheet-footer-band .pdf-ft-block.footer-grid .pdf-order-sheet-footer-band,
     body.report-browser-print .pdf-ft-block.footer-grid .pdf-order-sheet-footer-band-dompdf {
-        display: block !important;
+        display: table-row !important;
         visibility: visible !important;
         opacity: 1 !important;
-        width: 100% !important;
-        margin: 0 0 4px 0 !important;
-        padding: 0 0 5px 0 !important;
-        border-bottom: 1px solid rgba(0, 0, 0, 0.12) !important;
-        box-sizing: border-box !important;
         break-inside: avoid-page !important;
         page-break-inside: avoid !important;
         -webkit-print-color-adjust: exact !important;
         print-color-adjust: exact !important;
     }
+    body.report-browser-print.js-order-sheet-footer-table-row .pdf-ft-block.footer-grid .pdf-order-sheet-table-row td {
+        display: table-cell !important;
+        visibility: visible !important;
+        opacity: 1 !important;
+    }
     body.report-browser-print.js-order-sheet-header-in-flow .pdf-ft-block.footer-grid .pdf-order-sheet-footer-band,
-    body.report-browser-print.js-order-sheet-header-in-flow .pdf-ft-block.footer-grid .pdf-order-sheet-footer-band-dompdf {
+    body.report-browser-print.js-order-sheet-header-in-flow .pdf-ft-block.footer-grid .pdf-order-sheet-footer-band-dompdf,
+    body.report-browser-print.js-order-sheet-header-in-flow .pdf-ft-block.footer-grid .pdf-order-sheet-table-row {
         display: none !important;
         visibility: hidden !important;
         height: 0 !important;
@@ -322,7 +324,24 @@ body.js-total-pages-ready .pdf-counter-pages::before {
             var(--print-order-sheet-band-reserve-mm, <?= esc((string) $orderSheetBandReserveMm) ?>) * 1mm
         ) !important;
     }
-    body.report-browser-print .header-piece-pagination {
+    body.report-browser-print .pdf-osh-page1-cover {
+        display: block !important;
+        visibility: visible !important;
+        height: calc(var(--print-order-sheet-band-reserve-mm, <?= esc((string) $orderSheetBandReserveMm) ?>) * 1mm) !important;
+        margin-top: calc(var(--print-order-sheet-band-reserve-mm, <?= esc((string) $orderSheetBandReserveMm) ?>) * -1mm) !important;
+        background: #ffffff !important;
+        position: relative !important;
+        z-index: 6 !important;
+        break-after: avoid-page !important;
+        page-break-after: avoid !important;
+        border: 0 !important;
+        padding: 0 !important;
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
+    }
+    body.report-browser-print .pdf-hg-block .header-piece-pagination,
+    body.report-browser-print .pdf-pd-block .header-piece-pagination,
+    body.report-browser-print .lab-firmas-pdf-block .header-piece-pagination {
         z-index: 120 !important;
         margin: 0 !important;
         padding: 0 !important;
@@ -333,9 +352,6 @@ body.js-total-pages-ready .pdf-counter-pages::before {
     body.report-browser-print .lab-firmas-pdf-block .header-piece-pagination {
         position: fixed !important;
     }
-    body.report-browser-print .pdf-ft-block .header-piece-pagination {
-        position: static !important;
-    }
     body.report-browser-print .pdf-hg-block .header-piece-pagination,
     body.report-browser-print .pdf-pd-block .header-piece-pagination {
         top: calc(var(--print-margin-top-mm, <?= esc((string) $mt) ?>) * 1mm) !important;
@@ -345,17 +361,23 @@ body.js-total-pages-ready .pdf-counter-pages::before {
         top: auto !important;
         bottom: calc((var(--print-margin-bottom-mm, <?= esc((string) $mb) ?>) + var(--print-footer-reserve-mm, <?= esc((string) $pdfFooterReserveMm) ?>)) * 1mm) !important;
     }
-    body.report-browser-print .pdf-cell--left .header-piece-pagination {
+    body.report-browser-print .pdf-hg-block .pdf-cell--left .header-piece-pagination,
+    body.report-browser-print .pdf-pd-block .pdf-cell--left .header-piece-pagination,
+    body.report-browser-print .lab-firmas-pdf-block .pdf-cell--left .header-piece-pagination {
         left: calc(var(--print-margin-left-mm, <?= esc((string) $ml) ?>) * 1mm) !important;
         right: auto !important;
         text-align: left !important;
     }
-    body.report-browser-print .pdf-cell--center .header-piece-pagination {
+    body.report-browser-print .pdf-hg-block .pdf-cell--center .header-piece-pagination,
+    body.report-browser-print .pdf-pd-block .pdf-cell--center .header-piece-pagination,
+    body.report-browser-print .lab-firmas-pdf-block .pdf-cell--center .header-piece-pagination {
         left: calc(var(--print-margin-left-mm, <?= esc((string) $ml) ?>) * 1mm) !important;
         right: calc(var(--print-margin-right-mm, <?= esc((string) $mr) ?>) * 1mm) !important;
         text-align: center !important;
     }
-    body.report-browser-print .pdf-cell--right .header-piece-pagination {
+    body.report-browser-print .pdf-hg-block .pdf-cell--right .header-piece-pagination,
+    body.report-browser-print .pdf-pd-block .pdf-cell--right .header-piece-pagination,
+    body.report-browser-print .lab-firmas-pdf-block .pdf-cell--right .header-piece-pagination {
         left: auto !important;
         right: calc(var(--print-margin-right-mm, <?= esc((string) $mr) ?>) * 1mm) !important;
         text-align: right !important;

@@ -1,6 +1,6 @@
 <?php
 /**
- * Banda Paciente / No. Orden en impresión navegador (desde hoja 2, en flujo al inicio de cada hoja).
+ * Banda Paciente / No. Orden en impresión navegador (desde hoja 2, fila en pdf-section-table del pie).
  *
  * @var bool $order_sheet_header_enabled
  */
@@ -41,6 +41,15 @@ if (empty($order_sheet_header_enabled)) {
         return wrap;
     }
 
+    function buildOrderSheetTemplateFromFooterRow(footerRow) {
+        var tpl = document.createElement('div');
+        var patientCell = footerRow.querySelector('.pdf-order-sheet-header-patient');
+        var orderCell = footerRow.querySelector('.pdf-order-sheet-header-orden');
+        tpl.setAttribute('data-patient-line', patientCell ? (patientCell.textContent || '').trim() : '');
+        tpl.setAttribute('data-order-line', orderCell ? (orderCell.textContent || '').trim() : '');
+        return tpl;
+    }
+
     function clearOrderSheetHeaderPrintArtifacts() {
         document.querySelectorAll(
             '.pdf-order-sheet-header-print-fixed, .pdf-order-sheet-header-injected, '
@@ -52,19 +61,23 @@ if (empty($order_sheet_header_enabled)) {
         document.querySelectorAll('.pdf-ft-block.footer-grid .pdf-order-sheet-footer-band').forEach(function(node) {
             node.style.removeProperty('display');
         });
+        document.querySelectorAll('.pdf-ft-block.footer-grid .pdf-order-sheet-table-row').forEach(function(node) {
+            node.style.removeProperty('display');
+        });
         document.body.classList.remove(
             'js-order-sheet-header-print',
             'js-order-sheet-header-in-flow',
             'js-order-sheet-footer-band',
+            'js-order-sheet-footer-table-row',
             'js-order-sheet-footer-band-standalone'
         );
     }
 
-    function hideEmbeddedFooterBand(footer) {
+    function hideEmbeddedFooterOrderSheet(footer) {
         if (!footer) {
             return;
         }
-        footer.querySelectorAll('.pdf-order-sheet-footer-band').forEach(function(node) {
+        footer.querySelectorAll('.pdf-order-sheet-footer-band, .pdf-order-sheet-table-row').forEach(function(node) {
             node.style.setProperty('display', 'none', 'important');
         });
     }
@@ -97,6 +110,29 @@ if (empty($order_sheet_header_enabled)) {
         return best;
     }
 
+    function insertPage1OrderSheetCover(container) {
+        if (!window.reportPrintPagination || typeof window.reportPrintPagination.buildBoundaries !== 'function') {
+            return;
+        }
+        var boundarySet = window.reportPrintPagination.buildBoundaries(container);
+        var boundaries = boundarySet.boundaries || [];
+        if (boundaries.length < 1) {
+            return;
+        }
+        var page2Start = boundaries[0];
+        if (!isFinite(page2Start) || page2Start <= 0) {
+            return;
+        }
+        var anchor = firstElementAtOrAfter(container, page2Start);
+        if (!anchor) {
+            return;
+        }
+        var cover = document.createElement('div');
+        cover.className = 'pdf-osh-page1-cover';
+        cover.setAttribute('aria-hidden', 'true');
+        container.insertBefore(cover, anchor);
+    }
+
     function injectBandsInFlow(tpl, container) {
         if (!window.reportPrintPagination || typeof window.reportPrintPagination.buildBoundaries !== 'function') {
             return false;
@@ -126,14 +162,10 @@ if (empty($order_sheet_header_enabled)) {
     window.injectOrderSheetHeadersFromPageTwo = function() {
         var tpl = document.getElementById('pdf-order-sheet-header-template');
         var footer = document.querySelector('.pdf-ft-block.footer-grid');
-        var footerBand = footer ? footer.querySelector('.pdf-order-sheet-footer-band') : null;
+        var footerTableRow = footer ? footer.querySelector('.pdf-order-sheet-table-row') : null;
 
-        if (!tpl && footerBand) {
-            tpl = document.createElement('div');
-            var patientCell = footerBand.querySelector('.pdf-order-sheet-header-patient');
-            var orderCell = footerBand.querySelector('.pdf-order-sheet-header-orden');
-            tpl.setAttribute('data-patient-line', patientCell ? (patientCell.textContent || '').trim() : '');
-            tpl.setAttribute('data-order-line', orderCell ? (orderCell.textContent || '').trim() : '');
+        if (!tpl && footerTableRow) {
+            tpl = buildOrderSheetTemplateFromFooterRow(footerTableRow);
         }
 
         if (!tpl) {
@@ -141,7 +173,18 @@ if (empty($order_sheet_header_enabled)) {
         }
 
         clearOrderSheetHeaderPrintArtifacts();
-        hideEmbeddedFooterBand(footer);
+
+        if (footerTableRow) {
+            document.body.classList.add('js-order-sheet-footer-table-row');
+            var container = document.querySelector('.pdf-main-stack') || document.body;
+            insertPage1OrderSheetCover(container);
+            if (typeof window.syncReportPrintLayoutMetrics === 'function') {
+                window.syncReportPrintLayoutMetrics();
+            }
+            return true;
+        }
+
+        hideEmbeddedFooterOrderSheet(footer);
 
         var container = document.querySelector('.pdf-main-stack') || document.body;
         if (!injectBandsInFlow(tpl, container)) {

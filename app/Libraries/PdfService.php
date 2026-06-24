@@ -288,6 +288,10 @@ class PdfService
      */
     protected function buildPaginationCallbacks(array $slots): array
     {
+        $slots = array_values(array_filter(
+            $slots,
+            static fn (array $slot): bool => strtolower((string) ($slot['zone'] ?? 'header')) !== 'footer'
+        ));
         if ($slots === []) {
             return [];
         }
@@ -410,7 +414,7 @@ class PdfService
     }
 
     /**
-     * @return array{patient: string, order: string, ml: float, mr: float, mb: float, footerReserveMm: float, gapMm: float}|null
+     * @return array{patient: string, order: string, ml: float, mr: float, mb: float, footerReserveMm: float, gapMm: float, footerBg: string, rowHeightMm: float}|null
      */
     protected function extractOrderSheetHeaderSlot(string $html): ?array
     {
@@ -442,11 +446,13 @@ class PdfService
             'mb'              => max(0.0, (float) ($data['mb'] ?? 15)),
             'footerReserveMm' => max(0.0, (float) ($data['footerReserveMm'] ?? 0)),
             'gapMm'           => max(0.0, (float) ($data['gapMm'] ?? 1.5)),
+            'footerBg'        => (string) ($data['footerBg'] ?? '#ffffff'),
+            'rowHeightMm'     => max(1.0, (float) ($data['rowHeightMm'] ?? 4.5)),
         ];
     }
 
     /**
-     * @param array{patient: string, order: string, ml: float, mr: float, mb: float, footerReserveMm: float, gapMm: float}|null $slot
+     * @param array{patient: string, order: string, ml: float, mr: float, mb: float, footerReserveMm: float, gapMm: float, footerBg: string, rowHeightMm: float}|null $slot
      *
      * @return list<array{event: string, f: callable}>
      */
@@ -459,19 +465,21 @@ class PdfService
         return [[
             'event' => 'end_document',
             'f'     => function (int $pageNumber, int $pageCount, $canvas, FontMetrics $fontMetrics) use ($slot): void {
-                unset($pageCount);
-                if ($pageNumber < 2) {
+                unset($pageCount, $fontMetrics);
+                if ($pageNumber !== 1) {
                     return;
                 }
-                $this->paintOrderSheetHeaderOnPage($canvas, $fontMetrics, $slot);
+                $this->paintOrderSheetHeaderPage1Cover($canvas, $slot);
             },
         ]];
     }
 
     /**
-     * @param array{patient: string, order: string, ml: float, mr: float, mb: float, footerReserveMm: float, gapMm: float} $slot
+     * Oculta la fila Paciente / No. Orden en la 1.ª hoja (el HTML del pie se repite en todas).
+     *
+     * @param array{patient: string, order: string, ml: float, mr: float, mb: float, footerReserveMm: float, gapMm: float, footerBg: string, rowHeightMm: float} $slot
      */
-    protected function paintOrderSheetHeaderOnPage($canvas, FontMetrics $fontMetrics, array $slot): void
+    protected function paintOrderSheetHeaderPage1Cover($canvas, array $slot): void
     {
         if (! method_exists($canvas, 'get_cpdf')) {
             return;
@@ -486,30 +494,14 @@ class PdfService
             $mb     = $slot['mb'] * $mmToPt;
             $gap    = $slot['gapMm'] * $mmToPt;
             $footer = $slot['footerReserveMm'] * $mmToPt;
+            $rowH   = $slot['rowHeightMm'] * $mmToPt;
 
-            $fontSize   = 9.0;
-            $fontFamily = 'DejaVu Sans';
-            $font       = $fontMetrics->getFont($fontFamily, 'normal');
-            $subset     = $canvas->get_dompdf()->getOptions()->getIsFontSubsettingEnabled();
-            $cpdf->selectFont($font, '', true, $subset);
-
-            $y = $mb + $footer + $gap + ($fontSize * 0.85);
-
-            $cpdf->setColor($this->hexColorToRgb('#333333'), true);
-
-            $patient = $slot['patient'];
-            if ($patient !== '') {
-                $cpdf->addText($ml, $y, $fontSize, $patient, 0);
-            }
-
-            $order = $slot['order'];
-            if ($order !== '') {
-                $orderWidth = (float) $cpdf->getTextWidth($fontSize, $order);
-                $orderX     = max($ml, $pageW - $mr - $orderWidth);
-                $cpdf->addText($orderX, $y, $fontSize, $order, 0);
-            }
+            $yBase  = $mb + $footer + $gap;
+            $rgb    = $this->hexColorToRgb($slot['footerBg']);
+            $cpdf->setColor($rgb, true);
+            $cpdf->filledRectangle($ml, $yBase, $pageW - $ml - $mr, $rowH);
         } catch (\Throwable $e) {
-            // Sin banda si la fuente o el canvas no están disponibles.
+            // Sin cubierta si el canvas no está disponible.
         }
     }
 

@@ -99,7 +99,8 @@ $orderSheetBufferMm = 0.5;
             return 0;
         }
 
-        var bandNode = document.querySelector('.pdf-order-sheet-header-injected .pdf-order-sheet-header')
+        var bandNode = document.querySelector('.pdf-ft-block.footer-grid .pdf-order-sheet-table-row')
+            || document.querySelector('.pdf-order-sheet-header-injected .pdf-order-sheet-header')
             || document.querySelector('.pdf-order-sheet-header-injected');
         if (bandNode) {
             var measuredMm = pxToMm(bandNode.offsetHeight || bandNode.scrollHeight || 0);

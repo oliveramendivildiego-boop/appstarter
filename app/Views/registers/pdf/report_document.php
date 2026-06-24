@@ -73,6 +73,11 @@ $ctx = [
 <?php
 $analisisVariant = (string) ($analisis_variant ?? 'pdf');
 $useDompdfWatermarkCallback = $analisisVariant === 'pdf';
+$isDompdfPdf = $analisisVariant === 'pdf';
+$footerRenderCtx = array_merge($ctx, [
+    'footer_dompdf_fixed'     => $isDompdfPdf,
+    'footer_order_sheet_band' => in_array($analisisVariant, ['pdf', 'browser_print', 'screen_pdf'], true),
+]);
 if ($wmUri !== null && $wmUri !== ''):
     $wmSize     = max(10, min(95, (int) $sizeW));
     $opacityCss = number_format(max(0.05, min(0.9, $opacityW)), 2, '.', '');
@@ -127,10 +132,5 @@ endforeach; ?>
     'analisis_variant'  => $ctx['analisis_variant'] ?? 'pdf',
 ]) ?>
 <?php if ($footerBlockEnabled): ?>
-<?php
-echo view($pdfBlockViews['footer'], array_merge($ctx, [
-    'footer_dompdf_fixed'       => ($ctx['analisis_variant'] ?? 'pdf') === 'pdf',
-    'footer_order_sheet_band'   => in_array($ctx['analisis_variant'] ?? 'pdf', ['pdf', 'browser_print', 'screen_pdf'], true),
-]));
-?>
+<?= view($pdfBlockViews['footer'], $footerRenderCtx) ?>
 <?php endif; ?>

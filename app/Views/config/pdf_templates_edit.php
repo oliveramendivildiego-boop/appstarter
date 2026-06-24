@@ -32,6 +32,26 @@ foreach ($layout['instances'] ?? [] as $inst) {
         $instLabFirmas[] = $inst;
     }
 }
+$footerMatrixTypeSet = array_fill_keys(\App\Services\ReportPdfLayoutService::FOOTER_FIELD_ORDER, true);
+foreach ($instFooter as $inst) {
+    if (! is_array($inst)) {
+        continue;
+    }
+    $en = $inst['enabled'] ?? true;
+    if ($en === false || $en === 0 || $en === '0') {
+        continue;
+    }
+    if ((int) ($inst['column'] ?? -1) < 0) {
+        continue;
+    }
+    $t = (string) ($inst['element_type'] ?? '');
+    if ($t !== '') {
+        $footerMatrixTypeSet[$t] = true;
+    }
+}
+$footerMatrixTypeList = array_keys($footerMatrixTypeSet);
+sort($footerMatrixTypeList);
+$ftFieldUi = \App\Services\ReportPdfLayoutService::footerFieldLabels();
 $mm = $layout['margins_mm'] ?? \App\Services\ReportPdfLayoutService::defaultMarginsMmStatic();
 $wm = $layout['watermark'] ?? \App\Services\ReportPdfLayoutService::defaultWatermarkStatic();
 $ps = is_array($layout['page_style'] ?? null) ? $layout['page_style'] : \App\Services\ReportPdfLayoutService::defaultPageStyleStatic();
@@ -98,6 +118,11 @@ $labelsShort = [
     'lab_firmas_approver_cargo'         => '',
     'lab_firmas_matricula'              => '',
 ];
+$configTab = (string) ($config_tab ?? 'general');
+$pdfConfigTabs = ['general', 'header', 'patient_doctor', 'results', 'notes', 'lab_firmas', 'footer'];
+if (! in_array($configTab, $pdfConfigTabs, true)) {
+    $configTab = 'general';
+}
 ?>
 <?= $this->section('content') ?>
 <?= view('partial/breadcrumb_nav', ['items' => [
@@ -123,6 +148,7 @@ $labelsShort = [
 <?= form_open(site_url('config/pdf-templates/save'), ['id' => 'pdf_tpl_form', 'enctype' => 'multipart/form-data']) ?>
     <?= csrf_field() ?>
     <input type="hidden" name="id" value="<?= (int) ($template->id ?? 0) ?>">
+    <input type="hidden" name="config_tab" id="config_tab" value="<?= esc($configTab, 'attr') ?>">
     <input type="hidden" name="layout_json" id="layout_json" value="">
     <div class="d-flex flex-wrap gap-2 mb-3">
         <button type="submit" class="btn btn-primary"><i class="fa-solid fa-floppy-disk me-1"></i> Guardar plantilla</button>
@@ -133,13 +159,13 @@ $labelsShort = [
 <div class="card shadow-sm mb-4">
     <div class="card-body py-3">
         <ul class="nav nav-tabs flex-wrap gap-1" id="pdf_config_tabs" role="tablist">
-            <li class="nav-item" role="presentation"><button class="nav-link active" type="button" data-config-tab="general">General</button></li>
-            <li class="nav-item" role="presentation"><button class="nav-link" type="button" data-config-tab="header">Encabezado</button></li>
-            <li class="nav-item" role="presentation"><button class="nav-link" type="button" data-config-tab="patient_doctor">Paciente / médico</button></li>
-            <li class="nav-item" role="presentation"><button class="nav-link" type="button" data-config-tab="results">Resultados</button></li>
-            <li class="nav-item" role="presentation"><button class="nav-link" type="button" data-config-tab="notes">Notas</button></li>
-            <li class="nav-item" role="presentation"><button class="nav-link" type="button" data-config-tab="lab_firmas">Validación / firmas</button></li>
-            <li class="nav-item" role="presentation"><button class="nav-link" type="button" data-config-tab="footer">Pie</button></li>
+            <li class="nav-item" role="presentation"><button class="nav-link<?= $configTab === 'general' ? ' active' : '' ?>" type="button" data-config-tab="general">General</button></li>
+            <li class="nav-item" role="presentation"><button class="nav-link<?= $configTab === 'header' ? ' active' : '' ?>" type="button" data-config-tab="header">Encabezado</button></li>
+            <li class="nav-item" role="presentation"><button class="nav-link<?= $configTab === 'patient_doctor' ? ' active' : '' ?>" type="button" data-config-tab="patient_doctor">Paciente / médico</button></li>
+            <li class="nav-item" role="presentation"><button class="nav-link<?= $configTab === 'results' ? ' active' : '' ?>" type="button" data-config-tab="results">Resultados</button></li>
+            <li class="nav-item" role="presentation"><button class="nav-link<?= $configTab === 'notes' ? ' active' : '' ?>" type="button" data-config-tab="notes">Notas</button></li>
+            <li class="nav-item" role="presentation"><button class="nav-link<?= $configTab === 'lab_firmas' ? ' active' : '' ?>" type="button" data-config-tab="lab_firmas">Validación / firmas</button></li>
+            <li class="nav-item" role="presentation"><button class="nav-link<?= $configTab === 'footer' ? ' active' : '' ?>" type="button" data-config-tab="footer">Pie</button></li>
         </ul>
         <p class="small text-muted mt-2 mb-0">Cada pestaña muestra solo la configuración del bloque correspondiente.</p>
     </div>
@@ -398,52 +424,19 @@ $labelsShort = [
             <div class="col-6 col-md-3"><label class="form-label small" for="ft_text_transform">Transformación</label><select class="form-select form-select-sm" id="ft_text_transform"><?php foreach (['none' => 'Normal', 'uppercase' => 'MAYÚSCULAS', 'lowercase' => 'minúsculas', 'capitalize' => 'Tipo título'] as $k => $v): ?><option value="<?= esc($k, 'attr') ?>" <?= ($ft['text_transform'] ?? '') === $k ? 'selected' : '' ?>><?= esc($v) ?></option><?php endforeach; ?></select></div>
             <div class="col-6 col-md-2"><label class="form-label small" for="ft_line_height">Interlineado</label><input type="number" class="form-control form-control-sm" id="ft_line_height" min="1" max="3" step="0.05" value="<?= esc((string) ($ft['line_height'] ?? 1.35), 'attr') ?>"></div>
         </div>
-        <div class="row g-2 mb-2">
-            <div class="col-6 col-md-3"><label class="form-label small" for="ft_color_company">Color nombre laboratorio</label><input type="color" class="form-control form-control-color" id="ft_color_company" value="<?= esc((string) ($ft['footer_company_text_color'] ?? $ft['body_text_color']), 'attr') ?>"></div>
-            <div class="col-6 col-md-3"><label class="form-label small" for="ft_color_label_generated">Color texto antes de la fecha</label><input type="color" class="form-control form-control-color" id="ft_color_label_generated" value="<?= esc((string) ($ft['label_footer_generated_color'] ?? $ft['body_text_color']), 'attr') ?>"></div>
-            <div class="col-6 col-md-3"><label class="form-label small" for="ft_color_datetime">Color fecha y hora</label><input type="color" class="form-control form-control-color" id="ft_color_datetime" value="<?= esc((string) ($ft['label_footer_datetime_color'] ?? $ft['body_text_color']), 'attr') ?>"></div>
-            <div class="col-6 col-md-3"><label class="form-label small" for="ft_color_policy">Color texto legal / política</label><input type="color" class="form-control form-control-color" id="ft_color_policy" value="<?= esc((string) ($ft['footer_policy_text_color'] ?? $ft['body_text_color']), 'attr') ?>"></div>
-        </div>
-        <p class="small text-muted mb-2">Tamaño, grosor y estilo por texto (si no coincide con la vista, guarde la plantilla y recargue el reporte). El PDF y viewreport usan estos valores en el HTML.</p>
-        <div class="table-responsive mb-2">
-            <table class="table table-sm table-bordered align-middle mb-0">
-                <thead class="table-light"><tr class="small"><th>Texto del pie</th><th style="width:6rem;">Tamaño (pt)</th><th style="width:7rem;">Grosor</th><th style="width:7rem;">Estilo</th><th style="width:9rem;">Transformación</th></tr></thead>
-                <tbody class="small">
-                    <tr>
-                        <td>Nombre del laboratorio</td>
-                        <td><input type="number" class="form-control form-control-sm" id="ft_fs_company" min="7" max="20" step="0.5" value="<?= esc((string) ($ft['footer_company_font_size_pt'] ?? $ft['font_size_pt']), 'attr') ?>"></td>
-                        <td><select class="form-select form-select-sm" id="ft_fw_company"><?php foreach (['normal', 'bold', '400', '500', '600', '700', '800'] as $w): ?><option value="<?= esc($w, 'attr') ?>" <?= ($ft['footer_company_font_weight'] ?? $ft['font_weight']) === $w ? 'selected' : '' ?>><?= esc($w) ?></option><?php endforeach; ?></select></td>
-                        <td><select class="form-select form-select-sm" id="ft_fst_company"><?php foreach (['normal', 'italic', 'oblique'] as $st): ?><option value="<?= esc($st, 'attr') ?>" <?= ($ft['footer_company_font_style'] ?? $ft['font_style']) === $st ? 'selected' : '' ?>><?= esc(ucfirst($st)) ?></option><?php endforeach; ?></select></td>
-                        <td><select class="form-select form-select-sm" id="ft_tt_company"><?php foreach (['none' => 'Normal', 'uppercase' => 'MAYÚSCULAS', 'lowercase' => 'minúsculas', 'capitalize' => 'Tipo título'] as $k => $v): ?><option value="<?= esc($k, 'attr') ?>" <?= ($ft['footer_company_text_transform'] ?? $ft['text_transform']) === $k ? 'selected' : '' ?>><?= esc($v) ?></option><?php endforeach; ?></select></td>
-                    </tr>
-                    <tr>
-                        <td>Texto antes de la fecha</td>
-                        <td><input type="number" class="form-control form-control-sm" id="ft_fs_label_gen" min="7" max="20" step="0.5" value="<?= esc((string) ($ft['label_footer_generated_font_size_pt'] ?? $ft['font_size_pt']), 'attr') ?>"></td>
-                        <td><select class="form-select form-select-sm" id="ft_fw_label_gen"><?php foreach (['normal', 'bold', '400', '500', '600', '700', '800'] as $w): ?><option value="<?= esc($w, 'attr') ?>" <?= ($ft['label_footer_generated_font_weight'] ?? $ft['font_weight']) === $w ? 'selected' : '' ?>><?= esc($w) ?></option><?php endforeach; ?></select></td>
-                        <td><select class="form-select form-select-sm" id="ft_fst_label_gen"><?php foreach (['normal', 'italic', 'oblique'] as $st): ?><option value="<?= esc($st, 'attr') ?>" <?= ($ft['label_footer_generated_font_style'] ?? $ft['font_style']) === $st ? 'selected' : '' ?>><?= esc(ucfirst($st)) ?></option><?php endforeach; ?></select></td>
-                        <td><select class="form-select form-select-sm" id="ft_tt_label_gen"><?php foreach (['none' => 'Normal', 'uppercase' => 'MAYÚSCULAS', 'lowercase' => 'minúsculas', 'capitalize' => 'Tipo título'] as $k => $v): ?><option value="<?= esc($k, 'attr') ?>" <?= ($ft['label_footer_generated_text_transform'] ?? $ft['text_transform']) === $k ? 'selected' : '' ?>><?= esc($v) ?></option><?php endforeach; ?></select></td>
-                    </tr>
-                    <tr>
-                        <td>Fecha y hora generadas</td>
-                        <td><input type="number" class="form-control form-control-sm" id="ft_fs_datetime" min="7" max="20" step="0.5" value="<?= esc((string) ($ft['label_footer_datetime_font_size_pt'] ?? $ft['font_size_pt']), 'attr') ?>"></td>
-                        <td><select class="form-select form-select-sm" id="ft_fw_datetime"><?php foreach (['normal', 'bold', '400', '500', '600', '700', '800'] as $w): ?><option value="<?= esc($w, 'attr') ?>" <?= ($ft['label_footer_datetime_font_weight'] ?? $ft['font_weight']) === $w ? 'selected' : '' ?>><?= esc($w) ?></option><?php endforeach; ?></select></td>
-                        <td><select class="form-select form-select-sm" id="ft_fst_datetime"><?php foreach (['normal', 'italic', 'oblique'] as $st): ?><option value="<?= esc($st, 'attr') ?>" <?= ($ft['label_footer_datetime_font_style'] ?? $ft['font_style']) === $st ? 'selected' : '' ?>><?= esc(ucfirst($st)) ?></option><?php endforeach; ?></select></td>
-                        <td><select class="form-select form-select-sm" id="ft_tt_datetime"><?php foreach (['none' => 'Normal', 'uppercase' => 'MAYÚSCULAS', 'lowercase' => 'minúsculas', 'capitalize' => 'Tipo título'] as $k => $v): ?><option value="<?= esc($k, 'attr') ?>" <?= ($ft['label_footer_datetime_text_transform'] ?? $ft['text_transform']) === $k ? 'selected' : '' ?>><?= esc($v) ?></option><?php endforeach; ?></select></td>
-                    </tr>
-                    <tr>
-                        <td>Política / texto legal</td>
-                        <td><input type="number" class="form-control form-control-sm" id="ft_fs_policy" min="7" max="20" step="0.5" value="<?= esc((string) ($ft['footer_policy_font_size_pt'] ?? $ft['font_size_pt']), 'attr') ?>"></td>
-                        <td><select class="form-select form-select-sm" id="ft_fw_policy"><?php foreach (['normal', 'bold', '400', '500', '600', '700', '800'] as $w): ?><option value="<?= esc($w, 'attr') ?>" <?= ($ft['footer_policy_font_weight'] ?? $ft['font_weight']) === $w ? 'selected' : '' ?>><?= esc($w) ?></option><?php endforeach; ?></select></td>
-                        <td><select class="form-select form-select-sm" id="ft_fst_policy"><?php foreach (['normal', 'italic', 'oblique'] as $st): ?><option value="<?= esc($st, 'attr') ?>" <?= ($ft['footer_policy_font_style'] ?? $ft['font_style']) === $st ? 'selected' : '' ?>><?= esc(ucfirst($st)) ?></option><?php endforeach; ?></select></td>
-                        <td><select class="form-select form-select-sm" id="ft_tt_policy"><?php foreach (['none' => 'Normal', 'uppercase' => 'MAYÚSCULAS', 'lowercase' => 'minúsculas', 'capitalize' => 'Tipo título'] as $k => $v): ?><option value="<?= esc($k, 'attr') ?>" <?= ($ft['footer_policy_text_transform'] ?? $ft['text_transform']) === $k ? 'selected' : '' ?>><?= esc($v) ?></option><?php endforeach; ?></select></td>
-                    </tr>
-                </tbody>
-            </table>
-        </div>
-        <div class="row g-2 align-items-end">
-            <div class="col-12 col-md-6"><label class="form-label small" for="ft_label_footer_generated">Texto antes de la fecha («Resultados generados el»)</label><input type="text" class="form-control form-control-sm" id="ft_label_footer_generated" maxlength="120" value="<?= esc((string) ($ft['label_footer_generated'] ?? ''), 'attr') ?>"></div>
-            <div class="col-6 col-md-2 text-center"><div class="form-check d-inline-block"><input class="form-check-input" type="checkbox" id="ft_show_label_footer_generated" value="1"<?= $pdfGridChk($ft, 'show_label_footer_generated') ?>><label class="form-check-label small" for="ft_show_label_footer_generated">Mostrar</label></div></div>
-            <div class="col-6 col-md-3"><label class="form-label small" for="ft_label_footer_generated_line_mode">Texto vs fecha</label><select class="form-select form-select-sm" id="ft_label_footer_generated_line_mode"><option value="stacked" <?= $pdfGridLineMode($ft, 'label_footer_generated_line_mode') === 'stacked' ? 'selected' : '' ?>>Fecha debajo</option><option value="inline" <?= $pdfGridLineMode($ft, 'label_footer_generated_line_mode') === 'inline' ? 'selected' : '' ?>>Misma línea</option></select></div>
+        <div id="ft_matrix_controls_wrap">
+        <?= view('config/partials/pdf_footer_matrix_controls', [
+            'footerMatrixTypeList' => $footerMatrixTypeList,
+            'ft' => $ft,
+            'hg' => $hg,
+            'pd' => $pd,
+            'hgFieldUi' => $hgFieldUi,
+            'pdFieldUi' => $pdFieldUi,
+            'ftFieldUi' => $ftFieldUi,
+            'elLabels' => $elLabels,
+            'pdfGridChk' => $pdfGridChk,
+            'pdfGridLineMode' => $pdfGridLineMode,
+        ]) ?>
         </div>
         <hr class="my-3">
         <h6 class="text-secondary">Paginación en impresión directa (label / valor)</h6>
@@ -1364,8 +1357,7 @@ $labelsShort = [
 .pdf-preview-scope .pdf-el-item--h-center { text-align: center !important; }
 .pdf-preview-scope .pdf-el-item--h-right { text-align: right !important; }
 .pdf-preview-scope .pdf-el-item--v-bottom { margin-top: auto !important; }
-.pdf-preview-scope .pdf-el-item:not(:last-child) { margin-bottom: 0.4em; }
-.pdf-preview-scope.pdf-ft-block .pdf-el-item:not(:last-child) { margin-bottom: 0; }
+.pdf-preview-scope .pdf-el-item:not(:last-child) { margin-bottom: 0; }
 .pdf-preview-scope .patient-line { margin: 0 !important; }
 .pdf-preview-scope.pdf-hg-block { padding-bottom: 8px; border-bottom: 2px solid var(--pdf-header-separator-color, #0066cc); }
 .pdf-preview-scope.pdf-ft-block.footer-grid {
@@ -1379,12 +1371,38 @@ $labelsShort = [
 .pdf-preview-scope.pdf-ft-block .pdf-section-table td:not(.pdf-cell) {
     padding-bottom: 0;
 }
-.pdf-preview-scope.pdf-ft-block .footer-piece {
+.pdf-preview-scope.pdf-ft-block .footer-piece,
+.pdf-preview-scope.pdf-ft-block .pdf-ft-piece,
+.pdf-preview-scope.pdf-ft-block .pdf-ft-custom-text,
+.pdf-preview-scope.pdf-ft-block .pdf-ft-pagination {
     margin: 0;
 }
 .pdf-preview-lbl { font-weight: 700; color: #333; }
-.pdf-preview-grid-row { display: flex; gap: 8px; border-bottom: 1px solid #dee2e6; padding-bottom: 8px; }
-.pdf-preview-grid-cell { flex: 1; min-width: 0; font-size: 0.75rem; }
+.pdf-preview-matrix { display: flex; flex-direction: column; gap: 0.35rem; width: 100%; }
+.pdf-preview-scope .pdf-preview-grid-row {
+    display: grid;
+    gap: 0;
+    width: 100%;
+    min-height: 2.25rem;
+}
+.pdf-preview-scope .pdf-preview-grid-cell {
+    min-width: 0;
+    min-height: 2rem;
+    box-sizing: border-box;
+    word-wrap: break-word;
+    overflow-wrap: break-word;
+}
+.pdf-preview-scope .pdf-preview-grid-cell--empty {
+    background: rgba(0, 0, 0, 0.03);
+}
+.pdf-preview-scope .pdf-preview-grid-cell .pdf-el-item {
+    width: 100%;
+    box-sizing: border-box;
+}
+.pdf-preview-scope .pdf-el-item--h-left { text-align: left !important; }
+.pdf-preview-scope .pdf-el-item--h-center { text-align: center !important; }
+.pdf-preview-scope .pdf-el-item--h-right { text-align: right !important; }
+.pdf-preview-scope .pdf-el-item--v-bottom { margin-top: auto !important; }
 .pdf-instance-sortable { min-height: 2.5rem; }
 .pdf-config-panel-hidden { display: none !important; }
 .pdf-margins-card .card-body {
@@ -1566,11 +1584,15 @@ $labelsShort = [
 </style>
 <script>
 document.addEventListener('DOMContentLoaded', function() {
+    var initialConfigTab = <?= json_encode($configTab, JSON_UNESCAPED_UNICODE) ?>;
     function csvHasToken(csv, token) {
         if (!csv) return false;
         return String(csv).split(',').map(function(s) { return s.trim(); }).indexOf(token) >= 0;
     }
     function applyConfigTab(tabKey) {
+        tabKey = String(tabKey || 'general');
+        var tabInput = document.getElementById('config_tab');
+        if (tabInput) tabInput.value = tabKey;
         document.querySelectorAll('#pdf_config_tabs .nav-link[data-config-tab]').forEach(function(btn) {
             btn.classList.toggle('active', String(btn.getAttribute('data-config-tab') || '') === tabKey);
         });
@@ -1593,11 +1615,10 @@ document.addEventListener('DOMContentLoaded', function() {
     }
     document.querySelectorAll('#pdf_config_tabs .nav-link[data-config-tab]').forEach(function(btn) {
         btn.addEventListener('click', function() {
-            var key = String(btn.getAttribute('data-config-tab') || 'general');
-            applyConfigTab(key);
+            applyConfigTab(String(btn.getAttribute('data-config-tab') || 'general'));
         });
     });
-    applyConfigTab('general');
+    applyConfigTab(initialConfigTab);
 
     (function pdfGridEditorGapPrefs() {
         var rangeEl = document.getElementById('pdf_grid_editor_row_gap');
@@ -1661,6 +1682,11 @@ document.addEventListener('DOMContentLoaded', function() {
     window._labelsShort = <?= json_encode($labelsShort, JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP) ?>;
     window._headerLabelFieldIds = <?= json_encode(array_keys(\App\Services\ReportPdfLayoutService::HEADER_GRID_LABEL_DEFAULTS), JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP) ?>;
     window._headerLabelDefaults = <?= json_encode(\App\Services\ReportPdfLayoutService::HEADER_GRID_LABEL_DEFAULTS, JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP) ?>;
+    window._patientLabelDefaults = <?= json_encode(\App\Services\ReportPdfLayoutService::PATIENT_DOCTOR_GRID_LABEL_DEFAULTS, JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP) ?>;
+    window._footerFieldOrder = <?= json_encode(\App\Services\ReportPdfLayoutService::FOOTER_FIELD_ORDER, JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP) ?>;
+    window._footerFieldUi = <?= json_encode($ftFieldUi, JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP) ?>;
+    window._hgFieldUi = <?= json_encode($hgFieldUi, JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP) ?>;
+    window._patientFieldUi = <?= json_encode($pdFieldUi, JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP) ?>;
     window._pdfStyleAllowlists = <?= json_encode($pdfStyleAllowlists, JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP) ?>;
 
     function pdfAllow(key) {
@@ -1708,17 +1734,48 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     function colsForList(ul) {
-        if (ul === headerList) return clampCols(secColsH.value);
-        if (ul === patientList) return clampCols(secColsP.value);
-        if (ul === labFirmasList) return clampCols(secColsL ? secColsL.value : '3');
-        return clampCols(secColsF.value);
+        if (!ul) return 3;
+        var sectionKey = ul.getAttribute('data-section') || '';
+        var sel = document.querySelector('.pdf-sec-cols[data-pdf-section="' + sectionKey + '"]');
+        if (sel && String(sel.value || '').trim() !== '') return clampCols(sel.value);
+        if (ul === headerList && secColsH) return clampCols(secColsH.value);
+        if (ul === patientList && secColsP) return clampCols(secColsP.value);
+        if (ul === labFirmasList && secColsL) return clampCols(secColsL.value);
+        if (secColsF) return clampCols(secColsF.value);
+        return 3;
     }
 
     function rowsForSectionKey(sectionKey) {
+        var sel = document.querySelector('.pdf-sec-rows[data-pdf-section="' + sectionKey + '"]');
+        if (sel && String(sel.value || '').trim() !== '') return clampRows(sel.value);
         if (sectionKey === 'header') return clampRows(secRowsH ? secRowsH.value : '3');
         if (sectionKey === 'patient_doctor') return clampRows(secRowsP ? secRowsP.value : '4');
         if (sectionKey === 'lab_firmas') return clampRows(secRowsL ? secRowsL.value : '3');
         return clampRows(secRowsF ? secRowsF.value : '2');
+    }
+
+    function collectSectionGridRegions(sectionKey) {
+        var ul = listForSection(sectionKey);
+        if (!ul) return { cols: 3, rows: 1, regions: {} };
+        ensureGridPlacementForSection(sectionKey);
+        var cols = colsForList(ul);
+        var rows = rowsForSectionKey(sectionKey);
+        var itemsByRegion = {};
+        ul.querySelectorAll('.pdf-instance-item').forEach(function(li) {
+            var colSel = li.querySelector('.instance-column');
+            var enabledVal = colSel ? parseInt(colSel.value, 10) : -1;
+            if (isNaN(enabledVal) || enabledVal < 0) return;
+            var p = readGridPlacement(li, sectionKey);
+            var row = p.row == null ? 0 : Math.max(0, Math.min(rows - 1, p.row));
+            li.setAttribute('data-grid-row', String(row));
+            var key = row + ':' + p.col + ':' + p.span;
+            if (!itemsByRegion[key]) itemsByRegion[key] = [];
+            itemsByRegion[key].push({ li: li, row: row, col: p.col, span: p.span, stack: p.stack == null ? 0 : p.stack });
+        });
+        Object.keys(itemsByRegion).forEach(function(key) {
+            itemsByRegion[key].sort(function(a, b) { return a.stack - b.stack; });
+        });
+        return { cols: cols, rows: rows, regions: itemsByRegion };
     }
 
     function gridRootForSection(sectionKey) {
@@ -2197,28 +2254,13 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     function buildSectionGridEditor(sectionKey) {
-        var ul = listForSection(sectionKey);
         var root = gridRootForSection(sectionKey);
-        if (!ul || !root) return;
-        ensureGridPlacementForSection(sectionKey);
-        var cols = colsForList(ul);
-        var rows = rowsForSectionKey(sectionKey);
+        if (!root) return;
+        var gridData = collectSectionGridRegions(sectionKey);
+        var cols = gridData.cols;
+        var rows = gridData.rows;
+        var itemsByRegion = gridData.regions;
         root.innerHTML = '';
-        var itemsByRegion = {};
-        ul.querySelectorAll('.pdf-instance-item').forEach(function(li) {
-            var colSel = li.querySelector('.instance-column');
-            var enabledVal = colSel ? parseInt(colSel.value, 10) : -1;
-            if (isNaN(enabledVal) || enabledVal < 0) return;
-            var p = readGridPlacement(li, sectionKey);
-            var row = p.row == null ? 0 : Math.min(rows - 1, p.row);
-            li.setAttribute('data-grid-row', String(row));
-            var key = row + ':' + p.col + ':' + p.span;
-            if (!itemsByRegion[key]) itemsByRegion[key] = [];
-            itemsByRegion[key].push({ li: li, row: row, col: p.col, span: p.span, stack: p.stack == null ? 0 : p.stack });
-        });
-        Object.keys(itemsByRegion).forEach(function(key) {
-            itemsByRegion[key].sort(function(a, b) { return a.stack - b.stack; });
-        });
 
         for (var row = 0; row < rows; row++) {
             var rowWrap = document.createElement('div');
@@ -2512,6 +2554,17 @@ document.addEventListener('DOMContentLoaded', function() {
         return '<p style="margin:0;"><span style="' + escapeHtml(stV) + '">' + escapeHtml(valDisp) + '</span></p>';
     }
 
+    function fontFamilyToCss(fn) {
+        return String(fn || 'DejaVu Sans').trim().replace(/["\\]/g, '');
+    }
+
+    function fontWeightToCss(fw) {
+        fw = String(fw != null ? fw : 'normal').trim().toLowerCase();
+        if (fw === 'bold') return '700';
+        if (fw === 'normal') return '400';
+        return fw;
+    }
+
     function textStyleToInlineCss(ts) {
         var mapShadow = {
             none: 'none',
@@ -2519,9 +2572,9 @@ document.addEventListener('DOMContentLoaded', function() {
             medium: '0.7px 0.7px 1.4px rgba(0,0,0,0.35)',
             strong: '1px 1px 2px rgba(0,0,0,0.45)'
         };
-        return 'font-family:' + ts.font_family + ';' +
+        return 'font-family:' + fontFamilyToCss(ts.font_family) + ';' +
             'font-size:' + ts.font_size_pt + 'pt;' +
-            'font-weight:' + ts.font_weight + ';' +
+            'font-weight:' + fontWeightToCss(ts.font_weight) + ';' +
             'color:' + ts.font_color + ';' +
             'font-style:' + ts.font_style + ';' +
             'text-transform:' + ts.text_transform + ';' +
@@ -2566,14 +2619,50 @@ document.addEventListener('DOMContentLoaded', function() {
         };
     }
 
-    /** Pie: tipografía por instancia (como element.php); ft solo para textos/disposición de «generado el». */
+    /** Pie: tipografía de piezas fijas desde ft; valores de matriz usan estilo de instancia. */
+    function footerGridPieceStyleCss(ft, piece) {
+        if (!ft || typeof ft !== 'object') return '';
+        var ffCss = fontFamilyToCss(ft.font_family || 'DejaVu Sans');
+        var lh = parseFloat(ft.line_height);
+        if (isNaN(lh)) lh = 1.35;
+        lh = Math.max(1, Math.min(3, lh));
+        function decl(color, fs, fw, fst, tt) {
+            var fsn = parseFloat(fs);
+            if (isNaN(fsn)) fsn = parseFloat(ft.font_size_pt) || 8;
+            fsn = Math.max(7, Math.min(20, fsn));
+            return 'color:' + String(color)
+                + ';font-family:' + ffCss
+                + ';font-size:' + fsn + 'pt'
+                + ';font-weight:' + fontWeightToCss(fw)
+                + ';font-style:' + String(fst)
+                + ';text-transform:' + String(tt || 'none')
+                + ';line-height:' + lh;
+        }
+        if (piece === 'company') {
+            return decl(ft.footer_company_text_color || ft.body_text_color, ft.footer_company_font_size_pt, ft.footer_company_font_weight || ft.font_weight, ft.footer_company_font_style || ft.font_style, ft.footer_company_text_transform || ft.text_transform);
+        }
+        if (piece === 'label_generated') {
+            return decl(ft.label_footer_generated_color || ft.body_text_color, ft.label_footer_generated_font_size_pt, ft.label_footer_generated_font_weight || ft.font_weight, ft.label_footer_generated_font_style || ft.font_style, ft.label_footer_generated_text_transform || ft.text_transform);
+        }
+        if (piece === 'datetime') {
+            return decl(ft.label_footer_datetime_color || ft.body_text_color, ft.label_footer_datetime_font_size_pt, ft.label_footer_datetime_font_weight || ft.font_weight, ft.label_footer_datetime_font_style || ft.font_style, ft.label_footer_datetime_text_transform || ft.text_transform);
+        }
+        if (piece === 'policy') {
+            return decl(ft.footer_policy_text_color || ft.body_text_color, ft.footer_policy_font_size_pt, ft.footer_policy_font_weight || ft.font_weight, ft.footer_policy_font_style || ft.font_style, ft.footer_policy_text_transform || ft.text_transform);
+        }
+        return '';
+    }
+
     function buildFooterPreviewPieceHtml(type, sample, ft, instanceTs) {
-        var sti = textStyleToInlineCss(instanceTs || defaultInstanceTextStyleJson());
+        var stCompany = footerGridPieceStyleCss(ft, 'company');
+        var stLabelGen = footerGridPieceStyleCss(ft, 'label_generated');
+        var stDatetime = footerGridPieceStyleCss(ft, 'datetime');
+        var stPolicy = footerGridPieceStyleCss(ft, 'policy');
         if (type === 'footer_company') {
-            return '<div class="footer-piece footer-piece-company" style="' + escapeHtml(sti) + '">' + escapeHtml(sample) + '</div>';
+            return '<div class="footer-piece footer-piece-company" style="' + escapeHtml(stCompany) + '">' + escapeHtml(sample) + '</div>';
         }
         if (type === 'footer_policy') {
-            return '<div class="footer-piece footer-piece-policy"><small class="footer-policy-text" style="' + escapeHtml(sti) + '">' + escapeHtml(sample) + '</small></div>';
+            return '<div class="footer-piece footer-piece-policy"><small class="footer-policy-text" style="' + escapeHtml(stPolicy) + '">' + escapeHtml(sample) + '</small></div>';
         }
         if (type === 'footer_generated') {
             var pref = String(ft.label_footer_generated != null ? ft.label_footer_generated : '').trim();
@@ -2584,14 +2673,14 @@ document.addEventListener('DOMContentLoaded', function() {
             var parts = '<div class="footer-piece footer-piece-generated">';
             if (inlineF) {
                 if (showPref) {
-                    parts += '<span class="footer-generated-label" style="' + escapeHtml(sti) + '">' + escapeHtml(pref) + '</span> ';
+                    parts += '<span class="footer-generated-label" style="' + escapeHtml(stLabelGen) + '">' + escapeHtml(pref) + '</span> ';
                 }
-                parts += '<span class="footer-generated-datetime" style="' + escapeHtml(sti) + '">' + escapeHtml(dateSample) + '</span>';
+                parts += '<span class="footer-generated-datetime" style="' + escapeHtml(stDatetime) + '">' + escapeHtml(dateSample) + '</span>';
             } else {
                 if (showPref) {
-                    parts += '<div class="footer-generated-label" style="' + escapeHtml(sti) + '">' + escapeHtml(pref) + '</div>';
+                    parts += '<div class="footer-generated-label" style="' + escapeHtml(stLabelGen) + '">' + escapeHtml(pref) + '</div>';
                 }
-                parts += '<div class="footer-generated-datetime" style="' + escapeHtml(sti) + '">' + escapeHtml(dateSample) + '</div>';
+                parts += '<div class="footer-generated-datetime" style="' + escapeHtml(stDatetime) + '">' + escapeHtml(dateSample) + '</div>';
             }
             parts += '</div>';
             return parts;
@@ -2601,24 +2690,20 @@ document.addEventListener('DOMContentLoaded', function() {
 
     function headerGridLabelPieceStyleCss(hg, piece) {
         if (!hg || typeof hg !== 'object') return '';
-        var fn = String(hg.font_family || 'DejaVu Sans').trim();
-        var ffCss = (fn.indexOf(' ') >= 0 || fn.indexOf('"') >= 0)
-            ? '"' + fn.replace(/["\\]/g, '') + '", sans-serif'
-            : fn.replace(/["\\]/g, '') + ', sans-serif';
+        var ffCss = fontFamilyToCss(hg.font_family || 'DejaVu Sans');
         var lh = parseFloat(hg.line_height);
         if (isNaN(lh)) lh = 1.35;
         lh = Math.max(1, Math.min(3, lh));
-        var tt = String(hg.text_transform || 'none');
-        function decl(color, fs, fw, fst) {
+        function decl(color, fs, fw, fst, tt) {
             var fsn = parseFloat(fs);
             if (isNaN(fsn)) fsn = parseFloat(hg.font_size_pt) || 9.5;
             fsn = Math.max(7, Math.min(20, fsn));
             return 'color:' + String(color)
                 + ';font-family:' + ffCss
                 + ';font-size:' + fsn + 'pt'
-                + ';font-weight:' + String(fw)
+                + ';font-weight:' + fontWeightToCss(fw)
                 + ';font-style:' + String(fst)
-                + ';text-transform:' + tt
+                + ';text-transform:' + String(tt || 'none')
                 + ';line-height:' + lh;
         }
         if (piece === 'qr_hint') {
@@ -2626,7 +2711,8 @@ document.addEventListener('DOMContentLoaded', function() {
                 hg.label_qr_hint_text_color || hg.body_text_color,
                 hg.label_qr_hint_font_size_pt,
                 hg.label_qr_hint_font_weight || hg.font_weight,
-                hg.label_qr_hint_font_style || hg.font_style
+                hg.label_qr_hint_font_style || hg.font_style,
+                hg.label_qr_hint_text_transform || hg.text_transform
             );
         }
         var ids = window._headerLabelFieldIds || [];
@@ -2635,11 +2721,32 @@ document.addEventListener('DOMContentLoaded', function() {
             hg['label_' + piece + '_text_color'] || hg.body_text_color,
             hg['label_' + piece + '_font_size_pt'],
             hg['label_' + piece + '_font_weight'] || hg.font_weight,
-            hg['label_' + piece + '_font_style'] || hg.font_style
+            hg['label_' + piece + '_font_style'] || hg.font_style,
+            hg['label_' + piece + '_text_transform'] || hg.text_transform
         );
     }
 
-    function buildHeaderPreviewPieceHtml(type, sample, hg, instanceTs) {
+    function patientDoctorGridLabelStyleCss(pd, piece) {
+        if (!pd || typeof pd !== 'object') return '';
+        var ffCss = fontFamilyToCss(pd.font_family || 'DejaVu Sans');
+        var lh = parseFloat(pd.line_height);
+        if (isNaN(lh)) lh = 1.35;
+        lh = Math.max(1, Math.min(3, lh));
+        var fsn = parseFloat(pd['label_' + piece + '_font_size_pt']);
+        if (isNaN(fsn)) fsn = parseFloat(pd.font_size_pt) || 9.5;
+        fsn = Math.max(7, Math.min(20, fsn));
+        return 'color:' + String(pd['label_' + piece + '_text_color'] || pd.body_text_color || '#333')
+            + ';font-family:' + ffCss
+            + ';font-size:' + fsn + 'pt'
+            + ';font-weight:' + fontWeightToCss(pd['label_' + piece + '_font_weight'] || pd.font_weight || 'normal')
+            + ';font-style:' + String(pd['label_' + piece + '_font_style'] || pd.font_style || 'normal')
+            + ';text-transform:' + String(pd['label_' + piece + '_text_transform'] || pd.text_transform || 'none')
+            + ';line-height:' + lh;
+    }
+
+    function buildHeaderPreviewPieceHtml(type, sample, hg, instanceTs, forFooter) {
+        forFooter = !!forFooter;
+        var pieceCls = forFooter ? 'pdf-ft-piece' : 'header-piece';
         var st = headerGridLabelPieceStyleCss;
         var stI = textStyleToInlineCss(instanceTs || defaultInstanceTextStyleJson());
         function labeledBlock(fid, valueInnerHtml) {
@@ -2655,29 +2762,33 @@ document.addEventListener('DOMContentLoaded', function() {
             }
             return '<div><span style="' + escapeHtml(stL) + '">' + escapeHtml(lbl) + '</span></div><div>' + wrappedVal + '</div>';
         }
+        function wrapFooterField(innerHtml) {
+            return forFooter ? ('<div class="pdf-ft-piece">' + innerHtml + '</div>') : innerHtml;
+        }
         if (type === 'logo') {
-            return '<div class="header-piece header-piece-logo">' + labeledBlock('logo', '<span class="pdf-preview-logo-ph" style="display:inline-block;padding:2px 6px;background:#e9ecef;border-radius:3px;">' + escapeHtml(sample) + '</span>') + '</div>';
+            var logoCls = forFooter ? 'pdf-ft-piece pdf-ft-piece-logo' : 'header-piece header-piece-logo';
+            return '<div class="' + logoCls + '">' + labeledBlock('logo', '<span class="pdf-preview-logo-ph" style="display:inline-block;padding:2px 6px;background:#e9ecef;border-radius:3px;">' + escapeHtml(sample) + '</span>') + '</div>';
         }
         if (type === 'lab_company') {
-            return '<div class="header-preview-company">' + labeledBlock('lab_company', '<strong>' + escapeHtml(sample) + '</strong>') + '</div>';
+            return wrapFooterField('<div class="header-preview-company">' + labeledBlock('lab_company', '<strong>' + escapeHtml(sample) + '</strong>') + '</div>');
         }
         if (type === 'lab_address') {
-            return '<div class="header-preview-addr">' + labeledBlock('lab_address', escapeHtml(sample)) + '</div>';
+            return wrapFooterField('<div class="header-preview-addr">' + labeledBlock('lab_address', escapeHtml(sample)) + '</div>');
         }
         if (type === 'lab_phone') {
-            return '<div class="header-preview-phone">' + labeledBlock('lab_phone', escapeHtml(sample)) + '</div>';
+            return wrapFooterField('<div class="header-preview-phone">' + labeledBlock('lab_phone', escapeHtml(sample)) + '</div>');
         }
         if (type === 'lab_email') {
-            return '<div class="header-preview-email">' + labeledBlock('lab_email', escapeHtml(sample)) + '</div>';
+            return wrapFooterField('<div class="header-preview-email">' + labeledBlock('lab_email', escapeHtml(sample)) + '</div>');
         }
         if (type === 'lab_website') {
-            return '<div class="header-preview-web">' + labeledBlock('lab_website', escapeHtml(sample)) + '</div>';
+            return wrapFooterField('<div class="header-preview-web">' + labeledBlock('lab_website', escapeHtml(sample)) + '</div>');
         }
         if (type === 'paciente_institucion') {
-            return '<div class="header-preview-institucion">' + labeledBlock('paciente_institucion', escapeHtml(sample)) + '</div>';
+            return wrapFooterField('<div class="header-preview-institucion">' + labeledBlock('paciente_institucion', escapeHtml(sample)) + '</div>');
         }
         if (type === 'pdf_pages_total') {
-            return '<div class="header-preview-pages-total">' + labeledBlock('pdf_pages_total', escapeHtml(sample)) + '</div>';
+            return wrapFooterField('<div class="header-preview-pages-total">' + labeledBlock('pdf_pages_total', escapeHtml(sample)) + '</div>');
         }
         if (type === 'pdf_pagination') {
             var pagPreview = '1 de 3';
@@ -2685,16 +2796,19 @@ document.addEventListener('DOMContentLoaded', function() {
             var showPagL = !!hg.show_label_pdf_pagination && lblPag !== '';
             var inlinePag = (hg.label_pdf_pagination_line_mode === 'inline');
             var stL = st(hg, 'pdf_pagination');
-            var pagLine = '<span class="pdf-pagination-line" style="' + escapeHtml(stI) + '">' + escapeHtml(pagPreview) + '</span>';
+            var pagLineCls = forFooter ? 'pdf-ft-pagination-num' : 'pdf-pagination-line';
+            var pagLine = '<span class="' + pagLineCls + '" style="' + escapeHtml(stI) + '">' + escapeHtml(pagPreview) + '</span>';
             var inner = pagLine;
+            var outerWrap = forFooter ? 'pdf-ft-pagination' : 'header-preview-pagination';
+            var innerWrap = forFooter ? 'pdf-ft-pagination' : pieceCls;
             if (showPagL && inlinePag) {
                 inner = '<span style="' + escapeHtml(stL) + '">' + escapeHtml(lblPag) + '</span> ' + pagLine;
-                return '<div class="header-preview-pagination"><div class="header-piece"><p style="margin:0;">' + inner + '</p></div></div>';
+                return '<div class="' + outerWrap + '"><div class="' + innerWrap + '"><p style="margin:0;">' + inner + '</p></div></div>';
             }
             if (showPagL) {
-                return '<div class="header-preview-pagination"><div class="header-piece"><p style="margin:0;"><span style="' + escapeHtml(stL) + '">' + escapeHtml(lblPag) + '</span></p><p style="margin:0;">' + pagLine + '</p></div></div>';
+                return '<div class="' + outerWrap + '"><div class="' + innerWrap + '"><p style="margin:0;"><span style="' + escapeHtml(stL) + '">' + escapeHtml(lblPag) + '</span></p><p style="margin:0;">' + pagLine + '</p></div></div>';
             }
-            return '<div class="header-preview-pagination"><div class="header-piece"><p style="margin:0;">' + inner + '</p></div></div>';
+            return '<div class="' + outerWrap + '"><div class="' + innerWrap + '"><p style="margin:0;">' + inner + '</p></div></div>';
         }
         if (type === 'qr') {
             var hint = String(hg.label_qr_hint != null ? hg.label_qr_hint : '').trim();
@@ -2707,47 +2821,81 @@ document.addEventListener('DOMContentLoaded', function() {
             var qrBoxPx = Math.round(36 * qrPctPrev / 100);
             var qrFs = Math.max(8, Math.round(10 * qrPctPrev / 100));
             var img = '<span class="qr-img" role="img" aria-label="QR" style="display:block;width:' + qrBoxPx + 'px;height:' + qrBoxPx + 'px;line-height:' + qrBoxPx + 'px;text-align:center;background:#6c757d;color:#fff;border-radius:4px;font-size:' + qrFs + 'px;font-weight:600;">QR</span>';
+            var qrCls = forFooter ? 'pdf-ft-piece pdf-ft-piece-qr' : 'header-piece header-piece-qr';
             if (inlineQ && showH) {
-                return '<div class="header-piece header-piece-qr"><p style="margin:0;"><span class="qr-label" style="' + escapeHtml(stQ) + ';display:inline-block;vertical-align:middle;margin-right:6px;">' + escapeHtml(hint) + '</span>' + img + '</p></div>';
+                return '<div class="' + qrCls + '"><p style="margin:0;"><span class="qr-label" style="' + escapeHtml(stQ) + ';display:inline-block;vertical-align:middle;margin-right:6px;">' + escapeHtml(hint) + '</span>' + img + '</p></div>';
             }
             if (inlineQ) {
-                return '<div class="header-piece header-piece-qr">' + img + '</div>';
+                return '<div class="' + qrCls + '">' + img + '</div>';
             }
             if (showH) {
-                return '<div class="header-piece header-piece-qr"><div class="qr-label" style="' + escapeHtml(stQ) + '">' + escapeHtml(hint) + '</div>' + img + '</div>';
+                return '<div class="' + qrCls + '"><div class="qr-label" style="' + escapeHtml(stQ) + '">' + escapeHtml(hint) + '</div>' + img + '</div>';
             }
-            return '<div class="header-piece header-piece-qr">' + img + '</div>';
+            return '<div class="' + qrCls + '">' + img + '</div>';
         }
         return escapeHtml(sample);
     }
 
-    function buildMatrixRowFromItems(rowItems, n) {
-        var colspans = [];
-        var stacks = new Array(n).fill(null);
-        var regions = {};
-        rowItems.forEach(function(it) {
-            var key = it.col + ':' + it.span;
-            if (!regions[key]) {
-                regions[key] = { col: it.col, span: it.span, items: [] };
+    var PREVIEW_PD_TYPES = ['paciente_nombre', 'paciente_genero', 'paciente_edad', 'paciente_telefono', 'diagnostico_presuntivo', 'medico', 'fecha_recepcion', 'fecha_reporte', 'numero_orden'];
+    var PREVIEW_HEADER_LIKE_TYPES = ['logo', 'lab_company', 'lab_address', 'paciente_institucion', 'lab_phone', 'lab_email', 'lab_website', 'pdf_pages_total', 'pdf_pagination', 'qr'];
+
+    function readPreviewStyleContext() {
+        var ps = readCardHeaderStyleForJson();
+        return { ftFooter: ps.footer_grid, hgHeader: ps.header_grid, pdHeader: ps.patient_doctor_grid };
+    }
+
+    function buildInstancePreviewHtml(li, sectionKey, ctx) {
+        ctx = ctx || readPreviewStyleContext();
+        var type = li.getAttribute('data-element-type') || '';
+        var sample = (window._elementSamples && window._elementSamples[type]) ? window._elementSamples[type] : type;
+        var shortL = (window._labelsShort && window._labelsShort[type]) ? window._labelsShort[type] : '';
+        if (type === 'custom_text') {
+            if (sectionKey === 'footer') {
+                var innerFt = '<div class="pdf-ft-custom-text">' + buildCustomTextPreviewInnerHtml(readInstanceCustomText(li)) + '</div>';
+                return '<div class="pdf-ft-piece">' + innerFt + '</div>';
             }
-            regions[key].items.push({ stack: it.grid_stack || 0, item: it });
-        });
-        var regionsArr = Object.keys(regions).map(function(k) {
-            var p = k.split(':');
-            return { col: parseInt(p[0], 10), span: parseInt(p[1], 10), items: regions[k].items };
-        }).sort(function(a, b) {
-            return (a.col - b.col) || (a.span - b.span);
-        });
-        regionsArr.forEach(function(reg) {
-            reg.items.sort(function(a, b) { return a.stack - b.stack; });
-            var cellItems = reg.items.map(function(x) { return x.item; });
-            if (reg.span > 1) {
-                colspans.push({ col: reg.col, span: reg.span, items: cellItems });
-            } else {
-                stacks[reg.col] = cellItems;
+            return '<div class="pdf-custom-text">' + buildCustomTextPreviewInnerHtml(readInstanceCustomText(li)) + '</div>';
+        }
+        if (sectionKey === 'footer' && ctx.ftFooter && (type === 'footer_company' || type === 'footer_generated' || type === 'footer_policy')) {
+            return buildFooterPreviewPieceHtml(type, sample, ctx.ftFooter, readInstanceTextStyle(li));
+        }
+        var styleWrap = textStyleToInlineCss(readInstanceTextStyle(li));
+        if ((sectionKey === 'patient_doctor' || sectionKey === 'footer') && PREVIEW_PD_TYPES.indexOf(type) >= 0 && ctx.pdHeader) {
+            var pdHeader = ctx.pdHeader;
+            var showLpd = !!pdHeader['show_label_' + type];
+            var lblPd = String(pdHeader['label_' + type] != null ? pdHeader['label_' + type] : '').trim();
+            var inlinePd = (pdHeader['label_' + type + '_line_mode'] === 'inline');
+            var gapPd = parseInt(pdHeader['label_' + type + '_value_gap_px'], 10); if (isNaN(gapPd)) gapPd = 0;
+            var mtPd = parseInt(pdHeader['label_' + type + '_space_above_px'], 10); if (isNaN(mtPd)) mtPd = 0;
+            var mbPd = parseInt(pdHeader['label_' + type + '_space_below_px'], 10); if (isNaN(mbPd)) mbPd = 0;
+            var ovGapEl = li.querySelector('.instance-pd-label-value-gap-px');
+            var ovMtEl = li.querySelector('.instance-pd-space-above-px');
+            var ovMbEl = li.querySelector('.instance-pd-space-below-px');
+            if (ovGapEl) { var ovG = parseInt(ovGapEl.value, 10); if (!isNaN(ovG)) gapPd = Math.max(0, Math.min(40, ovG)); }
+            if (ovMtEl) { var ovA = parseInt(ovMtEl.value, 10); if (!isNaN(ovA)) mtPd = Math.max(0, Math.min(40, ovA)); }
+            if (ovMbEl) { var ovB = parseInt(ovMbEl.value, 10); if (!isNaN(ovB)) mbPd = Math.max(0, Math.min(40, ovB)); }
+            var valPd = escapeHtml(sample);
+            var lblEsc = escapeHtml(lblPd);
+            var showLblText = showLpd && lblPd !== '';
+            var stLblPd = patientDoctorGridLabelStyleCss(pdHeader, type);
+            if (inlinePd) {
+                return '<div class="patient-line" style="padding-top:' + mtPd + 'px;padding-bottom:' + mbPd + 'px;">'
+                    + (showLblText ? ('<span class="label" style="margin-right:' + gapPd + 'px;' + escapeHtml(stLblPd) + '">' + lblEsc + '</span>') : '')
+                    + (showLblText ? ('<span style="' + escapeHtml(styleWrap) + '">' + valPd + '</span>') : ('<span style="margin-left:' + gapPd + 'px;display:inline-block;' + escapeHtml(styleWrap) + '">' + valPd + '</span>'))
+                    + '</div>';
             }
-        });
-        return { colspans: colspans, stacks: stacks };
+            var valMtPd = showLblText ? 0 : (mtPd + gapPd);
+            return (showLblText ? ('<div class="patient-line" style="padding-top:' + mtPd + 'px;padding-bottom:' + gapPd + 'px;"><span class="label" style="' + escapeHtml(stLblPd) + '">' + lblEsc + '</span></div>') : '')
+                + '<div class="patient-line" style="padding-top:' + valMtPd + 'px;padding-bottom:' + mbPd + 'px;"><span style="' + escapeHtml(styleWrap) + '">' + valPd + '</span></div>';
+        }
+        if (sectionKey === 'footer' && PREVIEW_HEADER_LIKE_TYPES.indexOf(type) >= 0) {
+            return buildHeaderPreviewPieceHtml(type, sample, ctx.hgHeader, readInstanceTextStyle(li), true);
+        }
+        if (sectionKey === 'header' && PREVIEW_HEADER_LIKE_TYPES.indexOf(type) >= 0) {
+            return buildHeaderPreviewPieceHtml(type, sample, ctx.hgHeader, readInstanceTextStyle(li));
+        }
+        var rawLine = shortL ? ('<span class="pdf-preview-lbl">' + escapeHtml(shortL) + '</span> ' + escapeHtml(sample)) : escapeHtml(sample);
+        return '<span style="' + escapeHtml(styleWrap) + '">' + rawLine + '</span>';
     }
 
     function cellPadCssForSection(sectionKey, rowGapPx) {
@@ -2766,17 +2914,11 @@ document.addEventListener('DOMContentLoaded', function() {
         return '0 4px';
     }
 
-    function applyColumnBorderToCell(td, colIndex, gridStyle) {
-        if (!td || !gridStyle || colIndex <= 0) return;
+    function applyColumnBorderToCell(el, colIndex, gridStyle) {
+        if (!el || !gridStyle || colIndex <= 0) return;
         var w = parseInt(gridStyle.column_border_width_px, 10);
         if (isNaN(w) || w <= 0) return;
-        td.style.borderLeft = w + 'px solid ' + String(gridStyle.column_border_color || '#DDDDDD');
-    }
-
-    function previewRowMinHeightPx(sectionKey) {
-        if (sectionKey === 'footer') return 32;
-        if (sectionKey === 'lab_firmas') return 40;
-        return 48;
+        el.style.borderLeft = w + 'px solid ' + String(gridStyle.column_border_color || '#DDDDDD');
     }
 
     function applyPreviewSectionTheme(wrap, sectionKey, gridStyle) {
@@ -2788,311 +2930,373 @@ document.addEventListener('DOMContentLoaded', function() {
         if (!varPrefix || !gridStyle) return;
         var bg = gridStyle.body_transparent ? 'transparent' : (gridStyle.body_bg_color || '#ffffff');
         wrap.style.setProperty('--' + varPrefix + '-body-bg', bg);
-        if (gridStyle.body_text_color) {
-            wrap.style.setProperty('--' + varPrefix + '-body-color', gridStyle.body_text_color);
-        }
+        if (gridStyle.body_text_color) wrap.style.setProperty('--' + varPrefix + '-body-color', gridStyle.body_text_color);
         var colW = parseInt(gridStyle.column_border_width_px, 10);
         if (isNaN(colW)) colW = 0;
         wrap.style.setProperty('--' + varPrefix + '-column-border-width', Math.max(0, colW) + 'px');
         wrap.style.setProperty('--' + varPrefix + '-column-border-color', gridStyle.column_border_color || '#DDDDDD');
         if (sectionKey === 'footer' && gridStyle.section_top_border_enabled) {
-            var bw = parseInt(gridStyle.section_top_border_width_px, 10);
-            if (isNaN(bw)) bw = 1;
-            wrap.style.setProperty('--pdf-ft-section-top-border-width', Math.max(0, bw) + 'px');
+            var bwFt = parseInt(gridStyle.section_top_border_width_px, 10);
+            if (isNaN(bwFt)) bwFt = 1;
+            wrap.style.setProperty('--pdf-ft-section-top-border-width', Math.max(0, bwFt) + 'px');
             wrap.style.setProperty('--pdf-ft-section-top-border-color', gridStyle.section_top_border_color || '#DDDDDD');
         }
         if (sectionKey === 'header') {
             var sepEl = document.getElementById('hs_separator_color');
-            if (sepEl && isValidPdfHexJs(sepEl.value)) {
-                wrap.style.setProperty('--pdf-header-separator-color', sepEl.value.trim());
-            }
+            if (sepEl && isValidPdfHexJs(sepEl.value)) wrap.style.setProperty('--pdf-header-separator-color', sepEl.value.trim());
         }
     }
 
-    function previewCellNeedsFlex(cellItems) {
-        if (!cellItems || cellItems.length === 0) return false;
-        if (cellItems.length > 1) return true;
-        return resolveInstanceAlignV(cellItems[0]) === 'bottom';
+    function applyPreviewGridCellChrome(cell, colIndex, sectionKey, gridStyle, secSt, rowGapPx, rowIndex, isEmpty) {
+        var pad = isEmpty ? emptyCellPadCssForSection(sectionKey, rowGapPx) : cellPadCssForSection(sectionKey, rowGapPx);
+        cell.style.padding = pad;
+        cell.style.lineHeight = String(secSt.line_height);
+        if (rowIndex > 0 && rowGapPx > 0) cell.style.paddingTop = rowGapPx + 'px';
+        if (gridStyle && !isEmpty) {
+            cell.style.backgroundColor = gridStyle.body_transparent ? 'transparent' : (gridStyle.body_bg_color || '#ffffff');
+            if (gridStyle.body_text_color) cell.style.color = gridStyle.body_text_color;
+        }
+        applyColumnBorderToCell(cell, colIndex, gridStyle);
     }
 
-    function applyPreviewTdLayout(td, tdAl, cellItems, rowMinPx) {
-        td.style.minHeight = rowMinPx + 'px';
-        td.style.setProperty('vertical-align', previewCellNeedsFlex(cellItems) ? 'top' : tdAl.v, 'important');
-        td.style.setProperty('text-align', tdAl.h, 'important');
-        if (previewCellNeedsFlex(cellItems)) {
-            td.style.display = 'flex';
-            td.style.flexDirection = 'column';
-            td.style.justifyContent = (cellItems.length === 1 && tdAl.v === 'bottom') ? 'flex-end' : 'flex-start';
+    function applyPreviewGridCellAlign(cell, regionItems) {
+        if (!regionItems || !regionItems.length) return;
+        cell.style.display = 'flex';
+        cell.style.flexDirection = 'column';
+        cell.style.alignItems = 'stretch';
+        if (regionItems.length === 1) {
+            var al = readInstanceAlign(regionItems[0].li);
+            cell.style.textAlign = al.align_h;
+            cell.style.justifyContent = al.align_v === 'bottom' ? 'flex-end' : 'flex-start';
+            if (al.align_v === 'bottom') cell.style.minHeight = '28px';
         } else {
-            td.style.display = '';
-            td.style.flexDirection = '';
-            td.style.justifyContent = '';
+            cell.style.textAlign = 'left';
+            cell.style.justifyContent = 'flex-start';
         }
     }
 
-    function appendPreviewItemToTd(td, sit) {
+    function findRegionAt(itemsByRegion, row, col) {
+        var found = null;
+        Object.keys(itemsByRegion).some(function(key) {
+            var parts = key.split(':');
+            if (parseInt(parts[0], 10) !== row || parseInt(parts[1], 10) !== col) return false;
+            found = { span: parseInt(parts[2], 10), items: itemsByRegion[key] };
+            return true;
+        });
+        return found;
+    }
+
+    function appendPreviewInstanceToCell(cell, li, sectionKey) {
+        var instAlign = readInstanceAlign(li);
         var divM = document.createElement('div');
         divM.className = 'pdf-el-item';
-        divM.style.lineHeight = 'inherit';
-        applyItemAlign(divM, sit);
-        divM.innerHTML = sit.html;
-        td.appendChild(divM);
-    }
-
-    function buildPreviewColgroup(tbl, n, pctNum) {
-        var cg = document.createElement('colgroup');
-        for (var ci = 0; ci < n; ci++) {
-            var colEl = document.createElement('col');
-            colEl.style.width = pctNum.toFixed(4) + '%';
-            cg.appendChild(colEl);
+        divM.style.width = '100%';
+        divM.style.boxSizing = 'border-box';
+        var type = li.getAttribute('data-element-type') || '';
+        if (type === 'custom_text') {
+            var ct = readInstanceCustomText(li);
+            var vLh = ct && ct.value_style && ct.value_style.line_height != null ? parseFloat(ct.value_style.line_height) : NaN;
+            divM.style.lineHeight = (!isNaN(vLh) && vLh > 0) ? String(vLh) : 'inherit';
+        } else {
+            divM.style.lineHeight = 'inherit';
         }
-        tbl.appendChild(cg);
-    }
-
-    function appendPreviewRowCells(tr, row, rowIndex, n, secSt, sectionKey, pctNum, rowGapPx, gridStyle, rowMinPx) {
-        var colspans = row.colspans;
-        var stk = row.stacks;
-        var cellPad = cellPadCssForSection(sectionKey, rowGapPx);
-        var emptyPad = emptyCellPadCssForSection(sectionKey, rowGapPx);
-        var pct = pctNum.toFixed(2) + '%';
-        var c = 0;
-        function tdAlignForItems(cellItems) {
-            if (cellItems.length === 1) {
-                return {
-                    h: resolveInstanceAlignH(cellItems[0]),
-                    v: resolveInstanceAlignV(cellItems[0]),
-                    alignCls: (function() {
-                        var h = resolveInstanceAlignH(cellItems[0]);
-                        return h === 'right' ? 'right' : (h === 'center' ? 'center' : 'left');
-                    })()
-                };
-            }
-            return { h: 'left', v: 'top', alignCls: 'left' };
-        }
-        while (c < n) {
-            var block = null;
-            for (var cix = 0; cix < colspans.length; cix++) {
-                if (colspans[cix].col === c) {
-                    block = colspans[cix];
-                    break;
-                }
-            }
-            if (block) {
-                var sp = block.span;
-                var first = block.items[0];
-                var sc = first.col;
-                var tdAl = tdAlignForItems(block.items);
-                var spanPct = (sp * pctNum).toFixed(4) + '%';
-                var tdM = document.createElement('td');
-                tdM.colSpan = sp;
-                tdM.className = 'pdf-cell pdf-cell--' + tdAl.alignCls;
-                tdM.style.width = spanPct;
-                tdM.style.lineHeight = String(secSt.line_height);
-                tdM.style.padding = cellPad;
-                if (rowIndex > 0 && rowGapPx > 0) tdM.style.paddingTop = rowGapPx + 'px';
-                applyPreviewTdLayout(tdM, tdAl, block.items, rowMinPx);
-                applyColumnBorderToCell(tdM, sc, gridStyle);
-                block.items.forEach(function(sit) {
-                    appendPreviewItemToTd(tdM, sit);
-                });
-                tr.appendChild(tdM);
-                c += sp;
-            } else if (stk[c] !== null && stk[c].length > 0) {
-                var stackItems = stk[c];
-                var tdAlS = tdAlignForItems(stackItems);
-                var tdS = document.createElement('td');
-                tdS.className = 'pdf-cell pdf-cell--' + tdAlS.alignCls;
-                tdS.style.width = pct;
-                tdS.style.lineHeight = String(secSt.line_height);
-                tdS.style.padding = cellPad;
-                if (rowIndex > 0 && rowGapPx > 0) tdS.style.paddingTop = rowGapPx + 'px';
-                applyPreviewTdLayout(tdS, tdAlS, stackItems, rowMinPx);
-                applyColumnBorderToCell(tdS, c, gridStyle);
-                stackItems.forEach(function(sit) {
-                    appendPreviewItemToTd(tdS, sit);
-                });
-                tr.appendChild(tdS);
-                c++;
-            } else {
-                var tdE = document.createElement('td');
-                tdE.className = 'pdf-cell pdf-cell--empty';
-                tdE.style.width = pct;
-                tdE.style.lineHeight = String(secSt.line_height);
-                tdE.style.padding = emptyPad;
-                if (rowIndex > 0 && rowGapPx > 0) tdE.style.paddingTop = rowGapPx + 'px';
-                applyPreviewTdLayout(tdE, { h: 'left', v: 'top', alignCls: 'left' }, [], rowMinPx);
-                applyColumnBorderToCell(tdE, c, gridStyle);
-                var ph = document.createElement('span');
-                ph.className = 'pdf-preview-empty-ph';
-                ph.setAttribute('aria-hidden', 'true');
-                tdE.appendChild(ph);
-                tr.appendChild(tdE);
-                c++;
-            }
-        }
+        applyItemAlign(divM, { align_h: instAlign.align_h, align_v: instAlign.align_v });
+        divM.innerHTML = buildInstancePreviewHtml(li, sectionKey, readPreviewStyleContext());
+        cell.appendChild(divM);
     }
 
     function rebuildGridPreview(ul, previewEl) {
         if (!previewEl || !ul) return;
-        var n = colsForList(ul);
         var sectionKey = ul.getAttribute('data-section') || 'header';
+        var gridData = collectSectionGridRegions(sectionKey);
+        var cols = gridData.cols;
+        var rows = gridData.rows;
+        var itemsByRegion = gridData.regions;
         var secSt = readSectionStyleFromDom(sectionKey);
-        var ftFooter = null;
-        var hgHeader = null;
-        var pdHeader = null;
-        if (sectionKey === 'footer') {
-            ftFooter = readCardHeaderStyleForJson().footer_grid;
-        }
-        if (sectionKey === 'header') {
-            hgHeader = readCardHeaderStyleForJson().header_grid;
-        }
-        if (sectionKey === 'patient_doctor') {
-            pdHeader = readCardHeaderStyleForJson().patient_doctor_grid;
-        }
-        ensureGridPlacementForSection(sectionKey);
-        var items = [];
-        ul.querySelectorAll('.pdf-instance-item').forEach(function(li) {
-            var sel = li.querySelector('.instance-column');
-            var v = sel ? parseInt(sel.value, 10) : -1;
-            if (v < 0) return;
-            var col = Math.max(0, Math.min(n - 1, v));
-            var spanSel = li.querySelector('.instance-span');
-            var span = spanSel && !spanSel.disabled ? parseInt(spanSel.value, 10) : 1;
-            if (isNaN(span) || span < 1) span = 1;
-            var maxS = Math.max(1, n - col);
-            span = Math.max(1, Math.min(maxS, span));
-            var type = li.getAttribute('data-element-type') || '';
-            var sample = (window._elementSamples && window._elementSamples[type]) ? window._elementSamples[type] : type;
-            var shortL = (window._labelsShort && window._labelsShort[type]) ? window._labelsShort[type] : '';
-            var line;
-            if (type === 'custom_text') {
-                line = '<div class="pdf-custom-text">' + buildCustomTextPreviewInnerHtml(readInstanceCustomText(li)) + '</div>';
-            } else if (ftFooter && (type === 'footer_company' || type === 'footer_generated' || type === 'footer_policy')) {
-                line = buildFooterPreviewPieceHtml(type, sample, ftFooter, readInstanceTextStyle(li));
-            } else {
-                var styleWrap = textStyleToInlineCss(readInstanceTextStyle(li));
-                var rawLine;
-                var headerLikeTypes = ['logo', 'lab_company', 'lab_address', 'paciente_institucion', 'lab_phone', 'lab_email', 'lab_website', 'pdf_pages_total', 'pdf_pagination', 'qr'];
-                if (sectionKey === 'patient_doctor' && ['paciente_nombre','paciente_genero','paciente_edad','paciente_telefono','diagnostico_presuntivo','medico','fecha_recepcion','fecha_reporte','numero_orden'].indexOf(type) >= 0 && pdHeader) {
-                    var showLpd = !!pdHeader['show_label_' + type];
-                    var lblPd = String(pdHeader['label_' + type] != null ? pdHeader['label_' + type] : '').trim();
-                    var inlinePd = (pdHeader['label_' + type + '_line_mode'] === 'inline');
-                    var gapPd = parseInt(pdHeader['label_' + type + '_value_gap_px'], 10);
-                    if (isNaN(gapPd)) gapPd = 0;
-                    var mtPd = parseInt(pdHeader['label_' + type + '_space_above_px'], 10);
-                    if (isNaN(mtPd)) mtPd = 0;
-                    var mbPd = parseInt(pdHeader['label_' + type + '_space_below_px'], 10);
-                    if (isNaN(mbPd)) mbPd = 0;
-                    // Overrides por instancia (si existen en el editor).
-                    var ovGapEl = li.querySelector('.instance-pd-label-value-gap-px');
-                    var ovMtEl = li.querySelector('.instance-pd-space-above-px');
-                    var ovMbEl = li.querySelector('.instance-pd-space-below-px');
-                    if (ovGapEl) {
-                        var ovG = parseInt(ovGapEl.value, 10);
-                        if (!isNaN(ovG)) gapPd = Math.max(0, Math.min(40, ovG));
-                    }
-                    if (ovMtEl) {
-                        var ovA = parseInt(ovMtEl.value, 10);
-                        if (!isNaN(ovA)) mtPd = Math.max(0, Math.min(40, ovA));
-                    }
-                    if (ovMbEl) {
-                        var ovB = parseInt(ovMbEl.value, 10);
-                        if (!isNaN(ovB)) mbPd = Math.max(0, Math.min(40, ovB));
-                    }
-                    var valPd = escapeHtml(sample);
-                    var lblEsc = escapeHtml(lblPd);
-                    var showLblText = showLpd && lblPd !== '';
-                    if (inlinePd) {
-                        rawLine = '<div class="patient-line" style="padding-top:' + mtPd + 'px;padding-bottom:' + mbPd + 'px;">'
-                            + (showLblText ? ('<span class="label" style="margin-right:' + gapPd + 'px;">' + lblEsc + '</span>') : '')
-                            + (showLblText ? valPd : '<span style="margin-left:' + gapPd + 'px;display:inline-block;">' + valPd + '</span>')
-                            + '</div>';
-                    } else {
-                        var valMtPd = showLblText ? 0 : (mtPd + gapPd);
-                        rawLine = (showLblText
-                            ? ('<div class="patient-line" style="padding-top:' + mtPd + 'px;padding-bottom:' + gapPd + 'px;"><span class="label">' + lblEsc + '</span></div>')
-                            : '')
-                            + '<div class="patient-line" style="padding-top:' + valMtPd + 'px;padding-bottom:' + mbPd + 'px;">' + valPd + '</div>';
-                    }
-                    line = '<div style="' + escapeHtml(styleWrap) + '">' + rawLine + '</div>';
-                } else if (sectionKey === 'footer' && headerLikeTypes.indexOf(type) >= 0) {
-                    line = buildHeaderPreviewPieceHtml(type, sample, readCardHeaderStyleForJson().header_grid, readInstanceTextStyle(li));
-                } else if (hgHeader && headerLikeTypes.indexOf(type) >= 0) {
-                    line = buildHeaderPreviewPieceHtml(type, sample, hgHeader, readInstanceTextStyle(li));
-                } else {
-                    rawLine = shortL ? ('<span class="pdf-preview-lbl">' + escapeHtml(shortL) + '</span> ' + escapeHtml(sample)) : escapeHtml(sample);
-                    line = '<span style="' + escapeHtml(styleWrap) + '">' + rawLine + '</span>';
-                }
-            }
-            var placement = readGridPlacement(li, sectionKey);
-            var instAlign = readInstanceAlign(li);
-            items.push({
-                col: col,
-                span: span,
-                html: line,
-                grid_row: placement.row == null ? 0 : placement.row,
-                grid_stack: placement.stack == null ? 0 : placement.stack,
-                align_h: instAlign.align_h,
-                align_v: instAlign.align_v
-            });
-        });
+        var ctx = readPreviewStyleContext();
+        var gridStyle = null;
+        if (sectionKey === 'footer') gridStyle = ctx.ftFooter;
+        else if (sectionKey === 'header') gridStyle = ctx.hgHeader;
+        else if (sectionKey === 'patient_doctor') gridStyle = ctx.pdHeader;
+        var ftFooter = sectionKey === 'footer' ? ctx.ftFooter : null;
+
         previewEl.innerHTML = '';
         var wrap = document.createElement('div');
         wrap.className = 'pdf-preview-scope';
-        if (sectionKey === 'header') {
-            wrap.classList.add('pdf-hg-block', 'header', 'header-grid');
-        } else if (sectionKey === 'patient_doctor') {
-            wrap.classList.add('pdf-pd-block', 'patient-columns', 'patient-columns-grid');
-        } else if (sectionKey === 'footer') {
-            wrap.classList.add('pdf-ft-block', 'footer-grid');
-        } else if (sectionKey === 'lab_firmas') {
-            wrap.classList.add('lab-firmas-pdf-block');
-        }
+        if (sectionKey === 'header') wrap.classList.add('pdf-hg-block', 'header', 'header-grid');
+        else if (sectionKey === 'patient_doctor') wrap.classList.add('pdf-pd-block', 'patient-columns', 'patient-columns-grid');
+        else if (sectionKey === 'footer') wrap.classList.add('pdf-ft-block', 'footer-grid');
+        else if (sectionKey === 'lab_firmas') wrap.classList.add('lab-firmas-pdf-block');
         if (ftFooter && ftFooter.section_top_border_enabled) {
             var bw = parseInt(ftFooter.section_top_border_width_px, 10);
             if (isNaN(bw)) bw = 1;
             bw = Math.max(0, Math.min(6, bw));
-            var bc = String(ftFooter.section_top_border_color || '#DDDDDD');
-            if (bw > 0) {
-                wrap.style.borderTop = bw + 'px solid ' + bc;
-            }
+            if (bw > 0) wrap.style.borderTop = bw + 'px solid ' + String(ftFooter.section_top_border_color || '#DDDDDD');
             wrap.style.paddingTop = '8px';
         }
         if (sectionKey !== 'header' && sectionKey !== 'footer') {
             wrap.style.borderBottom = '1px solid #dee2e6';
             wrap.style.paddingBottom = '8px';
         }
-        var pctNum = 100 / n;
-        var totalRows = rowsForSectionKey(sectionKey);
         var rowGapPx = readSectionRowGapPx(sectionKey);
-        var gridStyle = ftFooter || hgHeader || pdHeader || null;
-        var rowMinPx = previewRowMinHeightPx(sectionKey);
         applyPreviewSectionTheme(wrap, sectionKey, gridStyle);
 
-        var tbl = document.createElement('table');
-        tbl.className = 'pdf-section-table';
-        tbl.setAttribute('data-pdf-lh', '1');
-        tbl.style.width = '100%';
-        tbl.style.tableLayout = 'fixed';
-        tbl.style.borderCollapse = 'collapse';
-        tbl.style.lineHeight = String(secSt.line_height);
-        buildPreviewColgroup(tbl, n, pctNum);
-
-        for (var mr = 0; mr < totalRows; mr++) {
-            var rowItems = items.filter(function(it) { return it.grid_row === mr; });
-            var matrixRow = buildMatrixRowFromItems(rowItems, n);
-            var tr = document.createElement('tr');
-            tr.className = 'pdf-section-row';
-            tr.setAttribute('data-pdf-row', String(mr));
-            tr.style.minHeight = rowMinPx + 'px';
-            appendPreviewRowCells(tr, matrixRow, mr, n, secSt, sectionKey, pctNum, rowGapPx, gridStyle, rowMinPx);
-            tbl.appendChild(tr);
+        var matrixRoot = document.createElement('div');
+        matrixRoot.className = 'pdf-preview-matrix';
+        for (var row = 0; row < rows; row++) {
+            var rowEl = document.createElement('div');
+            rowEl.className = 'pdf-preview-grid-row';
+            rowEl.style.gridTemplateColumns = 'repeat(' + cols + ', minmax(0, 1fr))';
+            rowEl.setAttribute('data-pdf-row', String(row));
+            var occupied = {};
+            Object.keys(itemsByRegion).forEach(function(key) {
+                var parts = key.split(':');
+                if (parseInt(parts[0], 10) !== row) return;
+                var c = parseInt(parts[1], 10);
+                var s = parseInt(parts[2], 10);
+                for (var x = c; x < c + s; x++) occupied[x] = true;
+            });
+            for (var col = 0; col < cols; col++) {
+                if (occupied[col] && !findRegionAt(itemsByRegion, row, col)) continue;
+                var region = findRegionAt(itemsByRegion, row, col);
+                var cell = document.createElement('div');
+                cell.className = 'pdf-preview-grid-cell';
+                if (region) {
+                    cell.style.gridColumn = String(col + 1) + ' / span ' + region.span;
+                    applyPreviewGridCellChrome(cell, col, sectionKey, gridStyle, secSt, rowGapPx, row, false);
+                    applyPreviewGridCellAlign(cell, region.items);
+                    region.items.forEach(function(rec) { appendPreviewInstanceToCell(cell, rec.li, sectionKey); });
+                    col += region.span - 1;
+                } else {
+                    cell.classList.add('pdf-preview-grid-cell--empty');
+                    applyPreviewGridCellChrome(cell, col, sectionKey, gridStyle, secSt, rowGapPx, row, true);
+                }
+                rowEl.appendChild(cell);
+            }
+            matrixRoot.appendChild(rowEl);
         }
-        wrap.appendChild(tbl);
+        wrap.appendChild(matrixRoot);
         previewEl.appendChild(wrap);
     }
 
+    var _footerMatrixTypesKey = <?= json_encode(implode('|', $footerMatrixTypeList), JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP) ?>;
+    var PDF_TYPO_FW_OPTS = ['normal', 'bold', '400', '500', '600', '700', '800'];
+    var PDF_TYPO_FST_OPTS = ['normal', 'italic', 'oblique'];
+    var PDF_TYPO_TT_OPTS = { none: 'Normal', uppercase: 'MAYÚSCULAS', lowercase: 'minúsculas', capitalize: 'Tipo título' };
+
+    function readControlMap(root) {
+        var map = {};
+        if (!root) return map;
+        root.querySelectorAll('input[id], select[id]').forEach(function(el) {
+            if (!el.id) return;
+            if (el.type === 'checkbox') map[el.id] = el.checked;
+            else map[el.id] = el.value;
+        });
+        return map;
+    }
+
+    function applyControlMap(map) {
+        Object.keys(map).forEach(function(id) {
+            var el = document.getElementById(id);
+            if (!el) return;
+            if (el.type === 'checkbox') el.checked = !!map[id];
+            else el.value = map[id];
+        });
+    }
+
+    function pickInputVal(id, fallback) {
+        var el = document.getElementById(id);
+        if (!el) return fallback;
+        if (el.type === 'checkbox') return el.checked;
+        var v = el.value;
+        return v !== '' && v !== null && v !== undefined ? v : fallback;
+    }
+
+    function valOr(map, id, fallback) {
+        return map[id] !== undefined ? map[id] : fallback;
+    }
+
+    function ftDupId(id) {
+        return 'ft_dup_' + id;
+    }
+
+    function buildTypoSelectOptions(opts, selected, ucFirst) {
+        return opts.map(function(o) {
+            var label = ucFirst ? (o.charAt(0).toUpperCase() + o.slice(1)) : o;
+            return '<option value="' + escapeHtml(o) + '"' + (String(selected) === String(o) ? ' selected' : '') + '>' + escapeHtml(label) + '</option>';
+        }).join('');
+    }
+
+    function buildTypoSelectTtOptions(selected) {
+        return Object.keys(PDF_TYPO_TT_OPTS).map(function(k) {
+            return '<option value="' + escapeHtml(k) + '"' + (String(selected) === String(k) ? ' selected' : '') + '>' + escapeHtml(PDF_TYPO_TT_OPTS[k]) + '</option>';
+        }).join('');
+    }
+
+    function buildTypoCells(colorId, colorVal, fsId, fsVal, fwId, fwVal, fstId, fstVal, ttId, ttVal) {
+        return '<td><input type="color" class="form-control form-control-color" id="' + escapeHtml(colorId) + '" value="' + escapeHtml(String(colorVal)) + '"></td>'
+            + '<td><input type="number" class="form-control form-control-sm" id="' + escapeHtml(fsId) + '" min="7" max="20" step="0.5" value="' + escapeHtml(String(fsVal)) + '"></td>'
+            + '<td><select class="form-select form-select-sm" id="' + escapeHtml(fwId) + '">' + buildTypoSelectOptions(PDF_TYPO_FW_OPTS, fwVal, false) + '</select></td>'
+            + '<td><select class="form-select form-select-sm" id="' + escapeHtml(fstId) + '">' + buildTypoSelectOptions(PDF_TYPO_FST_OPTS, fstVal, true) + '</select></td>'
+            + '<td><select class="form-select form-select-sm" id="' + escapeHtml(ttId) + '">' + buildTypoSelectTtOptions(ttVal) + '</select></td>';
+    }
+
+    function buildLineModeSelect(id, val, stackedLabel, inlineLabel) {
+        stackedLabel = stackedLabel || 'Debajo';
+        inlineLabel = inlineLabel || 'Misma línea';
+        return '<select class="form-select form-select-sm" id="' + escapeHtml(id) + '"><option value="stacked"' + (val === 'stacked' ? ' selected' : '') + '>' + escapeHtml(stackedLabel) + '</option><option value="inline"' + (val === 'inline' ? ' selected' : '') + '>' + escapeHtml(inlineLabel) + '</option></select>';
+    }
+
+    function buildEmptyLabelCells() {
+        return '<td class="text-muted text-center">—</td><td class="text-muted text-center">—</td><td class="text-muted text-center">—</td>';
+    }
+
+    function collectFooterMatrixTypes() {
+        var types = {};
+        (window._footerFieldOrder || []).forEach(function(t) { types[t] = true; });
+        if (footerList) {
+            footerList.querySelectorAll('.pdf-instance-item').forEach(function(li) {
+                var col = li.querySelector('.instance-column');
+                var v = col ? parseInt(col.value, 10) : -1;
+                if (v < 0) return;
+                var t = li.getAttribute('data-element-type') || '';
+                if (t) types[t] = true;
+            });
+        }
+        return Object.keys(types).sort();
+    }
+
+    function rebuildFooterMatrixTables() {
+        var types = collectFooterMatrixTypes();
+        var key = types.join('|');
+        if (key === _footerMatrixTypesKey) return;
+        _footerMatrixTypesKey = key;
+
+        var wrap = document.getElementById('ft_matrix_controls_wrap');
+        if (!wrap) return;
+        var saved = readControlMap(wrap);
+
+        var matrixTbody = document.getElementById('ft_matrix_tbody');
+        var matrixEmpty = document.getElementById('ft_matrix_empty');
+        var matrixWrap = document.getElementById('ft_matrix_table_wrap');
+        if (!matrixTbody) return;
+
+        var hgDefs = window._headerLabelDefaults || {};
+        var pdDefs = window._patientLabelDefaults || {};
+        var ftUi = window._footerFieldUi || {};
+        var hgUi = window._hgFieldUi || {};
+        var pdUi = window._patientFieldUi || {};
+        var elLbl = window._elementLabels || {};
+
+        var ftBtc = pickInputVal('ft_body_text', '#666666');
+        var ftBaseFs = pickInputVal('ft_font_size', 8);
+        var ftFw = pickInputVal('ft_font_weight', 'normal');
+        var ftFst = pickInputVal('ft_font_style', 'normal');
+        var ftTt = pickInputVal('ft_text_transform', 'none');
+        var hgBtc = pickInputVal('hg_body_text', '#333333');
+        var hgBaseFs = pickInputVal('hg_font_size', 9.5);
+        var hgFw = pickInputVal('hg_font_weight', 'normal');
+        var hgFst = pickInputVal('hg_font_style', 'normal');
+        var hgTt = pickInputVal('hg_text_transform', 'none');
+        var pdBtc = pickInputVal('pd_body_text', '#333333');
+        var pdBaseFs = pickInputVal('pd_font_size', 9.5);
+        var pdFw = pickInputVal('pd_font_weight', 'normal');
+        var pdFst = pickInputVal('pd_font_style', 'normal');
+        var pdTt = pickInputVal('pd_text_transform', 'none');
+
+        var tableHtml = '';
+
+        types.forEach(function(type) {
+            if (type === 'footer_generated') {
+                var labGen = valOr(saved, 'ft_label_footer_generated', pickInputVal('ft_label_footer_generated', 'Resultados generados el'));
+                var showGen = valOr(saved, 'ft_show_label_footer_generated', pickInputVal('ft_show_label_footer_generated', false));
+                var lmGen = valOr(saved, 'ft_label_footer_generated_line_mode', pickInputVal('ft_label_footer_generated_line_mode', 'stacked'));
+                tableHtml += '<tr data-ft-matrix-type="footer_generated"><td><span class="fw-semibold">' + escapeHtml(ftUi.footer_generated || type) + '</span><span class="text-muted d-block small">Etiqueta antes de la fecha</span></td>'
+                    + '<td><input type="text" class="form-control form-control-sm" id="ft_label_footer_generated" maxlength="120" value="' + escapeHtml(String(labGen)) + '"></td>'
+                    + '<td class="text-center"><input type="checkbox" class="form-check-input" id="ft_show_label_footer_generated" value="1"' + (showGen ? ' checked' : '') + '></td>'
+                    + '<td>' + buildLineModeSelect('ft_label_footer_generated_line_mode', lmGen) + '</td>'
+                    + buildTypoCells('ft_color_label_generated', valOr(saved, 'ft_color_label_generated', ftBtc), 'ft_fs_label_gen', valOr(saved, 'ft_fs_label_gen', ftBaseFs), 'ft_fw_label_gen', valOr(saved, 'ft_fw_label_gen', ftFw), 'ft_fst_label_gen', valOr(saved, 'ft_fst_label_gen', ftFst), 'ft_tt_label_gen', valOr(saved, 'ft_tt_label_gen', ftTt))
+                    + '</tr>';
+                tableHtml += '<tr data-ft-matrix-type="footer_generated_datetime"><td><span class="fw-semibold">Fecha y hora generadas</span><span class="text-muted d-block small">Valor en «generados el»</span></td>'
+                    + buildEmptyLabelCells()
+                    + buildTypoCells('ft_color_datetime', valOr(saved, 'ft_color_datetime', ftBtc), 'ft_fs_datetime', valOr(saved, 'ft_fs_datetime', ftBaseFs), 'ft_fw_datetime', valOr(saved, 'ft_fw_datetime', ftFw), 'ft_fst_datetime', valOr(saved, 'ft_fst_datetime', ftFst), 'ft_tt_datetime', valOr(saved, 'ft_tt_datetime', ftTt))
+                    + '</tr>';
+            } else if (type === 'footer_company') {
+                tableHtml += '<tr data-ft-matrix-type="footer_company"><td><span class="fw-semibold">' + escapeHtml(ftUi.footer_company || type) + '</span><span class="text-muted d-block small">Valor en la matriz</span></td>'
+                    + buildEmptyLabelCells()
+                    + buildTypoCells('ft_color_company', valOr(saved, 'ft_color_company', ftBtc), 'ft_fs_company', valOr(saved, 'ft_fs_company', ftBaseFs), 'ft_fw_company', valOr(saved, 'ft_fw_company', ftFw), 'ft_fst_company', valOr(saved, 'ft_fst_company', ftFst), 'ft_tt_company', valOr(saved, 'ft_tt_company', ftTt))
+                    + '</tr>';
+            } else if (type === 'footer_policy') {
+                tableHtml += '<tr data-ft-matrix-type="footer_policy"><td><span class="fw-semibold">' + escapeHtml(ftUi.footer_policy || type) + '</span><span class="text-muted d-block small">Valor en la matriz</span></td>'
+                    + buildEmptyLabelCells()
+                    + buildTypoCells('ft_color_policy', valOr(saved, 'ft_color_policy', ftBtc), 'ft_fs_policy', valOr(saved, 'ft_fs_policy', ftBaseFs), 'ft_fw_policy', valOr(saved, 'ft_fw_policy', ftFw), 'ft_fst_policy', valOr(saved, 'ft_fst_policy', ftFst), 'ft_tt_policy', valOr(saved, 'ft_tt_policy', ftTt))
+                    + '</tr>';
+            } else if (Object.prototype.hasOwnProperty.call(hgDefs, type)) {
+                var hgLabId = ftDupId('hg_label_' + type);
+                var hgLab = valOr(saved, hgLabId, pickInputVal('hg_label_' + type, hgDefs[type] || ''));
+                var showHgId = ftDupId('hg_show_label_' + type);
+                var showHg = valOr(saved, showHgId, pickInputVal('hg_show_label_' + type, false));
+                var lmHgId = ftDupId('hg_label_' + type + '_line_mode');
+                var lmHg = valOr(saved, lmHgId, pickInputVal('hg_label_' + type + '_line_mode', 'stacked'));
+                var hgHdrColor = pickInputVal('hg_hdr_' + type + '_color', hgBtc);
+                var hgHdrFs = pickInputVal('hg_hdr_' + type + '_fs', hgBaseFs);
+                var hgHdrFw = pickInputVal('hg_hdr_' + type + '_fw', hgFw);
+                var hgHdrFst = pickInputVal('hg_hdr_' + type + '_fst', hgFst);
+                var hgHdrTt = pickInputVal('hg_hdr_' + type + '_tt', hgTt);
+                tableHtml += '<tr data-ft-matrix-type="' + escapeHtml(type) + '"><td><span class="fw-semibold">' + escapeHtml(hgUi[type] || elLbl[type] || type) + '</span><span class="text-muted d-block small">Valor: estilo del ítem en la matriz</span></td>'
+                    + '<td><input type="text" class="form-control form-control-sm" id="' + escapeHtml(hgLabId) + '" maxlength="120" value="' + escapeHtml(String(hgLab)) + '"></td>'
+                    + '<td class="text-center"><input type="checkbox" class="form-check-input" id="' + escapeHtml(showHgId) + '" value="1"' + (showHg ? ' checked' : '') + '></td>'
+                    + '<td>' + buildLineModeSelect(lmHgId, lmHg) + '</td>'
+                    + buildTypoCells(ftDupId('hg_hdr_' + type + '_color'), valOr(saved, ftDupId('hg_hdr_' + type + '_color'), hgHdrColor), ftDupId('hg_hdr_' + type + '_fs'), valOr(saved, ftDupId('hg_hdr_' + type + '_fs'), hgHdrFs), ftDupId('hg_hdr_' + type + '_fw'), valOr(saved, ftDupId('hg_hdr_' + type + '_fw'), hgHdrFw), ftDupId('hg_hdr_' + type + '_fst'), valOr(saved, ftDupId('hg_hdr_' + type + '_fst'), hgHdrFst), ftDupId('hg_hdr_' + type + '_tt'), valOr(saved, ftDupId('hg_hdr_' + type + '_tt'), hgHdrTt))
+                    + '</tr>';
+            } else if (type === 'qr') {
+                var qrLabId = ftDupId('hg_label_qr_hint');
+                var qrLab = valOr(saved, qrLabId, pickInputVal('hg_label_qr_hint', ''));
+                var showQrId = ftDupId('hg_show_label_qr_hint');
+                var showQr = valOr(saved, showQrId, pickInputVal('hg_show_label_qr_hint', false));
+                var lmQrId = ftDupId('hg_label_qr_hint_line_mode');
+                var lmQr = valOr(saved, lmQrId, pickInputVal('hg_label_qr_hint_line_mode', 'stacked'));
+                var qrColor = pickInputVal('hg_qr_hint_color', hgBtc);
+                var qrFs = pickInputVal('hg_qr_hint_fs', hgBaseFs);
+                var qrFw = pickInputVal('hg_qr_hint_fw', hgFw);
+                var qrFst = pickInputVal('hg_qr_hint_fst', hgFst);
+                var qrTt = pickInputVal('hg_qr_hint_tt', hgTt);
+                tableHtml += '<tr data-ft-matrix-type="qr"><td><span class="fw-semibold">' + escapeHtml(hgUi.qr || 'Código QR') + ' — leyenda</span></td>'
+                    + '<td><input type="text" class="form-control form-control-sm" id="' + escapeHtml(qrLabId) + '" maxlength="120" value="' + escapeHtml(String(qrLab)) + '"></td>'
+                    + '<td class="text-center"><input type="checkbox" class="form-check-input" id="' + escapeHtml(showQrId) + '" value="1"' + (showQr ? ' checked' : '') + '></td>'
+                    + '<td>' + buildLineModeSelect(lmQrId, lmQr, 'Debajo del QR', 'Misma línea') + '</td>'
+                    + buildTypoCells(ftDupId('hg_qr_hint_color'), valOr(saved, ftDupId('hg_qr_hint_color'), qrColor), ftDupId('hg_qr_hint_fs'), valOr(saved, ftDupId('hg_qr_hint_fs'), qrFs), ftDupId('hg_qr_hint_fw'), valOr(saved, ftDupId('hg_qr_hint_fw'), qrFw), ftDupId('hg_qr_hint_fst'), valOr(saved, ftDupId('hg_qr_hint_fst'), qrFst), ftDupId('hg_qr_hint_tt'), valOr(saved, ftDupId('hg_qr_hint_tt'), qrTt))
+                    + '</tr>';
+            } else if (Object.prototype.hasOwnProperty.call(pdDefs, type)) {
+                var pdLabId = ftDupId('pd_label_' + type);
+                var pdLab = valOr(saved, pdLabId, pickInputVal('pd_label_' + type, pdDefs[type] || ''));
+                var showPdId = ftDupId('pd_show_label_' + type);
+                var showPd = valOr(saved, showPdId, pickInputVal('pd_show_label_' + type, false));
+                var lmPdId = ftDupId('pd_label_' + type + '_line_mode');
+                var lmPd = valOr(saved, lmPdId, pickInputVal('pd_label_' + type + '_line_mode', 'stacked'));
+                var pdLblColor = pickInputVal('pd_lbl_' + type + '_color', pdBtc);
+                var pdLblFs = pickInputVal('pd_lbl_' + type + '_fs', pdBaseFs);
+                var pdLblFw = pickInputVal('pd_lbl_' + type + '_fw', pdFw);
+                var pdLblFst = pickInputVal('pd_lbl_' + type + '_fst', pdFst);
+                var pdLblTt = pickInputVal('pd_lbl_' + type + '_tt', pdTt);
+                tableHtml += '<tr data-ft-matrix-type="' + escapeHtml(type) + '"><td><span class="fw-semibold">' + escapeHtml(pdUi[type] || elLbl[type] || type) + '</span><span class="text-muted d-block small">Valor: estilo del ítem en la matriz</span></td>'
+                    + '<td><input type="text" class="form-control form-control-sm" id="' + escapeHtml(pdLabId) + '" maxlength="120" value="' + escapeHtml(String(pdLab)) + '"></td>'
+                    + '<td class="text-center"><input type="checkbox" class="form-check-input" id="' + escapeHtml(showPdId) + '" value="1"' + (showPd ? ' checked' : '') + '></td>'
+                    + '<td>' + buildLineModeSelect(lmPdId, lmPd) + '</td>'
+                    + buildTypoCells(ftDupId('pd_lbl_' + type + '_color'), valOr(saved, ftDupId('pd_lbl_' + type + '_color'), pdLblColor), ftDupId('pd_lbl_' + type + '_fs'), valOr(saved, ftDupId('pd_lbl_' + type + '_fs'), pdLblFs), ftDupId('pd_lbl_' + type + '_fw'), valOr(saved, ftDupId('pd_lbl_' + type + '_fw'), pdLblFw), ftDupId('pd_lbl_' + type + '_fst'), valOr(saved, ftDupId('pd_lbl_' + type + '_fst'), pdLblFst), ftDupId('pd_lbl_' + type + '_tt'), valOr(saved, ftDupId('pd_lbl_' + type + '_tt'), pdLblTt))
+                    + '</tr>';
+            }
+        });
+
+        matrixTbody.innerHTML = tableHtml;
+        var hasRows = types.length > 0;
+        if (matrixEmpty) matrixEmpty.style.display = hasRows ? 'none' : '';
+        if (matrixWrap) matrixWrap.style.display = hasRows ? '' : 'none';
+        applyControlMap(saved);
+    }
+
     function rebuildAllPreviews() {
+        rebuildFooterMatrixTables();
         rebuildGridEditors();
         rebuildGridPreview(headerList, previewHeader);
         rebuildGridPreview(patientList, previewPatient);
@@ -3438,6 +3642,28 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     });
 
+    document.querySelectorAll('.pdf-sec-cols').forEach(function(inp) {
+        inp.addEventListener('change', function() {
+            inp.value = String(clampCols(inp.value));
+            rebuildColumnSelects();
+            rebuildAllPreviews();
+        });
+        inp.addEventListener('input', function() {
+            inp.value = String(clampCols(inp.value));
+            rebuildColumnSelects();
+            rebuildAllPreviews();
+        });
+    });
+    document.querySelectorAll('.pdf-sec-rows').forEach(function(inp) {
+        inp.addEventListener('change', function() {
+            inp.value = String(clampRows(inp.value));
+            rebuildAllPreviews();
+        });
+        inp.addEventListener('input', function() {
+            inp.value = String(clampRows(inp.value));
+            rebuildAllPreviews();
+        });
+    });
     [secColsH, secColsP, secColsL, secColsF].forEach(function(inp) {
         if (!inp) return;
         inp.addEventListener('change', function() {
@@ -3679,15 +3905,23 @@ document.addEventListener('DOMContentLoaded', function() {
         if (li) li.scrollIntoView({ behavior: 'smooth', block: 'center' });
     });
 
+    function shouldRebuildPreviewOnStyleInput(t) {
+        if (!t) return false;
+        if (t.classList && (t.classList.contains('instance-font-weight') || t.classList.contains('ct-lbl-font-weight') || t.classList.contains('ct-val-font-weight'))) {
+            return true;
+        }
+        if (!t.id) return false;
+        var id = String(t.id);
+        return id.indexOf('ft_') === 0 || id.indexOf('ft_dup_') === 0 || id.indexOf('hg_') === 0 || id.indexOf('pd_') === 0 || id === 'hs_separator_color';
+    }
+
     document.addEventListener('change', function(e) {
-        var t = e.target;
-        if (t && t.id && (t.id.indexOf('ft_') === 0 || t.id.indexOf('hg_') === 0 || t.id.indexOf('pd_') === 0 || t.id === 'hs_separator_color')) {
+        if (shouldRebuildPreviewOnStyleInput(e.target)) {
             rebuildAllPreviews();
         }
     });
     document.addEventListener('input', function(e) {
-        var t = e.target;
-        if (t && t.id && (t.id.indexOf('ft_') === 0 || t.id.indexOf('hg_') === 0 || t.id.indexOf('pd_') === 0 || t.id === 'hs_separator_color')) {
+        if (shouldRebuildPreviewOnStyleInput(e.target)) {
             rebuildAllPreviews();
         }
     });
@@ -3781,6 +4015,50 @@ document.addEventListener('DOMContentLoaded', function() {
             var v = el ? String(el.value || '').trim() : 'stacked';
             return v === 'inline' ? 'inline' : 'stacked';
         }
+        function firstDomEl(ids) {
+            for (var i = 0; i < ids.length; i++) {
+                var el = document.getElementById(ids[i]);
+                if (el) return el;
+            }
+            return null;
+        }
+        function pickLfTextIds(ids, fallback, allowEmpty) {
+            var el = firstDomEl(ids);
+            if (!el) return fallback;
+            var v = String(el.value || '').trim();
+            if (v === '') {
+                if (allowEmpty === true) return '';
+                return fallback;
+            }
+            return v.length > 120 ? v.slice(0, 120) : v;
+        }
+        function pickChkIds(ids, fallback) {
+            var el = firstDomEl(ids);
+            if (!el) return fallback;
+            return !!el.checked;
+        }
+        function pickLineModeIds(ids) {
+            var el = firstDomEl(ids);
+            var v = el ? String(el.value || '').trim() : 'stacked';
+            return v === 'inline' ? 'inline' : 'stacked';
+        }
+        function pickHexIds(ids, fallback) {
+            var el = firstDomEl(ids);
+            if (!el) return fallback;
+            var v = String(el.value || '').trim();
+            return isValidPdfHexJs(v) ? v : fallback;
+        }
+        function pickNumIds(ids, min, max, fallback) {
+            var el = firstDomEl(ids);
+            var n = el ? parseFloat(el.value) : NaN;
+            if (isNaN(n)) n = fallback;
+            return Math.max(min, Math.min(max, n));
+        }
+        function pickAllowedIds(ids, listKey, fallback) {
+            var el = firstDomEl(ids);
+            if (!el) return fallback;
+            return pickAllowedDomId(el.id, listKey, fallback);
+        }
         function pickPaginationPos(id, fallback) {
             var el = document.getElementById(id);
             var v = el ? String(el.value || '').trim() : fallback;
@@ -3808,14 +4086,14 @@ document.addEventListener('DOMContentLoaded', function() {
         var pdGrid = readSectionGridWrap('pd', '#F8F9FA', '#333333', 9.5);
         var pdDefs = { paciente_nombre: 'Paciente:', paciente_genero: 'Género:', paciente_edad: 'Edad:', paciente_telefono: 'Teléfono:', diagnostico_presuntivo: 'Diagnóstico presuntivo:', medico: 'Médico:', fecha_recepcion: 'Fecha de recepción:', fecha_reporte: 'Fecha de reporte:', numero_orden: 'No. Orden:' };
         Object.keys(pdDefs).forEach(function(fid) {
-            pdGrid['label_' + fid] = pickLfText('pd_label_' + fid, pdDefs[fid]);
-            pdGrid['show_label_' + fid] = pickChk('pd_show_label_' + fid, true);
-            pdGrid['label_' + fid + '_line_mode'] = pickLineModeSelect('pd_label_' + fid + '_line_mode');
-            pdGrid['label_' + fid + '_text_color'] = pickHex('pd_lbl_' + fid + '_color', pdGrid.body_text_color);
-            pdGrid['label_' + fid + '_font_size_pt'] = pickNum('pd_lbl_' + fid + '_fs', 7, 20, pdGrid.font_size_pt);
-            pdGrid['label_' + fid + '_font_weight'] = pickAllowedDomId('pd_lbl_' + fid + '_fw', 'font_weights', pdGrid.font_weight);
-            pdGrid['label_' + fid + '_font_style'] = pickAllowedDomId('pd_lbl_' + fid + '_fst', 'font_styles', pdGrid.font_style);
-            pdGrid['label_' + fid + '_text_transform'] = pickAllowedDomId('pd_lbl_' + fid + '_tt', 'text_transforms', pdGrid.text_transform);
+            pdGrid['label_' + fid] = pickLfTextIds(['ft_dup_pd_label_' + fid, 'pd_label_' + fid], pdDefs[fid]);
+            pdGrid['show_label_' + fid] = pickChkIds(['ft_dup_pd_show_label_' + fid, 'pd_show_label_' + fid], true);
+            pdGrid['label_' + fid + '_line_mode'] = pickLineModeIds(['ft_dup_pd_label_' + fid + '_line_mode', 'pd_label_' + fid + '_line_mode']);
+            pdGrid['label_' + fid + '_text_color'] = pickHexIds(['ft_dup_pd_lbl_' + fid + '_color', 'pd_lbl_' + fid + '_color'], pdGrid.body_text_color);
+            pdGrid['label_' + fid + '_font_size_pt'] = pickNumIds(['ft_dup_pd_lbl_' + fid + '_fs', 'pd_lbl_' + fid + '_fs'], 7, 20, pdGrid.font_size_pt);
+            pdGrid['label_' + fid + '_font_weight'] = pickAllowedIds(['ft_dup_pd_lbl_' + fid + '_fw', 'pd_lbl_' + fid + '_fw'], 'font_weights', pdGrid.font_weight);
+            pdGrid['label_' + fid + '_font_style'] = pickAllowedIds(['ft_dup_pd_lbl_' + fid + '_fst', 'pd_lbl_' + fid + '_fst'], 'font_styles', pdGrid.font_style);
+            pdGrid['label_' + fid + '_text_transform'] = pickAllowedIds(['ft_dup_pd_lbl_' + fid + '_tt', 'pd_lbl_' + fid + '_tt'], 'text_transforms', pdGrid.text_transform);
             pdGrid['label_' + fid + '_value_gap_px'] = pickNum('pd_label_' + fid + '_value_gap_px', 0, 40, 0);
             pdGrid['label_' + fid + '_space_above_px'] = pickNum('pd_label_' + fid + '_space_above_px', 0, 40, 0);
             pdGrid['label_' + fid + '_space_below_px'] = pickNum('pd_label_' + fid + '_space_below_px', 0, 40, 0);
@@ -3853,26 +4131,26 @@ document.addEventListener('DOMContentLoaded', function() {
         var hgGrid = readSectionGridWrap('hg', '#FFFFFF', '#333333', 9.5);
         var hgBaseFs = pickNum('hg_font_size', 7, 20, 9.5);
         Object.assign(hgGrid, {
-            label_qr_hint: pickLfText('hg_label_qr_hint', 'Escanee para ver sus resultados online'),
-            show_label_qr_hint: pickChk('hg_show_label_qr_hint', true),
-            label_qr_hint_line_mode: pickLineModeSelect('hg_label_qr_hint_line_mode'),
-            label_qr_hint_text_color: pickHex('hg_qr_hint_color', hgGrid.body_text_color),
-            label_qr_hint_font_size_pt: pickNum('hg_qr_hint_fs', 7, 20, hgBaseFs),
-            label_qr_hint_font_weight: pickAllowedDomId('hg_qr_hint_fw', 'font_weights', hgGrid.font_weight),
-            label_qr_hint_font_style: pickAllowedDomId('hg_qr_hint_fst', 'font_styles', hgGrid.font_style),
-            label_qr_hint_text_transform: pickAllowedDomId('hg_qr_hint_tt', 'text_transforms', hgGrid.text_transform),
+            label_qr_hint: pickLfTextIds(['ft_dup_hg_label_qr_hint', 'hg_label_qr_hint'], 'Escanee para ver sus resultados online'),
+            show_label_qr_hint: pickChkIds(['ft_dup_hg_show_label_qr_hint', 'hg_show_label_qr_hint'], true),
+            label_qr_hint_line_mode: pickLineModeIds(['ft_dup_hg_label_qr_hint_line_mode', 'hg_label_qr_hint_line_mode']),
+            label_qr_hint_text_color: pickHexIds(['ft_dup_hg_qr_hint_color', 'hg_qr_hint_color'], hgGrid.body_text_color),
+            label_qr_hint_font_size_pt: pickNumIds(['ft_dup_hg_qr_hint_fs', 'hg_qr_hint_fs'], 7, 20, hgBaseFs),
+            label_qr_hint_font_weight: pickAllowedIds(['ft_dup_hg_qr_hint_fw', 'hg_qr_hint_fw'], 'font_weights', hgGrid.font_weight),
+            label_qr_hint_font_style: pickAllowedIds(['ft_dup_hg_qr_hint_fst', 'hg_qr_hint_fst'], 'font_styles', hgGrid.font_style),
+            label_qr_hint_text_transform: pickAllowedIds(['ft_dup_hg_qr_hint_tt', 'hg_qr_hint_tt'], 'text_transforms', hgGrid.text_transform),
             qr_size_percent: Math.round(pickNum('hg_qr_size_percent', 50, 400, 100))
         });
         (window._headerLabelFieldIds || []).forEach(function(fid) {
             var defT = (window._headerLabelDefaults && Object.prototype.hasOwnProperty.call(window._headerLabelDefaults, fid)) ? window._headerLabelDefaults[fid] : '';
-            hgGrid['label_' + fid] = pickLfText('hg_label_' + fid, defT, true);
-            hgGrid['show_label_' + fid] = pickChk('hg_show_label_' + fid, true);
-            hgGrid['label_' + fid + '_line_mode'] = pickLineModeSelect('hg_label_' + fid + '_line_mode');
-            hgGrid['label_' + fid + '_text_color'] = pickHex('hg_hdr_' + fid + '_color', hgGrid.body_text_color);
-            hgGrid['label_' + fid + '_font_size_pt'] = pickNum('hg_hdr_' + fid + '_fs', 7, 20, hgBaseFs);
-            hgGrid['label_' + fid + '_font_weight'] = pickAllowedDomId('hg_hdr_' + fid + '_fw', 'font_weights', hgGrid.font_weight);
-            hgGrid['label_' + fid + '_font_style'] = pickAllowedDomId('hg_hdr_' + fid + '_fst', 'font_styles', hgGrid.font_style);
-            hgGrid['label_' + fid + '_text_transform'] = pickAllowedDomId('hg_hdr_' + fid + '_tt', 'text_transforms', hgGrid.text_transform);
+            hgGrid['label_' + fid] = pickLfTextIds(['ft_dup_hg_label_' + fid, 'hg_label_' + fid], defT, true);
+            hgGrid['show_label_' + fid] = pickChkIds(['ft_dup_hg_show_label_' + fid, 'hg_show_label_' + fid], true);
+            hgGrid['label_' + fid + '_line_mode'] = pickLineModeIds(['ft_dup_hg_label_' + fid + '_line_mode', 'hg_label_' + fid + '_line_mode']);
+            hgGrid['label_' + fid + '_text_color'] = pickHexIds(['ft_dup_hg_hdr_' + fid + '_color', 'hg_hdr_' + fid + '_color'], hgGrid.body_text_color);
+            hgGrid['label_' + fid + '_font_size_pt'] = pickNumIds(['ft_dup_hg_hdr_' + fid + '_fs', 'hg_hdr_' + fid + '_fs'], 7, 20, hgBaseFs);
+            hgGrid['label_' + fid + '_font_weight'] = pickAllowedIds(['ft_dup_hg_hdr_' + fid + '_fw', 'hg_hdr_' + fid + '_fw'], 'font_weights', hgGrid.font_weight);
+            hgGrid['label_' + fid + '_font_style'] = pickAllowedIds(['ft_dup_hg_hdr_' + fid + '_fst', 'hg_hdr_' + fid + '_fst'], 'font_styles', hgGrid.font_style);
+            hgGrid['label_' + fid + '_text_transform'] = pickAllowedIds(['ft_dup_hg_hdr_' + fid + '_tt', 'hg_hdr_' + fid + '_tt'], 'text_transforms', hgGrid.text_transform);
         });
         return {
             card_header: {
@@ -4435,6 +4713,11 @@ document.addEventListener('DOMContentLoaded', function() {
             }
             alert('Revise los estilos antes de guardar:\n\n' + msg);
             return;
+        }
+        var activeTabBtn = document.querySelector('#pdf_config_tabs .nav-link.active[data-config-tab]');
+        var configTabInput = document.getElementById('config_tab');
+        if (activeTabBtn && configTabInput) {
+            configTabInput.value = String(activeTabBtn.getAttribute('data-config-tab') || 'general');
         }
         var blocks = [];
         blockList.querySelectorAll('.pdf-block-item').forEach(function(li) {

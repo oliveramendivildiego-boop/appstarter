@@ -1,0 +1,360 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<title>Página de inicio de WAMPSERVER</title>
+	<meta charset="UTF-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+  <meta name="viewport" content="width=device-width">
+	<link id="stylecall" rel="stylesheet" href="wampthemes/classic/style.css" />
+	<link id="stylecall" rel="stylesheet" href="wampthemes/popupmodal.css" />
+	<link rel="shortcut icon" href="favicon.ico" type="image/ico" />
+</head>
+
+<body>
+  <div id="head">
+    <div class="innerhead">
+	    <h1><abbr title="Windows">W</abbr><abbr title="Apache">a</abbr><abbr title="MySQL/MariaDB">m</abbr><abbr title="PHP">p</abbr><abbr title="server WEB local">server</abbr></h1>
+		   <ul>
+			   <li>Apache 2.4</li><li>-</li><li>MySQL 5, 8 &amp; 9</li><li>-</li><li>MariaDB 10 &amp; 11</li><li>-</li><li>PHP 5, 7 &amp; 8</li>		   </ul>
+     </div>
+		<ul class="utility">
+		  <li>Version 3.4.0 - 64bit</li>
+      <li><form method="get" style="display:inline-block;"><select name="lang" id="langues" onchange="this.form.submit();">
+<option value="bulgarian">bulgarian</option>
+<option value="chinese">chinese</option>
+<option value="czech">czech</option>
+<option value="english">english</option>
+<option value="french">french</option>
+<option value="hellenic">hellenic</option>
+<option value="latvian">latvian</option>
+<option value="macedonian">macedonian</option>
+<option value="portuguese">portuguese</option>
+<option value="romanian">romanian</option>
+<option value="spanish" selected >spanish</option>
+<option value="turkish">turkish</option>
+</select></form><select id="themes">
+<option id="classic">classic</option>
+<option id="modern">modern</option>
+<option id="no-style">no-style</option>
+<option id="simple">simple</option>
+</select>
+</li>
+	  </ul>
+	</div>
+
+	<div class="config">
+	    <div class="innerconfig">
+        <h2>Configuración del servidor</h2>
+	        <dl class="content">
+		        <dt>Versión de Apache:</dt>
+		            <dd>2.4.62.1&nbsp;&nbsp;-&nbsp;<a href='http://httpd.apache.org/docs/2.4/es/'>Documentación Apache</a>&nbsp;-&nbsp;<a href='#apachemodloaded'><small style='color:#777;'>Loaded Apache modules</small></a></dd>
+		        <dt>Software del servidor:</dt>
+		            <dd>Apache/2.4.62 (Win64) PHP/8.4.0 mod_fcgid/2.3.10-dev&nbsp;-&nbsp;Puerto definido para Apache 80</dd>
+		        <dt>Versión de PHP:</dt>
+		            <dd><small style='color:blue;'>[Apache module]&nbsp;</small>&nbsp;8.4.0&nbsp;-&nbsp;<a href='http://www.php.net/manual/es/'>Documentación PHP</a>&nbsp;-&nbsp;<a href='#phpextloaded'><small style='color:#777;'>Extensiones PHP cargadas</small></a>&nbsp;-&nbsp;<a href='#phpversionsuse'><small style='color:#777;'>Uso de versiones de PHP</small></a></dd>
+		        
+		        <dt>&nbsp;</dt>
+		        		<dd><small style='color:green;'>[FCGI]</small>&nbsp;5.6.40 - 7.0.33 - 7.4.33 - 8.0.30 - 8.1.31 - 8.2.26 - 8.2.29 - 8.3.14 - 8.4.0&nbsp;-&nbsp;<a href='#helpfcgi'><small style='color:#777;'>Ayuda del modo FCGI</small></a></dd>
+						<dt>Versión de MySQL:</dt>
+	<dd>9.1.0&nbsp;-&nbsp;Puerto definido para MySQL 3306&nbsp;-&nbsp;SGBD predeterminado&nbsp;-&nbsp; <a href='http://dev.mysql.com/doc/index.html'>Documentación MySQL</a></dd><dt>Versión de MariaDB: </dt>
+  <dd>11.5.2&nbsp;-&nbsp;Puerto definido para MariaDB 3307&nbsp;-&nbsp; <a href='http://mariadb.com/kb/en/mariadb/documentation'>Documentación MariaDB</a>&nbsp;-&nbsp;<a href='#mysqlmariadb'><small style='color:#777;'>MySQL - MariaDB</small></a></dd>
+	        </dl>
+      </div>
+  </div>
+   <div class="divider1">&nbsp;</div>
+   <div class="alltools four-columns">
+	    <div class="inneralltools">
+	        <div class="column">
+	            <h2>Herramientas</h2>
+	            <ul class="tools">
+		            <li><a href="?phpinfo=-1">phpinfo()</a></li>
+		            
+		            <li><a href="phpsysinfo">PhpSysInfo 3.4.4</a></li>
+		            <li><a href='add_vhost.php?lang=spanish'>Agregar un hospedador virtual</a></li>
+	            </ul>
+	        </div>
+	        		<div class="column">
+	            <h2>Sus proyectos&nbsp;<span style='font-size:60%;'>(20)</span></h2>
+	            <ul class="projects">
+	                <li>chimba</li><li>driver xiaomi</li><li>farmacia</li><li>freewa</li><li>infolab</li><li>john</li><li>john-cloud</li><li>khali</li><li>laboratorio</li><li>laboratorio - copia</li><li>labos aux</li><li>master</li><li>oliverasolutions</li><li>panel-comercial</li><li>phpmyadmines</li><li>public_html</li><li>Reservas</li><li>scraper</li><li>ventas-old</li><li>ventas8</li><li class='projectsdir'>Estas son sus carpetas en c:/wamp64/www<br />Para utilizarlas como enlace http, debes declararlas como hospedador virtual.<br>Para esto, debes hacer clic derecho en el icono de Wampserver, Configuración de wampserver, en la pestaña, Precaución. Esto es sólo para expertos..., Permitir enlaces en la página de inicio de proyectos...</li>
+	            </ul>
+	        </div>
+	        	<div class="column">
+	            <h2>Sus alias&nbsp;<span style='font-size:60%;'>(2)</span></h2>
+	            <ul class="aliases">
+	                <li><a href="phpmyadmin5.2.1/">phpmyadmin 5.2.1</a></li><li class="phpmynot">Not compatible with PHP 8.4.0</li><li><a href="adminer/">adminer 4.8.4</a></li>
+	            </ul>
+	        </div>	        <div class="column">
+	            <h2>Su servidor virtual&nbsp;<span style='font-size:60%;'>(3)</span></h2>
+	            <ul class="vhost">
+	                <li><a href="http://localhost">localhost</a></li><li><a href="http://laboratorio.local">laboratorio.local</a></li><li><a href="http://quantum.local">quantum.local</a></li><li><i style='color:red;'>Error(s)</i> See below</li>
+	            </ul>
+	        </div>	<div id="error" style="clear:both;"></div>
+	<p style='color:red;'>La ruta <span style='color:black;'>C:/wamp64/www/laboratorio/public</span> para &lt;Directory ... no termina con una barra inclinada /<br /></p>
+      </div>
+    </div>
+	<div class="divider2">&nbsp;</div>
+	<ul id="foot">
+		<li><a href="http://forum.wampserver.com/list.php?2">Foro de Wampserver</a></li>
+	</ul>
+<div id="phpextloaded" class="modalOto">
+	<div>
+		<div class='modalOtoBar'><input type='button' value='Copy' class='js-copy' data-target='#tocopy'>
+			<a href="#closeOto" title="Close" class="closeOto">X</a>
+		</div>
+		<div id="tocopy"><b>PHP Loaded Extensions - Function get_loaded_extensions()</b><br>
+<u>PHP 8.4.0 -> Apache module</u><br>
+&nbsp;bcmath&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;calendar&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;com_dotnet&nbsp;&nbsp;&nbsp;&nbsp;Core&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;ctype&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;curl&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<br>
+&nbsp;date&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;dom&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;exif&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;fileinfo&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;filter&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;gd&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<br>
+&nbsp;gettext&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;gmp&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;hash&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;iconv&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;intl&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;json&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<br>
+&nbsp;ldap&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;libxml&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;mbstring&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;mysqli&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;mysqlnd&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;openssl&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<br>
+&nbsp;pcre&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;PDO&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;pdo_mysql&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;pdo_sqlite&nbsp;&nbsp;&nbsp;&nbsp;Phar&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;random&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<br>
+&nbsp;readline&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Reflection&nbsp;&nbsp;&nbsp;&nbsp;session&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;SimpleXML&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;soap&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;sockets&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<br>
+&nbsp;SPL&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;sqlite3&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;standard&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;tokenizer&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;xml&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;xmlreader&nbsp;&nbsp;&nbsp;&nbsp;<br>
+&nbsp;xmlwriter&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;xsl&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Zend&nbsp;OPcache&nbsp;&nbsp;zend_test&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;zip&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;zlib&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<br>
+<br>
+<u>PHP 8.4.0 -> CLI - FCGI</u><br>
+&nbsp;bcmath&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;calendar&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;com_dotnet&nbsp;&nbsp;&nbsp;&nbsp;Core&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;ctype&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;curl&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<br>
+&nbsp;date&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;dom&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;exif&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;fileinfo&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;filter&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;gd&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<br>
+&nbsp;gettext&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;gmp&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;hash&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;iconv&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;intl&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;json&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<br>
+&nbsp;ldap&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;libxml&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;mbstring&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;mysqli&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;mysqlnd&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;openssl&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<br>
+&nbsp;pcre&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;PDO&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;pdo_mysql&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;pdo_sqlite&nbsp;&nbsp;&nbsp;&nbsp;Phar&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;random&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<br>
+&nbsp;readline&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Reflection&nbsp;&nbsp;&nbsp;&nbsp;session&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;SimpleXML&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;soap&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;sockets&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<br>
+&nbsp;SPL&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;sqlite3&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;standard&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;tokenizer&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;xml&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;xmlreader&nbsp;&nbsp;&nbsp;&nbsp;<br>
+&nbsp;xmlwriter&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;xsl&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Zend&nbsp;OPcache&nbsp;&nbsp;zip&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;zlib&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<br>
+</div>
+	</div>
+</div><div id="phpversionsuse" class="modalOto">
+	<div>
+		<div class='modalOtoBar'><input type='button' value='Copy' class='js-copya' data-target='#tocopya'>
+			<a href="#closeOto" title="Close" class="closeOto">X</a>
+		</div>
+		<div id="tocopya"><b>-- Use of PHP versions</b><br>
+&nbsp;PHP&nbsp;5.6.40&nbsp; not used<br>
+&nbsp;PHP&nbsp;7.0.33&nbsp; not used<br>
+&nbsp;PHP&nbsp;7.4.33&nbsp; not used<br>
+&nbsp;PHP&nbsp;8.0.30&nbsp; not used<br>
+&nbsp;PHP&nbsp;8.1.31&nbsp; not used<br>
+&nbsp;PHP&nbsp;8.2.26&nbsp; not used<br>
+&nbsp;PHP&nbsp;8.2.29&nbsp; used for <span style='color:red;'>Wampserver internal PHP scripts</span> <br>
+&nbsp;PHP&nbsp;8.3.14&nbsp; not used<br>
+&nbsp;PHP&nbsp;8.4.0&nbsp;&nbsp; used as <span style='color:green;'>APACHE module</span><br>
+</div>
+	</div>
+</div><div id="helpfcgi" class="modalOtoArial">
+	<div>
+		<div class='modalOtoBar'><input type='button' value='Copy' class='js-copyb' data-target='#tocopyb'>
+			<a href="#closeOto" title="Close" class="closeOto">X</a>
+		</div>
+		<div id="tocopyb"><h4>Cómo usar PHP en modo Fast CGI con Wampserver</h4><br />
+El CGI (Interfaz de puerta de enlace común) define una forma en que un servidor web interactúa con programas externos de generación de contenido, que a menudo se denominan programas CGI o scripts CGI. Es una forma sencilla de poner contenido dinámico en su sitio web, utilizando cualquier lenguaje de programación con el que esté más familiarizado<br />
+<br />
+<h5>- Solo una versión de PHP como módulo de Apache</h5><br />
+Desde el principio, Wampserver carga PHP como un módulo de Apache:<br />
+&nbsp;&nbsp;<code>LoadModule php_module "${INSTALL_DIR}/bin/php/php8.1.1/php8apache2_4.dll"</code><br />
+lo que hace que todos los servidores virtuales, alias y proyectos usen la misma versión de PHP<br />
+Si cambia la versión de PHP a través del menú PHP de Wampmanager, esta nueva versión será utilizada en todas partes<br />
+<br />
+<h5>- Varias versiones de PHP con modo FCGI</h5><br />
+Desde Wampserver 3.2.8, es posible utilizar PHP en modo CGI, es decir, puede definir una versión de PHP diferente, cuyos complementos se hayan instalado previamente, para cada servidor virtual. Esto significa que el servidor virtual ya no está obligado a usar la misma versión de PHP<br />
+<br />
+Apache fcgid_module (mod_fcgid.so) simplifica la implementación de CGI<br />
+La documentación la podrá encontrar aquí: <a href='https://httpd.apache.org/mod_fcgid/mod/mod_fcgid.html'>mod_fcgid</a><br />
+<br />
+<h5>- Requerimientos previos</h5><br />
+- 1 Presencia del archivo mod_fcgid.so en la carpeta de módulos de Apache.<br />
+- 2 Presencia de la línea de carga del módulo en el archivo httpd.conf<br />
+&nbsp;&nbsp;<code>LoadModule fcgid_module modules/mod_fcgid.so</code> (Not commented - No # at the beginning))<br />
+- 3 Presencia de las directivas de configuración comunes del módulo fcgid_module en el archivo httpd.conf<br />
+<code><br />
+&lt;IfModule fcgid_module><br />
+&nbsp;&nbsp;FcgidMaxProcessesPerClass 300<br />
+&nbsp;&nbsp;FcgidConnectTimeout 10<br />
+&nbsp;&nbsp;FcgidProcessLifeTime 1800<br />
+&nbsp;&nbsp;FcgidMaxRequestsPerProcess 0<br />
+&nbsp;&nbsp;FcgidMinProcessesPerClass 0<br />
+&nbsp;&nbsp;FcgidFixPathinfo 0<br />
+&nbsp;&nbsp;FcgidZombieScanInterval 20<br />
+&nbsp;&nbsp;FcgidMaxRequestLen 536870912<br />
+&nbsp;&nbsp;FcgidBusyTimeout 120<br />
+&nbsp;&nbsp;FcgidIOTimeout 120<br />
+&nbsp;&nbsp;FcgidTimeScore 3<br />
+&nbsp;&nbsp;FcgidPassHeader Authorization<br />
+&nbsp;&nbsp;Define PHPROOT ${INSTALL_DIR}/bin/php/php<br />
+&lt;/IfModule><br />
+</code><br />
+Estos tres puntos 1, 2 y 3 se realizan automáticamente con la actualización de Wampserver 3.2.8<br />
+<br />
+<h5>- Creando un servidor virtual FCGI</h5><br />
+- Después de la actualización de Wampserver 3.2.8, la página http://localhost/add_vhost.php permite agregar un servidor virtual FCGI con toda sencillez<br />
+La elección de la versión de PHP a utilizar está limitada a las versiones de los complementos de PHP instalados en su Wampserver lo que evitará un error de versión de PHP<br />
+En efecto, declarar, en un servidor virtual, una versión de PHP inexistente en Wampserver generará un error de Apache y un "quiebre" de éste<br />
+<br />
+- Si desea modificar un servidor local existente para agregar el modo FCGI con una versión de PHP existente que ya está en los complementos PHP de Wampserver, solo tiene que ir a la página http://localhost/add_vhost.php y ejecutar el formulario de modificación del servidor local para que sea capaz, en tres clics, de agregar el modo FCGI al servidor virtual, cambiar la versión de PHP o eliminar el modo FCGI<br />
+Será necesario actualizar Wampserver para que eso tenga efecto<br />
+Esta misma página http://localhost/add_vhost.php también le permite, a través del formulario de modificación de alias, agregar el modo FCGI a un alias existente, cambiar la versión de PHP o remover el modo FCGI, esto es siempre en tres clics<br />
+<br />
+<h5>- Algunos detalles</h5><br />
+Para agregar el modo FCGI a un servidor virtual existente, simplemente agregue las siguientes directivas antes del final de </VirtualHost> de ese servidor virtual:<br />
+<code><br />
+&nbsp;&nbsp;&lt;IfModule fcgid_module><br />
+&nbsp;&nbsp;&nbsp;&nbsp;Define FCGIPHPVERSION "7.4.27"<br />
+&nbsp;&nbsp;&nbsp;&nbsp;FcgidInitialEnv PHPRC "${PHPROOT}${FCGIPHPVERSION}/php.ini"<br />
+&nbsp;&nbsp;&nbsp;&nbsp;&lt;Files ~ "\.php$"><br />
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Options +Indexes +Includes +FollowSymLinks +MultiViews +ExecCGI<br />
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;AddHandler fcgid-script .php<br />
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;FcgidWrapper "${PHPROOT}${FCGIPHPVERSION}/php-cgi.exe" .php<br />
+&nbsp;&nbsp;&nbsp;&nbsp;&lt;/Files><br />
+&nbsp;&nbsp;&lt;/IfModule><br />
+</code><br />
+La versión de PHP debe existir como un complemento de PHP en su servidor Wamp y podrá ser modificada<br />
+Por el contrario, removiendo estas líneas hace que el servidor virtual vuelva a la versión de PHP utilizada como módulo de Apache<br />
+<br />
+Para alias, es un poco menos simple, debe agregar las líneas anteriores en dos partes, la primera parte:<br />
+<code><br />
+&lt;IfModule fcgid_module><br />
+&nbsp;&nbsp;Define FCGIPHPVERSION "7.4.27"<br />
+&nbsp;&nbsp;FcgidCmdOptions ${PHPROOT}${FCGIPHPVERSION}/php-cgi.exe \<br />
+&nbsp;&nbsp;InitialEnv PHPRC=${PHPROOT}${FCGIPHPVERSION}/php.ini<br />
+&lt;/IfModule><br />
+</code><br />
+antes de la directiva &lt;Directory...<br />
+La segunda parte:<br />
+<code><br />
+&lt;IfModule fcgid_module><br />
+&nbsp;&nbsp;&lt;Files ~ "\.php$"><br />
+&nbsp;&nbsp;&nbsp;&nbsp;Options +Indexes +Includes +FollowSymLinks +MultiViews +ExecCGI<br />
+&nbsp;&nbsp;&nbsp;&nbsp;AddHandler fcgid-script .php<br />
+&nbsp;&nbsp;&nbsp;&nbsp;FcgidWrapper "${PHPROOT}${FCGIPHPVERSION}/php-cgi.exe" .php<br />
+&nbsp;&nbsp;&lt;/Files><br />
+&lt;/IfModule><br />
+</code><br />
+dentro del contexto <Directory...></Directory> para obtener, por ejemplo para cualquier alias, la siguiente estructura:<br />
+<code><br />
+Alias /myalias "g:/www/mydir/"<br />
+&lt;IfModule fcgid_module><br />
+&nbsp;&nbsp;Define FCGIPHPVERSION "7.4.27"<br />
+&nbsp;&nbsp;FcgidCmdOptions ${PHPROOT}${FCGIPHPVERSION}/php-cgi.exe \<br />
+&nbsp;&nbsp;InitialEnv PHPRC=${PHPROOT}${FCGIPHPVERSION}/php.ini<br />
+&lt;/IfModule><br />
+&lt;Directory "g:/www/mydir/"><br />
+&nbsp;&nbsp;Options Indexes FollowSymLinks<br />
+&nbsp;&nbsp;AllowOverride all<br />
+&nbsp;&nbsp;Require local<br />
+&nbsp;&nbsp;&lt;IfModule fcgid_module><br />
+&nbsp;&nbsp;&nbsp;&nbsp;&lt;Files ~ "\.php$"><br />
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Options +Indexes +Includes +FollowSymLinks +MultiViews +ExecCGI<br />
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;AddHandler fcgid-script .php<br />
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;FcgidWrapper "${PHPROOT}${FCGIPHPVERSION}/php-cgi.exe" .php<br />
+&nbsp;&nbsp;&nbsp;&nbsp;&lt;/Files><br />
+&nbsp;&nbsp;&lt;/IfModule><br />
+&lt;/Directory><br />
+</code><br />
+</div>
+	</div>
+</div><div id="mysqlmariadb" class="modalOto">
+	<div>
+		<div class='modalOtoBar'><input type='button' value='' class='js-copyc' data-target='none'>
+			<a href="#closeOto" title="Close" class="closeOto">X</a>
+		</div>
+		Cómo usar MySQL y/o MariaDB?<br>Qué es un DBMS predeterminado?<br>Cómo cambiar el DBMS predeterminado?<br>Vaya a la ayuda relacionada, luego haga clic derecho el el botón del icono de Wampmanager -> Ayuda -> MariaDB - MySQL
+	</div>
+</div><div id="apachemodloaded" class="modalOto">
+	<div>
+		<div class='modalOtoBar'><input type='button' value='Copy' class='js-copyd' data-target='#tocopy'>
+			<a href="#closeOto" title="Close" class="closeOto">X</a>
+		</div>
+	<div id="tocopyd"><b>Apache&nbsploaded&nbspmodules&nbsp-&nbspCommand:&nbsphttpd.exe&nbsp-t&nbsp-D&nbspDUMP_MODULES</b><br>
+-&nbspCore:<br>
+&nbspcore_module&nbsp&nbsp&nbsp&nbsp&nbsp&nbsp&nbsphttp_module&nbsp&nbsp&nbsp&nbsp&nbsp&nbsp&nbspmpm_winnt_module&nbsp<br>
+&nbspso_module&nbsp&nbsp&nbsp&nbsp&nbsp&nbsp&nbsp&nbsp&nbspwin32_module&nbsp&nbsp&nbsp&nbsp&nbsp<br>
+<br>
+-&nbspShared&nbspmodules:<br>
+&nbspactions_module&nbsp&nbsp&nbsp&nbsp&nbsp&nbsp&nbsp&nbsp&nbsp&nbspalias_module&nbsp&nbsp&nbsp&nbsp&nbsp&nbsp&nbsp&nbsp&nbsp&nbsp&nbsp&nbspallowmethods_module&nbsp&nbsp&nbsp&nbsp<br>
+&nbspasis_module&nbsp&nbsp&nbsp&nbsp&nbsp&nbsp&nbsp&nbsp&nbsp&nbsp&nbsp&nbsp&nbspauthn_core_module&nbsp&nbsp&nbsp&nbsp&nbsp&nbsp&nbspauthn_file_module&nbsp&nbsp&nbsp&nbsp&nbsp&nbsp<br>
+&nbspauthz_core_module&nbsp&nbsp&nbsp&nbsp&nbsp&nbsp&nbspauthz_groupfile_module&nbsp&nbspauthz_host_module&nbsp&nbsp&nbsp&nbsp&nbsp&nbsp<br>
+&nbspauthz_user_module&nbsp&nbsp&nbsp&nbsp&nbsp&nbsp&nbspauth_basic_module&nbsp&nbsp&nbsp&nbsp&nbsp&nbsp&nbspauth_digest_module&nbsp&nbsp&nbsp&nbsp&nbsp<br>
+&nbspautoindex_module&nbsp&nbsp&nbsp&nbsp&nbsp&nbsp&nbsp&nbspcache_disk_module&nbsp&nbsp&nbsp&nbsp&nbsp&nbsp&nbspcache_module&nbsp&nbsp&nbsp&nbsp&nbsp&nbsp&nbsp&nbsp&nbsp&nbsp&nbsp<br>
+&nbspcgi_module&nbsp&nbsp&nbsp&nbsp&nbsp&nbsp&nbsp&nbsp&nbsp&nbsp&nbsp&nbsp&nbsp&nbspdir_module&nbsp&nbsp&nbsp&nbsp&nbsp&nbsp&nbsp&nbsp&nbsp&nbsp&nbsp&nbsp&nbsp&nbspenv_module&nbsp&nbsp&nbsp&nbsp&nbsp&nbsp&nbsp&nbsp&nbsp&nbsp&nbsp&nbsp&nbsp<br>
+&nbspfcgid_module&nbsp&nbsp&nbsp&nbsp&nbsp&nbsp&nbsp&nbsp&nbsp&nbsp&nbsp&nbspfile_cache_module&nbsp&nbsp&nbsp&nbsp&nbsp&nbsp&nbspinclude_module&nbsp&nbsp&nbsp&nbsp&nbsp&nbsp&nbsp&nbsp&nbsp<br>
+&nbspisapi_module&nbsp&nbsp&nbsp&nbsp&nbsp&nbsp&nbsp&nbsp&nbsp&nbsp&nbsp&nbsplog_config_module&nbsp&nbsp&nbsp&nbsp&nbsp&nbsp&nbspmime_module&nbsp&nbsp&nbsp&nbsp&nbsp&nbsp&nbsp&nbsp&nbsp&nbsp&nbsp&nbsp<br>
+&nbspnegotiation_module&nbsp&nbsp&nbsp&nbsp&nbsp&nbspphp_module&nbsp&nbsp&nbsp&nbsp&nbsp&nbsp&nbsp&nbsp&nbsp&nbsp&nbsp&nbsp&nbsp&nbsprewrite_module&nbsp&nbsp&nbsp&nbsp&nbsp&nbsp&nbsp&nbsp&nbsp<br>
+&nbspsetenvif_module&nbsp&nbsp&nbsp&nbsp&nbsp&nbsp&nbsp&nbsp&nbspuserdir_module&nbsp&nbsp&nbsp&nbsp&nbsp&nbsp&nbsp&nbsp&nbsp&nbspvhost_alias_module&nbsp&nbsp&nbsp&nbsp&nbsp<br>
+<br>
+<br></div>
+	</div>
+</div>
+<script>
+/*Select themes script */
+var select = document.getElementById("themes");
+if(select.addEventListener) {
+	var stylecall = document.getElementById("stylecall");
+	/* looking for stored style name */
+	var wampStyle = localStorage.getItem("wampStyle");
+	if(wampStyle !== null) {
+	    stylecall.setAttribute("href", "wampthemes/" + wampStyle + "/style.css");
+	    selectedOption = document.getElementById(wampStyle);
+	    selectedOption.setAttribute("selected", "selected");
+	}
+	else {
+	    localStorage.setItem("wampStyle","classic");
+	    selectedOption = document.getElementById("classic");
+	    selectedOption.setAttribute("selected", "selected");
+	}
+	/* Changing style when select change */
+	select.addEventListener("change", function(){
+	    var styleName = this.value;
+	    stylecall.setAttribute("href", "wampthemes/" + styleName + "/style.css");
+	    localStorage.setItem("wampStyle", styleName);
+	})
+}
+</script><script>
+/*Copy modal dialog contents to clipboard */
+var btncopy = document.querySelector('.js-copy');
+if(btncopy) {
+  btncopy.addEventListener('click', docopy);
+}
+var btncopy = document.querySelector('.js-copya');
+if(btncopy) {
+  btncopy.addEventListener('click', docopy);
+}
+var btncopy = document.querySelector('.js-copyb');
+if(btncopy) {
+  btncopy.addEventListener('click', docopy);
+}
+var btncopy = document.querySelector('.js-copyc');
+if(btncopy) {
+  btncopy.addEventListener('click', docopy);
+}
+var btncopy = document.querySelector('.js-copyd');
+if(btncopy) {
+  btncopy.addEventListener('click', docopy);
+}
+function docopy() {
+	var range = document.createRange();
+	var target = this.dataset.target;
+	var fromElement = document.querySelector(target);
+	var selection = window.getSelection();
+
+	range.selectNode(fromElement);
+	selection.removeAllRanges();
+	selection.addRange(range);
+
+	try {
+		var result = document.execCommand('copy');
+		if (result) {
+		  window.alert('Copied');
+		}
+	}
+	catch(err) {
+		window.alert(err);
+	}
+	selection = window.getSelection();
+	if (typeof selection.removeRange === 'function') {
+	  selection.removeRange(range);
+	} else if (typeof selection.removeAllRanges === 'function') {
+	  selection.removeAllRanges();
+	}
+}
+</script></body>
+</html>

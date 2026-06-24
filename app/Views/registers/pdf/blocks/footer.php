@@ -37,23 +37,24 @@ $footerWrapperStyle = ! empty($footer_dompdf_fixed)
     ? \App\Services\ReportPdfLayoutService::footerDompdfFixedStyleAttr($layout)
     : '';
 
-$orderSheetBandHtml = '';
-$pdfVariant = (string) ($elementCtx['pdf_analisis_variant'] ?? $analisis_variant ?? 'pdf');
+$orderSheetTableRowHtml = '';
 if (! empty($footer_order_sheet_band)
-    && $pdfVariant !== 'pdf'
     && \App\Services\ReportPdfLayoutService::isOrderSheetHeaderEnabledForLayout($layout)) {
     $mm = is_array($layout['margins_mm'] ?? null)
         ? $layout['margins_mm']
         : \App\Services\ReportPdfLayoutService::defaultMarginsMmStatic();
+    $ftGrid = \App\Services\ReportPdfLayoutService::normalizeFooterGridStyle($ps['footer_grid'] ?? []);
     $lines = \App\Services\ReportPdfLayoutService::buildOrderSheetHeaderDisplayLines(
         is_object($paciente ?? null) ? $paciente : null,
         is_object($register_info ?? null) ? $register_info : null
     );
-    $orderSheetBandHtml = view('registers/partials/report_order_sheet_header_band', [
+    $orderSheetTableRowHtml = view('registers/partials/report_order_sheet_header_table_row', [
         'patient_line'    => $lines['patient'],
         'order_line'      => $lines['order'],
         'margin_left_mm'  => (float) ($mm['left'] ?? 15),
         'margin_right_mm' => (float) ($mm['right'] ?? 15),
+        'n_columns'       => $n,
+        'line_height'     => (float) ($ftGrid['line_height'] ?? 1.35),
     ]);
 }
 
@@ -61,7 +62,7 @@ echo view('registers/pdf/section_layout_grid', [
     'section_wrapper_class' => 'footer footer-grid pdf-ft-block',
     'section_key'           => 'footer',
     'section_wrapper_style'   => $footerWrapperStyle,
-    'section_prepend_markup' => $orderSheetBandHtml,
+    'section_table_prepend_rows' => $orderSheetTableRowHtml,
     'n_columns'             => $n,
     'grid_items'            => $gridItems,
     'element_ctx'           => $elementCtx,

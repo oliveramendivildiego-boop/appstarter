@@ -990,6 +990,10 @@ class Registers extends SecureArea
         if (function_exists('opcache_invalidate')) {
             foreach ([
                 APPPATH . 'Views/registers/pdf/blocks/results.php',
+                APPPATH . 'Views/registers/pdf/report_document.php',
+                APPPATH . 'Views/registers/pdf/section_layout_grid.php',
+                APPPATH . 'Views/registers/pdf/partials/element.php',
+                APPPATH . 'Libraries/PdfService.php',
                 APPPATH . 'Views/registers/analisis/partials/report_grupo_area_separator.php',
                 APPPATH . 'Services/ReportLayout/ReportLayoutPlanService.php',
                 APPPATH . 'Services/ReportLayout/LayoutPlanApplier.php',

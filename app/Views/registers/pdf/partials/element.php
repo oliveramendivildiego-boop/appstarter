@@ -11,6 +11,9 @@ $lab  = is_array($lab_config ?? null) ? $lab_config : [];
 $ts   = \App\Services\ReportPdfLayoutService::normalizeTextStyle($pdf_text_style ?? []);
 $stInst = \App\Services\ReportPdfLayoutService::textStyleNormalizedToInlineCss($ts);
 
+$pdfSectionKey  = (string) ($pdf_section_key ?? 'header');
+$pdfGridFieldCls = ($pdfSectionKey === 'footer') ? 'pdf-ft-piece' : 'header-piece';
+
 $reportEmitidoEl = (string) ($report_emitido_en ?? \App\Services\RegisterService::formatNowForReport());
 
 $valueOf = static function (string $id) use ($paciente, $doctor, $register_info, $reportEmitidoEl): string {
@@ -122,8 +125,18 @@ if ($type === 'custom_text') {
     $valT = $ct['value'];
     $showLbl = $ct['show_label'] && $labT !== '';
     $inlineM = ($ct['line_mode'] === 'inline');
-    ?>
+    $inFooter = ($pdfSectionKey === 'footer');
+    if ($inFooter) {
+        ?>
+                <div class="pdf-ft-piece">
+                <div class="pdf-ft-custom-text">
+        <?php
+    } else {
+        ?>
                 <div class="pdf-custom-text">
+        <?php
+    }
+    ?>
                 <?php if ($inlineM && $showLbl): ?>
                 <p style="margin:0;"><span style="<?= esc($stL, 'attr') ?>"><?= esc($labT) ?></span> <span style="<?= esc($stV, 'attr') ?>"><?= esc($valT !== '' ? $valT : '—') ?></span></p>
                 <?php elseif ($inlineM): ?>
@@ -135,8 +148,9 @@ if ($type === 'custom_text') {
                 <p style="margin:0;"><span style="<?= esc($stV, 'attr') ?>"><?= esc($valT !== '' ? $valT : '—') ?></span></p>
                 <?php endif; ?>
                 </div>
-    <?php
-
+    <?php if ($inFooter): ?>
+                </div>
+    <?php endif;
     return;
 }
 
@@ -216,7 +230,7 @@ switch ($type) {
             $stAdLbl   = \App\Services\ReportPdfLayoutService::headerGridLabelPieceStyleAttr($hgAd, 'lab_address');
             $valAd     = (string) $lab['address'];
             ?>
-                <div class="header-piece">
+                <div class="<?= esc($pdfGridFieldCls, 'attr') ?>">
                     <?php if ($inlineAd && $showLblAd): ?>
                     <p style="margin:0;"><span style="<?= esc($stAdLbl, 'attr') ?>"><?= esc($lblAd) ?></span> <span style="<?= esc($stInst, 'attr') ?>"><?= esc($valAd) ?></span></p>
                     <?php elseif ($showLblAd): ?>
@@ -242,7 +256,7 @@ switch ($type) {
             $stPhLbl   = \App\Services\ReportPdfLayoutService::headerGridLabelPieceStyleAttr($hgPh, 'lab_phone');
             $valPh     = (string) $lab['phone'];
             ?>
-                <div class="header-piece">
+                <div class="<?= esc($pdfGridFieldCls, 'attr') ?>">
                     <?php if ($inlinePh && $showLblPh): ?>
                     <p style="margin:0;"><span style="<?= esc($stPhLbl, 'attr') ?>"><?= esc($lblPh) ?></span> <span style="<?= esc($stInst, 'attr') ?>"><?= esc($valPh) ?></span></p>
                     <?php elseif ($showLblPh): ?>
@@ -268,7 +282,7 @@ switch ($type) {
             $stEmLbl   = \App\Services\ReportPdfLayoutService::headerGridLabelPieceStyleAttr($hgEm, 'lab_email');
             $valEm     = (string) $lab['email'];
             ?>
-                <div class="header-piece">
+                <div class="<?= esc($pdfGridFieldCls, 'attr') ?>">
                     <?php if ($inlineEm && $showLblEm): ?>
                     <p style="margin:0;"><span style="<?= esc($stEmLbl, 'attr') ?>"><?= esc($lblEm) ?></span> <span style="<?= esc($stInst, 'attr') ?>"><?= esc($valEm) ?></span></p>
                     <?php elseif ($showLblEm): ?>
@@ -294,7 +308,7 @@ switch ($type) {
             $stWsLbl   = \App\Services\ReportPdfLayoutService::headerGridLabelPieceStyleAttr($hgWs, 'lab_website');
             $valWs     = (string) $lab['website'];
             ?>
-                <div class="header-piece">
+                <div class="<?= esc($pdfGridFieldCls, 'attr') ?>">
                     <?php if ($inlineWs && $showLblWs): ?>
                     <p style="margin:0;"><span style="<?= esc($stWsLbl, 'attr') ?>"><?= esc($lblWs) ?></span> <span style="<?= esc($stInst, 'attr') ?>"><?= esc($valWs) ?></span></p>
                     <?php elseif ($showLblWs): ?>
@@ -320,7 +334,7 @@ switch ($type) {
         $valInstRaw  = trim((string) ($paciente->paciente_institucion ?? ''));
         $valInst     = $valInstRaw !== '' ? $valInstRaw : '—';
         ?>
-                <div class="header-piece">
+                <div class="<?= esc($pdfGridFieldCls, 'attr') ?>">
                     <?php if ($inlineInst && $showLblInst): ?>
                     <p style="margin:0;"><span style="<?= esc($stInstLbl, 'attr') ?>"><?= esc($lblInst) ?></span> <span style="<?= esc($stInst, 'attr') ?>"><?= esc($valInst) ?></span></p>
                     <?php elseif ($showLblInst): ?>
@@ -343,7 +357,7 @@ switch ($type) {
         $showLblPg = $showPgL && $lblPg !== '';
         $stPgLbl   = \App\Services\ReportPdfLayoutService::headerGridLabelPieceStyleAttr($hgPg, 'pdf_pages_total');
         ?>
-                <div class="header-piece">
+                <div class="<?= esc($pdfGridFieldCls, 'attr') ?>">
                     <?php if ($inlinePg && $showLblPg): ?>
                     <p style="margin:0;"><span style="<?= esc($stPgLbl, 'attr') ?>"><?= esc($lblPg) ?></span> <span style="<?= esc($stInst, 'attr') ?>"><?= '__PDF_TOTAL_PAGES__' ?></span></p>
                     <?php elseif ($showLblPg): ?>
@@ -409,19 +423,18 @@ switch ($type) {
         }
         $dataTotalAttr     = $pageToken;
         $hideForCanvas     = $isDompdf && ! $inFooter;
-        $footerDompdfClass = ($isDompdf && $inFooter) ? ' pdf-pagination-line--dompdf-footer' : '';
-        $pagPieceClass     = $inFooter ? 'header-piece' : 'header-piece header-piece-pagination';
-        $footerCanvasOnly  = $isDompdf && $inFooter;
-        $pagHideStyle      = $footerCanvasOnly ? 'visibility:hidden;' : '';
+        $pagPieceClass     = $inFooter ? 'pdf-ft-pagination' : 'header-piece header-piece-pagination';
+        $pagNumClass       = $inFooter ? 'pdf-ft-pagination-num' : 'pdf-pagination-line';
+        $pagHideStyle      = '';
         ?>
                 <div class="<?= esc($pagPieceClass, 'attr') ?>"<?= $hideForCanvas ? ' style="visibility:hidden;height:0;overflow:hidden;margin:0;padding:0;"' : '' ?>>
                     <?php if ($inlinePag && $showLblPag): ?>
-                    <p style="margin:0;<?= esc($pagHideStyle, 'attr') ?>"><span style="<?= esc($stPagLbl, 'attr') ?>"><?= esc($lblPag) ?></span> <span id="<?= esc($pagUid, 'attr') ?>" class="pdf-pagination-line<?= esc($footerDompdfClass, 'attr') ?>" style="<?= esc($stInst, 'attr') ?>" data-prefix="" data-total="<?= esc($dataTotalAttr, 'attr') ?>"></span></p>
+                    <p style="margin:0;<?= esc($pagHideStyle, 'attr') ?>"><span style="<?= esc($stPagLbl, 'attr') ?>"><?= esc($lblPag) ?></span> <span id="<?= esc($pagUid, 'attr') ?>" class="<?= esc($pagNumClass, 'attr') ?>" style="<?= esc($stInst, 'attr') ?>" data-prefix="" data-total="<?= esc($dataTotalAttr, 'attr') ?>"></span></p>
                     <?php elseif ($showLblPag): ?>
                     <p style="margin:0;<?= esc($pagHideStyle, 'attr') ?>"><span style="<?= esc($stPagLbl, 'attr') ?>"><?= esc($lblPag) ?></span></p>
-                    <p style="margin:0;<?= esc($pagHideStyle, 'attr') ?>"><span id="<?= esc($pagUid, 'attr') ?>" class="pdf-pagination-line<?= esc($footerDompdfClass, 'attr') ?>" style="<?= esc($stInst, 'attr') ?>" data-prefix="" data-total="<?= esc($dataTotalAttr, 'attr') ?>"></span></p>
+                    <p style="margin:0;<?= esc($pagHideStyle, 'attr') ?>"><span id="<?= esc($pagUid, 'attr') ?>" class="<?= esc($pagNumClass, 'attr') ?>" style="<?= esc($stInst, 'attr') ?>" data-prefix="" data-total="<?= esc($dataTotalAttr, 'attr') ?>"></span></p>
                     <?php else: ?>
-                    <p style="margin:0;<?= esc($pagHideStyle, 'attr') ?>"><span id="<?= esc($pagUid, 'attr') ?>" class="pdf-pagination-line<?= esc($footerDompdfClass, 'attr') ?>" style="<?= esc($stInst, 'attr') ?>" data-prefix="" data-total="<?= esc($dataTotalAttr, 'attr') ?>"></span></p>
+                    <p style="margin:0;<?= esc($pagHideStyle, 'attr') ?>"><span id="<?= esc($pagUid, 'attr') ?>" class="<?= esc($pagNumClass, 'attr') ?>" style="<?= esc($stInst, 'attr') ?>" data-prefix="" data-total="<?= esc($dataTotalAttr, 'attr') ?>"></span></p>
                     <?php endif; ?>
                 </div>
         <?php
@@ -461,7 +474,7 @@ switch ($type) {
             : \App\Services\ReportPdfLayoutService::normalizeFooterGridStyle([]);
         $stCo = \App\Services\ReportPdfLayoutService::footerGridPieceStyleAttr($ftS, 'company');
         ?>
-                <div class="footer-piece footer-piece-company" style="<?= esc($stCo, 'attr') ?>"><?= esc($lab['company'] ?? '') ?></div>
+                <div class="footer-piece footer-piece-company pdf-ft-piece pdf-ft-piece--company" style="<?= esc($stCo, 'attr') ?>"><?= esc($lab['company'] ?? '') ?></div>
         <?php
         break;
 
@@ -476,7 +489,7 @@ switch ($type) {
         $stPref = \App\Services\ReportPdfLayoutService::footerGridPieceStyleAttr($ftS, 'label_generated');
         $stDt   = \App\Services\ReportPdfLayoutService::footerGridPieceStyleAttr($ftS, 'datetime');
         ?>
-                <div class="footer-piece footer-piece-generated"><?php if ($inlineF): ?><?php if ($showPref): ?><span class="footer-generated-label" style="<?= esc($stPref, 'attr') ?>"><?= esc($pref) ?></span> <?php endif; ?><span class="footer-generated-datetime" style="<?= esc($stDt, 'attr') ?>"><?= esc($reportEmitidoEl) ?></span><?php else: ?><?php if ($showPref): ?><div class="footer-generated-label" style="<?= esc($stPref, 'attr') ?>"><?= esc($pref) ?></div><?php endif; ?><div class="footer-generated-datetime" style="<?= esc($stDt, 'attr') ?>"><?= esc($reportEmitidoEl) ?></div><?php endif; ?></div>
+                <div class="footer-piece footer-piece-generated pdf-ft-piece pdf-ft-piece--generated"><?php if ($inlineF): ?><?php if ($showPref): ?><span class="footer-generated-label pdf-ft-piece pdf-ft-piece--generated-label" style="<?= esc($stPref, 'attr') ?>"><?= esc($pref) ?></span> <?php endif; ?><span class="footer-generated-datetime pdf-ft-piece pdf-ft-piece--generated-datetime" style="<?= esc($stDt, 'attr') ?>"><?= esc($reportEmitidoEl) ?></span><?php else: ?><?php if ($showPref): ?><div class="footer-generated-label pdf-ft-piece pdf-ft-piece--generated-label" style="<?= esc($stPref, 'attr') ?>"><?= esc($pref) ?></div><?php endif; ?><div class="footer-generated-datetime pdf-ft-piece pdf-ft-piece--generated-datetime" style="<?= esc($stDt, 'attr') ?>"><?= esc($reportEmitidoEl) ?></div><?php endif; ?></div>
         <?php
         break;
 
@@ -487,7 +500,7 @@ switch ($type) {
                 : \App\Services\ReportPdfLayoutService::normalizeFooterGridStyle([]);
             $stPo = \App\Services\ReportPdfLayoutService::footerGridPieceStyleAttr($ftS, 'policy');
             ?>
-                <div class="footer-piece footer-piece-policy"><small class="footer-policy-text" style="<?= esc($stPo, 'attr') ?>"><?= esc($lab['return_policy']) ?></small></div>
+                <div class="footer-piece footer-piece-policy pdf-ft-piece pdf-ft-piece--policy"><small class="footer-policy-text pdf-ft-piece pdf-ft-piece--policy-text" style="<?= esc($stPo, 'attr') ?>"><?= esc($lab['return_policy']) ?></small></div>
             <?php
         }
         break;

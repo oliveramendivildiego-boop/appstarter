@@ -659,22 +659,35 @@ class ReportPdfLayoutService
         $ftSec      = is_array($secLayouts['footer'] ?? null) ? $secLayouts['footer'] : [];
         $rowGapPx   = max(0, min(40, (int) ($ftSec['row_gap_px'] ?? 0)));
 
-        $maxRow   = 0;
-        $maxStack = 0;
-        $enabled  = 0;
+        $footerCols = max(1, (int) ($ftSec['columns'] ?? 3));
+        $maxRow     = 0;
+        $maxStack   = 0;
+        $maxDepth   = 1;
+        $enabled    = 0;
+        /** @var array<string, int> $regionCounts */
+        $regionCounts = [];
         foreach ($layout['instances'] ?? [] as $inst) {
             if (! is_array($inst) || ($inst['section'] ?? '') !== 'footer' || empty($inst['enabled'])) {
                 continue;
             }
             $enabled++;
-            $maxRow   = max($maxRow, max(0, (int) ($inst['grid_row'] ?? 0)));
+            $row = max(0, (int) ($inst['grid_row'] ?? 0));
+            $col = max(0, min($footerCols - 1, (int) ($inst['column'] ?? 0)));
+            $span = max(1, min($footerCols - $col, (int) ($inst['column_span'] ?? 1)));
+            $regionKey = $row . ':' . $col . ':' . $span;
+            $regionCounts[$regionKey] = ($regionCounts[$regionKey] ?? 0) + 1;
+            $maxRow   = max($maxRow, $row);
             $maxStack = max($maxStack, max(0, (int) ($inst['grid_stack'] ?? 0)));
         }
         if ($enabled < 1) {
             return self::DEFAULT_PDF_FOOTER_RESERVE_MM;
         }
 
-        $rows   = max(1, $maxRow + 1, $maxStack + 1);
+        foreach ($regionCounts as $count) {
+            $maxDepth = max($maxDepth, max(1, (int) $count));
+        }
+
+        $rows   = max(1, $maxRow + 1, $maxStack + 1, $maxDepth);
         $lineMm = $fontPt * $lineHeight * 0.352778;
         $gapMm  = $rowGapPx * 0.264583;
         $padMm  = 6.0 * 0.264583 + 1.5;
@@ -3177,32 +3190,29 @@ class ReportPdfLayoutService
         $base['section_top_border_width_px']     = max(0, min(6, $tw));
         $base['section_top_border_color']       = self::normalizeLabFirmasBorderColor($s['section_top_border_color'] ?? null, '#DDDDDD');
 
-        $gridFs = (float) $base['font_size_pt'];
-        $gridFw = (string) $base['font_weight'];
-        $gridFst = (string) $base['font_style'];
-        $pickPieceFs = static function (string $key) use ($s, $gridFs): float {
+        $pickPieceFs = static function (string $key) use ($s): float {
             if (! array_key_exists($key, $s)) {
-                return $gridFs;
+                return 8.0;
             }
             $v = (float) $s[$key];
 
             return round(max(7.0, min(20.0, $v)), 2);
         };
-        $pickPieceFw = static function (string $key) use ($s, $gridFw): string {
-            $w = strtolower(trim((string) ($s[$key] ?? $gridFw)));
+        $pickPieceFw = static function (string $key) use ($s): string {
+            $w = strtolower(trim((string) ($s[$key] ?? 'normal')));
 
-            return in_array($w, self::ALLOWED_PDF_FONT_WEIGHTS, true) ? $w : $gridFw;
+            return in_array($w, self::ALLOWED_PDF_FONT_WEIGHTS, true) ? $w : 'normal';
         };
-        $pickPieceFst = static function (string $key) use ($s, $gridFst): string {
-            $st = strtolower(trim((string) ($s[$key] ?? $gridFst)));
+        $pickPieceFst = static function (string $key) use ($s): string {
+            $st = strtolower(trim((string) ($s[$key] ?? 'normal')));
 
-            return in_array($st, self::ALLOWED_PDF_FONT_STYLES, true) ? $st : $gridFst;
+            return in_array($st, self::ALLOWED_PDF_FONT_STYLES, true) ? $st : 'normal';
         };
         $gridTt = (string) $base['text_transform'];
-        $pickPieceTt = static function (string $key) use ($s, $gridTt): string {
-            $tt = strtolower(trim((string) ($s[$key] ?? $gridTt)));
+        $pickPieceTt = static function (string $key) use ($s): string {
+            $tt = strtolower(trim((string) ($s[$key] ?? 'none')));
 
-            return in_array($tt, self::ALLOWED_PDF_TEXT_TRANSFORMS, true) ? $tt : $gridTt;
+            return in_array($tt, self::ALLOWED_PDF_TEXT_TRANSFORMS, true) ? $tt : 'none';
         };
         $base['footer_company_font_size_pt']            = $pickPieceFs('footer_company_font_size_pt');
         $base['footer_company_font_weight']             = $pickPieceFw('footer_company_font_weight');
@@ -4086,6 +4096,37 @@ class ReportPdfLayoutService
     }
 
     /**
+     * font-family sin comillas para atributos style="" (nombres con espacio no cortan el HTML).
+     */
+    public static function fontFamilyForInlineCssAttr(string $family): string
+    {
+        $fn = trim(str_replace(['"', '\\'], '', $family));
+
+        return $fn !== '' ? $fn : 'DejaVu Sans';
+    }
+
+    /**
+     * Tipografía de pieza de cuadrícula para style="" (misma convención que textStyleNormalizedToInlineCss).
+     */
+    public static function gridTypographyPieceInlineCss(
+        string $color,
+        float $fontSizePt,
+        string $fontWeight,
+        string $fontStyle,
+        string $textTransform,
+        string $fontFamily,
+        float $lineHeight
+    ): string {
+        return 'color:' . $color
+            . ';font-family:' . self::fontFamilyForInlineCssAttr($fontFamily)
+            . ';font-size:' . (string) $fontSizePt . 'pt'
+            . ';font-weight:' . $fontWeight
+            . ';font-style:' . $fontStyle
+            . ';text-transform:' . $textTransform
+            . ';line-height:' . (string) $lineHeight;
+    }
+
+    /**
      * CSS inline para textos del pie (color/tipo) — evita que td.pdf-cell o estilos globales tapen variables en vista/PDF.
      *
      * @param array<string, mixed> $ft footer_grid normalizado o bruto
@@ -4093,19 +4134,10 @@ class ReportPdfLayoutService
     public static function footerGridPieceStyleAttr(array $ft, string $piece): string
     {
         $ft = self::normalizeFooterGridStyle($ft);
-        $fn   = (string) $ft['font_family'];
-        $ffCss = (strpbrk($fn, ' ') !== false)
-            ? '"' . str_replace(['"', '\\'], '', $fn) . '", sans-serif'
-            : str_replace(['"', '\\'], '', $fn) . ', sans-serif';
+        $ff   = (string) $ft['font_family'];
         $lh   = (float) $ft['line_height'];
-        $decl = static function (string $color, float $fs, string $fw, string $fst, string $tt) use ($ffCss, $lh): string {
-            return 'color:' . $color
-                . ';font-family:' . $ffCss
-                . ';font-size:' . (string) $fs . 'pt'
-                . ';font-weight:' . $fw
-                . ';font-style:' . $fst
-                . ';text-transform:' . $tt
-                . ';line-height:' . (string) $lh;
+        $decl = static function (string $color, float $fs, string $fw, string $fst, string $tt) use ($ff, $lh): string {
+            return self::gridTypographyPieceInlineCss($color, $fs, $fw, $fst, $tt, $ff, $lh);
         };
         switch ($piece) {
             case 'company':
@@ -4154,19 +4186,10 @@ class ReportPdfLayoutService
     public static function headerGridLabelPieceStyleAttr(array $hg, string $piece): string
     {
         $hg = self::normalizeHeaderGridStyle($hg);
-        $fn   = (string) $hg['font_family'];
-        $ffCss = (strpbrk($fn, ' ') !== false)
-            ? '"' . str_replace(['"', '\\'], '', $fn) . '", sans-serif'
-            : str_replace(['"', '\\'], '', $fn) . ', sans-serif';
+        $ff   = (string) $hg['font_family'];
         $lh   = (float) $hg['line_height'];
-        $decl = static function (string $color, float $fs, string $fw, string $fst, string $tt) use ($ffCss, $lh): string {
-            return 'color:' . $color
-                . ';font-family:' . $ffCss
-                . ';font-size:' . (string) $fs . 'pt'
-                . ';font-weight:' . $fw
-                . ';font-style:' . $fst
-                . ';text-transform:' . $tt
-                . ';line-height:' . (string) $lh;
+        $decl = static function (string $color, float $fs, string $fw, string $fst, string $tt) use ($ff, $lh): string {
+            return self::gridTypographyPieceInlineCss($color, $fs, $fw, $fst, $tt, $ff, $lh);
         };
         if ($piece === 'qr_hint') {
             return $decl(
@@ -4201,19 +4224,18 @@ class ReportPdfLayoutService
         if (! array_key_exists($piece, self::PATIENT_DOCTOR_GRID_LABEL_DEFAULTS)) {
             return '';
         }
-        $fn   = (string) $pd['font_family'];
-        $ffCss = (strpbrk($fn, ' ') !== false)
-            ? '"' . str_replace(['"', '\\'], '', $fn) . '", sans-serif'
-            : str_replace(['"', '\\'], '', $fn) . ', sans-serif';
-        $lh   = (float) $pd['line_height'];
+        $ff = (string) $pd['font_family'];
+        $lh = (float) $pd['line_height'];
 
-        return 'color:' . (string) $pd['label_' . $piece . '_text_color']
-            . ';font-family:' . $ffCss
-            . ';font-size:' . (string) ((float) $pd['label_' . $piece . '_font_size_pt']) . 'pt'
-            . ';font-weight:' . (string) $pd['label_' . $piece . '_font_weight']
-            . ';font-style:' . (string) $pd['label_' . $piece . '_font_style']
-            . ';text-transform:' . (string) $pd['label_' . $piece . '_text_transform']
-            . ';line-height:' . (string) $lh;
+        return self::gridTypographyPieceInlineCss(
+            (string) $pd['label_' . $piece . '_text_color'],
+            (float) $pd['label_' . $piece . '_font_size_pt'],
+            (string) $pd['label_' . $piece . '_font_weight'],
+            (string) $pd['label_' . $piece . '_font_style'],
+            (string) $pd['label_' . $piece . '_text_transform'],
+            $ff,
+            $lh
+        );
     }
 
     /**
