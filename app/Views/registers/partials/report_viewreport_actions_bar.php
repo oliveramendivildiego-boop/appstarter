@@ -30,7 +30,7 @@ if ($sticky) {
     </a>
     <?php endif; ?>
     <a href="<?= site_url('registers/pdf/' . $ridPdf) ?>" class="btn btn-success" target="_blank">
-        <i class="fa-solid fa-file-pdf me-1"></i> Descargar PDF
+        <i class="fa-solid fa-file-pdf me-1"></i> Descargar
     </a>
     <a href="<?= site_url('registers/comprobantePdf/' . $ridPdf) ?>"
        class="btn btn-outline-dark"

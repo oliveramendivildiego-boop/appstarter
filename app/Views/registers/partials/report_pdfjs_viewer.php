@@ -39,15 +39,15 @@ if ($pdfUrl === '' && $ridPdf > 0) {
             </button>
         </div>
         <div class="report-pdfjs-toolbar-note small text-muted">
-            Vista previa del PDF generado (misma salida que descarga e impresión)
+            Vista previa del análisis clínico (misma salida que descarga e impresión)
         </div>
     </div>
     <div class="report-pdfjs-status small text-muted" data-pdfjs-status hidden></div>
     <div class="report-pdfjs-canvas-host" data-pdfjs-canvas-host tabindex="0" aria-label="Vista previa del reporte PDF">
         <div class="report-pdfjs-loading" data-pdfjs-loading aria-live="polite" aria-busy="true">
             <div class="report-pdfjs-loading-spinner" aria-hidden="true"></div>
-            <p class="report-pdfjs-loading-text" data-pdfjs-loading-text>Generando vista previa del PDF…</p>
-            <p class="report-pdfjs-loading-hint">Dompdf puede tardar unos segundos la primera vez.</p>
+            <p class="report-pdfjs-loading-text" data-pdfjs-loading-text>Generando vista previa del análisis clínico…</p>
+            <p class="report-pdfjs-loading-hint">Este análisis puede tardar unos segundos la primera vez.</p>
         </div>
     </div>
 </div>

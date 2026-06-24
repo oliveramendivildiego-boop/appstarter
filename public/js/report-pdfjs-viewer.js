@@ -317,7 +317,7 @@
             global.pdfjsLib.GlobalWorkerOptions.workerSrc = this.workerSrc;
         }
 
-        this.setLoading(true, 'Generando vista previa del PDF…');
+        this.setLoading(true, 'Generando vista previa del análisis clínico…');
         this.setStatus('', false);
         this.bindUi();
 
@@ -325,7 +325,7 @@
 
         loadingTask.onProgress = function (progress) {
             if (!progress || !progress.total) {
-                self.setLoading(true, 'Generando vista previa del PDF…');
+                self.setLoading(true, 'Generando vista previa del análisis clínico…');
                 return;
             }
             var pct = Math.min(100, Math.round((progress.loaded / progress.total) * 100));
