@@ -91,6 +91,103 @@ final class ReportLayoutEngineTest extends CIUnitTestCase
         $this->assertSame(2, $tree->areas[0]->analysisBlocks[0]->tables[0]->rowCount);
     }
 
+    public function testReportTreeBuilderCountsCultivoPersonalizadoAndColumnasDetalleRows(): void
+    {
+        $grupos = [
+            'QUÍMICA CLÍNICA' => [
+                (object) [
+                    'prianacategoria_id' => 10,
+                    'hijo' => 'Glucosa',
+                    'nombre' => 'Glucosa',
+                    'regvalues' => '90',
+                    'es_separador' => 0,
+                ],
+            ],
+            'MICROBIOLOGÍA' => [
+                (object) [
+                    'es_cultivo_matriz' => true,
+                    'es_personalizado_matriz' => true,
+                    'prianacategoria_id' => 20,
+                    'padre' => 'MICROBIOLOGÍA',
+                    'hijo' => 'Urocultivo',
+                    'tipo_muestra_nombre' => 'Orina',
+                    'metodo_nombre' => 'Cultivo',
+                    'cultivo_display' => [
+                        [
+                            'grilla_reporte' => [
+                                'titulos_filas' => [
+                                    [['texto' => 'Germen', 'colspan' => 1]],
+                                ],
+                                'filas' => [
+                                    [['html' => 'E. coli', 'colspan' => 1, 'rowspan' => 1, 'estilo' => '']],
+                                ],
+                            ],
+                        ],
+                    ],
+                ],
+            ],
+            'INMUNOLOGÍA' => [
+                (object) [
+                    'prianacategoria_id' => 30,
+                    'hijo' => 'PCR',
+                    'nombre' => 'PCR',
+                    'regvalues' => 'Negativo',
+                    'es_separador' => 0,
+                ],
+            ],
+        ];
+
+        $tree = ReportTreeBuilder::build(
+            $grupos,
+            [20 => 'Orina'],
+            [20 => 'Cultivo'],
+            [],
+            [],
+            ['blocks' => []],
+        );
+
+        $this->assertCount(3, $tree->areas);
+        $this->assertSame('MICROBIOLOGÍA', $tree->areas[1]->name);
+        $this->assertCount(1, $tree->areas[1]->analysisBlocks);
+        $this->assertTrue($tree->areas[1]->analysisBlocks[0]->isCultivoMatrix);
+        $this->assertSame(2, $tree->areas[1]->analysisBlocks[0]->tables[0]->rowCount);
+
+        $cultivoEstandar = ReportTreeBuilder::build(
+            [
+                'MICROBIOLOGÍA' => [
+                    (object) [
+                        'es_cultivo_matriz' => true,
+                        'es_personalizado_matriz' => false,
+                        'prianacategoria_id' => 21,
+                        'padre' => 'MICROBIOLOGÍA',
+                        'hijo' => 'Coprocultivo',
+                        'cultivo_display' => [
+                            [
+                                'columnas_detalle' => [
+                                    [
+                                        'titulos_filas' => [
+                                            [['texto' => 'Parásito', 'colspan' => 1]],
+                                        ],
+                                        'valores' => ['Negativo'],
+                                    ],
+                                ],
+                                'titulos_banda' => [],
+                            ],
+                        ],
+                    ],
+                ],
+            ],
+            [],
+            [],
+            [],
+            [],
+            ['blocks' => []],
+        );
+
+        $this->assertCount(1, $cultivoEstandar->areas);
+        $this->assertSame(2, $cultivoEstandar->areas[0]->analysisBlocks[0]->tables[0]->rowCount);
+    }
+
     public function testMode1BlockTooLargeAdvancesPageWithoutCssForceBreak(): void
     {
         $metrics = new ReportLayoutMetrics(

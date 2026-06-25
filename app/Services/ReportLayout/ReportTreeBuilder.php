@@ -375,15 +375,74 @@ final class ReportTreeBuilder
             if (! is_array($sec)) {
                 continue;
             }
-            $filas = is_array($sec['filas'] ?? null) ? $sec['filas'] : [];
-            foreach ($filas as $fila) {
-                if (! is_array($fila)) {
-                    continue;
-                }
-                $celdas = is_array($fila['celdas'] ?? null) ? $fila['celdas'] : [];
-                if ($celdas !== []) {
+            $rows += self::countCultivoSectionRows($sec);
+        }
+
+        return $rows;
+    }
+
+    /**
+     * Filas visibles de una sección cultivo (misma lógica que cultivo_matriz_reporte.php).
+     *
+     * @param array<string, mixed> $sec
+     */
+    private static function countCultivoSectionRows(array $sec): int
+    {
+        $grillaReporte = is_array($sec['grilla_reporte'] ?? null) ? $sec['grilla_reporte'] : null;
+        if ($grillaReporte !== null) {
+            $titulosFilasGrilla = is_array($grillaReporte['titulos_filas'] ?? null)
+                ? $grillaReporte['titulos_filas']
+                : [];
+            $filasGrilla = is_array($grillaReporte['filas'] ?? null) ? $grillaReporte['filas'] : [];
+            if ($titulosFilasGrilla === [] && $filasGrilla === []) {
+                return 0;
+            }
+
+            $rows = count($titulosFilasGrilla);
+            foreach ($filasGrilla as $fila) {
+                if (is_array($fila) && $fila !== []) {
                     $rows++;
                 }
+            }
+
+            return $rows;
+        }
+
+        $columnasDetalle = is_array($sec['columnas_detalle'] ?? null) ? $sec['columnas_detalle'] : [];
+        if ($columnasDetalle !== []) {
+            $titulosBanda = is_array($sec['titulos_banda'] ?? null) ? $sec['titulos_banda'] : [];
+            $maxColumnRows = 0;
+            $hasColumnContent = false;
+            foreach ($columnasDetalle as $colDet) {
+                if (! is_array($colDet)) {
+                    continue;
+                }
+                $titulosFilasCol = is_array($colDet['titulos_filas'] ?? null) ? $colDet['titulos_filas'] : [];
+                $valoresCol = is_array($colDet['valores'] ?? null) ? $colDet['valores'] : [];
+                if ($titulosFilasCol === [] && $valoresCol === []) {
+                    continue;
+                }
+                $hasColumnContent = true;
+                $maxColumnRows = max($maxColumnRows, count($titulosFilasCol) + count($valoresCol));
+            }
+
+            return $hasColumnContent ? count($titulosBanda) + $maxColumnRows : 0;
+        }
+
+        $filas = is_array($sec['filas'] ?? null) ? $sec['filas'] : [];
+        $rows = 0;
+        foreach ($filas as $fila) {
+            if (! is_array($fila)) {
+                continue;
+            }
+            $celdas = is_array($fila['celdas'] ?? null) ? $fila['celdas'] : [];
+            if ($celdas !== []) {
+                $rows++;
+
+                continue;
+            }
+            if ($fila !== []) {
+                $rows++;
             }
         }
 
