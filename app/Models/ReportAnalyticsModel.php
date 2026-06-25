@@ -1255,4 +1255,206 @@ class ReportAnalyticsModel extends Model
 
         return round(($actual - $anterior) * 100 / $anterior, 2);
     }
+
+    // =====================================================================
+    // NOTIFICACIONES DE ENTREGA
+    // =====================================================================
+
+    /**
+     * Entregas confirmadas con el botón «Notificar».
+     * Combina dom_analisis_delivery_notification (attended) y dom_auditoria.
+     *
+     * @return list<array<string, mixed>>
+     */
+    public function getNotificacionesEntregaDetalle(
+        string $startDate,
+        string $endDate,
+        int $personId = 0,
+        int $registroId = 0,
+        int $pruebaId = 0,
+        int $limit = 5000
+    ): array {
+        [$ini, $fin] = RegisterService::labDateRangeToStorageBounds($startDate, $endDate);
+        $rows        = [];
+
+        if ($this->db->tableExists('analisis_delivery_notification')) {
+            $n   = $this->db->prefixTable('analisis_delivery_notification');
+            $r   = $this->db->prefixTable('registro');
+            $p   = $this->db->prefixTable('people');
+            $pri = $this->db->prefixTable('prianacategoria');
+
+            $builder = $this->db->table("{$n} nd")
+                ->select("nd.notification_id, nd.registro_id, nd.prianacategoria_id, nd.validated_at,
+                    nd.attended_at AS fecha_entrega, nd.attended_by AS person_id, nd.status,
+                    r.numero_orden, r.ingreso,
+                    {$this->sqlPaciente('p')} AS paciente,
+                    pri.name AS analisis_nombre,
+                    {$this->sqlPaciente('pu')} AS usuario", false)
+                ->join("{$r} r", 'r.registro_id = nd.registro_id', 'inner')
+                ->join("{$p} p", 'p.person_id = r.person_id', 'left')
+                ->join("{$pri} pri", 'pri.prianacategoria_id = nd.prianacategoria_id', 'left')
+                ->join("{$p} pu", 'pu.person_id = nd.attended_by', 'left')
+                ->where('nd.status', 'attended')
+                ->where('nd.attended_at >=', $ini)
+                ->where('nd.attended_at <', $fin)
+                ->where($this->sqlSinAnulados('r'), null, false);
+
+            if ($personId > 0) {
+                $builder->where('nd.attended_by', $personId);
+            }
+            if ($registroId > 0) {
+                $builder->where('nd.registro_id', $registroId);
+            }
+            if ($pruebaId > 0) {
+                $builder->where('nd.prianacategoria_id', $pruebaId);
+            }
+
+            foreach ($builder->orderBy('nd.attended_at', 'DESC')->limit($limit)->get()->getResultArray() as $row) {
+                $row['fuente'] = 'analisis';
+                $rows[]        = $this->enrichNotificacionEntregaRow($row);
+            }
+        }
+
+        if ($pruebaId < 1) {
+            $covered = [];
+            foreach ($rows as $row) {
+                $covered[($row['registro_id'] ?? 0) . '|' . substr((string) ($row['fecha_entrega'] ?? ''), 0, 10)] = true;
+            }
+            foreach ($this->getNotificacionesEntregaDesdeAuditoria($ini, $fin, $personId, $registroId, $limit) as $audRow) {
+                $key = ($audRow['registro_id'] ?? 0) . '|' . substr((string) ($audRow['fecha_entrega'] ?? ''), 0, 10);
+                if (isset($covered[$key])) {
+                    continue;
+                }
+                $rows[] = $this->enrichNotificacionEntregaRow($audRow);
+            }
+        }
+
+        usort($rows, static function (array $a, array $b): int {
+            return strcmp((string) ($b['fecha_entrega'] ?? ''), (string) ($a['fecha_entrega'] ?? ''));
+        });
+
+        return array_slice($rows, 0, $limit);
+    }
+
+    /** Total de confirmaciones registradas en auditoría (clics en Notificar). */
+    public function countNotificacionesEntregaAuditoria(
+        string $startDate,
+        string $endDate,
+        int $personId = 0,
+        int $registroId = 0
+    ): int {
+        [$ini, $fin] = RegisterService::labDateRangeToStorageBounds($startDate, $endDate);
+        $a           = $this->db->prefixTable('auditoria');
+
+        $builder = $this->db->table('auditoria')
+            ->where("{$a}.modulo", 'registers')
+            ->where("{$a}.accion", 'notificar_entrega_analisis')
+            ->where("{$a}.fecha >=", $ini)
+            ->where("{$a}.fecha <", $fin);
+
+        if ($personId > 0) {
+            $builder->where("{$a}.person_id", $personId);
+        }
+        if ($registroId > 0) {
+            $builder->where("{$a}.registro_id", $registroId);
+        }
+
+        return (int) $builder->countAllResults();
+    }
+
+    /**
+     * @return list<array<string, mixed>>
+     */
+    private function getNotificacionesEntregaDesdeAuditoria(
+        string $ini,
+        string $fin,
+        int $personId,
+        int $registroId,
+        int $limit
+    ): array {
+        $a = $this->db->prefixTable('auditoria');
+        $p = $this->db->prefixTable('people');
+        $r = $this->db->prefixTable('registro');
+
+        $filtroUsuario  = $personId > 0 ? ' AND a.person_id = ' . (int) $personId : '';
+        $filtroRegistro = $registroId > 0 ? ' AND a.registro_id = ' . (int) $registroId : '';
+
+        $sql = "SELECT a.auditoria_id, a.registro_id, a.person_id, a.fecha AS fecha_entrega,
+                r.numero_orden, r.ingreso,
+                {$this->sqlPaciente('p')} AS usuario,
+                {$this->sqlPaciente('pac')} AS paciente
+            FROM {$a} a
+            LEFT JOIN {$p} p ON p.person_id = a.person_id
+            LEFT JOIN {$r} r ON r.registro_id = a.registro_id
+            LEFT JOIN {$p} pac ON pac.person_id = r.person_id
+            WHERE a.modulo = 'registers'
+              AND a.accion = 'notificar_entrega_analisis'
+              AND a.fecha >= " . $this->db->escape($ini) . '
+              AND a.fecha < ' . $this->db->escape($fin) . "
+              {$filtroUsuario}{$filtroRegistro}
+            ORDER BY a.fecha DESC
+            LIMIT " . max(1, $limit);
+
+        $out = [];
+        foreach ($this->db->query($sql)->getResultArray() as $row) {
+            $row['fuente']              = 'auditoria';
+            $row['prianacategoria_id']  = 0;
+            $row['validated_at']        = null;
+            $row['analisis_nombre']     = 'Recepción completa';
+            $row['status']              = 'attended';
+            $out[]                      = $row;
+        }
+
+        return $out;
+    }
+
+    /**
+     * @param array<string, mixed> $row
+     * @return array<string, mixed>
+     */
+    private function enrichNotificacionEntregaRow(array $row): array
+    {
+        $validated = trim((string) ($row['validated_at'] ?? ''));
+        $entrega   = trim((string) ($row['fecha_entrega'] ?? ''));
+        $horas     = ($validated !== '' && $entrega !== '')
+            ? $this->diffHoursMysql($validated, $entrega)
+            : null;
+
+        $bucket = 'sin_validacion';
+        if ($horas !== null) {
+            if ($horas <= 12) {
+                $bucket = 'dentro_12';
+            } elseif ($horas <= 24) {
+                $bucket = 'entre_12_24';
+            } else {
+                $bucket = 'mayor_24';
+            }
+        }
+
+        $priaId = (int) ($row['prianacategoria_id'] ?? 0);
+        $nombre = trim((string) ($row['analisis_nombre'] ?? ''));
+
+        return array_merge($row, [
+            'horas_transcurridas' => $horas,
+            'bucket_tiempo'       => $bucket,
+            'estado'              => 'Entregado',
+            'analisis_codigo'     => $nombre !== '' ? $nombre : ($priaId > 0 ? ('Análisis #' . $priaId) : 'Recepción completa'),
+            'registro_codigo'     => trim((string) ($row['numero_orden'] ?? '')) !== ''
+                ? trim((string) $row['numero_orden'])
+                : (string) (int) ($row['registro_id'] ?? 0),
+        ]);
+    }
+
+    private function diffHoursMysql(string $from, string $to): ?float
+    {
+        try {
+            $dtFrom = new \DateTimeImmutable($from);
+            $dtTo   = new \DateTimeImmutable($to);
+            $sec    = $dtTo->getTimestamp() - $dtFrom->getTimestamp();
+
+            return $sec >= 0 ? round($sec / 3600, 2) : null;
+        } catch (\Throwable $e) {
+            return null;
+        }
+    }
 }

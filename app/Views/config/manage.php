@@ -120,6 +120,9 @@
     <li class="nav-item" role="presentation" data-config-group="general">
         <button class="nav-link <?= $activeTab === 'lab_validacion' ? 'active' : '' ?>" id="tab-lab-validacion-btn" data-bs-toggle="tab" data-bs-target="#tab-lab-validacion" type="button" role="tab"><?= lang('Config.config_lab_validation_tab_nav') ?></button>
     </li>
+    <li class="nav-item" role="presentation" data-config-group="general">
+        <button class="nav-link <?= $activeTab === 'notificaciones_analisis' ? 'active' : '' ?>" id="tab-notificaciones-analisis-btn" data-bs-toggle="tab" data-bs-target="#tab-notificaciones-analisis" type="button" role="tab"><i class="fa-solid fa-bell me-1"></i>Notificaciones de análisis</button>
+    </li>
     <li class="nav-item" role="presentation" data-config-group="impresion">
         <button class="nav-link <?= $activeTab === 'comprobante' ? 'active' : '' ?>" id="tab-comprobante-btn" data-bs-toggle="tab" data-bs-target="#tab-comprobante" type="button" role="tab">Comprobante</button>
     </li>
@@ -729,6 +732,12 @@
         'lab_validation_mode' => \App\Services\ConfigService::normalizeLabValidationMode(
             (string) ($config['lab_validation_mode'] ?? 'area')
         ),
+    ]) ?>
+
+    <?= view('config/tab_notificaciones_analisis', [
+        'activeTab' => $activeTab,
+        'delivery_notifications_enabled' => $delivery_notifications_enabled ?? false,
+        'delivery_notifications_scope' => $delivery_notifications_scope ?? 'all',
     ]) ?>
 
     <?= view('config/tab_estilo', ['config' => $config, 'activeTab' => $activeTab, 'theme_palette' => $theme_palette ?? []]) ?>

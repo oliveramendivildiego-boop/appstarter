@@ -167,8 +167,14 @@ $lblComp = ! empty($sin_billing_enabled ?? false) ? 'Factura' : 'Recibo (PDF)';
     'compOk'                   => $compOk,
     'lblComp'                  => $lblComp,
     'envelope_print_available' => $envelope_print_available ?? false,
+    'delivery_show_notify_button'   => ! empty($delivery_show_notify_button ?? false),
+    'delivery_pending_for_registro' => ! empty($delivery_pending_for_registro ?? false),
     'sticky'                   => true,
 ]) ?>
+
+<?php if (! empty($delivery_pending_rows)): ?>
+<?= view('registers/partials/report_delivery_pending_alert', ['delivery_pending_rows' => $delivery_pending_rows]) ?>
+<?php endif; ?>
 
 <?php if (empty($grupos)): ?>
 <div class="alert alert-info mt-3">
@@ -185,6 +191,8 @@ $lblComp = ! empty($sin_billing_enabled ?? false) ? 'Factura' : 'Recibo (PDF)';
     'compOk'                   => $compOk,
     'lblComp'                  => $lblComp,
     'envelope_print_available' => $envelope_print_available ?? false,
+    'delivery_show_notify_button'   => ! empty($delivery_show_notify_button ?? false),
+    'delivery_pending_for_registro' => ! empty($delivery_pending_for_registro ?? false),
     'sticky'                   => false,
 ]) ?>
 <?php endif; ?>
@@ -257,6 +265,82 @@ document.addEventListener('DOMContentLoaded', function() {
                 window.location.href = '<?= site_url('registers') ?>';
             })
             .catch(function() { uiAlert('Error al guardar', 'Error'); });
+        });
+    });
+
+    document.querySelectorAll('.js-viewreport-notify-delivery').forEach(function(btn) {
+        btn.addEventListener('click', function() {
+            var rid = btn.getAttribute('data-registro-id') || '';
+            if (!rid) return;
+            uiConfirm('¿Confirma que ya informó la entrega de estos resultados al médico o paciente?', 'Confirmar notificación').then(function(ok) {
+                if (!ok) return;
+                var csrfName = window.CI_CSRF_TOKEN_NAME || 'csrf_test_name';
+                var csrfVal = window.CI_CSRF_TOKEN || '';
+                var body = csrfName + '=' + encodeURIComponent(csrfVal);
+                fetch('<?= site_url('registers/notifyDelivery') ?>/' + encodeURIComponent(rid), {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'X-Requested-With': 'XMLHttpRequest' },
+                    body: body
+                })
+                .then(function(r) { return r.json(); })
+                .then(function(res) {
+                    if (res && res.csrf_token) {
+                        window.CI_CSRF_TOKEN = res.csrf_token;
+                        var meta = document.querySelector('meta[name="csrf-token"]');
+                        if (meta) meta.setAttribute('content', res.csrf_token);
+                    }
+                    if (!res || !res.success) {
+                        uiAlert((res && res.message) ? res.message : 'No se pudo registrar la notificación.', 'Error');
+                        return;
+                    }
+                    document.querySelectorAll('.js-viewreport-notify-delivery').forEach(function(b) { b.remove(); });
+                    document.querySelectorAll('.registro-delivery-pending-alert').forEach(function(el) { el.remove(); });
+                    var headerNotif = document.querySelector('.header-delivery-notifications');
+                    var n = parseInt(res.pending_count, 10);
+                    var labelText = (!n || n < 1) ? 'Mis notificaciones' : (n === 1 ? '1 notificación' : (n + ' notificaciones'));
+                    if (headerNotif) {
+                        var labelEl = headerNotif.querySelector('.header-delivery-notifications__label');
+                        if (labelEl) {
+                            labelEl.textContent = labelText;
+                            if (!n || n < 1) {
+                                labelEl.classList.add('d-none', 'd-md-inline');
+                            } else {
+                                labelEl.classList.remove('d-none', 'd-md-inline');
+                            }
+                        }
+                        if (!n || n < 1) {
+                            headerNotif.classList.remove('header-delivery-notifications--active');
+                            var dot = headerNotif.querySelector('.header-delivery-notifications__dot');
+                            if (dot) dot.remove();
+                            headerNotif.setAttribute('title', 'Ver notificaciones de entrega de análisis');
+                        } else {
+                            headerNotif.classList.add('header-delivery-notifications--active');
+                            var iconWrap = headerNotif.querySelector('.header-delivery-notifications__icon');
+                            if (iconWrap && !headerNotif.querySelector('.header-delivery-notifications__dot')) {
+                                var dotEl = document.createElement('span');
+                                dotEl.className = 'header-delivery-notifications__dot';
+                                dotEl.setAttribute('aria-hidden', 'true');
+                                iconWrap.appendChild(dotEl);
+                            }
+                            headerNotif.setAttribute('title', labelText);
+                        }
+                    }
+                    var banner = document.querySelector('.delivery-pending-alert');
+                    if (banner) {
+                        if (!n || n < 1) {
+                            banner.remove();
+                        } else {
+                            banner.innerHTML = '<span class="fw-semibold"><i class="fa-solid fa-bell me-1"></i> Tiene ' + labelText + '</span><span class="d-none d-md-inline"> — haga clic para ver el listado</span>';
+                        }
+                    }
+                    if (typeof showToast === 'function') {
+                        showToast(res.message || 'Entrega notificada.', 'success');
+                    } else {
+                        uiAlert(res.message || 'Entrega notificada.', 'Éxito');
+                    }
+                })
+                .catch(function() { uiAlert('Error de conexión al registrar la notificación.', 'Error'); });
+            });
         });
     });
 });

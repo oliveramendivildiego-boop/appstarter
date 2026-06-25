@@ -276,6 +276,9 @@ class Config extends SecureArea
         if (($this->request->getGet('tab') ?: '') === 'sobres') {
             $tab = 'sobres';
         }
+        if (($this->request->getGet('tab') ?: '') === 'notificaciones_analisis') {
+            $tab = 'notificaciones_analisis';
+        }
 
         $subSvc                 = new TenantSubscriptionService();
         $subscription_payments  = $canManageTenants
@@ -375,6 +378,10 @@ class Config extends SecureArea
             'theme_palette'        => get_theme_color_palette(),
             'instituciones_disponibles' => $institucionesDisponibles,
             'institucion_descuentos'    => $institucionDiscounts,
+            'delivery_notifications_enabled' => ($config[\App\Services\DeliveryNotificationService::KEY_ENABLED] ?? '0') === '1',
+            'delivery_notifications_scope' => \App\Services\DeliveryNotificationService::normalizeScope(
+                (string) ($config[\App\Services\DeliveryNotificationService::KEY_SCOPE] ?? 'all')
+            ),
             'allowed_modules'      => $this->allowed_modules,
             'user_info'            => $this->user_info,
             'current_module'       => 'config',
@@ -1767,6 +1774,14 @@ class Config extends SecureArea
         $this->configService->saveWhatsappConfig($this->request->getPost());
         \App\Models\AuditoriaModel::log('config', 'whatsapp_actualizar', null);
         return redirect()->to('config?tab=whatsapp')->with('success', 'Configuración de WhatsApp guardada.');
+    }
+
+    public function saveDeliveryNotifications(): ResponseInterface
+    {
+        (new \App\Services\DeliveryNotificationService())->saveConfigFromPost($this->request->getPost());
+        \App\Models\AuditoriaModel::log('config', 'delivery_notifications_actualizar', null);
+
+        return redirect()->to('config?tab=notificaciones_analisis')->with('success', 'Configuración de notificaciones de análisis guardada.');
     }
 
     public function saveSin(): ResponseInterface

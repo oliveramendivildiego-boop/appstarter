@@ -829,3 +829,58 @@ if (! function_exists('report_pdf_img_src_attr')) {
         return str_replace('"', '&quot;', $src);
     }
 }
+
+if (! function_exists('delivery_notification_count_label')) {
+    /**
+     * Etiqueta del contador en cabecera: «1 notificación» / «N notificaciones».
+     */
+    function delivery_notification_count_label(int $count): string
+    {
+        if ($count === 1) {
+            return '1 notificación';
+        }
+        if ($count > 1) {
+            return $count . ' notificaciones';
+        }
+
+        return 'Mis notificaciones';
+    }
+}
+
+if (! function_exists('delivery_notification_elapsed_label')) {
+    /**
+     * Etiqueta legible del tiempo transcurrido desde la validación.
+     */
+    function delivery_notification_elapsed_label(?string $mysqlDatetime): string
+    {
+        $mysqlDatetime = trim((string) $mysqlDatetime);
+        if ($mysqlDatetime === '') {
+            return '—';
+        }
+        try {
+            $tz = \App\Services\RegisterService::reportDisplayTimezone();
+            $dt = new \DateTimeImmutable($mysqlDatetime, new \DateTimeZone('UTC'));
+            $now = new \DateTimeImmutable('now', new \DateTimeZone($tz));
+            $local = $dt->setTimezone(new \DateTimeZone($tz));
+            $diff = $now->getTimestamp() - $local->getTimestamp();
+            if ($diff < 60) {
+                return 'Hace un momento';
+            }
+            if ($diff < 3600) {
+                $m = (int) floor($diff / 60);
+
+                return 'Hace ' . $m . ' min';
+            }
+            if ($diff < 86400) {
+                $h = (int) floor($diff / 3600);
+
+                return 'Hace ' . $h . ' h';
+            }
+            $d = (int) floor($diff / 86400);
+
+            return 'Hace ' . $d . ' día' . ($d === 1 ? '' : 's');
+        } catch (\Throwable $e) {
+            return '—';
+        }
+    }
+}

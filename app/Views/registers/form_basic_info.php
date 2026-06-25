@@ -166,6 +166,17 @@ document.addEventListener('DOMContentLoaded', function() {
             </select>
         </div>
     </div>
+    <?php if (! empty($show_notificar_entrega_checkbox)): ?>
+    <div class="col-12 col-md-6" id="notificar_entrega_container">
+        <div class="mb-3">
+            <div class="form-check mt-md-4">
+                <input class="form-check-input" type="checkbox" id="notificar_entrega" name="notificar_entrega" value="1">
+                <label class="form-check-label" for="notificar_entrega">Notificar entrega de esta recepción</label>
+            </div>
+            <small class="text-muted">Marque esta opción si desea recibir alertas cuando los análisis de esta orden estén listos para entregar.</small>
+        </div>
+    </div>
+    <?php endif; ?>
     <div class="col-12 col-md-6">
         <div class="mb-3">
             <label for="diagnostico_presuntivo" class="form-label">Diagnóstico presuntivo:</label>

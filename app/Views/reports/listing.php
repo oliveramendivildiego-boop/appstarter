@@ -195,6 +195,10 @@ $badgeNuevo = static fn (string $reportKey): string => in_array($reportKey, $ana
                     <i class="fas fa-users-cog me-2"></i> Productividad por usuario <?= $badgeNuevo('productividad_usuarios') ?>
                 </a>
                 <p class="list-group-item small text-muted mb-0">Recepciones, resultados cargados, modificaciones, validaciones e impresiones por usuario, con ranking.</p>
+                <a href="<?= site_url('reports/notificacionesEntrega') ?>" class="list-group-item list-group-item-action">
+                    <i class="fas fa-bell me-2"></i> Notificaciones de entrega <?= $badgeNuevo('notificaciones_entrega') ?>
+                </a>
+                <p class="list-group-item small text-muted mb-0">Entregas confirmadas con «Notificar»: volumen por usuario y recepción, tiempos desde validación e indicadores de calidad.</p>
                 <a href="<?= site_url('reports/resultadosCorregidos') ?>" class="list-group-item list-group-item-action">
                     <i class="fas fa-history me-2"></i> Resultados corregidos (auditoría) <?= $badgeNuevo('resultados_corregidos') ?>
                 </a>

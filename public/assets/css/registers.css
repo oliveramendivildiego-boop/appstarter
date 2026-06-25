@@ -76,6 +76,41 @@
     border-left: 6px solid #dc3545 !important;
 }
 
+@keyframes registro-delivery-pending-blink {
+    0%, 100% {
+        outline-color: #ff7218;
+    }
+    50% {
+        outline-color: rgba(255, 114, 24, 0.2);
+    }
+}
+
+.registros-table > tbody > tr.registro-delivery-pending {
+    outline: 2px solid #ff7218;
+    outline-offset: -2px;
+    animation: registro-delivery-pending-blink 1.35s ease-in-out infinite;
+}
+
+.registro-delivery-pending-badge {
+    background-color: #ff7218 !important;
+    color: #fff !important;
+}
+
+.registro-delivery-pending-alert {
+    background: linear-gradient(90deg, #fff4eb 0%, #ffe8d6 100%);
+    border-left: 4px solid #ff7218 !important;
+    color: #7a3b12;
+}
+
+.registro-delivery-pending-legend {
+    width: 1.35rem;
+    height: 0.85rem;
+    border: 2px solid #ff7218;
+    border-radius: 2px;
+    animation: registro-delivery-pending-blink 1.35s ease-in-out infinite;
+    vertical-align: middle;
+}
+
 .registros-table .registros-acciones-col {
     min-width: 135px;
 }

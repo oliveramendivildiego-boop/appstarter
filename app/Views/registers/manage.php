@@ -170,6 +170,7 @@ if (!empty($edit_registro)) {
         'origen_prueba' => (int)($edit_registro->origen_prueba ?? 0),
         'diagnostico_presuntivo' => (string)($edit_registro->diagnostico_presuntivo ?? ''),
         'motivo_estudio' => (string)($edit_registro->motivo_estudio ?? ''),
+        'notificar_entrega' => (int)($edit_registro->notificar_entrega ?? 0),
         'pruebas'     => (string)($edit_registro->pruebas ?? ''),
         'regvalues_count' => (int)($edit_regvalues_count ?? 0),
         'pago'        => [
@@ -197,7 +198,10 @@ if (!empty($edit_registro)) {
 <div id="registers_form_error" class="alert alert-danger" style="display:none;"></div>
 <div class="row">
     <div class="col-md-8 mb-3">
-        <?= view('registers/form_basic_info') ?>
+        <?= view('registers/form_basic_info', [
+            'show_notificar_entrega_checkbox' => ! empty($show_notificar_entrega_checkbox),
+            'perfiles' => $perfiles ?? [],
+        ]) ?>
         <div id="pruebas_error" class="text-danger small mb-2" style="display:none;"></div>
         <div class="mb-3">
             <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-2">
@@ -1073,6 +1077,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 '&registro[origen_prueba]=' + encodeURIComponent(registroData.origen_prueba) +
                 '&registro[diagnostico_presuntivo]=' + encodeURIComponent(registroData.diagnostico_presuntivo) +
                 '&registro[motivo_estudio]=' + encodeURIComponent(registroData.motivo_estudio) +
+                '&registro[notificar_entrega]=' + (registroData.notificar_entrega === '1' ? '1' : '0') +
                 '&pagos[total_reco]=' + encodeURIComponent(pagosData.total_reco) +
                 '&pagos[total]=' + encodeURIComponent(pagosData.total) +
                 '&pagos[monto_pagar]=' + encodeURIComponent(pagosData.monto_pagar) +
@@ -1407,7 +1412,11 @@ document.addEventListener('DOMContentLoaded', function() {
                 prioridad: procVal === '1' ? '1' : '0',
                 origen_prueba: procVal === '2' ? '1' : '0',
                 diagnostico_presuntivo: (document.getElementById('diagnostico_presuntivo') || {}).value || '',
-                motivo_estudio: (document.getElementById('motivo_estudio') || {}).value || ''
+                motivo_estudio: (document.getElementById('motivo_estudio') || {}).value || '',
+                notificar_entrega: (function () {
+                    var el = document.getElementById('notificar_entrega');
+                    return el && el.checked ? '1' : '0';
+                })()
             };
             var tipopagoVal = (document.getElementById('tipopago') || {}).value || '';
             var esPendiente = tipopagoVal === '4';
@@ -1681,6 +1690,10 @@ document.addEventListener('DOMContentLoaded', function() {
             }
             if (diagnosticoEl) diagnosticoEl.value = String(editInfo.diagnostico_presuntivo || '');
             if (motivoEl) motivoEl.value = String(editInfo.motivo_estudio || '');
+            var notificarEntregaEl = document.getElementById('notificar_entrega');
+            if (notificarEntregaEl) {
+                notificarEntregaEl.checked = parseInt(editInfo.notificar_entrega, 10) === 1;
+            }
             var institucionEl = document.getElementById('customer_institucion');
             var descuentoEl = document.getElementById('customer_descuento_pct');
             if (institucionEl) institucionEl.value = String(editInfo.institucion || '');

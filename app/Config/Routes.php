@@ -118,6 +118,9 @@ $routes->get('reports/tiempoEntregaExcel', 'ReportsAnalytics::tiempoEntregaExcel
 $routes->get('reports/productividadUsuarios', 'ReportsAnalytics::productividadUsuarios');
 $routes->get('reports/productividadUsuariosPdf', 'ReportsAnalytics::productividadUsuariosPdf');
 $routes->get('reports/productividadUsuariosExcel', 'ReportsAnalytics::productividadUsuariosExcel');
+$routes->get('reports/notificacionesEntrega', 'ReportsAnalytics::notificacionesEntrega');
+$routes->get('reports/notificacionesEntregaPdf', 'ReportsAnalytics::notificacionesEntregaPdf');
+$routes->get('reports/notificacionesEntregaExcel', 'ReportsAnalytics::notificacionesEntregaExcel');
 $routes->get('reports/resultadosCorregidos', 'ReportsAnalytics::resultadosCorregidos');
 $routes->get('reports/resultadosCorregidosPdf', 'ReportsAnalytics::resultadosCorregidosPdf');
 $routes->get('reports/resultadosCorregidosExcel', 'ReportsAnalytics::resultadosCorregidosExcel');
@@ -176,6 +179,7 @@ $routes->post('config/saveComprobanteStyle', 'Config::saveComprobanteStyle');
 $routes->get('config/exportComprobanteStyle', 'Config::exportComprobanteStyle');
 $routes->post('config/importComprobanteStyle', 'Config::importComprobanteStyle');
 $routes->post('config/saveWhatsapp', 'Config::saveWhatsapp');
+$routes->post('config/saveDeliveryNotifications', 'Config::saveDeliveryNotifications');
 $routes->post('config/saveSin', 'Config::saveSin');
 $routes->post('config/saveInstitucionDescuento', 'Config::saveInstitucionDescuento');
 $routes->post('config/savepoblacion', 'Config::savePoblacion');
@@ -374,6 +378,8 @@ $routes->post('registers/editarAbonoPago/(:num)', 'Registers::editarAbonoPago/$1
 $routes->post('registers/eliminarAbonoPago/(:num)', 'Registers::eliminarAbonoPago/$1');
 $routes->get('registers/historial/(:num)', 'Registers::historial/$1');
 $routes->post('registers/sendWhatsapp/(:num)', 'Registers::sendWhatsapp/$1');
+$routes->get('registers/deliveryNotifications', 'Registers::deliveryNotifications');
+$routes->post('registers/notifyDelivery/(:num)', 'Registers::notifyDelivery/$1');
 $routes->get('registers/servePdfFile/(:alphanum)', 'Registers::servePdfFile/$1');
 $routes->get('customers/view/(:num)', 'Customers::view/$1');
 $routes->get('customers/view', 'Customers::view/0');

@@ -116,6 +116,23 @@ if ($subAlert !== null && ! $hideSubAlertOnBlockedPage):
     <?php endif; ?>
 </div>
 <?php endif; ?>
+<?php
+$deliveryPendingCount = 0;
+$deliveryNotificationsEnabled = false;
+if (function_exists('session') && session()->get('person_id')) {
+    try {
+        $deliverySvc = new \App\Services\DeliveryNotificationService();
+        $deliveryNotificationsEnabled = $deliverySvc->isEnabled();
+        $deliveryPendingCount = $deliveryNotificationsEnabled ? $deliverySvc->getPendingCount() : 0;
+    } catch (\Throwable $e) {
+        $deliveryPendingCount = 0;
+        $deliveryNotificationsEnabled = false;
+    }
+}
+if ($deliveryPendingCount > 0) {
+    echo view('partial/delivery_pending_banner', ['delivery_pending_count' => $deliveryPendingCount]);
+}
+?>
 <div id="toast-container" class="position-fixed top-0 end-0 p-3"></div>
 
 <!-- Modal global (mensajes/confirmaciones) -->
@@ -169,6 +186,12 @@ if ($subAlert !== null && ! $hideSubAlertOnBlockedPage):
             <?= esc($companyName) ?>
         <?php endif; ?>
     </a>
+    <?php if (function_exists('session') && session()->get('person_id')): ?>
+    <?= view('partial/header_delivery_notifications', [
+        'delivery_pending_count' => $deliveryPendingCount ?? 0,
+        'delivery_notifications_enabled' => $deliveryNotificationsEnabled ?? false,
+    ]) ?>
+    <?php endif; ?>
     <?= view('partial/header_datetime') ?>
 </header>
 

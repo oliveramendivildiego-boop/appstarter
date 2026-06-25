@@ -6,6 +6,8 @@
  * @var bool   $compOk
  * @var string $lblComp
  * @var bool   $envelope_print_available
+ * @var bool   $delivery_show_notify_button
+ * @var bool   $delivery_pending_for_registro
  * @var bool   $sticky Si true, la barra queda fija al hacer scroll (solo arriba).
  */
 $ridPdf = (int) ($ridPdf ?? 0);
@@ -38,4 +40,9 @@ if ($sticky) {
        title="<?= $compOk ? 'Descargar comprobante de pago' : 'Si la orden no está saldada, se mostrará un aviso al intentar descargar' ?>">
         <i class="fa-solid fa-file-invoice-dollar me-1"></i> <?= esc($lblComp) ?>
     </a>
+    <?php if (! empty($delivery_show_notify_button)): ?>
+    <button type="button" class="btn text-white js-viewreport-notify-delivery" style="background-color:#FF7218;border-color:#FF7218;" data-registro-id="<?= $ridPdf ?>" title="Confirmar que informó la entrega de resultados al médico o paciente">
+        <i class="fa-solid fa-bell me-1"></i> Notificar
+    </button>
+    <?php endif; ?>
 </div>

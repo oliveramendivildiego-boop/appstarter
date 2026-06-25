@@ -163,6 +163,7 @@ class Registers extends SecureArea
             'edit_discount_info' => ['institucion' => '', 'descuento' => 0.0],
             'label_sin_doctor' => $this->getLabelSinDoctorConfig(),
             'codigo_orden'    => (new RegistroFolioService())->previewCodigoOrden(),
+            'show_notificar_entrega_checkbox' => (new \App\Services\DeliveryNotificationService())->showNotificarEntregaOnRegisterForm(),
         ], $this->buildFichaClinicaViewExtras()));
     }
 
@@ -206,6 +207,7 @@ class Registers extends SecureArea
                 (int) ($info->registro_id ?? 0),
                 (string) ($info->numero_orden ?? '')
             ),
+            'show_notificar_entrega_checkbox' => (new \App\Services\DeliveryNotificationService())->showNotificarEntregaOnRegisterForm(),
         ], $this->buildFichaClinicaViewExtras($id)));
     }
 
@@ -276,8 +278,28 @@ class Registers extends SecureArea
             $registros[$i] = $this->repairPagoTotalsIfZero($row);
         }
 
+        $deliverySvc = new \App\Services\DeliveryNotificationService();
+        $deliveryHighlightIds = [];
+        $deliveryHighlightOnPage = 0;
+        if ($deliverySvc->isEnabled()) {
+            $pageIds = [];
+            foreach ($registros as $row) {
+                $rid = (int) ($row->registro_id ?? 0);
+                if ($rid > 0) {
+                    $pageIds[] = $rid;
+                }
+            }
+            if ($deliverySvc->getScope() === 'all') {
+                foreach ($pageIds as $rid) {
+                    $deliverySvc->syncForRegistro((int) $rid);
+                }
+            }
+            $deliveryHighlightIds = $deliverySvc->getHighlightRegistroIds($pageIds);
+            $deliveryHighlightOnPage = count($deliveryHighlightIds);
+        }
+
         $whatsappOk  = (new WhatsAppService())->isConfigured();
-        $manageTable = $this->buildRegistrosTable($registros, $whatsappOk, $hasOrigenColumn);
+        $manageTable = $this->buildRegistrosTable($registros, $whatsappOk, $hasOrigenColumn, $deliverySvc, $deliveryHighlightIds);
         $totalPages  = $total > 0 ? (int) ceil($total / $perPage) : 1;
 
         $esListaDefault = $search === '' && $estado === '' && $origen === ''
@@ -312,6 +334,8 @@ class Registers extends SecureArea
             'fecha_mes_desde'     => $monthStart,
             'lista_fecha_default' => $listaFechaDefault,
             'es_lista_default'    => $esListaDefault,
+            'delivery_notifications_enabled' => $deliverySvc->isEnabled(),
+            'delivery_pending_on_page'         => $deliveryHighlightOnPage,
         ]);
     }
 
@@ -380,9 +404,16 @@ class Registers extends SecureArea
         return null;
     }
 
-    private function buildRegistrosTable(array $registros, bool $whatsappConfigured = false, bool $hasOrigenColumn = false): string
-    {
+    private function buildRegistrosTable(
+        array $registros,
+        bool $whatsappConfigured = false,
+        bool $hasOrigenColumn = false,
+        ?\App\Services\DeliveryNotificationService $deliverySvc = null,
+        array $deliveryHighlightIds = []
+    ): string {
         $labelSinDoctor = $this->getLabelSinDoctorConfig();
+        $deliverySvc = $deliverySvc ?? new \App\Services\DeliveryNotificationService();
+        $highlightSet = array_fill_keys($deliveryHighlightIds, true);
 
         $html = '<div class="table-responsive lab-grid-enhanced registros-table-responsive"><table class="table table-bordered table-striped registros-table"><thead><tr>';
         $html .= '<th>Código</th><th>Paciente</th><th>Doctor</th>';
@@ -401,17 +432,33 @@ class Registers extends SecureArea
             $isPrioridad = !$isAnulado && isset($r->prioridad) && (int) $r->prioridad === 1;
             $isDerivacion = ! $isAnulado && $hasOrigenColumn && registro_origen_prueba_es_derivacion($r);
             $hasDoctor = (int) ($r->doctor_id ?? 0) > 0;
+            $isDeliveryPending = ! $isAnulado && (
+                $deliveryHighlightIds !== []
+                    ? isset($highlightSet[$rid])
+                    : $deliverySvc->shouldHighlightRegistroInLista($r)
+            );
 
             if (!$isAnulado) {
                 $sumTotal += $totalNum;
                 $sumSaldo += $saldoNum;
             }
 
-            $rowClass = $isAnulado ? 'table-secondary' : ($isPrioridad ? 'registro-prioridad table-danger fw-semibold' : ($isDerivacion ? 'registro-derivacion table-info' : ''));
-            $html .= '<tr' . ($rowClass !== '' ? ' class="' . $rowClass . '"' : '') . '>';
+            $rowClasses = [];
+            if ($isAnulado) {
+                $rowClasses[] = 'table-secondary';
+            } elseif ($isPrioridad) {
+                $rowClasses[] = 'registro-prioridad table-danger fw-semibold';
+            } elseif ($isDerivacion) {
+                $rowClasses[] = 'registro-derivacion table-info';
+            }
+            if ($isDeliveryPending) {
+                $rowClasses[] = 'registro-delivery-pending';
+            }
+            $rowClass = implode(' ', $rowClasses);
+            $html .= '<tr' . ($rowClass !== '' ? ' class="' . esc($rowClass, 'attr') . '"' : '') . '>';
             $ordenDisp = registro_orden_display($r);
-            $codigoTdClass = $isPrioridad ? ' class="registro-prioridad-codigo"' : '';
-            $html .= '<td' . $codigoTdClass . ' title="ID interno: ' . esc((string) $rid) . '">' . esc($ordenDisp);
+            $codigoTdClass = $isPrioridad ? 'registro-prioridad-codigo' : '';
+            $html .= '<td' . ($codigoTdClass !== '' ? ' class="' . esc($codigoTdClass, 'attr') . '"' : '') . ' title="ID interno: ' . esc((string) $rid) . '">' . esc($ordenDisp);
             if ($isAnulado) {
                 $html .= ' <span class="badge bg-dark ms-1">Anulada</span>';
             } else {
@@ -420,6 +467,9 @@ class Registers extends SecureArea
                 }
                 if ($isDerivacion) {
                     $html .= ' <span class="badge bg-info text-dark ms-1">Derivación</span>';
+                }
+                if ($isDeliveryPending) {
+                    $html .= ' <span class="badge registro-delivery-pending-badge ms-1"><i class="fa-solid fa-bell me-1"></i>Notificar</span>';
                 }
             }
             $html .= '</td>';
@@ -479,6 +529,9 @@ class Registers extends SecureArea
                     $html .= '<li><button type="button" class="dropdown-item btn-agregar-pago" data-id="' . $rid . '" data-total="' . esc($r->total ?? '') . '" data-saldo="' . esc($r->saldo ?? '') . '" data-monto="' . esc($r->monto_pagar ?? '') . '"><i class="fa-solid fa-money-bill-wave me-2 text-warning"></i>Agregar pago</button></li>';
                 }
                 $html .= '<li><a class="dropdown-item" href="' . site_url('registers/comprobantePdf/' . $rid) . '" target="_blank"><i class="fa-solid fa-file-invoice-dollar me-2 text-dark"></i>Descargar comprobante</a></li>';
+                if ($isDeliveryPending) {
+                    $html .= '<li><button type="button" class="dropdown-item btn-notificar-entrega" data-id="' . $rid . '"><i class="fa-solid fa-bell me-2 text-warning"></i>Notificar</button></li>';
+                }
                 $html .= '<li><button type="button" class="dropdown-item btn-historial" data-id="' . $rid . '"><i class="fa-solid fa-clock-rotate-left me-2 text-info"></i>Historial de pagos y pruebas</button></li>';
                 $html .= '<li><hr class="dropdown-divider"></li>';
                 $html .= '<li><button type="button" class="dropdown-item text-danger btn-anular-registro" data-id="' . $rid . '"><i class="fa-solid fa-ban me-2 text-danger"></i>Anular orden</button></li>';
@@ -674,6 +727,12 @@ class Registers extends SecureArea
         $billingService = new BillingDocumentService();
         $pagoCompleto   = $this->registerModel->isPagoCompletoPorRegistroId($id);
         $envelopeRender = new EnvelopeRenderService();
+        $deliverySvc = new \App\Services\DeliveryNotificationService();
+        $registerInfo = $data['register_info'];
+        $deliveryPendingRows = $deliverySvc->listPendingForRegistro($id);
+        $deliverySvc->syncForRegistro($id);
+        $deliveryPendingRows = $deliverySvc->listPendingForRegistro($id);
+        $deliveryShowNotifyButton = $deliverySvc->shouldShowNotifyButtonForRegistro($registerInfo);
 
         return view('registers/viewreport', [
             'current_module'    => 'registers',
@@ -689,6 +748,9 @@ class Registers extends SecureArea
             'comprobante_pdf_pendiente_pago' => $pago !== null && ! $pagoCompleto,
             'comprobante_pdf_sin_registro_pago' => $pago === null,
             'envelope_print_available' => $envelopeRender->getPrintTemplate() !== null,
+            'delivery_show_notify_button'   => $deliveryShowNotifyButton,
+            'delivery_pending_for_registro' => $deliveryPendingRows !== [],
+            'delivery_pending_rows'         => $deliveryPendingRows,
         ]);
     }
 
@@ -1559,8 +1621,29 @@ class Registers extends SecureArea
         if ($this->registerModel->hasRegistroColumn('origen_prueba')) {
             $registroData['origen_prueba'] = (int) ($registroPost['origen_prueba'] ?? 0) === 1 ? 1 : 0;
         }
+        if ($this->registerModel->hasRegistroColumn('notificar_entrega')) {
+            $deliverySvc = new \App\Services\DeliveryNotificationService();
+            if ($deliverySvc->getScope() === 'selected') {
+                $registroData['notificar_entrega'] = $deliverySvc->isEnabled()
+                    && isset($registroPost['notificar_entrega'])
+                    && (string) $registroPost['notificar_entrega'] === '1' ? 1 : 0;
+            } else {
+                $registroData['notificar_entrega'] = 0;
+            }
+        }
 
         return $registroData;
+    }
+
+    /**
+     * @param array<string, mixed> $registroData
+     */
+    private function invalidateDeliveryNotificationCountIfNeeded(array $registroData): void
+    {
+        if (! array_key_exists('notificar_entrega', $registroData)) {
+            return;
+        }
+        (new \App\Services\DeliveryNotificationService())->invalidatePendingCountCache();
     }
 
     /** Segundos en que el mismo submit_token evita un segundo guardado (doble clic). */
@@ -1662,6 +1745,8 @@ class Registers extends SecureArea
             if ($registroId < 1) {
                 throw new \RuntimeException('No se pudo crear la orden.');
             }
+
+            $this->invalidateDeliveryNotificationCountIfNeeded($registroData);
 
             if (! $isReplay) {
                 $pagosNormalizados = $this->buildNormalizedPagoData($registroData, $pagos);
@@ -1780,6 +1865,7 @@ class Registers extends SecureArea
             $registroData = $this->withClinicalContextFields($registroData, $registro);
             $pagosNormalizados = $this->buildNormalizedPagoData($registroData, $pagos);
             $this->registerModel->saveRegistro($registroData, $id);
+            $this->invalidateDeliveryNotificationCountIfNeeded($registroData);
             \App\Models\AuditoriaModel::log('registers', 'editar_orden', (string) $id, \App\Models\AuditoriaModel::detail([
                 'paciente_id' => $registro['person_id'] ?? null,
                 'doctor_id' => $doctorId,
@@ -2158,6 +2244,7 @@ class Registers extends SecureArea
                 'consumo_auto_aplicados' => (int) ($autoStats['aplicados'] ?? 0),
                 'consumo_auto_errores' => (int) ($autoStats['errores'] ?? 0),
             ], $detalleAuditoria)));
+            (new \App\Services\DeliveryNotificationService())->syncForRegistro((int) $registroId);
         }
         return $this->response->setJSON([
             'success' => true,
@@ -2292,6 +2379,7 @@ class Registers extends SecureArea
         }
         if ($ridAn > 0) {
             $this->registerService->clearReportPdfPreviewCache($ridAn);
+            (new \App\Services\DeliveryNotificationService())->syncForRegistro($ridAn);
         }
         return $this->response->setJSON(['success' => true, 'message' => 'Guardado exitoso']);
     }
@@ -2313,6 +2401,7 @@ class Registers extends SecureArea
             'tipo' => $tipo,
             'observaciones' => $obs,
         ]));
+        (new \App\Services\DeliveryNotificationService())->syncForRegistro($registroId);
         $msg = $tipo === 'tecnico' ? 'Validación técnica registrada' : 'Validación médica registrada';
         return redirect()->to("registers/viewreport/{$registroId}")->with('success', $msg);
     }
@@ -2589,6 +2678,74 @@ class Registers extends SecureArea
             return;
         }
         model(RegistroFichaClinicaModel::class)->saveBatch($registroId, $decoded);
+    }
+
+    /**
+     * Listado de análisis pendientes de notificación de entrega.
+     */
+    public function deliveryNotifications()
+    {
+        $deliverySvc = new \App\Services\DeliveryNotificationService();
+        if (! $deliverySvc->isEnabled()) {
+            return redirect()->to('registers/lista')->with('error', 'Las notificaciones de análisis no están habilitadas.');
+        }
+
+        $pendientes = $deliverySvc->listPendientesEntrega();
+
+        return view('registers/delivery_notifications', [
+            'current_module'  => 'registers',
+            'controller_name' => 'registers',
+            'allowed_modules' => $this->allowed_modules,
+            'user_info'       => $this->user_info,
+            'pendientes'      => $pendientes,
+            'delivery_scope_selected' => $deliverySvc->getScope() === 'selected',
+        ]);
+    }
+
+    /**
+     * Marca como atendida la notificación de entrega del reporte.
+     */
+    public function notifyDelivery(int $id = 0): ResponseInterface
+    {
+        $id = (int) $id;
+        if ($id < 1) {
+            return $this->jsonWithCsrf(['success' => false, 'message' => 'ID inválido'], 400);
+        }
+        if ($this->registerModel->isRegistroAnulado($id)) {
+            return $this->jsonWithCsrf(['success' => false, 'message' => 'La orden está anulada.'], 400);
+        }
+
+        $deliverySvc = new \App\Services\DeliveryNotificationService();
+        if (! $deliverySvc->isEnabled()) {
+            return $this->jsonWithCsrf(['success' => false, 'message' => 'Funcionalidad deshabilitada.'], 403);
+        }
+
+        $personId = (int) session()->get('person_id');
+        if (! $deliverySvc->confirmRegistroDeliveryNotified($id, $personId)) {
+            $message = $deliverySvc->getScope() === 'all'
+                ? 'No hay análisis pendientes de notificar en esta recepción.'
+                : 'Esta recepción no está marcada para notificar entrega.';
+
+            return $this->jsonWithCsrf([
+                'success' => false,
+                'message' => $message,
+            ], 404);
+        }
+
+        \App\Models\AuditoriaModel::log(
+            'registers',
+            'notificar_entrega_analisis',
+            (string) $id,
+            \App\Models\AuditoriaModel::detail([
+                'person_id' => $personId,
+            ], 'Entrega de resultados confirmada')
+        );
+
+        return $this->jsonWithCsrf([
+            'success'        => true,
+            'message'        => 'Entrega notificada correctamente.',
+            'pending_count'  => $deliverySvc->getPendingCount(),
+        ]);
     }
 
     /**

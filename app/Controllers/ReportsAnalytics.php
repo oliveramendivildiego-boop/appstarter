@@ -855,4 +855,160 @@ class ReportsAnalytics extends SecureArea
             $rows
         );
     }
+
+    // ==================================================================
+    // NOTIFICACIONES DE ENTREGA
+    // ==================================================================
+
+    /**
+     * @param list<array<string, mixed>> $rows
+     * @return array<string, mixed>
+     */
+    private function buildNotificacionesEntregaAggregates(array $rows, int $totalNotificacionesAuditoria): array
+    {
+        $porUsuario   = [];
+        $porDia       = [];
+        $porMes       = [];
+        $porRecepcion = [];
+        $calidad      = ['dentro_12' => 0, 'entre_12_24' => 0, 'mayor_24' => 0, 'sin_validacion' => 0];
+        $horasSum     = 0.0;
+        $horasCount   = 0;
+
+        foreach ($rows as $row) {
+            $usuario = trim((string) ($row['usuario'] ?? ''));
+            if ($usuario === '') {
+                $usuario = 'Usuario #' . (int) ($row['person_id'] ?? 0);
+            }
+            $porUsuario[$usuario] = ($porUsuario[$usuario] ?? 0) + 1;
+
+            $fechaEntrega = trim((string) ($row['fecha_entrega'] ?? ''));
+            if ($fechaEntrega !== '') {
+                $dia = substr($fechaEntrega, 0, 10);
+                $mes = substr($fechaEntrega, 0, 7);
+                $porDia[$dia]   = ($porDia[$dia] ?? 0) + 1;
+                $porMes[$mes]   = ($porMes[$mes] ?? 0) + 1;
+            }
+
+            $regCodigo = trim((string) ($row['registro_codigo'] ?? ''));
+            if ($regCodigo !== '') {
+                $porRecepcion[$regCodigo] = ($porRecepcion[$regCodigo] ?? 0) + 1;
+            }
+
+            $bucket = (string) ($row['bucket_tiempo'] ?? 'sin_validacion');
+            if (! isset($calidad[$bucket])) {
+                $bucket = 'sin_validacion';
+            }
+            $calidad[$bucket]++;
+
+            if ($row['horas_transcurridas'] !== null) {
+                $horasSum += (float) $row['horas_transcurridas'];
+                $horasCount++;
+            }
+        }
+
+        arsort($porUsuario);
+        arsort($porDia);
+        arsort($porMes);
+        arsort($porRecepcion);
+
+        $conTiempo = $calidad['dentro_12'] + $calidad['entre_12_24'] + $calidad['mayor_24'];
+        $pct       = static function (int $n) use ($conTiempo): ?float {
+            if ($conTiempo < 1) {
+                return null;
+            }
+
+            return round($n * 100 / $conTiempo, 1);
+        };
+
+        return [
+            'total_notificaciones'  => $totalNotificacionesAuditoria > 0 ? $totalNotificacionesAuditoria : count($rows),
+            'total_analisis'        => count($rows),
+            'promedio_horas'        => $horasCount > 0 ? round($horasSum / $horasCount, 2) : null,
+            'por_usuario'           => $porUsuario,
+            'por_dia'               => $porDia,
+            'por_mes'               => $porMes,
+            'por_recepcion'         => $porRecepcion,
+            'calidad'               => [
+                'dentro_12'      => $calidad['dentro_12'],
+                'entre_12_24'    => $calidad['entre_12_24'],
+                'mayor_24'       => $calidad['mayor_24'],
+                'sin_validacion' => $calidad['sin_validacion'],
+                'pct_dentro_12'  => $pct($calidad['dentro_12']),
+                'pct_entre_12_24'=> $pct($calidad['entre_12_24']),
+                'pct_mayor_24'   => $pct($calidad['mayor_24']),
+            ],
+        ];
+    }
+
+    /** @return array<string, mixed> */
+    private function collectNotificacionesEntregaPayload(): array
+    {
+        [$start, $end] = $this->getRangoFechas('-1 month');
+        $personId      = (int) ($this->request->getGet('person_id') ?? 0);
+        $registroId    = (int) ($this->request->getGet('registro_id') ?? 0);
+        $pruebaId      = (int) ($this->request->getGet('prueba_id') ?? 0);
+
+        $rows = $this->analytics->getNotificacionesEntregaDetalle($start, $end, $personId, $registroId, $pruebaId);
+        $totalAud = $this->analytics->countNotificacionesEntregaAuditoria($start, $end, $personId, $registroId);
+        $totales  = $this->buildNotificacionesEntregaAggregates($rows, $totalAud);
+
+        return [
+            'startDate'   => $start,
+            'endDate'     => $end,
+            'personId'    => $personId,
+            'registroId'  => $registroId,
+            'pruebaId'    => $pruebaId,
+            'rows'        => $rows,
+            'totales'     => $totales,
+        ];
+    }
+
+    public function notificacionesEntrega()
+    {
+        $this->markAnalyticsReportSeen('notificaciones_entrega');
+        $payload = $this->collectNotificacionesEntregaPayload();
+
+        return view('reports/analytics/notificaciones_entrega', array_merge(
+            $this->commonViewData('Notificaciones de entrega', $payload['startDate'], $payload['endDate']),
+            $payload,
+            [
+                'usuarios' => $this->analytics->getUsuariosEmpleados(),
+            ]
+        ));
+    }
+
+    public function notificacionesEntregaPdf()
+    {
+        $payload = $this->collectNotificacionesEntregaPayload();
+        ReportPdfDocument::download(
+            $this->safePdfFilename('notificaciones_entrega'),
+            'Notificaciones de entrega',
+            RegisterService::formatReportDateRangeSubtitle($payload['startDate'], $payload['endDate']),
+            'reports/analytics/pdf/notificaciones_entrega',
+            $payload
+        );
+    }
+
+    public function notificacionesEntregaExcel()
+    {
+        $payload = $this->collectNotificacionesEntregaPayload();
+        $rows    = [];
+        foreach ($payload['rows'] as $row) {
+            $rows[] = [
+                $row['validated_at'] ?? '',
+                $row['fecha_entrega'] ?? '',
+                $row['horas_transcurridas'] !== null ? $row['horas_transcurridas'] : '',
+                $row['analisis_codigo'] ?? '',
+                $row['paciente'] ?? '',
+                $row['registro_codigo'] ?? '',
+                $row['usuario'] ?? '',
+                $row['estado'] ?? '',
+            ];
+        }
+        $this->streamCsv(
+            'notificaciones_entrega',
+            ['Fecha validación', 'Fecha entrega', 'Horas transcurridas', 'Análisis', 'Paciente', 'Registro', 'Usuario', 'Estado'],
+            $rows
+        );
+    }
 }

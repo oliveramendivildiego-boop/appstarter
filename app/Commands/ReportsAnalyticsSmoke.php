@@ -44,6 +44,12 @@ class ReportsAnalyticsSmoke extends BaseCommand
             '4a. Tiempo de entrega — detalle' => static fn () => count($model->getTiempoEntrega($start, $end)),
             '4b. Tiempo de entrega — resumen SLA' => static fn () => (int) $model->getTiempoEntregaResumen($start, $end, 24)['ordenes'],
             '5. Productividad por usuario' => static fn () => count($model->getProductividadUsuarios($start, $end)),
+            '5b. Notificaciones de entrega' => static function () use ($model, $start, $end) {
+                $det = count($model->getNotificacionesEntregaDetalle($start, $end));
+                $aud = $model->countNotificacionesEntregaAuditoria($start, $end);
+
+                return $det + $aud;
+            },
             '6. Resultados corregidos' => static fn () => count($model->getResultadosCorregidos($start, $end)),
             '7. Pendientes de validar (detalle + total)' => static fn () => $model->getPendientesValidacion($start, $end)['total'],
             '8a. Consumo por prueba' => static fn () => count($model->getConsumoPorPrueba($start, $end)),

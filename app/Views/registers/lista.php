@@ -768,6 +768,45 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
+    document.querySelectorAll('.btn-notificar-entrega').forEach(function(btn) {
+        btn.addEventListener('click', function() {
+            var id = this.getAttribute('data-id');
+            if (!id) return;
+            var msg = '¿Confirma que ya informó la entrega de estos resultados al médico o paciente?';
+            var ejecutar = function() {
+                var csrfName = window.CI_CSRF_TOKEN_NAME || 'csrf_test_name';
+                var csrfVal = window.CI_CSRF_TOKEN || '';
+                var body = csrfName + '=' + encodeURIComponent(csrfVal);
+                btn.disabled = true;
+                fetch('<?= site_url('registers/notifyDelivery') ?>/' + encodeURIComponent(id), {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'X-Requested-With': 'XMLHttpRequest' },
+                    body: body
+                })
+                .then(function(r) { return r.json(); })
+                .then(function(res) {
+                    if (res && res.csrf_token) {
+                        window.CI_CSRF_TOKEN = res.csrf_token;
+                    }
+                    if (res && res.success) {
+                        location.reload();
+                        return;
+                    }
+                    mostrarMensajeModal('Error', (res && res.message) ? res.message : 'No se pudo registrar la notificación.');
+                })
+                .catch(function() { mostrarMensajeModal('Error', 'Error de conexión'); })
+                .finally(function() { btn.disabled = false; });
+            };
+            if (typeof uiConfirm === 'function') {
+                uiConfirm(msg, 'Confirmar notificación').then(function(ok) {
+                    if (ok) ejecutar();
+                });
+            } else if (window.confirm(msg)) {
+                ejecutar();
+            }
+        });
+    });
+
     var modalAnular = document.getElementById('modalAnularRegistro');
     var anularRegistroId = document.getElementById('anular_registro_id');
     var anularMotivo = document.getElementById('anular_motivo');

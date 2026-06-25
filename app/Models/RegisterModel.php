@@ -1350,6 +1350,214 @@ class RegisterModel extends Model
         return $this->hasColumn('registro', $column);
     }
 
+    /** Recepciones activas marcadas con «Notificar entrega». */
+    public function countRegistrosConNotificarEntrega(): int
+    {
+        if (! $this->hasRegistroColumn('notificar_entrega')) {
+            return 0;
+        }
+
+        $r = $this->getRegistroTable();
+        $builder = $this->db->table('registro')->where("{$r}.notificar_entrega", 1);
+        if ($this->registroTieneColumnaAnulado()) {
+            $builder->where("COALESCE({$r}.anulado, 0) = 0", null, false);
+        }
+
+        return (int) $builder->countAllResults();
+    }
+
+    /**
+     * @return list<array<string, mixed>>
+     */
+    public function listRegistrosConNotificarEntrega(int $limit = 500): array
+    {
+        if (! $this->hasRegistroColumn('notificar_entrega')) {
+            return [];
+        }
+
+        $r  = $this->getRegistroTable();
+        $p  = $this->db->prefixTable('people');
+        $d  = $this->db->prefixTable('doctors');
+        $pacienteSql = $this->sqlPacienteNombreLista($p);
+
+        $builder = $this->db->table('registro')
+            ->select("{$r}.registro_id, {$r}.numero_orden, {$r}.ingreso, {$r}.notificar_entrega,
+                {$pacienteSql} AS paciente, {$p}.first_name, {$p}.last_name_fa, {$d}.name AS doctor")
+            ->join('people', "{$p}.person_id = {$r}.person_id")
+            ->join('doctors', "{$d}.doctor_id = {$r}.doctor_id", 'left')
+            ->where("{$r}.notificar_entrega", 1)
+            ->orderBy("{$r}.registro_id", 'DESC')
+            ->limit($limit);
+
+        if ($this->registroTieneColumnaAnulado()) {
+            $builder->where("COALESCE({$r}.anulado, 0) = 0", null, false);
+        }
+
+        return $builder->get()->getResultArray();
+    }
+
+    /**
+     * @param list<int> $registroIds
+     * @return list<int>
+     */
+    public function filterRegistroIdsConNotificarEntrega(array $registroIds): array
+    {
+        if (! $this->hasRegistroColumn('notificar_entrega') || $registroIds === []) {
+            return [];
+        }
+
+        $ids = array_values(array_unique(array_filter(array_map(
+            static fn ($id): int => (int) $id,
+            $registroIds
+        ), static fn (int $id): bool => $id > 0)));
+
+        if ($ids === []) {
+            return [];
+        }
+
+        $r = $this->getRegistroTable();
+        $builder = $this->db->table('registro')
+            ->select("{$r}.registro_id")
+            ->whereIn("{$r}.registro_id", $ids)
+            ->where("{$r}.notificar_entrega", 1);
+
+        if ($this->registroTieneColumnaAnulado()) {
+            $builder->where("COALESCE({$r}.anulado, 0) = 0", null, false);
+        }
+
+        $out = [];
+        foreach ($builder->get()->getResultArray() as $row) {
+            $rid = (int) ($row['registro_id'] ?? 0);
+            if ($rid > 0) {
+                $out[] = $rid;
+            }
+        }
+
+        return $out;
+    }
+
+    /**
+     * @param list<int> $registroIds
+     * @return array<int, string>
+     */
+    public function getIngresosByRegistroIds(array $registroIds): array
+    {
+        $ids = array_values(array_unique(array_filter(array_map(
+            static fn ($id): int => (int) $id,
+            $registroIds
+        ), static fn (int $id): bool => $id > 0)));
+
+        if ($ids === []) {
+            return [];
+        }
+
+        $r   = $this->getRegistroTable();
+        $map = [];
+        $builder = $this->db->table('registro')
+            ->select("{$r}.registro_id, {$r}.ingreso")
+            ->whereIn("{$r}.registro_id", $ids);
+        if ($this->registroTieneColumnaAnulado()) {
+            $builder->where("COALESCE({$r}.anulado, 0) = 0", null, false);
+        }
+        foreach ($builder->get()->getResultArray() as $row) {
+            $rid = (int) ($row['registro_id'] ?? 0);
+            if ($rid > 0) {
+                $map[$rid] = (string) ($row['ingreso'] ?? '');
+            }
+        }
+
+        return $map;
+    }
+
+    public function countIngresosDesdeWithoutDeliveryAck(string $enabledAt): int
+    {
+        $cutoff = substr(trim($enabledAt), 0, 10);
+        if ($cutoff === '') {
+            return 0;
+        }
+
+        $r = $this->getRegistroTable();
+        $n = $this->db->prefixTable('analisis_delivery_notification');
+        $a = $this->db->prefixTable('auditoria');
+
+        $anuladoSql = $this->registroTieneColumnaAnulado() ? ' AND COALESCE(r.anulado, 0) = 0' : '';
+
+        $sql = "SELECT COUNT(*) AS c
+            FROM {$r} r
+            WHERE DATE(r.ingreso) >= " . $this->db->escape($cutoff) . "
+              {$anuladoSql}
+              AND NOT EXISTS (
+                  SELECT 1 FROM {$n} n
+                  WHERE n.registro_id = r.registro_id AND n.status = 'pending'
+              )
+              AND NOT EXISTS (
+                  SELECT 1 FROM {$n} n2
+                  WHERE n2.registro_id = r.registro_id AND n2.status = 'attended'
+              )
+              AND NOT EXISTS (
+                  SELECT 1 FROM {$a} au
+                  WHERE au.registro_id = CAST(r.registro_id AS CHAR)
+                    AND au.modulo = 'registers'
+                    AND au.accion = 'notificar_entrega_analisis'
+              )";
+
+        $row = $this->db->query($sql)->getRowArray();
+
+        return (int) ($row['c'] ?? 0);
+    }
+
+    /**
+     * Recepciones ingresadas desde la activación sin confirmar entrega (alcance «todos»).
+     *
+     * @param list<int> $excludeRegistroIds
+     * @return list<array<string, mixed>>
+     */
+    public function listIngresosDesdeWithoutDeliveryAck(string $enabledAt, array $excludeRegistroIds = [], int $limit = 500): array
+    {
+        $cutoff = substr(trim($enabledAt), 0, 10);
+        if ($cutoff === '') {
+            return [];
+        }
+
+        $r = $this->getRegistroTable();
+        $p = $this->db->prefixTable('people');
+        $n = $this->db->prefixTable('analisis_delivery_notification');
+        $a = $this->db->prefixTable('auditoria');
+        $pacienteSql = $this->sqlPacienteNombreLista('p');
+
+        $exclude = array_values(array_unique(array_filter(array_map(
+            static fn ($id): int => (int) $id,
+            $excludeRegistroIds
+        ), static fn (int $id): bool => $id > 0)));
+        $excludeSql = $exclude !== [] ? ' AND r.registro_id NOT IN (' . implode(',', $exclude) . ')' : '';
+        $anuladoSql = $this->registroTieneColumnaAnulado() ? ' AND COALESCE(r.anulado, 0) = 0' : '';
+
+        $sql = "SELECT r.registro_id, r.numero_orden, r.ingreso,
+                {$pacienteSql} AS paciente, p.first_name, p.last_name_fa
+            FROM {$r} r
+            LEFT JOIN {$p} p ON p.person_id = r.person_id
+            WHERE DATE(r.ingreso) >= " . $this->db->escape($cutoff) . "
+              {$anuladoSql}{$excludeSql}
+              AND NOT EXISTS (
+                  SELECT 1 FROM {$n} n
+                  WHERE n.registro_id = r.registro_id AND n.status = 'pending'
+              )
+              AND NOT EXISTS (
+                  SELECT 1 FROM {$n} n2
+                  WHERE n2.registro_id = r.registro_id AND n2.status = 'attended'
+              )
+              AND NOT EXISTS (
+                  SELECT 1 FROM {$a} au
+                  WHERE au.registro_id = CAST(r.registro_id AS CHAR)
+                    AND au.modulo = 'registers'
+                    AND au.accion = 'notificar_entrega_analisis'
+              )
+            ORDER BY r.ingreso DESC, r.registro_id DESC
+            LIMIT " . max(1, $limit);
+
+        return $this->db->query($sql)->getResultArray();
+    }
+
     /**
      * Elimina claves que no existen en la tabla registro (BD sin migrar).
      *

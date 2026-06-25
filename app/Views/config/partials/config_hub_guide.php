@@ -34,6 +34,7 @@ window._configTabIndex = <?= json_encode([
     ['id' => 'sin', 'label' => 'Facturación SIN', 'group' => 'integraciones', 'keywords' => 'sin factura bolivia impuestos'],
     ['id' => 'poblacion', 'label' => 'Grupos de población', 'group' => 'general', 'keywords' => 'población edad referencia rango'],
     ['id' => 'lab_validacion', 'label' => 'Validación del laboratorio', 'group' => 'general', 'keywords' => 'validación firmas firma sello aprobador'],
+    ['id' => 'notificaciones_analisis', 'label' => 'Notificaciones de análisis', 'group' => 'general', 'keywords' => 'notificación entrega alerta pendiente análisis'],
     ['id' => 'metodos_prueba', 'label' => 'Métodos de prueba', 'group' => 'catalogos', 'keywords' => 'métodos metodos técnica análisis'],
     ['id' => 'sobres', 'label' => 'Sobres', 'group' => 'impresion', 'keywords' => 'sobres sobre envelope etiqueta'],
     ['id' => 'sesiones', 'label' => 'Sesiones activas', 'group' => 'admin', 'keywords' => 'sesiones usuarios conectados'],

@@ -11,7 +11,7 @@ class ReportsAnalyticsSeenService
 {
     public const CONFIG_KEY = 'reports_analytics_seen_json';
 
-    /** @var list<string> Claves estables de los 10 reportes analíticos nuevos */
+    /** @var list<string> Claves estables de los reportes analíticos nuevos */
     public const REPORT_KEYS = [
         'tendencia_paciente',
         'valores_criticos',
@@ -19,6 +19,7 @@ class ReportsAnalyticsSeenService
         'comparativo_mensual',
         'tiempo_entrega',
         'productividad_usuarios',
+        'notificaciones_entrega',
         'resultados_corregidos',
         'pendientes_validacion',
         'consumo_insumos',

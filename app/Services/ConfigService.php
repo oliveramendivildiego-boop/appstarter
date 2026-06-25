@@ -110,6 +110,8 @@ class ConfigService
         $data['sin_doctor_report_mode'] ??= 'clinico';
         $data['sin_doctor_show_interpretation'] ??= '1';
         $data[self::REGISTERS_LISTA_FECHA_DEFAULT_KEY] ??= 'hoy';
+        $data[\App\Services\DeliveryNotificationService::KEY_ENABLED] ??= '0';
+        $data[\App\Services\DeliveryNotificationService::KEY_SCOPE] ??= 'all';
         $cache->save($cacheKey, $data, self::CACHE_TTL);
         return $data;
     }
