@@ -843,7 +843,7 @@ if (! function_exists('delivery_notification_count_label')) {
             return $count . ' notificaciones';
         }
 
-        return 'Mis notificaciones';
+        return 'Sin pendientes';
     }
 }
 

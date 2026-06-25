@@ -297,22 +297,20 @@ document.addEventListener('DOMContentLoaded', function() {
                     document.querySelectorAll('.registro-delivery-pending-alert').forEach(function(el) { el.remove(); });
                     var headerNotif = document.querySelector('.header-delivery-notifications');
                     var n = parseInt(res.pending_count, 10);
-                    var labelText = (!n || n < 1) ? 'Mis notificaciones' : (n === 1 ? '1 notificación' : (n + ' notificaciones'));
+                    var labelText = (!n || n < 1) ? 'Sin pendientes' : (n === 1 ? '1 notificación' : (n + ' notificaciones'));
+                    var hrefPendientes = '<?= site_url('registers/deliveryNotifications') ?>';
+                    var hrefReporte = '<?= site_url('reports/notificacionesEntrega') ?>';
                     if (headerNotif) {
                         var labelEl = headerNotif.querySelector('.header-delivery-notifications__label');
                         if (labelEl) {
                             labelEl.textContent = labelText;
-                            if (!n || n < 1) {
-                                labelEl.classList.add('d-none', 'd-md-inline');
-                            } else {
-                                labelEl.classList.remove('d-none', 'd-md-inline');
-                            }
                         }
                         if (!n || n < 1) {
                             headerNotif.classList.remove('header-delivery-notifications--active');
                             var dot = headerNotif.querySelector('.header-delivery-notifications__dot');
                             if (dot) dot.remove();
-                            headerNotif.setAttribute('title', 'Ver notificaciones de entrega de análisis');
+                            headerNotif.setAttribute('title', 'Sin pendientes');
+                            headerNotif.setAttribute('href', hrefReporte);
                         } else {
                             headerNotif.classList.add('header-delivery-notifications--active');
                             var iconWrap = headerNotif.querySelector('.header-delivery-notifications__icon');
@@ -323,14 +321,7 @@ document.addEventListener('DOMContentLoaded', function() {
                                 iconWrap.appendChild(dotEl);
                             }
                             headerNotif.setAttribute('title', labelText);
-                        }
-                    }
-                    var banner = document.querySelector('.delivery-pending-alert');
-                    if (banner) {
-                        if (!n || n < 1) {
-                            banner.remove();
-                        } else {
-                            banner.innerHTML = '<span class="fw-semibold"><i class="fa-solid fa-bell me-1"></i> Tiene ' + labelText + '</span><span class="d-none d-md-inline"> — haga clic para ver el listado</span>';
+                            headerNotif.setAttribute('href', hrefPendientes);
                         }
                     }
                     if (typeof showToast === 'function') {

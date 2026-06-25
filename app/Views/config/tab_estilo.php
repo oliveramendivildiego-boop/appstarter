@@ -213,6 +213,25 @@ if (!preg_match('/^#([0-9A-Fa-f]{3}|[0-9A-Fa-f]{6})$/', $pgActiveColor)) {
 $pgLinkColor   = LayoutService::htmlColorPickerValue($pgLinkColor, $pgThemeFallback);
 $pgActiveBg    = LayoutService::htmlColorPickerValue($pgActiveBg, $pgThemeFallback);
 $pgActiveColor = LayoutService::htmlColorPickerValue($pgActiveColor, '#ffffff');
+
+$deliveryNotifTextDefault = trim((string) ($config['ui_delivery_notif_text'] ?? '')) === '';
+$deliveryNotifTextPick    = $deliveryNotifTextDefault
+    ? LayoutService::htmlColorPickerValue($navbarTextRaw, '#ffffff')
+    : LayoutService::htmlColorPickerValue($config['ui_delivery_notif_text'] ?? '', '#ffffff');
+$deliveryNotifTextActive = LayoutService::htmlColorPickerValue($config['ui_delivery_notif_text_active'] ?? '', '#ffffff');
+$deliveryNotifTextHover  = LayoutService::htmlColorPickerValue($config['ui_delivery_notif_text_hover'] ?? '', '#ffffff');
+$deliveryNotifHoverBg    = LayoutService::htmlColorPickerValue($config['ui_delivery_notif_hover_bg'] ?? '', '#ffffff');
+$deliveryNotifHoverOp    = max(0, min(100, (int) ($config['ui_delivery_notif_hover_opacity'] ?? 8)));
+$deliveryNotifBgActiveRaw = trim((string) ($config['ui_delivery_notif_bg_active'] ?? ''));
+$deliveryNotifBgActive    = $deliveryNotifBgActiveRaw !== ''
+    ? LayoutService::htmlColorPickerValue($deliveryNotifBgActiveRaw, '#ffffff')
+    : '';
+$deliveryNotifDotRaw = trim((string) ($config['ui_delivery_notif_dot'] ?? ''));
+$deliveryNotifDotPick = $deliveryNotifDotRaw !== ''
+    ? LayoutService::htmlColorPickerValue($deliveryNotifDotRaw, $pgThemeFallback)
+    : LayoutService::htmlColorPickerValue($pgThemeFallback, '#FF7218');
+$fwDeliveryNotif = LayoutService::normalizeUiFontWeight((string) ($config['ui_delivery_notif_text_weight'] ?? ''), '500');
+$fsDeliveryNotif = LayoutService::normalizeUiFontStyle((string) ($config['ui_delivery_notif_text_style'] ?? ''), 'normal');
 ?>
     <div class="tab-pane fade config-tab-estilo <?= $activeTab === 'estilo' ? 'show active' : '' ?>" id="tab-estilo" role="tabpanel">
         <?= view('config/partials/config_section_guide', [
@@ -369,6 +388,196 @@ $pgActiveColor = LayoutService::htmlColorPickerValue($pgActiveColor, '#ffffff');
                         </div>
                     </div>
                 </div>
+            </div>
+            </div>
+        </div>
+
+        <!-- Sección: Botón notificaciones de entrega (header) -->
+        <div class="accordion-item">
+            <h2 class="accordion-header">
+                <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#estsec-delivery-notif" aria-expanded="false" aria-controls="estsec-delivery-notif">
+                    <i class="fa-solid fa-bell me-2 text-warning"></i>
+                    <span class="fw-semibold"><?= lang('Config.config_style_delivery_notif_section') ?></span>
+                    <span class="cfg-sec-hint small text-muted ms-2 d-none d-md-inline"><?= lang('Config.config_style_delivery_notif_section_hint') ?></span>
+                </button>
+            </h2>
+            <div id="estsec-delivery-notif" class="accordion-collapse collapse">
+            <div class="accordion-body">
+                <div class="config-section-preview mb-4 p-3 rounded-3 border bg-light">
+                    <div class="small fw-semibold text-secondary text-uppercase config-style-preview-title mb-3"><?= lang('Config.config_style_preview_caption') ?></div>
+                    <div class="rounded-3 py-2 px-3 d-flex flex-wrap align-items-center justify-content-end gap-3 shadow-sm" style="background: linear-gradient(90deg, <?= $previewTheme ?>, <?= $previewGrad ?>);">
+                        <a href="#" class="header-delivery-notifications text-decoration-none d-inline-flex align-items-center gap-2 px-2 py-1 config-delivery-notif-preview config-delivery-notif-preview--idle" onclick="return false;">
+                            <span class="header-delivery-notifications__icon position-relative d-inline-flex"><i class="fa-solid fa-bell"></i></span>
+                            <span class="header-delivery-notifications__label"><?= lang('Config.config_style_delivery_notif_preview_idle') ?></span>
+                        </a>
+                        <a href="#" class="header-delivery-notifications header-delivery-notifications--active text-decoration-none d-inline-flex align-items-center gap-2 px-2 py-1 config-delivery-notif-preview config-delivery-notif-preview--active" onclick="return false;">
+                            <span class="header-delivery-notifications__icon position-relative d-inline-flex">
+                                <i class="fa-solid fa-bell"></i>
+                                <span class="header-delivery-notifications__dot" aria-hidden="true"></span>
+                            </span>
+                            <span class="header-delivery-notifications__label">3 notificaciones</span>
+                        </a>
+                    </div>
+                    <p class="small text-muted mb-0 mt-2"><?= lang('Config.config_style_delivery_notif_preview_help') ?></p>
+                </div>
+                <div class="row align-items-end">
+                    <div class="col-lg-4 mb-3">
+                        <label class="form-label" for="ui_delivery_notif_text"><?= lang('Config.config_style_delivery_notif_text') ?></label>
+                        <input type="hidden" name="ui_delivery_notif_text_default" value="0">
+                        <div class="form-check mb-2">
+                            <input class="form-check-input" type="checkbox" name="ui_delivery_notif_text_default" id="ui_delivery_notif_text_default" value="1" autocomplete="off" <?= $deliveryNotifTextDefault ? 'checked' : '' ?>>
+                            <label class="form-check-label" for="ui_delivery_notif_text_default"><?= lang('Config.config_style_delivery_notif_text_default') ?></label>
+                        </div>
+                        <input type="color" name="ui_delivery_notif_text" id="ui_delivery_notif_text" value="<?= esc($deliveryNotifTextPick) ?>" class="form-control form-control-color" <?= $deliveryNotifTextDefault ? 'disabled' : '' ?>>
+                    </div>
+                    <div class="col-lg-4 mb-3">
+                        <label class="form-label" for="ui_delivery_notif_text_active"><?= lang('Config.config_style_delivery_notif_text_active') ?></label>
+                        <input type="color" name="ui_delivery_notif_text_active" id="ui_delivery_notif_text_active" value="<?= esc($deliveryNotifTextActive) ?>" class="form-control form-control-color">
+                    </div>
+                    <div class="col-lg-4 mb-3">
+                        <label class="form-label" for="ui_delivery_notif_text_hover"><?= lang('Config.config_style_delivery_notif_text_hover') ?></label>
+                        <input type="color" name="ui_delivery_notif_text_hover" id="ui_delivery_notif_text_hover" value="<?= esc($deliveryNotifTextHover) ?>" class="form-control form-control-color">
+                    </div>
+                    <div class="col-lg-4 mb-3">
+                        <label class="form-label" for="ui_delivery_notif_hover_bg"><?= lang('Config.config_style_delivery_notif_hover_bg') ?></label>
+                        <input type="color" name="ui_delivery_notif_hover_bg" id="ui_delivery_notif_hover_bg" value="<?= esc($deliveryNotifHoverBg) ?>" class="form-control form-control-color">
+                    </div>
+                    <div class="col-lg-4 mb-3">
+                        <label class="form-label" for="ui_delivery_notif_hover_opacity"><?= lang('Config.config_style_delivery_notif_hover_opacity') ?></label>
+                        <input type="range" name="ui_delivery_notif_hover_opacity" id="ui_delivery_notif_hover_opacity" class="form-range" min="0" max="100" step="1" value="<?= (int) $deliveryNotifHoverOp ?>">
+                        <div class="small text-muted"><span id="ui_delivery_notif_hover_opacity_val"><?= (int) $deliveryNotifHoverOp ?></span>%</div>
+                    </div>
+                    <div class="col-lg-4 mb-3">
+                        <label class="form-label" for="ui_delivery_notif_bg_active"><?= lang('Config.config_style_delivery_notif_bg_active') ?></label>
+                        <input type="hidden" name="ui_delivery_notif_bg_active" id="ui_delivery_notif_bg_active_hidden" value="<?= esc($deliveryNotifBgActiveRaw) ?>">
+                        <input type="color" id="ui_delivery_notif_bg_active" value="<?= esc($deliveryNotifBgActive !== '' ? $deliveryNotifBgActive : '#ffffff') ?>" class="form-control form-control-color" <?= $deliveryNotifBgActive === '' ? 'disabled' : '' ?>>
+                        <div class="form-check mt-2">
+                            <input class="form-check-input" type="checkbox" id="ui_delivery_notif_bg_active_none" autocomplete="off" <?= $deliveryNotifBgActive === '' ? 'checked' : '' ?>>
+                            <label class="form-check-label" for="ui_delivery_notif_bg_active_none"><?= lang('Config.config_style_delivery_notif_bg_active_help') ?></label>
+                        </div>
+                    </div>
+                    <div class="col-lg-4 mb-3">
+                        <label class="form-label" for="ui_delivery_notif_dot"><?= lang('Config.config_style_delivery_notif_dot') ?></label>
+                        <input type="hidden" name="ui_delivery_notif_dot" id="ui_delivery_notif_dot_hidden" value="<?= esc($deliveryNotifDotRaw) ?>">
+                        <input type="color" id="ui_delivery_notif_dot" value="<?= esc($deliveryNotifDotPick) ?>" class="form-control form-control-color" <?= $deliveryNotifDotRaw === '' ? 'disabled' : '' ?>>
+                        <div class="form-check mt-2">
+                            <input class="form-check-input" type="checkbox" id="ui_delivery_notif_dot_theme" autocomplete="off" <?= $deliveryNotifDotRaw === '' ? 'checked' : '' ?>>
+                            <label class="form-check-label" for="ui_delivery_notif_dot_theme"><?= lang('Config.config_style_use_theme_primary') ?></label>
+                        </div>
+                        <small class="text-muted d-block"><?= lang('Config.config_style_delivery_notif_dot_help') ?></small>
+                    </div>
+                    <div class="col-lg-4 mb-3">
+                        <?= view('config/partials/ui_font_variant', [
+                            'weightField' => 'ui_delivery_notif_text_weight',
+                            'styleField'  => 'ui_delivery_notif_text_style',
+                            'weightId'    => 'ui_delivery_notif_text_weight',
+                            'styleId'     => 'ui_delivery_notif_text_style',
+                            'weightVal'   => $fwDeliveryNotif,
+                            'styleVal'    => $fsDeliveryNotif,
+                        ]) ?>
+                    </div>
+                </div>
+                <script>
+                (function () {
+                    var navbarText = document.getElementById('ui_navbar_text_color');
+                    var themeColor = document.getElementById('theme_color');
+                    var textDefault = document.getElementById('ui_delivery_notif_text_default');
+                    var textInput = document.getElementById('ui_delivery_notif_text');
+                    var textActive = document.getElementById('ui_delivery_notif_text_active');
+                    var textHover = document.getElementById('ui_delivery_notif_text_hover');
+                    var hoverBg = document.getElementById('ui_delivery_notif_hover_bg');
+                    var hoverOp = document.getElementById('ui_delivery_notif_hover_opacity');
+                    var hoverOpVal = document.getElementById('ui_delivery_notif_hover_opacity_val');
+                    var bgActive = document.getElementById('ui_delivery_notif_bg_active');
+                    var bgActiveHidden = document.getElementById('ui_delivery_notif_bg_active_hidden');
+                    var bgActiveNone = document.getElementById('ui_delivery_notif_bg_active_none');
+                    var dotColor = document.getElementById('ui_delivery_notif_dot');
+                    var dotHidden = document.getElementById('ui_delivery_notif_dot_hidden');
+                    var dotTheme = document.getElementById('ui_delivery_notif_dot_theme');
+                    var fwSel = document.getElementById('ui_delivery_notif_text_weight');
+                    var fsSel = document.getElementById('ui_delivery_notif_text_style');
+                    var previews = document.querySelectorAll('.config-delivery-notif-preview');
+
+                    function hexToRgba(hex, alpha) {
+                        hex = (hex || '#ffffff').replace('#', '');
+                        if (hex.length === 3) {
+                            hex = hex[0] + hex[0] + hex[1] + hex[1] + hex[2] + hex[2];
+                        }
+                        var r = parseInt(hex.substring(0, 2), 16);
+                        var g = parseInt(hex.substring(2, 4), 16);
+                        var b = parseInt(hex.substring(4, 6), 16);
+                        return 'rgba(' + r + ',' + g + ',' + b + ',' + alpha + ')';
+                    }
+
+                    function idleTextColor() {
+                        if (textDefault && textDefault.checked && navbarText) {
+                            return navbarText.value;
+                        }
+                        return textInput ? textInput.value : 'rgba(255,255,255,0.88)';
+                    }
+
+                    function syncPreview() {
+                        if (hoverOpVal && hoverOp) {
+                            hoverOpVal.textContent = hoverOp.value;
+                        }
+                        if (textInput && textDefault) {
+                            textInput.disabled = textDefault.checked;
+                        }
+                        if (bgActive && bgActiveNone) {
+                            bgActive.disabled = bgActiveNone.checked;
+                            if (bgActiveHidden) {
+                                bgActiveHidden.value = bgActiveNone.checked ? '' : (bgActive.value || '');
+                            }
+                        }
+                        if (dotColor && dotTheme && dotHidden) {
+                            dotColor.disabled = dotTheme.checked;
+                            dotHidden.value = dotTheme.checked ? '' : (dotColor.value || '');
+                        }
+                        var idle = document.querySelector('.config-delivery-notif-preview--idle');
+                        var active = document.querySelector('.config-delivery-notif-preview--active');
+                        var fw = fwSel ? fwSel.value : '500';
+                        var fs = fsSel ? fsSel.value : 'normal';
+                        var hoverAlpha = hoverOp ? (parseInt(hoverOp.value, 10) / 100) : 0.08;
+                        var hoverRgba = hexToRgba(hoverBg ? hoverBg.value : '#ffffff', hoverAlpha);
+                        var dotVal = (dotTheme && dotTheme.checked && themeColor) ? themeColor.value : (dotColor ? dotColor.value : '#ff7218');
+                        previews.forEach(function (el) {
+                            el.style.fontWeight = fw;
+                            el.style.fontStyle = fs;
+                        });
+                        if (idle) {
+                            idle.style.color = idleTextColor();
+                            idle.style.backgroundColor = 'transparent';
+                        }
+                        if (active) {
+                            active.style.color = textActive ? textActive.value : '#fff';
+                            active.style.backgroundColor = (bgActiveNone && bgActiveNone.checked) ? 'transparent' : (bgActive ? bgActive.value : 'transparent');
+                            var dot = active.querySelector('.header-delivery-notifications__dot');
+                            if (dot) {
+                                dot.style.backgroundColor = dotVal;
+                            }
+                        }
+                        if (idle) {
+                            idle.onmouseenter = function () {
+                                idle.style.color = textHover ? textHover.value : '#fff';
+                                idle.style.backgroundColor = hoverRgba;
+                            };
+                            idle.onmouseleave = function () {
+                                idle.style.color = idleTextColor();
+                                idle.style.backgroundColor = 'transparent';
+                            };
+                        }
+                    }
+
+                    ['change', 'input'].forEach(function (ev) {
+                        [textDefault, textInput, textActive, textHover, hoverBg, hoverOp, bgActive, bgActiveNone, dotColor, dotTheme, fwSel, fsSel, navbarText, themeColor].forEach(function (el) {
+                            if (el) {
+                                el.addEventListener(ev, syncPreview);
+                            }
+                        });
+                    });
+                    syncPreview();
+                })();
+                </script>
             </div>
             </div>
         </div>

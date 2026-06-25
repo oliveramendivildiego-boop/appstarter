@@ -58,7 +58,16 @@
                                 <?php endif; ?>
                                 <td><span class="badge bg-warning text-dark">Pendiente</span></td>
                                 <td class="text-end">
-                                    <a href="<?= site_url('registers/viewreport/' . $rid) ?>" class="btn btn-sm btn-outline-primary">Ver reporte</a>
+                                    <div class="d-flex flex-wrap gap-1 justify-content-end">
+                                        <a href="<?= site_url('registers/viewreport/' . $rid) ?>" class="btn btn-sm btn-outline-primary">Ver reporte</a>
+                                        <button type="button"
+                                                class="btn btn-sm text-white btn-notificar-entrega"
+                                                style="background-color:#FF7218;border-color:#FF7218;"
+                                                data-id="<?= $rid ?>"
+                                                title="Confirmar que informó la entrega de resultados al médico o paciente">
+                                            <i class="fa-solid fa-bell me-1"></i> Notificar
+                                        </button>
+                                    </div>
                                 </td>
                             </tr>
                         <?php endforeach; ?>
@@ -68,4 +77,58 @@
         <?php endif; ?>
     </div>
 </div>
+<?= $this->endSection() ?>
+
+<?= $this->section('scripts') ?>
+<script>
+document.querySelectorAll('.btn-notificar-entrega').forEach(function(btn) {
+    btn.addEventListener('click', function() {
+        var id = this.getAttribute('data-id');
+        if (!id) return;
+        var msg = '¿Confirma que ya informó la entrega de estos resultados al médico o paciente?';
+        var ejecutar = function() {
+            var csrfName = window.CI_CSRF_TOKEN_NAME || 'csrf_test_name';
+            var csrfVal = window.CI_CSRF_TOKEN || '';
+            var body = csrfName + '=' + encodeURIComponent(csrfVal);
+            btn.disabled = true;
+            fetch('<?= site_url('registers/notifyDelivery') ?>/' + encodeURIComponent(id), {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'X-Requested-With': 'XMLHttpRequest' },
+                body: body
+            })
+            .then(function(r) { return r.json(); })
+            .then(function(res) {
+                if (res && res.csrf_token) {
+                    window.CI_CSRF_TOKEN = res.csrf_token;
+                    var meta = document.querySelector('meta[name="csrf-token"]');
+                    if (meta) meta.setAttribute('content', res.csrf_token);
+                }
+                if (res && res.success) {
+                    if (typeof showToast === 'function') {
+                        showToast(res.message || 'Entrega notificada.', 'success');
+                    }
+                    location.reload();
+                    return;
+                }
+                if (typeof uiAlert === 'function') {
+                    uiAlert((res && res.message) ? res.message : 'No se pudo registrar la notificación.', 'Error');
+                }
+            })
+            .catch(function() {
+                if (typeof uiAlert === 'function') {
+                    uiAlert('Error de conexión al registrar la notificación.', 'Error');
+                }
+            })
+            .finally(function() { btn.disabled = false; });
+        };
+        if (typeof uiConfirm === 'function') {
+            uiConfirm(msg, 'Confirmar notificación').then(function(ok) {
+                if (ok) ejecutar();
+            });
+        } else if (window.confirm(msg)) {
+            ejecutar();
+        }
+    });
+});
+</script>
 <?= $this->endSection() ?>

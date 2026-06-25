@@ -2087,6 +2087,17 @@ class ConfigService
                 : '',
             'ui_card_border_sides' => $cardSides,
             'ui_card_shadow'       => $cardShadow,
+            'ui_delivery_notif_text' => ! empty($post['ui_delivery_notif_text_default'])
+                ? ''
+                : $this->normalizeUiHexOrEmpty((string) ($post['ui_delivery_notif_text'] ?? '')),
+            'ui_delivery_notif_text_active' => $this->normalizeUiHexOrEmpty((string) ($post['ui_delivery_notif_text_active'] ?? '')),
+            'ui_delivery_notif_text_hover'  => $this->normalizeUiHexOrEmpty((string) ($post['ui_delivery_notif_text_hover'] ?? '')),
+            'ui_delivery_notif_hover_bg'    => $this->normalizeUiHexOrEmpty((string) ($post['ui_delivery_notif_hover_bg'] ?? '')),
+            'ui_delivery_notif_hover_opacity' => (string) max(0, min(100, (int) ($post['ui_delivery_notif_hover_opacity'] ?? 8))),
+            'ui_delivery_notif_bg_active'   => $this->normalizeUiHexOrEmpty((string) ($post['ui_delivery_notif_bg_active'] ?? '')),
+            'ui_delivery_notif_dot'         => $this->normalizeUiHexOrEmpty((string) ($post['ui_delivery_notif_dot'] ?? '')),
+            'ui_delivery_notif_text_weight' => \App\Services\LayoutService::normalizeUiFontWeight((string) ($post['ui_delivery_notif_text_weight'] ?? ''), '500'),
+            'ui_delivery_notif_text_style'  => \App\Services\LayoutService::normalizeUiFontStyle((string) ($post['ui_delivery_notif_text_style'] ?? ''), 'normal'),
         ];
 
         $ok = $this->appConfigModel->batchSave($batch);

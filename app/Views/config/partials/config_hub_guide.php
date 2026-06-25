@@ -30,7 +30,7 @@ window._configTabIndex = <?= json_encode([
     ['id' => 'sistema', 'label' => 'Configuración del sistema', 'group' => 'general', 'keywords' => 'sistema logo moneda papel recepción inventario'],
     ['id' => 'institucion_descuentos', 'label' => 'Descuentos por institución', 'group' => 'general', 'keywords' => 'descuentos descuento paciente institución'],
     ['id' => 'comprobante', 'label' => 'Estilo comprobante', 'group' => 'impresion', 'keywords' => 'comprobante recibo factura pago'],
-    ['id' => 'estilo', 'label' => 'Apariencia', 'group' => 'impresion', 'keywords' => 'apariencia estilo tema color fuente menú'],
+    ['id' => 'estilo', 'label' => 'Apariencia', 'group' => 'impresion', 'keywords' => 'apariencia estilo tema color fuente menú notificaciones campana entrega header'],
     ['id' => 'sin', 'label' => 'Facturación SIN', 'group' => 'integraciones', 'keywords' => 'sin factura bolivia impuestos'],
     ['id' => 'poblacion', 'label' => 'Grupos de población', 'group' => 'general', 'keywords' => 'población edad referencia rango'],
     ['id' => 'lab_validacion', 'label' => 'Validación del laboratorio', 'group' => 'general', 'keywords' => 'validación firmas firma sello aprobador'],

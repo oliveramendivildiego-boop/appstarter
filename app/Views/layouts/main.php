@@ -129,9 +129,6 @@ if (function_exists('session') && session()->get('person_id')) {
         $deliveryNotificationsEnabled = false;
     }
 }
-if ($deliveryPendingCount > 0) {
-    echo view('partial/delivery_pending_banner', ['delivery_pending_count' => $deliveryPendingCount]);
-}
 ?>
 <div id="toast-container" class="position-fixed top-0 end-0 p-3"></div>
 

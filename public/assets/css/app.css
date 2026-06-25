@@ -124,24 +124,30 @@ main,
     }
 }
 
-.delivery-pending-alert:hover {
-    background-color: #ffecb5 !important;
-    color: inherit;
-}
-
+/* Campana «Notificaciones de entrega» en el header (especificidad sobre .navbar-theme-meta) */
+header.navbar-theme .header-delivery-notifications,
+.navbar-theme.sticky-top .header-delivery-notifications,
 .header-delivery-notifications {
-    color: rgba(255, 255, 255, 0.88);
+    color: var(--ui-delivery-notif-text, var(--ui-navbar-text, rgba(255, 255, 255, 0.88)));
+    opacity: 1;
+    font-weight: var(--ui-delivery-notif-font-weight, var(--ui-navbar-font-weight, 500));
+    font-style: var(--ui-delivery-notif-font-style, var(--ui-navbar-font-style, normal));
     transition: color 0.15s ease, background-color 0.15s ease;
     border-radius: 0.375rem;
 }
 
+header.navbar-theme .header-delivery-notifications:hover,
+.navbar-theme.sticky-top .header-delivery-notifications:hover,
 .header-delivery-notifications:hover {
-    color: #fff;
-    background-color: rgba(255, 255, 255, 0.08);
+    color: var(--ui-delivery-notif-text-hover, var(--ui-navbar-text, #fff));
+    background-color: var(--ui-delivery-notif-hover-bg, rgba(255, 255, 255, 0.08));
 }
 
+header.navbar-theme .header-delivery-notifications--active,
+.navbar-theme.sticky-top .header-delivery-notifications--active,
 .header-delivery-notifications--active {
-    color: #fff;
+    color: var(--ui-delivery-notif-text-active, var(--ui-delivery-notif-text, var(--ui-navbar-text, #fff)));
+    background-color: var(--ui-delivery-notif-bg-active, transparent);
 }
 
 .header-delivery-notifications__icon {
@@ -155,7 +161,7 @@ main,
     width: 0.5rem;
     height: 0.5rem;
     border-radius: 50%;
-    background-color: #ff7218;
+    background-color: var(--ui-delivery-notif-dot, #ff7218);
     border: 2px solid var(--ynex-navbar-bg, #1a1d29);
     animation: header-delivery-dot-pulse 1.4s ease-in-out infinite;
 }
@@ -172,11 +178,3 @@ main,
     min-width: 1.35rem;
 }
 
-.delivery-pending-alert {
-    animation: delivery-pending-banner-pulse 2s ease-in-out infinite;
-}
-
-@keyframes delivery-pending-banner-pulse {
-    0%, 100% { background-color: var(--bs-warning-bg-subtle, #fff3cd); }
-    50% { background-color: #ffe8b8; }
-}

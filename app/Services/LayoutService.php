@@ -186,6 +186,21 @@ class LayoutService
         return null;
     }
 
+    private function hexToRgba(?string $hex, float $alpha): ?string
+    {
+        $n = $this->normalizeHex($hex);
+        if ($n === null) {
+            return null;
+        }
+        $h   = ltrim($n, '#');
+        $r   = hexdec(substr($h, 0, 2));
+        $g   = hexdec(substr($h, 2, 2));
+        $b   = hexdec(substr($h, 4, 2));
+        $alpha = max(0.0, min(1.0, $alpha));
+
+        return sprintf('rgba(%d,%d,%d,%.3f)', $r, $g, $b, $alpha);
+    }
+
     /**
      * Color de fondo UI: hex o la palabra clave CSS "transparent".
      */
@@ -229,6 +244,10 @@ class LayoutService
             'ui_labotests_card_header_bg', 'ui_labotests_card_header_title_color', 'ui_labotests_card_header_title_weight', 'ui_labotests_card_header_title_style',
             'ui_pagination_link_color', 'ui_pagination_link_weight', 'ui_pagination_link_style',
             'ui_pagination_active_bg', 'ui_pagination_active_color',
+            'ui_delivery_notif_text', 'ui_delivery_notif_text_active', 'ui_delivery_notif_text_hover',
+            'ui_delivery_notif_hover_bg', 'ui_delivery_notif_hover_opacity',
+            'ui_delivery_notif_bg_active', 'ui_delivery_notif_dot',
+            'ui_delivery_notif_text_weight', 'ui_delivery_notif_text_style',
         ]);
 
         $themeColor = '#FF7218';
@@ -440,6 +459,41 @@ class LayoutService
         $paginationActiveBg = $this->normalizeHex($keys['ui_pagination_active_bg'] ?? '') ?? $themeColor;
         $paginationActiveColor = $this->normalizeHex($keys['ui_pagination_active_color'] ?? '') ?? '#ffffff';
 
+        $deliveryNotifExtra = '';
+        $deliveryText = $this->normalizeHex($keys['ui_delivery_notif_text'] ?? '');
+        if ($deliveryText !== null && $deliveryText !== '') {
+            $deliveryNotifExtra .= '--ui-delivery-notif-text:' . $deliveryText . ';';
+        }
+        $deliveryTextActive = $this->normalizeHex($keys['ui_delivery_notif_text_active'] ?? '');
+        if ($deliveryTextActive !== null && $deliveryTextActive !== '') {
+            $deliveryNotifExtra .= '--ui-delivery-notif-text-active:' . $deliveryTextActive . ';';
+        } elseif ($deliveryText !== null && $deliveryText !== '') {
+            $deliveryNotifExtra .= '--ui-delivery-notif-text-active:' . $deliveryText . ';';
+        }
+        $deliveryTextHover = $this->normalizeHex($keys['ui_delivery_notif_text_hover'] ?? '');
+        if ($deliveryTextHover !== null && $deliveryTextHover !== '') {
+            $deliveryNotifExtra .= '--ui-delivery-notif-text-hover:' . $deliveryTextHover . ';';
+        }
+        $deliveryHoverOpacity = max(0, min(100, (int) ($keys['ui_delivery_notif_hover_opacity'] ?? 8)));
+        $hoverBgHex = trim((string) ($keys['ui_delivery_notif_hover_bg'] ?? ''));
+        $deliveryHoverRgba = $this->hexToRgba($hoverBgHex !== '' ? $hoverBgHex : '#ffffff', $deliveryHoverOpacity / 100);
+        if ($deliveryHoverRgba !== null) {
+            $deliveryNotifExtra .= '--ui-delivery-notif-hover-bg:' . $deliveryHoverRgba . ';';
+        }
+        $deliveryBgActive = $this->normalizeHex($keys['ui_delivery_notif_bg_active'] ?? '');
+        if ($deliveryBgActive !== null && $deliveryBgActive !== '') {
+            $deliveryNotifExtra .= '--ui-delivery-notif-bg-active:' . $deliveryBgActive . ';';
+        }
+        $deliveryDot = $this->normalizeHex($keys['ui_delivery_notif_dot'] ?? '');
+        $deliveryNotifExtra .= '--ui-delivery-notif-dot:' . (($deliveryDot !== null && $deliveryDot !== '') ? $deliveryDot : $themeColor) . ';';
+        $deliveryFontW = self::normalizeUiFontWeight((string) ($keys['ui_delivery_notif_text_weight'] ?? ''), '500');
+        $deliveryFontS = self::normalizeUiFontStyle((string) ($keys['ui_delivery_notif_text_style'] ?? ''), 'normal');
+        $deliveryNotifExtra .= sprintf(
+            '--ui-delivery-notif-font-weight:%s;--ui-delivery-notif-font-style:%s;',
+            $deliveryFontW,
+            $deliveryFontS
+        );
+
         $uiInlineStyle = '--theme-gradient-end:' . $gradientEnd . ';--ui-font-family:' . $fontPreset['family'] . ';' . $fontSizeCss
             . '--ui-footer-justify:' . $footerJustify . ';'
             . sprintf(
@@ -483,7 +537,8 @@ class LayoutService
                 $paginationLinkS,
                 $paginationActiveBg,
                 $paginationActiveColor
-            );
+            )
+            . $deliveryNotifExtra;
 
         return [
             'company'              => $keys['company'] ?? 'Laboratorio',
