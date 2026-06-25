@@ -161,6 +161,7 @@ body.pdf-dompdf-download .pdf-ft-block .pdf-ft-pagination-num::before {
 .pdf-el-item--h-center { text-align: center !important; }
 .pdf-el-item--h-right { text-align: right !important; }
 .pdf-el-item--v-bottom { margin-top: auto !important; }
+.pdf-el-item--v-middle { margin-top: auto !important; margin-bottom: auto !important; }
 .pdf-el-item--h-left .header-piece-logo img,
 .pdf-el-item--h-left .header-piece-qr .qr-img,
 .pdf-el-item--h-left .pdf-lab-f-img {

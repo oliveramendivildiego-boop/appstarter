@@ -356,7 +356,7 @@ class ReportPdfLayoutService
     /** @var list<string> */
     public const ALLOWED_INSTANCE_ALIGN_H = ['left', 'center', 'right'];
     /** @var list<string> */
-    public const ALLOWED_INSTANCE_ALIGN_V = ['top', 'bottom'];
+    public const ALLOWED_INSTANCE_ALIGN_V = ['top', 'middle', 'bottom'];
 
     public const SECTION_COLUMN_MIN = 1;
 
@@ -902,7 +902,7 @@ class ReportPdfLayoutService
     }
 
     /**
-     * @return string|null top|bottom o null si no está definido
+     * @return string|null top|middle|bottom o null si no está definido
      */
     public static function normalizeInstanceAlignV(mixed $raw): ?string
     {
@@ -939,6 +939,8 @@ class ReportPdfLayoutService
         $style = 'text-align:' . $h . ' !important;';
         if ($v === 'bottom') {
             $style .= 'margin-top:auto !important;';
+        } elseif ($v === 'middle') {
+            $style .= 'margin-top:auto !important;margin-bottom:auto !important;';
         }
 
         return $style . $typography;

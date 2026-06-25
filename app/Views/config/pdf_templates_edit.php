@@ -1366,6 +1366,7 @@ if (! in_array($configTab, $pdfConfigTabs, true)) {
 .pdf-preview-scope .pdf-el-item--h-center { text-align: center !important; }
 .pdf-preview-scope .pdf-el-item--h-right { text-align: right !important; }
 .pdf-preview-scope .pdf-el-item--v-bottom { margin-top: auto !important; }
+.pdf-preview-scope .pdf-el-item--v-middle { margin-top: auto !important; margin-bottom: auto !important; }
 .pdf-preview-scope .pdf-el-item:not(:last-child) { margin-bottom: 0; }
 .pdf-preview-scope .patient-line { margin: 0 !important; }
 .pdf-preview-scope.pdf-hg-block { padding-bottom: 8px; border-bottom: 2px solid var(--pdf-header-separator-color, #0066cc); }
@@ -1412,6 +1413,7 @@ if (! in_array($configTab, $pdfConfigTabs, true)) {
 .pdf-preview-scope .pdf-el-item--h-center { text-align: center !important; }
 .pdf-preview-scope .pdf-el-item--h-right { text-align: right !important; }
 .pdf-preview-scope .pdf-el-item--v-bottom { margin-top: auto !important; }
+.pdf-preview-scope .pdf-el-item--v-middle { margin-top: auto !important; margin-bottom: auto !important; }
 .pdf-instance-sortable { min-height: 2.5rem; }
 .pdf-config-panel-hidden { display: none !important; }
 .pdf-margins-card .card-body {
@@ -2380,7 +2382,7 @@ document.addEventListener('DOMContentLoaded', function() {
         var v = vEl ? String(vEl.value || '').trim() : '';
         return {
             align_h: (h === 'left' || h === 'center' || h === 'right') ? h : 'left',
-            align_v: (v === 'top' || v === 'bottom') ? v : 'top'
+            align_v: (v === 'top' || v === 'middle' || v === 'bottom') ? v : 'top'
         };
     }
 
@@ -2392,7 +2394,7 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     function resolveInstanceAlignV(item) {
-        if (item && item.align_v && ['top', 'bottom'].indexOf(item.align_v) >= 0) {
+        if (item && item.align_v && ['top', 'middle', 'bottom'].indexOf(item.align_v) >= 0) {
             return item.align_v;
         }
         return 'top';
@@ -2410,8 +2412,13 @@ document.addEventListener('DOMContentLoaded', function() {
         el.style.setProperty('text-align', al.align_h, 'important');
         if (al.align_v === 'bottom') {
             el.style.setProperty('margin-top', 'auto', 'important');
+            el.style.removeProperty('margin-bottom');
+        } else if (al.align_v === 'middle') {
+            el.style.setProperty('margin-top', 'auto', 'important');
+            el.style.setProperty('margin-bottom', 'auto', 'important');
         } else {
             el.style.removeProperty('margin-top');
+            el.style.removeProperty('margin-bottom');
         }
     }
 
@@ -2976,8 +2983,16 @@ document.addEventListener('DOMContentLoaded', function() {
         if (regionItems.length === 1) {
             var al = readInstanceAlign(regionItems[0].li);
             cell.style.textAlign = al.align_h;
-            cell.style.justifyContent = al.align_v === 'bottom' ? 'flex-end' : 'flex-start';
-            if (al.align_v === 'bottom') cell.style.minHeight = '28px';
+            if (al.align_v === 'bottom') {
+                cell.style.justifyContent = 'flex-end';
+                cell.style.minHeight = '28px';
+            } else if (al.align_v === 'middle') {
+                cell.style.justifyContent = 'center';
+                cell.style.minHeight = '28px';
+            } else {
+                cell.style.justifyContent = 'flex-start';
+                cell.style.minHeight = '';
+            }
         } else {
             cell.style.textAlign = 'left';
             cell.style.justifyContent = 'flex-start';
@@ -3390,7 +3405,7 @@ document.addEventListener('DOMContentLoaded', function() {
         fillSpanSelectElement(spanSel, maxS, sp);
         if (!enabled) spanSel.disabled = true;
         var alignHSel = buildInstanceAlignSelect('instance-align-h', 'Alineación horizontal en la celda', [['left', 'Izquierda'], ['center', 'Centro'], ['right', 'Derecha']], 'left');
-        var alignVSel = buildInstanceAlignSelect('instance-align-v', 'Alineación vertical en la celda', [['top', 'Arriba'], ['bottom', 'Abajo']], 'top');
+        var alignVSel = buildInstanceAlignSelect('instance-align-v', 'Alineación vertical en la celda', [['top', 'Arriba'], ['middle', 'Centro'], ['bottom', 'Abajo']], 'top');
         if (!enabled) {
             alignHSel.disabled = true;
             alignVSel.disabled = true;
@@ -4625,7 +4640,10 @@ document.addEventListener('DOMContentLoaded', function() {
             var avEl = li.querySelector('.instance-align-v');
             if (avEl) {
                 var av = String(avEl.value || '').trim();
-                if (av && av !== 'top' && av !== 'bottom') errs.push('«' + label + '»: alineación vertical no permitida.');
+                if (av) {
+                    var va = pdfAllow('vertical_aligns');
+                    if (va.indexOf(av) < 0) errs.push('«' + label + '»: alineación vertical no permitida.');
+                }
             }
         });
         return errs;

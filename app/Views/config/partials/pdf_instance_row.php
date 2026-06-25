@@ -64,7 +64,7 @@ $alignVIn = \App\Services\ReportPdfLayoutService::normalizeInstanceAlignV($inst[
             <?php endforeach; ?>
         </select>
         <select class="form-select form-select-sm instance-align-v" style="max-width: 9rem;" title="Alineación vertical en la celda" <?= $selVal === '-1' ? 'disabled' : '' ?>>
-            <?php foreach (['top' => 'Arriba', 'bottom' => 'Abajo'] as $ak => $al): ?>
+            <?php foreach (['top' => 'Arriba', 'middle' => 'Centro', 'bottom' => 'Abajo'] as $ak => $al): ?>
             <option value="<?= esc($ak, 'attr') ?>" <?= ($alignVIn ?? 'top') === $ak ? 'selected' : '' ?>><?= esc($al) ?></option>
             <?php endforeach; ?>
         </select>
