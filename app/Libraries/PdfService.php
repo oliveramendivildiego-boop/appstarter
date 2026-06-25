@@ -291,6 +291,11 @@ class PdfService
      */
     protected function buildPaginationCallbacks(array $slots): array
     {
+        // Encabezado: canvas. Pie: HTML en la cuadrícula del footer (posición y estilos de plantilla).
+        $slots = array_values(array_filter(
+            $slots,
+            static fn (array $slot): bool => strtolower((string) ($slot['zone'] ?? 'header')) !== 'footer'
+        ));
         if ($slots === []) {
             return [];
         }
@@ -337,9 +342,7 @@ class PdfService
                     (string) ($slot['fontStyle'] ?? 'normal')
                 )
             );
-            $text       = ($slot['format'] ?? 'page_of_total') === 'total_only'
-                ? $slot['prefix'] . $pageCount
-                : $slot['prefix'] . $pageNumber . ' de ' . $pageCount;
+            $text       = $slot['prefix'] . $pageNumber . ' de ' . $pageCount;
             $textWidth  = (float) $canvas->get_text_width($text, $font, $fontSize);
             $lineHeight = max(1.0, (float) ($slot['lineHeight'] ?? 1.35));
             $linePt     = $fontSize * $lineHeight;
