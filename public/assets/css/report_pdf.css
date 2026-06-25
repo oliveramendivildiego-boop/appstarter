@@ -611,10 +611,18 @@ table.results td {
     text-transform: var(--pdf-results-transform, none);
     line-height: var(--pdf-results-line-height, 1.35);
 }
-/* Mayor especificidad que table.results td (dompdf respeta .text-center en columnas numéricas) */
+/* Mayor especificidad que table.results td (dompdf respeta estas clases en columnas de resultados) */
+table.results th.text-left,
+table.results td.text-left {
+    text-align: left;
+}
 table.results th.text-center,
 table.results td.text-center {
     text-align: center;
+}
+table.results th.text-right,
+table.results td.text-right {
+    text-align: right;
 }
 table.results th {
     background: var(--pdf-results-header-bg, #0066cc);

@@ -418,31 +418,31 @@ table.results.results-cols-4 td.resultado-colspan-rest[colspan="3"] {
 }
 table.results:not(.report-refs-matrix):not(.pdf-notes-table) th.results-col-analisis,
 table.results:not(.report-refs-matrix):not(.pdf-notes-table) td.results-col-analisis {
-    text-align: var(--pdf-results-col-analisis-align, left) !important;
+    text-align: <?= esc((string) ($rs['results_col_analisis_align'] ?? 'left')) ?> !important;
 }
 table.results:not(.report-refs-matrix):not(.pdf-notes-table) th.results-col-analisis {
-    text-align: var(--pdf-results-hdr-analisis-align, left) !important;
+    text-align: <?= esc((string) ($rs['results_hdr_analisis_align'] ?? 'left')) ?> !important;
 }
 table.results:not(.report-refs-matrix):not(.pdf-notes-table) th.results-col-resultado,
 table.results:not(.report-refs-matrix):not(.pdf-notes-table) td.results-col-resultado {
-    text-align: var(--pdf-results-col-resultado-align, center) !important;
+    text-align: <?= esc((string) ($rs['results_col_resultado_align'] ?? 'center')) ?> !important;
 }
 table.results:not(.report-refs-matrix):not(.pdf-notes-table) th.results-col-resultado {
-    text-align: var(--pdf-results-hdr-resultado-align, center) !important;
+    text-align: <?= esc((string) ($rs['results_hdr_resultado_align'] ?? 'center')) ?> !important;
 }
 table.results:not(.report-refs-matrix):not(.pdf-notes-table) th.results-col-rango,
 table.results:not(.report-refs-matrix):not(.pdf-notes-table) td.results-col-rango {
-    text-align: var(--pdf-results-col-rango-align, center) !important;
+    text-align: <?= esc((string) ($rs['results_col_rango_align'] ?? 'center')) ?> !important;
 }
 table.results:not(.report-refs-matrix):not(.pdf-notes-table) th.results-col-rango {
-    text-align: var(--pdf-results-hdr-rango-align, center) !important;
+    text-align: <?= esc((string) ($rs['results_hdr_rango_align'] ?? 'center')) ?> !important;
 }
 table.results:not(.report-refs-matrix):not(.pdf-notes-table) th.results-col-interpretacion,
 table.results:not(.report-refs-matrix):not(.pdf-notes-table) td.results-col-interpretacion {
-    text-align: var(--pdf-results-col-interpretacion-align, center) !important;
+    text-align: <?= esc((string) ($rs['results_col_interpretacion_align'] ?? 'center')) ?> !important;
 }
 table.results:not(.report-refs-matrix):not(.pdf-notes-table) th.results-col-interpretacion {
-    text-align: var(--pdf-results-hdr-interpretacion-align, center) !important;
+    text-align: <?= esc((string) ($rs['results_hdr_interpretacion_align'] ?? 'center')) ?> !important;
 }
 table.results td.out-range,
 table.results .out-range {

@@ -3861,6 +3861,69 @@ class ReportPdfLayoutService
         return ' style="width:' . (int) $w . '%;"';
     }
 
+    /**
+     * Alineación horizontal de columnas de table.results (análisis, resultado, rango, interpretación).
+     *
+     * @param array<string, mixed> $layout
+     */
+    public static function resultsColumnTextAlignCss(array $layout, string $column, bool $isHeader): string
+    {
+        $allowedColumns = ['analisis', 'resultado', 'rango', 'interpretacion'];
+        if (! in_array($column, $allowedColumns, true)) {
+            return 'left';
+        }
+        $ps = is_array($layout['page_style'] ?? null) ? $layout['page_style'] : [];
+        $rs = self::normalizeResultsTableStyle($ps['results_table'] ?? []);
+        $key = ($isHeader ? 'results_hdr_' : 'results_col_') . $column . '_align';
+        $default = (string) (self::DEFAULT_RESULTS_TABLE_STYLE[$key] ?? ($column === 'analisis' ? 'left' : 'center'));
+        $align = strtolower(trim((string) ($rs[$key] ?? $default)));
+
+        return in_array($align, self::ALLOWED_PDF_TEXT_ALIGNS, true) ? $align : $default;
+    }
+
+    /**
+     * Clase de alineación para celdas de table.results (Dompdf respeta .text-center mejor que style text-align).
+     *
+     * @param array<string, mixed> $layout
+     */
+    public static function resultsColumnAlignClass(array $layout, string $column, bool $isHeader): string
+    {
+        return match (self::resultsColumnTextAlignCss($layout, $column, $isHeader)) {
+            'center'  => 'text-center',
+            'right'   => 'text-right',
+            'left'    => 'text-left',
+            default   => '',
+        };
+    }
+
+    /**
+     * Atributos align/style para celdas de table.results (ancho extra + justify).
+     *
+     * @param array<string, mixed> $layout
+     */
+    public static function resultsColumnCellMarkupAttrs(array $layout, string $column, bool $isHeader, string $extraCss = ''): string
+    {
+        $align = self::resultsColumnTextAlignCss($layout, $column, $isHeader);
+        $css   = trim($extraCss);
+        if ($align === 'justify') {
+            $css = trim($css . ';text-align:justify', ';');
+        }
+        $out = $align !== 'justify' ? ' align="' . $align . '"' : '';
+        if ($css !== '') {
+            $out .= ' style="' . $css . '"';
+        }
+
+        return $out;
+    }
+
+    /**
+     * @param array<string, mixed> $layout
+     */
+    public static function resultsColumnCellStyleAttr(array $layout, string $column, bool $isHeader, string $extraCss = ''): string
+    {
+        return self::resultsColumnCellMarkupAttrs($layout, $column, $isHeader, $extraCss);
+    }
+
     public static function subgrupoPruebaGapPx(array $layout): int
     {
         $ps = is_array($layout['page_style'] ?? null) ? $layout['page_style'] : [];

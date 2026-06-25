@@ -30,6 +30,25 @@ $nombresTipoPorPria = $report_pria_tipo_muestra_nombre ?? [];
 $nombresMetodoPorPria = $report_pria_metodo_nombre ?? [];
 $refsMatrixAll = $report_pria_refs_consolidada ?? [];
 $pdfLayout = is_array($pdf_layout ?? null) ? $pdf_layout : [];
+$resultsCellMarkupAttrs = static function (string $column, bool $isHeader, string $widthStyle = '') use ($pdfLayout, $usePdfChrome): string {
+    if (! $usePdfChrome) {
+        return $widthStyle;
+    }
+    $extra = '';
+    if ($widthStyle !== '' && preg_match('/style="([^"]*)"/', $widthStyle, $m)) {
+        $extra = rtrim((string) ($m[1] ?? ''), ';');
+    }
+
+    return \App\Services\ReportPdfLayoutService::resultsColumnCellMarkupAttrs($pdfLayout, $column, $isHeader, $extra);
+};
+$resultsColAlignClass = static function (string $column, bool $isHeader) use ($pdfLayout, $usePdfChrome): string {
+    if (! $usePdfChrome) {
+        return '';
+    }
+    $cls = \App\Services\ReportPdfLayoutService::resultsColumnAlignClass($pdfLayout, $column, $isHeader);
+
+    return $cls !== '' ? ' ' . esc($cls, 'attr') : '';
+};
 $ocultarTheadResults = \App\Services\ReportPdfLayoutService::grupoCabeceraOcultarTheadResultsTabla($pdfLayout);
 $labConfigLocal = is_array($lab_config ?? null) ? $lab_config : [];
 $showInterpretacionCol = false;
@@ -355,13 +374,13 @@ $mostrarHeatmap = $tieneHeatmap && in_array(
             <?php if (! $ocultarTheadResults): ?>
             <thead<?= $usePdfChrome ? '' : ' class="thead-dark"' ?>>
                 <tr>
-                    <th class="results-col-analisis"<?= $thWidth(0) ?>>ANÁLISIS</th>
-                    <th class="results-col-resultado"<?= $thWidth(1) ?>>RESULTADO</th>
+                    <th class="results-col-analisis<?= $resultsColAlignClass('analisis', true) ?>"<?= $resultsCellMarkupAttrs('analisis', true, $thWidth(0)) ?>>ANÁLISIS</th>
+                    <th class="results-col-resultado<?= $resultsColAlignClass('resultado', true) ?>"<?= $resultsCellMarkupAttrs('resultado', true, $thWidth(1)) ?>>RESULTADO</th>
                     <?php if ($mostrarColRef): ?>
-                    <th class="results-col-rango"<?= $thWidth(2) ?>>RANGO REFERENCIAL</th>
+                    <th class="results-col-rango<?= $resultsColAlignClass('rango', true) ?>"<?= $resultsCellMarkupAttrs('rango', true, $thWidth(2)) ?>>RANGO REFERENCIAL</th>
                     <?php endif; ?>
                     <?php if ($mostrarColInterpretacion): ?>
-                    <th class="results-col-interpretacion"<?= $thWidth($mostrarColRef ? 3 : 2) ?>>INTERPRETACIÓN</th>
+                    <th class="results-col-interpretacion<?= $resultsColAlignClass('interpretacion', true) ?>"<?= $resultsCellMarkupAttrs('interpretacion', true, $thWidth($mostrarColRef ? 3 : 2)) ?>>INTERPRETACIÓN</th>
                     <?php endif; ?>
                 </tr>
             </thead>
@@ -400,13 +419,13 @@ $mostrarHeatmap = $tieneHeatmap && in_array(
             <?php if (! $ocultarTheadResults): ?>
             <thead<?= $usePdfChrome ? '' : ' class="thead-dark"' ?>>
                 <tr>
-                    <th class="results-col-analisis"<?= $thWidth(0) ?>>ANÁLISIS</th>
-                    <th class="results-col-resultado"<?= $thWidth(1) ?>>RESULTADO</th>
+                    <th class="results-col-analisis<?= $resultsColAlignClass('analisis', true) ?>"<?= $resultsCellMarkupAttrs('analisis', true, $thWidth(0)) ?>>ANÁLISIS</th>
+                    <th class="results-col-resultado<?= $resultsColAlignClass('resultado', true) ?>"<?= $resultsCellMarkupAttrs('resultado', true, $thWidth(1)) ?>>RESULTADO</th>
                     <?php if ($mostrarColRef): ?>
-                    <th class="results-col-rango"<?= $thWidth(2) ?>>RANGO REFERENCIAL</th>
+                    <th class="results-col-rango<?= $resultsColAlignClass('rango', true) ?>"<?= $resultsCellMarkupAttrs('rango', true, $thWidth(2)) ?>>RANGO REFERENCIAL</th>
                     <?php endif; ?>
                     <?php if ($mostrarColInterpretacion): ?>
-                    <th class="results-col-interpretacion"<?= $thWidth($mostrarColRef ? 3 : 2) ?>>INTERPRETACIÓN</th>
+                    <th class="results-col-interpretacion<?= $resultsColAlignClass('interpretacion', true) ?>"<?= $resultsCellMarkupAttrs('interpretacion', true, $thWidth($mostrarColRef ? 3 : 2)) ?>>INTERPRETACIÓN</th>
                     <?php endif; ?>
                 </tr>
             </thead>
@@ -536,7 +555,7 @@ $mostrarHeatmap = $tieneHeatmap && in_array(
                     ?>
                     <?php if (is_object($item)): ?>
                         <tr>
-                            <td class="results-col-analisis"><?= esc($item->nombre ?? '') ?></td>
+                            <td class="results-col-analisis<?= $resultsColAlignClass('analisis', false) ?>"<?= $resultsCellMarkupAttrs('analisis', false) ?>><?= esc($item->nombre ?? '') ?></td>
                             <?php
                                 // Si el modo es semáforo y la columna Interpretación está desactivada,
                                 // inyectar el icono correspondiente al lado del resultado.
@@ -580,9 +599,9 @@ $mostrarHeatmap = $tieneHeatmap && in_array(
                                     }
                                 }
                             ?>
-                            <td class="results-col-resultado<?= $celdaRicoClass ?><?= $resultadoColspanClass ?> <?= $class ?><?= $usePdfChrome && $isOutPdf ? ' out-range' : '' ?>"<?= $resultadoColspanAttr ?>><?= $resMostrarHtml ?></td>
+                            <td class="results-col-resultado<?= $celdaRicoClass ?><?= $resultadoColspanClass ?> <?= $class ?><?= $usePdfChrome && $isOutPdf ? ' out-range' : '' ?><?= $resultsColAlignClass('resultado', false) ?>"<?= $resultadoColspanAttr ?><?= $resultsCellMarkupAttrs('resultado', false) ?>><?= $resMostrarHtml ?></td>
                             <?php if ($resultadoColspan === 1 && $mostrarColRef): ?>
-                            <td class="results-col-rango<?= $usePdfChrome ? ' ref-range' : '' ?>"><?= $itemConRef ? $refMostrar : '' ?></td>
+                            <td class="results-col-rango<?= $usePdfChrome ? ' ref-range' : '' ?><?= $resultsColAlignClass('rango', false) ?>"<?= $resultsCellMarkupAttrs('rango', false) ?>><?= $itemConRef ? $refMostrar : '' ?></td>
                             <?php endif; ?>
                             <?php if ($resultadoColspan === 1 && $mostrarColInterpretacion): ?>
                             <?php
@@ -598,7 +617,7 @@ $mostrarHeatmap = $tieneHeatmap && in_array(
                                     }
                                 }
                             ?>
-                            <td class="results-col-interpretacion<?= $interpretacionRef !== null ? ' ' . esc($class, 'attr') : '' ?>"><?= $interpHtml !== '' ? $interpHtml : '' ?></td>
+                            <td class="results-col-interpretacion<?= $interpretacionRef !== null ? ' ' . esc($class, 'attr') : '' ?><?= $resultsColAlignClass('interpretacion', false) ?>"<?= $resultsCellMarkupAttrs('interpretacion', false) ?>><?= $interpHtml !== '' ? $interpHtml : '' ?></td>
                             <?php endif; ?>
                         </tr>
                     <?php endif; ?>

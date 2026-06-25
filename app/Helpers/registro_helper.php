@@ -425,7 +425,7 @@ if (! function_exists('registro_resultado_celda_html')) {
             $suffix = $u !== '' ? ' <strong>' . esc($u) . '</strong>' : '';
             $class = registro_opcion_es_texto_fijo($opcionId) ? 'resultado-texto-fijo resultado-texto-rico' : 'resultado-texto-rico';
 
-            return '<div class="' . $class . ' text-start d-inline-block">' . $html . $suffix . '</div>';
+            return '<div class="' . $class . ' d-inline-block">' . $html . $suffix . '</div>';
         }
 
         return registro_resultado_con_unidad_html($valor, $u);
