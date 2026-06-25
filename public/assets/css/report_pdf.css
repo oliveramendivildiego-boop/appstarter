@@ -674,7 +674,7 @@ table.results td.resultado-texto-rico-cell .resultado-texto-rico ol {
     font-weight: bold;
     font-size: 10pt;
     margin: 0;
-    padding: 6px 8px;
+    padding: var(--pdf-results-segment-padding-top, 6px) 8px var(--pdf-results-segment-padding-bottom, 6px) 8px;
     background: var(--pdf-results-segment-bg, #e9ecef);
     color: #333;
     border: var(--pdf-results-segment-border-width, 1px) solid var(--pdf-results-segment-border, #ddd);

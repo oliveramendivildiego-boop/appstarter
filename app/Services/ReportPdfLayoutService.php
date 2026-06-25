@@ -196,6 +196,8 @@ class ReportPdfLayoutService
         'segment_border_color' => '#DDDDDD',
         'segment_border_width_px' => 1,
         'segment_shadow'    => 'none',
+        'segment_padding_top_px'    => 6,
+        'segment_padding_bottom_px' => 6,
         'font_family'       => 'DejaVu Sans',
         'font_size_pt'      => 9.0,
         'font_weight'       => 'normal',
@@ -2088,6 +2090,17 @@ class ReportPdfLayoutService
         }
         if (isset($raw['segment_shadow']) && ! in_array(strtolower(trim((string) $raw['segment_shadow'])), self::ALLOWED_PDF_TEXT_SHADOWS, true)) {
             return 'Sombra de segmento no permitida en la tabla de resultados.';
+        }
+        foreach (['segment_padding_top_px' => 'superior', 'segment_padding_bottom_px' => 'inferior'] as $pk => $label) {
+            if (array_key_exists($pk, $raw)) {
+                if (! is_numeric($raw[$pk])) {
+                    return 'Relleno ' . $label . ' del texto en fila separadora inválido.';
+                }
+                $pv = (int) $raw[$pk];
+                if ($pv < 0 || $pv > 40) {
+                    return 'El relleno ' . $label . ' del texto en fila separadora debe estar entre 0 y 40 px.';
+                }
+            }
         }
         if (isset($raw['matrix_text_align']) && ! in_array(strtolower(trim((string) $raw['matrix_text_align'])), self::ALLOWED_PDF_TEXT_ALIGNS, true)) {
             return 'Alineación horizontal no permitida en la matriz de referencia.';
@@ -4389,6 +4402,10 @@ class ReportPdfLayoutService
         if (! in_array($segShadow, self::ALLOWED_PDF_TEXT_SHADOWS, true)) {
             $segShadow = $def['segment_shadow'];
         }
+        $segPadTop = isset($s['segment_padding_top_px']) ? (int) $s['segment_padding_top_px'] : (int) ($def['segment_padding_top_px'] ?? 6);
+        $segPadTop = max(0, min(40, $segPadTop));
+        $segPadBottom = isset($s['segment_padding_bottom_px']) ? (int) $s['segment_padding_bottom_px'] : (int) ($def['segment_padding_bottom_px'] ?? 6);
+        $segPadBottom = max(0, min(40, $segPadBottom));
         $matrixAlign = strtolower(trim((string) ($s['matrix_text_align'] ?? $def['matrix_text_align'])));
         if (! in_array($matrixAlign, self::ALLOWED_PDF_TEXT_ALIGNS, true)) {
             $matrixAlign = $def['matrix_text_align'];
@@ -4446,6 +4463,8 @@ class ReportPdfLayoutService
             'segment_border_color' => $pickColor('segment_border_color', $def['segment_border_color']),
             'segment_border_width_px' => $segBw,
             'segment_shadow'    => $segShadow,
+            'segment_padding_top_px'    => $segPadTop,
+            'segment_padding_bottom_px' => $segPadBottom,
             'font_family'       => $family,
             'font_size_pt'      => $size,
             'font_weight'       => $weight,

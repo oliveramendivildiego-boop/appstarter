@@ -585,6 +585,15 @@ if (! in_array($configTab, $pdfConfigTabs, true)) {
             <div class="col-6 col-md-3"><label class="form-label small" for="rs_segment_border_color">Color borde</label><input type="color" class="form-control form-control-color" id="rs_segment_border_color" value="<?= esc($rs['segment_border_color'], 'attr') ?>"></div>
             <div class="col-6 col-md-2"><label class="form-label small" for="rs_segment_border_width">Ancho borde (px)</label><input type="number" class="form-control" id="rs_segment_border_width" min="0" max="4" step="1" value="<?= esc((string) $rs['segment_border_width_px'], 'attr') ?>"></div>
             <div class="col-6 col-md-2"><label class="form-label small" for="rs_segment_shadow">Sombra</label><select class="form-select" id="rs_segment_shadow"><?php foreach (['none' => 'Sin sombra', 'soft' => 'Suave', 'medium' => 'Media', 'strong' => 'Fuerte'] as $k => $v): ?><option value="<?= esc($k, 'attr') ?>" <?= $rs['segment_shadow'] === $k ? 'selected' : '' ?>><?= esc($v) ?></option><?php endforeach; ?></select></div>
+            <div class="col-6 col-md-3">
+                <label class="form-label small" for="rs_segment_padding_top_px" title="Espacio entre el borde superior de la fila y el texto">Espacio arriba del texto (px)</label>
+                <input type="number" class="form-control" id="rs_segment_padding_top_px" min="0" max="40" step="1" value="<?= esc((string) (int) ($rs['segment_padding_top_px'] ?? 6), 'attr') ?>">
+            </div>
+            <div class="col-6 col-md-3">
+                <label class="form-label small" for="rs_segment_padding_bottom_px" title="Espacio entre el texto y el borde inferior de la fila">Espacio abajo del texto (px)</label>
+                <input type="number" class="form-control" id="rs_segment_padding_bottom_px" min="0" max="40" step="1" value="<?= esc((string) (int) ($rs['segment_padding_bottom_px'] ?? 6), 'attr') ?>">
+                <div class="form-text">Relleno vertical dentro de <code>.report-segment-title</code>.</div>
+            </div>
                         </div>
                     </div>
                 </div>
@@ -4272,6 +4281,8 @@ document.addEventListener('DOMContentLoaded', function() {
                 segment_border_color: pickHex('rs_segment_border_color', '#DDDDDD'),
                 segment_border_width_px: Math.round(pickNum('rs_segment_border_width', 0, 4, 1)),
                 segment_shadow: pickAllowedDomId('rs_segment_shadow', 'segment_shadows', 'none'),
+                segment_padding_top_px: Math.round(pickNum('rs_segment_padding_top_px', 0, 40, 6)),
+                segment_padding_bottom_px: Math.round(pickNum('rs_segment_padding_bottom_px', 0, 40, 6)),
                 font_family: pickAllowedDomId('rs_font_family', 'font_families', 'DejaVu Sans'),
                 font_size_pt: pickNum('rs_font_size', 7, 20, 9),
                 font_weight: pickAllowedDomId('rs_font_weight', 'font_weights', 'normal'),
@@ -4483,6 +4494,8 @@ document.addEventListener('DOMContentLoaded', function() {
         pushIfBadNum('rs_subgrupo_prueba_gap', 0, 80, 'Espacio entre pruebas del mismo área: entre 0 y 80 px.');
         pushIfBadNum('rs_segment_border_width', 0, 4, 'Grosor de borde de segmento: entre 0 y 4 px.');
         pushIfBadSelect('rs_segment_shadow', pdfAllow('segment_shadows'), 'Sombra de segmento no permitida.');
+        pushIfBadNum('rs_segment_padding_top_px', 0, 40, 'Espacio arriba del texto en fila separadora: entre 0 y 40 px.');
+        pushIfBadNum('rs_segment_padding_bottom_px', 0, 40, 'Espacio abajo del texto en fila separadora: entre 0 y 40 px.');
         pushIfBadSelect('rs_matrix_align', ta, 'Alineación horizontal no permitida en matriz de referencia.');
         pushIfBadSelect('rs_matrix_valign', va, 'Alineación vertical no permitida en matriz de referencia.');
         pushIfBadHex('rs_matrix_text_color', 'Color inválido en matriz de referencia.');

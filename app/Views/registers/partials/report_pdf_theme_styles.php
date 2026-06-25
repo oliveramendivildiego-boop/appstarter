@@ -295,6 +295,8 @@ body {
     --pdf-results-segment-border: <?= esc($rs['segment_border_color']) ?>;
     --pdf-results-segment-border-width: <?= esc((string) $rs['segment_border_width_px']) ?>px;
     --pdf-results-segment-shadow: <?= esc($rsSegShadow) ?>;
+    --pdf-results-segment-padding-top: <?= (int) ($rs['segment_padding_top_px'] ?? 6) ?>px;
+    --pdf-results-segment-padding-bottom: <?= (int) ($rs['segment_padding_bottom_px'] ?? 6) ?>px;
     --pdf-results-font-family: "<?= esc($rs['font_family']) ?>";
     --pdf-results-font-size: <?= esc((string) $rs['font_size_pt']) ?>pt;
     --pdf-results-font-weight: <?= esc($rs['font_weight']) ?>;
@@ -458,6 +460,8 @@ table.results.pdf-notes-table td.pdf-notes-cell {
     border-color: <?= esc($rs['segment_border_color']) ?> !important;
     border-width: <?= esc((string) $rs['segment_border_width_px']) ?>px !important;
     box-shadow: <?= esc($rsSegShadow) ?> !important;
+    padding-top: <?= (int) ($rs['segment_padding_top_px'] ?? 6) ?>px !important;
+    padding-bottom: <?= (int) ($rs['segment_padding_bottom_px'] ?? 6) ?>px !important;
 }
 .report-segment-title.pdf-card-header {
     background: <?= esc($rsSegBg) ?> !important;
