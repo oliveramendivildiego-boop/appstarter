@@ -475,7 +475,7 @@ if (! in_array($configTab, $pdfConfigTabs, true)) {
 <div class="card shadow-sm mb-4 pdf-config-panel" data-config-panels="results">
     <div class="card-header bg-info-subtle border">
         <h5 class="mb-1">Resultados en el PDF</h5>
-        <p class="small text-muted mb-0">Tabla por prueba, cabecera de grupo (área/análisis, tipo de muestra, método), espacio entre áreas/grupos, filas separadoras entre análisis y matriz de referencia. Use las secciones siguientes en orden: colores → tipografía → espacio entre filas y grupos → títulos de sección → matriz poblacional → cabecera de grupo.</p>
+        <p class="small text-muted mb-0">Tabla por prueba, cabecera de grupo (área/análisis, tipo de muestra, método), espacio entre áreas/grupos, filas separadoras entre análisis y matriz de referencia. Use las secciones siguientes en orden: colores → tipografía → espacio entre filas y grupos → títulos de sección → matriz poblacional → cabecera de grupo → separador de análisis.</p>
     </div>
     <div class="card-body">
         <div class="accordion accordion-flush pdf-results-accordion" id="accordion_pdf_results">
@@ -535,7 +535,7 @@ if (! in_array($configTab, $pdfConfigTabs, true)) {
                 </h2>
                 <div id="pdf_rs_panel_density" class="accordion-collapse collapse" data-bs-parent="#accordion_pdf_results">
                     <div class="accordion-body pt-0">
-                        <p class="small text-muted mb-2">Si las filas se ven muy altas o muy apretadas en el PDF, ajuste el <strong>relleno vertical</strong> (principal) y el interlineado en la sección anterior. El relleno vertical también define el margen inferior del título de grupo (<code>.group-title</code>).</p>
+                        <p class="small text-muted mb-2">Si las filas se ven muy altas o muy apretadas en el PDF, ajuste el <strong>relleno vertical</strong> (principal) y el interlineado en la sección anterior. El espaciado del nombre de análisis, tipo de muestra y método se configura en la sección <strong>7. Separador de análisis</strong>.</p>
                         <div class="row g-3">
             <div class="col-12 col-md-4 col-lg-3">
                 <label class="form-label small" for="rs_cell_padding_v" title="Espacio arriba y abajo en cada celda; controla el alto de la fila">Relleno vertical por fila (px)</label>
@@ -704,6 +704,55 @@ if (! in_array($configTab, $pdfConfigTabs, true)) {
                                     <input class="form-check-input" type="checkbox" id="rs_grupo_cabecera_show_metodo" <?= ! empty($rs['grupo_cabecera_show_metodo']) ? 'checked' : '' ?>>
                                     <label class="form-check-label small" for="rs_grupo_cabecera_show_metodo">Mostrar método</label>
                                 </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="accordion-item border rounded mb-2 overflow-hidden">
+                <h2 class="accordion-header m-0">
+                    <button class="accordion-button collapsed py-2" type="button" data-bs-toggle="collapse" data-bs-target="#pdf_rs_panel_grupo_cabecera_spacing" aria-expanded="false" aria-controls="pdf_rs_panel_grupo_cabecera_spacing">
+                        <span class="fw-semibold">7. Separador de análisis</span>
+                        <span class="small text-muted ms-2 d-none d-md-inline">Espacio vertical del nombre, tipo de muestra y método</span>
+                    </button>
+                </h2>
+                <div id="pdf_rs_panel_grupo_cabecera_spacing" class="accordion-collapse collapse" data-bs-parent="#accordion_pdf_results">
+                    <div class="accordion-body pt-0">
+                        <p class="small text-muted mb-3">Controla el espacio arriba y abajo de cada línea en <code>.report-pdf-grupo-cabecera</code> (nombre del análisis, tipo de muestra y método). Se refleja en el PDF de <code>/registers/viewreport</code>, impresión y vista previa.</p>
+                        <div class="small fw-semibold text-secondary mb-2">Nombre del análisis</div>
+                        <div class="row g-3 mb-2">
+                            <div class="col-6 col-md-3">
+                                <label class="form-label small" for="rs_grupo_cabecera_title_margin_top_px">Espacio arriba (px)</label>
+                                <input type="number" class="form-control" id="rs_grupo_cabecera_title_margin_top_px" min="0" max="40" step="1" value="<?= esc((string) (int) ($rs['grupo_cabecera_title_margin_top_px'] ?? 0), 'attr') ?>">
+                                <div class="form-text">Si es 0, el primer análisis del reporte usa el espacio entre grupos (sección 3).</div>
+                            </div>
+                            <div class="col-6 col-md-3">
+                                <label class="form-label small" for="rs_grupo_cabecera_title_margin_bottom_px">Espacio abajo (px)</label>
+                                <input type="number" class="form-control" id="rs_grupo_cabecera_title_margin_bottom_px" min="0" max="40" step="1" value="<?= esc((string) (int) ($rs['grupo_cabecera_title_margin_bottom_px'] ?? 6), 'attr') ?>">
+                            </div>
+                        </div>
+                        <div class="small fw-semibold text-secondary mb-2">Tipo de muestra</div>
+                        <div class="row g-3 mb-2">
+                            <div class="col-6 col-md-3">
+                                <label class="form-label small" for="rs_grupo_cabecera_tipo_muestra_margin_top_px">Espacio arriba (px)</label>
+                                <input type="number" class="form-control" id="rs_grupo_cabecera_tipo_muestra_margin_top_px" min="0" max="40" step="1" value="<?= esc((string) (int) ($rs['grupo_cabecera_tipo_muestra_margin_top_px'] ?? 0), 'attr') ?>">
+                            </div>
+                            <div class="col-6 col-md-3">
+                                <label class="form-label small" for="rs_grupo_cabecera_tipo_muestra_margin_bottom_px">Espacio abajo (px)</label>
+                                <input type="number" class="form-control" id="rs_grupo_cabecera_tipo_muestra_margin_bottom_px" min="0" max="40" step="1" value="<?= esc((string) (int) ($rs['grupo_cabecera_tipo_muestra_margin_bottom_px'] ?? 10), 'attr') ?>">
+                            </div>
+                        </div>
+                        <div class="small fw-semibold text-secondary mb-2">Método</div>
+                        <div class="row g-3">
+                            <div class="col-6 col-md-3">
+                                <label class="form-label small" for="rs_grupo_cabecera_metodo_margin_top_px">Espacio arriba (px)</label>
+                                <input type="number" class="form-control" id="rs_grupo_cabecera_metodo_margin_top_px" min="0" max="40" step="1" value="<?= esc((string) (int) ($rs['grupo_cabecera_metodo_margin_top_px'] ?? 0), 'attr') ?>">
+                            </div>
+                            <div class="col-6 col-md-3">
+                                <label class="form-label small" for="rs_grupo_cabecera_metodo_margin_bottom_px">Espacio abajo (px)</label>
+                                <input type="number" class="form-control" id="rs_grupo_cabecera_metodo_margin_bottom_px" min="0" max="40" step="1" value="<?= esc((string) (int) ($rs['grupo_cabecera_metodo_margin_bottom_px'] ?? 10), 'attr') ?>">
+                                <div class="form-text">Separación antes de la tabla de resultados.</div>
                             </div>
                         </div>
                     </div>
@@ -4333,6 +4382,12 @@ document.addEventListener('DOMContentLoaded', function() {
                 grupo_cabecera_title_mode: pickAllowedDomId('rs_grupo_cabecera_title_mode', 'grupo_cabecera_title_modes', 'grupo_analisis'),
                 grupo_cabecera_show_tipo_muestra: !!(document.getElementById('rs_grupo_cabecera_show_tipo_muestra') && document.getElementById('rs_grupo_cabecera_show_tipo_muestra').checked),
                 grupo_cabecera_show_metodo: !!(document.getElementById('rs_grupo_cabecera_show_metodo') && document.getElementById('rs_grupo_cabecera_show_metodo').checked),
+                grupo_cabecera_title_margin_top_px: Math.round(pickNum('rs_grupo_cabecera_title_margin_top_px', 0, 40, 0)),
+                grupo_cabecera_title_margin_bottom_px: Math.round(pickNum('rs_grupo_cabecera_title_margin_bottom_px', 0, 40, 6)),
+                grupo_cabecera_tipo_muestra_margin_top_px: Math.round(pickNum('rs_grupo_cabecera_tipo_muestra_margin_top_px', 0, 40, 0)),
+                grupo_cabecera_tipo_muestra_margin_bottom_px: Math.round(pickNum('rs_grupo_cabecera_tipo_muestra_margin_bottom_px', 0, 40, 10)),
+                grupo_cabecera_metodo_margin_top_px: Math.round(pickNum('rs_grupo_cabecera_metodo_margin_top_px', 0, 40, 0)),
+                grupo_cabecera_metodo_margin_bottom_px: Math.round(pickNum('rs_grupo_cabecera_metodo_margin_bottom_px', 0, 40, 10)),
                 grupo_area_separator_enabled: !!(document.getElementById('rs_grupo_area_separator_enabled') && document.getElementById('rs_grupo_area_separator_enabled').checked),
                 grupo_area_separator_margin_top_px: Math.round(pickNum('rs_grupo_area_separator_margin_top_px', 0, 80, 10)),
                 grupo_area_separator_margin_bottom_px: Math.round(pickNum('rs_grupo_area_separator_margin_bottom_px', 0, 80, 10))
@@ -4537,6 +4592,12 @@ document.addEventListener('DOMContentLoaded', function() {
             pushIfBadSelect(id, ta, 'Alineación no permitida en columnas de matriz de referencia (' + id + ').');
         });
         pushIfBadSelect('rs_grupo_cabecera_title_mode', pdfAllow('grupo_cabecera_title_modes'), 'Formato de título de cabecera de grupo no permitido.');
+        pushIfBadNum('rs_grupo_cabecera_title_margin_top_px', 0, 40, 'Espacio arriba del nombre de análisis: entre 0 y 40 px.');
+        pushIfBadNum('rs_grupo_cabecera_title_margin_bottom_px', 0, 40, 'Espacio abajo del nombre de análisis: entre 0 y 40 px.');
+        pushIfBadNum('rs_grupo_cabecera_tipo_muestra_margin_top_px', 0, 40, 'Espacio arriba del tipo de muestra: entre 0 y 40 px.');
+        pushIfBadNum('rs_grupo_cabecera_tipo_muestra_margin_bottom_px', 0, 40, 'Espacio abajo del tipo de muestra: entre 0 y 40 px.');
+        pushIfBadNum('rs_grupo_cabecera_metodo_margin_top_px', 0, 40, 'Espacio arriba del método: entre 0 y 40 px.');
+        pushIfBadNum('rs_grupo_cabecera_metodo_margin_bottom_px', 0, 40, 'Espacio abajo del método: entre 0 y 40 px.');
         pushIfBadNum('rs_grupo_area_separator_margin_top_px', 0, 80, 'Margen superior del separador de área: entre 0 y 80 px.');
         pushIfBadNum('rs_grupo_area_separator_margin_bottom_px', 0, 80, 'Margen inferior del separador de área: entre 0 y 80 px.');
 

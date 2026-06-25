@@ -233,6 +233,12 @@ class ReportPdfLayoutService
         'grupo_cabecera_title_mode'        => 'grupo_analisis',
         'grupo_cabecera_show_tipo_muestra' => true,
         'grupo_cabecera_show_metodo'       => true,
+        'grupo_cabecera_title_margin_top_px'    => 0,
+        'grupo_cabecera_title_margin_bottom_px' => 6,
+        'grupo_cabecera_tipo_muestra_margin_top_px'    => 0,
+        'grupo_cabecera_tipo_muestra_margin_bottom_px' => 10,
+        'grupo_cabecera_metodo_margin_top_px'    => 0,
+        'grupo_cabecera_metodo_margin_bottom_px' => 10,
         'grupo_area_separator_enabled'     => false,
         'grupo_area_separator_color'       => '#DDDDDD',
         'grupo_area_separator_width_px'    => 1,
@@ -2218,6 +2224,24 @@ class ReportPdfLayoutService
                 return 'El margen inferior del separador de área debe estar entre 0 y 80 px.';
             }
         }
+        foreach ([
+            'grupo_cabecera_title_margin_top_px' => 'superior del nombre de análisis',
+            'grupo_cabecera_title_margin_bottom_px' => 'inferior del nombre de análisis',
+            'grupo_cabecera_tipo_muestra_margin_top_px' => 'superior del tipo de muestra',
+            'grupo_cabecera_tipo_muestra_margin_bottom_px' => 'inferior del tipo de muestra',
+            'grupo_cabecera_metodo_margin_top_px' => 'superior del método',
+            'grupo_cabecera_metodo_margin_bottom_px' => 'inferior del método',
+        ] as $pk => $label) {
+            if (array_key_exists($pk, $raw)) {
+                if (! is_numeric($raw[$pk])) {
+                    return 'Espacio ' . $label . ' en separador de análisis inválido.';
+                }
+                $pv = (int) $raw[$pk];
+                if ($pv < 0 || $pv > 40) {
+                    return 'El espacio ' . $label . ' en separador de análisis debe estar entre 0 y 40 px.';
+                }
+            }
+        }
 
         return null;
     }
@@ -3845,7 +3869,34 @@ class ReportPdfLayoutService
     }
 
     /**
-     * Márgenes de .group-title en cabecera de prueba (sección 3 de resultados).
+     * Espaciado vertical del separador de análisis (.report-pdf-grupo-cabecera).
+     *
+     * @param array<string, mixed> $layout
+     *
+     * @return array{
+     *   title_top: int, title_bottom: int,
+     *   tipo_top: int, tipo_bottom: int,
+     *   metodo_top: int, metodo_bottom: int
+     * }
+     */
+    public static function grupoCabeceraSpacingFromLayout(array $layout): array
+    {
+        $ps = is_array($layout['page_style'] ?? null) ? $layout['page_style'] : [];
+        $rs = self::normalizeResultsTableStyle($ps['results_table'] ?? []);
+        $clamp = static fn (string $key, int $fallback): int => max(0, min(40, (int) ($rs[$key] ?? $fallback)));
+
+        return [
+            'title_top'    => $clamp('grupo_cabecera_title_margin_top_px', 0),
+            'title_bottom' => $clamp('grupo_cabecera_title_margin_bottom_px', 6),
+            'tipo_top'     => $clamp('grupo_cabecera_tipo_muestra_margin_top_px', 0),
+            'tipo_bottom'  => $clamp('grupo_cabecera_tipo_muestra_margin_bottom_px', 10),
+            'metodo_top'   => $clamp('grupo_cabecera_metodo_margin_top_px', 0),
+            'metodo_bottom' => $clamp('grupo_cabecera_metodo_margin_bottom_px', 10),
+        ];
+    }
+
+    /**
+     * Márgenes de .group-title en cabecera de prueba.
      *
      * @param array<string, mixed> $layout
      */
@@ -3853,13 +3904,41 @@ class ReportPdfLayoutService
     {
         $ps = is_array($layout['page_style'] ?? null) ? $layout['page_style'] : [];
         $rs = self::normalizeResultsTableStyle($ps['results_table'] ?? []);
-        $marginBottom = max(0, min(20, (int) ($rs['cell_padding_v_px'] ?? 6)));
-        $marginTop    = 0;
-        if ($isFirstSubgrupoInArea && $isFirstGrupoInReport && ! self::grupoAreaSeparatorEnabled($layout)) {
+        $spacing = self::grupoCabeceraSpacingFromLayout($layout);
+        $marginTop = $spacing['title_top'];
+        if ($marginTop === 0 && $isFirstSubgrupoInArea && $isFirstGrupoInReport && ! self::grupoAreaSeparatorEnabled($layout)) {
             $marginTop = max(0, min(80, (int) ($rs['grupo_prueba_gap_px'] ?? 10)));
         }
 
-        return sprintf('margin-top:%dpx;margin-bottom:%dpx;', $marginTop, $marginBottom);
+        return sprintf('margin-top:%dpx !important;margin-bottom:%dpx !important;', $marginTop, $spacing['title_bottom']);
+    }
+
+    /**
+     * @param array<string, mixed> $layout
+     */
+    public static function grupoCabeceraTipoMuestraStyleAttr(array $layout): string
+    {
+        $spacing = self::grupoCabeceraSpacingFromLayout($layout);
+
+        return sprintf(
+            'font-size:9pt;color:#555;margin:%dpx 0 %dpx 0 !important;line-height:1.3;',
+            $spacing['tipo_top'],
+            $spacing['tipo_bottom']
+        );
+    }
+
+    /**
+     * @param array<string, mixed> $layout
+     */
+    public static function grupoCabeceraMetodoStyleAttr(array $layout): string
+    {
+        $spacing = self::grupoCabeceraSpacingFromLayout($layout);
+
+        return sprintf(
+            'font-size:9pt;color:#555;margin:%dpx 0 %dpx 0 !important;line-height:1.3;',
+            $spacing['metodo_top'],
+            $spacing['metodo_bottom']
+        );
     }
 
     /**
@@ -4506,6 +4585,12 @@ class ReportPdfLayoutService
             'grupo_cabecera_show_metodo'       => array_key_exists('grupo_cabecera_show_metodo', $s)
                 ? ! empty($s['grupo_cabecera_show_metodo'])
                 : (bool) $def['grupo_cabecera_show_metodo'],
+            'grupo_cabecera_title_margin_top_px'    => max(0, min(40, isset($s['grupo_cabecera_title_margin_top_px']) ? (int) $s['grupo_cabecera_title_margin_top_px'] : (int) ($def['grupo_cabecera_title_margin_top_px'] ?? 0))),
+            'grupo_cabecera_title_margin_bottom_px' => max(0, min(40, isset($s['grupo_cabecera_title_margin_bottom_px']) ? (int) $s['grupo_cabecera_title_margin_bottom_px'] : (int) ($def['grupo_cabecera_title_margin_bottom_px'] ?? 6))),
+            'grupo_cabecera_tipo_muestra_margin_top_px'    => max(0, min(40, isset($s['grupo_cabecera_tipo_muestra_margin_top_px']) ? (int) $s['grupo_cabecera_tipo_muestra_margin_top_px'] : (int) ($def['grupo_cabecera_tipo_muestra_margin_top_px'] ?? 0))),
+            'grupo_cabecera_tipo_muestra_margin_bottom_px' => max(0, min(40, isset($s['grupo_cabecera_tipo_muestra_margin_bottom_px']) ? (int) $s['grupo_cabecera_tipo_muestra_margin_bottom_px'] : (int) ($def['grupo_cabecera_tipo_muestra_margin_bottom_px'] ?? 10))),
+            'grupo_cabecera_metodo_margin_top_px'    => max(0, min(40, isset($s['grupo_cabecera_metodo_margin_top_px']) ? (int) $s['grupo_cabecera_metodo_margin_top_px'] : (int) ($def['grupo_cabecera_metodo_margin_top_px'] ?? 0))),
+            'grupo_cabecera_metodo_margin_bottom_px' => max(0, min(40, isset($s['grupo_cabecera_metodo_margin_bottom_px']) ? (int) $s['grupo_cabecera_metodo_margin_bottom_px'] : (int) ($def['grupo_cabecera_metodo_margin_bottom_px'] ?? 10))),
             'grupo_area_separator_enabled'     => array_key_exists('grupo_area_separator_enabled', $s)
                 ? ! empty($s['grupo_area_separator_enabled'])
                 : (bool) ($def['grupo_area_separator_enabled'] ?? false),

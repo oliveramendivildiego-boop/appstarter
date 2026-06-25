@@ -309,6 +309,13 @@ body {
     --pdf-results-grupo-gap: <?= (int) ($rs['grupo_prueba_gap_px'] ?? 10) ?>px;
     --pdf-grupo-area-separator-margin-top: <?= (int) ($rs['grupo_area_separator_margin_top_px'] ?? 10) ?>px;
     --pdf-grupo-area-separator-margin-bottom: <?= (int) ($rs['grupo_area_separator_margin_bottom_px'] ?? 10) ?>px;
+    --pdf-grupo-cabecera-title-margin-top: <?= (int) ($rs['grupo_cabecera_title_margin_top_px'] ?? 0) ?>px;
+    --pdf-grupo-cabecera-title-margin-bottom: <?= (int) ($rs['grupo_cabecera_title_margin_bottom_px'] ?? 6) ?>px;
+    --pdf-grupo-cabecera-title-first-margin-top: <?= (int) ($rs['grupo_prueba_gap_px'] ?? 10) ?>px;
+    --pdf-grupo-cabecera-tipo-margin-top: <?= (int) ($rs['grupo_cabecera_tipo_muestra_margin_top_px'] ?? 0) ?>px;
+    --pdf-grupo-cabecera-tipo-margin-bottom: <?= (int) ($rs['grupo_cabecera_tipo_muestra_margin_bottom_px'] ?? 10) ?>px;
+    --pdf-grupo-cabecera-metodo-margin-top: <?= (int) ($rs['grupo_cabecera_metodo_margin_top_px'] ?? 0) ?>px;
+    --pdf-grupo-cabecera-metodo-margin-bottom: <?= (int) ($rs['grupo_cabecera_metodo_margin_bottom_px'] ?? 10) ?>px;
     --pdf-results-matrix-align: <?= esc((string) ($rs['matrix_text_align'] ?? 'center')) ?>;
     --pdf-results-matrix-vertical-align: <?= esc((string) ($rs['matrix_vertical_align'] ?? 'middle')) ?>;
     --pdf-results-matrix-color: <?= esc((string) ($rs['matrix_text_color'] ?? $rs['body_text_color'])) ?>;
@@ -484,11 +491,14 @@ table.results.pdf-notes-table td.pdf-notes-cell {
     padding-top: <?= (int) ($rs['subgrupo_prueba_gap_px'] ?? 18) ?>px !important;
 }
 .report-pdf-grupo-cabecera .group-title {
-    margin-top: 0 !important;
-    margin-bottom: <?= (int) ($rs['cell_padding_v_px'] ?? 6) ?>px !important;
+    page-break-after: avoid;
+    break-after: avoid;
 }
-.report-pdf-grupo-prueba-first .report-pdf-subgrupo-block:not(.report-pdf-subgrupo-prueba) .report-pdf-grupo-cabecera .group-title {
-    margin-top: <?= (int) ($rs['grupo_prueba_gap_px'] ?? 10) ?>px !important;
+.report-pdf-grupo-cabecera .report-tipo-muestra,
+.report-pdf-grupo-cabecera .report-metodo-prueba {
+    font-size: 9pt;
+    color: #555;
+    line-height: 1.3;
 }
 <?= view('registers/partials/report_layout_engine_print_styles', [
     'dompdf_download_only' => $embedStylesheetForPdf,
