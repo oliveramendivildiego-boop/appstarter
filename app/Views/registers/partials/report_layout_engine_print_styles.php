@@ -314,6 +314,16 @@ body.pdf-layout-engine.pdf-pagination-area-soft-fit-signature.pdf-dompdf-downloa
     page-break-before: always !important;
     break-before: page !important;
 }
+body.pdf-layout-engine.pdf-pagination-area-hard-page-break.pdf-dompdf-download .report-pdf-grupo-area-separator,
+body.pdf-layout-engine.pdf-pagination-area-soft-fit-signature.pdf-dompdf-download .report-pdf-grupo-area-separator {
+    page-break-after: avoid !important;
+    break-after: avoid-page !important;
+}
+body.pdf-layout-engine.pdf-pagination-area-hard-page-break.pdf-dompdf-download .report-pdf-grupo-area-separator + .report-pdf-subgrupo-block,
+body.pdf-layout-engine.pdf-pagination-area-soft-fit-signature.pdf-dompdf-download .report-pdf-grupo-area-separator + .report-pdf-subgrupo-block {
+    page-break-before: avoid !important;
+    break-before: avoid-page !important;
+}
 body.pdf-layout-engine.pdf-pagination-area-hard-page-break.pdf-dompdf-download .report-segment-table-wrap.report-segment-force-break-before,
 body.pdf-layout-engine.pdf-pagination-area-hard-page-break.pdf-dompdf-download .report-refs-matrix-wrap.report-segment-force-break-before,
 body.pdf-layout-engine.pdf-pagination-area-soft-fit-signature.pdf-dompdf-download .report-segment-table-wrap.report-segment-force-break-before,
@@ -325,6 +335,16 @@ body.pdf-layout-engine.pdf-pagination-area-hard-page-break.pdf-dompdf-download .
 body.pdf-layout-engine.pdf-pagination-area-soft-fit-signature.pdf-dompdf-download .report-pdf-subgrupo-block {
     page-break-inside: avoid !important;
     break-inside: avoid-page !important;
+}
+body.pdf-layout-engine.pdf-pagination-area-hard-page-break.pdf-dompdf-download .report-pdf-subgrupo-block.report-cultivo-area-page-start,
+body.pdf-layout-engine.pdf-pagination-area-soft-fit-signature.pdf-dompdf-download .report-pdf-subgrupo-block.report-cultivo-area-page-start {
+    page-break-inside: auto !important;
+    break-inside: auto !important;
+}
+body.pdf-layout-engine.pdf-pagination-area-hard-page-break.pdf-dompdf-download .report-pdf-subgrupo-block.report-cultivo-area-page-start > .report-segment-table-wrap:not(.report-segment-allow-split),
+body.pdf-layout-engine.pdf-pagination-area-soft-fit-signature.pdf-dompdf-download .report-pdf-subgrupo-block.report-cultivo-area-page-start > .report-cultivo-seccion .report-segment-table-wrap:not(.report-segment-allow-split) {
+    page-break-inside: auto !important;
+    break-inside: auto !important;
 }
 body.pdf-layout-engine.pdf-pagination-area-hard-page-break.pdf-dompdf-download .report-pdf-subgrupo-block.report-subgrupo-keep-intact,
 body.pdf-layout-engine.pdf-pagination-area-soft-fit-signature.pdf-dompdf-download .report-pdf-subgrupo-block.report-subgrupo-keep-intact {

@@ -258,9 +258,23 @@ foreach ($gruposList as $padre => $items) {
 
     }
 
+    $grupoSoloCultivoMatriz = false;
+    if ($itemsList !== []) {
+        $grupoSoloCultivoMatriz = true;
+        foreach ($itemsList as $grupoItem) {
+            $grupoItemObj = is_array($grupoItem) ? (object) $grupoItem : $grupoItem;
+            if (empty($grupoItemObj->es_cultivo_matriz)) {
+                $grupoSoloCultivoMatriz = false;
+
+                break;
+            }
+        }
+    }
+
     $deferFirmaToTailBundle = $useLayoutApplier
         && $hasFirmaEnGrupo
-        && $layoutApplier->areaUsesSignatureTailBundle($grupoPruebaIdx);
+        && $layoutApplier->areaUsesSignatureTailBundle($grupoPruebaIdx)
+        && ! $grupoSoloCultivoMatriz;
 
     echo view('registers/analisis/partials/compleja_tabla_reporte_grupo', [
 
@@ -297,6 +311,8 @@ foreach ($gruposList as $padre => $items) {
             'lab_config'        => $lab_config ?? [],
             'lab_firmas_style'  => $lfStyle,
         ] : null,
+
+        'grupo_area_inter_break'          => $useInterPageBreak,
 
     ]);
 

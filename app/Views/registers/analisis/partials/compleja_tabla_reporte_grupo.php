@@ -98,6 +98,7 @@ foreach ($ordenPriaKeys as $subIdx => $priaKey) :
             'layout_block_index'              => $layoutBlockIndex,
             'is_last_subgrupo'                => $isLastSubgrupo,
             'area_firma_bundle'               => $isLastSubgrupo ? ($area_firma_bundle ?? null) : null,
+            'grupo_area_inter_break'          => ! empty($grupo_area_inter_break) && $layoutBlockIndex === 0,
         ]);
         $layoutBlockIndex++;
         continue;

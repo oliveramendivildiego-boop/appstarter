@@ -385,6 +385,9 @@ final class LayoutPlanApplier
     private function areaUsesSplitSegments(AreaNode $area): bool
     {
         foreach ($area->analysisBlocks as $block) {
+            if ($block->isCultivoMatrix) {
+                continue;
+            }
             $placement = $this->plan->findPlacement($block->id);
             if ($placement === null) {
                 continue;

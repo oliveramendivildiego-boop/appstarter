@@ -181,10 +181,67 @@ $subgrupoCultivoStyle = $subIdxCultivo > 0
     : '';
 $blockIdCultivo = \App\Services\ReportLayout\ReportTreeBuilder::analysisBlockId($layoutAreaIndexCultivo, $layoutBlockIndexCultivo);
 $isLastSubgrupoCultivo = ! empty($is_last_subgrupo);
+$cultivoFirmaEnTailBundle = is_array($area_firma_bundle ?? null) && ($area_firma_bundle['firma'] ?? []) !== [];
+$cultivoTotalFilas = 0;
+foreach ($secciones as $secRowCount) {
+    $grillaCount = is_array($secRowCount['grilla_reporte']['filas'] ?? null)
+        ? count($secRowCount['grilla_reporte']['filas'])
+        : 0;
+    if ($grillaCount > 0) {
+        $cultivoTotalFilas += $grillaCount;
+
+        continue;
+    }
+    $columnasDetalleCount = is_array($secRowCount['columnas_detalle'] ?? null) ? $secRowCount['columnas_detalle'] : [];
+    foreach ($columnasDetalleCount as $colDetCount) {
+        $valoresCount = is_array($colDetCount['valores'] ?? null) ? count($colDetCount['valores']) : 0;
+        $cultivoTotalFilas += $valoresCount;
+    }
+}
+$cultivoKeepIntact = $usePdfChrome
+    && $cultivoTotalFilas > 0
+    && $cultivoTotalFilas <= \App\Services\ReportPdfLayoutService::subgrupoKeepIntactMaxRows()
+    && (
+        $layoutPlanApplier === null
+        || \App\Services\ReportLayout\ReportPaginationMode::usesSubgrupoKeepIntactInHtml(
+            $layoutPlanApplier->mode()
+        )
+    );
+if ($cultivoKeepIntact) {
+    $subgrupoCultivoClass .= ' report-subgrupo-keep-intact';
+}
 $subgrupoTailBundleAtStart = $usePdfChrome
     && $layoutPlanApplier !== null
     && $isLastSubgrupoCultivo
+    && $cultivoFirmaEnTailBundle
     && $layoutPlanApplier->shouldOpenSignatureTailBundleBeforeSubgrupo($layoutAreaIndexCultivo, $layoutBlockIndexCultivo);
+$layoutSectionIndexCultivo = 0;
+$cultivoFirmaRendered = false;
+$renderCultivoFirmaDentroDelBundle = static function () use (
+    &$cultivoFirmaRendered,
+    $usePdfChrome,
+    $isLastSubgrupoCultivo,
+    $layoutPlanApplier,
+    $area_firma_bundle,
+): void {
+    if ($cultivoFirmaRendered || ! $usePdfChrome || ! $isLastSubgrupoCultivo) {
+        return;
+    }
+    $firmaBundle = is_array($area_firma_bundle ?? null) ? $area_firma_bundle : null;
+    if ($firmaBundle === null || ($firmaBundle['firma'] ?? []) === []) {
+        return;
+    }
+    if ($layoutPlanApplier !== null && ! $layoutPlanApplier->isSignatureTailBundleOpen()) {
+        echo $layoutPlanApplier->beginSignatureTailBundleMarkup();
+    }
+    echo view('registers/partials/report_lab_firma_grupo_inline', $firmaBundle);
+    $cultivoFirmaRendered = true;
+};
+$cerrarCultivoFirmaBundle = static function () use ($layoutPlanApplier): void {
+    if ($layoutPlanApplier !== null && $layoutPlanApplier->isSignatureTailBundleOpen()) {
+        echo $layoutPlanApplier->endSignatureTailBundleMarkup();
+    }
+};
 ?>
 <?php if ($variant === 'browser_print' && $layoutPlanApplier !== null && $layoutPlanApplier->browserPrintPageBreakBeforeAnalysisBlock($layoutAreaIndexCultivo, $layoutBlockIndexCultivo)): ?>
 <?= view('registers/partials/report_browser_print_plan_page_break', [
@@ -223,6 +280,22 @@ $subgrupoTailBundleAtStart = $usePdfChrome
 <?php endif; ?>
 
 <?php foreach ($secciones as $sec):
+    $tailSplitSec = ($layoutPlanApplier && $cultivoFirmaEnTailBundle)
+        ? $layoutPlanApplier->sectionSignatureTailSplit($layoutAreaIndexCultivo, $layoutBlockIndexCultivo, $layoutSectionIndexCultivo)
+        : null;
+    $tailSplitAtSec = is_array($tailSplitSec) ? (int) ($tailSplitSec['splitAt'] ?? 0) : null;
+    $tailFullInTailSec = is_array($tailSplitSec) && ! empty($tailSplitSec['fullInTail']);
+    $segmentWrapClassSec = '';
+    if ($usePdfChrome && $layoutPlanApplier) {
+        $segmentWrapClassSec = trim($layoutPlanApplier->segmentClass($layoutAreaIndexCultivo, $layoutBlockIndexCultivo, $layoutSectionIndexCultivo));
+    }
+    if ($tailFullInTailSec) {
+        $segmentWrapClassSec = trim(preg_replace('/\breport-segment-allow-split\b/', '', $segmentWrapClassSec));
+        $segmentWrapClassSec = trim($segmentWrapClassSec . ' report-segment-tail-with-signature');
+    }
+    $segmentWrapDivClass = trim('report-segment-table-wrap' . ($segmentWrapClassSec !== '' ? ' ' . $segmentWrapClassSec : ''));
+    $segmentWrapOpenAttrSec = ' class="' . esc($segmentWrapDivClass, 'attr') . '"' . $segmentWrapStyleAttr;
+
     $grillaReporte = ($esPersonalizadoMatriz && is_array($sec['grilla_reporte'] ?? null))
         ? $sec['grilla_reporte']
         : null;
@@ -230,6 +303,8 @@ $subgrupoTailBundleAtStart = $usePdfChrome
         $titulosFilasGrilla = is_array($grillaReporte['titulos_filas'] ?? null) ? $grillaReporte['titulos_filas'] : [];
         $filasGrilla = is_array($grillaReporte['filas'] ?? null) ? $grillaReporte['filas'] : [];
         if ($titulosFilasGrilla === [] && $filasGrilla === []) {
+            $layoutSectionIndexCultivo++;
+
             continue;
         }
         $reporteEstiloGrilla = is_array($sec['reporte_estilo'] ?? null) ? $sec['reporte_estilo'] : null;
@@ -243,9 +318,37 @@ $subgrupoTailBundleAtStart = $usePdfChrome
             ? \App\Models\LabotestModel::buildPersonalizadoReporteTdBorderStyleAttr($reporteEstiloGrilla)
             : '';
         $tableGrillaStyleAttr = $tableStyleGrilla !== '' ? ' style="' . esc($tableStyleGrilla, 'attr') . '"' : '';
+        $signatureTailBundleOpenSec = '';
+        if ($usePdfChrome && $layoutPlanApplier !== null && $cultivoFirmaEnTailBundle && $tailFullInTailSec && ! $subgrupoTailBundleAtStart) {
+            $signatureTailBundleOpenSec = $layoutPlanApplier->beginSignatureTailBundleMarkup();
+        }
+        $needsTailSplitSec = $tailSplitAtSec !== null && $tailSplitAtSec > 0 && count($filasGrilla) > $tailSplitAtSec;
+        $renderGrillaBodyRows = static function (array $filas, int $startAt = 0, ?int $stopBefore = null) use ($renderCultivoCeldaGrilla, $tdBorderGrilla): void {
+            $rowIdx = 0;
+            foreach ($filas as $filaCeldas) {
+                if ($rowIdx < $startAt) {
+                    $rowIdx++;
+
+                    continue;
+                }
+                if ($stopBefore !== null && $rowIdx >= $stopBefore) {
+                    break;
+                }
+                echo '<tr>';
+                foreach ($filaCeldas as $celdaGrilla) {
+                    if (! is_array($celdaGrilla)) {
+                        continue;
+                    }
+                    $renderCultivoCeldaGrilla($celdaGrilla, $tdBorderGrilla);
+                }
+                echo '</tr>';
+                $rowIdx++;
+            }
+        };
         ?>
 <div class="report-cultivo-seccion mb-3 report-cultivo-personalizado">
-    <div class="report-segment-table-wrap"<?= $segmentWrapStyleAttr ?>>
+    <?= $signatureTailBundleOpenSec ?>
+    <div<?= $segmentWrapOpenAttrSec ?>>
         <table class="<?= esc($mainTableClass, 'attr') ?> report-cultivo-grilla-personalizado w-100"<?= $tableGrillaStyleAttr ?>>
             <?php if ($titulosFilasGrilla !== []): ?>
             <thead>
@@ -264,28 +367,47 @@ $subgrupoTailBundleAtStart = $usePdfChrome
             <?php endif; ?>
             <?php if ($filasGrilla !== []): ?>
             <tbody>
-                <?php foreach ($filasGrilla as $filaCeldas): ?>
-                <tr>
-                    <?php foreach ($filaCeldas as $celdaGrilla):
-                        if (! is_array($celdaGrilla)) {
-                            continue;
-                        }
-                        $renderCultivoCeldaGrilla($celdaGrilla, $tdBorderGrilla);
-                    endforeach; ?>
-                </tr>
-                <?php endforeach; ?>
+                <?php $renderGrillaBodyRows($filasGrilla, 0, $needsTailSplitSec ? $tailSplitAtSec : null); ?>
             </tbody>
             <?php endif; ?>
         </table>
     </div>
+    <?php if ($needsTailSplitSec): ?>
+    <?php
+        if ($cultivoFirmaEnTailBundle && $usePdfChrome && $layoutPlanApplier !== null && $signatureTailBundleOpenSec === '' && ! $layoutPlanApplier->isSignatureTailBundleOpen()) {
+            echo $layoutPlanApplier->beginSignatureTailBundleMarkup();
+        }
+        $tailWrapClassSec = trim('report-segment-table-wrap report-segment-tail-with-signature report-signature-tail-continuation' . ($segmentWrapClassSec !== '' ? ' ' . preg_replace('/\breport-segment-allow-split\b/', '', $segmentWrapClassSec) : ''));
+    ?>
+    <div class="<?= esc($tailWrapClassSec, 'attr') ?>"<?= $segmentWrapStyleAttr ?>>
+        <table class="<?= esc($mainTableClass, 'attr') ?> report-cultivo-grilla-personalizado report-segment-thead-continuation w-100"<?= $tableGrillaStyleAttr ?>>
+            <tbody>
+                <?php $renderGrillaBodyRows($filasGrilla, $tailSplitAtSec); ?>
+            </tbody>
+        </table>
+    </div>
+    <?php
+        $renderCultivoFirmaDentroDelBundle();
+        $cerrarCultivoFirmaBundle();
+    ?>
+    <?php else: ?>
+    <?php
+        $renderCultivoFirmaDentroDelBundle();
+        $cerrarCultivoFirmaBundle();
+    ?>
+    <?php endif; ?>
 </div>
         <?php
+        $layoutSectionIndexCultivo++;
+
         continue;
     }
 
     $columnasDetalle = is_array($sec['columnas_detalle'] ?? null) ? $sec['columnas_detalle'] : [];
     $titulosBanda = is_array($sec['titulos_banda'] ?? null) ? $sec['titulos_banda'] : [];
     if ($columnasDetalle === []) {
+        $layoutSectionIndexCultivo++;
+
         continue;
     }
     $numColsVisible = count($columnasDetalle);
@@ -340,7 +462,7 @@ $subgrupoTailBundleAtStart = $usePdfChrome
     $secClassPersonalizado = $esPersonalizadoMatriz ? ' report-cultivo-personalizado' : '';
 ?>
 <div class="report-cultivo-seccion mb-3<?= $secClassAlineacion ?><?= $secClassPersonalizado ?>">
-    <div class="report-segment-table-wrap"<?= $segmentWrapStyleAttr ?>>
+    <div<?= $segmentWrapOpenAttrSec ?>>
         <?php if ($tieneBanda): ?>
         <div class="report-cultivo-banda w-100">
             <table class="<?= esc($mainTableClass, 'attr') ?>"<?= $mergeStyleAttr($tableFixedStyle !== '' ? trim(str_replace([' style="', '"'], '', $tableFixedStyle)) : '', $tableStylePersonalizado) ?>>
@@ -457,15 +579,13 @@ $subgrupoTailBundleAtStart = $usePdfChrome
         <?php endif; ?>
     </div>
 </div>
+<?php $layoutSectionIndexCultivo++; ?>
 <?php endforeach; ?>
 
-<?php if ($usePdfChrome && $isLastSubgrupoCultivo && $layoutPlanApplier !== null && $layoutPlanApplier->isSignatureTailBundleOpen()): ?>
+<?php if ($usePdfChrome && $isLastSubgrupoCultivo): ?>
     <?php
-    $firmaBundle = is_array($area_firma_bundle ?? null) ? $area_firma_bundle : null;
-    if ($firmaBundle !== null && ($firmaBundle['firma'] ?? []) !== []):
-        echo view('registers/partials/report_lab_firma_grupo_inline', $firmaBundle);
-    endif;
-    echo $layoutPlanApplier->endSignatureTailBundleMarkup();
+    $renderCultivoFirmaDentroDelBundle();
+    $cerrarCultivoFirmaBundle();
     ?>
 <?php endif; ?>
 

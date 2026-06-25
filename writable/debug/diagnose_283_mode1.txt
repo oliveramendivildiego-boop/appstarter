@@ -1,0 +1,93 @@
+DIAGNÓSTICO PIPELINE LAYOUT — registro #283 MODE 1
+========================================================================================
+
+1) ReportTreeBuilder
+----------------------------------------------------------------------------------------
+  AREA 0 «HEMATOLOGIA» — 1 bloque(s), firma=sí
+    area-0-block-0 | «HEMOGRAMA + PLAQUETAS» | sub=N | tablas=3 filas=16
+  AREA 1 «COAGULOGRAMA» — 2 bloque(s), firma=sí
+    area-1-block-0 | «Tiempo de Protrombina» | sub=N | tablas=1 filas=3
+    area-1-block-1 | «Tiempo de Tromboplastina (KPTT)» | sub=Y | tablas=1 filas=1
+  AREA 2 «QUIMICA CLÍNICA» — 3 bloque(s), firma=sí
+    area-2-block-0 | «Glucosa» | sub=N | tablas=1 filas=1
+    area-2-block-1 | «Urea» | sub=Y | tablas=1 filas=1
+    area-2-block-2 | «Creatinina» | sub=Y | tablas=1 filas=1
+  AREA 3 «MICROBIOLOGIA» — 1 bloque(s), firma=sí
+    area-3-block-0 | «CRIBADO DE SAMR Y PSEUDOMONAS» | sub=N | tablas=1 filas=7
+
+2) ReportNodeMeasurer
+----------------------------------------------------------------------------------------
+  contentStart=30.2mm maxContent=250.4mm pageBottom=280.6mm row=4.69mm blockFactor=1.26
+    area-0-block-0 h=166.9mm (hdr=12.0) [s0=48.9, s1=38.9, s2=33.8]
+    area-1-block-0 h=52.5mm (hdr=18.7) [s0=22.4]
+    area-1-block-1 h=38.4mm (hdr=18.7) [s0=12.3]
+    area-2-block-0 h=31.2mm (hdr=12.0) [s0=12.3]
+    area-2-block-1 h=29.9mm (hdr=12.0) [s0=12.3]
+    area-2-block-2 h=21.4mm (hdr=5.2) [s0=12.3]
+    area-3-block-0 h=77.9mm (hdr=18.7) [s0=42.5]
+
+3) ReportLayoutEngine → LayoutPlan
+----------------------------------------------------------------------------------------
+  totalPages=3
+    area-0-block-0 | type=analysis | planPage=1 | y=30.2mm h=166.9mm | (sin salto)
+    area-0-signature | type=signature | planPage=1 | y=197.1mm h=47.6mm | (sin salto)
+    area-1-block-0 | type=analysis | planPage=2 | y=38.9mm h=52.5mm | (sin salto)
+    area-1-block-1 | type=analysis | planPage=2 | y=91.4mm h=38.4mm | (sin salto)
+    area-1-signature | type=signature | planPage=2 | y=129.8mm h=47.6mm | (sin salto)
+    area-2-block-0 | type=analysis | planPage=2 | y=186.2mm h=31.2mm | (sin salto)
+    area-2-block-1 | type=analysis | planPage=2 | y=217.4mm h=29.9mm | (sin salto)
+    area-2-block-2 | type=analysis | planPage=2 | y=247.3mm h=21.4mm | (sin salto)
+    area-2-signature | type=signature | planPage=3 | y=30.2mm h=47.6mm | (sin salto)
+    area-3-block-0 | type=analysis | planPage=3 | y=86.5mm h=77.9mm | (sin salto)
+    area-3-signature | type=signature | planPage=3 | y=164.4mm h=47.6mm | (sin salto)
+  Saltos plan: ninguno
+
+4) LayoutPlanApplier → HTML
+----------------------------------------------------------------------------------------
+  OK — marcadores PHP en PDF y PRINT coinciden con el plan.
+
+5) CSS en HTML renderizado
+----------------------------------------------------------------------------------------
+  PDF:
+    - body=pdf-layout-engine&#x20;pdf-pagination-flow-continuous-signature-last-page&#x20;pdf-dompdf-download
+  PRINT:
+    - body=report-browser-print pdf-layout-engine&#x20;pdf-pagination-flow-continuous-signature-last-page
+
+6) Simulación acumulativa (cursor mm) vs pageBottom
+----------------------------------------------------------------------------------------
+    area-0-block-0 | simPage=1 y=30.2→197.1 h=166.9 | planPage=1 | overflow=no
+    area-0-signature | simPage=1 y=197.1→244.8 h=47.6 | planPage=1 | overflow=no
+    area-1-block-0 | simPage=1 y=244.8→297.2 h=52.5 | planPage=2 | overflow=SÍ ← sim desborda
+    area-1-block-1 | simPage=2 y=46.9→85.3 h=38.4 | planPage=2 | overflow=no
+    area-1-signature | simPage=2 y=85.3→132.9 h=47.6 | planPage=2 | overflow=no
+    area-2-block-0 | simPage=2 y=132.9→164.1 h=31.2 | planPage=2 | overflow=no
+    area-2-block-1 | simPage=2 y=164.1→194.0 h=29.9 | planPage=2 | overflow=no
+    area-2-block-2 | simPage=2 y=194.0→215.4 h=21.4 | planPage=2 | overflow=no
+    area-2-signature | simPage=2 y=215.4→263.0 h=47.6 | planPage=3 | overflow=no
+    area-3-block-0 | simPage=2 y=263.0→340.9 h=77.9 | planPage=3 | overflow=SÍ ← sim desborda
+    area-3-signature | simPage=3 y=90.5→138.1 h=47.6 | planPage=3 | overflow=no
+
+7) Dompdf page_count vs plan (render PDF real)
+----------------------------------------------------------------------------------------
+  dompdf pages=3 | plan pages=3 | Δ=+0
+  Nota: Dompdf no expone frames por bloque en este HTML (árbol=1 nodo); page_count es fiable.
+
+8) Estimación altura real (plan h × 1.30) — umbral Dompdf aproximado
+----------------------------------------------------------------------------------------
+    area-0-block-0 | estH=172.2mm simPage=1 planPage=1 | ok
+    area-1-block-0 | estH=54.1mm simPage=1 planPage=2 | Δ página vs plan
+    area-1-block-1 | estH=39.6mm simPage=1 planPage=2 | Δ página vs plan
+    area-2-block-0 | estH=32.2mm simPage=2 planPage=2 | ok
+    area-2-block-1 | estH=30.8mm simPage=2 planPage=2 | ok
+    area-2-block-2 | estH=22.0mm simPage=2 planPage=2 | ok
+    area-3-block-0 | estH=80.3mm simPage=2 planPage=3 | Δ página vs plan
+
+9) PRIMERA DIVERGENCIA — veredicto por componente
+----------------------------------------------------------------------------------------
+  ReportTreeBuilder ........ OK (16 bloques, 3 áreas, índices alineados con HTML)
+  LayoutPlanApplier ........ OK — clases force-break en PDF y PRINT = plan
+  → Sin divergencia plan/Dompdf page_count; revisar impresión Chrome (@media print).
+
+Saltos planificados: 
+
+Archivos: writable/debug/diagnose_283_mode1.txt

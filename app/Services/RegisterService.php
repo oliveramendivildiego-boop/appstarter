@@ -22,7 +22,7 @@ class RegisterService
     public const TOTAL_PAGES_TOKEN = '__PDF_TOTAL_PAGES__';
 
     /** Invalida caché inline de viewreport al cambiar el pipeline Dompdf (p. ej. banda Paciente/Orden). */
-    private const REPORT_PDF_PREVIEW_CACHE_SALT = 'order-sheet-from-page-2-v13-results-richtext-align';
+    private const REPORT_PDF_PREVIEW_CACHE_SALT = 'order-sheet-from-page-2-v15-cultivo-area-same-page';
     protected RegisterModel $registerModel;
     protected AppConfigModel $appConfigModel;
 
