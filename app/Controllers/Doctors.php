@@ -155,7 +155,9 @@ class Doctors extends SecureArea
 
         $result = $this->doctorModel->saveDoctor($doctor_data, $id);
         if ($result !== false) {
-            \App\Models\AuditoriaModel::log('doctors', $id === null ? 'crear' : 'actualizar', (string) (int) $result);
+            $savedDoctorId = (int) $result;
+            (new \App\Services\RegisterService())->clearReportPdfPreviewCacheForDoctor($savedDoctorId);
+            \App\Models\AuditoriaModel::log('doctors', $id === null ? 'crear' : 'actualizar', (string) $savedDoctorId);
             $msg = $id === null
                 ? lang('Doctors.doctors_successful_adding') . ' ' . $doctor_data['name']
                 : lang('Doctors.doctors_successful_updating') . ' ' . $doctor_data['name'];

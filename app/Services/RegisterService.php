@@ -2227,11 +2227,17 @@ class RegisterService
         $master = $this->registerModel->getInforeport($registroId);
         $paciente = $master ? $this->registerModel->getInfoPaciente($master->person_id) : null;
         $doctorId = $master ? (int) ($master->doctor_id ?? 0) : 0;
-        $doctor   = ($doctorId > 0) ? $this->registerModel->getInfoDoctor($doctorId) : null;
+        $doctor   = null;
+        if ($doctorId > 0) {
+            $doctorRow = model(\App\Models\DoctorModel::class)->getInfo($doctorId);
+            if (is_object($doctorRow) && (int) ($doctorRow->doctor_id ?? 0) > 0) {
+                $doctor = $doctorRow;
+            }
+        }
         $analisis = $this->registerModel->getInfoAnalisis($registroId);
 
         $paciente = $this->preparePacienteParaReporte($paciente);
-        if ($doctor === null || $doctorId < 1) {
+        if ($doctorId < 1 || $doctor === null) {
             $cfg     = new ConfigService();
             $labelSd = trim((string) ($cfg->getAllAsArray()['label_sin_doctor'] ?? ''));
             if ($labelSd === '') {
@@ -2788,6 +2794,7 @@ class RegisterService
             $parts[] = trim((string) ($row['name'] ?? '')) . '=' . trim((string) ($row['regvalues'] ?? ''));
         }
 
+        $parts[] = $this->reportPdfDoctorFingerprintPart($reportData['doctor'] ?? null);
         $parts[] = $this->hashPdfLayoutForFingerprint($pdfLayout);
         $parts[] = self::REPORT_PDF_PREVIEW_CACHE_SALT;
 
@@ -2810,10 +2817,44 @@ class RegisterService
             $parts[] = trim((string) ($row['name'] ?? '')) . '=' . trim((string) ($row['regvalues'] ?? ''));
         }
 
+        $master = $this->registerModel->getInforeport($registroId);
+        $doctorId = $master ? (int) ($master->doctor_id ?? 0) : 0;
+        $doctor = ($doctorId > 0) ? model(\App\Models\DoctorModel::class)->getInfo($doctorId) : null;
+        $parts[] = $this->reportPdfDoctorFingerprintPart($doctor);
+
         $parts[] = $this->hashPdfLayoutForFingerprint($pdfLayout);
         $parts[] = self::REPORT_PDF_PREVIEW_CACHE_SALT;
 
         return hash('sha256', implode("\n", $parts));
+    }
+
+    /**
+     * Fragmento de huella con preferencias del doctor que afectan el render del reporte.
+     *
+     * @param object|array<string,mixed>|null $doctor
+     */
+    private function reportPdfDoctorFingerprintPart($doctor): string
+    {
+        helper('registro');
+        $labConfig = $this->getLabConfig();
+        $doctorId = 0;
+        $displayMode = 'clinico';
+
+        if (is_object($doctor)) {
+            $doctorId = (int) ($doctor->doctor_id ?? 0);
+            $displayMode = trim((string) ($doctor->display_mode ?? 'clinico'));
+        } elseif (is_array($doctor)) {
+            $doctorId = (int) ($doctor['doctor_id'] ?? 0);
+            $displayMode = trim((string) ($doctor['display_mode'] ?? 'clinico'));
+        }
+
+        if ($displayMode === '') {
+            $displayMode = 'clinico';
+        }
+
+        $showInterp = registro_doctor_mostrar_interpretacion_col($doctor, $labConfig) ? '1' : '0';
+
+        return 'doctor_id=' . $doctorId . '|interp=' . $showInterp . '|mode=' . $displayMode;
     }
 
     /**
@@ -2906,6 +2947,23 @@ class RegisterService
         }
         if (is_file($path . '.meta')) {
             @unlink($path . '.meta');
+        }
+    }
+
+    public function clearReportPdfPreviewCacheForDoctor(int $doctorId): void
+    {
+        if ($doctorId < 1) {
+            return;
+        }
+
+        $rows = $this->registerModel->db->table('registro')
+            ->select('registro_id')
+            ->where('doctor_id', $doctorId)
+            ->get()
+            ->getResultArray();
+
+        foreach ($rows as $row) {
+            $this->clearReportPdfPreviewCache((int) ($row['registro_id'] ?? 0));
         }
     }
 

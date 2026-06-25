@@ -632,6 +632,82 @@ if (! function_exists('registro_interpretacion_referencial_etiqueta_viewreport')
     }
 }
 
+if (! function_exists('registro_doctor_es_sintetico_sin_doctor')) {
+    function registro_doctor_es_sintetico_sin_doctor($doctor): bool
+    {
+        if (empty($doctor)) {
+            return true;
+        }
+        if (is_object($doctor)) {
+            return property_exists($doctor, 'report_sin_prefijo_medico') && ! empty($doctor->report_sin_prefijo_medico);
+        }
+        if (is_array($doctor)) {
+            return ! empty($doctor['report_sin_prefijo_medico']);
+        }
+
+        return false;
+    }
+}
+
+if (! function_exists('registro_doctor_mostrar_interpretacion_col')) {
+    /**
+     * Indica si el reporte debe incluir la columna Interpretación para el doctor del registro.
+     *
+     * @param object|array<string,mixed>|null $doctor
+     * @param array<string, mixed>            $labConfig
+     */
+    function registro_doctor_mostrar_interpretacion_col($doctor, array $labConfig = []): bool
+    {
+        if (registro_doctor_es_sintetico_sin_doctor($doctor)) {
+            if (array_key_exists('sin_doctor_show_interpretation', $labConfig)) {
+                return ($labConfig['sin_doctor_show_interpretation'] === '1');
+            }
+
+            return (($labConfig['sin_doctor_show_interpretation'] ?? '1') === '1');
+        }
+
+        $doctorId = 0;
+        $interpretacionEnabled = null;
+
+        if (! empty($doctor)) {
+            if (is_object($doctor)) {
+                $doctorId = (int) ($doctor->doctor_id ?? 0);
+                if (property_exists($doctor, 'interpretacion_enabled')) {
+                    $interpretacionEnabled = (int) $doctor->interpretacion_enabled;
+                }
+            } elseif (is_array($doctor)) {
+                $doctorId = (int) ($doctor['doctor_id'] ?? 0);
+                if (array_key_exists('interpretacion_enabled', $doctor)) {
+                    $interpretacionEnabled = (int) $doctor['interpretacion_enabled'];
+                }
+            }
+        }
+
+        if ($doctorId > 0) {
+            if ($interpretacionEnabled !== null) {
+                return $interpretacionEnabled === 1;
+            }
+
+            try {
+                $row = model(\App\Models\DoctorModel::class)->getInfo($doctorId);
+                if (is_object($row) && property_exists($row, 'interpretacion_enabled')) {
+                    return (int) $row->interpretacion_enabled === 1;
+                }
+            } catch (\Throwable $e) {
+                // ignore
+            }
+
+            return true;
+        }
+
+        if (array_key_exists('sin_doctor_show_interpretation', $labConfig)) {
+            return ($labConfig['sin_doctor_show_interpretation'] === '1');
+        }
+
+        return (($labConfig['sin_doctor_show_interpretation'] ?? '1') === '1');
+    }
+}
+
 if (! function_exists('registro_interpretacion_referencial_clase_resultado')) {
     /**
      * Clase CSS del resultado en viewreport cuando la columna Interpretación está activa.

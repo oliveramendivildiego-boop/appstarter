@@ -52,26 +52,9 @@ $resultsColAlignClass = static function (string $column, bool $isHeader) use ($p
 $ocultarTheadResults = \App\Services\ReportPdfLayoutService::grupoCabeceraOcultarTheadResultsTabla($pdfLayout);
 $labConfigLocal = is_array($lab_config ?? null) ? $lab_config : [];
 $showInterpretacionCol = false;
-// Interpretación: preferencia por doctor si está definida, si no usar configuración global del laboratorio
 if (in_array($variant, ['screen_pdf', 'pdf', 'browser_print'], true)) {
-    $doctorPref = null;
-    if (! empty($doctor)) {
-        if (is_object($doctor) && property_exists($doctor, 'interpretacion_enabled')) {
-            $doctorPref = (int) ($doctor->interpretacion_enabled ?? null);
-        } elseif (is_array($doctor) && array_key_exists('interpretacion_enabled', $doctor)) {
-            $doctorPref = (int) ($doctor['interpretacion_enabled'] ?? null);
-        }
-    }
-    if ($doctorPref !== null) {
-        $showInterpretacionCol = $doctorPref === 1;
-    } else {
-        // Si no hay doctor, usar la preferencia específica para "sin doctor" si está, luego fallback global
-        if (array_key_exists('sin_doctor_show_interpretation', $labConfigLocal)) {
-            $showInterpretacionCol = ($labConfigLocal['sin_doctor_show_interpretation'] === '1');
-        } else {
-            $showInterpretacionCol = (($labConfigLocal['interpretacion_enabled'] ?? '1') === '1');
-        }
-    }
+    helper('registro');
+    $showInterpretacionCol = registro_doctor_mostrar_interpretacion_col($doctor ?? null, $labConfigLocal);
 }
 
 $subgruposPorPria = [];
