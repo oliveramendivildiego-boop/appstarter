@@ -1,0 +1,214 @@
+/**
+ * UX del módulo Configuración (/config)
+ */
+
+.config-hub-guide {
+    border-left: 4px solid #1f6fd7;
+}
+
+.config-hub-guide-steps {
+    counter-reset: cfg-hub-step;
+    list-style: none;
+    padding-left: 0;
+    margin-bottom: 0;
+}
+
+.config-hub-guide-steps li {
+    counter-increment: cfg-hub-step;
+    position: relative;
+    padding-left: 2.1rem;
+    margin-bottom: 0.55rem;
+}
+
+.config-hub-guide-steps li:last-child {
+    margin-bottom: 0;
+}
+
+.config-hub-guide-steps li::before {
+    content: counter(cfg-hub-step);
+    position: absolute;
+    left: 0;
+    top: 0.05rem;
+    width: 1.5rem;
+    height: 1.5rem;
+    border-radius: 50%;
+    background: #e7f1ff;
+    color: #1f6fd7;
+    font-size: 0.75rem;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.config-tab-finder {
+    max-width: 28rem;
+}
+
+.config-tabs-shell {
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 0.5rem;
+    padding: 0.5rem 0.65rem 0.45rem;
+}
+
+.config-tab-group-filter .btn {
+    font-size: 0.78rem;
+    padding: 0.2rem 0.55rem;
+}
+
+.config-tab-group-filter .btn.active {
+    font-weight: 600;
+}
+
+.config-tabs-scroll-wrap {
+    overflow-x: auto;
+    overflow-y: hidden;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: thin;
+}
+
+.config-tabs-scroll-wrap .config-tabs-nav {
+    margin-bottom: 0;
+    border-bottom: 0;
+}
+
+.config-tabs-nav .nav-item.config-tab-filter-hidden {
+    display: none !important;
+}
+
+.config-quick-links-compact {
+    display: flex;
+    flex-wrap: nowrap;
+    gap: 0.35rem;
+    overflow-x: auto;
+    padding-bottom: 2px;
+}
+
+.config-quick-links-compact .config-quick-link {
+    flex: 0 0 auto;
+    min-width: auto;
+    padding: 0.3rem 0.5rem;
+    font-size: 0.78rem;
+}
+
+.config-quick-links-compact .config-quick-link span {
+    white-space: nowrap;
+}
+
+.config-section-guide {
+    border-left: 3px solid #0dcaf0;
+    background: #f0f9ff;
+    border-radius: 0.35rem;
+    padding: 0.75rem 1rem;
+    margin-bottom: 1rem;
+}
+
+.config-section-guide-title {
+    font-weight: 600;
+    font-size: 0.95rem;
+    margin-bottom: 0.25rem;
+}
+
+.config-section-guide-body {
+    font-size: 0.875rem;
+    color: #495057;
+    margin-bottom: 0;
+}
+
+.config-section-guide-steps {
+    margin: 0.5rem 0 0;
+    padding-left: 1.15rem;
+    font-size: 0.85rem;
+    color: #495057;
+}
+
+.config-list-toolbar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.5rem 1rem;
+    margin-bottom: 0.75rem;
+    padding: 0.5rem 0.65rem;
+    background: #f8f9fa;
+    border: 1px solid #e9ecef;
+    border-radius: 0.4rem;
+}
+
+.config-list-toolbar .config-list-search {
+    min-width: 12rem;
+    max-width: 22rem;
+    flex: 1 1 12rem;
+}
+
+.config-list-toolbar .config-list-meta {
+    font-size: 0.8rem;
+    color: #6c757d;
+    white-space: nowrap;
+}
+
+.config-list-pagination {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+    margin-top: 0.75rem;
+    font-size: 0.85rem;
+}
+
+.config-list-pagination .pagination {
+    margin-bottom: 0;
+}
+
+.config-paginated-list tr.config-list-filter-hidden {
+    display: none;
+}
+
+.config-paginated-list tr.config-list-page-hidden {
+    display: none;
+}
+
+.config-quick-links {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(11rem, 1fr));
+    gap: 0.5rem;
+}
+
+.config-quick-link {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.5rem;
+    padding: 0.55rem 0.65rem;
+    border: 1px solid #dee2e6;
+    border-radius: 0.45rem;
+    background: #fff;
+    color: inherit;
+    text-decoration: none;
+    font-size: 0.85rem;
+    transition: border-color 0.15s, box-shadow 0.15s;
+}
+
+.config-quick-link:hover {
+    border-color: #9db6d8;
+    box-shadow: 0 2px 6px rgba(31, 111, 215, 0.12);
+    color: #1d3557;
+}
+
+.config-quick-link i {
+    color: #1f6fd7;
+    margin-top: 0.15rem;
+}
+
+@media (max-width: 767.98px) {
+    .config-tab-group-filter {
+        max-width: 100%;
+        overflow-x: auto;
+        flex-wrap: nowrap;
+    }
+
+    .config-tab-finder-inline {
+        width: 100%;
+        max-width: 100% !important;
+    }
+}

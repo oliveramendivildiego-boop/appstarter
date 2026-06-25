@@ -319,6 +319,8 @@ if (! function_exists('registro_sanitizar_html_rico')) {
         $clean = strip_tags($html, $allowed);
         $clean = preg_replace('/\s+on\w+\s*=\s*(["\']).*?\1/i', '', $clean) ?? $clean;
         $clean = preg_replace('/javascript\s*:/i', '', $clean) ?? $clean;
+        // Quitar style= residual (p. ej. text-align de Summernote) para que aplique la plantilla PDF.
+        $clean = preg_replace('/\s+style=(["\']).*?\1/i', '', $clean) ?? $clean;
         // Quitar style= residual en span (ya convertidos los formatos comunes a em/strong/u).
         $clean = preg_replace('/<span\b[^>]*\bstyle=(["\']).*?\1[^>]*>/i', '<span>', $clean) ?? $clean;
 
@@ -425,7 +427,7 @@ if (! function_exists('registro_resultado_celda_html')) {
             $suffix = $u !== '' ? ' <strong>' . esc($u) . '</strong>' : '';
             $class = registro_opcion_es_texto_fijo($opcionId) ? 'resultado-texto-fijo resultado-texto-rico' : 'resultado-texto-rico';
 
-            return '<div class="' . $class . ' d-inline-block">' . $html . $suffix . '</div>';
+            return '<div class="' . $class . ' resultado-texto-rico-inner">' . $html . $suffix . '</div>';
         }
 
         return registro_resultado_con_unidad_html($valor, $u);

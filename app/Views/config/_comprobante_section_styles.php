@@ -31,9 +31,6 @@ if ($sectionId === 'header') {
 }
 ?>
 <div class="comp-section-styles h-100">
-    <h6 class="text-uppercase text-muted small mb-2">
-        <i class="fa-solid fa-font me-1"></i>Estilos tipográficos de esta sección
-    </h6>
     <div class="comp-section-styles-scroll comp-style-matrix"
          id="comp_style_matrix_<?= esc($sectionId, 'attr') ?>"
          data-section="<?= esc($sectionId, 'attr') ?>">

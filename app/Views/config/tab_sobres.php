@@ -14,6 +14,16 @@ if ($printId < 1 && $templates !== []) {
         <h5 class="mb-0"><i class="fa-solid fa-envelope me-2"></i>Plantillas de sobres</h5>
     </div>
     <div class="card-body">
+        <?= view('config/partials/config_section_guide', [
+            'guide_key' => 'sobres',
+            'title' => 'Sobres para resultados impresos',
+            'body' => 'Diseñe la plantilla del sobre que se imprime desde el reporte de cada orden (datos del paciente, QR, logo, etc.).',
+            'steps' => [
+                'Elija qué plantilla se usa al pulsar <strong>Imprimir sobre</strong> en el reporte.',
+                'Cree o edite plantillas con el editor visual (misma lógica que PDF de resultados).',
+                'Marque una como activa para abrirla por defecto en el editor.',
+            ],
+        ]) ?>
         <?php if (! empty($envelope_db_error)): ?>
         <div class="alert alert-danger">
             <strong>Falta la tabla de sobres en la base de datos.</strong>

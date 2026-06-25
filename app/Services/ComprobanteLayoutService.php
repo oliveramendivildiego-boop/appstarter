@@ -960,6 +960,24 @@ class ComprobanteLayoutService
     }
 
     /**
+     * Elementos de la paleta que pertenecen a una sección de la matriz.
+     *
+     * @return array<string, string> tipo => etiqueta
+     */
+    public function paletteLabelsForSection(string $sectionId): array
+    {
+        $out = [];
+        foreach (self::MATRIX_ELEMENT_DEFINITIONS as $type => $def) {
+            if ($this->sectionIdForElementType($type) !== $sectionId) {
+                continue;
+            }
+            $out[$type] = (string) ($def['label'] ?? $type);
+        }
+
+        return $out;
+    }
+
+    /**
      * Grupos de la matriz tipográfica asociados a una sección (layout).
      *
      * @return list<array{id: string, label: string, style_keys: list<string>, dimensions: array<string, string>}>

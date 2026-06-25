@@ -23,10 +23,16 @@ $pruebasCounts = $ficha_clinica_pruebas_counts ?? [];
             <span class="badge bg-light text-dark"><?= count($fichasClinicas) ?></span>
         </div>
         <div class="card-body">
-            <p class="text-muted small mb-3">
-                Defina plantillas de ficha clínica con matriz personalizada (igual que el tipo de análisis <em>Personalizado</em> en pruebas de laboratorio).
-                Puede crear varias fichas, exportarlas en JSON e importarlas en este u otro laboratorio.
-            </p>
+            <?= view('config/partials/config_section_guide', [
+                'guide_key' => 'ficha_clinica',
+                'title' => 'Plantillas de ficha clínica',
+                'body' => 'Matrices personalizadas reutilizables en recepción o consulta. Puede vincular pruebas de laboratorio a cada ficha.',
+                'steps' => [
+                    'Cree una ficha con nombre y diseño de matriz.',
+                    'Exporte/importe JSON para copiar entre entornos.',
+                    'Al editar una ficha, asocie las pruebas que debe incluir.',
+                ],
+            ]) ?>
 
             <div class="border rounded p-3 mb-3 bg-light-subtle">
                 <div class="d-flex flex-wrap align-items-center gap-2 mb-2">
@@ -50,6 +56,8 @@ $pruebasCounts = $ficha_clinica_pruebas_counts ?? [];
 
             <div class="row g-3">
                 <div class="col-lg-5">
+                    <div class="config-paginated-list" data-page-size="10">
+                    <?= view('config/partials/config_list_toolbar', ['search_placeholder' => 'Buscar ficha clínica…']) ?>
                     <div class="table-responsive">
                         <table class="table table-sm table-bordered align-middle mb-0">
                             <thead class="table-light">
@@ -103,6 +111,11 @@ $pruebasCounts = $ficha_clinica_pruebas_counts ?? [];
                                 <?php endif; ?>
                             </tbody>
                         </table>
+                    </div>
+                    <div class="config-list-pagination">
+                        <span class="text-muted small"></span>
+                        <div class="config-list-pagination-nav"></div>
+                    </div>
                     </div>
                 </div>
 

@@ -1,0 +1,197 @@
+/**
+ * Estilos del editor de plantillas PDF (config/pdf-templates/edit)
+ */
+.pdf-tpl-editor {
+    --pdf-tpl-sticky-offset: 0px;
+}
+
+.pdf-tpl-sticky-bar {
+    position: sticky;
+    top: var(--pdf-tpl-sticky-offset, 0);
+    z-index: 1020;
+    background: rgba(255, 255, 255, 0.97);
+    backdrop-filter: blur(6px);
+    border: 1px solid rgba(0, 0, 0, 0.08);
+    border-radius: 0.5rem;
+    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.06);
+    padding: 0.65rem 1rem;
+    margin-bottom: 1rem;
+}
+
+.pdf-tpl-sticky-bar.is-scrolled {
+    border-radius: 0;
+    margin-left: calc(var(--bs-gutter-x, 0.75rem) * -0.5);
+    margin-right: calc(var(--bs-gutter-x, 0.75rem) * -0.5);
+    border-left: none;
+    border-right: none;
+}
+
+.pdf-tpl-sticky-bar .pdf-tpl-current-tab {
+    font-size: 0.8rem;
+    color: #6c757d;
+}
+
+.pdf-tpl-guide-card {
+    border-left: 4px solid #0d6efd;
+}
+
+.pdf-tpl-guide-steps {
+    counter-reset: pdf-guide-step;
+    list-style: none;
+    padding-left: 0;
+    margin-bottom: 0;
+}
+
+.pdf-tpl-guide-steps li {
+    counter-increment: pdf-guide-step;
+    position: relative;
+    padding-left: 2.25rem;
+    margin-bottom: 0.65rem;
+}
+
+.pdf-tpl-guide-steps li:last-child {
+    margin-bottom: 0;
+}
+
+.pdf-tpl-guide-steps li::before {
+    content: counter(pdf-guide-step);
+    position: absolute;
+    left: 0;
+    top: 0.1rem;
+    width: 1.55rem;
+    height: 1.55rem;
+    border-radius: 50%;
+    background: #e7f1ff;
+    color: #0d6efd;
+    font-size: 0.78rem;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.pdf-tpl-tab-context {
+    background: #f8f9fa;
+    border: 1px solid #e9ecef;
+    border-radius: 0.5rem;
+    padding: 0.75rem 1rem;
+    margin-top: 0.75rem;
+}
+
+.pdf-tpl-tab-context strong {
+    color: #212529;
+}
+
+#pdf_config_tabs .nav-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    font-size: 0.9rem;
+}
+
+#pdf_config_tabs .nav-link i {
+    opacity: 0.85;
+    font-size: 0.85em;
+}
+
+.pdf-tpl-general-accordion .accordion-button {
+    font-size: 0.95rem;
+    font-weight: 600;
+}
+
+.pdf-tpl-general-accordion .accordion-button:not(.collapsed) {
+    background: #f8f9fa;
+    box-shadow: none;
+}
+
+.pdf-tpl-editor .pdf-block-item .pdf-block-tech-id {
+    display: none;
+}
+
+.pdf-tpl-editor.show-tech-ids .pdf-block-item .pdf-block-tech-id {
+    display: block;
+}
+
+.pdf-tpl-matrix-help {
+    background: #eef5ff;
+    border: 1px solid #cfe2ff;
+    border-radius: 0.5rem;
+    padding: 0.75rem 1rem;
+    margin-bottom: 1rem;
+}
+
+.pdf-tpl-matrix-help ul {
+    margin-bottom: 0;
+    padding-left: 1.15rem;
+}
+
+.pdf-tpl-palette-hint {
+    background: #fff;
+    border: 1px dashed #b9c4d0;
+    border-radius: 0.5rem;
+    padding: 0.65rem 0.85rem;
+}
+
+.pdf-instance-list-col {
+    display: none;
+}
+
+.pdf-tpl-editor.show-advanced-lists .pdf-instance-list-col {
+    display: block;
+}
+
+@media (min-width: 992px) {
+    .pdf-tpl-editor.show-advanced-lists .pdf-instance-list-col {
+        display: block;
+    }
+}
+
+.pdf-tpl-editor .pdf-instance-item .pdf-instance-tech-id {
+    display: none;
+}
+
+.pdf-tpl-editor.show-tech-ids .pdf-instance-item .pdf-instance-tech-id {
+    display: inline;
+}
+
+.pdf-tpl-floating-save {
+    position: fixed;
+    right: 1.25rem;
+    bottom: 1.25rem;
+    z-index: 1030;
+    display: none;
+    box-shadow: 0 4px 16px rgba(13, 110, 253, 0.35);
+}
+
+.pdf-tpl-live-preview-sticky {
+    position: sticky;
+    top: 5.5rem;
+    z-index: 1010;
+}
+
+.pdf-tpl-style-hint {
+    border-left: 3px solid #0dcaf0;
+    background: #f0f9ff;
+    padding: 0.5rem 0.75rem;
+    border-radius: 0.25rem;
+    margin-bottom: 1rem;
+}
+
+@media (max-width: 991.98px) {
+    .pdf-tpl-live-preview-sticky {
+        position: static;
+    }
+}
+
+.pdf-tpl-editor:not(.show-advanced-lists) .pdf-section-editor .row.g-4 > .col-lg-6:last-child {
+    flex: 0 0 100%;
+    max-width: 100%;
+}
+
+.pdf-tpl-floating-save.is-visible {
+    display: inline-flex;
+}
+
+.pdf-tpl-editor .pdf-advanced-editor-prefs.pdf-config-panel-hidden {
+    display: none !important;
+}

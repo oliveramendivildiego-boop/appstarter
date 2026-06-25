@@ -2,6 +2,8 @@
 <?= $this->section('title') ?>Editar plantilla PDF<?= $this->endSection() ?>
 <?= $this->section('head_extra') ?>
 <link rel="stylesheet" href="<?= base_url('assets/css/report_pdf.css') ?>">
+<link rel="stylesheet" href="<?= base_url('assets/css/pdf_template_editor.css') ?>">
+<link rel="stylesheet" href="<?= base_url('assets/css/pdf_template_live_preview.css') ?>">
 <script src="<?= base_url('js/vendor/sortable.min.js') ?>"></script>
 <?= $this->endSection() ?>
 <?php
@@ -66,10 +68,10 @@ $ft = \App\Services\ReportPdfLayoutService::normalizeFooterGridStyle($ps['footer
 $pp = \App\Services\ReportPdfLayoutService::normalizePrintPaginationStyle($ps['print_pagination'] ?? []);
 $paginationMode = \App\Services\ReportPdfLayoutService::resolvePaginationModeFromLayout(['page_style' => $ps]);
 $paginationModeLabels = [
-    \App\Services\ReportLayout\ReportPaginationMode::FLOW_CONTINUOUS_SIGNATURE_LAST_PAGE => 'MODE 1 — Flujo continuo; optimiza firma solo en última página',
-    \App\Services\ReportLayout\ReportPaginationMode::FLOW_NO_LONE_SIGNATURE => 'MODE 2 — Flujo continuo; nunca firma sola',
-    \App\Services\ReportLayout\ReportPaginationMode::AREA_HARD_PAGE_BREAK => 'MODE 3 — Cada área en página nueva',
-    \App\Services\ReportLayout\ReportPaginationMode::AREA_SOFT_FIT_SIGNATURE => 'MODE 4 — Cada área en página nueva; evita firma sola si es posible',
+    \App\Services\ReportLayout\ReportPaginationMode::FLOW_CONTINUOUS_SIGNATURE_LAST_PAGE => 'Continuo — ajustar firma en la última página (recomendado)',
+    \App\Services\ReportLayout\ReportPaginationMode::FLOW_NO_LONE_SIGNATURE => 'Continuo — nunca dejar la firma sola en una página',
+    \App\Services\ReportLayout\ReportPaginationMode::AREA_HARD_PAGE_BREAK => 'Cada área (grupo de pruebas) empieza en página nueva',
+    \App\Services\ReportLayout\ReportPaginationMode::AREA_SOFT_FIT_SIGNATURE => 'Cada área en página nueva — evitar firma sola si es posible',
 ];
 $gpb = \App\Services\ReportPdfLayoutService::normalizeGrupoPruebaPageBreakStyle($ps['grupo_prueba_page_break'] ?? []);
 $osh = \App\Services\ReportPdfLayoutService::normalizeOrderSheetHeaderStyle($ps['order_sheet_header'] ?? []);
@@ -142,41 +144,90 @@ if (! in_array($configTab, $pdfConfigTabs, true)) {
 </div>
 <?php endif; ?>
 
-<h3 class="mb-2">Diseño: <?= esc($template->name ?? '') ?></h3>
-<p class="text-muted">Configure el <strong>número de columnas</strong> por zona y, en cada tarjeta (encabezado, paciente/médico, validación/firmas, pie), la sección <strong>Estilo de la cuadrícula</strong>: <strong>interlineado</strong> (1–2,5) y <strong>alineación por columna</strong> (izquierda/centro/derecha y arriba/centro/abajo). Los ítems en la misma fila del PDF comparten una sola fila de tabla aunque ocupen varias columnas; varios bloques con la misma columna y ancho se apilan en una celda. Puede arrastrar elementos entre encabezado, paciente/médico y pie; la sección de firmas tiene su propia lista. <strong>Guarde la plantilla</strong> para persistir el diseño en el JSON.</p>
+<div class="pdf-tpl-editor" id="pdf_tpl_editor_root">
+<h3 class="mb-1">Plantilla PDF: <?= esc($template->name ?? '') ?></h3>
+<p class="text-muted mb-3">Personalice el formato del informe de resultados. Elija una pestaña, haga sus cambios y guarde.</p>
 
 <?= form_open(site_url('config/pdf-templates/save'), ['id' => 'pdf_tpl_form', 'enctype' => 'multipart/form-data']) ?>
     <?= csrf_field() ?>
     <input type="hidden" name="id" value="<?= (int) ($template->id ?? 0) ?>">
     <input type="hidden" name="config_tab" id="config_tab" value="<?= esc($configTab, 'attr') ?>">
     <input type="hidden" name="layout_json" id="layout_json" value="">
-    <div class="d-flex flex-wrap gap-2 mb-3">
-        <button type="submit" class="btn btn-primary"><i class="fa-solid fa-floppy-disk me-1"></i> Guardar plantilla</button>
-        <a href="<?= site_url('config/pdf-templates') ?>" class="btn btn-outline-secondary">Volver al listado</a>
-        <a href="<?= site_url('config') ?>?tab=sistema" class="btn btn-outline-secondary">Configuración</a>
+
+    <div class="pdf-tpl-sticky-bar d-flex flex-wrap align-items-center justify-content-between gap-2" id="pdf_tpl_sticky_bar">
+        <div class="d-flex flex-wrap align-items-center gap-2">
+            <button type="submit" class="btn btn-primary" id="btn_save_pdf_tpl_top"><i class="fa-solid fa-floppy-disk me-1"></i> Guardar plantilla</button>
+            <a href="<?= site_url('config/pdf-templates') ?>" class="btn btn-outline-secondary btn-sm">Volver</a>
+            <span class="pdf-tpl-current-tab d-none d-md-inline" id="pdf_tpl_current_tab_label"></span>
+        </div>
+        <div class="d-flex flex-wrap align-items-center gap-2">
+            <div class="form-check form-switch mb-0">
+                <input class="form-check-input" type="checkbox" id="toggle_tech_ids">
+                <label class="form-check-label small" for="toggle_tech_ids">IDs técnicos</label>
+            </div>
+            <a href="<?= site_url('config') ?>?tab=sistema" class="btn btn-outline-secondary btn-sm">Configuración</a>
+        </div>
     </div>
+
+<?= view('config/partials/pdf_templates_edit_guide', ['configTab' => $configTab]) ?>
 
 <div class="card shadow-sm mb-4">
     <div class="card-body py-3">
         <ul class="nav nav-tabs flex-wrap gap-1" id="pdf_config_tabs" role="tablist">
-            <li class="nav-item" role="presentation"><button class="nav-link<?= $configTab === 'general' ? ' active' : '' ?>" type="button" data-config-tab="general">General</button></li>
-            <li class="nav-item" role="presentation"><button class="nav-link<?= $configTab === 'header' ? ' active' : '' ?>" type="button" data-config-tab="header">Encabezado</button></li>
-            <li class="nav-item" role="presentation"><button class="nav-link<?= $configTab === 'patient_doctor' ? ' active' : '' ?>" type="button" data-config-tab="patient_doctor">Paciente / médico</button></li>
-            <li class="nav-item" role="presentation"><button class="nav-link<?= $configTab === 'results' ? ' active' : '' ?>" type="button" data-config-tab="results">Resultados</button></li>
-            <li class="nav-item" role="presentation"><button class="nav-link<?= $configTab === 'notes' ? ' active' : '' ?>" type="button" data-config-tab="notes">Notas</button></li>
-            <li class="nav-item" role="presentation"><button class="nav-link<?= $configTab === 'lab_firmas' ? ' active' : '' ?>" type="button" data-config-tab="lab_firmas">Validación / firmas</button></li>
-            <li class="nav-item" role="presentation"><button class="nav-link<?= $configTab === 'footer' ? ' active' : '' ?>" type="button" data-config-tab="footer">Pie</button></li>
+            <li class="nav-item" role="presentation"><button class="nav-link<?= $configTab === 'general' ? ' active' : '' ?>" type="button" data-config-tab="general" aria-selected="<?= $configTab === 'general' ? 'true' : 'false' ?>"><i class="fa-solid fa-sliders" aria-hidden="true"></i> General</button></li>
+            <li class="nav-item" role="presentation"><button class="nav-link<?= $configTab === 'header' ? ' active' : '' ?>" type="button" data-config-tab="header" aria-selected="<?= $configTab === 'header' ? 'true' : 'false' ?>"><i class="fa-solid fa-building" aria-hidden="true"></i> Encabezado</button></li>
+            <li class="nav-item" role="presentation"><button class="nav-link<?= $configTab === 'patient_doctor' ? ' active' : '' ?>" type="button" data-config-tab="patient_doctor" aria-selected="<?= $configTab === 'patient_doctor' ? 'true' : 'false' ?>"><i class="fa-solid fa-user-doctor" aria-hidden="true"></i> Paciente</button></li>
+            <li class="nav-item" role="presentation"><button class="nav-link<?= $configTab === 'results' ? ' active' : '' ?>" type="button" data-config-tab="results" aria-selected="<?= $configTab === 'results' ? 'true' : 'false' ?>"><i class="fa-solid fa-table" aria-hidden="true"></i> Resultados</button></li>
+            <li class="nav-item" role="presentation"><button class="nav-link<?= $configTab === 'notes' ? ' active' : '' ?>" type="button" data-config-tab="notes" aria-selected="<?= $configTab === 'notes' ? 'true' : 'false' ?>"><i class="fa-solid fa-note-sticky" aria-hidden="true"></i> Notas</button></li>
+            <li class="nav-item" role="presentation"><button class="nav-link<?= $configTab === 'lab_firmas' ? ' active' : '' ?>" type="button" data-config-tab="lab_firmas" aria-selected="<?= $configTab === 'lab_firmas' ? 'true' : 'false' ?>"><i class="fa-solid fa-signature" aria-hidden="true"></i> Firmas</button></li>
+            <li class="nav-item" role="presentation"><button class="nav-link<?= $configTab === 'footer' ? ' active' : '' ?>" type="button" data-config-tab="footer" aria-selected="<?= $configTab === 'footer' ? 'true' : 'false' ?>"><i class="fa-solid fa-align-justify" aria-hidden="true"></i> Pie</button></li>
         </ul>
-        <p class="small text-muted mt-2 mb-0">Cada pestaña muestra solo la configuración del bloque correspondiente.</p>
     </div>
 </div>
 
-<div class="card shadow-sm mb-4 pdf-margins-card pdf-config-panel" data-config-panels="general">
-    <div class="card-header bg-primary text-white">
-        <h5 class="mb-0">Estilo global de card-header (PDF / impresión)</h5>
+<div class="card shadow-sm mb-4 pdf-config-panel" data-config-panels="general">
+    <div class="card-header bg-secondary text-white">
+        <h5 class="mb-0"><i class="fa-solid fa-layer-group me-1"></i> Secciones del PDF</h5>
     </div>
     <div class="card-body">
-        <p class="small text-muted">Aplica a los encabezados de sección del reporte (títulos tipo tarjeta como separadores de análisis).</p>
+        <p class="small text-muted mb-3">Active o desactive cada parte del informe y arrastre para cambiar el orden vertical en el documento.</p>
+        <ul id="pdf-block-list" class="list-group pdf-block-sortable">
+            <?php foreach (($layout['blocks'] ?? []) as $b):
+                $bid = $b['id'] ?? '';
+                $label = $block_labels[$bid] ?? $bid;
+                ?>
+            <li class="list-group-item d-flex align-items-center gap-3 pdf-block-item" data-block-id="<?= esc($bid) ?>">
+                <span class="text-muted pdf-drag-handle" title="Arrastrar para reordenar" style="cursor: grab;"><i class="fa-solid fa-grip-vertical fa-lg"></i></span>
+                <div class="form-check mb-0">
+                    <input class="form-check-input pdf-block-enabled" type="checkbox" id="en_<?= esc($bid) ?>" <?= ! empty($b['enabled']) ? 'checked' : '' ?>>
+                    <label class="form-check-label" for="en_<?= esc($bid) ?>">Incluir</label>
+                </div>
+                <div class="flex-grow-1">
+                    <strong><?= esc($label) ?></strong>
+                    <div class="small text-muted font-monospace pdf-block-tech-id"><?= esc($bid) ?></div>
+                </div>
+            </li>
+            <?php endforeach; ?>
+        </ul>
+        <p class="small text-muted mt-3 mb-0">Los estilos de <strong>Notas</strong> y <strong>Firmas</strong> se configuran en sus pestañas.</p>
+    </div>
+</div>
+
+<div class="accordion pdf-tpl-general-accordion mb-4 pdf-config-panel" data-config-panels="general" id="pdf_general_advanced_accordion">
+    <div class="accordion-item border rounded mb-2 overflow-hidden">
+        <h2 class="accordion-header m-0">
+            <button class="accordion-button collapsed py-2" type="button" data-bs-toggle="collapse" data-bs-target="#pdf_adv_panel_titles" aria-expanded="false" aria-controls="pdf_adv_panel_titles">
+                <i class="fa-solid fa-heading me-2 text-muted"></i> Títulos de análisis — colores y tipografía
+            </button>
+        </h2>
+        <div id="pdf_adv_panel_titles" class="accordion-collapse collapse" data-bs-parent="#pdf_general_advanced_accordion">
+            <div class="accordion-body pt-2">
+<div class="card shadow-sm mb-0 pdf-margins-card border-0">
+    <div class="card-header bg-primary text-white">
+        <h5 class="mb-0">Estilo de los títulos de cada análisis</h5>
+    </div>
+    <div class="card-body">
+        <p class="small text-muted">Aplica a los encabezados de sección del reporte (por ejemplo «HEMATOLOGÍA», «QUÍMICA»).</p>
         <div class="row g-3">
             <div class="col-6 col-md-3">
                 <label class="form-label small" for="hs_separator_color">Separador de encabezado (línea azul)</label>
@@ -235,11 +286,147 @@ if (! in_array($configTab, $pdfConfigTabs, true)) {
         </div>
     </div>
 </div>
+            </div>
+        </div>
+    </div>
+    <div class="accordion-item border rounded mb-2 overflow-hidden">
+        <h2 class="accordion-header m-0">
+            <button class="accordion-button collapsed py-2" type="button" data-bs-toggle="collapse" data-bs-target="#pdf_adv_panel_page" aria-expanded="false" aria-controls="pdf_adv_panel_page">
+                <i class="fa-solid fa-file-lines me-2 text-muted"></i> Márgenes, paginación y marca de agua
+            </button>
+        </h2>
+        <div id="pdf_adv_panel_page" class="accordion-collapse collapse" data-bs-parent="#pdf_general_advanced_accordion">
+            <div class="accordion-body pt-2">
+<div class="card shadow-sm mb-3 pdf-margins-card border-0">
+    <div class="card-header bg-dark text-white" style="color:#fff !important;">
+        <h5 class="mb-0" style="color:#fff !important;">Márgenes de la hoja (mm)</h5>
+    </div>
+    <div class="card-body">
+        <p class="small text-muted">Espacio en blanco respecto al borde de la página al generar el PDF (0–50 mm).</p>
+        <div class="row g-3">
+            <div class="col-6 col-md-3">
+                <label class="form-label small" for="margin_top">Arriba</label>
+                <input type="number" class="form-control" id="margin_top" min="0" max="50" step="0.5" value="<?= esc((string) ($mm['top'] ?? 15)) ?>">
+            </div>
+            <div class="col-6 col-md-3">
+                <label class="form-label small" for="margin_right">Derecha</label>
+                <input type="number" class="form-control" id="margin_right" min="0" max="50" step="0.5" value="<?= esc((string) ($mm['right'] ?? 15)) ?>">
+            </div>
+            <div class="col-6 col-md-3">
+                <label class="form-label small" for="margin_bottom">Abajo</label>
+                <input type="number" class="form-control" id="margin_bottom" min="0" max="50" step="0.5" value="<?= esc((string) ($mm['bottom'] ?? 15)) ?>">
+            </div>
+            <div class="col-6 col-md-3">
+                <label class="form-label small" for="margin_left">Izquierda</label>
+                <input type="number" class="form-control" id="margin_left" min="0" max="50" step="0.5" value="<?= esc((string) ($mm['left'] ?? 15)) ?>">
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="card shadow-sm mb-3 border-0">
+    <div class="card-header bg-secondary text-white">
+        <h5 class="mb-0">Cabecera de orden en hojas siguientes</h5>
+    </div>
+    <div class="card-body">
+        <?php
+        $tplId = (int) ($template->id ?? 0);
+        $activePdfTplId = (int) ($active_pdf_template_id ?? 0);
+        $activePrintTplId = (int) ($active_print_template_id ?? 0);
+        $isActivePdfTpl = $tplId > 0 && $tplId === $activePdfTplId;
+        $isActivePrintTpl = $tplId > 0 && $tplId === $activePrintTplId;
+        $oshGlobal = ! empty($pdf_order_sheet_header_global);
+        ?>
+        <p class="small text-muted mb-2">Desde la <strong>2.ª hoja</strong> muestra paciente y número de orden arriba del pie. La 1.ª hoja no lo necesita porque ya incluye esos datos.</p>
+        <?php if ($oshGlobal): ?>
+        <div class="alert alert-info py-2 small mb-2">Opción global activa en <strong>Configuración → Sistema</strong> (aplica aunque este check esté desmarcado).</div>
+        <?php endif; ?>
+        <?php if ($tplId > 0 && ! $isActivePdfTpl && ! $isActivePrintTpl): ?>
+        <div class="alert alert-warning py-2 small mb-2">Esta plantilla <strong>no es la activa</strong>. Para ver los cambios al descargar PDF o imprimir, actívela en Configuración → Sistema o marque el check y guarde.</div>
+        <?php else: ?>
+        <p class="small text-muted mb-2">
+            Plantilla activa:
+            <?php if ($isActivePdfTpl): ?><span class="badge text-bg-primary">PDF</span><?php endif; ?>
+            <?php if ($isActivePrintTpl): ?><span class="badge text-bg-secondary">Impresión</span><?php endif; ?>
+        </p>
+        <?php endif; ?>
+        <div class="form-check">
+            <input class="form-check-input" type="checkbox" id="osh_enabled" <?= ! empty($osh['enabled']) ? 'checked' : '' ?>>
+            <label class="form-check-label" for="osh_enabled">Mostrar cabecera de orden (en esta plantilla)</label>
+        </div>
+    </div>
+</div>
+
+<div class="card shadow-sm mb-3 border-0">
+    <div class="card-header bg-info text-white">
+        <h5 class="mb-0">Saltos de página</h5>
+    </div>
+    <div class="card-body">
+        <p class="small text-muted mb-3">Define cómo se reparten las áreas de análisis y las firmas entre las páginas del PDF.</p>
+        <div class="row g-3">
+            <div class="col-12 col-lg-8">
+                <label class="form-label small" for="pagination_mode">Modo de paginación</label>
+                <select class="form-select" id="pagination_mode">
+                    <?php foreach (\App\Services\ReportLayout\ReportPaginationMode::ALL as $modeOpt): ?>
+                    <option value="<?= esc($modeOpt, 'attr') ?>" <?= $paginationMode === $modeOpt ? 'selected' : '' ?>><?= esc($paginationModeLabels[$modeOpt] ?? $modeOpt) ?></option>
+                    <?php endforeach; ?>
+                </select>
+            </div>
+        </div>
+        <details class="small text-muted mt-3">
+            <summary class="text-primary" style="cursor:pointer;">Ver explicación de cada modo</summary>
+            <ul class="mb-0 mt-2 ps-3">
+                <li><strong>Continuo (última página):</strong> flujo normal; si la firma queda sola al final, mueve el último bloque.</li>
+                <li><strong>Continuo (sin firma sola):</strong> nunca deja la firma sola en una página.</li>
+                <li><strong>Nueva página por área:</strong> cada grupo de pruebas empieza en hoja nueva.</li>
+                <li><strong>Nueva página + evitar firma sola:</strong> igual que el anterior, pero intenta no dejar firma sola.</li>
+            </ul>
+        </details>
+    </div>
+</div>
+
+<div class="card shadow-sm mb-0 border-0">
+    <div class="card-header bg-white border">
+        <h5 class="mb-0">Marca de agua</h5>
+    </div>
+    <div class="card-body">
+        <p class="small text-muted">Imagen semitransparente al centro de la hoja al generar PDF o imprimir.</p>
+        <input type="hidden" name="watermark_file_rel" id="watermark_file_rel" value="<?= esc($wm['file'] ?? '') ?>">
+        <div class="row g-3">
+            <div class="col-md-6">
+                <div class="form-check mb-2">
+                    <input class="form-check-input" type="checkbox" id="wm_enabled" <?= ! empty($wm['enabled']) ? 'checked' : '' ?>>
+                    <label class="form-check-label" for="wm_enabled">Usar marca de agua</label>
+                </div>
+                <label class="form-label small" for="wm_opacity">Opacidad (0,05 – 0,9)</label>
+                <input type="number" class="form-control" id="wm_opacity" min="0.05" max="0.9" step="0.01" value="<?= esc((string) ($wm['opacity'] ?? 0.12)) ?>">
+                <label class="form-label small mt-2" for="wm_size">Tamaño (% del ancho de la hoja)</label>
+                <input type="number" class="form-control" id="wm_size" min="10" max="95" value="<?= (int) ($wm['size_percent'] ?? 45) ?>">
+            </div>
+            <div class="col-md-6">
+                <label class="form-label small" for="watermark_upload">Subir imagen (PNG, JPG, GIF, WebP; máx. 2&nbsp;MB)</label>
+                <input type="file" class="form-control" name="watermark_upload" id="watermark_upload" accept="image/jpeg,image/png,image/gif,image/webp">
+                <div class="form-check mt-3">
+                    <input class="form-check-input" type="checkbox" name="watermark_remove" id="watermark_remove" value="1">
+                    <label class="form-check-label text-danger" for="watermark_remove">Quitar imagen de marca de agua</label>
+                </div>
+                <?php if ($wmPreview): ?>
+                <p class="small mb-1 mt-2 text-muted">Archivo actual:</p>
+                <img src="<?= esc($wmPreview, 'attr') ?>" alt="" class="img-thumbnail" style="max-height: 120px;">
+                <?php endif; ?>
+            </div>
+        </div>
+    </div>
+</div>
+            </div>
+        </div>
+    </div>
+</div>
 
 <div class="card shadow-sm mb-4 border border-primary border-opacity-25 pdf-config-panel" data-config-panels="header,patient_doctor,footer">
     <div class="card-header bg-primary-subtle border-bottom">
-        <h5 class="mb-0">Cuadrículas PDF: encabezado superior, paciente/médico y pie</h5>
-        <p class="small text-muted mb-0 mt-1">Fondo de celdas (con opción transparente), tipografía, bordes verticales entre columnas y textos de etiquetas editables (incl. leyenda del QR y prefijo de «generado el»).</p>
+        <h5 class="mb-0">Estilos de encabezado, paciente y pie</h5>
+        <p class="small text-muted mb-0 mt-1">Colores, fuentes y textos de las etiquetas. Use la pestaña correspondiente para ubicar cada campo en la cuadrícula.</p>
     </div>
     <div class="card-body">
         <div class="pdf-subpanel" data-config-subpanel="header">
@@ -472,18 +659,20 @@ if (! in_array($configTab, $pdfConfigTabs, true)) {
     </div>
 </div>
 
-<div class="card shadow-sm mb-4 pdf-config-panel" data-config-panels="results">
+<div class="card shadow-sm mb-4 pdf-config-panel" data-config-panels="results" id="pdf_results_config_card">
     <div class="card-header bg-info-subtle border">
-        <h5 class="mb-1">Resultados en el PDF</h5>
-        <p class="small text-muted mb-0">Tabla por prueba, cabecera de grupo (área/análisis, tipo de muestra, método), espacio entre áreas/grupos, filas separadoras entre análisis y matriz de referencia. Use las secciones siguientes en orden: colores → tipografía → espacio entre filas y grupos → títulos de sección → matriz poblacional → cabecera de grupo → separador de análisis.</p>
+        <h5 class="mb-1"><i class="fa-solid fa-table me-1"></i> Resultados en el PDF</h5>
+        <p class="small text-muted mb-0">A la derecha verá una <strong>vista previa en tiempo real</strong>. Los colores de la tabla están en la sección <strong>1. Colores de la tabla principal</strong>; el título gris sobre cada análisis en la <strong>4. Títulos de sección</strong>.</p>
     </div>
     <div class="card-body">
+        <div class="row g-4 align-items-start">
+            <div class="col-lg-8 order-2 order-lg-1" id="pdf_results_config_root">
         <div class="accordion accordion-flush pdf-results-accordion" id="accordion_pdf_results">
             <div class="accordion-item border rounded mb-2 overflow-hidden">
                 <h2 class="accordion-header m-0">
                     <button class="accordion-button py-2" type="button" data-bs-toggle="collapse" data-bs-target="#pdf_rs_panel_colors" aria-expanded="true" aria-controls="pdf_rs_panel_colors">
-                        <span class="fw-semibold">1. Colores de la tabla principal</span>
-                        <span class="small text-muted ms-2 d-none d-md-inline">Encabezado, cuerpo y bordes</span>
+                        <span class="fw-semibold">1. Colores de la tabla</span>
+                        <span class="small text-muted ms-2 d-none d-md-inline">Encabezado azul, filas y bordes → vista previa</span>
                     </button>
                 </h2>
                 <div id="pdf_rs_panel_colors" class="accordion-collapse collapse show" data-bs-parent="#accordion_pdf_results">
@@ -568,8 +757,8 @@ if (! in_array($configTab, $pdfConfigTabs, true)) {
             <div class="accordion-item border rounded mb-2 overflow-hidden">
                 <h2 class="accordion-header m-0">
                     <button class="accordion-button collapsed py-2" type="button" data-bs-toggle="collapse" data-bs-target="#pdf_rs_panel_segment" aria-expanded="false" aria-controls="pdf_rs_panel_segment">
-                        <span class="fw-semibold">4. Fila separadora entre pruebas / secciones</span>
-                        <span class="small text-muted ms-2 d-none d-md-inline">Título de cada bloque de análisis</span>
+                        <span class="fw-semibold">4. Título de cada análisis</span>
+                        <span class="small text-muted ms-2 d-none d-md-inline">Barra «GLUCOSA» — se ve en la vista previa</span>
                     </button>
                 </h2>
                 <div id="pdf_rs_panel_segment" class="accordion-collapse collapse" data-bs-parent="#accordion_pdf_results">
@@ -788,42 +977,29 @@ if (! in_array($configTab, $pdfConfigTabs, true)) {
                 </div>
             </div>
         </div>
+            </div>
+            <div class="col-lg-4 order-1 order-lg-2">
+                <?= view('config/partials/pdf_templates_live_preview_results') ?>
+            </div>
+        </div>
     </div>
 </div>
 
-<div class="card shadow-sm mb-4 pdf-config-panel" data-config-panels="general">
-    <div class="card-header bg-secondary text-white">
-        <h5 class="mb-0">Bloques del documento (orden vertical)</h5>
-    </div>
-    <div class="card-body">
-        <ul id="pdf-block-list" class="list-group pdf-block-sortable">
-            <?php foreach (($layout['blocks'] ?? []) as $b):
-                $bid = $b['id'] ?? '';
-                $label = $block_labels[$bid] ?? $bid;
-                ?>
-            <li class="list-group-item d-flex align-items-center gap-3 pdf-block-item" data-block-id="<?= esc($bid) ?>">
-                <span class="text-muted pdf-drag-handle" title="Arrastrar" style="cursor: grab;"><i class="fa-solid fa-grip-vertical fa-lg"></i></span>
-                <div class="form-check mb-0">
-                    <input class="form-check-input pdf-block-enabled" type="checkbox" id="en_<?= esc($bid) ?>" <?= ! empty($b['enabled']) ? 'checked' : '' ?>>
-                    <label class="form-check-label" for="en_<?= esc($bid) ?>">Incluir bloque</label>
-                </div>
-                <div class="flex-grow-1">
-                    <strong><?= esc($label) ?></strong>
-                    <div class="small text-muted font-monospace"><?= esc($bid) ?></div>
-                </div>
-            </li>
-            <?php endforeach; ?>
-        </ul>
-        <p class="small text-muted mt-3 mb-0">Los estilos del bloque <strong>Notas del resultado</strong> y de <strong>Validación y aprobación (firmas)</strong> se configuran justo debajo, en la misma página.</p>
-    </div>
-</div>
-
-<div class="card shadow-sm mb-4 pdf-config-panel" data-config-panels="notes">
+<div class="card shadow-sm mb-4 pdf-config-panel" data-config-panels="notes" id="pdf_notes_config_card">
     <div class="card-header bg-warning-subtle border">
-        <h5 class="mb-0">Bloque «Notas del resultado» — estilo en PDF / impresión</h5>
+        <h5 class="mb-1"><i class="fa-solid fa-note-sticky me-1"></i> Notas del resultado</h5>
+        <p class="small text-muted mb-0">La vista previa a la derecha muestra el bloque de notas. Use los selectores de color para título y contenido.</p>
     </div>
     <div class="card-body">
+        <div class="row g-4 align-items-start">
+            <div class="col-lg-8 order-2 order-lg-1" id="pdf_notes_config_root">
         <div class="row g-3">
+            <div class="col-12">
+                <div class="pdf-tpl-style-hint small mb-0">
+                    <strong>Colores principales:</strong>
+                    <span class="ms-1">Fondo título · Texto título · Fondo contenido · Texto contenido</span>
+                </div>
+            </div>
             <div class="col-6 col-md-3"><label class="form-label small" for="ns_title_bg">Fondo título</label><input type="color" class="form-control form-control-color" id="ns_title_bg" value="<?= esc($ns['title_bg_color'], 'attr') ?>"></div>
             <div class="col-6 col-md-3"><label class="form-label small" for="ns_title_text">Texto título</label><input type="color" class="form-control form-control-color" id="ns_title_text" value="<?= esc($ns['title_text_color'], 'attr') ?>"></div>
             <div class="col-6 col-md-3"><label class="form-label small" for="ns_body_bg">Fondo contenido</label><input type="color" class="form-control form-control-color" id="ns_body_bg" value="<?= esc($ns['body_bg_color'], 'attr') ?>"></div>
@@ -853,6 +1029,11 @@ if (! in_array($configTab, $pdfConfigTabs, true)) {
             <div class="col-6 col-md-2"><label class="form-label small" for="ns_font_style">Estilo</label><select class="form-select" id="ns_font_style"><?php foreach (['normal', 'italic', 'oblique'] as $st): ?><option value="<?= esc($st, 'attr') ?>" <?= $ns['font_style'] === $st ? 'selected' : '' ?>><?= esc(ucfirst($st)) ?></option><?php endforeach; ?></select></div>
             <div class="col-6 col-md-3"><label class="form-label small" for="ns_text_transform">Transformación</label><select class="form-select" id="ns_text_transform"><?php foreach (['none' => 'Normal', 'uppercase' => 'MAYÚSCULAS', 'lowercase' => 'minúsculas', 'capitalize' => 'Tipo Título'] as $k => $v): ?><option value="<?= esc($k, 'attr') ?>" <?= $ns['text_transform'] === $k ? 'selected' : '' ?>><?= esc($v) ?></option><?php endforeach; ?></select></div>
             <div class="col-6 col-md-2"><label class="form-label small" for="ns_line_height">Interlineado</label><input type="number" class="form-control" id="ns_line_height" min="1" max="3" step="0.05" value="<?= esc((string) $ns['line_height'], 'attr') ?>"></div>
+        </div>
+            </div>
+            <div class="col-lg-4 order-1 order-lg-2">
+                <?= view('config/partials/pdf_templates_live_preview_notes', ['ns' => $ns]) ?>
+            </div>
         </div>
     </div>
 </div>
@@ -1048,129 +1229,10 @@ if (! in_array($configTab, $pdfConfigTabs, true)) {
     </div>
 </div>
 
-<div class="card shadow-sm mb-4 pdf-config-panel" data-config-panels="general">
-    <div class="card-header bg-dark text-white" style="color:#fff !important;">
-        <h5 class="mb-0" style="color:#fff !important;">Márgenes de la hoja (mm)</h5>
-    </div>
-    <div class="card-body">
-        <p class="small text-muted">Espacio en blanco respecto al borde de la página al generar el PDF (0–50 mm).</p>
-        <div class="row g-3">
-            <div class="col-6 col-md-3">
-                <label class="form-label small" for="margin_top">Arriba</label>
-                <input type="number" class="form-control" id="margin_top" min="0" max="50" step="0.5" value="<?= esc((string) ($mm['top'] ?? 15)) ?>">
-            </div>
-            <div class="col-6 col-md-3">
-                <label class="form-label small" for="margin_right">Derecha</label>
-                <input type="number" class="form-control" id="margin_right" min="0" max="50" step="0.5" value="<?= esc((string) ($mm['right'] ?? 15)) ?>">
-            </div>
-            <div class="col-6 col-md-3">
-                <label class="form-label small" for="margin_bottom">Abajo</label>
-                <input type="number" class="form-control" id="margin_bottom" min="0" max="50" step="0.5" value="<?= esc((string) ($mm['bottom'] ?? 15)) ?>">
-            </div>
-            <div class="col-6 col-md-3">
-                <label class="form-label small" for="margin_left">Izquierda</label>
-                <input type="number" class="form-control" id="margin_left" min="0" max="50" step="0.5" value="<?= esc((string) ($mm['left'] ?? 15)) ?>">
-            </div>
-        </div>
-    </div>
-</div>
-
-<div class="card shadow-sm mb-4 pdf-config-panel" data-config-panels="general">
-    <div class="card-header bg-secondary text-white">
-        <h5 class="mb-0">Cabecera de orden en hojas siguientes</h5>
-    </div>
-    <div class="card-body">
-        <?php
-        $tplId = (int) ($template->id ?? 0);
-        $activePdfTplId = (int) ($active_pdf_template_id ?? 0);
-        $activePrintTplId = (int) ($active_print_template_id ?? 0);
-        $isActivePdfTpl = $tplId > 0 && $tplId === $activePdfTplId;
-        $isActivePrintTpl = $tplId > 0 && $tplId === $activePrintTplId;
-        $oshGlobal = ! empty($pdf_order_sheet_header_global);
-        ?>
-        <p class="small text-muted mb-2">Desde la <strong>2.ª hoja</strong> del PDF o impresión muestra «Paciente: …» (izquierda) y «No. Orden: …» (derecha), justo encima del pie. La 1.ª hoja no lleva esta línea porque ya incluye esos datos. No depende del margen superior de la plantilla.</p>
-        <?php if ($oshGlobal): ?>
-        <div class="alert alert-info py-2 small mb-2">Está activa la opción global en <strong>Configuración → Sistema</strong> para este laboratorio (aplica aunque este check esté desmarcado).</div>
-        <?php endif; ?>
-        <?php if ($tplId > 0 && ! $isActivePdfTpl && ! $isActivePrintTpl): ?>
-        <div class="alert alert-warning py-2 small mb-2">Esta plantilla <strong>no es la activa</strong> en Configuración → Sistema. Para que el cambio se vea al descargar PDF o imprimir, active aquí el check y guarde, <em>o</em> asigne esta plantilla como «Plantilla del PDF» / «Plantilla de impresión», <em>o</em> use la opción global en Sistema.</div>
-        <?php else: ?>
-        <p class="small text-muted mb-2">
-            Plantilla activa:
-            <?php if ($isActivePdfTpl): ?><span class="badge text-bg-primary">PDF</span><?php endif; ?>
-            <?php if ($isActivePrintTpl): ?><span class="badge text-bg-secondary">Impresión</span><?php endif; ?>
-        </p>
-        <?php endif; ?>
-        <div class="form-check">
-            <input class="form-check-input" type="checkbox" id="osh_enabled" <?= ! empty($osh['enabled']) ? 'checked' : '' ?>>
-            <label class="form-check-label" for="osh_enabled">Cabecera orden (en esta plantilla)</label>
-        </div>
-    </div>
-</div>
-
-<div class="card shadow-sm mb-4 pdf-config-panel" data-config-panels="general">
-    <div class="card-header bg-info text-white">
-        <h5 class="mb-0">Comportamiento de salto de página (LayoutEngine)</h5>
-    </div>
-    <div class="card-body">
-        <p class="small text-muted mb-3">Define cómo el motor único de paginación distribuye áreas, bloques de análisis y firmas en PDF e impresión. La decisión es determinista en PHP; el navegador solo aplica el plan.</p>
-        <div class="row g-3">
-            <div class="col-12 col-lg-8">
-                <label class="form-label small" for="pagination_mode">Modo de paginación</label>
-                <select class="form-select" id="pagination_mode">
-                    <?php foreach (\App\Services\ReportLayout\ReportPaginationMode::ALL as $modeOpt): ?>
-                    <option value="<?= esc($modeOpt, 'attr') ?>" <?= $paginationMode === $modeOpt ? 'selected' : '' ?>><?= esc($paginationModeLabels[$modeOpt] ?? $modeOpt) ?></option>
-                    <?php endforeach; ?>
-                </select>
-            </div>
-        </div>
-        <ul class="small text-muted mb-0 mt-3 ps-3">
-            <li><strong>MODE 1:</strong> flujo continuo; el bloque de análisis es atómico; si la firma queda sola en la última página, mueve el último bloque.</li>
-            <li><strong>MODE 2:</strong> flujo continuo; nunca permite firma sola (backtracking del último bloque).</li>
-            <li><strong>MODE 3:</strong> cada área inicia en página nueva; la firma puede quedar sola.</li>
-            <li><strong>MODE 4:</strong> igual que MODE 3, pero intenta evitar firma sola moviendo el último bloque del área.</li>
-            <li>Las tablas largas pueden partirse con repetición automática de encabezado (THEAD).</li>
-        </ul>
-    </div>
-</div>
-
-<div class="card shadow-sm mb-4 pdf-config-panel" data-config-panels="general">
-    <div class="card-header bg-white border">
-        <h5 class="mb-0">Marca de agua (centro de la hoja)</h5>
-    </div>
-    <div class="card-body">
-        <p class="small text-muted">Imagen semitransparente detrás del contenido al generar <strong>PDF</strong> o <strong>imprimir</strong> con esta plantilla.</p>
-        <input type="hidden" name="watermark_file_rel" id="watermark_file_rel" value="<?= esc($wm['file'] ?? '') ?>">
-        <div class="row g-3">
-            <div class="col-md-6">
-                <div class="form-check mb-2">
-                    <input class="form-check-input" type="checkbox" id="wm_enabled" <?= ! empty($wm['enabled']) ? 'checked' : '' ?>>
-                    <label class="form-check-label" for="wm_enabled">Usar marca de agua</label>
-                </div>
-                <label class="form-label small" for="wm_opacity">Opacidad (0,05 – 0,9)</label>
-                <input type="number" class="form-control" id="wm_opacity" min="0.05" max="0.9" step="0.01" value="<?= esc((string) ($wm['opacity'] ?? 0.12)) ?>">
-                <label class="form-label small mt-2" for="wm_size">Tamaño (% del ancho de la hoja)</label>
-                <input type="number" class="form-control" id="wm_size" min="10" max="95" value="<?= (int) ($wm['size_percent'] ?? 45) ?>">
-            </div>
-            <div class="col-md-6">
-                <label class="form-label small" for="watermark_upload">Subir imagen (PNG, JPG, GIF, WebP; máx. 2&nbsp;MB)</label>
-                <input type="file" class="form-control" name="watermark_upload" id="watermark_upload" accept="image/jpeg,image/png,image/gif,image/webp">
-                <div class="form-check mt-3">
-                    <input class="form-check-input" type="checkbox" name="watermark_remove" id="watermark_remove" value="1">
-                    <label class="form-check-label text-danger" for="watermark_remove">Quitar imagen de marca de agua</label>
-                </div>
-                <?php if ($wmPreview): ?>
-                <p class="small mb-1 mt-2 text-muted">Archivo actual:</p>
-                <img src="<?= esc($wmPreview, 'attr') ?>" alt="" class="img-thumbnail" style="max-height: 120px;">
-                <?php endif; ?>
-            </div>
-        </div>
-    </div>
-</div>
-
 <div class="card shadow-sm mb-4 pdf-config-panel" data-config-panels="general,header,patient_doctor,lab_firmas,footer" id="pdf-editor-instances">
     <div class="card-header bg-light border">
-        <h5 class="mb-0">Elementos del PDF</h5>
+        <h5 class="mb-0"><i class="fa-solid fa-table-cells me-1"></i> Diseño por zonas</h5>
+        <p class="small text-muted mb-0 mt-1">Ubique cada campo en la cuadrícula. La vista previa se actualiza al instante.</p>
     </div>
     <div class="card-body">
         <template id="tpl_pdf_custom_text_editor">
@@ -1188,9 +1250,9 @@ if (! in_array($configTab, $pdfConfigTabs, true)) {
         </template>
         <div class="row g-3 mb-4 pdf-general-only-controls">
             <div class="col-12 col-lg-6">
-                <label class="form-label small mb-1" for="add_element_type">Añadir elemento al diseño</label>
+                <label class="form-label small mb-1" for="add_element_type">Añadir un campo nuevo</label>
                 <div class="d-flex flex-wrap gap-2 align-items-center">
-                    <select class="form-select form-select-sm" id="add_element_type" style="max-width: 22rem;">
+                    <select class="form-select form-select-sm" id="add_element_type" style="max-width: 22rem;" title="Tipo de campo">
                         <?php foreach (\App\Services\ReportPdfLayoutService::ELEMENT_TYPES as $tid):
                             if (! isset($elLabels[$tid])) {
                                 continue;
@@ -1208,32 +1270,43 @@ if (! in_array($configTab, $pdfConfigTabs, true)) {
                 </div>
             </div>
             <div class="col-12 col-lg-6">
-                <label class="form-label small mb-1" for="palette_span_select">Campos arrastrables (drag & drop)</label>
-                <div class="d-flex flex-wrap gap-2 align-items-center mb-2">
-                    <select class="form-select form-select-sm" id="palette_span_select" style="max-width: 12rem;">
-                        <option value="1">Ancho nuevo: 1 col.</option>
-                        <option value="2">Ancho nuevo: 2 cols.</option>
-                        <option value="3">Ancho nuevo: 3 cols.</option>
-                        <option value="4">Ancho nuevo: 4 cols.</option>
-                        <option value="5">Ancho nuevo: 5 cols.</option>
-                        <option value="6">Ancho nuevo: 6 cols.</option>
+                <label class="form-label small mb-1" for="palette_span_select">Arrastrar campos a la cuadrícula</label>
+                <div class="pdf-tpl-palette-hint mb-2">
+                    <p class="small mb-2">Tomá un campo de abajo y soltalo en una celda de la cuadrícula. Si lo soltás sobre otro campo, lo reemplaza.</p>
+                    <div class="d-flex flex-wrap gap-2 align-items-center">
+                    <select class="form-select form-select-sm" id="palette_span_select" style="max-width: 12rem;" title="Ancho al agregar desde la paleta">
+                        <option value="1">Ancho: 1 columna</option>
+                        <option value="2">Ancho: 2 columnas</option>
+                        <option value="3">Ancho: 3 columnas</option>
+                        <option value="4">Ancho: 4 columnas</option>
+                        <option value="5">Ancho: 5 columnas</option>
+                        <option value="6">Ancho: 6 columnas</option>
                     </select>
                     <div class="form-check ms-2">
-                        <input class="form-check-input" type="checkbox" id="toggle_instance_lists" checked>
-                        <label class="form-check-label small" for="toggle_instance_lists">Mostrar lista avanzada</label>
+                        <input class="form-check-input" type="checkbox" id="toggle_instance_lists">
+                        <label class="form-check-label small" for="toggle_instance_lists">Opciones avanzadas por campo</label>
                     </div>
-                    <span class="small text-muted">Arrastrá estos campos a cualquier matriz. Si soltás sobre un item, hace replace y conserva el ancho del destino.</span>
+                    </div>
                 </div>
                 <div id="pdf-field-palette" class="pdf-field-palette"></div>
             </div>
-            <div class="col-12 border-top pt-3 mt-1">
-                <label class="form-label small mb-1" for="pdf_grid_editor_row_gap">Separación entre filas en la cuadrícula (solo vista del editor, no el PDF)</label>
+            <div class="col-12 border-top pt-3 mt-1 pdf-advanced-editor-prefs">
+                <label class="form-label small mb-1" for="pdf_grid_editor_row_gap">Altura de filas en el editor (solo vista previa aquí)</label>
                 <div class="d-flex flex-wrap align-items-center gap-3">
                     <input type="range" class="form-range m-0" id="pdf_grid_editor_row_gap" min="2" max="18" step="1" value="6" style="max-width: 22rem;">
                     <span class="small text-muted" id="pdf_grid_editor_row_gap_hint">0,60 rem</span>
                 </div>
-                <p class="small text-muted mb-0 mt-1">Si cada fila del diseño se ve muy alta, baje este valor. La pestaña <strong>Resultados</strong> tiene el control equivalente para el PDF (<em>Relleno vertical por fila</em>).</p>
+                <p class="small text-muted mb-0 mt-1">Si las filas se ven muy separadas, baje este valor. En la pestaña <strong>Resultados</strong> puede ajustar el espaciado real del PDF.</p>
             </div>
+        </div>
+
+        <div class="pdf-tpl-matrix-help pdf-config-panel" data-config-panels="header,patient_doctor,lab_firmas,footer">
+            <strong class="small d-block mb-1"><i class="fa-solid fa-hand-pointer me-1"></i> Cómo usar la cuadrícula</strong>
+            <ul class="small mb-0">
+                <li>Arrastre campos desde la paleta (pestaña General) o desde otra celda.</li>
+                <li>Haga clic en un campo de la cuadrícula para ver sus opciones (columna, ancho, alineación).</li>
+                <li>La vista previa a la derecha muestra el resultado aproximado.</li>
+            </ul>
         </div>
 
         <div class="card border-info mb-4 pdf-section-editor" data-config-section="header">
@@ -1248,14 +1321,13 @@ if (! in_array($configTab, $pdfConfigTabs, true)) {
                 ]) ?>
                 <div class="pdf-grid-editor-wrap mb-4">
                     <div class="d-flex justify-content-between align-items-center mb-2 flex-wrap gap-2">
-                        <h6 class="text-uppercase text-muted small mb-0">Matriz editable</h6>
+                        <h6 class="text-muted small mb-0">Cuadrícula de diseño</h6>
                         <div class="d-flex align-items-center gap-3 flex-wrap">
                             <?= view('config/partials/pdf_matrix_size_controls', [
                                 'section_key' => 'header',
                                 'col_count'   => $hCols,
                                 'sec_layout'  => $secLayouts['header'] ?? [],
                             ]) ?>
-                            <span class="small text-muted">Drop en la celda: agrega al final del stack. Drop sobre un item: replace.</span>
                         </div>
                     </div>
                     <div id="grid-editor-header" class="pdf-grid-editor" data-section="header"></div>
@@ -1291,14 +1363,13 @@ if (! in_array($configTab, $pdfConfigTabs, true)) {
                 ]) ?>
                 <div class="pdf-grid-editor-wrap mb-4">
                     <div class="d-flex justify-content-between align-items-center mb-2 flex-wrap gap-2">
-                        <h6 class="text-uppercase text-muted small mb-0">Matriz editable</h6>
+                        <h6 class="text-muted small mb-0">Cuadrícula de diseño</h6>
                         <div class="d-flex align-items-center gap-3 flex-wrap">
                             <?= view('config/partials/pdf_matrix_size_controls', [
                                 'section_key' => 'patient_doctor',
                                 'col_count'   => $pCols,
                                 'sec_layout'  => $secLayouts['patient_doctor'] ?? [],
                             ]) ?>
-                            <span class="small text-muted">Los espacios, tipografías y alineaciones se conservan por instancia.</span>
                         </div>
                     </div>
                     <div id="grid-editor-patient" class="pdf-grid-editor" data-section="patient_doctor"></div>
@@ -1335,14 +1406,13 @@ if (! in_array($configTab, $pdfConfigTabs, true)) {
                 ]) ?>
                 <div class="pdf-grid-editor-wrap mb-4">
                     <div class="d-flex justify-content-between align-items-center mb-2 flex-wrap gap-2">
-                        <h6 class="text-uppercase text-muted small mb-0">Matriz editable</h6>
+                        <h6 class="text-muted small mb-0">Cuadrícula de diseño</h6>
                         <div class="d-flex align-items-center gap-3 flex-wrap">
                             <?= view('config/partials/pdf_matrix_size_controls', [
                                 'section_key' => 'lab_firmas',
                                 'col_count'   => $lCols,
                                 'sec_layout'  => $secLayouts['lab_firmas'] ?? [],
                             ]) ?>
-                            <span class="small text-muted">Podés apilar varios elementos dentro del mismo espacio.</span>
                         </div>
                     </div>
                     <div id="grid-editor-lab-firmas" class="pdf-grid-editor" data-section="lab_firmas"></div>
@@ -1379,14 +1449,13 @@ if (! in_array($configTab, $pdfConfigTabs, true)) {
                 ]) ?>
                 <div class="pdf-grid-editor-wrap mb-4">
                     <div class="d-flex justify-content-between align-items-center mb-2 flex-wrap gap-2">
-                        <h6 class="text-uppercase text-muted small mb-0">Matriz editable</h6>
+                        <h6 class="text-muted small mb-0">Cuadrícula de diseño</h6>
                         <div class="d-flex align-items-center gap-3 flex-wrap">
                             <?= view('config/partials/pdf_matrix_size_controls', [
                                 'section_key' => 'footer',
                                 'col_count'   => $fCols,
                                 'sec_layout'  => $secLayouts['footer'] ?? [],
                             ]) ?>
-                            <span class="small text-muted">El ancho de destino se mantiene en los replace.</span>
                         </div>
                     </div>
                     <div id="grid-editor-footer" class="pdf-grid-editor" data-section="footer"></div>
@@ -1412,14 +1481,21 @@ if (! in_array($configTab, $pdfConfigTabs, true)) {
     </div>
 </div>
 
-    <div class="mb-3">
-        <label class="form-label" for="tpl_name">Nombre de la plantilla</label>
-        <input type="text" class="form-control" name="name" id="tpl_name" required maxlength="120" value="<?= esc($template->name ?? '') ?>">
+    <div class="card border-0 bg-light mb-3">
+        <div class="card-body py-3">
+            <label class="form-label mb-1" for="tpl_name">Nombre de la plantilla</label>
+            <input type="text" class="form-control" name="name" id="tpl_name" required maxlength="120" value="<?= esc($template->name ?? '') ?>">
+        </div>
     </div>
-    <button type="submit" class="btn btn-primary"><i class="fa-solid fa-floppy-disk me-1"></i> Guardar plantilla</button>
-    <a href="<?= site_url('config/pdf-templates') ?>" class="btn btn-outline-secondary">Volver al listado</a>
-    <a href="<?= site_url('config') ?>?tab=sistema" class="btn btn-outline-secondary">Configuración</a>
+    <div class="d-flex flex-wrap gap-2 mb-4">
+        <button type="submit" class="btn btn-primary btn-lg" id="btn_save_pdf_tpl_bottom"><i class="fa-solid fa-floppy-disk me-1"></i> Guardar plantilla</button>
+        <a href="<?= site_url('config/pdf-templates') ?>" class="btn btn-outline-secondary">Volver al listado</a>
+    </div>
+    <button type="submit" class="btn btn-primary btn-lg pdf-tpl-floating-save" id="btn_save_pdf_tpl_float" title="Guardar plantilla">
+        <i class="fa-solid fa-floppy-disk me-1"></i> Guardar
+    </button>
 <?= form_close() ?>
+</div><!-- /.pdf-tpl-editor -->
 
 <style>
 .pdf-block-sortable .pdf-block-item.sortable-ghost,
@@ -1673,6 +1749,12 @@ if (! in_array($configTab, $pdfConfigTabs, true)) {
 </style>
 <script>
 document.addEventListener('DOMContentLoaded', function() {
+    var PDF_SEG_SHADOW_MAP = {
+        none: 'none',
+        soft: '0 1px 2px rgba(0,0,0,0.18)',
+        medium: '0 1.5px 3px rgba(0,0,0,0.26)',
+        strong: '0 2px 5px rgba(0,0,0,0.34)'
+    };
     var initialConfigTab = <?= json_encode($configTab, JSON_UNESCAPED_UNICODE) ?>;
     function csvHasToken(csv, token) {
         if (!csv) return false;
@@ -1683,7 +1765,9 @@ document.addEventListener('DOMContentLoaded', function() {
         var tabInput = document.getElementById('config_tab');
         if (tabInput) tabInput.value = tabKey;
         document.querySelectorAll('#pdf_config_tabs .nav-link[data-config-tab]').forEach(function(btn) {
-            btn.classList.toggle('active', String(btn.getAttribute('data-config-tab') || '') === tabKey);
+            var isActive = String(btn.getAttribute('data-config-tab') || '') === tabKey;
+            btn.classList.toggle('active', isActive);
+            btn.setAttribute('aria-selected', isActive ? 'true' : 'false');
         });
         document.querySelectorAll('.pdf-config-panel[data-config-panels]').forEach(function(panel) {
             var groups = String(panel.getAttribute('data-config-panels') || '');
@@ -1698,9 +1782,31 @@ document.addEventListener('DOMContentLoaded', function() {
         document.querySelectorAll('.pdf-section-editor[data-config-section]').forEach(function(panel) {
             panel.classList.toggle('pdf-config-panel-hidden', String(panel.getAttribute('data-config-section') || '') !== tabKey);
         });
-        document.querySelectorAll('.pdf-general-only-controls').forEach(function(panel) {
+        document.querySelectorAll('.pdf-general-only-controls, .pdf-advanced-editor-prefs').forEach(function(panel) {
             panel.classList.toggle('pdf-config-panel-hidden', tabKey !== 'general');
         });
+        var tabLabels = {
+            general: 'General',
+            header: 'Encabezado',
+            patient_doctor: 'Paciente',
+            results: 'Resultados',
+            notes: 'Notas',
+            lab_firmas: 'Firmas',
+            footer: 'Pie'
+        };
+        var tabLabelEl = document.getElementById('pdf_tpl_current_tab_label');
+        if (tabLabelEl) {
+            tabLabelEl.textContent = 'Pestaña: ' + (tabLabels[tabKey] || tabKey);
+        }
+        var helpMap = window._pdfTplTabHelp || {};
+        var help = helpMap[tabKey] || helpMap.general || null;
+        var helpTitle = document.getElementById('pdf_tpl_tab_context_title');
+        var helpText = document.getElementById('pdf_tpl_tab_context_text');
+        if (help && helpTitle) helpTitle.textContent = help.title || '';
+        if (help && helpText) helpText.textContent = help.text || '';
+        if (tabKey === 'results' && typeof rebuildResultsLivePreview === 'function') rebuildResultsLivePreview();
+        if (tabKey === 'notes' && typeof rebuildNotesLivePreview === 'function') rebuildNotesLivePreview();
+        try { window.scrollTo({ top: 0, behavior: 'smooth' }); } catch (e) { window.scrollTo(0, 0); }
     }
     document.querySelectorAll('#pdf_config_tabs .nav-link[data-config-tab]').forEach(function(btn) {
         btn.addEventListener('click', function() {
@@ -1708,6 +1814,43 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     });
     applyConfigTab(initialConfigTab);
+
+    (function pdfTplEditorUx() {
+        var root = document.getElementById('pdf_tpl_editor_root');
+        var stickyBar = document.getElementById('pdf_tpl_sticky_bar');
+        var floatSave = document.getElementById('btn_save_pdf_tpl_float');
+        var guideCard = document.getElementById('pdf_tpl_guide_card');
+        var dismissGuide = document.getElementById('btn_dismiss_pdf_guide');
+        var toggleTech = document.getElementById('toggle_tech_ids');
+
+        if (dismissGuide && guideCard) {
+            try {
+                if (localStorage.getItem('pdfTplGuideDismissed') === '1') {
+                    guideCard.style.display = 'none';
+                }
+            } catch (e) { /* ignore */ }
+            dismissGuide.addEventListener('click', function() {
+                guideCard.style.display = 'none';
+                try { localStorage.setItem('pdfTplGuideDismissed', '1'); } catch (e) { /* ignore */ }
+            });
+        }
+
+        if (toggleTech && root) {
+            toggleTech.addEventListener('change', function() {
+                root.classList.toggle('show-tech-ids', !!toggleTech.checked);
+            });
+        }
+
+        function syncFloatingSave() {
+            if (!stickyBar || !floatSave) return;
+            var rect = stickyBar.getBoundingClientRect();
+            var showFloat = rect.bottom < 0;
+            floatSave.classList.toggle('is-visible', showFloat);
+            if (stickyBar) stickyBar.classList.toggle('is-scrolled', window.scrollY > 8);
+        }
+        window.addEventListener('scroll', syncFloatingSave, { passive: true });
+        syncFloatingSave();
+    })();
 
     (function pdfGridEditorGapPrefs() {
         var rangeEl = document.getElementById('pdf_grid_editor_row_gap');
@@ -2696,11 +2839,11 @@ document.addEventListener('DOMContentLoaded', function() {
 
     function buildSectionLayoutsForJson() {
         function pack(secKey, colsInput, rowsInput) {
-            var n = clampCols(colsInput.value);
+            var n = clampCols(colsInput ? colsInput.value : 3);
             var st = readSectionStyleFromDom(secKey);
             return {
                 columns: n,
-                rows: clampRows(rowsInput && rowsInput.value),
+                rows: clampRows(rowsInput ? rowsInput.value : 3),
                 line_height: st.line_height,
                 row_gap_px: readSectionRowGapPx(secKey)
             };
@@ -4055,9 +4198,8 @@ document.addEventListener('DOMContentLoaded', function() {
     if (toggleInstanceLists) {
         var applyListVisibility = function() {
             var show = !!toggleInstanceLists.checked;
-            document.querySelectorAll('.pdf-instance-list-col').forEach(function(el) {
-                el.style.display = show ? '' : 'none';
-            });
+            var root = document.getElementById('pdf_tpl_editor_root');
+            if (root) root.classList.toggle('show-advanced-lists', show);
         };
         toggleInstanceLists.addEventListener('change', applyListVisibility);
         applyListVisibility();
@@ -4431,6 +4573,300 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         };
     }
+
+    function applyCssVarsToEl(el, vars) {
+        if (!el || !vars) return;
+        Object.keys(vars).forEach(function(key) {
+            if (vars[key] !== undefined && vars[key] !== null) {
+                el.style.setProperty(key, String(vars[key]));
+            }
+        });
+    }
+
+    function pageStyleToPreviewCssVars(ps) {
+        ps = ps || {};
+        var ch = ps.card_header || {};
+        var ns = ps.notes || {};
+        var rs = ps.results_table || {};
+        var chCardBg = ch.bg_transparent ? 'transparent' : (ch.bg_color || '#e9ecef');
+        var nsTitleBg = ns.title_transparent ? 'transparent' : (ns.title_bg_color || '#fff3cd');
+        var nsBodyBg = ns.body_transparent ? 'transparent' : (ns.body_bg_color || '#ffffff');
+        var rsBodyBg = rs.body_transparent ? 'transparent' : (rs.body_bg_color || '#ffffff');
+        var rsSegBg = rs.segment_transparent ? 'transparent' : (rs.segment_bg_color || '#e9ecef');
+        return {
+            '--pdf-card-header-bg': chCardBg,
+            '--pdf-card-header-color': ch.text_color || '#212529',
+            '--pdf-card-header-font-family': '"' + (ch.font_family || 'DejaVu Sans') + '"',
+            '--pdf-card-header-font-size': (ch.font_size_pt || 10) + 'pt',
+            '--pdf-card-header-font-weight': ch.font_weight || '700',
+            '--pdf-card-header-font-style': ch.font_style || 'normal',
+            '--pdf-card-header-transform': ch.text_transform || 'uppercase',
+            '--pdf-notes-title-bg': nsTitleBg,
+            '--pdf-notes-title-color': ns.title_text_color || '#664d03',
+            '--pdf-notes-body-bg': nsBodyBg,
+            '--pdf-notes-body-color': ns.body_text_color || '#333333',
+            '--pdf-notes-column-border-width': (Math.max(0, Math.min(4, parseInt(ns.column_border_width_px, 10) || 1))) + 'px',
+            '--pdf-notes-column-border-color': ns.column_border_color || '#dddddd',
+            '--pdf-notes-font-family': '"' + (ns.font_family || 'DejaVu Sans') + '"',
+            '--pdf-notes-font-size': (ns.font_size_pt || 9.5) + 'pt',
+            '--pdf-notes-font-weight': ns.font_weight || 'normal',
+            '--pdf-notes-font-style': ns.font_style || 'normal',
+            '--pdf-notes-transform': ns.text_transform || 'none',
+            '--pdf-notes-line-height': String(ns.line_height || 1.4),
+            '--pdf-results-header-bg': rs.header_bg_color || '#0066cc',
+            '--pdf-results-header-color': rs.header_text_color || '#ffffff',
+            '--pdf-results-body-bg': rsBodyBg,
+            '--pdf-results-body-color': rs.body_text_color || '#333333',
+            '--pdf-results-border-color': rs.border_color || '#dddddd',
+            '--pdf-results-segment-bg': rsSegBg,
+            '--pdf-results-segment-border': rs.segment_border_color || '#dddddd',
+            '--pdf-results-segment-border-width': (parseInt(rs.segment_border_width_px, 10) || 1) + 'px',
+            '--pdf-results-segment-shadow': PDF_SEG_SHADOW_MAP[rs.segment_shadow] || 'none',
+            '--pdf-results-segment-padding-top': (parseInt(rs.segment_padding_top_px, 10) || 6) + 'px',
+            '--pdf-results-segment-padding-bottom': (parseInt(rs.segment_padding_bottom_px, 10) || 6) + 'px',
+            '--pdf-results-font-family': '"' + (rs.font_family || 'DejaVu Sans') + '"',
+            '--pdf-results-font-size': (rs.font_size_pt || 9) + 'pt',
+            '--pdf-results-font-weight': rs.font_weight || 'normal',
+            '--pdf-results-font-style': rs.font_style || 'normal',
+            '--pdf-results-transform': rs.text_transform || 'none',
+            '--pdf-results-line-height': String(rs.line_height || 1.35),
+            '--pdf-results-cell-padding-v': (parseInt(rs.cell_padding_v_px, 10) || 6) + 'px',
+            '--pdf-results-table-margin-top': (parseInt(rs.table_margin_top_px, 10) || 15) + 'px',
+            '--pdf-results-table-margin-bottom': (parseInt(rs.table_margin_bottom_px, 10) || 15) + 'px',
+            '--pdf-results-grupo-gap': (parseInt(rs.grupo_prueba_gap_px, 10) || 10) + 'px',
+            '--pdf-grupo-area-separator-margin-top': (parseInt(rs.grupo_area_separator_margin_top_px, 10) || 10) + 'px',
+            '--pdf-grupo-area-separator-margin-bottom': (parseInt(rs.grupo_area_separator_margin_bottom_px, 10) || 10) + 'px',
+            '--pdf-grupo-cabecera-title-margin-top': (parseInt(rs.grupo_cabecera_title_margin_top_px, 10) || 0) + 'px',
+            '--pdf-grupo-cabecera-title-margin-bottom': (parseInt(rs.grupo_cabecera_title_margin_bottom_px, 10) || 6) + 'px',
+            '--pdf-grupo-cabecera-tipo-margin-top': (parseInt(rs.grupo_cabecera_tipo_muestra_margin_top_px, 10) || 0) + 'px',
+            '--pdf-grupo-cabecera-tipo-margin-bottom': (parseInt(rs.grupo_cabecera_tipo_muestra_margin_bottom_px, 10) || 10) + 'px',
+            '--pdf-grupo-cabecera-metodo-margin-top': (parseInt(rs.grupo_cabecera_metodo_margin_top_px, 10) || 0) + 'px',
+            '--pdf-grupo-cabecera-metodo-margin-bottom': (parseInt(rs.grupo_cabecera_metodo_margin_bottom_px, 10) || 10) + 'px',
+            '--pdf-results-matrix-vertical-align': rs.matrix_vertical_align || 'middle',
+            '--pdf-results-matrix-color': rs.matrix_text_color || rs.body_text_color || '#333333',
+            '--pdf-results-matrix-font-size': (rs.matrix_font_size_pt || rs.font_size_pt || 8) + 'pt',
+            '--pdf-results-matrix-font-weight': rs.matrix_font_weight || rs.font_weight || 'normal',
+            '--pdf-results-matrix-font-style': rs.matrix_font_style || rs.font_style || 'normal',
+            '--pdf-results-matrix-transform': rs.matrix_text_transform || rs.text_transform || 'none',
+            '--pdf-results-matrix-header-color': rs.matrix_header_text_color || rs.header_text_color || '#1f2937',
+            '--pdf-results-matrix-header-font-family': '"' + (rs.matrix_header_font_family || rs.font_family || 'DejaVu Sans') + '"',
+            '--pdf-results-matrix-header-font-size': (rs.matrix_header_font_size_pt || rs.font_size_pt || 8) + 'pt',
+            '--pdf-results-matrix-header-font-weight': rs.matrix_header_font_weight || 'bold',
+            '--pdf-results-matrix-header-font-style': rs.matrix_header_font_style || 'normal',
+            '--pdf-results-matrix-header-transform': rs.matrix_header_text_transform || 'uppercase'
+        };
+    }
+
+    function previewColorFromInput(id, fallback) {
+        var el = document.getElementById(id);
+        if (!el) return fallback;
+        var v = String(el.value || '').trim();
+        return /^#[0-9a-fA-F]{6}$/.test(v) ? v : fallback;
+    }
+
+    function previewChecked(id) {
+        var el = document.getElementById(id);
+        return !!(el && el.checked);
+    }
+
+    function buildResultsPreviewExtraCss(rs) {
+        rs = rs || {};
+        var scope = '.ynex-theme #pdf_results_live_preview_scope';
+        var lines = [];
+
+        var bodyTransparent = previewChecked('rs_body_transparent') || !!rs.body_transparent;
+        var segTransparent = previewChecked('rs_segment_transparent') || !!rs.segment_transparent;
+        var hdrBg = previewColorFromInput('rs_header_bg', rs.header_bg_color || '#0066CC');
+        var hdrText = previewColorFromInput('rs_header_text', rs.header_text_color || '#FFFFFF');
+        var bodyBg = bodyTransparent ? 'transparent' : previewColorFromInput('rs_body_bg', rs.body_bg_color || '#FFFFFF');
+        var bodyText = previewColorFromInput('rs_body_text', rs.body_text_color || '#333333');
+        var borderColor = previewColorFromInput('rs_border_color', rs.border_color || '#DDDDDD');
+        var segBg = segTransparent ? 'transparent' : previewColorFromInput('rs_segment_bg', rs.segment_bg_color || '#E9ECEF');
+        var segBorder = previewColorFromInput('rs_segment_border_color', rs.segment_border_color || '#DDDDDD');
+        var matrixText = previewColorFromInput('rs_matrix_text_color', rs.matrix_text_color || bodyText);
+        var matrixHdrText = previewColorFromInput('rs_matrix_header_text_color', rs.matrix_header_text_color || hdrText);
+
+        lines.push(scope + ' table.results:not(.pdf-notes-table):not(.report-refs-matrix) thead th {');
+        lines.push('  background: ' + hdrBg + ' !important;');
+        lines.push('  color: ' + hdrText + ' !important;');
+        lines.push('  border-color: ' + borderColor + ' !important;');
+        lines.push('}');
+        lines.push(scope + ' table.results:not(.pdf-notes-table):not(.report-refs-matrix) tbody td {');
+        lines.push('  background: ' + bodyBg + ' !important;');
+        lines.push('  color: ' + bodyText + ' !important;');
+        lines.push('  border-color: ' + borderColor + ' !important;');
+        lines.push('}');
+        lines.push(scope + ' table.results.report-refs-matrix thead th {');
+        lines.push('  background: ' + hdrBg + ' !important;');
+        lines.push('  color: ' + matrixHdrText + ' !important;');
+        lines.push('  border-color: ' + borderColor + ' !important;');
+        lines.push('}');
+        lines.push(scope + ' table.results.report-refs-matrix tbody td {');
+        lines.push('  background: ' + bodyBg + ' !important;');
+        lines.push('  color: ' + matrixText + ' !important;');
+        lines.push('  border-color: ' + borderColor + ' !important;');
+        lines.push('}');
+        lines.push(scope + ' .report-segment-title, ' + scope + ' .report-segment-title.pdf-card-header {');
+        lines.push('  background: ' + segBg + ' !important;');
+        lines.push('  border-color: ' + segBorder + ' !important;');
+        lines.push('}');
+
+        var pad = parseInt(rs.cell_padding_v_px, 10);
+        if (isNaN(pad)) {
+            var padEl = document.getElementById('rs_cell_padding_v');
+            pad = padEl ? parseInt(padEl.value, 10) : 6;
+        }
+        if (isNaN(pad)) pad = 6;
+        lines.push(scope + ' table.results:not(.report-refs-matrix) th, ' + scope + ' table.results:not(.report-refs-matrix) td {');
+        lines.push('  padding-top: ' + pad + 'px !important; padding-bottom: ' + pad + 'px !important;');
+        lines.push('}');
+
+        var alignPairs = [
+            ['analisis', rs.results_hdr_analisis_align || 'left', rs.results_col_analisis_align || 'left'],
+            ['resultado', rs.results_hdr_resultado_align || 'center', rs.results_col_resultado_align || 'center'],
+            ['rango', rs.results_hdr_rango_align || 'center', rs.results_col_rango_align || 'center'],
+            ['interpretacion', rs.results_hdr_interpretacion_align || 'center', rs.results_col_interpretacion_align || 'center']
+        ];
+        alignPairs.forEach(function(pair) {
+            var key = pair[0];
+            lines.push(scope + ' th.results-col-' + key + ' { text-align:' + pair[1] + ' !important; }');
+            lines.push(scope + ' td.results-col-' + key + ' { text-align:' + pair[2] + ' !important; }');
+        });
+        var matrixPairs = [
+            ['population', rs.matrix_hdr_population_align || 'left', rs.matrix_col_population_align || 'left'],
+            ['parameter', rs.matrix_hdr_parameter_align || 'left', rs.matrix_col_parameter_align || 'left'],
+            ['sex', rs.matrix_hdr_sex_align || 'center', rs.matrix_col_sex_align || 'center'],
+            ['reference', rs.matrix_hdr_reference_align || 'center', rs.matrix_col_reference_align || 'center']
+        ];
+        matrixPairs.forEach(function(pair) {
+            lines.push(scope + ' th.matrix-col-' + pair[0] + ' { text-align:' + pair[1] + ' !important; }');
+            lines.push(scope + ' td.matrix-col-' + pair[0] + ' { text-align:' + pair[2] + ' !important; }');
+        });
+        var vAlign = rs.matrix_vertical_align || 'middle';
+        lines.push(scope + ' .report-refs-matrix th, ' + scope + ' .report-refs-matrix td { vertical-align:' + vAlign + ' !important; }');
+        return lines.join('\n');
+    }
+
+    function buildNotesPreviewExtraCss(ns) {
+        ns = ns || {};
+        var scope = '.ynex-theme #pdf_notes_live_preview_scope';
+        var titleTransparent = previewChecked('ns_title_transparent') || !!ns.title_transparent;
+        var bodyTransparent = previewChecked('ns_body_transparent') || !!ns.body_transparent;
+        var titleBg = titleTransparent ? 'transparent' : previewColorFromInput('ns_title_bg', ns.title_bg_color || '#FFF3CD');
+        var titleText = previewColorFromInput('ns_title_text', ns.title_text_color || '#664D03');
+        var bodyBg = bodyTransparent ? 'transparent' : previewColorFromInput('ns_body_bg', ns.body_bg_color || '#FFFFFF');
+        var bodyText = previewColorFromInput('ns_body_text', ns.body_text_color || '#333333');
+        var borderColor = previewColorFromInput('ns_column_border_color', ns.column_border_color || '#DDDDDD');
+        var borderW = parseInt(ns.column_border_width_px, 10);
+        if (isNaN(borderW)) {
+            var bwEl = document.getElementById('ns_column_border_width');
+            borderW = bwEl ? parseInt(bwEl.value, 10) : 1;
+        }
+        if (isNaN(borderW)) borderW = 1;
+        return [
+            scope + ' td.pdf-notes-title {',
+            '  background: ' + titleBg + ' !important;',
+            '  color: ' + titleText + ' !important;',
+            '  border: ' + borderW + 'px solid ' + borderColor + ' !important;',
+            '}',
+            scope + ' td.pdf-notes-cell {',
+            '  background: ' + bodyBg + ' !important;',
+            '  color: ' + bodyText + ' !important;',
+            '  border: ' + borderW + 'px solid ' + borderColor + ' !important;',
+            '}'
+        ].join('\n');
+    }
+
+    function syncResultsPreviewContent(rs) {
+        rs = rs || {};
+        var areaSep = document.getElementById('pdf_preview_area_separator');
+        if (areaSep) {
+            areaSep.style.display = rs.grupo_area_separator_enabled ? '' : 'none';
+            areaSep.textContent = 'HEMATOLOGÍA';
+        }
+        var titleEl = document.getElementById('pdf_preview_grupo_title');
+        if (titleEl) {
+            var mode = String(rs.grupo_cabecera_title_mode || 'grupo_analisis');
+            titleEl.textContent = mode === 'solo_analisis' ? 'Hemograma completo' : 'HEMATOLOGÍA — Hemograma completo';
+        }
+        var tipoEl = document.getElementById('pdf_preview_tipo_muestra');
+        if (tipoEl) {
+            tipoEl.style.display = rs.grupo_cabecera_show_tipo_muestra ? '' : 'none';
+        }
+        var metodoEl = document.getElementById('pdf_preview_metodo');
+        if (metodoEl) {
+            metodoEl.style.display = rs.grupo_cabecera_show_metodo ? '' : 'none';
+        }
+        var segmentTitle = document.querySelector('#pdf_results_live_preview_scope .report-segment-table-wrap .report-segment-title');
+        if (segmentTitle) {
+            segmentTitle.style.display = rs.grupo_cabecera_title_mode === 'grupo_analisis_sin_cabecera_tabla' ? 'none' : '';
+        }
+    }
+
+    function rebuildResultsLivePreview() {
+        var scope = document.getElementById('pdf_results_live_preview_scope');
+        if (!scope) return;
+        var ps = null;
+        try {
+            ps = readCardHeaderStyleForJson();
+            applyCssVarsToEl(scope, pageStyleToPreviewCssVars(ps));
+            syncResultsPreviewContent(ps.results_table || {});
+        } catch (e) {
+            console.warn('Vista previa resultados (variables):', e);
+        }
+        var styleEl = document.getElementById('pdf_results_live_preview_rules');
+        if (styleEl) {
+            styleEl.textContent = buildResultsPreviewExtraCss(ps && ps.results_table ? ps.results_table : {});
+        }
+    }
+
+    function rebuildNotesLivePreview() {
+        var scope = document.getElementById('pdf_notes_live_preview_scope');
+        if (!scope) return;
+        var ps = null;
+        try {
+            ps = readCardHeaderStyleForJson();
+            applyCssVarsToEl(scope, pageStyleToPreviewCssVars(ps));
+        } catch (e) {
+            console.warn('Vista previa notas (variables):', e);
+        }
+        var ns = (ps && ps.notes) ? ps.notes : {};
+        var titleRow = document.getElementById('pdf_notes_preview_title_row');
+        var titleEl = document.getElementById('pdf_notes_preview_title');
+        if (titleRow) {
+            titleRow.style.display = ns.show_section_title ? '' : 'none';
+        }
+        if (titleEl) {
+            var t = String(ns.section_title || '').trim();
+            titleEl.textContent = t !== '' ? t : 'NOTAS';
+        }
+        var notesStyleEl = document.getElementById('pdf_notes_live_preview_rules');
+        if (notesStyleEl) {
+            notesStyleEl.textContent = buildNotesPreviewExtraCss(ns);
+        }
+    }
+
+    function wireLiveStylePreviews() {
+        function wireRoot(root, handler) {
+            if (!root) return;
+            root.querySelectorAll('input, select, textarea').forEach(function(el) {
+                el.addEventListener('input', handler);
+                el.addEventListener('change', handler);
+            });
+        }
+        wireRoot(document.getElementById('pdf_results_config_root'), rebuildResultsLivePreview);
+        wireRoot(document.getElementById('pdf_notes_config_root'), rebuildNotesLivePreview);
+        ['ch_bg_color', 'ch_text_color', 'ch_bg_transparent', 'ch_font_family', 'ch_font_size', 'ch_font_weight', 'ch_font_style', 'ch_text_transform'].forEach(function(id) {
+            var el = document.getElementById(id);
+            if (!el) return;
+            el.addEventListener('input', rebuildResultsLivePreview);
+            el.addEventListener('change', rebuildResultsLivePreview);
+        });
+        rebuildResultsLivePreview();
+        rebuildNotesLivePreview();
+    }
+
+    wireLiveStylePreviews();
 
     function validatePdfEditorStylesBeforeSave() {
         var errs = [];
@@ -4838,87 +5274,129 @@ document.addEventListener('DOMContentLoaded', function() {
         return base;
     }
 
-    document.getElementById('pdf_tpl_form').addEventListener('submit', function(ev) {
-        var styleErrs = validatePdfEditorStylesBeforeSave();
-        var gridErrs = validateGridConflictsBeforeSave();
-        if (gridErrs.length > 0) {
-            styleErrs = styleErrs.concat(gridErrs);
-        }
-        if (styleErrs.length > 0) {
+    var pdfTplForm = document.getElementById('pdf_tpl_form');
+    if (pdfTplForm) {
+        pdfTplForm.addEventListener('submit', function(ev) {
             ev.preventDefault();
-            var maxShow = 10;
-            var msg = styleErrs.slice(0, maxShow).join('\n');
-            if (styleErrs.length > maxShow) {
-                msg += '\n… (' + styleErrs.length + ' problemas)';
+            var styleErrs = [];
+            var gridErrs = [];
+            try {
+                styleErrs = validatePdfEditorStylesBeforeSave();
+                gridErrs = validateGridConflictsBeforeSave();
+            } catch (err) {
+                console.error(err);
+                alert('No se pudo validar el diseño antes de guardar. Recargue la página e intente de nuevo.');
+                return;
             }
-            alert('Revise los estilos antes de guardar:\n\n' + msg);
-            return;
-        }
-        var activeTabBtn = document.querySelector('#pdf_config_tabs .nav-link.active[data-config-tab]');
-        var configTabInput = document.getElementById('config_tab');
-        if (activeTabBtn && configTabInput) {
-            configTabInput.value = String(activeTabBtn.getAttribute('data-config-tab') || 'general');
-        }
-        var blocks = [];
-        blockList.querySelectorAll('.pdf-block-item').forEach(function(li) {
-            var id = li.getAttribute('data-block-id');
-            var cb = li.querySelector('.pdf-block-enabled');
-            blocks.push({ id: id, enabled: cb ? cb.checked : true });
-        });
-
-        var instances = [];
-        headerList.querySelectorAll('.pdf-instance-item').forEach(function(li) {
-            instances.push(parseInstanceLi(li, 'header'));
-        });
-        patientList.querySelectorAll('.pdf-instance-item').forEach(function(li) {
-            instances.push(parseInstanceLi(li, 'patient_doctor'));
-        });
-        footerList.querySelectorAll('.pdf-instance-item').forEach(function(li) {
-            instances.push(parseInstanceLi(li, 'footer'));
-        });
-        if (labFirmasList) {
-            labFirmasList.querySelectorAll('.pdf-instance-item').forEach(function(li) {
-                instances.push(parseInstanceLi(li, 'lab_firmas'));
-            });
-        }
-
-        function buildWatermarkForJson() {
-            var relIn = document.getElementById('watermark_file_rel');
-            var rel = relIn && relIn.value ? String(relIn.value).trim() : '';
-            var removeCb = document.getElementById('watermark_remove');
-            if (removeCb && removeCb.checked) {
-                rel = '';
+            if (gridErrs.length > 0) {
+                styleErrs = styleErrs.concat(gridErrs);
             }
-            var op = parseFloat(document.getElementById('wm_opacity').value);
-            if (isNaN(op)) op = 0.12;
-            op = Math.max(0.05, Math.min(0.9, op));
-            var sz = parseInt(document.getElementById('wm_size').value, 10);
-            if (isNaN(sz)) sz = 45;
-            sz = Math.max(10, Math.min(95, sz));
-            var en = document.getElementById('wm_enabled') && document.getElementById('wm_enabled').checked;
-            return {
-                enabled: en,
-                opacity: op,
-                size_percent: sz,
-                file: rel === '' ? null : rel
-            };
-        }
+            if (styleErrs.length > 0) {
+                var maxShow = 10;
+                var msg = styleErrs.slice(0, maxShow).join('\n');
+                if (styleErrs.length > maxShow) {
+                    msg += '\n… (' + styleErrs.length + ' problemas)';
+                }
+                alert('Revise los estilos antes de guardar:\n\n' + msg);
+                return;
+            }
+            var layoutInput = document.getElementById('layout_json');
+            if (!layoutInput) {
+                alert('Error interno: falta el campo de diseño. Recargue la página.');
+                return;
+            }
+            try {
+                var activeTabBtn = document.querySelector('#pdf_config_tabs .nav-link.active[data-config-tab]');
+                var configTabInput = document.getElementById('config_tab');
+                if (activeTabBtn && configTabInput) {
+                    configTabInput.value = String(activeTabBtn.getAttribute('data-config-tab') || 'general');
+                }
+                var blocks = [];
+                if (blockList) {
+                    blockList.querySelectorAll('.pdf-block-item').forEach(function(li) {
+                        var id = li.getAttribute('data-block-id');
+                        var cb = li.querySelector('.pdf-block-enabled');
+                        blocks.push({ id: id, enabled: cb ? cb.checked : true });
+                    });
+                }
+                if (!blocks.length) {
+                    alert('No hay secciones del PDF configuradas. Recargue la página e intente de nuevo.');
+                    return;
+                }
 
-        document.getElementById('layout_json').value = JSON.stringify({
-            version: 7,
-            blocks: blocks,
-            section_layouts: buildSectionLayoutsForJson(),
-            instances: instances,
-            margins_mm: {
-                top: clampMargin(document.getElementById('margin_top').value),
-                right: clampMargin(document.getElementById('margin_right').value),
-                bottom: clampMargin(document.getElementById('margin_bottom').value),
-                left: clampMargin(document.getElementById('margin_left').value)
-            },
-            watermark: buildWatermarkForJson(),
-            page_style: readCardHeaderStyleForJson()
+                var instances = [];
+                if (headerList) {
+                    headerList.querySelectorAll('.pdf-instance-item').forEach(function(li) {
+                        instances.push(parseInstanceLi(li, 'header'));
+                    });
+                }
+                if (patientList) {
+                    patientList.querySelectorAll('.pdf-instance-item').forEach(function(li) {
+                        instances.push(parseInstanceLi(li, 'patient_doctor'));
+                    });
+                }
+                if (footerList) {
+                    footerList.querySelectorAll('.pdf-instance-item').forEach(function(li) {
+                        instances.push(parseInstanceLi(li, 'footer'));
+                    });
+                }
+                if (labFirmasList) {
+                    labFirmasList.querySelectorAll('.pdf-instance-item').forEach(function(li) {
+                        instances.push(parseInstanceLi(li, 'lab_firmas'));
+                    });
+                }
+
+                function buildWatermarkForJson() {
+                    var relIn = document.getElementById('watermark_file_rel');
+                    var rel = relIn && relIn.value ? String(relIn.value).trim() : '';
+                    var removeCb = document.getElementById('watermark_remove');
+                    if (removeCb && removeCb.checked) {
+                        rel = '';
+                    }
+                    var opEl = document.getElementById('wm_opacity');
+                    var op = parseFloat(opEl ? opEl.value : '0.12');
+                    if (isNaN(op)) op = 0.12;
+                    op = Math.max(0.05, Math.min(0.9, op));
+                    var szEl = document.getElementById('wm_size');
+                    var sz = parseInt(szEl ? szEl.value : '45', 10);
+                    if (isNaN(sz)) sz = 45;
+                    sz = Math.max(10, Math.min(95, sz));
+                    var en = document.getElementById('wm_enabled') && document.getElementById('wm_enabled').checked;
+                    return {
+                        enabled: en,
+                        opacity: op,
+                        size_percent: sz,
+                        file: rel === '' ? null : rel
+                    };
+                }
+
+                function readMarginInput(id, fallback) {
+                    var el = document.getElementById(id);
+                    return clampMargin(el ? el.value : fallback);
+                }
+
+                layoutInput.value = JSON.stringify({
+                    version: 7,
+                    blocks: blocks,
+                    section_layouts: buildSectionLayoutsForJson(),
+                    instances: instances,
+                    margins_mm: {
+                        top: readMarginInput('margin_top', 15),
+                        right: readMarginInput('margin_right', 15),
+                        bottom: readMarginInput('margin_bottom', 15),
+                        left: readMarginInput('margin_left', 15)
+                    },
+                    watermark: buildWatermarkForJson(),
+                    page_style: readCardHeaderStyleForJson()
+                });
+            } catch (err) {
+                console.error(err);
+                alert('No se pudo preparar el diseño para guardar. Recargue la página e intente de nuevo.');
+                return;
+            }
+            pdfTplForm.submit();
         });
-    });
+    }
 });
 </script>
 <?= $this->endSection() ?>

@@ -444,6 +444,26 @@ table.results:not(.report-refs-matrix):not(.pdf-notes-table) td.results-col-inte
 table.results:not(.report-refs-matrix):not(.pdf-notes-table) th.results-col-interpretacion {
     text-align: <?= esc((string) ($rs['results_hdr_interpretacion_align'] ?? 'center')) ?> !important;
 }
+<?php foreach (['analisis', 'resultado', 'rango', 'interpretacion'] as $resCol):
+    $colAlign = (string) ($rs['results_col_' . $resCol . '_align'] ?? ($resCol === 'analisis' ? 'left' : 'center'));
+    if (! in_array($colAlign, ['left', 'center', 'right', 'justify'], true)) {
+        $colAlign = $resCol === 'analisis' ? 'left' : 'center';
+    }
+    $listPad = $colAlign === 'right' ? 'padding-right:1.25em;padding-left:0;' : ($colAlign === 'center' ? 'padding-left:0;padding-right:0;list-style-position:inside;' : 'padding-left:1.25em;padding-right:0;');
+    ?>
+table.results td.results-col-<?= esc($resCol) ?>.resultado-texto-rico-cell .resultado-texto-rico,
+table.results td.results-col-<?= esc($resCol) ?>.resultado-texto-rico-cell .resultado-texto-rico-inner,
+table.results td.results-col-<?= esc($resCol) ?>.resultado-texto-rico-cell .resultado-texto-rico p,
+table.results td.results-col-<?= esc($resCol) ?>.resultado-texto-rico-cell .resultado-texto-rico ul,
+table.results td.results-col-<?= esc($resCol) ?>.resultado-texto-rico-cell .resultado-texto-rico ol,
+table.results td.results-col-<?= esc($resCol) ?>.resultado-texto-rico-cell .resultado-texto-rico li {
+    text-align: <?= esc($colAlign) ?> !important;
+}
+table.results td.results-col-<?= esc($resCol) ?>.resultado-texto-rico-cell .resultado-texto-rico ul,
+table.results td.results-col-<?= esc($resCol) ?>.resultado-texto-rico-cell .resultado-texto-rico ol {
+    <?= $listPad ?>
+}
+<?php endforeach; ?>
 table.results td.out-range,
 table.results .out-range {
     color: #c00 !important;

@@ -10,10 +10,16 @@ $opcionesSort = (string) ($opcionesPagination['sort'] ?? '');
 $opcionesSort = in_array($opcionesSort, ['az', 'za'], true) ? $opcionesSort : '';
 $opcionesSortQuery = $opcionesSort !== '' ? '&opciones_sort=' . $opcionesSort : '';
 ?>
-<p class="text-muted mb-4">
-    Estos tipos definen las opciones del select "Tipo resultado" al agregar sub-clases en análisis compuestos.
-    Puede crear tipos personalizados (ej: Color, Consistencia, Presencia de moco) y definir sus valores.
-</p>
+<?= view('config/partials/config_section_guide', [
+    'guide_key' => 'opciones',
+    'title' => 'Tipos de resultado en análisis compuestos',
+    'body' => 'Define las listas desplegables (color, consistencia, presencia, etc.) usadas al agregar sub-clases en análisis compuestos.',
+    'steps' => [
+        'Cree un tipo con nombre y agregue sus valores en la misma fila.',
+        'Arrastre los valores para cambiar el orden del select.',
+        'La paginación inferior muestra 10 tipos por página; use buscar para filtrar la página actual.',
+    ],
+]) ?>
 
 <div class="border rounded p-3 mb-4 bg-light">
     <div class="d-flex flex-wrap align-items-center gap-2">
@@ -30,6 +36,14 @@ $opcionesSortQuery = $opcionesSort !== '' ? '&opciones_sort=' . $opcionesSort : 
         <?= form_close() ?>
     </div>
     <small class="text-muted d-block mt-2">La importación agrega/actualiza tipos y valores del archivo sin borrar los existentes.</small>
+</div>
+
+<div class="config-list-toolbar mb-2" id="opciones_client_filter_bar">
+    <div class="input-group input-group-sm config-list-search-wrap">
+        <span class="input-group-text"><i class="fa-solid fa-magnifying-glass"></i></span>
+        <input type="search" class="form-control" id="opciones_client_filter" placeholder="Filtrar tipos en esta página…" autocomplete="off">
+    </div>
+    <span class="config-list-meta small text-muted" id="opciones_client_filter_meta"></span>
 </div>
 
 <div class="d-flex flex-wrap align-items-center gap-2 mb-2">
@@ -280,6 +294,27 @@ window.initOpcionesDragDrop = function () {
     });
 };
 window.initOpcionesDragDrop();
+(function () {
+    var input = document.getElementById('opciones_client_filter');
+    var meta = document.getElementById('opciones_client_filter_meta');
+    var table = document.querySelector('#opciones-content table tbody');
+    if (!input || !table) return;
+    function filterOpciones() {
+        var q = String(input.value || '').toLowerCase().trim();
+        var rows = table.querySelectorAll('tr[id^="opcion-"]');
+        var shown = 0;
+        rows.forEach(function (tr) {
+            var hit = q === '' || String(tr.textContent || '').toLowerCase().indexOf(q) >= 0;
+            tr.style.display = hit ? '' : 'none';
+            if (hit) shown++;
+        });
+        if (meta) {
+            meta.textContent = rows.length ? (shown + ' de ' + rows.length + ' en esta página') : '';
+        }
+    }
+    input.addEventListener('input', filterOpciones);
+    filterOpciones();
+})();
 </script>
 
 <?php if ($opcionesTotalPages > 1): ?>

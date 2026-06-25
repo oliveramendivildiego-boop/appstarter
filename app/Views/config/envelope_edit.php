@@ -1,6 +1,8 @@
 <?= $this->extend('layouts/main') ?>
 <?= $this->section('head_extra') ?>
+<link rel="stylesheet" href="<?= base_url('assets/css/config_ux.css') ?>?v=1">
 <link rel="stylesheet" href="<?= base_url('css/envelope-editor.css') ?>?v=19">
+<script src="<?= base_url('js/config-ux.js') ?>?v=1" defer></script>
 <?= $this->endSection() ?>
 <?= $this->section('content') ?>
 <?php
@@ -65,6 +67,17 @@ if ($printTplId > 0 && $printTplId !== $tid):
     <a href="<?= esc(site_url('config?tab=sobres'), 'attr') ?>" class="btn btn-sm btn-warning">Ir a configuración de impresión</a>
 </div>
 <?php endif; ?>
+
+<?= view('config/partials/config_section_guide', [
+    'guide_key' => 'envelope_edit',
+    'title' => 'Editor visual del sobre',
+    'body' => 'Coloque en la cuadrícula los datos del paciente, logo, código QR y otros campos. El tamaño del sobre se define en milímetros.',
+    'steps' => [
+        'Arrastre elementos desde la paleta a una celda de la matriz.',
+        'Use la vista previa para comprobar el resultado antes de guardar.',
+        'Recuerde elegir la plantilla de impresión en Configuración → Sobres.',
+    ],
+]) ?>
 
 <?= form_open(site_url('config/sobres/save'), [
     'id'       => 'envelope_tpl_form',

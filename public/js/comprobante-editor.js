@@ -863,7 +863,7 @@
     function updateSectionBadge(sectionId) {
         var grid = getSectionGrid(sectionId);
         document.querySelectorAll('.comp-section-dims-badge[data-section="' + sectionId + '"]').forEach(function (badge) {
-            badge.textContent = grid.columns + ' columnas × ' + grid.rows + ' filas';
+            badge.textContent = grid.columns + '×' + grid.rows;
         });
     }
 
@@ -932,19 +932,22 @@
             var sample = matrixSamples[item.element_type] || fieldSamples[item.element_type] || '';
             var colSpanVal = item.col_span || 1;
             var rowSpanVal = item.row_span || 1;
-            var spanNote = '';
+            var metaBits = [];
             if (colSpanVal > 1) {
-                spanNote += ' · ' + colSpanVal + ' col';
+                metaBits.push(colSpanVal + ' col');
             }
             if (rowSpanVal > 1) {
-                spanNote += ' · ' + rowSpanVal + ' filas';
+                metaBits.push(rowSpanVal + ' filas');
             }
-            spanNote += alignHintLabel(item);
+            var alignHint = alignHintLabel(item);
+            if (alignHint) {
+                metaBits.push(alignHint.replace(/^ · /, ''));
+            }
+            var titleAttr = typeLabel + (sample ? ' — ' + sample : '');
             cell.innerHTML =
-                '<div class="comp-matrix-item" draggable="true" data-section="' + escapeHtml(sectionId) + '" data-uid="' + escapeHtml(item.uid) + '"' + (colSpanVal > 1 || rowSpanVal > 1 ? ' style="min-height:100%;width:100%;"' : '') + '>' +
+                '<div class="comp-matrix-item" draggable="true" data-section="' + escapeHtml(sectionId) + '" data-uid="' + escapeHtml(item.uid) + '" title="' + escapeHtml(titleAttr) + '"' + (colSpanVal > 1 || rowSpanVal > 1 ? ' style="min-height:100%;width:100%;"' : '') + '>' +
                 '<div class="comp-matrix-item__type">' + escapeHtml(label) + '</div>' +
-                '<div class="comp-matrix-item__code">' + escapeHtml(typeLabel) + spanNote + '</div>' +
-                (sample ? '<div class="comp-matrix-item__sample">' + escapeHtml(sample) + '</div>' : '') +
+                (metaBits.length ? '<div class="comp-matrix-item__meta">' + escapeHtml(metaBits.join(' · ')) + '</div>' : '') +
                 (item.enabled === false ? '<div class="comp-matrix-item__off">Oculto</div>' : '') +
                 '</div>';
         });

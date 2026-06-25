@@ -43,7 +43,7 @@ $alignVIn = \App\Services\ReportPdfLayoutService::normalizeInstanceAlignV($inst[
 <li class="list-group-item pdf-instance-item" data-uid="<?= esc($uid) ?>" data-element-type="<?= esc($type, 'attr') ?>" data-grid-row="<?= esc((string) $gridRow, 'attr') ?>" data-grid-stack="<?= esc((string) $gridStack, 'attr') ?>">
     <div class="pdf-instance-head mb-2 pb-2 border-bottom">
         <strong class="d-block"><?= esc($label) ?></strong>
-        <span class="small text-muted font-monospace"><?= esc($type) ?></span>
+        <span class="small text-muted font-monospace pdf-instance-tech-id"><?= esc($type) ?></span>
     </div>
     <div class="d-flex flex-wrap align-items-center gap-2">
         <span class="text-muted instance-drag-handle" style="cursor: grab;" title="Arrastrar"><i class="fa-solid fa-grip-vertical"></i></span>

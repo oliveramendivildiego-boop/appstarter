@@ -1,7 +1,9 @@
 <?= $this->extend('layouts/main') ?>
 <?= $this->section('head_extra') ?>
-<link rel="stylesheet" href="<?= base_url('css/comprobante-editor.css') ?>?v=20">
+<link rel="stylesheet" href="<?= base_url('assets/css/config_ux.css') ?>?v=3">
+<link rel="stylesheet" href="<?= base_url('css/comprobante-editor.css') ?>?v=21">
 <script src="<?= base_url('js/vendor/jquery.validate.min.js') ?>"></script>
+<script src="<?= base_url('js/config-ux.js') ?>?v=3" defer></script>
 <?php if (($can_manage_tenants ?? false)): ?>
 <link rel="stylesheet" href="<?= base_url('css/vendor/flatpickr.min.css') ?>">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/themes/material_green.css">
@@ -25,19 +27,24 @@
 </div>
 <?php endif; ?>
 
+<?= view('config/partials/config_hub_guide', ['can_manage_tenants' => $can_manage_tenants ?? false]) ?>
+
 <?php $activeTab = isset($active_tab) ? $active_tab : 'sistema'; ?>
 <style>
 #configTabs.config-tabs-nav {
     border-bottom: 0;
-    gap: .45rem;
+    gap: .35rem;
+    flex-wrap: nowrap;
 }
 #configTabs.config-tabs-nav .nav-link {
     border: 1px solid #cfd8e3;
-    border-radius: .65rem;
+    border-radius: .5rem;
     background: #f4f7fb;
     color: #2d4059;
     font-weight: 600;
-    padding: .45rem .85rem;
+    font-size: .84rem;
+    padding: .35rem .65rem;
+    white-space: nowrap;
     transition: all .15s ease-in-out;
 }
 #configTabs.config-tabs-nav .nav-link:hover,
@@ -84,69 +91,85 @@
     z-index: 5;
 }
 </style>
-<ul class="nav nav-tabs mb-3 config-tabs-nav" id="configTabs" role="tablist">
-    <li class="nav-item" role="presentation">
-        <button class="nav-link <?= $activeTab === 'sistema' ? 'active' : '' ?>" id="tab-sistema-btn" data-bs-toggle="tab" data-bs-target="#tab-sistema" type="button" role="tab">Configuración del sistema</button>
+<div class="config-tabs-shell mb-3">
+    <div class="d-flex flex-wrap align-items-center gap-2 mb-2">
+        <div class="btn-group btn-group-sm config-tab-group-filter" role="group" aria-label="Filtrar secciones">
+            <button type="button" class="btn btn-outline-secondary" data-config-group-filter="all">Todas</button>
+            <button type="button" class="btn btn-outline-secondary" data-config-group-filter="general">General</button>
+            <button type="button" class="btn btn-outline-secondary" data-config-group-filter="impresion">Impresión</button>
+            <button type="button" class="btn btn-outline-secondary" data-config-group-filter="catalogos">Catálogos</button>
+            <button type="button" class="btn btn-outline-secondary" data-config-group-filter="integraciones">Integraciones</button>
+            <button type="button" class="btn btn-outline-secondary" data-config-group-filter="admin">Administración</button>
+        </div>
+        <div class="input-group input-group-sm config-tab-finder-inline ms-md-auto" style="min-width: 11rem; max-width: 18rem;">
+            <span class="input-group-text"><i class="fa-solid fa-magnifying-glass"></i></span>
+            <input type="search" class="form-control" id="config_tab_finder_inline" placeholder="Ir a sección…" list="config_tab_finder_list" autocomplete="on">
+        </div>
+    </div>
+    <div class="config-tabs-scroll-wrap">
+<ul class="nav nav-tabs config-tabs-nav" id="configTabs" role="tablist">
+    <li class="nav-item" role="presentation" data-config-group="general">
+        <button class="nav-link <?= $activeTab === 'sistema' ? 'active' : '' ?>" id="tab-sistema-btn" data-bs-toggle="tab" data-bs-target="#tab-sistema" type="button" role="tab">Sistema</button>
     </li>
-    <li class="nav-item" role="presentation">
-        <button class="nav-link <?= $activeTab === 'institucion_descuentos' ? 'active' : '' ?>" id="tab-institucion-descuentos-btn" data-bs-toggle="tab" data-bs-target="#tab-institucion-descuentos" type="button" role="tab">Descuentos por institución</button>
+    <li class="nav-item" role="presentation" data-config-group="general">
+        <button class="nav-link <?= $activeTab === 'institucion_descuentos' ? 'active' : '' ?>" id="tab-institucion-descuentos-btn" data-bs-toggle="tab" data-bs-target="#tab-institucion-descuentos" type="button" role="tab">Descuentos</button>
     </li>
-    <li class="nav-item" role="presentation">
-        <button class="nav-link <?= $activeTab === 'comprobante' ? 'active' : '' ?>" id="tab-comprobante-btn" data-bs-toggle="tab" data-bs-target="#tab-comprobante" type="button" role="tab">Estilo comprobante</button>
+    <li class="nav-item" role="presentation" data-config-group="general">
+        <button class="nav-link <?= $activeTab === 'poblacion' ? 'active' : '' ?>" id="tab-poblacion-btn" data-bs-toggle="tab" data-bs-target="#tab-poblacion" type="button" role="tab">Población</button>
     </li>
-    <li class="nav-item" role="presentation">
-        <button class="nav-link <?= $activeTab === 'estilo' ? 'active' : '' ?>" id="tab-estilo-btn" data-bs-toggle="tab" data-bs-target="#tab-estilo" type="button" role="tab"><?= lang('Config.config_style_tab_nav') ?></button>
-    </li>
-    <li class="nav-item" role="presentation">
-        <button class="nav-link <?= $activeTab === 'sin' ? 'active' : '' ?>" id="tab-sin-btn" data-bs-toggle="tab" data-bs-target="#tab-sin" type="button" role="tab">Facturación SIN</button>
-    </li>
-    <li class="nav-item" role="presentation">
-        <button class="nav-link <?= $activeTab === 'poblacion' ? 'active' : '' ?>" id="tab-poblacion-btn" data-bs-toggle="tab" data-bs-target="#tab-poblacion" type="button" role="tab">Grupos de población (por edad)</button>
-    </li>
-    <li class="nav-item" role="presentation">
+    <li class="nav-item" role="presentation" data-config-group="general">
         <button class="nav-link <?= $activeTab === 'lab_validacion' ? 'active' : '' ?>" id="tab-lab-validacion-btn" data-bs-toggle="tab" data-bs-target="#tab-lab-validacion" type="button" role="tab"><?= lang('Config.config_lab_validation_tab_nav') ?></button>
     </li>
-    <li class="nav-item" role="presentation">
-        <button class="nav-link <?= $activeTab === 'metodos_prueba' ? 'active' : '' ?>" id="tab-metodos_prueba-btn" data-bs-toggle="tab" data-bs-target="#tab-metodos_prueba" type="button" role="tab">Métodos de prueba</button>
+    <li class="nav-item" role="presentation" data-config-group="impresion">
+        <button class="nav-link <?= $activeTab === 'comprobante' ? 'active' : '' ?>" id="tab-comprobante-btn" data-bs-toggle="tab" data-bs-target="#tab-comprobante" type="button" role="tab">Comprobante</button>
     </li>
-    <li class="nav-item" role="presentation">
-        <a class="nav-link" href="<?= site_url('config/pdf-templates') ?>"><i class="fa-solid fa-file-pdf me-1"></i><?= lang('Config.config_pdf_templates_tab') ?></a>
+    <li class="nav-item" role="presentation" data-config-group="impresion">
+        <button class="nav-link <?= $activeTab === 'estilo' ? 'active' : '' ?>" id="tab-estilo-btn" data-bs-toggle="tab" data-bs-target="#tab-estilo" type="button" role="tab"><?= lang('Config.config_style_tab_nav') ?></button>
     </li>
-    <li class="nav-item" role="presentation">
+    <li class="nav-item" role="presentation" data-config-group="impresion">
+        <a class="nav-link" href="<?= site_url('config/pdf-templates') ?>"><i class="fa-solid fa-file-pdf me-1"></i>PDF</a>
+    </li>
+    <li class="nav-item" role="presentation" data-config-group="impresion">
         <button class="nav-link <?= $activeTab === 'sobres' ? 'active' : '' ?>" id="tab-sobres-btn" data-bs-toggle="tab" data-bs-target="#tab-sobres" type="button" role="tab"><i class="fa-solid fa-envelope me-1"></i>Sobres</button>
     </li>
-    <?php if (($can_manage_tenants ?? false)): ?>
-    <li class="nav-item" role="presentation">
-        <button class="nav-link <?= $activeTab === 'tenant_home_broadcast' ? 'active' : '' ?>" id="tab-tenant-home-broadcast-btn" data-bs-toggle="tab" data-bs-target="#tab-tenant-home-broadcast" type="button" role="tab">Aviso en dashboard</button>
+    <li class="nav-item" role="presentation" data-config-group="catalogos">
+        <button class="nav-link <?= $activeTab === 'tipos_muestra' ? 'active' : '' ?>" id="tab-tipos_muestra-btn" data-bs-toggle="tab" data-bs-target="#tab-tipos_muestra" type="button" role="tab">Muestras</button>
     </li>
-    <li class="nav-item" role="presentation">
-        <button class="nav-link <?= $activeTab === 'tenant_subscriptions' ? 'active' : '' ?>" id="tab-tenant-subscriptions-btn" data-bs-toggle="tab" data-bs-target="#tab-tenant-subscriptions" type="button" role="tab">Pagos / suscripciones</button>
+    <li class="nav-item" role="presentation" data-config-group="catalogos">
+        <button class="nav-link <?= $activeTab === 'metodos_prueba' ? 'active' : '' ?>" id="tab-metodos_prueba-btn" data-bs-toggle="tab" data-bs-target="#tab-metodos_prueba" type="button" role="tab">Métodos</button>
     </li>
-    <?php endif; ?>
-    <li class="nav-item" role="presentation">
-        <button class="nav-link <?= $activeTab === 'sesiones' ? 'active' : '' ?>" id="tab-sesiones-btn" data-bs-toggle="tab" data-bs-target="#tab-sesiones" type="button" role="tab">Sesiones activas</button>
+    <li class="nav-item" role="presentation" data-config-group="catalogos">
+        <button class="nav-link <?= $activeTab === 'opciones' ? 'active' : '' ?>" id="tab-opciones-btn" data-bs-toggle="tab" data-bs-target="#tab-opciones" type="button" role="tab">Resultados</button>
     </li>
-    <?php if (($can_manage_tenants ?? false)): ?>
-    <li class="nav-item" role="presentation">
-        <button class="nav-link <?= $activeTab === 'tenants' ? 'active' : '' ?>" id="tab-tenants-btn" data-bs-toggle="tab" data-bs-target="#tab-tenants" type="button" role="tab">Tenants</button>
+    <li class="nav-item" role="presentation" data-config-group="catalogos">
+        <button class="nav-link <?= $activeTab === 'leyendas_cultivo' ? 'active' : '' ?>" id="tab-leyendas_cultivo-btn" data-bs-toggle="tab" data-bs-target="#tab-leyendas_cultivo" type="button" role="tab">Cultivos</button>
     </li>
-    <?php endif; ?>
-    <li class="nav-item" role="presentation">
-        <button class="nav-link <?= $activeTab === 'tipos_muestra' ? 'active' : '' ?>" id="tab-tipos_muestra-btn" data-bs-toggle="tab" data-bs-target="#tab-tipos_muestra" type="button" role="tab">Tipos de muestra</button>
-    </li>
-    <li class="nav-item" role="presentation">
-        <button class="nav-link <?= $activeTab === 'opciones' ? 'active' : '' ?>" id="tab-opciones-btn" data-bs-toggle="tab" data-bs-target="#tab-opciones" type="button" role="tab">Tipos de resultado</button>
-    </li>
-    <li class="nav-item" role="presentation">
-        <button class="nav-link <?= $activeTab === 'leyendas_cultivo' ? 'active' : '' ?>" id="tab-leyendas_cultivo-btn" data-bs-toggle="tab" data-bs-target="#tab-leyendas_cultivo" type="button" role="tab">Leyendas cultivo</button>
-    </li>
-    <li class="nav-item" role="presentation">
+    <li class="nav-item" role="presentation" data-config-group="catalogos">
         <button class="nav-link <?= $activeTab === 'ficha_clinica' ? 'active' : '' ?>" id="tab-ficha_clinica-btn" data-bs-toggle="tab" data-bs-target="#tab-ficha_clinica" type="button" role="tab"><i class="fa-solid fa-file-medical me-1"></i>Ficha clínica</button>
     </li>
-    <li class="nav-item" role="presentation">
+    <li class="nav-item" role="presentation" data-config-group="integraciones">
+        <button class="nav-link <?= $activeTab === 'sin' ? 'active' : '' ?>" id="tab-sin-btn" data-bs-toggle="tab" data-bs-target="#tab-sin" type="button" role="tab">SIN</button>
+    </li>
+    <li class="nav-item" role="presentation" data-config-group="integraciones">
         <button class="nav-link <?= $activeTab === 'whatsapp' ? 'active' : '' ?>" id="tab-whatsapp-btn" data-bs-toggle="tab" data-bs-target="#tab-whatsapp" type="button" role="tab">WhatsApp</button>
     </li>
+    <li class="nav-item" role="presentation" data-config-group="admin">
+        <button class="nav-link <?= $activeTab === 'sesiones' ? 'active' : '' ?>" id="tab-sesiones-btn" data-bs-toggle="tab" data-bs-target="#tab-sesiones" type="button" role="tab">Sesiones</button>
+    </li>
+    <?php if (($can_manage_tenants ?? false)): ?>
+    <li class="nav-item" role="presentation" data-config-group="admin">
+        <button class="nav-link <?= $activeTab === 'tenants' ? 'active' : '' ?>" id="tab-tenants-btn" data-bs-toggle="tab" data-bs-target="#tab-tenants" type="button" role="tab">Tenants</button>
+    </li>
+    <li class="nav-item" role="presentation" data-config-group="admin">
+        <button class="nav-link <?= $activeTab === 'tenant_home_broadcast' ? 'active' : '' ?>" id="tab-tenant-home-broadcast-btn" data-bs-toggle="tab" data-bs-target="#tab-tenant-home-broadcast" type="button" role="tab">Aviso inicio</button>
+    </li>
+    <li class="nav-item" role="presentation" data-config-group="admin">
+        <button class="nav-link <?= $activeTab === 'tenant_subscriptions' ? 'active' : '' ?>" id="tab-tenant-subscriptions-btn" data-bs-toggle="tab" data-bs-target="#tab-tenant-subscriptions" type="button" role="tab">Suscripciones</button>
+    </li>
+    <?php endif; ?>
 </ul>
+    </div>
+</div>
 
 <div class="tab-content" id="configTabsContent">
     <!-- Pestaña: Configuración del sistema -->
@@ -165,6 +188,16 @@
                 </div>
             </div>
             <div class="card-body">
+                <?= view('config/partials/config_section_guide', [
+                    'guide_key' => 'sistema',
+                    'title' => '¿Qué configura aquí?',
+                    'body' => 'Datos del laboratorio, moneda, formatos de fecha, inventario, recepción y opciones generales del sistema.',
+                    'steps' => [
+                        'Use el buscador del encabezado para saltar a un campo concreto.',
+                        'Abra solo las secciones del acordeón que necesite editar.',
+                        'Al terminar, pulse <strong>Guardar configuración</strong> en la barra inferior.',
+                    ],
+                ]) ?>
 <?= form_open_multipart(site_url('config/save'), ['id' => 'config_form', 'data-async' => '1', 'data-reload-on-success' => '1']) ?>
         <div class="accordion config-accordion" id="configSistemaAccordion">
 
@@ -848,7 +881,9 @@
                     <?= form_close() ?>
                 </div>
 
-                <div class="table-responsive mb-4">
+                <div class="config-paginated-list" data-page-size="10">
+                <?= view('config/partials/config_list_toolbar', ['search_placeholder' => 'Buscar tenant, host o base de datos…']) ?>
+                <div class="table-responsive mb-2">
                     <table class="table table-sm table-bordered align-middle">
                         <thead class="table-light">
                             <tr>
@@ -907,6 +942,11 @@
                             <?php endif; ?>
                         </tbody>
                     </table>
+                </div>
+                <div class="config-list-pagination">
+                    <span class="text-muted small"></span>
+                    <div class="config-list-pagination-nav"></div>
+                </div>
                 </div>
 
                 <?php $tenantEdit = $tenant_edit_data ?? []; ?>
@@ -1196,8 +1236,16 @@
                 <h5 class="mb-0"><i class="fa-solid fa-user-shield me-2"></i>Sesiones activas</h5>
             </div>
             <div class="card-body">
-                <p class="text-muted small mb-1">Administre sesiones abiertas en otros dispositivos. Su sesión actual no se puede cerrar desde aquí.</p>
-                <p class="text-muted small"><strong>Nota:</strong> cada fila es un ID de sesión en el servidor; el texto bajo la fecha es <em>cuándo fue la última petición</em> para ese ID (no indica si el usuario está deshabilitado). Duplicados con horas distintas solían ser filas viejas al rotar el ID de sesión; ahora se elimina la fila anterior automáticamente. Puede borrar restos antiguos con «Cerrar» o «Cerrar todas».</p>
+                <?= view('config/partials/config_section_guide', [
+                    'guide_key' => 'sesiones',
+                    'title' => 'Sesiones abiertas en el servidor',
+                    'body' => 'Vea quién está conectado y cierre sesiones en otros dispositivos. Su sesión actual no puede cerrarse desde aquí.',
+                    'steps' => [
+                        'Pulse <strong>Actualizar</strong> para refrescar la lista.',
+                        'Use el buscador para localizar un usuario o IP.',
+                        'La lista se actualiza sola mientras permanezca en esta pestaña.',
+                    ],
+                ]) ?>
                 <div class="d-flex flex-wrap gap-2 mb-3">
                     <button type="button" id="btn_close_all_sessions" class="btn btn-danger">
                         <i class="fa-solid fa-door-open me-1"></i> Cerrar todas las sesiones
@@ -1206,6 +1254,8 @@
                         <i class="fa-solid fa-rotate me-1"></i> Actualizar sesiones activas
                     </button>
                 </div>
+                <div class="config-paginated-list" id="sessions_paginated_wrap" data-page-size="12">
+                <?= view('config/partials/config_list_toolbar', ['search_placeholder' => 'Buscar usuario, IP o navegador…']) ?>
                 <div class="table-responsive">
                     <table class="table table-sm table-bordered align-middle" id="active_sessions_table">
                         <thead class="table-light">
@@ -1226,6 +1276,11 @@
                             </tr>
                         </tbody>
                     </table>
+                </div>
+                <div class="config-list-pagination">
+                    <span class="text-muted small"></span>
+                    <div class="config-list-pagination-nav"></div>
+                </div>
                 </div>
             </div>
         </div>
@@ -1331,6 +1386,16 @@
                 <h5 class="mb-0"><i class="fa-brands fa-whatsapp me-2"></i>Configuración de WhatsApp Business API</h5>
             </div>
             <div class="card-body">
+                <?= view('config/partials/config_section_guide', [
+                    'guide_key' => 'whatsapp',
+                    'title' => 'Envío de mensajes por WhatsApp',
+                    'body' => 'Conecte la API de WhatsApp Business para notificar pacientes y médicos desde el sistema.',
+                    'steps' => [
+                        'Configure el prefijo telefónico de su país.',
+                        'Complete token, ID de teléfono y plantillas según su proveedor (Meta, etc.).',
+                        'Personalice los mensajes con los placeholders indicados debajo de cada campo.',
+                    ],
+                ]) ?>
                 <?= form_open(site_url('config/saveWhatsapp'), ['id' => 'whatsapp_form']) ?>
                 <div class="mb-4">
                     <label for="whatsapp_country_code" class="form-label fw-bold">Prefijo telefónico del país</label>
@@ -1449,12 +1514,20 @@
                 <h5 class="mb-0"><i class="fa-solid fa-percent me-2"></i>Descuentos por institución / procedencia</h5>
             </div>
             <div class="card-body">
-                <p class="text-muted small mb-3">
-                    Defina el porcentaje de descuento por institución. Estas instituciones salen del campo
-                    <strong>Institución / procedencia</strong> registrado en pacientes.
-                </p>
+                <?= view('config/partials/config_section_guide', [
+                    'guide_key' => 'institucion_descuentos',
+                    'title' => 'Descuentos automáticos',
+                    'body' => 'Asigne un porcentaje de descuento a cada institución o procedencia del paciente. Se aplica al facturar órdenes de pacientes con ese dato.',
+                    'steps' => [
+                        'Elija la institución en el desplegable (proviene de pacientes registrados).',
+                        'Indique el porcentaje y pulse <strong>Guardar</strong>.',
+                        'Use la tabla para revisar descuentos existentes o eliminarlos.',
+                    ],
+                ]) ?>
 
-                <div class="table-responsive mb-4">
+                <div class="config-paginated-list" data-page-size="12">
+                <?= view('config/partials/config_list_toolbar', ['search_placeholder' => 'Buscar institución…']) ?>
+                <div class="table-responsive mb-2">
                     <table class="table table-sm table-bordered align-middle">
                         <thead class="table-light">
                             <tr>
@@ -1484,6 +1557,11 @@
                             <?php endif; ?>
                         </tbody>
                     </table>
+                </div>
+                <div class="config-list-pagination">
+                    <span class="text-muted small"></span>
+                    <div class="config-list-pagination-nav"></div>
+                </div>
                 </div>
 
                 <?= form_open(site_url('config/saveInstitucionDescuento'), ['class' => 'border rounded p-3']) ?>
@@ -1528,9 +1606,16 @@
                 <h5 class="mb-0"><i class="fa-solid fa-vial me-2"></i>Tipos de muestra</h5>
             </div>
             <div class="card-body">
-                <p class="text-muted small mb-3">
-                    Defina los tipos que aparecerán al <strong>crear una muestra</strong> en una orden (sangre, suero, orina, etc.). La eliminación es lógica y solo está permitida si ninguna muestra usa ese tipo.
-                </p>
+                <?= view('config/partials/config_section_guide', [
+                    'guide_key' => 'tipos_muestra',
+                    'title' => 'Tipos de muestra en recepción',
+                    'body' => 'Lista de opciones al registrar muestras en una orden (sangre, suero, orina, etc.). Solo puede eliminar un tipo si ninguna muestra lo usa.',
+                    'steps' => [
+                        'Revise o busque en la tabla los tipos existentes.',
+                        'Use <strong>Agregar tipo</strong> al pie para crear uno nuevo.',
+                        'Los botones A-Z y Aa ordenan o normalizan los nombres de toda la lista.',
+                    ],
+                ]) ?>
                 <div class="d-flex flex-wrap align-items-center gap-2 mb-2">
                     <span class="text-muted small">Ordenar nombres:</span>
                     <div class="btn-group btn-group-sm" role="group" aria-label="Ordenar nombres">
@@ -1551,7 +1636,9 @@
                     </div>
                     <?= form_close() ?>
                 </div>
-                <div class="table-responsive mb-4">
+                <div class="config-paginated-list" data-page-size="15">
+                <?= view('config/partials/config_list_toolbar', ['search_placeholder' => 'Buscar tipo de muestra…']) ?>
+                <div class="table-responsive mb-2">
                     <table class="table table-sm table-bordered align-middle">
                         <thead class="table-light">
                             <tr>
@@ -1583,6 +1670,11 @@
                         </tbody>
                     </table>
                 </div>
+                <div class="config-list-pagination">
+                    <span class="text-muted small"></span>
+                    <div class="config-list-pagination-nav"></div>
+                </div>
+                </div>
 
                 <h6 class="mb-3"><?= (($editar_tipo_muestra ?? 0) > 0) ? 'Editar tipo' : 'Agregar tipo' ?></h6>
                 <?= form_open(site_url('config/savetipomuestra'), ['class' => 'border rounded p-3']) ?>
@@ -1613,9 +1705,16 @@
                 <h5 class="mb-0"><i class="fa-solid fa-microscope me-2"></i>Métodos de prueba</h5>
             </div>
             <div class="card-body">
-                <p class="text-muted small mb-3">
-                    Defina los <strong>métodos o técnicas</strong> empleadas en cada análisis (por ejemplo inmunoenzimático, quimioluminiscencia). Se asignan en <strong>Análisis clínicos → detalle del análisis</strong>, debajo del tipo de muestra, y aparecen en el reporte bajo «Tipo de Muestra». Solo se puede eliminar un método si ningún análisis lo usa.
-                </p>
+                <?= view('config/partials/config_section_guide', [
+                    'guide_key' => 'metodos_prueba',
+                    'title' => 'Métodos o técnicas analíticas',
+                    'body' => 'Catálogo de métodos (ELISA, quimioluminiscencia, etc.) que se asignan en cada análisis y aparecen en el reporte PDF.',
+                    'steps' => [
+                        'Asigne el método en <strong>Análisis clínicos → detalle del análisis</strong>.',
+                        'Agregue o edite métodos en la tabla y el formulario inferior.',
+                        'No se puede eliminar un método si algún análisis lo usa.',
+                    ],
+                ]) ?>
                 <div class="d-flex flex-wrap align-items-center gap-2 mb-2">
                     <span class="text-muted small">Ordenar nombres:</span>
                     <div class="btn-group btn-group-sm" role="group" aria-label="Ordenar nombres">
@@ -1636,7 +1735,9 @@
                     </div>
                     <?= form_close() ?>
                 </div>
-                <div class="table-responsive mb-4">
+                <div class="config-paginated-list" data-page-size="15">
+                <?= view('config/partials/config_list_toolbar', ['search_placeholder' => 'Buscar método…']) ?>
+                <div class="table-responsive mb-2">
                     <table class="table table-sm table-bordered align-middle">
                         <thead class="table-light">
                             <tr>
@@ -1667,6 +1768,11 @@
                             <?php endif; ?>
                         </tbody>
                     </table>
+                </div>
+                <div class="config-list-pagination">
+                    <span class="text-muted small"></span>
+                    <div class="config-list-pagination-nav"></div>
+                </div>
                 </div>
 
                 <h6 class="mb-3"><?= (($editar_metodo ?? 0) > 0) ? 'Editar método' : 'Agregar método' ?></h6>
@@ -1935,7 +2041,7 @@
 <?= $this->section('scripts') ?>
 <link href="https://cdn.jsdelivr.net/npm/summernote@0.8.18/dist/summernote-lite.min.css" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/summernote@0.8.18/dist/summernote-lite.min.js"></script>
-<script src="<?= base_url('js/comprobante-editor.js') ?>?v=20" defer></script>
+<script src="<?= base_url('js/comprobante-editor.js') ?>?v=21" defer></script>
 <script src="<?= base_url('js/config.js') ?>" defer></script>
 <script>
 $(document).ready(function() {
@@ -2462,6 +2568,14 @@ $(document).ready(function() {
             }).join('');
 
             sessionsTableBody.innerHTML = rowsHtml;
+            var sessionsWrap = document.getElementById('sessions_paginated_wrap');
+            if (sessionsWrap && typeof window.initConfigPaginatedList === 'function') {
+                if (sessionsWrap._configPaginate && sessionsWrap._configPaginate.rebuild) {
+                    sessionsWrap._configPaginate.rebuild();
+                } else {
+                    sessionsWrap._configPaginate = window.initConfigPaginatedList(sessionsWrap);
+                }
+            }
         }).catch(function() {
             sessionsTableBody.innerHTML = '<tr><td colspan="8" class="text-danger text-center">Error al conectar con el servidor</td></tr>';
         });

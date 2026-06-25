@@ -20,6 +20,16 @@ $labels = [
             <h5 class="mb-0"><i class="fa-solid fa-user-check me-2"></i><?= lang('Config.config_lab_validation_section') ?></h5>
         </div>
         <div class="card-body">
+            <?= view('config/partials/config_section_guide', [
+                'guide_key' => 'lab_validacion',
+                'title' => 'Firmas y validación en reportes',
+                'body' => 'Configure quién valida resultados y qué firmas o sellos aparecen en los PDF según el modo elegido (por área o por análisis).',
+                'steps' => [
+                    'Elija el <strong>modo de validación</strong> acorde a su flujo de trabajo.',
+                    'Registre validadores y aprobadores con sus imágenes de firma/sello.',
+                    'Guarde al final del formulario para aplicar los cambios.',
+                ],
+            ]) ?>
             <p class="text-muted small"><?= lang('Config.config_lab_validation_tab_intro') ?></p>
 
             <?= form_open_multipart(site_url('config/saveLabValidation'), ['id' => 'lab_validation_form']) ?>

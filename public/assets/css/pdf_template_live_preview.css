@@ -1,0 +1,177 @@
+/**
+ * Vista previa en vivo del editor de plantillas PDF.
+ * Cargar DESPUÉS de Bootstrap, Ynex y report_pdf.css.
+ * Máxima especificidad para que la configuración de Resultados/Notas prevalezca.
+ */
+
+.ynex-theme #pdf_results_live_preview_scope,
+.ynex-theme #pdf_notes_live_preview_scope {
+    font-size: 9pt;
+    background: #fff;
+    isolation: isolate;
+}
+
+.ynex-theme #pdf_results_live_preview_scope table.results,
+.ynex-theme #pdf_notes_live_preview_scope table.results {
+    width: 100%;
+    border-collapse: collapse;
+    table-layout: fixed;
+    --bs-table-bg: transparent;
+    --bs-table-accent-bg: transparent;
+    --bs-table-color: inherit;
+    background-color: transparent;
+}
+
+.ynex-theme #pdf_results_live_preview_scope table.results > :not(caption) > * > *,
+.ynex-theme #pdf_notes_live_preview_scope table.results > :not(caption) > * > * {
+    box-shadow: none !important;
+    background-image: none !important;
+}
+
+/* Resultados: tabla principal */
+.ynex-theme #pdf_results_live_preview_scope table.results:not(.pdf-notes-table):not(.report-refs-matrix) thead th {
+    background: var(--pdf-results-header-bg, #0066cc) !important;
+    color: var(--pdf-results-header-color, #ffffff) !important;
+    border: 1px solid var(--pdf-results-border-color, #dddddd) !important;
+    font-family: var(--pdf-results-font-family, "DejaVu Sans"), sans-serif !important;
+    font-size: var(--pdf-results-font-size, 9pt) !important;
+    font-weight: var(--pdf-results-font-weight, normal) !important;
+    font-style: var(--pdf-results-font-style, normal) !important;
+    text-transform: var(--pdf-results-transform, none) !important;
+    line-height: var(--pdf-results-line-height, 1.35) !important;
+    padding: var(--pdf-results-cell-padding-v, 6px) 8px !important;
+    vertical-align: middle !important;
+}
+
+.ynex-theme #pdf_results_live_preview_scope table.results:not(.pdf-notes-table):not(.report-refs-matrix) tbody td {
+    background: var(--pdf-results-body-bg, #ffffff) !important;
+    color: var(--pdf-results-body-color, #333333) !important;
+    border: 1px solid var(--pdf-results-border-color, #dddddd) !important;
+    font-family: var(--pdf-results-font-family, "DejaVu Sans"), sans-serif !important;
+    font-size: var(--pdf-results-font-size, 9pt) !important;
+    font-weight: var(--pdf-results-font-weight, normal) !important;
+    font-style: var(--pdf-results-font-style, normal) !important;
+    text-transform: var(--pdf-results-transform, none) !important;
+    line-height: var(--pdf-results-line-height, 1.35) !important;
+    padding: var(--pdf-results-cell-padding-v, 6px) 8px !important;
+    vertical-align: middle !important;
+}
+
+.ynex-theme #pdf_results_live_preview_scope table.results:not(.pdf-notes-table):not(.report-refs-matrix) tbody tr:hover td {
+    background: var(--pdf-results-body-bg, #ffffff) !important;
+    color: var(--pdf-results-body-color, #333333) !important;
+}
+
+/* Título de sección / segmento */
+.ynex-theme #pdf_results_live_preview_scope .report-segment-title {
+    font-size: inherit;
+    font-weight: bold;
+    margin: 0;
+    padding: var(--pdf-results-segment-padding-top, 6px) 8px var(--pdf-results-segment-padding-bottom, 6px) 8px;
+    background: var(--pdf-results-segment-bg, #e9ecef) !important;
+    border: var(--pdf-results-segment-border-width, 1px) solid var(--pdf-results-segment-border, #dddddd);
+    border-bottom: none;
+    box-shadow: var(--pdf-results-segment-shadow, none);
+}
+
+.ynex-theme #pdf_results_live_preview_scope .report-segment-title.pdf-card-header {
+    background: var(--pdf-results-segment-bg, #e9ecef) !important;
+    color: var(--pdf-card-header-color, #212529) !important;
+    font-family: var(--pdf-card-header-font-family, "DejaVu Sans"), sans-serif !important;
+    font-size: var(--pdf-card-header-font-size, 10pt) !important;
+    font-weight: var(--pdf-card-header-font-weight, 700) !important;
+    font-style: var(--pdf-card-header-font-style, normal) !important;
+    text-transform: var(--pdf-card-header-transform, uppercase) !important;
+}
+
+.ynex-theme #pdf_results_live_preview_scope .report-pdf-grupo-area-separator.report-segment-title {
+    text-align: center;
+    border-bottom: var(--pdf-results-segment-border-width, 1px) solid var(--pdf-results-segment-border, #dddddd);
+    margin-top: var(--pdf-grupo-area-separator-margin-top, 10px);
+    margin-bottom: var(--pdf-grupo-area-separator-margin-bottom, 10px);
+}
+
+.ynex-theme #pdf_results_live_preview_scope .report-pdf-grupo-cabecera .group-title {
+    font-size: 11pt;
+    font-weight: bold;
+    margin-top: var(--pdf-grupo-cabecera-title-margin-top, 0);
+    margin-bottom: var(--pdf-grupo-cabecera-title-margin-bottom, 6px);
+    color: var(--pdf-results-body-color, #333333) !important;
+}
+
+.ynex-theme #pdf_results_live_preview_scope .report-pdf-grupo-cabecera .report-tipo-muestra,
+.ynex-theme #pdf_results_live_preview_scope .report-pdf-grupo-cabecera .report-metodo-prueba {
+    font-size: 9pt;
+    color: #555555 !important;
+    line-height: 1.3;
+}
+
+/* Matriz de referencia */
+.ynex-theme #pdf_results_live_preview_scope table.results.report-refs-matrix thead th {
+    background: var(--pdf-results-header-bg, #0066cc) !important;
+    color: var(--pdf-results-matrix-header-color, #1f2937) !important;
+    border: 1px solid var(--pdf-results-border-color, #dddddd) !important;
+    font-family: var(--pdf-results-matrix-header-font-family, "DejaVu Sans"), sans-serif !important;
+    font-size: var(--pdf-results-matrix-header-font-size, 8pt) !important;
+    font-weight: var(--pdf-results-matrix-header-font-weight, bold) !important;
+    font-style: var(--pdf-results-matrix-header-font-style, normal) !important;
+    text-transform: var(--pdf-results-matrix-header-transform, uppercase) !important;
+    padding: var(--pdf-results-cell-padding-v, 6px) 8px !important;
+    vertical-align: var(--pdf-results-matrix-vertical-align, middle) !important;
+}
+
+.ynex-theme #pdf_results_live_preview_scope table.results.report-refs-matrix tbody td {
+    background: var(--pdf-results-body-bg, #ffffff) !important;
+    color: var(--pdf-results-matrix-color, #333333) !important;
+    border: 1px solid var(--pdf-results-border-color, #dddddd) !important;
+    font-family: var(--pdf-results-font-family, "DejaVu Sans"), sans-serif !important;
+    font-size: var(--pdf-results-matrix-font-size, 8pt) !important;
+    font-weight: var(--pdf-results-matrix-font-weight, normal) !important;
+    font-style: var(--pdf-results-matrix-font-style, normal) !important;
+    text-transform: var(--pdf-results-matrix-transform, none) !important;
+    padding: var(--pdf-results-cell-padding-v, 6px) 8px !important;
+    vertical-align: var(--pdf-results-matrix-vertical-align, middle) !important;
+}
+
+/* Notas */
+.ynex-theme #pdf_notes_live_preview_scope td.pdf-notes-title {
+    background: var(--pdf-notes-title-bg, #fff3cd) !important;
+    color: var(--pdf-notes-title-color, #664d03) !important;
+    font-family: var(--pdf-notes-font-family, "DejaVu Sans"), sans-serif !important;
+    font-size: var(--pdf-notes-font-size, 9.5pt) !important;
+    font-weight: var(--pdf-notes-font-weight, normal) !important;
+    font-style: var(--pdf-notes-font-style, normal) !important;
+    text-transform: var(--pdf-notes-transform, none) !important;
+    line-height: var(--pdf-notes-line-height, 1.4) !important;
+    padding: 6px 8px !important;
+    border: var(--pdf-notes-column-border-width, 1px) solid var(--pdf-notes-column-border-color, #dddddd) !important;
+}
+
+.ynex-theme #pdf_notes_live_preview_scope td.pdf-notes-cell {
+    background: var(--pdf-notes-body-bg, #ffffff) !important;
+    color: var(--pdf-notes-body-color, #333333) !important;
+    font-family: var(--pdf-notes-font-family, "DejaVu Sans"), sans-serif !important;
+    font-size: var(--pdf-notes-font-size, 9.5pt) !important;
+    font-weight: var(--pdf-notes-font-weight, normal) !important;
+    font-style: var(--pdf-notes-font-style, normal) !important;
+    text-transform: var(--pdf-notes-transform, none) !important;
+    line-height: var(--pdf-notes-line-height, 1.4) !important;
+    padding: 6px 8px !important;
+    border: var(--pdf-notes-column-border-width, 1px) solid var(--pdf-notes-column-border-color, #dddddd) !important;
+}
+
+.ynex-theme #pdf_results_live_preview_scope table.results td.out-range {
+    color: #cc0000 !important;
+    font-weight: 700 !important;
+}
+
+.ynex-theme #pdf_results_live_preview_scope table.results td.report-interpretacion-bajo {
+    color: #0d6efd !important;
+    font-weight: 700 !important;
+}
+
+/* Reglas dinámicas inyectadas por JS (#pdf_*_live_preview_rules) tienen la última palabra */
+#pdf_results_live_preview_rules,
+#pdf_notes_live_preview_rules {
+    display: none;
+}

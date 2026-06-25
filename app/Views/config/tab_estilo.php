@@ -215,6 +215,16 @@ $pgActiveBg    = LayoutService::htmlColorPickerValue($pgActiveBg, $pgThemeFallba
 $pgActiveColor = LayoutService::htmlColorPickerValue($pgActiveColor, '#ffffff');
 ?>
     <div class="tab-pane fade config-tab-estilo <?= $activeTab === 'estilo' ? 'show active' : '' ?>" id="tab-estilo" role="tabpanel">
+        <?= view('config/partials/config_section_guide', [
+            'guide_key' => 'estilo',
+            'title' => 'Apariencia del sistema web',
+            'body' => 'Colores del tema, menú lateral, tipografía, botones y pie de página que ven los usuarios al trabajar en el laboratorio.',
+            'steps' => [
+                'Use el buscador para encontrar la sección del acordeón que necesita.',
+                'Observe la vista previa mientras cambia colores y fuentes.',
+                'Guarde con el botón al final de la pestaña.',
+            ],
+        ]) ?>
         <div class="d-flex flex-wrap align-items-center gap-2 mb-3">
             <p class="text-muted small mb-0 flex-grow-1" style="min-width: 16rem;"><?= lang('Config.config_style_tab_intro') ?></p>
             <div class="d-flex align-items-center gap-2">

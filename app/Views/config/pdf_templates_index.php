@@ -17,12 +17,27 @@
 </div>
 <?php endif; ?>
 
-<div class="d-flex justify-content-between align-items-center mb-3">
-    <h3 class="mb-0">Plantillas del PDF de resultados</h3>
+<div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+    <div>
+        <h3 class="mb-1">Plantillas del PDF de resultados</h3>
+        <p class="text-muted mb-0">Cree y personalice el formato del informe que se descarga desde cada registro.</p>
+    </div>
     <a href="<?= site_url('config') ?>?tab=sistema" class="btn btn-outline-secondary">Volver a configuración</a>
 </div>
 
-<p class="text-muted">Defina el orden y qué secciones incluir en el PDF descargado desde el registro. La plantilla activa se elige en <strong>Configuración del sistema</strong>.</p>
+<div class="alert alert-light border mb-4">
+    <div class="d-flex gap-3">
+        <div class="text-primary fs-4"><i class="fa-solid fa-circle-info"></i></div>
+        <div class="small">
+            <strong>¿Cómo empezar?</strong>
+            <ol class="mb-0 mt-1 ps-3">
+                <li>Cree una plantilla con un nombre descriptivo (ej. «Formato con firmas por área»).</li>
+                <li>Use <strong>Editar diseño</strong> para configurar encabezado, paciente, resultados y firmas.</li>
+                <li>Active la plantilla en <strong>Configuración → Sistema</strong> para que se use al descargar PDF.</li>
+            </ol>
+        </div>
+    </div>
+</div>
 
 <?php if (!empty($db_error)): ?>
 <div class="alert alert-danger">
@@ -39,20 +54,21 @@
 <?php if (empty($db_error)): ?>
 <div class="card shadow-sm mb-4">
     <div class="card-header bg-primary text-white">
-        <h5 class="mb-0">Nueva plantilla</h5>
+        <h5 class="mb-0"><i class="fa-solid fa-plus me-1"></i> Nueva plantilla</h5>
     </div>
     <div class="card-body">
         <?= form_open(site_url('config/pdf-templates/create')) ?>
             <?= csrf_field() ?>
             <div class="row g-2 align-items-end">
                 <div class="col-md-8">
-                    <label class="form-label" for="new_tpl_name">Nombre</label>
-                    <input type="text" class="form-control" id="new_tpl_name" name="name" required maxlength="120" placeholder="Ej. Formato con notas arriba">
+                    <label class="form-label" for="new_tpl_name">Nombre de la plantilla</label>
+                    <input type="text" class="form-control" id="new_tpl_name" name="name" required maxlength="120" placeholder="Ej. Formato estándar con logo y QR">
                 </div>
                 <div class="col-md-4">
-                    <button type="submit" class="btn btn-primary w-100">Crear y editar</button>
+                    <button type="submit" class="btn btn-primary w-100"><i class="fa-solid fa-pen me-1"></i> Crear y configurar</button>
                 </div>
             </div>
+            <p class="small text-muted mb-0 mt-2">Se abrirá el diseñador visual para personalizar el PDF paso a paso.</p>
         <?= form_close() ?>
     </div>
 </div>
@@ -85,7 +101,7 @@
                             <?php endif; ?>
                         </td>
                         <td class="text-end text-nowrap">
-                            <a href="<?= site_url('config/pdf-templates/edit/' . (int)($t->id ?? 0)) ?>" class="btn btn-sm btn-primary">Editar diseño</a>
+                            <a href="<?= site_url('config/pdf-templates/edit/' . (int)($t->id ?? 0)) ?>" class="btn btn-sm btn-primary"><i class="fa-solid fa-pen me-1"></i> Editar diseño</a>
                             <button type="button"
                                     class="btn btn-sm btn-outline-secondary btn-pdf-tpl-duplicate"
                                     data-id="<?= (int)($t->id ?? 0) ?>"

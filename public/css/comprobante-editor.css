@@ -1,21 +1,100 @@
 /* Solo aplica dentro de Config → Estilo comprobante (#tab-comprobante) */
-#tab-comprobante .comp-field-palette {
+
+#tab-comprobante .comp-sections-accordion .accordion-button {
+    font-size: 0.92rem;
+    font-weight: 600;
+}
+#tab-comprobante .comp-sections-accordion .accordion-button:not(.collapsed) {
+    background: #f8fafc;
+    color: #1e293b;
+    box-shadow: none;
+}
+#tab-comprobante .comp-section-card.comp-section-accent-primary {
+    border-left: 3px solid #0d6efd;
+}
+#tab-comprobante .comp-section-card.comp-section-accent-info {
+    border-left: 3px solid #0dcaf0;
+}
+#tab-comprobante .comp-section-card.comp-section-accent-success {
+    border-left: 3px solid #198754;
+}
+#tab-comprobante .comp-section-card.comp-section-accent-warning {
+    border-left: 3px solid #ffc107;
+}
+#tab-comprobante .comp-section-card.comp-section-accent-secondary {
+    border-left: 3px solid #6c757d;
+}
+#tab-comprobante .comp-section-body {
+    background: #fafbfc;
+}
+#tab-comprobante .comp-section-advanced,
+#tab-comprobante .comp-section-styles-collapse {
+    background: #fff;
+    border: 1px solid #e2e8f0;
+    border-radius: 0.5rem;
+    padding: 0.5rem 0.75rem;
+}
+#tab-comprobante .comp-section-advanced summary,
+#tab-comprobante .comp-section-styles-collapse summary {
+    cursor: pointer;
+    list-style-position: outside;
+}
+#tab-comprobante .comp-section-advanced summary::-webkit-details-marker,
+#tab-comprobante .comp-section-styles-collapse summary::-webkit-details-marker {
+    color: #64748b;
+}
+#tab-comprobante .comp-section-separator-row {
+    background: transparent;
+    border: 0;
+    padding: 0;
+}
+
+#tab-comprobante .comp-matrix-workspace {
+    display: grid;
+    grid-template-columns: minmax(11rem, 15rem) minmax(0, 1fr);
+    gap: 0.75rem;
+    align-items: start;
+}
+#tab-comprobante .comp-palette-sidebar {
+    background: #fff;
+    border: 1px solid #dbe3ec;
+    border-radius: 0.5rem;
+    padding: 0.55rem;
+    max-height: 22rem;
+    overflow: auto;
+}
+#tab-comprobante .comp-palette-sidebar__head,
+#tab-comprobante .comp-matrix-main__head {
     display: flex;
-    flex-wrap: wrap;
-    gap: 0.45rem;
+    flex-direction: column;
+    gap: 0.1rem;
+    margin-bottom: 0.45rem;
+    padding-bottom: 0.35rem;
+    border-bottom: 1px solid #e9ecef;
+}
+#tab-comprobante .comp-palette-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
 }
 #tab-comprobante .comp-palette-item {
-    display: inline-flex;
-    align-items: center;
-    padding: 0.35rem 0.65rem;
-    background: #e7f1ff;
-    border: 1px dashed #6ea8fe;
-    border-radius: 0.45rem;
-    font-size: 0.82rem;
+    display: block;
+    width: 100%;
+    padding: 0.4rem 0.55rem;
+    background: #f0f6ff;
+    border: 1px solid #b6d4fe;
+    border-radius: 0.4rem;
+    font-size: 0.78rem;
     font-weight: 600;
-    color: #084298;
+    line-height: 1.25;
+    color: #0a3d7a;
     cursor: grab;
     user-select: none;
+    text-align: left;
+}
+#tab-comprobante .comp-palette-item:hover {
+    background: #e7f1ff;
+    border-color: #6ea8fe;
 }
 #tab-comprobante .comp-palette-item:active {
     cursor: grabbing;
@@ -23,69 +102,74 @@
 #tab-comprobante .comp-palette-item.comp-dragging {
     opacity: 0.55;
 }
+#tab-comprobante .comp-palette-style-hint {
+    display: none;
+}
 
+#tab-comprobante .comp-matrix-main {
+    min-width: 0;
+}
 #tab-comprobante .comp-matrix-table-wrap {
     overflow-x: auto;
-    background: #f1f4f8;
-    border: 2px solid #ced4da;
-    border-radius: 10px;
-    padding: 0.5rem;
+    background: #fff;
+    border: 1px solid #ced4da;
+    border-radius: 0.5rem;
+    padding: 0.45rem;
 }
 #tab-comprobante .comp-matrix-table {
     table-layout: fixed;
     width: 100%;
-    min-width: 420px;
+    min-width: 280px;
     background: #fff;
     border-collapse: separate;
     border-spacing: 0;
+    margin-bottom: 0;
 }
 #tab-comprobante .comp-matrix-corner,
 #tab-comprobante .comp-matrix-col-th,
 #tab-comprobante .comp-matrix-row-th {
-    background: #e9ecef;
-    font-size: 0.7rem;
+    background: #f1f5f9;
+    font-size: 0.68rem;
     font-weight: 700;
-    color: #495057;
+    color: #64748b;
+    border-color: #e2e8f0 !important;
 }
 #tab-comprobante .comp-matrix-corner {
-    width: 2.5rem;
+    width: 1.75rem;
 }
 #tab-comprobante .comp-matrix-row-th {
-    width: 2.5rem;
+    width: 1.75rem;
 }
 #tab-comprobante .comp-matrix-cell {
-    min-height: 3.25rem;
-    vertical-align: top;
-    padding: 0.35rem !important;
+    min-height: 2.6rem;
+    vertical-align: middle;
+    padding: 0.25rem !important;
     background: #fff;
+    border-color: #e2e8f0 !important;
     transition: background 0.12s, box-shadow 0.12s;
 }
 #tab-comprobante .comp-matrix-cell.comp-drop-target {
-    background: #fff3cd;
+    background: #fff8e1;
     box-shadow: inset 0 0 0 2px #ffc107;
 }
 #tab-comprobante .comp-matrix-cell.comp-has-item {
     background: #f8fafc;
+    padding: 0.2rem !important;
 }
 #tab-comprobante .comp-matrix-cell[colspan] .comp-matrix-item,
 #tab-comprobante .comp-matrix-cell[rowspan] .comp-matrix-item {
     width: 100%;
-    min-height: 2.75rem;
+    min-height: 2.25rem;
     box-sizing: border-box;
-}
-#tab-comprobante .comp-matrix-cell[rowspan] .comp-matrix-item {
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
 }
 #tab-comprobante .comp-matrix-item {
     display: block;
-    padding: 0.3rem 0.45rem;
-    border: 1px solid #adb5bd;
+    padding: 0.28rem 0.4rem;
+    border: 1px solid #cbd5e1;
     border-radius: 0.35rem;
     background: #fff;
-    font-size: 0.75rem;
-    line-height: 1.3;
+    font-size: 0.72rem;
+    line-height: 1.25;
     cursor: pointer;
 }
 #tab-comprobante .comp-matrix-item:hover {
@@ -98,7 +182,8 @@
 #tab-comprobante .comp-matrix-item[draggable="true"]:active {
     cursor: grabbing;
 }
-#tab-comprobante .comp-matrix-cell.comp-cell-disabled {
+#tab-comprobante .comp-matrix-cell.comp-cell-disabled .comp-matrix-item {
+    opacity: 0.55;
     background: #f1f3f5;
 }
 #tab-comprobante .comp-matrix-item__off {
@@ -110,32 +195,54 @@
 #tab-comprobante .comp-section-palette,
 #tab-comprobante .comp-doc-palette-group {
     display: flex;
-    flex-wrap: wrap;
-    gap: 0.45rem;
-}
-#tab-comprobante .comp-section-card .card-body {
-    background: #fafbfc;
-}
-#tab-comprobante .comp-section-split {
-    align-items: stretch;
-}
-#tab-comprobante .comp-section-layout-col,
-#tab-comprobante .comp-section-styles-col {
-    min-width: 0;
+    flex-direction: column;
+    gap: 0.35rem;
 }
 #tab-comprobante .comp-section-styles {
     background: #fff;
     border: 1px solid #dee2e6;
     border-radius: 8px;
     padding: 0.65rem 0.5rem;
-    height: 100%;
 }
 #tab-comprobante .comp-section-styles-scroll {
-    max-height: 32rem;
+    max-height: 24rem;
     overflow-y: auto;
     overflow-x: hidden;
     padding-right: 0.15rem;
 }
+#tab-comprobante .comp-matrix-item__type {
+    font-weight: 600;
+    color: #1e293b;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+#tab-comprobante .comp-matrix-item__meta {
+    font-size: 0.62rem;
+    color: #64748b;
+    margin-top: 0.1rem;
+}
+#tab-comprobante .comp-matrix-item__code,
+#tab-comprobante .comp-matrix-item__sample {
+    display: none;
+}
+
+@media (max-width: 991.98px) {
+    #tab-comprobante .comp-matrix-workspace {
+        grid-template-columns: 1fr;
+    }
+    #tab-comprobante .comp-palette-sidebar {
+        max-height: none;
+    }
+    #tab-comprobante .comp-palette-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(9.5rem, 1fr));
+    }
+    #tab-comprobante .comp-section-styles-scroll {
+        max-height: none;
+    }
+}
+
 #tab-comprobante .comp-section-styles .comp-style-block {
     background: #f8fafc;
     border: 1px solid #dee2e6;
@@ -191,53 +298,11 @@
     border-bottom: 1px solid #cbd5e1;
     padding-bottom: 0.25rem;
 }
-#tab-comprobante .comp-palette-item {
-    flex-direction: column;
-    align-items: flex-start;
-    line-height: 1.25;
-}
-#tab-comprobante .comp-palette-style-hint {
-    display: block;
-    font-size: 0.62rem;
-    font-weight: 500;
-    color: #5c6b7a;
-    margin-top: 0.1rem;
-}
-@media (max-width: 1199.98px) {
-    #tab-comprobante .comp-section-styles {
-        margin-top: 0.5rem;
-    }
-    #tab-comprobante .comp-section-styles-scroll {
-        max-height: none;
-    }
-}
-#tab-comprobante .comp-section-card + .comp-section-card {
-    margin-top: 0.5rem;
-}
-#tab-comprobante .comp-section-separator-row {
-    background: #f8fafc;
-    border: 1px dashed #cbd5e1;
-    border-radius: 8px;
-    padding: 0.5rem 0.65rem 0.65rem;
-}
 #tab-comprobante .comp-receipt-preview .comp-section-sep {
     clear: both;
 }
 #tab-comprobante .comp-receipt-preview .comp-sec-block {
     display: block;
-}
-#tab-comprobante .comp-matrix-item__type {
-    font-weight: 700;
-    color: #212529;
-}
-#tab-comprobante .comp-matrix-item__code {
-    font-size: 0.65rem;
-    color: #6c757d;
-}
-#tab-comprobante .comp-matrix-item__sample {
-    font-size: 0.68rem;
-    color: #495057;
-    margin-top: 0.15rem;
 }
 
 #tab-comprobante .comp-style-matrix .comp-style-group-header td {

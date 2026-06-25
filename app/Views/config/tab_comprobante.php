@@ -53,6 +53,16 @@ foreach (array_keys($matrixSections) as $sid) {
             <h5 class="mb-0"><i class="fa-solid fa-file-invoice me-2"></i>Personalización de comprobante PDF</h5>
         </div>
         <div class="card-body">
+            <?= view('config/partials/config_section_guide', [
+                'guide_key' => 'comprobante',
+                'title' => 'Diseño del comprobante de pago (PDF)',
+                'body' => 'Personalice colores, textos y la disposición de datos en el recibo que entrega al paciente.',
+                'steps' => [
+                    'Ajuste colores y tipografía en las secciones superiores.',
+                    'Arrastre elementos en la matriz para cambiar su posición.',
+                    'Exporte/importe JSON para respaldar o copiar el diseño entre laboratorios.',
+                ],
+            ]) ?>
             <div class="border rounded p-3 mb-4 bg-light">
                 <div class="d-flex flex-wrap align-items-center gap-2">
                     <a href="<?= site_url('config/exportComprobanteStyle') ?>" class="btn btn-outline-secondary btn-sm">
@@ -71,9 +81,9 @@ foreach (array_keys($matrixSections) as $sid) {
                 </small>
             </div>
 
-            <p class="text-muted small mb-4">
-                Configure colores globales, tipografía por sección y la matriz completa del comprobante.
-                Arrastre elementos desde la paleta o entre celdas; haga clic en un elemento para cambiar el nombre, ocultarlo o quitarlo.
+            <p class="text-muted small mb-3">
+                Cada bloque del comprobante se edita por separado. Expanda la sección, arrastre <strong>solo los elementos de esa parte</strong> a la matriz y ajuste estilos si lo necesita.
+                La vista previa al final se actualiza en vivo.
             </p>
 
             <?= form_open(site_url('config/saveComprobanteStyle'), ['id' => 'form_comprobante_style']) ?>
@@ -138,13 +148,7 @@ foreach (array_keys($matrixSections) as $sid) {
                 </div>
             </div>
 
-            <p class="text-muted small mb-3">
-                Cada sección incluye la <strong>matriz de diseño</strong> (arrastre de elementos) y, a su lado, los <strong>estilos tipográficos</strong> de los elementos de esa parte.
-                Use <strong>Espacio entre filas</strong>, <strong>Margen inferior entre secciones</strong> y el <strong>separador</strong> opcional para el espacio entre bloques (encabezado, cliente, tabla, etc.).
-                La vista previa se actualiza al mover elementos o cambiar estilos. Pulse <strong>Guardar estilo de comprobante</strong> para el PDF.
-            </p>
-
-            <div id="comp-sections-editor">
+            <div id="comp-sections-editor" class="comp-sections-accordion accordion mb-4">
             <?php foreach ($matrixSections as $sectionId => $sectionDef):
                 $secGrid = $sectionGrids[$sectionId] ?? ['columns' => $sectionDef['default_columns'], 'rows' => $sectionDef['default_rows'], 'items' => []];
                 $secCols = max(1, (int) ($secGrid['columns'] ?? $sectionDef['default_columns']));
@@ -158,26 +162,40 @@ foreach (array_keys($matrixSections) as $sid) {
                 $secSepThick = (float) ($secSpace['separator_thickness_pt'] ?? 1);
                 $secSepWidth = (float) ($secSpace['separator_width_pct'] ?? 100);
                 $secSepGap = (float) ($secSpace['separator_gap_pt'] ?? 6);
-                $sectionCardClass = match ($sectionId) {
-                    'header' => 'border-primary',
-                    'client' => 'border-info',
-                    'table'  => 'border-success',
-                    'totals' => 'border-warning',
-                    default  => 'border-secondary',
-                };
+                $sectionPalette = $layoutSvc->paletteLabelsForSection($sectionId);
                 $sectionStyleGroups = $layoutSvc->styleGroupsForMatrixSection($sectionId);
+                $sectionOpen = $sectionId === 'header';
+                $sectionAccent = match ($sectionId) {
+                    'header' => 'primary',
+                    'client' => 'info',
+                    'table'  => 'success',
+                    'totals' => 'warning',
+                    default  => 'secondary',
+                };
                 ?>
-            <div class="card <?= $sectionCardClass ?> mb-4 comp-section-card" data-section="<?= esc($sectionId, 'attr') ?>">
-                <div class="card-header py-2 d-flex flex-wrap align-items-center justify-content-between gap-2">
-                    <h6 class="mb-0"><i class="fa-solid fa-table-cells me-2"></i><?= esc($sectionDef['label']) ?></h6>
-                    <span class="badge bg-light text-dark comp-section-dims-badge" data-section="<?= esc($sectionId, 'attr') ?>">
-                        <?= $secCols ?> columnas × <?= $secRows ?> filas
-                    </span>
-                </div>
+            <div class="accordion-item comp-section-card comp-section-accent-<?= $sectionAccent ?>" data-section="<?= esc($sectionId, 'attr') ?>">
+                <h2 class="accordion-header" id="comp-hdr-<?= esc($sectionId, 'attr') ?>">
+                    <button class="accordion-button <?= $sectionOpen ? '' : 'collapsed' ?> py-2"
+                            type="button"
+                            data-bs-toggle="collapse"
+                            data-bs-target="#comp-collapse-<?= esc($sectionId, 'attr') ?>"
+                            aria-expanded="<?= $sectionOpen ? 'true' : 'false' ?>"
+                            aria-controls="comp-collapse-<?= esc($sectionId, 'attr') ?>">
+                        <i class="fa-solid fa-layer-group me-2 opacity-75"></i><?= esc($sectionDef['label']) ?>
+                        <span class="badge bg-light text-dark border ms-2 comp-section-dims-badge" data-section="<?= esc($sectionId, 'attr') ?>">
+                            <?= $secCols ?>×<?= $secRows ?>
+                        </span>
+                        <span class="badge bg-light text-muted border ms-1"><?= count($sectionPalette) ?> elementos</span>
+                    </button>
+                </h2>
+                <div id="comp-collapse-<?= esc($sectionId, 'attr') ?>"
+                     class="accordion-collapse collapse <?= $sectionOpen ? 'show' : '' ?>"
+                     data-bs-parent="#comp-sections-editor"
+                     aria-labelledby="comp-hdr-<?= esc($sectionId, 'attr') ?>">
                 <div class="card-body comp-section-body" data-section="<?= esc($sectionId, 'attr') ?>">
-                    <div class="row g-2 mb-3">
-                        <div class="col-md-2 col-6">
-                            <label class="form-label small" for="comp_sec_<?= esc($sectionId, 'attr') ?>_cols">Columnas</label>
+                    <div class="comp-section-sizebar row g-2 align-items-end mb-3">
+                        <div class="col-6 col-md-2">
+                            <label class="form-label small mb-0" for="comp_sec_<?= esc($sectionId, 'attr') ?>_cols">Columnas</label>
                             <input type="number"
                                    class="form-control form-control-sm comp-section-cols"
                                    id="comp_sec_<?= esc($sectionId, 'attr') ?>_cols"
@@ -186,8 +204,8 @@ foreach (array_keys($matrixSections) as $sid) {
                                    max="<?= (int) $sectionDef['col_max'] ?>"
                                    value="<?= $secCols ?>">
                         </div>
-                        <div class="col-md-2 col-6">
-                            <label class="form-label small" for="comp_sec_<?= esc($sectionId, 'attr') ?>_rows">Filas</label>
+                        <div class="col-6 col-md-2">
+                            <label class="form-label small mb-0" for="comp_sec_<?= esc($sectionId, 'attr') ?>_rows">Filas</label>
                             <input type="number"
                                    class="form-control form-control-sm comp-section-rows"
                                    id="comp_sec_<?= esc($sectionId, 'attr') ?>_rows"
@@ -196,8 +214,8 @@ foreach (array_keys($matrixSections) as $sid) {
                                    max="<?= (int) $sectionDef['row_max'] ?>"
                                    value="<?= $secRows ?>">
                         </div>
-                        <div class="col-md-3 col-6">
-                            <label class="form-label small" for="comp_sec_<?= esc($sectionId, 'attr') ?>_row_gap">Espacio entre filas (pt)</label>
+                        <div class="col-6 col-md-2">
+                            <label class="form-label small mb-0" for="comp_sec_<?= esc($sectionId, 'attr') ?>_row_gap">Espacio filas (pt)</label>
                             <input type="number"
                                    class="form-control form-control-sm comp-section-spacing"
                                    id="comp_sec_<?= esc($sectionId, 'attr') ?>_row_gap"
@@ -208,8 +226,8 @@ foreach (array_keys($matrixSections) as $sid) {
                                    step="0.5"
                                    value="<?= esc((string) $secRowGap, 'attr') ?>">
                         </div>
-                        <div class="col-md-3 col-6">
-                            <label class="form-label small" for="comp_sec_<?= esc($sectionId, 'attr') ?>_margin"><?= $sectionId === 'header' ? 'Margen inferior tras encabezado y separador (pt)' : 'Margen inferior entre secciones (pt)' ?></label>
+                        <div class="col-6 col-md-3">
+                            <label class="form-label small mb-0" for="comp_sec_<?= esc($sectionId, 'attr') ?>_margin"><?= $sectionId === 'header' ? 'Margen tras encabezado (pt)' : 'Margen inferior (pt)' ?></label>
                             <input type="number"
                                    class="form-control form-control-sm comp-section-spacing"
                                    id="comp_sec_<?= esc($sectionId, 'attr') ?>_margin"
@@ -222,7 +240,9 @@ foreach (array_keys($matrixSections) as $sid) {
                         </div>
                     </div>
 
-                    <div class="row g-2 mb-3 comp-section-separator-row align-items-end">
+                    <details class="comp-section-advanced mb-3">
+                        <summary class="small fw-semibold text-secondary user-select-none">Separador después de esta sección</summary>
+                        <div class="comp-section-separator-row row g-2 align-items-end mt-2">
                         <div class="col-12">
                             <div class="form-check">
                                 <input type="checkbox"
@@ -232,11 +252,11 @@ foreach (array_keys($matrixSections) as $sid) {
                                        data-spacing-field="separator_enabled"
                                        value="1"
                                        <?= $secSepEnabled ? 'checked' : '' ?>>
-                                <label class="form-check-label small" for="comp_sec_<?= esc($sectionId, 'attr') ?>_sep_on">Separador después de esta sección</label>
+                                <label class="form-check-label small" for="comp_sec_<?= esc($sectionId, 'attr') ?>_sep_on">Mostrar línea o espacio entre bloques</label>
                             </div>
                         </div>
                         <div class="col-md-3 col-6">
-                            <label class="form-label small" for="comp_sec_<?= esc($sectionId, 'attr') ?>_sep_style">Tipo de separador</label>
+                            <label class="form-label small mb-0" for="comp_sec_<?= esc($sectionId, 'attr') ?>_sep_style">Tipo</label>
                             <select class="form-select form-select-sm comp-section-spacing"
                                     id="comp_sec_<?= esc($sectionId, 'attr') ?>_sep_style"
                                     data-section="<?= esc($sectionId, 'attr') ?>"
@@ -247,7 +267,7 @@ foreach (array_keys($matrixSections) as $sid) {
                             </select>
                         </div>
                         <div class="col-md-2 col-6">
-                            <label class="form-label small" for="comp_sec_<?= esc($sectionId, 'attr') ?>_sep_color">Color</label>
+                            <label class="form-label small mb-0" for="comp_sec_<?= esc($sectionId, 'attr') ?>_sep_color">Color</label>
                             <input type="color"
                                    class="form-control form-control-color comp-section-spacing w-100"
                                    id="comp_sec_<?= esc($sectionId, 'attr') ?>_sep_color"
@@ -256,7 +276,7 @@ foreach (array_keys($matrixSections) as $sid) {
                                    value="<?= esc($secSepColor, 'attr') ?>">
                         </div>
                         <div class="col-md-2 col-6">
-                            <label class="form-label small" for="comp_sec_<?= esc($sectionId, 'attr') ?>_sep_thick">Grosor (pt)</label>
+                            <label class="form-label small mb-0" for="comp_sec_<?= esc($sectionId, 'attr') ?>_sep_thick">Grosor (pt)</label>
                             <input type="number"
                                    class="form-control form-control-sm comp-section-spacing"
                                    id="comp_sec_<?= esc($sectionId, 'attr') ?>_sep_thick"
@@ -268,7 +288,7 @@ foreach (array_keys($matrixSections) as $sid) {
                                    value="<?= esc((string) $secSepThick, 'attr') ?>">
                         </div>
                         <div class="col-md-2 col-6">
-                            <label class="form-label small" for="comp_sec_<?= esc($sectionId, 'attr') ?>_sep_width">Ancho (%)</label>
+                            <label class="form-label small mb-0" for="comp_sec_<?= esc($sectionId, 'attr') ?>_sep_width">Ancho (%)</label>
                             <input type="number"
                                    class="form-control form-control-sm comp-section-spacing"
                                    id="comp_sec_<?= esc($sectionId, 'attr') ?>_sep_width"
@@ -280,7 +300,7 @@ foreach (array_keys($matrixSections) as $sid) {
                                    value="<?= esc((string) $secSepWidth, 'attr') ?>">
                         </div>
                         <div class="col-md-3 col-6">
-                            <label class="form-label small" for="comp_sec_<?= esc($sectionId, 'attr') ?>_sep_gap">Espacio antes del separador (pt)</label>
+                            <label class="form-label small mb-0" for="comp_sec_<?= esc($sectionId, 'attr') ?>_sep_gap">Espacio previo (pt)</label>
                             <input type="number"
                                    class="form-control form-control-sm comp-section-spacing"
                                    id="comp_sec_<?= esc($sectionId, 'attr') ?>_sep_gap"
@@ -291,35 +311,34 @@ foreach (array_keys($matrixSections) as $sid) {
                                    step="0.5"
                                    value="<?= esc((string) $secSepGap, 'attr') ?>">
                         </div>
-                    </div>
+                        </div>
+                    </details>
 
-                    <div class="row g-3 comp-section-split">
-                        <div class="col-lg-6 comp-section-layout-col">
-                            <h6 class="text-uppercase text-muted small mb-2">Matriz de diseño — arrastre cualquier elemento</h6>
-                            <div class="comp-field-palette comp-section-palette mb-3" data-section-palette="<?= esc($sectionId, 'attr') ?>">
-                                <?php foreach ($matrixLabels as $matrixType => $matrixLabel):
-                                    $meta = ComprobanteLayoutService::MATRIX_ELEMENT_DEFINITIONS[$matrixType] ?? null;
-                                    if ($meta === null) {
-                                        continue;
-                                    }
-                                    $suggestedSection = $layoutSvc->sectionIdForElementType($matrixType);
-                                    $suggestedLabel = $matrixSections[$suggestedSection]['label'] ?? $suggestedSection;
-                                    $elStyleKey = (string) ($meta['style_key'] ?? '');
-                                    $elStyleLabel = $styleLabels[$elStyleKey] ?? $elStyleKey;
-                                    ?>
+                    <div class="comp-matrix-workspace">
+                        <aside class="comp-palette-sidebar">
+                            <div class="comp-palette-sidebar__head">
+                                <span class="fw-semibold small">Elementos</span>
+                                <span class="text-muted small">Arrastre a la matriz →</span>
+                            </div>
+                            <div class="comp-field-palette comp-section-palette comp-palette-grid" data-section-palette="<?= esc($sectionId, 'attr') ?>">
+                                <?php foreach ($sectionPalette as $matrixType => $matrixLabel): ?>
                                 <div class="comp-palette-item"
                                      draggable="true"
                                      role="button"
                                      tabindex="0"
                                      data-element-type="<?= esc($matrixType, 'attr') ?>"
                                      data-section="<?= esc($sectionId, 'attr') ?>"
-                                     title="<?= esc($matrixType . ' → estilo: ' . $elStyleKey . ' · sugerido: ' . $suggestedLabel, 'attr') ?>">
+                                     title="<?= esc($matrixLabel, 'attr') ?>">
                                     <?= esc($matrixLabel) ?>
-                                    <span class="comp-palette-style-hint"><?= esc($elStyleLabel) ?><?= $suggestedSection !== $sectionId ? ' · ' . esc($suggestedLabel) : '' ?></span>
                                 </div>
                                 <?php endforeach; ?>
                             </div>
-
+                        </aside>
+                        <div class="comp-matrix-main">
+                            <div class="comp-matrix-main__head">
+                                <span class="fw-semibold small">Matriz de posiciones</span>
+                                <span class="text-muted small">Clic en un dato para editarlo</span>
+                            </div>
                             <div class="comp-matrix-table-wrap">
                                 <table class="table table-bordered comp-matrix-table mb-0 comp-section-matrix"
                                        id="comp_matrix_<?= esc($sectionId, 'attr') ?>"
@@ -328,14 +347,14 @@ foreach (array_keys($matrixSections) as $sid) {
                                         <tr>
                                             <th class="comp-matrix-corner"></th>
                                             <?php for ($c = 0; $c < $secCols; $c++): ?>
-                                            <th class="comp-matrix-col-th text-center small">Col <?= $c + 1 ?></th>
+                                            <th class="comp-matrix-col-th text-center small"><?= $c + 1 ?></th>
                                             <?php endfor; ?>
                                         </tr>
                                     </thead>
                                     <tbody>
                                     <?php for ($r = 0; $r < $secRows; $r++): ?>
                                         <tr>
-                                            <th class="comp-matrix-row-th text-center small">F<?= $r + 1 ?></th>
+                                            <th class="comp-matrix-row-th text-center small"><?= $r + 1 ?></th>
                                             <?php for ($c = 0; $c < $secCols; $c++): ?>
                                             <td class="comp-matrix-cell"
                                                 data-section="<?= esc($sectionId, 'attr') ?>"
@@ -349,7 +368,11 @@ foreach (array_keys($matrixSections) as $sid) {
                                 </table>
                             </div>
                         </div>
-                        <div class="col-lg-6 comp-section-styles-col">
+                    </div>
+
+                    <details class="comp-section-styles-collapse mt-3" open>
+                        <summary class="small fw-semibold text-secondary user-select-none mb-0">Estilos tipográficos de esta sección</summary>
+                        <div class="mt-2">
                             <?= view('config/_comprobante_section_styles', [
                                 'sectionId'           => $sectionId,
                                 'sectionStyleGroups'  => $sectionStyleGroups,
@@ -364,7 +387,8 @@ foreach (array_keys($matrixSections) as $sid) {
                                 'textTransforms'      => $textTransforms,
                             ]) ?>
                         </div>
-                    </div>
+                    </details>
+                </div>
                 </div>
             </div>
             <?php endforeach; ?>
