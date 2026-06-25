@@ -1,5 +1,6 @@
 /**
- * Fondo estilo Matrix en el panel de login (color = --login-primary del tenant).
+ * Fondo estilo Matrix en el panel de login.
+ * Usa --login-matrix-color (si el tema es oscuro, cae al fin del degradado).
  */
 (function () {
     var canvas = document.getElementById('login_matrix_canvas');
@@ -16,9 +17,9 @@
     var timer = null;
     var chars = 'アイウエオカキクケコサシスセソタチツテトナニヌネノハヒフヘホマミムメモ0123456789ABCDEF+-×÷LabHDL';
 
-    function getPrimaryColor() {
-        var value = getComputedStyle(document.documentElement).getPropertyValue('--login-primary').trim();
-        return value || '#0d9488';
+    function getCssColor(name, fallback) {
+        var value = getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+        return value || fallback;
     }
 
     function parseHex(hex) {
@@ -26,12 +27,42 @@
         if (raw.length === 3) {
             raw = raw[0] + raw[0] + raw[1] + raw[1] + raw[2] + raw[2];
         }
-        if (raw.length !== 6) return { r: 13, g: 148, b: 136 };
+        if (raw.length !== 6) return { r: 45, g: 212, b: 191 };
         return {
             r: parseInt(raw.slice(0, 2), 16),
             g: parseInt(raw.slice(2, 4), 16),
             b: parseInt(raw.slice(4, 6), 16),
         };
+    }
+
+    function relativeLuminance(rgb) {
+        function channel(value) {
+            var v = value / 255;
+            return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4);
+        }
+
+        return 0.2126 * channel(rgb.r) + 0.7152 * channel(rgb.g) + 0.0722 * channel(rgb.b);
+    }
+
+    function getMatrixRgb() {
+        var matrixColor = getCssColor('--login-matrix-color', '');
+        if (matrixColor !== '') {
+            return parseHex(matrixColor);
+        }
+
+        var primary = getCssColor('--login-primary', '#0d9488');
+        var gradientEnd = getCssColor('--login-gradient-end', '#0284c7');
+        var primaryRgb = parseHex(primary);
+
+        if (relativeLuminance(primaryRgb) < 0.12) {
+            var endRgb = parseHex(gradientEnd);
+            if (relativeLuminance(endRgb) >= 0.12) {
+                return endRgb;
+            }
+            return { r: 45, g: 212, b: 191 };
+        }
+
+        return primaryRgb;
     }
 
     function resize() {
@@ -53,7 +84,7 @@
 
     function draw() {
         var rect = container.getBoundingClientRect();
-        var rgb = parseHex(getPrimaryColor());
+        var rgb = getMatrixRgb();
 
         ctx.fillStyle = 'rgba(4, 8, 12, 0.12)';
         ctx.fillRect(0, 0, rect.width, rect.height);

@@ -21,6 +21,7 @@ $themeHover    = preg_match('/^#[a-fA-F0-9]{3,6}$/', (string) ($layoutConfig['th
 $gradientEnd   = preg_match('/^#[a-fA-F0-9]{3,6}$/', (string) ($layoutConfig['theme_gradient_end'] ?? ''))
     ? $layoutConfig['theme_gradient_end']
     : '#0284c7';
+$matrixRainColor = login_matrix_rain_color($themeColor, $gradientEnd);
 $heroPitch     = esc($companyName) . ' le permite gestionar recepción, resultados, inventario, calidad y reportes desde un solo lugar.';
 ?>
 <!DOCTYPE html>
@@ -37,6 +38,7 @@ $heroPitch     = esc($companyName) . ' le permite gestionar recepción, resultad
             --login-gradient-end: <?= esc($gradientEnd) ?>;
             --login-primary-soft: color-mix(in srgb, <?= esc($themeColor) ?> 14%, transparent);
             --login-accent: <?= esc($gradientEnd) ?>;
+            --login-matrix-color: <?= esc($matrixRainColor) ?>;
             --login-hero-accent: linear-gradient(135deg, <?= esc($themeColor) ?> 0%, <?= esc($gradientEnd) ?> 100%);
         }
     </style>
