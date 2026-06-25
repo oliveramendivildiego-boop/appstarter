@@ -355,13 +355,13 @@ $mostrarHeatmap = $tieneHeatmap && in_array(
             <?php if (! $ocultarTheadResults): ?>
             <thead<?= $usePdfChrome ? '' : ' class="thead-dark"' ?>>
                 <tr>
-                    <th<?= $thWidth(0) ?>>ANÁLISIS</th>
-                    <th class="text-center"<?= $thWidth(1) ?>>RESULTADO</th>
+                    <th class="results-col-analisis"<?= $thWidth(0) ?>>ANÁLISIS</th>
+                    <th class="results-col-resultado"<?= $thWidth(1) ?>>RESULTADO</th>
                     <?php if ($mostrarColRef): ?>
-                    <th class="text-center"<?= $thWidth(2) ?>>RANGO REFERENCIAL</th>
+                    <th class="results-col-rango"<?= $thWidth(2) ?>>RANGO REFERENCIAL</th>
                     <?php endif; ?>
                     <?php if ($mostrarColInterpretacion): ?>
-                    <th class="text-center"<?= $thWidth($mostrarColRef ? 3 : 2) ?>>INTERPRETACIÓN</th>
+                    <th class="results-col-interpretacion"<?= $thWidth($mostrarColRef ? 3 : 2) ?>>INTERPRETACIÓN</th>
                     <?php endif; ?>
                 </tr>
             </thead>
@@ -400,13 +400,13 @@ $mostrarHeatmap = $tieneHeatmap && in_array(
             <?php if (! $ocultarTheadResults): ?>
             <thead<?= $usePdfChrome ? '' : ' class="thead-dark"' ?>>
                 <tr>
-                    <th<?= $thWidth(0) ?>>ANÁLISIS</th>
-                    <th class="text-center"<?= $thWidth(1) ?>>RESULTADO</th>
+                    <th class="results-col-analisis"<?= $thWidth(0) ?>>ANÁLISIS</th>
+                    <th class="results-col-resultado"<?= $thWidth(1) ?>>RESULTADO</th>
                     <?php if ($mostrarColRef): ?>
-                    <th class="text-center"<?= $thWidth(2) ?>>RANGO REFERENCIAL</th>
+                    <th class="results-col-rango"<?= $thWidth(2) ?>>RANGO REFERENCIAL</th>
                     <?php endif; ?>
                     <?php if ($mostrarColInterpretacion): ?>
-                    <th class="text-center"<?= $thWidth($mostrarColRef ? 3 : 2) ?>>INTERPRETACIÓN</th>
+                    <th class="results-col-interpretacion"<?= $thWidth($mostrarColRef ? 3 : 2) ?>>INTERPRETACIÓN</th>
                     <?php endif; ?>
                 </tr>
             </thead>
@@ -536,7 +536,7 @@ $mostrarHeatmap = $tieneHeatmap && in_array(
                     ?>
                     <?php if (is_object($item)): ?>
                         <tr>
-                            <td><?= esc($item->nombre ?? '') ?></td>
+                            <td class="results-col-analisis"><?= esc($item->nombre ?? '') ?></td>
                             <?php
                                 // Si el modo es semáforo y la columna Interpretación está desactivada,
                                 // inyectar el icono correspondiente al lado del resultado.
@@ -565,13 +565,12 @@ $mostrarHeatmap = $tieneHeatmap && in_array(
                                         }
                                     }
                                     if ($lvl === 'alto') {
-                                        $iconHtml = '<i class="fa-solid fa-arrow-up report-interpretacion-icon text-danger" aria-hidden="true"></i>';
+                                        $iconHtml = registro_interpretacion_semaforo_icon_html('alto', $usePdfChrome);
                                         $class = 'report-interpretacion-alto';
                                     } elseif ($lvl === 'bajo') {
-                                        $iconHtml = '<i class="fa-solid fa-arrow-down report-interpretacion-icon text-primary" aria-hidden="true"></i>';
+                                        $iconHtml = registro_interpretacion_semaforo_icon_html('bajo', $usePdfChrome);
                                         $class = 'report-interpretacion-bajo';
                                     } else {
-                                        // nivel 'normal' -> no mostrar icono y clase normal
                                         $iconHtml = '';
                                         $class = 'normal';
                                     }
@@ -581,26 +580,25 @@ $mostrarHeatmap = $tieneHeatmap && in_array(
                                     }
                                 }
                             ?>
-                            <td class="text-center<?= $celdaRicoClass ?><?= $resultadoColspanClass ?> <?= $class ?><?= $usePdfChrome && $isOutPdf ? ' out-range' : '' ?>"<?= $resultadoColspanAttr ?>><?= $resMostrarHtml ?></td>
+                            <td class="results-col-resultado<?= $celdaRicoClass ?><?= $resultadoColspanClass ?> <?= $class ?><?= $usePdfChrome && $isOutPdf ? ' out-range' : '' ?>"<?= $resultadoColspanAttr ?>><?= $resMostrarHtml ?></td>
                             <?php if ($resultadoColspan === 1 && $mostrarColRef): ?>
-                            <td class="text-center<?= $usePdfChrome ? ' ref-range' : '' ?>"><?= $itemConRef ? $refMostrar : '' ?></td>
+                            <td class="results-col-rango<?= $usePdfChrome ? ' ref-range' : '' ?>"><?= $itemConRef ? $refMostrar : '' ?></td>
                             <?php endif; ?>
                             <?php if ($resultadoColspan === 1 && $mostrarColInterpretacion): ?>
                             <?php
                                 $interpHtml = $interpretacionRef !== null ? esc($interpretacionRef['label']) : '';
                                 if ($displayMode === 'semaforo' && $interpretacionRef !== null) {
-                                    $ico = '';
-                                    if ($interpretacionRef['nivel'] === 'alto') {
-                                        $ico = '<i class="fa-solid fa-arrow-up report-interpretacion-icon text-danger" aria-hidden="true"></i>';
-                                    } elseif ($interpretacionRef['nivel'] === 'bajo') {
-                                        $ico = '<i class="fa-solid fa-arrow-down report-interpretacion-icon text-primary" aria-hidden="true"></i>';
-                                    } else {
-                                        $ico = '<i class="fa-solid fa-minus report-interpretacion-icon text-dark" aria-hidden="true"></i>';
+                                    $ico = registro_interpretacion_semaforo_icon_html(
+                                        (string) ($interpretacionRef['nivel'] ?? 'normal'),
+                                        $usePdfChrome,
+                                        true
+                                    );
+                                    if ($ico !== '') {
+                                        $interpHtml = $ico . ' ' . $interpHtml;
                                     }
-                                    $interpHtml = $ico . ' ' . $interpHtml;
                                 }
                             ?>
-                            <td class="text-center<?= $interpretacionRef !== null ? ' ' . esc($class, 'attr') : '' ?>"><?= $interpHtml !== '' ? $interpHtml : '' ?></td>
+                            <td class="results-col-interpretacion<?= $interpretacionRef !== null ? ' ' . esc($class, 'attr') : '' ?>"><?= $interpHtml !== '' ? $interpHtml : '' ?></td>
                             <?php endif; ?>
                         </tr>
                     <?php endif; ?>

@@ -648,6 +648,36 @@ if (! function_exists('registro_interpretacion_referencial_clase_resultado')) {
     }
 }
 
+if (! function_exists('registro_interpretacion_semaforo_icon_html')) {
+    /**
+     * Icono del modo semáforo: Font Awesome en web; Unicode en PDF (Dompdf no carga FA).
+     *
+     * @param 'alto'|'bajo'|'normal'|string $nivel
+     */
+    function registro_interpretacion_semaforo_icon_html(string $nivel, bool $forPdf = false, bool $includeNormal = false): string
+    {
+        if ($nivel === 'normal' && ! $includeNormal) {
+            return '';
+        }
+
+        if ($forPdf) {
+            return match ($nivel) {
+                'alto'   => '<span class="report-interpretacion-icon report-interpretacion-icon-alto" aria-hidden="true">&#9650;</span>',
+                'bajo'   => '<span class="report-interpretacion-icon report-interpretacion-icon-bajo" aria-hidden="true">&#9660;</span>',
+                'normal' => '<span class="report-interpretacion-icon report-interpretacion-icon-normal" aria-hidden="true">&#8722;</span>',
+                default  => '',
+            };
+        }
+
+        return match ($nivel) {
+            'alto'   => '<i class="fa-solid fa-arrow-up report-interpretacion-icon text-danger" aria-hidden="true"></i>',
+            'bajo'   => '<i class="fa-solid fa-arrow-down report-interpretacion-icon text-primary" aria-hidden="true"></i>',
+            'normal' => '<i class="fa-solid fa-minus report-interpretacion-icon text-dark" aria-hidden="true"></i>',
+            default  => '',
+        };
+    }
+}
+
 if (! function_exists('registro_origen_prueba_es_derivacion')) {
     /**
      * Indica si la orden usa precios de derivación (origen_prueba = 1).

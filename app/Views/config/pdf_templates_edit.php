@@ -603,7 +603,7 @@ if (! in_array($configTab, $pdfConfigTabs, true)) {
                 <h2 class="accordion-header m-0">
                     <button class="accordion-button collapsed py-2" type="button" data-bs-toggle="collapse" data-bs-target="#pdf_rs_panel_matrix" aria-expanded="false" aria-controls="pdf_rs_panel_matrix">
                         <span class="fw-semibold">5. Matriz de valores referenciales</span>
-                        <span class="small text-muted ms-2 d-none d-md-inline">Tabla poblacional</span>
+                        <span class="small text-muted ms-2 d-none d-md-inline">Tabla principal y matriz poblacional</span>
                     </button>
                 </h2>
                 <div id="pdf_rs_panel_matrix" class="accordion-collapse collapse" data-bs-parent="#accordion_pdf_results">
@@ -624,8 +624,37 @@ if (! in_array($configTab, $pdfConfigTabs, true)) {
             <div class="col-6 col-md-2"><label class="form-label small" for="rs_matrix_header_font_weight">Grosor header</label><select class="form-select" id="rs_matrix_header_font_weight"><?php foreach (['normal', 'bold', '400', '500', '600', '700', '800'] as $w): ?><option value="<?= esc($w, 'attr') ?>" <?= (($rs['matrix_header_font_weight'] ?? 'bold') === $w) ? 'selected' : '' ?>><?= esc($w) ?></option><?php endforeach; ?></select></div>
             <div class="col-6 col-md-2"><label class="form-label small" for="rs_matrix_header_font_style">Estilo header</label><select class="form-select" id="rs_matrix_header_font_style"><?php foreach (['normal', 'italic', 'oblique'] as $st): ?><option value="<?= esc($st, 'attr') ?>" <?= (($rs['matrix_header_font_style'] ?? 'normal') === $st) ? 'selected' : '' ?>><?= esc(ucfirst($st)) ?></option><?php endforeach; ?></select></div>
             <div class="col-6 col-md-3"><label class="form-label small" for="rs_matrix_header_text_transform">Transformación header</label><select class="form-select" id="rs_matrix_header_text_transform"><?php foreach (['none' => 'Normal', 'uppercase' => 'MAYÚSCULAS', 'lowercase' => 'minúsculas', 'capitalize' => 'Tipo Título'] as $k => $v): ?><option value="<?= esc($k, 'attr') ?>" <?= (($rs['matrix_header_text_transform'] ?? 'uppercase') === $k) ? 'selected' : '' ?>><?= esc($v) ?></option><?php endforeach; ?></select></div>
-            <div class="col-12"><div class="small text-muted fw-semibold mt-1">Alineación por columna (header / contenido)</div></div>
+            <div class="col-12"><div class="small text-muted fw-semibold mt-1">Alineación por columna — tabla principal de resultados</div></div>
             <div class="col-12">
+                <div class="form-text mb-2">Columnas de <code>table.results</code> en el reporte (<code>/registers/viewreport</code>): ANÁLISIS, RESULTADO, RANGO REFERENCIAL e INTERPRETACIÓN.</div>
+                <div class="table-responsive">
+                    <table class="table table-sm table-bordered align-middle mb-3">
+                        <thead class="table-light"><tr><th>Columna</th><th>Header</th><th>Contenido</th></tr></thead>
+                        <tbody class="small">
+                            <?php
+                            $resultsAlignRows = [
+                                ['label' => 'Análisis', 'key' => 'analisis', 'hdr' => 'left', 'col' => 'left'],
+                                ['label' => 'Resultado', 'key' => 'resultado', 'hdr' => 'center', 'col' => 'center'],
+                                ['label' => 'Rango referencial', 'key' => 'rango', 'hdr' => 'center', 'col' => 'center'],
+                                ['label' => 'Interpretación', 'key' => 'interpretacion', 'hdr' => 'center', 'col' => 'center'],
+                            ];
+                            foreach ($resultsAlignRows as $row):
+                                $hdrKey = 'results_hdr_' . $row['key'] . '_align';
+                                $colKey = 'results_col_' . $row['key'] . '_align';
+                            ?>
+                            <tr>
+                                <td><?= esc($row['label']) ?></td>
+                                <td><select class="form-select form-select-sm" id="rs_<?= esc($hdrKey, 'attr') ?>"><?php foreach (['left' => 'Izquierda', 'center' => 'Centro', 'right' => 'Derecha', 'justify' => 'Justificado'] as $k => $v): ?><option value="<?= esc($k, 'attr') ?>" <?= (($rs[$hdrKey] ?? $row['hdr']) === $k) ? 'selected' : '' ?>><?= esc($v) ?></option><?php endforeach; ?></select></td>
+                                <td><select class="form-select form-select-sm" id="rs_<?= esc($colKey, 'attr') ?>"><?php foreach (['left' => 'Izquierda', 'center' => 'Centro', 'right' => 'Derecha', 'justify' => 'Justificado'] as $k => $v): ?><option value="<?= esc($k, 'attr') ?>" <?= (($rs[$colKey] ?? $row['col']) === $k) ? 'selected' : '' ?>><?= esc($v) ?></option><?php endforeach; ?></select></td>
+                            </tr>
+                            <?php endforeach; ?>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            <div class="col-12"><div class="small text-muted fw-semibold mt-1">Alineación por columna — matriz poblacional</div></div>
+            <div class="col-12">
+                <div class="form-text mb-2">Tabla <code>report-refs-matrix</code> (valores de referencia por grupo poblacional).</div>
                 <div class="table-responsive">
                     <table class="table table-sm table-bordered align-middle mb-0">
                         <thead class="table-light"><tr><th>Columna</th><th>Header</th><th>Contenido</th></tr></thead>
@@ -4379,6 +4408,14 @@ document.addEventListener('DOMContentLoaded', function() {
                 matrix_hdr_parameter_align: pickAllowedDomId('rs_matrix_hdr_parameter_align', 'text_aligns', 'left'),
                 matrix_hdr_sex_align: pickAllowedDomId('rs_matrix_hdr_sex_align', 'text_aligns', 'center'),
                 matrix_hdr_reference_align: pickAllowedDomId('rs_matrix_hdr_reference_align', 'text_aligns', 'center'),
+                results_hdr_analisis_align: pickAllowedDomId('rs_results_hdr_analisis_align', 'text_aligns', 'left'),
+                results_col_analisis_align: pickAllowedDomId('rs_results_col_analisis_align', 'text_aligns', 'left'),
+                results_hdr_resultado_align: pickAllowedDomId('rs_results_hdr_resultado_align', 'text_aligns', 'center'),
+                results_col_resultado_align: pickAllowedDomId('rs_results_col_resultado_align', 'text_aligns', 'center'),
+                results_hdr_rango_align: pickAllowedDomId('rs_results_hdr_rango_align', 'text_aligns', 'center'),
+                results_col_rango_align: pickAllowedDomId('rs_results_col_rango_align', 'text_aligns', 'center'),
+                results_hdr_interpretacion_align: pickAllowedDomId('rs_results_hdr_interpretacion_align', 'text_aligns', 'center'),
+                results_col_interpretacion_align: pickAllowedDomId('rs_results_col_interpretacion_align', 'text_aligns', 'center'),
                 grupo_cabecera_title_mode: pickAllowedDomId('rs_grupo_cabecera_title_mode', 'grupo_cabecera_title_modes', 'grupo_analisis'),
                 grupo_cabecera_show_tipo_muestra: !!(document.getElementById('rs_grupo_cabecera_show_tipo_muestra') && document.getElementById('rs_grupo_cabecera_show_tipo_muestra').checked),
                 grupo_cabecera_show_metodo: !!(document.getElementById('rs_grupo_cabecera_show_metodo') && document.getElementById('rs_grupo_cabecera_show_metodo').checked),
@@ -4580,6 +4617,14 @@ document.addEventListener('DOMContentLoaded', function() {
         pushIfBadSelect('rs_matrix_header_font_style', fst, 'Estilo no permitido en headers de matriz de referencia.');
         pushIfBadSelect('rs_matrix_header_text_transform', tt, 'Transformación no permitida en headers de matriz de referencia.');
         [
+            'rs_results_col_analisis_align',
+            'rs_results_col_resultado_align',
+            'rs_results_col_rango_align',
+            'rs_results_col_interpretacion_align',
+            'rs_results_hdr_analisis_align',
+            'rs_results_hdr_resultado_align',
+            'rs_results_hdr_rango_align',
+            'rs_results_hdr_interpretacion_align',
             'rs_matrix_col_population_align',
             'rs_matrix_col_parameter_align',
             'rs_matrix_col_sex_align',
@@ -4589,7 +4634,10 @@ document.addEventListener('DOMContentLoaded', function() {
             'rs_matrix_hdr_sex_align',
             'rs_matrix_hdr_reference_align'
         ].forEach(function(id) {
-            pushIfBadSelect(id, ta, 'Alineación no permitida en columnas de matriz de referencia (' + id + ').');
+            var msg = id.indexOf('results_') >= 0
+                ? 'Alineación no permitida en columnas de la tabla principal de resultados (' + id + ').'
+                : 'Alineación no permitida en columnas de matriz de referencia (' + id + ').';
+            pushIfBadSelect(id, ta, msg);
         });
         pushIfBadSelect('rs_grupo_cabecera_title_mode', pdfAllow('grupo_cabecera_title_modes'), 'Formato de título de cabecera de grupo no permitido.');
         pushIfBadNum('rs_grupo_cabecera_title_margin_top_px', 0, 40, 'Espacio arriba del nombre de análisis: entre 0 y 40 px.');

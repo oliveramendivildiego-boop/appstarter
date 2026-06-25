@@ -230,6 +230,14 @@ class ReportPdfLayoutService
         'matrix_hdr_parameter_align' => 'left',
         'matrix_hdr_sex_align' => 'center',
         'matrix_hdr_reference_align' => 'center',
+        'results_hdr_analisis_align' => 'left',
+        'results_col_analisis_align' => 'left',
+        'results_hdr_resultado_align' => 'center',
+        'results_col_resultado_align' => 'center',
+        'results_hdr_rango_align' => 'center',
+        'results_col_rango_align' => 'center',
+        'results_hdr_interpretacion_align' => 'center',
+        'results_col_interpretacion_align' => 'center',
         'grupo_cabecera_title_mode'        => 'grupo_analisis',
         'grupo_cabecera_show_tipo_muestra' => true,
         'grupo_cabecera_show_metodo'       => true,
@@ -2170,9 +2178,21 @@ class ReportPdfLayoutService
             'matrix_hdr_parameter_align',
             'matrix_hdr_sex_align',
             'matrix_hdr_reference_align',
+            'results_col_analisis_align',
+            'results_col_resultado_align',
+            'results_col_rango_align',
+            'results_col_interpretacion_align',
+            'results_hdr_analisis_align',
+            'results_hdr_resultado_align',
+            'results_hdr_rango_align',
+            'results_hdr_interpretacion_align',
         ] as $ak) {
             if (isset($raw[$ak]) && ! in_array(strtolower(trim((string) $raw[$ak])), self::ALLOWED_PDF_TEXT_ALIGNS, true)) {
-                return 'Alineación no permitida en columnas de la matriz de referencia (' . $ak . ').';
+                $msg = str_starts_with($ak, 'results_')
+                    ? 'Alineación no permitida en columnas de la tabla principal de resultados (' . $ak . ').'
+                    : 'Alineación no permitida en columnas de la matriz de referencia (' . $ak . ').';
+
+                return $msg;
             }
         }
         if (isset($raw['grupo_cabecera_title_mode']) && ! in_array(
@@ -4578,6 +4598,14 @@ class ReportPdfLayoutService
             'matrix_hdr_parameter_align' => $pickColAlign('matrix_hdr_parameter_align'),
             'matrix_hdr_sex_align' => $pickColAlign('matrix_hdr_sex_align'),
             'matrix_hdr_reference_align' => $pickColAlign('matrix_hdr_reference_align'),
+            'results_hdr_analisis_align' => $pickColAlign('results_hdr_analisis_align'),
+            'results_col_analisis_align' => $pickColAlign('results_col_analisis_align'),
+            'results_hdr_resultado_align' => $pickColAlign('results_hdr_resultado_align'),
+            'results_col_resultado_align' => $pickColAlign('results_col_resultado_align'),
+            'results_hdr_rango_align' => $pickColAlign('results_hdr_rango_align'),
+            'results_col_rango_align' => $pickColAlign('results_col_rango_align'),
+            'results_hdr_interpretacion_align' => $pickColAlign('results_hdr_interpretacion_align'),
+            'results_col_interpretacion_align' => $pickColAlign('results_col_interpretacion_align'),
             'grupo_cabecera_title_mode'        => self::normalizeGrupoCabeceraTitleMode($s['grupo_cabecera_title_mode'] ?? $def['grupo_cabecera_title_mode']),
             'grupo_cabecera_show_tipo_muestra' => array_key_exists('grupo_cabecera_show_tipo_muestra', $s)
                 ? ! empty($s['grupo_cabecera_show_tipo_muestra'])
