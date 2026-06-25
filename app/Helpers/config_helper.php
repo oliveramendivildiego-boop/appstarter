@@ -234,3 +234,130 @@ if (!function_exists('whatsapp_format_phone_number')) {
         return \App\Services\WhatsAppService::formatPhoneWithCountryCode($phone, whatsapp_country_code());
     }
 }
+
+if (!function_exists('genero_dropdown_options')) {
+    /**
+     * Opciones para select de género en formularios de pacientes, empleados, etc.
+     *
+     * @return array<string, string>
+     */
+    function genero_dropdown_options(string $emptyLabel = '-- Seleccione --'): array
+    {
+        try {
+            return model(\App\Models\GeneroModel::class)->getDropdownOptions($emptyLabel);
+        } catch (\Throwable $e) {
+            return ['' => $emptyLabel, '1' => 'Masculino', '2' => 'Femenino'];
+        }
+    }
+}
+
+if (!function_exists('referencia_sexo_value_for_genero')) {
+    /**
+     * Valor persistido en secanacategoria/priresultados.sexo según id de género del catálogo.
+     */
+    function referencia_sexo_value_for_genero(int $generoId): string
+    {
+        return match ($generoId) {
+            1       => 'masculino',
+            2       => 'femenino',
+            default => 'g' . $generoId,
+        };
+    }
+}
+
+if (!function_exists('referencia_sexo_dropdown_options')) {
+    /**
+     * Opciones de sexo para valores de referencia (sub-clases, priresultados).
+     *
+     * @return array<string, string> value => label
+     */
+    function referencia_sexo_dropdown_options(): array
+    {
+        $options = ['ambos' => 'Todos'];
+        try {
+            foreach (model(\App\Models\GeneroModel::class)->getAllActive() as $row) {
+                $id = (int) ($row['genero_id'] ?? 0);
+                $nombre = trim((string) ($row['nombre'] ?? ''));
+                if ($id > 0 && $nombre !== '') {
+                    $options[referencia_sexo_value_for_genero($id)] = $nombre;
+                }
+            }
+        } catch (\Throwable $e) {
+            $options['masculino'] = 'Masculino';
+            $options['femenino']  = 'Femenino';
+        }
+
+        return $options;
+    }
+}
+
+if (!function_exists('referencia_sexo_label')) {
+    /**
+     * Etiqueta legible para secanacategoria/priresultados.sexo.
+     */
+    function referencia_sexo_label(?string $sexo): string
+    {
+        $sx = strtolower(trim((string) $sexo));
+        if ($sx === '' || $sx === 'ambos') {
+            return 'Todos';
+        }
+        $options = referencia_sexo_dropdown_options();
+
+        return $options[$sx] ?? ucfirst($sx);
+    }
+}
+
+if (!function_exists('referencia_sexo_short_label')) {
+    /**
+     * Abreviatura para listados (M, F, Todos, etc.).
+     */
+    function referencia_sexo_short_label(?string $sexo): string
+    {
+        $sx = strtolower(trim((string) $sexo));
+
+        return match ($sx) {
+            'masculino' => 'M',
+            'femenino'  => 'F',
+            'ambos', '' => 'Todos',
+            default     => function_exists('mb_substr')
+                ? mb_substr(referencia_sexo_label($sexo), 0, 1, 'UTF-8')
+                : substr(referencia_sexo_label($sexo), 0, 1),
+        };
+    }
+}
+
+if (!function_exists('referencia_sexo_is_valid')) {
+    function referencia_sexo_is_valid(?string $sexo): bool
+    {
+        $sx = strtolower(trim((string) $sexo));
+        if ($sx === 'ambos' || $sx === 'masculino' || $sx === 'femenino') {
+            return true;
+        }
+        if (preg_match('/^g(\d+)$/', $sx, $m) !== 1) {
+            return false;
+        }
+        try {
+            return model(\App\Models\GeneroModel::class)->getNombreById((int) $m[1]) !== null;
+        } catch (\Throwable $e) {
+            return false;
+        }
+    }
+}
+
+if (!function_exists('referencia_sexo_normalize_for_save')) {
+    /**
+     * Normaliza sexo para guardar sin alterar ambos/masculino/femenino existentes.
+     */
+    function referencia_sexo_normalize_for_save(?string $sexo): string
+    {
+        $sx = strtolower(trim((string) $sexo));
+        if ($sx === 'masculino' || $sx === 'femenino') {
+            return $sx;
+        }
+        if (preg_match('/^g(\d+)$/', $sx) === 1 && referencia_sexo_is_valid($sx)) {
+            return $sx;
+        }
+
+        return 'ambos';
+    }
+}

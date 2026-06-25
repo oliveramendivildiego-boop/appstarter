@@ -203,6 +203,8 @@ $routes->get('config/deletepoblacion/(:num)', 'Config::deletePoblacion/$1');
 $routes->get('config/deleteInstitucionDescuento', 'Config::deleteInstitucionDescuento');
 $routes->post('config/savetipomuestra', 'Config::saveTipoMuestra');
 $routes->get('config/deletetipomuestra/(:num)', 'Config::deleteTipoMuestra/$1');
+$routes->post('config/savegenero', 'Config::saveGenero');
+$routes->get('config/deletegenero/(:num)', 'Config::deleteGenero/$1');
 $routes->post('config/savemetodo', 'Config::saveMetodo');
 $routes->get('config/deletemetodo/(:num)', 'Config::deleteMetodo/$1');
 $routes->post('config/saveleyendacultivo', 'Config::saveLeyendaCultivo');

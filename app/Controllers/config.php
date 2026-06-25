@@ -12,6 +12,7 @@ use App\Models\LeyendaCultivoCategoriaModel;
 use App\Models\FichaClinicaModel;
 use App\Models\MetodoModel;
 use App\Models\TipoMuestraModel;
+use App\Models\GeneroModel;
 use App\Models\CustomerModel;
 use App\Libraries\TenantResolver;
 use App\Services\ConfigService;
@@ -36,6 +37,7 @@ class Config extends SecureArea
     protected PoblacionModel $poblacionModel;
     protected OpcionModel $opcionModel;
     protected TipoMuestraModel $tipoMuestraModel;
+    protected GeneroModel $generoModel;
     protected MetodoModel $metodoModel;
     protected LeyendaCultivoModel $leyendaCultivoModel;
     protected LeyendaCultivoCategoriaModel $leyendaCultivoCategoriaModel;
@@ -52,6 +54,7 @@ class Config extends SecureArea
         $this->poblacionModel = model(PoblacionModel::class);
         $this->opcionModel        = model(OpcionModel::class);
         $this->tipoMuestraModel   = model(TipoMuestraModel::class);
+        $this->generoModel        = model(GeneroModel::class);
         $this->metodoModel        = model(MetodoModel::class);
         $this->leyendaCultivoModel = model(LeyendaCultivoModel::class);
         $this->leyendaCultivoCategoriaModel = model(LeyendaCultivoCategoriaModel::class);
@@ -112,6 +115,27 @@ class Config extends SecureArea
                 }
             } catch (\Throwable $e) {
                 $editarTipoMuestraId = 0;
+            }
+        }
+
+        $editarGeneroId = (int) ($this->request->getGet('editar_genero') ?? 0);
+        $editarGeneroData = [];
+        $generosLista = [];
+        try {
+            $generosLista = $this->generoModel->getAllActive();
+        } catch (\Throwable $e) {
+            $generosLista = [];
+        }
+        if ($editarGeneroId > 0) {
+            try {
+                $rowGenero = $this->generoModel->find($editarGeneroId);
+                if (is_array($rowGenero) && (int) ($rowGenero['deleted'] ?? 0) === 0) {
+                    $editarGeneroData = $rowGenero;
+                } else {
+                    $editarGeneroId = 0;
+                }
+            } catch (\Throwable $e) {
+                $editarGeneroId = 0;
             }
         }
 
@@ -197,6 +221,9 @@ class Config extends SecureArea
         }
         if ($editarTipoMuestraId > 0) {
             $tab = 'tipos_muestra';
+        }
+        if ($editarGeneroId > 0) {
+            $tab = 'generos';
         }
         if ($editarMetodoId > 0) {
             $tab = 'metodos_prueba';
@@ -340,6 +367,9 @@ class Config extends SecureArea
             'tipos_muestra_sort'   => $tiposMuestraSort,
             'editar_tipo_muestra'  => $editarTipoMuestraId,
             'editar_tipo_muestra_data' => $editarTipoMuestraData,
+            'generos'              => $generosLista,
+            'editar_genero'        => $editarGeneroId,
+            'editar_genero_data'   => $editarGeneroData,
             'metodos_prueba'       => $metodosLista,
             'metodos_sort'         => $metodosSort,
             'editar_metodo'        => $editarMetodoId,
@@ -888,6 +918,49 @@ class Config extends SecureArea
         }
 
         return redirect()->to('config?tab=tipos_muestra')->with($result['success'] ? 'success' : 'error', $result['message']);
+    }
+
+    public function saveGenero(): ResponseInterface
+    {
+        $nombre = trim($this->request->getPost('nombre') ?? '');
+        $len    = function_exists('mb_strlen') ? mb_strlen($nombre, 'UTF-8') : strlen($nombre);
+        if ($nombre === '' || $len > 64) {
+            return redirect()->to('config?tab=generos')->with('error', 'El nombre es obligatorio (máx. 64 caracteres).');
+        }
+        $id = (int) ($this->request->getPost('genero_id') ?? 0);
+        $orden = (int) ($this->request->getPost('orden') ?? 0);
+        if ($id > 0) {
+            $ex = $this->generoModel->find($id);
+            if (!is_array($ex) || (int) ($ex['deleted'] ?? 0) !== 0) {
+                return redirect()->to('config?tab=generos')->with('error', 'El género no existe o fue eliminado.');
+            }
+        }
+        try {
+            $saved = $this->generoModel->saveGenero($nombre, $orden, $id > 0 ? $id : null);
+            if ($saved === false) {
+                return redirect()->to('config?tab=generos')->with('error', 'No se pudo guardar el género.');
+            }
+            \App\Models\AuditoriaModel::log('config', $id > 0 ? 'genero_actualizar' : 'genero_crear', (string) $saved);
+        } catch (\Throwable $e) {
+            return redirect()->to('config?tab=generos' . ($id > 0 ? '&editar_genero=' . $id : ''))->with('error', 'Error al guardar. Ejecute las migraciones si la tabla genero no existe.');
+        }
+
+        return redirect()->to('config?tab=generos')->with('success', 'Género guardado.');
+    }
+
+    public function deleteGenero($id): ResponseInterface
+    {
+        $id = (int) $id;
+        try {
+            $result = $this->generoModel->softDeleteIfUnused($id);
+        } catch (\Throwable $e) {
+            return redirect()->to('config?tab=generos')->with('error', 'No se pudo eliminar.');
+        }
+        if ($result['success']) {
+            \App\Models\AuditoriaModel::log('config', 'genero_eliminar', (string) $id);
+        }
+
+        return redirect()->to('config?tab=generos')->with($result['success'] ? 'success' : 'error', $result['message']);
     }
 
     public function saveMetodo(): ResponseInterface

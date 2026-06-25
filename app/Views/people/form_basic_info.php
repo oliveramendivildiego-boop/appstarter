@@ -1,4 +1,5 @@
 <?php
+helper('config');
 $person_info = $person_info ?? new stdClass();
 ?>
 <input type="hidden" name="person_id" value="<?= esc($person_info->person_id ?? '') ?>" id="person_id">
@@ -39,7 +40,7 @@ $person_info = $person_info ?? new stdClass();
     </div>
     <div class="col-md-6 mb-3">
         <?= form_label(lang('Customers.customers_gender') . ':', 'gender', ['class' => 'form-label']) ?>
-        <?= form_dropdown('gender', ['' => '-- Seleccione --', '1' => 'Masculino', '2' => 'Femenino'], $person_info->gender ?? '', 'id="gender" class="form-select"') ?>
+        <?= form_dropdown('gender', genero_dropdown_options(), $person_info->gender ?? '', 'id="gender" class="form-select"') ?>
     </div>
 </div>
 <div class="row">

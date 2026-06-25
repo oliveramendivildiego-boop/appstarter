@@ -8,7 +8,10 @@ $pobMap = [];
 foreach ($poblaciones ?? [] as $p) {
     $pobMap[(int) $p['id_poblacion']] = $p['name'] ?? '';
 }
-$sexoMap = ['ambos' => 'Ambos', 'masculino' => 'Masculino', 'femenino' => 'Femenino'];
+if (! function_exists('referencia_sexo_dropdown_options')) {
+    helper('config');
+}
+$referencia_sexo_options = $referencia_sexo_options ?? referencia_sexo_dropdown_options();
 ?>
 <div class="card mt-3">
     <div class="card-header"><strong>Valores de referencia (<?= lang('Labotests.labotests_tipo_analisis_simple') ?>)</strong></div>
@@ -46,7 +49,7 @@ $sexoMap = ['ambos' => 'Ambos', 'masculino' => 'Masculino', 'femenino' => 'Femen
                 ?>
                 <tr>
                     <td><?= esc($pobMap[(int) ($pr['id_poblacion'] ?? 0)] ?? $pr['id_poblacion'] ?? '') ?></td>
-                    <td><?= esc($sexoMap[$pr['sexo'] ?? 'ambos'] ?? 'Ambos') ?></td>
+                    <td><?= esc(referencia_sexo_label($pr['sexo'] ?? 'ambos')) ?></td>
                     <td><?= esc($pr['valor_min'] ?? '') ?></td>
                     <td><?= esc($pr['valor_max'] ?? '') ?></td>
                     <td><?= esc($pr['umedida'] ?? '') ?></td>
@@ -91,9 +94,9 @@ $sexoMap = ['ambos' => 'Ambos', 'masculino' => 'Masculino', 'femenino' => 'Femen
                             <div class="col-md-3 mb-2">
                                 <label class="form-label">Sexo</label>
                                 <select name="sexo" class="form-control form-control-sm">
-                                    <option value="ambos">Ambos</option>
-                                    <option value="masculino">Masculino</option>
-                                    <option value="femenino">Femenino</option>
+                                    <?php foreach ($referencia_sexo_options as $sexoVal => $sexoLbl): ?>
+                                    <option value="<?= esc($sexoVal) ?>"><?= esc($sexoLbl) ?></option>
+                                    <?php endforeach; ?>
                                 </select>
                             </div>
                             <div class="col-md-3 mb-2">

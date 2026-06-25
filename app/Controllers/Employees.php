@@ -149,6 +149,7 @@ class Employees extends PersonController
 
         $validation = \Config\Services::validation();
         $rules = config('Validation')->employees ?? [];
+        model(\App\Models\GeneroModel::class)->applyValidationRules($rules);
         if ($employee_id) {
             $rules['username']['rules'] = 'required|min_length[3]|max_length[50]';
             unset($rules['password']['rules']);

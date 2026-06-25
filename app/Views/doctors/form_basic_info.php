@@ -1,4 +1,5 @@
 <?php
+helper('config');
 $doctor_info = $doctor_info ?? new stdClass();
 ?>
 <input type="hidden" name="doctor_id" value="<?= $doctor_info->doctor_id ?? '' ?>" id="doctor_id">
@@ -55,7 +56,7 @@ $doctor_info = $doctor_info ?? new stdClass();
 <div class="row">
     <div class="col-md-6 mb-3">
         <?= form_label(lang('Doctors.doctors_gender') . ':', 'gender', ['class' => 'form-label required']) ?>
-        <?= form_dropdown('gender', ['' => '-- Seleccione --', '1' => 'Masculino', '2' => 'Femenino'], $doctor_info->gender ?? '', 'id="gender" class="form-select"') ?>
+        <?= form_dropdown('gender', genero_dropdown_options(), $doctor_info->gender ?? '', 'id="gender" class="form-select"') ?>
     </div>
     <div class="col-md-6 mb-3">
         <div class="form-check mt-4">

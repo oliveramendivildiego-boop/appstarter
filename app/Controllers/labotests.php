@@ -370,9 +370,11 @@ class Labotests extends SecureArea
             'tipo_muestra_id'=> (int) ($this->request->getPost('tipo_muestra_id') ?? 0),
             'metodo_id'      => (int) ($this->request->getPost('metodo_id') ?? 0),
         ];
-        $this->labotestModel->saveSubCategory($data, $prianacategoriaId > 0 ? $prianacategoriaId : null);
-        \App\Models\AuditoriaModel::log('labotests', $prianacategoriaId > 0 ? 'actualizar_analisis' : 'crear_analisis', (string)($prianacategoriaId ?: ''), \App\Models\AuditoriaModel::detail(['nombre' => $name, 'compleja' => $compleja]));
-        return redirect()->to($this->listUrl())->with('success', 'Análisis guardado correctamente');
+        $isNew = $prianacategoriaId < 1;
+        $this->labotestModel->saveSubCategory($data, $isNew ? null : $prianacategoriaId);
+        $savedId = $isNew ? (int) $this->labotestModel->db->insertID() : $prianacategoriaId;
+        \App\Models\AuditoriaModel::log('labotests', $isNew ? 'crear_analisis' : 'actualizar_analisis', (string) $savedId, \App\Models\AuditoriaModel::detail(['nombre' => $name, 'compleja' => $compleja]));
+        return redirect()->to("labotests/detail/{$savedId}")->with('success', 'Análisis guardado correctamente');
     }
 
     public function savesub()
@@ -443,18 +445,19 @@ class Labotests extends SecureArea
         if ($nombre === '') {
             return redirect()->back()->with('error', 'El nombre de la sub-clase es obligatorio');
         }
+        helper('config');
         if (! $esSeparador) {
             if ($pacienteId < 1) {
                 return redirect()->back()->with('error', 'La población es obligatoria');
             }
-            if ($sexo === '' || ! in_array($sexo, ['ambos', 'masculino', 'femenino'], true)) {
+            if ($sexo === '' || ! referencia_sexo_is_valid($sexo)) {
                 return redirect()->back()->with('error', 'El sexo es obligatorio');
             }
         } else {
             if ($pacienteId < 1) {
                 $pacienteId = 3;
             }
-            if ($sexo === '' || ! in_array($sexo, ['ambos', 'masculino', 'femenino'], true)) {
+            if ($sexo === '' || ! referencia_sexo_is_valid($sexo)) {
                 $sexo = 'ambos';
             }
         }
@@ -1456,10 +1459,11 @@ class Labotests extends SecureArea
         if ($prianacategoriaId < 1) {
             return redirect()->back()->with('error', 'Datos incompletos');
         }
+        helper('config');
         $data = [
             'prianacategoria_id' => $prianacategoriaId,
             'id_poblacion'      => (int) ($this->request->getPost('id_poblacion') ?? 15),
-            'sexo'              => $this->request->getPost('sexo') ?? 'ambos',
+            'sexo'              => referencia_sexo_normalize_for_save($this->request->getPost('sexo') ?? 'ambos'),
             'valor_min'         => $this->request->getPost('valor_min') ?? '',
             'valor_max'         => $this->request->getPost('valor_max') ?? '',
             'critico_min'       => $this->request->getPost('critico_min') ?? '',

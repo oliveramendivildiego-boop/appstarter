@@ -109,7 +109,9 @@ class Customers extends PersonController
     public function save(int|string $customer_id = -1)
     {
         $validation = \Config\Services::validation();
-        $validation->setRules(config('Validation')->customers ?? []);
+        $rules = config('Validation')->customers ?? [];
+        model(\App\Models\GeneroModel::class)->applyValidationRules($rules);
+        $validation->setRules($rules);
         if (!$validation->withRequest($this->request)->run()) {
             if ($this->request->isAJAX()) {
                 return $this->response->setJSON([

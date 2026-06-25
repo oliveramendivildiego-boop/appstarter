@@ -136,6 +136,9 @@
         <button class="nav-link <?= $activeTab === 'sobres' ? 'active' : '' ?>" id="tab-sobres-btn" data-bs-toggle="tab" data-bs-target="#tab-sobres" type="button" role="tab"><i class="fa-solid fa-envelope me-1"></i>Sobres</button>
     </li>
     <li class="nav-item" role="presentation" data-config-group="catalogos">
+        <button class="nav-link <?= $activeTab === 'generos' ? 'active' : '' ?>" id="tab-generos-btn" data-bs-toggle="tab" data-bs-target="#tab-generos" type="button" role="tab">Géneros</button>
+    </li>
+    <li class="nav-item" role="presentation" data-config-group="catalogos">
         <button class="nav-link <?= $activeTab === 'tipos_muestra' ? 'active' : '' ?>" id="tab-tipos_muestra-btn" data-bs-toggle="tab" data-bs-target="#tab-tipos_muestra" type="button" role="tab">Muestras</button>
     </li>
     <li class="nav-item" role="presentation" data-config-group="catalogos">
@@ -1603,6 +1606,92 @@
                     </div>
                 </div>
                 <small class="text-muted d-block mt-2">Si la institución ya existe en la tabla, al guardar se actualizará su porcentaje.</small>
+                <?= form_close() ?>
+            </div>
+        </div>
+    </div>
+
+    <!-- Pestaña: Géneros de paciente -->
+    <div class="tab-pane fade <?= $activeTab === 'generos' ? 'show active' : '' ?>" id="tab-generos" role="tabpanel">
+        <div class="card shadow-sm">
+            <div class="card-header bg-secondary text-white">
+                <h5 class="mb-0"><i class="fa-solid fa-venus-mars me-2"></i>Géneros de paciente</h5>
+            </div>
+            <div class="card-body">
+                <?= view('config/partials/config_section_guide', [
+                    'guide_key' => 'generos',
+                    'title' => 'Opciones de género en pacientes',
+                    'body' => 'Catálogo usado al registrar o editar pacientes, empleados y médicos. Los valores Masculino (1) y Femenino (2) se usan también en rangos de referencia por sexo.',
+                    'steps' => [
+                        'Revise los géneros existentes en la tabla.',
+                        'Use el formulario inferior para agregar o editar un género.',
+                        'Solo puede eliminar un género si ningún paciente ni médico lo usa.',
+                    ],
+                ]) ?>
+                <div class="config-paginated-list" data-page-size="15">
+                <?= view('config/partials/config_list_toolbar', ['search_placeholder' => 'Buscar género…']) ?>
+                <div class="table-responsive mb-2">
+                    <table class="table table-sm table-bordered align-middle">
+                        <thead class="table-light">
+                            <tr>
+                                <th style="width: 70px;">Orden</th>
+                                <th>Nombre</th>
+                                <th class="text-center" style="width: 140px; white-space: nowrap;">Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <?php foreach (($generos ?? []) as $gen): ?>
+                            <tr>
+                                <td><?= (int) ($gen['orden'] ?? 0) ?></td>
+                                <td><?= esc($gen['nombre'] ?? '') ?></td>
+                                <td class="text-center p-2">
+                                    <div class="d-inline-flex align-items-center justify-content-center gap-1 flex-nowrap">
+                                        <form method="get" action="<?= esc(site_url('config')) ?>" class="d-inline m-0">
+                                            <input type="hidden" name="tab" value="generos">
+                                            <input type="hidden" name="editar_genero" value="<?= (int) ($gen['genero_id'] ?? 0) ?>">
+                                            <button type="submit" class="btn btn-sm btn-outline-primary" title="Editar"><i class="fa-solid fa-pen"></i></button>
+                                        </form>
+                                        <a href="<?= site_url('config/deletegenero/' . (int) ($gen['genero_id'] ?? 0)) ?>" class="btn btn-sm btn-outline-danger flex-shrink-0" title="Eliminar" onclick="return uiConfirmLink(this, '¿Eliminar este género?');"><i class="fa-solid fa-trash"></i></a>
+                                    </div>
+                                </td>
+                            </tr>
+                            <?php endforeach; ?>
+                            <?php if (empty($generos)): ?>
+                            <tr>
+                                <td colspan="3" class="text-muted text-center">No hay géneros definidos. Ejecute la migración de base de datos (<code>php spark migrate</code>) o agregue uno abajo.</td>
+                            </tr>
+                            <?php endif; ?>
+                        </tbody>
+                    </table>
+                </div>
+                <div class="config-list-pagination">
+                    <span class="text-muted small"></span>
+                    <div class="config-list-pagination-nav"></div>
+                </div>
+                </div>
+
+                <h6 class="mb-3"><?= (($editar_genero ?? 0) > 0) ? 'Editar género' : 'Agregar género' ?></h6>
+                <?= form_open(site_url('config/savegenero'), ['class' => 'border rounded p-3']) ?>
+                <input type="hidden" name="genero_id" value="<?= (($editar_genero ?? 0) > 0) ? (int) $editar_genero : '' ?>">
+                <div class="row align-items-end">
+                    <div class="col-md-2 mb-2 mb-md-0">
+                        <label class="form-label">Orden</label>
+                        <input type="number" name="orden" class="form-control form-control-sm" min="0"
+                               value="<?= (int) ($editar_genero_data['orden'] ?? 0) ?>">
+                    </div>
+                    <div class="col-md-6 mb-2 mb-md-0">
+                        <label class="form-label">Nombre <span class="text-danger">*</span></label>
+                        <input type="text" name="nombre" class="form-control form-control-sm" maxlength="64" required
+                               value="<?= esc($editar_genero_data['nombre'] ?? '') ?>"
+                               placeholder="Ej: Masculino, Femenino, Otro…">
+                    </div>
+                    <div class="col-md-4">
+                        <button type="submit" class="btn btn-primary btn-sm me-2"><?= (($editar_genero ?? 0) > 0) ? 'Actualizar' : 'Agregar' ?></button>
+                        <?php if (($editar_genero ?? 0) > 0): ?>
+                        <a href="<?= site_url('config?tab=generos') ?>" class="btn btn-secondary btn-sm">Cancelar</a>
+                        <?php endif; ?>
+                    </div>
+                </div>
                 <?= form_close() ?>
             </div>
         </div>

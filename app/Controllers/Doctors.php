@@ -88,7 +88,9 @@ class Doctors extends SecureArea
     public function saves($doctor_id = -1)
     {
         $validation = \Config\Services::validation();
-        $validation->setRules(config('Validation')->doctors ?? []);
+        $rules = config('Validation')->doctors ?? [];
+        model(\App\Models\GeneroModel::class)->applyValidationRules($rules);
+        $validation->setRules($rules);
         if (!$validation->withRequest($this->request)->run()) {
             if ($this->request->isAJAX()) {
                 return $this->response->setJSON([

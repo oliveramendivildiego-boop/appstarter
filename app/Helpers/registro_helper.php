@@ -807,7 +807,7 @@ if (! function_exists('paciente_nombre_display')) {
 
 if (! function_exists('paciente_genero_texto')) {
     /**
-     * Texto de género según people.gender (1=Masculino, 2=Femenino).
+     * Texto de género según people.gender y catálogo Config → Géneros.
      */
     function paciente_genero_texto(object|array|null $person): string
     {
@@ -817,6 +817,17 @@ if (! function_exists('paciente_genero_texto')) {
         $g = is_object($person)
             ? (int) ($person->gender ?? 0)
             : (int) ($person['gender'] ?? 0);
+        if ($g <= 0) {
+            return '—';
+        }
+        try {
+            $nombre = model(\App\Models\GeneroModel::class)->getNombreById($g);
+            if ($nombre !== null && $nombre !== '') {
+                return $nombre;
+            }
+        } catch (\Throwable $e) {
+            // fallback abajo
+        }
 
         return match ($g) {
             1 => 'Masculino',

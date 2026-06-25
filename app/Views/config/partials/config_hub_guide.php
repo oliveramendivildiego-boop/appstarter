@@ -33,6 +33,7 @@ window._configTabIndex = <?= json_encode([
     ['id' => 'estilo', 'label' => 'Apariencia', 'group' => 'impresion', 'keywords' => 'apariencia estilo tema color fuente menú notificaciones campana entrega header'],
     ['id' => 'sin', 'label' => 'Facturación SIN', 'group' => 'integraciones', 'keywords' => 'sin factura bolivia impuestos'],
     ['id' => 'poblacion', 'label' => 'Grupos de población', 'group' => 'general', 'keywords' => 'población edad referencia rango'],
+    ['id' => 'generos', 'label' => 'Géneros de paciente', 'group' => 'catalogos', 'keywords' => 'género genero masculino femenino paciente sexo'],
     ['id' => 'lab_validacion', 'label' => 'Validación del laboratorio', 'group' => 'general', 'keywords' => 'validación firmas firma sello aprobador'],
     ['id' => 'notificaciones_analisis', 'label' => 'Notificaciones de análisis', 'group' => 'general', 'keywords' => 'notificación entrega alerta pendiente análisis'],
     ['id' => 'metodos_prueba', 'label' => 'Métodos de prueba', 'group' => 'catalogos', 'keywords' => 'métodos metodos técnica análisis'],

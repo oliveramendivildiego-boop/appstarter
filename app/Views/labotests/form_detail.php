@@ -3,6 +3,7 @@
 <script src="<?= base_url('js/vendor/jquery.validate.min.js') ?>"></script>
 <?= $this->endSection() ?>
 <?= $this->section('content') ?>
+<?php helper('config'); $referencia_sexo_options = referencia_sexo_dropdown_options(); ?>
 <?= view('partial/breadcrumb_nav', [
     'items' => [
         ['label' => lang('Module.module_labotests'), 'url' => site_url('labotests')],
@@ -306,11 +307,7 @@ if ($feRaw !== '' && !empty($formulas_con_expresion ?? [])) {
                         'es_separador' => ! empty($s['es_separador']) ? 1 : 0,
                     ];
                     $esSepRow = ! empty($s['es_separador']);
-                    $sexoEtq = match ($s['sexo'] ?? '') {
-                        'masculino' => 'M',
-                        'femenino'  => 'F',
-                        default     => 'Ambos',
-                    };
+                    $sexoEtq = referencia_sexo_short_label($s['sexo'] ?? 'ambos');
                     $pobEtq = $pobMap[(int) ($s['paciente_id'] ?? 0)] ?? (string) ($s['paciente_id'] ?? '');
                     $etiquetaOrden = $esSepRow
                         ? ('Título · ' . trim((string) ($s['nombre'] ?? '')))
@@ -347,7 +344,7 @@ if ($feRaw !== '' && !empty($formulas_con_expresion ?? [])) {
                     </td>
                     <td><?= esc($s['nombre'] ?? '') ?></td>
                     <td><?= esc($pobMap[(int)($s['paciente_id'] ?? 0)] ?? $s['paciente_id'] ?? '') ?></td>
-                    <td><?= esc(match($s['sexo'] ?? '') { 'masculino' => 'Masculino', 'femenino' => 'Femenino', default => 'Ambos' }) ?></td>
+                    <td><?= esc(referencia_sexo_label($s['sexo'] ?? 'ambos')) ?></td>
                     <td><?= esc($s['valor_min'] ?? '') ?></td>
                     <td><?= esc($s['valor_max'] ?? '') ?></td>
                     <td><?= esc($s['umedida'] ?? '') ?></td>
@@ -466,9 +463,9 @@ if ($fe !== '') {
             <div class="col-md-2 mb-2">
                 <label class="form-label">Sexo <span class="text-danger">*</span></label>
                 <select name="sexo" class="form-control form-control-sm" required>
-                    <option value="ambos" <?= (($editar_sec_data['sexo'] ?? 'ambos') === 'ambos') ? 'selected' : '' ?>>Ambos</option>
-                    <option value="masculino" <?= (($editar_sec_data['sexo'] ?? '') === 'masculino') ? 'selected' : '' ?>>Masculino</option>
-                    <option value="femenino" <?= (($editar_sec_data['sexo'] ?? '') === 'femenino') ? 'selected' : '' ?>>Femenino</option>
+                    <?php foreach ($referencia_sexo_options as $sexoVal => $sexoLbl): ?>
+                    <option value="<?= esc($sexoVal) ?>" <?= (($editar_sec_data['sexo'] ?? 'ambos') === $sexoVal) ? 'selected' : '' ?>><?= esc($sexoLbl) ?></option>
+                    <?php endforeach; ?>
                 </select>
             </div>
             <div class="col-md-2 mb-2">

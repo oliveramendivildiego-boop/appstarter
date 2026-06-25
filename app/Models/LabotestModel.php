@@ -2014,8 +2014,7 @@ class LabotestModel extends Model
             $save['formula_expresion'] = null;
         }
         if ($this->hasColumn('secanacategoria', 'sexo')) {
-            $sexo = $data['sexo'] ?? 'ambos';
-            $save['sexo'] = in_array($sexo, ['masculino', 'femenino'], true) ? $sexo : 'ambos';
+            $save['sexo'] = $this->normalizeReferenciaSexoForSave($data['sexo'] ?? 'ambos');
         }
         if ($this->hasColumn('secanacategoria', 'mostrar_medida', true)) {
             $save['mostrar_medida'] = ! empty($data['mostrar_medida']) ? 1 : 0;
@@ -2231,8 +2230,7 @@ class LabotestModel extends Model
             'deleted'           => 0,
         ];
         if ($this->hasColumn('priresultados', 'sexo')) {
-            $sexo = $data['sexo'] ?? 'ambos';
-            $save['sexo'] = in_array($sexo, ['masculino', 'femenino'], true) ? $sexo : 'ambos';
+            $save['sexo'] = $this->normalizeReferenciaSexoForSave($data['sexo'] ?? 'ambos');
         }
         if ($this->hasColumn('priresultados', 'mostrar_medida', true)) {
             $save['mostrar_medida'] = ! empty($data['mostrar_medida']) ? 1 : 0;
@@ -2499,8 +2497,7 @@ class LabotestModel extends Model
                 $update['paciente_id'] = max(0, (int) $row['paciente_id']);
             }
             if (array_key_exists('sexo', $row) && $this->hasColumn('secanacategoria', 'sexo')) {
-                $sexo = (string) $row['sexo'];
-                $update['sexo'] = in_array($sexo, ['masculino', 'femenino'], true) ? $sexo : 'ambos';
+                $update['sexo'] = $this->normalizeReferenciaSexoForSave((string) $row['sexo']);
             }
             if (array_key_exists('opcion_id', $row)) {
                 $update['opcion_id'] = max(1, (int) $row['opcion_id']);
@@ -2578,8 +2575,7 @@ class LabotestModel extends Model
                 $update['id_poblacion'] = max(0, (int) $row['id_poblacion']);
             }
             if (array_key_exists('sexo', $row) && $this->hasColumn('priresultados', 'sexo')) {
-                $sexo = (string) $row['sexo'];
-                $update['sexo'] = in_array($sexo, ['masculino', 'femenino'], true) ? $sexo : 'ambos';
+                $update['sexo'] = $this->normalizeReferenciaSexoForSave((string) $row['sexo']);
             }
             if (array_key_exists('opcion_id', $row)) {
                 $update['opcion_id'] = max(1, (int) $row['opcion_id']);
@@ -3259,8 +3255,7 @@ class LabotestModel extends Model
                     'deleted'            => 0,
                 ];
                 if ($this->hasColumn('secanacategoria', 'sexo')) {
-                    $sexo = strtolower(trim((string) ($raw['sexo'] ?? 'ambos')));
-                    $insert['sexo'] = in_array($sexo, ['masculino', 'femenino'], true) ? $sexo : 'ambos';
+                    $insert['sexo'] = $this->normalizeReferenciaSexoForSave((string) ($raw['sexo'] ?? 'ambos'));
                 }
                 if ($this->hasColumn('secanacategoria', 'es_separador')) {
                     $insert['es_separador'] = $esSeparador ? 1 : 0;
@@ -3314,8 +3309,7 @@ class LabotestModel extends Model
                     'deleted'            => 0,
                 ];
                 if ($this->hasColumn('priresultados', 'sexo')) {
-                    $sexo = strtolower(trim((string) ($raw['sexo'] ?? 'ambos')));
-                    $insert['sexo'] = in_array($sexo, ['masculino', 'femenino'], true) ? $sexo : 'ambos';
+                    $insert['sexo'] = $this->normalizeReferenciaSexoForSave((string) ($raw['sexo'] ?? 'ambos'));
                 }
                 if ($this->hasColumn('priresultados', 'mostrar_medida')) {
                     $insert['mostrar_medida'] = ! empty($raw['mostrar_medida']) ? 1 : 0;
@@ -3497,5 +3491,12 @@ class LabotestModel extends Model
         usort($duplicates, static fn(array $a, array $b): int => strcasecmp($a['name'], $b['name']));
 
         return $duplicates;
+    }
+
+    private function normalizeReferenciaSexoForSave(?string $sexo): string
+    {
+        helper('config');
+
+        return referencia_sexo_normalize_for_save($sexo);
     }
 }
