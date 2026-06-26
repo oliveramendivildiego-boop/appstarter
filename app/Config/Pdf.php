@@ -72,7 +72,7 @@ class Pdf extends BaseConfig
     {
         parent::__construct();
 
-        $envRenderer = getenv('PDF_RENDERER');
+        $envRenderer = env('PDF_RENDERER');
         if (is_string($envRenderer) && $envRenderer !== '') {
             $normalized = strtolower(trim($envRenderer));
             if ($normalized !== 'chromium' && $normalized !== 'chrome') {
@@ -81,15 +81,15 @@ class Pdf extends BaseConfig
             $this->renderer = 'chromium';
         }
 
-        $envChrome = $_ENV['CHROME_EXECUTABLE_PATH'] ?? getenv('CHROME_EXECUTABLE_PATH');
+        $envChrome = env('CHROME_EXECUTABLE_PATH', '');
         if (is_string($envChrome)) {
-            $envChrome = trim($envChrome);
+            $envChrome = trim($envChrome, " \t\"'");
             if ($envChrome !== '' && ! in_array(strtolower($envChrome), ['false', '0', 'null', 'none'], true)) {
                 $this->executablePath = $envChrome;
             }
         }
 
-        $envTimeout = getenv('PDF_CHROMIUM_TIMEOUT');
+        $envTimeout = env('PDF_CHROMIUM_TIMEOUT');
         if (is_string($envTimeout) && is_numeric($envTimeout)) {
             $this->timeoutSeconds = max(10, (int) $envTimeout);
         }

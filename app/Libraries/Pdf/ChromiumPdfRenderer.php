@@ -11,6 +11,15 @@ class ChromiumPdfRenderer implements PdfRendererInterface
 {
     private const TOTAL_PAGES_TOKEN = '__PDF_TOTAL_PAGES__';
 
+    /** Rutas típicas en Windows (WAMP/open_basedir impide is_file fuera de www). */
+    private const WINDOWS_BROWSER_EXES = [
+        'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe',
+        'C:\\Program Files (x86)\\Google\\Chrome\\Application\\chrome.exe',
+        'C:\\Program Files\\Chromium\\Application\\chrome.exe',
+        'C:\\Program Files\\Microsoft\\Edge\\Application\\msedge.exe',
+        'C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe',
+    ];
+
     public function renderHtml(string $html, PdfOptions $options): string
     {
         $sourceHtml            = $html;
@@ -99,6 +108,11 @@ class ChromiumPdfRenderer implements PdfRendererInterface
             '--no-pdf-header-footer',
         ];
 
+        if (! $this->isWindows()) {
+            // Servidor Linux (Apache/nginx como www-data): suele ser necesario en producción.
+            $args[] = '--no-sandbox';
+        }
+
         if ($options->scale > 0 && abs($options->scale - 1.0) > 0.001) {
             $args[] = '--force-device-scale-factor=' . max(0.1, min(3.0, $options->scale));
         }
@@ -176,21 +190,103 @@ class ChromiumPdfRenderer implements PdfRendererInterface
 
     private function resolveExecutable(): string
     {
-        $configured = trim((string) (config('Pdf')->executablePath ?? ''));
-        if ($configured !== '' && $this->executablePathIsUsable($configured, true)) {
+        $configured = $this->normalizeExecutablePath((string) (config('Pdf')->executablePath ?? ''));
+        if ($configured !== '') {
             return $configured;
         }
 
+        $viaShell = $this->resolveExecutableViaShell();
+        if ($viaShell !== null) {
+            return $viaShell;
+        }
+
         foreach ($this->browserExecutableCandidates() as $path) {
-            if ($this->executablePathIsUsable($path, false)) {
+            if (@is_file($path) || @is_executable($path)) {
                 return $path;
             }
         }
 
-        throw new RuntimeException(
-            'No se encontró Chrome/Chromium. Configure CHROME_EXECUTABLE_PATH en .env '
-            . '(p. ej. C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe).'
-        );
+        if ($this->isWindows() && self::WINDOWS_BROWSER_EXES !== []) {
+            return self::WINDOWS_BROWSER_EXES[0];
+        }
+
+        throw new RuntimeException($this->buildMissingBrowserMessage());
+    }
+
+    private function normalizeExecutablePath(string $path): string
+    {
+        $path = trim($path, " \t\"'");
+        if ($path === '') {
+            return '';
+        }
+
+        if ($this->isWindows()) {
+            return str_replace('/', '\\', $path);
+        }
+
+        return str_replace('\\', '/', $path);
+    }
+
+    private function buildMissingBrowserMessage(): string
+    {
+        if ($this->isWindows()) {
+            return 'No se encontró Chrome/Chromium. En .env configure: '
+                . 'CHROME_EXECUTABLE_PATH="C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe"';
+        }
+
+        return 'No se encontró Chrome/Chromium en el servidor. En producción instale Chromium '
+            . '(p. ej. apt install chromium-browser) y en .env configure: '
+            . 'CHROME_EXECUTABLE_PATH=/usr/bin/chromium-browser '
+            . '(o /usr/bin/google-chrome-stable).';
+    }
+
+    private function isWindows(): bool
+    {
+        return PHP_OS_FAMILY === 'Windows' || DIRECTORY_SEPARATOR === '\\';
+    }
+
+    private function resolveExecutableViaShell(): ?string
+    {
+        if (! function_exists('shell_exec')) {
+            return null;
+        }
+
+        $disabled = array_map('trim', explode(',', (string) ini_get('disable_functions')));
+        if (in_array('shell_exec', $disabled, true)) {
+            return null;
+        }
+
+        if ($this->isWindows()) {
+            foreach (['chrome', 'msedge', 'chromium'] as $bin) {
+                $out = shell_exec('where ' . $bin . ' 2>nul');
+                if (! is_string($out)) {
+                    continue;
+                }
+                foreach (preg_split('/\R/', trim($out)) ?: [] as $line) {
+                    $line = trim(str_replace('/', '\\', $line));
+                    if ($line !== '' && preg_match('/\.exe$/i', $line)) {
+                        return $line;
+                    }
+                }
+            }
+
+            return null;
+        }
+
+        foreach (['google-chrome-stable', 'google-chrome', 'chromium-browser', 'chromium'] as $bin) {
+            foreach (['command -v ', 'which '] as $prefix) {
+                $out = shell_exec($prefix . escapeshellarg($bin) . ' 2>/dev/null');
+                if (! is_string($out)) {
+                    continue;
+                }
+                $line = trim(str_replace('\\', '/', $out));
+                if ($line !== '') {
+                    return $line;
+                }
+            }
+        }
+
+        return null;
     }
 
     /**
@@ -198,12 +294,14 @@ class ChromiumPdfRenderer implements PdfRendererInterface
      */
     private function browserExecutableCandidates(): array
     {
-        if (PHP_OS_FAMILY !== 'Windows') {
+        if (! $this->isWindows()) {
             return [
-                '/usr/bin/google-chrome',
                 '/usr/bin/google-chrome-stable',
-                '/usr/bin/chromium',
+                '/usr/bin/google-chrome',
+                '/opt/google/chrome/google-chrome',
                 '/usr/bin/chromium-browser',
+                '/usr/bin/chromium',
+                '/usr/local/bin/chromium',
                 '/snap/bin/chromium',
             ];
         }
@@ -212,18 +310,16 @@ class ChromiumPdfRenderer implements PdfRendererInterface
         $pfX86 = $this->windowsEnvPath('ProgramFiles(x86)', 'PROGRAMFILES(X86)');
         $local = $this->windowsEnvPath('LOCALAPPDATA', 'LOCALAPPDATA');
 
-        return array_values(array_unique(array_filter([
-            $pf !== '' ? $pf . '\\Google\\Chrome\\Application\\chrome.exe' : '',
-            $pfX86 !== '' ? $pfX86 . '\\Google\\Chrome\\Application\\chrome.exe' : '',
-            $local !== '' ? $local . '\\Google\\Chrome\\Application\\chrome.exe' : '',
-            'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe',
-            'C:\\Program Files (x86)\\Google\\Chrome\\Application\\chrome.exe',
-            'C:\\Program Files\\Chromium\\Application\\chrome.exe',
-            $pf !== '' ? $pf . '\\Microsoft\\Edge\\Application\\msedge.exe' : '',
-            $pfX86 !== '' ? $pfX86 . '\\Microsoft\\Edge\\Application\\msedge.exe' : '',
-            'C:\\Program Files\\Microsoft\\Edge\\Application\\msedge.exe',
-            'C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe',
-        ])));
+        return array_values(array_unique(array_filter(array_merge(
+            [
+                $pf !== '' ? $pf . '\\Google\\Chrome\\Application\\chrome.exe' : '',
+                $pfX86 !== '' ? $pfX86 . '\\Google\\Chrome\\Application\\chrome.exe' : '',
+                $local !== '' ? $local . '\\Google\\Chrome\\Application\\chrome.exe' : '',
+                $pf !== '' ? $pf . '\\Microsoft\\Edge\\Application\\msedge.exe' : '',
+                $pfX86 !== '' ? $pfX86 . '\\Microsoft\\Edge\\Application\\msedge.exe' : '',
+            ],
+            self::WINDOWS_BROWSER_EXES,
+        ))));
     }
 
     private function windowsEnvPath(string $serverKey, string $getenvKey): string
@@ -239,38 +335,6 @@ class ChromiumPdfRenderer implements PdfRendererInterface
         }
 
         return '';
-    }
-
-    /**
-     * @param bool $configured Si true, confía en la ruta aunque open_basedir bloquee is_file (típico en WAMP).
-     */
-    private function executablePathIsUsable(string $path, bool $configured): bool
-    {
-        $path = trim(str_replace('/', '\\', $path));
-        if ($path === '') {
-            return false;
-        }
-
-        if (@is_file($path)) {
-            return true;
-        }
-
-        if ($configured) {
-            return PHP_OS_FAMILY === 'Windows'
-                ? (bool) preg_match('/\.exe$/i', $path)
-                : is_executable($path);
-        }
-
-        // WAMP/open_basedir: is_file() falla fuera de www aunque Chrome exista; rutas canónicas siguen siendo válidas.
-        if (PHP_OS_FAMILY === 'Windows' && preg_match('/\.exe$/i', $path)) {
-            foreach ($this->browserExecutableCandidates() as $known) {
-                if (strcasecmp(str_replace('/', '\\', $known), $path) === 0) {
-                    return true;
-                }
-            }
-        }
-
-        return false;
     }
 
     private function resolveTempDir(): string
