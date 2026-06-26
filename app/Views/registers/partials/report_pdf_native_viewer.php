@@ -12,19 +12,6 @@ if ($pdfUrl === '' && $ridPdf > 0) {
 }
 ?>
 <div class="report-pdf-native-viewer is-loading" data-report-pdf-native-viewer>
-    <div class="report-pdf-native-toolbar" role="toolbar" aria-label="Controles del visor PDF">
-        <div class="report-pdf-native-toolbar-group">
-            <a href="<?= esc($pdfUrl, 'attr') ?>" class="btn btn-sm btn-outline-primary" target="_blank" rel="noopener" title="Abrir en pestaña nueva">
-                <i class="fa-solid fa-up-right-from-square me-1"></i>Abrir
-            </a>
-            <a href="<?= esc(site_url('registers/pdf/' . $ridPdf), 'attr') ?>" class="btn btn-sm btn-outline-secondary" title="Descargar PDF">
-                <i class="fa-solid fa-download me-1"></i>Descargar
-            </a>
-        </div>
-        <div class="report-pdf-native-toolbar-note small text-muted">
-            Vista previa del análisis clínico (misma salida que descarga e impresión)
-        </div>
-    </div>
     <div class="report-pdf-native-frame-host">
         <div class="report-pdf-native-loading" data-pdf-native-loading aria-live="polite" aria-busy="true">
             <div class="report-pdf-native-loading-spinner" aria-hidden="true"></div>

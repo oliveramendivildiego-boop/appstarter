@@ -29,26 +29,6 @@
     overflow: hidden;
     box-shadow: 0 2px 10px rgba(0, 0, 0, 0.14);
 }
-.report-pdf-native-toolbar {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 12px;
-    align-items: center;
-    justify-content: space-between;
-    padding: 10px 14px;
-    background: #f8f9fa;
-    border-bottom: 1px solid #dee2e6;
-}
-.report-pdf-native-toolbar-group {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 8px;
-    align-items: center;
-}
-.report-pdf-native-toolbar-note {
-    flex: 1 1 220px;
-    text-align: right;
-}
 .report-pdf-native-frame-host {
     position: relative;
     min-height: calc(100vh - 220px);
@@ -105,10 +85,6 @@
     to { transform: rotate(360deg); }
 }
 @media (max-width: 767.98px) {
-    .report-pdf-native-toolbar-note {
-        text-align: left;
-        flex-basis: 100%;
-    }
     .report-pdf-native-frame-host,
     .report-pdf-native-frame {
         min-height: 70vh;
