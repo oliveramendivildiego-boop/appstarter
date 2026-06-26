@@ -119,6 +119,10 @@ class PdfChromeSetupService
 
     private function portableChromePath(): string
     {
+        if (! defined('WRITEPATH')) {
+            return '';
+        }
+
         $base = WRITEPATH . self::PORTABLE_DIR;
         foreach (['chrome', 'google-chrome'] as $name) {
             $path = $base . DIRECTORY_SEPARATOR . $name;
@@ -197,31 +201,42 @@ class PdfChromeSetupService
 
     private function downloadFile(string $url, string $dest): void
     {
-        $fp = @fopen($dest, 'wb');
-        if ($fp === false) {
-            throw new RuntimeException('No se pudo escribir en ' . $dest);
-        }
+        if (function_exists('curl_init')) {
+            $fp = @fopen($dest, 'wb');
+            if ($fp === false) {
+                throw new RuntimeException('No se pudo escribir en ' . $dest);
+            }
 
-        $ch = curl_init($url);
-        if ($ch === false) {
+            $ch = curl_init($url);
+            if ($ch === false) {
+                fclose($fp);
+                throw new RuntimeException('curl no disponible.');
+            }
+
+            curl_setopt_array($ch, [
+                CURLOPT_FILE           => $fp,
+                CURLOPT_FOLLOWLOCATION => true,
+                CURLOPT_TIMEOUT        => 600,
+                CURLOPT_FAILONERROR    => true,
+            ]);
+
+            $ok = curl_exec($ch);
+            curl_close($ch);
             fclose($fp);
-            throw new RuntimeException('curl no disponible.');
+
+            if ($ok === true && is_file($dest) && filesize($dest) > 1_000_000) {
+                return;
+            }
+            @unlink($dest);
         }
 
-        curl_setopt_array($ch, [
-            CURLOPT_FILE           => $fp,
-            CURLOPT_FOLLOWLOCATION => true,
-            CURLOPT_TIMEOUT        => 600,
-            CURLOPT_FAILONERROR    => true,
-        ]);
-
-        $ok = curl_exec($ch);
-        curl_close($ch);
-        fclose($fp);
-
-        if ($ok !== true || ! is_file($dest) || filesize($dest) < 1_000_000) {
-            @unlink($dest);
+        $ctx = stream_context_create(['http' => ['timeout' => 600]]);
+        $raw = @file_get_contents($url, false, $ctx);
+        if (! is_string($raw) || strlen($raw) < 1_000_000) {
             throw new RuntimeException('Descarga de Chromium incompleta.');
+        }
+        if (@file_put_contents($dest, $raw) === false) {
+            throw new RuntimeException('No se pudo guardar Chromium en ' . $dest);
         }
     }
 
@@ -262,6 +277,10 @@ class PdfChromeSetupService
 
     private function readOverridePath(): string
     {
+        if (! defined('WRITEPATH')) {
+            return '';
+        }
+
         $file = WRITEPATH . 'cache' . DIRECTORY_SEPARATOR . self::OVERRIDE_FILE;
         if (! is_file($file)) {
             return '';
@@ -307,7 +326,7 @@ class PdfChromeSetupService
         if ($exe === '') {
             return 'none';
         }
-        if (str_contains($exe, WRITEPATH . 'chrome')) {
+        if (defined('WRITEPATH') && str_contains($exe, WRITEPATH . 'chrome')) {
             return 'portable';
         }
 

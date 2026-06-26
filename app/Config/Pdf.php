@@ -81,7 +81,11 @@ class Pdf extends BaseConfig
             $this->renderer = 'chromium';
         }
 
-        $this->executablePath = self::readChromeExecutableFromEnvironment();
+        $this->executablePath = self::readChromeOverrideFile();
+
+        if ($this->executablePath === '') {
+            $this->executablePath = self::readChromeExecutableFromEnvironment();
+        }
 
         if ($this->executablePath === '') {
             $this->executablePath = self::discoverChromeViaShell();
@@ -95,6 +99,32 @@ class Pdf extends BaseConfig
         if (is_string($envTimeout) && is_numeric($envTimeout)) {
             $this->timeoutSeconds = max(10, (int) $envTimeout);
         }
+    }
+
+    /**
+     * Ruta escrita por la instalación web (writable/cache/pdf_chrome_executable.txt).
+     */
+    public static function readChromeOverrideFile(): string
+    {
+        if (! defined('WRITEPATH')) {
+            return '';
+        }
+
+        $file = WRITEPATH . 'cache' . DIRECTORY_SEPARATOR . 'pdf_chrome_executable.txt';
+        if (! is_file($file)) {
+            return '';
+        }
+
+        $path = trim(str_replace('\\', '/', (string) file_get_contents($file)));
+        if ($path === '') {
+            return '';
+        }
+
+        if (@is_file($path) || @is_executable($path)) {
+            return $path;
+        }
+
+        return '';
     }
 
     /**
@@ -182,14 +212,25 @@ class Pdf extends BaseConfig
      */
     public static function linuxChromeCandidatePaths(): array
     {
-        return [
+        $paths = [];
+        if (defined('WRITEPATH')) {
+            $portable = WRITEPATH . 'chrome' . DIRECTORY_SEPARATOR . 'chrome-linux64' . DIRECTORY_SEPARATOR . 'chrome';
+            $paths[] = str_replace('\\', '/', $portable);
+        }
+
+        return array_merge($paths, [
             '/usr/bin/chromium-browser',
             '/usr/bin/chromium',
             '/usr/bin/google-chrome-stable',
             '/usr/bin/google-chrome',
             '/snap/bin/chromium',
             '/opt/google/chrome/google-chrome',
-        ];
+        ]);
+    }
+
+    public static function isWindowsPlatform(): bool
+    {
+        return PHP_OS_FAMILY === 'Windows' || DIRECTORY_SEPARATOR === '\\';
     }
 
     /**
@@ -208,11 +249,6 @@ class Pdf extends BaseConfig
         }
 
         return '';
-    }
-
-    private static function isWindowsPlatform(): bool
-    {
-        return PHP_OS_FAMILY === 'Windows' || DIRECTORY_SEPARATOR === '\\';
     }
 
     private static function looksLikeWindowsPath(string $path): bool

@@ -196,6 +196,8 @@ $routes->post('config/savetenant', 'Config::saveTenant');
 $routes->post('config/saveTenantBackupSchedule', 'Config::saveTenantBackupSchedule');
 $routes->post('config/saveWritableCacheSchedule', 'Config::saveWritableCacheSchedule');
 $routes->post('config/clearWritableCache', 'Config::clearWritableCache');
+$routes->post('config/setupPdfChrome', 'Config::setupPdfChrome');
+$routes->get('config/pdfChromeStatus', 'Config::pdfChromeStatus');
 $routes->post('config/closeAllSessions', 'Config::closeAllSessions');
 $routes->post('config/testSin', 'Config::testSin');
 $routes->post('config/getActiveSessions', 'Config::getActiveSessions');
