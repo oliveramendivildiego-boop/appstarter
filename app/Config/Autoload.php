@@ -58,10 +58,7 @@ class Autoload extends AutoloadConfig
      *
      * @var array<string, string>
      */
-    public $classmap = [
-        // Evita fallo "Class Config\Kint not found" tras deploy si el file locator cache está obsoleto.
-        'Config\\Kint' => APPPATH . 'Config' . DIRECTORY_SEPARATOR . 'Kint.php',
-    ];
+    public $classmap = [];
 
     /**
      * -------------------------------------------------------------------

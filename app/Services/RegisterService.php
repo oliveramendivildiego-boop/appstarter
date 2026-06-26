@@ -2,7 +2,6 @@
 
 namespace App\Services;
 
-use App\Libraries\Pdf\HtmlChromiumAdapter;
 use App\Libraries\PdfService;
 use App\Models\AppConfigModel;
 use App\Models\LabotestModel;
@@ -22,8 +21,8 @@ class RegisterService
 {
     public const TOTAL_PAGES_TOKEN = '__PDF_TOTAL_PAGES__';
 
-    /** Invalida caché inline de viewreport al cambiar el pipeline PDF (Chromium/Dompdf). */
-    private const REPORT_PDF_PREVIEW_CACHE_SALT = 'chromium-only-v32-no-dompdf';
+    /** Invalida caché inline de viewreport al cambiar el pipeline PDF. */
+    private const REPORT_PDF_PREVIEW_CACHE_SALT = 'dompdf-primary-v1';
 
     private ?\App\Services\Report\ReportDataCacheService $reportDataCache = null;
     protected RegisterModel $registerModel;
@@ -2857,8 +2856,7 @@ class RegisterService
 
         $parts[] = $this->reportPdfDoctorFingerprintPart($reportData['doctor'] ?? null);
         $parts[] = $this->hashPdfLayoutForFingerprint($pdfLayout);
-        $parts[] = (string) (config('Pdf')->renderer ?? 'chromium');
-        $parts[] = HtmlChromiumAdapter::CACHE_REVISION;
+        $parts[] = (string) (config('Pdf')->renderer ?? 'dompdf');
         $parts[] = self::REPORT_PDF_PREVIEW_CACHE_SALT;
 
         return hash('sha256', implode("\n", $parts));
@@ -2886,8 +2884,7 @@ class RegisterService
         $parts[] = $this->reportPdfDoctorFingerprintPart($doctor);
 
         $parts[] = $this->hashPdfLayoutForFingerprint($pdfLayout);
-        $parts[] = (string) (config('Pdf')->renderer ?? 'chromium');
-        $parts[] = HtmlChromiumAdapter::CACHE_REVISION;
+        $parts[] = (string) (config('Pdf')->renderer ?? 'dompdf');
         $parts[] = self::REPORT_PDF_PREVIEW_CACHE_SALT;
 
         return hash('sha256', implode("\n", $parts));

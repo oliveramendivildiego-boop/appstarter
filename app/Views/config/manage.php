@@ -746,33 +746,6 @@
                     Archivos temporales generados por el sistema: caché de CodeIgniter, vistas previas de PDF, datos de reportes, etc.
                     Borrar la caché no afecta la base de datos; los reportes se regenerarán en la siguiente consulta.
                 </p>
-                <?php
-                $pcs = $pdf_chrome_status ?? ['ready' => false, 'executable' => '', 'message' => '', 'source' => 'none'];
-                ?>
-                <div class="d-flex flex-wrap align-items-center gap-3 mb-3 p-3 border rounded <?= ! empty($pcs['ready']) ? 'bg-success-subtle' : 'bg-warning-subtle' ?>">
-                    <div class="flex-grow-1">
-                        <span class="text-muted small d-block">Motor PDF (Chromium)</span>
-                        <strong id="pdf_chrome_status_label"><?= ! empty($pcs['ready']) ? 'Listo' : 'No configurado' ?></strong>
-                        <span class="text-muted small d-block mt-1" id="pdf_chrome_path_label">
-                            <?php if (! empty($pcs['executable'])): ?>
-                                <?= esc($pcs['executable']) ?>
-                                <?php if (! empty($pcs['source']) && $pcs['source'] !== 'none'): ?>
-                                    <span class="badge bg-secondary ms-1"><?= esc($pcs['source']) ?></span>
-                                <?php endif; ?>
-                            <?php else: ?>
-                                <?= esc($pcs['message'] ?? 'Instale Chromium para generar reportes PDF en el servidor.') ?>
-                            <?php endif; ?>
-                        </span>
-                    </div>
-                    <button type="button" class="btn btn-primary" id="btn_setup_pdf_chrome"
-                        data-url="<?= esc(site_url('config/setupPdfChrome'), 'attr') ?>">
-                        <i class="fa-solid fa-download me-1"></i>Instalar PDF / Chromium
-                    </button>
-                </div>
-                <p class="text-muted small mb-3" id="pdf_chrome_setup_hint">
-                    En Linux sin SSH: el botón descarga Chrome en <code>writable/chrome/</code> y empaqueta bibliotecas del sistema en <code>writable/chrome/libs/</code>.
-                    Si el PDF falla con «shared libraries», pulse el botón otra vez (no vuelve a descargar Chrome, solo las bibliotecas).
-                </p>
                 <div class="d-flex flex-wrap align-items-center gap-3 mb-3 p-3 border rounded bg-light">
                     <div>
                         <span class="text-muted small d-block">Uso actual</span>
@@ -2472,64 +2445,6 @@ $(document).ready(function() {
                 }
             }).finally(function () {
                 btn.disabled = false;
-            });
-        });
-    })();
-
-    (function initPdfChromeSetupBtn() {
-        var btn = document.getElementById('btn_setup_pdf_chrome');
-        if (!btn) {
-            return;
-        }
-        var url = btn.getAttribute('data-url') || '';
-        var statusEl = document.getElementById('pdf_chrome_status_label');
-        var pathEl = document.getElementById('pdf_chrome_path_label');
-        btn.addEventListener('click', function () {
-            if (!url) {
-                return;
-            }
-            if (!window.confirm('¿Instalar o configurar Chromium para PDF? En Linux se descargará ~150 MB. Espere hasta que termine.')) {
-                return;
-            }
-            btn.disabled = true;
-            var originalHtml = btn.innerHTML;
-            btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1" role="status"></span>Instalando…';
-            var csrf = document.querySelector('input[name="<?= esc(csrf_token(), 'js') ?>"]');
-            var body = new URLSearchParams();
-            if (csrf && csrf.name) {
-                body.append(csrf.name, csrf.value);
-            }
-            fetch(url, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'X-Requested-With': 'XMLHttpRequest' },
-                body: body.toString()
-            }).then(function (r) { return r.json(); }).then(function (data) {
-                if (data && data.success) {
-                    if (statusEl) {
-                        statusEl.textContent = 'Listo';
-                    }
-                    if (pathEl && data.executable) {
-                        pathEl.textContent = data.executable;
-                    }
-                }
-                var msg = (data && data.message) || 'Error';
-                if (data && data.steps && data.steps.length) {
-                    msg += '\n\n' + data.steps.join('\n');
-                }
-                if (typeof window.uiToast === 'function') {
-                    window.uiToast(data && data.success ? 'success' : 'error', msg);
-                } else {
-                    alert(msg);
-                }
-            }).catch(function () {
-                if (typeof window.uiToast === 'function') {
-                    window.uiToast('error', 'No se pudo completar la instalación (timeout o red).');
-                } else {
-                    alert('No se pudo completar la instalación.');
-                }
-            }).finally(function () {
-                btn.disabled = false;
-                btn.innerHTML = originalHtml;
             });
         });
     })();

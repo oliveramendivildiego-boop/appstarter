@@ -7,7 +7,7 @@ namespace App\Libraries\Pdf;
  */
 class HtmlChromiumAdapter
 {
-    public const CACHE_REVISION = 'footer-pagination-php-v32-chromium-only';
+    public const CACHE_REVISION = 'footer-pagination-php-v31';
 
     public static function adapt(string $html, ?PdfOptions $options = null): string
     {
@@ -271,8 +271,20 @@ CSS;
      */
     private static function buildDejaVuFontFaceCss(): string
     {
-        $toFileUrl = static function (string $fileName): ?string {
-            return PdfDejaVuFonts::fileUrl($fileName);
+        $fontDir = realpath(ROOTPATH . 'vendor/dompdf/dompdf/lib/fonts');
+        if ($fontDir === false) {
+            return '';
+        }
+
+        $toFileUrl = static function (string $fileName) use ($fontDir): ?string {
+            $real = realpath($fontDir . DIRECTORY_SEPARATOR . $fileName);
+            if ($real === false || ! is_file($real)) {
+                return null;
+            }
+
+            $normalized = str_replace('\\', '/', $real);
+
+            return PHP_OS_FAMILY === 'Windows' ? 'file:///' . $normalized : 'file://' . $normalized;
         };
 
         $declarations = [];

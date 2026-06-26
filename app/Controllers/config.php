@@ -20,7 +20,6 @@ use App\Services\TenantBackupScheduleService;
 use App\Services\TenantBackupService;
 use App\Services\WritableCachePurgeService;
 use App\Services\WritableCacheScheduleService;
-use App\Services\Pdf\PdfChromeSetupService;
 use App\Services\TenantConfigService;
 use App\Services\GhostTenantAccessService;
 use App\Services\TenantHandoffService;
@@ -357,8 +356,6 @@ class Config extends SecureArea
         $writableCacheSchedule   = $wcsSvc->getFormState();
         $writableCacheTimezoneId = $wcsSvc->getResolvedTimezoneIdentifier();
 
-        $pdfChromeStatus = (new PdfChromeSetupService())->status();
-
         $tenantHomeBroadcastForm = $canManageTenants
             ? (new \App\Services\TenantHomeBroadcastService())->getFormState()
             : [];
@@ -420,7 +417,6 @@ class Config extends SecureArea
             'writable_cache_timezone_id' => $writableCacheTimezoneId,
             'writable_cache_cron_url'   => site_url('cron/writable-cache-purge'),
             'writable_cache_cron_ready' => trim((string) env('writableCache.cronKey', '')) !== '',
-            'pdf_chrome_status'         => $pdfChromeStatus,
             'tenant_home_broadcast_form' => $tenantHomeBroadcastForm,
             'active_tab'           => $tab,
             'timezone_options'     => get_timezone_options(),
@@ -908,56 +904,6 @@ class Config extends SecureArea
             'bytes_freed'   => (int) ($result['bytes_freed'] ?? 0),
             'measure'       => (new WritableCachePurgeService())->measure(),
         ])->setStatusCode(($result['success'] ?? false) ? 200 : 500);
-    }
-
-    /**
-     * Estado de Chromium para PDF (instalación web sin SSH).
-     */
-    public function pdfChromeStatus(): ResponseInterface
-    {
-        $personId = (int) session()->get('person_id');
-        if ($personId <= 0) {
-            return $this->response->setJSON([
-                'success' => false,
-                'message' => 'No hay sesión activa',
-            ])->setStatusCode(401);
-        }
-
-        $status = (new PdfChromeSetupService())->status();
-
-        return $this->response->setJSON([
-            'success' => true,
-            'status'  => $status,
-        ]);
-    }
-
-    /**
-     * Descarga Chromium portable en writable/ y configura la ruta (Linux, sin sudo).
-     */
-    public function setupPdfChrome(): ResponseInterface
-    {
-        $personId = (int) session()->get('person_id');
-        if ($personId <= 0) {
-            return $this->response->setJSON([
-                'success' => false,
-                'message' => 'No hay sesión activa',
-            ])->setStatusCode(401);
-        }
-
-        @set_time_limit(600);
-        @ini_set('memory_limit', '512M');
-
-        $result = (new PdfChromeSetupService())->ensureReady();
-        if ($result['success'] ?? false) {
-            \App\Models\AuditoriaModel::log(
-                'config',
-                'pdf_chrome_setup_web',
-                null,
-                (string) ($result['executable'] ?? '')
-            );
-        }
-
-        return $this->response->setJSON($result)->setStatusCode(($result['success'] ?? false) ? 200 : 500);
     }
 
     /**

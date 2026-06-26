@@ -36,9 +36,7 @@ class Optimize
      * File Locator Caching
      * --------------------------------------------------------------------------
      *
-     * Deshabilitado: tras deploy puede servir rutas de clases obsoletas (p. ej. Config\Kint).
-     *
      * @see https://codeigniter.com/user_guide/concepts/autoloader.html#file-locator-caching
      */
-    public bool $locatorCacheEnabled = false;
+    public bool $locatorCacheEnabled = true;
 }
