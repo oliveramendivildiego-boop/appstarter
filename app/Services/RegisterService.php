@@ -23,7 +23,7 @@ class RegisterService
     public const TOTAL_PAGES_TOKEN = '__PDF_TOTAL_PAGES__';
 
     /** Invalida caché inline de viewreport al cambiar el pipeline PDF (Chromium/Dompdf). */
-    private const REPORT_PDF_PREVIEW_CACHE_SALT = 'order-sheet-from-page-2-v31-chromium-osh-no-gap-p1';
+    private const REPORT_PDF_PREVIEW_CACHE_SALT = 'chromium-only-v32-no-dompdf';
 
     private ?\App\Services\Report\ReportDataCacheService $reportDataCache = null;
     protected RegisterModel $registerModel;
@@ -2857,7 +2857,7 @@ class RegisterService
 
         $parts[] = $this->reportPdfDoctorFingerprintPart($reportData['doctor'] ?? null);
         $parts[] = $this->hashPdfLayoutForFingerprint($pdfLayout);
-        $parts[] = (string) (config('Pdf')->renderer ?? 'dompdf');
+        $parts[] = (string) (config('Pdf')->renderer ?? 'chromium');
         $parts[] = HtmlChromiumAdapter::CACHE_REVISION;
         $parts[] = self::REPORT_PDF_PREVIEW_CACHE_SALT;
 
@@ -2886,7 +2886,7 @@ class RegisterService
         $parts[] = $this->reportPdfDoctorFingerprintPart($doctor);
 
         $parts[] = $this->hashPdfLayoutForFingerprint($pdfLayout);
-        $parts[] = (string) (config('Pdf')->renderer ?? 'dompdf');
+        $parts[] = (string) (config('Pdf')->renderer ?? 'chromium');
         $parts[] = HtmlChromiumAdapter::CACHE_REVISION;
         $parts[] = self::REPORT_PDF_PREVIEW_CACHE_SALT;
 

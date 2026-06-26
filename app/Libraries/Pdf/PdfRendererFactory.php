@@ -6,59 +6,45 @@ use App\Services\Report\ReportPipelineMetrics;
 use RuntimeException;
 
 /**
- * Fábrica de renderizadores PDF (Chromium / Dompdf) con fallback configurable.
+ * Fábrica del renderizador PDF (Chromium headless).
  */
 class PdfRendererFactory
 {
     public static function create(?string $engine = null): PdfRendererInterface
     {
-        $engine = strtolower(trim($engine ?? (string) (config('Pdf')->renderer ?? 'dompdf')));
+        $engine = strtolower(trim($engine ?? (string) (config('Pdf')->renderer ?? 'chromium')));
 
         return match ($engine) {
             'chromium', 'chrome' => new ChromiumPdfRenderer(),
-            'dompdf'             => new DompdfPdfRenderer(),
-            default              => throw new RuntimeException('Motor PDF no soportado: ' . $engine),
+            default              => throw new RuntimeException(
+                'Motor PDF no soportado: ' . $engine . '. Use chromium y tenga Chrome/Chromium instalado.',
+            ),
         };
     }
 
     /**
-     * Renderiza con el motor configurado; si falla Chromium y fallback está activo, usa Dompdf.
+     * Genera PDF con Chromium headless.
      */
     public static function renderWithFallback(string $html, PdfOptions $options): string
     {
-        $engine  = strtolower(trim((string) (config('Pdf')->renderer ?? 'dompdf')));
+        $t0       = microtime(true);
+        $renderer = self::create();
 
-        if ($engine === 'chromium' || $engine === 'chrome') {
-            $t0 = microtime(true);
-            try {
-                $renderer = new ChromiumPdfRenderer();
-                $binary   = $renderer->renderHtml($html, $options);
-                ReportPipelineMetrics::getInstance()->recordPdfRender(
-                    microtime(true) - $t0,
-                    $renderer->engineName(),
-                    'rendered',
-                );
+        try {
+            $binary = $renderer->renderHtml($html, $options);
+        } catch (\Throwable $e) {
+            ReportPipelineMetrics::getInstance()->recordChromiumRender(
+                microtime(true) - $t0,
+                false,
+                $renderer->engineName(),
+                $e->getMessage(),
+            );
 
-                return $binary;
-            } catch (\Throwable $e) {
-                ReportPipelineMetrics::getInstance()->recordChromiumRender(
-                    microtime(true) - $t0,
-                    false,
-                    'chromium',
-                    $e->getMessage(),
-                );
-                if (! (bool) (config('Pdf')->fallbackToDompdf ?? true)) {
-                    throw $e;
-                }
-                log_message('warning', 'Chromium PDF fallback to Dompdf: {msg}', ['msg' => $e->getMessage()]);
-            }
+            throw $e;
         }
 
-        $t1       = microtime(true);
-        $renderer = new DompdfPdfRenderer();
-        $binary   = $renderer->renderHtml($html, $options);
         ReportPipelineMetrics::getInstance()->recordPdfRender(
-            microtime(true) - $t1,
+            microtime(true) - $t0,
             $renderer->engineName(),
             'rendered',
         );

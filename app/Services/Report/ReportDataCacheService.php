@@ -55,7 +55,7 @@ class ReportDataCacheService
         $labConfig = (new RegisterService())->getLabConfig();
         $parts[]   = md5(json_encode($labConfig, JSON_UNESCAPED_UNICODE) ?: '');
 
-        $parts[] = (string) (config('Pdf')->renderer ?? 'dompdf');
+        $parts[] = (string) (config('Pdf')->renderer ?? 'chromium');
         $parts[] = self::SALT;
 
         return hash('sha256', implode("\n", $parts));

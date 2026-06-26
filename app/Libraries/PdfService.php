@@ -6,7 +6,7 @@ use App\Libraries\Pdf\PdfOptions;
 use App\Libraries\Pdf\PdfRendererFactory;
 
 /**
- * Fachada de generación PDF. Delega al motor configurado (Chromium / Dompdf).
+ * Fachada de generación PDF. Delega a Chromium headless.
  */
 class PdfService
 {

@@ -7,15 +7,10 @@ use CodeIgniter\Config\BaseConfig;
 class Pdf extends BaseConfig
 {
     /**
-     * Motor de renderizado: chromium | dompdf
-     * Variable de entorno: PDF_RENDERER
+     * Motor de renderizado: chromium
+     * Variable de entorno: PDF_RENDERER (solo chromium)
      */
     public string $renderer = 'chromium';
-
-    /**
-     * Si Chromium falla, usar Dompdf automáticamente.
-     */
-    public bool $fallbackToDompdf = true;
 
     /**
      * Ruta al ejecutable de Chrome/Chromium.
@@ -79,12 +74,19 @@ class Pdf extends BaseConfig
 
         $envRenderer = getenv('PDF_RENDERER');
         if (is_string($envRenderer) && $envRenderer !== '') {
-            $this->renderer = strtolower(trim($envRenderer));
+            $normalized = strtolower(trim($envRenderer));
+            if ($normalized !== 'chromium' && $normalized !== 'chrome') {
+                log_message('warning', 'PDF_RENDERER={val} ignorado; solo chromium está soportado.', ['val' => $normalized]);
+            }
+            $this->renderer = 'chromium';
         }
 
-        $envChrome = getenv('CHROME_EXECUTABLE_PATH');
-        if (is_string($envChrome) && $envChrome !== '') {
-            $this->executablePath = trim($envChrome);
+        $envChrome = $_ENV['CHROME_EXECUTABLE_PATH'] ?? getenv('CHROME_EXECUTABLE_PATH');
+        if (is_string($envChrome)) {
+            $envChrome = trim($envChrome);
+            if ($envChrome !== '' && ! in_array(strtolower($envChrome), ['false', '0', 'null', 'none'], true)) {
+                $this->executablePath = $envChrome;
+            }
         }
 
         $envTimeout = getenv('PDF_CHROMIUM_TIMEOUT');
