@@ -22,16 +22,26 @@ class PdfChromeSetupService
      */
     public function status(): array
     {
-        $exe    = $this->resolveBestExecutable();
-        $ready  = $exe !== '' && $this->executableUsable($exe);
+        $exe   = $this->resolveBestExecutable();
+        $ready = $exe !== '' && $this->executableUsable($exe);
+
+        if ($ready && ! PdfConfig::isWindowsPlatform() && PdfChromeRuntime::isPortableExecutable($exe)) {
+            $ready = $this->testHeadlessPrint($exe);
+        }
+
+        $libsDir = PdfChromeRuntime::bundledLibsDir();
+        $libsCount = ($libsDir !== '' && is_dir($libsDir)) ? count(glob($libsDir . '/*.so*') ?: []) : 0;
 
         return [
             'ready'      => $ready,
             'executable' => $exe,
             'source'     => $this->describeSource($exe),
+            'libs_count' => $libsCount,
             'message'    => $ready
                 ? 'Chromium listo para generar PDF.'
-                : 'Chromium no configurado. Use el botón «Instalar PDF / Chromium».',
+                : ($exe !== '' && PdfChromeRuntime::isPortableExecutable($exe)
+                    ? 'Chromium instalado pero faltan bibliotecas. Pulse «Instalar PDF / Chromium» de nuevo.'
+                    : 'Chromium no configurado. Use el botón «Instalar PDF / Chromium».'),
             'platform'   => PHP_OS_FAMILY,
         ];
     }
@@ -44,49 +54,73 @@ class PdfChromeSetupService
         @set_time_limit(600);
         @ini_set('memory_limit', '512M');
 
-        $steps = [];
+        $steps      = [];
+        $executable = $this->resolveBestExecutable();
 
-        $existing = $this->resolveBestExecutable();
-        if ($existing !== '' && $this->executableUsable($existing)) {
-            $this->persistExecutablePath($existing);
-            $steps[] = 'Chromium ya disponible: ' . $existing;
+        if (! PdfConfig::isWindowsPlatform()) {
+            if ($executable === '' || ! $this->executableUsable($executable)) {
+                $steps[] = 'Descargando Chromium portable (puede tardar varios minutos)…';
+                try {
+                    $executable = $this->installPortableChromeLinux();
+                    $steps[]    = 'Chromium instalado en: ' . $executable;
+                } catch (\Throwable $e) {
+                    $steps[] = 'Error Chromium: ' . $e->getMessage();
+
+                    return [
+                        'success'    => false,
+                        'message'    => 'No se pudo instalar Chromium. ' . $e->getMessage(),
+                        'executable' => '',
+                        'steps'      => $steps,
+                    ];
+                }
+            } else {
+                $steps[] = 'Chromium ya presente: ' . $executable;
+            }
+
+            $steps[] = 'Empaquetando bibliotecas del sistema (libatk, libnss, etc.)…';
+            $libResult = (new PdfChromeLinuxLibsInstaller())->install();
+            $steps     = array_merge($steps, $libResult['steps'] ?? []);
+            if (! ($libResult['success'] ?? false)) {
+                $steps[] = 'AVISO: ' . ($libResult['message'] ?? 'bibliotecas incompletas');
+            }
+
+            if ($this->testHeadlessPrint($executable)) {
+                $this->persistExecutablePath($executable);
+                $steps[] = 'Prueba headless OK';
+
+                return [
+                    'success'    => true,
+                    'message'    => 'Chromium y bibliotecas listos. Recargue un reporte PDF.',
+                    'executable' => $executable,
+                    'steps'      => $steps,
+                ];
+            }
+
+            $steps[] = 'La prueba headless falló; revise permisos exec y espacio en writable/';
 
             return [
-                'success'    => true,
-                'message'    => 'Chromium ya estaba instalado. PDF listo.',
-                'executable' => $existing,
+                'success'    => false,
+                'message'    => 'Chromium está instalado pero no arranca. Pida al hosting instalar '
+                    . 'chromium-browser o las bibliotecas GTK/ATK del sistema.',
+                'executable' => $executable,
                 'steps'      => $steps,
             ];
         }
 
-        if (! PdfConfig::isWindowsPlatform()) {
-            $steps[] = 'Descargando Chromium portable (puede tardar varios minutos)…';
-            try {
-                $portable = $this->installPortableChromeLinux();
-                $steps[]  = 'Instalado en: ' . $portable;
-                $this->persistExecutablePath($portable);
+        if ($executable !== '' && $this->executableUsable($executable)) {
+            $this->persistExecutablePath($executable);
 
-                if ($this->testHeadlessPrint($portable)) {
-                    $steps[] = 'Prueba headless OK';
-                } else {
-                    $steps[] = 'AVISO: prueba headless falló; pruebe un reporte PDF igualmente';
-                }
-
-                return [
-                    'success'    => true,
-                    'message'    => 'Chromium instalado correctamente. Recargue un reporte PDF.',
-                    'executable' => $portable,
-                    'steps'      => $steps,
-                ];
-            } catch (\Throwable $e) {
-                $steps[] = 'Error portable: ' . $e->getMessage();
-            }
+            return [
+                'success'    => true,
+                'message'    => 'Chromium ya estaba instalado. PDF listo.',
+                'executable' => $executable,
+                'steps'      => $steps,
+            ];
         }
 
         return [
             'success'    => false,
-            'message'    => 'No se pudo instalar Chromium automáticamente. '
-                . implode(' ', $steps),
+            'message'    => 'No se pudo configurar Chromium en este entorno.',
             'executable' => '',
             'steps'      => $steps,
         ];
@@ -305,17 +339,67 @@ class PdfChromeSetupService
 
     private function testHeadlessPrint(string $chrome): bool
     {
-        $pdf = WRITEPATH . 'cache' . DIRECTORY_SEPARATOR . 'chrome_setup_test.pdf';
-        $cmd = escapeshellarg($chrome)
-            . ' --headless=new --disable-gpu --no-sandbox --print-to-pdf='
-            . escapeshellarg($pdf)
-            . ' about:blank 2>/dev/null';
+        if (! defined('WRITEPATH')) {
+            return false;
+        }
 
-        @exec($cmd, $out, $code);
+        $pdf = WRITEPATH . 'cache' . DIRECTORY_SEPARATOR . 'chrome_setup_test.pdf';
+        @unlink($pdf);
+
+        $args = [
+            $chrome,
+            '--headless=new',
+            '--disable-gpu',
+            '--no-sandbox',
+            '--disable-dev-shm-usage',
+            '--print-to-pdf=' . $pdf,
+            'about:blank',
+        ];
+
+        $cmd = implode(' ', array_map(static fn (string $arg): string => escapeshellarg($arg), $args));
+        $descriptors = [
+            0 => ['pipe', 'r'],
+            1 => ['pipe', 'w'],
+            2 => ['pipe', 'w'],
+        ];
+
+        $env     = PdfChromeRuntime::processEnvironment($chrome);
+        $process = proc_open($cmd, $descriptors, $pipes, WRITEPATH . 'cache', $env);
+        if (! is_resource($process)) {
+            return false;
+        }
+
+        fclose($pipes[0]);
+        stream_set_blocking($pipes[1], false);
+        stream_set_blocking($pipes[2], false);
+
+        $stderr = '';
+        $start  = microtime(true);
+        while (true) {
+            $status = proc_get_status($process);
+            $stderr .= stream_get_contents($pipes[2]) ?: '';
+            if (! $status['running']) {
+                break;
+            }
+            if ((microtime(true) - $start) > 60) {
+                proc_terminate($process);
+                break;
+            }
+            usleep(100_000);
+        }
+
+        fclose($pipes[1]);
+        fclose($pipes[2]);
+        proc_close($process);
+
         if (is_file($pdf) && filesize($pdf) > 100) {
             @unlink($pdf);
 
             return true;
+        }
+
+        if ($stderr !== '') {
+            log_message('error', 'PdfChromeSetup test headless: {err}', ['err' => trim($stderr)]);
         }
 
         return false;

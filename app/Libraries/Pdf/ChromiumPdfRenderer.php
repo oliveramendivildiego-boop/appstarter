@@ -3,6 +3,7 @@
 namespace App\Libraries\Pdf;
 
 use Config\Pdf as PdfConfig;
+use App\Services\Pdf\PdfChromeRuntime;
 use RuntimeException;
 
 /**
@@ -127,7 +128,8 @@ class ChromiumPdfRenderer implements PdfRendererInterface
             2 => ['pipe', 'w'],
         ];
 
-        $process = proc_open($cmd, $descriptors, $pipes, $this->resolveTempDir());
+        $env = PdfChromeRuntime::processEnvironment($executable);
+        $process = proc_open($cmd, $descriptors, $pipes, $this->resolveTempDir(), $env);
         if (! is_resource($process)) {
             throw new RuntimeException('No se pudo iniciar el proceso Chromium.');
         }
@@ -165,6 +167,9 @@ class ChromiumPdfRenderer implements PdfRendererInterface
         $exitCode = proc_close($process);
         if ($exitCode !== 0 && ! is_file($pdfPath)) {
             $msg = trim($stderr) !== '' ? trim($stderr) : 'código de salida ' . $exitCode;
+            if (str_contains($msg, 'error while loading shared libraries') && PdfChromeRuntime::isPortableExecutable($executable)) {
+                $msg .= '. Vaya a Configuración → Caché del sistema → «Instalar PDF / Chromium» para empaquetar bibliotecas del sistema.';
+            }
             throw new RuntimeException('Chromium falló al generar el PDF: ' . $msg);
         }
     }

@@ -770,7 +770,8 @@
                     </button>
                 </div>
                 <p class="text-muted small mb-3" id="pdf_chrome_setup_hint">
-                    En servidores Linux sin SSH, este botón descarga Chrome portable en <code>writable/chrome/</code> (puede tardar 2–5 minutos). No requiere sudo.
+                    En Linux sin SSH: el botón descarga Chrome en <code>writable/chrome/</code> y empaqueta bibliotecas del sistema en <code>writable/chrome/libs/</code>.
+                    Si el PDF falla con «shared libraries», pulse el botón otra vez (no vuelve a descargar Chrome, solo las bibliotecas).
                 </p>
                 <div class="d-flex flex-wrap align-items-center gap-3 mb-3 p-3 border rounded bg-light">
                     <div>
