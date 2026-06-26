@@ -1164,7 +1164,13 @@ class Registers extends SecureArea
                 ->setStatusCode(304)
                 ->setHeader('ETag', $etag)
                 ->setHeader('Cache-Control', 'private, max-age=3600, must-revalidate')
-                ->setHeader('X-Report-Pdf-Cache', $cacheHeader);
+                ->setHeader('X-Report-Pdf-Cache', $cacheHeader)
+                ->setHeader('X-Pdf-Engine', 'cache-hit');
+        }
+
+        $engineHeader = \App\Libraries\Pdf\PdfRendererFactory::lastRenderEngine();
+        if ($engineHeader === '') {
+            $engineHeader = $cacheHeader === 'hit' || $cacheHeader === 'hit-early' ? 'cache-hit' : (string) (config('Pdf')->renderer ?? 'dompdf');
         }
 
         return $this->response
@@ -1173,6 +1179,7 @@ class Registers extends SecureArea
             ->setHeader('Cache-Control', 'private, max-age=3600, must-revalidate')
             ->setHeader('ETag', $etag)
             ->setHeader('X-Report-Pdf-Cache', $cacheHeader)
+            ->setHeader('X-Pdf-Engine', $engineHeader)
             ->setBody($pdfBinary);
     }
 

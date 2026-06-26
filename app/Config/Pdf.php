@@ -13,6 +13,11 @@ class Pdf extends BaseConfig
     public string $renderer = 'dompdf';
 
     /**
+     * Permite generar PDF con Dompdf (PHP puro, sin Chrome en el servidor).
+     */
+    public bool $dompdfEnabled = true;
+
+    /**
      * Si Chromium falla, usar Dompdf automáticamente.
      */
     public bool $fallbackToDompdf = true;
@@ -77,18 +82,23 @@ class Pdf extends BaseConfig
     {
         parent::__construct();
 
-        $envRenderer = getenv('PDF_RENDERER');
-        if (is_string($envRenderer) && $envRenderer !== '') {
+        $envRenderer = env('PDF_RENDERER');
+        if (is_string($envRenderer) && trim($envRenderer) !== '') {
             $this->renderer = strtolower(trim($envRenderer));
         }
 
-        $envChrome = getenv('CHROME_EXECUTABLE_PATH');
-        if (is_string($envChrome) && $envChrome !== '') {
-            $this->executablePath = trim($envChrome);
+        $envChrome = env('CHROME_EXECUTABLE_PATH');
+        if (is_string($envChrome) && trim($envChrome, " \t\"'") !== '') {
+            $path = trim($envChrome, " \t\"'");
+            $this->executablePath = DIRECTORY_SEPARATOR === '\\'
+                ? str_replace('/', '\\', $path)
+                : str_replace('\\', '/', $path);
         }
 
-        $envTimeout = getenv('PDF_CHROMIUM_TIMEOUT');
+        $envTimeout = env('PDF_CHROMIUM_TIMEOUT');
         if (is_string($envTimeout) && is_numeric($envTimeout)) {
+            $this->timeoutSeconds = max(10, (int) $envTimeout);
+        } elseif (is_int($envTimeout) || is_float($envTimeout)) {
             $this->timeoutSeconds = max(10, (int) $envTimeout);
         }
     }
