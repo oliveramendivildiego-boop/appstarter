@@ -84,6 +84,10 @@ class Pdf extends BaseConfig
         $this->executablePath = self::readChromeExecutableFromEnvironment();
 
         if ($this->executablePath === '') {
+            $this->executablePath = self::discoverChromeViaShell();
+        }
+
+        if ($this->executablePath === '') {
             $this->executablePath = self::defaultChromeExecutableForPlatform();
         }
 
@@ -130,6 +134,42 @@ class Pdf extends BaseConfig
             return self::isWindowsPlatform()
                 ? str_replace('/', '\\', $path)
                 : str_replace('\\', '/', $path);
+        }
+
+        return '';
+    }
+
+    /**
+     * Busca chromium en PATH (Apache/www-data suele tener PATH mínimo; probamos rutas absolutas).
+     */
+    public static function discoverChromeViaShell(): string
+    {
+        if (self::isWindowsPlatform()) {
+            return '';
+        }
+
+        if (function_exists('shell_exec')) {
+            $disabled = array_map('trim', explode(',', (string) ini_get('disable_functions')));
+            if (! in_array('shell_exec', $disabled, true)) {
+                foreach (['chromium-browser', 'chromium', 'google-chrome-stable', 'google-chrome'] as $bin) {
+                    foreach (['command -v ', 'which '] as $prefix) {
+                        $out = shell_exec($prefix . escapeshellarg($bin) . ' 2>/dev/null');
+                        if (! is_string($out)) {
+                            continue;
+                        }
+                        $path = trim(str_replace('\\', '/', $out));
+                        if ($path !== '' && (@is_file($path) || @is_executable($path))) {
+                            return $path;
+                        }
+                    }
+                }
+            }
+        }
+
+        foreach (self::linuxChromeCandidatePaths() as $path) {
+            if (@is_file($path) || @is_executable($path)) {
+                return $path;
+            }
         }
 
         return '';
