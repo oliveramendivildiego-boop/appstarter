@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Libraries\Pdf\HtmlChromiumAdapter;
 use App\Libraries\PdfService;
 use App\Models\AppConfigModel;
 use App\Models\LabotestModel;
@@ -21,8 +22,10 @@ class RegisterService
 {
     public const TOTAL_PAGES_TOKEN = '__PDF_TOTAL_PAGES__';
 
-    /** Invalida caché inline de viewreport al cambiar el pipeline Dompdf (p. ej. banda Paciente/Orden). */
-    private const REPORT_PDF_PREVIEW_CACHE_SALT = 'order-sheet-from-page-2-v15-cultivo-area-same-page';
+    /** Invalida caché inline de viewreport al cambiar el pipeline PDF (Chromium/Dompdf). */
+    private const REPORT_PDF_PREVIEW_CACHE_SALT = 'order-sheet-from-page-2-v31-chromium-osh-no-gap-p1';
+
+    private ?\App\Services\Report\ReportDataCacheService $reportDataCache = null;
     protected RegisterModel $registerModel;
     protected AppConfigModel $appConfigModel;
 
@@ -2202,9 +2205,34 @@ class RegisterService
      * Prepara datos para el reporte (viewreport / PDF)
      *
      * @param bool $forViewreportShell Si true, omite metadatos solo usados al generar el PDF.
+     * @param bool $useCache           Si true, reutiliza caché de datos preparados (sin HTML/PDF).
+     *
+     * @return array<string, mixed>|null
      */
-    public function prepareReportData(int $registroId, bool $forViewreportShell = false): ?array
+    public function prepareReportData(int $registroId, bool $forViewreportShell = false, bool $useCache = true): ?array
     {
+        $dataCache = $this->reportDataCacheService();
+        if ($useCache) {
+            $fingerprint = $dataCache->computeFingerprint($registroId);
+            $cached      = $dataCache->read($registroId, $fingerprint);
+            if ($cached !== null) {
+                \App\Services\Report\ReportPipelineMetrics::getInstance()->log(
+                    'report_data_cache_hit',
+                    0,
+                    ['registro_id' => $registroId],
+                );
+
+                return $forViewreportShell
+                    ? $this->sliceReportDataForViewreportShell($cached)
+                    : $cached;
+            }
+            \App\Services\Report\ReportPipelineMetrics::getInstance()->log(
+                'report_data_cache_miss',
+                0,
+                ['registro_id' => $registroId],
+            );
+        }
+
         $this->resetReportBuildCaches();
 
         $registerInfo = $this->registerModel->getInfoRefill($registroId);
@@ -2297,7 +2325,7 @@ class RegisterService
             $reportPriaRefsConsolidada = $this->buildReportPriaRefsConsolidada($eligiblePriaConfig);
         }
 
-        return [
+        $result = [
             'register_info' => $registerInfo,
             'paciente'      => $paciente,
             'doctor'        => $doctor,
@@ -2308,6 +2336,39 @@ class RegisterService
             'report_lab_firmas'               => $reportLabFirmas,
             'report_pria_refs_consolidada'    => $reportPriaRefsConsolidada,
         ];
+
+        if ($useCache && ! $forViewreportShell) {
+            $dataCache->write($registroId, $dataCache->computeFingerprint($registroId), $result);
+        }
+
+        return $forViewreportShell ? $this->sliceReportDataForViewreportShell($result) : $result;
+    }
+
+    /**
+     * @param array<string, mixed> $data
+     *
+     * @return array{register_info: object, grupos: array<string, list<object|array<string, mixed>>>}
+     */
+    private function sliceReportDataForViewreportShell(array $data): array
+    {
+        return [
+            'register_info' => $data['register_info'],
+            'grupos'        => $data['grupos'] ?? [],
+        ];
+    }
+
+    private function reportDataCacheService(): \App\Services\Report\ReportDataCacheService
+    {
+        if ($this->reportDataCache === null) {
+            $this->reportDataCache = new \App\Services\Report\ReportDataCacheService($this->registerModel);
+        }
+
+        return $this->reportDataCache;
+    }
+
+    public function clearReportDataCache(int $registroId): void
+    {
+        $this->reportDataCacheService()->clear($registroId);
     }
 
     /**
@@ -2796,6 +2857,8 @@ class RegisterService
 
         $parts[] = $this->reportPdfDoctorFingerprintPart($reportData['doctor'] ?? null);
         $parts[] = $this->hashPdfLayoutForFingerprint($pdfLayout);
+        $parts[] = (string) (config('Pdf')->renderer ?? 'dompdf');
+        $parts[] = HtmlChromiumAdapter::CACHE_REVISION;
         $parts[] = self::REPORT_PDF_PREVIEW_CACHE_SALT;
 
         return hash('sha256', implode("\n", $parts));
@@ -2823,6 +2886,8 @@ class RegisterService
         $parts[] = $this->reportPdfDoctorFingerprintPart($doctor);
 
         $parts[] = $this->hashPdfLayoutForFingerprint($pdfLayout);
+        $parts[] = (string) (config('Pdf')->renderer ?? 'dompdf');
+        $parts[] = HtmlChromiumAdapter::CACHE_REVISION;
         $parts[] = self::REPORT_PDF_PREVIEW_CACHE_SALT;
 
         return hash('sha256', implode("\n", $parts));
@@ -2833,7 +2898,7 @@ class RegisterService
      *
      * @param object|array<string,mixed>|null $doctor
      */
-    private function reportPdfDoctorFingerprintPart($doctor): string
+    public function reportPdfDoctorFingerprintPart($doctor): string
     {
         helper('registro');
         $labConfig = $this->getLabConfig();
@@ -2950,6 +3015,79 @@ class RegisterService
         }
     }
 
+    /**
+     * URL pública del reporte para QR / PDF (token o portal doctor).
+     */
+    public function publicReportViewerUrlForQr(int $registroId): string
+    {
+        $token = $this->registerModel->ensurePublicAccessToken($registroId);
+        if ($token !== null && $token !== '') {
+            return site_url('resultados/' . $token);
+        }
+
+        return site_url('doctor/viewreport/' . $registroId);
+    }
+
+    /**
+     * Genera y guarda el PDF en caché para viewreport (miss → hit en la siguiente petición).
+     */
+    public function warmReportPdfPreviewCache(int $registroId): bool
+    {
+        if ($registroId < 1 || $this->registerModel->isRegistroAnulado($registroId)) {
+            return false;
+        }
+
+        $data = $this->prepareReportData($registroId);
+        if ($data === null || ($data['grupos'] ?? []) === []) {
+            return false;
+        }
+
+        helper('qr');
+
+        $layoutService = new ReportPdfLayoutService();
+        $pdfLayout     = $layoutService->getActiveLayoutForRender();
+        $emitidoEn     = $this->lockReportEmitidoEnForPrintOrPdf($registroId);
+        $fingerprint   = $this->reportPdfPreviewCacheFingerprint($registroId, $data, $emitidoEn, $pdfLayout);
+
+        if ($this->readReportPdfPreviewCache($registroId, $fingerprint) !== null) {
+            return true;
+        }
+
+        $reportUrl = $this->publicReportViewerUrlForQr($registroId);
+        $qrPx      = ReportPdfLayoutService::qrImagePixelSizeFromLayout($pdfLayout);
+        $qrDataUri = qr_base64($reportUrl, $qrPx);
+        $pdfBinary = $this->generateReportPdfBinary($data, $reportUrl, $qrDataUri, $emitidoEn, $pdfLayout);
+
+        if ($pdfBinary === '') {
+            return false;
+        }
+
+        $this->writeReportPdfPreviewCache($registroId, $fingerprint, $pdfBinary);
+
+        return true;
+    }
+
+    /**
+     * Pre-caché del PDF tras guardar, sin bloquear la respuesta HTTP actual.
+     */
+    public function scheduleReportPdfPreviewCacheWarm(int $registroId): void
+    {
+        if ($registroId < 1) {
+            return;
+        }
+
+        register_shutdown_function(static function () use ($registroId): void {
+            try {
+                (new \App\Services\Report\ReportPipelineService())->warmSync($registroId);
+            } catch (\Throwable $e) {
+                log_message('error', 'scheduleReportPdfPreviewCacheWarm {id}: {msg}', [
+                    'id'  => $registroId,
+                    'msg' => $e->getMessage(),
+                ]);
+            }
+        });
+    }
+
     public function clearReportPdfPreviewCacheForDoctor(int $doctorId): void
     {
         if ($doctorId < 1) {
@@ -2963,7 +3101,9 @@ class RegisterService
             ->getResultArray();
 
         foreach ($rows as $row) {
-            $this->clearReportPdfPreviewCache((int) ($row['registro_id'] ?? 0));
+            $rid = (int) ($row['registro_id'] ?? 0);
+            $this->clearReportPdfPreviewCache($rid);
+            $this->clearReportDataCache($rid);
         }
     }
 

@@ -720,6 +720,121 @@ class ReportPdfLayoutService
     }
 
     /**
+     * Altura (mm) de filas prepended al inicio de la tabla del pie (p. ej. Paciente / No. Orden)
+     * para alinear el estampado de paginación Chromium con la cuadrícula HTML.
+     *
+     * @param array<string, mixed> $layout
+     */
+    public static function estimateFooterPrependedRowMmForPagination(array $layout): float
+    {
+        if (! self::isOrderSheetHeaderEnabledForLayout($layout)) {
+            return 0.0;
+        }
+
+        // 9pt + padding/borde + separación hasta la primera fila de la cuadrícula del pie.
+        return self::ORDER_SHEET_HEADER_HEIGHT_MM + 3.5;
+    }
+
+    /** Padding superior del bloque pie (px), igual que report_pdf.css y la vista previa de plantilla. */
+    public const FOOTER_BLOCK_PAD_TOP_PX = 8;
+
+    /**
+     * Altura aproximada de una línea de instancia del pie (pt), coherente con Chromium/Dompdf.
+     *
+     * @param array<string, mixed> $inst
+     * @param array<string, mixed> $layout
+     */
+    public static function estimateFooterInstanceLinePt(array $inst, array $layout): float
+    {
+        $type = (string) ($inst['element_type'] ?? '');
+        $ps   = is_array($layout['page_style'] ?? null) ? $layout['page_style'] : [];
+        $hg   = self::normalizeHeaderGridStyle($ps['header_grid'] ?? []);
+        $hgLh = max(1.0, (float) ($hg['line_height'] ?? 1.35));
+
+        if ($type === 'custom_text' && is_array($inst['custom_text'] ?? null)) {
+            $ct  = self::normalizeCustomTextPayload($inst['custom_text']);
+            $vs  = $ct['value_style'];
+            $ls  = $ct['label_style'];
+            $val = max(6.0, (float) ($vs['font_size_pt'] ?? 8)) * max(1.0, (float) ($vs['line_height'] ?? 1.35));
+            if ($ct['show_label'] && trim((string) ($ct['label'] ?? '')) !== '') {
+                $lbl = max(6.0, (float) ($ls['font_size_pt'] ?? 8)) * max(1.0, (float) ($ls['line_height'] ?? 1.35));
+                if ($ct['line_mode'] === 'inline') {
+                    return max($val, $lbl);
+                }
+
+                return $val + $lbl;
+            }
+
+            return $val;
+        }
+
+        $ts   = self::normalizeTextStyle($inst['text_style'] ?? []);
+        $val  = max(6.0, (float) $ts['font_size_pt']) * max(1.0, (float) $ts['line_height']);
+
+        if (array_key_exists($type, self::HEADER_GRID_LABEL_DEFAULTS)) {
+            $lblKey = 'label_' . $type;
+            $showL  = self::labFirmasBool($hg, 'show_label_' . $type, true);
+            $lbl    = trim((string) ($hg[$lblKey] ?? ''));
+            $inline = (($hg[$lblKey . '_line_mode'] ?? 'stacked') === 'inline');
+            if ($showL && $lbl !== '') {
+                $lblFs = (float) ($hg[$lblKey . '_font_size_pt'] ?? $hg['font_size_pt'] ?? 8);
+                $lblPt = max(6.0, $lblFs) * $hgLh;
+                if ($inline) {
+                    return max($val, $lblPt);
+                }
+
+                return $val + $lblPt;
+            }
+        }
+
+        return $val;
+    }
+
+    /**
+     * Desplazamiento vertical acumulado (pt) por filas/apilamiento en la cuadrícula del pie.
+     *
+     * @param array<string, mixed> $layout
+     */
+    public static function estimateFooterStackOffsetPt(array $layout, int $gridRow, int $gridStack): float
+    {
+        if ($gridStack <= 0 && $gridRow <= 0) {
+            return 0.0;
+        }
+
+        $pxToPt     = 72.0 / 96.0;
+        $secLayouts = is_array($layout['section_layouts'] ?? null) ? $layout['section_layouts'] : [];
+        $sec        = is_array($secLayouts['footer'] ?? null) ? $secLayouts['footer'] : [];
+        $rowGapPt   = max(0, min(40, (int) ($sec['row_gap_px'] ?? 0))) * $pxToPt;
+        $ps         = is_array($layout['page_style'] ?? null) ? $layout['page_style'] : [];
+        $ft         = self::normalizeFooterGridStyle($ps['footer_grid'] ?? []);
+        $rowLhPt    = max(6.0, (float) ($ft['font_size_pt'] ?? 8)) * max(1.0, (float) ($ft['line_height'] ?? 1.35));
+
+        $offset = 0.0;
+        for ($stack = 0; $stack < $gridStack; $stack++) {
+            $tierMax = 0.0;
+            foreach (is_array($layout['instances'] ?? null) ? $layout['instances'] : [] as $inst) {
+                if (! is_array($inst) || ($inst['section'] ?? '') !== 'footer' || empty($inst['enabled'])) {
+                    continue;
+                }
+                if ((int) ($inst['grid_row'] ?? 0) !== $gridRow) {
+                    continue;
+                }
+                if ((int) ($inst['grid_stack'] ?? 0) !== $stack) {
+                    continue;
+                }
+                $tierMax = max($tierMax, self::estimateFooterInstanceLinePt($inst, $layout));
+            }
+            $offset += $tierMax > 0.0 ? $tierMax : $rowLhPt;
+        }
+
+        if ($gridRow > 0) {
+            $offset += $gridRow * ($rowLhPt + $rowGapPt);
+        }
+
+        return $offset;
+    }
+
+    /**
      * Altura estimada (mm) de bloques antes del primer grupo de resultados (página 1).
      * Equivalente a measureHeaderHeightPx() en impresión navegador.
      *
@@ -3808,36 +3923,79 @@ class ReportPdfLayoutService
         return $total > 0 && $total <= self::SUBGRUPO_KEEP_INTACT_MAX_ROWS;
     }
 
+    /** Grid fijo de 4 columnas lógicas en el PDF; los bordes verticales coinciden entre tablas. */
+    public const RESULTS_GRID_COL_COUNT = 4;
+
+    /** Anchos canónicos (%) por columna semántica; suman 100 en el grid de 4 columnas. */
+    public const RESULTS_COL_WIDTH_ANALISIS       = 34;
+    public const RESULTS_COL_WIDTH_RESULTADO      = 18;
+    public const RESULTS_COL_WIDTH_RANGO          = 28;
+    public const RESULTS_COL_WIDTH_INTERPRETACION = 20;
+
     /**
-     * Anchos de columna (%) para tablas de resultados; suman 100.
+     * @return list<int>
+     */
+    public static function resultsTableGridColumnWidthsPct(): array
+    {
+        return [
+            self::RESULTS_COL_WIDTH_ANALISIS,
+            self::RESULTS_COL_WIDTH_RESULTADO,
+            self::RESULTS_COL_WIDTH_RANGO,
+            self::RESULTS_COL_WIDTH_INTERPRETACION,
+        ];
+    }
+
+    public static function resultsTableUsesGridLayout(bool $forPdf, int $logicalColCount): bool
+    {
+        return $forPdf && $logicalColCount >= 2;
+    }
+
+    public static function resultsTableGridClass(bool $forPdf, int $logicalColCount): string
+    {
+        return self::resultsTableUsesGridLayout($forPdf, $logicalColCount)
+            ? ' results-cols-4 results-cols-grid'
+            : '';
+    }
+
+    /**
+     * Anchos de columna (%) para tablas de resultados en vista web; suman 100.
      *
      * @return list<int>
      */
     public static function resultsTableColumnWidthsPct(int $colCount): array
     {
         return match ($colCount) {
-            4       => [34, 18, 28, 20],
-            3       => [42, 25, 33],
-            2       => [58, 42],
+            4       => self::resultsTableGridColumnWidthsPct(),
+            3       => [
+                self::RESULTS_COL_WIDTH_ANALISIS,
+                self::RESULTS_COL_WIDTH_RESULTADO,
+                self::RESULTS_COL_WIDTH_RANGO + self::RESULTS_COL_WIDTH_INTERPRETACION,
+            ],
+            2       => [
+                self::RESULTS_COL_WIDTH_ANALISIS,
+                self::RESULTS_COL_WIDTH_RESULTADO + self::RESULTS_COL_WIDTH_RANGO + self::RESULTS_COL_WIDTH_INTERPRETACION,
+            ],
             default => [100],
         };
     }
 
-    public static function resultsTableFixedLayoutAttrs(int $colCount): string
+    public static function resultsTableFixedLayoutAttrs(int $colCount, bool $forPdf = false): string
     {
-        if ($colCount < 3) {
+        if ($colCount < 2) {
             return ' width="100%"';
         }
 
         return ' width="100%" style="table-layout:fixed;width:100%;"';
     }
 
-    public static function resultsTableColgroupHtml(int $colCount): string
+    public static function resultsTableColgroupHtml(int $colCount, bool $forPdf = false): string
     {
-        if ($colCount < 3) {
+        if ($colCount < 2) {
             return '';
         }
-        $widths = self::resultsTableColumnWidthsPct($colCount);
+        $widths = self::resultsTableUsesGridLayout($forPdf, $colCount)
+            ? self::resultsTableGridColumnWidthsPct()
+            : self::resultsTableColumnWidthsPct($colCount);
         $html   = '<colgroup>';
         foreach ($widths as $w) {
             $html .= '<col width="' . (int) $w . '%" style="width:' . (int) $w . '%;">';
@@ -3849,7 +4007,7 @@ class ReportPdfLayoutService
 
     public static function resultsTableThWidthStyleAttr(int $colIndex, int $colCount, bool $forPdf = true): string
     {
-        if (! $forPdf || $colCount < 3) {
+        if (! $forPdf || $colCount < 2 || self::resultsTableUsesGridLayout($forPdf, $colCount)) {
             return '';
         }
         $widths = self::resultsTableColumnWidthsPct($colCount);

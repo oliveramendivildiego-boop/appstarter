@@ -28,9 +28,12 @@ $elementCtx = [
         ? $layout['margins_mm']
         : \App\Services\ReportPdfLayoutService::defaultMarginsMmStatic(),
     'pdf_footer_reserve_mm' => \App\Services\ReportPdfLayoutService::estimatePdfFooterReserveMm($layout),
+    'pdf_footer_prepended_row_mm' => \App\Services\ReportPdfLayoutService::estimateFooterPrependedRowMmForPagination($layout),
     'pdf_footer_columns'    => $n,
     'pdf_footer_rows'       => max(1, min(50, (int) ($sectionLayout['rows'] ?? 2))),
     'pdf_footer_row_gap_px' => max(0, min(40, (int) ($sectionLayout['row_gap_px'] ?? 0))),
+    'pdf_footer_cell_pad_h_px' => max(0, min(12, (int) round(max(0, min(40, (int) ($sectionLayout['row_gap_px'] ?? 0))) / 2))),
+    'pdf_layout'          => $layout,
 ];
 
 $footerWrapperStyle = ! empty($footer_dompdf_fixed)

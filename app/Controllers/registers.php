@@ -710,6 +710,7 @@ class Registers extends SecureArea
 
     public function viewreport($id = -1)
     {
+        $tView = microtime(true);
         $id = (int) $id;
         if ($id < 1) {
             return redirect()->to('registers')->with('error', 'Registro no válido');
@@ -729,10 +730,14 @@ class Registers extends SecureArea
         $envelopeRender = new EnvelopeRenderService();
         $deliverySvc = new \App\Services\DeliveryNotificationService();
         $registerInfo = $data['register_info'];
-        $deliveryPendingRows = $deliverySvc->listPendingForRegistro($id);
         $deliverySvc->syncForRegistro($id);
         $deliveryPendingRows = $deliverySvc->listPendingForRegistro($id);
         $deliveryShowNotifyButton = $deliverySvc->shouldShowNotifyButtonForRegistro($registerInfo);
+
+        \App\Services\Report\ReportPipelineMetrics::getInstance()->recordViewreport(
+            microtime(true) - $tView,
+            ($data['grupos'] ?? []) !== [] ? 'ready' : 'empty',
+        );
 
         return view('registers/viewreport', [
             'current_module'    => 'registers',
@@ -1193,12 +1198,7 @@ class Registers extends SecureArea
      */
     private function publicReportViewerUrlForQr(int $registroId): string
     {
-        $token = $this->registerModel->ensurePublicAccessToken($registroId);
-        if ($token !== null && $token !== '') {
-            return site_url('resultados/' . $token);
-        }
-
-        return site_url('doctor/viewreport/' . $registroId);
+        return $this->registerService->publicReportViewerUrlForQr($registroId);
     }
 
     /**
@@ -2138,6 +2138,7 @@ class Registers extends SecureArea
 
     public function saveregvalues(): ResponseInterface
     {
+        $tSave = microtime(true);
         $data = $this->request->getPost('data');
         $data = is_string($data) ? json_decode($data, true) : $data;
         $comentario = trim((string)($this->request->getPost('comentario_resultado') ?? ''));
@@ -2245,7 +2246,26 @@ class Registers extends SecureArea
                 'consumo_auto_errores' => (int) ($autoStats['errores'] ?? 0),
             ], $detalleAuditoria)));
             (new \App\Services\DeliveryNotificationService())->syncForRegistro((int) $registroId);
+
+            $metrics = \App\Services\Report\ReportPipelineMetrics::getInstance();
+            $metrics->recordSaveRegvalues(microtime(true) - $tSave);
+
+            $warmOk = (new \App\Services\Report\ReportPipelineService($this->registerService))
+                ->warmSync((int) $registroId);
+
+            return $this->response->setJSON([
+                'success' => true,
+                'message' => 'Guardado exitoso',
+                'consumo_auto' => $autoStats,
+                'warm_cache' => $warmOk,
+                'csrf_token' => csrf_hash(),
+                'csrf_name' => csrf_token(),
+            ]);
         }
+
+        $metrics = \App\Services\Report\ReportPipelineMetrics::getInstance();
+        $metrics->recordSaveRegvalues(microtime(true) - $tSave);
+
         return $this->response->setJSON([
             'success' => true,
             'message' => 'Guardado exitoso',
@@ -2378,7 +2398,9 @@ class Registers extends SecureArea
             ]);
         }
         if ($ridAn > 0) {
+            $this->registerService->clearReportDataCache($ridAn);
             $this->registerService->clearReportPdfPreviewCache($ridAn);
+            $this->registerService->scheduleReportPdfPreviewCacheWarm($ridAn);
             (new \App\Services\DeliveryNotificationService())->syncForRegistro($ridAn);
         }
         return $this->response->setJSON(['success' => true, 'message' => 'Guardado exitoso']);
@@ -2396,12 +2418,19 @@ class Registers extends SecureArea
             return redirect()->back()->with('error', 'La orden está anulada; no se puede validar.');
         }
         $this->registerModel->validarResultados($registroId, $tipo, $obs);
-        $this->registerService->clearReportPdfPreviewCache($registroId);
         \App\Models\AuditoriaModel::log('registers', 'validar_' . $tipo, (string) $registroId, \App\Models\AuditoriaModel::detail([
             'tipo' => $tipo,
             'observaciones' => $obs,
         ]));
         (new \App\Services\DeliveryNotificationService())->syncForRegistro($registroId);
+        try {
+            (new \App\Services\Report\ReportPipelineService($this->registerService))->warmSync($registroId);
+        } catch (\Throwable $e) {
+            log_message('error', 'validar warmSync {id}: {msg}', [
+                'id'  => $registroId,
+                'msg' => $e->getMessage(),
+            ]);
+        }
         $msg = $tipo === 'tecnico' ? 'Validación técnica registrada' : 'Validación médica registrada';
         return redirect()->to("registers/viewreport/{$registroId}")->with('success', $msg);
     }

@@ -261,6 +261,77 @@ class TenantSubscriptionService
     }
 
     /**
+     * @return array{items: list<array<string,mixed>>, pagination: array{page: int, per_page: int, total: int, pages: int}}
+     */
+    public function listPaymentsForManagementPaginated(int $page, int $perPage = 10): array
+    {
+        $page    = max(1, $page);
+        $perPage = max(1, $perPage);
+        $empty   = [
+            'items'      => [],
+            'pagination' => [
+                'page'     => 1,
+                'per_page' => $perPage,
+                'total'    => 0,
+                'pages'    => 1,
+            ],
+        ];
+
+        $payModel = model(TenantSubscriptionPaymentModel::class);
+        if (! $payModel->db->tableExists('tenant_subscription_payments')) {
+            return $empty;
+        }
+
+        $total = (int) $payModel->countAllResults();
+        $pages = max(1, (int) ceil($total / $perPage));
+        if ($page > $pages) {
+            $page = $pages;
+        }
+        $offset = ($page - 1) * $perPage;
+        $rows   = $payModel->orderBy('created_at', 'DESC')->findAll($perPage, $offset);
+
+        return [
+            'items'      => $this->listPaymentsWithTenantNames($rows),
+            'pagination' => [
+                'page'     => $page,
+                'per_page' => $perPage,
+                'total'    => $total,
+                'pages'    => $pages,
+            ],
+        ];
+    }
+
+    /**
+     * @return array{success: bool, message: string}
+     */
+    public function deletePayment(int $paymentId): array
+    {
+        $payModel = model(TenantSubscriptionPaymentModel::class);
+        if (! $payModel->db->tableExists('tenant_subscription_payments')) {
+            return ['success' => false, 'message' => 'Ejecute las migraciones (tenant_subscription_payments).'];
+        }
+
+        $p = $this->findPayment($paymentId);
+        if (! $p) {
+            return ['success' => false, 'message' => 'Pago no encontrado.'];
+        }
+
+        $fn = (string) ($p['voucher_filename'] ?? '');
+        if ($fn !== '' && preg_match('/^[a-zA-Z0-9._-]+$/', $fn)) {
+            $path = $this->voucherPath($fn);
+            if (is_file($path)) {
+                @unlink($path);
+            }
+        }
+
+        if (! $payModel->delete($paymentId)) {
+            return ['success' => false, 'message' => 'No se pudo eliminar el pago.'];
+        }
+
+        return ['success' => true, 'message' => 'Pago eliminado.'];
+    }
+
+    /**
      * @param list<array<string,mixed>> $payments
      * @return list<array<string,mixed>>
      */

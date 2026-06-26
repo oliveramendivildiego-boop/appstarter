@@ -724,6 +724,120 @@
             <span class="small text-muted">Guarda los cambios de todas las secciones de esta pestaña.</span>
         </div>
         <?= form_close() ?>
+
+            <!-- Caché del sistema (fuera de config_form: formularios anidados no son válidos en HTML) -->
+            <div class="accordion config-accordion mt-3" id="configCacheAccordion">
+            <div class="accordion-item">
+                <h2 class="accordion-header">
+                    <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#cfgsec-cache" aria-expanded="false" aria-controls="cfgsec-cache">
+                        <i class="fa-solid fa-broom me-2 text-primary"></i>
+                        <span class="fw-semibold">Caché del sistema</span>
+                        <span class="cfg-sec-hint small text-muted ms-2 d-none d-md-inline">writable/cache — borrado manual y programado</span>
+                    </button>
+                </h2>
+                <div id="cfgsec-cache" class="accordion-collapse collapse">
+                    <div class="accordion-body">
+                <?php
+                $wcm = $writable_cache_measure ?? ['file_count' => 0, 'dir_count' => 0, 'bytes' => 0];
+                $wcs = $writable_cache_schedule ?? [];
+                $wcsTzId = (string) ($writable_cache_timezone_id ?? 'UTC');
+                ?>
+                <p class="text-muted small mb-3">
+                    Archivos temporales generados por el sistema: caché de CodeIgniter, vistas previas de PDF, datos de reportes, etc.
+                    Borrar la caché no afecta la base de datos; los reportes se regenerarán en la siguiente consulta.
+                </p>
+                <div class="d-flex flex-wrap align-items-center gap-3 mb-3 p-3 border rounded bg-light">
+                    <div>
+                        <span class="text-muted small d-block">Uso actual</span>
+                        <strong id="writable_cache_size_label"><?= esc(\App\Services\WritableCachePurgeService::formatBytes((int) ($wcm['bytes'] ?? 0))) ?></strong>
+                        <span class="text-muted small" id="writable_cache_files_label">
+                            (<?= (int) ($wcm['file_count'] ?? 0) ?> archivo(s), <?= (int) ($wcm['dir_count'] ?? 0) ?> carpeta(s))
+                        </span>
+                    </div>
+                    <button type="button" class="btn btn-outline-danger ms-md-auto" id="btn_clear_writable_cache"
+                        data-url="<?= esc(site_url('config/clearWritableCache'), 'attr') ?>">
+                        <i class="fa-solid fa-trash-can me-1"></i>Borrar caché ahora
+                    </button>
+                </div>
+
+                <div class="border rounded p-3 bg-white">
+                    <h6 class="mb-2 d-flex flex-wrap align-items-center gap-2">
+                        <span><i class="fa-solid fa-clock me-1"></i>Limpieza automática</span>
+                        <span class="d-inline-flex align-items-center gap-2 ms-md-auto">
+                            <span class="small text-muted text-nowrap">Hora del laboratorio</span>
+                            <span class="badge bg-dark font-monospace px-2 py-2 fs-6"
+                                id="wcs-lab-clock"
+                                data-timezone="<?= esc($wcsTzId, 'attr') ?>"
+                                title="Zona horaria (configuración del sistema): <?= esc($wcsTzId, 'attr') ?>">
+                                --:--:--
+                            </span>
+                        </span>
+                    </h6>
+                    <div class="alert alert-warning small py-2 mb-3" role="alert">
+                        <strong>Importante:</strong> guardar aquí solo define la hora; hace falta un cron que llame al sistema cada pocos minutos (idealmente cada 5).
+                    </div>
+                    <div class="alert alert-info small py-2 mb-3" role="alert">
+                        <strong>cPanel / hosting:</strong> en <em>Cron Jobs</em> programe cada 5 minutos:
+                        <br><code class="user-select-all d-inline-block mt-1">wget -q -O - "<?= esc(rtrim((string) ($writable_cache_cron_url ?? ''), '/')) ?>?token=SU_CLAVE_SECRETA"</code>
+                        <br>Sustituya <code>SU_CLAVE_SECRETA</code> por <code>writableCache.cronKey</code> en <code>.env</code>.
+                        <?php if (! empty($writable_cache_cron_ready)): ?>
+                            <br><span class="text-success">Token cron configurado en el servidor.</span>
+                        <?php else: ?>
+                            <br><span class="text-danger">Aún no hay <code>writableCache.cronKey</code> en <code>.env</code>.</span>
+                        <?php endif; ?>
+                        <br><strong>Sin cron:</strong> <code>writableCache.tickOnWeb = true</code> en <code>.env</code> (usuarios con permiso de Configuración).
+                        <br><strong>SSH / Windows:</strong> <code>php spark lab:writable-cache-purge</code> cada ~5 min, o forzar: <code>--force</code>.
+                        <?php $wcsTickOn = filter_var((string) env('writableCache.tickOnWeb', 'false'), FILTER_VALIDATE_BOOLEAN); ?>
+                        <br><span class="<?= $wcsTickOn ? 'text-success' : 'text-secondary' ?>">Comprobación vía navegación (tickOnWeb): <strong><?= $wcsTickOn ? 'activada' : 'desactivada' ?></strong>.</span>
+                    </div>
+                    <?= form_open(site_url('config/saveWritableCacheSchedule'), ['class' => 'row g-3 align-items-end', 'id' => 'writable_cache_schedule_form']) ?>
+                    <div class="col-12">
+                        <div class="form-check">
+                            <input type="checkbox" name="writable_cache_schedule_enabled" value="1" class="form-check-input" id="wcs_enabled"
+                                <?= (($wcs[\App\Services\WritableCacheScheduleService::$keyEnabled] ?? '0') === '1') ? 'checked' : '' ?>>
+                            <label class="form-check-label" for="wcs_enabled">Activar limpieza automática de caché</label>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label" for="wcs_freq">Frecuencia</label>
+                        <select name="writable_cache_schedule_frequency" id="wcs_freq" class="form-select">
+                            <?php $wf = (string) ($wcs[\App\Services\WritableCacheScheduleService::$keyFrequency] ?? 'daily'); ?>
+                            <option value="<?= esc(\App\Services\WritableCacheScheduleService::$freqDaily) ?>" <?= $wf === \App\Services\WritableCacheScheduleService::$freqDaily ? 'selected' : '' ?>>Cada día</option>
+                            <option value="<?= esc(\App\Services\WritableCacheScheduleService::$freqWeekly) ?>" <?= $wf === \App\Services\WritableCacheScheduleService::$freqWeekly ? 'selected' : '' ?>>Cada semana</option>
+                        </select>
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label" for="wcs_time">Hora (24 h)</label>
+                        <input type="time" name="writable_cache_schedule_time" id="wcs_time" class="form-control" required
+                            value="<?= esc((string) ($wcs[\App\Services\WritableCacheScheduleService::$keyTime] ?? '03:00')) ?>">
+                    </div>
+                    <div class="col-md-4" id="wcs_weekday_wrap">
+                        <label class="form-label" for="wcs_wd">Día (solo semanal)</label>
+                        <?php $wwd = (int) ($wcs[\App\Services\WritableCacheScheduleService::$keyWeekday] ?? 1); ?>
+                        <select name="writable_cache_schedule_weekday" id="wcs_wd" class="form-select">
+                            <?php
+                            $wdays = [0 => 'Domingo', 1 => 'Lunes', 2 => 'Martes', 3 => 'Miércoles', 4 => 'Jueves', 5 => 'Viernes', 6 => 'Sábado'];
+                            foreach ($wdays as $k => $label): ?>
+                            <option value="<?= (int) $k ?>" <?= $wwd === $k ? 'selected' : '' ?>><?= esc($label) ?></option>
+                            <?php endforeach; ?>
+                        </select>
+                    </div>
+                    <div class="col-12">
+                        <button type="submit" class="btn btn-primary"><i class="fa-solid fa-save me-1"></i>Guardar programación</button>
+                    </div>
+                    <div class="col-12">
+                        <p class="small mb-0"><strong>Última limpieza automática:</strong>
+                            <?php $wlr = trim((string) ($wcs[\App\Services\WritableCacheScheduleService::$keyLastRun] ?? '')); ?>
+                            <?= $wlr !== '' ? esc($wlr) : '<span class="text-muted">—</span>' ?>
+                        </p>
+                    </div>
+                    <?= form_close() ?>
+                </div>
+                    </div>
+                </div>
+            </div>
+            </div><!-- /configCacheAccordion -->
+
             </div>
         </div>
     </div>
@@ -1197,7 +1311,23 @@
                 <button type="submit" class="btn btn-success mt-3"><i class="fa-solid fa-plus me-1"></i> Guardar pago</button>
                 <?= form_close() ?>
 
-                <h6 class="mb-2">Historial</h6>
+                <?php
+                $subPayPagination = isset($subscription_payments_pagination) && is_array($subscription_payments_pagination)
+                    ? $subscription_payments_pagination
+                    : [];
+                $subPayCurrentPage = max(1, (int) ($subPayPagination['page'] ?? 1));
+                $subPayPerPage = max(1, (int) ($subPayPagination['per_page'] ?? 10));
+                $subPayTotal = max(0, (int) ($subPayPagination['total'] ?? 0));
+                $subPayTotalPages = max(1, (int) ($subPayPagination['pages'] ?? 1));
+                $subPayFrom = $subPayTotal > 0 ? (($subPayCurrentPage - 1) * $subPayPerPage) + 1 : 0;
+                $subPayTo = min($subPayTotal, $subPayCurrentPage * $subPayPerPage);
+                ?>
+                <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-2">
+                    <h6 class="mb-0">Historial</h6>
+                    <?php if ($subPayTotal > 0): ?>
+                    <span class="small text-muted"><?= $subPayFrom ?>–<?= $subPayTo ?> de <?= $subPayTotal ?></span>
+                    <?php endif; ?>
+                </div>
                 <div class="table-responsive">
                     <table class="table table-sm table-bordered align-middle">
                         <thead class="table-light">
@@ -1208,6 +1338,7 @@
                                 <th>Hasta</th>
                                 <th>Monto</th>
                                 <th style="min-width:200px">Comprobante</th>
+                                <th style="width:70px">Acciones</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -1224,18 +1355,41 @@
                                     <a class="btn btn-sm btn-outline-primary mb-2 d-inline-block" href="<?= site_url('config/tenantSubscriptionVoucher/' . $spId) ?>" title="Descargar"><i class="fa-solid fa-download"></i></a>
                                     <?php endif; ?>
                                     <?= form_open_multipart(site_url('config/uploadTenantSubscriptionVoucher/' . $spId), ['class' => 'tenant-sub-voucher-upload']) ?>
+                                    <input type="hidden" name="tenant_subscriptions_page" value="<?= $subPayCurrentPage ?>">
                                     <input type="file" name="voucher_pdf" class="form-control form-control-sm mb-1" accept="application/pdf,.pdf" required>
                                     <button type="submit" class="btn btn-sm btn-outline-secondary"><?= ! empty($sp['voucher_filename']) ? 'Reemplazar PDF' : 'Subir PDF' ?></button>
                                     <?= form_close() ?>
                                 </td>
+                                <td class="text-center">
+                                    <a href="<?= site_url('config/deleteTenantSubscriptionPayment/' . $spId . '?tenant_subscriptions_page=' . $subPayCurrentPage) ?>" class="btn btn-sm btn-outline-danger" title="Eliminar pago" onclick="return uiConfirmLink(this, '¿Eliminar este pago y su comprobante?');"><i class="fa-solid fa-trash"></i></a>
+                                </td>
                             </tr>
                             <?php endforeach; ?>
                             <?php if (empty($subscription_payments)): ?>
-                            <tr><td colspan="6" class="text-center text-muted">No hay pagos registrados.</td></tr>
+                            <tr><td colspan="7" class="text-center text-muted">No hay pagos registrados.</td></tr>
                             <?php endif; ?>
                         </tbody>
                     </table>
                 </div>
+                <?php if ($subPayTotalPages > 1): ?>
+                <nav aria-label="Paginación pagos de suscripción" class="mt-3">
+                    <ul class="pagination pagination-sm mb-0">
+                        <?php $subPayPrevPage = max(1, $subPayCurrentPage - 1); ?>
+                        <li class="page-item <?= $subPayCurrentPage <= 1 ? 'disabled' : '' ?>">
+                            <a class="page-link" href="<?= site_url('config?tab=tenant_subscriptions&tenant_subscriptions_page=' . $subPayPrevPage) ?>">Anterior</a>
+                        </li>
+                        <?php for ($p = 1; $p <= $subPayTotalPages; $p++): ?>
+                        <li class="page-item <?= $p === $subPayCurrentPage ? 'active' : '' ?>">
+                            <a class="page-link" href="<?= site_url('config?tab=tenant_subscriptions&tenant_subscriptions_page=' . $p) ?>"><?= $p ?></a>
+                        </li>
+                        <?php endfor; ?>
+                        <?php $subPayNextPage = min($subPayTotalPages, $subPayCurrentPage + 1); ?>
+                        <li class="page-item <?= $subPayCurrentPage >= $subPayTotalPages ? 'disabled' : '' ?>">
+                            <a class="page-link" href="<?= site_url('config?tab=tenant_subscriptions&tenant_subscriptions_page=' . $subPayNextPage) ?>">Siguiente</a>
+                        </li>
+                    </ul>
+                </nav>
+                <?php endif; ?>
             </div>
         </div>
     </div>
@@ -2186,6 +2340,113 @@ $(document).ready(function() {
         }
         tick();
         setInterval(tick, 1000);
+    })();
+
+    (function initWritableCacheLabClock() {
+        var el = document.getElementById('wcs-lab-clock');
+        if (!el || typeof Intl === 'undefined' || !Intl.DateTimeFormat) {
+            return;
+        }
+        var tz = el.getAttribute('data-timezone') || 'UTC';
+        function tick() {
+            try {
+                var fmt = new Intl.DateTimeFormat('es', {
+                    timeZone: tz,
+                    hour: '2-digit',
+                    minute: '2-digit',
+                    second: '2-digit',
+                    hour12: false
+                });
+                el.textContent = fmt.format(new Date());
+            } catch (err) {
+                el.textContent = '—';
+            }
+        }
+        tick();
+        setInterval(tick, 1000);
+    })();
+
+    (function initWritableCacheScheduleUi() {
+        var freq = document.getElementById('wcs_freq');
+        var wdWrap = document.getElementById('wcs_weekday_wrap');
+        if (!freq || !wdWrap) {
+            return;
+        }
+        function sync() {
+            wdWrap.style.display = freq.value === 'weekly' ? '' : 'none';
+        }
+        freq.addEventListener('change', sync);
+        sync();
+    })();
+
+    (function initWritableCacheClearBtn() {
+        var btn = document.getElementById('btn_clear_writable_cache');
+        if (!btn) {
+            return;
+        }
+        var url = btn.getAttribute('data-url') || '';
+        var sizeEl = document.getElementById('writable_cache_size_label');
+        var filesEl = document.getElementById('writable_cache_files_label');
+        function formatBytes(bytes) {
+            bytes = parseInt(bytes, 10) || 0;
+            if (bytes < 1024) {
+                return bytes + ' B';
+            }
+            if (bytes < 1048576) {
+                return (Math.round(bytes / 102.4) / 10) + ' KB';
+            }
+            if (bytes < 1073741824) {
+                return (Math.round(bytes / 104857.6) / 10) + ' MB';
+            }
+            return (Math.round(bytes / 10737418.24) / 100) + ' GB';
+        }
+        function updateMeasure(m) {
+            if (!m) {
+                return;
+            }
+            if (sizeEl) {
+                sizeEl.textContent = formatBytes(m.bytes || 0);
+            }
+            if (filesEl) {
+                filesEl.textContent = '(' + (m.file_count || 0) + ' archivo(s), ' + (m.dir_count || 0) + ' carpeta(s))';
+            }
+        }
+        btn.addEventListener('click', function () {
+            if (!url) {
+                return;
+            }
+            if (!window.confirm('¿Borrar todo el contenido de writable/cache? Los PDFs y datos en caché se regenerarán al volver a consultarlos.')) {
+                return;
+            }
+            btn.disabled = true;
+            var csrf = document.querySelector('input[name="<?= esc(csrf_token(), 'js') ?>"]');
+            var body = new URLSearchParams();
+            if (csrf && csrf.name) {
+                body.append(csrf.name, csrf.value);
+            }
+            fetch(url, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'X-Requested-With': 'XMLHttpRequest' },
+                body: body.toString()
+            }).then(function (r) { return r.json(); }).then(function (data) {
+                if (data && data.measure) {
+                    updateMeasure(data.measure);
+                }
+                if (typeof window.uiToast === 'function') {
+                    window.uiToast(data && data.success ? 'success' : 'error', (data && data.message) || 'Error');
+                } else {
+                    alert((data && data.message) || 'Error');
+                }
+            }).catch(function () {
+                if (typeof window.uiToast === 'function') {
+                    window.uiToast('error', 'No se pudo borrar la caché.');
+                } else {
+                    alert('No se pudo borrar la caché.');
+                }
+            }).finally(function () {
+                btn.disabled = false;
+            });
+        });
     })();
     
     // Tamaño de hoja personalizado (impresión directa)

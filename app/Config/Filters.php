@@ -39,6 +39,7 @@ class Filters extends BaseFilters
         'pagecache'     => PageCache::class,
         'performance'   => PerformanceMetrics::class,
         'tenant_backup_web_tick' => \App\Filters\TenantBackupWebTickFilter::class,
+        'writable_cache_web_tick' => \App\Filters\WritableCacheWebTickFilter::class,
         'subscription_blocked'   => \App\Filters\SubscriptionBlockedFilter::class,
     ];
 
@@ -85,6 +86,7 @@ class Filters extends BaseFilters
         ],
         'after' => [
             'tenant_backup_web_tick',
+            'writable_cache_web_tick',
             // 'honeypot',
             // 'secureheaders',
         ],

@@ -22,14 +22,14 @@
 .viewreport-actions-bar--bottom {
     margin-top: 16px;
 }
-.report-pdfjs-viewer {
+.report-pdf-native-viewer {
     border: 1px solid #dee2e6;
     border-radius: 8px;
     background: #525659;
     overflow: hidden;
     box-shadow: 0 2px 10px rgba(0, 0, 0, 0.14);
 }
-.report-pdfjs-toolbar {
+.report-pdf-native-toolbar {
     display: flex;
     flex-wrap: wrap;
     gap: 12px;
@@ -39,39 +39,29 @@
     background: #f8f9fa;
     border-bottom: 1px solid #dee2e6;
 }
-.report-pdfjs-toolbar-group {
+.report-pdf-native-toolbar-group {
     display: flex;
     flex-wrap: wrap;
     gap: 8px;
     align-items: center;
 }
-.report-pdfjs-page-indicator,
-.report-pdfjs-zoom-label {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    min-width: 72px;
-    line-height: 1.2;
-    white-space: nowrap;
-}
-.report-pdfjs-toolbar-note {
+.report-pdf-native-toolbar-note {
     flex: 1 1 220px;
     text-align: right;
 }
-.report-pdfjs-status {
-    padding: 8px 14px;
-    background: #f8f9fa;
-    border-bottom: 1px solid #dee2e6;
-}
-.report-pdfjs-canvas-host {
+.report-pdf-native-frame-host {
     position: relative;
-    max-height: calc(100vh - 220px);
-    min-height: 480px;
-    overflow: auto;
-    padding: 16px;
+    min-height: calc(100vh - 220px);
     background: #525659;
 }
-.report-pdfjs-loading {
+.report-pdf-native-frame {
+    display: block;
+    width: 100%;
+    min-height: calc(100vh - 220px);
+    border: 0;
+    background: #fff;
+}
+.report-pdf-native-loading {
     position: absolute;
     inset: 0;
     z-index: 2;
@@ -85,56 +75,43 @@
     background: rgba(45, 47, 49, 0.92);
     color: #f8f9fa;
 }
-.report-pdfjs-viewer.is-loading .report-pdfjs-loading {
+.report-pdf-native-viewer.is-loading .report-pdf-native-loading {
     display: flex;
 }
-.report-pdfjs-viewer:not(.is-loading) .report-pdfjs-loading {
+.report-pdf-native-viewer:not(.is-loading) .report-pdf-native-loading {
     display: none;
 }
-.report-pdfjs-loading-spinner {
+.report-pdf-native-loading-spinner {
     width: 42px;
     height: 42px;
     border: 3px solid rgba(255, 255, 255, 0.25);
     border-top-color: #fff;
     border-radius: 50%;
-    animation: report-pdfjs-spin 0.85s linear infinite;
+    animation: report-pdf-native-spin 0.85s linear infinite;
 }
-.report-pdfjs-loading-text {
+.report-pdf-native-loading-text {
     margin: 0;
     font-size: 1rem;
     font-weight: 600;
     color: #fff;
 }
-.report-pdfjs-loading-hint {
+.report-pdf-native-loading-hint {
     margin: 0;
     font-size: 0.875rem;
     color: rgba(255, 255, 255, 0.72);
     max-width: 320px;
 }
-@keyframes report-pdfjs-spin {
+@keyframes report-pdf-native-spin {
     to { transform: rotate(360deg); }
 }
-.report-pdfjs-page {
-    margin: 0 auto 16px;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.35);
-    background: #fff;
-    width: fit-content;
-}
-.report-pdfjs-page:last-child {
-    margin-bottom: 0;
-}
-.report-pdfjs-page-canvas {
-    display: block;
-    width: 100%;
-    height: auto;
-}
 @media (max-width: 767.98px) {
-    .report-pdfjs-toolbar-note {
+    .report-pdf-native-toolbar-note {
         text-align: left;
         flex-basis: 100%;
     }
-    .report-pdfjs-canvas-host {
-        min-height: 360px;
+    .report-pdf-native-frame-host,
+    .report-pdf-native-frame {
+        min-height: 70vh;
     }
 }
 </style>
@@ -182,7 +159,7 @@ $lblComp = ! empty($sin_billing_enabled ?? false) ? 'Factura' : 'Recibo (PDF)';
 </div>
 <?php else: ?>
 <?= view('registers/partials/report_viewreport_hidden_analisis', ['grupos' => $grupos]) ?>
-<?= view('registers/partials/report_pdfjs_viewer', [
+<?= view('registers/partials/report_pdf_native_viewer', [
     'ridPdf'  => $ridPdf,
     'pdf_url' => site_url('registers/pdf/' . $ridPdf . '?inline=1'),
 ]) ?>
@@ -213,15 +190,25 @@ $lblComp = ! empty($sin_billing_enabled ?? false) ? 'Factura' : 'Recibo (PDF)';
 
 <?= $this->section('scripts') ?>
 <?php if (! empty($grupos)): ?>
-<script src="<?= asset_url('js/vendor/pdfjs/pdf.min.js') ?>"></script>
-<script src="<?= asset_url('js/report-pdfjs-viewer.js') ?>"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    document.querySelectorAll('[data-report-pdf-native-viewer]').forEach(function(root) {
+        var frame = root.querySelector('[data-pdf-native-frame]');
+        if (!frame) {
+            root.classList.remove('is-loading');
+            return;
+        }
+        var hideLoading = function() {
+            root.classList.remove('is-loading');
+        };
+        frame.addEventListener('load', hideLoading);
+        setTimeout(hideLoading, 20000);
+    });
+});
+</script>
 <?php endif; ?>
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-    if (typeof window.initReportPdfJsViewer === 'function') {
-        window.initReportPdfJsViewer('[data-report-pdfjs-viewer]');
-    }
-
     function bindPrintWindow(selector, windowName) {
         document.querySelectorAll(selector).forEach(function(btn) {
             btn.addEventListener('click', function (e) {

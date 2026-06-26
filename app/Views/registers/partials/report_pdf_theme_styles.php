@@ -388,33 +388,21 @@ table.results:not(.pdf-notes-table) td {
     padding-left: 8px !important;
     padding-right: 8px !important;
 }
-table.results.results-cols-3,
-table.results.results-cols-4 {
+table.results.results-cols-grid {
     table-layout: fixed !important;
     width: 100% !important;
 }
-table.results.results-cols-3 th:nth-child(1),
-table.results.results-cols-3 td:nth-child(1) {
-    width: 42% !important;
-    max-width: 42% !important;
+table.results.results-cols-grid > colgroup > col:nth-child(1) {
+    width: 34% !important;
 }
-table.results.results-cols-3 th:nth-child(2),
-table.results.results-cols-3 td:nth-child(2) {
-    width: 25% !important;
-    max-width: 25% !important;
+table.results.results-cols-grid > colgroup > col:nth-child(2) {
+    width: 18% !important;
 }
-table.results.results-cols-3 th:nth-child(3),
-table.results.results-cols-3 td:nth-child(3) {
-    width: 33% !important;
-    max-width: 33% !important;
+table.results.results-cols-grid > colgroup > col:nth-child(3) {
+    width: 28% !important;
 }
-table.results.results-cols-3 td.resultado-colspan-rest[colspan="2"] {
-    width: 58% !important;
-    max-width: 58% !important;
-}
-table.results.results-cols-4 td.resultado-colspan-rest[colspan="3"] {
-    width: 66% !important;
-    max-width: 66% !important;
+table.results.results-cols-grid > colgroup > col:nth-child(4) {
+    width: 20% !important;
 }
 table.results:not(.report-refs-matrix):not(.pdf-notes-table) th.results-col-analisis,
 table.results:not(.report-refs-matrix):not(.pdf-notes-table) td.results-col-analisis {

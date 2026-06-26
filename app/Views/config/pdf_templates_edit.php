@@ -1282,10 +1282,6 @@ if (! in_array($configTab, $pdfConfigTabs, true)) {
                         <option value="5">Ancho: 5 columnas</option>
                         <option value="6">Ancho: 6 columnas</option>
                     </select>
-                    <div class="form-check ms-2">
-                        <input class="form-check-input" type="checkbox" id="toggle_instance_lists">
-                        <label class="form-check-label small" for="toggle_instance_lists">Opciones avanzadas por campo</label>
-                    </div>
                     </div>
                 </div>
                 <div id="pdf-field-palette" class="pdf-field-palette"></div>
@@ -1304,8 +1300,8 @@ if (! in_array($configTab, $pdfConfigTabs, true)) {
             <strong class="small d-block mb-1"><i class="fa-solid fa-hand-pointer me-1"></i> Cómo usar la cuadrícula</strong>
             <ul class="small mb-0">
                 <li>Arrastre campos desde la paleta (pestaña General) o desde otra celda.</li>
-                <li>Haga clic en un campo de la cuadrícula para ver sus opciones (columna, ancho, alineación).</li>
-                <li>La vista previa a la derecha muestra el resultado aproximado.</li>
+                <li>Use el botón <strong>Editar</strong> (lápiz) en la cuadrícula, o haga clic sobre el nombre del campo, para resaltar sus opciones debajo.</li>
+                <li>La vista previa aparece debajo de las opciones de cada campo.</li>
             </ul>
         </div>
 
@@ -1332,16 +1328,17 @@ if (! in_array($configTab, $pdfConfigTabs, true)) {
                     </div>
                     <div id="grid-editor-header" class="pdf-grid-editor" data-section="header"></div>
                 </div>
-                <div class="row g-4">
-                    <div class="col-lg-6 pdf-instance-list-col">
+                <div class="pdf-instance-preview-stack row g-4">
+                    <div class="col-12 pdf-instance-list-col">
+                        <h6 class="text-uppercase text-muted small mb-2">Opciones por campo</h6>
                         <ul id="instance-list-header" class="list-group pdf-instance-sortable" data-section="header">
                             <?php foreach ($instHeader as $inst): ?>
                                 <?= view('config/partials/pdf_instance_row', ['inst' => $inst, 'col_count' => $hCols, 'elLabels' => $elLabels]) ?>
                             <?php endforeach; ?>
                         </ul>
                     </div>
-                    <div class="col-lg-6">
-                        <h6 class="text-uppercase text-muted small">Vista previa</h6>
+                    <div class="col-12 pdf-instance-preview-col">
+                        <h6 class="text-uppercase text-muted small mb-2">Vista previa</h6>
                         <div class="pdf-preview-sheet border rounded shadow-sm bg-white mx-auto">
                             <div class="pdf-preview-sheet-bar small text-white px-2 py-1" style="background:#0dcaf0;">Encabezado</div>
                             <div class="p-2" id="pdf-preview-header-block"></div>
@@ -1374,16 +1371,17 @@ if (! in_array($configTab, $pdfConfigTabs, true)) {
                     </div>
                     <div id="grid-editor-patient" class="pdf-grid-editor" data-section="patient_doctor"></div>
                 </div>
-                <div class="row g-4">
-                    <div class="col-lg-6 pdf-instance-list-col">
+                <div class="pdf-instance-preview-stack row g-4">
+                    <div class="col-12 pdf-instance-list-col">
+                        <h6 class="text-uppercase text-muted small mb-2">Opciones por campo</h6>
                         <ul id="instance-list-patient" class="list-group pdf-instance-sortable" data-section="patient_doctor">
                             <?php foreach ($instPatient as $inst): ?>
                                 <?= view('config/partials/pdf_instance_row', ['inst' => $inst, 'col_count' => $pCols, 'elLabels' => $elLabels, 'pd_grid' => $pd]) ?>
                             <?php endforeach; ?>
                         </ul>
                     </div>
-                    <div class="col-lg-6">
-                        <h6 class="text-uppercase text-muted small">Vista previa</h6>
+                    <div class="col-12 pdf-instance-preview-col">
+                        <h6 class="text-uppercase text-muted small mb-2">Vista previa</h6>
                         <div class="pdf-preview-sheet border rounded shadow-sm bg-white mx-auto">
                             <div class="pdf-preview-sheet-bar small text-white bg-dark px-2 py-1">Paciente / médico</div>
                             <div class="pdf-preview-sheet-body p-2" id="pdf-preview-patient-block"></div>
@@ -1417,16 +1415,17 @@ if (! in_array($configTab, $pdfConfigTabs, true)) {
                     </div>
                     <div id="grid-editor-lab-firmas" class="pdf-grid-editor" data-section="lab_firmas"></div>
                 </div>
-                <div class="row g-4">
-                    <div class="col-lg-6 pdf-instance-list-col">
+                <div class="pdf-instance-preview-stack row g-4">
+                    <div class="col-12 pdf-instance-list-col">
+                        <h6 class="text-uppercase text-muted small mb-2">Opciones por campo</h6>
                         <ul id="instance-list-lab-firmas" class="list-group pdf-instance-sortable" data-section="lab_firmas">
                             <?php foreach ($instLabFirmas as $inst): ?>
                                 <?= view('config/partials/pdf_instance_row', ['inst' => $inst, 'col_count' => $lCols, 'elLabels' => $elLabels]) ?>
                             <?php endforeach; ?>
                         </ul>
                     </div>
-                    <div class="col-lg-6">
-                        <h6 class="text-uppercase text-muted small">Vista previa</h6>
+                    <div class="col-12 pdf-instance-preview-col">
+                        <h6 class="text-uppercase text-muted small mb-2">Vista previa</h6>
                         <div class="pdf-preview-sheet border rounded shadow-sm bg-white mx-auto">
                             <div class="pdf-preview-sheet-bar small text-dark bg-warning px-2 py-1">Validación / firmas</div>
                             <div class="p-2" id="pdf-preview-lab-firmas-block"></div>
@@ -1460,16 +1459,17 @@ if (! in_array($configTab, $pdfConfigTabs, true)) {
                     </div>
                     <div id="grid-editor-footer" class="pdf-grid-editor" data-section="footer"></div>
                 </div>
-                <div class="row g-4">
-                    <div class="col-lg-6 pdf-instance-list-col">
+                <div class="pdf-instance-preview-stack row g-4">
+                    <div class="col-12 pdf-instance-list-col">
+                        <h6 class="text-uppercase text-muted small mb-2">Opciones por campo</h6>
                         <ul id="instance-list-footer" class="list-group pdf-instance-sortable" data-section="footer">
                             <?php foreach ($instFooter as $inst): ?>
                                 <?= view('config/partials/pdf_instance_row', ['inst' => $inst, 'col_count' => $fCols, 'elLabels' => $elLabels]) ?>
                             <?php endforeach; ?>
                         </ul>
                     </div>
-                    <div class="col-lg-6">
-                        <h6 class="text-uppercase text-muted small">Vista previa</h6>
+                    <div class="col-12 pdf-instance-preview-col">
+                        <h6 class="text-uppercase text-muted small mb-2">Vista previa</h6>
                         <div class="pdf-preview-sheet border rounded shadow-sm bg-white mx-auto">
                             <div class="pdf-preview-sheet-bar small text-white px-2 py-1" style="background-color:#6f42c1;">Pie de página</div>
                             <div class="p-2" id="pdf-preview-footer-block"></div>
@@ -1703,6 +1703,7 @@ if (! in_array($configTab, $pdfConfigTabs, true)) {
 }
 .pdf-grid-chip-main {
     min-width: 0;
+    cursor: pointer;
 }
 .pdf-grid-chip-actions {
     display: inline-flex;
@@ -1897,7 +1898,6 @@ document.addEventListener('DOMContentLoaded', function() {
     var gridEditorLabFirmas = document.getElementById('grid-editor-lab-firmas');
     var fieldPalette = document.getElementById('pdf-field-palette');
     var paletteSpanSelect = document.getElementById('palette_span_select');
-    var toggleInstanceLists = document.getElementById('toggle_instance_lists');
     var activeDragPayload = null;
     var secColsH = document.getElementById('sec_cols_header');
     var secColsP = document.getElementById('sec_cols_patient');
@@ -2034,6 +2034,17 @@ document.addEventListener('DOMContentLoaded', function() {
         return found;
     }
 
+    function focusInstanceEditor(li) {
+        if (!li) return;
+        document.querySelectorAll('.pdf-instance-item.is-editor-focus').forEach(function(el) {
+            el.classList.remove('is-editor-focus');
+        });
+        li.classList.add('is-editor-focus');
+        window.requestAnimationFrame(function() {
+            li.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        });
+    }
+
     function instanceDisplayLabel(type) {
         return (window._elementLabels && window._elementLabels[type]) ? window._elementLabels[type] : type;
     }
@@ -2138,7 +2149,7 @@ document.addEventListener('DOMContentLoaded', function() {
         for (var s = 1; s <= maxS; s++) {
             var o = document.createElement('option');
             o.value = String(s);
-            o.textContent = s === 1 ? 'Ancho: 1 col.' : 'Ancho: ' + s + ' cols.';
+            o.textContent = s === 1 ? '1 columna' : (s + ' columnas');
             sel.appendChild(o);
         }
         sel.value = String(prev);
@@ -3573,7 +3584,6 @@ document.addEventListener('DOMContentLoaded', function() {
     function buildInstanceAlignSelect(className, title, options, selected) {
         var sel = document.createElement('select');
         sel.className = 'form-select form-select-sm ' + className;
-        sel.style.maxWidth = '9rem';
         sel.title = title;
         options.forEach(function(pair) {
             var o = document.createElement('option');
@@ -3614,11 +3624,9 @@ document.addEventListener('DOMContentLoaded', function() {
         li.setAttribute('data-grid-stack', '');
         var sel = document.createElement('select');
         sel.className = 'form-select form-select-sm instance-column';
-        sel.style.maxWidth = '11rem';
         fillColumnSelect(sel, colCount, enabled ? String(column) : '-1');
         var spanSel = document.createElement('select');
         spanSel.className = 'form-select form-select-sm instance-span';
-        spanSel.style.maxWidth = '9rem';
         spanSel.title = 'Cuántas columnas ocupa el elemento';
         var col = enabled ? Math.max(0, Math.min(colCount - 1, column)) : 0;
         var maxS = enabled ? Math.max(1, colCount - col) : 1;
@@ -3631,16 +3639,11 @@ document.addEventListener('DOMContentLoaded', function() {
             alignHSel.disabled = true;
             alignVSel.disabled = true;
         }
-        var wrap = document.createElement('div');
-        wrap.className = 'd-flex flex-wrap align-items-center gap-2';
-        var h = document.createElement('span');
-        h.className = 'text-muted instance-drag-handle';
-        h.style.cursor = 'grab';
-        h.title = 'Arrastrar';
-        h.innerHTML = '<i class="fa-solid fa-grip-vertical"></i>';
-        var lab = document.createElement('div');
-        lab.className = 'flex-grow-1';
-        lab.innerHTML = '';
+        var head = document.createElement('div');
+        head.className = 'pdf-instance-head d-flex flex-wrap align-items-start gap-2 mb-3 pb-2 border-bottom';
+        head.innerHTML = '<div class="pdf-instance-head-title flex-grow-1 min-w-0"><strong class="d-block">' + escapeHtml(label) + '</strong><span class="small text-muted font-monospace pdf-instance-tech-id">' + escapeHtml(elementType) + '</span></div>';
+        var headActions = document.createElement('div');
+        headActions.className = 'pdf-instance-head-actions d-flex flex-shrink-0 gap-1';
         var bDup = document.createElement('button');
         bDup.type = 'button';
         bDup.className = 'btn btn-sm btn-outline-secondary btn-dup-instance';
@@ -3651,19 +3654,37 @@ document.addEventListener('DOMContentLoaded', function() {
         bDel.className = 'btn btn-sm btn-outline-danger btn-del-instance';
         bDel.title = 'Quitar';
         bDel.innerHTML = '<i class="fa-solid fa-trash"></i>';
-        wrap.appendChild(h);
-        wrap.appendChild(sel);
-        wrap.appendChild(spanSel);
-        wrap.appendChild(alignHSel);
-        wrap.appendChild(alignVSel);
-        wrap.appendChild(lab);
-        wrap.appendChild(bDup);
-        wrap.appendChild(bDel);
-        var head = document.createElement('div');
-        head.className = 'pdf-instance-head mb-2 pb-2 border-bottom';
-        head.innerHTML = '<strong class="d-block">' + escapeHtml(label) + '</strong><span class="small text-muted font-monospace">' + escapeHtml(elementType) + '</span>';
+        headActions.appendChild(bDup);
+        headActions.appendChild(bDel);
+        head.appendChild(headActions);
         li.appendChild(head);
-        li.appendChild(wrap);
+
+        var placement = document.createElement('div');
+        placement.className = 'pdf-instance-placement row g-2 g-md-3 align-items-end mb-2';
+        var dragCol = document.createElement('div');
+        dragCol.className = 'col-auto d-flex align-items-end pb-1';
+        var h = document.createElement('span');
+        h.className = 'text-muted instance-drag-handle';
+        h.title = 'Arrastrar';
+        h.innerHTML = '<i class="fa-solid fa-grip-vertical"></i>';
+        dragCol.appendChild(h);
+        placement.appendChild(dragCol);
+
+        function addPlacementField(colClass, labelText, controlEl) {
+            var box = document.createElement('div');
+            box.className = colClass;
+            var labEl = document.createElement('label');
+            labEl.className = 'form-label small mb-1';
+            labEl.textContent = labelText;
+            box.appendChild(labEl);
+            box.appendChild(controlEl);
+            placement.appendChild(box);
+        }
+        addPlacementField('col-6 col-sm-4 col-md-3 col-xl-2', 'Ubicación', sel);
+        addPlacementField('col-6 col-sm-4 col-md-3 col-xl-2', 'Ancho', spanSel);
+        addPlacementField('col-6 col-sm-4 col-md-3 col-xl-2', 'Alineación H', alignHSel);
+        addPlacementField('col-6 col-sm-4 col-md-3 col-xl-2', 'Alineación V', alignVSel);
+        li.appendChild(placement);
         if (elementType === 'custom_text') {
             var tplCt = document.getElementById('tpl_pdf_custom_text_editor');
             if (tplCt && tplCt.innerHTML) {
@@ -3672,25 +3693,25 @@ document.addEventListener('DOMContentLoaded', function() {
         } else {
             var addPdSpacing = (sectionKey === 'patient_doctor' && pdTypes.indexOf(elementType) >= 0);
             li.insertAdjacentHTML('beforeend',
-                '<div class="row g-3 mt-2 pdf-text-style-controls">' +
-                '  <div class="col-12 col-md-6 col-lg-4"><label class="form-label small mb-1">Fuente</label><select class="form-select form-select-sm instance-font-family"><option value="DejaVu Sans">DejaVu Sans</option><option value="Helvetica">Helvetica</option><option value="Arial">Arial</option><option value="Times New Roman">Times New Roman</option><option value="Courier New">Courier New</option></select></div>' +
-                '  <div class="col-6 col-md-3 col-lg-2"><label class="form-label small mb-1">Tamaño</label><input type="number" class="form-control form-control-sm instance-font-size" min="6" max="24" step="0.5" value="10"></div>' +
-                '  <div class="col-6 col-md-3 col-lg-2"><label class="form-label small mb-1">Grosor</label><select class="form-select form-select-sm instance-font-weight"><option value="normal">normal</option><option value="bold">bold</option><option value="100">100</option><option value="200">200</option><option value="300">300</option><option value="400">400</option><option value="500">500</option><option value="600">600</option><option value="700">700</option><option value="800">800</option><option value="900">900</option></select></div>' +
-                '  <div class="col-6 col-md-3 col-lg-2"><label class="form-label small mb-1">Color</label><input type="color" class="form-control form-control-color form-control-sm instance-font-color" value="#333333"></div>' +
-                '  <div class="col-6 col-md-3 col-lg-2"><label class="form-label small mb-1">Estilo</label><select class="form-select form-select-sm instance-font-style"><option value="normal">Normal</option><option value="italic">Italic</option><option value="oblique">Oblique</option></select></div>' +
-                '  <div class="col-6 col-md-4 col-lg-3"><label class="form-label small mb-1">Transformación</label><select class="form-select form-select-sm instance-text-transform"><option value="none">Normal</option><option value="uppercase">MAYÚSCULAS</option><option value="lowercase">minúsculas</option><option value="capitalize">Tipo Título</option></select></div>' +
-                '  <div class="col-6 col-md-4 col-lg-2"><label class="form-label small mb-1">Esp. letras</label><input type="number" class="form-control form-control-sm instance-letter-spacing" min="-0.2" max="1" step="0.01" value="0"></div>' +
-                '  <div class="col-6 col-md-4 col-lg-2"><label class="form-label small mb-1">Interlineado</label><input type="number" class="form-control form-control-sm instance-line-height" min="1" max="3" step="0.05" value="1.35"></div>' +
-                '  <div class="col-12 col-md-6 col-lg-3"><label class="form-label small mb-1">Sombra</label><select class="form-select form-select-sm instance-text-shadow"><option value="none">Sin sombra</option><option value="soft">Suave</option><option value="medium">Media</option><option value="strong">Fuerte</option></select></div>' +
+                '<div class="row g-2 g-md-3 pdf-text-style-controls">' +
+                '  <div class="col-12 col-sm-6 col-md-4 col-xl-3"><label class="form-label small mb-1">Fuente</label><select class="form-select form-select-sm instance-font-family"><option value="DejaVu Sans">DejaVu Sans</option><option value="Helvetica">Helvetica</option><option value="Arial">Arial</option><option value="Times New Roman">Times New Roman</option><option value="Courier New">Courier New</option></select></div>' +
+                '  <div class="col-6 col-sm-3 col-md-2 col-xl-1"><label class="form-label small mb-1">Tamaño</label><input type="number" class="form-control form-control-sm instance-font-size" min="6" max="24" step="0.5" value="10"></div>' +
+                '  <div class="col-6 col-sm-3 col-md-2 col-xl-1"><label class="form-label small mb-1">Grosor</label><select class="form-select form-select-sm instance-font-weight"><option value="normal">normal</option><option value="bold">bold</option><option value="100">100</option><option value="200">200</option><option value="300">300</option><option value="400">400</option><option value="500">500</option><option value="600">600</option><option value="700">700</option><option value="800">800</option><option value="900">900</option></select></div>' +
+                '  <div class="col-6 col-sm-3 col-md-2 col-xl-1"><label class="form-label small mb-1">Color</label><input type="color" class="form-control form-control-color form-control-sm instance-font-color" value="#333333"></div>' +
+                '  <div class="col-6 col-sm-3 col-md-2 col-xl-1"><label class="form-label small mb-1">Estilo</label><select class="form-select form-select-sm instance-font-style"><option value="normal">Normal</option><option value="italic">Italic</option><option value="oblique">Oblique</option></select></div>' +
+                '  <div class="col-6 col-sm-6 col-md-4 col-xl-2"><label class="form-label small mb-1">Transformación</label><select class="form-select form-select-sm instance-text-transform"><option value="none">Normal</option><option value="uppercase">MAYÚSCULAS</option><option value="lowercase">minúsculas</option><option value="capitalize">Tipo Título</option></select></div>' +
+                '  <div class="col-6 col-sm-4 col-md-2 col-xl-1"><label class="form-label small mb-1">Esp. letras</label><input type="number" class="form-control form-control-sm instance-letter-spacing" min="-0.2" max="1" step="0.01" value="0"></div>' +
+                '  <div class="col-6 col-sm-4 col-md-2 col-xl-1"><label class="form-label small mb-1">Interlineado</label><input type="number" class="form-control form-control-sm instance-line-height" min="1" max="3" step="0.05" value="1.35"></div>' +
+                '  <div class="col-6 col-sm-4 col-md-3 col-xl-2"><label class="form-label small mb-1">Sombra</label><select class="form-select form-select-sm instance-text-shadow"><option value="none">Sin sombra</option><option value="soft">Suave</option><option value="medium">Media</option><option value="strong">Fuerte</option></select></div>' +
                 '</div>' +
                 (addPdSpacing
                     ? (
-                        '<div class="row g-3 mt-2 pdf-patient-spacing-controls">' +
-                        '  <div class="col-12 col-md-4 col-lg-4"><label class="form-label small mb-1">Separación label/valor (px)</label>' +
+                        '<div class="row g-2 g-md-3 mt-2 pdf-patient-spacing-controls">' +
+                        '  <div class="col-12 col-sm-4"><label class="form-label small mb-1">Separación label/valor (px)</label>' +
                         '    <input type="number" class="form-control form-control-sm instance-pd-label-value-gap-px" min="0" max="40" step="1" value="' + pdSpacingDefaults.gap + '"></div>' +
-                        '  <div class="col-12 col-md-4 col-lg-4"><label class="form-label small mb-1">Espacio arriba (px)</label>' +
+                        '  <div class="col-12 col-sm-4"><label class="form-label small mb-1">Espacio arriba (px)</label>' +
                         '    <input type="number" class="form-control form-control-sm instance-pd-space-above-px" min="0" max="40" step="1" value="' + pdSpacingDefaults.above + '"></div>' +
-                        '  <div class="col-12 col-md-4 col-lg-4"><label class="form-label small mb-1">Espacio abajo (px)</label>' +
+                        '  <div class="col-12 col-sm-4"><label class="form-label small mb-1">Espacio abajo (px)</label>' +
                         '    <input type="number" class="form-control form-control-sm instance-pd-space-below-px" min="0" max="40" step="1" value="' + pdSpacingDefaults.below + '"></div>' +
                         '</div>'
                     )
@@ -4143,11 +4164,21 @@ document.addEventListener('DOMContentLoaded', function() {
             return;
         }
         var btn = ev.target.closest('.pdf-grid-chip-edit');
-        if (!btn) return;
-        var chip = btn.closest('.pdf-grid-chip');
-        if (!chip) return;
-        var li = findInstanceByUid(chip.getAttribute('data-section') || '', chip.getAttribute('data-uid') || '');
-        if (li) li.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        if (btn) {
+            var chipEdit = btn.closest('.pdf-grid-chip');
+            if (!chipEdit) return;
+            var liEdit = findInstanceByUid(chipEdit.getAttribute('data-section') || '', chipEdit.getAttribute('data-uid') || '');
+            if (liEdit) focusInstanceEditor(liEdit);
+            return;
+        }
+
+        var chipMain = ev.target.closest('.pdf-grid-chip-main');
+        if (chipMain) {
+            var chipFocus = chipMain.closest('.pdf-grid-chip');
+            if (!chipFocus) return;
+            var liFocus = findInstanceByUid(chipFocus.getAttribute('data-section') || '', chipFocus.getAttribute('data-uid') || '');
+            if (liFocus) focusInstanceEditor(liFocus);
+        }
     });
 
     function shouldRebuildPreviewOnStyleInput(t) {
@@ -4195,15 +4226,6 @@ document.addEventListener('DOMContentLoaded', function() {
     }
     syncAddElementTypeOptions();
     renderFieldPalette();
-    if (toggleInstanceLists) {
-        var applyListVisibility = function() {
-            var show = !!toggleInstanceLists.checked;
-            var root = document.getElementById('pdf_tpl_editor_root');
-            if (root) root.classList.toggle('show-advanced-lists', show);
-        };
-        toggleInstanceLists.addEventListener('change', applyListVisibility);
-        applyListVisibility();
-    }
 
     wireInstanceSelects();
     rebuildAllPreviews();

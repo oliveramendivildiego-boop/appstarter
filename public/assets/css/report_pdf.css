@@ -502,58 +502,30 @@ table.results {
     page-break-inside: auto;
     break-inside: auto;
 }
-/* Anchos de columna uniformes en todas las pruebas del reporte (Dompdf + vista previa). */
-table.results:not(.pdf-notes-table):not(.report-refs-matrix).results-cols-3,
-table.results:not(.pdf-notes-table):not(.report-refs-matrix).results-cols-4 {
+/*
+ * Grid fijo de 4 columnas lógicas (34/18/28/20): los bordes verticales coinciden entre
+ * todas las tablas del reporte; columnas omitidas se fusionan con colspan.
+ */
+table.results:not(.pdf-notes-table):not(.report-refs-matrix).results-cols-grid {
     table-layout: fixed !important;
     width: 100% !important;
 }
-table.results:not(.pdf-notes-table):not(.report-refs-matrix).results-cols-3 th:nth-child(1),
-table.results:not(.pdf-notes-table):not(.report-refs-matrix).results-cols-3 td:nth-child(1) {
-    width: 42% !important;
-    max-width: 42% !important;
-    word-wrap: break-word;
-    overflow-wrap: break-word;
-}
-table.results:not(.pdf-notes-table):not(.report-refs-matrix).results-cols-3 th:nth-child(2),
-table.results:not(.pdf-notes-table):not(.report-refs-matrix).results-cols-3 td:nth-child(2) {
-    width: 25% !important;
-    max-width: 25% !important;
-}
-table.results:not(.pdf-notes-table):not(.report-refs-matrix).results-cols-3 th:nth-child(3),
-table.results:not(.pdf-notes-table):not(.report-refs-matrix).results-cols-3 td:nth-child(3) {
-    width: 33% !important;
-    max-width: 33% !important;
-}
-table.results:not(.pdf-notes-table):not(.report-refs-matrix).results-cols-4 th:nth-child(1),
-table.results:not(.pdf-notes-table):not(.report-refs-matrix).results-cols-4 td:nth-child(1) {
+table.results.results-cols-grid > colgroup > col:nth-child(1) {
     width: 34% !important;
-    max-width: 34% !important;
+}
+table.results.results-cols-grid > colgroup > col:nth-child(2) {
+    width: 18% !important;
+}
+table.results.results-cols-grid > colgroup > col:nth-child(3) {
+    width: 28% !important;
+}
+table.results.results-cols-grid > colgroup > col:nth-child(4) {
+    width: 20% !important;
+}
+table.results.results-cols-grid th.results-col-analisis,
+table.results.results-cols-grid td.results-col-analisis {
     word-wrap: break-word;
     overflow-wrap: break-word;
-}
-table.results:not(.pdf-notes-table):not(.report-refs-matrix).results-cols-4 th:nth-child(2),
-table.results:not(.pdf-notes-table):not(.report-refs-matrix).results-cols-4 td:nth-child(2) {
-    width: 18% !important;
-    max-width: 18% !important;
-}
-table.results:not(.pdf-notes-table):not(.report-refs-matrix).results-cols-4 th:nth-child(3),
-table.results:not(.pdf-notes-table):not(.report-refs-matrix).results-cols-4 td:nth-child(3) {
-    width: 28% !important;
-    max-width: 28% !important;
-}
-table.results:not(.pdf-notes-table):not(.report-refs-matrix).results-cols-4 th:nth-child(4),
-table.results:not(.pdf-notes-table):not(.report-refs-matrix).results-cols-4 td:nth-child(4) {
-    width: 20% !important;
-    max-width: 20% !important;
-}
-table.results:not(.pdf-notes-table):not(.report-refs-matrix).results-cols-3 td.resultado-colspan-rest[colspan="2"] {
-    width: 58% !important;
-    max-width: 58% !important;
-}
-table.results:not(.pdf-notes-table):not(.report-refs-matrix).results-cols-4 td.resultado-colspan-rest[colspan="3"] {
-    width: 66% !important;
-    max-width: 66% !important;
 }
 /*
  * Dompdf: si el salto cae justo después del thead, la siguiente página puede mostrar filas

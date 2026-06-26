@@ -132,18 +132,61 @@
     padding: 0.65rem 0.85rem;
 }
 
-.pdf-instance-list-col {
-    display: none;
+.pdf-instance-preview-stack {
+    display: flex;
+    flex-direction: column;
+    gap: 1.25rem;
 }
 
-.pdf-tpl-editor.show-advanced-lists .pdf-instance-list-col {
-    display: block;
+.pdf-instance-list-col,
+.pdf-instance-preview-col {
+    flex: 0 0 100%;
+    max-width: 100%;
+    width: 100%;
 }
 
-@media (min-width: 992px) {
-    .pdf-tpl-editor.show-advanced-lists .pdf-instance-list-col {
-        display: block;
-    }
+.pdf-instance-list-col .pdf-instance-sortable {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.pdf-instance-list-col .pdf-instance-sortable.list-group {
+    --bs-list-group-border-width: 0;
+    --bs-list-group-bg: transparent;
+    padding-left: 0;
+    padding-right: 0;
+}
+
+.pdf-tpl-editor .pdf-instance-item {
+    border: 1px solid #dee2e6;
+    border-radius: 0.5rem;
+    padding: 0.85rem 1rem;
+    background: #fff;
+}
+
+.pdf-tpl-editor .pdf-instance-item.is-editor-focus {
+    border-color: #0d6efd;
+    box-shadow: 0 0 0 0.2rem rgba(13, 110, 253, 0.2);
+    background-color: #f0f7ff;
+}
+
+.pdf-instance-item .instance-drag-handle {
+    cursor: grab;
+    font-size: 1.1rem;
+    line-height: 1;
+    padding: 0.35rem 0.25rem;
+}
+
+.pdf-instance-item .instance-drag-handle:active {
+    cursor: grabbing;
+}
+
+.pdf-instance-placement .form-label,
+.pdf-text-style-controls .form-label,
+.pdf-patient-spacing-controls .form-label {
+    color: #6c757d;
+    font-weight: 600;
 }
 
 .pdf-tpl-editor .pdf-instance-item .pdf-instance-tech-id {
@@ -181,11 +224,6 @@
     .pdf-tpl-live-preview-sticky {
         position: static;
     }
-}
-
-.pdf-tpl-editor:not(.show-advanced-lists) .pdf-section-editor .row.g-4 > .col-lg-6:last-child {
-    flex: 0 0 100%;
-    max-width: 100%;
 }
 
 .pdf-tpl-floating-save.is-visible {

@@ -18,6 +18,8 @@ use App\Libraries\TenantResolver;
 use App\Services\ConfigService;
 use App\Services\TenantBackupScheduleService;
 use App\Services\TenantBackupService;
+use App\Services\WritableCachePurgeService;
+use App\Services\WritableCacheScheduleService;
 use App\Services\TenantConfigService;
 use App\Services\GhostTenantAccessService;
 use App\Services\TenantHandoffService;
@@ -307,10 +309,11 @@ class Config extends SecureArea
             $tab = 'notificaciones_analisis';
         }
 
-        $subSvc                 = new TenantSubscriptionService();
-        $subscription_payments  = $canManageTenants
-            ? $subSvc->listPaymentsWithTenantNames($subSvc->listPaymentsForManagement())
-            : [];
+        $subSvc                        = new TenantSubscriptionService();
+        $subscriptionPaymentsPageData  = $canManageTenants
+            ? $subSvc->listPaymentsForManagementPaginated($this->resolveTenantSubscriptionsPage(), 10)
+            : ['items' => [], 'pagination' => ['page' => 1, 'per_page' => 10, 'total' => 0, 'pages' => 1]];
+        $subscription_payments         = $subscriptionPaymentsPageData['items'];
         $billable_tenants = $canManageTenants ? $subSvc->getBillableTenants() : [];
         $appCfg                 = model(\App\Models\AppConfigModel::class);
         $rawSubAlert            = $appCfg->getValue('dias_alerta_suscripcion_tenant');
@@ -346,6 +349,12 @@ class Config extends SecureArea
             $tenantBackupSchedule   = $tbsSvc->getFormState();
             $tenantBackupTimezoneId = $tbsSvc->getResolvedTimezoneIdentifier();
         }
+
+        $writableCachePurgeSvc   = new WritableCachePurgeService();
+        $writableCacheMeasure    = $writableCachePurgeSvc->measure();
+        $wcsSvc                  = new WritableCacheScheduleService();
+        $writableCacheSchedule   = $wcsSvc->getFormState();
+        $writableCacheTimezoneId = $wcsSvc->getResolvedTimezoneIdentifier();
 
         $tenantHomeBroadcastForm = $canManageTenants
             ? (new \App\Services\TenantHomeBroadcastService())->getFormState()
@@ -393,6 +402,7 @@ class Config extends SecureArea
             'tenant_edit_data'     => $tenantEditData,
             'can_manage_tenants'   => $canManageTenants,
             'subscription_payments'=> $subscription_payments,
+            'subscription_payments_pagination' => $subscriptionPaymentsPageData['pagination'],
             'billable_tenants'     => $billable_tenants,
             'tenant_subscription_alert_days_form' => $tenant_subscription_alert_days_form,
             'tenant_subscription_resumen_admin'   => $canManageTenants && $subSvc->isMultiTenant()
@@ -402,6 +412,11 @@ class Config extends SecureArea
             'tenant_backup_timezone_id' => $tenantBackupTimezoneId,
             'tenant_backup_cron_url'    => $canManageTenants ? site_url('cron/tenant-backup-schedule') : '',
             'tenant_backup_cron_ready'  => $canManageTenants && trim((string) env('tenantBackup.cronKey', '')) !== '',
+            'writable_cache_measure'    => $writableCacheMeasure,
+            'writable_cache_schedule'   => $writableCacheSchedule,
+            'writable_cache_timezone_id' => $writableCacheTimezoneId,
+            'writable_cache_cron_url'   => site_url('cron/writable-cache-purge'),
+            'writable_cache_cron_ready' => trim((string) env('writableCache.cronKey', '')) !== '',
             'tenant_home_broadcast_form' => $tenantHomeBroadcastForm,
             'active_tab'           => $tab,
             'timezone_options'     => get_timezone_options(),
@@ -497,6 +512,25 @@ class Config extends SecureArea
         $sort = $this->resolveOpcionesSort();
         return 'config?tab=opciones&opciones_page=' . $targetPage
             . ($sort !== '' ? '&opciones_sort=' . $sort : '');
+    }
+
+    private function resolveTenantSubscriptionsPage(): int
+    {
+        $raw = $this->request->getPost('tenant_subscriptions_page');
+        if ($raw === null || $raw === '') {
+            $raw = $this->request->getGet('tenant_subscriptions_page');
+        }
+        $page = (int) $raw;
+
+        return $page > 0 ? $page : 1;
+    }
+
+    private function tenantSubscriptionsTabUrl(?int $page = null): string
+    {
+        $targetPage = $page ?? $this->resolveTenantSubscriptionsPage();
+        $targetPage = max(1, (int) $targetPage);
+
+        return 'config?tab=tenant_subscriptions&tenant_subscriptions_page=' . $targetPage;
     }
 
     private function shouldReturnJson(): bool
@@ -837,6 +871,61 @@ class Config extends SecureArea
         }
 
         return redirect()->to('config?tab=tenants')->with('error', (string) ($result['message'] ?? 'Error al guardar.'));
+    }
+
+    /**
+     * Borra manualmente el contenido de writable/cache.
+     */
+    public function clearWritableCache(): ResponseInterface
+    {
+        $personId = (int) session()->get('person_id');
+        if ($personId <= 0) {
+            return $this->response->setJSON([
+                'success' => false,
+                'message' => 'No hay sesión activa',
+            ])->setStatusCode(401);
+        }
+
+        $result = (new WritableCachePurgeService())->purge();
+        if ($result['success'] ?? false) {
+            \App\Models\AuditoriaModel::log(
+                'config',
+                'writable_cache_borrar_manual',
+                null,
+                (string) (($result['files_removed'] ?? 0) . ' archivos')
+            );
+        }
+
+        return $this->response->setJSON([
+            'success'       => (bool) ($result['success'] ?? false),
+            'message'       => (string) ($result['message'] ?? 'Error al borrar la caché.'),
+            'files_removed' => (int) ($result['files_removed'] ?? 0),
+            'dirs_removed'  => (int) ($result['dirs_removed'] ?? 0),
+            'bytes_freed'   => (int) ($result['bytes_freed'] ?? 0),
+            'measure'       => (new WritableCachePurgeService())->measure(),
+        ])->setStatusCode(($result['success'] ?? false) ? 200 : 500);
+    }
+
+    /**
+     * Guarda programación de limpieza automática de writable/cache.
+     */
+    public function saveWritableCacheSchedule(): ResponseInterface
+    {
+        $svc    = new WritableCacheScheduleService();
+        $result = $svc->saveFromPost($this->request->getPost());
+        if ($result['success'] ?? false) {
+            $this->configService->invalidateCache();
+            \App\Models\AuditoriaModel::log(
+                'config',
+                'writable_cache_schedule_guardar',
+                null,
+                (string) (($result['data'][WritableCacheScheduleService::$keyFrequency] ?? '') . '@' . ($result['data'][WritableCacheScheduleService::$keyTime] ?? ''))
+            );
+
+            return redirect()->to('config?tab=sistema')->with('success', $result['message']);
+        }
+
+        return redirect()->to('config?tab=sistema')->with('error', (string) ($result['message'] ?? 'Error al guardar.'));
     }
 
     /**
@@ -2485,7 +2574,7 @@ class Config extends SecureArea
         model(\App\Models\AppConfigModel::class)->saveValue('dias_alerta_suscripcion_tenant', (string) $d);
         \App\Models\AuditoriaModel::log('config', 'tenant_subscription_dias_alerta', (string) $d);
 
-        return redirect()->to('config?tab=tenant_subscriptions')->with('success', 'Días de aviso de suscripción actualizados.');
+        return redirect()->to($this->tenantSubscriptionsTabUrl())->with('success', 'Días de aviso de suscripción actualizados.');
     }
 
     public function saveTenantSubscriptionPayment(): ResponseInterface
@@ -2505,7 +2594,7 @@ class Config extends SecureArea
         $upload = null;
         if ($file !== null && $file->getError() !== UPLOAD_ERR_NO_FILE) {
             if (! $file->isValid()) {
-                return redirect()->to('config?tab=tenant_subscriptions')->with('error', 'El PDF adjunto no se subió correctamente.');
+                return redirect()->to($this->tenantSubscriptionsTabUrl(1))->with('error', 'El PDF adjunto no se subió correctamente.');
             }
             $upload = $file;
         }
@@ -2515,10 +2604,10 @@ class Config extends SecureArea
         if ($result['success']) {
             \App\Models\AuditoriaModel::log('config', 'tenant_subscription_pago', (string) ($result['id'] ?? ''));
 
-            return redirect()->to('config?tab=tenant_subscriptions')->with('success', $result['message']);
+            return redirect()->to($this->tenantSubscriptionsTabUrl(1))->with('success', $result['message']);
         }
 
-        return redirect()->to('config?tab=tenant_subscriptions')->with('error', $result['message']);
+        return redirect()->to($this->tenantSubscriptionsTabUrl(1))->with('error', $result['message']);
     }
 
     public function uploadTenantSubscriptionVoucher($id): ResponseInterface
@@ -2530,10 +2619,10 @@ class Config extends SecureArea
         $payId = (int) $id;
         $file  = $this->request->getFile('voucher_pdf');
         if ($file === null || $file->getError() === UPLOAD_ERR_NO_FILE) {
-            return redirect()->to('config?tab=tenant_subscriptions')->with('error', 'Seleccione un archivo PDF.');
+            return redirect()->to($this->tenantSubscriptionsTabUrl())->with('error', 'Seleccione un archivo PDF.');
         }
         if (! $file->isValid()) {
-            return redirect()->to('config?tab=tenant_subscriptions')->with('error', 'El archivo no se subió correctamente.');
+            return redirect()->to($this->tenantSubscriptionsTabUrl())->with('error', 'El archivo no se subió correctamente.');
         }
 
         $svc    = new TenantSubscriptionService();
@@ -2541,10 +2630,31 @@ class Config extends SecureArea
         if ($result['success']) {
             \App\Models\AuditoriaModel::log('config', 'tenant_subscription_pdf_adjunto', (string) $payId);
 
-            return redirect()->to('config?tab=tenant_subscriptions')->with('success', $result['message']);
+            return redirect()->to($this->tenantSubscriptionsTabUrl())->with('success', $result['message']);
         }
 
-        return redirect()->to('config?tab=tenant_subscriptions')->with('error', $result['message']);
+        return redirect()->to($this->tenantSubscriptionsTabUrl())->with('error', $result['message']);
+    }
+
+    public function deleteTenantSubscriptionPayment($id): ResponseInterface
+    {
+        if (! $this->canManageTenants()) {
+            return redirect()->to('config')->with('error', 'No tiene permiso para eliminar pagos de suscripción.');
+        }
+
+        $payId       = (int) $id;
+        $currentPage = $this->resolveTenantSubscriptionsPage();
+        $svc         = new TenantSubscriptionService();
+        $result      = $svc->deletePayment($payId);
+        if ($result['success']) {
+            \App\Models\AuditoriaModel::log('config', 'tenant_subscription_pago_eliminar', (string) $payId);
+            $pageData    = $svc->listPaymentsForManagementPaginated($currentPage, 10);
+            $redirectPage = (int) ($pageData['pagination']['page'] ?? 1);
+
+            return redirect()->to($this->tenantSubscriptionsTabUrl($redirectPage))->with('success', $result['message']);
+        }
+
+        return redirect()->to($this->tenantSubscriptionsTabUrl())->with('error', $result['message']);
     }
 
     public function downloadTenantSubscriptionVoucher($id): ResponseInterface
@@ -2557,19 +2667,19 @@ class Config extends SecureArea
         $svc   = new TenantSubscriptionService();
         $p     = $svc->findPayment($payId);
         if (! $p) {
-            return redirect()->to('config?tab=tenant_subscriptions')->with('error', 'Comprobante no encontrado.');
+            return redirect()->to($this->tenantSubscriptionsTabUrl())->with('error', 'Comprobante no encontrado.');
         }
         $fn = (string) ($p['voucher_filename'] ?? '');
         if ($fn === '' || ! preg_match('/^[a-zA-Z0-9._-]+$/', $fn)) {
-            return redirect()->to('config?tab=tenant_subscriptions')->with('error', 'Archivo no disponible.');
+            return redirect()->to($this->tenantSubscriptionsTabUrl())->with('error', 'Archivo no disponible.');
         }
         $path = $svc->voucherPath($fn);
         if (! is_file($path) || ! is_readable($path)) {
-            return redirect()->to('config?tab=tenant_subscriptions')->with('error', 'Archivo no encontrado en disco.');
+            return redirect()->to($this->tenantSubscriptionsTabUrl())->with('error', 'Archivo no encontrado en disco.');
         }
         $binary = @file_get_contents($path);
         if ($binary === false) {
-            return redirect()->to('config?tab=tenant_subscriptions')->with('error', 'No se pudo leer el PDF.');
+            return redirect()->to($this->tenantSubscriptionsTabUrl())->with('error', 'No se pudo leer el PDF.');
         }
 
         $downloadName = $svc->buildVoucherDownloadFilename($payId);

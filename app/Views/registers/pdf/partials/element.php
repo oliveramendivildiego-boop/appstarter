@@ -437,6 +437,59 @@ switch ($type) {
             ? $pdf_footer_grid_style
             : \App\Services\ReportPdfLayoutService::normalizeFooterGridStyle([]);
         $footerLh     = max(1.0, (float) ($ftGrid['line_height'] ?? 1.35));
+        if ($isDompdf && $inFooter) {
+            $mm = is_array($pdf_margins_mm ?? null)
+                ? $pdf_margins_mm
+                : \App\Services\ReportPdfLayoutService::defaultMarginsMmStatic();
+            $pdfLayout = is_array($pdf_layout ?? null) ? $pdf_layout : [];
+            $valueLh   = max(1.0, (float) ($ts['line_height'] ?? $footerLh));
+            $pagConfig = [
+                'prefix'            => '',
+                'format'            => 'page_of_total',
+                'zone'              => 'footer',
+                'align'             => (string) ($pdf_cell_align ?? 'left'),
+                'fontSize'          => (float) ($ts['font_size_pt'] ?? 10),
+                'fontFamily'        => (string) ($ts['font_family'] ?? 'DejaVu Sans'),
+                'fontWeight'        => (string) ($ts['font_weight'] ?? 'normal'),
+                'fontStyle'         => (string) ($ts['font_style'] ?? 'normal'),
+                'color'             => (string) ($ts['font_color'] ?? '#333333'),
+                'mt'                => (float) ($mm['top'] ?? 15),
+                'mr'                => (float) ($mm['right'] ?? 15),
+                'mb'                => (float) ($mm['bottom'] ?? 15),
+                'ml'                => (float) ($mm['left'] ?? 15),
+                'footerReserveMm'   => max(0.0, (float) ($pdf_footer_reserve_mm ?? 0)),
+                'footerPrependedRowMm' => max(0.0, (float) ($pdf_footer_prepended_row_mm ?? 0)),
+                'gridColumn'        => (int) ($pdf_grid_column ?? 0),
+                'gridColumnSpan'    => max(1, (int) ($pdf_grid_column_span ?? 1)),
+                'gridRow'           => (int) ($pdf_grid_row ?? 0),
+                'gridStack'         => (int) ($pdf_grid_stack ?? 0),
+                'footerColumns'     => max(1, (int) ($pdf_footer_columns ?? 1)),
+                'footerRows'        => max(1, (int) ($pdf_footer_rows ?? 1)),
+                'footerRowGapPx'    => max(0.0, (float) ($pdf_footer_row_gap_px ?? 0)),
+                'cellPadHPx'        => max(0, (int) ($pdf_footer_cell_pad_h_px ?? 0)),
+                'lineHeight'        => $valueLh,
+                'stackOffsetPt'     => \App\Services\ReportPdfLayoutService::estimateFooterStackOffsetPt(
+                    $pdfLayout,
+                    (int) ($pdf_grid_row ?? 0),
+                    (int) ($pdf_grid_stack ?? 0),
+                ),
+                'footerPadTopPx'    => \App\Services\ReportPdfLayoutService::FOOTER_BLOCK_PAD_TOP_PX,
+                'labelStacked'      => (! $inlinePag && $showLblPag),
+                'inlineAfterLabel'  => ($inlinePag && $showLblPag),
+                'inlineLabelText'   => ($inlinePag && $showLblPag) ? $lblPag . ' ' : '',
+                'inlineLabelFontSize'   => (float) ($hgPag['label_pdf_pagination_font_size_pt'] ?? $hgPag['font_size_pt'] ?? 8),
+                'inlineLabelFontWeight' => (string) ($hgPag['label_pdf_pagination_font_weight'] ?? 'normal'),
+                'inlineLabelFontStyle'  => (string) ($hgPag['label_pdf_pagination_font_style'] ?? 'normal'),
+                'inlineLabelColor'      => (string) ($hgPag['label_pdf_pagination_text_color'] ?? '#333333'),
+                'inlineLabelFontFamily' => (string) ($hgPag['font_family'] ?? 'DejaVu Sans'),
+                'inlineLabelLineHeight' => max(1.0, (float) ($hgPag['line_height'] ?? 1.35)),
+                'inlineLabelTextTransform' => (string) ($hgPag['label_pdf_pagination_text_transform'] ?? 'none'),
+                'inlineLabelLetterSpacingEm' => (float) ($hgPag['letter_spacing_em'] ?? 0),
+                'textTransform'         => (string) ($ts['text_transform'] ?? 'none'),
+                'letterSpacingEm'       => (float) ($ts['letter_spacing_em'] ?? 0),
+            ];
+            echo '<!-- pdf-pagination:' . base64_encode(json_encode($pagConfig, JSON_UNESCAPED_UNICODE)) . ' -->';
+        }
         if ($isDompdf && ! $inFooter) {
             $mm = is_array($pdf_margins_mm ?? null)
                 ? $pdf_margins_mm
@@ -475,7 +528,7 @@ switch ($type) {
         ?>
                 <div class="<?= esc($pagPieceClass, 'attr') ?>">
                     <?php if ($inlinePag && $showLblPag): ?>
-                    <p style="margin:0;<?= esc($pagLineStyle, 'attr') ?>"><span style="<?= esc($stPagLbl, 'attr') ?>"><?= esc($lblPag) ?></span> <span id="<?= esc($pagUid, 'attr') ?>" class="<?= esc($pagNumClass, 'attr') ?>"<?= ($inFooter && $isDompdf) ? '' : ' style="' . esc($stInst, 'attr') . '"' ?> data-prefix="" data-total="<?= esc($dataTotalAttr, 'attr') ?>"></span></p>
+                    <p style="margin:0;<?= esc($pagLineStyle, 'attr') ?>"><span class="pdf-ft-pagination-label" style="<?= esc($stPagLbl, 'attr') ?>"><?= esc($lblPag) ?></span> <span id="<?= esc($pagUid, 'attr') ?>" class="<?= esc($pagNumClass, 'attr') ?>" style="<?= esc($stInst, 'attr') ?>" data-prefix="" data-total="<?= esc($dataTotalAttr, 'attr') ?>"></span></p>
                     <?php elseif ($showLblPag): ?>
                     <p style="margin:0;"><span style="<?= esc($stPagLbl, 'attr') ?>"><?= esc($lblPag) ?></span></p>
                     <p style="margin:0;<?= esc($pagLineStyle, 'attr') ?>"><span id="<?= esc($pagUid, 'attr') ?>" class="<?= esc($pagNumClass, 'attr') ?>"<?= ($inFooter && $isDompdf) ? '' : ' style="' . esc($stInst, 'attr') . '"' ?> data-prefix="" data-total="<?= esc($dataTotalAttr, 'attr') ?>"></span></p>

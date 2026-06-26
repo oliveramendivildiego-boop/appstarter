@@ -166,6 +166,7 @@ $routes->get('config/sobres/media/(:num)/(:segment)', 'EnvelopeTemplates::media/
 $routes->get('config/backup', 'Config::backup');
 $routes->get('config/backupTenants', 'Config::backupTenants');
 $routes->get('cron/tenant-backup-schedule', 'Cron::tenantBackupSchedule');
+$routes->get('cron/writable-cache-purge', 'Cron::writableCachePurge');
 $routes->get('config/opciones', 'Config::opciones');
 $routes->get('config/exportOpciones', 'Config::exportOpciones');
 $routes->post('config/save', 'Config::save');
@@ -193,6 +194,8 @@ $routes->post('config/transformmetodos', 'Config::transformMetodos');
 $routes->post('config/savevalortabla', 'Config::saveValorTabla');
 $routes->post('config/savetenant', 'Config::saveTenant');
 $routes->post('config/saveTenantBackupSchedule', 'Config::saveTenantBackupSchedule');
+$routes->post('config/saveWritableCacheSchedule', 'Config::saveWritableCacheSchedule');
+$routes->post('config/clearWritableCache', 'Config::clearWritableCache');
 $routes->post('config/closeAllSessions', 'Config::closeAllSessions');
 $routes->post('config/testSin', 'Config::testSin');
 $routes->post('config/getActiveSessions', 'Config::getActiveSessions');
@@ -227,6 +230,7 @@ $routes->post('config/saveTenantHomeBroadcast', 'Config::saveTenantHomeBroadcast
 $routes->post('config/saveTenantSubscriptionAlertDays', 'Config::saveTenantSubscriptionAlertDays');
 $routes->post('config/saveTenantSubscriptionPayment', 'Config::saveTenantSubscriptionPayment');
 $routes->post('config/uploadTenantSubscriptionVoucher/(:num)', 'Config::uploadTenantSubscriptionVoucher/$1');
+$routes->get('config/deleteTenantSubscriptionPayment/(:num)', 'Config::deleteTenantSubscriptionPayment/$1');
 $routes->get('config/tenantSubscriptionVoucher/(:num)', 'Config::downloadTenantSubscriptionVoucher/$1');
 $routes->post('config/provisiontenant/(:num)', 'Config::provisionTenant/$1');
 $routes->post('config/migrateCurrentDatabase', 'Config::migrateCurrentDatabase');
