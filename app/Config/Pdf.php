@@ -136,7 +136,24 @@ class Pdf extends BaseConfig
     }
 
     /**
-     * Ruta por defecto si no hay variable de entorno (desarrollo Windows / Linux típico).
+     * Busca un ejecutable Chromium/Chrome instalado en Linux (solo rutas que existen).
+     *
+     * @return list<string>
+     */
+    public static function linuxChromeCandidatePaths(): array
+    {
+        return [
+            '/usr/bin/chromium-browser',
+            '/usr/bin/chromium',
+            '/usr/bin/google-chrome-stable',
+            '/usr/bin/google-chrome',
+            '/snap/bin/chromium',
+            '/opt/google/chrome/google-chrome',
+        ];
+    }
+
+    /**
+     * Ruta por defecto si no hay variable de entorno (solo si el binario existe).
      */
     public static function defaultChromeExecutableForPlatform(): string
     {
@@ -144,19 +161,13 @@ class Pdf extends BaseConfig
             return 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe';
         }
 
-        foreach ([
-            '/usr/bin/chromium-browser',
-            '/usr/bin/chromium',
-            '/usr/bin/google-chrome-stable',
-            '/usr/bin/google-chrome',
-            '/snap/bin/chromium',
-        ] as $path) {
+        foreach (self::linuxChromeCandidatePaths() as $path) {
             if (@is_file($path) || @is_executable($path)) {
                 return $path;
             }
         }
 
-        return '/usr/bin/chromium-browser';
+        return '';
     }
 
     private static function isWindowsPlatform(): bool

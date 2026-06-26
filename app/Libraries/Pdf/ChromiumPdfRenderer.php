@@ -199,6 +199,8 @@ class ChromiumPdfRenderer implements PdfRendererInterface
             $configured = $this->normalizeExecutablePath(PdfConfig::defaultChromeExecutableForPlatform());
         }
         if ($configured !== '') {
+            $this->assertExecutableExists($configured);
+
             return $configured;
         }
 
@@ -245,11 +247,29 @@ class ChromiumPdfRenderer implements PdfRendererInterface
                 . '(config actual: ' . ($configured !== '' ? $configured : 'vacío') . ').';
         }
 
-        return $hint . ' Instale Chromium en el servidor (apt install chromium-browser) y en .env: '
-            . 'CHROME_EXECUTABLE_PATH=/usr/bin/chromium-browser '
+        return $hint . ' Instale Chromium en el servidor: '
+            . 'sudo bash writable/scripts/install_chromium_linux.sh '
+            . 'Luego en .env: CHROME_EXECUTABLE_PATH=/usr/bin/chromium-browser '
             . '(config: ' . ($configured !== '' ? $configured : 'vacío')
             . ', open_basedir: ' . ($openBasedir !== '' ? $openBasedir : 'no')
             . ', shell_exec: ' . ($shellExec ? 'sí' : 'no') . ').';
+    }
+
+    private function assertExecutableExists(string $path): void
+    {
+        if (@is_file($path) || @is_executable($path)) {
+            return;
+        }
+
+        if ($this->isWindows() && preg_match('/\.exe$/i', $path)) {
+            return;
+        }
+
+        $install = ' Ejecute en el servidor: sudo bash writable/scripts/install_chromium_linux.sh';
+
+        throw new RuntimeException(
+            'Chromium no está instalado en: ' . $path . '.' . $install,
+        );
     }
 
     private function isWindows(): bool
@@ -307,15 +327,7 @@ class ChromiumPdfRenderer implements PdfRendererInterface
     private function browserExecutableCandidates(): array
     {
         if (! $this->isWindows()) {
-            return [
-                '/usr/bin/google-chrome-stable',
-                '/usr/bin/google-chrome',
-                '/opt/google/chrome/google-chrome',
-                '/usr/bin/chromium-browser',
-                '/usr/bin/chromium',
-                '/usr/local/bin/chromium',
-                '/snap/bin/chromium',
-            ];
+            return PdfConfig::linuxChromeCandidatePaths();
         }
 
         $pf    = $this->windowsEnvPath('ProgramFiles', 'PROGRAMFILES');

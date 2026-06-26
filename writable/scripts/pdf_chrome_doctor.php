@@ -2,7 +2,7 @@
 declare(strict_types=1);
 
 /**
- * Diagnóstico PDF/Chromium en el servidor. Ejecutar: php writable/scripts/pdf_chrome_doctor.php
+ * Diagnóstico PDF/Chromium. Ejecutar: php writable/scripts/pdf_chrome_doctor.php
  */
 $_SERVER['CI_ENVIRONMENT'] = $_SERVER['CI_ENVIRONMENT'] ?? 'development';
 define('ENVIRONMENT', $_SERVER['CI_ENVIRONMENT']);
@@ -25,6 +25,17 @@ echo 'env CHROME_EXECUTABLE_PATH=' . ($fromEnv !== '' ? $fromEnv : '(vacío)') .
 echo 'config Pdf.executablePath=' . ($config !== '' ? $config : '(vacío)') . PHP_EOL;
 echo 'default plataforma=' . ($default !== '' ? $default : '(vacío)') . PHP_EOL;
 
+$checkPath = $config !== '' ? $config : ($fromEnv !== '' ? $fromEnv : $default);
+if ($checkPath !== '' && ! @is_file($checkPath) && ! @is_executable($checkPath)) {
+    echo PHP_EOL;
+    echo 'ERROR: El ejecutable no existe: ' . $checkPath . PHP_EOL;
+    if (PHP_OS_FAMILY === 'Linux') {
+        echo 'Instale Chromium en el servidor:' . PHP_EOL;
+        echo '  sudo bash writable/scripts/install_chromium_linux.sh --write-env' . PHP_EOL;
+    }
+    exit(1);
+}
+
 try {
     $r   = new ReflectionClass(\App\Libraries\Pdf\ChromiumPdfRenderer::class);
     $m   = $r->getMethod('resolveExecutable');
@@ -33,7 +44,10 @@ try {
     echo 'resolveExecutable OK: ' . $exe . PHP_EOL;
 } catch (Throwable $e) {
     echo 'resolveExecutable ERROR: ' . $e->getMessage() . PHP_EOL;
+    if (PHP_OS_FAMILY === 'Linux') {
+        echo 'Instale: sudo bash writable/scripts/install_chromium_linux.sh --write-env' . PHP_EOL;
+    }
     exit(1);
 }
 
-echo 'Listo. Si resolveExecutable OK pero el PDF falla, revise proc_open y permisos de writable/cache.' . PHP_EOL;
+echo 'Listo. Abra un reporte PDF en cualquier navegador para probar.' . PHP_EOL;
