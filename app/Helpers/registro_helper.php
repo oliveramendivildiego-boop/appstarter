@@ -230,6 +230,39 @@ if (! function_exists('registro_opcion_es_select')) {
     }
 }
 
+if (! function_exists('registro_form_field_class')) {
+    /** Clases base de cada tarjeta de campo en captura de resultados. */
+    function registro_form_field_class(): string
+    {
+        return 'register-form-field register-form-field--filled register-form-field--valid';
+    }
+}
+
+if (! function_exists('registro_form_input_wrap_open')) {
+    /** Contenedor con borde para inputs en captura de resultados (registers/view). */
+    function registro_form_input_wrap_open(string $umedida = '', bool $isSelect = false): void
+    {
+        $classes = 'register-form-input-wrap';
+        if ($isSelect) {
+            $classes .= ' register-form-input-wrap--select';
+        }
+        if (trim($umedida) !== '') {
+            $classes .= ' register-form-input-wrap--unit';
+        }
+        echo '<div class="' . esc($classes) . '">';
+    }
+}
+
+if (! function_exists('registro_form_input_wrap_close')) {
+    function registro_form_input_wrap_close(string $umedida = ''): void
+    {
+        if (trim($umedida) !== '') {
+            echo '<span class="register-form-unit" aria-hidden="true">' . esc(trim($umedida)) . '</span>';
+        }
+        echo '</div>';
+    }
+}
+
 if (! function_exists('registro_personalizado_texto_fijo_html')) {
     /**
      * Muestra texto fijo de celda personalizada (plano o HTML enriquecido).
@@ -726,6 +759,33 @@ if (! function_exists('registro_interpretacion_referencial_clase_resultado')) {
     }
 }
 
+if (! function_exists('registro_interpretacion_pdf_td_style_fragment')) {
+    /**
+     * Color inline en celdas PDF: mPDF no siempre aplica clases de color del CSS de plantilla.
+     *
+     * @return string Fragmento CSS para style="" (sin comillas)
+     */
+    function registro_interpretacion_pdf_td_style_fragment(string $class, bool $forPdf = true): string
+    {
+        if (! $forPdf) {
+            return '';
+        }
+
+        $haystack = ' ' . preg_replace('/\s+/', ' ', trim($class)) . ' ';
+        if (str_contains($haystack, ' report-interpretacion-alto ') || str_contains($haystack, ' text-danger ')) {
+            return 'color:#dc3545;font-weight:700';
+        }
+        if (str_contains($haystack, ' report-interpretacion-bajo ')) {
+            return 'color:#0d6efd;font-weight:700';
+        }
+        if (str_contains($haystack, ' out-range ')) {
+            return 'color:#cc0000;font-weight:700';
+        }
+
+        return '';
+    }
+}
+
 if (! function_exists('registro_interpretacion_semaforo_icon_html')) {
     /**
      * Icono del modo semáforo: Font Awesome en web; Unicode en PDF (Dompdf no carga FA).
@@ -740,9 +800,9 @@ if (! function_exists('registro_interpretacion_semaforo_icon_html')) {
 
         if ($forPdf) {
             return match ($nivel) {
-                'alto'   => '<span class="report-interpretacion-icon report-interpretacion-icon-alto" aria-hidden="true">&#9650;</span>',
-                'bajo'   => '<span class="report-interpretacion-icon report-interpretacion-icon-bajo" aria-hidden="true">&#9660;</span>',
-                'normal' => '<span class="report-interpretacion-icon report-interpretacion-icon-normal" aria-hidden="true">&#8722;</span>',
+                'alto'   => '<span class="report-interpretacion-icon report-interpretacion-icon-alto" style="color:#dc3545;font-weight:700" aria-hidden="true">&#9650;</span>',
+                'bajo'   => '<span class="report-interpretacion-icon report-interpretacion-icon-bajo" style="color:#0d6efd;font-weight:700" aria-hidden="true">&#9660;</span>',
+                'normal' => '<span class="report-interpretacion-icon report-interpretacion-icon-normal" style="color:#212529;font-weight:700" aria-hidden="true">&#8722;</span>',
                 default  => '',
             };
         }
@@ -782,6 +842,29 @@ if (! function_exists('registro_origen_prueba_label')) {
     function registro_origen_prueba_label(object|array|null $row): string
     {
         return registro_origen_prueba_es_derivacion($row) ? 'Derivación' : 'Propio';
+    }
+}
+
+if (! function_exists('registro_form_columnas_normalizar')) {
+    function registro_form_columnas_normalizar(int|string|null $raw): int
+    {
+        return \App\Services\ConfigService::normalizeRegistroFormColumnas($raw);
+    }
+}
+
+if (! function_exists('registro_form_columnas_clase_bootstrap')) {
+    /**
+     * Clases Bootstrap para cada campo del formulario de captura de resultados.
+     */
+    function registro_form_columnas_clase_bootstrap(int|string|null $columnas): string
+    {
+        return match (registro_form_columnas_normalizar($columnas)) {
+            1       => 'col-12 register-form-col-single',
+            2       => 'col-12 col-md-6',
+            3       => 'col-12 col-md-6 col-lg-4',
+            4       => 'col-12 col-sm-6 col-lg-3',
+            default => 'col-12 col-md-6 col-lg-4',
+        };
     }
 }
 

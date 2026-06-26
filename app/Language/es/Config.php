@@ -68,6 +68,8 @@ return [
     'config_print_after_sale'=> 'Imprimir después de venta',
     'config_decimales_sugerencia' => 'Decimales en sugerencias (registros)',
     'config_decimales_sugerencia_help' => 'Cantidad de decimales al mostrar el valor calculado en las sugerencias del formulario de registro (0-10).',
+    'config_registro_form_columnas' => 'Columnas en captura de resultados',
+    'config_registro_form_columnas_help' => 'Cantidad de columnas al capturar resultados en Editar registro (/registers/view). En pantallas pequeñas siempre se apilan en una columna.',
     'config_label_sin_doctor'      => 'Sin Doctor',
     'config_label_sin_doctor_help' => 'Texto mostrado en la lista de órdenes cuando no hay médico asignado.',
     'config_saved'          => 'Configuración guardada correctamente',

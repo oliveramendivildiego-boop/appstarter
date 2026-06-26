@@ -1,8 +1,6 @@
 <?php
 declare(strict_types=1);
-
-$registroId = isset($argv[1]) ? (int) $argv[1] : 0;
-
+putenv('CI_ENVIRONMENT=development');
 $_SERVER['CI_ENVIRONMENT'] = 'development';
 define('ENVIRONMENT', 'development');
 define('FCPATH', dirname(__DIR__, 2) . DIRECTORY_SEPARATOR . 'public' . DIRECTORY_SEPARATOR);
@@ -12,22 +10,13 @@ $paths = new Config\Paths();
 require $paths->systemDirectory . '/Boot.php';
 CodeIgniter\Boot::bootConsole($paths);
 
-$rs = new \App\Services\RegisterService(
-    new \App\Models\RegisterModel(),
-    new \App\Models\AppConfigModel(),
-);
-
-$dir = WRITEPATH . 'cache' . DIRECTORY_SEPARATOR . 'report_pdf_preview';
-
-if ($registroId > 0) {
-    $rs->clearReportPdfPreviewCache($registroId);
-    echo "Caché PDF limpiada para registro {$registroId}\n";
-} elseif (is_dir($dir)) {
-    foreach (glob($dir . DIRECTORY_SEPARATOR . 'registro_*.pdf*') ?: [] as $file) {
-        @unlink($file);
-        echo 'Eliminado: ' . basename($file) . "\n";
+$id = (int) ($argv[1] ?? 308);
+(new \App\Services\Report\ReportPdfHtmlCacheService())->clear($id);
+$previewDir = WRITEPATH . 'cache' . DIRECTORY_SEPARATOR . 'report_pdf_preview';
+foreach (['.pdf', '.pdf.meta'] as $ext) {
+    $p = $previewDir . DIRECTORY_SEPARATOR . 'registro_' . $id . $ext;
+    if (is_file($p)) {
+        @unlink($p);
     }
-    echo "Caché PDF de reportes vaciada.\n";
-} else {
-    echo "No existe directorio de caché.\n";
 }
+echo "Cleared report_pdf_html + report_pdf_preview cache for registro {$id}\n";

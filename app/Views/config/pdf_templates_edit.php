@@ -61,6 +61,11 @@ $ch = \App\Services\ReportPdfLayoutService::normalizeCardHeaderStyle($ps['card_h
 $ns = \App\Services\ReportPdfLayoutService::normalizeNotesStyle($ps['notes'] ?? []);
 $lf = \App\Services\ReportPdfLayoutService::normalizeLabFirmasStyle($ps['lab_firmas'] ?? []);
 $rs = \App\Services\ReportPdfLayoutService::normalizeResultsTableStyle($ps['results_table'] ?? []);
+$rsRaw = is_array($ps['results_table'] ?? null) ? $ps['results_table'] : [];
+$segFontFamily = array_key_exists('segment_font_family', $rsRaw) ? (string) $rs['segment_font_family'] : (string) $ch['font_family'];
+$segFontSize = array_key_exists('segment_font_size_pt', $rsRaw) ? (float) $rs['segment_font_size_pt'] : (float) $ch['font_size_pt'];
+$segFontWeight = array_key_exists('segment_font_weight', $rsRaw) ? (string) $rs['segment_font_weight'] : (string) $ch['font_weight'];
+$titleTypo = \App\Services\ReportPdfLayoutService::resolveGrupoCabeceraTitleTypography($rs, $rsRaw);
 $hs = \App\Services\ReportPdfLayoutService::normalizeHeaderSectionStyle($ps['header_section'] ?? []);
 $hg = \App\Services\ReportPdfLayoutService::normalizeHeaderGridStyle($ps['header_grid'] ?? []);
 $pd = \App\Services\ReportPdfLayoutService::normalizePatientDoctorGridStyle($ps['patient_doctor_grid'] ?? []);
@@ -662,7 +667,7 @@ if (! in_array($configTab, $pdfConfigTabs, true)) {
 <div class="card shadow-sm mb-4 pdf-config-panel" data-config-panels="results" id="pdf_results_config_card">
     <div class="card-header bg-info-subtle border">
         <h5 class="mb-1"><i class="fa-solid fa-table me-1"></i> Resultados en el PDF</h5>
-        <p class="small text-muted mb-0">A la derecha verá una <strong>vista previa en tiempo real</strong>. Los colores de la tabla están en la sección <strong>1. Colores de la tabla principal</strong>; el título gris sobre cada análisis en la <strong>4. Títulos de sección</strong>.</p>
+        <p class="small text-muted mb-0">A la derecha verá una <strong>vista previa en tiempo real</strong>. Los colores de la tabla están en la sección <strong>1. Colores de la tabla principal</strong>; el título gris sobre cada análisis en la <strong>4. Título de cada análisis</strong>; el nombre del análisis (p. ej. Hemograma completo) en la <strong>7. Nombre del análisis</strong>.</p>
     </div>
     <div class="card-body">
         <div class="row g-4 align-items-start">
@@ -758,7 +763,7 @@ if (! in_array($configTab, $pdfConfigTabs, true)) {
                 <h2 class="accordion-header m-0">
                     <button class="accordion-button collapsed py-2" type="button" data-bs-toggle="collapse" data-bs-target="#pdf_rs_panel_segment" aria-expanded="false" aria-controls="pdf_rs_panel_segment">
                         <span class="fw-semibold">4. Título de cada análisis</span>
-                        <span class="small text-muted ms-2 d-none d-md-inline">Barra «GLUCOSA» — se ve en la vista previa</span>
+                        <span class="small text-muted ms-2 d-none d-md-inline">Barra «GLUCOSA» — fuente, tamaño y grosor en vista previa</span>
                     </button>
                 </h2>
                 <div id="pdf_rs_panel_segment" class="accordion-collapse collapse" data-bs-parent="#accordion_pdf_results">
@@ -774,6 +779,9 @@ if (! in_array($configTab, $pdfConfigTabs, true)) {
             <div class="col-6 col-md-3"><label class="form-label small" for="rs_segment_border_color">Color borde</label><input type="color" class="form-control form-control-color" id="rs_segment_border_color" value="<?= esc($rs['segment_border_color'], 'attr') ?>"></div>
             <div class="col-6 col-md-2"><label class="form-label small" for="rs_segment_border_width">Ancho borde (px)</label><input type="number" class="form-control" id="rs_segment_border_width" min="0" max="4" step="1" value="<?= esc((string) $rs['segment_border_width_px'], 'attr') ?>"></div>
             <div class="col-6 col-md-2"><label class="form-label small" for="rs_segment_shadow">Sombra</label><select class="form-select" id="rs_segment_shadow"><?php foreach (['none' => 'Sin sombra', 'soft' => 'Suave', 'medium' => 'Media', 'strong' => 'Fuerte'] as $k => $v): ?><option value="<?= esc($k, 'attr') ?>" <?= $rs['segment_shadow'] === $k ? 'selected' : '' ?>><?= esc($v) ?></option><?php endforeach; ?></select></div>
+            <div class="col-12 col-md-3"><label class="form-label small" for="rs_segment_font_family">Fuente del título</label><select class="form-select" id="rs_segment_font_family"><?php foreach (['DejaVu Sans', 'Helvetica', 'Arial', 'Times New Roman', 'Courier New'] as $ff): ?><option value="<?= esc($ff, 'attr') ?>" <?= $segFontFamily === $ff ? 'selected' : '' ?>><?= esc($ff) ?></option><?php endforeach; ?></select></div>
+            <div class="col-6 col-md-2"><label class="form-label small" for="rs_segment_font_size">Tamaño (pt)</label><input type="number" class="form-control" id="rs_segment_font_size" min="7" max="20" step="0.5" value="<?= esc((string) $segFontSize, 'attr') ?>"></div>
+            <div class="col-6 col-md-2"><label class="form-label small" for="rs_segment_font_weight">Grosor</label><select class="form-select" id="rs_segment_font_weight"><?php foreach (['normal', 'bold', '400', '500', '600', '700', '800'] as $w): ?><option value="<?= esc($w, 'attr') ?>" <?= $segFontWeight === $w ? 'selected' : '' ?>><?= esc($w) ?></option><?php endforeach; ?></select></div>
             <div class="col-6 col-md-3">
                 <label class="form-label small" for="rs_segment_padding_top_px" title="Espacio entre el borde superior de la fila y el texto">Espacio arriba del texto (px)</label>
                 <input type="number" class="form-control" id="rs_segment_padding_top_px" min="0" max="40" step="1" value="<?= esc((string) (int) ($rs['segment_padding_top_px'] ?? 6), 'attr') ?>">
@@ -930,27 +938,44 @@ if (! in_array($configTab, $pdfConfigTabs, true)) {
 
             <div class="accordion-item border rounded mb-2 overflow-hidden">
                 <h2 class="accordion-header m-0">
-                    <button class="accordion-button collapsed py-2" type="button" data-bs-toggle="collapse" data-bs-target="#pdf_rs_panel_grupo_cabecera_spacing" aria-expanded="false" aria-controls="pdf_rs_panel_grupo_cabecera_spacing">
-                        <span class="fw-semibold">7. Separador de análisis</span>
-                        <span class="small text-muted ms-2 d-none d-md-inline">Espacio vertical del nombre, tipo de muestra y método</span>
+                    <button class="accordion-button collapsed py-2" type="button" data-bs-toggle="collapse" data-bs-target="#pdf_rs_panel_grupo_title_style" aria-expanded="false" aria-controls="pdf_rs_panel_grupo_title_style">
+                        <span class="fw-semibold">7. Nombre del análisis</span>
+                        <span class="small text-muted ms-2 d-none d-md-inline">«Hemograma completo» — tipografía y espaciado</span>
                     </button>
                 </h2>
-                <div id="pdf_rs_panel_grupo_cabecera_spacing" class="accordion-collapse collapse" data-bs-parent="#accordion_pdf_results">
+                <div id="pdf_rs_panel_grupo_title_style" class="accordion-collapse collapse" data-bs-parent="#accordion_pdf_results">
                     <div class="accordion-body pt-0">
-                        <p class="small text-muted mb-3">Controla el espacio arriba y abajo de cada línea en <code>.report-pdf-grupo-cabecera</code> (nombre del análisis, tipo de muestra y método). Se refleja en el PDF de <code>/registers/viewreport</code>, impresión y vista previa.</p>
-                        <div class="small fw-semibold text-secondary mb-2">Nombre del análisis</div>
-                        <div class="row g-3 mb-2">
+                        <p class="small text-muted mb-3">Estilo de <code>.group-title</code> en la cabecera de cada prueba (p. ej. «Hemograma completo»). Se refleja en la vista previa, en <code>/registers/viewreport</code> y en el PDF.</p>
+                        <div class="row g-3">
+                            <div class="col-12 col-md-3"><label class="form-label small" for="rs_grupo_cabecera_title_font_family">Fuente</label><select class="form-select" id="rs_grupo_cabecera_title_font_family"><?php foreach (['DejaVu Sans', 'Helvetica', 'Arial', 'Times New Roman', 'Courier New'] as $ff): ?><option value="<?= esc($ff, 'attr') ?>" <?= ($titleTypo['font_family'] ?? '') === $ff ? 'selected' : '' ?>><?= esc($ff) ?></option><?php endforeach; ?></select></div>
+                            <div class="col-6 col-md-2"><label class="form-label small" for="rs_grupo_cabecera_title_font_size">Tamaño (pt)</label><input type="number" class="form-control" id="rs_grupo_cabecera_title_font_size" min="7" max="20" step="0.5" value="<?= esc((string) ($titleTypo['font_size_pt'] ?? 9), 'attr') ?>"></div>
+                            <div class="col-6 col-md-2"><label class="form-label small" for="rs_grupo_cabecera_title_font_weight">Grosor</label><select class="form-select" id="rs_grupo_cabecera_title_font_weight"><?php foreach (['normal', 'bold', '400', '500', '600', '700', '800'] as $w): ?><option value="<?= esc($w, 'attr') ?>" <?= ($titleTypo['font_weight'] ?? '') === $w ? 'selected' : '' ?>><?= esc($w) ?></option><?php endforeach; ?></select></div>
+                            <div class="col-6 col-md-3"><label class="form-label small" for="rs_grupo_cabecera_title_text_color">Color de la letra</label><input type="color" class="form-control form-control-color" id="rs_grupo_cabecera_title_text_color" value="<?= esc($titleTypo['text_color'] ?? '#333333', 'attr') ?>"></div>
+                            <div class="col-6 col-md-2"><label class="form-label small" for="rs_grupo_cabecera_title_text_shadow">Sombra</label><select class="form-select" id="rs_grupo_cabecera_title_text_shadow"><?php foreach (['none' => 'Sin sombra', 'soft' => 'Suave', 'medium' => 'Media', 'strong' => 'Fuerte'] as $k => $v): ?><option value="<?= esc($k, 'attr') ?>" <?= ($titleTypo['text_shadow'] ?? 'none') === $k ? 'selected' : '' ?>><?= esc($v) ?></option><?php endforeach; ?></select></div>
                             <div class="col-6 col-md-3">
-                                <label class="form-label small" for="rs_grupo_cabecera_title_margin_top_px">Espacio arriba (px)</label>
+                                <label class="form-label small" for="rs_grupo_cabecera_title_margin_top_px">Espacio arriba del texto (px)</label>
                                 <input type="number" class="form-control" id="rs_grupo_cabecera_title_margin_top_px" min="0" max="40" step="1" value="<?= esc((string) (int) ($rs['grupo_cabecera_title_margin_top_px'] ?? 0), 'attr') ?>">
                                 <div class="form-text">Si es 0, el primer análisis del reporte usa el espacio entre grupos (sección 3).</div>
                             </div>
                             <div class="col-6 col-md-3">
-                                <label class="form-label small" for="rs_grupo_cabecera_title_margin_bottom_px">Espacio abajo (px)</label>
+                                <label class="form-label small" for="rs_grupo_cabecera_title_margin_bottom_px">Espacio abajo del texto (px)</label>
                                 <input type="number" class="form-control" id="rs_grupo_cabecera_title_margin_bottom_px" min="0" max="40" step="1" value="<?= esc((string) (int) ($rs['grupo_cabecera_title_margin_bottom_px'] ?? 6), 'attr') ?>">
                             </div>
                         </div>
-                        <div class="small fw-semibold text-secondary mb-2">Tipo de muestra</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="accordion-item border rounded mb-2 overflow-hidden">
+                <h2 class="accordion-header m-0">
+                    <button class="accordion-button collapsed py-2" type="button" data-bs-toggle="collapse" data-bs-target="#pdf_rs_panel_grupo_cabecera_spacing" aria-expanded="false" aria-controls="pdf_rs_panel_grupo_cabecera_spacing">
+                        <span class="fw-semibold">8. Espaciado tipo de muestra y método</span>
+                        <span class="small text-muted ms-2 d-none d-md-inline">Espacio vertical debajo del nombre del análisis</span>
+                    </button>
+                </h2>
+                <div id="pdf_rs_panel_grupo_cabecera_spacing" class="accordion-collapse collapse" data-bs-parent="#accordion_pdf_results">
+                    <div class="accordion-body pt-0">
+                        <p class="small text-muted mb-3">Controla el espacio arriba y abajo de <strong>tipo de muestra</strong> y <strong>método</strong> en <code>.report-pdf-grupo-cabecera</code>. El nombre del análisis se configura en la sección anterior.</p>
                         <div class="row g-3 mb-2">
                             <div class="col-6 col-md-3">
                                 <label class="form-label small" for="rs_grupo_cabecera_tipo_muestra_margin_top_px">Espacio arriba (px)</label>
@@ -1755,6 +1780,12 @@ document.addEventListener('DOMContentLoaded', function() {
         soft: '0 1px 2px rgba(0,0,0,0.18)',
         medium: '0 1.5px 3px rgba(0,0,0,0.26)',
         strong: '0 2px 5px rgba(0,0,0,0.34)'
+    };
+    var PDF_TEXT_SHADOW_MAP = {
+        none: 'none',
+        soft: '0.4px 0.4px 1px rgba(0,0,0,0.28)',
+        medium: '0.7px 0.7px 1.4px rgba(0,0,0,0.35)',
+        strong: '1px 1px 2px rgba(0,0,0,0.45)'
     };
     var initialConfigTab = <?= json_encode($configTab, JSON_UNESCAPED_UNICODE) ?>;
     function csvHasToken(csv, token) {
@@ -4540,6 +4571,9 @@ document.addEventListener('DOMContentLoaded', function() {
                 segment_shadow: pickAllowedDomId('rs_segment_shadow', 'segment_shadows', 'none'),
                 segment_padding_top_px: Math.round(pickNum('rs_segment_padding_top_px', 0, 40, 6)),
                 segment_padding_bottom_px: Math.round(pickNum('rs_segment_padding_bottom_px', 0, 40, 6)),
+                segment_font_family: pickAllowedDomId('rs_segment_font_family', 'font_families', 'DejaVu Sans'),
+                segment_font_size_pt: pickNum('rs_segment_font_size', 7, 20, 10),
+                segment_font_weight: pickAllowedDomId('rs_segment_font_weight', 'font_weights', '700'),
                 font_family: pickAllowedDomId('rs_font_family', 'font_families', 'DejaVu Sans'),
                 font_size_pt: pickNum('rs_font_size', 7, 20, 9),
                 font_weight: pickAllowedDomId('rs_font_weight', 'font_weights', 'normal'),
@@ -4585,6 +4619,11 @@ document.addEventListener('DOMContentLoaded', function() {
                 grupo_cabecera_show_metodo: !!(document.getElementById('rs_grupo_cabecera_show_metodo') && document.getElementById('rs_grupo_cabecera_show_metodo').checked),
                 grupo_cabecera_title_margin_top_px: Math.round(pickNum('rs_grupo_cabecera_title_margin_top_px', 0, 40, 0)),
                 grupo_cabecera_title_margin_bottom_px: Math.round(pickNum('rs_grupo_cabecera_title_margin_bottom_px', 0, 40, 6)),
+                grupo_cabecera_title_font_family: pickAllowedDomId('rs_grupo_cabecera_title_font_family', 'font_families', 'DejaVu Sans'),
+                grupo_cabecera_title_font_size_pt: pickNum('rs_grupo_cabecera_title_font_size', 7, 20, 9),
+                grupo_cabecera_title_font_weight: pickAllowedDomId('rs_grupo_cabecera_title_font_weight', 'font_weights', 'normal'),
+                grupo_cabecera_title_text_color: pickHex('rs_grupo_cabecera_title_text_color', '#333333'),
+                grupo_cabecera_title_text_shadow: pickAllowedDomId('rs_grupo_cabecera_title_text_shadow', 'text_shadows', 'none'),
                 grupo_cabecera_tipo_muestra_margin_top_px: Math.round(pickNum('rs_grupo_cabecera_tipo_muestra_margin_top_px', 0, 40, 0)),
                 grupo_cabecera_tipo_muestra_margin_bottom_px: Math.round(pickNum('rs_grupo_cabecera_tipo_muestra_margin_bottom_px', 0, 40, 10)),
                 grupo_cabecera_metodo_margin_top_px: Math.round(pickNum('rs_grupo_cabecera_metodo_margin_top_px', 0, 40, 0)),
@@ -4646,6 +4685,9 @@ document.addEventListener('DOMContentLoaded', function() {
             '--pdf-results-segment-shadow': PDF_SEG_SHADOW_MAP[rs.segment_shadow] || 'none',
             '--pdf-results-segment-padding-top': (parseInt(rs.segment_padding_top_px, 10) || 6) + 'px',
             '--pdf-results-segment-padding-bottom': (parseInt(rs.segment_padding_bottom_px, 10) || 6) + 'px',
+            '--pdf-results-segment-font-family': '"' + (rs.segment_font_family || 'DejaVu Sans') + '"',
+            '--pdf-results-segment-font-size': (rs.segment_font_size_pt || 10) + 'pt',
+            '--pdf-results-segment-font-weight': rs.segment_font_weight || '700',
             '--pdf-results-font-family': '"' + (rs.font_family || 'DejaVu Sans') + '"',
             '--pdf-results-font-size': (rs.font_size_pt || 9) + 'pt',
             '--pdf-results-font-weight': rs.font_weight || 'normal',
@@ -4656,10 +4698,16 @@ document.addEventListener('DOMContentLoaded', function() {
             '--pdf-results-table-margin-top': (parseInt(rs.table_margin_top_px, 10) || 15) + 'px',
             '--pdf-results-table-margin-bottom': (parseInt(rs.table_margin_bottom_px, 10) || 15) + 'px',
             '--pdf-results-grupo-gap': (parseInt(rs.grupo_prueba_gap_px, 10) || 10) + 'px',
+            '--pdf-results-subgrupo-gap': (parseInt(rs.subgrupo_prueba_gap_px, 10) || 18) + 'px',
             '--pdf-grupo-area-separator-margin-top': (parseInt(rs.grupo_area_separator_margin_top_px, 10) || 10) + 'px',
             '--pdf-grupo-area-separator-margin-bottom': (parseInt(rs.grupo_area_separator_margin_bottom_px, 10) || 10) + 'px',
             '--pdf-grupo-cabecera-title-margin-top': (parseInt(rs.grupo_cabecera_title_margin_top_px, 10) || 0) + 'px',
             '--pdf-grupo-cabecera-title-margin-bottom': (parseInt(rs.grupo_cabecera_title_margin_bottom_px, 10) || 6) + 'px',
+            '--pdf-grupo-cabecera-title-font-family': '"' + (rs.grupo_cabecera_title_font_family || rs.font_family || 'DejaVu Sans') + '"',
+            '--pdf-grupo-cabecera-title-font-size': (rs.grupo_cabecera_title_font_size_pt || rs.font_size_pt || 9) + 'pt',
+            '--pdf-grupo-cabecera-title-font-weight': rs.grupo_cabecera_title_font_weight || rs.font_weight || 'normal',
+            '--pdf-grupo-cabecera-title-color': rs.grupo_cabecera_title_text_color || rs.body_text_color || '#333333',
+            '--pdf-grupo-cabecera-title-text-shadow': PDF_TEXT_SHADOW_MAP[rs.grupo_cabecera_title_text_shadow || 'none'] || 'none',
             '--pdf-grupo-cabecera-tipo-margin-top': (parseInt(rs.grupo_cabecera_tipo_muestra_margin_top_px, 10) || 0) + 'px',
             '--pdf-grupo-cabecera-tipo-margin-bottom': (parseInt(rs.grupo_cabecera_tipo_muestra_margin_bottom_px, 10) || 10) + 'px',
             '--pdf-grupo-cabecera-metodo-margin-top': (parseInt(rs.grupo_cabecera_metodo_margin_top_px, 10) || 0) + 'px',
@@ -4731,6 +4779,39 @@ document.addEventListener('DOMContentLoaded', function() {
         lines.push(scope + ' .report-segment-title, ' + scope + ' .report-segment-title.pdf-card-header {');
         lines.push('  background: ' + segBg + ' !important;');
         lines.push('  border-color: ' + segBorder + ' !important;');
+        lines.push('  font-family: "' + (rs.segment_font_family || 'DejaVu Sans') + '", sans-serif !important;');
+        lines.push('  font-size: ' + (rs.segment_font_size_pt || 10) + 'pt !important;');
+        lines.push('  font-weight: ' + (rs.segment_font_weight || '700') + ' !important;');
+        lines.push('}');
+        var titleColor = previewColorFromInput('rs_grupo_cabecera_title_text_color', rs.grupo_cabecera_title_text_color || rs.body_text_color || '#333333');
+        var titleShadowKey = (document.getElementById('rs_grupo_cabecera_title_text_shadow') || {}).value || rs.grupo_cabecera_title_text_shadow || 'none';
+        var cabSpacing = readGrupoCabeceraSpacingFromRs(rs);
+        lines.push(scope + ' .report-pdf-grupo-cabecera .group-title, ' + scope + ' #pdf_preview_grupo_title {');
+        lines.push('  margin: 0 !important;');
+        lines.push('  font-family: "' + (rs.grupo_cabecera_title_font_family || rs.font_family || 'DejaVu Sans') + '", sans-serif !important;');
+        lines.push('  font-size: ' + (rs.grupo_cabecera_title_font_size_pt || rs.font_size_pt || 9) + 'pt !important;');
+        lines.push('  font-weight: ' + (rs.grupo_cabecera_title_font_weight || rs.font_weight || 'normal') + ' !important;');
+        lines.push('  color: ' + titleColor + ' !important;');
+        lines.push('  text-shadow: ' + (PDF_TEXT_SHADOW_MAP[titleShadowKey] || 'none') + ' !important;');
+        lines.push('  padding-top: ' + cabSpacing.titleTop + 'px !important;');
+        lines.push('  padding-bottom: ' + cabSpacing.titleBottom + 'px !important;');
+        lines.push('}');
+        lines.push(scope + ' .report-pdf-grupo-cabecera .report-tipo-muestra, ' + scope + ' #pdf_preview_tipo_muestra {');
+        lines.push('  margin: 0 !important;');
+        lines.push('  padding-top: ' + cabSpacing.tipoTop + 'px !important;');
+        lines.push('  padding-bottom: ' + cabSpacing.tipoBottom + 'px !important;');
+        lines.push('}');
+        lines.push(scope + ' .report-pdf-grupo-cabecera .report-metodo-prueba, ' + scope + ' #pdf_preview_metodo {');
+        lines.push('  margin: 0 !important;');
+        lines.push('  padding-top: ' + cabSpacing.metodoTop + 'px !important;');
+        lines.push('  padding-bottom: ' + cabSpacing.metodoBottom + 'px !important;');
+        lines.push('}');
+        lines.push(scope + ' .report-pdf-grupo-cabecera-line--last {');
+        lines.push('  padding-bottom: ' + cabSpacing.gapBeforeTable + 'px !important;');
+        lines.push('}');
+
+        lines.push(scope + ' .report-pdf-grupo-cabecera + .report-segment-table-wrap table.results {');
+        lines.push('  margin-top: 0 !important;');
         lines.push('}');
 
         var pad = parseInt(rs.cell_padding_v_px, 10);
@@ -4799,8 +4880,35 @@ document.addEventListener('DOMContentLoaded', function() {
         ].join('\n');
     }
 
+    function readGrupoCabeceraSpacingFromRs(rs) {
+        rs = rs || {};
+        function spacingPx(key, fallback) {
+            var v = parseInt(rs[key], 10);
+            if (isNaN(v)) v = fallback;
+            return Math.max(0, Math.min(40, v));
+        }
+        var metodoBottom = spacingPx('grupo_cabecera_metodo_margin_bottom_px', 10);
+        return {
+            titleTop: spacingPx('grupo_cabecera_title_margin_top_px', 0),
+            titleBottom: spacingPx('grupo_cabecera_title_margin_bottom_px', 6),
+            tipoTop: spacingPx('grupo_cabecera_tipo_muestra_margin_top_px', 0),
+            tipoBottom: spacingPx('grupo_cabecera_tipo_muestra_margin_bottom_px', 10),
+            metodoTop: spacingPx('grupo_cabecera_metodo_margin_top_px', 0),
+            metodoBottom: metodoBottom,
+            gapBeforeTable: metodoBottom
+        };
+    }
+
+    function applyGrupoCabeceraLinePadding(el, topPx, bottomPx) {
+        if (!el) return;
+        el.style.setProperty('margin', '0', 'important');
+        el.style.setProperty('padding-top', topPx + 'px', 'important');
+        el.style.setProperty('padding-bottom', bottomPx + 'px', 'important');
+    }
+
     function syncResultsPreviewContent(rs) {
         rs = rs || {};
+        var cabSpacing = readGrupoCabeceraSpacingFromRs(rs);
         var areaSep = document.getElementById('pdf_preview_area_separator');
         if (areaSep) {
             areaSep.style.display = rs.grupo_area_separator_enabled ? '' : 'none';
@@ -4809,15 +4917,56 @@ document.addEventListener('DOMContentLoaded', function() {
         var titleEl = document.getElementById('pdf_preview_grupo_title');
         if (titleEl) {
             var mode = String(rs.grupo_cabecera_title_mode || 'grupo_analisis');
-            titleEl.textContent = mode === 'solo_analisis' ? 'Hemograma completo' : 'HEMATOLOGÍA — Hemograma completo';
+            if (rs.grupo_area_separator_enabled) {
+                titleEl.textContent = 'HEMOGRAMA + PLAQUETAS';
+            } else if (mode === 'solo_analisis') {
+                titleEl.textContent = 'Hemograma completo';
+            } else {
+                titleEl.textContent = 'HEMATOLOGÍA — Hemograma completo';
+            }
         }
         var tipoEl = document.getElementById('pdf_preview_tipo_muestra');
-        if (tipoEl) {
-            tipoEl.style.display = rs.grupo_cabecera_show_tipo_muestra ? '' : 'none';
-        }
         var metodoEl = document.getElementById('pdf_preview_metodo');
+        var showTipo = !!rs.grupo_cabecera_show_tipo_muestra;
+        var showMetodo = !!rs.grupo_cabecera_show_metodo;
+        if (tipoEl) {
+            tipoEl.style.display = showTipo ? '' : 'none';
+        }
         if (metodoEl) {
-            metodoEl.style.display = rs.grupo_cabecera_show_metodo ? '' : 'none';
+            metodoEl.style.display = showMetodo ? '' : 'none';
+        }
+        [titleEl, tipoEl, metodoEl].forEach(function(el) {
+            if (!el) return;
+            el.classList.remove('report-pdf-grupo-cabecera-line--last');
+        });
+        var lastVisible = showMetodo && metodoEl ? metodoEl : (showTipo && tipoEl && tipoEl.style.display !== 'none' ? tipoEl : titleEl);
+        if (lastVisible) {
+            lastVisible.classList.add('report-pdf-grupo-cabecera-line--last');
+        }
+        applyGrupoCabeceraLinePadding(
+            titleEl,
+            cabSpacing.titleTop,
+            lastVisible === titleEl ? cabSpacing.gapBeforeTable : cabSpacing.titleBottom
+        );
+        if (showTipo && tipoEl) {
+            applyGrupoCabeceraLinePadding(
+                tipoEl,
+                cabSpacing.tipoTop,
+                lastVisible === tipoEl ? cabSpacing.gapBeforeTable : cabSpacing.tipoBottom
+            );
+        } else if (tipoEl) {
+            tipoEl.style.removeProperty('padding-top');
+            tipoEl.style.removeProperty('padding-bottom');
+        }
+        if (showMetodo && metodoEl) {
+            applyGrupoCabeceraLinePadding(
+                metodoEl,
+                cabSpacing.metodoTop,
+                lastVisible === metodoEl ? cabSpacing.gapBeforeTable : cabSpacing.metodoBottom
+            );
+        } else if (metodoEl) {
+            metodoEl.style.removeProperty('padding-top');
+            metodoEl.style.removeProperty('padding-bottom');
         }
         var segmentTitle = document.querySelector('#pdf_results_live_preview_scope .report-segment-table-wrap .report-segment-title');
         if (segmentTitle) {
@@ -5061,6 +5210,9 @@ document.addEventListener('DOMContentLoaded', function() {
         pushIfBadSelect('rs_segment_shadow', pdfAllow('segment_shadows'), 'Sombra de segmento no permitida.');
         pushIfBadNum('rs_segment_padding_top_px', 0, 40, 'Espacio arriba del texto en fila separadora: entre 0 y 40 px.');
         pushIfBadNum('rs_segment_padding_bottom_px', 0, 40, 'Espacio abajo del texto en fila separadora: entre 0 y 40 px.');
+        pushIfBadSelect('rs_segment_font_family', ff, 'Fuente no permitida en el título de cada análisis.');
+        pushIfBadNum('rs_segment_font_size', 7, 20, 'Tamaño en el título de cada análisis: entre 7 y 20 pt.');
+        pushIfBadSelect('rs_segment_font_weight', fw, 'Grosor no permitido en el título de cada análisis.');
         pushIfBadSelect('rs_matrix_align', ta, 'Alineación horizontal no permitida en matriz de referencia.');
         pushIfBadSelect('rs_matrix_valign', va, 'Alineación vertical no permitida en matriz de referencia.');
         pushIfBadHex('rs_matrix_text_color', 'Color inválido en matriz de referencia.');
@@ -5100,6 +5252,11 @@ document.addEventListener('DOMContentLoaded', function() {
         pushIfBadSelect('rs_grupo_cabecera_title_mode', pdfAllow('grupo_cabecera_title_modes'), 'Formato de título de cabecera de grupo no permitido.');
         pushIfBadNum('rs_grupo_cabecera_title_margin_top_px', 0, 40, 'Espacio arriba del nombre de análisis: entre 0 y 40 px.');
         pushIfBadNum('rs_grupo_cabecera_title_margin_bottom_px', 0, 40, 'Espacio abajo del nombre de análisis: entre 0 y 40 px.');
+        pushIfBadSelect('rs_grupo_cabecera_title_font_family', ff, 'Fuente no permitida en el nombre del análisis.');
+        pushIfBadNum('rs_grupo_cabecera_title_font_size', 7, 20, 'Tamaño en el nombre del análisis: entre 7 y 20 pt.');
+        pushIfBadSelect('rs_grupo_cabecera_title_font_weight', fw, 'Grosor no permitido en el nombre del análisis.');
+        pushIfBadHex('rs_grupo_cabecera_title_text_color', 'Color inválido en el nombre del análisis.');
+        pushIfBadSelect('rs_grupo_cabecera_title_text_shadow', sh, 'Sombra no permitida en el nombre del análisis.');
         pushIfBadNum('rs_grupo_cabecera_tipo_muestra_margin_top_px', 0, 40, 'Espacio arriba del tipo de muestra: entre 0 y 40 px.');
         pushIfBadNum('rs_grupo_cabecera_tipo_muestra_margin_bottom_px', 0, 40, 'Espacio abajo del tipo de muestra: entre 0 y 40 px.');
         pushIfBadNum('rs_grupo_cabecera_metodo_margin_top_px', 0, 40, 'Espacio arriba del método: entre 0 y 40 px.');

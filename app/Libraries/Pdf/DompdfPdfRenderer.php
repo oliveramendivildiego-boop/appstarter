@@ -19,7 +19,7 @@ class DompdfPdfRenderer implements PdfRendererInterface
     private const ORDER_SHEET_HEADER_MARKER = 'pdf-order-sheet-header';
 
     /**
-     * Dompdf espera nombre estándar o [x0, y0, ancho_pt, alto_pt]; no [mm, mm].
+     * Dompdf espera nombre est├índar o [x0, y0, ancho_pt, alto_pt]; no [mm, mm].
      *
      * @param array<string, mixed>|null $pageSize
      *
@@ -257,7 +257,7 @@ class DompdfPdfRenderer implements PdfRendererInterface
             $align = 'left';
         }
 
-        return [
+        $slot = [
             'prefix'          => (string) ($data['prefix'] ?? ''),
             'zone'            => $zone,
             'align'           => $align,
@@ -281,21 +281,31 @@ class DompdfPdfRenderer implements PdfRendererInterface
             'lineHeight'      => max(1.0, (float) ($data['lineHeight'] ?? 1.35)),
             'labelStacked'    => ! empty($data['labelStacked']),
             'format'          => (string) ($data['format'] ?? 'page_of_total'),
+            'footerPrependedRowMm' => max(0.0, (float) ($data['footerPrependedRowMm'] ?? 0)),
+            'cellPadHPx'      => max(0, (int) ($data['cellPadHPx'] ?? 0)),
+            'stackOffsetPt'   => isset($data['stackOffsetPt']) ? (float) $data['stackOffsetPt'] : null,
+            'footerPadTopPx'  => max(0.0, (float) ($data['footerPadTopPx'] ?? 6)),
+            'inlineAfterLabel' => ! empty($data['inlineAfterLabel']),
+            'inlineLabelText' => (string) ($data['inlineLabelText'] ?? ''),
+            'inlineLabelFontSize' => round(max(7.0, min(20.0, (float) ($data['inlineLabelFontSize'] ?? ($data['fontSize'] ?? 10)))), 2),
+            'inlineLabelFontWeight' => (string) ($data['inlineLabelFontWeight'] ?? 'normal'),
+            'inlineLabelFontStyle'  => (string) ($data['inlineLabelFontStyle'] ?? 'normal'),
+            'inlineLabelColor'      => (string) ($data['inlineLabelColor'] ?? '#333333'),
+            'inlineLabelFontFamily' => trim((string) ($data['inlineLabelFontFamily'] ?? 'DejaVu Sans')) ?: 'DejaVu Sans',
+            'textTransform'         => (string) ($data['textTransform'] ?? 'none'),
+            'inlineLabelTextTransform' => (string) ($data['inlineLabelTextTransform'] ?? 'none'),
         ];
+
+        return $slot;
     }
 
     /**
-     * @param list<array{prefix: string, zone: string, align: string, fontSize: float, fontFamily: string, color: string, mt: float, mr: float, mb: float, ml: float}> $slots
+     * @param list<array<string, mixed>> $slots
      *
      * @return list<array{event: string, f: callable}>
      */
     protected function buildPaginationCallbacks(array $slots): array
     {
-        // Encabezado: canvas. Pie: HTML en la cuadrícula del footer (posición y estilos de plantilla).
-        $slots = array_values(array_filter(
-            $slots,
-            static fn (array $slot): bool => strtolower((string) ($slot['zone'] ?? 'header')) !== 'footer'
-        ));
         if ($slots === []) {
             return [];
         }
@@ -311,7 +321,7 @@ class DompdfPdfRenderer implements PdfRendererInterface
     }
 
     /**
-     * @param array{prefix: string, zone: string, align: string, fontSize: float, fontFamily: string, color: string, mt: float, mr: float, mb: float, ml: float, footerReserveMm: float} $slot
+     * @param array<string, mixed> $slot
      */
     protected function paintPaginationOnPage(
         $canvas,
@@ -324,6 +334,12 @@ class DompdfPdfRenderer implements PdfRendererInterface
             return;
         }
 
+        if (! empty($slot['inlineAfterLabel']) && ($slot['zone'] ?? '') === 'footer') {
+            $this->paintInlineFooterPaginationOnPage($canvas, $fontMetrics, $slot, $pageNumber, $pageCount);
+
+            return;
+        }
+
         try {
             $pageW  = (float) $canvas->get_width();
             $pageH  = (float) $canvas->get_height();
@@ -333,10 +349,9 @@ class DompdfPdfRenderer implements PdfRendererInterface
             $mb     = $slot['mb'] * $mmToPt;
             $ml     = $slot['ml'] * $mmToPt;
 
-            $fontSize   = $slot['fontSize'];
-            $fontFamily = $slot['fontFamily'];
-            $font       = $fontMetrics->getFont(
-                $fontFamily,
+            $fontSize = (float) $slot['fontSize'];
+            $font     = $fontMetrics->getFont(
+                (string) $slot['fontFamily'],
                 $this->dompdfFontVariant(
                     (string) ($slot['fontWeight'] ?? 'normal'),
                     (string) ($slot['fontStyle'] ?? 'normal')
@@ -345,59 +360,181 @@ class DompdfPdfRenderer implements PdfRendererInterface
             $format = (string) ($slot['format'] ?? 'page_of_total');
             $text   = $format === 'total_only'
                 ? (string) $pageCount
-                : $slot['prefix'] . $pageNumber . ' de ' . $pageCount;
-            $textWidth  = (float) $canvas->get_text_width($text, $font, $fontSize);
-            $lineHeight = max(1.0, (float) ($slot['lineHeight'] ?? 1.35));
-            $linePt     = $fontSize * $lineHeight;
-            $pxToPt     = 72.0 / 96.0;
+                : (string) ($slot['prefix'] ?? '') . $pageNumber . ' de ' . $pageCount;
+            $text     = $this->applyPaginationTextTransform($text, (string) ($slot['textTransform'] ?? 'none'));
+            $textWidth = (float) $canvas->get_text_width($text, $font, $fontSize);
 
-            if ($slot['zone'] === 'footer' && ($slot['footerColumns'] ?? 0) > 0) {
-                $footerCols    = max(1, (int) $slot['footerColumns']);
-                $gridCol       = min(max(0, (int) ($slot['gridColumn'] ?? 0)), $footerCols - 1);
-                $gridColSpan   = max(1, min((int) ($slot['gridColumnSpan'] ?? 1), $footerCols - $gridCol));
-                $gridRow       = max(0, (int) ($slot['gridRow'] ?? 0));
-                $gridStack     = max(0, (int) ($slot['gridStack'] ?? 0));
-                $rowGapPt      = max(0.0, (float) ($slot['footerRowGapPx'] ?? 0)) * $pxToPt;
-                $contentW      = max(1.0, $pageW - $ml - $mr);
-                $colW          = $contentW / $footerCols;
-                $cellX0        = $ml + ($gridCol * $colW);
-                $cellW         = $colW * $gridColSpan;
-                $footerReservePt = max(0.0, (float) ($slot['footerReserveMm'] ?? 0)) * $mmToPt;
-                $footerTopY    = $pageH - $mb - $footerReservePt;
-                $padTopPt      = 6.0 * $pxToPt;
-                $rowOffset     = ($gridRow * ($linePt + $rowGapPt)) + ($gridStack * $linePt);
-                if (! empty($slot['labelStacked'])) {
-                    $rowOffset += $linePt;
-                }
-                $y             = $footerTopY + $padTopPt + $rowOffset + ($fontSize * 0.82);
-                $y             = max($mt + $fontSize, min($pageH - $mb - $fontSize * 0.5, $y));
-
-                $x = match ($slot['align']) {
-                    'right'  => $cellX0 + max(0.0, $cellW - $textWidth),
-                    'center' => $cellX0 + max(0.0, ($cellW - $textWidth) / 2),
-                    default  => $cellX0,
+            if (($slot['zone'] ?? '') === 'footer' && ($slot['footerColumns'] ?? 0) > 0) {
+                $pxToPt = 72.0 / 96.0;
+                [$cellX0, $cellW, $cellPadHPt] = $this->paginationFooterCellMetrics($slot, $pageW, $ml, $mr, $pxToPt);
+                $y = $this->paginationFooterBaselineY($slot, $pageH, $fontSize, $pageNumber, $mb, $mmToPt);
+                $align = (string) ($slot['align'] ?? 'left');
+                $x = match ($align) {
+                    'right'  => $cellX0 + max($cellPadHPt, $cellW - $cellPadHPt - $textWidth),
+                    'center' => $cellX0 + max($cellPadHPt, ($cellW - $textWidth) / 2),
+                    default  => $cellX0 + $cellPadHPt,
                 };
             } else {
-                $x = match ($slot['align']) {
+                $x = match ((string) ($slot['align'] ?? 'left')) {
                     'right'  => max($ml, $pageW - $mr - $textWidth),
                     'center' => max($ml, ($pageW - $textWidth) / 2),
                     default  => $ml,
                 };
 
-                if ($slot['zone'] === 'footer') {
-                    $footerReservePt = max(0.0, (float) ($slot['footerReserveMm'] ?? 0)) * $mmToPt;
-                    $bandPt          = $footerReservePt > 0 ? $footerReservePt : ($fontSize * 2.4);
-                    $y               = $pageH - $mb - ($bandPt * 0.42) - ($fontSize * 0.15);
-                    $y               = max($mt + $fontSize, min($pageH - $mb - $fontSize * 0.5, $y));
+                if (($slot['zone'] ?? '') === 'footer') {
+                    $y = $this->paginationFooterBaselineY($slot, $pageH, $fontSize, $pageNumber, $mb, $mmToPt);
                 } else {
                     $y = $mt + ($fontSize * 0.85);
                 }
             }
 
-            $canvas->text($x, $y, $text, $font, $fontSize, $this->hexColorToRgb($slot['color']));
+            $canvas->text($x, $y, $text, $font, $fontSize, $this->hexColorToRgb((string) ($slot['color'] ?? '#333333')));
         } catch (\Throwable $e) {
             // Sin paginación si la fuente o el canvas no están disponibles.
         }
+    }
+
+    /**
+     * «Página N de M» inline en el pie (label + número como bloque único).
+     *
+     * @param array<string, mixed> $slot
+     */
+    protected function paintInlineFooterPaginationOnPage(
+        $canvas,
+        FontMetrics $fontMetrics,
+        array $slot,
+        int $pageNumber,
+        int $pageCount,
+    ): void {
+        try {
+            $pageW  = (float) $canvas->get_width();
+            $pageH  = (float) $canvas->get_height();
+            $mmToPt = 72 / 25.4;
+            $ml     = (float) $slot['ml'] * $mmToPt;
+            $mr     = (float) $slot['mr'] * $mmToPt;
+            $pxToPt = 72.0 / 96.0;
+
+            $labelText = $this->applyPaginationTextTransform(
+                (string) ($slot['inlineLabelText'] ?? ''),
+                (string) ($slot['inlineLabelTextTransform'] ?? 'none'),
+            );
+            $numText = $this->applyPaginationTextTransform(
+                $pageNumber . ' de ' . $pageCount,
+                (string) ($slot['textTransform'] ?? 'none'),
+            );
+            if (trim($labelText) === '' && $numText === '') {
+                return;
+            }
+
+            $labelSize = (float) ($slot['inlineLabelFontSize'] ?? $slot['fontSize'] ?? 10);
+            $valueSize = (float) ($slot['fontSize'] ?? 10);
+            $labelFont = $fontMetrics->getFont(
+                (string) ($slot['inlineLabelFontFamily'] ?? 'DejaVu Sans'),
+                $this->dompdfFontVariant(
+                    (string) ($slot['inlineLabelFontWeight'] ?? 'normal'),
+                    (string) ($slot['inlineLabelFontStyle'] ?? 'normal')
+                )
+            );
+            $valueFont = $fontMetrics->getFont(
+                (string) ($slot['fontFamily'] ?? 'DejaVu Sans'),
+                $this->dompdfFontVariant(
+                    (string) ($slot['fontWeight'] ?? 'normal'),
+                    (string) ($slot['fontStyle'] ?? 'normal')
+                )
+            );
+
+            $labelW = $labelText !== '' ? (float) $canvas->get_text_width($labelText, $labelFont, $labelSize) : 0.0;
+            $numW   = (float) $canvas->get_text_width($numText, $valueFont, $valueSize);
+            $groupW = $labelW + $numW;
+            $y      = $this->paginationFooterBaselineY(
+                $slot,
+                $pageH,
+                max($labelSize, $valueSize),
+                $pageNumber,
+                (float) $slot['mb'] * $mmToPt,
+                $mmToPt
+            );
+
+            [$cellX0, $cellW, $cellPadHPt] = $this->paginationFooterCellMetrics($slot, $pageW, $ml, $mr, $pxToPt);
+            $align = (string) ($slot['align'] ?? 'left');
+
+            $x = match ($align) {
+                'right'  => $cellX0 + $cellW - $cellPadHPt - $groupW,
+                'center' => $cellX0 + max($cellPadHPt, ($cellW - $groupW) / 2),
+                default  => $cellX0 + $cellPadHPt,
+            };
+
+            if ($labelText !== '') {
+                $canvas->text($x, $y, $labelText, $labelFont, $labelSize, $this->hexColorToRgb((string) ($slot['inlineLabelColor'] ?? '#333333')));
+            }
+            $canvas->text($x + $labelW, $y, $numText, $valueFont, $valueSize, $this->hexColorToRgb((string) ($slot['color'] ?? '#333333')));
+        } catch (\Throwable $e) {
+            // Sin paginación inline en pie.
+        }
+    }
+
+    /**
+     * @param array<string, mixed> $slot
+     *
+     * @return array{0: float, 1: float, 2: float}
+     */
+    protected function paginationFooterCellMetrics(array $slot, float $pageW, float $ml, float $mr, float $pxToPt): array
+    {
+        $footerCols  = max(1, (int) ($slot['footerColumns'] ?? 1));
+        $gridCol     = min(max(0, (int) ($slot['gridColumn'] ?? 0)), $footerCols - 1);
+        $gridColSpan = max(1, min((int) ($slot['gridColumnSpan'] ?? 1), $footerCols - $gridCol));
+        $contentW    = max(1.0, $pageW - $ml - $mr);
+        $colW        = $contentW / $footerCols;
+        $cellX0      = $ml + ($gridCol * $colW);
+        $cellW       = $colW * $gridColSpan;
+        $cellPadHPt  = max(0.0, (float) ($slot['cellPadHPx'] ?? 0)) * $pxToPt;
+
+        return [$cellX0, $cellW, $cellPadHPt];
+    }
+
+    /**
+     * @param array<string, mixed> $slot
+     */
+    protected function paginationFooterBaselineY(
+        array $slot,
+        float $pageH,
+        float $fontSize,
+        int $pageNumber,
+        float $mbPt,
+        float $mmToPt,
+    ): float {
+        $mt              = (float) ($slot['mt'] ?? 15) * $mmToPt;
+        $footerReservePt = max(0.0, (float) ($slot['footerReserveMm'] ?? 0)) * $mmToPt;
+        $prependedPt     = $pageNumber >= 2
+            ? max(0.0, (float) ($slot['footerPrependedRowMm'] ?? 0)) * $mmToPt
+            : 0.0;
+        $pxToPt          = 72.0 / 96.0;
+        $padTopPt        = max(0.0, (float) ($slot['footerPadTopPx'] ?? 6)) * $pxToPt;
+        $lineHeight      = max(1.0, (float) ($slot['lineHeight'] ?? 1.35));
+        $linePt          = $fontSize * $lineHeight;
+        $rowOffset       = isset($slot['stackOffsetPt']) && is_numeric($slot['stackOffsetPt'])
+            ? (float) $slot['stackOffsetPt']
+            : (($max(0, (int) ($slot['gridRow'] ?? 0)) * ($linePt + max(0.0, (float) ($slot['footerRowGapPx'] ?? 0)) * $pxToPt))
+                + (max(0, (int) ($slot['gridStack'] ?? 0)) * $linePt));
+        if (! empty($slot['labelStacked'])) {
+            $rowOffset += $linePt;
+        }
+
+        $footerTopY = $pageH - $mbPt - $footerReservePt;
+        $valueFs    = (float) ($slot['fontSize'] ?? $fontSize);
+        $y          = $footerTopY + $padTopPt + $prependedPt + $rowOffset + ($valueFs * 0.82);
+
+        return max($mt + $valueFs, min($pageH - $mbPt - ($valueFs * 0.5), $y));
+    }
+
+    protected function applyPaginationTextTransform(string $text, string $transform): string
+    {
+        return match (strtolower(trim($transform))) {
+            'uppercase'  => function_exists('mb_strtoupper') ? mb_strtoupper($text, 'UTF-8') : strtoupper($text),
+            'lowercase'  => function_exists('mb_strtolower') ? mb_strtolower($text, 'UTF-8') : strtolower($text),
+            'capitalize' => function_exists('mb_convert_case') ? mb_convert_case($text, MB_CASE_TITLE, 'UTF-8') : ucwords(strtolower($text)),
+            default      => $text,
+        };
     }
 
     protected function dompdfFontVariant(string $fontWeight, string $fontStyle): string
@@ -496,61 +633,71 @@ class DompdfPdfRenderer implements PdfRendererInterface
         }
 
         return [[
-            'event' => 'begin_page_reflow',
-            'f'     => function ($frame, $canvas, FontMetrics $fontMetrics) use ($slot): void {
-                unset($slot, $fontMetrics);
-                if (! $frame instanceof \Dompdf\Frame) {
-                    return;
-                }
-                if ((int) $canvas->get_page_number() >= 2) {
-                    return;
-                }
-                $this->stripOrderSheetRowsForPageOne($frame);
+            'event' => 'end_document',
+            'f'     => function (int $pageNumber, int $pageCount, $canvas, FontMetrics $fontMetrics) use ($slot): void {
+                unset($pageCount);
+                $this->paintOrderSheetHeaderOnPage($canvas, $fontMetrics, $slot, $pageNumber);
             },
         ]];
     }
 
-    protected function isOrderSheetRowFrame(\Dompdf\Frame $frame): bool
-    {
-        $node = $frame->get_node();
-
-        return $node instanceof \DOMElement
-            && $node->hasAttribute('data-order-sheet-from-page-two')
-            && str_contains($node->getAttribute('class'), 'pdf-order-sheet-table-row');
-    }
-
     /**
-     * Elimina la fila Paciente / No. Orden del árbol en hoja 1 (antes del reflow).
+     * Paciente / No. Orden en canvas (hojas 2+), alineado con márgenes @page.
+     *
+     * @param array{patient: string, order: string, ml: float, mr: float, mb: float, footerReserveMm: float, gapMm: float, footerBg: string, rowHeightMm: float} $slot
      */
-    protected function stripOrderSheetRowsForPageOne(\Dompdf\Frame $frame): void
-    {
-        $rows = [];
-        $this->collectOrderSheetRowFrames($frame, $rows);
-        foreach ($rows as $rowFrame) {
-            $rowFrame->dispose(false);
+    protected function paintOrderSheetHeaderOnPage(
+        $canvas,
+        FontMetrics $fontMetrics,
+        array $slot,
+        int $pageNumber,
+    ): void {
+        if ($pageNumber < 2) {
+            return;
         }
-    }
-
-    /**
-     * @param list<\Dompdf\Frame> $rows
-     */
-    protected function collectOrderSheetRowFrames(\Dompdf\Frame $frame, array &$rows): void
-    {
-        if ($this->isOrderSheetRowFrame($frame)) {
-            $rows[] = $frame;
-
+        if (! method_exists($canvas, 'text') || ! method_exists($canvas, 'get_text_width')) {
             return;
         }
 
-        foreach ($frame->get_children() as $child) {
-            if ($child instanceof \Dompdf\Frame) {
-                $this->collectOrderSheetRowFrames($child, $rows);
+        try {
+            $pageW    = (float) $canvas->get_width();
+            $pageH    = (float) $canvas->get_height();
+            $mmToPt   = 72 / 25.4;
+            $ml       = (float) $slot['ml'] * $mmToPt;
+            $mr       = (float) $slot['mr'] * $mmToPt;
+            $mb       = (float) $slot['mb'] * $mmToPt;
+            $fontSize = 9.0;
+            $font     = $fontMetrics->getFont('DejaVu Sans', 'bold');
+            $rgb      = $this->hexColorToRgb('#333333');
+
+            $pxToPt    = 72.0 / 96.0;
+            $reservePt = max(0.0, (float) ($slot['footerReserveMm'] ?? 0)) * $mmToPt;
+            $footerTop = $pageH - $mb - $reservePt;
+            $padTopPt  = 6.0 * $pxToPt;
+            $oshPt     = max(1.0, (float) ($slot['rowHeightMm'] ?? 4.5)) * $mmToPt;
+            $gapPt     = max(0.0, (float) ($slot['gapMm'] ?? 1.5)) * $mmToPt;
+            // Banda Paciente/Orden en la zona superior reservada del pie (hojas 2+).
+            $y         = $footerTop + $padTopPt + ($oshPt * 0.55) + ($fontSize * 0.35);
+
+            $patient = (string) ($slot['patient'] ?? '');
+            if ($patient !== '') {
+                $canvas->text($ml, $y, $patient, $font, $fontSize, $rgb);
             }
+
+            $order = (string) ($slot['order'] ?? '');
+            if ($order !== '') {
+                $orderW = (float) $canvas->get_text_width($order, $font, $fontSize);
+                $x      = max($ml, $pageW - $mr - $orderW);
+                $canvas->text($x, $y, $order, $font, $fontSize, $rgb);
+            }
+
+        } catch (\Throwable $e) {
+            // Sin banda si el canvas o la fuente no están disponibles.
         }
     }
 
     /**
-     * Opciones Dompdf compartidas (render principal y sondeo de páginas).
+     * Opciones Dompdf compartidas (render principal y sondeo de p├íginas).
      */
     protected function makeDompdfOptions(bool $forPageCountProbe = false): Options
     {
@@ -586,7 +733,7 @@ class DompdfPdfRenderer implements PdfRendererInterface
     }
 
     /**
-     * El token en data-total de pdf_pagination es solo para impresión en navegador.
+     * El token en data-total de pdf_pagination es solo para impresi├│n en navegador.
      */
     protected function htmlNeedsPageCountProbe(string $html): bool
     {

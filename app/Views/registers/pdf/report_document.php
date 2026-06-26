@@ -42,10 +42,19 @@ $pdfBlockViews = [
 ];
 
 $footerBlockEnabled = false;
+$headerBlockEnabled = false;
+$patientDoctorBlockEnabled = false;
 foreach (is_array($pl['blocks'] ?? null) ? $pl['blocks'] : [] as $fb) {
-    if (! empty($fb['enabled']) && (string) ($fb['id'] ?? '') === 'footer') {
+    if (empty($fb['enabled'])) {
+        continue;
+    }
+    $fbid = (string) ($fb['id'] ?? '');
+    if ($fbid === 'footer') {
         $footerBlockEnabled = true;
-        break;
+    } elseif ($fbid === 'header') {
+        $headerBlockEnabled = true;
+    } elseif ($fbid === 'patient_doctor') {
+        $patientDoctorBlockEnabled = true;
     }
 }
 
@@ -64,6 +73,8 @@ $ctx = [
     'report_pria_metodo_nombre'       => $report_pria_metodo_nombre ?? [],
     'report_lab_firmas'               => $report_lab_firmas ?? [],
     'report_pria_refs_consolidada'    => $report_pria_refs_consolidada ?? [],
+    'report_categorical_heatmap'      => $report_categorical_heatmap ?? [],
+    'report_graficar_modo'            => $report_graficar_modo ?? [],
     'analisis_variant'                => $analisis_variant ?? 'pdf',
     'pb_diag_no_separators'           => $pb_diag_no_separators ?? false,
     'report_layout_plan'              => $report_layout_plan ?? null,
@@ -73,9 +84,11 @@ $ctx = [
 <?php
 $analisisVariant = (string) ($analisis_variant ?? 'pdf');
 $useDompdfWatermarkCallback = $analisisVariant === 'pdf';
-$isDompdfPdf = $analisisVariant === 'pdf';
+$isPdfDownloadVariant = \App\Libraries\Pdf\PdfEngine::isPdfDownloadVariant($analisisVariant);
+$isDompdfEnginePdf = $isPdfDownloadVariant && \App\Libraries\Pdf\PdfEngine::isDompdf();
+$isMpdfEnginePdf = $isPdfDownloadVariant && \App\Libraries\Pdf\PdfEngine::isMpdf();
 $footerRenderCtx = array_merge($ctx, [
-    'footer_dompdf_fixed'     => $isDompdfPdf,
+    'footer_dompdf_fixed'     => $isDompdfEnginePdf,
     'footer_order_sheet_band' => in_array($analisisVariant, ['pdf', 'browser_print', 'screen_pdf'], true),
 ]);
 if ($wmUri !== null && $wmUri !== ''):
@@ -113,6 +126,29 @@ if ($wmUri !== null && $wmUri !== ''):
     endif;
 endif;
 ?>
+<?php
+$orderSheetHeaderCtx = [
+    'pdf_layout'       => $pl,
+    'paciente'         => $paciente,
+    'register_info'    => $register_info,
+    'analisis_variant' => $ctx['analisis_variant'] ?? 'pdf',
+];
+// Dompdf: cabecera + paciente/médico en flujo continuo; el pie fijo va después (no entre ambos).
+$dompdfFlowTopEnabled = $isDompdfEnginePdf && ($headerBlockEnabled || $patientDoctorBlockEnabled);
+if ($dompdfFlowTopEnabled): ?>
+<div class="pdf-dompdf-flow-top">
+<?php if ($headerBlockEnabled): ?>
+<?= view($pdfBlockViews['header'], $ctx) ?>
+<?php endif; ?>
+<?php if ($patientDoctorBlockEnabled): ?>
+<?= view($pdfBlockViews['patient_doctor'], $ctx) ?>
+<?php endif; ?>
+</div>
+<?php endif; ?>
+<?php if ($isDompdfEnginePdf && $footerBlockEnabled): ?>
+<?= view('registers/partials/report_order_sheet_header', $orderSheetHeaderCtx) ?>
+<?= view($pdfBlockViews['footer'], $footerRenderCtx) ?>
+<?php endif; ?>
 <div class="pdf-main-stack">
 <?php foreach (($pl['blocks'] ?? []) as $block):
     if (empty($block['enabled'])) {
@@ -122,15 +158,13 @@ endif;
     if ($bid === 'footer' || $bid === '' || ! isset($pdfBlockViews[$bid])) {
         continue;
     }
+    if ($isDompdfEnginePdf && in_array($bid, ['header', 'patient_doctor'], true)) {
+        continue;
+    }
     echo view($pdfBlockViews[$bid], $ctx);
 endforeach; ?>
 </div>
-<?= view('registers/partials/report_order_sheet_header', [
-    'pdf_layout'        => $pl,
-    'paciente'          => $paciente,
-    'register_info'     => $register_info,
-    'analisis_variant'  => $ctx['analisis_variant'] ?? 'pdf',
-]) ?>
-<?php if ($footerBlockEnabled): ?>
+<?php if ((! $isPdfDownloadVariant || $isMpdfEnginePdf) && $footerBlockEnabled): ?>
+<?= view('registers/partials/report_order_sheet_header', $orderSheetHeaderCtx) ?>
 <?= view($pdfBlockViews['footer'], $footerRenderCtx) ?>
 <?php endif; ?>

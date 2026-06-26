@@ -30,13 +30,16 @@ $nombresTipoPorPria = $report_pria_tipo_muestra_nombre ?? [];
 $nombresMetodoPorPria = $report_pria_metodo_nombre ?? [];
 $refsMatrixAll = $report_pria_refs_consolidada ?? [];
 $pdfLayout = is_array($pdf_layout ?? null) ? $pdf_layout : [];
-$resultsCellMarkupAttrs = static function (string $column, bool $isHeader, string $widthStyle = '') use ($pdfLayout, $usePdfChrome): string {
+$resultsCellMarkupAttrs = static function (string $column, bool $isHeader, string $widthStyle = '', string $extraColorCss = '') use ($pdfLayout, $usePdfChrome): string {
     if (! $usePdfChrome) {
         return $widthStyle;
     }
     $extra = '';
     if ($widthStyle !== '' && preg_match('/style="([^"]*)"/', $widthStyle, $m)) {
         $extra = rtrim((string) ($m[1] ?? ''), ';');
+    }
+    if ($extraColorCss !== '') {
+        $extra = trim($extra . ';' . $extraColorCss, ';');
     }
 
     return \App\Services\ReportPdfLayoutService::resultsColumnCellMarkupAttrs($pdfLayout, $column, $isHeader, $extra);
@@ -256,13 +259,25 @@ foreach ($ordenPriaKeys as $subIdx => $priaKey) :
 ]) ?>
 <?php endif; ?>
 <?php
-$cmpService = new \App\Services\CategoricalSerialComparisonService();
+$cmpService = null;
+$precomputedHeatmaps = is_array($report_categorical_heatmap ?? null) ? $report_categorical_heatmap : [];
+$precomputedModos    = is_array($report_graficar_modo ?? null) ? $report_graficar_modo : [];
 $graficarModo = $priaIdTitulo > 0
-    ? $cmpService->getGraficarModo($priaIdTitulo)
+    ? (int) ($precomputedModos[$priaIdTitulo] ?? \App\Models\LabotestModel::GRAFICAR_NO)
     : \App\Models\LabotestModel::GRAFICAR_NO;
-$heatmapData = $priaIdTitulo > 0
-    ? $cmpService->buildFromReportItems($subItems, $priaIdTitulo)
-    : null;
+if ($priaIdTitulo > 0 && $graficarModo === \App\Models\LabotestModel::GRAFICAR_NO && $precomputedModos === []) {
+    $cmpService = new \App\Services\CategoricalSerialComparisonService();
+    $graficarModo = $cmpService->getGraficarModo($priaIdTitulo);
+}
+$heatmapData = null;
+if ($priaIdTitulo > 0) {
+    if (array_key_exists($priaIdTitulo, $precomputedHeatmaps)) {
+        $heatmapData = $precomputedHeatmaps[$priaIdTitulo];
+    } else {
+        $cmpService ??= new \App\Services\CategoricalSerialComparisonService();
+        $heatmapData = $cmpService->buildFromReportItemsWithModo($subItems, $priaIdTitulo, $graficarModo);
+    }
+}
 $tieneHeatmap = is_array($heatmapData) && ! empty($heatmapData['sections']);
 $mostrarTablaSeriada = ! ($graficarModo === \App\Models\LabotestModel::GRAFICAR_SI && $tieneHeatmap);
 $mostrarHeatmap = $tieneHeatmap && in_array(
@@ -272,6 +287,7 @@ $mostrarHeatmap = $tieneHeatmap && in_array(
 );
 ?>
 <?php $layoutSectionIndex = 0; ?>
+<?php $firstTableAfterCabecera = true; ?>
 <?php if ($mostrarTablaSeriada): ?>
 <?php foreach ($segments as $segIdx => $seg): ?>
     <?php
@@ -297,9 +313,12 @@ $mostrarHeatmap = $tieneHeatmap && in_array(
     $resultsColCount = 2 + ($mostrarColRef ? 1 : 0) + ($mostrarColInterpretacion ? 1 : 0);
     $resultsColClass = \App\Services\ReportPdfLayoutService::resultsTableGridClass($usePdfChrome, $resultsColCount);
     $mainTableClass = ($usePdfChrome ? 'results' : 'table mb-0') . $resultsColClass;
+    $suppressTableMarginTop = $usePdfChrome && $firstTableAfterCabecera;
     $resultsTableLayoutAttrs = ($usePdfChrome && $resultsColCount >= 2)
-        ? \App\Services\ReportPdfLayoutService::resultsTableFixedLayoutAttrs($resultsColCount, $usePdfChrome)
-        : '';
+        ? \App\Services\ReportPdfLayoutService::resultsTablePdfLayoutAttrs($resultsColCount, $pdfLayout, $usePdfChrome, $suppressTableMarginTop)
+        : ($usePdfChrome
+            ? \App\Services\ReportPdfLayoutService::resultsTablePdfLayoutAttrs($resultsColCount, $pdfLayout, true, $suppressTableMarginTop)
+            : '');
     $resultsColgroupHtml = ($usePdfChrome && $resultsColCount >= 2)
         ? \App\Services\ReportPdfLayoutService::resultsTableColgroupHtml($resultsColCount, $usePdfChrome)
         : '';
@@ -365,6 +384,9 @@ $mostrarHeatmap = $tieneHeatmap && in_array(
     $titleInTailOnly = $tailSplitAt !== null && $tailSplitAt > 0 && $titleObj !== null;
     ?>
     <?php if ($tieneConResultado): ?>
+    <?php if ($firstTableAfterCabecera): ?>
+    <?php $firstTableAfterCabecera = false; ?>
+    <?php endif; ?>
     <?php if ($tailFullInTail): ?>
     <?php $tailTableOpened = true; ?>
     <?php endif; ?>
@@ -590,7 +612,13 @@ $mostrarHeatmap = $tieneHeatmap && in_array(
                                     }
                                 }
                             ?>
-                            <td class="results-col-resultado<?= $celdaRicoClass ?><?= $resultadoColspanClass ?> <?= $class ?><?= $usePdfChrome && $isOutPdf ? ' out-range' : '' ?><?= $resultsColAlignClass('resultado', false) ?>"<?= $resultadoColspanAttr ?><?= $resultsCellMarkupAttrs('resultado', false) ?>><?= $resMostrarHtml ?></td>
+                            <?php
+                                $resultadoClassList = trim($class . ($usePdfChrome && $isOutPdf ? ' out-range' : ''));
+                                $pdfInterpColorCss = $usePdfChrome
+                                    ? registro_interpretacion_pdf_td_style_fragment($resultadoClassList)
+                                    : '';
+                            ?>
+                            <td class="results-col-resultado<?= $celdaRicoClass ?><?= $resultadoColspanClass ?> <?= $class ?><?= $usePdfChrome && $isOutPdf ? ' out-range' : '' ?><?= $resultsColAlignClass('resultado', false) ?>"<?= $resultadoColspanAttr ?><?= $resultsCellMarkupAttrs('resultado', false, '', $pdfInterpColorCss) ?>><?= $resMostrarHtml ?></td>
                             <?php if ($resultadoColspan === 1 && $mostrarColRef): ?>
                             <td class="results-col-rango<?= $usePdfChrome ? ' ref-range' : '' ?><?= $resultsColAlignClass('rango', false) ?>"<?= $rangoColspanAttr ?><?= $resultsCellMarkupAttrs('rango', false) ?>><?= $itemConRef ? $refMostrar : '' ?></td>
                             <?php endif; ?>
@@ -608,7 +636,13 @@ $mostrarHeatmap = $tieneHeatmap && in_array(
                                     }
                                 }
                             ?>
-                            <td class="results-col-interpretacion<?= $interpretacionRef !== null ? ' ' . esc($class, 'attr') : '' ?><?= $resultsColAlignClass('interpretacion', false) ?>"<?= $resultsCellMarkupAttrs('interpretacion', false) ?>><?= $interpHtml !== '' ? $interpHtml : '' ?></td>
+                            <?php
+                                $interpClassList = $interpretacionRef !== null ? trim($class) : '';
+                                $pdfInterpColColorCss = ($usePdfChrome && $interpClassList !== '')
+                                    ? registro_interpretacion_pdf_td_style_fragment($interpClassList)
+                                    : '';
+                            ?>
+                            <td class="results-col-interpretacion<?= $interpretacionRef !== null ? ' ' . esc($class, 'attr') : '' ?><?= $resultsColAlignClass('interpretacion', false) ?>"<?= $resultsCellMarkupAttrs('interpretacion', false, '', $pdfInterpColColorCss) ?>><?= $interpHtml !== '' ? $interpHtml : '' ?></td>
                             <?php endif; ?>
                         </tr>
                     <?php endif; ?>
@@ -648,7 +682,10 @@ if ($priaIdTitulo > 0 && ! empty($refsMatrixAll[$priaIdTitulo])) :
     ?>
 <?= $matrixWrapOpen ?>
     <?php if ($usePdfChrome): ?>
-    <div class="report-refs-matrix-title pdf-card-header" style="margin-top:10px;">Valores de referencia por grupo poblacional</div>
+    <div class="report-refs-matrix-title pdf-card-header"<?php
+        $matrixTitleStyle = \App\Services\ReportPdfLayoutService::refsMatrixTitleSpacingStyleAttr($pdfLayout);
+        echo $matrixTitleStyle !== '' ? ' style="' . esc($matrixTitleStyle, 'attr') . '"' : '';
+    ?>>Valores de referencia por grupo poblacional</div>
     <?php else: ?>
     <div class="report-refs-matrix-title-web px-2 py-2 mt-3 mb-2 bg-light border-start border-4 border-secondary rounded-end small fw-semibold text-uppercase">Valores de referencia por grupo poblacional</div>
     <?php endif; ?>

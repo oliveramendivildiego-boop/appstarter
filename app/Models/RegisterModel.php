@@ -283,6 +283,20 @@ class RegisterModel extends Model
     }
 
     /**
+     * Inserta varios regvalues en una sola operación (formfill).
+     *
+     * @param list<array<string, mixed>> $rows
+     */
+    public function insertRegvaluesBatch(array $rows): bool
+    {
+        if ($rows === []) {
+            return true;
+        }
+
+        return $this->db->table('regvalues')->insertBatch($rows) !== false;
+    }
+
+    /**
      * Elimina regvalues asociados a pruebas removidas de una orden existente.
      *
      * @param int[] $removedPrianacategoriaIds

@@ -131,6 +131,7 @@ $areaHeadingStyle = 'color:' . esc((string) ($lfTxt['area_heading_color'] ?? '#6
 <?php if ($titleItems !== []): ?>
     <?= view('registers/pdf/section_layout_grid', [
         'section_wrapper_class' => 'lab-firmas-title-grid',
+        'section_wrapper_style' => '',
         'n_columns'             => $n,
         'grid_items'            => $titleItems,
         'element_ctx'           => [
@@ -145,6 +146,7 @@ $areaHeadingStyle = 'color:' . esc((string) ($lfTxt['area_heading_color'] ?? '#6
 <?php if ($bodyItems !== []): ?>
     <?= view('registers/pdf/section_layout_grid', [
         'section_wrapper_class' => 'lab-firmas-body-grid',
+        'section_wrapper_style' => '',
         'n_columns'             => $n,
         'grid_items'            => $bodyItems,
         'element_ctx'           => [

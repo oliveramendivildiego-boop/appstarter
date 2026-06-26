@@ -59,7 +59,8 @@ body {
 }
 .pdf-main-stack {
     position: relative;
-    z-index: 1;
+    z-index: 2;
+    isolation: isolate;
 }
 /* Contadores de paginación (Dompdf / CSS Paged Media).
  * Legacy: .pdf-counter-page / .pdf-counter-pages (paginación fija de impresión).
@@ -157,23 +158,52 @@ body.pdf-dompdf-download .pdf-ft-block .pdf-ft-pagination-num::before {
 .pdf-section-table td:not(.pdf-cell) {
     vertical-align: top;
 }
+.pdf-cell--h-left { text-align: left !important; }
+.pdf-cell--h-center { text-align: center !important; }
+.pdf-cell--h-right { text-align: right !important; }
 .pdf-el-item--h-left { text-align: left !important; }
 .pdf-el-item--h-center { text-align: center !important; }
 .pdf-el-item--h-right { text-align: right !important; }
 .pdf-el-item--v-bottom { margin-top: auto !important; }
 .pdf-el-item--v-middle { margin-top: auto !important; margin-bottom: auto !important; }
+/* Cuadrícula PDF: valign middle/bottom — td crece con la fila (height:1px) salvo altura explícita (encabezado). */
+.pdf-section-table td.pdf-cell[valign="middle"]:not(.pdf-cell--has-explicit-height),
+.pdf-section-table td.pdf-cell[valign="bottom"]:not(.pdf-cell--has-explicit-height) {
+    height: 1px;
+}
+.pdf-section-table td.pdf-cell > table.pdf-cell-valign-table {
+    width: 100%;
+    height: 100%;
+    border-collapse: collapse;
+    margin: 0;
+    border: 0;
+    table-layout: fixed;
+}
+.pdf-section-table td.pdf-cell > table.pdf-cell-valign-table td {
+    padding: 0;
+    border: 0;
+}
+.pdf-cell--h-left .header-piece-logo img,
+.pdf-cell--h-left .header-piece-qr .qr-img,
+.pdf-cell--h-left .pdf-lab-f-img,
 .pdf-el-item--h-left .header-piece-logo img,
 .pdf-el-item--h-left .header-piece-qr .qr-img,
 .pdf-el-item--h-left .pdf-lab-f-img {
     margin-left: 0 !important;
     margin-right: auto !important;
 }
+.pdf-cell--h-center .header-piece-logo img,
+.pdf-cell--h-center .header-piece-qr .qr-img,
+.pdf-cell--h-center .pdf-lab-f-img,
 .pdf-el-item--h-center .header-piece-logo img,
 .pdf-el-item--h-center .header-piece-qr .qr-img,
 .pdf-el-item--h-center .pdf-lab-f-img {
     margin-left: auto !important;
     margin-right: auto !important;
 }
+.pdf-cell--h-right .header-piece-logo img,
+.pdf-cell--h-right .header-piece-qr .qr-img,
+.pdf-cell--h-right .pdf-lab-f-img,
 .pdf-el-item--h-right .header-piece-logo img,
 .pdf-el-item--h-right .header-piece-qr .qr-img,
 .pdf-el-item--h-right .pdf-lab-f-img {
@@ -190,7 +220,7 @@ body.pdf-dompdf-download .pdf-ft-block .pdf-ft-pagination-num::before {
 /*
  * Cuadrícula con interlineado configurable (tabla con data-pdf-lh + line-height inline).
  * Dompdf no colapsa márgenes como el navegador: evitar margin en piezas internas;
- * el espaciado entre instancias apiladas va en .pdf-el-item y el px configurado en inline/padding.
+ * el espaciado entre instancias apiladas va en la tabla interna y el px configurado en inline/padding.
  */
 .pdf-hg-block .pdf-section-table .header-piece,
 .pdf-ft-block .pdf-section-table .footer-piece,
@@ -202,11 +232,17 @@ body.pdf-dompdf-download .pdf-ft-block .pdf-ft-pagination-num::before {
     margin-top: 0 !important;
     margin-bottom: 0 !important;
 }
-.pdf-hg-block .pdf-section-table td.pdf-cell > .pdf-el-item:not(:last-child),
-.pdf-pd-block .pdf-section-table td.pdf-cell > .pdf-el-item:not(:last-child),
-.pdf-ft-block .pdf-section-table td.pdf-cell > .pdf-el-item:not(:last-child),
-.lab-firmas-pdf-block .pdf-section-table td.pdf-cell > .pdf-el-item:not(:last-child) {
+.pdf-hg-block .pdf-section-table td.pdf-cell-stack-item,
+.pdf-pd-block .pdf-section-table td.pdf-cell-stack-item,
+.pdf-ft-block .pdf-section-table td.pdf-cell-stack-item,
+.lab-firmas-pdf-block .pdf-section-table td.pdf-cell-stack-item {
     margin-bottom: 0;
+}
+.pdf-section-table td.pdf-cell > table.pdf-cell-stack-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 0;
+    border: 0;
 }
 .pdf-hg-block .pdf-section-table td p,
 .pdf-pd-block .pdf-section-table td p,
@@ -249,6 +285,11 @@ body.pdf-dompdf-download .pdf-ft-block .pdf-ft-pagination-num::before {
     font-size: inherit;
     color: inherit;
 }
+.pdf-hg-block .pdf-section-table td.pdf-cell--has-explicit-height .header-piece-company,
+.pdf-hg-block .pdf-section-table td.pdf-cell--has-explicit-height .header-piece-company h1 {
+    margin-top: 0 !important;
+    margin-bottom: 0 !important;
+}
 /* Pie PDF: tipografía solo inline del PHP (clases .pdf-ft-*). */
 .pdf-ft-block .pdf-ft-piece p,
 .pdf-ft-block .pdf-ft-custom-text p,
@@ -276,8 +317,13 @@ body.pdf-dompdf-download .pdf-ft-block .pdf-ft-pagination-num::before {
 }
 .header-piece-company h1 {
     margin: 0;
-    font-size: 14pt;
+    font-size: inherit;
     color: inherit;
+    font-weight: inherit;
+    font-style: inherit;
+    text-transform: inherit;
+    letter-spacing: inherit;
+    line-height: inherit;
     max-width: 100%;
     word-wrap: break-word;
     overflow-wrap: break-word;
@@ -339,7 +385,7 @@ body.pdf-dompdf-download .pdf-ft-block .pdf-ft-pagination-num::before {
     padding-left: 12px;
     padding-right: 0;
 }
-.patient-section .label {
+.patient-section:not(.pdf-pd-block) .label {
     font-weight: bold;
 }
 .patient-section-lines .patient-line {
@@ -356,7 +402,8 @@ body.pdf-dompdf-download .pdf-ft-block .pdf-ft-pagination-num::before {
 }
 /* No forzar salto de hoja por grupo entero; el contenido fluye. La cabecera (título + muestra + método) sí se mantiene unida. */
 .report-pdf-grupo-prueba:not(.report-pdf-grupo-prueba-first) {
-    margin-top: var(--pdf-results-grupo-gap, 10px);
+    padding-top: var(--pdf-results-grupo-gap, 10px);
+    margin-top: 0;
 }
 /* Separador inter-área: salto mecánico (LayoutEngine marca el nodo). */
 .report-grupo-inter-page-break,
@@ -400,33 +447,35 @@ body.pdf-dompdf-download .report-pdf-grupo-prueba.report-pdf-grupo-prueba-allow-
     margin-top: 0;
     padding-top: 0;
 }
-/* Compactación (modo area_soft_fit_signature). */
-.report-pdf-grupo-prueba.report-pdf-grupo-prueba-compact {
+/* Compactación (modo area_soft_fit_signature) — solo Dompdf; mPDF usa valores exactos de plantilla. */
+body.pdf-dompdf-download .report-pdf-grupo-prueba.report-pdf-grupo-prueba-compact {
     font-size: calc(1em * var(--pdf-gpb-compact-scale, 0.92));
 }
-.report-pdf-grupo-prueba.report-pdf-grupo-prueba-compact table.results th,
-.report-pdf-grupo-prueba.report-pdf-grupo-prueba-compact table.results td {
+body.pdf-dompdf-download .report-pdf-grupo-prueba.report-pdf-grupo-prueba-compact table.results th,
+body.pdf-dompdf-download .report-pdf-grupo-prueba.report-pdf-grupo-prueba-compact table.results td {
     padding-top: var(--pdf-gpb-compact-cell-padding-v, calc(var(--pdf-results-cell-padding-v, 6px) * var(--pdf-gpb-compact-scale, 0.92))) !important;
     padding-bottom: var(--pdf-gpb-compact-cell-padding-v, calc(var(--pdf-results-cell-padding-v, 6px) * var(--pdf-gpb-compact-scale, 0.92))) !important;
     font-size: calc(var(--pdf-results-font-size, 9pt) * var(--pdf-gpb-compact-scale, 0.92)) !important;
     line-height: calc(var(--pdf-results-line-height, 1.35) * var(--pdf-gpb-compact-line-height-scale, 0.98)) !important;
 }
-.report-pdf-grupo-prueba-compact-aggressive.report-pdf-grupo-prueba-compact {
+body.pdf-dompdf-download .report-pdf-grupo-prueba-compact-aggressive.report-pdf-grupo-prueba-compact {
     --pdf-gpb-compact-line-height-scale: 0.92;
     --pdf-gpb-compact-segment-margin-scale: 0.82;
     --pdf-gpb-compact-grupo-gap-scale: 0.82;
 }
-.report-pdf-grupo-prueba-compact-aggressive.report-pdf-grupo-prueba-compact .report-segment-table-wrap {
+body.pdf-dompdf-download .report-pdf-grupo-prueba-compact-aggressive.report-pdf-grupo-prueba-compact .report-segment-table-wrap {
     margin: 0 !important;
 }
-.report-pdf-grupo-prueba-compact-aggressive.report-pdf-grupo-prueba-compact:not(.report-pdf-grupo-prueba-first) {
-    margin-top: calc(var(--pdf-results-grupo-gap, 10px) * var(--pdf-gpb-compact-scale, 0.92) * var(--pdf-gpb-compact-grupo-gap-scale, 1)) !important;
+body.pdf-dompdf-download .report-pdf-grupo-prueba-compact-aggressive.report-pdf-grupo-prueba-compact:not(.report-pdf-grupo-prueba-first) {
+    padding-top: calc(var(--pdf-results-grupo-gap, 10px) * var(--pdf-gpb-compact-scale, 0.92) * var(--pdf-gpb-compact-grupo-gap-scale, 1)) !important;
+    margin-top: 0 !important;
 }
-.report-pdf-grupo-prueba.report-pdf-grupo-prueba-compact .report-segment-table-wrap {
+body.pdf-dompdf-download .report-pdf-grupo-prueba.report-pdf-grupo-prueba-compact .report-segment-table-wrap {
     margin: 0 !important;
 }
-.report-pdf-grupo-prueba.report-pdf-grupo-prueba-compact:not(.report-pdf-grupo-prueba-first) {
-    margin-top: calc(var(--pdf-results-grupo-gap, 10px) * var(--pdf-gpb-compact-scale, 0.92)) !important;
+body.pdf-dompdf-download .report-pdf-grupo-prueba.report-pdf-grupo-prueba-compact:not(.report-pdf-grupo-prueba-first) {
+    padding-top: calc(var(--pdf-results-grupo-gap, 10px) * var(--pdf-gpb-compact-scale, 0.92)) !important;
+    margin-top: 0 !important;
 }
 /* Encabezado repetido al continuar un grupo en otra página. */
 .report-pdf-grupo-cabecera-continuacion {
@@ -575,13 +624,32 @@ table.results td {
     padding-left: 8px;
     padding-right: 8px;
     text-align: left;
-    vertical-align: middle;
+    vertical-align: var(--pdf-results-cell-vertical-align, middle);
     font-family: var(--pdf-results-font-family, "DejaVu Sans"), sans-serif;
     font-size: var(--pdf-results-font-size, 9pt);
     font-weight: var(--pdf-results-font-weight, normal);
     font-style: var(--pdf-results-font-style, normal);
     text-transform: var(--pdf-results-transform, none);
+    letter-spacing: var(--pdf-results-letter-spacing, 0em);
     line-height: var(--pdf-results-line-height, 1.35);
+    text-shadow: var(--pdf-results-text-shadow, none);
+}
+/* Cabecera de análisis: tipografía y espaciado vienen de la plantilla (theme inline + style attr). */
+.report-pdf-grupo-cabecera .group-title,
+.report-pdf-grupo-cabecera .report-tipo-muestra,
+.report-pdf-grupo-cabecera .report-metodo-prueba {
+    display: block;
+    box-sizing: border-box;
+    width: 100%;
+    margin: 0;
+}
+.pdf-rs-block .report-pdf-grupo-cabecera .group-title {
+    font-family: var(--pdf-grupo-cabecera-title-font-family, var(--pdf-results-font-family, "DejaVu Sans")), sans-serif;
+    font-size: var(--pdf-grupo-cabecera-title-font-size, var(--pdf-results-font-size, 9pt));
+    font-weight: var(--pdf-grupo-cabecera-title-font-weight, var(--pdf-results-font-weight, normal));
+    line-height: var(--pdf-results-line-height, 1.35);
+    color: var(--pdf-grupo-cabecera-title-color, var(--pdf-results-body-color, #333));
+    text-shadow: var(--pdf-grupo-cabecera-title-text-shadow, none);
 }
 /* Mayor especificidad que table.results td (dompdf respeta estas clases en columnas de resultados) */
 table.results th.text-left,
@@ -653,16 +721,21 @@ table.results td.resultado-texto-rico-cell .resultado-texto-rico ol {
 .table td.resultado-texto-rico-cell .resultado-texto-rico u {
     text-decoration: underline !important;
 }
-.group-title {
+.group-title:not(.report-pdf-grupo-cabecera-line) {
     font-weight: bold;
     font-size: 11pt;
     margin: 15px 0 8px 0;
     color: #333;
 }
+.report-pdf-grupo-cabecera-line.group-title,
+.report-pdf-grupo-cabecera .group-title {
+    margin: 0 !important;
+}
 /* Subtítulo de sección (separador) encima de cada tabla de resultados; la fila de cabecera va debajo */
 .report-segment-title {
-    font-weight: bold;
-    font-size: 10pt;
+    font-family: var(--pdf-results-segment-font-family, "DejaVu Sans"), sans-serif;
+    font-weight: var(--pdf-results-segment-font-weight, 700);
+    font-size: var(--pdf-results-segment-font-size, 10pt);
     margin: 0;
     padding: var(--pdf-results-segment-padding-top, 6px) 8px var(--pdf-results-segment-padding-bottom, 6px) 8px;
     background: var(--pdf-results-segment-bg, #e9ecef);
@@ -685,6 +758,9 @@ table.results td.resultado-texto-rico-cell .resultado-texto-rico ol {
 /* Misma tipografía que .pdf-card-header pero fondo según plantilla (tabla de resultados → título de sección) */
 .report-segment-title.pdf-card-header {
     background: var(--pdf-results-segment-bg, #e9ecef) !important;
+    font-family: var(--pdf-results-segment-font-family, var(--pdf-card-header-font-family, "DejaVu Sans")), sans-serif !important;
+    font-size: var(--pdf-results-segment-font-size, var(--pdf-card-header-font-size, 10pt)) !important;
+    font-weight: var(--pdf-results-segment-font-weight, var(--pdf-card-header-font-weight, 700)) !important;
 }
 .pdf-notes-title {
     background: var(--pdf-notes-title-bg, #fff3cd);
@@ -751,7 +827,7 @@ table.results td.resultado-texto-rico-cell .resultado-texto-rico ol {
 .lab-firmas-pdf-block .pdf-section-table td.pdf-cell {
     background: var(--pdf-lf-body-bg, #ffffff);
     background-color: var(--pdf-lf-body-bg, #ffffff);
-    /* Sin color/fuente en el td: cada instancia lleva tipografía en .pdf-el-item (inline); en viewreport Bootstrap heredaba mal si el td imponía la fuente de la cuadrícula. */
+    /* Tipografía por instancia en el td (inline), no en reglas globales del bloque */
     border-width: var(--pdf-lf-column-border-width, 1px);
     border-style: solid;
     border-color: var(--pdf-lf-column-border-color, #ddd);
@@ -792,8 +868,8 @@ table.results td.resultado-texto-rico-cell .resultado-texto-rico ol {
     background-color: var(--pdf-ft-body-bg, #ffffff) !important;
     background-image: none !important;
 }
-.pdf-hg-block .pdf-el-item,
-.pdf-pd-block .pdf-el-item {
+.pdf-hg-block .pdf-section-table td.pdf-cell,
+.pdf-pd-block .pdf-section-table td.pdf-cell {
     background-color: transparent !important;
     background-image: none !important;
 }
@@ -808,11 +884,15 @@ table.results td.resultado-texto-rico-cell .resultado-texto-rico ol {
     margin-top: 0 !important;
     margin-bottom: 0 !important;
 }
-/* Heredar la tipografía del .pdf-el-item (estilo inline por instancia); evita que reglas globales (p. ej. .patient-section-lines) pisen la fuente en viewreport. */
-.pdf-hg-block .pdf-section-table td.pdf-cell > .pdf-el-item .patient-line,
-.pdf-pd-block .pdf-section-table td.pdf-cell > .pdf-el-item .patient-line,
-.pdf-ft-block .pdf-section-table td.pdf-cell > .pdf-el-item .patient-line,
-.lab-firmas-pdf-block .pdf-section-table td.pdf-cell > .pdf-el-item .patient-line {
+/* Heredar la tipografía del td (estilo inline por instancia); evita que reglas globales pisen la fuente en viewreport. */
+.pdf-hg-block .pdf-section-table td.pdf-cell .patient-line,
+.pdf-pd-block .pdf-section-table td.pdf-cell .patient-line,
+.pdf-ft-block .pdf-section-table td.pdf-cell .patient-line,
+.lab-firmas-pdf-block .pdf-section-table td.pdf-cell .patient-line,
+.pdf-hg-block .pdf-section-table td.pdf-cell-stack-item .patient-line,
+.pdf-pd-block .pdf-section-table td.pdf-cell-stack-item .patient-line,
+.pdf-ft-block .pdf-section-table td.pdf-cell-stack-item .patient-line,
+.lab-firmas-pdf-block .pdf-section-table td.pdf-cell-stack-item .patient-line {
     font-family: inherit;
     font-size: inherit;
     font-weight: inherit;
@@ -843,7 +923,7 @@ table.results td.resultado-texto-rico-cell .resultado-texto-rico ol {
 .pdf-hg-block .pdf-section-table td.pdf-cell {
     background: var(--pdf-hg-body-bg, #ffffff);
     background-color: var(--pdf-hg-body-bg, #ffffff);
-    /* Tipografía por instancia en .pdf-el-item (inline), no en el td */
+    /* Tipografía por instancia en el td (inline) */
     border-left-width: var(--pdf-hg-column-border-width, 0);
     border-left-style: solid;
     border-left-color: var(--pdf-hg-column-border-color, #ddd);
@@ -855,7 +935,7 @@ table.results td.resultado-texto-rico-cell .resultado-texto-rico ol {
 .pdf-pd-block .pdf-section-table td.pdf-cell {
     background: var(--pdf-pd-body-bg, #f8f9fa);
     background-color: var(--pdf-pd-body-bg, #f8f9fa);
-    /* Tipografía por instancia en .pdf-el-item (inline), no en el td */
+    /* Tipografía por instancia en el td (inline) */
     border-left-width: var(--pdf-pd-column-border-width, 0);
     border-left-style: solid;
     border-left-color: var(--pdf-pd-column-border-color, #ddd);
@@ -867,7 +947,7 @@ table.results td.resultado-texto-rico-cell .resultado-texto-rico ol {
 .pdf-ft-block .pdf-section-table td.pdf-cell {
     background: var(--pdf-ft-body-bg, #ffffff);
     background-color: var(--pdf-ft-body-bg, #ffffff);
-    /* Tipografía por instancia en .pdf-el-item (inline), no en el td */
+    /* Tipografía por instancia en el td (inline) */
     border-left-width: var(--pdf-ft-column-border-width, 0);
     border-left-style: solid;
     border-left-color: var(--pdf-ft-column-border-color, #ddd);
@@ -888,8 +968,41 @@ table.results td.resultado-texto-rico-cell .resultado-texto-rico ol {
     border-top-style: var(--pdf-ft-section-top-border-style, solid);
     border-top-color: var(--pdf-ft-section-top-border-color, #dddddd);
 }
+/* mPDF: misma regla de línea verde que Dompdf */
+body.pdf-engine-mpdf .pdf-dompdf-footer-anchor > .pdf-ft-block.footer-grid,
+body.pdf-engine-mpdf .pdf-ft-block.footer-grid {
+    border-top: none !important;
+}
+body.pdf-engine-mpdf .pdf-dompdf-footer-anchor > .pdf-ft-block.footer-grid .pdf-section-table,
+body.pdf-engine-mpdf .pdf-ft-block.footer-grid .pdf-section-table {
+    border-top-width: var(--pdf-ft-section-top-border-width, 1px);
+    border-top-style: var(--pdf-ft-section-top-border-style, solid);
+    border-top-color: var(--pdf-ft-section-top-border-color, #dddddd);
+}
+/* Dompdf: padding-top del bloque reserva Paciente/Orden; el borde va sobre la cuadrícula, no arriba del padding. */
+body.pdf-dompdf-download .pdf-dompdf-footer-anchor > .pdf-ft-block.footer-grid,
+body.pdf-dompdf-download .pdf-ft-block.footer-grid {
+    border-top: none !important;
+}
+body.pdf-dompdf-download .pdf-dompdf-footer-anchor > .pdf-ft-block.footer-grid .pdf-section-table,
+body.pdf-dompdf-download .pdf-ft-block.footer-grid .pdf-section-table {
+    border-top-width: var(--pdf-ft-section-top-border-width, 1px);
+    border-top-style: var(--pdf-ft-section-top-border-style, solid);
+    border-top-color: var(--pdf-ft-section-top-border-color, #dddddd);
+}
 .pdf-ft-block table.pdf-section-table {
     margin-bottom: 0 !important;
+}
+.pdf-ft-block .pdf-ft-stack-table {
+    border-collapse: collapse;
+    table-layout: fixed;
+    width: 100%;
+    margin: 0;
+}
+.pdf-ft-block .pdf-ft-stack-table td {
+    padding: 0;
+    vertical-align: top;
+    border: 0;
 }
 .pdf-ft-block .pdf-section-table td.pdf-cell,
 .pdf-ft-block .pdf-section-table td:not(.pdf-cell) {
@@ -936,6 +1049,7 @@ table.results td.resultado-texto-rico-cell .resultado-texto-rico ol {
 }
 .report-segment-table-wrap table.results {
     margin-top: 0;
+    margin-bottom: 0;
 }
 .report-segment-sin-ref table.results {
     margin-top: 0;
@@ -986,15 +1100,26 @@ table.results td.matrix-col-reference strong,
 .text-center {
     text-align: center;
 }
+/* Dompdf: validación por área — no forzar keep-intact (empuja todo al final del documento). */
+body.pdf-dompdf-download .report-lab-firma-grupo-inline {
+    page-break-inside: auto;
+    break-inside: auto;
+}
+body.pdf-dompdf-download .lab-firmas-pdf-block .lab-firmas-title-grid,
+body.pdf-dompdf-download .lab-firmas-pdf-block .lab-firmas-body-grid,
+body.pdf-dompdf-download .lab-firmas-pdf-block .pdf-section-table {
+    page-break-inside: auto;
+    break-inside: auto;
+}
 @media print {
     /* Validación / firmas: no partir la cuadrícula; el salto previo lo inserta JS (page-leader). */
-    .report-lab-firma-grupo-inline {
+    body:not(.pdf-dompdf-download) .report-lab-firma-grupo-inline {
         page-break-inside: avoid;
         break-inside: avoid-page;
     }
-    .lab-firmas-pdf-block .lab-firmas-title-grid,
-    .lab-firmas-pdf-block .lab-firmas-body-grid,
-    .lab-firmas-pdf-block .pdf-section-table {
+    body:not(.pdf-dompdf-download) .lab-firmas-pdf-block .lab-firmas-title-grid,
+    body:not(.pdf-dompdf-download) .lab-firmas-pdf-block .lab-firmas-body-grid,
+    body:not(.pdf-dompdf-download) .lab-firmas-pdf-block .pdf-section-table {
         page-break-inside: avoid;
         break-inside: avoid-page;
     }
@@ -1016,10 +1141,8 @@ table.results td.matrix-col-reference strong,
 }
 
 /* Dompdf: paciente/médico — ver overrides con valores de plantilla en report_pdf_theme_styles.php */
-body.pdf-dompdf-download .pdf-pd-block .pdf-section-table td.pdf-cell > .pdf-el-item:not(:last-child) {
-    margin-bottom: 0 !important;
-}
-body.pdf-dompdf-download .pdf-pd-block .pdf-section-table td.pdf-cell > .pdf-el-item {
+body.pdf-dompdf-download .pdf-pd-block .pdf-section-table td.pdf-cell,
+body.pdf-dompdf-download .pdf-pd-block .pdf-section-table td.pdf-cell-stack-item {
     font-size: calc(var(--pdf-pd-font-size, 9.5pt) * 0.96) !important;
     line-height: calc(var(--pdf-pd-line-height, 1.35) * 0.88) !important;
 }

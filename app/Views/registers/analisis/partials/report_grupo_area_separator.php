@@ -26,7 +26,10 @@ if ($titulo === '') {
     return;
 }
 
-$wrapStyle = \App\Services\ReportPdfLayoutService::grupoAreaSeparatorMarginStyleAttr($pdfLayout, (string) $variant);
+$wrapStyle = \App\Services\ReportPdfLayoutService::mergePdfInlineStyleAttrs(
+    \App\Services\ReportPdfLayoutService::grupoAreaSeparatorMarginStyleAttr($pdfLayout, (string) $variant),
+    \App\Services\ReportPdfLayoutService::grupoAreaSeparatorInlineStyleAttr($pdfLayout)
+);
 $separatorClass = 'report-segment-title pdf-card-header report-pdf-grupo-area-separator';
 if (! empty($grupo_inicia_nueva_pagina) && $variant === 'pdf') {
     $separatorClass .= ' report-pdf-grupo-area-new-page';

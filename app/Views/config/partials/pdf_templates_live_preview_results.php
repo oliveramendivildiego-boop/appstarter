@@ -11,9 +11,9 @@ declare(strict_types=1);
             <div class="report-pdf-grupo-prueba report-pdf-grupo-prueba-first">
                 <div id="pdf_preview_area_separator" class="report-segment-title pdf-card-header report-pdf-grupo-area-separator" style="display:none;">HEMATOLOGÍA</div>
                 <div class="report-pdf-grupo-cabecera" id="pdf_preview_grupo_cabecera">
-                    <div class="group-title" id="pdf_preview_grupo_title">HEMATOLOGÍA — Hemograma completo</div>
-                    <div class="report-tipo-muestra" id="pdf_preview_tipo_muestra">Tipo de muestra: Sangre EDTA</div>
-                    <div class="report-metodo-prueba" id="pdf_preview_metodo">Método: Impedancia</div>
+                    <div class="group-title report-pdf-grupo-cabecera-line report-pdf-grupo-cabecera-line--title" id="pdf_preview_grupo_title">HEMOGRAMA + PLAQUETAS</div>
+                    <div class="report-tipo-muestra report-pdf-grupo-cabecera-line report-pdf-grupo-cabecera-line--tipo" id="pdf_preview_tipo_muestra">Tipo de muestra: Sangre EDTA</div>
+                    <div class="report-metodo-prueba report-pdf-grupo-cabecera-line report-pdf-grupo-cabecera-line--metodo report-pdf-grupo-cabecera-line--last" id="pdf_preview_metodo">Método: Impedancia</div>
                 </div>
                 <div class="report-segment-table-wrap">
                     <div class="report-segment-title pdf-card-header">GLUCOSA</div>
@@ -72,9 +72,10 @@ declare(strict_types=1);
     </p>
     <ul class="small text-muted mb-0 ps-3 mt-1">
         <li><strong>Sección 1:</strong> encabezado y filas de la tabla principal.</li>
-        <li><strong>Sección 4:</strong> barra sobre cada análisis (<code>report-segment-title</code>).</li>
+        <li><strong>Sección 4:</strong> barra sobre cada análisis (<code>report-segment-title</code>): fondo, fuente, tamaño y grosor.</li>
         <li><strong>Sección 5:</strong> matriz poblacional al pie del ejemplo.</li>
-        <li><strong>Secciones 6–7:</strong> cabecera de grupo y separador de área.</li>
+        <li><strong>Sección 7:</strong> nombre del análisis (<code>.group-title</code>, p. ej. Hemograma completo).</li>
+        <li><strong>Secciones 6 y 8:</strong> cabecera de grupo, separador de área y espaciado de tipo/método.</li>
     </ul>
 </div>
 <style id="pdf_results_live_preview_rules"></style>

@@ -70,6 +70,8 @@ $reportForzarColRef = in_array($av, ['pdf', 'screen_pdf', 'browser_print'], true
 
     && \App\Services\ReportPdfLayoutService::reportGruposTienenRangoReferencial($gruposList);
 
+echo '<div class="pdf-rs-block">';
+
 foreach ($gruposList as $padre => $items) {
 
     $isFirstGrupo = ($grupoPruebaIdx === 0);
@@ -271,7 +273,8 @@ foreach ($gruposList as $padre => $items) {
         }
     }
 
-    $deferFirmaToTailBundle = $useLayoutApplier
+    $deferFirmaToTailBundle = ! in_array($av, ['pdf'], true)
+        && $useLayoutApplier
         && $hasFirmaEnGrupo
         && $layoutApplier->areaUsesSignatureTailBundle($grupoPruebaIdx)
         && ! $grupoSoloCultivoMatriz;
@@ -295,6 +298,10 @@ foreach ($gruposList as $padre => $items) {
         'report_pria_metodo_nombre'       => $report_pria_metodo_nombre ?? [],
 
         'report_pria_refs_consolidada'    => $report_pria_refs_consolidada ?? [],
+
+        'report_categorical_heatmap'      => $report_categorical_heatmap ?? [],
+
+        'report_graficar_modo'            => $report_graficar_modo ?? [],
 
         'layout_plan_applier'             => $useLayoutApplier ? $layoutApplier : null,
 
@@ -345,4 +352,6 @@ foreach ($gruposList as $padre => $items) {
     $grupoPruebaIdx++;
 
 }
+
+echo '</div>';
 

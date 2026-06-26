@@ -23,7 +23,9 @@ $valueOf = static function (string $id) use ($paciente, $doctor, $register_info,
 
             return $nom !== '' ? $nom : '—';
         case 'paciente_genero':
-            return paciente_genero_texto($paciente);
+            $gt = trim((string) ($paciente->genero_texto ?? ''));
+
+            return $gt !== '' ? $gt : paciente_genero_texto($paciente);
         case 'paciente_edad':
             return (string) ($paciente->edad ?? '-');
         case 'paciente_telefono':
@@ -89,13 +91,17 @@ if (array_key_exists($type, \App\Services\ReportPdfLayoutService::PATIENT_DOCTOR
     }
     $showLblText = $showL && $lbl !== '';
     $stPdLbl = \App\Services\ReportPdfLayoutService::patientDoctorGridLabelStyleAttr($pdS, $type);
+    $instTs  = is_array($pdf_text_style ?? null) ? $pdf_text_style : [];
+    $stPdVal = $instTs !== []
+        ? \App\Services\ReportPdfLayoutService::textStyleArrayToInlineCss($instTs)
+        : \App\Services\ReportPdfLayoutService::patientDoctorGridValueStyleAttr($pdS);
     if ($inline) {
         ?>
                 <div class="patient-line" style="padding-top:<?= (int) max(0, $mtPx) ?>px;padding-bottom:<?= (int) max(0, $mbPx) ?>px;">
                     <?php if ($showLblText): ?>
                         <span class="label" style="margin-right:<?= (int) max(0, $gapPx) ?>px;<?= esc($stPdLbl, 'attr') ?>"><?= esc($lbl) ?></span>
                     <?php endif; ?>
-                    <span style="<?= $showLblText ? '' : 'margin-left:' . (int) max(0, $gapPx) . 'px;' ?>"><?= esc($val) ?></span>
+                    <span style="<?= esc($stPdVal, 'attr') ?><?= $showLblText ? '' : 'margin-left:' . (int) max(0, $gapPx) . 'px;' ?>"><?= esc($val) ?></span>
                 </div>
         <?php
     } else {
@@ -108,7 +114,7 @@ if (array_key_exists($type, \App\Services\ReportPdfLayoutService::PATIENT_DOCTOR
         }
         $valMt = $showLblText ? 0 : ((int) max(0, $mtPx) + (int) max(0, $gapPx));
         ?>
-                <div class="patient-line" style="padding-top:<?= (int) max(0, $valMt) ?>px;padding-bottom:<?= (int) max(0, $mbPx) ?>px;"><?= esc($val) ?></div>
+                <div class="patient-line" style="padding-top:<?= (int) max(0, $valMt) ?>px;padding-bottom:<?= (int) max(0, $mbPx) ?>px;"><span style="<?= esc($stPdVal, 'attr') ?>"><?= esc($val) ?></span></div>
         <?php
     }
 
@@ -166,13 +172,20 @@ switch ($type) {
         $stLogoLbl   = \App\Services\ReportPdfLayoutService::headerGridLabelPieceStyleAttr($hgLogo, 'logo');
         $logoRel     = $lab['logo'] ?? 'images/logo-john.png';
         $logoSrc     = $logoDataUri !== '' ? $logoDataUri : report_image_src_for_variant($logoRel, $pdfVariant);
+        $logoImgStyle = \App\Services\ReportPdfLayoutService::logoImageInlineStyleAttr(
+            is_array($pdf_text_style ?? null) ? $pdf_text_style : [],
+            (int) ($pdf_grid_column_span ?? 1),
+            (int) ($pdf_section_columns ?? 5),
+            $logoSrc,
+            is_array($pdf_margins_mm ?? null) ? $pdf_margins_mm : null,
+        ) . \App\Services\ReportPdfLayoutService::blockImageAlignMarginCss((string) ($pdf_cell_align ?? 'left'));
         ?>
                 <div class="header-piece header-piece-logo">
                     <?php if ($inlineLogo && $showLblLogo): ?>
                     <div style="display:flex;flex-wrap:wrap;align-items:center;gap:8px;">
                         <span style="<?= esc($stLogoLbl, 'attr') ?>"><?= esc($lblLogo) ?></span>
                         <?php if ($logoSrc !== ''): ?>
-                        <img src="<?= report_pdf_img_src_attr($logoSrc) ?>" alt="Logo">
+                        <img src="<?= report_pdf_img_src_attr($logoSrc) ?>" alt="Logo" style="<?= esc($logoImgStyle, 'attr') ?>">
                         <?php else: ?>
                         <strong style="<?= esc($stInst, 'attr') ?>"><?= esc($lab['company'] ?? 'Laboratorio') ?></strong>
                         <?php endif; ?>
@@ -182,7 +195,7 @@ switch ($type) {
                     <div style="margin-bottom:6px;"><span style="<?= esc($stLogoLbl, 'attr') ?>"><?= esc($lblLogo) ?></span></div>
                     <?php endif; ?>
                     <?php if ($logoSrc !== ''): ?>
-                    <img src="<?= report_pdf_img_src_attr($logoSrc) ?>" alt="Logo">
+                    <img src="<?= report_pdf_img_src_attr($logoSrc) ?>" alt="Logo" style="<?= esc($logoImgStyle, 'attr') ?>">
                     <?php else: ?>
                     <strong style="<?= esc($stInst, 'attr') ?>"><?= esc($lab['company'] ?? 'Laboratorio') ?></strong>
                     <?php endif; ?>
@@ -357,9 +370,9 @@ switch ($type) {
         $showLblPg = $showPgL && $lblPg !== '';
         $stPgLbl   = \App\Services\ReportPdfLayoutService::headerGridLabelPieceStyleAttr($hgPg, 'pdf_pages_total');
         $variantPg = (string) ($pdf_analisis_variant ?? 'pdf');
-        $isDompdfPg = ($variantPg === 'pdf');
+        $isPdfDownloadPg = ($variantPg === 'pdf');
         $inFooterPg = ($pdfSectionKey === 'footer');
-        if ($isDompdfPg && ! $inFooterPg) {
+        if ($isPdfDownloadPg && ! $inFooterPg && \App\Libraries\Pdf\PdfEngine::isDompdf()) {
             $mm = is_array($pdf_margins_mm ?? null)
                 ? $pdf_margins_mm
                 : \App\Services\ReportPdfLayoutService::defaultMarginsMmStatic();
@@ -427,7 +440,7 @@ switch ($type) {
         $stPagLbl     = \App\Services\ReportPdfLayoutService::headerGridLabelPieceStyleAttr($hgPag, 'pdf_pagination');
         $canvasPrefix = $showLblPag ? $lblPag . ' ' : '';
         $variant      = (string) ($pdf_analisis_variant ?? 'pdf');
-        $isDompdf     = ($variant === 'pdf');
+        $isPdfDownload = ($variant === 'pdf');
         $instUid      = trim((string) ($pdf_instance_uid ?? ''));
         $pagUid       = 'pdf-pag-' . substr(sha1($instUid . '|' . $canvasPrefix . '|' . $stInst), 0, 10);
         $pageToken    = \App\Services\RegisterService::TOTAL_PAGES_TOKEN;
@@ -437,60 +450,7 @@ switch ($type) {
             ? $pdf_footer_grid_style
             : \App\Services\ReportPdfLayoutService::normalizeFooterGridStyle([]);
         $footerLh     = max(1.0, (float) ($ftGrid['line_height'] ?? 1.35));
-        if ($isDompdf && $inFooter) {
-            $mm = is_array($pdf_margins_mm ?? null)
-                ? $pdf_margins_mm
-                : \App\Services\ReportPdfLayoutService::defaultMarginsMmStatic();
-            $pdfLayout = is_array($pdf_layout ?? null) ? $pdf_layout : [];
-            $valueLh   = max(1.0, (float) ($ts['line_height'] ?? $footerLh));
-            $pagConfig = [
-                'prefix'            => '',
-                'format'            => 'page_of_total',
-                'zone'              => 'footer',
-                'align'             => (string) ($pdf_cell_align ?? 'left'),
-                'fontSize'          => (float) ($ts['font_size_pt'] ?? 10),
-                'fontFamily'        => (string) ($ts['font_family'] ?? 'DejaVu Sans'),
-                'fontWeight'        => (string) ($ts['font_weight'] ?? 'normal'),
-                'fontStyle'         => (string) ($ts['font_style'] ?? 'normal'),
-                'color'             => (string) ($ts['font_color'] ?? '#333333'),
-                'mt'                => (float) ($mm['top'] ?? 15),
-                'mr'                => (float) ($mm['right'] ?? 15),
-                'mb'                => (float) ($mm['bottom'] ?? 15),
-                'ml'                => (float) ($mm['left'] ?? 15),
-                'footerReserveMm'   => max(0.0, (float) ($pdf_footer_reserve_mm ?? 0)),
-                'footerPrependedRowMm' => max(0.0, (float) ($pdf_footer_prepended_row_mm ?? 0)),
-                'gridColumn'        => (int) ($pdf_grid_column ?? 0),
-                'gridColumnSpan'    => max(1, (int) ($pdf_grid_column_span ?? 1)),
-                'gridRow'           => (int) ($pdf_grid_row ?? 0),
-                'gridStack'         => (int) ($pdf_grid_stack ?? 0),
-                'footerColumns'     => max(1, (int) ($pdf_footer_columns ?? 1)),
-                'footerRows'        => max(1, (int) ($pdf_footer_rows ?? 1)),
-                'footerRowGapPx'    => max(0.0, (float) ($pdf_footer_row_gap_px ?? 0)),
-                'cellPadHPx'        => max(0, (int) ($pdf_footer_cell_pad_h_px ?? 0)),
-                'lineHeight'        => $valueLh,
-                'stackOffsetPt'     => \App\Services\ReportPdfLayoutService::estimateFooterStackOffsetPt(
-                    $pdfLayout,
-                    (int) ($pdf_grid_row ?? 0),
-                    (int) ($pdf_grid_stack ?? 0),
-                ),
-                'footerPadTopPx'    => \App\Services\ReportPdfLayoutService::FOOTER_BLOCK_PAD_TOP_PX,
-                'labelStacked'      => (! $inlinePag && $showLblPag),
-                'inlineAfterLabel'  => ($inlinePag && $showLblPag),
-                'inlineLabelText'   => ($inlinePag && $showLblPag) ? $lblPag . ' ' : '',
-                'inlineLabelFontSize'   => (float) ($hgPag['label_pdf_pagination_font_size_pt'] ?? $hgPag['font_size_pt'] ?? 8),
-                'inlineLabelFontWeight' => (string) ($hgPag['label_pdf_pagination_font_weight'] ?? 'normal'),
-                'inlineLabelFontStyle'  => (string) ($hgPag['label_pdf_pagination_font_style'] ?? 'normal'),
-                'inlineLabelColor'      => (string) ($hgPag['label_pdf_pagination_text_color'] ?? '#333333'),
-                'inlineLabelFontFamily' => (string) ($hgPag['font_family'] ?? 'DejaVu Sans'),
-                'inlineLabelLineHeight' => max(1.0, (float) ($hgPag['line_height'] ?? 1.35)),
-                'inlineLabelTextTransform' => (string) ($hgPag['label_pdf_pagination_text_transform'] ?? 'none'),
-                'inlineLabelLetterSpacingEm' => (float) ($hgPag['letter_spacing_em'] ?? 0),
-                'textTransform'         => (string) ($ts['text_transform'] ?? 'none'),
-                'letterSpacingEm'       => (float) ($ts['letter_spacing_em'] ?? 0),
-            ];
-            echo '<!-- pdf-pagination:' . base64_encode(json_encode($pagConfig, JSON_UNESCAPED_UNICODE)) . ' -->';
-        }
-        if ($isDompdf && ! $inFooter) {
+        if ($isPdfDownload && ! $inFooter && \App\Libraries\Pdf\PdfEngine::isDompdf()) {
             $mm = is_array($pdf_margins_mm ?? null)
                 ? $pdf_margins_mm
                 : \App\Services\ReportPdfLayoutService::defaultMarginsMmStatic();
@@ -524,16 +484,21 @@ switch ($type) {
         $dataTotalAttr     = $pageToken;
         $pagPieceClass     = $inFooter ? 'pdf-ft-pagination' : 'header-piece header-piece-pagination';
         $pagNumClass       = $inFooter ? 'pdf-ft-pagination-num' : 'pdf-pagination-line';
-        $pagLineStyle      = $inFooter && $isDompdf ? $stInst : '';
+        $useDompdfFooterCanvas = $inFooter && $isPdfDownload && \App\Libraries\Pdf\PdfEngine::isDompdf();
+        $pagLineStyle      = $useDompdfFooterCanvas ? $stInst : '';
+        $pagLh             = (string) ($ts['line_height'] ?? 1.1);
+        $pagLabelLineStyle = $useDompdfFooterCanvas && $inlinePag && $showLblPag
+            ? (preg_replace('/line-height\s*:\s*[^;]+;?/i', 'line-height:' . $pagLh . ';', $stPagLbl) ?? $stPagLbl)
+            : $stPagLbl;
         ?>
                 <div class="<?= esc($pagPieceClass, 'attr') ?>">
                     <?php if ($inlinePag && $showLblPag): ?>
-                    <p style="margin:0;<?= esc($pagLineStyle, 'attr') ?>"><span class="pdf-ft-pagination-label" style="<?= esc($stPagLbl, 'attr') ?>"><?= esc($lblPag) ?></span> <span id="<?= esc($pagUid, 'attr') ?>" class="<?= esc($pagNumClass, 'attr') ?>" style="<?= esc($stInst, 'attr') ?>" data-prefix="" data-total="<?= esc($dataTotalAttr, 'attr') ?>"></span></p>
+                    <p style="margin:0;white-space:nowrap;<?= esc($pagLineStyle, 'attr') ?>"><span class="pdf-ft-pagination-label" style="<?= esc($pagLabelLineStyle, 'attr') ?>"><?= esc($lblPag) ?></span> <span id="<?= esc($pagUid, 'attr') ?>" class="<?= esc($pagNumClass, 'attr') ?>" style="<?= esc($stInst, 'attr') ?>" data-prefix="" data-total="<?= esc($dataTotalAttr, 'attr') ?>"></span></p>
                     <?php elseif ($showLblPag): ?>
                     <p style="margin:0;"><span style="<?= esc($stPagLbl, 'attr') ?>"><?= esc($lblPag) ?></span></p>
-                    <p style="margin:0;<?= esc($pagLineStyle, 'attr') ?>"><span id="<?= esc($pagUid, 'attr') ?>" class="<?= esc($pagNumClass, 'attr') ?>"<?= ($inFooter && $isDompdf) ? '' : ' style="' . esc($stInst, 'attr') . '"' ?> data-prefix="" data-total="<?= esc($dataTotalAttr, 'attr') ?>"></span></p>
+                    <p style="margin:0;<?= esc($pagLineStyle, 'attr') ?>"><span id="<?= esc($pagUid, 'attr') ?>" class="<?= esc($pagNumClass, 'attr') ?>"<?= $useDompdfFooterCanvas ? '' : ' style="' . esc($stInst, 'attr') . '"' ?> data-prefix="" data-total="<?= esc($dataTotalAttr, 'attr') ?>"></span></p>
                     <?php else: ?>
-                    <p style="margin:0;<?= esc($pagLineStyle, 'attr') ?>"><span id="<?= esc($pagUid, 'attr') ?>" class="<?= esc($pagNumClass, 'attr') ?>"<?= ($inFooter && $isDompdf) ? '' : ' style="' . esc($stInst, 'attr') . '"' ?> data-prefix="" data-total="<?= esc($dataTotalAttr, 'attr') ?>"></span></p>
+                    <p style="margin:0;<?= esc($pagLineStyle, 'attr') ?>"><span id="<?= esc($pagUid, 'attr') ?>" class="<?= esc($pagNumClass, 'attr') ?>"<?= $useDompdfFooterCanvas ? '' : ' style="' . esc($stInst, 'attr') . '"' ?> data-prefix="" data-total="<?= esc($dataTotalAttr, 'attr') ?>"></span></p>
                     <?php endif; ?>
                 </div>
         <?php

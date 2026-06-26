@@ -7,32 +7,20 @@ use CodeIgniter\Config\BaseConfig;
 class Pdf extends BaseConfig
 {
     /**
-     * Motor de renderizado: chromium | dompdf
+     * Motor de renderizado: mpdf (recomendado) | dompdf (legacy)
      * Variable de entorno: PDF_RENDERER
      */
-    public string $renderer = 'dompdf';
+    public string $renderer = 'mpdf';
 
     /**
-     * Permite generar PDF con Dompdf (PHP puro, sin Chrome en el servidor).
+     * Caché de HTML entre prepareReportData y el motor PDF (writable/cache/report_pdf_html).
      */
-    public bool $dompdfEnabled = true;
+    public bool $htmlCacheEnabled = true;
 
     /**
-     * Si Chromium falla, usar Dompdf automáticamente.
+     * Directorio temporal mPDF (vacío = writable/cache/mpdf).
      */
-    public bool $fallbackToDompdf = true;
-
-    /**
-     * Ruta al ejecutable de Chrome/Chromium.
-     * Variable de entorno: CHROME_EXECUTABLE_PATH
-     * Vacío = autodetección (Windows / Linux).
-     */
-    public string $executablePath = '';
-
-    /**
-     * Timeout en segundos para el proceso Chromium.
-     */
-    public int $timeoutSeconds = 120;
+    public string $mpdfTempDir = '';
 
     /**
      * Tamaño de papel por defecto si no viene del layout: letter | a4 | legal
@@ -45,7 +33,7 @@ class Pdf extends BaseConfig
     public string $orientation = 'portrait';
 
     /**
-     * Imprimir fondos y colores (printBackground).
+     * Imprimir fondos y colores.
      */
     public bool $printBackground = true;
 
@@ -66,18 +54,6 @@ class Pdf extends BaseConfig
         'left'   => null,
     ];
 
-    /**
-     * Plantillas HTML/PDF de cabecera y pie para Chromium (vacío = desactivado).
-     */
-    public string $headerTemplate = '';
-
-    public string $footerTemplate = '';
-
-    /**
-     * Directorio temporal para HTML/PDF de Chromium (vacío = writable/cache/chromium_pdf).
-     */
-    public string $tempDir = '';
-
     public function __construct()
     {
         parent::__construct();
@@ -87,19 +63,13 @@ class Pdf extends BaseConfig
             $this->renderer = strtolower(trim($envRenderer));
         }
 
-        $envChrome = env('CHROME_EXECUTABLE_PATH');
-        if (is_string($envChrome) && trim($envChrome, " \t\"'") !== '') {
-            $path = trim($envChrome, " \t\"'");
-            $this->executablePath = DIRECTORY_SEPARATOR === '\\'
-                ? str_replace('/', '\\', $path)
-                : str_replace('\\', '/', $path);
-        }
-
-        $envTimeout = env('PDF_CHROMIUM_TIMEOUT');
-        if (is_string($envTimeout) && is_numeric($envTimeout)) {
-            $this->timeoutSeconds = max(10, (int) $envTimeout);
-        } elseif (is_int($envTimeout) || is_float($envTimeout)) {
-            $this->timeoutSeconds = max(10, (int) $envTimeout);
+        if (! in_array($this->renderer, ['dompdf', 'mpdf'], true)) {
+            log_message(
+                'warning',
+                'PDF_RENDERER={renderer} no soportado; usando mpdf.',
+                ['renderer' => $this->renderer],
+            );
+            $this->renderer = 'mpdf';
         }
     }
 }

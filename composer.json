@@ -14,13 +14,10 @@
         "codeigniter4/framework": "^4.7",
         "dompdf/dompdf": "^3.1",
         "endroid/qr-code": "^6.1",
-        "league/oauth2-google": "*",
-        "picqer/php-barcode-generator": "^3.2",
-        "setasign/fpdi-tcpdf": "2.3"
+        "mpdf/mpdf": "^8.3",
+        "picqer/php-barcode-generator": "^3.2"
     },
     "require-dev": {
-        "fakerphp/faker": "^1.9",
-        "mikey179/vfsstream": "^1.6",
         "phpunit/phpunit": "^10.5.16",
         "squizlabs/php_codesniffer": "^3.7"
     },

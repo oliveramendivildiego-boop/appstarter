@@ -642,7 +642,7 @@
                     <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#cfgsec-resultados" aria-expanded="false" aria-controls="cfgsec-resultados">
                         <i class="fa-solid fa-flask me-2 text-primary"></i>
                         <span class="fw-semibold">Resultados y registro de pruebas</span>
-                        <span class="cfg-sec-hint small text-muted ms-2 d-none d-md-inline">Decimales y leyendas/comentarios</span>
+                        <span class="cfg-sec-hint small text-muted ms-2 d-none d-md-inline">Decimales, columnas del formulario y leyendas</span>
                     </button>
                 </h2>
                 <div id="cfgsec-resultados" class="accordion-collapse collapse">
@@ -652,6 +652,19 @@
                 <?= form_label(lang('Config.config_decimales_sugerencia'), 'decimales_sugerencia', ['class' => 'form-label']) ?>
                 <?= form_input(['name' => 'decimales_sugerencia', 'id' => 'decimales_sugerencia', 'type' => 'number', 'min' => 0, 'max' => 10, 'class' => 'form-control', 'value' => $config['decimales_sugerencia'] ?? '2', 'autocomplete' => 'off']) ?>
                 <small class="text-muted"><?= lang('Config.config_decimales_sugerencia_help') ?></small>
+            </div>
+            <div class="col-md-6 mb-3 cfg-item">
+                <?php
+                $formCols = \App\Services\ConfigService::normalizeRegistroFormColumnas($config['registro_form_columnas'] ?? 3);
+                ?>
+                <?= form_label(lang('Config.config_registro_form_columnas'), 'registro_form_columnas', ['class' => 'form-label']) ?>
+                <?= form_dropdown('registro_form_columnas', [
+                    '1' => '1 columna (ancho completo)',
+                    '2' => '2 columnas',
+                    '3' => '3 columnas (predeterminado)',
+                    '4' => '4 columnas',
+                ], (string) $formCols, 'id="registro_form_columnas" class="form-select" style="max-width: 22rem;" autocomplete="off"') ?>
+                <small class="text-muted"><?= lang('Config.config_registro_form_columnas_help') ?></small>
             </div>
         </div>
         <div class="mb-3 cfg-item">

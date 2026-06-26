@@ -33,11 +33,18 @@ if (!empty($muestra)): ?>
 </div>
 <?php endif; ?>
 
-<fieldset id="customer_basic_info">
+<?php
+$formColumnas = registro_form_columnas_normalizar($registro_form_columnas ?? 3);
+$formUnaColumna = ($formColumnas === 1);
+?>
+<fieldset id="customer_basic_info" class="register-form-capture<?= $formUnaColumna ? ' register-form-capture--cols-1' : '' ?>">
 <?= csrf_field() ?>
 <input type="hidden" name="registro_id" id="registro_id" value="<?= (int)($labotests_namecate ?? 0) ?>">
 <?php
 $registerModel = $registerModel ?? null;
+$formColClass = registro_form_columnas_clase_bootstrap($formColumnas);
+$formPanelAbierto = false;
+$formGridRowClass = 'row register-form-pruebas-grid g-3 mb-4';
 $last_padre = '';
 $pobMap = [];
 foreach (($poblaciones_catalogo ?? []) as $pobRow) {
@@ -59,6 +66,29 @@ if (empty($pruebas_info)):
 <div class="alert alert-warning">No hay pruebas para completar en este registro. <a href="<?= site_url('registers') ?>">Volver a registros</a></div>
 <?php
 else:
+$codigoRecepcion = registro_codigo_recepcion_display($register_info ?? null, false);
+$pacienteNombre = paciente_nombre_display($register_info ?? null);
+?>
+<div class="register-form-context card border-0 shadow-sm mb-4">
+    <div class="card-body py-3 px-3 px-md-4">
+        <div class="d-flex flex-wrap align-items-center gap-3">
+            <div class="register-form-context-avatar" aria-hidden="true">
+                <i class="fa-solid fa-user-pen"></i>
+            </div>
+            <div class="flex-grow-1 min-w-0">
+                <div class="register-form-context-kicker">Captura de resultados</div>
+                <div class="register-form-context-title text-truncate"><?= esc($pacienteNombre !== '' ? $pacienteNombre : 'Paciente') ?></div>
+                <?php if ($codigoRecepcion !== ''): ?>
+                <div class="register-form-context-meta"><span class="register-form-context-pill">Orden <?= esc($codigoRecepcion) ?></span></div>
+                <?php endif; ?>
+            </div>
+            <a href="<?= site_url('registers/viewreport/' . (int)($register_info->registro_id ?? 0)) ?>" class="btn btn-sm btn-outline-primary ms-md-auto">
+                <i class="fa-solid fa-file-lines me-1"></i> Ver reporte
+            </a>
+        </div>
+    </div>
+</div>
+<?php
 $labGruposFirma = [];
 $labFirmaLvList = $lab_validators ?? [];
 $labFirmaLaList = $lab_approvers ?? [];
@@ -154,7 +184,7 @@ $renderCampoTextoRico = static function (
         }
         $attrs .= ' ' . esc($attrName) . '="' . esc((string) $attrVal) . '"';
     }
-    echo '<div class="col-12 mb-3"><div class="mb-3">';
+    echo '<div class="col-12 mb-3"><div class="' . esc(registro_form_field_class()) . '">';
     echo '<label for="' . esc($fieldId) . '" class="form-label">' . $labelHtml . ':</label>';
     echo '<textarea ' . $attrs . '>' . registro_textarea_body_safe($value) . '</textarea>';
     echo '<span class="invalid-feedback d-block" data-msg-for="' . esc($fieldId) . '"></span>';
@@ -175,7 +205,7 @@ $renderCampoTextoFijo = static function (
         }
         $attrs .= ' ' . esc($attrName) . '="' . esc((string) $attrVal) . '"';
     }
-    echo '<div class="col-12 mb-3"><div class="mb-3">';
+    echo '<div class="col-12 mb-3"><div class="' . esc(registro_form_field_class()) . '">';
     echo '<label for="' . esc($fieldId) . '" class="form-label">' . $labelHtml . ':</label>';
     echo '<textarea ' . $attrs . '>' . registro_textarea_body_safe($val) . '</textarea>';
     echo '<span class="invalid-feedback d-block" data-msg-for="' . esc($fieldId) . '"></span>';
@@ -185,9 +215,20 @@ foreach ($pruebas_info ?? [] as $prueba):
     if (($prueba['padre'] ?? '') != $last_padre):
         if ($last_padre !== '') {
             $renderLabFirmaGrupoCerrado($last_padre);
-            echo '</div>';
+            if (! $formUnaColumna) {
+                echo '</div>';
+            }
         }
-        echo '<div class="row mb-3">';
+        if ($formUnaColumna) {
+            if (! $formPanelAbierto) {
+                echo '<div class="' . esc($formGridRowClass) . ' register-form-area-panel register-form-area-panel--single-col" data-form-cols="1">';
+                $formPanelAbierto = true;
+            } elseif (trim((string) ($prueba['padre'] ?? '')) !== '') {
+                echo '<div class="col-12"><div class="register-form-padre-divider" role="heading" aria-level="3">' . esc($prueba['padre']) . '</div></div>';
+            }
+        } else {
+            echo '<div class="' . esc($formGridRowClass) . ' register-form-area-panel" data-form-cols="' . (int) $formColumnas . '">';
+        }
         $last_padre = $prueba['padre'] ?? '';
     endif;
 
@@ -298,14 +339,16 @@ foreach ($pruebas_info ?? [] as $prueba):
             $pMin = trim($prueba['valor_min'] ?? ''); $pMax = trim($prueba['valor_max'] ?? ''); $pUmed = trim($prueba['umedida'] ?? '');
             $pRef = ($pMin !== '' || $pMax !== '') ? ' <small class="text-muted">(Ref: ' . ($pMin ?: 'â€¦') . ' - ' . ($pMax ?: 'â€¦') . ($pUmed ? ' ' . $pUmed : '') . ')</small>' : '';
             $valores = $registerModel ? $registerModel->getOpciones((int)$prueba['opcion_id']) : [];
-            echo '<div class="col-12 col-md-6 col-lg-4 mb-3"><div class="mb-3">';
+            echo '<div class="' . esc($formColClass) . ' mb-3"><div class="' . esc(registro_form_field_class()) . '">';
             $nocId = 'noc_' . ($prueba['priresultados_id'] ?? '');
             echo '<label for="' . esc($nocId) . '" class="form-label">' . esc($prueba['hijo'] ?? '') . $pRef . ':</label>';
             $extra = 'id="' . esc($nocId) . '" class="form-control input-con-ref"';
             if ($pidPrueba > 0) $extra .= ' data-prianacategoria-id="' . $pidPrueba . '"';
             if ($esPruebaRetirada) $extra .= ' disabled data-prueba-retirada="1"';
             if ($pMin !== '') $extra .= ' data-min="' . esc($pMin) . '"'; if ($pMax !== '') $extra .= ' data-max="' . esc($pMax) . '"';
+            registro_form_input_wrap_open('', true);
             echo build_select($nocId, $valores, $existentes[$nocId] ?? '', $extra);
+            registro_form_input_wrap_close();
             echo '<span class="invalid-feedback d-block" data-msg-for="' . esc($nocId) . '"></span></div></div>';
         elseif (registro_opcion_es_texto_fijo((int) ($prueba['opcion_id'] ?? 0))):
             $rid = $prueba['priresultados_id'] ?? $prueba['prianacategoria_id'] ?? '';
@@ -335,7 +378,7 @@ foreach ($pruebas_info ?? [] as $prueba):
             $rid = $prueba['priresultados_id'] ?? $prueba['prianacategoria_id'] ?? '';
             $pMin = trim($prueba['valor_min'] ?? ''); $pMax = trim($prueba['valor_max'] ?? ''); $pUmed = trim($prueba['umedida'] ?? '');
             $pRef = ($pMin !== '' || $pMax !== '') ? ' <small class="text-muted">(Ref: ' . ($pMin ?: '…') . ' - ' . ($pMax ?: '…') . ($pUmed ? ' ' . esc($pUmed) : '') . ')</small>' : '';
-            echo '<div class="col-12 col-md-6 col-lg-4 mb-3"><div class="mb-3">';
+            echo '<div class="' . esc($formColClass) . ' mb-3"><div class="' . esc(registro_form_field_class()) . '">';
             $nocRid = 'noc_' . esc($rid);
             echo '<label for="' . $nocRid . '" class="form-label">' . esc($prueba['hijo'] ?? '') . $pRef . ($esCalculadaNoc ? ' <span class="badge badge-calculada">' . ($esFormulaValorNoc ? 'Fórmula (valor × expresión)' : 'Calculada') . '</span>' : '') . ':</label>';
             $valRid = $existentes['noc_' . $rid] ?? '';
@@ -350,7 +393,10 @@ foreach ($pruebas_info ?? [] as $prueba):
                 if ($formulasIdNoc > 1) $attrs .= ' data-formula-id="' . $formulasIdNoc . '"';
                 $attrs .= $esFormulaValorNoc ? ' placeholder="Escriba el valor (ej. 50)"' : ' placeholder="Escriba o use la sugerencia"';
             }
-            echo '<input type="text" ' . $attrs . '><span class="invalid-feedback d-block" data-msg-for="noc_' . esc($rid) . '"></span>';
+            registro_form_input_wrap_open($pUmed);
+            echo '<input type="text" ' . $attrs . '>';
+            registro_form_input_wrap_close($pUmed);
+            echo '<span class="invalid-feedback d-block" data-msg-for="noc_' . esc($rid) . '"></span>';
             if ($esCalculadaNoc) {
                 echo '<span class="sugerencia-calculada small text-muted mt-1 d-block" data-sugerencia-for="noc_' . esc($rid) . '" role="button" tabindex="0" title="Clic para usar este valor">Sugerencia: —</span>';
             }
@@ -359,14 +405,18 @@ foreach ($pruebas_info ?? [] as $prueba):
             $rid = $prueba['priresultados_id'] ?? $prueba['prianacategoria_id'] ?? '';
             $pMin = trim($prueba['valor_min'] ?? ''); $pMax = trim($prueba['valor_max'] ?? ''); $pUmed = trim($prueba['umedida'] ?? '');
             $pRef = ($pMin !== '' || $pMax !== '') ? ' <small class="text-muted">(Ref: ' . ($pMin ?: 'â€¦') . ' - ' . ($pMax ?: 'â€¦') . ($pUmed ? ' ' . $pUmed : '') . ')</small>' : ' <small class="text-muted">(Por favor revise los valores de referencia en AnÃ¡lisis clÃ­nico)</small>';
-            echo '<div class="col-12 col-md-6 col-lg-4 mb-3"><div class="mb-3">';
+            echo '<div class="' . esc($formColClass) . ' mb-3"><div class="' . esc(registro_form_field_class()) . '">';
             echo '<label for="noc_' . esc($rid) . '" class="form-label">' . esc($prueba['hijo'] ?? '') . $pRef . ':</label>';
             $valRid = $existentes['noc_' . $rid] ?? '';
             $attrs = 'name="noc_' . esc($rid) . '" id="noc_' . esc($rid) . '" class="form-control input-con-ref" value="' . esc($valRid) . '"';
             if ($pidPrueba > 0) $attrs .= ' data-prianacategoria-id="' . $pidPrueba . '"';
             if ($esPruebaRetirada) $attrs .= ' readonly tabindex="-1" data-prueba-retirada="1"';
             if ($pMin !== '') $attrs .= ' data-min="' . esc($pMin) . '"'; if ($pMax !== '') $attrs .= ' data-max="' . esc($pMax) . '"';
-            echo '<input type="text" ' . $attrs . '><span class="invalid-feedback d-block" data-msg-for="noc_' . esc($rid) . '"></span>';
+            if ($pUmed !== '') $attrs .= ' data-umedida="' . esc($pUmed) . '"';
+            registro_form_input_wrap_open($pUmed);
+            echo '<input type="text" ' . $attrs . '>';
+            registro_form_input_wrap_close($pUmed);
+            echo '<span class="invalid-feedback d-block" data-msg-for="noc_' . esc($rid) . '"></span>';
             echo '</div></div>';
         endif;
     elseif (in_array((int) ($prueba['compleja'] ?? 0), [\App\Models\LabotestModel::COMPLEJA_CULTIVO, \App\Models\LabotestModel::COMPLEJA_PERSONALIZADO], true)):
@@ -416,7 +466,7 @@ foreach ($pruebas_info ?? [] as $prueba):
             $valorExiste = $existentes[$cId] ?? ($prianacategoriaId > 0 && $nombrePrueba !== '' ? ($existentes[$prianacategoriaId . '|' . $nombrePrueba] ?? '') : '');
             if (registro_opcion_es_select((int) ($v['opcion_id'] ?? 0))):
                 $opts = $registerModel ? $registerModel->getOpciones((int)($v['opcion_id'] ?? 0)) : [];
-                echo '<div class="col-12 col-md-6 col-lg-4 mb-3"><div class="mb-3">';
+                echo '<div class="' . esc($formColClass) . ' mb-3"><div class="' . esc(registro_form_field_class()) . '">';
                 echo '<label for="' . esc($cId) . '" class="form-label">' . esc($v['nombre'] ?? '') . $refText . ':</label>';
                 $extra = 'id="' . esc($cId) . '" class="form-control input-con-ref"';
                 if ($prianacategoriaId > 0) $extra .= ' data-prianacategoria-id="' . $prianacategoriaId . '"';
@@ -424,7 +474,9 @@ foreach ($pruebas_info ?? [] as $prueba):
                 if ($nombrePrueba !== '') $extra .= ' data-prueba="' . esc($nombrePrueba) . '"';
                 if ($vMin !== '') $extra .= ' data-min="' . esc($vMin) . '"';
                 if ($vMax !== '') $extra .= ' data-max="' . esc($vMax) . '"';
+                registro_form_input_wrap_open('', true);
                 echo build_select($cId, $opts, $valorExiste, $extra);
+                registro_form_input_wrap_close();
                 echo '<span class="invalid-feedback d-block" data-msg-for="' . esc($cId) . '"></span></div></div>';
             elseif (registro_opcion_es_texto_fijo((int) ($v['opcion_id'] ?? 0))):
                 $cId = 'c_' . ($v['secanacategoria_id'] ?? '');
@@ -477,7 +529,7 @@ foreach ($pruebas_info ?? [] as $prueba):
                 $esCalculada = $expresion !== '' && $formulasId !== 1;
                 $idsEnFormula = $esCalculada && preg_match_all('/c_\d+/', $expresion, $m) ? array_unique($m[0]) : [];
                 $esFormulaValor = $esCalculada && count($idsEnFormula) === 1 && in_array($cId, $idsEnFormula, true);
-                echo '<div class="col-12 col-md-6 col-lg-4 mb-3"><div class="mb-3">';
+                echo '<div class="' . esc($formColClass) . ' mb-3"><div class="' . esc(registro_form_field_class()) . '">';
                 echo '<label for="' . esc($cId) . '" class="form-label">' . esc($v['nombre'] ?? '') . $refText . ($esCalculada ? ' <span class="badge badge-calculada">' . ($esFormulaValor ? 'FÃ³rmula (valor Ã— expresiÃ³n)' : 'Calculada') . '</span>' : '') . ':</label>';
                 if ($esCalculada) {
                     if ($esFormulaValor) {
@@ -487,7 +539,9 @@ foreach ($pruebas_info ?? [] as $prueba):
                         if ($nombrePrueba !== '') $attrs .= ' data-prueba="' . esc($nombrePrueba) . '"';
                         if ($vMin !== '') $attrs .= ' data-min="' . esc($vMin) . '"'; if ($vMax !== '') $attrs .= ' data-max="' . esc($vMax) . '"';
                         if ($umedida !== '') $attrs .= ' data-umedida="' . esc($umedida) . '"';
+                        registro_form_input_wrap_open($umedida);
                         echo '<input type="text" ' . $attrs . '>';
+                        registro_form_input_wrap_close($umedida);
                         echo '<span class="sugerencia-calculada small text-muted mt-1 d-block" data-sugerencia-for="' . esc($cId) . '" role="button" tabindex="0" title="Clic para usar este valor">Sugerencia: â€”</span>';
                         echo '<span class="invalid-feedback d-block" data-msg-for="' . esc($cId) . '"></span>';
                     } else {
@@ -497,7 +551,9 @@ foreach ($pruebas_info ?? [] as $prueba):
                         if ($nombrePrueba !== '') $attrs .= ' data-prueba="' . esc($nombrePrueba) . '"';
                         if ($vMin !== '') $attrs .= ' data-min="' . esc($vMin) . '"'; if ($vMax !== '') $attrs .= ' data-max="' . esc($vMax) . '"';
                         if ($umedida !== '') $attrs .= ' data-umedida="' . esc($umedida) . '"';
+                        registro_form_input_wrap_open($umedida);
                         echo '<input type="text" ' . $attrs . '>';
+                        registro_form_input_wrap_close($umedida);
                         echo '<span class="sugerencia-calculada small text-muted mt-1 d-block" data-sugerencia-for="' . esc($cId) . '" role="button" tabindex="0" title="Clic para usar este valor">Sugerencia: â€”</span>';
                         echo '<span class="invalid-feedback d-block" data-msg-for="' . esc($cId) . '"></span>';
                     }
@@ -507,7 +563,10 @@ foreach ($pruebas_info ?? [] as $prueba):
                     if ($nombrePrueba !== '') $attrs .= ' data-prueba="' . esc($nombrePrueba) . '"';
                     if ($vMin !== '') $attrs .= ' data-min="' . esc($vMin) . '"'; if ($vMax !== '') $attrs .= ' data-max="' . esc($vMax) . '"';
                     if ($umedida !== '') $attrs .= ' data-umedida="' . esc($umedida) . '"';
-                    echo '<input type="text" ' . $attrs . '><span class="invalid-feedback d-block" data-msg-for="' . esc($cId) . '"></span>';
+                    registro_form_input_wrap_open($umedida);
+                    echo '<input type="text" ' . $attrs . '>';
+                    registro_form_input_wrap_close($umedida);
+                    echo '<span class="invalid-feedback d-block" data-msg-for="' . esc($cId) . '"></span>';
                 }
                 echo '</div></div>';
             endif;
@@ -516,7 +575,6 @@ foreach ($pruebas_info ?? [] as $prueba):
 endforeach;
 if ($last_padre !== '') {
     $renderLabFirmaGrupoCerrado($last_padre);
-    echo '</div>';
 }
 if ($labValidationMode === 'analisis' && $labGruposFirma !== []) {
     $labGrpKeysTodas = array_keys($labGruposFirma);
@@ -528,43 +586,75 @@ if ($labValidationMode === 'analisis' && $labGruposFirma !== []) {
             }
         }
     }
-    echo '<div class="row mb-3">';
-    echo view('registers/partials/lab_firma_grupo', [
-        'padre_label'      => 'Análisis',
-        'grp_key'          => $labGrpKeysTodas[0],
-        'es_global'        => true,
-        'grp_keys_all'     => $labGrpKeysTodas,
-        'existentes'       => $existentes,
-        'lv_list'          => $labFirmaLvList,
-        'la_list'          => $labFirmaLaList,
-        'pria_ids_legacy'  => $labPriaIdsTodas,
-    ]);
+    if ($formUnaColumna && $formPanelAbierto) {
+        echo '<div class="col-12">';
+        echo view('registers/partials/lab_firma_grupo', [
+            'padre_label'      => 'Análisis',
+            'grp_key'          => $labGrpKeysTodas[0],
+            'es_global'        => true,
+            'grp_keys_all'     => $labGrpKeysTodas,
+            'existentes'       => $existentes,
+            'lv_list'          => $labFirmaLvList,
+            'la_list'          => $labFirmaLaList,
+            'pria_ids_legacy'  => $labPriaIdsTodas,
+        ]);
+        echo '</div>';
+    } else {
+        echo '<div class="' . esc($formGridRowClass) . ' register-form-area-panel" data-form-cols="' . (int) $formColumnas . '">';
+        echo view('registers/partials/lab_firma_grupo', [
+            'padre_label'      => 'Análisis',
+            'grp_key'          => $labGrpKeysTodas[0],
+            'es_global'        => true,
+            'grp_keys_all'     => $labGrpKeysTodas,
+            'existentes'       => $existentes,
+            'lv_list'          => $labFirmaLvList,
+            'la_list'          => $labFirmaLaList,
+            'pria_ids_legacy'  => $labPriaIdsTodas,
+        ]);
+        echo '</div>';
+    }
+}
+if ($formUnaColumna && $formPanelAbierto) {
+    echo '</div>';
+} elseif ($last_padre !== '' && ! $formUnaColumna) {
     echo '</div>';
 }
 endif;
 ?>
 <?php if (!empty($pruebas_info)): ?>
 <?php if (!empty($leyendas_enabled)): ?>
-<div class="row mt-2">
-    <div class="col-12">
+<div class="register-form-notes card border-0 shadow-sm mt-4">
+    <div class="card-body">
+        <h6 class="register-form-notes-title"><i class="fa-solid fa-comment-medical me-2"></i>Comentarios y notas</h6>
         <?php if (!empty($leyendas_activas)): ?>
-        <label for="leyenda_sugerida" class="form-label">Sugerencias de leyendas</label>
-        <select id="leyenda_sugerida" class="form-select mb-2">
-            <option value="">-- Seleccionar leyenda --</option>
-            <?php foreach (($leyendas_activas ?? []) as $leyenda): ?>
-                <?php $txtLey = trim((string)($leyenda['mensaje'] ?? '')); if ($txtLey === '') continue; ?>
-                <option value="<?= esc($txtLey) ?>"><?= esc($leyenda['titulo'] ?? 'Leyenda') ?></option>
-            <?php endforeach; ?>
-        </select>
+        <label for="leyenda_sugerida" class="form-label register-form-label-text">Sugerencias de leyendas</label>
+        <div class="register-form-input-wrap register-form-input-wrap--select mb-3">
+            <select id="leyenda_sugerida" class="form-select">
+                <option value="">Seleccionar leyenda sugerida…</option>
+                <?php foreach (($leyendas_activas ?? []) as $leyenda): ?>
+                    <?php $txtLey = trim((string)($leyenda['mensaje'] ?? '')); if ($txtLey === '') continue; ?>
+                    <option value="<?= esc($txtLey) ?>"><?= esc($leyenda['titulo'] ?? 'Leyenda') ?></option>
+                <?php endforeach; ?>
+            </select>
+        </div>
         <?php endif; ?>
-        <label for="comentario_resultado" class="form-label fw-bold">Comentarios / Nota</label>
-        <textarea id="comentario_resultado" class="form-control" rows="3" placeholder="Escriba una nota o seleccione una leyenda sugerida..."><?= esc((string)($register_info->comentario_resultado ?? '')) ?></textarea>
-        <small class="text-muted">Puede usar una leyenda sugerida y luego editar el texto manualmente.</small>
+        <label for="comentario_resultado" class="form-label register-form-label-text">Nota del resultado</label>
+        <div class="register-form-input-wrap mb-2">
+            <textarea id="comentario_resultado" class="form-control" rows="3" placeholder="Escriba una observación clínica o seleccione una leyenda arriba…"><?= esc((string)($register_info->comentario_resultado ?? '')) ?></textarea>
+        </div>
+        <p class="register-form-helper mb-0"><i class="fa-solid fa-circle-info" aria-hidden="true"></i><span>Visible en el reporte si está configurado en la plantilla.</span></p>
     </div>
 </div>
 <?php endif; ?>
-<div class="mt-3">
-    <button type="button" id="submit" name="btn_submit" class="btn btn-primary"><?= !empty($existentes) ? ucfirst(lang('Common.common_edit')) : lang('Common.common_submit') ?></button>
+<div class="register-form-actions mt-4">
+    <button type="button" id="submit" name="btn_submit" class="btn btn-primary btn-lg px-4">
+        <i class="fa-solid fa-floppy-disk me-2"></i><?= !empty($existentes) ? ucfirst(lang('Common.common_edit')) : lang('Common.common_submit') ?>
+    </button>
+    <?php if (!empty($existentes)): ?>
+    <a href="<?= site_url('registers/viewreport/' . (int)($register_info->registro_id ?? 0)) ?>" class="btn btn-outline-secondary btn-lg" id="formfill-ver-reporte">
+        <i class="fa-solid fa-file-lines me-2"></i>Ver reporte
+    </a>
+    <?php endif; ?>
 </div>
 <?php endif; ?>
 <!-- Modal confirmación de envío (reemplaza window.confirm) -->
@@ -657,6 +747,9 @@ document.addEventListener('DOMContentLoaded', function() {
                 toolbar: false
             });
             jQuery(el).summernote('disable');
+        });
+        document.querySelectorAll('.register-form-field .note-editor.note-frame, .register-form-capture .cultivo-fill-wrap .note-editor.note-frame').forEach(function (editor) {
+            editor.classList.add('register-form-rich-editor');
         });
     }
     function syncTextoRicoEditors() {
@@ -753,27 +846,36 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
     function validarInputAlEscribir(el) {
-        if (el.getAttribute('data-skip-ref-validation') === '1') return;
+        if (el.getAttribute('data-skip-ref-validation') === '1') {
+            if (typeof window.__formfillSyncFieldState === 'function') {
+                window.__formfillSyncFieldState(el);
+            }
+            return;
+        }
         var min = el.getAttribute('data-min');
         var max = el.getAttribute('data-max');
         var msgEl = document.querySelector('[data-msg-for="' + el.id + '"]');
-        if (!msgEl) return;
         var val = (el.value || '').trim().replace(',', '.');
         var num = val !== '' && !isNaN(parseFloat(val)) ? parseFloat(val) : NaN;
         var valorMostrar = val !== '' ? val : '';
-        msgEl.textContent = '';
-        msgEl.innerHTML = '';
+        if (msgEl) {
+            msgEl.textContent = '';
+            msgEl.innerHTML = '';
+        }
         el.classList.remove('is-invalid');
-        if ((min === null || min === '') && (max === null || max === '')) return;
-        if (isNaN(num)) return;
-        var minNum = (min !== null && min !== '') ? parseFloat(String(min).replace(',', '.')) : null;
-        var maxNum = (max !== null && max !== '') ? parseFloat(String(max).replace(',', '.')) : null;
-        if (minNum !== null && !isNaN(minNum) && num < minNum) {
-            msgEl.innerHTML = 'Valor: <strong>' + valorMostrar + '</strong>. Por debajo del rango de referencia (min. ' + min + ').';
-            el.classList.add('is-invalid');
-        } else if (maxNum !== null && !isNaN(maxNum) && num > maxNum) {
-            msgEl.innerHTML = 'Valor: <strong>' + valorMostrar + '</strong>. Por encima del rango de referencia (max. ' + max + ').';
-            el.classList.add('is-invalid');
+        if (msgEl && ((min !== null && min !== '') || (max !== null && max !== '')) && val !== '' && !isNaN(num)) {
+            var minNum = (min !== null && min !== '') ? parseFloat(String(min).replace(',', '.')) : null;
+            var maxNum = (max !== null && max !== '') ? parseFloat(String(max).replace(',', '.')) : null;
+            if (minNum !== null && !isNaN(minNum) && num < minNum) {
+                msgEl.innerHTML = 'Valor: <strong>' + valorMostrar + '</strong>. Por debajo del rango de referencia (mín. ' + min + ').';
+                el.classList.add('is-invalid');
+            } else if (maxNum !== null && !isNaN(maxNum) && num > maxNum) {
+                msgEl.innerHTML = 'Valor: <strong>' + valorMostrar + '</strong>. Por encima del rango de referencia (máx. ' + max + ').';
+                el.classList.add('is-invalid');
+            }
+        }
+        if (typeof window.__formfillSyncFieldState === 'function') {
+            window.__formfillSyncFieldState(el);
         }
     }
     document.addEventListener('click', function(e) {
@@ -856,6 +958,7 @@ document.addEventListener('DOMContentLoaded', function() {
     }
     var submitBtn = document.getElementById('submit');
     if (!submitBtn) return;
+    var submitBtnDefaultHtml = submitBtn.innerHTML;
     var leyendaSel = document.getElementById('leyenda_sugerida');
     if (leyendaSel) {
         leyendaSel.addEventListener('change', function() {
@@ -894,7 +997,10 @@ document.addEventListener('DOMContentLoaded', function() {
         return null;
     }
     function ejecutarEnvio() {
-        if (submitBtn) submitBtn.disabled = true;
+        if (submitBtn) {
+            submitBtn.disabled = true;
+            submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>Guardando…';
+        }
         syncTextoRicoEditors();
         var datos = [];
         document.querySelectorAll('.input-con-ref').forEach(function(el) {
@@ -964,7 +1070,10 @@ document.addEventListener('DOMContentLoaded', function() {
 
         if (datos.length === 0) {
             uiAlert('No hay datos para guardar. Complete al menos un campo de resultado.', 'Aviso');
-            if (submitBtn) submitBtn.disabled = false;
+            if (submitBtn) {
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = submitBtnDefaultHtml;
+            }
             return;
         }
 
@@ -997,7 +1106,10 @@ document.addEventListener('DOMContentLoaded', function() {
         var csrf = getCsrfPair();
         if (!csrf) {
             uiAlert('Sesión de seguridad no disponible. Recargue la página (F5) e intente de nuevo.', 'Error');
-            if (submitBtn) submitBtn.disabled = false;
+            if (submitBtn) {
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = submitBtnDefaultHtml;
+            }
             return;
         }
         var body = 'data=' + encodeURIComponent(JSON.stringify(datos));
@@ -1033,15 +1145,24 @@ document.addEventListener('DOMContentLoaded', function() {
             }
             if (res && res.success) {
                 var rid = document.getElementById('registro_id').value;
+                if (submitBtn) {
+                    submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>Abriendo reporte…';
+                }
                 window.location.href = '<?= site_url('registers/viewreport') ?>/' + rid;
             } else {
                 uiAlert(res && res.message ? res.message : 'Error al guardar', 'Error');
-                if (submitBtn) submitBtn.disabled = false;
+                if (submitBtn) {
+                    submitBtn.disabled = false;
+                    submitBtn.innerHTML = submitBtnDefaultHtml;
+                }
             }
         })
         .catch(function(err) {
             uiAlert(err && err.message ? err.message : 'Error al guardar', 'Error');
-            if (submitBtn) submitBtn.disabled = false;
+            if (submitBtn) {
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = submitBtnDefaultHtml;
+            }
         });
     }
 
@@ -1067,5 +1188,6 @@ document.addEventListener('DOMContentLoaded', function() {
     actualizarCalculadas();
 });
 </script>
+<script src="<?= base_url('js/modern/formfill-field-ux.js') ?>?v=5" defer></script>
 <script src="<?= base_url('js/modern/formfill-offline-draft.js') ?>" defer></script>
 <?= $this->endSection() ?>

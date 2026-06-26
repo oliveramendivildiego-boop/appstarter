@@ -5,13 +5,14 @@
  * @var array<string,mixed> $pdf_layout
  * @var bool                $use_sheet_padding Si true, márgenes en .viewreport-pdf-sheet (vista embebida); si no, en body (PDF/impresión).
  * @var bool                $browser_print_mode Si true, impresión directa navegador: sin margin/padding en body (solo @page).
- * @var bool                $embed_stylesheet_for_pdf Si true, incrusta report_pdf.css (Dompdf no siempre carga &lt;link&gt; remoto).
+ * @var bool $embed_stylesheet_for_pdf Si true, incrusta report_pdf.css (Dompdf no siempre carga &lt;link&gt; remoto).
  */
 
 $pdf_layout = is_array($pdf_layout ?? null) ? $pdf_layout : [];
 $useSheetPadding = ! empty($use_sheet_padding_for_margins);
 $browserPrintMode = ! empty($browser_print_mode);
 $embedStylesheetForPdf = ! empty($embed_stylesheet_for_pdf);
+$pdfBodyClass = \App\Libraries\Pdf\PdfEngine::isMpdf() ? 'pdf-engine-mpdf' : 'pdf-dompdf-download';
 
 $reportPdfCssRel = 'assets/css/report_pdf.css';
 $reportPdfCssFs  = FCPATH . str_replace('/', DIRECTORY_SEPARATOR, $reportPdfCssRel);
@@ -21,8 +22,8 @@ if ($embedStylesheetForPdf && is_file($reportPdfCssFs)) {
     static $reportPdfEmbeddedCssMtime = 0;
     $cssMtime = (int) filemtime($reportPdfCssFs);
     if ($reportPdfEmbeddedCss === null || $reportPdfEmbeddedCssMtime !== $cssMtime) {
-        $reportPdfEmbeddedCss       = (string) file_get_contents($reportPdfCssFs);
-        $reportPdfEmbeddedCssMtime  = $cssMtime;
+        $reportPdfEmbeddedCss      = (string) file_get_contents($reportPdfCssFs);
+        $reportPdfEmbeddedCssMtime = $cssMtime;
     }
     echo '<style>' . "\n" . $reportPdfEmbeddedCss . "\n" . '</style>' . "\n";
 } else {
@@ -71,6 +72,18 @@ $nsColW = max(0, min(4, (int) ($ns['column_border_width_px'] ?? 1)));
 $nsColColor = (string) ($ns['column_border_color'] ?? '#DDDDDD');
 $chCardBg = ! empty($ch['bg_transparent']) ? 'transparent' : (string) $ch['bg_color'];
 $rs = \App\Services\ReportPdfLayoutService::normalizeResultsTableStyle($ps['results_table'] ?? []);
+$rsRaw = is_array($ps['results_table'] ?? null) ? $ps['results_table'] : [];
+$titleTypo = \App\Services\ReportPdfLayoutService::resolveGrupoCabeceraTitleTypography($rs, $rsRaw);
+$titleTextShadowMap = [
+    'none'   => 'none',
+    'soft'   => '0.4px 0.4px 1px rgba(0,0,0,0.28)',
+    'medium' => '0.7px 0.7px 1.4px rgba(0,0,0,0.35)',
+    'strong' => '1px 1px 2px rgba(0,0,0,0.45)',
+];
+$titleTextShadow = $titleTextShadowMap[$titleTypo['text_shadow'] ?? 'none'] ?? 'none';
+$segFontFamily = array_key_exists('segment_font_family', $rsRaw) ? (string) $rs['segment_font_family'] : (string) $ch['font_family'];
+$segFontSize = array_key_exists('segment_font_size_pt', $rsRaw) ? (float) $rs['segment_font_size_pt'] : (float) $ch['font_size_pt'];
+$segFontWeight = array_key_exists('segment_font_weight', $rsRaw) ? (string) $rs['segment_font_weight'] : (string) $ch['font_weight'];
 $orderSheetHeaderEnabled = \App\Services\ReportPdfLayoutService::isOrderSheetHeaderEnabledForLayout($pl);
 $rsBodyBg = ! empty($rs['body_transparent']) ? 'transparent' : (string) $rs['body_bg_color'];
 $rsSegBg  = ! empty($rs['segment_transparent']) ? 'transparent' : (string) $rs['segment_bg_color'];
@@ -81,6 +94,13 @@ $segShadowMap = [
     'strong' => '0 2px 5px rgba(0,0,0,0.34)',
 ];
 $rsSegShadow = $segShadowMap[$rs['segment_shadow']] ?? 'none';
+$rsTextShadowMap = [
+    'none'   => 'none',
+    'soft'   => '0.4px 0.4px 1px rgba(0,0,0,0.28)',
+    'medium' => '0.7px 0.7px 1.4px rgba(0,0,0,0.35)',
+    'strong' => '1px 1px 2px rgba(0,0,0,0.45)',
+];
+$rsTextShadow = $rsTextShadowMap[$rs['text_shadow'] ?? 'none'] ?? 'none';
 
 $pdfFooterEnabled = false;
 foreach (is_array($pl['blocks'] ?? null) ? $pl['blocks'] : [] as $fb) {
@@ -99,6 +119,9 @@ $ftTopColor         = (string) ($ft['section_top_border_color'] ?? '#DDDDDD');
 $ftTopStyleCss      = ($ftTopOn && $ftTopW > 0) ? 'solid' : 'none';
 $ftTopWpx           = ($ftTopOn && $ftTopW > 0) ? $ftTopW : 0;
 ?>
+<?php if ($pdfFooterEnabled && $pdfFooterReserveMm > 0): ?>
+<!-- pdf-footer-reserve-mm:<?= esc((string) $pdfFooterReserveMm) ?> -->
+<?php endif; ?>
 <style>
 <?php if ($useSheetPadding): ?>
 .viewreport-pdf-sheet {
@@ -180,18 +203,20 @@ body.report-browser-print .pdf-ft-block.footer-grid {
 <?php
 $bodyMarginBottomMm = $pdfFooterEnabled ? ($mb + $pdfFooterReserveMm) : $mb;
 ?>
+<?php if (! \App\Libraries\Pdf\PdfEngine::isMpdf()): ?>
 @page {
     margin-top: <?= esc((string) $mt) ?>mm;
     margin-right: <?= esc((string) $mr) ?>mm;
     margin-bottom: <?= esc((string) $bodyMarginBottomMm) ?>mm;
     margin-left: <?= esc((string) $ml) ?>mm;
 }
+<?php endif; ?>
 body {
     margin: 0 !important;
     padding: 0 !important;
     position: relative;
 }
-<?php if ($pdfFooterEnabled): ?>
+<?php if ($pdfFooterEnabled && ! \App\Libraries\Pdf\PdfEngine::isMpdf()): ?>
 .pdf-ft-block.footer-grid {
     position: fixed !important;
     left: 0 !important;
@@ -199,12 +224,158 @@ body {
     width: 100% !important;
     bottom: -<?= esc((string) $pdfFooterReserveMm) ?>mm !important;
     min-height: <?= esc((string) $pdfFooterReserveMm) ?>mm !important;
-    z-index: 2;
+    z-index: 0;
     margin: 0 !important;
     padding-top: 6px;
     padding-bottom: 0;
-    background: <?= esc($pdfFooterStripBg) ?>;
+    background: transparent;
     box-sizing: border-box;
+}
+body.<?= $pdfBodyClass ?> .pdf-dompdf-footer-anchor {
+    position: fixed !important;
+    height: 0 !important;
+    overflow: visible !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    border: 0 !important;
+    z-index: 0 !important;
+}
+body.<?= $pdfBodyClass ?> .pdf-dompdf-footer-anchor > .pdf-ft-block.footer-grid {
+    position: absolute !important;
+    top: auto !important;
+    left: 0 !important;
+    right: 0 !important;
+    bottom: 0 !important;
+    margin: 0 !important;
+    padding-left: 0 !important;
+    padding-right: 0 !important;
+    background: transparent !important;
+    z-index: 0 !important;
+    border-top: none !important;
+}
+body.<?= $pdfBodyClass ?> .pdf-dompdf-footer-anchor > .pdf-ft-block.footer-grid .pdf-section-table,
+body.<?= $pdfBodyClass ?> .pdf-ft-block.footer-grid .pdf-section-table {
+    border-top-width: var(--pdf-ft-section-top-border-width, 1px);
+    border-top-style: var(--pdf-ft-section-top-border-style, solid);
+    border-top-color: var(--pdf-ft-section-top-border-color, #dddddd);
+}
+body.<?= $pdfBodyClass ?> .pdf-ft-block .pdf-ft-stack-table {
+    border-collapse: collapse;
+    table-layout: fixed;
+    width: 100%;
+    margin: 0;
+}
+body.<?= $pdfBodyClass ?> .pdf-ft-block .pdf-ft-stack-table td {
+    padding: 0;
+    vertical-align: top;
+    border: 0;
+}
+body.<?= $pdfBodyClass ?> .pdf-dompdf-flow-top {
+    position: relative;
+    z-index: 2;
+    margin: 0;
+    padding: 0;
+}
+body.<?= $pdfBodyClass ?> .pdf-main-stack {
+    position: relative;
+    z-index: 2;
+}
+body.<?= $pdfBodyClass ?> .pdf-dompdf-flow-top > .pdf-hg-block {
+    page-break-inside: avoid !important;
+    break-inside: avoid-page !important;
+    page-break-after: avoid !important;
+    break-after: avoid !important;
+}
+body.<?= $pdfBodyClass ?> .pdf-dompdf-flow-top > .pdf-pd-block {
+    page-break-inside: avoid !important;
+    break-inside: avoid-page !important;
+    page-break-after: avoid !important;
+    break-after: avoid !important;
+}
+<?php
+$pdFillBg = $pdBodyBg !== 'transparent' ? $pdBodyBg : '#f8f9fa';
+?>
+body.<?= $pdfBodyClass ?> .pdf-dompdf-flow-top > .pdf-pd-block .pdf-section-table td:not(.pdf-cell) {
+    background-color: <?= esc($pdFillBg) ?> !important;
+    background-image: none !important;
+}
+body.<?= $pdfBodyClass ?> .pdf-dompdf-flow-top > .pdf-pd-block .pdf-section-table td.pdf-cell {
+    color: <?= esc($pd['body_text_color']) ?> !important;
+}
+<?php
+$lfInlineMt = round((float) ($lf['inline_margin_top_pt'] ?? 8), 2);
+$lfInlineMb = round((float) ($lf['inline_margin_bottom_pt'] ?? 6), 2);
+?>
+body.<?= $pdfBodyClass ?> .report-lab-firma-grupo-inline,
+body.<?= $pdfBodyClass ?> .lab-firmas-pdf-block-inline {
+    position: relative;
+    z-index: 3;
+    display: block !important;
+    visibility: visible !important;
+    overflow: visible !important;
+    page-break-inside: auto !important;
+    break-inside: auto !important;
+    margin-top: <?= esc((string) $lfInlineMt) ?>pt !important;
+    margin-bottom: <?= esc((string) $lfInlineMb) ?>pt !important;
+}
+body.<?= $pdfBodyClass ?> .lab-firmas-pdf-block-inline .pdf-section-table,
+body.<?= $pdfBodyClass ?> .lab-firmas-pdf-block-inline .lab-firmas-body-grid,
+body.<?= $pdfBodyClass ?> .lab-firmas-pdf-block-inline .lab-firmas-title-grid {
+    position: static !important;
+    left: auto !important;
+    right: auto !important;
+    bottom: auto !important;
+    page-break-inside: auto !important;
+    break-inside: auto !important;
+}
+body.<?= $pdfBodyClass ?> .lab-firmas-pdf-block-inline .pdf-section-table td.pdf-cell {
+    background-color: <?= esc($lfBodyBg !== 'transparent' ? $lfBodyBg : '#ffffff') ?> !important;
+    color: <?= esc((string) $lf['body_text_color']) ?> !important;
+}
+body.<?= $pdfBodyClass ?> .lab-firmas-pdf-block-inline .pdf-section-table td.pdf-cell,
+body.<?= $pdfBodyClass ?> .lab-firmas-pdf-block-inline .pdf-section-table td.pdf-cell p,
+body.<?= $pdfBodyClass ?> .lab-firmas-pdf-block-inline .pdf-section-table td.pdf-cell span,
+body.<?= $pdfBodyClass ?> .lab-firmas-pdf-block-inline .pdf-section-table td.pdf-cell div {
+    color: <?= esc((string) $lf['body_text_color']) ?> !important;
+}
+body.<?= $pdfBodyClass ?> .report-pdf-grupo-prueba .report-pdf-subgrupo-block:last-child .report-segment-table-wrap:last-of-type,
+body.<?= $pdfBodyClass ?> .report-pdf-grupo-prueba .report-refs-matrix-wrap:last-of-type {
+    page-break-after: avoid !important;
+    break-after: avoid-page !important;
+}
+body.<?= $pdfBodyClass ?> .report-signature-tail-bundle {
+    position: relative;
+    z-index: 3;
+    page-break-inside: auto !important;
+    break-inside: auto !important;
+}
+body.<?= $pdfBodyClass ?> .report-signature-tail-bundle .report-lab-firma-grupo-inline {
+    page-break-before: avoid !important;
+    break-before: avoid-page !important;
+}
+body.<?= $pdfBodyClass ?> .report-pdf-grupo-prueba > .report-lab-firma-grupo-inline {
+    page-break-before: avoid !important;
+    break-before: avoid-page !important;
+}
+body.<?= $pdfBodyClass ?> .pdf-pagination-line::before,
+body.<?= $pdfBodyClass ?> .pdf-hg-block .pdf-ft-pagination-num::before {
+    content: none !important;
+}
+body.<?= $pdfBodyClass ?> .pdf-ft-block .pdf-ft-pagination-num::before {
+    content: attr(data-prefix) counter(page) ' de ' attr(data-total) !important;
+    display: inline !important;
+    white-space: nowrap !important;
+}
+body.<?= $pdfBodyClass ?> .pdf-ft-block .pdf-ft-pagination p {
+    white-space: nowrap !important;
+    line-height: 1.1 !important;
+}
+body.<?= $pdfBodyClass ?> .pdf-ft-block .pdf-ft-pagination-label,
+body.<?= $pdfBodyClass ?> .pdf-ft-block .pdf-ft-pagination-num,
+body.<?= $pdfBodyClass ?> .pdf-ft-block .pdf-ft-pagination-num::before {
+    display: inline !important;
+    vertical-align: baseline !important;
+    white-space: nowrap !important;
 }
 <?php endif; ?>
 <?php endif; ?>
@@ -297,20 +468,32 @@ body {
     --pdf-results-segment-shadow: <?= esc($rsSegShadow) ?>;
     --pdf-results-segment-padding-top: <?= (int) ($rs['segment_padding_top_px'] ?? 6) ?>px;
     --pdf-results-segment-padding-bottom: <?= (int) ($rs['segment_padding_bottom_px'] ?? 6) ?>px;
+    --pdf-results-segment-font-family: "<?= esc($segFontFamily) ?>";
+    --pdf-results-segment-font-size: <?= esc((string) $segFontSize) ?>pt;
+    --pdf-results-segment-font-weight: <?= esc($segFontWeight) ?>;
     --pdf-results-font-family: "<?= esc($rs['font_family']) ?>";
     --pdf-results-font-size: <?= esc((string) $rs['font_size_pt']) ?>pt;
     --pdf-results-font-weight: <?= esc($rs['font_weight']) ?>;
     --pdf-results-font-style: <?= esc($rs['font_style']) ?>;
     --pdf-results-transform: <?= esc($rs['text_transform']) ?>;
     --pdf-results-line-height: <?= esc((string) $rs['line_height']) ?>;
+    --pdf-results-letter-spacing: <?= esc((string) ($rs['letter_spacing_em'] ?? 0)) ?>em;
+    --pdf-results-text-shadow: <?= esc($rsTextShadow) ?>;
+    --pdf-results-cell-vertical-align: <?= esc((string) ($rs['cell_vertical_align'] ?? 'middle')) ?>;
     --pdf-results-cell-padding-v: <?= (int) ($rs['cell_padding_v_px'] ?? 6) ?>px;
     --pdf-results-table-margin-top: <?= (int) ($rs['table_margin_top_px'] ?? 15) ?>px;
     --pdf-results-table-margin-bottom: <?= (int) ($rs['table_margin_bottom_px'] ?? 15) ?>px;
     --pdf-results-grupo-gap: <?= (int) ($rs['grupo_prueba_gap_px'] ?? 10) ?>px;
+    --pdf-results-subgrupo-gap: <?= (int) ($rs['subgrupo_prueba_gap_px'] ?? 18) ?>px;
     --pdf-grupo-area-separator-margin-top: <?= (int) ($rs['grupo_area_separator_margin_top_px'] ?? 10) ?>px;
     --pdf-grupo-area-separator-margin-bottom: <?= (int) ($rs['grupo_area_separator_margin_bottom_px'] ?? 10) ?>px;
     --pdf-grupo-cabecera-title-margin-top: <?= (int) ($rs['grupo_cabecera_title_margin_top_px'] ?? 0) ?>px;
     --pdf-grupo-cabecera-title-margin-bottom: <?= (int) ($rs['grupo_cabecera_title_margin_bottom_px'] ?? 6) ?>px;
+    --pdf-grupo-cabecera-title-font-family: "<?= esc($titleTypo['font_family']) ?>";
+    --pdf-grupo-cabecera-title-font-size: <?= esc((string) $titleTypo['font_size_pt']) ?>pt;
+    --pdf-grupo-cabecera-title-font-weight: <?= esc($titleTypo['font_weight']) ?>;
+    --pdf-grupo-cabecera-title-color: <?= esc($titleTypo['text_color']) ?>;
+    --pdf-grupo-cabecera-title-text-shadow: <?= esc($titleTextShadow) ?>;
     --pdf-grupo-cabecera-title-first-margin-top: <?= (int) ($rs['grupo_prueba_gap_px'] ?? 10) ?>px;
     --pdf-grupo-cabecera-tipo-margin-top: <?= (int) ($rs['grupo_cabecera_tipo_muestra_margin_top_px'] ?? 0) ?>px;
     --pdf-grupo-cabecera-tipo-margin-bottom: <?= (int) ($rs['grupo_cabecera_tipo_muestra_margin_bottom_px'] ?? 10) ?>px;
@@ -367,6 +550,83 @@ table.results td {
     font-style: <?= esc($rs['font_style']) ?> !important;
     text-transform: <?= esc($rs['text_transform']) ?> !important;
     line-height: <?= esc((string) $rs['line_height']) ?> !important;
+    letter-spacing: <?= esc((string) ($rs['letter_spacing_em'] ?? 0)) ?>em !important;
+    text-shadow: <?= esc($rsTextShadow) ?> !important;
+    vertical-align: <?= esc((string) ($rs['cell_vertical_align'] ?? 'middle')) ?> !important;
+}
+/* Resultados: la plantilla manda dentro de .pdf-rs-block (evita compactación y reglas globales). */
+.pdf-rs-block table.results th,
+.pdf-rs-block table.results td {
+    border-color: <?= esc($rs['border_color']) ?> !important;
+    font-family: "<?= esc($rs['font_family']) ?>", sans-serif !important;
+    font-size: <?= esc((string) $rs['font_size_pt']) ?>pt !important;
+    font-weight: <?= esc($rs['font_weight']) ?> !important;
+    font-style: <?= esc($rs['font_style']) ?> !important;
+    text-transform: <?= esc($rs['text_transform']) ?> !important;
+    line-height: <?= esc((string) $rs['line_height']) ?> !important;
+    letter-spacing: <?= esc((string) ($rs['letter_spacing_em'] ?? 0)) ?>em !important;
+    text-shadow: <?= esc($rsTextShadow) ?> !important;
+    vertical-align: <?= esc((string) ($rs['cell_vertical_align'] ?? 'middle')) ?> !important;
+}
+.report-pdf-grupo-cabecera .group-title,
+.report-pdf-grupo-cabecera .report-tipo-muestra,
+.report-pdf-grupo-cabecera .report-metodo-prueba {
+    display: block !important;
+    box-sizing: border-box !important;
+    width: 100% !important;
+    margin: 0 !important;
+}
+.report-pdf-grupo-cabecera .report-tipo-muestra,
+.report-pdf-grupo-cabecera .report-metodo-prueba {
+    font-family: "<?= esc($rs['font_family']) ?>", sans-serif !important;
+    font-size: <?= esc((string) $rs['font_size_pt']) ?>pt !important;
+    font-weight: <?= esc($rs['font_weight']) ?> !important;
+    font-style: <?= esc($rs['font_style']) ?> !important;
+    text-transform: <?= esc($rs['text_transform']) ?> !important;
+    letter-spacing: <?= esc((string) ($rs['letter_spacing_em'] ?? 0)) ?>em !important;
+    line-height: <?= esc((string) $rs['line_height']) ?> !important;
+    text-shadow: <?= esc($rsTextShadow) ?> !important;
+    color: <?= esc($rs['body_text_color']) ?> !important;
+}
+.report-pdf-grupo-cabecera-table td {
+    padding: 0 !important;
+    border: 0 !important;
+    margin: 0 !important;
+    vertical-align: top !important;
+}
+.report-pdf-grupo-cabecera-line {
+    display: block !important;
+    box-sizing: border-box !important;
+    width: 100% !important;
+    margin: 0 !important;
+}
+.report-pdf-grupo-cabecera .group-title,
+.report-pdf-grupo-cabecera-line--title {
+    page-break-after: avoid;
+    break-after: avoid;
+    font-family: "<?= esc($titleTypo['font_family']) ?>", sans-serif !important;
+    font-size: <?= esc((string) $titleTypo['font_size_pt']) ?>pt !important;
+    font-weight: <?= esc($titleTypo['font_weight']) ?> !important;
+    color: <?= esc($titleTypo['text_color']) ?> !important;
+    line-height: 1.2 !important;
+    text-shadow: <?= esc($titleTextShadow) ?> !important;
+    padding-top: var(--pdf-grupo-cabecera-title-margin-top, 0) !important;
+    padding-bottom: var(--pdf-grupo-cabecera-title-margin-bottom, 6px) !important;
+}
+.report-pdf-grupo-cabecera-line--tipo {
+    padding-top: var(--pdf-grupo-cabecera-tipo-margin-top, 0) !important;
+    padding-bottom: var(--pdf-grupo-cabecera-tipo-margin-bottom, 10px) !important;
+}
+.report-pdf-grupo-cabecera-line--metodo {
+    padding-top: var(--pdf-grupo-cabecera-metodo-margin-top, 0) !important;
+    padding-bottom: var(--pdf-grupo-cabecera-metodo-margin-bottom, 10px) !important;
+}
+.report-pdf-grupo-cabecera-line--last {
+    padding-bottom: var(--pdf-grupo-cabecera-metodo-margin-bottom, 10px) !important;
+}
+.report-pdf-grupo-cabecera + .report-segment-table-wrap table.results,
+.report-pdf-grupo-cabecera + .report-refs-matrix-wrap table.results {
+    margin-top: 0 !important;
 }
 table.results td.resultado-texto-rico-cell .resultado-texto-rico em,
 table.results td.resultado-texto-rico-cell .resultado-texto-rico i,
@@ -536,9 +796,9 @@ table.results.pdf-notes-table td.pdf-notes-cell {
 .report-segment-title.pdf-card-header {
     background: <?= esc($rsSegBg) ?> !important;
     color: <?= esc($ch['text_color']) ?> !important;
-    font-family: "<?= esc($ch['font_family']) ?>", sans-serif !important;
-    font-size: <?= esc((string) $ch['font_size_pt']) ?>pt !important;
-    font-weight: <?= esc($ch['font_weight']) ?> !important;
+    font-family: "<?= esc($segFontFamily) ?>", sans-serif !important;
+    font-size: <?= esc((string) $segFontSize) ?>pt !important;
+    font-weight: <?= esc($segFontWeight) ?> !important;
     font-style: <?= esc($ch['font_style']) ?> !important;
     text-transform: <?= esc($ch['text_transform']) ?> !important;
 }
@@ -548,20 +808,11 @@ table.results.pdf-notes-table td.pdf-notes-cell {
     border-bottom-width: <?= esc((string) $rs['segment_border_width_px']) ?>px !important;
 }
 .report-pdf-grupo-prueba:not(.report-pdf-grupo-prueba-first) {
-    margin-top: <?= (int) ($rs['grupo_prueba_gap_px'] ?? 10) ?>px !important;
+    padding-top: <?= (int) ($rs['grupo_prueba_gap_px'] ?? 10) ?>px !important;
+    margin-top: 0 !important;
 }
 .report-pdf-subgrupo-block.report-pdf-subgrupo-prueba {
     padding-top: <?= (int) ($rs['subgrupo_prueba_gap_px'] ?? 18) ?>px !important;
-}
-.report-pdf-grupo-cabecera .group-title {
-    page-break-after: avoid;
-    break-after: avoid;
-}
-.report-pdf-grupo-cabecera .report-tipo-muestra,
-.report-pdf-grupo-cabecera .report-metodo-prueba {
-    font-size: 9pt;
-    color: #555;
-    line-height: 1.3;
 }
 <?= view('registers/partials/report_layout_engine_print_styles', [
     'dompdf_download_only' => $embedStylesheetForPdf,
@@ -702,20 +953,21 @@ body.report-browser-print.js-order-sheet-footer-table-row .pdf-ft-block.footer-g
     print-color-adjust: exact !important;
 }
 <?php endif; ?>
+<?php endif; ?>
 <?php if ($embedStylesheetForPdf && ! $browserPrintMode): ?>
-body.pdf-dompdf-download .pdf-ft-block.footer-grid .pdf-order-sheet-table-row {
+body.<?= $pdfBodyClass ?> .pdf-ft-block.footer-grid .pdf-order-sheet-table-row {
     display: table-row !important;
     visibility: visible !important;
     page-break-inside: avoid !important;
     break-inside: avoid-page !important;
 }
-body.pdf-dompdf-download .pdf-ft-block.footer-grid .pdf-order-sheet-table-row td {
+body.<?= $pdfBodyClass ?> .pdf-ft-block.footer-grid .pdf-order-sheet-table-row td {
     padding-top: 0 !important;
     background: transparent !important;
 }
 <?php endif; ?>
-<?php endif; ?>
 <?php if ($embedStylesheetForPdf && ! $browserPrintMode): ?>
+<?php if (\App\Libraries\Pdf\PdfEngine::isDompdf()): ?>
 <?php
 $paginationModeDompdf = \App\Services\ReportPdfLayoutService::resolvePaginationModeFromLayout($pl);
 $gpbDompdf = \App\Services\ReportPdfLayoutService::normalizeGrupoPruebaPageBreakStyle($ps['grupo_prueba_page_break'] ?? []);
@@ -742,6 +994,8 @@ body.pdf-dompdf-download.pdf-layout-engine .report-pdf-grupo-prueba.report-pdf-g
     line-height: <?= esc((string) $dompdfCompactLh) ?> !important;
 }
 <?php endif; ?>
+<?php endif; ?>
+<?php if (\App\Libraries\Pdf\PdfEngine::isDompdf()): ?>
 <?php
 $dompdfPdBodyFsMax = (float) ($pd['font_size_pt'] ?? 9.5);
 foreach (is_array($pl['instances'] ?? null) ? $pl['instances'] : [] as $pdInst) {
@@ -758,10 +1012,8 @@ $dompdfPdBodyLh = max(1.0, round((float) ($pd['line_height'] ?? 1.35) * 0.88, 3)
 $dompdfPdLblFs  = round(max(7.0, (float) ($pd['label_paciente_nombre_font_size_pt'] ?? $pd['font_size_pt'] ?? 9.5)) * 0.96, 2);
 ?>
 /* Dompdf: paciente/médico — DejaVu y márgenes en «em» dejan más aire que Chrome al imprimir. */
-body.pdf-dompdf-download .pdf-pd-block .pdf-section-table td.pdf-cell > .pdf-el-item:not(:last-child) {
-    margin-bottom: 0 !important;
-}
-body.pdf-dompdf-download .pdf-pd-block .pdf-section-table td.pdf-cell > .pdf-el-item {
+body.pdf-dompdf-download .pdf-pd-block .pdf-section-table td.pdf-cell,
+body.pdf-dompdf-download .pdf-pd-block .pdf-section-table td.pdf-cell-stack-item {
     font-size: <?= esc((string) $dompdfPdBodyFs) ?>pt !important;
     line-height: <?= esc((string) $dompdfPdBodyLh) ?> !important;
 }
@@ -773,47 +1025,91 @@ body.pdf-dompdf-download .pdf-pd-block .pdf-section-table .patient-line .label {
     font-size: <?= esc((string) $dompdfPdLblFs) ?>pt !important;
     line-height: inherit !important;
 }
-body.pdf-dompdf-download .pdf-hg-block .header-piece-pagination,
-body.pdf-dompdf-download .pdf-pd-block .header-piece-pagination,
-body.pdf-dompdf-download .lab-firmas-pdf-block .header-piece-pagination {
+<?php endif; ?>
+body.<?= $pdfBodyClass ?> .pdf-hg-block .header-piece-pagination,
+body.<?= $pdfBodyClass ?> .pdf-pd-block .header-piece-pagination,
+body.<?= $pdfBodyClass ?> .lab-firmas-pdf-block .header-piece-pagination {
     z-index: 120;
     margin: 0;
     padding: 0;
 }
-body.pdf-dompdf-download .pdf-hg-block .header-piece-pagination,
-body.pdf-dompdf-download .pdf-pd-block .header-piece-pagination,
-body.pdf-dompdf-download .lab-firmas-pdf-block .header-piece-pagination {
+body.<?= $pdfBodyClass ?> .pdf-hg-block .header-piece-pagination,
+body.<?= $pdfBodyClass ?> .pdf-pd-block .header-piece-pagination,
+body.<?= $pdfBodyClass ?> .lab-firmas-pdf-block .header-piece-pagination {
     position: fixed;
 }
-body.pdf-dompdf-download .pdf-hg-block .header-piece-pagination,
-body.pdf-dompdf-download .pdf-pd-block .header-piece-pagination {
+body.<?= $pdfBodyClass ?> .pdf-hg-block .header-piece-pagination,
+body.<?= $pdfBodyClass ?> .pdf-pd-block .header-piece-pagination {
     top: <?= esc((string) $mt) ?>mm;
     bottom: auto;
 }
-body.pdf-dompdf-download .lab-firmas-pdf-block .header-piece-pagination {
+body.<?= $pdfBodyClass ?> .lab-firmas-pdf-block .header-piece-pagination {
     top: auto;
     bottom: <?= esc((string) $mb) ?>mm;
 }
-body.pdf-dompdf-download .pdf-hg-block .pdf-cell--left .header-piece-pagination,
-body.pdf-dompdf-download .pdf-pd-block .pdf-cell--left .header-piece-pagination,
-body.pdf-dompdf-download .lab-firmas-pdf-block .pdf-cell--left .header-piece-pagination {
+body.<?= $pdfBodyClass ?> .pdf-hg-block .pdf-cell--left .header-piece-pagination,
+body.<?= $pdfBodyClass ?> .pdf-pd-block .pdf-cell--left .header-piece-pagination,
+body.<?= $pdfBodyClass ?> .lab-firmas-pdf-block .pdf-cell--left .header-piece-pagination {
     left: <?= esc((string) $ml) ?>mm;
     right: auto;
     text-align: left;
 }
-body.pdf-dompdf-download .pdf-hg-block .pdf-cell--center .header-piece-pagination,
-body.pdf-dompdf-download .pdf-pd-block .pdf-cell--center .header-piece-pagination,
-body.pdf-dompdf-download .lab-firmas-pdf-block .pdf-cell--center .header-piece-pagination {
+body.<?= $pdfBodyClass ?> .pdf-hg-block .pdf-cell--center .header-piece-pagination,
+body.<?= $pdfBodyClass ?> .pdf-pd-block .pdf-cell--center .header-piece-pagination,
+body.<?= $pdfBodyClass ?> .lab-firmas-pdf-block .pdf-cell--center .header-piece-pagination {
     left: <?= esc((string) $ml) ?>mm;
     right: <?= esc((string) $mr) ?>mm;
     text-align: center;
 }
-body.pdf-dompdf-download .pdf-hg-block .pdf-cell--right .header-piece-pagination,
-body.pdf-dompdf-download .pdf-pd-block .pdf-cell--right .header-piece-pagination,
-body.pdf-dompdf-download .lab-firmas-pdf-block .pdf-cell--right .header-piece-pagination {
+body.<?= $pdfBodyClass ?> .pdf-hg-block .pdf-cell--right .header-piece-pagination,
+body.<?= $pdfBodyClass ?> .pdf-pd-block .pdf-cell--right .header-piece-pagination,
+body.<?= $pdfBodyClass ?> .lab-firmas-pdf-block .pdf-cell--right .header-piece-pagination {
     left: auto;
     right: <?= esc((string) $mr) ?>mm;
     text-align: right;
 }
 <?php endif; ?>
+<?php
+echo \App\Services\ReportPdfLayoutService::buildResultsTableParityCss('.pdf-rs-block', is_array($pl ?? null) ? $pl : []);
+?>
+/* Modo clínico / semáforo: debe ir DESPUÉS de buildResultsTableParityCss (pisa color de tbody td). */
+.pdf-rs-block table.results:not(.pdf-notes-table):not(.report-refs-matrix) tbody td.out-range,
+.pdf-rs-block table.results:not(.pdf-notes-table):not(.report-refs-matrix) tbody td.report-interpretacion-alto,
+table.results td.out-range,
+table.results td.report-interpretacion-alto {
+    color: #dc3545 !important;
+    font-weight: 700 !important;
+}
+.pdf-rs-block table.results:not(.pdf-notes-table):not(.report-refs-matrix) tbody td.report-interpretacion-bajo,
+table.results td.report-interpretacion-bajo {
+    color: #0d6efd !important;
+    font-weight: 700 !important;
+}
+.pdf-rs-block table.results:not(.pdf-notes-table):not(.report-refs-matrix) tbody td.out-range strong,
+.pdf-rs-block table.results:not(.pdf-notes-table):not(.report-refs-matrix) tbody td.report-interpretacion-alto strong,
+.pdf-rs-block table.results:not(.pdf-notes-table):not(.report-refs-matrix) tbody td.report-interpretacion-bajo strong,
+table.results td.out-range strong,
+table.results td.report-interpretacion-alto strong,
+table.results td.report-interpretacion-bajo strong {
+    color: inherit !important;
+    font-weight: 700 !important;
+}
+.pdf-rs-block table.results:not(.pdf-notes-table):not(.report-refs-matrix) tbody td .report-interpretacion-icon-alto,
+table.results td .report-interpretacion-icon-alto,
+.report-interpretacion-icon-alto,
+.report-interpretacion-icon.text-danger {
+    color: #dc3545 !important;
+}
+.pdf-rs-block table.results:not(.pdf-notes-table):not(.report-refs-matrix) tbody td .report-interpretacion-icon-bajo,
+table.results td .report-interpretacion-icon-bajo,
+.report-interpretacion-icon-bajo,
+.report-interpretacion-icon.text-primary {
+    color: #0d6efd !important;
+}
+.pdf-rs-block table.results:not(.pdf-notes-table):not(.report-refs-matrix) tbody td .report-interpretacion-icon-normal,
+table.results td .report-interpretacion-icon-normal,
+.report-interpretacion-icon-normal,
+.report-interpretacion-icon.text-dark {
+    color: #212529 !important;
+}
 </style>

@@ -1,16 +1,30 @@
 <?php
-declare(strict_types=1);
-
-$pdf = (string) file_get_contents(dirname(__DIR__) . '/debug/report_262_fresh.pdf');
-// Buscar texto literal o UTF-16 en streams
-$patterns = ['1 de 4', '2 de 4', '3 de 4', '4 de 4', 'Página'];
-foreach ($patterns as $p) {
-    echo $p . ': ' . (str_contains($pdf, $p) ? 'yes' : 'no') . PHP_EOL;
-}
-if (preg_match_all('/\(([^\\\\\)]{4,30})\)/', $pdf, $m)) {
-    foreach ($m[1] as $s) {
-        if (str_contains($s, 'de') || str_contains($s, 'gina')) {
-            echo 'lit: ' . $s . PHP_EOL;
-        }
+function scanPdf(string $path): void
+{
+    $raw = file_get_contents($path);
+    if ($raw === false) {
+        echo "$path: unreadable\n";
+        return;
     }
+    preg_match_all('/\((?:\\\\.|[^\\\\\)])*\)/s', $raw, $m);
+    $hits = array_filter($m[0], static function (string $s): bool {
+        return stripos($s, 'footer') !== false
+            || stripos($s, 'Direccion') !== false
+            || stripos($s, 'FOOTER') !== false
+            || stripos($s, 'Celular') !== false
+            || stripos($s, 'Tarija') !== false
+            || stripos($s, 'Méndez') !== false
+            || stripos($s, 'Mendez') !== false;
+    });
+    echo basename($path) . ': ' . count($hits) . " string hits\n";
+    foreach (array_slice(array_values($hits), 0, 8) as $h) {
+        echo '  ' . substr($h, 0, 100) . "\n";
+    }
+}
+
+foreach ($argv as $i => $arg) {
+    if ($i === 0) {
+        continue;
+    }
+    scanPdf($arg);
 }

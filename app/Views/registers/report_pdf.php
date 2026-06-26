@@ -2,6 +2,7 @@
 $pdfGrupoPageBreakBodyClass = \App\Services\ReportPdfLayoutService::grupoPruebaPageBreakBodyClass(
     is_array($pdf_layout ?? null) ? $pdf_layout : []
 );
+$pdfEngineBodyClass = \App\Libraries\Pdf\PdfEngine::isMpdf() ? 'pdf-engine-mpdf' : 'pdf-engine-dompdf';
 ?>
 <!DOCTYPE html>
 <html lang="es">
@@ -14,7 +15,15 @@ $pdfGrupoPageBreakBodyClass = \App\Services\ReportPdfLayoutService::grupoPruebaP
         'embed_stylesheet_for_pdf'      => true,
     ]) ?>
 </head>
-<body class="<?= esc(trim($pdfGrupoPageBreakBodyClass . ' pdf-dompdf-download'), 'attr') ?>">
+<body class="<?= esc(trim($pdfGrupoPageBreakBodyClass . ' pdf-dompdf-download ' . $pdfEngineBodyClass), 'attr') ?>">
+<?php if (\App\Libraries\Pdf\PdfEngine::isMpdf()): ?>
+<?php
+$mpdfLayoutMarker = \App\Libraries\Pdf\MpdfLayoutSnapshot::marker(is_array($pdf_layout ?? null) ? $pdf_layout : []);
+if ($mpdfLayoutMarker !== ''):
+    echo $mpdfLayoutMarker . "\n";
+endif;
+?>
+<?php endif; ?>
 <?= view('registers/pdf/report_document', [
     'pdf_layout'          => $pdf_layout ?? [],
     'register_info'       => $register_info,
@@ -33,6 +42,8 @@ $pdfGrupoPageBreakBodyClass = \App\Services\ReportPdfLayoutService::grupoPruebaP
     'report_pria_refs_consolidada'    => $report_pria_refs_consolidada ?? [],
     'report_layout_plan'              => $report_layout_plan ?? null,
     'report_layout_applier'           => $report_layout_applier ?? null,
+    'report_categorical_heatmap'      => $report_categorical_heatmap ?? [],
+    'report_graficar_modo'            => $report_graficar_modo ?? [],
 ]) ?>
 </body>
 </html>

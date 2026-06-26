@@ -137,6 +137,13 @@ class ConfigService
         return in_array($v, ['none', 'area', 'analisis'], true) ? $v : 'area';
     }
 
+    public static function normalizeRegistroFormColumnas(int|string|null $raw): int
+    {
+        $n = (int) ($raw ?? 3);
+
+        return max(1, min(4, $n > 0 ? $n : 3));
+    }
+
     public function getLabValidationMode(): string
     {
         return self::normalizeLabValidationMode(
@@ -1002,7 +1009,7 @@ class ConfigService
             'default_tax_rate', 'default_tax_1_name', 'default_tax_1_rate',
             'default_tax_2_name', 'default_tax_2_rate', 'return_policy',
             'print_after_sale', 'logo', 'theme_color', 'header_brand',
-            'decimales_sugerencia', 'dias_alerta_vencimiento', 'stock_alerta_factor', 'show_order_barcode', 'show_order_costs', 'order_barcode_print_layout', 'order_barcode_print_size_percent',
+            'decimales_sugerencia', 'registro_form_columnas', 'dias_alerta_vencimiento', 'stock_alerta_factor', 'show_order_barcode', 'show_order_costs', 'order_barcode_print_layout', 'order_barcode_print_size_percent',
             self::REGISTERS_LISTA_FECHA_DEFAULT_KEY,
             'print_paper_size', 'print_pagination_enabled', 'print_pagination_position', 'leyendas_enabled',
             'custom1_name', 'custom2_name', 'custom3_name', 'custom4_name', 'custom5_name',
@@ -1013,11 +1020,14 @@ class ConfigService
 
         $batch = array_filter(
             array_intersect_key($postData, array_flip($keys)),
-            fn (mixed $v, mixed $k): bool => in_array($k, ['decimales_sugerencia', 'dias_alerta_vencimiento', 'stock_alerta_factor']) || ($v !== null && $v !== ''),
+            fn (mixed $v, mixed $k): bool => in_array($k, ['decimales_sugerencia', 'registro_form_columnas', 'dias_alerta_vencimiento', 'stock_alerta_factor']) || ($v !== null && $v !== ''),
             ARRAY_FILTER_USE_BOTH
         );
         if (isset($batch['decimales_sugerencia'])) {
             $batch['decimales_sugerencia'] = (string) max(0, min(10, (int) $batch['decimales_sugerencia']));
+        }
+        if (isset($batch['registro_form_columnas'])) {
+            $batch['registro_form_columnas'] = (string) self::normalizeRegistroFormColumnas($batch['registro_form_columnas']);
         }
         if (isset($batch['dias_alerta_vencimiento'])) {
             $val = (int) $batch['dias_alerta_vencimiento'];

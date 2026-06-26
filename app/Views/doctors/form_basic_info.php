@@ -38,9 +38,48 @@ $doctor_info = $doctor_info ?? new stdClass();
         ];
         ?>
         <?= form_dropdown('display_mode', $modes, $modeVal, 'id="display_mode" class="form-select"') ?>
-        <small class="form-text text-muted">Selecciona cómo se mostrarán los resultados en el reporte para este doctor.</small>
+        <small class="form-text text-muted">Aplica solo a órdenes que tengan asignado este médico. Tras guardar, recargue el reporte (<code>/registers/viewreport/…</code>) para ver el PDF actualizado.</small>
+    </div>
+    <div class="col-md-6 mb-3">
+        <label class="form-label">Vista previa (como en el reporte)</label>
+        <div id="display_mode_preview" class="border rounded p-2 bg-white">
+            <table class="table table-sm table-bordered mb-0 small doctor-display-mode-preview-table">
+                <thead class="table-light">
+                    <tr>
+                        <th>Análisis</th>
+                        <th class="text-center">Resultado</th>
+                        <th class="text-center js-preview-col-interpretacion">Interpretación</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>Glucosa</td>
+                        <td class="text-center js-preview-result-high">180 mg/dL</td>
+                        <td class="text-center js-preview-col-interpretacion js-preview-interp-high">Alto</td>
+                    </tr>
+                    <tr>
+                        <td>Hemoglobina</td>
+                        <td class="text-center js-preview-result-low">10.2 g/dL</td>
+                        <td class="text-center js-preview-col-interpretacion js-preview-interp-low">Bajo</td>
+                    </tr>
+                    <tr>
+                        <td>Colesterol</td>
+                        <td class="text-center js-preview-result-normal">180 mg/dL</td>
+                        <td class="text-center js-preview-col-interpretacion js-preview-interp-normal">Normal</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
     </div>
 </div>
+<style>
+.doctor-display-mode-preview-table .report-interpretacion-alto { color: #dc3545 !important; font-weight: 700; }
+.doctor-display-mode-preview-table .report-interpretacion-bajo { color: #0d6efd !important; font-weight: 700; }
+.doctor-display-mode-preview-table .report-interpretacion-icon { display: inline-block; font-weight: 700; font-size: 0.9em; margin-left: 0.25rem; vertical-align: baseline; }
+.doctor-display-mode-preview-table .report-interpretacion-icon-alto { color: #dc3545; }
+.doctor-display-mode-preview-table .report-interpretacion-icon-bajo { color: #0d6efd; }
+.doctor-display-mode-preview-table .report-interpretacion-icon-normal { color: #212529; }
+</style>
 
 <div class="row mt-2">
     <div class="col-md-6 mb-3">

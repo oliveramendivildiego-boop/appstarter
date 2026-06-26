@@ -11,6 +11,7 @@ use App\Models\RegisterModel;
 use App\Services\ConfigService;
 use App\Services\ReportLayout\LayoutPlanApplier;
 use App\Services\ReportLayout\ReportLayoutPlanService;
+use App\Services\Report\ReportPipelineMetrics;
 use Config\App as AppConfig;
 
 /**
@@ -22,9 +23,11 @@ class RegisterService
     public const TOTAL_PAGES_TOKEN = '__PDF_TOTAL_PAGES__';
 
     /** Invalida caché inline de viewreport al cambiar el pipeline PDF. */
-    private const REPORT_PDF_PREVIEW_CACHE_SALT = 'dompdf-primary-v1';
+    private const REPORT_PDF_PREVIEW_CACHE_SALT = 'mpdf-native-v7';
 
     private ?\App\Services\Report\ReportDataCacheService $reportDataCache = null;
+
+    private ?\App\Services\Report\ReportPdfHtmlCacheService $reportPdfHtmlCache = null;
     protected RegisterModel $registerModel;
     protected AppConfigModel $appConfigModel;
 
@@ -1645,6 +1648,9 @@ class RegisterService
             $edad     = $fechaNac->diff($hoy);
             $paciente->edad = $edad->y . ' años, ' . $edad->m . ' meses y ' . $edad->d . ' días';
         }
+        helper('registro');
+        $paciente->genero_texto = paciente_genero_texto($paciente);
+
         return $paciente;
     }
 
@@ -2201,6 +2207,45 @@ class RegisterService
     }
 
     /**
+     * Heatmap seriado y modo graficar por prianacategoria (sin SQL en render HTML).
+     *
+     * @param array<string, list<object|array<string, mixed>>> $grupos
+     * @param list<array<string, mixed>>                        $priasCfg
+     *
+     * @return array{heatmaps: array<int, array<string, mixed>|null>, modos: array<int, int>}
+     */
+    private function buildReportCategoricalHeatmapMaps(array $grupos, array $priasCfg): array
+    {
+        $modos = [];
+        foreach ($priasCfg as $cfg) {
+            $pid = (int) ($cfg['prianacategoria_id'] ?? 0);
+            if ($pid > 0) {
+                $modos[$pid] = \App\Models\LabotestModel::normalizeGraficar((int) ($cfg['graficar'] ?? 0));
+            }
+        }
+
+        $itemsByPria = [];
+        foreach ($grupos as $items) {
+            foreach ($items as $raw) {
+                $it  = is_array($raw) ? (object) $raw : $raw;
+                $pid = (int) ($it->prianacategoria_id ?? 0);
+                if ($pid > 0) {
+                    $itemsByPria[$pid][] = $raw;
+                }
+            }
+        }
+
+        $cmp      = new CategoricalSerialComparisonService();
+        $heatmaps = [];
+        foreach ($itemsByPria as $pid => $subItems) {
+            $modo = $modos[$pid] ?? \App\Models\LabotestModel::GRAFICAR_NO;
+            $heatmaps[$pid] = $cmp->buildFromReportItemsWithModo($subItems, $pid, $modo);
+        }
+
+        return ['heatmaps' => $heatmaps, 'modos' => $modos];
+    }
+
+    /**
      * Prepara datos para el reporte (viewreport / PDF)
      *
      * @param bool $forViewreportShell Si true, omite metadatos solo usados al generar el PDF.
@@ -2319,9 +2364,16 @@ class RegisterService
 
         $reportLabFirmas            = [];
         $reportPriaRefsConsolidada  = [];
+        $reportCategoricalHeatmap   = [];
+        $reportGraficarModo         = [];
+        $pdfLayoutSnapshot          = [];
         if (! $forViewreportShell) {
             $reportLabFirmas           = $this->buildLabFirmasParaReporte($analisis, (string) ($registerInfo->pruebas ?? ''), array_keys($grupos));
             $reportPriaRefsConsolidada = $this->buildReportPriaRefsConsolidada($eligiblePriaConfig);
+            $heatmapPack               = $this->buildReportCategoricalHeatmapMaps($grupos, $priasCfg);
+            $reportCategoricalHeatmap  = $heatmapPack['heatmaps'];
+            $reportGraficarModo        = $heatmapPack['modos'];
+            $pdfLayoutSnapshot         = (new ReportPdfLayoutService())->getActiveLayoutForRender();
         }
 
         $result = [
@@ -2334,6 +2386,9 @@ class RegisterService
             'report_pria_metodo_nombre'       => $reportPriaMetodoNombre,
             'report_lab_firmas'               => $reportLabFirmas,
             'report_pria_refs_consolidada'    => $reportPriaRefsConsolidada,
+            'report_categorical_heatmap'      => $reportCategoricalHeatmap,
+            'report_graficar_modo'            => $reportGraficarModo,
+            'pdf_layout'                      => $pdfLayoutSnapshot,
         ];
 
         if ($useCache && ! $forViewreportShell) {
@@ -2727,7 +2782,9 @@ class RegisterService
             $reportEmitidoEn = self::formatNowForReport();
         }
 
-        $labConfig = $this->getLabConfig();
+        $labConfig = is_array($reportData['lab_config'] ?? null) && $reportData['lab_config'] !== []
+            ? $reportData['lab_config']
+            : $this->getLabConfig();
         $layoutCtx = $this->buildReportLayoutContext($reportData, $pdf_layout, $labConfig);
 
         $html = view('registers/report_pdf', [
@@ -2744,6 +2801,8 @@ class RegisterService
             'report_pria_metodo_nombre'       => $reportData['report_pria_metodo_nombre'] ?? [],
             'report_lab_firmas'               => $reportData['report_lab_firmas'] ?? [],
             'report_pria_refs_consolidada'    => $reportData['report_pria_refs_consolidada'] ?? [],
+            'report_categorical_heatmap'      => $reportData['report_categorical_heatmap'] ?? [],
+            'report_graficar_modo'            => $reportData['report_graficar_modo'] ?? [],
             'report_layout_plan'              => $layoutCtx['plan'],
             'report_layout_applier'           => $layoutCtx['applier'],
         ]);
@@ -2752,7 +2811,7 @@ class RegisterService
     }
 
     /**
-     * PDF binario idéntico al de descarga (Dompdf + plantilla PDF activa).
+     * PDF binario según plantilla PDF activa (motor configurado en config/Pdf).
      *
      * @param array<string, mixed> $reportData
      */
@@ -2763,10 +2822,94 @@ class RegisterService
         string $reportEmitidoEn = '',
         ?array $pdfLayoutOverride = null,
     ): string {
-        $html = $this->renderReportPdfHtml($reportData, $reportUrl, $qrDataUri, $reportEmitidoEn, $pdfLayoutOverride);
+        $registroId    = $this->registroIdFromReportData($reportData);
+        $layoutService = new ReportPdfLayoutService();
+        $pdfLayout     = $pdfLayoutOverride ?? $layoutService->getActiveLayoutForRender();
+        if ($reportEmitidoEn === '') {
+            $reportEmitidoEn = self::formatNowForReport();
+        }
+
+        $html = $this->getOrBuildReportPdfHtml(
+            $registroId,
+            $reportData,
+            $reportUrl,
+            $qrDataUri,
+            $reportEmitidoEn,
+            $pdfLayout,
+        );
         $pageSize = ReportPdfLayoutService::resolveGlobalPageSizeMm($this->getLabConfig());
 
         return (new PdfService())->generate($html, 'resultados.pdf', $pageSize);
+    }
+
+    /**
+     * HTML cacheado o generado una sola vez por huella (evita re-render en warm + pdf miss).
+     *
+     * @param array<string, mixed> $reportData
+     */
+    public function getOrBuildReportPdfHtml(
+        int $registroId,
+        array $reportData,
+        string $reportUrl,
+        string $qrDataUri,
+        string $reportEmitidoEn,
+        array $pdfLayout,
+    ): string {
+        $fingerprint = null;
+        if ($registroId > 0 && $this->isPdfHtmlCacheEnabled()) {
+            $fingerprint = $this->reportPdfPreviewCacheFingerprint(
+                $registroId,
+                $reportData,
+                $reportEmitidoEn,
+                $pdfLayout,
+            );
+            $cachedHtml = $this->reportPdfHtmlCache()->read($registroId, $fingerprint);
+            if ($cachedHtml !== null) {
+                ReportPipelineMetrics::getInstance()->log('report_pdf_html_cache_hit', 0, [
+                    'registro_id' => $registroId,
+                ]);
+
+                return $cachedHtml;
+            }
+        }
+
+        $html = $this->renderReportPdfHtml($reportData, $reportUrl, $qrDataUri, $reportEmitidoEn, $pdfLayout);
+
+        if ($registroId > 0 && $this->isPdfHtmlCacheEnabled() && $fingerprint !== null) {
+            $this->reportPdfHtmlCache()->write($registroId, $fingerprint, $html);
+        }
+
+        return $html;
+    }
+
+    private function isPdfHtmlCacheEnabled(): bool
+    {
+        return (bool) (config('Pdf')->htmlCacheEnabled ?? true);
+    }
+
+    /**
+     * @param array<string, mixed> $reportData
+     */
+    private function registroIdFromReportData(array $reportData): int
+    {
+        $info = $reportData['register_info'] ?? null;
+        if (is_object($info)) {
+            return (int) ($info->registro_id ?? 0);
+        }
+        if (is_array($info)) {
+            return (int) ($info['registro_id'] ?? 0);
+        }
+
+        return 0;
+    }
+
+    private function reportPdfHtmlCache(): \App\Services\Report\ReportPdfHtmlCacheService
+    {
+        if ($this->reportPdfHtmlCache === null) {
+            $this->reportPdfHtmlCache = new \App\Services\Report\ReportPdfHtmlCacheService();
+        }
+
+        return $this->reportPdfHtmlCache;
     }
 
     /**
@@ -2856,10 +2999,16 @@ class RegisterService
 
         $parts[] = $this->reportPdfDoctorFingerprintPart($reportData['doctor'] ?? null);
         $parts[] = $this->hashPdfLayoutForFingerprint($pdfLayout);
-        $parts[] = (string) (config('Pdf')->renderer ?? 'dompdf');
+        $parts[] = (string) (config('Pdf')->renderer ?? 'mpdf');
+        $parts[] = self::reportPdfEngineCacheRevision();
         $parts[] = self::REPORT_PDF_PREVIEW_CACHE_SALT;
 
         return hash('sha256', implode("\n", $parts));
+    }
+
+    private static function reportPdfEngineCacheRevision(): string
+    {
+        return \App\Libraries\Pdf\HtmlMpdfAdapter::CACHE_REVISION;
     }
 
     /**
@@ -2884,7 +3033,8 @@ class RegisterService
         $parts[] = $this->reportPdfDoctorFingerprintPart($doctor);
 
         $parts[] = $this->hashPdfLayoutForFingerprint($pdfLayout);
-        $parts[] = (string) (config('Pdf')->renderer ?? 'dompdf');
+        $parts[] = (string) (config('Pdf')->renderer ?? 'mpdf');
+        $parts[] = self::reportPdfEngineCacheRevision();
         $parts[] = self::REPORT_PDF_PREVIEW_CACHE_SALT;
 
         return hash('sha256', implode("\n", $parts));
@@ -3010,6 +3160,8 @@ class RegisterService
         if (is_file($path . '.meta')) {
             @unlink($path . '.meta');
         }
+
+        $this->reportPdfHtmlCache()->clear($registroId);
     }
 
     /**
@@ -3075,6 +3227,9 @@ class RegisterService
 
         register_shutdown_function(static function () use ($registroId): void {
             try {
+                if (function_exists('fastcgi_finish_request')) {
+                    @fastcgi_finish_request();
+                }
                 (new \App\Services\Report\ReportPipelineService())->warmSync($registroId);
             } catch (\Throwable $e) {
                 log_message('error', 'scheduleReportPdfPreviewCacheWarm {id}: {msg}', [

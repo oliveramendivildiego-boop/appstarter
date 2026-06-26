@@ -106,6 +106,64 @@ $(document).ready(function() {
             $('#hide_commission_details').prop('checked', false);
         }
     });
+
+    function doctorDisplayModeIcon(level) {
+        if (level === 'alto') {
+            return '<span class="report-interpretacion-icon report-interpretacion-icon-alto" aria-hidden="true">▲</span>';
+        }
+        if (level === 'bajo') {
+            return '<span class="report-interpretacion-icon report-interpretacion-icon-bajo" aria-hidden="true">▼</span>';
+        }
+        return '<span class="report-interpretacion-icon report-interpretacion-icon-normal" aria-hidden="true">−</span>';
+    }
+
+    function updateDoctorDisplayModePreview() {
+        var mode = $('#display_mode').val() || 'clinico';
+        var showInterp = $('#interpretacion_enabled').is(':checked');
+        var samples = {
+            high: { value: '180 mg/dL', label: 'Alto', level: 'alto' },
+            low: { value: '10.2 g/dL', label: 'Bajo', level: 'bajo' },
+            normal: { value: '180 mg/dL', label: 'Normal', level: 'normal' }
+        };
+
+        $('.js-preview-col-interpretacion').toggle(showInterp);
+
+        ['high', 'low', 'normal'].forEach(function(key) {
+            var sample = samples[key];
+            var $result = $('.js-preview-result-' + key);
+            var $interp = $('.js-preview-interp-' + key);
+            var resultHtml = sample.value;
+            var interpHtml = sample.label;
+            var resultClass = '';
+            var interpClass = '';
+
+            if (mode === 'neutral' || sample.level === 'normal') {
+                resultClass = '';
+                interpClass = '';
+                if (mode === 'semaforo' && showInterp && sample.level === 'normal') {
+                    interpHtml = doctorDisplayModeIcon('normal') + ' ' + sample.label;
+                }
+            } else if (mode === 'clinico') {
+                resultClass = sample.level === 'alto' ? 'report-interpretacion-alto' : 'report-interpretacion-bajo';
+                interpClass = resultClass;
+            } else if (mode === 'semaforo') {
+                resultClass = sample.level === 'alto' ? 'report-interpretacion-alto' : 'report-interpretacion-bajo';
+                interpClass = resultClass;
+                var icon = doctorDisplayModeIcon(sample.level);
+                if (showInterp) {
+                    interpHtml = icon + ' ' + sample.label;
+                } else if (sample.level !== 'normal') {
+                    resultHtml = sample.value + ' ' + icon;
+                }
+            }
+
+            $result.attr('class', 'text-center js-preview-result-' + key + (resultClass ? ' ' + resultClass : '')).html(resultHtml);
+            $interp.attr('class', 'text-center js-preview-col-interpretacion js-preview-interp-' + key + (interpClass ? ' ' + interpClass : '')).html(interpHtml);
+        });
+    }
+
+    $('#display_mode, #interpretacion_enabled').on('change', updateDoctorDisplayModePreview);
+    updateDoctorDisplayModePreview();
     
     <?php if (!empty($validationErrors) && is_array($validationErrors)): ?>
     window.CI_VALIDATION_ERRORS = <?= json_encode($validationErrors) ?>;

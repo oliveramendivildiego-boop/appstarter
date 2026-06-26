@@ -35,6 +35,30 @@ class CategoricalSerialComparisonService
             return null;
         }
 
+        return $this->buildHeatmapFromParsedItems($items, $prianacategoriaId);
+    }
+
+    /**
+     * Igual que buildFromReportItems pero sin consultar graficar en BD (precalculado en prepareReportData).
+     *
+     * @param list<object|array<string, mixed>> $items
+     */
+    public function buildFromReportItemsWithModo(array $items, int $prianacategoriaId, int $graficarModo): ?array
+    {
+        if ($prianacategoriaId < 1 || $items === [] || $graficarModo <= LabotestModel::GRAFICAR_NO) {
+            return null;
+        }
+
+        return $this->buildHeatmapFromParsedItems($items, $prianacategoriaId);
+    }
+
+    /**
+     * @param list<object|array<string, mixed>> $items
+     */
+    private function buildHeatmapFromParsedItems(array $items, int $prianacategoriaId): ?array
+    {
+        unset($prianacategoriaId);
+
         $parsed = $this->parseItems($items);
         if ($parsed['rows'] === []) {
             return null;

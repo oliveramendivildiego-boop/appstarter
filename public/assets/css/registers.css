@@ -1,18 +1,471 @@
 /**
  * Módulo Registros - formfill, badges calculada
  */
-.register-form-seccion-separador {
-    margin: 1rem 0 0.5rem;
-    padding: 0.55rem 0.85rem;
-    background: #e2e8f0;
-    border: 1px solid #cbd5e1;
-    border-left: 4px solid var(--primary-color, #0d6efd);
-    border-radius: 0 0.375rem 0.375rem 0;
+
+/* ── Captura de resultados (registers/view) — estilo SaaS / Eleken ── */
+#customer_basic_info.register-form-capture {
+    border: 0;
+    padding: 0;
+    margin: 0;
+    min-width: 0;
+    /* Fin del degradado (Config → Apariencia → Marca y degradado) */
+    --register-form-accent: var(--theme-gradient-end, #4f46e5);
+}
+
+.register-form-context {
+    border-radius: 0.875rem;
+    background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%);
+    border: 1px solid #e2e8f0 !important;
+}
+
+.register-form-context-avatar {
+    width: 2.75rem;
+    height: 2.75rem;
+    border-radius: 0.75rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: color-mix(in srgb, var(--register-form-accent) 12%, #fff);
+    color: var(--register-form-accent);
+    font-size: 1.1rem;
+    flex-shrink: 0;
+}
+
+.register-form-context-kicker {
+    font-size: 0.6875rem;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: #64748b;
+    margin-bottom: 0.15rem;
+}
+
+.register-form-context-title {
+    font-size: 1.125rem;
+    font-weight: 700;
+    color: #0f172a;
+    line-height: 1.3;
+}
+
+.register-form-context-pill {
+    display: inline-block;
+    margin-top: 0.35rem;
+    padding: 0.15rem 0.55rem;
+    border-radius: 999px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    background: #f1f5f9;
+    color: #475569;
+    border: 1px solid #e2e8f0;
+}
+
+.register-form-area-panel {
+    background: #fff;
+    border: 1px solid #e8edf4;
+    border-radius: 0.875rem;
+    padding: 1.15rem 1.15rem 0.35rem;
+    box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04), 0 4px 16px rgba(15, 23, 42, 0.03);
+}
+
+.register-form-area-panel--single-col,
+.register-form-capture--cols-1 .register-form-area-panel[data-form-cols="1"] {
+    width: 100%;
+    max-width: 100%;
+}
+
+.register-form-capture--cols-1 .register-form-area-panel[data-form-cols="1"] > .register-form-col-single {
+    flex: 0 0 100%;
+    max-width: 100%;
+    width: 100%;
+}
+
+.register-form-capture--cols-1 .register-form-col-single .register-form-field {
+    max-width: 50%;
+    width: 100%;
+}
+
+@media (max-width: 767.98px) {
+    .register-form-capture--cols-1 .register-form-col-single .register-form-field {
+        max-width: 100%;
+    }
+}
+
+.register-form-padre-divider {
+    margin: 0.85rem 0 0.35rem;
+    padding: 0.6rem 0.85rem;
+    font-size: 0.8125rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--register-form-accent);
+    background: color-mix(in srgb, var(--register-form-accent) 8%, #fff);
+    border-radius: 0.5rem;
+    border-left: 4px solid var(--register-form-accent);
+    line-height: 1.35;
+}
+
+.register-form-pruebas-grid {
+    --register-form-field-gap: 0.85rem;
+}
+
+.register-form-field {
+    position: relative;
+    background: #fff;
+    border: 1px solid var(--register-form-accent);
+    border-radius: 0.75rem;
+    padding: 0.9rem 1rem 1rem;
+    height: 100%;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease, background-color 0.2s ease;
+}
+
+.register-form-field:hover {
+    border-color: var(--register-form-accent);
+    background: #fff;
+}
+
+.register-form-field:focus-within {
+    border-color: var(--register-form-accent);
+    background: #fff;
+    box-shadow: 0 0 0 4px color-mix(in srgb, var(--register-form-accent) 12%, transparent);
+}
+
+.register-form-field--filled {
+    background: #fff;
+    border-color: color-mix(in srgb, var(--register-form-accent) 50%, #e2e8f0);
+}
+
+.register-form-field--valid,
+.register-form-field--filled.register-form-field--valid {
+    border-color: var(--register-form-accent);
+}
+
+.register-form-field--valid:focus-within,
+.register-form-field--filled.register-form-field--valid:focus-within {
+    border-color: var(--register-form-accent);
+    box-shadow: 0 0 0 4px color-mix(in srgb, var(--register-form-accent) 15%, transparent);
+}
+
+.register-form-field--valid::after {
+    content: '\f00c';
+    font-family: 'Font Awesome 6 Free';
+    font-weight: 900;
+    position: absolute;
+    top: 0.85rem;
+    right: 0.85rem;
+    width: 1.35rem;
+    height: 1.35rem;
+    border-radius: 999px;
+    background: color-mix(in srgb, var(--register-form-accent) 14%, #fff);
+    color: var(--register-form-accent);
+    font-size: 0.65rem;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    pointer-events: none;
+}
+
+.register-form-field--valid.register-form-field--has-value:not(.register-form-field--error)::after {
+    display: flex;
+}
+
+.register-form-field--valid:has(.register-form-input-wrap--select)::after,
+.register-form-field--valid:has(textarea)::after {
+    display: none;
+}
+
+.register-form-field--error {
+    border-color: #fca5a5;
+    background: #fffafb;
+}
+
+.register-form-field--error:focus-within {
+    border-color: #ef4444;
+    box-shadow: 0 0 0 4px rgba(239, 68, 68, 0.12);
+}
+
+.register-form-field .form-label {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.35rem;
     font-size: 0.8125rem;
     font-weight: 600;
-    text-transform: uppercase;
-    letter-spacing: 0.04em;
     color: #1e293b;
+    margin-bottom: 0.35rem;
+    line-height: 1.35;
+    padding-right: 1.75rem;
+}
+
+.register-form-label-text {
+    font-weight: 600;
+    color: #1e293b;
+}
+
+.register-form-helper {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.35rem;
+    font-size: 0.75rem;
+    font-weight: 500;
+    color: #64748b;
+    margin-bottom: 0.55rem;
+    line-height: 1.4;
+}
+
+.register-form-helper i {
+    margin-top: 0.1rem;
+    opacity: 0.75;
+    flex-shrink: 0;
+}
+
+.register-form-input-wrap {
+    position: relative;
+    display: flex;
+    align-items: stretch;
+    width: 100%;
+    box-sizing: border-box;
+    border-radius: 0.625rem;
+    background: #fff;
+    border: 1px solid var(--register-form-accent) !important;
+    overflow: hidden;
+    transition: border-color 0.15s ease, box-shadow 0.15s ease;
+    min-height: 2.75rem;
+}
+
+/* Controles sueltos (sin .register-form-input-wrap) */
+.register-form-field:not(:has(.register-form-input-wrap)) .form-control,
+.register-form-field:not(:has(.register-form-input-wrap)) .form-select,
+.register-form-field:not(:has(.register-form-input-wrap)) textarea.form-control {
+    border: 1px solid var(--register-form-accent) !important;
+    border-radius: 0.625rem;
+    background: #fff;
+    width: 100%;
+    box-sizing: border-box;
+    min-height: 2.75rem;
+    padding: 0.6rem 0.85rem;
+    font-size: 0.9375rem;
+}
+
+.register-form-field .register-form-input-wrap .form-control,
+.register-form-field .register-form-input-wrap .form-select,
+.register-form-field .register-form-input-wrap textarea.form-control {
+    border: 0 !important;
+    box-shadow: none !important;
+    background: transparent !important;
+    border-radius: 0 !important;
+    min-height: 2.75rem;
+    padding: 0.6rem 0.85rem;
+    font-size: 0.9375rem;
+    font-weight: 500;
+    color: #0f172a;
+    flex: 1 1 0%;
+    min-width: 0;
+    width: auto !important;
+    max-width: 100%;
+}
+
+.register-form-field .note-editor.note-frame,
+.register-form-field .register-form-rich-editor {
+    border: 1px solid var(--register-form-accent) !important;
+    border-radius: 0.625rem !important;
+    overflow: hidden;
+    width: 100%;
+}
+
+.register-form-field .note-editor.note-frame .note-editing-area,
+.register-form-field .register-form-rich-editor .note-editing-area {
+    background: #fff;
+}
+
+.register-form-validacion-cuerpo .form-control,
+.register-form-validacion-cuerpo .form-select {
+    border: 1px solid #cbd5e1 !important;
+    border-radius: 0.5rem;
+}
+
+.register-form-capture .cultivo-fill-wrap .form-control,
+.register-form-capture .cultivo-fill-wrap .form-select {
+    border: 1px solid #cbd5e1 !important;
+    border-radius: 0.375rem;
+}
+
+.register-form-capture .cultivo-fill-wrap .note-editor.note-frame,
+.register-form-capture .cultivo-fill-wrap .register-form-rich-editor {
+    border: 1px solid #cbd5e1 !important;
+    border-radius: 0.375rem !important;
+}
+
+.register-form-notes .register-form-input-wrap {
+    border: 1px solid #cbd5e1 !important;
+}
+
+.register-form-input-wrap textarea.form-control {
+    min-height: 5.5rem;
+    resize: vertical;
+}
+
+.register-form-field:focus-within .register-form-input-wrap,
+.register-form-field:focus-within .note-editor.note-frame {
+    border-color: var(--register-form-accent) !important;
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--register-form-accent) 14%, transparent);
+}
+
+.register-form-field--error .register-form-input-wrap,
+.register-form-field--error .note-editor.note-frame {
+    border-color: #f87171 !important;
+}
+
+.register-form-field--filled .register-form-input-wrap,
+.register-form-field--valid .register-form-input-wrap,
+.register-form-field--filled .register-form-input-wrap--unit,
+.register-form-field--valid .register-form-input-wrap--unit {
+    border-color: var(--register-form-accent) !important;
+}
+
+.register-form-field--filled .register-form-input-wrap--unit .register-form-unit,
+.register-form-field--valid .register-form-input-wrap--unit .register-form-unit {
+    border-left-color: color-mix(in srgb, var(--register-form-accent) 40%, #e2e8f0);
+    color: var(--register-form-accent);
+    background: color-mix(in srgb, var(--register-form-accent) 10%, #f8fafc);
+}
+
+.register-form-input-wrap .form-control::placeholder {
+    color: #94a3b8;
+    font-weight: 400;
+}
+
+.register-form-input-wrap--select {
+    padding-right: 0;
+}
+
+.register-form-input-wrap--select::after {
+    content: '\f078';
+    font-family: 'Font Awesome 6 Free';
+    font-weight: 900;
+    position: absolute;
+    right: 0.85rem;
+    top: 50%;
+    transform: translateY(-50%);
+    font-size: 0.65rem;
+    color: #64748b;
+    pointer-events: none;
+}
+
+.register-form-input-wrap--select .form-select {
+    padding-right: 2.25rem;
+    appearance: none;
+    cursor: pointer;
+}
+
+.register-form-input-wrap--unit .form-control {
+    padding-right: 0.5rem;
+    flex: 1 1 0%;
+}
+
+.register-form-unit {
+    display: flex;
+    align-items: center;
+    flex: 0 0 auto;
+    padding: 0 0.75rem;
+    font-size: 0.75rem;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+    color: #64748b;
+    background: #f1f5f9;
+    border-left: 1px solid #e2e8f0;
+    white-space: nowrap;
+}
+
+.register-form-field .invalid-feedback {
+    margin-top: 0.45rem;
+    font-size: 0.75rem;
+    font-weight: 500;
+    color: #dc2626;
+    display: flex;
+    align-items: flex-start;
+    gap: 0.35rem;
+}
+
+.register-form-field .invalid-feedback:not(:empty)::before {
+    content: '\f06a';
+    font-family: 'Font Awesome 6 Free';
+    font-weight: 900;
+    flex-shrink: 0;
+    margin-top: 0.05rem;
+}
+
+.register-form-field .sugerencia-calculada {
+    margin-top: 0.5rem;
+    padding: 0.35rem 0.65rem;
+    border-radius: 0.5rem;
+    background: color-mix(in srgb, var(--register-form-accent) 8%, #fff);
+    border: 1px dashed color-mix(in srgb, var(--register-form-accent) 45%, #fff);
+    color: var(--register-form-accent);
+    font-size: 0.8125rem;
+    font-weight: 500;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    cursor: pointer;
+    transition: background 0.15s ease;
+}
+
+.register-form-field .sugerencia-calculada:hover {
+    background: color-mix(in srgb, var(--register-form-accent) 16%, #fff);
+    text-decoration: none;
+}
+
+.register-form-field .badge-calculada {
+    font-size: 0.65rem;
+    font-weight: 600;
+    padding: 0.2em 0.55em;
+    border-radius: 999px;
+    vertical-align: middle;
+}
+
+.register-form-notes {
+    border-radius: 0.875rem;
+    background: #fff;
+    border: 1px solid #e8edf4 !important;
+}
+
+.register-form-notes-title {
+    font-size: 0.875rem;
+    font-weight: 700;
+    color: #1e293b;
+    margin-bottom: 1rem;
+}
+
+.register-form-notes .register-form-input-wrap {
+    background: #f8fafc;
+}
+
+.register-form-actions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.65rem;
+    padding: 1.15rem 0 0.5rem;
+    border-top: 1px solid #e8edf4;
+}
+
+.register-form-actions .btn-primary {
+    box-shadow: 0 2px 8px color-mix(in srgb, var(--register-form-accent) 35%, transparent);
+}
+
+.register-form-capture .register-form-seccion-separador {
+    margin: 0.75rem 0 0.65rem;
+    padding: 0.5rem 0.75rem;
+    background-color: var(--ui-breadcrumb-bg, var(--primary-color, #212529));
+    background-image: var(--ui-breadcrumb-bg-image, linear-gradient(135deg, var(--primary-color, #212529), var(--theme-gradient-end, #4f46e5)));
+    border: none;
+    border-radius: var(--bs-border-radius, 0.375rem);
+    font-size: 0.75rem;
+    font-weight: var(--ui-breadcrumb-font-weight, 700);
+    font-style: var(--ui-breadcrumb-font-style, normal);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--ui-breadcrumb-text, #ffffff);
     line-height: 1.35;
 }
 
@@ -29,7 +482,7 @@
     padding: 0.6rem 0.9rem;
     background: linear-gradient(90deg, #f1f5f9 0%, #e2e8f0 100%);
     border-bottom: 1px solid #cbd5e1;
-    border-left: 4px solid var(--primary-color, #0d6efd);
+    border-left: 4px solid var(--register-form-accent);
     font-size: 0.8125rem;
     font-weight: 600;
     text-transform: uppercase;

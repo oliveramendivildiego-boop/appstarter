@@ -1,32 +1,18 @@
 <?php
 declare(strict_types=1);
 
-$_SERVER['CI_ENVIRONMENT'] = 'development';
-define('ENVIRONMENT', 'development');
-defined('CI_DEBUG') || define('CI_DEBUG', true);
-define('FCPATH', dirname(__DIR__, 2) . DIRECTORY_SEPARATOR . 'public' . DIRECTORY_SEPARATOR);
-chdir(FCPATH);
-require FCPATH . '../app/Config/Paths.php';
-$paths = new Config\Paths();
-require $paths->systemDirectory . '/Boot.php';
-CodeIgniter\Boot::bootConsole($paths);
-
-$htmlFile = dirname(__DIR__) . DIRECTORY_SEPARATOR . 'debug' . DIRECTORY_SEPARATOR . 'report_262.html';
-$html = (string) file_get_contents($htmlFile);
-
-$svc = new \App\Libraries\PdfService();
-$ref = new ReflectionClass($svc);
-$extract = $ref->getMethod('extractPaginationSlots');
-$extract->setAccessible(true);
-$slots = $extract->invoke($svc, $html);
-echo 'Slots: ' . count($slots) . PHP_EOL;
-if ($slots !== []) {
-    echo json_encode($slots[0], JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT) . PHP_EOL;
+$path = $argv[1] ?? dirname(__DIR__) . '/cache/dompdf_test_308.pdf';
+$bin  = file_get_contents($path);
+if ($bin === false) {
+    fwrite(STDERR, "Cannot read {$path}\n");
+    exit(1);
 }
 
-$pdf = $svc->generate($html, 'test.pdf');
-file_put_contents(dirname(__DIR__) . DIRECTORY_SEPARATOR . 'debug' . DIRECTORY_SEPARATOR . 'pagination_check.pdf', $pdf);
-
-foreach (['Página 1 de', '1 de 4', '2 de 4', 'gina 1'] as $p) {
-    echo "Contains '{$p}': " . (str_contains($pdf, $p) ? 'yes' : 'no') . PHP_EOL;
+echo 'file: ' . $path . PHP_EOL;
+echo 'has Pagina label: ' . (preg_match('/P[aá]gina/i', $bin) ? 'yes' : 'no') . PHP_EOL;
+preg_match_all('/\d+ de \d+/', $bin, $matches);
+$unique = array_values(array_unique($matches[0] ?? []));
+echo 'page patterns: ' . count($unique) . PHP_EOL;
+foreach ($unique as $m) {
+    echo '  - ' . $m . PHP_EOL;
 }

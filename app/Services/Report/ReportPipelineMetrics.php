@@ -54,14 +54,6 @@ class ReportPipelineMetrics
         ]);
     }
 
-    public function recordChromiumRender(float $seconds, bool $success, string $engine, ?string $error = null): void
-    {
-        $this->recordPdfRender($seconds, $engine, $success ? 'rendered' : 'failed');
-        if ($error !== null) {
-            $this->log('chromium_error', 0, ['message' => $error]);
-        }
-    }
-
     public function recordTotal(string $phase, float $seconds, array $extra = []): void
     {
         $this->log('total_' . $phase . '_ms', $seconds * 1000, $extra);

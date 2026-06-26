@@ -12,7 +12,7 @@ use App\Services\ReportPdfLayoutService;
  */
 class ReportDataCacheService
 {
-    private const SALT = 'report-data-prep-v1-chromium-pipeline';
+    private const SALT = 'report-data-prep-v3-mpdf-pipeline';
 
     private RegisterModel $registerModel;
 
@@ -55,7 +55,9 @@ class ReportDataCacheService
         $labConfig = (new RegisterService())->getLabConfig();
         $parts[]   = md5(json_encode($labConfig, JSON_UNESCAPED_UNICODE) ?: '');
 
-        $parts[] = (string) (config('Pdf')->renderer ?? 'dompdf');
+        $parts[] = (string) (config('Pdf')->renderer ?? 'mpdf');
+        $parts[] = \App\Libraries\Pdf\HtmlMpdfAdapter::CACHE_REVISION;
+        $parts[] = \App\Services\Report\ReportPdfHtmlCacheService::salt();
         $parts[] = self::SALT;
 
         return hash('sha256', implode("\n", $parts));

@@ -1,0 +1,46 @@
+.pdf-cell--center .header-piece-pagination,
+body.pdf-engine-mpdf .lab-firmas-pdf-block .pdf-cell--center .header-piece-pagination {
+    left: 25mm;
+    right: 10mm;
+    text-align: center;
+}
+body.pdf-engine-mpdf .pdf-hg-block .pdf-cell--right .header-piece-pagination,
+body.pdf-engine-mpdf .pdf-pd-block .pdf-cell--right .header-piece-pagination,
+body.pdf-engine-mpdf .lab-firmas-pdf-block .pdf-cell--right .header-piece-pagination {
+    left: auto;
+    right: 10mm;
+    text-align: right;
+}
+</style>
+<style>
+/* mPDF footer (plantilla) */
+.mpdf-ft-root {
+    margin: 0;
+    padding: 6px 0 0 0;
+    background: transparent;
+    box-sizing: border-box;
+    width: 100%;
+    font-family:dejavusans, sans-serif;
+    font-size: 7pt;
+    line-height: 1.35;
+    color: #383938;
+}
+.mpdf-ft-root .mpdf-ft-table {
+    width: 100%;
+    table-layout: fixed;
+    border-collapse: collapse;
+    margin: 0;
+    border-top:2px solid #236149;
+}
+.mpdf-ft-root .mpdf-ft-table td.mpdf-ft-cell {
+    vertical-align: top;
+    padding: 0 2px;
+    line-height: 1.35;
+}
+.mpdf-ft-root .mpdf-ft-stack {
+    width: 100%;
+    border-collapse: collapse;
+    table-layout: fixed;
+    margin: 0;
+}
+.mpdf

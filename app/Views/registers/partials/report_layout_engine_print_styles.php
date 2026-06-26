@@ -203,14 +203,18 @@ body.pdf-layout-engine.pdf-pagination-flow-no-lone-signature.pdf-dompdf-download
     page-break-before: avoid !important;
     break-before: avoid-page !important;
 }
+body.pdf-layout-engine.pdf-pagination-flow-continuous-signature-last-page.pdf-dompdf-download .report-signature-tail-bundle,
 body.pdf-layout-engine.pdf-pagination-flow-no-lone-signature.pdf-dompdf-download .report-signature-tail-bundle {
     page-break-inside: avoid !important;
     break-inside: avoid-page !important;
 }
+body.pdf-layout-engine.pdf-pagination-flow-continuous-signature-last-page.pdf-dompdf-download .report-signature-tail-bundle .report-lab-firma-grupo-inline,
 body.pdf-layout-engine.pdf-pagination-flow-no-lone-signature.pdf-dompdf-download .report-signature-tail-bundle .report-lab-firma-grupo-inline {
     page-break-before: avoid !important;
     break-before: avoid-page !important;
 }
+body.pdf-layout-engine.pdf-pagination-flow-continuous-signature-last-page.pdf-dompdf-download .report-signature-tail-bundle .report-pdf-grupo-cabecera,
+body.pdf-layout-engine.pdf-pagination-flow-continuous-signature-last-page.pdf-dompdf-download .report-signature-tail-bundle .report-segment-title,
 body.pdf-layout-engine.pdf-pagination-flow-no-lone-signature.pdf-dompdf-download .report-signature-tail-bundle .report-pdf-grupo-cabecera,
 body.pdf-layout-engine.pdf-pagination-flow-no-lone-signature.pdf-dompdf-download .report-signature-tail-bundle .report-segment-title {
     page-break-after: avoid !important;
@@ -367,20 +371,37 @@ body.pdf-layout-engine.pdf-pagination-area-soft-fit-signature.pdf-dompdf-downloa
 }
 <?php if ($__dompdfCssOnly):
     $css = (string) ob_get_clean();
-    $lines = explode("\n", $css);
-    $filtered = [];
-    $mediaDepth = 0;
-    foreach ($lines as $line) {
-        if (preg_match('/@media\s+print\b/', $line)) {
-            $mediaDepth++;
+    $stripped = '';
+    $len = strlen($css);
+    $pos = 0;
+    while ($pos < $len) {
+        if (! preg_match('/@media\s+print\b/i', $css, $mediaMatch, PREG_OFFSET_CAPTURE, $pos)) {
+            $stripped .= substr($css, $pos);
+            break;
+        }
+        $mediaStart = $mediaMatch[0][1];
+        $stripped .= substr($css, $pos, $mediaStart - $pos);
+        $openBrace = strpos($css, '{', $mediaStart);
+        if ($openBrace === false) {
+            $pos = $mediaStart + strlen($mediaMatch[0][0]);
             continue;
         }
-        if ($mediaDepth > 0) {
-            if (preg_match('/^\s*\}\s*$/', $line)) {
-                $mediaDepth--;
+        $depth = 1;
+        $cursor = $openBrace + 1;
+        while ($cursor < $len && $depth > 0) {
+            $char = $css[$cursor];
+            if ($char === '{') {
+                $depth++;
+            } elseif ($char === '}') {
+                $depth--;
             }
-            continue;
+            $cursor++;
         }
+        $pos = $cursor;
+    }
+    $lines = explode("\n", $stripped);
+    $filtered = [];
+    foreach ($lines as $line) {
         if (str_contains($line, 'report-browser-print')) {
             continue;
         }

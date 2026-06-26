@@ -198,12 +198,18 @@ class ReportPdfLayoutService
         'segment_shadow'    => 'none',
         'segment_padding_top_px'    => 6,
         'segment_padding_bottom_px' => 6,
+        'segment_font_family'       => 'DejaVu Sans',
+        'segment_font_size_pt'      => 10.0,
+        'segment_font_weight'       => '700',
         'font_family'       => 'DejaVu Sans',
         'font_size_pt'      => 9.0,
         'font_weight'       => 'normal',
         'font_style'        => 'normal',
         'text_transform'    => 'none',
         'line_height'       => 1.35,
+        'letter_spacing_em' => 0.0,
+        'text_shadow'       => 'none',
+        'cell_vertical_align' => 'middle',
         'cell_padding_v_px' => 6,
         'table_margin_top_px' => 15,
         'table_margin_bottom_px' => 15,
@@ -243,6 +249,11 @@ class ReportPdfLayoutService
         'grupo_cabecera_show_metodo'       => true,
         'grupo_cabecera_title_margin_top_px'    => 0,
         'grupo_cabecera_title_margin_bottom_px' => 6,
+        'grupo_cabecera_title_font_family'      => 'DejaVu Sans',
+        'grupo_cabecera_title_font_size_pt'     => 9.0,
+        'grupo_cabecera_title_font_weight'      => 'normal',
+        'grupo_cabecera_title_text_color'       => '#333333',
+        'grupo_cabecera_title_text_shadow'      => 'none',
         'grupo_cabecera_tipo_muestra_margin_top_px'    => 0,
         'grupo_cabecera_tipo_muestra_margin_bottom_px' => 10,
         'grupo_cabecera_metodo_margin_top_px'    => 0,
@@ -678,32 +689,36 @@ class ReportPdfLayoutService
         $footerCols = max(1, (int) ($ftSec['columns'] ?? 3));
         $maxRow     = 0;
         $maxStack   = 0;
-        $maxDepth   = 1;
+        $tierRows   = 0;
         $enabled    = 0;
-        /** @var array<string, int> $regionCounts */
-        $regionCounts = [];
+        /** @var array<int, list<array<string, mixed>>> $itemsByFooterRow */
+        $itemsByFooterRow = [];
         foreach ($layout['instances'] ?? [] as $inst) {
             if (! is_array($inst) || ($inst['section'] ?? '') !== 'footer' || empty($inst['enabled'])) {
                 continue;
             }
             $enabled++;
             $row = max(0, (int) ($inst['grid_row'] ?? 0));
-            $col = max(0, min($footerCols - 1, (int) ($inst['column'] ?? 0)));
-            $span = max(1, min($footerCols - $col, (int) ($inst['column_span'] ?? 1)));
-            $regionKey = $row . ':' . $col . ':' . $span;
-            $regionCounts[$regionKey] = ($regionCounts[$regionKey] ?? 0) + 1;
             $maxRow   = max($maxRow, $row);
             $maxStack = max($maxStack, max(0, (int) ($inst['grid_stack'] ?? 0)));
+            $itemsByFooterRow[$row][] = $inst;
         }
         if ($enabled < 1) {
             return self::DEFAULT_PDF_FOOTER_RESERVE_MM;
         }
 
-        foreach ($regionCounts as $count) {
-            $maxDepth = max($maxDepth, max(1, (int) $count));
+        foreach ($itemsByFooterRow as $rowItems) {
+            $maxStackInRow = 0;
+            foreach ($rowItems as $rowInst) {
+                if (! is_array($rowInst)) {
+                    continue;
+                }
+                $maxStackInRow = max($maxStackInRow, (int) ($rowInst['grid_stack'] ?? 0));
+            }
+            $tierRows += $maxStackInRow + 1;
         }
 
-        $rows   = max(1, $maxRow + 1, $maxStack + 1, $maxDepth);
+        $rows   = max(1, $maxRow + 1, $tierRows);
         $lineMm = $fontPt * $lineHeight * 0.352778;
         $gapMm  = $rowGapPx * 0.264583;
         $padMm  = 6.0 * 0.264583 + 1.5;
@@ -736,7 +751,25 @@ class ReportPdfLayoutService
     }
 
     /** Padding superior del bloque pie (px), igual que report_pdf.css y la vista previa de plantilla. */
-    public const FOOTER_BLOCK_PAD_TOP_PX = 8;
+    public const FOOTER_BLOCK_PAD_TOP_PX = 6;
+
+    /**
+     * Padding superior del pie en PDF (px). La vista previa del editor usa 8px cuando hay borde superior.
+     *
+     * @param array<string, mixed> $footerGrid footer_grid normalizado o bruto
+     */
+    public static function footerBlockPadTopPx(array $footerGrid): int
+    {
+        $ft = self::normalizeFooterGridStyle($footerGrid);
+        if (self::labFirmasBool($ft, 'section_top_border_enabled', true)) {
+            $w = (int) ($ft['section_top_border_width_px'] ?? 0);
+            if ($w > 0) {
+                return 8;
+            }
+        }
+
+        return self::FOOTER_BLOCK_PAD_TOP_PX;
+    }
 
     /**
      * Altura aproximada de una línea de instancia del pie (pt), coherente con Chromium/Dompdf.
@@ -795,8 +828,13 @@ class ReportPdfLayoutService
      *
      * @param array<string, mixed> $layout
      */
-    public static function estimateFooterStackOffsetPt(array $layout, int $gridRow, int $gridStack): float
-    {
+    public static function estimateFooterStackOffsetPt(
+        array $layout,
+        int $gridRow,
+        int $gridStack,
+        int $gridColumn = 0,
+        int $gridColumnSpan = 1,
+    ): float {
         if ($gridStack <= 0 && $gridRow <= 0) {
             return 0.0;
         }
@@ -808,6 +846,10 @@ class ReportPdfLayoutService
         $ps         = is_array($layout['page_style'] ?? null) ? $layout['page_style'] : [];
         $ft         = self::normalizeFooterGridStyle($ps['footer_grid'] ?? []);
         $rowLhPt    = max(6.0, (float) ($ft['font_size_pt'] ?? 8)) * max(1.0, (float) ($ft['line_height'] ?? 1.35));
+        $footerCols = max(1, (int) ($sec['columns'] ?? 3));
+        $cellStart  = max(0, min($footerCols - 1, $gridColumn));
+        $cellSpan   = max(1, min($gridColumnSpan, $footerCols - $cellStart));
+        $cellEnd    = $cellStart + $cellSpan;
 
         $offset = 0.0;
         for ($stack = 0; $stack < $gridStack; $stack++) {
@@ -820,6 +862,12 @@ class ReportPdfLayoutService
                     continue;
                 }
                 if ((int) ($inst['grid_stack'] ?? 0) !== $stack) {
+                    continue;
+                }
+                $instCol = max(0, min($footerCols - 1, (int) ($inst['column'] ?? 0)));
+                $instSpan = max(1, min((int) ($inst['column_span'] ?? 1), $footerCols - $instCol));
+                $instEnd = $instCol + $instSpan;
+                if ($instCol >= $cellEnd || $cellStart >= $instEnd) {
                     continue;
                 }
                 $tierMax = max($tierMax, self::estimateFooterInstanceLinePt($inst, $layout));
@@ -999,7 +1047,10 @@ class ReportPdfLayoutService
             }
         }
 
-        return 'left';
+        $colIdx   = max(0, min(max(0, count($colAlignH) - 1), $col));
+        $fallback = strtolower(trim((string) ($colAlignH[$colIdx] ?? 'left')));
+
+        return in_array($fallback, self::ALLOWED_INSTANCE_ALIGN_H, true) ? $fallback : 'left';
     }
 
     /**
@@ -1014,7 +1065,10 @@ class ReportPdfLayoutService
             }
         }
 
-        return 'top';
+        $colIdx   = max(0, min(max(0, count($colAlignV) - 1), $col));
+        $fallback = strtolower(trim((string) ($colAlignV[$colIdx] ?? 'top')));
+
+        return in_array($fallback, self::ALLOWED_INSTANCE_ALIGN_V, true) ? $fallback : 'top';
     }
 
     /**
@@ -1057,6 +1111,21 @@ class ReportPdfLayoutService
     }
 
     /**
+     * Clases de alineación en la celda de cuadrícula PDF (sin wrapper .pdf-el-item).
+     *
+     * @param array<string, mixed> $item
+     * @param list<string>         $colAlignH
+     * @param list<string>         $colAlignV
+     */
+    public static function instanceAlignCellClasses(array $item, array $colAlignH, array $colAlignV, int $col): string
+    {
+        $h = self::resolveInstanceAlignH($item, $colAlignH, $col);
+        $v = self::resolveInstanceAlignV($item, $colAlignV, $col);
+
+        return 'pdf-cell--h-' . $h . ' pdf-cell--v-' . $v;
+    }
+
+    /**
      * @param array<string, mixed> $item
      * @param list<string>         $colAlignH
      * @param list<string>         $colAlignV
@@ -1064,13 +1133,8 @@ class ReportPdfLayoutService
     public static function instanceAlignInlineStyle(array $item, array $colAlignH, array $colAlignV, int $col, string $typography = ''): string
     {
         $h = self::resolveInstanceAlignH($item, $colAlignH, $col);
-        $v = self::resolveInstanceAlignV($item, $colAlignV, $col);
+        // Alineación vertical: tabla anidada pdf-cell-valign-table en section_layout_grid.php
         $style = 'text-align:' . $h . ' !important;';
-        if ($v === 'bottom') {
-            $style .= 'margin-top:auto !important;';
-        } elseif ($v === 'middle') {
-            $style .= 'margin-top:auto !important;margin-bottom:auto !important;';
-        }
 
         return $style . $typography;
     }
@@ -1747,7 +1811,7 @@ class ReportPdfLayoutService
         ];
         $sh = $shadowMap[$ts['text_shadow']] ?? 'none';
 
-        return 'font-family:' . $ts['font_family'] . ';'
+        return 'font-family:' . self::fontFamilyForInlineCssAttr((string) $ts['font_family']) . ';'
             . 'font-size:' . $ts['font_size_pt'] . 'pt;'
             . 'font-weight:' . $ts['font_weight'] . ';'
             . 'color:' . $ts['font_color'] . ';'
@@ -2233,6 +2297,21 @@ class ReportPdfLayoutService
                 }
             }
         }
+        if (isset($raw['segment_font_family']) && ! in_array((string) $raw['segment_font_family'], self::ALLOWED_PDF_FONT_FAMILIES, true)) {
+            return 'Familia de fuente no permitida en el título de cada análisis.';
+        }
+        if (array_key_exists('segment_font_size_pt', $raw)) {
+            if (! is_numeric($raw['segment_font_size_pt'])) {
+                return 'Tamaño de fuente inválido en el título de cada análisis.';
+            }
+            $sfs = (float) $raw['segment_font_size_pt'];
+            if ($sfs < 7.0 || $sfs > 20.0) {
+                return 'El tamaño de fuente en el título de cada análisis debe estar entre 7 y 20 pt.';
+            }
+        }
+        if (isset($raw['segment_font_weight']) && ! in_array(strtolower(trim((string) $raw['segment_font_weight'])), self::ALLOWED_PDF_FONT_WEIGHTS, true)) {
+            return 'Grosor de fuente no permitido en el título de cada análisis.';
+        }
         if (isset($raw['matrix_text_align']) && ! in_array(strtolower(trim((string) $raw['matrix_text_align'])), self::ALLOWED_PDF_TEXT_ALIGNS, true)) {
             return 'Alineación horizontal no permitida en la matriz de referencia.';
         }
@@ -2376,6 +2455,27 @@ class ReportPdfLayoutService
                     return 'El espacio ' . $label . ' en separador de análisis debe estar entre 0 y 40 px.';
                 }
             }
+        }
+        if (isset($raw['grupo_cabecera_title_font_family']) && ! in_array((string) $raw['grupo_cabecera_title_font_family'], self::ALLOWED_PDF_FONT_FAMILIES, true)) {
+            return 'Familia de fuente no permitida en el nombre del análisis.';
+        }
+        if (array_key_exists('grupo_cabecera_title_font_size_pt', $raw)) {
+            if (! is_numeric($raw['grupo_cabecera_title_font_size_pt'])) {
+                return 'Tamaño de fuente inválido en el nombre del análisis.';
+            }
+            $tfs = (float) $raw['grupo_cabecera_title_font_size_pt'];
+            if ($tfs < 7.0 || $tfs > 20.0) {
+                return 'El tamaño de fuente en el nombre del análisis debe estar entre 7 y 20 pt.';
+            }
+        }
+        if (isset($raw['grupo_cabecera_title_font_weight']) && ! in_array(strtolower(trim((string) $raw['grupo_cabecera_title_font_weight'])), self::ALLOWED_PDF_FONT_WEIGHTS, true)) {
+            return 'Grosor de fuente no permitido en el nombre del análisis.';
+        }
+        if (isset($raw['grupo_cabecera_title_text_color']) && ! self::isValidPdfHexColor((string) $raw['grupo_cabecera_title_text_color'])) {
+            return 'Color de texto inválido en el nombre del análisis (#RRGGBB).';
+        }
+        if (isset($raw['grupo_cabecera_title_text_shadow']) && ! in_array(strtolower(trim((string) $raw['grupo_cabecera_title_text_shadow'])), self::ALLOWED_PDF_TEXT_SHADOWS, true)) {
+            return 'Sombra de texto no permitida en el nombre del análisis.';
         }
 
         return null;
@@ -3885,15 +3985,50 @@ class ReportPdfLayoutService
         $rs  = self::normalizeResultsTableStyle($ps['results_table'] ?? []);
         $gpb = self::normalizeGrupoPruebaPageBreakStyle($ps['grupo_prueba_page_break'] ?? []);
         $gap = max(0, min(80, (int) ($rs['grupo_prueba_gap_px'] ?? 10)));
-        if (self::grupoPruebaPageBreakUsesGrupoIntactCss($gpb)) {
-            if (self::grupoAreaSeparatorEnabled($layout)) {
-                return '';
-            }
-
-            return 'padding-top:' . $gap . 'px;';
+        if ($gap <= 0) {
+            return '';
+        }
+        if (self::grupoPruebaPageBreakUsesGrupoIntactCss($gpb) && self::grupoAreaSeparatorEnabled($layout)) {
+            return '';
         }
 
-        return 'margin-top:' . $gap . 'px;';
+        // mPDF ignora margin-top en divs; padding-top inline es fiable (Dompdf también).
+        return 'padding-top:' . $gap . 'px;';
+    }
+
+    /**
+     * Margen vertical de cada table.results según plantilla (Results).
+     *
+     * @param array<string, mixed> $layout
+     */
+    public static function resultsTableMarginStyleAttr(array $layout): string
+    {
+        $ps = is_array($layout['page_style'] ?? null) ? $layout['page_style'] : [];
+        $rs = self::normalizeResultsTableStyle($ps['results_table'] ?? []);
+        $mt = max(0, min(80, (int) ($rs['table_margin_top_px'] ?? 15)));
+        $mb = max(0, min(80, (int) ($rs['table_margin_bottom_px'] ?? 15)));
+        if ($mt <= 0 && $mb <= 0) {
+            return '';
+        }
+
+        return sprintf('margin-top:%dpx;margin-bottom:%dpx;', $mt, $mb);
+    }
+
+    /**
+     * Espaciado superior del título de matriz de referencia (table_margin_top_px).
+     *
+     * @param array<string, mixed> $layout
+     */
+    public static function refsMatrixTitleSpacingStyleAttr(array $layout): string
+    {
+        $ps = is_array($layout['page_style'] ?? null) ? $layout['page_style'] : [];
+        $rs = self::normalizeResultsTableStyle($ps['results_table'] ?? []);
+        $mt = max(0, min(80, (int) ($rs['table_margin_top_px'] ?? 15)));
+        if ($mt <= 0) {
+            return '';
+        }
+
+        return 'padding-top:' . $mt . 'px;';
     }
 
     /**
@@ -3985,7 +4120,34 @@ class ReportPdfLayoutService
             return ' width="100%"';
         }
 
-        return ' width="100%" style="table-layout:fixed;width:100%;"';
+        $style = 'table-layout:fixed;width:100%;';
+
+        return ' width="100%" style="' . $style . '"';
+    }
+
+    /**
+     * Atributos width/style para table.results en PDF, incluyendo márgenes de plantilla.
+     *
+     * @param array<string, mixed> $layout
+     */
+    public static function resultsTablePdfLayoutAttrs(int $colCount, array $layout, bool $forPdf = false, bool $suppressMarginTop = false): string
+    {
+        if (! $forPdf) {
+            return $colCount >= 2 ? ' width="100%" style="table-layout:fixed;width:100%;"' : ' width="100%"';
+        }
+        $marginStyle = self::resultsTableMarginStyleAttr($layout);
+        if ($suppressMarginTop && $marginStyle !== '') {
+            $marginStyle = preg_replace('/margin-top:\d+px;/', 'margin-top:0;', $marginStyle) ?? $marginStyle;
+        }
+        $style = self::mergePdfInlineStyleAttrs(
+            $colCount >= 2 ? 'table-layout:fixed;width:100%;' : '',
+            $marginStyle
+        );
+        if ($style === '') {
+            return ' width="100%"';
+        }
+
+        return ' width="100%" style="' . $style . '"';
     }
 
     public static function resultsTableColgroupHtml(int $colCount, bool $forPdf = false): string
@@ -4061,17 +4223,289 @@ class ReportPdfLayoutService
      */
     public static function resultsColumnCellMarkupAttrs(array $layout, string $column, bool $isHeader, string $extraCss = ''): string
     {
+        $ps = is_array($layout['page_style'] ?? null) ? $layout['page_style'] : [];
+        $rs = self::normalizeResultsTableStyle($ps['results_table'] ?? []);
         $align = self::resultsColumnTextAlignCss($layout, $column, $isHeader);
+        $vAlign = (string) ($rs['cell_vertical_align'] ?? 'middle');
         $css   = trim($extraCss);
         if ($align === 'justify') {
             $css = trim($css . ';text-align:justify', ';');
         }
+        if (in_array($vAlign, self::ALLOWED_PDF_VERTICAL_ALIGNS, true)) {
+            $css = trim($css . ';vertical-align:' . $vAlign, ';');
+        }
         $out = $align !== 'justify' ? ' align="' . $align . '"' : '';
+        if (in_array($vAlign, self::ALLOWED_PDF_VERTICAL_ALIGNS, true)) {
+            $out .= ' valign="' . $vAlign . '"';
+        }
         if ($css !== '') {
             $out .= ' style="' . $css . '"';
         }
 
         return $out;
+    }
+
+    /**
+     * CSS de paridad con la vista previa en vivo del editor (pdf_template_live_preview.css).
+     * Una sola fuente para PDF (viewreport) y, opcionalmente, el editor.
+     *
+     * @param array<string, mixed> $layout Plantilla PDF activa
+     */
+    public static function buildResultsTableParityCss(string $scope, array $layout): string
+    {
+        $scope = rtrim(trim($scope));
+        if ($scope === '') {
+            return '';
+        }
+
+        $ps    = is_array($layout['page_style'] ?? null) ? $layout['page_style'] : [];
+        $rs    = self::normalizeResultsTableStyle($ps['results_table'] ?? []);
+        $ch    = self::normalizeCardHeaderStyle($ps['card_header'] ?? []);
+        $rsRaw = is_array($ps['results_table'] ?? null) ? $ps['results_table'] : [];
+        $segFamily = array_key_exists('segment_font_family', $rsRaw)
+            ? (string) $rs['segment_font_family']
+            : (string) $ch['font_family'];
+        $segSize = array_key_exists('segment_font_size_pt', $rsRaw)
+            ? (float) $rs['segment_font_size_pt']
+            : (float) $ch['font_size_pt'];
+        $segWeight = array_key_exists('segment_font_weight', $rsRaw)
+            ? (string) $rs['segment_font_weight']
+            : (string) $ch['font_weight'];
+
+        $bodyBg   = ! empty($rs['body_transparent']) ? 'transparent' : (string) $rs['body_bg_color'];
+        $segBg    = ! empty($rs['segment_transparent']) ? 'transparent' : (string) $rs['segment_bg_color'];
+        $cellPad  = (int) ($rs['cell_padding_v_px'] ?? 6);
+        $tableMt  = (int) ($rs['table_margin_top_px'] ?? 15);
+        $tableMb  = (int) ($rs['table_margin_bottom_px'] ?? 15);
+        $grupoGap = (int) ($rs['grupo_prueba_gap_px'] ?? 10);
+        $subGap   = (int) ($rs['subgrupo_prueba_gap_px'] ?? 18);
+        $segBorderW = (int) ($rs['segment_border_width_px'] ?? 1);
+        $segPadTop  = (int) ($rs['segment_padding_top_px'] ?? 6);
+        $segPadBottom = (int) ($rs['segment_padding_bottom_px'] ?? 6);
+        $areaSepMt  = (int) ($rs['grupo_area_separator_margin_top_px'] ?? 10);
+        $areaSepMb  = (int) ($rs['grupo_area_separator_margin_bottom_px'] ?? 10);
+        $cabSpacing = self::grupoCabeceraSpacingFromLayout($layout);
+        $cabGapBeforeTable = self::grupoCabeceraGapBeforeResultsPx($layout);
+
+        $segShadowMap = [
+            'none'   => 'none',
+            'soft'   => '0 1px 2px rgba(0,0,0,0.18)',
+            'medium' => '0 1.5px 3px rgba(0,0,0,0.26)',
+            'strong' => '0 2px 5px rgba(0,0,0,0.34)',
+        ];
+        $textShadowMap = [
+            'none'   => 'none',
+            'soft'   => '0.4px 0.4px 1px rgba(0,0,0,0.28)',
+            'medium' => '0.7px 0.7px 1.4px rgba(0,0,0,0.35)',
+            'strong' => '1px 1px 2px rgba(0,0,0,0.45)',
+        ];
+        $segShadow   = $segShadowMap[$rs['segment_shadow'] ?? 'none'] ?? 'none';
+        $textShadow  = $textShadowMap[$rs['text_shadow'] ?? 'none'] ?? 'none';
+
+        $esc = static fn (string $v): string => htmlspecialchars($v, ENT_QUOTES, 'UTF-8');
+        $titleTypo = self::resolveGrupoCabeceraTitleTypography($rs, $rsRaw);
+        $titleShadow = $textShadowMap[$titleTypo['text_shadow'] ?? 'none'] ?? 'none';
+        $titleFamily = '"' . $esc((string) $titleTypo['font_family']) . '", sans-serif';
+        $mainTable = $scope . ' table.results:not(.pdf-notes-table):not(.report-refs-matrix)';
+        $matrixTable = $scope . ' table.results.report-refs-matrix';
+        $fontFamily = self::fontFamilyForInlineCssAttr((string) $rs['font_family']);
+        $matrixHdrFamily = self::fontFamilyForInlineCssAttr((string) ($rs['matrix_header_font_family'] ?? $rs['font_family']));
+
+        $lines = [
+            '/* Paridad vista previa editor → PDF (results_table) */',
+            $scope . ' table.results { width:100%; border-collapse:collapse; table-layout:fixed; }',
+            $mainTable . ' thead th {',
+            '    background:' . $esc((string) $rs['header_bg_color']) . ' !important;',
+            '    color:' . $esc((string) $rs['header_text_color']) . ' !important;',
+            '    border:1px solid ' . $esc((string) $rs['border_color']) . ' !important;',
+            '    font-family:' . $fontFamily . ' !important;',
+            '    font-size:' . $esc((string) $rs['font_size_pt']) . 'pt !important;',
+            '    font-weight:' . $esc((string) $rs['font_weight']) . ' !important;',
+            '    font-style:' . $esc((string) $rs['font_style']) . ' !important;',
+            '    text-transform:' . $esc((string) $rs['text_transform']) . ' !important;',
+            '    line-height:' . $esc((string) $rs['line_height']) . ' !important;',
+            '    letter-spacing:' . $esc((string) ($rs['letter_spacing_em'] ?? 0)) . 'em !important;',
+            '    text-shadow:' . $esc($textShadow) . ' !important;',
+            '    padding:' . $cellPad . 'px 8px !important;',
+            '    vertical-align:' . $esc((string) ($rs['cell_vertical_align'] ?? 'middle')) . ' !important;',
+            '}',
+            $mainTable . ' tbody td {',
+            '    background:' . $esc($bodyBg) . ' !important;',
+            '    color:' . $esc((string) $rs['body_text_color']) . ' !important;',
+            '    border:1px solid ' . $esc((string) $rs['border_color']) . ' !important;',
+            '    font-family:' . $fontFamily . ' !important;',
+            '    font-size:' . $esc((string) $rs['font_size_pt']) . 'pt !important;',
+            '    font-weight:' . $esc((string) $rs['font_weight']) . ' !important;',
+            '    font-style:' . $esc((string) $rs['font_style']) . ' !important;',
+            '    text-transform:' . $esc((string) $rs['text_transform']) . ' !important;',
+            '    line-height:' . $esc((string) $rs['line_height']) . ' !important;',
+            '    letter-spacing:' . $esc((string) ($rs['letter_spacing_em'] ?? 0)) . 'em !important;',
+            '    text-shadow:' . $esc($textShadow) . ' !important;',
+            '    padding:' . $cellPad . 'px 8px !important;',
+            '    vertical-align:' . $esc((string) ($rs['cell_vertical_align'] ?? 'middle')) . ' !important;',
+            '}',
+            $scope . ' table.results:not(.pdf-notes-table):not(.report-refs-matrix) {',
+            '    margin-top:' . $tableMt . 'px !important;',
+            '    margin-bottom:' . $tableMb . 'px !important;',
+            '}',
+            $scope . ' .report-segment-table-wrap table.results {',
+            '    margin-top:' . $tableMt . 'px !important;',
+            '    margin-bottom:' . $tableMb . 'px !important;',
+            '}',
+            $scope . ' .report-segment-title {',
+            '    font-family:"' . $esc($segFamily) . '", sans-serif !important;',
+            '    font-size:' . $esc((string) $segSize) . 'pt !important;',
+            '    font-weight:' . $esc($segWeight) . ' !important;',
+            '    margin:0 !important;',
+            '    padding:' . $segPadTop . 'px 8px ' . $segPadBottom . 'px 8px !important;',
+            '    background:' . $esc($segBg) . ' !important;',
+            '    border:' . $segBorderW . 'px solid ' . $esc((string) $rs['segment_border_color']) . ' !important;',
+            '    border-bottom:none !important;',
+            '    box-shadow:' . $esc($segShadow) . ' !important;',
+            '}',
+            $scope . ' .report-segment-title.pdf-card-header {',
+            '    background:' . $esc($segBg) . ' !important;',
+            '    color:' . $esc((string) $ch['text_color']) . ' !important;',
+            '    font-family:"' . $esc($segFamily) . '", sans-serif !important;',
+            '    font-size:' . $esc((string) $segSize) . 'pt !important;',
+            '    font-weight:' . $esc($segWeight) . ' !important;',
+            '    font-style:' . $esc((string) $ch['font_style']) . ' !important;',
+            '    text-transform:' . $esc((string) $ch['text_transform']) . ' !important;',
+            '}',
+            $scope . ' .report-pdf-grupo-area-separator.report-segment-title {',
+            '    text-align:center !important;',
+            '    border-bottom:' . $segBorderW . 'px solid ' . $esc((string) $rs['segment_border_color']) . ' !important;',
+            '    padding-top:' . $areaSepMt . 'px !important;',
+            '    padding-bottom:' . $areaSepMb . 'px !important;',
+            '    margin:0 !important;',
+            '}',
+            $scope . ' .report-pdf-grupo-prueba:not(.report-pdf-grupo-prueba-first) {',
+            '    padding-top:' . $grupoGap . 'px !important;',
+            '    margin-top:0 !important;',
+            '}',
+            $scope . ' .report-pdf-subgrupo-block.report-pdf-subgrupo-prueba {',
+            '    padding-top:' . $subGap . 'px !important;',
+            '}',
+            $scope . ' .report-pdf-grupo-cabecera-table { border-collapse:collapse !important;width:100% !important;border:0 !important; }',
+            $scope . ' .report-pdf-grupo-cabecera-table td { border:0 !important;padding:0 !important;margin:0 !important;vertical-align:top !important; }',
+            $scope . ' .report-pdf-grupo-cabecera-line { display:block !important;box-sizing:border-box !important;width:100% !important;margin:0 !important; }',
+            $scope . ' .report-pdf-grupo-cabecera-line--title,',
+            $scope . ' .report-pdf-grupo-cabecera .group-title {',
+            '    font-family:' . $titleFamily . ' !important;',
+            '    font-size:' . $esc((string) $titleTypo['font_size_pt']) . 'pt !important;',
+            '    font-weight:' . $esc((string) $titleTypo['font_weight']) . ' !important;',
+            '    color:' . $esc((string) $titleTypo['text_color']) . ' !important;',
+            '    text-shadow:' . $esc($titleShadow) . ' !important;',
+            '    line-height:1.2 !important;',
+            '    padding-top:' . (int) $cabSpacing['title_top'] . 'px !important;',
+            '    padding-bottom:' . (int) $cabSpacing['title_bottom'] . 'px !important;',
+            '}',
+            $scope . ' .report-pdf-grupo-cabecera-line--tipo,',
+            $scope . ' .report-pdf-grupo-cabecera-line--metodo {',
+            '    font-family:' . $fontFamily . ' !important;',
+            '    font-size:' . $esc((string) $rs['font_size_pt']) . 'pt !important;',
+            '    font-weight:' . $esc((string) $rs['font_weight']) . ' !important;',
+            '    font-style:' . $esc((string) $rs['font_style']) . ' !important;',
+            '    text-transform:' . $esc((string) $rs['text_transform']) . ' !important;',
+            '    letter-spacing:' . $esc((string) ($rs['letter_spacing_em'] ?? 0)) . 'em !important;',
+            '    line-height:' . $esc((string) $rs['line_height']) . ' !important;',
+            '    text-shadow:' . $esc($textShadow) . ' !important;',
+            '    color:' . $esc((string) $rs['body_text_color']) . ' !important;',
+            '}',
+            $scope . ' .report-pdf-grupo-cabecera-line--tipo {',
+            '    padding-top:' . (int) $cabSpacing['tipo_top'] . 'px !important;',
+            '    padding-bottom:' . (int) $cabSpacing['tipo_bottom'] . 'px !important;',
+            '}',
+            $scope . ' .report-pdf-grupo-cabecera-line--metodo {',
+            '    padding-top:' . (int) $cabSpacing['metodo_top'] . 'px !important;',
+            '    padding-bottom:' . (int) $cabSpacing['metodo_bottom'] . 'px !important;',
+            '}',
+            $scope . ' .report-pdf-grupo-cabecera-line--last {',
+            '    padding-bottom:' . $cabGapBeforeTable . 'px !important;',
+            '}',
+            $scope . ' .report-pdf-grupo-cabecera + .report-segment-table-wrap table.results,',
+            $scope . ' .report-pdf-grupo-cabecera + .report-refs-matrix-wrap table.results {',
+            '    margin-top:0 !important;',
+            '}',
+            $matrixTable . ' thead th {',
+            '    background:' . $esc((string) $rs['header_bg_color']) . ' !important;',
+            '    color:' . $esc((string) ($rs['matrix_header_text_color'] ?? $rs['header_text_color'])) . ' !important;',
+            '    border:1px solid ' . $esc((string) $rs['border_color']) . ' !important;',
+            '    font-family:' . $matrixHdrFamily . ' !important;',
+            '    font-size:' . $esc((string) ($rs['matrix_header_font_size_pt'] ?? $rs['font_size_pt'])) . 'pt !important;',
+            '    font-weight:' . $esc((string) ($rs['matrix_header_font_weight'] ?? 'bold')) . ' !important;',
+            '    font-style:' . $esc((string) ($rs['matrix_header_font_style'] ?? 'normal')) . ' !important;',
+            '    text-transform:' . $esc((string) ($rs['matrix_header_text_transform'] ?? 'uppercase')) . ' !important;',
+            '    padding:' . $cellPad . 'px 8px !important;',
+            '    vertical-align:' . $esc((string) ($rs['matrix_vertical_align'] ?? 'middle')) . ' !important;',
+            '}',
+            $matrixTable . ' tbody td {',
+            '    background:' . $esc($bodyBg) . ' !important;',
+            '    color:' . $esc((string) ($rs['matrix_text_color'] ?? $rs['body_text_color'])) . ' !important;',
+            '    border:1px solid ' . $esc((string) $rs['border_color']) . ' !important;',
+            '    font-family:' . $fontFamily . ' !important;',
+            '    font-size:' . $esc((string) ($rs['matrix_font_size_pt'] ?? $rs['font_size_pt'])) . 'pt !important;',
+            '    font-weight:' . $esc((string) ($rs['matrix_font_weight'] ?? $rs['font_weight'])) . ' !important;',
+            '    font-style:' . $esc((string) ($rs['matrix_font_style'] ?? $rs['font_style'])) . ' !important;',
+            '    text-transform:' . $esc((string) ($rs['matrix_text_transform'] ?? $rs['text_transform'])) . ' !important;',
+            '    padding:' . $cellPad . 'px 8px !important;',
+            '    vertical-align:' . $esc((string) ($rs['matrix_vertical_align'] ?? 'middle')) . ' !important;',
+            '}',
+        ];
+
+        foreach (['analisis', 'resultado', 'rango', 'interpretacion'] as $col) {
+            $hdrAlign = (string) ($rs['results_hdr_' . $col . '_align'] ?? ($col === 'analisis' ? 'left' : 'center'));
+            $colAlign = (string) ($rs['results_col_' . $col . '_align'] ?? ($col === 'analisis' ? 'left' : 'center'));
+            $lines[] = $scope . ' th.results-col-' . $col . ' { text-align:' . $esc($hdrAlign) . ' !important; }';
+            $lines[] = $scope . ' td.results-col-' . $col . ' { text-align:' . $esc($colAlign) . ' !important; }';
+        }
+        foreach (['population' => ['matrix_hdr_population_align', 'matrix_col_population_align', 'left'],
+            'parameter' => ['matrix_hdr_parameter_align', 'matrix_col_parameter_align', 'left'],
+            'sex' => ['matrix_hdr_sex_align', 'matrix_col_sex_align', 'center'],
+            'reference' => ['matrix_hdr_reference_align', 'matrix_col_reference_align', 'center']] as $col => [$hdrKey, $colKey, $def]) {
+            $hdrAlign = (string) ($rs[$hdrKey] ?? $def);
+            $colAlign = (string) ($rs[$colKey] ?? $def);
+            $lines[] = $scope . ' th.matrix-col-' . $col . ' { text-align:' . $esc($hdrAlign) . ' !important; }';
+            $lines[] = $scope . ' td.matrix-col-' . $col . ' { text-align:' . $esc($colAlign) . ' !important; }';
+        }
+
+        return implode("\n", $lines) . "\n";
+    }
+
+    /**
+     * CSS inline de tipografía del cuerpo de table.results (desde page_style.results_table).
+     *
+     * @param array<string, mixed> $rs normalizeResultsTableStyle()
+     */
+    public static function resultsTableBodyTypographyCss(array $rs): string
+    {
+        $shadowMap = [
+            'none'   => 'none',
+            'soft'   => '0.4px 0.4px 1px rgba(0,0,0,0.28)',
+            'medium' => '0.7px 0.7px 1.4px rgba(0,0,0,0.35)',
+            'strong' => '1px 1px 2px rgba(0,0,0,0.45)',
+        ];
+        $sh = $shadowMap[$rs['text_shadow'] ?? 'none'] ?? 'none';
+
+        return 'font-family:' . self::fontFamilyForInlineCssAttr((string) $rs['font_family'])
+            . ';font-size:' . $rs['font_size_pt'] . 'pt'
+            . ';font-weight:' . $rs['font_weight']
+            . ';color:' . $rs['body_text_color']
+            . ';font-style:' . $rs['font_style']
+            . ';text-transform:' . $rs['text_transform']
+            . ';letter-spacing:' . $rs['letter_spacing_em'] . 'em'
+            . ';line-height:' . $rs['line_height']
+            . ';text-shadow:' . $sh . ';';
+    }
+
+    /**
+     * @param array<string, mixed> $layout
+     */
+    public static function resultsTableBodyTypographyStyleAttr(array $layout): string
+    {
+        $ps = is_array($layout['page_style'] ?? null) ? $layout['page_style'] : [];
+
+        return self::resultsTableBodyTypographyCss(self::normalizeResultsTableStyle($ps['results_table'] ?? []));
     }
 
     /**
@@ -4137,49 +4571,198 @@ class ReportPdfLayoutService
     }
 
     /**
+     * Espaciado vertical en cabecera de análisis (padding: mPDF respeta mejor que margin en divs).
+     */
+    public static function grupoCabeceraVerticalSpacingStyleAttr(int $topPx, int $bottomPx): string
+    {
+        return sprintf(
+            'padding-top:%dpx !important;padding-bottom:%dpx !important;margin:0 !important;',
+            max(0, $topPx),
+            max(0, $bottomPx)
+        );
+    }
+
+    /**
+     * Padding inferior de la última línea visible antes de la tabla de resultados (sección 7 → método abajo).
+     *
+     * @param array<string, mixed> $layout
+     */
+    public static function grupoCabeceraGapBeforeResultsPx(array $layout): int
+    {
+        $spacing = self::grupoCabeceraSpacingFromLayout($layout);
+
+        return $spacing['metodo_bottom'];
+    }
+
+    /**
+     * Padding superior/inferior por línea de cabecera según plantilla (sección 7).
+     *
+     * @param array<string, mixed> $layout
+     *
+     * @return array{top: int, bottom: int}
+     */
+    public static function grupoCabeceraLineVerticalPaddingPx(
+        array $layout,
+        string $line,
+        bool $isLastVisibleLine,
+        bool $isFirstSubgrupoInArea,
+        bool $isFirstGrupoInReport
+    ): array {
+        $spacing = self::grupoCabeceraSpacingFromLayout($layout);
+        $top = match ($line) {
+            'tipo'   => $spacing['tipo_top'],
+            'metodo' => $spacing['metodo_top'],
+            default  => $spacing['title_top'],
+        };
+        if ($line === 'title' && $top === 0 && $isFirstSubgrupoInArea && $isFirstGrupoInReport && ! self::grupoAreaSeparatorEnabled($layout)) {
+            $ps = is_array($layout['page_style'] ?? null) ? $layout['page_style'] : [];
+            $rs = self::normalizeResultsTableStyle($ps['results_table'] ?? []);
+            $top = max(0, min(80, (int) ($rs['grupo_prueba_gap_px'] ?? 10)));
+        }
+        if ($isLastVisibleLine) {
+            return ['top' => $top, 'bottom' => self::grupoCabeceraGapBeforeResultsPx($layout)];
+        }
+
+        $bottom = match ($line) {
+            'tipo'   => $spacing['tipo_bottom'],
+            'metodo' => $spacing['metodo_bottom'],
+            default  => $spacing['title_bottom'],
+        };
+
+        return ['top' => $top, 'bottom' => $bottom];
+    }
+
+    /**
+     * Tipografía efectiva del nombre del análisis (.group-title).
+     * Si la plantilla no define campos propios, hereda la tipografía del cuerpo de la tabla.
+     *
+     * @param array<string, mixed> $rs normalizeResultsTableStyle()
+     * @param array<string, mixed> $rsRaw page_style.results_table sin normalizar
+     *
+     * @return array{font_family: string, font_size_pt: float, font_weight: string, text_color: string, text_shadow: string}
+     */
+    public static function resolveGrupoCabeceraTitleTypography(array $rs, array $rsRaw = []): array
+    {
+        $pick = static function (string $key, $fallback) use ($rs, $rsRaw) {
+            return array_key_exists($key, $rsRaw) ? $rs[$key] : $fallback;
+        };
+
+        return [
+            'font_family'   => (string) $pick('grupo_cabecera_title_font_family', $rs['font_family']),
+            'font_size_pt'  => (float) $pick('grupo_cabecera_title_font_size_pt', $rs['font_size_pt']),
+            'font_weight'   => (string) $pick('grupo_cabecera_title_font_weight', $rs['font_weight']),
+            'text_color'    => (string) $pick('grupo_cabecera_title_text_color', $rs['body_text_color']),
+            'text_shadow'   => (string) $pick('grupo_cabecera_title_text_shadow', $rs['text_shadow'] ?? 'none'),
+        ];
+    }
+
+    /**
+     * @param array{font_family: string, font_size_pt: float, font_weight: string, text_color: string, text_shadow: string} $typo
+     */
+    public static function grupoCabeceraTitleTypographyCss(array $typo): string
+    {
+        $shadowMap = [
+            'none'   => 'none',
+            'soft'   => '0.4px 0.4px 1px rgba(0,0,0,0.28)',
+            'medium' => '0.7px 0.7px 1.4px rgba(0,0,0,0.35)',
+            'strong' => '1px 1px 2px rgba(0,0,0,0.45)',
+        ];
+        $sh = $shadowMap[$typo['text_shadow'] ?? 'none'] ?? 'none';
+
+        return 'font-family:' . self::fontFamilyForInlineCssAttr((string) $typo['font_family'])
+            . ';font-size:' . $typo['font_size_pt'] . 'pt !important'
+            . ';font-weight:' . $typo['font_weight'] . ' !important'
+            . ';color:' . $typo['text_color'] . ' !important'
+            . ';line-height:1.2 !important'
+            . ';text-shadow:' . $sh . ' !important;';
+    }
+
+    /**
+     * @param array<string, mixed> $layout
+     */
+    public static function grupoCabeceraTitleTypographyStyleAttr(array $layout): string
+    {
+        $ps = is_array($layout['page_style'] ?? null) ? $layout['page_style'] : [];
+        $rsRaw = is_array($ps['results_table'] ?? null) ? $ps['results_table'] : [];
+        $rs = self::normalizeResultsTableStyle($rsRaw);
+
+        return self::grupoCabeceraTitleTypographyCss(self::resolveGrupoCabeceraTitleTypography($rs, $rsRaw));
+    }
+
+    /**
+     * Estilo inline (tipografía + padding) de una línea de .report-pdf-grupo-cabecera.
+     *
+     * @param array<string, mixed> $layout
+     */
+    public static function grupoCabeceraLineStyleAttr(
+        array $layout,
+        string $line,
+        bool $isLastVisibleLine,
+        bool $isFirstSubgrupoInArea,
+        bool $isFirstGrupoInReport
+    ): string {
+        $pad = self::grupoCabeceraLineVerticalPaddingPx(
+            $layout,
+            $line,
+            $isLastVisibleLine,
+            $isFirstSubgrupoInArea,
+            $isFirstGrupoInReport
+        );
+        $typography = $line === 'title'
+            ? self::grupoCabeceraTitleTypographyStyleAttr($layout)
+            : self::resultsTableBodyTypographyStyleAttr($layout);
+
+        return $typography . self::grupoCabeceraVerticalSpacingStyleAttr($pad['top'], $pad['bottom']);
+    }
+
+    /**
      * Márgenes de .group-title en cabecera de prueba.
      *
      * @param array<string, mixed> $layout
      */
     public static function groupTitleMarginStyleAttr(array $layout, bool $isFirstSubgrupoInArea, bool $isFirstGrupoInReport): string
     {
-        $ps = is_array($layout['page_style'] ?? null) ? $layout['page_style'] : [];
-        $rs = self::normalizeResultsTableStyle($ps['results_table'] ?? []);
-        $spacing = self::grupoCabeceraSpacingFromLayout($layout);
-        $marginTop = $spacing['title_top'];
-        if ($marginTop === 0 && $isFirstSubgrupoInArea && $isFirstGrupoInReport && ! self::grupoAreaSeparatorEnabled($layout)) {
-            $marginTop = max(0, min(80, (int) ($rs['grupo_prueba_gap_px'] ?? 10)));
-        }
+        $pad = self::grupoCabeceraLineVerticalPaddingPx($layout, 'title', false, $isFirstSubgrupoInArea, $isFirstGrupoInReport);
 
-        return sprintf('margin-top:%dpx !important;margin-bottom:%dpx !important;', $marginTop, $spacing['title_bottom']);
+        return self::grupoCabeceraVerticalSpacingStyleAttr($pad['top'], $pad['bottom']);
+    }
+
+    /**
+     * Márgenes + tipografía de .group-title según results_table de la plantilla.
+     *
+     * @param array<string, mixed> $layout
+     */
+    public static function groupTitleStyleAttr(
+        array $layout,
+        bool $isLastVisibleLine,
+        bool $isFirstSubgrupoInArea,
+        bool $isFirstGrupoInReport
+    ): string {
+        return self::grupoCabeceraLineStyleAttr($layout, 'title', $isLastVisibleLine, $isFirstSubgrupoInArea, $isFirstGrupoInReport);
     }
 
     /**
      * @param array<string, mixed> $layout
      */
-    public static function grupoCabeceraTipoMuestraStyleAttr(array $layout): string
-    {
-        $spacing = self::grupoCabeceraSpacingFromLayout($layout);
-
-        return sprintf(
-            'font-size:9pt;color:#555;margin:%dpx 0 %dpx 0 !important;line-height:1.3;',
-            $spacing['tipo_top'],
-            $spacing['tipo_bottom']
-        );
+    public static function grupoCabeceraTipoMuestraStyleAttr(
+        array $layout,
+        bool $isLastVisibleLine,
+        bool $isFirstSubgrupoInArea,
+        bool $isFirstGrupoInReport
+    ): string {
+        return self::grupoCabeceraLineStyleAttr($layout, 'tipo', $isLastVisibleLine, $isFirstSubgrupoInArea, $isFirstGrupoInReport);
     }
 
     /**
      * @param array<string, mixed> $layout
      */
-    public static function grupoCabeceraMetodoStyleAttr(array $layout): string
-    {
-        $spacing = self::grupoCabeceraSpacingFromLayout($layout);
-
-        return sprintf(
-            'font-size:9pt;color:#555;margin:%dpx 0 %dpx 0 !important;line-height:1.3;',
-            $spacing['metodo_top'],
-            $spacing['metodo_bottom']
-        );
+    public static function grupoCabeceraMetodoStyleAttr(
+        array $layout,
+        bool $isLastVisibleLine,
+        bool $isFirstSubgrupoInArea,
+        bool $isFirstGrupoInReport
+    ): string {
+        return self::grupoCabeceraLineStyleAttr($layout, 'metodo', $isLastVisibleLine, $isFirstSubgrupoInArea, $isFirstGrupoInReport);
     }
 
     /**
@@ -4235,7 +4818,7 @@ class ReportPdfLayoutService
             return sprintf('margin-bottom:%dpx;', $marginBottom);
         }
 
-        return sprintf('margin-top:%dpx;margin-bottom:%dpx;', $marginTop, $marginBottom);
+        return sprintf('padding-top:%dpx;padding-bottom:%dpx;', $marginTop, $marginBottom);
     }
 
     /**
@@ -4249,10 +4832,36 @@ class ReportPdfLayoutService
         $width = max(0, min(4, (int) ($rs['grupo_area_separator_width_px'] ?? 1)));
         $fs    = (float) ($rs['grupo_area_separator_font_size_pt'] ?? 11.0);
         $fw    = (string) ($rs['grupo_area_separator_font_weight'] ?? 'bold');
+        $segBorderColor = (string) ($rs['segment_border_color'] ?? '#DDDDDD');
+        $segBorderWidth = max(0, min(4, (int) ($rs['segment_border_width_px'] ?? 1)));
 
-        return 'color:#333333;font-size:' . $fs . 'pt;font-weight:' . $fw
-            . ';--pdf-grupo-area-separator-color:' . $color
-            . ';--pdf-grupo-area-separator-width:' . $width . 'px;';
+        $parts = [
+            'color:#333333',
+            'font-size:' . $fs . 'pt',
+            'font-weight:' . $fw,
+            'text-align:center',
+            '--pdf-grupo-area-separator-color:' . $color,
+            '--pdf-grupo-area-separator-width:' . $width . 'px',
+        ];
+
+        // mPDF no pinta el fondo vía clases CSS en el primer bloque tras un salto de página; inline obligatorio.
+        if (! empty($rs['segment_transparent'])) {
+            $parts[] = 'background:transparent';
+            $parts[] = 'background-color:transparent';
+        } else {
+            $bg = (string) ($rs['segment_bg_color'] ?? '#E9ECEF');
+            $parts[] = 'background:' . $bg;
+            $parts[] = 'background-color:' . $bg;
+        }
+
+        if ($segBorderWidth > 0) {
+            $parts[] = 'border:' . $segBorderWidth . 'px solid ' . $segBorderColor;
+            $parts[] = 'border-bottom:' . max($width, $segBorderWidth) . 'px solid ' . $color;
+        } elseif ($width > 0) {
+            $parts[] = 'border-bottom:' . $width . 'px solid ' . $color;
+        }
+
+        return implode(';', $parts) . ';';
     }
 
     /**
@@ -4261,6 +4870,87 @@ class ReportPdfLayoutService
     public static function buildGrupoAreaSeparatorTitle(string $padre, array $layout): string
     {
         return trim($padre);
+    }
+
+    /**
+     * Contenedor fijo sin altura en flujo (pie al inicio del body para repetir en Dompdf).
+     *
+     * @param array<string, mixed> $layout
+     */
+    public static function footerDompdfFixedAnchorStyleAttr(array $layout): string
+    {
+        $footerReserveMm = self::estimatePdfFooterReserveMm($layout);
+        $fmt             = static fn (float $v): string => rtrim(rtrim(number_format($v, 2, '.', ''), '0'), '.');
+
+        return sprintf(
+            'position:fixed;left:0;right:0;bottom:-%smm;height:0;margin:0;padding:0;border:0;overflow:visible;z-index:0;line-height:normal;font-size:9pt;box-sizing:border-box;width:100%%;',
+            $fmt($footerReserveMm)
+        );
+    }
+
+    /**
+     * Banda visual del pie dentro de {@see footerDompdfFixedAnchorStyleAttr()}.
+     *
+     * @param array<string, mixed> $layout
+     */
+    public static function footerDompdfFixedInnerStyleAttr(array $layout): string
+    {
+        $ps = is_array($layout['page_style'] ?? null) ? $layout['page_style'] : [];
+        $ft = self::normalizeFooterGridStyle($ps['footer_grid'] ?? []);
+
+        $footerReserveMm = self::estimatePdfFooterReserveMm($layout);
+        $fmt             = static fn (float $v): string => rtrim(rtrim(number_format($v, 2, '.', ''), '0'), '.');
+        $padTop          = self::FOOTER_BLOCK_PAD_TOP_PX;
+        $padTopCss       = $padTop . 'px';
+        if (self::isOrderSheetHeaderEnabledForLayout($layout)) {
+            $oshBandMm = self::ORDER_SHEET_HEADER_HEIGHT_MM + self::ORDER_SHEET_HEADER_GAP_ABOVE_FOOTER_MM;
+            $padTopCss = sprintf('calc(%dpx + %smm)', $padTop, $fmt($oshBandMm));
+        }
+
+        // Fondo transparente en el contenedor: las celdas (.pdf-cell) llevan el color; así no tapa validación ni paginación.
+        return sprintf(
+            'position:absolute;left:0;right:0;bottom:0;min-height:%smm;z-index:0;margin:0;padding-top:%s;padding-bottom:0;background:transparent;box-sizing:border-box;width:100%%;',
+            $fmt($footerReserveMm),
+            $padTopCss
+        );
+    }
+
+    /**
+     * Contenedor del pie en SetHTMLFooter() de mPDF (sin posicionamiento Dompdf).
+     *
+     * @param array<string, mixed> $layout
+     */
+    public static function footerMpdfHtmlFooterInnerStyleAttr(array $layout): string
+    {
+        unset($layout);
+
+        return sprintf(
+            'margin:0;padding-top:%dpx;padding-bottom:0;background:transparent;box-sizing:border-box;width:100%%;',
+            self::FOOTER_BLOCK_PAD_TOP_PX
+        );
+    }
+
+    /**
+     * Borde superior del pie como CSS inline (mPDF no resuelve var() en SetHTMLFooter).
+     *
+     * @param array<string, mixed> $ft footer_grid normalizado o bruto
+     */
+    public static function footerGridSectionTableBorderStyleAttr(array $ft): string
+    {
+        $ft = self::normalizeFooterGridStyle($ft);
+        if (! self::labFirmasBool($ft, 'section_top_border_enabled', true)) {
+            return 'border-top:none;';
+        }
+        $w = (int) ($ft['section_top_border_width_px'] ?? 0);
+        if ($w <= 0) {
+            return 'border-top:none;';
+        }
+
+        return sprintf(
+            'border-top:%dpx solid %s;',
+            $w,
+            (string) ($ft['section_top_border_color'] ?? '#DDDDDD')
+        );
     }
 
     /**
@@ -4430,14 +5120,119 @@ class ReportPdfLayoutService
         return 'pdf-layout-engine pdf-pagination-' . str_replace('_', '-', $mode);
     }
 
+    public const LOGO_REFERENCE_FONT_PT     = 10.0;
+    public const LOGO_REFERENCE_MAX_HEIGHT_PX = 70;
+
     /**
-     * font-family sin comillas para atributos style="" (nombres con espacio no cortan el HTML).
+     * Altura máxima del logo (px) según «Tamaño» de la instancia en plantilla (10 pt ≈ 70 px).
+     *
+     * @param array<string, mixed>|null $raw text_style de la instancia logo
+     */
+    public static function logoMaxHeightPxFromTextStyle(?array $raw): int
+    {
+        $pt = (float) (self::normalizeTextStyle(is_array($raw) ? $raw : [])['font_size_pt'] ?? self::LOGO_REFERENCE_FONT_PT);
+
+        return max(20, min(280, (int) round(self::LOGO_REFERENCE_MAX_HEIGHT_PX * ($pt / self::LOGO_REFERENCE_FONT_PT))));
+    }
+
+    /**
+     * Altura renderizada del logo en px (misma lógica que element.php) para igualar filas del encabezado.
+     *
+     * @param array<string, mixed> $item
+     * @param array<string, mixed> $elementCtx
+     */
+    public static function gridLogoRenderedHeightPx(array $item, array $elementCtx, int $sectionColumns = 5): int
+    {
+        if ((string) ($item['element_type'] ?? '') !== 'logo') {
+            return 0;
+        }
+
+        if (! function_exists('report_image_src_for_variant')) {
+            helper('registro');
+        }
+
+        $lab         = is_array($elementCtx['lab_config'] ?? null) ? $elementCtx['lab_config'] : [];
+        $logoRel     = (string) ($lab['logo'] ?? 'images/logo-john.png');
+        $pdfVariant  = (string) ($elementCtx['pdf_analisis_variant'] ?? 'pdf');
+        $logoDataUri = (string) ($elementCtx['pdf_logo_data_uri'] ?? '');
+        $logoSrc     = $logoDataUri !== '' ? $logoDataUri : report_image_src_for_variant($logoRel, $pdfVariant);
+        $style       = self::logoImageInlineStyleAttr(
+            is_array($item['text_style'] ?? null) ? $item['text_style'] : [],
+            max(1, (int) ($item['span'] ?? 1)),
+            max(1, $sectionColumns),
+            $logoSrc,
+            is_array($elementCtx['pdf_margins_mm'] ?? null) ? $elementCtx['pdf_margins_mm'] : null,
+        );
+        if (preg_match('/\bheight:\s*(\d+)px/i', $style, $m)) {
+            return max(1, (int) $m[1]);
+        }
+
+        return self::logoMaxHeightPxFromTextStyle(is_array($item['text_style'] ?? null) ? $item['text_style'] : []);
+    }
+
+    /**
+     * Estilo inline del &lt;img&gt; del logo (mPDF necesita dimensiones explícitas; el CSS max-height solo no basta).
+     *
+     * @param array<string, mixed>|null $textStyle
+     * @param array<string, float|int>|null $marginsMm
+     */
+    public static function logoImageInlineStyleAttr(
+        ?array $textStyle,
+        int $columnSpan = 1,
+        int $totalColumns = 5,
+        ?string $imageSrc = null,
+        ?array $marginsMm = null,
+        string $paperKey = 'letter',
+    ): string {
+        $maxH        = self::logoMaxHeightPxFromTextStyle($textStyle);
+        $margins     = is_array($marginsMm) ? $marginsMm : self::defaultMarginsMmStatic();
+        $ml          = max(0.0, (float) ($margins['left'] ?? 15));
+        $mr          = max(0.0, (float) ($margins['right'] ?? 15));
+        $pageWidthMm = match (strtolower(trim($paperKey))) {
+            'a4'    => 210.0,
+            'legal' => 215.9,
+            default => 215.9,
+        };
+        $contentMm   = max(40.0, $pageWidthMm - $ml - $mr);
+        $span        = max(1, $columnSpan);
+        $cols        = max(1, $totalColumns);
+        $maxWPx      = max(40, (int) floor($contentMm * ($span / $cols) * (96 / 25.4) * 0.88));
+
+        $src = trim((string) $imageSrc);
+        if ($src !== '' && ! str_starts_with($src, 'data:') && is_file($src)) {
+            $info = @getimagesize($src);
+            if (is_array($info) && ($info[0] ?? 0) > 0 && ($info[1] ?? 0) > 0) {
+                $iw    = (int) $info[0];
+                $ih    = (int) $info[1];
+                $scale = min($maxH / $ih, $maxWPx / $iw, 1.0);
+                $w     = max(1, (int) round($iw * $scale));
+                $h     = max(1, (int) round($ih * $scale));
+
+                return 'width:' . $w . 'px;height:' . $h . 'px;max-width:100%;display:block;box-sizing:border-box;';
+            }
+        }
+
+        return 'max-height:' . $maxH . 'px;max-width:' . $maxWPx . 'px;width:auto;height:auto;display:block;box-sizing:border-box;';
+    }
+
+    /**
+     * Márgenes horizontales para imágenes de bloque (logo) según alineación H de la instancia.
+     */
+    public static function blockImageAlignMarginCss(string $alignH): string
+    {
+        return match (strtolower(trim($alignH))) {
+            'center' => 'margin-left:auto;margin-right:auto;',
+            'right'  => 'margin-left:auto;margin-right:0;',
+            default  => 'margin-left:0;margin-right:auto;',
+        };
+    }
+
+    /**
+     * font-family con comillas seguras para atributos style="" cuando el nombre tiene espacios.
      */
     public static function fontFamilyForInlineCssAttr(string $family): string
     {
-        $fn = trim(str_replace(['"', '\\'], '', $family));
-
-        return $fn !== '' ? $fn : 'DejaVu Sans';
+        return \App\Libraries\Pdf\MpdfFontMapper::quoteForCss($family);
     }
 
     /**
@@ -4570,6 +5365,26 @@ class ReportPdfLayoutService
             (string) $pd['label_' . $piece . '_text_transform'],
             $ff,
             $lh
+        );
+    }
+
+    /**
+     * CSS inline para valores de paciente/médico (cuerpo de cuadrícula).
+     *
+     * @param array<string, mixed> $pd patient_doctor_grid normalizado o bruto
+     */
+    public static function patientDoctorGridValueStyleAttr(array $pd): string
+    {
+        $pd = self::normalizePatientDoctorGridStyle($pd);
+
+        return self::gridTypographyPieceInlineCss(
+            (string) $pd['body_text_color'],
+            (float) $pd['font_size_pt'],
+            (string) $pd['font_weight'],
+            (string) $pd['font_style'],
+            (string) $pd['text_transform'],
+            (string) $pd['font_family'],
+            (float) $pd['line_height']
         );
     }
 
@@ -4708,6 +5523,16 @@ class ReportPdfLayoutService
         }
         $lh = isset($s['line_height']) ? (float) $s['line_height'] : $def['line_height'];
         $lh = round(max(1.0, min(3.0, $lh)), 2);
+        $ls = isset($s['letter_spacing_em']) ? (float) $s['letter_spacing_em'] : (float) ($def['letter_spacing_em'] ?? 0.0);
+        $ls = round(max(-0.2, min(1.0, $ls)), 3);
+        $shadow = strtolower(trim((string) ($s['text_shadow'] ?? ($def['text_shadow'] ?? 'none'))));
+        if (! in_array($shadow, self::ALLOWED_PDF_TEXT_SHADOWS, true)) {
+            $shadow = (string) ($def['text_shadow'] ?? 'none');
+        }
+        $cellVAlign = strtolower(trim((string) ($s['cell_vertical_align'] ?? ($def['cell_vertical_align'] ?? 'middle'))));
+        if (! in_array($cellVAlign, self::ALLOWED_PDF_VERTICAL_ALIGNS, true)) {
+            $cellVAlign = (string) ($def['cell_vertical_align'] ?? 'middle');
+        }
         $cellPadV = isset($s['cell_padding_v_px']) ? (int) $s['cell_padding_v_px'] : (int) ($def['cell_padding_v_px'] ?? 6);
         $cellPadV = max(0, min(20, $cellPadV));
         $tableMt = isset($s['table_margin_top_px']) ? (int) $s['table_margin_top_px'] : (int) ($def['table_margin_top_px'] ?? 15);
@@ -4728,6 +5553,16 @@ class ReportPdfLayoutService
         $segPadTop = max(0, min(40, $segPadTop));
         $segPadBottom = isset($s['segment_padding_bottom_px']) ? (int) $s['segment_padding_bottom_px'] : (int) ($def['segment_padding_bottom_px'] ?? 6);
         $segPadBottom = max(0, min(40, $segPadBottom));
+        $segFamily = (string) ($s['segment_font_family'] ?? $def['segment_font_family']);
+        if (! in_array($segFamily, self::ALLOWED_PDF_FONT_FAMILIES, true)) {
+            $segFamily = (string) $def['segment_font_family'];
+        }
+        $segSize = isset($s['segment_font_size_pt']) ? (float) $s['segment_font_size_pt'] : (float) $def['segment_font_size_pt'];
+        $segSize = round(max(7.0, min(20.0, $segSize)), 2);
+        $segWeight = strtolower(trim((string) ($s['segment_font_weight'] ?? $def['segment_font_weight'])));
+        if (! in_array($segWeight, self::ALLOWED_PDF_FONT_WEIGHTS, true)) {
+            $segWeight = (string) $def['segment_font_weight'];
+        }
         $matrixAlign = strtolower(trim((string) ($s['matrix_text_align'] ?? $def['matrix_text_align'])));
         if (! in_array($matrixAlign, self::ALLOWED_PDF_TEXT_ALIGNS, true)) {
             $matrixAlign = $def['matrix_text_align'];
@@ -4787,12 +5622,18 @@ class ReportPdfLayoutService
             'segment_shadow'    => $segShadow,
             'segment_padding_top_px'    => $segPadTop,
             'segment_padding_bottom_px' => $segPadBottom,
+            'segment_font_family'       => $segFamily,
+            'segment_font_size_pt'      => $segSize,
+            'segment_font_weight'       => $segWeight,
             'font_family'       => $family,
             'font_size_pt'      => $size,
             'font_weight'       => $weight,
             'font_style'        => $style,
             'text_transform'    => $transform,
             'line_height'       => $lh,
+            'letter_spacing_em' => $ls,
+            'text_shadow'       => $shadow,
+            'cell_vertical_align' => $cellVAlign,
             'cell_padding_v_px' => $cellPadV,
             'table_margin_top_px' => $tableMt,
             'table_margin_bottom_px' => $tableMb,
@@ -4836,6 +5677,20 @@ class ReportPdfLayoutService
                 : (bool) $def['grupo_cabecera_show_metodo'],
             'grupo_cabecera_title_margin_top_px'    => max(0, min(40, isset($s['grupo_cabecera_title_margin_top_px']) ? (int) $s['grupo_cabecera_title_margin_top_px'] : (int) ($def['grupo_cabecera_title_margin_top_px'] ?? 0))),
             'grupo_cabecera_title_margin_bottom_px' => max(0, min(40, isset($s['grupo_cabecera_title_margin_bottom_px']) ? (int) $s['grupo_cabecera_title_margin_bottom_px'] : (int) ($def['grupo_cabecera_title_margin_bottom_px'] ?? 6))),
+            'grupo_cabecera_title_font_family'      => (static function () use ($s, $def): string {
+                $family = (string) ($s['grupo_cabecera_title_font_family'] ?? $def['grupo_cabecera_title_font_family']);
+                return in_array($family, self::ALLOWED_PDF_FONT_FAMILIES, true) ? $family : (string) $def['grupo_cabecera_title_font_family'];
+            })(),
+            'grupo_cabecera_title_font_size_pt'     => round(max(7.0, min(20.0, isset($s['grupo_cabecera_title_font_size_pt']) ? (float) $s['grupo_cabecera_title_font_size_pt'] : (float) $def['grupo_cabecera_title_font_size_pt'])), 2),
+            'grupo_cabecera_title_font_weight'      => (static function () use ($s, $def): string {
+                $w = strtolower(trim((string) ($s['grupo_cabecera_title_font_weight'] ?? $def['grupo_cabecera_title_font_weight'])));
+                return in_array($w, self::ALLOWED_PDF_FONT_WEIGHTS, true) ? $w : (string) $def['grupo_cabecera_title_font_weight'];
+            })(),
+            'grupo_cabecera_title_text_color'       => $pickColor('grupo_cabecera_title_text_color', (string) $def['grupo_cabecera_title_text_color']),
+            'grupo_cabecera_title_text_shadow'      => (static function () use ($s, $def): string {
+                $sh = strtolower(trim((string) ($s['grupo_cabecera_title_text_shadow'] ?? $def['grupo_cabecera_title_text_shadow'])));
+                return in_array($sh, self::ALLOWED_PDF_TEXT_SHADOWS, true) ? $sh : (string) $def['grupo_cabecera_title_text_shadow'];
+            })(),
             'grupo_cabecera_tipo_muestra_margin_top_px'    => max(0, min(40, isset($s['grupo_cabecera_tipo_muestra_margin_top_px']) ? (int) $s['grupo_cabecera_tipo_muestra_margin_top_px'] : (int) ($def['grupo_cabecera_tipo_muestra_margin_top_px'] ?? 0))),
             'grupo_cabecera_tipo_muestra_margin_bottom_px' => max(0, min(40, isset($s['grupo_cabecera_tipo_muestra_margin_bottom_px']) ? (int) $s['grupo_cabecera_tipo_muestra_margin_bottom_px'] : (int) ($def['grupo_cabecera_tipo_muestra_margin_bottom_px'] ?? 10))),
             'grupo_cabecera_metodo_margin_top_px'    => max(0, min(40, isset($s['grupo_cabecera_metodo_margin_top_px']) ? (int) $s['grupo_cabecera_metodo_margin_top_px'] : (int) ($def['grupo_cabecera_metodo_margin_top_px'] ?? 0))),

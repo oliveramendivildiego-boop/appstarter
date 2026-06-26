@@ -1,7 +1,7 @@
 <?php
 /**
  * Cabecera por hoja: Paciente izquierda, No. Orden derecha (desde hoja 2).
- * Impresión: plantilla JS + bandas en flujo. PDF: callback Dompdf (hojas 2+).
+ * Impresión: plantilla JS + bandas en flujo. PDF: callback Dompdf (hojas 2+) o mPDF vía adaptador.
  *
  * @var array<string,mixed> $pdf_layout
  * @var object|null         $paciente

@@ -674,6 +674,9 @@ class Registers extends SecureArea
 
         $decimalesSugerencia = (int) (model(AppConfigModel::class)->getValue('decimales_sugerencia') ?: 2);
         $decimalesSugerencia = max(0, min(10, $decimalesSugerencia));
+        $registroFormColumnas = ConfigService::normalizeRegistroFormColumnas(
+            model(AppConfigModel::class)->getValue('registro_form_columnas') ?: 3
+        );
 
         (new PrianacategoriaReferenceService())->repairRegvaluesForRegistro($id);
         $analisis = $this->registerModel->getInfoAnalisis($id);
@@ -702,6 +705,7 @@ class Registers extends SecureArea
             'leyendas_activas'  => ($this->configModel->getValue('leyendas_enabled') === '1') ? model(LeyendaModel::class)->where('activo', 1)->where('deleted', 0)->orderBy('titulo', 'ASC')->findAll() : [],
             'leyendas_enabled'  => ($this->configModel->getValue('leyendas_enabled') === '1'),
             'decimales_sugerencia' => $decimalesSugerencia,
+            'registro_form_columnas' => $registroFormColumnas,
             'retired_prueba_ids' => $retiredPruebaIds,
             'allowed_modules'   => $this->allowed_modules,
             'user_info'         => $this->user_info,
@@ -1101,7 +1105,7 @@ class Registers extends SecureArea
     }
 
     /**
-     * PDF con plantilla PDF activa: caché de viewreport o generación Dompdf.
+     * PDF con plantilla PDF activa: caché de viewreport o generación con motor configurado.
      *
      * @param array<string, mixed> $data
      *
@@ -1127,11 +1131,13 @@ class Registers extends SecureArea
 
         $qrPx      = \App\Services\ReportPdfLayoutService::qrImagePixelSizeFromLayout($qrLayout);
         $qrDataUri = qr_base64($reportUrl, $qrPx);
-        $html      = $this->registerService->renderReportPdfHtml($data, $reportUrl, $qrDataUri, $emitidoEn);
-
-        $pdfService = new PdfService();
-        $pageSize   = \App\Services\ReportPdfLayoutService::resolveGlobalPageSizeMm($this->registerService->getLabConfig());
-        $pdfBinary  = $pdfService->generate($html, $this->reportPdfFilename($id, $data), $pageSize);
+        $pdfBinary = $this->registerService->generateReportPdfBinary(
+            $data,
+            $reportUrl,
+            $qrDataUri,
+            $emitidoEn,
+            $qrLayout,
+        );
 
         $this->registerService->writeReportPdfPreviewCache($id, $fingerprint, $pdfBinary);
 
@@ -1170,7 +1176,7 @@ class Registers extends SecureArea
 
         $engineHeader = \App\Libraries\Pdf\PdfRendererFactory::lastRenderEngine();
         if ($engineHeader === '') {
-            $engineHeader = $cacheHeader === 'hit' || $cacheHeader === 'hit-early' ? 'cache-hit' : (string) (config('Pdf')->renderer ?? 'dompdf');
+            $engineHeader = $cacheHeader === 'hit' || $cacheHeader === 'hit-early' ? 'cache-hit' : (string) (config('Pdf')->renderer ?? 'mpdf');
         }
 
         return $this->response
@@ -1901,6 +1907,9 @@ class Registers extends SecureArea
 
             $this->persistFichasClinicasFromPost($id);
 
+            $this->registerService->clearReportDataCache($id);
+            $this->registerService->clearReportPdfPreviewCache($id);
+
             return $this->jsonWithCsrf([
                 'success' => true,
                 'message' => 'Registro actualizado',
@@ -2200,6 +2209,7 @@ class Registers extends SecureArea
 
         $valCount = 0;
         $dedupedSave = [];
+        $rowsToInsert = [];
         foreach ($data as $item) {
             if (! is_array($item)) {
                 continue;
@@ -2211,12 +2221,12 @@ class Registers extends SecureArea
             $dedupedSave[$id] = $item;
         }
         foreach ($dedupedSave as $item) {
-            $this->registerModel->saveRegvalues([
+            $rowsToInsert[] = [
                 'regvalues'   => $item['valor'] ?? null,
                 'registro_id' => $item['registro_id'] ?? null,
                 'name'        => $item['id'] ?? null,
                 'id_session'  => session()->get('person_id'),
-            ]);
+            ];
             $valCount++;
         }
 
@@ -2225,13 +2235,17 @@ class Registers extends SecureArea
             if ($clave === '') {
                 continue;
             }
-            $this->registerModel->saveRegvalues([
+            $rowsToInsert[] = [
                 'regvalues'   => $rowRetirado['regvalues'] ?? null,
                 'registro_id' => $registroId,
                 'name'        => $clave,
                 'id_session'  => $rowRetirado['id_session'] ?? session()->get('person_id'),
-            ]);
+            ];
             $valCount++;
+        }
+
+        if ($rowsToInsert !== []) {
+            $this->registerModel->insertRegvaluesBatch($rowsToInsert);
         }
 
         $autoStats = ['aplicados' => 0, 'omitidos' => 0, 'errores' => 0];
@@ -2257,14 +2271,13 @@ class Registers extends SecureArea
             $metrics = \App\Services\Report\ReportPipelineMetrics::getInstance();
             $metrics->recordSaveRegvalues(microtime(true) - $tSave);
 
-            $warmOk = (new \App\Services\Report\ReportPipelineService($this->registerService))
-                ->warmSync((int) $registroId);
+            $this->registerService->clearReportDataCache((int) $registroId);
+            $this->registerService->clearReportPdfPreviewCache((int) $registroId);
 
             return $this->response->setJSON([
                 'success' => true,
                 'message' => 'Guardado exitoso',
                 'consumo_auto' => $autoStats,
-                'warm_cache' => $warmOk,
                 'csrf_token' => csrf_hash(),
                 'csrf_name' => csrf_token(),
             ]);
@@ -2407,7 +2420,6 @@ class Registers extends SecureArea
         if ($ridAn > 0) {
             $this->registerService->clearReportDataCache($ridAn);
             $this->registerService->clearReportPdfPreviewCache($ridAn);
-            $this->registerService->scheduleReportPdfPreviewCacheWarm($ridAn);
             (new \App\Services\DeliveryNotificationService())->syncForRegistro($ridAn);
         }
         return $this->response->setJSON(['success' => true, 'message' => 'Guardado exitoso']);
@@ -2430,14 +2442,8 @@ class Registers extends SecureArea
             'observaciones' => $obs,
         ]));
         (new \App\Services\DeliveryNotificationService())->syncForRegistro($registroId);
-        try {
-            (new \App\Services\Report\ReportPipelineService($this->registerService))->warmSync($registroId);
-        } catch (\Throwable $e) {
-            log_message('error', 'validar warmSync {id}: {msg}', [
-                'id'  => $registroId,
-                'msg' => $e->getMessage(),
-            ]);
-        }
+        $this->registerService->clearReportDataCache($registroId);
+        $this->registerService->clearReportPdfPreviewCache($registroId);
         $msg = $tipo === 'tecnico' ? 'Validación técnica registrada' : 'Validación médica registrada';
         return redirect()->to("registers/viewreport/{$registroId}")->with('success', $msg);
     }
@@ -2501,10 +2507,8 @@ class Registers extends SecureArea
         $qrPx      = \App\Services\ReportPdfLayoutService::qrImagePixelSizeFromLayout($qrLayout);
         $qrDataUri = qr_base64($reportUrl, $qrPx);
         $emitidoEn = $this->registerService->reportEmitidoEnForView($id);
-        $html      = $this->registerService->renderReportPdfHtml($data, $reportUrl, $qrDataUri, $emitidoEn);
-        $pdfService = new PdfService();
         $filename   = 'Resultados_' . preg_replace('/\s+/', '_', $pacienteNombre) . '_' . $id . '.pdf';
-        $pdfContent = $pdfService->generate($html, $filename);
+        $pdfContent = $this->registerService->generateReportPdfBinary($data, $reportUrl, $qrDataUri, $emitidoEn, $qrLayout);
 
         $token = bin2hex(random_bytes(16));
         $tempDir = WRITEPATH . 'temp' . DIRECTORY_SEPARATOR;

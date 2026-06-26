@@ -75,16 +75,13 @@ class PublicResultados extends BaseController
         $qrPx      = \App\Services\ReportPdfLayoutService::qrImagePixelSizeFromLayout($qrLayout);
         $qrDataUri = qr_base64($reportUrl, $qrPx);
         $emitidoEn = $registerService->lockReportEmitidoEnForPrintOrPdf($id);
-        $html      = $registerService->renderReportPdfHtml($data, $reportUrl, $qrDataUri, $emitidoEn);
-
-        $pdfService     = new PdfService();
-        $pageSize       = \App\Services\ReportPdfLayoutService::resolveGlobalPageSizeMm($registerService->getLabConfig());
         $pacienteNombre = trim(($data['paciente']->first_name ?? '') . '_' . ($data['paciente']->last_name_fa ?? ''));
         $filename       = 'Resultados_' . ($pacienteNombre ?: 'paciente') . '_' . $id . '_' . lab_filename_date() . '.pdf';
+        $pdfBinary      = $registerService->generateReportPdfBinary($data, $reportUrl, $qrDataUri, $emitidoEn, $qrLayout);
 
         return $this->response
             ->setHeader('Content-Type', 'application/pdf')
             ->setHeader('Content-Disposition', 'attachment; filename="' . $filename . '"')
-            ->setBody($pdfService->generate($html, $filename, $pageSize));
+            ->setBody($pdfBinary);
     }
 }
