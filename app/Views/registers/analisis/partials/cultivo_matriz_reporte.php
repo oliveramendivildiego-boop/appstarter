@@ -33,6 +33,46 @@ if ($usePdfChrome) {
     );
 }
 $segmentWrapStyleAttr = $segmentWrapStyle !== '' ? ' style="' . esc($segmentWrapStyle, 'attr') . '"' : '';
+/** @var \App\Services\ReportLayout\LayoutPlanApplier|null $layoutPlanApplier */
+$layoutPlanApplier = ($layout_plan_applier ?? null) instanceof \App\Services\ReportLayout\LayoutPlanApplier
+    ? $layout_plan_applier
+    : null;
+$layoutAreaIndexCultivo = (int) ($layout_area_index ?? 0);
+$layoutBlockIndexCultivo = (int) ($layout_block_index ?? 0);
+$areaFirmaBundle = is_array($area_firma_bundle ?? null) ? $area_firma_bundle : null;
+$layoutSectionIndexCultivo = 0;
+$isLastSubgrupoCultivo = ! empty($is_last_subgrupo);
+$cultivoFirmaEnTailBundle = $areaFirmaBundle !== null && ($areaFirmaBundle['firma'] ?? []) !== [];
+$cultivoFirmaRendered = false;
+$renderCultivoFirmaDentroDelBundle = static function () use (
+    &$cultivoFirmaRendered,
+    $usePdfChrome,
+    $isLastSubgrupoCultivo,
+    $layoutPlanApplier,
+    $areaFirmaBundle,
+): void {
+    if ($cultivoFirmaRendered || ! $usePdfChrome || ! $isLastSubgrupoCultivo) {
+        return;
+    }
+    if ($areaFirmaBundle === null || ($areaFirmaBundle['firma'] ?? []) === []) {
+        return;
+    }
+    if ($layoutPlanApplier !== null && ! $layoutPlanApplier->isSignatureTailBundleOpen()) {
+        echo $layoutPlanApplier->beginSignatureTailBundleMarkup();
+    }
+    echo view('registers/partials/report_lab_firma_grupo_inline', $areaFirmaBundle);
+    $cultivoFirmaRendered = true;
+};
+$cerrarCultivoFirmaBundle = static function () use ($layoutPlanApplier): void {
+    if ($layoutPlanApplier !== null && $layoutPlanApplier->isSignatureTailBundleOpen()) {
+        echo $layoutPlanApplier->endSignatureTailBundleMarkup();
+    }
+};
+$subgrupoTailBundleAtStart = $usePdfChrome
+    && $layoutPlanApplier !== null
+    && $isLastSubgrupoCultivo
+    && $cultivoFirmaEnTailBundle
+    && $layoutPlanApplier->shouldOpenSignatureTailBundleBeforeSubgrupo($layoutAreaIndexCultivo, $layoutBlockIndexCultivo);
 $mainTableClass = $usePdfChrome ? 'results' : 'table table-bordered table-sm mb-0';
 $subIdxCultivo = (int) ($sub_idx ?? 0);
 $webTitleMt = $subIdxCultivo > 0 ? 'mt-5' : 'mt-4';
@@ -158,12 +198,6 @@ $renderCultivoCeldaGrilla = static function (array $celda, string $tdBorderPerso
 <?php endif; ?>
 <?php if ($usePdfChrome): ?>
 <?php
-/** @var \App\Services\ReportLayout\LayoutPlanApplier|null $layoutPlanApplier */
-$layoutPlanApplier = ($layout_plan_applier ?? null) instanceof \App\Services\ReportLayout\LayoutPlanApplier
-    ? $layout_plan_applier
-    : null;
-$layoutAreaIndexCultivo = (int) ($layout_area_index ?? 0);
-$layoutBlockIndexCultivo = (int) ($layout_block_index ?? 0);
 $cultivoPb = $layoutPlanApplier
     ? $layoutPlanApplier->blockMarkers($layoutAreaIndexCultivo, $layoutBlockIndexCultivo)
     : ['segment_class' => '', 'cabecera_class' => '', 'subgrupo_class' => ''];
@@ -180,8 +214,6 @@ $subgrupoCultivoStyle = $subIdxCultivo > 0
     )
     : '';
 $blockIdCultivo = \App\Services\ReportLayout\ReportTreeBuilder::analysisBlockId($layoutAreaIndexCultivo, $layoutBlockIndexCultivo);
-$isLastSubgrupoCultivo = ! empty($is_last_subgrupo);
-$cultivoFirmaEnTailBundle = is_array($area_firma_bundle ?? null) && ($area_firma_bundle['firma'] ?? []) !== [];
 $cultivoTotalFilas = 0;
 foreach ($secciones as $secRowCount) {
     $grillaCount = is_array($secRowCount['grilla_reporte']['filas'] ?? null)
@@ -210,38 +242,6 @@ $cultivoKeepIntact = $usePdfChrome
 if ($cultivoKeepIntact) {
     $subgrupoCultivoClass .= ' report-subgrupo-keep-intact';
 }
-$subgrupoTailBundleAtStart = $usePdfChrome
-    && $layoutPlanApplier !== null
-    && $isLastSubgrupoCultivo
-    && $cultivoFirmaEnTailBundle
-    && $layoutPlanApplier->shouldOpenSignatureTailBundleBeforeSubgrupo($layoutAreaIndexCultivo, $layoutBlockIndexCultivo);
-$layoutSectionIndexCultivo = 0;
-$cultivoFirmaRendered = false;
-$renderCultivoFirmaDentroDelBundle = static function () use (
-    &$cultivoFirmaRendered,
-    $usePdfChrome,
-    $isLastSubgrupoCultivo,
-    $layoutPlanApplier,
-    $area_firma_bundle,
-): void {
-    if ($cultivoFirmaRendered || ! $usePdfChrome || ! $isLastSubgrupoCultivo) {
-        return;
-    }
-    $firmaBundle = is_array($area_firma_bundle ?? null) ? $area_firma_bundle : null;
-    if ($firmaBundle === null || ($firmaBundle['firma'] ?? []) === []) {
-        return;
-    }
-    if ($layoutPlanApplier !== null && ! $layoutPlanApplier->isSignatureTailBundleOpen()) {
-        echo $layoutPlanApplier->beginSignatureTailBundleMarkup();
-    }
-    echo view('registers/partials/report_lab_firma_grupo_inline', $firmaBundle);
-    $cultivoFirmaRendered = true;
-};
-$cerrarCultivoFirmaBundle = static function () use ($layoutPlanApplier): void {
-    if ($layoutPlanApplier !== null && $layoutPlanApplier->isSignatureTailBundleOpen()) {
-        echo $layoutPlanApplier->endSignatureTailBundleMarkup();
-    }
-};
 ?>
 <?php if ($variant === 'browser_print' && $layoutPlanApplier !== null && $layoutPlanApplier->browserPrintPageBreakBeforeAnalysisBlock($layoutAreaIndexCultivo, $layoutBlockIndexCultivo)): ?>
 <?= view('registers/partials/report_browser_print_plan_page_break', [
