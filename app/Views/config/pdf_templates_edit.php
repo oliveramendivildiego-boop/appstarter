@@ -107,6 +107,14 @@ if (! empty($wm['file'])) {
         'watermark' => array_merge($wm, ['enabled' => true]),
     ]);
 }
+helper('registro');
+$previewLabCfg = (new \App\Services\ConfigService())->getAllAsArray();
+$previewLogoRel = trim((string) ($previewLabCfg['logo'] ?? 'images/logo-john.png'));
+$previewLogoDataUri = $previewLogoRel !== '' ? report_image_data_uri($previewLogoRel) : '';
+$previewLabCompany = trim((string) ($previewLabCfg['company'] ?? ''));
+if ($previewLabCompany === '') {
+    $previewLabCompany = 'Laboratorio';
+}
 $labelsShort = [
     'paciente_nombre'   => 'Paciente:',
     'paciente_genero'   => 'Género:',
@@ -1951,6 +1959,8 @@ document.addEventListener('DOMContentLoaded', function() {
     window._hgFieldUi = <?= json_encode($hgFieldUi, JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP) ?>;
     window._patientFieldUi = <?= json_encode($pdFieldUi, JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP) ?>;
     window._pdfStyleAllowlists = <?= json_encode($pdfStyleAllowlists, JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP) ?>;
+    window._previewLogoDataUri = <?= json_encode($previewLogoDataUri, JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP) ?>;
+    window._previewLabCompany = <?= json_encode($previewLabCompany, JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP) ?>;
 
     function pdfAllow(key) {
         var a = window._pdfStyleAllowlists || {};
@@ -1973,6 +1983,35 @@ document.addEventListener('DOMContentLoaded', function() {
         var d = document.createElement('div');
         d.textContent = s;
         return d.innerHTML;
+    }
+
+    function escapeAttr(s) {
+        return String(s == null ? '' : s)
+            .replace(/&/g, '&amp;')
+            .replace(/"/g, '&quot;')
+            .replace(/</g, '&lt;');
+    }
+
+    function logoMaxHeightPxFromTextStyle(ts) {
+        var pt = parseFloat(ts && ts.font_size_pt != null ? ts.font_size_pt : 10);
+        if (isNaN(pt)) pt = 10;
+        return Math.max(20, Math.min(280, Math.round(70 * (pt / 10))));
+    }
+
+    function logoMaxWidthPxFromSpan(span, sectionKey) {
+        var ul = listForSection(sectionKey);
+        var cols = colsForList(ul);
+        var contentMm = 185.9;
+        span = Math.max(1, parseInt(span, 10) || 1);
+        cols = Math.max(1, cols);
+        return Math.max(40, Math.floor(contentMm * (span / cols) * (96 / 25.4) * 0.88));
+    }
+
+    function blockImageAlignMarginCss(alignH) {
+        alignH = String(alignH || 'left').toLowerCase();
+        if (alignH === 'center') return 'margin-left:auto;margin-right:auto;';
+        if (alignH === 'right') return 'margin-left:auto;margin-right:0;';
+        return 'margin-left:0;margin-right:auto;';
     }
 
     function clampCols(v) {
@@ -3023,7 +3062,7 @@ document.addEventListener('DOMContentLoaded', function() {
             + ';line-height:' + lh;
     }
 
-    function buildHeaderPreviewPieceHtml(type, sample, hg, instanceTs, forFooter) {
+    function buildHeaderPreviewPieceHtml(type, sample, hg, instanceTs, forFooter, li) {
         forFooter = !!forFooter;
         var pieceCls = forFooter ? 'pdf-ft-piece' : 'header-piece';
         var st = headerGridLabelPieceStyleCss;
@@ -3046,7 +3085,35 @@ document.addEventListener('DOMContentLoaded', function() {
         }
         if (type === 'logo') {
             var logoCls = forFooter ? 'pdf-ft-piece pdf-ft-piece-logo' : 'header-piece header-piece-logo';
-            return '<div class="' + logoCls + '">' + labeledBlock('logo', '<span class="pdf-preview-logo-ph" style="display:inline-block;padding:2px 6px;background:#e9ecef;border-radius:3px;">' + escapeHtml(sample) + '</span>') + '</div>';
+            var logoSrc = String(window._previewLogoDataUri || '').trim();
+            var company = String(window._previewLabCompany || sample || 'Laboratorio');
+            var lblLogo = String(hg.label_logo != null ? hg.label_logo : '').trim();
+            var showLogoL = hg.show_label_logo !== false && hg.show_label_logo !== 0 && hg.show_label_logo !== '0';
+            var inlineLogo = (hg.label_logo_line_mode === 'inline');
+            var showLblLogo = showLogoL && lblLogo !== '';
+            var stLogoLbl = st(hg, 'logo');
+            var sectionKey = forFooter ? 'footer' : 'header';
+            var span = 1;
+            var alignH = 'left';
+            if (li) {
+                span = readGridPlacement(li, sectionKey).span;
+                alignH = readInstanceAlign(li).align_h;
+            }
+            var maxH = logoMaxHeightPxFromTextStyle(instanceTs || defaultInstanceTextStyleJson());
+            var maxW = logoMaxWidthPxFromSpan(span, sectionKey);
+            var imgStyle = 'max-height:' + maxH + 'px;max-width:' + maxW + 'px;width:auto;height:auto;display:block;box-sizing:border-box;' + blockImageAlignMarginCss(alignH);
+            var logoInner = logoSrc !== ''
+                ? ('<img class="pdf-preview-logo-img" src="' + escapeAttr(logoSrc) + '" alt="Logo" style="' + escapeHtml(imgStyle) + '">')
+                : ('<strong style="' + escapeHtml(stI) + '">' + escapeHtml(company) + '</strong>');
+            if (inlineLogo && showLblLogo) {
+                return '<div class="' + logoCls + '"><div style="display:flex;flex-wrap:wrap;align-items:center;gap:8px;"><span style="' + escapeHtml(stLogoLbl) + '">' + escapeHtml(lblLogo) + '</span>' + logoInner + '</div></div>';
+            }
+            var logoHtml = '<div class="' + logoCls + '">';
+            if (showLblLogo) {
+                logoHtml += '<div style="margin-bottom:6px;"><span style="' + escapeHtml(stLogoLbl) + '">' + escapeHtml(lblLogo) + '</span></div>';
+            }
+            logoHtml += logoInner + '</div>';
+            return logoHtml;
         }
         if (type === 'lab_company') {
             return wrapFooterField('<div class="header-preview-company">' + labeledBlock('lab_company', '<strong>' + escapeHtml(sample) + '</strong>') + '</div>');
@@ -3168,10 +3235,10 @@ document.addEventListener('DOMContentLoaded', function() {
                 + '<div class="patient-line" style="padding-top:' + valMtPd + 'px;padding-bottom:' + mbPd + 'px;"><span style="' + escapeHtml(styleWrap) + '">' + valPd + '</span></div>';
         }
         if (sectionKey === 'footer' && PREVIEW_HEADER_LIKE_TYPES.indexOf(type) >= 0) {
-            return buildHeaderPreviewPieceHtml(type, sample, ctx.hgHeader, readInstanceTextStyle(li), true);
+            return buildHeaderPreviewPieceHtml(type, sample, ctx.hgHeader, readInstanceTextStyle(li), true, li);
         }
         if (sectionKey === 'header' && PREVIEW_HEADER_LIKE_TYPES.indexOf(type) >= 0) {
-            return buildHeaderPreviewPieceHtml(type, sample, ctx.hgHeader, readInstanceTextStyle(li));
+            return buildHeaderPreviewPieceHtml(type, sample, ctx.hgHeader, readInstanceTextStyle(li), false, li);
         }
         var rawLine = shortL ? ('<span class="pdf-preview-lbl">' + escapeHtml(shortL) + '</span> ' + escapeHtml(sample)) : escapeHtml(sample);
         return '<span style="' + escapeHtml(styleWrap) + '">' + rawLine + '</span>';
@@ -4786,7 +4853,7 @@ document.addEventListener('DOMContentLoaded', function() {
         var titleColor = previewColorFromInput('rs_grupo_cabecera_title_text_color', rs.grupo_cabecera_title_text_color || rs.body_text_color || '#333333');
         var titleShadowKey = (document.getElementById('rs_grupo_cabecera_title_text_shadow') || {}).value || rs.grupo_cabecera_title_text_shadow || 'none';
         var cabSpacing = readGrupoCabeceraSpacingFromRs(rs);
-        lines.push(scope + ' .report-pdf-grupo-cabecera .group-title, ' + scope + ' #pdf_preview_grupo_title {');
+        lines.push(scope + ' .report-pdf-grupo-cabecera .group-title, ' + scope + ' .report-pdf-grupo-cabecera-line--title, ' + scope + ' #pdf_preview_grupo_title {');
         lines.push('  margin: 0 !important;');
         lines.push('  font-family: "' + (rs.grupo_cabecera_title_font_family || rs.font_family || 'DejaVu Sans') + '", sans-serif !important;');
         lines.push('  font-size: ' + (rs.grupo_cabecera_title_font_size_pt || rs.font_size_pt || 9) + 'pt !important;');
@@ -4796,12 +4863,12 @@ document.addEventListener('DOMContentLoaded', function() {
         lines.push('  padding-top: ' + cabSpacing.titleTop + 'px !important;');
         lines.push('  padding-bottom: ' + cabSpacing.titleBottom + 'px !important;');
         lines.push('}');
-        lines.push(scope + ' .report-pdf-grupo-cabecera .report-tipo-muestra, ' + scope + ' #pdf_preview_tipo_muestra {');
+        lines.push(scope + ' .report-pdf-grupo-cabecera .report-tipo-muestra, ' + scope + ' .report-pdf-grupo-cabecera-line--tipo, ' + scope + ' #pdf_preview_tipo_muestra {');
         lines.push('  margin: 0 !important;');
         lines.push('  padding-top: ' + cabSpacing.tipoTop + 'px !important;');
         lines.push('  padding-bottom: ' + cabSpacing.tipoBottom + 'px !important;');
         lines.push('}');
-        lines.push(scope + ' .report-pdf-grupo-cabecera .report-metodo-prueba, ' + scope + ' #pdf_preview_metodo {');
+        lines.push(scope + ' .report-pdf-grupo-cabecera .report-metodo-prueba, ' + scope + ' .report-pdf-grupo-cabecera-line--metodo, ' + scope + ' #pdf_preview_metodo {');
         lines.push('  margin: 0 !important;');
         lines.push('  padding-top: ' + cabSpacing.metodoTop + 'px !important;');
         lines.push('  padding-bottom: ' + cabSpacing.metodoBottom + 'px !important;');

@@ -47,7 +47,7 @@ $lastLine = $mostrarMetodo ? 'metodo' : ($mostrarTipoMuestra ? 'tipo' : ($hasTit
 <?php if ($hasTitle): ?>
 
 <?php if ($usePdfChrome): ?>
-<div class="report-pdf-grupo-cabecera-line report-pdf-grupo-cabecera-line--title<?= $lastLine === 'title' ? ' report-pdf-grupo-cabecera-line--last' : '' ?>" style="<?= esc(\App\Services\ReportPdfLayoutService::groupTitleStyleAttr(
+<div class="group-title report-pdf-grupo-cabecera-line report-pdf-grupo-cabecera-line--title<?= $lastLine === 'title' ? ' report-pdf-grupo-cabecera-line--last' : '' ?>" style="<?= esc(\App\Services\ReportPdfLayoutService::groupTitleStyleAttr(
     $pdfLayout,
     $lastLine === 'title',
     $isFirstSubgrupoInArea,

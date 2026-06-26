@@ -970,7 +970,7 @@ if (! function_exists('report_image_dompdf_src')) {
 
 if (! function_exists('report_image_src_for_variant')) {
     /**
-     * PDF Dompdf: ruta de archivo. Impresión HTML: data URI.
+     * PDF Dompdf: ruta de archivo. mPDF e impresión HTML: data URI (mPDF no carga bien rutas locales en img).
      */
     function report_image_src_for_variant(string $relativePath, string $variant = 'pdf'): string
     {
@@ -979,9 +979,15 @@ if (! function_exists('report_image_src_for_variant')) {
             return '';
         }
 
-        return ($variant === 'pdf')
-            ? report_image_dompdf_src($relativePath)
-            : report_image_data_uri($relativePath);
+        if ($variant !== 'pdf') {
+            return report_image_data_uri($relativePath);
+        }
+
+        if (\App\Libraries\Pdf\PdfEngine::isMpdf()) {
+            return report_image_data_uri($relativePath);
+        }
+
+        return report_image_dompdf_src($relativePath);
     }
 }
 

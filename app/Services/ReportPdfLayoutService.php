@@ -3978,6 +3978,9 @@ class ReportPdfLayoutService
      */
     public static function grupoPruebaGapMarginStyleAttr(array $layout, bool $isFirstGrupo): string
     {
+        if (\App\Libraries\Pdf\PdfEngine::isMpdf()) {
+            return '';
+        }
         if ($isFirstGrupo) {
             return '';
         }
@@ -4003,6 +4006,9 @@ class ReportPdfLayoutService
      */
     public static function resultsTableMarginStyleAttr(array $layout): string
     {
+        if (\App\Libraries\Pdf\PdfEngine::isMpdf()) {
+            return '';
+        }
         $ps = is_array($layout['page_style'] ?? null) ? $layout['page_style'] : [];
         $rs = self::normalizeResultsTableStyle($ps['results_table'] ?? []);
         $mt = max(0, min(80, (int) ($rs['table_margin_top_px'] ?? 15)));
@@ -4401,7 +4407,9 @@ class ReportPdfLayoutService
             '    padding-bottom:' . (int) $cabSpacing['title_bottom'] . 'px !important;',
             '}',
             $scope . ' .report-pdf-grupo-cabecera-line--tipo,',
-            $scope . ' .report-pdf-grupo-cabecera-line--metodo {',
+            $scope . ' .report-pdf-grupo-cabecera-line--metodo,',
+            $scope . ' .report-pdf-grupo-cabecera .report-tipo-muestra,',
+            $scope . ' .report-pdf-grupo-cabecera .report-metodo-prueba {',
             '    font-family:' . $fontFamily . ' !important;',
             '    font-size:' . $esc((string) $rs['font_size_pt']) . 'pt !important;',
             '    font-weight:' . $esc((string) $rs['font_weight']) . ' !important;',
@@ -4412,11 +4420,13 @@ class ReportPdfLayoutService
             '    text-shadow:' . $esc($textShadow) . ' !important;',
             '    color:' . $esc((string) $rs['body_text_color']) . ' !important;',
             '}',
-            $scope . ' .report-pdf-grupo-cabecera-line--tipo {',
+            $scope . ' .report-pdf-grupo-cabecera-line--tipo,',
+            $scope . ' .report-pdf-grupo-cabecera .report-tipo-muestra {',
             '    padding-top:' . (int) $cabSpacing['tipo_top'] . 'px !important;',
             '    padding-bottom:' . (int) $cabSpacing['tipo_bottom'] . 'px !important;',
             '}',
-            $scope . ' .report-pdf-grupo-cabecera-line--metodo {',
+            $scope . ' .report-pdf-grupo-cabecera-line--metodo,',
+            $scope . ' .report-pdf-grupo-cabecera .report-metodo-prueba {',
             '    padding-top:' . (int) $cabSpacing['metodo_top'] . 'px !important;',
             '    padding-bottom:' . (int) $cabSpacing['metodo_bottom'] . 'px !important;',
             '}',
@@ -4532,6 +4542,9 @@ class ReportPdfLayoutService
      */
     public static function subgrupoPruebaGapStyleAttr(array $layout, bool $needsGap): string
     {
+        if (\App\Libraries\Pdf\PdfEngine::isMpdf()) {
+            return '';
+        }
         if (! $needsGap) {
             return '';
         }
@@ -4670,6 +4683,7 @@ class ReportPdfLayoutService
         $sh = $shadowMap[$typo['text_shadow'] ?? 'none'] ?? 'none';
 
         return 'font-family:' . self::fontFamilyForInlineCssAttr((string) $typo['font_family'])
+            . ' !important'
             . ';font-size:' . $typo['font_size_pt'] . 'pt !important'
             . ';font-weight:' . $typo['font_weight'] . ' !important'
             . ';color:' . $typo['text_color'] . ' !important'
@@ -4690,6 +4704,14 @@ class ReportPdfLayoutService
     }
 
     /**
+     * Estilo inline mínimo de cabecera de resultados con mPDF (tipografía/espaciado vía buildResultsTableParityCss).
+     */
+    public static function mpdfResultsCabeceraCompatInlineStyleAttr(): string
+    {
+        return 'margin:0 !important;';
+    }
+
+    /**
      * Estilo inline (tipografía + padding) de una línea de .report-pdf-grupo-cabecera.
      *
      * @param array<string, mixed> $layout
@@ -4701,6 +4723,9 @@ class ReportPdfLayoutService
         bool $isFirstSubgrupoInArea,
         bool $isFirstGrupoInReport
     ): string {
+        if (\App\Libraries\Pdf\PdfEngine::isMpdf()) {
+            return self::mpdfResultsCabeceraCompatInlineStyleAttr();
+        }
         $pad = self::grupoCabeceraLineVerticalPaddingPx(
             $layout,
             $line,
@@ -4810,6 +4835,9 @@ class ReportPdfLayoutService
      */
     public static function grupoAreaSeparatorMarginStyleAttr(array $layout, string $variant = 'pdf'): string
     {
+        if (\App\Libraries\Pdf\PdfEngine::isMpdf() && in_array($variant, ['pdf', 'screen_pdf'], true)) {
+            return '';
+        }
         $ps = is_array($layout['page_style'] ?? null) ? $layout['page_style'] : [];
         $rs = self::normalizeResultsTableStyle($ps['results_table'] ?? []);
         $marginTop    = max(0, min(80, (int) ($rs['grupo_area_separator_margin_top_px'] ?? 10)));
@@ -5171,6 +5199,38 @@ class ReportPdfLayoutService
     }
 
     /**
+     * @return array{0: int, 1: int}|null [widthPx, heightPx]
+     */
+    private static function imagePixelSizeFromSrc(string $src): ?array
+    {
+        $src = trim($src);
+        if ($src === '') {
+            return null;
+        }
+
+        if (str_starts_with($src, 'data:')) {
+            if (! preg_match('#^data:image/(?:png|jpe?g|gif|webp);base64,(.+)$#i', $src, $matches)) {
+                return null;
+            }
+            $binary = base64_decode($matches[1], true);
+            if ($binary === false) {
+                return null;
+            }
+            $info = @getimagesizefromstring($binary);
+        } elseif (is_file($src)) {
+            $info = @getimagesize($src);
+        } else {
+            return null;
+        }
+
+        if (! is_array($info) || ($info[0] ?? 0) <= 0 || ($info[1] ?? 0) <= 0) {
+            return null;
+        }
+
+        return [(int) $info[0], (int) $info[1]];
+    }
+
+    /**
      * Estilo inline del &lt;img&gt; del logo (mPDF necesita dimensiones explícitas; el CSS max-height solo no basta).
      *
      * @param array<string, mixed>|null $textStyle
@@ -5183,8 +5243,39 @@ class ReportPdfLayoutService
         ?string $imageSrc = null,
         ?array $marginsMm = null,
         string $paperKey = 'letter',
+        bool $intrinsicSizing = false,
     ): string {
-        $maxH        = self::logoMaxHeightPxFromTextStyle($textStyle);
+        $maxH   = self::logoMaxHeightPxFromTextStyle($textStyle);
+        $maxWPx = self::logoImageMaxColumnWidthPx($columnSpan, $totalColumns, $marginsMm, $paperKey);
+
+        if ($intrinsicSizing) {
+            return 'max-height:' . $maxH . 'px;max-width:' . $maxWPx . 'px;max-width:100%;width:auto;height:auto;display:block;box-sizing:border-box;';
+        }
+
+        $pixelSize = self::imagePixelSizeFromSrc(trim((string) $imageSrc));
+        if ($pixelSize !== null) {
+            [$iw, $ih] = $pixelSize;
+            $scale = min($maxH / $ih, $maxWPx / $iw, 1.0);
+            $w     = max(1, (int) round($iw * $scale));
+            $h     = max(1, (int) round($ih * $scale));
+
+            return 'width:' . $w . 'px;height:' . $h . 'px;max-width:100%;display:block;box-sizing:border-box;';
+        }
+
+        return 'max-height:' . $maxH . 'px;max-width:' . $maxWPx . 'px;width:auto;height:auto;display:block;box-sizing:border-box;';
+    }
+
+    /**
+     * Ancho máximo del logo en px según columnas y márgenes (misma lógica que logoImageInlineStyleAttr).
+     *
+     * @param array<string, float|int>|null $marginsMm
+     */
+    public static function logoImageMaxColumnWidthPx(
+        int $columnSpan = 1,
+        int $totalColumns = 5,
+        ?array $marginsMm = null,
+        string $paperKey = 'letter',
+    ): int {
         $margins     = is_array($marginsMm) ? $marginsMm : self::defaultMarginsMmStatic();
         $ml          = max(0.0, (float) ($margins['left'] ?? 15));
         $mr          = max(0.0, (float) ($margins['right'] ?? 15));
@@ -5193,26 +5284,83 @@ class ReportPdfLayoutService
             'legal' => 215.9,
             default => 215.9,
         };
-        $contentMm   = max(40.0, $pageWidthMm - $ml - $mr);
-        $span        = max(1, $columnSpan);
-        $cols        = max(1, $totalColumns);
-        $maxWPx      = max(40, (int) floor($contentMm * ($span / $cols) * (96 / 25.4) * 0.88));
+        $contentMm = max(40.0, $pageWidthMm - $ml - $mr);
+        $span      = max(1, $columnSpan);
+        $cols      = max(1, $totalColumns);
 
-        $src = trim((string) $imageSrc);
-        if ($src !== '' && ! str_starts_with($src, 'data:') && is_file($src)) {
-            $info = @getimagesize($src);
-            if (is_array($info) && ($info[0] ?? 0) > 0 && ($info[1] ?? 0) > 0) {
-                $iw    = (int) $info[0];
-                $ih    = (int) $info[1];
-                $scale = min($maxH / $ih, $maxWPx / $iw, 1.0);
-                $w     = max(1, (int) round($iw * $scale));
-                $h     = max(1, (int) round($ih * $scale));
+        return max(40, (int) floor($contentMm * ($span / $cols) * (96 / 25.4) * 0.88));
+    }
 
-                return 'width:' . $w . 'px;height:' . $h . 'px;max-width:100%;display:block;box-sizing:border-box;';
-            }
+    /**
+     * Altura renderizada del logo con max-height/max-width (como la vista previa del editor).
+     */
+    public static function logoIntrinsicRenderedHeightPx(
+        ?array $textStyle,
+        int $columnSpan = 1,
+        int $totalColumns = 5,
+        ?string $imageSrc = null,
+        ?array $marginsMm = null,
+        string $paperKey = 'letter',
+    ): int {
+        $maxH      = self::logoMaxHeightPxFromTextStyle($textStyle);
+        $maxWPx    = self::logoImageMaxColumnWidthPx($columnSpan, $totalColumns, $marginsMm, $paperKey);
+        $pixelSize = self::imagePixelSizeFromSrc(trim((string) $imageSrc));
+        if ($pixelSize === null) {
+            return $maxH;
+        }
+        [$iw, $ih] = $pixelSize;
+        $scale = min($maxH / $ih, $maxWPx / $iw, 1.0);
+
+        return max(1, (int) round($ih * $scale));
+    }
+
+    /**
+     * padding-top para simular margin auto vertical en mPDF (flex no disponible).
+     */
+    public static function pdfValignPaddingStyle(int $rowHeightPx, int $contentHeightPx, string $valign = 'middle'): string
+    {
+        $px = self::pdfValignSpacerHeightPx($rowHeightPx, $contentHeightPx, $valign);
+
+        return $px > 0 ? ('padding-top:' . $px . 'px;') : '';
+    }
+
+    /**
+     * Altura de espaciador superior (px CSS) para centrar contenido en filas de encabezado con mPDF.
+     */
+    public static function pdfValignSpacerHeightPx(int $rowHeightPx, int $contentHeightPx, string $valign = 'middle'): int
+    {
+        if ($rowHeightPx <= 0 || $contentHeightPx <= 0 || $contentHeightPx >= $rowHeightPx) {
+            return 0;
         }
 
-        return 'max-height:' . $maxH . 'px;max-width:' . $maxWPx . 'px;width:auto;height:auto;display:block;box-sizing:border-box;';
+        return match (strtolower(trim($valign))) {
+            'bottom' => $rowHeightPx - $contentHeightPx,
+            default  => max(0, (int) floor(($rowHeightPx - $contentHeightPx) / 2)),
+        };
+    }
+
+    public static function pdfValignSpacerHtml(int $rowHeightPx, int $contentHeightPx, string $valign = 'middle'): string
+    {
+        $px = self::pdfValignSpacerHeightPx($rowHeightPx, $contentHeightPx, $valign);
+        if ($px <= 0) {
+            return '';
+        }
+
+        return '<table width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse;width:100%;table-layout:fixed;">'
+            . '<tr><td height="' . $px . '" style="height:' . $px . 'px;line-height:0;font-size:0;padding:0;border:0;">&#160;</td></tr>'
+            . '</table>';
+    }
+
+    /**
+     * Altura estimada de una línea tipográfica en px CSS (encabezado lab_company, etc.).
+     *
+     * @param array<string, mixed>|null $textStyle
+     */
+    public static function typographyBlockHeightPx(?array $textStyle, float $lineHeight = 1.35): int
+    {
+        $pt = (float) (self::normalizeTextStyle(is_array($textStyle) ? $textStyle : [])['font_size_pt'] ?? 10);
+
+        return max(1, (int) round($pt * max(1.0, $lineHeight) * (96 / 72)));
     }
 
     /**

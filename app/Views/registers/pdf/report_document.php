@@ -13,15 +13,9 @@ $logoRel    = $labForLogo['logo'] ?? 'images/logo-john.png';
 $logoPath   = FCPATH . str_replace('/', DIRECTORY_SEPARATOR, $logoRel);
 $pdf_logo_data_uri = $pdf_logo_data_uri ?? '';
 $analisisVariantForAssets = (string) ($analisis_variant ?? 'pdf');
-if ($pdf_logo_data_uri === '' && $analisisVariantForAssets !== 'pdf') {
-    if (file_exists($logoPath)) {
-        $logoData = base64_encode((string) file_get_contents($logoPath));
-        $finfo    = finfo_open(FILEINFO_MIME_TYPE);
-        $mime     = $finfo ? finfo_file($finfo, $logoPath) : false;
-        if ($finfo) {
-            finfo_close($finfo);
-        }
-        $pdf_logo_data_uri = 'data:' . ($mime ?: 'image/png') . ';base64,' . $logoData;
+if ($pdf_logo_data_uri === '' && is_file($logoPath)) {
+    if ($analisisVariantForAssets !== 'pdf' || \App\Libraries\Pdf\PdfEngine::isMpdf()) {
+        $pdf_logo_data_uri = report_image_data_uri($logoRel);
     }
 }
 
@@ -149,6 +143,8 @@ if ($dompdfFlowTopEnabled): ?>
 <?= view('registers/partials/report_order_sheet_header', $orderSheetHeaderCtx) ?>
 <?= view($pdfBlockViews['footer'], $footerRenderCtx) ?>
 <?php endif; ?>
+<?php $reportPipelineRegistroId = (int) ($register_info->registro_id ?? 0); ?>
+<?= \App\Services\Report\ReportPdfHtmlCacheService::registroMarker($reportPipelineRegistroId) ?>
 <div class="pdf-main-stack">
 <?php foreach (($pl['blocks'] ?? []) as $block):
     if (empty($block['enabled'])) {

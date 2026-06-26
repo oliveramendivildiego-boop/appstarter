@@ -7,11 +7,25 @@ namespace App\Services\Report;
  */
 class ReportPdfHtmlCacheService
 {
-    private const SALT = 'report-pdf-html-v1-mpdf-pipeline';
+    private const SALT = 'report-pdf-html-v2-grupos-fingerprint';
 
     public static function salt(): string
     {
         return self::SALT;
+    }
+
+    public static function registroMarker(int $registroId): string
+    {
+        return '<!-- report-pipeline-registro:' . max(0, $registroId) . ' -->';
+    }
+
+    public static function htmlMatchesRegistroId(string $html, int $registroId): bool
+    {
+        if ($registroId < 1) {
+            return true;
+        }
+
+        return str_contains($html, 'report-pipeline-registro:' . $registroId);
     }
 
     public function read(int $registroId, string $fingerprint): ?string
@@ -29,8 +43,17 @@ class ReportPdfHtmlCacheService
         }
 
         $html = file_get_contents($path);
+        if ($html === false || $html === '') {
+            return null;
+        }
 
-        return ($html !== false && $html !== '') ? $html : null;
+        if (! self::htmlMatchesRegistroId($html, $registroId)) {
+            $this->clear($registroId);
+
+            return null;
+        }
+
+        return $html;
     }
 
     public function write(int $registroId, string $fingerprint, string $html): void

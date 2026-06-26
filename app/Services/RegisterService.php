@@ -579,9 +579,13 @@ class RegisterService
         int $prianacategoriaId,
         array $cellValues,
         array $cellNumeros = [],
-        ?string $unidadGlobalRegistro = null
+        ?string $unidadGlobalRegistro = null,
+        bool $allowEmptyCells = false,
     ): ?object {
-        if ($prianacategoriaId < 1 || $cellValues === []) {
+        if ($prianacategoriaId < 1) {
+            return null;
+        }
+        if ($cellValues === [] && ! $allowEmptyCells) {
             return null;
         }
 
@@ -1524,6 +1528,170 @@ class RegisterService
     }
 
     /**
+     * Incluye en el reporte las pruebas del CSV de la orden que aún no tienen filas
+     * (p. ej. matriz personalizada/cultivo sin cv_* guardados, como en registers/view).
+     *
+     * @param array<string, list<object|array<string, mixed>>> $grupos
+     * @param array<int, int> $matchingPoblacionIds
+     *
+     * @return array<string, list<object|array<string, mixed>>>
+     */
+    protected function appendMissingPruebasFromRegistroOrder(
+        array $grupos,
+        string $pruebasCsv,
+        array $matchingPoblacionIds = [],
+        ?int $gender = null,
+    ): array {
+        $orderedIds = $this->extractPrianacategoriaIdsFromRegistroPruebas($pruebasCsv);
+        if ($orderedIds === []) {
+            return $grupos;
+        }
+
+        $presentPriaIds = $this->collectPrianacategoriaIdsFromGrupos($grupos);
+        $missingIds = array_values(array_filter(
+            $orderedIds,
+            static fn (int $id): bool => ! isset($presentPriaIds[$id]),
+        ));
+        if ($missingIds === []) {
+            return $grupos;
+        }
+
+        $cfgById = [];
+        foreach ($this->registerModel->getPrianacategoriaConfigByIds($missingIds, true) as $cfgRow) {
+            $pid = (int) ($cfgRow['prianacategoria_id'] ?? 0);
+            if ($pid > 0) {
+                $cfgById[$pid] = $cfgRow;
+            }
+        }
+
+        foreach ($missingIds as $priaId) {
+            $cfg = $cfgById[$priaId] ?? null;
+            if ($cfg === null) {
+                continue;
+            }
+
+            $compleja = (int) ($cfg['compleja'] ?? 0);
+            if (LabotestModel::esMatrizConfigurable($compleja)) {
+                $item = $this->buildCultivoMatrizReportItem($priaId, [], [], null, true);
+                if ($item === null) {
+                    continue;
+                }
+                $item->incluir_en_reporte_sin_valores = true;
+                $padre = trim((string) ($item->padre ?? ''));
+                if ($padre === '') {
+                    continue;
+                }
+                $grupos[$padre] ??= [];
+                $grupos[$padre][] = $item;
+                continue;
+            }
+
+            foreach ($this->buildPlaceholderItemsForMissingPrueba($priaId, $cfg, $matchingPoblacionIds, $gender) as $item) {
+                $item->incluir_en_reporte_sin_valores = true;
+                $padre = trim((string) ($item->padre ?? ''));
+                if ($padre === '') {
+                    continue;
+                }
+                $grupos[$padre] ??= [];
+                $grupos[$padre][] = $item;
+            }
+        }
+
+        return $grupos;
+    }
+
+    /**
+     * @param array<string, list<object|array<string, mixed>>> $grupos
+     *
+     * @return array<int, true>
+     */
+    protected function collectPrianacategoriaIdsFromGrupos(array $grupos): array
+    {
+        $out = [];
+        foreach ($grupos as $items) {
+            if (! is_array($items)) {
+                continue;
+            }
+            foreach ($items as $raw) {
+                $it = is_array($raw) ? (object) $raw : $raw;
+                $pid = (int) ($it->prianacategoria_id ?? 0);
+                if ($pid > 0) {
+                    $out[$pid] = true;
+                }
+            }
+        }
+
+        return $out;
+    }
+
+    /**
+     * Filas mínimas para una prueba de la orden sin resultados guardados aún.
+     *
+     * @param array<string, mixed> $cfg
+     * @param array<int, int> $matchingPoblacionIds
+     *
+     * @return list<object>
+     */
+    protected function buildPlaceholderItemsForMissingPrueba(
+        int $prianacategoriaId,
+        array $cfg,
+        array $matchingPoblacionIds = [],
+        ?int $gender = null,
+    ): array {
+        $compleja = (int) ($cfg['compleja'] ?? 0);
+        if ($compleja === LabotestModel::COMPLEJA_COMPOUESTA) {
+            $refs = $this->registerModel->getAllSecItemsByPrianacategoriaForReport(
+                $prianacategoriaId,
+                $matchingPoblacionIds,
+                $gender,
+            );
+            if ($refs === []) {
+                return $this->buildSinglePruebaPlaceholderItem($prianacategoriaId, $cfg);
+            }
+            $out = [];
+            foreach ($refs as $ref) {
+                $item = (object) $ref;
+                $item->regvalues = ((int) ($ref['es_separador'] ?? 0) === 1) ? '-' : '-';
+                $this->applyTextoFijoRegvalueForReport($item);
+                $out[] = $item;
+            }
+
+            return $out;
+        }
+
+        return $this->buildSinglePruebaPlaceholderItem($prianacategoriaId, $cfg);
+    }
+
+    /**
+     * @param array<string, mixed> $cfg
+     *
+     * @return list<object>
+     */
+    protected function buildSinglePruebaPlaceholderItem(int $prianacategoriaId, array $cfg): array
+    {
+        $meta = $this->registerModel->getPrianacategoriaWithArea($prianacategoriaId)
+            ?? $this->registerModel->getPrianacategoriaWithAreaIncludingRetired($prianacategoriaId);
+        if ($meta === null) {
+            return [];
+        }
+
+        $hijo = trim((string) ($cfg['name'] ?? ($meta->hijo ?? '')));
+        $padre = trim((string) ($meta->padre ?? ''));
+        if ($padre === '' || $hijo === '') {
+            return [];
+        }
+
+        return [(object) [
+            'prianacategoria_id' => $prianacategoriaId,
+            'padre'              => $padre,
+            'hijo'               => $hijo,
+            'nombre'             => $hijo,
+            'regvalues'          => '-',
+            'orden'              => 0,
+        ]];
+    }
+
+    /**
      * @param array<string, list<object|array<string, mixed>>> $grupos
      * @return array<string, list<object|array<string, mixed>>>
      */
@@ -1549,10 +1717,16 @@ class RegisterService
                 continue;
             }
             if (! empty($it->es_cultivo_matriz)) {
+                if (! empty($it->incluir_en_reporte_sin_valores)) {
+                    return true;
+                }
                 if ($this->cultivoMatrizTieneValores(is_array($it->cultivo_valores ?? null) ? $it->cultivo_valores : [])) {
                     return true;
                 }
                 continue;
+            }
+            if (! empty($it->incluir_en_reporte_sin_valores)) {
+                return true;
             }
             if ($considerarShowReference && !empty($it->show_reference)) {
                 return true;
@@ -2331,6 +2505,12 @@ class RegisterService
 
         $grupos = $this->buildGruposParaReporte($registroId, $analisis, $matchingPoblacionIds, $patientGender);
         $grupos = $this->mergeSeparadoresYOrdenCompuestoDesdePlantilla($grupos, $matchingPoblacionIds, $patientGender);
+        $grupos = $this->appendMissingPruebasFromRegistroOrder(
+            $grupos,
+            (string) ($registerInfo->pruebas ?? ''),
+            $matchingPoblacionIds,
+            $patientGender,
+        );
         $pruebasIds = $this->extractPrianacategoriaIdsFromRegistroPruebas((string)($registerInfo->pruebas ?? ''));
         foreach ($analisis as $rvRow) {
             $rvName = trim((string) ($rvRow['name'] ?? ''));
@@ -2821,8 +3001,15 @@ class RegisterService
         string $qrDataUri,
         string $reportEmitidoEn = '',
         ?array $pdfLayoutOverride = null,
+        ?int $expectedRegistroId = null,
     ): string {
-        $registroId    = $this->registroIdFromReportData($reportData);
+        $registroId = $this->registroIdFromReportData($reportData);
+        if ($expectedRegistroId !== null && $expectedRegistroId > 0) {
+            if ($registroId !== $expectedRegistroId) {
+                $this->clearReportPdfPreviewCache($expectedRegistroId);
+            }
+            $registroId = $expectedRegistroId;
+        }
         $layoutService = new ReportPdfLayoutService();
         $pdfLayout     = $pdfLayoutOverride ?? $layoutService->getActiveLayoutForRender();
         if ($reportEmitidoEn === '') {
@@ -3002,6 +3189,7 @@ class RegisterService
         $parts[] = (string) (config('Pdf')->renderer ?? 'mpdf');
         $parts[] = self::reportPdfEngineCacheRevision();
         $parts[] = self::REPORT_PDF_PREVIEW_CACHE_SALT;
+        array_push($parts, ...$this->reportPdfPreviewFingerprintExtraParts($registroId, $reportData));
 
         return hash('sha256', implode("\n", $parts));
     }
@@ -3036,8 +3224,74 @@ class RegisterService
         $parts[] = (string) (config('Pdf')->renderer ?? 'mpdf');
         $parts[] = self::reportPdfEngineCacheRevision();
         $parts[] = self::REPORT_PDF_PREVIEW_CACHE_SALT;
+        array_push($parts, ...$this->reportPdfPreviewFingerprintExtraParts($registroId));
 
         return hash('sha256', implode("\n", $parts));
+    }
+
+    /**
+     * Fragmentos extra de huella PDF/HTML: pruebas del registro, resumen de grupos y salt HTML.
+     *
+     * @param array<string, mixed> $reportData
+     *
+     * @return list<string>
+     */
+    private function reportPdfPreviewFingerprintExtraParts(int $registroId, array $reportData = []): array
+    {
+        $parts = [];
+
+        $info = $reportData['register_info'] ?? null;
+        if (is_object($info)) {
+            $parts[] = 'pruebas=' . trim((string) ($info->pruebas ?? ''));
+        } else {
+            $refill = $this->registerModel->getInfoRefill($registroId);
+            $parts[] = 'pruebas=' . trim((string) ($refill->pruebas ?? ''));
+        }
+
+        $grupos = $reportData['grupos'] ?? null;
+        if (! is_array($grupos) || $grupos === []) {
+            $dataCache = $this->reportDataCacheService();
+            $dataFp    = $dataCache->computeFingerprint($registroId);
+            $cachedData = $dataCache->read($registroId, $dataFp);
+            if (is_array($cachedData)) {
+                $grupos = $cachedData['grupos'] ?? [];
+            }
+        }
+        if (is_array($grupos) && $grupos !== []) {
+            $parts[] = $this->reportPdfGruposFingerprintPart($grupos);
+        }
+
+        $parts[] = \App\Services\Report\ReportPdfHtmlCacheService::salt();
+
+        return $parts;
+    }
+
+    /**
+     * @param array<string, list<object|array<string, mixed>>> $grupos
+     */
+    private function reportPdfGruposFingerprintPart(array $grupos): string
+    {
+        $lines = [];
+        foreach ($grupos as $padre => $items) {
+            if (! is_array($items)) {
+                continue;
+            }
+            foreach ($items as $it) {
+                $o = is_array($it) ? (object) $it : $it;
+                $lines[] = trim((string) $padre)
+                    . '|' . trim((string) ($o->hijo ?? ''))
+                    . '|' . trim((string) ($o->regvalues ?? ''))
+                    . '|' . (int) ($o->prianacategoria_id ?? 0);
+            }
+        }
+
+        if ($lines === []) {
+            return 'grupos=empty';
+        }
+
+        sort($lines);
+
+        return 'grupos=' . hash('sha256', implode("\n", $lines));
     }
 
     /**

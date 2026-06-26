@@ -177,7 +177,7 @@ final class MpdfFontMapper
 
     /**
      * mPDF pinta mal títulos en negrita cuando font-family inline queda como dejavusans (slug interno).
-     * Comillas simples dentro de style="" para no cortar el atributo.
+     * Comillas simples dentro de style="" para no cortar el atributo HTML.
      */
     private static function restoreHumanFontFamiliesInInlineStyle(string $style): string
     {
@@ -185,11 +185,33 @@ final class MpdfFontMapper
             '/font-family\s*:\s*([^;}{]+)/i',
             static function (array $m): string {
                 $raw = trim($m[1]);
-                if (preg_match('/\bdejavusansb?\b/i', $raw)) {
-                    return 'font-family:\'DejaVu Sans\',sans-serif';
+                $importantSuffix = '';
+                if (preg_match('/\s*!important\s*$/i', $raw)) {
+                    $raw = preg_replace('/\s*!important\s*$/i', '', $raw);
+                    $importantSuffix = ' !important';
                 }
 
-                return 'font-family:' . $raw;
+                if (preg_match('/\bdejavusansb?\b/i', $raw)) {
+                    return 'font-family:\'DejaVu Sans\',sans-serif' . $importantSuffix;
+                }
+
+                $parts = preg_split('/\s*,\s*/', $raw) ?: [];
+                $normalized = [];
+                foreach ($parts as $part) {
+                    $part = trim(str_replace(['"', "'"], '', $part));
+                    if ($part === '') {
+                        continue;
+                    }
+                    $normalized[] = str_contains($part, ' ')
+                        ? "'" . $part . "'"
+                        : $part;
+                }
+
+                if ($normalized === []) {
+                    return 'font-family:\'DejaVu Sans\',sans-serif' . $importantSuffix;
+                }
+
+                return 'font-family:' . implode(',', $normalized) . $importantSuffix;
             },
             $style,
         ) ?? $style;

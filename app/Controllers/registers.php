@@ -861,6 +861,7 @@ class Registers extends SecureArea
                 $qrDataUri,
                 $emitidoEn,
                 $pdfLayoutForPrint,
+                $id,
             );
         }
 
@@ -1137,6 +1138,7 @@ class Registers extends SecureArea
             $qrDataUri,
             $emitidoEn,
             $qrLayout,
+            $id,
         );
 
         $this->registerService->writeReportPdfPreviewCache($id, $fingerprint, $pdfBinary);
@@ -1182,8 +1184,11 @@ class Registers extends SecureArea
         return $this->response
             ->setHeader('Content-Type', 'application/pdf')
             ->setHeader('Content-Disposition', $disposition . '; filename="' . $filename . '"')
-            ->setHeader('Cache-Control', 'private, max-age=3600, must-revalidate')
+            ->setHeader('Cache-Control', $disposition === 'inline'
+                ? 'private, no-cache, must-revalidate'
+                : 'private, max-age=3600, must-revalidate')
             ->setHeader('ETag', $etag)
+            ->setHeader('X-Report-Registro-Id', (string) $registroId)
             ->setHeader('X-Report-Pdf-Cache', $cacheHeader)
             ->setHeader('X-Pdf-Engine', $engineHeader)
             ->setBody($pdfBinary);
@@ -2508,7 +2513,7 @@ class Registers extends SecureArea
         $qrDataUri = qr_base64($reportUrl, $qrPx);
         $emitidoEn = $this->registerService->reportEmitidoEnForView($id);
         $filename   = 'Resultados_' . preg_replace('/\s+/', '_', $pacienteNombre) . '_' . $id . '.pdf';
-        $pdfContent = $this->registerService->generateReportPdfBinary($data, $reportUrl, $qrDataUri, $emitidoEn, $qrLayout);
+        $pdfContent = $this->registerService->generateReportPdfBinary($data, $reportUrl, $qrDataUri, $emitidoEn, $qrLayout, $id);
 
         $token = bin2hex(random_bytes(16));
         $tempDir = WRITEPATH . 'temp' . DIRECTORY_SEPARATOR;

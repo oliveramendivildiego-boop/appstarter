@@ -3,7 +3,8 @@
 
 <?= $this->section('head_extra') ?>
 <?php if (! empty($grupos ?? [])): ?>
-<link rel="preload" href="<?= esc(site_url('registers/pdf/' . (int) ($labotests_namecate ?? 0) . '?inline=1&v=' . rawurlencode(\App\Libraries\Pdf\HtmlMpdfAdapter::CACHE_REVISION)), 'attr') ?>" as="fetch" crossorigin="use-credentials">
+<?php $ridPdfPreload = (int) ($labotests_namecate ?? 0); ?>
+<link rel="preload" href="<?= esc(site_url('registers/pdf/' . $ridPdfPreload . '?inline=1&v=' . rawurlencode(\App\Libraries\Pdf\HtmlMpdfAdapter::CACHE_REVISION) . '&rid=' . $ridPdfPreload), 'attr') ?>" as="fetch" crossorigin="use-credentials">
 <?php endif; ?>
 <style>
 .viewreport-actions-bar {
@@ -137,7 +138,7 @@ $lblComp = ! empty($sin_billing_enabled ?? false) ? 'Factura' : 'Recibo (PDF)';
 <?= view('registers/partials/report_viewreport_hidden_analisis', ['grupos' => $grupos]) ?>
 <?= view('registers/partials/report_pdf_native_viewer', [
     'ridPdf'  => $ridPdf,
-    'pdf_url' => site_url('registers/pdf/' . $ridPdf . '?inline=1&v=' . rawurlencode(\App\Libraries\Pdf\HtmlMpdfAdapter::CACHE_REVISION)),
+    'pdf_url' => site_url('registers/pdf/' . $ridPdf . '?inline=1&v=' . rawurlencode(\App\Libraries\Pdf\HtmlMpdfAdapter::CACHE_REVISION) . '&rid=' . $ridPdf),
 ]) ?>
 <?= view('registers/partials/report_viewreport_actions_bar', [
     'ridPdf'                   => $ridPdf,

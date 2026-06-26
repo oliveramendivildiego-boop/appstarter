@@ -2176,7 +2176,9 @@ body.pdf-engine-mpdf .lab-firmas-pdf-block .pdf-cell--right .header-piece-pagina
     padding-bottom:0px !important;
 }
 .pdf-rs-block .report-pdf-grupo-cabecera-line--tipo,
-.pdf-rs-block .report-pdf-grupo-cabecera-line--metodo {
+.pdf-rs-block .report-pdf-grupo-cabecera-line--metodo,
+.pdf-rs-block .report-pdf-grupo-cabecera .report-tipo-muestra,
+.pdf-rs-block .report-pdf-grupo-cabecera .report-metodo-prueba {
     font-family:dejavusans;
     font-size:8.5pt !important;
     font-weight:normal !important;
@@ -2187,11 +2189,13 @@ body.pdf-engine-mpdf .lab-firmas-pdf-block .pdf-cell--right .header-piece-pagina
     text-shadow:none !important;
     color:#333333 !important;
 }
-.pdf-rs-block .report-pdf-grupo-cabecera-line--tipo {
+.pdf-rs-block .report-pdf-grupo-cabecera-line--tipo,
+.pdf-rs-block .report-pdf-grupo-cabecera .report-tipo-muestra {
     padding-top:2px !important;
     padding-bottom:2px !important;
 }
-.pdf-rs-block .report-pdf-grupo-cabecera-line--metodo {
+.pdf-rs-block .report-pdf-grupo-cabecera-line--metodo,
+.pdf-rs-block .report-pdf-grupo-cabecera .report-metodo-prueba {
     padding-top:5px !important;
     padding-bottom:10px !important;
 }
@@ -2284,155 +2288,6 @@ table.results td .report-interpretacion-icon-normal,
 }
 </style>
 <style>
-/* mPDF footer (plantilla) */
-.mpdf-ft-root,
-.pdf-ft-block.footer-grid.mpdf-ft-root {
-    margin: 0;
-    padding: 8px 0 0 0;
-    background: transparent;
-    box-sizing: border-box;
-    width: 100%;
-    font-family:dejavusans, sans-serif;
-    font-size: 7pt;
-    line-height: 1.35;
-    color: #383938;
-}
-.mpdf-ft-root .mpdf-ft-table,
-.pdf-ft-block.footer-grid.mpdf-ft-root .pdf-section-table {
-    width: 100%;
-    table-layout: fixed;
-    border-collapse: collapse;
-    margin: 0;
-    border-top:2px solid #236149;
-}
-.mpdf-ft-root .mpdf-ft-table td.mpdf-ft-cell,
-.pdf-ft-block.footer-grid.mpdf-ft-root .pdf-section-table td.mpdf-ft-cell {
-    vertical-align: top;
-    padding: 0 2px;
-    line-height: 1.35;
-    overflow-wrap: break-word;
-    word-wrap: break-word;
-    word-break: break-word;
-    white-space: normal;
-    box-sizing: border-box;
-}
-.mpdf-ft-root .pdf-ft-piece,
-.mpdf-ft-root .pdf-ft-piece p,
-.pdf-ft-block.footer-grid.mpdf-ft-root .pdf-ft-piece,
-.pdf-ft-block.footer-grid.mpdf-ft-root .pdf-ft-piece p {
-    overflow-wrap: break-word;
-    word-wrap: break-word;
-    word-break: break-word;
-    white-space: normal;
-    max-width: 100%;
-}
-.mpdf-ft-root .mpdf-ft-stack,
-.pdf-ft-block.footer-grid.mpdf-ft-root .pdf-ft-stack-table {
-    width: 100%;
-    border-collapse: collapse;
-    table-layout: fixed;
-    margin: 0;
-}
-.mpdf-ft-root .mpdf-ft-stack td,
-.pdf-ft-block.footer-grid.mpdf-ft-root .pdf-ft-stack-table td {
-    padding: 0;
-    vertical-align: top;
-    border: 0;
-    overflow-wrap: break-word;
-    word-wrap: break-word;
-    word-break: break-word;
-    white-space: normal;
-}
-.mpdf-ft-root .pdf-ft-piece p,
-.mpdf-ft-root .mpdf-ft-piece,
-.pdf-ft-block.footer-grid.mpdf-ft-root .pdf-ft-piece {
-    margin: 0;
-}
-.mpdf-ft-root .pdf-ft-pagination p,
-.pdf-ft-block.footer-grid.mpdf-ft-root .pdf-ft-pagination p {
-    margin: 0;
-    white-space: nowrap;
-}
-.mpdf-ft-root .pdf-ft-pagination-label,
-.mpdf-ft-root .pdf-ft-pagination-num,
-.pdf-ft-block.footer-grid.mpdf-ft-root .pdf-ft-pagination-label,
-.pdf-ft-block.footer-grid.mpdf-ft-root .pdf-ft-pagination-num {
-    display: inline;
-    white-space: nowrap;
-    vertical-align: baseline;
-}
-.mpdf-ft-root .mpdf-order-sheet-row td,
-.pdf-ft-block.footer-grid.mpdf-ft-root .mpdf-order-sheet-row td {
-    font-family:dejavusans, sans-serif;
-    font-size: 9pt;
-    font-weight: bold;
-    color: #333333;
-    white-space: nowrap;
-    border-bottom: 1px solid #cccccc;
-    padding-bottom: 4px;
-    vertical-align: middle;
-}
-.mpdf-ft-root .mpdf-order-sheet-patient,
-.pdf-ft-block.footer-grid.mpdf-ft-root .mpdf-order-sheet-patient {
-    text-align: left !important;
-    padding-left: 0 !important;
-    padding-right: 0 !important;
-}
-.mpdf-ft-root .mpdf-order-sheet-order,
-.pdf-ft-block.footer-grid.mpdf-ft-root .mpdf-order-sheet-order {
-    text-align: right !important;
-    padding-left: 0 !important;
-    padding-right: 0 !important;
-}
-/* mPDF pie: anchos de columna y alineación */
-.mpdf-ft-root table.mpdf-ft-table[data-pdf-cols="5"] > colgroup > col { width: 20%; }
-.mpdf-ft-root table.mpdf-ft-table[data-pdf-cols="5"] > tbody > tr > td.mpdf-ft-cell:not([colspan]) { width: 20% !important; max-width: 20% !important; }
-.mpdf-ft-root table.mpdf-ft-table[data-pdf-cols="5"] > tbody > tr > td.mpdf-ft-cell[colspan="2"] { width: 40% !important; max-width: 40% !important; }
-.mpdf-ft-root table.mpdf-ft-table[data-pdf-cols="5"] > tbody > tr > td.mpdf-ft-cell[colspan="3"] { width: 60% !important; max-width: 60% !important; }
-.mpdf-ft-root table.mpdf-ft-table[data-pdf-cols="5"] > tbody > tr > td.mpdf-ft-cell[colspan="4"] { width: 80% !important; max-width: 80% !important; }
-.mpdf-ft-root table.mpdf-ft-table[data-pdf-cols="5"] > tbody > tr > td.mpdf-ft-cell[colspan="5"] { width: 100% !important; max-width: 100% !important; }
-.mpdf-ft-root td.pdf-cell--left,
-.mpdf-ft-root td.pdf-cell--h-left,
-.mpdf-ft-root td.pdf-cell-stack-item.pdf-cell--h-left,
-.mpdf-ft-root td[align="left"] { text-align: left !important; }
-.mpdf-ft-root td.pdf-cell--left .pdf-ft-piece,
-.mpdf-ft-root td.pdf-cell--h-left .pdf-ft-piece,
-.mpdf-ft-root td[align="left"] .pdf-ft-piece,
-.mpdf-ft-root td.pdf-cell--left .pdf-ft-piece p,
-.mpdf-ft-root td.pdf-cell--h-left .pdf-ft-piece p,
-.mpdf-ft-root td[align="left"] .pdf-ft-piece p { text-align: left !important; }
-.mpdf-ft-root td.pdf-cell--center,
-.mpdf-ft-root td.pdf-cell--h-center,
-.mpdf-ft-root td.pdf-cell-stack-item.pdf-cell--h-center,
-.mpdf-ft-root td[align="center"] { text-align: center !important; }
-.mpdf-ft-root td.pdf-cell--center .pdf-ft-piece,
-.mpdf-ft-root td.pdf-cell--h-center .pdf-ft-piece,
-.mpdf-ft-root td[align="center"] .pdf-ft-piece,
-.mpdf-ft-root td.pdf-cell--center .pdf-ft-piece p,
-.mpdf-ft-root td.pdf-cell--h-center .pdf-ft-piece p,
-.mpdf-ft-root td[align="center"] .pdf-ft-piece p { text-align: center !important; }
-.mpdf-ft-root td.pdf-cell--right,
-.mpdf-ft-root td.pdf-cell--h-right,
-.mpdf-ft-root td.pdf-cell-stack-item.pdf-cell--h-right,
-.mpdf-ft-root td[align="right"] { text-align: right !important; }
-.mpdf-ft-root td.pdf-cell--right .pdf-ft-piece,
-.mpdf-ft-root td.pdf-cell--h-right .pdf-ft-piece,
-.mpdf-ft-root td[align="right"] .pdf-ft-piece,
-.mpdf-ft-root td.pdf-cell--right .pdf-ft-piece p,
-.mpdf-ft-root td.pdf-cell--h-right .pdf-ft-piece p,
-.mpdf-ft-root td[align="right"] .pdf-ft-piece p { text-align: right !important; }
-
-/* mPDF pie: 3 columnas lógicas 40/20/40 (tabla simplificada) */
-.mpdf-ft-root table.mpdf-ft-table[data-pdf-cols="3"] > colgroup > col:nth-child(1) { width: 40% !important; }
-.mpdf-ft-root table.mpdf-ft-table[data-pdf-cols="3"] > colgroup > col:nth-child(2) { width: 20% !important; }
-.mpdf-ft-root table.mpdf-ft-table[data-pdf-cols="3"] > colgroup > col:nth-child(3) { width: 40% !important; }
-.mpdf-ft-root table.mpdf-ft-table[data-pdf-cols="3"] > tbody > tr:not(.mpdf-order-sheet-row) > td.mpdf-ft-cell:nth-child(1) { width: 40% !important; max-width: 40% !important; }
-.mpdf-ft-root table.mpdf-ft-table[data-pdf-cols="3"] > tbody > tr:not(.mpdf-order-sheet-row) > td.mpdf-ft-cell:nth-child(2) { width: 20% !important; max-width: 20% !important; }
-.mpdf-ft-root table.mpdf-ft-table[data-pdf-cols="3"] > tbody > tr:not(.mpdf-order-sheet-row) > td.mpdf-ft-cell:nth-child(3) { width: 40% !important; max-width: 40% !important; }
-.mpdf-ft-root table.mpdf-ft-table[data-pdf-cols="3"] > tbody > tr.mpdf-order-sheet-row > td.mpdf-order-sheet-patient { width: 40% !important; max-width: 40% !important; }
-.mpdf-ft-root table.mpdf-ft-table[data-pdf-cols="3"] > tbody > tr.mpdf-order-sheet-row > td.mpdf-order-sheet-order { width: 60% !important; max-width: 60% !important; }
-</style>
-<style>
 /* mPDF: paridad con plantilla PDF fija */
 body.pdf-engine-mpdf .pdf-pagination-line::before,
 body.pdf-engine-mpdf .pdf-ft-pagination-num::before,
@@ -2520,66 +2375,8 @@ body.pdf-engine-mpdf .report-pdf-grupo-cabecera + .report-segment-table-wrap tab
 body.pdf-engine-mpdf .report-pdf-grupo-cabecera + .report-refs-matrix-wrap table.results {
     margin-top: 0 !important;
 }
-body.pdf-engine-mpdf .report-pdf-grupo-cabecera-line--title,
-body.pdf-engine-mpdf .report-pdf-grupo-cabecera-table .group-title,
-body.pdf-engine-mpdf .report-pdf-grupo-cabecera .group-title.report-pdf-grupo-cabecera-line--title {
-    display: block !important;
-    box-sizing: border-box !important;
-    width: 100% !important;
-    margin: 0 !important;
-    font-family:dejavusans;
-    font-size: 12pt !important;
-    font-weight: bold !important;
-    color: #333333 !important;
-    line-height: 1.2 !important;
-    text-shadow: none !important;
-}
-body.pdf-engine-mpdf .report-pdf-grupo-cabecera-line--tipo,
-body.pdf-engine-mpdf .report-pdf-grupo-cabecera-line--metodo,
-body.pdf-engine-mpdf .report-pdf-grupo-cabecera-table .report-tipo-muestra,
-body.pdf-engine-mpdf .report-pdf-grupo-cabecera-table .report-metodo-prueba,
-body.pdf-engine-mpdf .report-pdf-grupo-cabecera .report-tipo-muestra,
-body.pdf-engine-mpdf .report-pdf-grupo-cabecera .report-metodo-prueba {
-    display: block !important;
-    box-sizing: border-box !important;
-    width: 100% !important;
-    margin: 0 !important;
-    font-family:dejavusans;
-    font-size: 8.5pt !important;
-    font-weight: normal !important;
-    font-style: normal !important;
-    text-transform: none !important;
-    letter-spacing: 0em !important;
-    line-height: 1.1 !important;
-    text-shadow: none !important;
-    color: #333333 !important;
-}
-body.pdf-engine-mpdf .report-pdf-grupo-cabecera-table .report-pdf-grupo-cabecera-line--title,
-body.pdf-engine-mpdf .report-pdf-grupo-cabecera .report-pdf-grupo-cabecera-line--title {
-    padding-top: 0px !important;
-    padding-bottom: 0px !important;
-}
-body.pdf-engine-mpdf .report-pdf-grupo-cabecera-table .report-pdf-grupo-cabecera-line--tipo,
-body.pdf-engine-mpdf .report-pdf-grupo-cabecera .report-pdf-grupo-cabecera-line--tipo {
-    padding-top: 2px !important;
-    padding-bottom: 2px !important;
-}
-body.pdf-engine-mpdf .report-pdf-grupo-cabecera-table .report-pdf-grupo-cabecera-line--metodo,
-body.pdf-engine-mpdf .report-pdf-grupo-cabecera .report-pdf-grupo-cabecera-line--metodo {
-    padding-top: 5px !important;
-    padding-bottom: 10px !important;
-}
-body.pdf-engine-mpdf .report-pdf-grupo-cabecera-table .report-pdf-grupo-cabecera-line--last,
-body.pdf-engine-mpdf .report-pdf-grupo-cabecera .report-pdf-grupo-cabecera-line--last {
-    padding-bottom: 10px !important;
-}
 body.pdf-engine-mpdf .report-pdf-grupo-prueba:not(.report-pdf-grupo-prueba-first) {
     margin-top: 0 !important;
-    padding-top: 5px !important;
-}
-body.pdf-engine-mpdf .report-pdf-subgrupo-block.report-pdf-subgrupo-prueba {
-    margin-top: 0 !important;
-    padding-top: 5px !important;
 }
 body.pdf-engine-mpdf.pdf-layout-engine .report-pdf-grupo-area-separator,
 body.pdf-engine-mpdf.pdf-dompdf-download .report-pdf-grupo-area-separator {
@@ -2604,21 +2401,12 @@ body.pdf-engine-mpdf.pdf-dompdf-download .report-pdf-grupo-cabecera-line--title,
 body.pdf-engine-mpdf.pdf-dompdf-download .report-pdf-grupo-cabecera .group-title.report-pdf-grupo-cabecera-line--title {
     page-break-after: auto !important;
     break-after: auto !important;
-    min-height: 1.2em !important;
     overflow: visible !important;
-    background-color: #ffffff !important;
-    position: relative !important;
-    z-index: 2 !important;
 }
 body.pdf-engine-mpdf.pdf-layout-engine .report-pdf-grupo-cabecera + .report-segment-table-wrap,
 body.pdf-engine-mpdf.pdf-dompdf-download .report-pdf-grupo-cabecera + .report-segment-table-wrap {
     page-break-before: auto !important;
     break-before: auto !important;
-}
-body.pdf-engine-mpdf .report-segment-table-wrap table.results,
-body.pdf-engine-mpdf .pdf-rs-block table.results:not(.pdf-notes-table):not(.report-refs-matrix) {
-    margin-top: 5px !important;
-    margin-bottom: 5px !important;
 }
 body.pdf-engine-mpdf .pdf-rs-block table.results:not(.pdf-notes-table):not(.report-refs-matrix) th,
 body.pdf-engine-mpdf .pdf-rs-block table.results:not(.pdf-notes-table):not(.report-refs-matrix) td {
@@ -2631,6 +2419,7 @@ body.pdf-engine-mpdf .report-refs-matrix-wrap > .report-refs-matrix-title {
 </head>
 <body class="pdf-layout-engine pdf-pagination-area-soft-fit-signature pdf-dompdf-download pdf-engine-mpdf">
 
+
 <div class="pdf-main-stack">
 <div class="header header-grid pdf-hg-block">
 <table class="pdf-section-table" width="100%" data-pdf-lh="1" data-pdf-cols="5" style="table-layout:fixed;border-collapse:collapse;line-height:1.35;">
@@ -2642,12 +2431,12 @@ body.pdf-engine-mpdf .report-refs-matrix-wrap > .report-refs-matrix-title {
     <col style="width:20%;" />
 </colgroup>
     <tr class="pdf-section-row" data-pdf-row="0">
-        <td class="pdf-cell pdf-cell--center pdf-cell--h-center pdf-cell--v-middle pdf-cell--has-explicit-height" colspan="3" align="center" valign="middle" height="70" style="width:60%;line-height:1.35;text-align:center !important;vertical-align:middle !important;padding:0 6px;font-family:"DejaVu Sans";font-size:15pt;font-weight:bold;color:#2E8B62;font-style:normal;text-transform:uppercase;letter-spacing:0em;line-height:1.35;text-shadow:none;;height:70px;">
+        <td class="pdf-cell pdf-cell--center pdf-cell--h-center pdf-cell--v-middle pdf-cell--has-explicit-height" colspan="3" align="center" valign="middle" height="70" style="width:60%;line-height:1.35;text-align:center !important;vertical-align:middle !important;padding:0 6px;font-family:'DejaVu Sans';font-size:15pt;font-weight:bold;color:#2E8B62;font-style:normal;text-transform:uppercase;letter-spacing:0em;line-height:1.35;text-shadow:none;;height:70px;">
                             <div class="header-piece header-piece-company">
-                                        <h1 style="font-family:"DejaVu Sans";font-size:15pt;font-weight:bold;color:#2E8B62;font-style:normal;text-transform:uppercase;letter-spacing:0em;line-height:1.35;text-shadow:none;;margin:0;">Laboratorio Quantum S.R.L.</h1>
+                                        <h1 style="font-family:'DejaVu Sans';font-size:15pt;font-weight:bold;color:#2E8B62;font-style:normal;text-transform:uppercase;letter-spacing:0em;line-height:1.35;text-shadow:none;;margin:0;">Laboratorio Quantum S.R.L.</h1>
                                     </div>
                 </td>
-        <td class="pdf-cell pdf-cell--left pdf-cell--h-left pdf-cell--v-top" colspan="2" align="left" valign="top" style="width:40%;line-height:1.35;text-align:left !important;vertical-align:top !important;padding:0 6px;font-family:"DejaVu Sans";font-size:10pt;font-weight:normal;color:#333333;font-style:normal;text-transform:none;letter-spacing:0em;line-height:1.35;text-shadow:none;;">
+        <td class="pdf-cell pdf-cell--left pdf-cell--h-left pdf-cell--v-top" colspan="2" align="left" valign="top" style="width:40%;line-height:1.35;text-align:left !important;vertical-align:top !important;padding:0 6px;font-family:'DejaVu Sans';font-size:10pt;font-weight:normal;color:#333333;font-style:normal;text-transform:none;letter-spacing:0em;line-height:1.35;text-shadow:none;;">
                             <div class="header-piece header-piece-logo">
                                                                                 <img src="C:/wamp64/www/laboratorio/public/images/logo-lab-7410202fa8ffc708.png" alt="Logo" style="width:238px;height:70px;max-width:100%;display:block;box-sizing:border-box;margin-left:0;margin-right:auto;">
                                                         </div>
@@ -2664,61 +2453,61 @@ body.pdf-engine-mpdf .report-refs-matrix-wrap > .report-refs-matrix-title {
 </colgroup>
     <tr class="pdf-section-row" data-pdf-row="0">
         <td class="pdf-cell pdf-cell--left" align="left" valign="top" style="width:50%;line-height:1.35;text-align:left !important;vertical-align:top !important;padding:0 6px;">
-            <table class="pdf-cell-stack-table" width="100%" cellpadding="0" cellspacing="0" style="table-layout:fixed;width:100%;border-collapse:collapse;"><tr><td class="pdf-cell pdf-cell-stack-item pdf-cell--left pdf-cell--h-left pdf-cell--v-top" align="left" valign="top" style="padding:0;border:0;line-height:inherit;text-align:left !important;vertical-align:top !important;font-family:"DejaVu Sans";font-size:10pt;font-weight:normal;color:#333333;font-style:normal;text-transform:none;letter-spacing:0em;line-height:1.35;text-shadow:none;;">                <div class="patient-line" style="padding-top:0px;padding-bottom:0px;">
-                                            <span class="label" style="margin-right:0px;color:#333333;font-family:"DejaVu Sans";font-size:9.5pt;font-weight:bold;font-style:normal;text-transform:none;line-height:1.35">Paciente:</span>
-                                        <span style="font-family:"DejaVu Sans";font-size:10pt;font-weight:normal;color:#333333;font-style:normal;text-transform:none;letter-spacing:0em;line-height:1.35;text-shadow:none;">DELIA  MAMANI SUYO</span>
+            <table class="pdf-cell-stack-table" width="100%" cellpadding="0" cellspacing="0" style="table-layout:fixed;width:100%;border-collapse:collapse;"><tr><td class="pdf-cell pdf-cell-stack-item pdf-cell--left pdf-cell--h-left pdf-cell--v-top" align="left" valign="top" style="padding:0;border:0;line-height:inherit;text-align:left !important;vertical-align:top !important;font-family:'DejaVu Sans';font-size:10pt;font-weight:normal;color:#333333;font-style:normal;text-transform:none;letter-spacing:0em;line-height:1.35;text-shadow:none;;">                <div class="patient-line" style="padding-top:0px;padding-bottom:0px;">
+                                            <span class="label" style="margin-right:0px;color:#333333;font-family:'DejaVu Sans';font-size:9.5pt;font-weight:bold;font-style:normal;text-transform:none;line-height:1.35">Paciente:</span>
+                                        <span style="font-family:'DejaVu Sans';font-size:10pt;font-weight:normal;color:#333333;font-style:normal;text-transform:none;letter-spacing:0em;line-height:1.35;text-shadow:none;">DELIA  MAMANI SUYO</span>
                 </div>
-        </td></tr><tr><td class="pdf-cell pdf-cell-stack-item pdf-cell--left pdf-cell--h-left pdf-cell--v-top" align="left" valign="top" style="padding:0;border:0;line-height:inherit;text-align:left !important;vertical-align:top !important;font-family:"DejaVu Sans";font-size:10pt;font-weight:normal;color:#333333;font-style:normal;text-transform:none;letter-spacing:0em;line-height:1.35;text-shadow:none;;padding-top:2px;">                <div class="patient-line" style="padding-top:0px;padding-bottom:0px;">
-                                            <span class="label" style="margin-right:0px;color:#333333;font-family:"DejaVu Sans";font-size:9.5pt;font-weight:bold;font-style:normal;text-transform:none;line-height:1.35">Género:</span>
-                                        <span style="font-family:"DejaVu Sans";font-size:10pt;font-weight:normal;color:#333333;font-style:normal;text-transform:none;letter-spacing:0em;line-height:1.35;text-shadow:none;">Femenino</span>
+        </td></tr><tr><td class="pdf-cell pdf-cell-stack-item pdf-cell--left pdf-cell--h-left pdf-cell--v-top" align="left" valign="top" style="padding:0;border:0;line-height:inherit;text-align:left !important;vertical-align:top !important;font-family:'DejaVu Sans';font-size:10pt;font-weight:normal;color:#333333;font-style:normal;text-transform:none;letter-spacing:0em;line-height:1.35;text-shadow:none;;padding-top:2px;">                <div class="patient-line" style="padding-top:0px;padding-bottom:0px;">
+                                            <span class="label" style="margin-right:0px;color:#333333;font-family:'DejaVu Sans';font-size:9.5pt;font-weight:bold;font-style:normal;text-transform:none;line-height:1.35">Género:</span>
+                                        <span style="font-family:'DejaVu Sans';font-size:10pt;font-weight:normal;color:#333333;font-style:normal;text-transform:none;letter-spacing:0em;line-height:1.35;text-shadow:none;">Femenino</span>
                 </div>
-        </td></tr><tr><td class="pdf-cell pdf-cell-stack-item pdf-cell--left pdf-cell--h-left pdf-cell--v-top" align="left" valign="top" style="padding:0;border:0;line-height:inherit;text-align:left !important;vertical-align:top !important;font-family:"DejaVu Sans";font-size:10pt;font-weight:normal;color:#333333;font-style:normal;text-transform:none;letter-spacing:0em;line-height:1.35;text-shadow:none;;padding-top:2px;">                <div class="patient-line" style="padding-top:0px;padding-bottom:0px;">
-                                            <span class="label" style="margin-right:0px;color:#333333;font-family:"DejaVu Sans";font-size:9.5pt;font-weight:bold;font-style:normal;text-transform:none;line-height:1.35">Edad:</span>
-                                        <span style="font-family:"DejaVu Sans";font-size:10pt;font-weight:normal;color:#333333;font-style:normal;text-transform:none;letter-spacing:0em;line-height:1.35;text-shadow:none;">33 años, 7 meses y 3 días</span>
+        </td></tr><tr><td class="pdf-cell pdf-cell-stack-item pdf-cell--left pdf-cell--h-left pdf-cell--v-top" align="left" valign="top" style="padding:0;border:0;line-height:inherit;text-align:left !important;vertical-align:top !important;font-family:'DejaVu Sans';font-size:10pt;font-weight:normal;color:#333333;font-style:normal;text-transform:none;letter-spacing:0em;line-height:1.35;text-shadow:none;;padding-top:2px;">                <div class="patient-line" style="padding-top:0px;padding-bottom:0px;">
+                                            <span class="label" style="margin-right:0px;color:#333333;font-family:'DejaVu Sans';font-size:9.5pt;font-weight:bold;font-style:normal;text-transform:none;line-height:1.35">Edad:</span>
+                                        <span style="font-family:'DejaVu Sans';font-size:10pt;font-weight:normal;color:#333333;font-style:normal;text-transform:none;letter-spacing:0em;line-height:1.35;text-shadow:none;">33 años, 7 meses y 3 días</span>
                 </div>
-        </td></tr><tr><td class="pdf-cell pdf-cell-stack-item pdf-cell--left pdf-cell--h-left pdf-cell--v-top" align="left" valign="top" style="padding:0;border:0;line-height:inherit;text-align:left !important;vertical-align:top !important;font-family:"DejaVu Sans";font-size:10pt;font-weight:normal;color:#333333;font-style:normal;text-transform:none;letter-spacing:0em;line-height:1.35;text-shadow:none;;padding-top:2px;">                <div class="patient-line" style="padding-top:0px;padding-bottom:0px;">
-                                            <span class="label" style="margin-right:0px;color:#333333;font-family:"DejaVu Sans";font-size:9.5pt;font-weight:bold;font-style:normal;text-transform:none;line-height:1.35">Teléfono:</span>
-                                        <span style="font-family:"DejaVu Sans";font-size:10pt;font-weight:normal;color:#333333;font-style:normal;text-transform:none;letter-spacing:0em;line-height:1.35;text-shadow:none;">67977231</span>
+        </td></tr><tr><td class="pdf-cell pdf-cell-stack-item pdf-cell--left pdf-cell--h-left pdf-cell--v-top" align="left" valign="top" style="padding:0;border:0;line-height:inherit;text-align:left !important;vertical-align:top !important;font-family:'DejaVu Sans';font-size:10pt;font-weight:normal;color:#333333;font-style:normal;text-transform:none;letter-spacing:0em;line-height:1.35;text-shadow:none;;padding-top:2px;">                <div class="patient-line" style="padding-top:0px;padding-bottom:0px;">
+                                            <span class="label" style="margin-right:0px;color:#333333;font-family:'DejaVu Sans';font-size:9.5pt;font-weight:bold;font-style:normal;text-transform:none;line-height:1.35">Teléfono:</span>
+                                        <span style="font-family:'DejaVu Sans';font-size:10pt;font-weight:normal;color:#333333;font-style:normal;text-transform:none;letter-spacing:0em;line-height:1.35;text-shadow:none;">67977231</span>
                 </div>
         </td></tr></table>        </td>
         <td class="pdf-cell pdf-cell--left" align="left" valign="top" style="width:50%;line-height:1.35;text-align:left !important;vertical-align:top !important;padding:0 6px;">
-            <table class="pdf-cell-stack-table" width="100%" cellpadding="0" cellspacing="0" style="table-layout:fixed;width:100%;border-collapse:collapse;"><tr><td class="pdf-cell pdf-cell-stack-item pdf-cell--left pdf-cell--h-left pdf-cell--v-top" align="left" valign="top" style="padding:0;border:0;line-height:inherit;text-align:left !important;vertical-align:top !important;font-family:"DejaVu Sans";font-size:10pt;font-weight:normal;color:#333333;font-style:normal;text-transform:none;letter-spacing:0em;line-height:1.35;text-shadow:none;;">                <div class="patient-line" style="padding-top:0px;padding-bottom:0px;">
-                                            <span class="label" style="margin-right:0px;color:#333333;font-family:"DejaVu Sans";font-size:9.5pt;font-weight:bold;font-style:normal;text-transform:none;line-height:1.35">Médico:</span>
-                                        <span style="font-family:"DejaVu Sans";font-size:10pt;font-weight:normal;color:#333333;font-style:normal;text-transform:none;letter-spacing:0em;line-height:1.35;text-shadow:none;">Dr. CRISTIAN SIMONS ROMERO</span>
+            <table class="pdf-cell-stack-table" width="100%" cellpadding="0" cellspacing="0" style="table-layout:fixed;width:100%;border-collapse:collapse;"><tr><td class="pdf-cell pdf-cell-stack-item pdf-cell--left pdf-cell--h-left pdf-cell--v-top" align="left" valign="top" style="padding:0;border:0;line-height:inherit;text-align:left !important;vertical-align:top !important;font-family:'DejaVu Sans';font-size:10pt;font-weight:normal;color:#333333;font-style:normal;text-transform:none;letter-spacing:0em;line-height:1.35;text-shadow:none;;">                <div class="patient-line" style="padding-top:0px;padding-bottom:0px;">
+                                            <span class="label" style="margin-right:0px;color:#333333;font-family:'DejaVu Sans';font-size:9.5pt;font-weight:bold;font-style:normal;text-transform:none;line-height:1.35">Médico:</span>
+                                        <span style="font-family:'DejaVu Sans';font-size:10pt;font-weight:normal;color:#333333;font-style:normal;text-transform:none;letter-spacing:0em;line-height:1.35;text-shadow:none;">Dr. CRISTIAN SIMONS ROMERO</span>
                 </div>
-        </td></tr><tr><td class="pdf-cell pdf-cell-stack-item pdf-cell--left pdf-cell--h-left pdf-cell--v-top" align="left" valign="top" style="padding:0;border:0;line-height:inherit;text-align:left !important;vertical-align:top !important;font-family:"DejaVu Sans";font-size:10pt;font-weight:normal;color:#333333;font-style:normal;text-transform:none;letter-spacing:0em;line-height:1.35;text-shadow:none;;padding-top:2px;">                <div class="patient-line" style="padding-top:0px;padding-bottom:0px;">
-                                            <span class="label" style="margin-right:0px;color:#333333;font-family:"DejaVu Sans";font-size:9.5pt;font-weight:bold;font-style:normal;text-transform:none;line-height:1.35">Fecha Recepción:</span>
-                                        <span style="font-family:"DejaVu Sans";font-size:10pt;font-weight:normal;color:#333333;font-style:normal;text-transform:none;letter-spacing:0em;line-height:1.35;text-shadow:none;">25/06/2026 13:03:56</span>
+        </td></tr><tr><td class="pdf-cell pdf-cell-stack-item pdf-cell--left pdf-cell--h-left pdf-cell--v-top" align="left" valign="top" style="padding:0;border:0;line-height:inherit;text-align:left !important;vertical-align:top !important;font-family:'DejaVu Sans';font-size:10pt;font-weight:normal;color:#333333;font-style:normal;text-transform:none;letter-spacing:0em;line-height:1.35;text-shadow:none;;padding-top:2px;">                <div class="patient-line" style="padding-top:0px;padding-bottom:0px;">
+                                            <span class="label" style="margin-right:0px;color:#333333;font-family:'DejaVu Sans';font-size:9.5pt;font-weight:bold;font-style:normal;text-transform:none;line-height:1.35">Fecha Recepción:</span>
+                                        <span style="font-family:'DejaVu Sans';font-size:10pt;font-weight:normal;color:#333333;font-style:normal;text-transform:none;letter-spacing:0em;line-height:1.35;text-shadow:none;">25/06/2026 13:03:56</span>
                 </div>
-        </td></tr><tr><td class="pdf-cell pdf-cell-stack-item pdf-cell--left pdf-cell--h-left pdf-cell--v-top" align="left" valign="top" style="padding:0;border:0;line-height:inherit;text-align:left !important;vertical-align:top !important;font-family:"DejaVu Sans";font-size:10pt;font-weight:normal;color:#333333;font-style:normal;text-transform:none;letter-spacing:0em;line-height:1.35;text-shadow:none;;padding-top:2px;">                <div class="patient-line" style="padding-top:0px;padding-bottom:0px;">
-                                            <span class="label" style="margin-right:0px;color:#333333;font-family:"DejaVu Sans";font-size:9.5pt;font-weight:bold;font-style:normal;text-transform:none;line-height:1.35">Fecha Reporte:</span>
-                                        <span style="font-family:"DejaVu Sans";font-size:10pt;font-weight:normal;color:#333333;font-style:normal;text-transform:none;letter-spacing:0em;line-height:1.35;text-shadow:none;">25/06/2026 15:26:48</span>
+        </td></tr><tr><td class="pdf-cell pdf-cell-stack-item pdf-cell--left pdf-cell--h-left pdf-cell--v-top" align="left" valign="top" style="padding:0;border:0;line-height:inherit;text-align:left !important;vertical-align:top !important;font-family:'DejaVu Sans';font-size:10pt;font-weight:normal;color:#333333;font-style:normal;text-transform:none;letter-spacing:0em;line-height:1.35;text-shadow:none;;padding-top:2px;">                <div class="patient-line" style="padding-top:0px;padding-bottom:0px;">
+                                            <span class="label" style="margin-right:0px;color:#333333;font-family:'DejaVu Sans';font-size:9.5pt;font-weight:bold;font-style:normal;text-transform:none;line-height:1.35">Fecha Reporte:</span>
+                                        <span style="font-family:'DejaVu Sans';font-size:10pt;font-weight:normal;color:#333333;font-style:normal;text-transform:none;letter-spacing:0em;line-height:1.35;text-shadow:none;">25/06/2026 15:26:48</span>
                 </div>
-        </td></tr><tr><td class="pdf-cell pdf-cell-stack-item pdf-cell--left pdf-cell--h-left pdf-cell--v-top" align="left" valign="top" style="padding:0;border:0;line-height:inherit;text-align:left !important;vertical-align:top !important;font-family:"DejaVu Sans";font-size:10pt;font-weight:normal;color:#333333;font-style:normal;text-transform:none;letter-spacing:0em;line-height:1.35;text-shadow:none;;padding-top:2px;">                <div class="patient-line" style="padding-top:0px;padding-bottom:0px;">
-                                            <span class="label" style="margin-right:0px;color:#333333;font-family:"DejaVu Sans";font-size:9.5pt;font-weight:bold;font-style:normal;text-transform:none;line-height:1.35">No. Orden:</span>
-                                        <span style="font-family:"DejaVu Sans";font-size:10pt;font-weight:normal;color:#333333;font-style:normal;text-transform:none;letter-spacing:0em;line-height:1.35;text-shadow:none;">06252026-157</span>
+        </td></tr><tr><td class="pdf-cell pdf-cell-stack-item pdf-cell--left pdf-cell--h-left pdf-cell--v-top" align="left" valign="top" style="padding:0;border:0;line-height:inherit;text-align:left !important;vertical-align:top !important;font-family:'DejaVu Sans';font-size:10pt;font-weight:normal;color:#333333;font-style:normal;text-transform:none;letter-spacing:0em;line-height:1.35;text-shadow:none;;padding-top:2px;">                <div class="patient-line" style="padding-top:0px;padding-bottom:0px;">
+                                            <span class="label" style="margin-right:0px;color:#333333;font-family:'DejaVu Sans';font-size:9.5pt;font-weight:bold;font-style:normal;text-transform:none;line-height:1.35">No. Orden:</span>
+                                        <span style="font-family:'DejaVu Sans';font-size:10pt;font-weight:normal;color:#333333;font-style:normal;text-transform:none;letter-spacing:0em;line-height:1.35;text-shadow:none;">06252026-157</span>
                 </div>
         </td></tr></table>        </td>
     </tr>
 </table>
 </div>
 </div>
-<div class="pdf-rs-block"><div class="report-pdf-grupo-prueba report-pdf-grupo-prueba-first" data-layout-area-index="0"><div class="report-segment-title pdf-card-header report-pdf-grupo-area-separator" style="padding-top:2px;padding-bottom:2px;color:#333333;font-size:11pt;font-weight:bold;text-align:center;--pdf-grupo-area-separator-color:#DDDDDD;--pdf-grupo-area-separator-width:1px;background:#E9ECEF;background-color:#E9ECEF;border:1px solid #DDDDDD;border-bottom:1px solid #DDDDDD;">HEMATOLOGIA</div>
+<div class="pdf-rs-block"><div class="report-pdf-grupo-prueba report-pdf-grupo-prueba-first" data-layout-area-index="0"><div class="report-segment-title pdf-card-header report-pdf-grupo-area-separator" style="color:#333333;font-size:11pt;font-weight:bold;text-align:center;--pdf-grupo-area-separator-color:#DDDDDD;--pdf-grupo-area-separator-width:1px;background:#E9ECEF;background-color:#E9ECEF;border:1px solid #DDDDDD;border-bottom:1px solid #DDDDDD">HEMATOLOGIA</div>
 <div class="report-pdf-subgrupo-block" data-layout-block-id="area-0-block-0">
 <div class="report-pdf-grupo-cabecera">
 
 
-<div class="report-pdf-grupo-cabecera-line report-pdf-grupo-cabecera-line--title" style="font-family:"DejaVu Sans";font-size:12pt !important;font-weight:bold !important;color:#333333 !important;line-height:1.2 !important;text-shadow:none !important;padding-top:0px !important;padding-bottom:0px !important;margin:0 !important;">HEMOGRAMA + PLAQUETAS</div>
+<div class="group-title report-pdf-grupo-cabecera-line report-pdf-grupo-cabecera-line--title" style="margin:0 !important">HEMOGRAMA + PLAQUETAS</div>
 
 
 
 
-<div class="report-metodo-prueba report-pdf-grupo-cabecera-line report-pdf-grupo-cabecera-line--metodo report-pdf-grupo-cabecera-line--last" style="font-family:"DejaVu Sans";font-size:8.5pt;font-weight:normal;color:#333333;font-style:normal;text-transform:none;letter-spacing:0em;line-height:1.1;text-shadow:none;padding-top:5px !important;padding-bottom:10px !important;margin:0 !important;">Método: Automatizado por impedancia eléctrica (Coulter)</div>
+<div class="report-metodo-prueba report-pdf-grupo-cabecera-line report-pdf-grupo-cabecera-line--metodo report-pdf-grupo-cabecera-line--last" style="margin:0 !important">Método: Automatizado por impedancia eléctrica (Coulter)</div>
 
 
 </div>
                                 <div class="report-segment-table-wrap">                                <div class="report-segment-title pdf-card-header">Serie Roja</div>
-                            <table class="results results-cols-4 results-cols-grid" width="100%" style="table-layout:fixed;width:100%;margin-top:0;margin-bottom:5px;">
+                            <table class="results results-cols-4 results-cols-grid" width="100%" style="table-layout:fixed;width:100%;">
             <colgroup><col width="34%" style="width:34%;"><col width="18%" style="width:18%;"><col width="28%" style="width:28%;"><col width="20%" style="width:20%;"></colgroup>                        <thead>
                                 <tr>
                     <th class="results-col-analisis text-left" align="left" valign="middle" style="vertical-align:middle">ANÁLISIS</th>
@@ -2765,7 +2554,7 @@ body.pdf-engine-mpdf .report-refs-matrix-wrap > .report-refs-matrix-title {
                                                                     </tbody>
         </table>
     </div>                                <div class="report-segment-table-wrap">                                <div class="report-segment-title pdf-card-header">Serie Blanca</div>
-                            <table class="results results-cols-4 results-cols-grid" width="100%" style="table-layout:fixed;width:100%;margin-top:5px;margin-bottom:5px;">
+                            <table class="results results-cols-4 results-cols-grid" width="100%" style="table-layout:fixed;width:100%;">
             <colgroup><col width="34%" style="width:34%;"><col width="18%" style="width:18%;"><col width="28%" style="width:28%;"><col width="20%" style="width:20%;"></colgroup>                        <thead>
                                 <tr>
                     <th class="results-col-analisis text-left" align="left" valign="middle" style="vertical-align:middle">ANÁLISIS</th>
@@ -2802,7 +2591,7 @@ body.pdf-engine-mpdf .report-refs-matrix-wrap > .report-refs-matrix-title {
                                                                                                             </tbody>
         </table>
     </div>                                <div class="report-segment-table-wrap">                                <div class="report-segment-title pdf-card-header">Serie Plaquetaria</div>
-                            <table class="results results-cols-4 results-cols-grid" width="100%" style="table-layout:fixed;width:100%;margin-top:5px;margin-bottom:5px;">
+                            <table class="results results-cols-4 results-cols-grid" width="100%" style="table-layout:fixed;width:100%;">
             <colgroup><col width="34%" style="width:34%;"><col width="18%" style="width:18%;"><col width="28%" style="width:28%;"><col width="20%" style="width:20%;"></colgroup>                        <thead>
                                 <tr>
                     <th class="results-col-analisis text-left" align="left" valign="middle" style="vertical-align:middle">ANÁLISIS</th>
@@ -2844,43 +2633,43 @@ body.pdf-engine-mpdf .report-refs-matrix-wrap > .report-refs-matrix-title {
 </colgroup>
     <tr class="pdf-section-row" data-pdf-row="0">
         <td class="pdf-cell pdf-cell--left" align="left" valign="top" style="width:33.3333%;line-height:1.35;text-align:left !important;vertical-align:top !important;padding:0 6px;">
-            <table class="pdf-cell-stack-table" width="100%" cellpadding="0" cellspacing="0" style="table-layout:fixed;width:100%;border-collapse:collapse;"><tr><td class="pdf-cell pdf-cell-stack-item pdf-cell--left pdf-cell--h-left pdf-cell--v-top" align="left" valign="top" style="padding:0;border:0;line-height:inherit;text-align:left !important;vertical-align:top !important;font-family:"DejaVu Sans";font-size:10pt;font-weight:normal;color:#333333;font-style:normal;text-transform:none;letter-spacing:0em;line-height:1.35;text-shadow:none;;">                                <div>
+            <table class="pdf-cell-stack-table" width="100%" cellpadding="0" cellspacing="0" style="table-layout:fixed;width:100%;border-collapse:collapse;"><tr><td class="pdf-cell pdf-cell-stack-item pdf-cell--left pdf-cell--h-left pdf-cell--v-top" align="left" valign="top" style="padding:0;border:0;line-height:inherit;text-align:left !important;vertical-align:top !important;font-family:'DejaVu Sans';font-size:10pt;font-weight:normal;color:#333333;font-style:normal;text-transform:none;letter-spacing:0em;line-height:1.35;text-shadow:none;;">                                <div>
                     <span class="pdf-lab-f-sublabel" style="opacity:0.75;font-size:0.92em;">Verificado por:</span> <span>Marisol</span>
                 </div>
-                        </td></tr><tr><td class="pdf-cell pdf-cell-stack-item pdf-cell--left pdf-cell--h-left pdf-cell--v-top" align="left" valign="top" style="padding:0;border:0;line-height:inherit;text-align:left !important;vertical-align:top !important;font-family:"DejaVu Sans";font-size:10pt;font-weight:normal;color:#333333;font-style:normal;text-transform:none;letter-spacing:0em;line-height:1.35;text-shadow:none;;padding-top:6px;">                                                                    <div style="opacity:0.6;">—</div>
+                        </td></tr><tr><td class="pdf-cell pdf-cell-stack-item pdf-cell--left pdf-cell--h-left pdf-cell--v-top" align="left" valign="top" style="padding:0;border:0;line-height:inherit;text-align:left !important;vertical-align:top !important;font-family:'DejaVu Sans';font-size:10pt;font-weight:normal;color:#333333;font-style:normal;text-transform:none;letter-spacing:0em;line-height:1.35;text-shadow:none;;padding-top:6px;">                                                                    <div style="opacity:0.6;">—</div>
                                         </td></tr></table>        </td>
         <td style="width:33.3333%;vertical-align:top !important;padding:0 4px;line-height:1.35;"></td>
         <td class="pdf-cell pdf-cell--left" align="left" valign="top" style="width:33.3333%;line-height:1.35;text-align:left !important;vertical-align:top !important;padding:0 6px;">
-            <table class="pdf-cell-stack-table" width="100%" cellpadding="0" cellspacing="0" style="table-layout:fixed;width:100%;border-collapse:collapse;"><tr><td class="pdf-cell pdf-cell-stack-item pdf-cell--left pdf-cell--h-left pdf-cell--v-top" align="left" valign="top" style="padding:0;border:0;line-height:inherit;text-align:left !important;vertical-align:top !important;font-family:"DejaVu Sans";font-size:10pt;font-weight:normal;color:#333333;font-style:normal;text-transform:none;letter-spacing:0em;line-height:1.35;text-shadow:none;;">                                                <div class="pdf-lab-f-sublabel" style="opacity:0.75;font-size:0.92em;margin-bottom:6px;">ATENTAMENTE</div>
+            <table class="pdf-cell-stack-table" width="100%" cellpadding="0" cellspacing="0" style="table-layout:fixed;width:100%;border-collapse:collapse;"><tr><td class="pdf-cell pdf-cell-stack-item pdf-cell--left pdf-cell--h-left pdf-cell--v-top" align="left" valign="top" style="padding:0;border:0;line-height:inherit;text-align:left !important;vertical-align:top !important;font-family:'DejaVu Sans';font-size:10pt;font-weight:normal;color:#333333;font-style:normal;text-transform:none;letter-spacing:0em;line-height:1.35;text-shadow:none;;">                                                <div class="pdf-lab-f-sublabel" style="opacity:0.75;font-size:0.92em;margin-bottom:6px;">ATENTAMENTE</div>
                                                     <div style="margin-bottom:4px;">
                         <img src="C:/wamp64/www/laboratorio/public/images/lab-approver-sig-e00e30c832a22588.png" alt="" class="pdf-lab-f-img" style="max-height:80px;max-width:150px;">
                     </div>
-                                        </td></tr><tr><td class="pdf-cell pdf-cell-stack-item pdf-cell--left pdf-cell--h-left pdf-cell--v-top" align="left" valign="top" style="padding:0;border:0;line-height:inherit;text-align:left !important;vertical-align:top !important;font-family:"DejaVu Sans";font-size:10pt;font-weight:normal;color:#333333;font-style:normal;text-transform:none;letter-spacing:0em;line-height:1.35;text-shadow:none;;padding-top:6px;">                                                <div style="opacity:0.95;">O-10699227</div>
-                        </td></tr><tr><td class="pdf-cell pdf-cell-stack-item pdf-cell--left pdf-cell--h-left pdf-cell--v-top" align="left" valign="top" style="padding:0;border:0;line-height:inherit;text-align:left !important;vertical-align:top !important;font-family:"DejaVu Sans";font-size:10pt;font-weight:normal;color:#333333;font-style:normal;text-transform:none;letter-spacing:0em;line-height:1.35;text-shadow:none;;padding-top:6px;">                                                <div style="font-weight:600;">Ximena Ortega Rueda</div>
-                        </td></tr><tr><td class="pdf-cell pdf-cell-stack-item pdf-cell--left pdf-cell--h-left pdf-cell--v-top" align="left" valign="top" style="padding:0;border:0;line-height:inherit;text-align:left !important;vertical-align:top !important;font-family:"DejaVu Sans";font-size:10pt;font-weight:normal;color:#333333;font-style:normal;text-transform:none;letter-spacing:0em;line-height:1.35;text-shadow:none;;padding-top:6px;">                                                <div style="opacity:0.95;">Bioquímica</div>
+                                        </td></tr><tr><td class="pdf-cell pdf-cell-stack-item pdf-cell--left pdf-cell--h-left pdf-cell--v-top" align="left" valign="top" style="padding:0;border:0;line-height:inherit;text-align:left !important;vertical-align:top !important;font-family:'DejaVu Sans';font-size:10pt;font-weight:normal;color:#333333;font-style:normal;text-transform:none;letter-spacing:0em;line-height:1.35;text-shadow:none;;padding-top:6px;">                                                <div style="opacity:0.95;">O-10699227</div>
+                        </td></tr><tr><td class="pdf-cell pdf-cell-stack-item pdf-cell--left pdf-cell--h-left pdf-cell--v-top" align="left" valign="top" style="padding:0;border:0;line-height:inherit;text-align:left !important;vertical-align:top !important;font-family:'DejaVu Sans';font-size:10pt;font-weight:normal;color:#333333;font-style:normal;text-transform:none;letter-spacing:0em;line-height:1.35;text-shadow:none;;padding-top:6px;">                                                <div style="font-weight:600;">Ximena Ortega Rueda</div>
+                        </td></tr><tr><td class="pdf-cell pdf-cell-stack-item pdf-cell--left pdf-cell--h-left pdf-cell--v-top" align="left" valign="top" style="padding:0;border:0;line-height:inherit;text-align:left !important;vertical-align:top !important;font-family:'DejaVu Sans';font-size:10pt;font-weight:normal;color:#333333;font-style:normal;text-transform:none;letter-spacing:0em;line-height:1.35;text-shadow:none;;padding-top:6px;">                                                <div style="opacity:0.95;">Bioquímica</div>
                         </td></tr></table>        </td>
     </tr>
 </table>
 </div>
 </div>
-</div><div class="report-grupo-inter-page-break report-grupo-inter-page-break-server report-grupo-inter-page-break-pdf" aria-hidden="true" style="display:block;width:100%;height:1px;min-height:1px;margin:0;padding:0;border:0;line-height:0;font-size:0;overflow:hidden;clear:both;page-break-before:always;break-before:page;page-break-after:avoid;break-after:avoid;"></div><div class="report-pdf-grupo-prueba report-pdf-grupo-prueba-new-page-start" data-layout-area-index="1" style="page-break-before:avoid;break-before:avoid;margin-top:0;padding-top:0;"><div class="report-segment-title pdf-card-header report-pdf-grupo-area-separator" style="padding-top:2px;padding-bottom:2px;color:#333333;font-size:11pt;font-weight:bold;text-align:center;--pdf-grupo-area-separator-color:#DDDDDD;--pdf-grupo-area-separator-width:1px;background:#E9ECEF;background-color:#E9ECEF;border:1px solid #DDDDDD;border-bottom:1px solid #DDDDDD;">COAGULOGRAMA</div>
+</div><div class="report-grupo-inter-page-break report-grupo-inter-page-break-server report-grupo-inter-page-break-pdf" aria-hidden="true" style="display:block;width:100%;height:1px;min-height:1px;margin:0;padding:0;border:0;line-height:0;font-size:0;overflow:hidden;clear:both;page-break-before:always;break-before:page;page-break-after:avoid;break-after:avoid;"></div><div class="report-pdf-grupo-prueba report-pdf-grupo-prueba-new-page-start" data-layout-area-index="1" style="page-break-before:avoid;break-before:avoid;margin-top:0;padding-top:0;"><div class="report-segment-title pdf-card-header report-pdf-grupo-area-separator" style="color:#333333;font-size:11pt;font-weight:bold;text-align:center;--pdf-grupo-area-separator-color:#DDDDDD;--pdf-grupo-area-separator-width:1px;background:#E9ECEF;background-color:#E9ECEF;border:1px solid #DDDDDD;border-bottom:1px solid #DDDDDD">COAGULOGRAMA</div>
 <div class="report-pdf-subgrupo-block report-subgrupo-keep-intact" data-layout-block-id="area-1-block-0">
 <div class="report-pdf-grupo-cabecera">
 
 
-<div class="report-pdf-grupo-cabecera-line report-pdf-grupo-cabecera-line--title" style="font-family:"DejaVu Sans";font-size:12pt !important;font-weight:bold !important;color:#333333 !important;line-height:1.2 !important;text-shadow:none !important;padding-top:0px !important;padding-bottom:0px !important;margin:0 !important;">Tiempo de Protrombina</div>
+<div class="group-title report-pdf-grupo-cabecera-line report-pdf-grupo-cabecera-line--title" style="margin:0 !important">Tiempo de Protrombina</div>
 
 
 
-<div class="report-tipo-muestra report-pdf-grupo-cabecera-line report-pdf-grupo-cabecera-line--tipo" style="font-family:"DejaVu Sans";font-size:8.5pt;font-weight:normal;color:#333333;font-style:normal;text-transform:none;letter-spacing:0em;line-height:1.1;text-shadow:none;padding-top:2px !important;padding-bottom:2px !important;margin:0 !important;">Tipo de Muestra: SANGRE</div>
+<div class="report-tipo-muestra report-pdf-grupo-cabecera-line report-pdf-grupo-cabecera-line--tipo" style="margin:0 !important">Tipo de Muestra: SANGRE</div>
 
 
 
-<div class="report-metodo-prueba report-pdf-grupo-cabecera-line report-pdf-grupo-cabecera-line--metodo report-pdf-grupo-cabecera-line--last" style="font-family:"DejaVu Sans";font-size:8.5pt;font-weight:normal;color:#333333;font-style:normal;text-transform:none;letter-spacing:0em;line-height:1.1;text-shadow:none;padding-top:5px !important;padding-bottom:10px !important;margin:0 !important;">Método: Coagulómetro semiautomático - Coatron X</div>
+<div class="report-metodo-prueba report-pdf-grupo-cabecera-line report-pdf-grupo-cabecera-line--metodo report-pdf-grupo-cabecera-line--last" style="margin:0 !important">Método: Coagulómetro semiautomático - Coatron X</div>
 
 
 </div>
-                                <div class="report-segment-table-wrap">                <table class="results results-cols-4 results-cols-grid" width="100%" style="table-layout:fixed;width:100%;margin-top:0;margin-bottom:5px;">
+                                <div class="report-segment-table-wrap">                <table class="results results-cols-4 results-cols-grid" width="100%" style="table-layout:fixed;width:100%;">
             <colgroup><col width="34%" style="width:34%;"><col width="18%" style="width:18%;"><col width="28%" style="width:28%;"><col width="20%" style="width:20%;"></colgroup>                        <thead>
                                 <tr>
                     <th class="results-col-analisis text-left" align="left" valign="middle" style="vertical-align:middle">ANÁLISIS</th>
@@ -2907,23 +2696,23 @@ body.pdf-engine-mpdf .report-refs-matrix-wrap > .report-refs-matrix-title {
                                                                     </tbody>
         </table>
     </div>        </div>
-<div class="report-pdf-subgrupo-block report-pdf-subgrupo-prueba report-subgrupo-keep-intact" data-layout-block-id="area-1-block-1" style="padding-top:5px;">
+<div class="report-pdf-subgrupo-block report-pdf-subgrupo-prueba report-subgrupo-keep-intact" data-layout-block-id="area-1-block-1">
 <div class="report-pdf-grupo-cabecera">
 
 
-<div class="report-pdf-grupo-cabecera-line report-pdf-grupo-cabecera-line--title" style="font-family:"DejaVu Sans";font-size:12pt !important;font-weight:bold !important;color:#333333 !important;line-height:1.2 !important;text-shadow:none !important;padding-top:0px !important;padding-bottom:0px !important;margin:0 !important;">Tiempo de Tromboplastina (KPTT)</div>
+<div class="group-title report-pdf-grupo-cabecera-line report-pdf-grupo-cabecera-line--title" style="margin:0 !important">Tiempo de Tromboplastina (KPTT)</div>
 
 
 
-<div class="report-tipo-muestra report-pdf-grupo-cabecera-line report-pdf-grupo-cabecera-line--tipo" style="font-family:"DejaVu Sans";font-size:8.5pt;font-weight:normal;color:#333333;font-style:normal;text-transform:none;letter-spacing:0em;line-height:1.1;text-shadow:none;padding-top:2px !important;padding-bottom:2px !important;margin:0 !important;">Tipo de Muestra: PLASMA</div>
+<div class="report-tipo-muestra report-pdf-grupo-cabecera-line report-pdf-grupo-cabecera-line--tipo" style="margin:0 !important">Tipo de Muestra: PLASMA</div>
 
 
 
-<div class="report-metodo-prueba report-pdf-grupo-cabecera-line report-pdf-grupo-cabecera-line--metodo report-pdf-grupo-cabecera-line--last" style="font-family:"DejaVu Sans";font-size:8.5pt;font-weight:normal;color:#333333;font-style:normal;text-transform:none;letter-spacing:0em;line-height:1.1;text-shadow:none;padding-top:5px !important;padding-bottom:10px !important;margin:0 !important;">Método: Coagulómetro semiautomático - Coatron X</div>
+<div class="report-metodo-prueba report-pdf-grupo-cabecera-line report-pdf-grupo-cabecera-line--metodo report-pdf-grupo-cabecera-line--last" style="margin:0 !important">Método: Coagulómetro semiautomático - Coatron X</div>
 
 
 </div>
-                                <div class="report-segment-table-wrap">                <table class="results results-cols-4 results-cols-grid" width="100%" style="table-layout:fixed;width:100%;margin-top:0;margin-bottom:5px;">
+                                <div class="report-segment-table-wrap">                <table class="results results-cols-4 results-cols-grid" width="100%" style="table-layout:fixed;width:100%;">
             <colgroup><col width="34%" style="width:34%;"><col width="18%" style="width:18%;"><col width="28%" style="width:28%;"><col width="20%" style="width:20%;"></colgroup>                        <thead>
                                 <tr>
                     <th class="results-col-analisis text-left" align="left" valign="middle" style="vertical-align:middle">ANÁLISIS</th>
@@ -2950,40 +2739,40 @@ body.pdf-engine-mpdf .report-refs-matrix-wrap > .report-refs-matrix-title {
 </colgroup>
     <tr class="pdf-section-row" data-pdf-row="0">
         <td class="pdf-cell pdf-cell--left" align="left" valign="top" style="width:33.3333%;line-height:1.35;text-align:left !important;vertical-align:top !important;padding:0 6px;">
-            <table class="pdf-cell-stack-table" width="100%" cellpadding="0" cellspacing="0" style="table-layout:fixed;width:100%;border-collapse:collapse;"><tr><td class="pdf-cell pdf-cell-stack-item pdf-cell--left pdf-cell--h-left pdf-cell--v-top" align="left" valign="top" style="padding:0;border:0;line-height:inherit;text-align:left !important;vertical-align:top !important;font-family:"DejaVu Sans";font-size:10pt;font-weight:normal;color:#333333;font-style:normal;text-transform:none;letter-spacing:0em;line-height:1.35;text-shadow:none;;">                                <div>
+            <table class="pdf-cell-stack-table" width="100%" cellpadding="0" cellspacing="0" style="table-layout:fixed;width:100%;border-collapse:collapse;"><tr><td class="pdf-cell pdf-cell-stack-item pdf-cell--left pdf-cell--h-left pdf-cell--v-top" align="left" valign="top" style="padding:0;border:0;line-height:inherit;text-align:left !important;vertical-align:top !important;font-family:'DejaVu Sans';font-size:10pt;font-weight:normal;color:#333333;font-style:normal;text-transform:none;letter-spacing:0em;line-height:1.35;text-shadow:none;;">                                <div>
                     <span class="pdf-lab-f-sublabel" style="opacity:0.75;font-size:0.92em;">Verificado por:</span> <span>Marisol</span>
                 </div>
-                        </td></tr><tr><td class="pdf-cell pdf-cell-stack-item pdf-cell--left pdf-cell--h-left pdf-cell--v-top" align="left" valign="top" style="padding:0;border:0;line-height:inherit;text-align:left !important;vertical-align:top !important;font-family:"DejaVu Sans";font-size:10pt;font-weight:normal;color:#333333;font-style:normal;text-transform:none;letter-spacing:0em;line-height:1.35;text-shadow:none;;padding-top:6px;">                                                                    <div style="opacity:0.6;">—</div>
+                        </td></tr><tr><td class="pdf-cell pdf-cell-stack-item pdf-cell--left pdf-cell--h-left pdf-cell--v-top" align="left" valign="top" style="padding:0;border:0;line-height:inherit;text-align:left !important;vertical-align:top !important;font-family:'DejaVu Sans';font-size:10pt;font-weight:normal;color:#333333;font-style:normal;text-transform:none;letter-spacing:0em;line-height:1.35;text-shadow:none;;padding-top:6px;">                                                                    <div style="opacity:0.6;">—</div>
                                         </td></tr></table>        </td>
         <td style="width:33.3333%;vertical-align:top !important;padding:0 4px;line-height:1.35;"></td>
         <td class="pdf-cell pdf-cell--left" align="left" valign="top" style="width:33.3333%;line-height:1.35;text-align:left !important;vertical-align:top !important;padding:0 6px;">
-            <table class="pdf-cell-stack-table" width="100%" cellpadding="0" cellspacing="0" style="table-layout:fixed;width:100%;border-collapse:collapse;"><tr><td class="pdf-cell pdf-cell-stack-item pdf-cell--left pdf-cell--h-left pdf-cell--v-top" align="left" valign="top" style="padding:0;border:0;line-height:inherit;text-align:left !important;vertical-align:top !important;font-family:"DejaVu Sans";font-size:10pt;font-weight:normal;color:#333333;font-style:normal;text-transform:none;letter-spacing:0em;line-height:1.35;text-shadow:none;;">                                                <div class="pdf-lab-f-sublabel" style="opacity:0.75;font-size:0.92em;margin-bottom:6px;">ATENTAMENTE</div>
+            <table class="pdf-cell-stack-table" width="100%" cellpadding="0" cellspacing="0" style="table-layout:fixed;width:100%;border-collapse:collapse;"><tr><td class="pdf-cell pdf-cell-stack-item pdf-cell--left pdf-cell--h-left pdf-cell--v-top" align="left" valign="top" style="padding:0;border:0;line-height:inherit;text-align:left !important;vertical-align:top !important;font-family:'DejaVu Sans';font-size:10pt;font-weight:normal;color:#333333;font-style:normal;text-transform:none;letter-spacing:0em;line-height:1.35;text-shadow:none;;">                                                <div class="pdf-lab-f-sublabel" style="opacity:0.75;font-size:0.92em;margin-bottom:6px;">ATENTAMENTE</div>
                                                     <div style="margin-bottom:4px;">
                         <img src="C:/wamp64/www/laboratorio/public/images/lab-approver-sig-e00e30c832a22588.png" alt="" class="pdf-lab-f-img" style="max-height:80px;max-width:150px;">
                     </div>
-                                        </td></tr><tr><td class="pdf-cell pdf-cell-stack-item pdf-cell--left pdf-cell--h-left pdf-cell--v-top" align="left" valign="top" style="padding:0;border:0;line-height:inherit;text-align:left !important;vertical-align:top !important;font-family:"DejaVu Sans";font-size:10pt;font-weight:normal;color:#333333;font-style:normal;text-transform:none;letter-spacing:0em;line-height:1.35;text-shadow:none;;padding-top:6px;">                                                <div style="opacity:0.95;">O-10699227</div>
-                        </td></tr><tr><td class="pdf-cell pdf-cell-stack-item pdf-cell--left pdf-cell--h-left pdf-cell--v-top" align="left" valign="top" style="padding:0;border:0;line-height:inherit;text-align:left !important;vertical-align:top !important;font-family:"DejaVu Sans";font-size:10pt;font-weight:normal;color:#333333;font-style:normal;text-transform:none;letter-spacing:0em;line-height:1.35;text-shadow:none;;padding-top:6px;">                                                <div style="font-weight:600;">Ximena Ortega Rueda</div>
-                        </td></tr><tr><td class="pdf-cell pdf-cell-stack-item pdf-cell--left pdf-cell--h-left pdf-cell--v-top" align="left" valign="top" style="padding:0;border:0;line-height:inherit;text-align:left !important;vertical-align:top !important;font-family:"DejaVu Sans";font-size:10pt;font-weight:normal;color:#333333;font-style:normal;text-transform:none;letter-spacing:0em;line-height:1.35;text-shadow:none;;padding-top:6px;">                                                <div style="opacity:0.95;">Bioquímica</div>
+                                        </td></tr><tr><td class="pdf-cell pdf-cell-stack-item pdf-cell--left pdf-cell--h-left pdf-cell--v-top" align="left" valign="top" style="padding:0;border:0;line-height:inherit;text-align:left !important;vertical-align:top !important;font-family:'DejaVu Sans';font-size:10pt;font-weight:normal;color:#333333;font-style:normal;text-transform:none;letter-spacing:0em;line-height:1.35;text-shadow:none;;padding-top:6px;">                                                <div style="opacity:0.95;">O-10699227</div>
+                        </td></tr><tr><td class="pdf-cell pdf-cell-stack-item pdf-cell--left pdf-cell--h-left pdf-cell--v-top" align="left" valign="top" style="padding:0;border:0;line-height:inherit;text-align:left !important;vertical-align:top !important;font-family:'DejaVu Sans';font-size:10pt;font-weight:normal;color:#333333;font-style:normal;text-transform:none;letter-spacing:0em;line-height:1.35;text-shadow:none;;padding-top:6px;">                                                <div style="font-weight:600;">Ximena Ortega Rueda</div>
+                        </td></tr><tr><td class="pdf-cell pdf-cell-stack-item pdf-cell--left pdf-cell--h-left pdf-cell--v-top" align="left" valign="top" style="padding:0;border:0;line-height:inherit;text-align:left !important;vertical-align:top !important;font-family:'DejaVu Sans';font-size:10pt;font-weight:normal;color:#333333;font-style:normal;text-transform:none;letter-spacing:0em;line-height:1.35;text-shadow:none;;padding-top:6px;">                                                <div style="opacity:0.95;">Bioquímica</div>
                         </td></tr></table>        </td>
     </tr>
 </table>
 </div>
 </div>
-</div><div class="report-grupo-inter-page-break report-grupo-inter-page-break-server report-grupo-inter-page-break-pdf" aria-hidden="true" style="display:block;width:100%;height:1px;min-height:1px;margin:0;padding:0;border:0;line-height:0;font-size:0;overflow:hidden;clear:both;page-break-before:always;break-before:page;page-break-after:avoid;break-after:avoid;"></div><div class="report-pdf-grupo-prueba report-pdf-grupo-prueba-new-page-start report-pdf-grupo-prueba-split-segments-only" data-layout-area-index="2" style="page-break-before:avoid;break-before:avoid;margin-top:0;padding-top:0;"><div class="report-segment-title pdf-card-header report-pdf-grupo-area-separator" style="padding-top:2px;padding-bottom:2px;color:#333333;font-size:11pt;font-weight:bold;text-align:center;--pdf-grupo-area-separator-color:#DDDDDD;--pdf-grupo-area-separator-width:1px;background:#E9ECEF;background-color:#E9ECEF;border:1px solid #DDDDDD;border-bottom:1px solid #DDDDDD;">QUIMICA CLÍNICA</div>
+</div><div class="report-grupo-inter-page-break report-grupo-inter-page-break-server report-grupo-inter-page-break-pdf" aria-hidden="true" style="display:block;width:100%;height:1px;min-height:1px;margin:0;padding:0;border:0;line-height:0;font-size:0;overflow:hidden;clear:both;page-break-before:always;break-before:page;page-break-after:avoid;break-after:avoid;"></div><div class="report-pdf-grupo-prueba report-pdf-grupo-prueba-new-page-start report-pdf-grupo-prueba-split-segments-only" data-layout-area-index="2" style="page-break-before:avoid;break-before:avoid;margin-top:0;padding-top:0;"><div class="report-segment-title pdf-card-header report-pdf-grupo-area-separator" style="color:#333333;font-size:11pt;font-weight:bold;text-align:center;--pdf-grupo-area-separator-color:#DDDDDD;--pdf-grupo-area-separator-width:1px;background:#E9ECEF;background-color:#E9ECEF;border:1px solid #DDDDDD;border-bottom:1px solid #DDDDDD">QUIMICA CLÍNICA</div>
 <div class="report-pdf-subgrupo-block report-subgrupo-keep-intact" data-layout-block-id="area-2-block-0">
 <div class="report-pdf-grupo-cabecera">
 
 
-<div class="report-pdf-grupo-cabecera-line report-pdf-grupo-cabecera-line--title" style="font-family:"DejaVu Sans";font-size:12pt !important;font-weight:bold !important;color:#333333 !important;line-height:1.2 !important;text-shadow:none !important;padding-top:0px !important;padding-bottom:0px !important;margin:0 !important;">Glucosa</div>
+<div class="group-title report-pdf-grupo-cabecera-line report-pdf-grupo-cabecera-line--title" style="margin:0 !important">Glucosa</div>
 
 
 
 
-<div class="report-metodo-prueba report-pdf-grupo-cabecera-line report-pdf-grupo-cabecera-line--metodo report-pdf-grupo-cabecera-line--last" style="font-family:"DejaVu Sans";font-size:8.5pt;font-weight:normal;color:#333333;font-style:normal;text-transform:none;letter-spacing:0em;line-height:1.1;text-shadow:none;padding-top:5px !important;padding-bottom:10px !important;margin:0 !important;">Método: Semiautomático - Mindray BA88A</div>
+<div class="report-metodo-prueba report-pdf-grupo-cabecera-line report-pdf-grupo-cabecera-line--metodo report-pdf-grupo-cabecera-line--last" style="margin:0 !important">Método: Semiautomático - Mindray BA88A</div>
 
 
 </div>
-                                <div class="report-segment-table-wrap">                <table class="results results-cols-4 results-cols-grid" width="100%" style="table-layout:fixed;width:100%;margin-top:0;margin-bottom:5px;">
+                                <div class="report-segment-table-wrap">                <table class="results results-cols-4 results-cols-grid" width="100%" style="table-layout:fixed;width:100%;">
             <colgroup><col width="34%" style="width:34%;"><col width="18%" style="width:18%;"><col width="28%" style="width:28%;"><col width="20%" style="width:20%;"></colgroup>                        <thead>
                                 <tr>
                     <th class="results-col-analisis text-left" align="left" valign="middle" style="vertical-align:middle">ANÁLISIS</th>
@@ -3000,20 +2789,20 @@ body.pdf-engine-mpdf .report-refs-matrix-wrap > .report-refs-matrix-title {
                                                                     </tbody>
         </table>
     </div>        </div>
-<div class="report-pdf-subgrupo-block report-pdf-subgrupo-prueba report-subgrupo-keep-intact" data-layout-block-id="area-2-block-1" style="padding-top:5px;">
+<div class="report-pdf-subgrupo-block report-pdf-subgrupo-prueba report-subgrupo-keep-intact" data-layout-block-id="area-2-block-1">
 <div class="report-pdf-grupo-cabecera">
 
 
-<div class="report-pdf-grupo-cabecera-line report-pdf-grupo-cabecera-line--title" style="font-family:"DejaVu Sans";font-size:12pt !important;font-weight:bold !important;color:#333333 !important;line-height:1.2 !important;text-shadow:none !important;padding-top:0px !important;padding-bottom:0px !important;margin:0 !important;">Urea</div>
+<div class="group-title report-pdf-grupo-cabecera-line report-pdf-grupo-cabecera-line--title" style="margin:0 !important">Urea</div>
 
 
 
 
-<div class="report-metodo-prueba report-pdf-grupo-cabecera-line report-pdf-grupo-cabecera-line--metodo report-pdf-grupo-cabecera-line--last" style="font-family:"DejaVu Sans";font-size:8.5pt;font-weight:normal;color:#333333;font-style:normal;text-transform:none;letter-spacing:0em;line-height:1.1;text-shadow:none;padding-top:5px !important;padding-bottom:10px !important;margin:0 !important;">Método: Semiautomático - Mindray BA88A</div>
+<div class="report-metodo-prueba report-pdf-grupo-cabecera-line report-pdf-grupo-cabecera-line--metodo report-pdf-grupo-cabecera-line--last" style="margin:0 !important">Método: Semiautomático - Mindray BA88A</div>
 
 
 </div>
-                                <div class="report-segment-table-wrap">                <table class="results results-cols-4 results-cols-grid" width="100%" style="table-layout:fixed;width:100%;margin-top:0;margin-bottom:5px;">
+                                <div class="report-segment-table-wrap">                <table class="results results-cols-4 results-cols-grid" width="100%" style="table-layout:fixed;width:100%;">
             <colgroup><col width="34%" style="width:34%;"><col width="18%" style="width:18%;"><col width="28%" style="width:28%;"><col width="20%" style="width:20%;"></colgroup>                        <thead>
                                 <tr>
                     <th class="results-col-analisis text-left" align="left" valign="middle" style="vertical-align:middle">ANÁLISIS</th>
@@ -3030,17 +2819,17 @@ body.pdf-engine-mpdf .report-refs-matrix-wrap > .report-refs-matrix-title {
                                                                     </tbody>
         </table>
     </div>        </div>
-<div class="report-pdf-subgrupo-block report-pdf-subgrupo-prueba report-subgrupo-keep-intact" data-layout-block-id="area-2-block-2" style="padding-top:5px;">
+<div class="report-pdf-subgrupo-block report-pdf-subgrupo-prueba report-subgrupo-keep-intact" data-layout-block-id="area-2-block-2">
 <div class="report-signature-tail-bundle"><div class="report-pdf-grupo-cabecera">
 
 
-<div class="report-pdf-grupo-cabecera-line report-pdf-grupo-cabecera-line--title report-pdf-grupo-cabecera-line--last" style="font-family:"DejaVu Sans";font-size:12pt !important;font-weight:bold !important;color:#333333 !important;line-height:1.2 !important;text-shadow:none !important;padding-top:0px !important;padding-bottom:10px !important;margin:0 !important;">Creatinina</div>
+<div class="group-title report-pdf-grupo-cabecera-line report-pdf-grupo-cabecera-line--title report-pdf-grupo-cabecera-line--last" style="margin:0 !important">Creatinina</div>
 
 
 
 
 </div>
-                                        <div class="report-segment-table-wrap report-segment-tail-with-signature">                <table class="results results-cols-4 results-cols-grid" width="100%" style="table-layout:fixed;width:100%;margin-top:0;margin-bottom:5px;">
+                                        <div class="report-segment-table-wrap report-segment-tail-with-signature">                <table class="results results-cols-4 results-cols-grid" width="100%" style="table-layout:fixed;width:100%;">
             <colgroup><col width="34%" style="width:34%;"><col width="18%" style="width:18%;"><col width="28%" style="width:28%;"><col width="20%" style="width:20%;"></colgroup>                        <thead>
                                 <tr>
                     <th class="results-col-analisis text-left" align="left" valign="middle" style="vertical-align:middle">ANÁLISIS</th>
@@ -3067,20 +2856,20 @@ body.pdf-engine-mpdf .report-refs-matrix-wrap > .report-refs-matrix-title {
 </colgroup>
     <tr class="pdf-section-row" data-pdf-row="0">
         <td class="pdf-cell pdf-cell--left" align="left" valign="top" style="width:33.3333%;line-height:1.35;text-align:left !important;vertical-align:top !important;padding:0 6px;">
-            <table class="pdf-cell-stack-table" width="100%" cellpadding="0" cellspacing="0" style="table-layout:fixed;width:100%;border-collapse:collapse;"><tr><td class="pdf-cell pdf-cell-stack-item pdf-cell--left pdf-cell--h-left pdf-cell--v-top" align="left" valign="top" style="padding:0;border:0;line-height:inherit;text-align:left !important;vertical-align:top !important;font-family:"DejaVu Sans";font-size:10pt;font-weight:normal;color:#333333;font-style:normal;text-transform:none;letter-spacing:0em;line-height:1.35;text-shadow:none;;">                                <div>
+            <table class="pdf-cell-stack-table" width="100%" cellpadding="0" cellspacing="0" style="table-layout:fixed;width:100%;border-collapse:collapse;"><tr><td class="pdf-cell pdf-cell-stack-item pdf-cell--left pdf-cell--h-left pdf-cell--v-top" align="left" valign="top" style="padding:0;border:0;line-height:inherit;text-align:left !important;vertical-align:top !important;font-family:'DejaVu Sans';font-size:10pt;font-weight:normal;color:#333333;font-style:normal;text-transform:none;letter-spacing:0em;line-height:1.35;text-shadow:none;;">                                <div>
                     <span class="pdf-lab-f-sublabel" style="opacity:0.75;font-size:0.92em;">Verificado por:</span> <span>Ximena</span>
                 </div>
-                        </td></tr><tr><td class="pdf-cell pdf-cell-stack-item pdf-cell--left pdf-cell--h-left pdf-cell--v-top" align="left" valign="top" style="padding:0;border:0;line-height:inherit;text-align:left !important;vertical-align:top !important;font-family:"DejaVu Sans";font-size:10pt;font-weight:normal;color:#333333;font-style:normal;text-transform:none;letter-spacing:0em;line-height:1.35;text-shadow:none;;padding-top:6px;">                                                                    <div style="opacity:0.6;">—</div>
+                        </td></tr><tr><td class="pdf-cell pdf-cell-stack-item pdf-cell--left pdf-cell--h-left pdf-cell--v-top" align="left" valign="top" style="padding:0;border:0;line-height:inherit;text-align:left !important;vertical-align:top !important;font-family:'DejaVu Sans';font-size:10pt;font-weight:normal;color:#333333;font-style:normal;text-transform:none;letter-spacing:0em;line-height:1.35;text-shadow:none;;padding-top:6px;">                                                                    <div style="opacity:0.6;">—</div>
                                         </td></tr></table>        </td>
         <td style="width:33.3333%;vertical-align:top !important;padding:0 4px;line-height:1.35;"></td>
         <td class="pdf-cell pdf-cell--left" align="left" valign="top" style="width:33.3333%;line-height:1.35;text-align:left !important;vertical-align:top !important;padding:0 6px;">
-            <table class="pdf-cell-stack-table" width="100%" cellpadding="0" cellspacing="0" style="table-layout:fixed;width:100%;border-collapse:collapse;"><tr><td class="pdf-cell pdf-cell-stack-item pdf-cell--left pdf-cell--h-left pdf-cell--v-top" align="left" valign="top" style="padding:0;border:0;line-height:inherit;text-align:left !important;vertical-align:top !important;font-family:"DejaVu Sans";font-size:10pt;font-weight:normal;color:#333333;font-style:normal;text-transform:none;letter-spacing:0em;line-height:1.35;text-shadow:none;;">                                                <div class="pdf-lab-f-sublabel" style="opacity:0.75;font-size:0.92em;margin-bottom:6px;">ATENTAMENTE</div>
+            <table class="pdf-cell-stack-table" width="100%" cellpadding="0" cellspacing="0" style="table-layout:fixed;width:100%;border-collapse:collapse;"><tr><td class="pdf-cell pdf-cell-stack-item pdf-cell--left pdf-cell--h-left pdf-cell--v-top" align="left" valign="top" style="padding:0;border:0;line-height:inherit;text-align:left !important;vertical-align:top !important;font-family:'DejaVu Sans';font-size:10pt;font-weight:normal;color:#333333;font-style:normal;text-transform:none;letter-spacing:0em;line-height:1.35;text-shadow:none;;">                                                <div class="pdf-lab-f-sublabel" style="opacity:0.75;font-size:0.92em;margin-bottom:6px;">ATENTAMENTE</div>
                                                     <div style="margin-bottom:4px;">
                         <img src="C:/wamp64/www/laboratorio/public/images/lab-approver-sig-fa0728166487c5c7.png" alt="" class="pdf-lab-f-img" style="max-height:80px;max-width:150px;">
                     </div>
-                                        </td></tr><tr><td class="pdf-cell pdf-cell-stack-item pdf-cell--left pdf-cell--h-left pdf-cell--v-top" align="left" valign="top" style="padding:0;border:0;line-height:inherit;text-align:left !important;vertical-align:top !important;font-family:"DejaVu Sans";font-size:10pt;font-weight:normal;color:#333333;font-style:normal;text-transform:none;letter-spacing:0em;line-height:1.35;text-shadow:none;;padding-top:6px;">                                                <div style="opacity:0.95;">v-1140</div>
-                        </td></tr><tr><td class="pdf-cell pdf-cell-stack-item pdf-cell--left pdf-cell--h-left pdf-cell--v-top" align="left" valign="top" style="padding:0;border:0;line-height:inherit;text-align:left !important;vertical-align:top !important;font-family:"DejaVu Sans";font-size:10pt;font-weight:normal;color:#333333;font-style:normal;text-transform:none;letter-spacing:0em;line-height:1.35;text-shadow:none;;padding-top:6px;">                                                <div style="font-weight:600;">Marisol Velasquez Tito</div>
-                        </td></tr><tr><td class="pdf-cell pdf-cell-stack-item pdf-cell--left pdf-cell--h-left pdf-cell--v-top" align="left" valign="top" style="padding:0;border:0;line-height:inherit;text-align:left !important;vertical-align:top !important;font-family:"DejaVu Sans";font-size:10pt;font-weight:normal;color:#333333;font-style:normal;text-transform:none;letter-spacing:0em;line-height:1.35;text-shadow:none;;padding-top:6px;">                                                <div style="opacity:0.95;">Bioquímica Especialista en Endocrinología</div>
+                                        </td></tr><tr><td class="pdf-cell pdf-cell-stack-item pdf-cell--left pdf-cell--h-left pdf-cell--v-top" align="left" valign="top" style="padding:0;border:0;line-height:inherit;text-align:left !important;vertical-align:top !important;font-family:'DejaVu Sans';font-size:10pt;font-weight:normal;color:#333333;font-style:normal;text-transform:none;letter-spacing:0em;line-height:1.35;text-shadow:none;;padding-top:6px;">                                                <div style="opacity:0.95;">v-1140</div>
+                        </td></tr><tr><td class="pdf-cell pdf-cell-stack-item pdf-cell--left pdf-cell--h-left pdf-cell--v-top" align="left" valign="top" style="padding:0;border:0;line-height:inherit;text-align:left !important;vertical-align:top !important;font-family:'DejaVu Sans';font-size:10pt;font-weight:normal;color:#333333;font-style:normal;text-transform:none;letter-spacing:0em;line-height:1.35;text-shadow:none;;padding-top:6px;">                                                <div style="font-weight:600;">Marisol Velasquez Tito</div>
+                        </td></tr><tr><td class="pdf-cell pdf-cell-stack-item pdf-cell--left pdf-cell--h-left pdf-cell--v-top" align="left" valign="top" style="padding:0;border:0;line-height:inherit;text-align:left !important;vertical-align:top !important;font-family:'DejaVu Sans';font-size:10pt;font-weight:normal;color:#333333;font-style:normal;text-transform:none;letter-spacing:0em;line-height:1.35;text-shadow:none;;padding-top:6px;">                                                <div style="opacity:0.95;">Bioquímica Especialista en Endocrinología</div>
                         </td></tr></table>        </td>
     </tr>
 </table>

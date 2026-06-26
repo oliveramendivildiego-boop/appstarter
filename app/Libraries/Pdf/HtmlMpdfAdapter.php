@@ -7,7 +7,7 @@ namespace App\Libraries\Pdf;
  */
 class HtmlMpdfAdapter
 {
-    public const CACHE_REVISION = 'mpdf-native-v59';
+    public const CACHE_REVISION = 'mpdf-native-v74';
 
     private const TOTAL_PAGES_TOKEN = '__PDF_TOTAL_PAGES__';
 
@@ -25,9 +25,95 @@ class HtmlMpdfAdapter
         $html = self::injectMpdfCompatStyles($html);
         $html = MpdfCssVariablesResolver::resolveInHtml($html);
         $html = MpdfFontMapper::normalizeInlineStylesInHtml($html);
+        $html = self::stripResultsLayoutInlineConflictsForMpdf($html);
         $html = MpdfFontMapper::normalizeClassAttrsInHtml($html);
 
         return $html;
+    }
+
+    /**
+     * Todos los PDF con mPDF: el bloque Resultados usa buildResultsTableParityCss (cualquier plantilla/registro).
+     * Los style="" densos son para Dompdf; aquí se eliminan propiedades que compiten con ese CSS.
+     */
+    private static function stripResultsLayoutInlineConflictsForMpdf(string $html): string
+    {
+        $cabeceraLayoutProps = [
+            'font-size',
+            'padding-top',
+            'padding-bottom',
+            'font-family',
+            'font-weight',
+            'color',
+            'line-height',
+            'text-shadow',
+            'font-style',
+            'text-transform',
+            'letter-spacing',
+        ];
+
+        $blockGapProps = ['padding-top', 'margin-top'];
+
+        foreach ([
+            'report-pdf-grupo-cabecera-line',
+            'report-metodo-prueba',
+            'report-tipo-muestra',
+        ] as $classPattern) {
+            $html = self::stripInlineStylePropertiesOnMatchingElements(
+                $html,
+                $classPattern,
+                $cabeceraLayoutProps,
+            );
+        }
+
+        $html = self::stripInlineStylePropertiesOnMatchingElements(
+            $html,
+            'report-pdf-grupo-area-separator',
+            ['padding-top', 'padding-bottom'],
+        );
+
+        return self::stripInlineStylePropertiesOnMatchingElements(
+            $html,
+            'report-pdf-subgrupo-prueba',
+            $blockGapProps,
+        );
+    }
+
+    /**
+     * @param list<string> $properties
+     */
+    private static function stripInlineStylePropertiesOnMatchingElements(
+        string $html,
+        string $classPattern,
+        array $properties,
+    ): string {
+        $regex = '/(<(?:div|h4)\b[^>]*\b' . $classPattern . '\b[^>]*)\sstyle=(["\'])((?:\\\\.|(?!\2).)*)(\2)/is';
+
+        return preg_replace_callback(
+            $regex,
+            static function (array $m) use ($properties): string {
+                $style = self::stripInlineCssProperties($m[3], $properties);
+                if ($style === '') {
+                    return $m[1] . '>';
+                }
+
+                return $m[1] . ' style=' . $m[2] . $style . $m[4];
+            },
+            $html,
+        ) ?? $html;
+    }
+
+    /**
+     * @param list<string> $properties
+     */
+    private static function stripInlineCssProperties(string $style, array $properties): string
+    {
+        foreach ($properties as $property) {
+            $style = preg_replace('/\b' . preg_quote($property, '/') . '\s*:\s*[^;]+;?/i', '', $style) ?? $style;
+        }
+
+        $style = preg_replace('/;\s*;/', ';', $style) ?? $style;
+
+        return trim($style, " \t\n\r\0\x0B;");
     }
 
     /**
@@ -214,7 +300,14 @@ body.pdf-engine-mpdf .pdf-ft-pagination-num {
 }
 body.pdf-engine-mpdf .pdf-hg-block .header-piece-logo img {
     max-width: 100% !important;
-    height: auto !important;
+}
+body.pdf-engine-mpdf .pdf-hg-block .pdf-section-table td.pdf-cell[valign="middle"] .header-piece-logo,
+body.pdf-engine-mpdf .pdf-hg-block .pdf-section-table td.pdf-cell[valign="bottom"] .header-piece-logo {
+    display: inline-block !important;
+    vertical-align: middle !important;
+}
+body.pdf-engine-mpdf .pdf-hg-block .pdf-section-table td.pdf-cell > table.pdf-cell-valign-table td[valign="bottom"] {
+    vertical-align: bottom !important;
 }
 body.pdf-engine-mpdf .pdf-hg-block .header-piece-company h1 {
     margin: 0 !important;
@@ -274,66 +367,8 @@ body.pdf-engine-mpdf .report-pdf-grupo-cabecera + .report-segment-table-wrap tab
 body.pdf-engine-mpdf .report-pdf-grupo-cabecera + .report-refs-matrix-wrap table.results {
     margin-top: 0 !important;
 }
-body.pdf-engine-mpdf .report-pdf-grupo-cabecera-line--title,
-body.pdf-engine-mpdf .report-pdf-grupo-cabecera-table .group-title,
-body.pdf-engine-mpdf .report-pdf-grupo-cabecera .group-title.report-pdf-grupo-cabecera-line--title {
-    display: block !important;
-    box-sizing: border-box !important;
-    width: 100% !important;
-    margin: 0 !important;
-    font-family: var(--pdf-grupo-cabecera-title-font-family, dejavusans, sans-serif) !important;
-    font-size: var(--pdf-grupo-cabecera-title-font-size, 9pt) !important;
-    font-weight: var(--pdf-grupo-cabecera-title-font-weight, normal) !important;
-    color: var(--pdf-grupo-cabecera-title-color, #333) !important;
-    line-height: 1.2 !important;
-    text-shadow: var(--pdf-grupo-cabecera-title-text-shadow, none) !important;
-}
-body.pdf-engine-mpdf .report-pdf-grupo-cabecera-line--tipo,
-body.pdf-engine-mpdf .report-pdf-grupo-cabecera-line--metodo,
-body.pdf-engine-mpdf .report-pdf-grupo-cabecera-table .report-tipo-muestra,
-body.pdf-engine-mpdf .report-pdf-grupo-cabecera-table .report-metodo-prueba,
-body.pdf-engine-mpdf .report-pdf-grupo-cabecera .report-tipo-muestra,
-body.pdf-engine-mpdf .report-pdf-grupo-cabecera .report-metodo-prueba {
-    display: block !important;
-    box-sizing: border-box !important;
-    width: 100% !important;
-    margin: 0 !important;
-    font-family: var(--pdf-results-font-family, dejavusans, sans-serif) !important;
-    font-size: var(--pdf-results-font-size, 9pt) !important;
-    font-weight: var(--pdf-results-font-weight, normal) !important;
-    font-style: var(--pdf-results-font-style, normal) !important;
-    text-transform: var(--pdf-results-transform, none) !important;
-    letter-spacing: var(--pdf-results-letter-spacing, 0em) !important;
-    line-height: var(--pdf-results-line-height, 1.35) !important;
-    text-shadow: var(--pdf-results-text-shadow, none) !important;
-    color: var(--pdf-results-body-color, #333) !important;
-}
-body.pdf-engine-mpdf .report-pdf-grupo-cabecera-table .report-pdf-grupo-cabecera-line--title,
-body.pdf-engine-mpdf .report-pdf-grupo-cabecera .report-pdf-grupo-cabecera-line--title {
-    padding-top: var(--pdf-grupo-cabecera-title-margin-top, 0) !important;
-    padding-bottom: var(--pdf-grupo-cabecera-title-margin-bottom, 6px) !important;
-}
-body.pdf-engine-mpdf .report-pdf-grupo-cabecera-table .report-pdf-grupo-cabecera-line--tipo,
-body.pdf-engine-mpdf .report-pdf-grupo-cabecera .report-pdf-grupo-cabecera-line--tipo {
-    padding-top: var(--pdf-grupo-cabecera-tipo-margin-top, 0) !important;
-    padding-bottom: var(--pdf-grupo-cabecera-tipo-margin-bottom, 10px) !important;
-}
-body.pdf-engine-mpdf .report-pdf-grupo-cabecera-table .report-pdf-grupo-cabecera-line--metodo,
-body.pdf-engine-mpdf .report-pdf-grupo-cabecera .report-pdf-grupo-cabecera-line--metodo {
-    padding-top: var(--pdf-grupo-cabecera-metodo-margin-top, 0) !important;
-    padding-bottom: var(--pdf-grupo-cabecera-metodo-margin-bottom, 10px) !important;
-}
-body.pdf-engine-mpdf .report-pdf-grupo-cabecera-table .report-pdf-grupo-cabecera-line--last,
-body.pdf-engine-mpdf .report-pdf-grupo-cabecera .report-pdf-grupo-cabecera-line--last {
-    padding-bottom: var(--pdf-grupo-cabecera-metodo-margin-bottom, 10px) !important;
-}
 body.pdf-engine-mpdf .report-pdf-grupo-prueba:not(.report-pdf-grupo-prueba-first) {
     margin-top: 0 !important;
-    padding-top: var(--pdf-results-grupo-gap, 10px) !important;
-}
-body.pdf-engine-mpdf .report-pdf-subgrupo-block.report-pdf-subgrupo-prueba {
-    margin-top: 0 !important;
-    padding-top: var(--pdf-results-subgrupo-gap, 18px) !important;
 }
 body.pdf-engine-mpdf.pdf-layout-engine .report-pdf-grupo-area-separator,
 body.pdf-engine-mpdf.pdf-dompdf-download .report-pdf-grupo-area-separator {
@@ -358,21 +393,12 @@ body.pdf-engine-mpdf.pdf-dompdf-download .report-pdf-grupo-cabecera-line--title,
 body.pdf-engine-mpdf.pdf-dompdf-download .report-pdf-grupo-cabecera .group-title.report-pdf-grupo-cabecera-line--title {
     page-break-after: auto !important;
     break-after: auto !important;
-    min-height: 1.2em !important;
     overflow: visible !important;
-    background-color: #ffffff !important;
-    position: relative !important;
-    z-index: 2 !important;
 }
 body.pdf-engine-mpdf.pdf-layout-engine .report-pdf-grupo-cabecera + .report-segment-table-wrap,
 body.pdf-engine-mpdf.pdf-dompdf-download .report-pdf-grupo-cabecera + .report-segment-table-wrap {
     page-break-before: auto !important;
     break-before: auto !important;
-}
-body.pdf-engine-mpdf .report-segment-table-wrap table.results,
-body.pdf-engine-mpdf .pdf-rs-block table.results:not(.pdf-notes-table):not(.report-refs-matrix) {
-    margin-top: var(--pdf-results-table-margin-top, 15px) !important;
-    margin-bottom: var(--pdf-results-table-margin-bottom, 15px) !important;
 }
 body.pdf-engine-mpdf .pdf-rs-block table.results:not(.pdf-notes-table):not(.report-refs-matrix) th,
 body.pdf-engine-mpdf .pdf-rs-block table.results:not(.pdf-notes-table):not(.report-refs-matrix) td {

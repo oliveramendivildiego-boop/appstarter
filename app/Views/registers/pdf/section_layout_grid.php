@@ -350,6 +350,19 @@ $pdfTdStyle = static function (int $startCol, int $span, float $pctUnit, int $ro
         $v    = $itemAlignV($only, $startCol);
         $alignCellClasses = \App\Services\ReportPdfLayoutService::instanceAlignCellClasses($only, $colAlignH, $colAlignV, $startCol);
         $typography       = $itemTypographyCss($only, (string) ($only['element_type'] ?? ''));
+        // Logo en fila con altura fija: respetar align_v de la instancia (null → top, como la vista previa).
+        if ($sectionKeyStr === 'header' && $rowHeightPx > 0 && (string) ($only['element_type'] ?? '') === 'logo') {
+            $explicitV = isset($only['align_v']) ? strtolower(trim((string) $only['align_v'])) : '';
+            if (in_array($explicitV, ['middle', 'bottom'], true)) {
+                $v = $explicitV;
+                $alignCellClasses = \App\Services\ReportPdfLayoutService::instanceAlignCellClasses(
+                    array_merge($only, ['align_v' => $explicitV]),
+                    $colAlignH,
+                    $colAlignV,
+                    $startCol,
+                );
+            }
+        }
     } elseif (count($cellItems) > 1 && $sectionKeyStr === 'footer') {
         $first = $cellItems[0];
         $h     = $itemAlignH($first, $startCol);
@@ -433,9 +446,11 @@ $renderCellStackItems = static function (array $cellItems, int $startCol, int $g
     $section_key,
     $n,
     $itemAlignH,
+    $itemAlignV,
     $resolveGridStack,
     $mpdfFooterMode,
-    $cellItemTdInfo
+    $cellItemTdInfo,
+    $headerRowHeightsPx
 ): void {
     $useInnerStackTable = count($cellItems) > 1;
     if ($useInnerStackTable) {
@@ -453,12 +468,15 @@ $renderCellStackItems = static function (array $cellItems, int $startCol, int $g
         $isCustomText = ($elType === 'custom_text');
         $itemCol      = (int) ($cellItem['col'] ?? $startCol);
         $itemAlignCls = $itemAlignH($cellItem, $itemCol);
+        $itemVAlign   = $itemAlignV($cellItem, $itemCol);
         $elCtx        = array_merge($element_ctx, [
             'pdf_element_type'       => $cellItem['element_type'],
             'pdf_instance_uid'       => (string) ($cellItem['uid'] ?? ''),
             'pdf_section_key'        => (string) ($section_key ?? ''),
             'pdf_section_columns'    => $n,
             'pdf_cell_align'         => $itemAlignCls,
+            'pdf_cell_valign'        => $itemVAlign,
+            'pdf_row_height_px'      => (int) ($headerRowHeightsPx[$gridRowIndex] ?? 0),
             'pdf_grid_row'           => (int) $gridRowIndex,
             'pdf_grid_column'        => (int) ($cellItem['col'] ?? $startCol),
             'pdf_grid_column_span'   => (int) ($cellItem['span'] ?? 1),
@@ -491,20 +509,23 @@ $renderCellStackItems = static function (array $cellItems, int $startCol, int $g
 
 $wrapCellValignTable = static function (array $tdInfo, callable $render): void {
     $valign = (string) ($tdInfo['valign'] ?? 'top');
-    if ($valign === 'top' || (int) ($tdInfo['explicitHeightPx'] ?? 0) > 0) {
+    if ($valign === 'top') {
         $render();
 
         return;
     }
+    $explicitH = (int) ($tdInfo['explicitHeightPx'] ?? 0);
+    $hAttr     = $explicitH > 0 ? (' height="' . $explicitH . '"') : '';
+    $hCss      = $explicitH > 0 ? ('height:' . $explicitH . 'px;') : 'height:100%;';
     $hAlign = match ((string) ($tdInfo['alignCls'] ?? 'left')) {
         'center' => 'center',
         'right'  => 'right',
         default  => 'left',
     };
     ?>
-    <table class="pdf-cell-valign-table" width="100%" height="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse;width:100%;height:100%;table-layout:fixed;">
-        <tr>
-            <td valign="<?= esc($valign, 'attr') ?>" align="<?= esc($hAlign, 'attr') ?>" style="padding:0;border:0;line-height:inherit;text-align:<?= esc($hAlign, 'attr') ?> !important;vertical-align:<?= esc($valign, 'attr') ?> !important;height:100%;">
+    <table class="pdf-cell-valign-table" width="100%"<?= $hAttr ?> cellpadding="0" cellspacing="0" style="border-collapse:collapse;width:100%;<?= esc($hCss, 'attr') ?>table-layout:fixed;">
+        <tr<?= $hAttr ?>>
+            <td valign="<?= esc($valign, 'attr') ?>" align="<?= esc($hAlign, 'attr') ?>"<?= $hAttr ?> style="padding:0;border:0;line-height:inherit;text-align:<?= esc($hAlign, 'attr') ?> !important;vertical-align:<?= esc($valign, 'attr') ?> !important;<?= esc($hCss, 'attr') ?>">
                 <?php $render(); ?>
             </td>
         </tr>

@@ -172,15 +172,40 @@ switch ($type) {
         $stLogoLbl   = \App\Services\ReportPdfLayoutService::headerGridLabelPieceStyleAttr($hgLogo, 'logo');
         $logoRel     = $lab['logo'] ?? 'images/logo-john.png';
         $logoSrc     = $logoDataUri !== '' ? $logoDataUri : report_image_src_for_variant($logoRel, $pdfVariant);
+        $cellVAlign  = strtolower(trim((string) ($pdf_cell_valign ?? 'top')));
+        $rowHeightPx = (int) ($pdf_row_height_px ?? 0);
+        $logoTextStyle = is_array($pdf_text_style ?? null) ? $pdf_text_style : [];
+        $logoMargins   = is_array($pdf_margins_mm ?? null) ? $pdf_margins_mm : null;
+        $logoColSpan   = (int) ($pdf_grid_column_span ?? 1);
+        $logoCols      = (int) ($pdf_section_columns ?? 5);
+        $useIntrinsicLogo = $rowHeightPx > 0 && in_array($cellVAlign, ['middle', 'bottom'], true);
         $logoImgStyle = \App\Services\ReportPdfLayoutService::logoImageInlineStyleAttr(
-            is_array($pdf_text_style ?? null) ? $pdf_text_style : [],
-            (int) ($pdf_grid_column_span ?? 1),
-            (int) ($pdf_section_columns ?? 5),
+            $logoTextStyle,
+            $logoColSpan,
+            $logoCols,
             $logoSrc,
-            is_array($pdf_margins_mm ?? null) ? $pdf_margins_mm : null,
+            $logoMargins,
+            'letter',
+            $useIntrinsicLogo,
         ) . \App\Services\ReportPdfLayoutService::blockImageAlignMarginCss((string) ($pdf_cell_align ?? 'left'));
+        $logoSpacerHtml = '';
+        if ($useIntrinsicLogo) {
+            $logoContentH = \App\Services\ReportPdfLayoutService::logoIntrinsicRenderedHeightPx(
+                $logoTextStyle,
+                $logoColSpan,
+                $logoCols,
+                $logoSrc,
+                $logoMargins,
+            );
+            $logoSpacerHtml = \App\Services\ReportPdfLayoutService::pdfValignSpacerHtml(
+                $rowHeightPx,
+                $logoContentH,
+                $cellVAlign,
+            );
+        }
         ?>
                 <div class="header-piece header-piece-logo">
+                    <?= $logoSpacerHtml ?>
                     <?php if ($inlineLogo && $showLblLogo): ?>
                     <div style="display:flex;flex-wrap:wrap;align-items:center;gap:8px;">
                         <span style="<?= esc($stLogoLbl, 'attr') ?>"><?= esc($lblLogo) ?></span>
@@ -214,8 +239,18 @@ switch ($type) {
         $showLblCo = $showCoL && $lblCo !== '';
         $stCoLbl   = \App\Services\ReportPdfLayoutService::headerGridLabelPieceStyleAttr($hgCo, 'lab_company');
         $h1CoStyle = esc($stInst, 'attr') . ';margin:0;';
+        $coVAlign  = strtolower(trim((string) ($pdf_cell_valign ?? 'top')));
+        $coRowH    = (int) ($pdf_row_height_px ?? 0);
+        $coSpacerHtml = '';
+        if ($coRowH > 0 && in_array($coVAlign, ['middle', 'bottom'], true) && ! $showLblCo) {
+            $coTextStyle = is_array($pdf_text_style ?? null) ? $pdf_text_style : [];
+            $coLineH     = (float) (preg_match('/line-height\s*:\s*([\d.]+)/', (string) $stInst, $lhM) ? $lhM[1] : 1.35);
+            $coContentH  = \App\Services\ReportPdfLayoutService::typographyBlockHeightPx($coTextStyle, $coLineH);
+            $coSpacerHtml = \App\Services\ReportPdfLayoutService::pdfValignSpacerHtml($coRowH, $coContentH, $coVAlign);
+        }
         ?>
                 <div class="header-piece header-piece-company">
+                    <?= $coSpacerHtml ?>
                     <?php if ($inlineCo && $showLblCo): ?>
                     <div style="display:flex;flex-wrap:wrap;align-items:baseline;gap:8px;">
                         <span style="<?= esc($stCoLbl, 'attr') ?>"><?= esc($lblCo) ?></span>

@@ -51,6 +51,7 @@ class MpdfPdfRenderer implements PdfRendererInterface
         $html = MpdfFooterStyles::injectDocumentFooterCss($html, $layout);
 
         $html = HtmlMpdfAdapter::adapt($html, $options);
+        $html = MpdfInlineImageResolver::materializeDataUriImages($html);
 
         $footerHtmlPageOne = null;
         $footerHtmlRest    = null;

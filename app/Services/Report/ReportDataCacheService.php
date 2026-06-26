@@ -12,7 +12,7 @@ use App\Services\ReportPdfLayoutService;
  */
 class ReportDataCacheService
 {
-    private const SALT = 'report-data-prep-v3-mpdf-pipeline';
+    private const SALT = 'report-data-prep-v4-order-pruebas';
 
     private RegisterModel $registerModel;
 
