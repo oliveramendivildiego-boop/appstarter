@@ -2,6 +2,7 @@
 
 namespace App\Libraries\Pdf;
 
+use Config\Pdf as PdfConfig;
 use RuntimeException;
 
 /**
@@ -191,6 +192,12 @@ class ChromiumPdfRenderer implements PdfRendererInterface
     private function resolveExecutable(): string
     {
         $configured = $this->normalizeExecutablePath((string) (config('Pdf')->executablePath ?? ''));
+        if ($configured === '') {
+            $configured = $this->normalizeExecutablePath(PdfConfig::readChromeExecutableFromEnvironment());
+        }
+        if ($configured === '') {
+            $configured = $this->normalizeExecutablePath(PdfConfig::defaultChromeExecutableForPlatform());
+        }
         if ($configured !== '') {
             return $configured;
         }
@@ -204,10 +211,6 @@ class ChromiumPdfRenderer implements PdfRendererInterface
             if (@is_file($path) || @is_executable($path)) {
                 return $path;
             }
-        }
-
-        if ($this->isWindows() && self::WINDOWS_BROWSER_EXES !== []) {
-            return self::WINDOWS_BROWSER_EXES[0];
         }
 
         throw new RuntimeException($this->buildMissingBrowserMessage());
@@ -229,15 +232,24 @@ class ChromiumPdfRenderer implements PdfRendererInterface
 
     private function buildMissingBrowserMessage(): string
     {
+        $configured = (string) (config('Pdf')->executablePath ?? '');
+        $openBasedir  = (string) ini_get('open_basedir');
+        $shellExec    = function_exists('shell_exec')
+            && ! in_array('shell_exec', array_map('trim', explode(',', (string) ini_get('disable_functions'))), true);
+
+        $hint = 'El PDF se genera en el servidor (Chromium headless); el navegador del usuario no importa.';
+
         if ($this->isWindows()) {
-            return 'No se encontró Chrome/Chromium. En .env configure: '
-                . 'CHROME_EXECUTABLE_PATH="C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe"';
+            return $hint . ' No se encontró Chrome. En .env del servidor: '
+                . 'CHROME_EXECUTABLE_PATH="C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe" '
+                . '(config actual: ' . ($configured !== '' ? $configured : 'vacío') . ').';
         }
 
-        return 'No se encontró Chrome/Chromium en el servidor. En producción instale Chromium '
-            . '(p. ej. apt install chromium-browser) y en .env configure: '
+        return $hint . ' Instale Chromium en el servidor (apt install chromium-browser) y en .env: '
             . 'CHROME_EXECUTABLE_PATH=/usr/bin/chromium-browser '
-            . '(o /usr/bin/google-chrome-stable).';
+            . '(config: ' . ($configured !== '' ? $configured : 'vacío')
+            . ', open_basedir: ' . ($openBasedir !== '' ? $openBasedir : 'no')
+            . ', shell_exec: ' . ($shellExec ? 'sí' : 'no') . ').';
     }
 
     private function isWindows(): bool

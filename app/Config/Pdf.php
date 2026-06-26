@@ -81,17 +81,91 @@ class Pdf extends BaseConfig
             $this->renderer = 'chromium';
         }
 
-        $envChrome = env('CHROME_EXECUTABLE_PATH', '');
-        if (is_string($envChrome)) {
-            $envChrome = trim($envChrome, " \t\"'");
-            if ($envChrome !== '' && ! in_array(strtolower($envChrome), ['false', '0', 'null', 'none'], true)) {
-                $this->executablePath = $envChrome;
-            }
+        $this->executablePath = self::readChromeExecutableFromEnvironment();
+
+        if ($this->executablePath === '') {
+            $this->executablePath = self::defaultChromeExecutableForPlatform();
         }
 
         $envTimeout = env('PDF_CHROMIUM_TIMEOUT');
         if (is_string($envTimeout) && is_numeric($envTimeout)) {
             $this->timeoutSeconds = max(10, (int) $envTimeout);
         }
+    }
+
+    /**
+     * Lee CHROME_EXECUTABLE_PATH desde .env / variables de servidor (Apache a veces solo expone $_SERVER).
+     */
+    public static function readChromeExecutableFromEnvironment(): string
+    {
+        $candidates = [
+            env('CHROME_EXECUTABLE_PATH'),
+            $_ENV['CHROME_EXECUTABLE_PATH'] ?? null,
+            $_SERVER['CHROME_EXECUTABLE_PATH'] ?? null,
+        ];
+
+        $fromGetenv = getenv('CHROME_EXECUTABLE_PATH');
+        if (is_string($fromGetenv)) {
+            $candidates[] = $fromGetenv;
+        }
+
+        foreach ($candidates as $value) {
+            if (! is_string($value)) {
+                continue;
+            }
+
+            $path = trim($value, " \t\"'");
+            if ($path === '' || in_array(strtolower($path), ['false', '0', 'null', 'none'], true)) {
+                continue;
+            }
+
+            if (self::looksLikeWindowsPath($path) && ! self::isWindowsPlatform()) {
+                log_message(
+                    'warning',
+                    'CHROME_EXECUTABLE_PATH parece ruta de Windows en un servidor Linux; se ignora. Use /usr/bin/chromium-browser.',
+                );
+                continue;
+            }
+
+            return self::isWindowsPlatform()
+                ? str_replace('/', '\\', $path)
+                : str_replace('\\', '/', $path);
+        }
+
+        return '';
+    }
+
+    /**
+     * Ruta por defecto si no hay variable de entorno (desarrollo Windows / Linux típico).
+     */
+    public static function defaultChromeExecutableForPlatform(): string
+    {
+        if (self::isWindowsPlatform()) {
+            return 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe';
+        }
+
+        foreach ([
+            '/usr/bin/chromium-browser',
+            '/usr/bin/chromium',
+            '/usr/bin/google-chrome-stable',
+            '/usr/bin/google-chrome',
+            '/snap/bin/chromium',
+        ] as $path) {
+            if (@is_file($path) || @is_executable($path)) {
+                return $path;
+            }
+        }
+
+        return '/usr/bin/chromium-browser';
+    }
+
+    private static function isWindowsPlatform(): bool
+    {
+        return PHP_OS_FAMILY === 'Windows' || DIRECTORY_SEPARATOR === '\\';
+    }
+
+    private static function looksLikeWindowsPath(string $path): bool
+    {
+        return (bool) preg_match('#^[A-Za-z]:[/\\\\]#', $path);
     }
 }
