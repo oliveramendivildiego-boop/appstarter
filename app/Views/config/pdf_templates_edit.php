@@ -1671,11 +1671,6 @@ if (! in_array($configTab, $pdfConfigTabs, true)) {
     width: auto;
     height: auto;
     display: block;
-    object-fit: contain;
-    background: #fff;
-    border: 1px solid #dee2e6;
-    border-radius: 3px;
-    padding: 2px;
     box-sizing: border-box;
 }
 .pdf-preview-scope .header-piece-qr .qr-label {

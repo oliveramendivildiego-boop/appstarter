@@ -189,7 +189,7 @@ switch ($type) {
             $useIntrinsicLogo,
         ) . \App\Services\ReportPdfLayoutService::blockImageAlignMarginCss((string) ($pdf_cell_align ?? 'left'));
         $logoSpacerHtml = '';
-        if ($useIntrinsicLogo) {
+        if ($rowHeightPx > 0 && in_array($cellVAlign, ['middle', 'bottom'], true)) {
             $logoContentH = \App\Services\ReportPdfLayoutService::logoIntrinsicRenderedHeightPx(
                 $logoTextStyle,
                 $logoColSpan,
@@ -197,6 +197,9 @@ switch ($type) {
                 $logoSrc,
                 $logoMargins,
             );
+            if ($rowHeightPx > 0) {
+                $logoContentH = min($logoContentH, $rowHeightPx);
+            }
             $logoSpacerHtml = \App\Services\ReportPdfLayoutService::pdfValignSpacerHtml(
                 $rowHeightPx,
                 $logoContentH,
@@ -548,16 +551,41 @@ switch ($type) {
             $showHint = \App\Services\ReportPdfLayoutService::labFirmasBool($hgS, 'show_label_qr_hint', true) && $hint !== '';
             $inlineH  = (($hgS['label_qr_hint_line_mode'] ?? 'stacked') === 'inline');
             $stQrHint = \App\Services\ReportPdfLayoutService::headerGridLabelPieceStyleAttr($hgS, 'qr_hint');
+            $alignH   = (string) ($pdf_cell_align ?? 'left');
+            $cellVAlign  = strtolower(trim((string) ($pdf_cell_valign ?? 'top')));
+            $rowHeightPx = (int) ($pdf_row_height_px ?? 0);
+            $qrImgStyle  = \App\Services\ReportPdfLayoutService::qrImageInlineStyleAttr($hgS, $alignH);
+            $qrDisplayH  = \App\Services\ReportPdfLayoutService::qrDisplayedHeightPx($hgS);
+            $contentH    = $qrDisplayH;
+            if ($showHint && ! $inlineH) {
+                $fsHint = (float) ($hgS['label_qr_hint_font_size_pt'] ?? $hgS['font_size_pt'] ?? 9.5);
+                $lhHint = max(1.0, (float) ($hgS['line_height'] ?? 1.35));
+                $contentH += max(8, (int) round($fsHint * $lhHint * (96 / 72))) + 4;
+            }
+            $qrSpacerHtml = '';
+            if ($rowHeightPx > 0 && in_array($cellVAlign, ['middle', 'bottom'], true)) {
+                $qrSpacerHtml = \App\Services\ReportPdfLayoutService::pdfValignSpacerHtml(
+                    $rowHeightPx,
+                    $contentH,
+                    $cellVAlign,
+                );
+            }
+            $wrapAlign = match ($alignH) {
+                'center' => 'center',
+                'right'  => 'right',
+                default  => 'left',
+            };
             ?>
-                <div class="header-piece header-piece-qr">
+                <div class="header-piece header-piece-qr" style="text-align:<?= esc($wrapAlign, 'attr') ?>;">
+                    <?= $qrSpacerHtml ?>
                     <?php if ($inlineH && $showHint): ?>
-                    <div class="qr-inline-wrap" style="text-align:center;">
-                        <span style="display:inline-block;vertical-align:middle;max-width:58%;margin-right:6px;<?= esc($stQrHint, 'attr') ?>"><?= esc($hint) ?></span><img src="<?= $qr_data_uri ?>" alt="QR" class="qr-img" style="vertical-align:middle;">
+                    <div class="qr-inline-wrap" style="text-align:<?= esc($wrapAlign, 'attr') ?>;">
+                        <span style="display:inline-block;vertical-align:middle;max-width:58%;margin-right:6px;<?= esc($stQrHint, 'attr') ?>"><?= esc($hint) ?></span><img src="<?= $qr_data_uri ?>" alt="QR" class="qr-img" style="<?= esc($qrImgStyle, 'attr') ?>;vertical-align:middle;">
                     </div>
                     <?php elseif ($inlineH): ?>
-                    <img src="<?= $qr_data_uri ?>" alt="QR" class="qr-img">
+                    <img src="<?= $qr_data_uri ?>" alt="QR" class="qr-img" style="<?= esc($qrImgStyle, 'attr') ?>">
                     <?php else: ?>
-                    <img src="<?= $qr_data_uri ?>" alt="QR" class="qr-img">
+                    <img src="<?= $qr_data_uri ?>" alt="QR" class="qr-img" style="<?= esc($qrImgStyle, 'attr') ?>">
                     <?php if ($showHint): ?>
                     <p class="qr-label" style="<?= esc($stQrHint, 'attr') ?>"><?= esc($hint) ?></p>
                     <?php endif; ?>

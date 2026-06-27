@@ -7,7 +7,7 @@ namespace App\Libraries\Pdf;
  */
 class HtmlMpdfAdapter
 {
-    public const CACHE_REVISION = 'mpdf-native-v78';
+    public const CACHE_REVISION = 'mpdf-native-v79';
 
     private const TOTAL_PAGES_TOKEN = '__PDF_TOTAL_PAGES__';
 
@@ -301,8 +301,15 @@ body.pdf-engine-mpdf .pdf-ft-pagination-num {
 body.pdf-engine-mpdf .pdf-hg-block .header-piece-logo img {
     max-width: 100% !important;
 }
+body.pdf-engine-mpdf .pdf-hg-block .header-piece-qr .qr-img {
+    max-width: 100% !important;
+    display: block !important;
+    box-sizing: border-box !important;
+}
 body.pdf-engine-mpdf .pdf-hg-block .pdf-section-table td.pdf-cell[valign="middle"] .header-piece-logo,
-body.pdf-engine-mpdf .pdf-hg-block .pdf-section-table td.pdf-cell[valign="bottom"] .header-piece-logo {
+body.pdf-engine-mpdf .pdf-hg-block .pdf-section-table td.pdf-cell[valign="bottom"] .header-piece-logo,
+body.pdf-engine-mpdf .pdf-hg-block .pdf-section-table td.pdf-cell[valign="middle"] .header-piece-qr,
+body.pdf-engine-mpdf .pdf-hg-block .pdf-section-table td.pdf-cell[valign="bottom"] .header-piece-qr {
     display: inline-block !important;
     vertical-align: middle !important;
 }

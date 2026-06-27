@@ -354,6 +354,9 @@ if ($sectionKeyStr === 'header') {
                         \App\Services\ReportPdfLayoutService::typographyBlockHeightPx($itemResolved['text_style'], $lineHeight),
                     );
                 }
+                if ($elType === 'qr') {
+                    $maxH = max($maxH, \App\Services\ReportPdfLayoutService::gridQrRenderedHeightPx($gridStyleRaw));
+                }
             }
         };
         foreach ($row['colspans'] as $C) {
@@ -401,17 +404,20 @@ $pdfTdStyle = static function (int $startCol, int $span, float $pctUnit, int $ro
         $v    = $itemAlignV($only, $startCol);
         $alignCellClasses = \App\Services\ReportPdfLayoutService::instanceAlignCellClasses($only, $colAlignH, $colAlignV, $startCol);
         $typography       = $itemTypographyCss($only, (string) ($only['element_type'] ?? ''));
-        // Logo en fila con altura fija: respetar align_v de la instancia (null → top, como la vista previa).
-        if ($sectionKeyStr === 'header' && $rowHeightPx > 0 && (string) ($only['element_type'] ?? '') === 'logo') {
-            $explicitV = isset($only['align_v']) ? strtolower(trim((string) $only['align_v'])) : '';
-            if (in_array($explicitV, ['middle', 'bottom'], true)) {
-                $v = $explicitV;
-                $alignCellClasses = \App\Services\ReportPdfLayoutService::instanceAlignCellClasses(
-                    array_merge($only, ['align_v' => $explicitV]),
-                    $colAlignH,
-                    $colAlignV,
-                    $startCol,
-                );
+        // Encabezado con altura de fila fija: respetar align_v guardado en logo, QR y company.
+        if ($sectionKeyStr === 'header' && $rowHeightPx > 0) {
+            $onlyType = (string) ($only['element_type'] ?? '');
+            if (in_array($onlyType, ['logo', 'qr', 'lab_company'], true)) {
+                $explicitV = isset($only['align_v']) ? strtolower(trim((string) $only['align_v'])) : '';
+                if (in_array($explicitV, ['middle', 'bottom'], true)) {
+                    $v = $explicitV;
+                    $alignCellClasses = \App\Services\ReportPdfLayoutService::instanceAlignCellClasses(
+                        array_merge($only, ['align_v' => $explicitV]),
+                        $colAlignH,
+                        $colAlignV,
+                        $startCol,
+                    );
+                }
             }
         }
     } elseif (count($cellItems) > 1 && $sectionKeyStr === 'footer') {

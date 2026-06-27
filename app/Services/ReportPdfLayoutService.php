@@ -5278,6 +5278,53 @@ class ReportPdfLayoutService
     }
 
     /**
+     * Alto visible del QR en px (misma base que el CSS: 75 px al 100 %).
+     *
+     * @param array<string, mixed>|null $headerGridStyle
+     */
+    public static function qrDisplayedHeightPx(?array $headerGridStyle = null): int
+    {
+        $hg  = self::normalizeHeaderGridStyle(is_array($headerGridStyle) ? $headerGridStyle : []);
+        $pct = max(50, min(400, (int) ($hg['qr_size_percent'] ?? 100)));
+
+        return max(28, (int) round(75 * $pct / 100));
+    }
+
+    /**
+     * Altura total del bloque QR (imagen + leyenda apilada) para calcular filas del encabezado.
+     *
+     * @param array<string, mixed>|null $headerGridStyle
+     */
+    public static function gridQrRenderedHeightPx(?array $headerGridStyle = null): int
+    {
+        $hg = self::normalizeHeaderGridStyle(is_array($headerGridStyle) ? $headerGridStyle : []);
+        $h  = self::qrDisplayedHeightPx($hg);
+        $hint = trim((string) ($hg['label_qr_hint'] ?? ''));
+        $showHint = self::labFirmasBool($hg, 'show_label_qr_hint', true) && $hint !== '';
+        $inlineH  = (($hg['label_qr_hint_line_mode'] ?? 'stacked') === 'inline');
+        if ($showHint && ! $inlineH) {
+            $fs = (float) ($hg['label_qr_hint_font_size_pt'] ?? $hg['font_size_pt'] ?? 9.5);
+            $lh = max(1.0, (float) ($hg['line_height'] ?? 1.35));
+            $h += max(8, (int) round($fs * $lh * (96 / 72))) + 4;
+        }
+
+        return $h;
+    }
+
+    /**
+     * Estilo inline del &lt;img&gt; QR (mPDF necesita width/height explícitos).
+     *
+     * @param array<string, mixed>|null $headerGridStyle
+     */
+    public static function qrImageInlineStyleAttr(?array $headerGridStyle, string $alignH = 'left'): string
+    {
+        $px = self::qrDisplayedHeightPx($headerGridStyle);
+
+        return 'width:' . $px . 'px;height:' . $px . 'px;max-width:100%;display:block;box-sizing:border-box;'
+            . self::blockImageAlignMarginCss($alignH);
+    }
+
+    /**
      * @return array{0: int, 1: int}|null [widthPx, heightPx]
      */
     private static function imagePixelSizeFromSrc(string $src): ?array
