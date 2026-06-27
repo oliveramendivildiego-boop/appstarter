@@ -1223,8 +1223,8 @@ class RegisterModel extends Model
         };
 
         $applySexo = function ($builder) use ($sec, $gender) {
-            if ($gender !== null && ($gender === 1 || $gender === 2) && $this->hasColumn('secanacategoria', 'sexo')) {
-                $sexoVal = $gender === 1 ? 'masculino' : 'femenino';
+            $sexoVal = $this->sexoReferenciaFromGender($gender);
+            if ($sexoVal !== null && $this->hasColumn('secanacategoria', 'sexo')) {
                 $builder->groupStart()
                     ->where("LOWER(TRIM({$sec}.sexo)) = 'ambos'", null, false)
                     ->orWhere("LOWER(TRIM({$sec}.sexo)) = '" . $this->db->escapeString($sexoVal) . "'", null, false)
@@ -1629,16 +1629,29 @@ class RegisterModel extends Model
     }
 
     /**
+     * Valor de priresultados/secanacategoria.sexo según id de género del catálogo (masculino, femenino, gN…).
+     */
+    private function sexoReferenciaFromGender(?int $gender): ?string
+    {
+        if ($gender === null || $gender <= 0) {
+            return null;
+        }
+        helper('config');
+
+        return referencia_sexo_value_for_genero($gender);
+    }
+
+    /**
      * Quita filas cuyo sexo contradice al paciente (defensa ante mayúsculas / datos inconsistentes).
      * @param array<int,array<string,mixed>> $cands
      * @return array<int,array<string,mixed>>
      */
     private function filterSecanacategoriaCandidatesBySexo(array $cands, ?int $gender): array
     {
-        if ($gender !== 1 && $gender !== 2) {
+        $want = $this->sexoReferenciaFromGender($gender);
+        if ($want === null) {
             return $cands;
         }
-        $want = $gender === 1 ? 'masculino' : 'femenino';
         $ok = [];
         foreach ($cands as $r) {
             $sx = strtolower(trim((string) ($r['sexo'] ?? '')));
@@ -1675,12 +1688,7 @@ class RegisterModel extends Model
             $priority[(int) $id] = $idx;
         }
         $allowed = array_map('intval', $matchingPoblacionIds);
-        $sexoPaciente = null;
-        if ($gender === 1) {
-            $sexoPaciente = 'masculino';
-        } elseif ($gender === 2) {
-            $sexoPaciente = 'femenino';
-        }
+        $sexoPaciente = $this->sexoReferenciaFromGender($gender);
 
         $best = null;
         $bestKey = null;
@@ -1763,8 +1771,8 @@ class RegisterModel extends Model
         $sexoCond = '';
         $sexoCondFallback = '';
         $bindParams = [];
-        if ($gender !== null && ($gender === 1 || $gender === 2) && $this->hasColumn('priresultados', 'sexo')) {
-            $sexoVal = $gender === 1 ? 'masculino' : 'femenino';
+        $sexoVal = $this->sexoReferenciaFromGender($gender);
+        if ($sexoVal !== null && $this->hasColumn('priresultados', 'sexo')) {
             $sexoCond = " AND (pr.sexo = 'ambos' OR pr.sexo = ? OR pr.sexo IS NULL OR pr.sexo = '')";
             $sexoCondFallback = " AND (prff.sexo = 'ambos' OR prff.sexo = ? OR prff.sexo IS NULL OR prff.sexo = '')";
             $bindParams = [$sexoVal, $sexoVal];

@@ -4,6 +4,7 @@
 <?= $this->endSection() ?>
 <?= $this->section('content') ?>
 <?php helper('config'); $referencia_sexo_options = referencia_sexo_dropdown_options(); ?>
+<?= view('labotests/partial_referencia_sexo_styles') ?>
 <?= view('partial/breadcrumb_nav', [
     'items' => [
         ['label' => lang('Module.module_labotests'), 'url' => site_url('labotests')],
@@ -224,12 +225,26 @@ if ($feRaw !== '' && !empty($formulas_con_expresion ?? [])) {
         <strong>Valores de sub-clases</strong>
         <?php if (! empty($sub_items)): ?>
         <span class="badge bg-secondary"><?= count($sub_items) ?> filas</span>
-        <span class="text-muted small">Agrupadas por población; cada analito puede tener una fila por grupo y sexo.</span>
+        <span class="text-muted small">Agrupadas por población; cada analito puede tener una fila por grupo y sexo. Doble clic en el nombre de sub-clase para resaltar filas iguales.</span>
         <button type="button" class="btn btn-sm btn-outline-primary ms-auto" id="btn_abrir_modal_orden_sec" title="Lista compacta para reordenar más rápido">
             <i class="fa-solid fa-list-ol me-1"></i> Orden rápido
         </button>
+        <button type="button" class="btn btn-sm btn-outline-primary" id="btn_abrir_modal_orden_bloques_sec" title="Reordenar grupos completos por nombre de sub-clase">
+            <i class="fa-solid fa-layer-group me-1"></i> Ordenar bloques
+        </button>
+        <?= view('labotests/partial_modal_orden_criterios', [
+            'modal_id'           => 'modalOrdenCriteriosSec',
+            'btn_open_id'        => 'btn_abrir_modal_orden_criterios_sec',
+            'btn_apply_id'       => 'btn_aplicar_orden_criterios_sec',
+            'include_nombre'     => true,
+            'sort_url'           => site_url('labotests/sortsecitemsbycriteria'),
+            'prianacategoria_id' => (int) ($labotests_info->prianacategoria_id ?? 0),
+        ]) ?>
         <button type="button" class="btn btn-sm btn-outline-secondary" id="btn_duplicar_sec_seleccionadas" disabled>
             <i class="fa-solid fa-copy me-1"></i>Duplicar seleccionadas
+        </button>
+        <button type="button" class="btn btn-sm btn-outline-secondary" id="btn_generos_sec_seleccionadas" disabled title="Crea una fila por cada género del catálogo a partir de las sub-clases seleccionadas">
+            <i class="fa-solid fa-venus-mars me-1"></i>Pruebas por géneros
         </button>
         <button type="button" class="btn btn-sm btn-outline-danger" id="btn_eliminar_sec_seleccionadas" disabled>
             <i class="fa-solid fa-trash me-1"></i>Eliminar seleccionadas
@@ -239,8 +254,8 @@ if ($feRaw !== '' && !empty($formulas_con_expresion ?? [])) {
     <div class="card-body">
         <script src="<?= base_url('js/vendor/sortable.min.js') ?>"></script>
         <div class="wrapper-tabla-sub-items">
-        <table class="table table-bordered" id="tabla_sub_items">
-            <thead>
+        <table class="table table-bordered table-striped table-hover align-middle mb-0" id="tabla_sub_items">
+            <thead class="table-light">
                 <tr>
                     <th class="text-center">
                         <input type="checkbox" id="sec_check_all" title="Seleccionar todas">
@@ -307,13 +322,14 @@ if ($feRaw !== '' && !empty($formulas_con_expresion ?? [])) {
                         'es_separador' => ! empty($s['es_separador']) ? 1 : 0,
                     ];
                     $esSepRow = ! empty($s['es_separador']);
+                    $nombreSubclase = trim((string) ($s['nombre'] ?? ''));
                     $sexoEtq = referencia_sexo_short_label($s['sexo'] ?? 'ambos');
                     $pobEtq = $pobMap[(int) ($s['paciente_id'] ?? 0)] ?? (string) ($s['paciente_id'] ?? '');
                     $etiquetaOrden = $esSepRow
                         ? ('Título · ' . trim((string) ($s['nombre'] ?? '')))
                         : (trim((string) ($s['nombre'] ?? '')) . ' · ' . $pobEtq . ' · ' . $sexoEtq);
                 ?>
-                <tr data-sec="<?= htmlspecialchars(json_encode($rowDataSec), ENT_QUOTES, 'UTF-8') ?>" data-secanacategoria-id="<?= (int)($s['secanacategoria_id'] ?? 0) ?>" data-orden-etiqueta="<?= esc($etiquetaOrden, 'attr') ?>">
+                <tr data-sec="<?= htmlspecialchars(json_encode($rowDataSec), ENT_QUOTES, 'UTF-8') ?>" data-secanacategoria-id="<?= (int)($s['secanacategoria_id'] ?? 0) ?>" data-orden-etiqueta="<?= esc($etiquetaOrden, 'attr') ?>" data-subclase-nombre="<?= esc($nombreSubclase, 'attr') ?>"<?= $esSepRow ? '' : ' data-sexo="' . esc(referencia_sexo_css_slug($s['sexo'] ?? 'ambos'), 'attr') . '"' ?>>
                     <?php if ($esSepRow): ?>
                     <td class="text-center">
                         <input type="checkbox" class="sec-check-item" value="<?= (int)($s['secanacategoria_id'] ?? 0) ?>">
@@ -325,7 +341,7 @@ if ($feRaw !== '' && !empty($formulas_con_expresion ?? [])) {
                         <button type="button" class="btn btn-sm btn-outline-secondary btn-sec-bajar" title="Bajar una fila"><i class="fa-solid fa-arrow-down"></i></button>
                         <button type="button" class="btn btn-sm btn-outline-secondary btn-sec-ultimo" title="Ir al final de la lista"><i class="fa-solid fa-angles-down"></i></button>
                     </td>
-                    <td colspan="9" class="table-secondary"><span class="badge bg-secondary me-2">Título</span><strong><?= esc($s['nombre'] ?? '') ?></strong></td>
+                    <td colspan="9" class="table-secondary sec-subclase-nombre-cell" title="Doble clic para resaltar todas las filas de esta sub-clase"><span class="badge bg-secondary me-2">Título</span><strong><?= esc($s['nombre'] ?? '') ?></strong></td>
                     <td class="text-center">
                         <button type="button" class="btn btn-sm btn-outline-primary btn-editar-sec" title="Editar"><i class="fa-solid fa-pen"></i></button>
                         <a href="<?= site_url("labotests/duplicatesecitem/" . (int)($s['secanacategoria_id'] ?? 0)) ?>" class="btn btn-sm btn-outline-secondary btn-sec-duplicar" title="Duplicar"><i class="fa-solid fa-copy"></i></a>
@@ -342,9 +358,9 @@ if ($feRaw !== '' && !empty($formulas_con_expresion ?? [])) {
                         <button type="button" class="btn btn-sm btn-outline-secondary btn-sec-bajar" title="Bajar una fila"><i class="fa-solid fa-arrow-down"></i></button>
                         <button type="button" class="btn btn-sm btn-outline-secondary btn-sec-ultimo" title="Ir al final de la lista"><i class="fa-solid fa-angles-down"></i></button>
                     </td>
-                    <td><?= esc($s['nombre'] ?? '') ?></td>
+                    <td class="sec-subclase-nombre-cell" title="Doble clic para resaltar todas las filas de esta sub-clase"><?= esc($s['nombre'] ?? '') ?></td>
                     <td><?= esc($pobMap[(int)($s['paciente_id'] ?? 0)] ?? $s['paciente_id'] ?? '') ?></td>
-                    <td><?= esc(referencia_sexo_label($s['sexo'] ?? 'ambos')) ?></td>
+                    <td><span class="<?= esc(referencia_sexo_badge_class($s['sexo'] ?? 'ambos'), 'attr') ?>"><?= esc(referencia_sexo_label($s['sexo'] ?? 'ambos')) ?></span></td>
                     <td><?= esc($s['valor_min'] ?? '') ?></td>
                     <td><?= esc($s['valor_max'] ?? '') ?></td>
                     <td><?= esc($s['umedida'] ?? '') ?></td>
@@ -386,6 +402,29 @@ if ($fe !== '') {
                     <div class="modal-footer">
                         <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
                         <button type="button" class="btn btn-primary" id="btn_aplicar_orden_sec_modal">Aplicar y guardar</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="modal fade" id="modalOrdenBloquesSecItems" tabindex="-1" aria-labelledby="modalOrdenBloquesSecItemsTitle" aria-hidden="true">
+            <div class="modal-dialog modal-dialog-scrollable">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title" id="modalOrdenBloquesSecItemsTitle">Ordenar bloques por sub-clase</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+                    </div>
+                    <div class="modal-body">
+                        <p class="text-muted small mb-2">
+                            Cada bloque agrupa todas las filas con el mismo nombre de sub-clase (población, sexo, etc.).
+                            Arrastra el asa <i class="fa-solid fa-grip-vertical text-secondary"></i> para mover el bloque completo.
+                            El orden interno de cada bloque no cambia.
+                        </p>
+                        <ul class="list-group mt-3 lista-orden-bloques-sec-modal" id="listaOrdenBloquesSecItems" style="max-height: 62vh; overflow-y: auto;"></ul>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
+                        <button type="button" class="btn btn-primary" id="btn_aplicar_orden_bloques_sec_modal">Aplicar y guardar</button>
                     </div>
                 </div>
             </div>
@@ -1206,6 +1245,7 @@ if ($fe !== '') {
                 var secCheckAll = document.getElementById('sec_check_all');
                 var btnEliminarSeleccionadas = document.getElementById('btn_eliminar_sec_seleccionadas');
                 var btnDuplicarSeleccionadas = document.getElementById('btn_duplicar_sec_seleccionadas');
+                var btnGenerosSeleccionadas = document.getElementById('btn_generos_sec_seleccionadas');
                 var duplicarSecBulkMode = false;
                 var modalDuplicarSecEl = document.getElementById('modalDuplicarSecItem');
                 var modalDuplicarSecInst = (modalDuplicarSecEl && typeof bootstrap !== 'undefined')
@@ -1264,6 +1304,9 @@ if ($fe !== '') {
                         btnDuplicarSeleccionadas.innerHTML = selected.length > 0
                             ? '<i class="fa-solid fa-copy me-1"></i>Duplicar seleccionadas (' + selected.length + ')'
                             : '<i class="fa-solid fa-copy me-1"></i>Duplicar seleccionadas';
+                    }
+                    if (btnGenerosSeleccionadas) {
+                        btnGenerosSeleccionadas.disabled = selected.length === 0;
                     }
                     syncSecCheckAllState();
                 }
@@ -1464,6 +1507,134 @@ if ($fe !== '') {
                 if (btnAplicarOrden) {
                     btnAplicarOrden.addEventListener('click', aplicarOrdenDesdeModal);
                 }
+                function bloqueKeyFromTr(tr) {
+                    if (!tr) return '';
+                    var nombre = (tr.getAttribute('data-subclase-nombre') || '').trim();
+                    if (nombre !== '') return nombre;
+                    return '__id_' + String(tr.getAttribute('data-secanacategoria-id') || '');
+                }
+                function buildBloquesPorNombre() {
+                    var blockOrder = [];
+                    var blocks = {};
+                    getOrderIds().forEach(function(id) {
+                        var tr = tablaSub.querySelector('tr[data-secanacategoria-id="' + id + '"]');
+                        if (!tr) return;
+                        var key = bloqueKeyFromTr(tr);
+                        if (!blocks[key]) {
+                            var esSep = false;
+                            try {
+                                var data = JSON.parse(tr.getAttribute('data-sec') || '{}');
+                                esSep = parseInt(String(data.es_separador || 0), 10) === 1;
+                            } catch (e) { /* ignore */ }
+                            blocks[key] = {
+                                ids: [],
+                                nombre: (tr.getAttribute('data-subclase-nombre') || '').trim(),
+                                esSep: esSep
+                            };
+                            blockOrder.push(key);
+                        }
+                        blocks[key].ids.push(id);
+                    });
+                    return { blockOrder: blockOrder, blocks: blocks };
+                }
+                function aplicarOrdenBloquesDesdeModal() {
+                    var tbody = tablaSub.querySelector('tbody');
+                    var list = document.getElementById('listaOrdenBloquesSecItems');
+                    if (!tbody || !list) return;
+                    var built = buildBloquesPorNombre();
+                    var blocks = built.blocks;
+                    var frag = document.createDocumentFragment();
+                    list.querySelectorAll('li[data-bloque-key]').forEach(function(li) {
+                        var key = li.getAttribute('data-bloque-key') || '';
+                        (blocks[key] || { ids: [] }).ids.forEach(function(id) {
+                            var tr = tablaSub.querySelector('tr[data-secanacategoria-id="' + id + '"]');
+                            if (tr) frag.appendChild(tr);
+                        });
+                    });
+                    tbody.appendChild(frag);
+                    guardarOrden();
+                    var modalBloquesEl = document.getElementById('modalOrdenBloquesSecItems');
+                    if (modalBloquesEl && typeof bootstrap !== 'undefined') {
+                        var inst = bootstrap.Modal.getInstance(modalBloquesEl);
+                        if (inst) inst.hide();
+                    }
+                }
+                function poblarListaBloquesModal() {
+                    var list = document.getElementById('listaOrdenBloquesSecItems');
+                    if (!list) return;
+                    list.innerHTML = '';
+                    var built = buildBloquesPorNombre();
+                    built.blockOrder.forEach(function(key) {
+                        var meta = built.blocks[key];
+                        if (!meta || !meta.ids.length) return;
+                        var label = meta.esSep
+                            ? ('Título · ' + (meta.nombre || '(sin nombre)'))
+                            : (meta.nombre || '(sin nombre)');
+                        if (meta.ids.length > 1) {
+                            label += ' (' + meta.ids.length + ' filas)';
+                        }
+                        var li = document.createElement('li');
+                        li.className = 'list-group-item d-flex align-items-center gap-2 py-2';
+                        li.setAttribute('data-bloque-key', key);
+                        var h = document.createElement('span');
+                        h.className = 'sec-orden-bloques-handle text-muted flex-shrink-0';
+                        h.style.cursor = 'grab';
+                        h.title = 'Arrastrar bloque';
+                        h.innerHTML = '<i class="fa-solid fa-grip-vertical"></i>';
+                        var t = document.createElement('span');
+                        t.className = 'flex-grow-1 small text-break';
+                        t.textContent = label;
+                        if (meta.esSep) {
+                            var badge = document.createElement('span');
+                            badge.className = 'badge bg-secondary flex-shrink-0';
+                            badge.textContent = 'Título';
+                            li.appendChild(h);
+                            li.appendChild(t);
+                            li.appendChild(badge);
+                        } else {
+                            li.appendChild(h);
+                            li.appendChild(t);
+                        }
+                        list.appendChild(li);
+                    });
+                }
+                var sortableModalBloques = null;
+                var modalOrdenBloquesEl = document.getElementById('modalOrdenBloquesSecItems');
+                var modalOrdenBloquesInst = null;
+                if (modalOrdenBloquesEl && typeof bootstrap !== 'undefined') {
+                    modalOrdenBloquesInst = bootstrap.Modal.getInstance(modalOrdenBloquesEl) || new bootstrap.Modal(modalOrdenBloquesEl);
+                    modalOrdenBloquesEl.addEventListener('show.bs.modal', function() {
+                        if (sortableModalBloques) {
+                            sortableModalBloques.destroy();
+                            sortableModalBloques = null;
+                        }
+                        poblarListaBloquesModal();
+                    });
+                    modalOrdenBloquesEl.addEventListener('shown.bs.modal', function() {
+                        var list = document.getElementById('listaOrdenBloquesSecItems');
+                        if (list && typeof Sortable !== 'undefined' && list.children.length) {
+                            sortableModalBloques = new Sortable(list, {
+                                handle: '.sec-orden-bloques-handle',
+                                animation: 150,
+                                ghostClass: 'list-group-item-secondary'
+                            });
+                        }
+                    });
+                    modalOrdenBloquesEl.addEventListener('hidden.bs.modal', function() {
+                        if (sortableModalBloques) {
+                            sortableModalBloques.destroy();
+                            sortableModalBloques = null;
+                        }
+                    });
+                }
+                var btnAbrirOrdenBloques = document.getElementById('btn_abrir_modal_orden_bloques_sec');
+                if (btnAbrirOrdenBloques && modalOrdenBloquesInst) {
+                    btnAbrirOrdenBloques.addEventListener('click', function() { modalOrdenBloquesInst.show(); });
+                }
+                var btnAplicarOrdenBloques = document.getElementById('btn_aplicar_orden_bloques_sec_modal');
+                if (btnAplicarOrdenBloques) {
+                    btnAplicarOrdenBloques.addEventListener('click', aplicarOrdenBloquesDesdeModal);
+                }
                 if (secCheckAll) {
                     secCheckAll.addEventListener('change', function() {
                         tablaSub.querySelectorAll('tbody .sec-check-item').forEach(function(chk) {
@@ -1482,6 +1653,44 @@ if ($fe !== '') {
                         var ids = getSelectedSecIds();
                         if (ids.length < 1) return;
                         abrirModalDuplicarSec({ bulk: true });
+                    });
+                }
+                if (btnGenerosSeleccionadas) {
+                    btnGenerosSeleccionadas.addEventListener('click', function() {
+                        var ids = getSelectedSecIds();
+                        if (ids.length < 1) return;
+                        var msg = '¿Generar sub-clases por cada género del catálogo a partir de ' + ids.length + ' fila(s) seleccionada(s)? Las filas con sexo «Todos» serán reemplazadas. Los separadores no aplican.';
+                        var confirmar = (typeof uiConfirm === 'function')
+                            ? uiConfirm(msg, 'Pruebas por géneros')
+                            : Promise.resolve(window.confirm(msg));
+                        confirmar.then(function(ok) {
+                            if (!ok) return;
+                            var fd = new FormData();
+                            fd.append('prianacategoria_id', String(prianacategoriaId));
+                            ids.forEach(function(id) { fd.append('secanacategoria_ids[]', String(id)); });
+                            var csrfData = getCsrfData();
+                            if (csrfData.value) fd.append(csrfData.name, csrfData.value);
+                            var headers = { 'X-Requested-With': 'XMLHttpRequest' };
+                            if (csrfData.value) headers['X-CSRF-TOKEN'] = csrfData.value;
+                            btnGenerosSeleccionadas.disabled = true;
+                            fetch('<?= site_url('labotests/expandreferenciasbygenerossec') ?>', {
+                                method: 'POST',
+                                body: fd,
+                                headers: headers
+                            }).then(function(r) { return r.json(); }).then(function(d) {
+                                applyCsrfFromJson(d);
+                                if (d.success) {
+                                    if (typeof showToast === 'function') showToast(d.message || 'Operación completada', 'success');
+                                    window.location.reload();
+                                } else if (typeof showToast === 'function') {
+                                    showToast(d.message || 'No se pudo completar la operación', 'error');
+                                    actualizarEstadoSeleccion();
+                                }
+                            }).catch(function() {
+                                if (typeof showToast === 'function') showToast('No se pudo completar la operación', 'error');
+                                actualizarEstadoSeleccion();
+                            });
+                        });
                     });
                 }
                 if (btnEliminarSeleccionadas) {
@@ -1628,6 +1837,53 @@ if ($fe !== '') {
                         onEnd: function() { guardarOrden(); }
                     });
                 }
+                var subclaseResaltada = null;
+                function limpiarResaltadoSubclase() {
+                    tablaSub.querySelectorAll('tbody tr.sec-subclase-resaltada').forEach(function(tr) {
+                        tr.classList.remove('sec-subclase-resaltada');
+                    });
+                    subclaseResaltada = null;
+                }
+                function resaltarSubclasePorNombre(nombre) {
+                    nombre = (nombre || '').trim();
+                    if (!nombre) {
+                        limpiarResaltadoSubclase();
+                        return;
+                    }
+                    if (subclaseResaltada === nombre) {
+                        limpiarResaltadoSubclase();
+                        return;
+                    }
+                    limpiarResaltadoSubclase();
+                    subclaseResaltada = nombre;
+                    var total = 0;
+                    tablaSub.querySelectorAll('tbody tr[data-subclase-nombre]').forEach(function(tr) {
+                        if ((tr.getAttribute('data-subclase-nombre') || '').trim() === nombre) {
+                            tr.classList.add('sec-subclase-resaltada');
+                            total++;
+                        }
+                    });
+                    if (total === 0) {
+                        subclaseResaltada = null;
+                    }
+                }
+                tablaSub.addEventListener('dblclick', function(e) {
+                    var cell = e.target.closest('.sec-subclase-nombre-cell');
+                    if (!cell) return;
+                    e.preventDefault();
+                    var tr = cell.closest('tr');
+                    if (!tr) return;
+                    var nombre = (tr.getAttribute('data-subclase-nombre') || '').trim();
+                    if (!nombre) {
+                        nombre = (cell.textContent || '').replace(/\s+/g, ' ').trim();
+                    }
+                    resaltarSubclasePorNombre(nombre);
+                });
+                document.addEventListener('keydown', function(e) {
+                    if (e.key === 'Escape' && subclaseResaltada) {
+                        limpiarResaltadoSubclase();
+                    }
+                });
                 actualizarEstadoSeleccion();
             }
             <?php if ($editar_sec ?? 0): ?>

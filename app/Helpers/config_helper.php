@@ -361,3 +361,66 @@ if (!function_exists('referencia_sexo_normalize_for_save')) {
         return 'ambos';
     }
 }
+
+if (! function_exists('referencia_sexo_css_slug')) {
+    /**
+     * Sufijo CSS seguro para un valor de sexo (ambos, masculino, femenino, g-3, …).
+     */
+    function referencia_sexo_css_slug(?string $sexo): string
+    {
+        $sx = strtolower(trim((string) $sexo));
+        if ($sx === '' || $sx === 'ambos') {
+            return 'ambos';
+        }
+        if (preg_match('/^g(\d+)$/', $sx, $m) === 1) {
+            return 'g-' . $m[1];
+        }
+
+        return preg_replace('/[^a-z0-9-]+/', '-', $sx);
+    }
+}
+
+if (! function_exists('referencia_sexo_color_defs')) {
+    /**
+     * Colores por sexo del catálogo para badges en tablas de referencia.
+     *
+     * @return array<string, array{bg: string, text: string, border: string}>
+     */
+    function referencia_sexo_color_defs(): array
+    {
+        $defs = [
+            'ambos'     => ['bg' => '#eef2f7', 'text' => '#475569', 'border' => '#94a3b8'],
+            'masculino' => ['bg' => '#dbeafe', 'text' => '#1d4ed8', 'border' => '#60a5fa'],
+            'femenino'  => ['bg' => '#fce7f3', 'text' => '#be185d', 'border' => '#f472b6'],
+        ];
+        $extra = [
+            ['bg' => '#ecfdf5', 'text' => '#047857', 'border' => '#6ee7b7'],
+            ['bg' => '#fff7ed', 'text' => '#c2410c', 'border' => '#fdba74'],
+            ['bg' => '#f5f3ff', 'text' => '#6d28d9', 'border' => '#c4b5fd'],
+            ['bg' => '#ecfeff', 'text' => '#0e7490', 'border' => '#67e8f9'],
+            ['bg' => '#fefce8', 'text' => '#a16207', 'border' => '#fde047'],
+            ['bg' => '#fef2f2', 'text' => '#b91c1c', 'border' => '#fca5a5'],
+        ];
+        foreach (referencia_sexo_dropdown_options() as $val => $label) {
+            $slug = referencia_sexo_css_slug($val);
+            if (isset($defs[$slug])) {
+                continue;
+            }
+            if (preg_match('/^g-(\d+)$/', $slug, $m) === 1) {
+                $idx = max(0, (int) $m[1] - 3) % count($extra);
+            } else {
+                $idx = abs(crc32($val)) % count($extra);
+            }
+            $defs[$slug] = $extra[$idx];
+        }
+
+        return $defs;
+    }
+}
+
+if (! function_exists('referencia_sexo_badge_class')) {
+    function referencia_sexo_badge_class(?string $sexo): string
+    {
+        return 'lab-sexo-badge lab-sexo-' . referencia_sexo_css_slug($sexo);
+    }
+}

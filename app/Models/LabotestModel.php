@@ -1676,29 +1676,12 @@ class LabotestModel extends Model
             ->where('(deleted = 0 OR deleted IS NULL)');
         $rows = $builder->get()->getResultArray();
 
-        $pobOrd = [];
-        try {
-            $pobRows = $this->db->table('poblacion')
-                ->select('id_poblacion, orden')
-                ->where('(deleted = 0 OR deleted IS NULL)')
-                ->get()
-                ->getResultArray();
-        } catch (\Throwable $e) {
-            $pobRows = $this->db->table('poblacion')
-                ->select('id_poblacion, orden')
-                ->get()
-                ->getResultArray();
-        }
-        foreach ($pobRows as $p) {
-            $pobOrd[(int) ($p['id_poblacion'] ?? 0)] = (int) ($p['orden'] ?? 9999);
-        }
+        $pobOrd = $this->getPoblacionOrdenMap();
+        $sexRankMap = $this->getReferenciaSexoRankMap();
+        $sexRank = static function (array $r) use ($sexRankMap): int {
+            $sx = strtolower(trim((string) ($r['sexo'] ?? '')));
 
-        $sexRank = static function (array $r): int {
-            return match (strtolower(trim((string) ($r['sexo'] ?? '')))) {
-                'masculino' => 0,
-                'femenino'  => 1,
-                default     => 2,
-            };
+            return $sexRankMap[$sx] ?? 9998;
         };
 
         usort($rows, static function (array $a, array $b) use ($pobOrd, $sexRank): int {
@@ -1730,16 +1713,35 @@ class LabotestModel extends Model
     }
 
     /**
-     * Obtiene resultados (priresultados) de una prueba no compuesta
+     * Obtiene resultados (priresultados) de una prueba no compuesta.
+     * Orden: población (config) y sexo (catálogo de géneros).
      */
     public function getPriResultados(int $prianacategoriaId): array
     {
-        return $this->db->table('priresultados')
+        $rows = $this->db->table('priresultados')
             ->where('prianacategoria_id', $prianacategoriaId)
             ->where('(deleted = 0 OR deleted IS NULL)')
-            ->orderBy('id_poblacion')
             ->get()
             ->getResultArray();
+
+        $hasOrden = $this->hasColumn('priresultados', 'orden');
+        $pobOrd = $this->getPoblacionOrdenMap();
+        $sexRankMap = $this->getReferenciaSexoRankMap();
+        $compare = $this->buildReferenciaRowComparator(['poblacion', 'sexo'], false, $pobOrd, $sexRankMap);
+
+        usort($rows, static function (array $a, array $b) use ($hasOrden, $compare): int {
+            if ($hasOrden) {
+                $oA = (int) ($a['orden'] ?? 0);
+                $oB = (int) ($b['orden'] ?? 0);
+                if ($oA !== $oB) {
+                    return $oA <=> $oB;
+                }
+            }
+
+            return $compare($a, $b);
+        });
+
+        return $rows;
     }
 
     /**
@@ -2210,6 +2212,569 @@ class LabotestModel extends Model
             ->update(['deleted' => 1]);
 
         return $this->db->affectedRows();
+    }
+
+    /**
+     * Sexos del catálogo de géneros para referencias (sin «Todos» / ambos).
+     *
+     * @return list<string>
+     */
+    private function getCatalogReferenciaSexos(): array
+    {
+        helper('config');
+        $options = referencia_sexo_dropdown_options();
+        unset($options['ambos']);
+        $sexos = [];
+        foreach (array_keys($options) as $sx) {
+            $sx = strtolower(trim((string) $sx));
+            if ($sx !== '' && $sx !== 'ambos') {
+                $sexos[] = $sx;
+            }
+        }
+
+        return $sexos;
+    }
+
+    /**
+     * @return array<int, int> id_poblacion => orden
+     */
+    private function getPoblacionOrdenMap(): array
+    {
+        try {
+            $pobRows = $this->db->table('poblacion')
+                ->select('id_poblacion, orden')
+                ->where('(deleted = 0 OR deleted IS NULL)')
+                ->get()
+                ->getResultArray();
+        } catch (\Throwable $e) {
+            $pobRows = $this->db->table('poblacion')
+                ->select('id_poblacion, orden')
+                ->get()
+                ->getResultArray();
+        }
+        $pobOrd = [];
+        foreach ($pobRows as $p) {
+            $pobOrd[(int) ($p['id_poblacion'] ?? 0)] = (int) ($p['orden'] ?? 9999);
+        }
+
+        return $pobOrd;
+    }
+
+    /**
+     * Prioridad de sexo según catálogo de géneros (ambos al final).
+     *
+     * @return array<string, int>
+     */
+    private function getReferenciaSexoRankMap(): array
+    {
+        helper('config');
+        $rank = ['ambos' => 9999, '' => 9999];
+        $i = 0;
+        foreach (referencia_sexo_dropdown_options() as $val => $label) {
+            $val = strtolower(trim((string) $val));
+            if ($val === '' || $val === 'ambos') {
+                continue;
+            }
+            $rank[$val] = $i++;
+        }
+
+        return $rank;
+    }
+
+    /**
+     * Reasigna orden de sub-clases: nombre, población (config), sexo (catálogo).
+     */
+    private function reorderSecItemsByNombrePoblacionSexo(int $prianacategoriaId): void
+    {
+        $this->reorderSecItemsByCriteria($prianacategoriaId, ['nombre', 'poblacion', 'sexo']);
+    }
+
+    /**
+     * Criterios válidos para ordenar referencias.
+     *
+     * @return list<string>
+     */
+    public function getReferenciaSortCriteriaOptions(bool $includeNombre = true): array
+    {
+        $opts = [];
+        if ($includeNombre) {
+            $opts[] = 'nombre';
+        }
+        $opts[] = 'poblacion';
+        $opts[] = 'sexo';
+
+        return $opts;
+    }
+
+    /**
+     * @param list<string> $criteria
+     * @return list<string>
+     */
+    public function normalizeReferenciaSortCriteria(array $criteria, bool $includeNombre = true): array
+    {
+        $allowed = $this->getReferenciaSortCriteriaOptions($includeNombre);
+        $out = [];
+        foreach ($criteria as $c) {
+            $c = strtolower(trim((string) $c));
+            if ($c === '' || ! in_array($c, $allowed, true) || in_array($c, $out, true)) {
+                continue;
+            }
+            $out[] = $c;
+        }
+
+        return $out;
+    }
+
+    /**
+     * @param list<string> $criteria
+     */
+    public function reorderSecItemsByCriteria(int $prianacategoriaId, array $criteria): bool
+    {
+        $criteria = $this->normalizeReferenciaSortCriteria($criteria, true);
+        if ($prianacategoriaId < 1 || $criteria === [] || ! $this->hasColumn('secanacategoria', 'orden')) {
+            return false;
+        }
+
+        $rows = $this->db->table('secanacategoria')
+            ->where('prianacategoria_id', $prianacategoriaId)
+            ->where('(deleted = 0 OR deleted IS NULL)')
+            ->get()
+            ->getResultArray();
+
+        if ($rows === []) {
+            return true;
+        }
+
+        $compare = $this->buildReferenciaRowComparator($criteria, true, $this->getPoblacionOrdenMap(), $this->getReferenciaSexoRankMap());
+        usort($rows, $compare);
+
+        $ids = [];
+        foreach ($rows as $r) {
+            $id = (int) ($r['secanacategoria_id'] ?? 0);
+            if ($id > 0) {
+                $ids[] = $id;
+            }
+        }
+
+        return $this->updateSecItemsOrder($prianacategoriaId, $ids);
+    }
+
+    /**
+     * @param list<string> $criteria
+     */
+    public function reorderPriResultadosByCriteria(int $prianacategoriaId, array $criteria): bool
+    {
+        $criteria = $this->normalizeReferenciaSortCriteria($criteria, false);
+        if ($prianacategoriaId < 1 || $criteria === []) {
+            return false;
+        }
+        if (! $this->ensurePriResultadosOrdenColumn()) {
+            return false;
+        }
+
+        $rows = $this->db->table('priresultados')
+            ->where('prianacategoria_id', $prianacategoriaId)
+            ->where('(deleted = 0 OR deleted IS NULL)')
+            ->get()
+            ->getResultArray();
+
+        if ($rows === []) {
+            return true;
+        }
+
+        $compare = $this->buildReferenciaRowComparator($criteria, false, $this->getPoblacionOrdenMap(), $this->getReferenciaSexoRankMap());
+        usort($rows, $compare);
+
+        $this->db->transStart();
+        foreach ($rows as $orden => $r) {
+            $id = (int) ($r['priresultados_id'] ?? 0);
+            if ($id < 1) {
+                continue;
+            }
+            $this->db->table('priresultados')
+                ->where('priresultados_id', $id)
+                ->where('prianacategoria_id', $prianacategoriaId)
+                ->update(['orden' => (int) $orden]);
+        }
+        $this->db->transComplete();
+
+        return (bool) $this->db->transStatus();
+    }
+
+    private function ensurePriResultadosOrdenColumn(): bool
+    {
+        if ($this->hasColumn('priresultados', 'orden')) {
+            return true;
+        }
+        try {
+            $column = [
+                'type'       => 'INT',
+                'constraint' => 11,
+                'default'    => 0,
+                'null'       => false,
+            ];
+            if ($this->hasColumn('priresultados', 'id_poblacion')) {
+                $column['after'] = 'id_poblacion';
+            }
+            \Config\Database::forge($this->db)->addColumn('priresultados', [
+                'orden' => $column,
+            ]);
+
+            return $this->hasColumn('priresultados', 'orden', true);
+        } catch (\Throwable $e) {
+            log_message('error', 'ensurePriResultadosOrdenColumn: {err}', ['err' => $e->getMessage()]);
+
+            return false;
+        }
+    }
+
+    /**
+     * @param list<string> $criteria
+     */
+    private function buildReferenciaRowComparator(
+        array $criteria,
+        bool $isSec,
+        array $pobOrd,
+        array $sexRankMap
+    ): callable {
+        $criteria = $this->normalizeReferenciaSortCriteria($criteria, $isSec);
+        $sexRank = static function (array $r) use ($sexRankMap): int {
+            $sx = strtolower(trim((string) ($r['sexo'] ?? '')));
+
+            return $sexRankMap[$sx] ?? 9998;
+        };
+        $nombreCmp = static function (array $a, array $b): int {
+            $na = trim((string) ($a['nombre'] ?? ''));
+            $nb = trim((string) ($b['nombre'] ?? ''));
+            if (function_exists('mb_strtolower')) {
+                return mb_strtolower($na, 'UTF-8') <=> mb_strtolower($nb, 'UTF-8');
+            }
+
+            return strcasecmp($na, $nb);
+        };
+        $pobCmp = static function (array $a, array $b) use ($isSec, $pobOrd): int {
+            $pidA = (int) ($isSec ? ($a['paciente_id'] ?? 0) : ($a['id_poblacion'] ?? 0));
+            $pidB = (int) ($isSec ? ($b['paciente_id'] ?? 0) : ($b['id_poblacion'] ?? 0));
+            $ordPA = $pobOrd[$pidA] ?? 9998;
+            $ordPB = $pobOrd[$pidB] ?? 9998;
+            if ($ordPA !== $ordPB) {
+                return $ordPA <=> $ordPB;
+            }
+
+            return $pidA <=> $pidB;
+        };
+        $idCmp = static function (array $a, array $b) use ($isSec): int {
+            if ($isSec) {
+                return ((int) ($a['secanacategoria_id'] ?? 0)) <=> ((int) ($b['secanacategoria_id'] ?? 0));
+            }
+
+            return ((int) ($a['priresultados_id'] ?? 0)) <=> ((int) ($b['priresultados_id'] ?? 0));
+        };
+
+        return static function (array $a, array $b) use ($criteria, $nombreCmp, $pobCmp, $sexRank, $idCmp): int {
+            foreach ($criteria as $criterion) {
+                $cmp = 0;
+                if ($criterion === 'nombre') {
+                    $cmp = $nombreCmp($a, $b);
+                } elseif ($criterion === 'poblacion') {
+                    $cmp = $pobCmp($a, $b);
+                } elseif ($criterion === 'sexo') {
+                    $cmp = $sexRank($a) <=> $sexRank($b);
+                }
+                if ($cmp !== 0) {
+                    return $cmp;
+                }
+            }
+
+            return $idCmp($a, $b);
+        };
+    }
+
+    /**
+     * Genera filas por cada género del catálogo a partir de sub-clases seleccionadas.
+     * Las filas con sexo «Todos» se reemplazan; no crea duplicados nombre + población + sexo.
+     *
+     * @return array{success:bool, message:string, inserted:int, replaced:int, skipped_separators:int}
+     */
+    public function expandReferenciasByGenerosSec(int $prianacategoriaId, array $ids): array
+    {
+        $ids = array_values(array_unique(array_filter(array_map('intval', $ids), static fn(int $v): bool => $v > 0)));
+        $empty = static fn(string $msg): array => [
+            'success'            => false,
+            'message'            => $msg,
+            'inserted'           => 0,
+            'replaced'           => 0,
+            'skipped_separators' => 0,
+        ];
+        if ($prianacategoriaId < 1 || $ids === []) {
+            return $empty('Debe seleccionar al menos una sub-clase');
+        }
+
+        $sexos = $this->getCatalogReferenciaSexos();
+        if ($sexos === []) {
+            return $empty('No hay géneros configurados en el catálogo');
+        }
+
+        $existingRows = $this->db->table('secanacategoria')
+            ->where('prianacategoria_id', $prianacategoriaId)
+            ->where('(deleted = 0 OR deleted IS NULL)')
+            ->get()
+            ->getResultArray();
+
+        $rowsById = [];
+        foreach ($existingRows as $r) {
+            $rowsById[(int) ($r['secanacategoria_id'] ?? 0)] = $r;
+        }
+
+        $existingKeys = [];
+        foreach ($existingRows as $r) {
+            if ((int) ($r['es_separador'] ?? 0) === 1) {
+                continue;
+            }
+            $existingKeys[$this->secReferenciaKey(
+                (string) ($r['nombre'] ?? ''),
+                (int) ($r['paciente_id'] ?? 0),
+                (string) ($r['sexo'] ?? 'ambos')
+            )] = true;
+        }
+
+        $hasOrden = $this->hasColumn('secanacategoria', 'orden');
+        $nextOrden = 0;
+        if ($hasOrden) {
+            $max = $this->db->table('secanacategoria')
+                ->where('prianacategoria_id', $prianacategoriaId)
+                ->selectMax('orden')
+                ->get()
+                ->getRow();
+            $nextOrden = 1 + (int) ($max->orden ?? 0);
+        }
+
+        $inserted = 0;
+        $replaced = 0;
+        $skippedSeparators = 0;
+        $processed = 0;
+
+        $this->db->transStart();
+
+        foreach ($ids as $id) {
+            $row = $rowsById[$id] ?? null;
+            if (! $row || (int) ($row['prianacategoria_id'] ?? 0) !== $prianacategoriaId) {
+                continue;
+            }
+            if ((int) ($row['es_separador'] ?? 0) === 1) {
+                $skippedSeparators++;
+                continue;
+            }
+
+            $processed++;
+            $nombre = trim((string) ($row['nombre'] ?? ''));
+            $pob = (int) ($row['paciente_id'] ?? 0);
+            $sourceSx = strtolower(trim((string) ($row['sexo'] ?? 'ambos')));
+            $isAmbos = ($sourceSx === '' || $sourceSx === 'ambos');
+
+            foreach ($sexos as $sexoVal) {
+                $key = $this->secReferenciaKey($nombre, $pob, $sexoVal);
+                if (isset($existingKeys[$key])) {
+                    continue;
+                }
+
+                $newRow = $row;
+                unset($newRow['secanacategoria_id']);
+                $newRow['sexo'] = $sexoVal;
+                $newRow['deleted'] = 0;
+                if ($hasOrden) {
+                    $newRow['orden'] = $nextOrden++;
+                }
+                if ($this->db->table('secanacategoria')->insert($newRow) !== false) {
+                    $existingKeys[$key] = true;
+                    $inserted++;
+                }
+            }
+
+            if ($isAmbos) {
+                $this->db->table('secanacategoria')
+                    ->where('secanacategoria_id', $id)
+                    ->update(['deleted' => 1]);
+                unset($existingKeys[$this->secReferenciaKey($nombre, $pob, 'ambos')]);
+                $replaced++;
+            }
+        }
+
+        if ($inserted > 0 || $replaced > 0) {
+            $this->reorderSecItemsByNombrePoblacionSexo($prianacategoriaId);
+        }
+
+        $this->db->transComplete();
+
+        if (! $this->db->transStatus()) {
+            return $empty('No se pudo completar la operación');
+        }
+        if ($processed < 1) {
+            $msg = $skippedSeparators > 0
+                ? 'Las filas seleccionadas son separadores y no aplican para esta acción'
+                : 'No se encontraron sub-clases válidas en la selección';
+
+            return $empty($msg);
+        }
+
+        if ($inserted < 1 && $replaced < 1) {
+            return [
+                'success'            => true,
+                'message'            => 'No había géneros pendientes: las combinaciones ya existían',
+                'inserted'           => 0,
+                'replaced'           => 0,
+                'skipped_separators' => $skippedSeparators,
+            ];
+        }
+
+        $parts = [];
+        if ($inserted > 0) {
+            $parts[] = 'Se crearon ' . $inserted . ' fila' . ($inserted === 1 ? '' : 's') . ' por género';
+        }
+        if ($replaced > 0) {
+            $parts[] = 'se reemplaz' . ($replaced === 1 ? 'ó' : 'aron') . ' ' . $replaced . ' fila' . ($replaced === 1 ? '' : 's') . ' «Todos»';
+        }
+
+        return [
+            'success'            => true,
+            'message'            => implode(' y ', $parts),
+            'inserted'           => $inserted,
+            'replaced'           => $replaced,
+            'skipped_separators' => $skippedSeparators,
+        ];
+    }
+
+    /**
+     * Genera filas por cada género del catálogo a partir de priresultados seleccionados.
+     * Las filas con sexo «Todos» se reemplazan; no crea duplicados población + sexo.
+     *
+     * @return array{success:bool, message:string, inserted:int, replaced:int}
+     */
+    public function expandReferenciasByGenerosPri(int $prianacategoriaId, array $ids): array
+    {
+        $ids = array_values(array_unique(array_filter(array_map('intval', $ids), static fn(int $v): bool => $v > 0)));
+        $empty = static fn(string $msg): array => [
+            'success'  => false,
+            'message'  => $msg,
+            'inserted' => 0,
+            'replaced' => 0,
+        ];
+        if ($prianacategoriaId < 1 || $ids === []) {
+            return $empty('Debe seleccionar al menos una fila de referencia');
+        }
+
+        $sexos = $this->getCatalogReferenciaSexos();
+        if ($sexos === []) {
+            return $empty('No hay géneros configurados en el catálogo');
+        }
+
+        $existingRows = $this->db->table('priresultados')
+            ->where('prianacategoria_id', $prianacategoriaId)
+            ->where('(deleted = 0 OR deleted IS NULL)')
+            ->get()
+            ->getResultArray();
+
+        $rowsById = [];
+        foreach ($existingRows as $r) {
+            $rowsById[(int) ($r['priresultados_id'] ?? 0)] = $r;
+        }
+
+        $existingKeys = [];
+        foreach ($existingRows as $r) {
+            $existingKeys[$this->priReferenciaKey(
+                (int) ($r['id_poblacion'] ?? 0),
+                (string) ($r['sexo'] ?? 'ambos')
+            )] = true;
+        }
+
+        $inserted = 0;
+        $replaced = 0;
+        $processed = 0;
+
+        $this->db->transStart();
+
+        foreach ($ids as $id) {
+            $row = $rowsById[$id] ?? null;
+            if (! $row || (int) ($row['prianacategoria_id'] ?? 0) !== $prianacategoriaId) {
+                continue;
+            }
+
+            $processed++;
+            $pob = (int) ($row['id_poblacion'] ?? 0);
+            $sourceSx = strtolower(trim((string) ($row['sexo'] ?? 'ambos')));
+            $isAmbos = ($sourceSx === '' || $sourceSx === 'ambos');
+
+            foreach ($sexos as $sexoVal) {
+                $key = $this->priReferenciaKey($pob, $sexoVal);
+                if (isset($existingKeys[$key])) {
+                    continue;
+                }
+
+                $newRow = $row;
+                unset($newRow['priresultados_id']);
+                $newRow['sexo'] = $sexoVal;
+                $newRow['deleted'] = 0;
+                if ($this->db->table('priresultados')->insert($newRow) !== false) {
+                    $existingKeys[$key] = true;
+                    $inserted++;
+                }
+            }
+
+            if ($isAmbos) {
+                $this->db->table('priresultados')
+                    ->where('priresultados_id', $id)
+                    ->update(['deleted' => 1]);
+                unset($existingKeys[$this->priReferenciaKey($pob, 'ambos')]);
+                $replaced++;
+            }
+        }
+
+        $this->db->transComplete();
+
+        if (! $this->db->transStatus()) {
+            return $empty('No se pudo completar la operación');
+        }
+        if ($processed < 1) {
+            return $empty('No se encontraron filas válidas en la selección');
+        }
+
+        if ($inserted < 1 && $replaced < 1) {
+            return [
+                'success'  => true,
+                'message'  => 'No había géneros pendientes: las combinaciones ya existían',
+                'inserted' => 0,
+                'replaced' => 0,
+            ];
+        }
+
+        $parts = [];
+        if ($inserted > 0) {
+            $parts[] = 'Se crearon ' . $inserted . ' fila' . ($inserted === 1 ? '' : 's') . ' por género';
+        }
+        if ($replaced > 0) {
+            $parts[] = 'se reemplaz' . ($replaced === 1 ? 'ó' : 'aron') . ' ' . $replaced . ' fila' . ($replaced === 1 ? '' : 's') . ' «Todos»';
+        }
+
+        return [
+            'success'  => true,
+            'message'  => implode(' y ', $parts),
+            'inserted' => $inserted,
+            'replaced' => $replaced,
+        ];
+    }
+
+    private function secReferenciaKey(string $nombre, int $poblacionId, string $sexo): string
+    {
+        $nombreNorm = function_exists('mb_strtolower')
+            ? mb_strtolower(trim($nombre), 'UTF-8')
+            : strtolower(trim($nombre));
+
+        return $nombreNorm . "\0" . $poblacionId . "\0" . strtolower(trim($sexo));
+    }
+
+    private function priReferenciaKey(int $poblacionId, string $sexo): string
+    {
+        return $poblacionId . "\0" . strtolower(trim($sexo));
     }
 
     /**

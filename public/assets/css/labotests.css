@@ -157,6 +157,41 @@
 #tabla_sub_items th.col-orden {
     width: 6rem;
 }
+.lab-sexo-badge {
+    display: inline-block;
+    padding: 0.15em 0.55em;
+    border-radius: 0.35rem;
+    font-size: 0.8125rem;
+    font-weight: 600;
+    white-space: nowrap;
+    line-height: 1.3;
+}
+#tabla_sub_items tbody tr.table-secondary > td {
+    background-color: var(--bs-secondary-bg, #e2e3e5);
+}
+#tabla_sub_items tbody tr.table-secondary:hover > td {
+    background-color: var(--bs-secondary-bg, #e2e3e5);
+}
+#tabla_sub_items td.sec-subclase-nombre-cell {
+    cursor: pointer;
+    user-select: none;
+}
+#tabla_sub_items td.sec-subclase-nombre-cell:hover {
+    text-decoration: underline;
+    text-decoration-style: dotted;
+    text-underline-offset: 0.15em;
+}
+#tabla_sub_items tbody tr.sec-subclase-resaltada > td {
+    background-color: #fff3cd !important;
+    --bs-table-accent-bg: #fff3cd;
+    --bs-table-bg-type: #fff3cd;
+}
+#tabla_sub_items tbody tr.sec-subclase-resaltada.table-secondary > td {
+    background-color: #ffe69c !important;
+}
+#tabla_sub_items tbody tr.sec-subclase-resaltada:hover > td {
+    background-color: #ffe8a1 !important;
+}
 .formula-constructor-box {
     min-height: 50px;
 }

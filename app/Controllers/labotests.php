@@ -646,6 +646,82 @@ class Labotests extends SecureArea
     }
 
     /**
+     * Ordenar sub-clases por criterios combinables (nombre, población, sexo).
+     */
+    public function sortsecitemsbycriteria(): ResponseInterface
+    {
+        $prianacategoriaId = (int) ($this->request->getPost('prianacategoria_id') ?? 0);
+        $criteria = $this->request->getPost('sort_criteria');
+        $criteria = is_array($criteria) ? $criteria : [];
+
+        if ($prianacategoriaId < 1) {
+            return $this->response->setJSON([
+                'success' => false,
+                'message' => 'ID de prueba inválido',
+            ])->setStatusCode(400);
+        }
+
+        $normalized = $this->labotestModel->normalizeReferenciaSortCriteria($criteria, true);
+        if ($normalized === []) {
+            return $this->response->setJSON([
+                'success' => false,
+                'message' => 'Seleccione al menos un criterio de orden',
+            ])->setStatusCode(400);
+        }
+
+        $ok = $this->labotestModel->reorderSecItemsByCriteria($prianacategoriaId, $normalized);
+        $json = [
+            'success' => $ok,
+            'message' => $ok ? 'Orden aplicado correctamente' : 'No se pudo aplicar el orden',
+            'criteria' => $normalized,
+        ];
+        if (function_exists('csrf_hash')) {
+            $json['csrf_token'] = csrf_hash();
+            $json['csrf_name'] = csrf_token();
+        }
+
+        return $this->response->setJSON($json)->setStatusCode($ok ? 200 : 400);
+    }
+
+    /**
+     * Ordenar valores de referencia simples por criterios (población, sexo).
+     */
+    public function sortpriresultadosbycriteria(): ResponseInterface
+    {
+        $prianacategoriaId = (int) ($this->request->getPost('prianacategoria_id') ?? 0);
+        $criteria = $this->request->getPost('sort_criteria');
+        $criteria = is_array($criteria) ? $criteria : [];
+
+        if ($prianacategoriaId < 1) {
+            return $this->response->setJSON([
+                'success' => false,
+                'message' => 'ID de prueba inválido',
+            ])->setStatusCode(400);
+        }
+
+        $normalized = $this->labotestModel->normalizeReferenciaSortCriteria($criteria, false);
+        if ($normalized === []) {
+            return $this->response->setJSON([
+                'success' => false,
+                'message' => 'Seleccione al menos un criterio de orden',
+            ])->setStatusCode(400);
+        }
+
+        $ok = $this->labotestModel->reorderPriResultadosByCriteria($prianacategoriaId, $normalized);
+        $json = [
+            'success' => $ok,
+            'message' => $ok ? 'Orden aplicado correctamente' : 'No se pudo aplicar el orden',
+            'criteria' => $normalized,
+        ];
+        if (function_exists('csrf_hash')) {
+            $json['csrf_token'] = csrf_hash();
+            $json['csrf_name'] = csrf_token();
+        }
+
+        return $this->response->setJSON($json)->setStatusCode($ok ? 200 : 400);
+    }
+
+    /**
      * Reporte JSON de análisis con nombre duplicado y perfiles donde figura cada registro.
      */
     public function duplicateAnalysesReport(): ResponseInterface
@@ -1447,6 +1523,96 @@ class Labotests extends SecureArea
         }
 
         return $this->response->setJSON($json)->setStatusCode($inserted > 0 ? 200 : 400);
+    }
+
+    /**
+     * Genera sub-clases por cada género del catálogo a partir de filas seleccionadas.
+     */
+    public function expandreferenciasbygenerossec(): ResponseInterface
+    {
+        $prianacategoriaId = (int) ($this->request->getPost('prianacategoria_id') ?? 0);
+        $ids = $this->request->getPost('secanacategoria_ids');
+        $ids = is_array($ids) ? $ids : [];
+        $ids = array_values(array_unique(array_filter(array_map('intval', $ids), static fn(int $v): bool => $v > 0)));
+
+        if ($prianacategoriaId < 1 || $ids === []) {
+            return $this->response->setJSON([
+                'success' => false,
+                'message' => 'Debe seleccionar al menos una sub-clase',
+            ])->setStatusCode(400);
+        }
+
+        $result = $this->labotestModel->expandReferenciasByGenerosSec($prianacategoriaId, $ids);
+        if (($result['success'] ?? false) && ((int) ($result['inserted'] ?? 0) > 0 || (int) ($result['replaced'] ?? 0) > 0)) {
+            \App\Models\AuditoriaModel::log(
+                'labotests',
+                'pruebas_por_generos_subclases',
+                (string) $prianacategoriaId,
+                \App\Models\AuditoriaModel::detail([
+                    'inserted' => (int) ($result['inserted'] ?? 0),
+                    'replaced' => (int) ($result['replaced'] ?? 0),
+                    'ids'      => $ids,
+                ])
+            );
+        }
+
+        $json = [
+            'success' => (bool) ($result['success'] ?? false),
+            'message' => (string) ($result['message'] ?? ''),
+            'inserted' => (int) ($result['inserted'] ?? 0),
+            'replaced' => (int) ($result['replaced'] ?? 0),
+        ];
+        if (function_exists('csrf_hash')) {
+            $json['csrf_token'] = csrf_hash();
+            $json['csrf_name'] = csrf_token();
+        }
+
+        return $this->response->setJSON($json)->setStatusCode(($result['success'] ?? false) ? 200 : 400);
+    }
+
+    /**
+     * Genera valores de referencia simples por cada género del catálogo.
+     */
+    public function expandreferenciasbygenerospri(): ResponseInterface
+    {
+        $prianacategoriaId = (int) ($this->request->getPost('prianacategoria_id') ?? 0);
+        $ids = $this->request->getPost('priresultados_ids');
+        $ids = is_array($ids) ? $ids : [];
+        $ids = array_values(array_unique(array_filter(array_map('intval', $ids), static fn(int $v): bool => $v > 0)));
+
+        if ($prianacategoriaId < 1 || $ids === []) {
+            return $this->response->setJSON([
+                'success' => false,
+                'message' => 'Debe seleccionar al menos una fila de referencia',
+            ])->setStatusCode(400);
+        }
+
+        $result = $this->labotestModel->expandReferenciasByGenerosPri($prianacategoriaId, $ids);
+        if (($result['success'] ?? false) && ((int) ($result['inserted'] ?? 0) > 0 || (int) ($result['replaced'] ?? 0) > 0)) {
+            \App\Models\AuditoriaModel::log(
+                'labotests',
+                'pruebas_por_generos_referencia',
+                (string) $prianacategoriaId,
+                \App\Models\AuditoriaModel::detail([
+                    'inserted' => (int) ($result['inserted'] ?? 0),
+                    'replaced' => (int) ($result['replaced'] ?? 0),
+                    'ids'      => $ids,
+                ])
+            );
+        }
+
+        $json = [
+            'success' => (bool) ($result['success'] ?? false),
+            'message' => (string) ($result['message'] ?? ''),
+            'inserted' => (int) ($result['inserted'] ?? 0),
+            'replaced' => (int) ($result['replaced'] ?? 0),
+        ];
+        if (function_exists('csrf_hash')) {
+            $json['csrf_token'] = csrf_hash();
+            $json['csrf_name'] = csrf_token();
+        }
+
+        return $this->response->setJSON($json)->setStatusCode(($result['success'] ?? false) ? 200 : 400);
     }
 
     /**

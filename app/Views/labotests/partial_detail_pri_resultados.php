@@ -13,13 +13,35 @@ if (! function_exists('referencia_sexo_dropdown_options')) {
 }
 $referencia_sexo_options = $referencia_sexo_options ?? referencia_sexo_dropdown_options();
 ?>
-<div class="card mt-3">
-    <div class="card-header"><strong>Valores de referencia (<?= lang('Labotests.labotests_tipo_analisis_simple') ?>)</strong></div>
+<div class="card mt-3" id="card_pri_resultados">
+    <div class="card-header d-flex flex-wrap align-items-center gap-2">
+        <strong>Valores de referencia (<?= lang('Labotests.labotests_tipo_analisis_simple') ?>)</strong>
+        <?php if (! empty($priresultados)): ?>
+        <div class="ms-auto d-flex flex-wrap align-items-center gap-2">
+        <?= view('labotests/partial_modal_orden_criterios', [
+            'modal_id'           => 'modalOrdenCriteriosPri',
+            'btn_open_id'        => 'btn_abrir_modal_orden_criterios_pri',
+            'btn_apply_id'       => 'btn_aplicar_orden_criterios_pri',
+            'include_nombre'     => false,
+            'sort_url'           => site_url('labotests/sortpriresultadosbycriteria'),
+            'prianacategoria_id' => (int) ($labotests_info->prianacategoria_id ?? 0),
+        ]) ?>
+        <button type="button" class="btn btn-sm btn-outline-secondary" id="btn_pri_por_generos" disabled title="Crea una fila por cada género del catálogo a partir de las filas seleccionadas">
+            <i class="fa-solid fa-venus-mars me-1"></i>Pruebas por géneros
+        </button>
+        </div>
+        <?php endif; ?>
+    </div>
     <div class="card-body">
         <div class="table-responsive">
-        <table class="table table-sm table-bordered">
-            <thead>
+        <table class="table table-sm table-bordered table-striped table-hover align-middle mb-0" id="tabla_pri_resultados">
+            <thead class="table-light">
                 <tr>
+                    <?php if (! empty($priresultados)): ?>
+                    <th class="text-center">
+                        <input type="checkbox" id="pri_check_all" title="Seleccionar todas">
+                    </th>
+                    <?php endif; ?>
                     <th>Población</th>
                     <th>Sexo</th>
                     <th>Valor mín</th>
@@ -47,9 +69,14 @@ $referencia_sexo_options = $referencia_sexo_options ?? referencia_sexo_dropdown_
                     'texto_fijo' => (string) ($pr['texto_fijo'] ?? ''),
                 ];
                 ?>
-                <tr>
+                <tr data-priresultados-id="<?= (int) ($pr['priresultados_id'] ?? 0) ?>" data-sexo="<?= esc(referencia_sexo_css_slug($pr['sexo'] ?? 'ambos'), 'attr') ?>">
+                    <?php if (! empty($priresultados)): ?>
+                    <td class="text-center">
+                        <input type="checkbox" class="pri-check-item" value="<?= (int) ($pr['priresultados_id'] ?? 0) ?>">
+                    </td>
+                    <?php endif; ?>
                     <td><?= esc($pobMap[(int) ($pr['id_poblacion'] ?? 0)] ?? $pr['id_poblacion'] ?? '') ?></td>
-                    <td><?= esc(referencia_sexo_label($pr['sexo'] ?? 'ambos')) ?></td>
+                    <td><span class="<?= esc(referencia_sexo_badge_class($pr['sexo'] ?? 'ambos'), 'attr') ?>"><?= esc(referencia_sexo_label($pr['sexo'] ?? 'ambos')) ?></span></td>
                     <td><?= esc($pr['valor_min'] ?? '') ?></td>
                     <td><?= esc($pr['valor_max'] ?? '') ?></td>
                     <td><?= esc($pr['umedida'] ?? '') ?></td>
@@ -232,6 +259,10 @@ $referencia_sexo_options = $referencia_sexo_options ?? referencia_sexo_dropdown_
     var formulaNombreInput = document.getElementById('pri_formula_nombre_input');
     var mathDisplay = document.getElementById('pri_formula_math_display');
     var inputId = document.getElementById('priresultados_id_input');
+    var prianacategoriaId = <?= (int) ($labotests_info->prianacategoria_id ?? 0) ?>;
+    var tablaPri = document.getElementById('tabla_pri_resultados');
+    var priCheckAll = document.getElementById('pri_check_all');
+    var btnPriPorGeneros = document.getElementById('btn_pri_por_generos');
 
     function openModal() {
         if (modal) modal.show();
@@ -477,6 +508,98 @@ $referencia_sexo_options = $referencia_sexo_options ?? referencia_sexo_dropdown_
         clearFormPri();
         openModal();
     });
+
+    function getPriCsrfData() {
+        var csrf = document.querySelector('input[name="csrf_test_name"]') || document.querySelector('input[name*="csrf"]');
+        var csrfName = (csrf && csrf.name) ? csrf.name : (typeof window.CI_CSRF_TOKEN_NAME !== 'undefined' ? window.CI_CSRF_TOKEN_NAME : 'csrf_test_name');
+        var csrfVal = (csrf && csrf.value) ? csrf.value : (typeof window.CI_CSRF_TOKEN !== 'undefined' ? window.CI_CSRF_TOKEN : '');
+        return { name: csrfName, value: csrfVal };
+    }
+    function applyPriCsrfFromJson(d) {
+        if (!d || !d.csrf_token || !d.csrf_name) return;
+        window.CI_CSRF_TOKEN = d.csrf_token;
+        window.CI_CSRF_TOKEN_NAME = d.csrf_name;
+        document.querySelectorAll('input[name="csrf_test_name"], input[name*="csrf"]').forEach(function(inp) {
+            inp.name = d.csrf_name;
+            inp.value = d.csrf_token;
+        });
+    }
+    function getSelectedPriIds() {
+        var ids = [];
+        if (!tablaPri) return ids;
+        tablaPri.querySelectorAll('tbody .pri-check-item:checked').forEach(function(chk) {
+            var id = parseInt(chk.value, 10);
+            if (id > 0) ids.push(id);
+        });
+        return ids;
+    }
+    function syncPriCheckAllState() {
+        if (!priCheckAll || !tablaPri) return;
+        var all = tablaPri.querySelectorAll('tbody .pri-check-item');
+        var checked = tablaPri.querySelectorAll('tbody .pri-check-item:checked');
+        priCheckAll.checked = all.length > 0 && checked.length === all.length;
+        priCheckAll.indeterminate = checked.length > 0 && checked.length < all.length;
+    }
+    function actualizarEstadoSeleccionPri() {
+        var selected = getSelectedPriIds();
+        if (btnPriPorGeneros) {
+            btnPriPorGeneros.disabled = selected.length === 0;
+        }
+        syncPriCheckAllState();
+    }
+    if (priCheckAll && tablaPri) {
+        priCheckAll.addEventListener('change', function() {
+            var checked = !!priCheckAll.checked;
+            tablaPri.querySelectorAll('tbody .pri-check-item').forEach(function(chk) {
+                chk.checked = checked;
+            });
+            actualizarEstadoSeleccionPri();
+        });
+        tablaPri.addEventListener('change', function(e) {
+            if (e.target && e.target.classList.contains('pri-check-item')) {
+                actualizarEstadoSeleccionPri();
+            }
+        });
+        actualizarEstadoSeleccionPri();
+    }
+    if (btnPriPorGeneros) {
+        btnPriPorGeneros.addEventListener('click', function() {
+            var ids = getSelectedPriIds();
+            if (ids.length < 1) return;
+            var msg = '¿Generar filas por cada género del catálogo a partir de ' + ids.length + ' fila(s) seleccionada(s)? Las filas con sexo «Todos» serán reemplazadas.';
+            var confirmar = (typeof uiConfirm === 'function')
+                ? uiConfirm(msg, 'Pruebas por géneros')
+                : Promise.resolve(window.confirm(msg));
+            confirmar.then(function(ok) {
+                if (!ok) return;
+                var fd = new FormData();
+                fd.append('prianacategoria_id', String(prianacategoriaId));
+                ids.forEach(function(id) { fd.append('priresultados_ids[]', String(id)); });
+                var csrfData = getPriCsrfData();
+                if (csrfData.value) fd.append(csrfData.name, csrfData.value);
+                var headers = { 'X-Requested-With': 'XMLHttpRequest' };
+                if (csrfData.value) headers['X-CSRF-TOKEN'] = csrfData.value;
+                btnPriPorGeneros.disabled = true;
+                fetch('<?= site_url('labotests/expandreferenciasbygenerospri') ?>', {
+                    method: 'POST',
+                    body: fd,
+                    headers: headers
+                }).then(function(r) { return r.json(); }).then(function(d) {
+                    applyPriCsrfFromJson(d);
+                    if (d.success) {
+                        if (typeof showToast === 'function') showToast(d.message || 'Operación completada', 'success');
+                        window.location.reload();
+                    } else if (typeof showToast === 'function') {
+                        showToast(d.message || 'No se pudo completar la operación', 'error');
+                        actualizarEstadoSeleccionPri();
+                    }
+                }).catch(function() {
+                    if (typeof showToast === 'function') showToast('No se pudo completar la operación', 'error');
+                    actualizarEstadoSeleccionPri();
+                });
+            });
+        });
+    }
 
     document.querySelectorAll('.btn-editar-pri').forEach(function(btn) {
         btn.addEventListener('click', function() {
