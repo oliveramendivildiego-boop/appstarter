@@ -957,7 +957,7 @@ table.results td.resultado-texto-rico-cell .resultado-texto-rico ol {
     border-left-style: none;
 }
 /* Sin flex/min-height en el stack: Dompdf crea páginas en blanco si forzamos altura de hoja. */
-.pdf-ft-block.footer-grid {
+.pdf-ft-block.footer-grid:not(.mpdf-ft-root) {
     font-size: inherit;
     color: inherit;
     margin-top: 0;
@@ -974,10 +974,17 @@ body.pdf-engine-mpdf .pdf-ft-block.footer-grid {
     border-top: none !important;
 }
 body.pdf-engine-mpdf .pdf-dompdf-footer-anchor > .pdf-ft-block.footer-grid .pdf-section-table,
-body.pdf-engine-mpdf .pdf-ft-block.footer-grid .pdf-section-table {
+body.pdf-engine-mpdf .pdf-ft-block.footer-grid:not(.mpdf-ft-root) .pdf-section-table {
     border-top-width: var(--pdf-ft-section-top-border-width, 1px);
     border-top-style: var(--pdf-ft-section-top-border-style, solid);
     border-top-color: var(--pdf-ft-section-top-border-color, #dddddd);
+}
+/* mPDF SetHTMLFooter: borde solo inline en .mpdf-ft-table (evita doble línea con variables CSS) */
+body.pdf-engine-mpdf .mpdf-ft-root .mpdf-ft-table,
+body.pdf-engine-mpdf .mpdf-ft-root .pdf-section-table.mpdf-ft-table {
+    border-top-width: 0 !important;
+    border-top-style: none !important;
+    border-top-color: transparent !important;
 }
 /* Dompdf: padding-top del bloque reserva Paciente/Orden; el borde va sobre la cuadrícula, no arriba del padding. */
 body.pdf-dompdf-download .pdf-dompdf-footer-anchor > .pdf-ft-block.footer-grid,

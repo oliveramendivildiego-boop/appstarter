@@ -7,7 +7,7 @@ namespace App\Libraries\Pdf;
  */
 class HtmlMpdfAdapter
 {
-    public const CACHE_REVISION = 'mpdf-native-v85';
+    public const CACHE_REVISION = 'mpdf-native-v87';
 
     private const TOTAL_PAGES_TOKEN = '__PDF_TOTAL_PAGES__';
 
@@ -284,6 +284,12 @@ body.pdf-engine-mpdf .mpdf-injected-pagination,
 body.pdf-dompdf-download .mpdf-injected-pagination { display: block !important; }
 body.pdf-engine-mpdf .pdf-dompdf-footer-anchor,
 body.pdf-engine-mpdf .pdf-ft-block.footer-grid { position: static !important; }
+body.pdf-engine-mpdf .mpdf-ft-root .mpdf-ft-table,
+body.pdf-engine-mpdf .mpdf-ft-root .pdf-section-table.mpdf-ft-table {
+    border-top-width: 0 !important;
+    border-top-style: none !important;
+    border-top-color: transparent !important;
+}
 body.pdf-engine-mpdf .mpdf-html-footer .mpdf-ft-root { position: static !important; padding: 0 !important; margin: 0 !important; background: transparent !important; }
 body.pdf-engine-mpdf .report-lab-firma-grupo-inline,
 body.pdf-engine-mpdf .lab-firmas-pdf-block-inline {

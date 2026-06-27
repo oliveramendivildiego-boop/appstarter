@@ -70,6 +70,9 @@ final class MpdfFooterStyles
     table-layout: fixed;
     border-collapse: collapse;
     margin: 0;
+    border-top-width: 0 !important;
+    border-top-style: none !important;
+    border-top-color: transparent !important;
 }
 .mpdf-ft-root .mpdf-ft-table td.mpdf-ft-cell,
 .pdf-ft-block.footer-grid.mpdf-ft-root .pdf-section-table td.mpdf-ft-cell {

@@ -71,18 +71,28 @@ class MpdfPdfRenderer implements PdfRendererInterface
             }
         }
 
-        $footerHtml = (! $useDualFooters && $footerHtmlPageOne !== null && $footerHtmlPageOne !== '')
-            ? $footerHtmlPageOne
-            : null;
-
         $metrics = $layout !== []
 
             ? MpdfFooterStyles::resolveLayoutMetrics($layout)
 
             : MpdfLayoutMetrics::fromHtml($html);
 
+        $useNamedDualFooters = false;
         if ($useDualFooters && $footerHtmlPageOne !== '' && $footerHtmlRest !== '') {
-            $html = MpdfNamedFooterInjector::injectPageCss(
+            $pageCount = $this->countDocumentPages(
+                $html,
+                $options,
+                $metrics,
+                $headerHtml,
+                $footerHtmlPageOne,
+                $watermark,
+            );
+            $useNamedDualFooters = $pageCount > 1;
+        }
+
+        $renderHtml = $html;
+        if ($useNamedDualFooters) {
+            $renderHtml = MpdfNamedFooterInjector::injectPageCss(
                 $html,
                 (float) ($metrics['bottom'] ?? 2.0),
             );
@@ -100,56 +110,81 @@ class MpdfPdfRenderer implements PdfRendererInterface
 
 
 
-        if ($useDualFooters && $footerHtmlPageOne !== '' && $footerHtmlRest !== '') {
+        if ($useNamedDualFooters) {
             MpdfNamedFooterInjector::registerFooters($mpdf, $footerHtmlPageOne, $footerHtmlRest);
-        } elseif ($footerHtml !== null && $footerHtml !== '') {
+        } elseif ($footerHtmlPageOne !== null && $footerHtmlPageOne !== '') {
 
-            $mpdf->SetHTMLFooter($footerHtml);
-
-        }
-
-
-
-        if ($watermark !== null) {
-
-            $imagePath = $this->resolveImagePath($watermark);
-
-            if ($imagePath !== null) {
-
-                $sizePct = max(10, min(95, (int) ($watermark['size_percent'] ?? 45)));
-
-                $opacity = max(0.05, min(0.9, (float) ($watermark['opacity'] ?? 0.12)));
-
-                [$widthMm, $heightMm] = $this->computeWatermarkDimensionsMm($mpdf, $imagePath, $sizePct);
-
-                $mpdf->SetWatermarkImage(new WatermarkImage(
-
-                    $imagePath,
-
-                    [$widthMm, $heightMm],
-
-                    WatermarkImage::POSITION_CENTER_PAGE,
-
-                    $opacity,
-
-                    true,
-
-                ));
-
-                $mpdf->showWatermarkImage = true;
-
-            }
+            $mpdf->SetHTMLFooter($footerHtmlPageOne);
 
         }
 
 
 
-        $mpdf->WriteHTML($html);
+        $this->applyWatermark($mpdf, $watermark);
+
+
+
+        $mpdf->WriteHTML($renderHtml);
 
 
 
         return $mpdf->Output('', Destination::STRING_RETURN);
 
+    }
+
+    /**
+     * @param array{top: float, right: float, bottom: float, left: float, footer_reserve_mm: float} $metrics
+     * @param array<string, mixed>|null $watermark
+     */
+    private function countDocumentPages(
+        string $html,
+        PdfOptions $options,
+        array $metrics,
+        string $headerHtml,
+        string $footerHtml,
+        ?array $watermark,
+    ): int {
+        $mpdf = $this->createMpdf($options, $metrics);
+
+        if ($headerHtml !== '') {
+            $mpdf->SetHTMLHeader($headerHtml);
+        }
+
+        if ($footerHtml !== '') {
+            $mpdf->SetHTMLFooter($footerHtml);
+        }
+
+        $this->applyWatermark($mpdf, $watermark);
+        $mpdf->WriteHTML($html);
+
+        return max(1, (int) $mpdf->page);
+    }
+
+    /**
+     * @param array<string, mixed>|null $watermark
+     */
+    private function applyWatermark(Mpdf $mpdf, ?array $watermark): void
+    {
+        if ($watermark === null) {
+            return;
+        }
+
+        $imagePath = $this->resolveImagePath($watermark);
+        if ($imagePath === null) {
+            return;
+        }
+
+        $sizePct = max(10, min(95, (int) ($watermark['size_percent'] ?? 45)));
+        $opacity = max(0.05, min(0.9, (float) ($watermark['opacity'] ?? 0.12)));
+        [$widthMm, $heightMm] = $this->computeWatermarkDimensionsMm($mpdf, $imagePath, $sizePct);
+        $mpdf->SetWatermarkImage(new WatermarkImage(
+            $imagePath,
+            [$widthMm, $heightMm],
+            WatermarkImage::POSITION_CENTER_PAGE,
+            $opacity,
+            true,
+        ));
+        $mpdf->showWatermarkImage = true;
     }
 
 
