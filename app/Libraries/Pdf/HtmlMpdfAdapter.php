@@ -7,7 +7,7 @@ namespace App\Libraries\Pdf;
  */
 class HtmlMpdfAdapter
 {
-    public const CACHE_REVISION = 'mpdf-native-v79';
+    public const CACHE_REVISION = 'mpdf-native-v80';
 
     private const TOTAL_PAGES_TOKEN = '__PDF_TOTAL_PAGES__';
 
@@ -433,7 +433,6 @@ body.pdf-engine-mpdf .report-refs-matrix-wrap > .report-refs-matrix-title {
      */
     public static function adaptFooterForMpdf(string $footerHtml): string
     {
-        $footerHtml = MpdfFooterGridSimplifier::simplify($footerHtml);
         $footerHtml = self::replacePaginationTokens($footerHtml);
         $footerHtml = MpdfFontMapper::sanitizeFooterFragmentHtml($footerHtml);
 

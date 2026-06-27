@@ -262,7 +262,8 @@ $lineHeight   = $secStyle['line_height'];
 $sectionKeyStr = (string) ($section_key ?? '');
 $mpdfFooterMode = ! empty($mpdf_footer_mode) || ! empty($element_ctx['mpdf_footer_mode'] ?? false);
 $mpdfGridWidths = \App\Libraries\Pdf\PdfEngine::isMpdf();
-$mpdfNoColspan    = $mpdfGridWidths || $mpdfFooterMode;
+// Pie: misma grilla 5 columnas + colspan que la vista previa del editor (40/20/40).
+$mpdfNoColspan  = $mpdfGridWidths && $sectionKeyStr !== 'footer';
 $cellWidthAttrForSpan = static function (int $spanCols) use ($pct, $mpdfGridWidths, $mpdfFooterMode): string {
     if (! $mpdfGridWidths && ! $mpdfFooterMode) {
         return '';
@@ -442,7 +443,7 @@ $pdfTdStyle = static function (int $startCol, int $span, float $pctUnit, int $ro
     }
     /* !important: dompdf a veces aplica vertical-align:top de hojas de estilo sobre el td sin esto */
     $style    = $widthCss . 'line-height:' . $lineHeight . ';text-align:' . $h . ' !important;vertical-align:' . $v . ' !important;padding:' . $cellPadCss . ';' . $rowPad . $cellBorderCss($startCol);
-    if ($typography !== '') {
+    if ($typography !== '' && ! ($mpdfFooterMode && $sectionKeyStr === 'footer')) {
         $style .= $typography . ';';
     }
     $explicitHeightPx = 0;
@@ -465,7 +466,7 @@ $pdfTdStyle = static function (int $startCol, int $span, float $pctUnit, int $ro
     ];
 };
 
-$cellItemTdInfo = static function (array $cellItem, int $startCol) use ($itemAlignH, $itemAlignV, $itemTypographyCss, $colAlignH, $colAlignV): array {
+$cellItemTdInfo = static function (array $cellItem, int $startCol) use ($itemAlignH, $itemAlignV, $itemTypographyCss, $colAlignH, $colAlignV, $mpdfFooterMode, $sectionKeyStr): array {
     $itemCol  = (int) ($cellItem['col'] ?? $startCol);
     $elType   = (string) ($cellItem['element_type'] ?? '');
     $h        = $itemAlignH($cellItem, $itemCol);
@@ -475,7 +476,7 @@ $cellItemTdInfo = static function (array $cellItem, int $startCol) use ($itemAli
     $alignCls = $h === 'left' ? 'left' : ($h === 'right' ? 'right' : 'center');
     $typography = $itemTypographyCss($cellItem, $elType);
     $style    = 'padding:0;border:0;line-height:inherit;text-align:' . $h . ' !important;vertical-align:' . $v . ' !important;';
-    if ($typography !== '') {
+    if ($typography !== '' && ! ($mpdfFooterMode && $sectionKeyStr === 'footer')) {
         $style .= $typography . ';';
     }
     $valign = match ($v) {

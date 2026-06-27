@@ -223,19 +223,6 @@ CSS;
                 . ".mpdf-ft-root td[align=\"{$val}\"] .pdf-ft-piece p { text-align: {$val} !important; }\n";
         }
 
-        $css .= <<<'CSS'
-
-/* mPDF pie: 3 columnas lógicas 40/20/40 (tabla simplificada) */
-.mpdf-ft-root table.mpdf-ft-table[data-pdf-cols="3"] > colgroup > col:nth-child(1) { width: 40% !important; }
-.mpdf-ft-root table.mpdf-ft-table[data-pdf-cols="3"] > colgroup > col:nth-child(2) { width: 20% !important; }
-.mpdf-ft-root table.mpdf-ft-table[data-pdf-cols="3"] > colgroup > col:nth-child(3) { width: 40% !important; }
-.mpdf-ft-root table.mpdf-ft-table[data-pdf-cols="3"] > tbody > tr:not(.mpdf-order-sheet-row) > td.mpdf-ft-cell:nth-child(1) { width: 40% !important; max-width: 40% !important; }
-.mpdf-ft-root table.mpdf-ft-table[data-pdf-cols="3"] > tbody > tr:not(.mpdf-order-sheet-row) > td.mpdf-ft-cell:nth-child(2) { width: 20% !important; max-width: 20% !important; }
-.mpdf-ft-root table.mpdf-ft-table[data-pdf-cols="3"] > tbody > tr:not(.mpdf-order-sheet-row) > td.mpdf-ft-cell:nth-child(3) { width: 40% !important; max-width: 40% !important; }
-.mpdf-ft-root table.mpdf-ft-table[data-pdf-cols="3"] > tbody > tr.mpdf-order-sheet-row > td.mpdf-order-sheet-patient { width: 40% !important; max-width: 40% !important; }
-.mpdf-ft-root table.mpdf-ft-table[data-pdf-cols="3"] > tbody > tr.mpdf-order-sheet-row > td.mpdf-order-sheet-order { width: 60% !important; max-width: 60% !important; }
-CSS;
-
         return $css;
     }
 
