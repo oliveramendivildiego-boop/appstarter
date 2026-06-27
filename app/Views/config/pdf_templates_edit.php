@@ -115,6 +115,12 @@ $previewLabCompany = trim((string) ($previewLabCfg['company'] ?? ''));
 if ($previewLabCompany === '') {
     $previewLabCompany = 'Laboratorio';
 }
+helper('qr');
+$previewQrUrl = site_url('registers/viewreport/preview');
+$previewQrPx = \App\Services\ReportPdfLayoutService::qrImagePixelSizeFromLayout([
+    'page_style' => ['header_grid' => $hg],
+]);
+$previewQrDataUri = qr_base64($previewQrUrl, $previewQrPx);
 $labelsShort = [
     'paciente_nombre'   => 'Paciente:',
     'paciente_genero'   => 'Género:',
@@ -456,7 +462,7 @@ if (! in_array($configTab, $pdfConfigTabs, true)) {
             <div class="col-4 col-md-2"><label class="form-label small" for="hg_font_style">Estilo</label><select class="form-select form-select-sm" id="hg_font_style"><?php foreach (['normal', 'italic', 'oblique'] as $st): ?><option value="<?= esc($st, 'attr') ?>" <?= ($hg['font_style'] ?? '') === $st ? 'selected' : '' ?>><?= esc(ucfirst($st)) ?></option><?php endforeach; ?></select></div>
             <div class="col-6 col-md-3"><label class="form-label small" for="hg_text_transform">Transformación</label><select class="form-select form-select-sm" id="hg_text_transform"><?php foreach (['none' => 'Normal', 'uppercase' => 'MAYÚSCULAS', 'lowercase' => 'minúsculas', 'capitalize' => 'Tipo título'] as $k => $v): ?><option value="<?= esc($k, 'attr') ?>" <?= ($hg['text_transform'] ?? '') === $k ? 'selected' : '' ?>><?= esc($v) ?></option><?php endforeach; ?></select></div>
             <div class="col-6 col-md-2"><label class="form-label small" for="hg_line_height">Interlineado</label><input type="number" class="form-control form-control-sm" id="hg_line_height" min="1" max="3" step="0.05" value="<?= esc((string) ($hg['line_height'] ?? 1.35), 'attr') ?>"></div>
-            <div class="col-6 col-md-3"><label class="form-label small" for="hg_qr_size_percent" title="100 % = tamaño base del PDF (~75 px de alto). Suba el porcentaje para ampliar el código QR (máx. 400 %).">Tamaño del código QR (%)</label><input type="number" class="form-control form-control-sm" id="hg_qr_size_percent" min="50" max="400" step="5" value="<?= esc((string) (int) ($hg['qr_size_percent'] ?? 100), 'attr') ?>"><span class="form-text small text-muted d-block">50–400 % respecto al tamaño base</span></div>
+            <div class="col-6 col-md-3"><label class="form-label small" for="hg_qr_size_percent" title="100 % = tamaño base del PDF (~75 px de alto). Suba el porcentaje para ampliar el código QR (máx. 400 %).">Tamaño del código QR (%)</label><input type="number" class="form-control form-control-sm" id="hg_qr_size_percent" min="50" max="400" step="1" value="<?= esc((string) (int) ($hg['qr_size_percent'] ?? 100), 'attr') ?>"><span class="form-text small text-muted d-block">50–400 % respecto al tamaño base</span></div>
         </div>
         <p class="small text-muted mb-2">Etiquetas del encabezado: texto, visibilidad, disposición respecto al valor (o al QR) y tipografía del texto de etiqueta en el PDF.</p>
         <div class="table-responsive mb-2">
@@ -1366,7 +1372,7 @@ if (! in_array($configTab, $pdfConfigTabs, true)) {
                         <h6 class="text-uppercase text-muted small mb-2">Opciones por campo</h6>
                         <ul id="instance-list-header" class="list-group pdf-instance-sortable" data-section="header">
                             <?php foreach ($instHeader as $inst): ?>
-                                <?= view('config/partials/pdf_instance_row', ['inst' => $inst, 'col_count' => $hCols, 'elLabels' => $elLabels]) ?>
+                                <?= view('config/partials/pdf_instance_row', ['inst' => $inst, 'col_count' => $hCols, 'elLabels' => $elLabels, 'qr_size_percent' => (int) ($hg['qr_size_percent'] ?? 100)]) ?>
                             <?php endforeach; ?>
                         </ul>
                     </div>
@@ -1646,6 +1652,34 @@ if (! in_array($configTab, $pdfConfigTabs, true)) {
 .pdf-text-style-controls .form-control-color {
     min-height: 2rem;
     padding: 0.15rem;
+}
+.pdf-qr-size-controls {
+    border-top: 1px dashed #d8dee5;
+    background: #fafbfc;
+    border-radius: 8px;
+    padding: 0.7rem 0.45rem 0.45rem;
+}
+.pdf-preview-scope .header-piece-qr,
+.pdf-preview-scope .pdf-ft-piece-qr {
+    max-width: 100%;
+    line-height: 1.2;
+}
+.pdf-preview-scope .header-piece-qr .qr-img,
+.pdf-preview-scope .pdf-ft-piece-qr .qr-img {
+    max-height: calc(75px * var(--pdf-qr-size-percent, 100) / 100);
+    max-width: min(100%, calc(75px * var(--pdf-qr-size-percent, 100) / 100));
+    width: auto;
+    height: auto;
+    display: block;
+    object-fit: contain;
+    background: #fff;
+    border: 1px solid #dee2e6;
+    border-radius: 3px;
+    padding: 2px;
+    box-sizing: border-box;
+}
+.pdf-preview-scope .header-piece-qr .qr-label {
+    margin: 0 0 4px 0;
 }
 .pdf-field-palette {
     display: flex;
@@ -1960,6 +1994,7 @@ document.addEventListener('DOMContentLoaded', function() {
     window._patientFieldUi = <?= json_encode($pdFieldUi, JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP) ?>;
     window._pdfStyleAllowlists = <?= json_encode($pdfStyleAllowlists, JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP) ?>;
     window._previewLogoDataUri = <?= json_encode($previewLogoDataUri, JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP) ?>;
+    window._previewQrDataUri = <?= json_encode($previewQrDataUri, JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP) ?>;
     window._previewLabCompany = <?= json_encode($previewLabCompany, JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP) ?>;
 
     function pdfAllow(key) {
@@ -2012,6 +2047,61 @@ document.addEventListener('DOMContentLoaded', function() {
         if (alignH === 'center') return 'margin-left:auto;margin-right:auto;';
         if (alignH === 'right') return 'margin-left:auto;margin-right:0;';
         return 'margin-left:0;margin-right:auto;';
+    }
+
+    var qrSizePreviewTimer = null;
+
+    function readQrSizePercentFromDom() {
+        var active = document.activeElement;
+        if (active && (active.id === 'hg_qr_size_percent' || (active.classList && active.classList.contains('instance-qr-size-percent')))) {
+            var na = parseInt(active.value, 10);
+            if (!isNaN(na)) return Math.max(50, Math.min(400, na));
+        }
+        var focusLi = document.querySelector('.pdf-instance-item.is-editor-focus');
+        if (focusLi) {
+            var instEl = focusLi.querySelector('.instance-qr-size-percent');
+            if (instEl) {
+                var ni = parseInt(instEl.value, 10);
+                if (!isNaN(ni)) return Math.max(50, Math.min(400, ni));
+            }
+        }
+        var el = document.getElementById('hg_qr_size_percent');
+        var n = el ? parseInt(el.value, 10) : 100;
+        if (isNaN(n)) n = 100;
+        return Math.max(50, Math.min(400, n));
+    }
+
+    function mirrorQrSizePercentRaw(value, skipEl) {
+        var raw = String(value == null ? '' : value).trim();
+        var hgEl = document.getElementById('hg_qr_size_percent');
+        if (hgEl && hgEl !== skipEl && String(hgEl.value) !== raw) hgEl.value = raw;
+        document.querySelectorAll('.instance-qr-size-percent').forEach(function(el) {
+            if (el !== skipEl && String(el.value) !== raw) el.value = raw;
+        });
+    }
+
+    function syncQrSizePercentInputs(value, skipEl) {
+        var n = parseInt(value, 10);
+        if (isNaN(n)) n = 100;
+        n = Math.max(50, Math.min(400, n));
+        var hgEl = document.getElementById('hg_qr_size_percent');
+        if (hgEl && hgEl !== skipEl && String(hgEl.value) !== String(n)) hgEl.value = String(n);
+        document.querySelectorAll('.instance-qr-size-percent').forEach(function(el) {
+            if (el !== skipEl && String(el.value) !== String(n)) el.value = String(n);
+        });
+        return n;
+    }
+
+    function scheduleQrSizePreviewRebuild() {
+        if (qrSizePreviewTimer) clearTimeout(qrSizePreviewTimer);
+        qrSizePreviewTimer = setTimeout(function() {
+            qrSizePreviewTimer = null;
+            rebuildAllPreviews();
+        }, 120);
+    }
+
+    function isQrSizePercentField(el) {
+        return !!el && (el.id === 'hg_qr_size_percent' || (el.classList && el.classList.contains('instance-qr-size-percent')));
     }
 
     function clampCols(v) {
@@ -3157,27 +3247,33 @@ document.addEventListener('DOMContentLoaded', function() {
             return '<div class="' + outerWrap + '"><div class="' + innerWrap + '"><p style="margin:0;">' + inner + '</p></div></div>';
         }
         if (type === 'qr') {
+            if (!hg || typeof hg !== 'object') hg = {};
             var hint = String(hg.label_qr_hint != null ? hg.label_qr_hint : '').trim();
             var showH = !!hg.show_label_qr_hint && hint !== '';
             var inlineQ = (hg.label_qr_hint_line_mode === 'inline');
             var stQ = st(hg, 'qr_hint');
+            var alignH = 'left';
+            if (li) alignH = readInstanceAlign(li).align_h;
+            var imgStyle = blockImageAlignMarginCss(alignH);
+            var qrSrc = String(window._previewQrDataUri || '').trim();
             var qrPctPrev = parseInt(hg.qr_size_percent, 10);
             if (isNaN(qrPctPrev)) qrPctPrev = 100;
-            qrPctPrev = Math.max(50, Math.min(400, qrPctPrev));
-            var qrBoxPx = Math.round(36 * qrPctPrev / 100);
-            var qrFs = Math.max(8, Math.round(10 * qrPctPrev / 100));
-            var img = '<span class="qr-img" role="img" aria-label="QR" style="display:block;width:' + qrBoxPx + 'px;height:' + qrBoxPx + 'px;line-height:' + qrBoxPx + 'px;text-align:center;background:#6c757d;color:#fff;border-radius:4px;font-size:' + qrFs + 'px;font-weight:600;">QR</span>';
+            var qrBoxPx = Math.max(28, Math.round(75 * Math.max(50, Math.min(400, qrPctPrev)) / 100));
+            var img = qrSrc !== ''
+                ? ('<img class="qr-img" src="' + escapeAttr(qrSrc) + '" alt="QR" style="' + escapeHtml(imgStyle) + '">')
+                : ('<span class="qr-img" role="img" aria-label="QR" style="' + escapeHtml(imgStyle) + ';width:' + qrBoxPx + 'px;height:' + qrBoxPx + 'px;line-height:' + qrBoxPx + 'px;text-align:center;background:#6c757d;color:#fff;border-radius:4px;font-size:' + Math.max(8, Math.round(10 * qrPctPrev / 100)) + 'px;font-weight:600;">QR</span>');
             var qrCls = forFooter ? 'pdf-ft-piece pdf-ft-piece-qr' : 'header-piece header-piece-qr';
+            var qrWrapStyle = 'text-align:' + (alignH === 'center' ? 'center' : (alignH === 'right' ? 'right' : 'left')) + ';';
             if (inlineQ && showH) {
-                return '<div class="' + qrCls + '"><p style="margin:0;"><span class="qr-label" style="' + escapeHtml(stQ) + ';display:inline-block;vertical-align:middle;margin-right:6px;">' + escapeHtml(hint) + '</span>' + img + '</p></div>';
+                return '<div class="' + qrCls + '" style="' + escapeHtml(qrWrapStyle) + '"><p style="margin:0;"><span class="qr-label" style="' + escapeHtml(stQ) + ';display:inline-block;vertical-align:middle;margin-right:6px;">' + escapeHtml(hint) + '</span>' + img + '</p></div>';
             }
             if (inlineQ) {
-                return '<div class="' + qrCls + '">' + img + '</div>';
+                return '<div class="' + qrCls + '" style="' + escapeHtml(qrWrapStyle) + '">' + img + '</div>';
             }
             if (showH) {
-                return '<div class="' + qrCls + '"><div class="qr-label" style="' + escapeHtml(stQ) + '">' + escapeHtml(hint) + '</div>' + img + '</div>';
+                return '<div class="' + qrCls + '" style="' + escapeHtml(qrWrapStyle) + '"><div class="qr-label" style="' + escapeHtml(stQ) + '">' + escapeHtml(hint) + '</div>' + img + '</div>';
             }
-            return '<div class="' + qrCls + '">' + img + '</div>';
+            return '<div class="' + qrCls + '" style="' + escapeHtml(qrWrapStyle) + '">' + img + '</div>';
         }
         return escapeHtml(sample);
     }
@@ -3290,6 +3386,14 @@ document.addEventListener('DOMContentLoaded', function() {
         if (sectionKey === 'header') {
             var sepEl = document.getElementById('hs_separator_color');
             if (sepEl && isValidPdfHexJs(sepEl.value)) wrap.style.setProperty('--pdf-header-separator-color', sepEl.value.trim());
+            var qrPctTheme = parseInt(gridStyle && gridStyle.qr_size_percent != null ? gridStyle.qr_size_percent : NaN, 10);
+            if (isNaN(qrPctTheme)) {
+                var qrEl = document.getElementById('hg_qr_size_percent');
+                qrPctTheme = qrEl ? parseInt(qrEl.value, 10) : 100;
+            }
+            if (isNaN(qrPctTheme)) qrPctTheme = 100;
+            qrPctTheme = Math.max(50, Math.min(400, qrPctTheme));
+            wrap.style.setProperty('--pdf-qr-size-percent', String(qrPctTheme));
         }
     }
 
@@ -3788,6 +3892,15 @@ document.addEventListener('DOMContentLoaded', function() {
             if (tplCt && tplCt.innerHTML) {
                 li.insertAdjacentHTML('beforeend', tplCt.innerHTML.replace(/__PDF_UID__/g, uid));
             }
+        } else if (elementType === 'qr') {
+            var qrSizeDef = readQrSizePercentFromDom();
+            li.insertAdjacentHTML('beforeend',
+                '<div class="row g-2 g-md-3 pdf-qr-size-controls">' +
+                '  <div class="col-6 col-sm-4 col-md-3 col-xl-2"><label class="form-label small mb-1">Tamaño del QR (%)</label>' +
+                '    <input type="number" class="form-control form-control-sm instance-qr-size-percent" min="50" max="400" step="1" value="' + qrSizeDef + '" title="100 % ≈ 75 px de alto en el PDF"></div>' +
+                '  <div class="col-12"><p class="small text-muted mb-0">La leyenda del QR (texto debajo o al lado) se configura en la tarjeta «Estilos de encabezado, paciente y pie».</p></div>' +
+                '</div>'
+            );
         } else {
             var addPdSpacing = (sectionKey === 'patient_doctor' && pdTypes.indexOf(elementType) >= 0);
             li.insertAdjacentHTML('beforeend',
@@ -3862,6 +3975,8 @@ document.addEventListener('DOMContentLoaded', function() {
         if (!fromLi || !toLi) return;
         if ((fromLi.getAttribute('data-element-type') || '') === 'custom_text') return;
         if ((toLi.getAttribute('data-element-type') || '') === 'custom_text') return;
+        if ((fromLi.getAttribute('data-element-type') || '') === 'qr') return;
+        if ((toLi.getAttribute('data-element-type') || '') === 'qr') return;
         var ts = readInstanceTextStyle(fromLi);
         function setIf(q, v) {
             var el = toLi.querySelector(q);
@@ -4290,15 +4405,30 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     document.addEventListener('change', function(e) {
+        if (isQrSizePercentField(e.target)) {
+            syncQrSizePercentInputs(e.target.value, e.target);
+            rebuildAllPreviews();
+            return;
+        }
         if (shouldRebuildPreviewOnStyleInput(e.target)) {
             rebuildAllPreviews();
         }
     });
     document.addEventListener('input', function(e) {
+        if (isQrSizePercentField(e.target)) {
+            mirrorQrSizePercentRaw(e.target.value, e.target);
+            scheduleQrSizePreviewRebuild();
+            return;
+        }
         if (shouldRebuildPreviewOnStyleInput(e.target)) {
             rebuildAllPreviews();
         }
     });
+    document.addEventListener('blur', function(e) {
+        if (isQrSizePercentField(e.target)) {
+            syncQrSizePercentInputs(e.target.value, e.target);
+        }
+    }, true);
 
     if (blockList && typeof Sortable !== 'undefined') {
         new Sortable(blockList, { animation: 150, handle: '.pdf-drag-handle' });
@@ -4503,7 +4633,7 @@ document.addEventListener('DOMContentLoaded', function() {
             label_qr_hint_font_weight: pickAllowedIds(['ft_dup_hg_qr_hint_fw', 'hg_qr_hint_fw'], 'font_weights', hgGrid.font_weight),
             label_qr_hint_font_style: pickAllowedIds(['ft_dup_hg_qr_hint_fst', 'hg_qr_hint_fst'], 'font_styles', hgGrid.font_style),
             label_qr_hint_text_transform: pickAllowedIds(['ft_dup_hg_qr_hint_tt', 'hg_qr_hint_tt'], 'text_transforms', hgGrid.text_transform),
-            qr_size_percent: Math.round(pickNum('hg_qr_size_percent', 50, 400, 100))
+            qr_size_percent: Math.round(readQrSizePercentFromDom())
         });
         (window._headerLabelFieldIds || []).forEach(function(fid) {
             var defT = (window._headerLabelDefaults && Object.prototype.hasOwnProperty.call(window._headerLabelDefaults, fid)) ? window._headerLabelDefaults[fid] : '';
@@ -5569,6 +5699,10 @@ document.addEventListener('DOMContentLoaded', function() {
                     alert('No hay secciones del PDF configuradas. Recargue la página e intente de nuevo.');
                     return;
                 }
+
+                ['header', 'patient_doctor', 'footer', 'lab_firmas'].forEach(function(sec) {
+                    ensureGridPlacementForSection(sec);
+                });
 
                 var instances = [];
                 if (headerList) {

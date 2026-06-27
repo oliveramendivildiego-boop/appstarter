@@ -261,6 +261,16 @@ $colAlignV    = $secStyle['column_align_v'];
 $lineHeight   = $secStyle['line_height'];
 $sectionKeyStr = (string) ($section_key ?? '');
 $mpdfFooterMode = ! empty($mpdf_footer_mode) || ! empty($element_ctx['mpdf_footer_mode'] ?? false);
+$mpdfGridWidths = \App\Libraries\Pdf\PdfEngine::isMpdf();
+$mpdfNoColspan    = $mpdfGridWidths || $mpdfFooterMode;
+$cellWidthAttrForSpan = static function (int $spanCols) use ($pct, $mpdfGridWidths, $mpdfFooterMode): string {
+    if (! $mpdfGridWidths && ! $mpdfFooterMode) {
+        return '';
+    }
+    $spanCols = max(1, $spanCols);
+
+    return ' width="' . esc((string) round($spanCols * $pct, 4), 'attr') . '%"';
+};
 $defRowGap     = $sectionKeyStr === 'patient_doctor' ? 2 : ($sectionKeyStr === 'footer' ? 0 : 6);
 $rowGapPx      = max(0, min(40, (int) ($secLayoutRaw['row_gap_px'] ?? $defRowGap)));
 $gridStyleRaw  = [];
@@ -304,25 +314,46 @@ $itemAlignV = static function (array $item, int $col) use ($colAlignV): string {
 $resolveGridStack = static function (array $item, int $indexInCell): int {
     return $indexInCell;
 };
-$itemTypographyCss = static function (array $item, string $elType) use ($textStyleCss, $lineHeight): string {
+$itemTypographyCss = static function (array $item, string $elType) use ($textStyleCss, $lineHeight, $sectionKeyStr, $gridStyleRaw): string {
     if ($elType === 'custom_text' && is_array($item['custom_text'] ?? null)) {
         $ct = \App\Services\ReportPdfLayoutService::normalizeCustomTextPayload($item['custom_text']);
 
         return \App\Services\ReportPdfLayoutService::textStyleArrayToInlineCss($ct['value_style']);
     }
 
+    $sectionTypo = \App\Services\ReportPdfLayoutService::gridSectionBodyTypographyCss($sectionKeyStr, $gridStyleRaw);
+    if ($sectionTypo !== '') {
+        return $sectionTypo;
+    }
+
     return $textStyleCss(is_array($item['text_style'] ?? null) ? $item['text_style'] : []);
+};
+$resolveItemTextStyle = static function (array $item) use ($sectionKeyStr, $gridStyleRaw): array {
+    return \App\Services\ReportPdfLayoutService::resolveGridInstanceTextStyle(
+        $sectionKeyStr,
+        $gridStyleRaw,
+        is_array($item['text_style'] ?? null) ? $item['text_style'] : [],
+    );
 };
 $headerRowHeightsPx = [];
 if ($sectionKeyStr === 'header') {
     foreach ($rows as $rowIndex => $row) {
         $maxH = 0;
-        $scanItems = static function (array $items) use (&$maxH, $element_ctx, $n): void {
+        $scanItems = static function (array $items) use (&$maxH, $element_ctx, $n, $gridStyleRaw, $resolveItemTextStyle, $lineHeight): void {
             foreach ($items as $item) {
                 if (! is_array($item)) {
                     continue;
                 }
-                $maxH = max($maxH, \App\Services\ReportPdfLayoutService::gridLogoRenderedHeightPx($item, $element_ctx, $n));
+                $itemResolved         = $item;
+                $itemResolved['text_style'] = $resolveItemTextStyle($item);
+                $elType               = (string) ($item['element_type'] ?? '');
+                $maxH = max($maxH, \App\Services\ReportPdfLayoutService::gridLogoRenderedHeightPx($itemResolved, $element_ctx, $n));
+                if ($elType === 'lab_company') {
+                    $maxH = max(
+                        $maxH,
+                        \App\Services\ReportPdfLayoutService::typographyBlockHeightPx($itemResolved['text_style'], $lineHeight),
+                    );
+                }
             }
         };
         foreach ($row['colspans'] as $C) {
@@ -333,12 +364,32 @@ if ($sectionKeyStr === 'header') {
                 $scanItems($stackItems);
             }
         }
+        if ($maxH <= 0) {
+            $hasItems = false;
+            foreach ($row['colspans'] as $C) {
+                if (count(is_array($C['items'] ?? null) ? $C['items'] : []) > 0) {
+                    $hasItems = true;
+                    break;
+                }
+            }
+            if (! $hasItems) {
+                foreach ($row['stacks'] as $stackItems) {
+                    if (is_array($stackItems) && count($stackItems) > 0) {
+                        $hasItems = true;
+                        break;
+                    }
+                }
+            }
+            if ($hasItems) {
+                $maxH = 48;
+            }
+        }
         if ($maxH > 0) {
             $headerRowHeightsPx[(int) $rowIndex] = $maxH;
         }
     }
 }
-$pdfTdStyle = static function (int $startCol, int $span, float $pctUnit, int $rowIndex, array $cellItems = [], int $rowHeightPx = 0) use ($n, $lineHeight, $cellPadCss, $rowGapPx, $cellBorderCss, $itemAlignH, $itemAlignV, $sectionKeyStr, $colAlignH, $colAlignV, $itemTypographyCss, $mpdfFooterMode): array {
+$pdfTdStyle = static function (int $startCol, int $span, float $pctUnit, int $rowIndex, array $cellItems = [], int $rowHeightPx = 0) use ($n, $lineHeight, $cellPadCss, $rowGapPx, $cellBorderCss, $itemAlignH, $itemAlignV, $sectionKeyStr, $colAlignH, $colAlignV, $itemTypographyCss, $mpdfFooterMode, $mpdfGridWidths): array {
     $startCol = max(0, min($n - 1, $startCol));
     $h        = 'left';
     $v        = 'top';
@@ -380,6 +431,8 @@ $pdfTdStyle = static function (int $startCol, int $span, float $pctUnit, int $ro
     $widthCss = 'width:' . $spanPct . '%;';
     if ($mpdfFooterMode && $sectionKeyStr === 'footer') {
         $widthCss .= 'max-width:' . $spanPct . '%;overflow-wrap:break-word;word-wrap:break-word;word-break:break-word;white-space:normal;';
+    } elseif ($mpdfGridWidths && in_array($sectionKeyStr, ['header', 'patient_doctor'], true)) {
+        $widthCss .= 'max-width:' . $spanPct . '%;';
     }
     /* !important: dompdf a veces aplica vertical-align:top de hojas de estilo sobre el td sin esto */
     $style    = $widthCss . 'line-height:' . $lineHeight . ';text-align:' . $h . ' !important;vertical-align:' . $v . ' !important;padding:' . $cellPadCss . ';' . $rowPad . $cellBorderCss($startCol);
@@ -450,7 +503,8 @@ $renderCellStackItems = static function (array $cellItems, int $startCol, int $g
     $resolveGridStack,
     $mpdfFooterMode,
     $cellItemTdInfo,
-    $headerRowHeightsPx
+    $headerRowHeightsPx,
+    $resolveItemTextStyle
 ): void {
     $useInnerStackTable = count($cellItems) > 1;
     if ($useInnerStackTable) {
@@ -481,7 +535,7 @@ $renderCellStackItems = static function (array $cellItems, int $startCol, int $g
             'pdf_grid_column'        => (int) ($cellItem['col'] ?? $startCol),
             'pdf_grid_column_span'   => (int) ($cellItem['span'] ?? 1),
             'pdf_grid_stack'         => $resolveGridStack($cellItem, (int) $stackIndex),
-            'pdf_text_style'         => is_array($cellItem['text_style'] ?? null) ? $cellItem['text_style'] : [],
+            'pdf_text_style'         => $resolveItemTextStyle($cellItem),
             'pdf_label_value_gap_px' => array_key_exists('label_value_gap_px', $cellItem) ? (int) ($cellItem['label_value_gap_px'] ?? 0) : null,
             'pdf_label_space_above_px' => array_key_exists('label_space_above_px', $cellItem) ? (int) ($cellItem['label_space_above_px'] ?? 0) : null,
             'pdf_label_space_below_px' => array_key_exists('label_space_below_px', $cellItem) ? (int) ($cellItem['label_space_below_px'] ?? 0) : null,
@@ -557,11 +611,13 @@ echo $sectionWrapperStyle !== '' ? ' style="' . esc($sectionWrapperStyle, 'attr'
     }
 ?>
 <table class="<?= esc($sectionTableClass, 'attr') ?>" width="100%" data-pdf-lh="1" data-pdf-cols="<?= (int) $n ?>" style="<?= esc($sectionTableStyle, 'attr') ?>">
+<?php if (! $mpdfNoColspan): ?>
 <colgroup>
 <?php for ($colIdx = 0; $colIdx < $n; $colIdx++): ?>
     <col style="width:<?= esc((string) $pct, 'attr') ?>%;" />
 <?php endfor; ?>
 </colgroup>
+<?php endif; ?>
 <?php if (trim((string) ($section_table_prepend_rows ?? '')) !== ''): ?>
 <?= $section_table_prepend_rows ?>
 <?php endif; ?>
@@ -590,7 +646,7 @@ echo $sectionWrapperStyle !== '' ? ' style="' . esc($sectionWrapperStyle, 'attr'
                 . ((int) ($tdInfo['explicitHeightPx'] ?? 0) > 0 ? ' pdf-cell--has-explicit-height' : '')
                 . ($mpdfFooterMode && $sectionKeyStr === 'footer' ? ' mpdf-ft-cell' : '');
             ?>
-        <td class="<?= esc(trim($tdCellClass), 'attr') ?>" colspan="<?= $span ?>" align="<?= esc($tdInfo['alignCls'], 'attr') ?>" valign="<?= esc($tdInfo['valign'], 'attr') ?>"<?= ($mpdfFooterMode && $sectionKeyStr === 'footer') ? (' width="' . esc((string) round($span * $pct, 4), 'attr') . '%"') : '' ?><?= (int) ($tdInfo['explicitHeightPx'] ?? 0) > 0 ? ' height="' . (int) $tdInfo['explicitHeightPx'] . '"' : '' ?> style="<?= esc($tdInfo['style'], 'attr') ?>">
+        <td class="<?= esc(trim($tdCellClass), 'attr') ?>"<?= $mpdfNoColspan ? '' : (' colspan="' . (int) $span . '"') ?> align="<?= esc($tdInfo['alignCls'], 'attr') ?>" valign="<?= esc($tdInfo['valign'], 'attr') ?>"<?= $cellWidthAttrForSpan($span) ?><?= (int) ($tdInfo['explicitHeightPx'] ?? 0) > 0 ? ' height="' . (int) $tdInfo['explicitHeightPx'] . '"' : '' ?> style="<?= esc($tdInfo['style'], 'attr') ?>">
             <?php $wrapCellValignTable($tdInfo, static function () use ($renderCellStackItems, $block, $startCol, $rowIndex): void {
                 $renderCellStackItems($block['items'], $startCol, (int) $rowIndex);
             }); ?>
@@ -606,7 +662,7 @@ echo $sectionWrapperStyle !== '' ? ' style="' . esc($sectionWrapperStyle, 'attr'
                 . ((int) ($tdInfo['explicitHeightPx'] ?? 0) > 0 ? ' pdf-cell--has-explicit-height' : '')
                 . ($mpdfFooterMode && $sectionKeyStr === 'footer' ? ' mpdf-ft-cell' : '');
             ?>
-        <td class="<?= esc(trim($tdCellClass), 'attr') ?>" align="<?= esc($tdInfo['alignCls'], 'attr') ?>" valign="<?= esc($tdInfo['valign'], 'attr') ?>"<?= ($mpdfFooterMode && $sectionKeyStr === 'footer') ? (' width="' . esc((string) round($pct, 4), 'attr') . '%"') : '' ?><?= (int) ($tdInfo['explicitHeightPx'] ?? 0) > 0 ? ' height="' . (int) $tdInfo['explicitHeightPx'] . '"' : '' ?> style="<?= esc($tdInfo['style'], 'attr') ?>">
+        <td class="<?= esc(trim($tdCellClass), 'attr') ?>" align="<?= esc($tdInfo['alignCls'], 'attr') ?>" valign="<?= esc($tdInfo['valign'], 'attr') ?>"<?= $cellWidthAttrForSpan(1) ?><?= (int) ($tdInfo['explicitHeightPx'] ?? 0) > 0 ? ' height="' . (int) $tdInfo['explicitHeightPx'] . '"' : '' ?> style="<?= esc($tdInfo['style'], 'attr') ?>">
             <?php $wrapCellValignTable($tdInfo, static function () use ($renderCellStackItems, $stackItems, $c, $rowIndex): void {
                 $renderCellStackItems($stackItems, $c, (int) $rowIndex);
             }); ?>
@@ -614,7 +670,7 @@ echo $sectionWrapperStyle !== '' ? ' style="' . esc($sectionWrapperStyle, 'attr'
 <?php
             $c++;
         else: ?>
-        <td style="<?= esc($pdfEmptyTdStyle($c, $pct, (int) $rowIndex), 'attr') ?>"></td>
+        <td style="<?= esc($pdfEmptyTdStyle($c, $pct, (int) $rowIndex), 'attr') ?>"<?= $cellWidthAttrForSpan(1) ?>></td>
 <?php
             $c++;
         endif;

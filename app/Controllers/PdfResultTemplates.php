@@ -195,6 +195,10 @@ class PdfResultTemplates extends SecureArea
         ]);
 
         (new ConfigService())->invalidateCache();
+        (new \App\Services\RegisterService(
+            model(\App\Models\RegisterModel::class),
+            model(\App\Models\AppConfigModel::class),
+        ))->clearAllReportPdfPreviewCaches();
 
         return redirect()->to($this->pdfTemplateEditUrl($id, $configTab))->with('success', 'Plantilla guardada.');
     }

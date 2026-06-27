@@ -7,7 +7,7 @@ namespace App\Libraries\Pdf;
  */
 class HtmlMpdfAdapter
 {
-    public const CACHE_REVISION = 'mpdf-native-v74';
+    public const CACHE_REVISION = 'mpdf-native-v78';
 
     private const TOTAL_PAGES_TOKEN = '__PDF_TOTAL_PAGES__';
 
@@ -317,6 +317,11 @@ body.pdf-engine-mpdf .pdf-pd-block .pdf-section-table,
 body.pdf-engine-mpdf .pdf-ft-block .pdf-section-table {
     table-layout: fixed !important;
     width: 100% !important;
+}
+body.pdf-engine-mpdf .pdf-hg-block .pdf-section-table td.pdf-cell[valign="middle"],
+body.pdf-engine-mpdf .pdf-hg-block .pdf-section-table td.pdf-cell[valign="bottom"] {
+    height: auto !important;
+    min-height: 0 !important;
 }
 body.pdf-engine-mpdf .pdf-section-table td.pdf-cell,
 body.pdf-engine-mpdf .pdf-section-table td.pdf-cell-stack-item {

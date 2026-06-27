@@ -132,7 +132,7 @@ $lblComp = ! empty($sin_billing_enabled ?? false) ? 'Factura' : 'Recibo (PDF)';
 
 <?php if (empty($grupos)): ?>
 <div class="alert alert-info mt-3">
-    <i class="fa-solid fa-info-circle me-2"></i>No hay resultados cargados para esta orden. Complete los resultados en <a href="<?= site_url('registers/view/' . $ridPdf) ?>">Editar registro</a>.
+    <i class="fa-solid fa-info-circle me-2"></i>Las pruebas de esta orden están sin valores o no se ha guardado ningún resultado. Complete los resultados en <a href="<?= site_url('registers/view/' . $ridPdf) ?>">Editar registro</a>.
 </div>
 <?php else: ?>
 <?= view('registers/partials/report_viewreport_hidden_analisis', ['grupos' => $grupos]) ?>

@@ -211,7 +211,43 @@ $renderCampoTextoFijo = static function (
     echo '<span class="invalid-feedback d-block" data-msg-for="' . esc($fieldId) . '"></span>';
     echo '</div></div>';
 };
+$pruebaEstaSinValores = static function (array $prueba) use ($registerModel, $matching_poblacion_ids, $register_info): bool {
+    $compleja = (int) ($prueba['compleja'] ?? 0);
+    $pid = (int) ($prueba['prianacategoria_id'] ?? 0);
+    if ($compleja === 1) {
+        $valores = $registerModel
+            ? $registerModel->getValoresComplejaSiempre(
+                $pid,
+                $matching_poblacion_ids ?? [],
+                isset($register_info->gender) ? (int) $register_info->gender : null
+            )
+            : [];
+
+        return $valores === [];
+    }
+    if ($compleja === 0) {
+        return (int) ($prueba['priresultados_id'] ?? 0) < 1;
+    }
+
+    return false;
+};
+$renderPruebaSinValoresAlert = static function (array $prueba): void {
+    $pid = (int) ($prueba['prianacategoria_id'] ?? 0);
+    $nombre = trim((string) ($prueba['hijo'] ?? ''));
+    if ($nombre === '') {
+        $nombre = 'ID ' . $pid;
+    }
+    echo '<div class="alert alert-warning mb-3">';
+    echo '<i class="fa-solid fa-triangle-exclamation me-2"></i>';
+    echo 'La prueba <strong>' . esc($nombre) . '</strong> está sin valores.';
+    echo '</div>';
+};
 foreach ($pruebas_info ?? [] as $prueba):
+    if ($pruebaEstaSinValores($prueba)) {
+        $renderPruebaSinValoresAlert($prueba);
+        continue;
+    }
+
     if (($prueba['padre'] ?? '') != $last_padre):
         if ($last_padre !== '') {
             $renderLabFirmaGrupoCerrado($last_padre);
@@ -242,91 +278,6 @@ foreach ($pruebas_info ?? [] as $prueba):
             . 'Análisis retirado del catálogo. Los resultados guardados se muestran en <strong>solo lectura</strong>.'
             . '</div></div>';
     }
-
-    $mostrarPrueba = true;
-    if (($prueba['compleja'] ?? 0) == 1) {
-        $prianacategoriaIdTmp = (int)($prueba['prianacategoria_id'] ?? 0);
-        $valoresTmp = $registerModel
-            ? $registerModel->getValoresComplejaSiempre(
-                $prianacategoriaIdTmp,
-                $matching_poblacion_ids ?? [],
-                isset($register_info->gender) ? (int) $register_info->gender : null
-            )
-            : [];
-        if (empty($valoresTmp)) {
-            $mostrarPrueba = false;
-            $refsTabla = $registerModel ? $registerModel->getSecReferenciasConsolidadasSinColapsar($prianacategoriaIdTmp) : [];
-            echo '<div class="col-12 mb-3">';
-            echo '<div class="alert alert-warning mb-2">';
-            echo '<i class="fa-solid fa-triangle-exclamation me-2"></i>';
-            echo 'La prueba <strong>' . esc($prueba['hijo'] ?? ('ID ' . $prianacategoriaIdTmp)) . '</strong> no tiene valores de referencia para la población/edad del paciente.';
-            echo '</div>';
-            if (!empty($refsTabla)) {
-                echo '<div class="table-responsive border rounded bg-white">';
-                echo '<table class="table table-sm table-striped mb-0">';
-                echo '<thead><tr><th>Parámetro</th><th>Población</th><th>Género</th><th>Valor mín.</th><th>Valor máx.</th><th>Unidad</th></tr></thead><tbody>';
-                foreach ($refsTabla as $refRow) {
-                    $sexoRef = trim((string) ($refRow['sexo'] ?? ''));
-                    if ($sexoRef === '') {
-                        $sexoRef = 'ambos';
-                    }
-                    echo '<tr>';
-                    echo '<td>' . esc($refRow['nombre'] ?? '') . '</td>';
-                    echo '<td>' . esc($refRow['poblacion_nombre'] ?? '') . '</td>';
-                    echo '<td>' . esc(ucfirst($sexoRef)) . '</td>';
-                    echo '<td>' . esc((string) ($refRow['valor_min'] ?? '')) . '</td>';
-                    echo '<td>' . esc((string) ($refRow['valor_max'] ?? '')) . '</td>';
-                    echo '<td>' . esc((string) ($refRow['umedida'] ?? '')) . '</td>';
-                    echo '</tr>';
-                }
-                echo '</tbody></table></div>';
-            } else {
-                echo '<div class="small text-muted">No hay filas de referencia configuradas para esta prueba.</div>';
-            }
-            echo '</div>';
-        }
-    }
-    if (!$mostrarPrueba) continue;
-
-    $sinReferenciaSimple = (($prueba['compleja'] ?? 0) == 0) && ((int) ($prueba['priresultados_id'] ?? 0) < 1);
-    if ($sinReferenciaSimple):
-        $prianacategoriaIdTmp = (int) ($prueba['prianacategoria_id'] ?? 0);
-        $refsSimple = $registerModel ? $registerModel->getAllPriResultadosByPrianacategoriaForReport($prianacategoriaIdTmp) : [];
-        echo '<div class="col-12 mb-3">';
-        echo '<div class="alert alert-warning mb-2">';
-        echo '<i class="fa-solid fa-triangle-exclamation me-2"></i>';
-        echo 'La prueba <strong>' . esc($prueba['hijo'] ?? ('ID ' . $prianacategoriaIdTmp)) . '</strong> no tiene valores de referencia para la población/edad del paciente.';
-        echo '</div>';
-        if (!empty($refsSimple)) {
-            echo '<div class="table-responsive border rounded bg-white">';
-            echo '<table class="table table-sm table-striped mb-0">';
-            echo '<thead><tr><th>Parámetro</th><th>Población</th><th>Género</th><th>Valor mín.</th><th>Valor máx.</th><th>Unidad</th></tr></thead><tbody>';
-            foreach ($refsSimple as $refRow) {
-                $idPob = (int) ($refRow['id_poblacion'] ?? 0);
-                $nomPob = trim((string) ($pobMap[$idPob] ?? ''));
-                if ($nomPob === '') {
-                    $nomPob = (string) $idPob;
-                }
-                $sexoRef = trim((string) ($refRow['sexo'] ?? ''));
-                if ($sexoRef === '') {
-                    $sexoRef = 'ambos';
-                }
-                echo '<tr>';
-                echo '<td>' . esc($refRow['nombre'] ?? '') . '</td>';
-                echo '<td>' . esc($nomPob) . '</td>';
-                echo '<td>' . esc(ucfirst($sexoRef)) . '</td>';
-                echo '<td>' . esc((string) ($refRow['valor_min'] ?? '')) . '</td>';
-                echo '<td>' . esc((string) ($refRow['valor_max'] ?? '')) . '</td>';
-                echo '<td>' . esc((string) ($refRow['umedida'] ?? '')) . '</td>';
-                echo '</tr>';
-            }
-            echo '</tbody></table></div>';
-        } else {
-            echo '<div class="small text-muted">No hay filas de referencia configuradas para esta prueba.</div>';
-        }
-        echo '</div>';
-        continue;
-    endif;
 
     if (($prueba['compleja'] ?? 0) == 0):
         $formulaExprNoc = trim((string) ($prueba['formula_expresion'] ?? ''));

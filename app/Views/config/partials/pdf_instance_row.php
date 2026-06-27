@@ -40,6 +40,8 @@ $mbDef = $canPdSpacing ? ((int) ($inst['label_space_below_px'] ?? $pdGrid['label
 $alignHIn = \App\Services\ReportPdfLayoutService::normalizeInstanceAlignH($inst['align_h'] ?? null);
 $alignVIn = \App\Services\ReportPdfLayoutService::normalizeInstanceAlignV($inst['align_v'] ?? null);
 $placementDisabled = ($selVal === '-1');
+$isQr = ($type === 'qr');
+$qrSizePct = max(50, min(400, (int) ($qr_size_percent ?? 100)));
 ?>
 <li class="list-group-item pdf-instance-item" data-uid="<?= esc($uid) ?>" data-element-type="<?= esc($type, 'attr') ?>" data-grid-row="<?= esc((string) $gridRow, 'attr') ?>" data-grid-stack="<?= esc((string) $gridStack, 'attr') ?>">
     <div class="pdf-instance-head d-flex flex-wrap align-items-start gap-2 mb-3 pb-2 border-bottom">
@@ -92,6 +94,16 @@ $placementDisabled = ($selVal === '-1');
     </div>
     <?php if ($isCustomText): ?>
     <?= view('config/partials/pdf_instance_custom_text_editor', ['ct' => $ctCustom, 'rowUid' => $uid]) ?>
+    <?php elseif ($isQr): ?>
+    <div class="row g-2 g-md-3 pdf-qr-size-controls">
+        <div class="col-6 col-sm-4 col-md-3 col-xl-2">
+            <label class="form-label small mb-1">Tamaño del QR (%)</label>
+            <input type="number" class="form-control form-control-sm instance-qr-size-percent" min="50" max="400" step="1" value="<?= esc((string) $qrSizePct, 'attr') ?>" title="100 % ≈ 75 px de alto en el PDF">
+        </div>
+        <div class="col-12">
+            <p class="small text-muted mb-0">La leyenda del QR (texto debajo o al lado) se configura en la tarjeta «Estilos de encabezado, paciente y pie».</p>
+        </div>
+    </div>
     <?php else: ?>
     <div class="row g-2 g-md-3 pdf-text-style-controls">
         <div class="col-12 col-sm-6 col-md-4 col-xl-3">

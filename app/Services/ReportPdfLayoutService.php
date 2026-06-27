@@ -1831,6 +1831,85 @@ class ReportPdfLayoutService
     }
 
     /**
+     * Tipografía base del cuerpo de una cuadrícula (encabezado / paciente-médico / pie) como text_style.
+     *
+     * @param array<string, mixed>|null $gridStyleRaw
+     *
+     * @return array<string, mixed>
+     */
+    public static function gridSectionTextStyleArray(string $sectionKey, ?array $gridStyleRaw): array
+    {
+        $raw = is_array($gridStyleRaw) ? $gridStyleRaw : [];
+        $wrap = match ($sectionKey) {
+            'header'          => self::normalizeHeaderGridStyle($raw),
+            'patient_doctor'  => self::normalizePatientDoctorGridStyle($raw),
+            'footer'          => self::normalizeFooterGridStyle($raw),
+            default           => [],
+        };
+        if ($wrap === []) {
+            return [];
+        }
+
+        return [
+            'font_family'       => (string) ($wrap['font_family'] ?? self::DEFAULT_TEXT_STYLE['font_family']),
+            'font_size_pt'      => (float) ($wrap['font_size_pt'] ?? self::DEFAULT_TEXT_STYLE['font_size_pt']),
+            'font_weight'       => (string) ($wrap['font_weight'] ?? self::DEFAULT_TEXT_STYLE['font_weight']),
+            'font_color'        => (string) ($wrap['body_text_color'] ?? self::DEFAULT_TEXT_STYLE['font_color']),
+            'font_style'        => (string) ($wrap['font_style'] ?? self::DEFAULT_TEXT_STYLE['font_style']),
+            'text_transform'    => (string) ($wrap['text_transform'] ?? self::DEFAULT_TEXT_STYLE['text_transform']),
+            'line_height'       => (float) ($wrap['line_height'] ?? self::DEFAULT_TEXT_STYLE['line_height']),
+            'letter_spacing_em' => self::DEFAULT_TEXT_STYLE['letter_spacing_em'],
+            'text_shadow'       => self::DEFAULT_TEXT_STYLE['text_shadow'],
+        ];
+    }
+
+    /**
+     * CSS inline del cuerpo de celda según la cuadrícula de sección (no la instancia).
+     *
+     * @param array<string, mixed>|null $gridStyleRaw
+     */
+    public static function gridSectionBodyTypographyCss(string $sectionKey, ?array $gridStyleRaw): string
+    {
+        $base = self::gridSectionTextStyleArray($sectionKey, $gridStyleRaw);
+        if ($base === []) {
+            return '';
+        }
+
+        return self::textStyleNormalizedToInlineCss(self::normalizeTextStyle($base));
+    }
+
+    /**
+     * Tipografía efectiva de una instancia: cuadrícula de sección + overrides de instancia.
+     * Si la instancia conserva font_size_pt por defecto (10 pt), prevalece el tamaño de la cuadrícula.
+     *
+     * @param array<string, mixed>|null $gridStyleRaw
+     * @param array<string, mixed>|null $instanceRaw
+     *
+     * @return array<string, mixed>
+     */
+    public static function resolveGridInstanceTextStyle(string $sectionKey, ?array $gridStyleRaw, ?array $instanceRaw): array
+    {
+        $def      = self::DEFAULT_TEXT_STYLE;
+        $section  = self::gridSectionTextStyleArray($sectionKey, $gridStyleRaw);
+        $merged   = array_merge($def, $section);
+        $instRaw  = is_array($instanceRaw) ? $instanceRaw : [];
+
+        foreach ($instRaw as $key => $val) {
+            if ($val === null || $val === '') {
+                continue;
+            }
+            if ($key === 'font_size_pt' && is_numeric($val)
+                && round((float) $val, 2) === round((float) $def['font_size_pt'], 2)
+                && $section !== []) {
+                continue;
+            }
+            $merged[$key] = $val;
+        }
+
+        return self::normalizeTextStyle($merged);
+    }
+
+    /**
      * Texto libre por instancia: etiqueta + valor con estilos propios (no usa text_style global del elemento).
      *
      * @param mixed $raw

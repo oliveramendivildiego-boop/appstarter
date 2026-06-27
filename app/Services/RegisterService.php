@@ -1698,8 +1698,26 @@ class RegisterService
     protected function dropGruposSinValorIngresado(array $grupos): array
     {
         foreach ($grupos as $padre => $items) {
-            if (! $this->grupoTieneAlgunValorIngresado($items, true)) {
+            $itemsByPria = [];
+            foreach ($items as $raw) {
+                $it = is_array($raw) ? (object) $raw : $raw;
+                $pid = (int) ($it->prianacategoria_id ?? 0);
+                $itemsByPria[$pid][] = $raw;
+            }
+
+            $kept = [];
+            foreach ($itemsByPria as $priaItems) {
+                if ($this->grupoTieneAlgunValorIngresado($priaItems, false)) {
+                    foreach ($priaItems as $priaItem) {
+                        $kept[] = $priaItem;
+                    }
+                }
+            }
+
+            if ($kept === []) {
                 unset($grupos[$padre]);
+            } else {
+                $grupos[$padre] = $kept;
             }
         }
 
@@ -1717,16 +1735,10 @@ class RegisterService
                 continue;
             }
             if (! empty($it->es_cultivo_matriz)) {
-                if (! empty($it->incluir_en_reporte_sin_valores)) {
-                    return true;
-                }
                 if ($this->cultivoMatrizTieneValores(is_array($it->cultivo_valores ?? null) ? $it->cultivo_valores : [])) {
                     return true;
                 }
                 continue;
-            }
-            if (! empty($it->incluir_en_reporte_sin_valores)) {
-                return true;
             }
             if ($considerarShowReference && !empty($it->show_reference)) {
                 return true;
@@ -2505,12 +2517,6 @@ class RegisterService
 
         $grupos = $this->buildGruposParaReporte($registroId, $analisis, $matchingPoblacionIds, $patientGender);
         $grupos = $this->mergeSeparadoresYOrdenCompuestoDesdePlantilla($grupos, $matchingPoblacionIds, $patientGender);
-        $grupos = $this->appendMissingPruebasFromRegistroOrder(
-            $grupos,
-            (string) ($registerInfo->pruebas ?? ''),
-            $matchingPoblacionIds,
-            $patientGender,
-        );
         $pruebasIds = $this->extractPrianacategoriaIdsFromRegistroPruebas((string)($registerInfo->pruebas ?? ''));
         foreach ($analisis as $rvRow) {
             $rvName = trim((string) ($rvRow['name'] ?? ''));
@@ -3510,6 +3516,30 @@ class RegisterService
             $rid = (int) ($row['registro_id'] ?? 0);
             $this->clearReportPdfPreviewCache($rid);
             $this->clearReportDataCache($rid);
+        }
+    }
+
+    /**
+     * Invalida todos los PDF/HTML cacheados de reportes (p. ej. tras guardar plantilla PDF).
+     */
+    public function clearAllReportPdfPreviewCaches(): void
+    {
+        $previewDir = WRITEPATH . 'cache' . DIRECTORY_SEPARATOR . 'report_pdf_preview';
+        if (is_dir($previewDir)) {
+            foreach (glob($previewDir . DIRECTORY_SEPARATOR . '*') ?: [] as $path) {
+                if (is_file($path)) {
+                    @unlink($path);
+                }
+            }
+        }
+
+        $htmlDir = WRITEPATH . 'cache' . DIRECTORY_SEPARATOR . 'report_pdf_html';
+        if (is_dir($htmlDir)) {
+            foreach (glob($htmlDir . DIRECTORY_SEPARATOR . '*') ?: [] as $path) {
+                if (is_file($path)) {
+                    @unlink($path);
+                }
+            }
         }
     }
 
