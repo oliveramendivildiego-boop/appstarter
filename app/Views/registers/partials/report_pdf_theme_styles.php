@@ -254,7 +254,7 @@ body.<?= $pdfBodyClass ?> .pdf-dompdf-footer-anchor > .pdf-ft-block.footer-grid 
     border-top: none !important;
 }
 body.<?= $pdfBodyClass ?> .pdf-dompdf-footer-anchor > .pdf-ft-block.footer-grid .pdf-section-table,
-body.<?= $pdfBodyClass ?> .pdf-ft-block.footer-grid .pdf-section-table {
+body.<?= $pdfBodyClass ?> .pdf-ft-block.footer-grid:not(.mpdf-ft-root) .pdf-section-table {
     border-top-width: var(--pdf-ft-section-top-border-width, 1px);
     border-top-style: var(--pdf-ft-section-top-border-style, solid);
     border-top-color: var(--pdf-ft-section-top-border-color, #dddddd);

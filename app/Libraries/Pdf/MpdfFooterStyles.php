@@ -41,7 +41,6 @@ final class MpdfFooterStyles
         $ft = \App\Services\ReportPdfLayoutService::normalizeFooterGridStyle($ps['footer_grid'] ?? []);
 
         $bg     = ! empty($ft['body_transparent']) ? 'transparent' : (string) ($ft['body_bg_color'] ?? '#ffffff');
-        $border = \App\Services\ReportPdfLayoutService::footerGridSectionTableBorderStyleAttr($ft);
         $lh     = max(1.0, (float) ($ft['line_height'] ?? 1.35));
         $colW   = max(0, min(4, (int) ($ft['column_border_width_px'] ?? 0)));
         $colClr = (string) ($ft['column_border_color'] ?? '#DDDDDD');
@@ -71,7 +70,6 @@ final class MpdfFooterStyles
     table-layout: fixed;
     border-collapse: collapse;
     margin: 0;
-    {$border}
 }
 .mpdf-ft-root .mpdf-ft-table td.mpdf-ft-cell,
 .pdf-ft-block.footer-grid.mpdf-ft-root .pdf-section-table td.mpdf-ft-cell {
@@ -129,8 +127,8 @@ final class MpdfFooterStyles
     white-space: nowrap;
     vertical-align: baseline;
 }
-.mpdf-ft-root .mpdf-order-sheet-row td,
-.pdf-ft-block.footer-grid.mpdf-ft-root .mpdf-order-sheet-row td {
+.mpdf-ft-root .mpdf-ft-table .mpdf-order-sheet-row td,
+.pdf-ft-block.footer-grid.mpdf-ft-root .mpdf-ft-table .mpdf-order-sheet-row td {
     font-family: dejavusans, sans-serif;
     font-size: 8pt;
     font-weight: bold;
@@ -139,6 +137,11 @@ final class MpdfFooterStyles
     border-bottom: 1px solid #cccccc;
     padding-bottom: 4px;
     vertical-align: middle;
+}
+.mpdf-ft-root table.mpdf-order-sheet-above .mpdf-order-sheet-row td,
+.pdf-ft-block.footer-grid.mpdf-ft-root table.mpdf-order-sheet-above .mpdf-order-sheet-row td {
+    border-bottom: none !important;
+    padding-bottom: 0;
 }
 .mpdf-ft-root .mpdf-order-sheet-patient,
 .pdf-ft-block.footer-grid.mpdf-ft-root .mpdf-order-sheet-patient {
@@ -240,10 +243,41 @@ CSS;
 
         $footerInnerHtml = self::stripDompdfArtifacts($footerInnerHtml);
         $footerInnerHtml = HtmlMpdfAdapter::adaptFooterForMpdf($footerInnerHtml);
+        $footerInnerHtml = self::ensureFooterTableInlineBorderTop($footerInnerHtml, $layout);
         $footerInnerHtml = self::ensureRootInlineStyle($footerInnerHtml, $layout);
-        $footerInnerHtml = MpdfFontMapper::sanitizeFooterFragmentHtml($footerInnerHtml);
 
         return $footerInnerHtml;
+    }
+
+    /**
+     * mPDF aplica el borde del pie solo vía style inline en la tabla (no desde CSS del &lt;head&gt;).
+     *
+     * @param array<string, mixed> $layout
+     */
+    private static function ensureFooterTableInlineBorderTop(string $html, array $layout): string
+    {
+        $ps = is_array($layout['page_style'] ?? null) ? $layout['page_style'] : [];
+        $ft = \App\Services\ReportPdfLayoutService::normalizeFooterGridStyle($ps['footer_grid'] ?? []);
+        $border = trim(\App\Services\ReportPdfLayoutService::footerGridSectionTableBorderStyleAttr($ft));
+        if ($border === '') {
+            return $html;
+        }
+
+        return preg_replace_callback(
+            '/(<table\b[^>]*\bmpdf-ft-table\b[^>]*\sstyle=)(["\'])([^"\']*)\2/i',
+            static function (array $m) use ($border): string {
+                $style = preg_replace('/\bborder-top\s*:\s*[^;]+;\s*/i', '', $m[3]) ?? $m[3];
+                $style = trim($style, '; ');
+                if ($style !== '') {
+                    $style .= ';';
+                }
+                $style .= $border;
+
+                return $m[1] . $m[2] . $style . $m[2];
+            },
+            $html,
+            1,
+        ) ?? $html;
     }
 
     /**
