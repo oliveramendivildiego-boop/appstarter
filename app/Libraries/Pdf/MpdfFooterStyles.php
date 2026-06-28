@@ -52,18 +52,21 @@ final class MpdfFooterStyles
         $cellPadH   = max(0, min(12, (int) round($rowGapPx / 2)));
         $tableBorderTop = \App\Services\ReportPdfLayoutService::footerGridSectionTableBorderTopCss($ft, true);
 
-        $css = <<<CSS
+        $fontSizePt = (string) ($ft['font_size_pt'] ?? 10);
+        $bodyColor  = (string) ($ft['body_text_color'] ?? '#333333');
+
+        $css = <<<'CSS'
 .mpdf-ft-root,
 .pdf-ft-block.footer-grid.mpdf-ft-root {
     margin: 0;
-    padding: {$padTop}px 0 0 0;
-    background: {$bg};
+    padding: {{padTop}}px 0 0 0;
+    background: {{bg}};
     box-sizing: border-box;
     width: 100%;
     font-family: dejavusans, sans-serif;
-    font-size: {$ft['font_size_pt']}pt;
-    line-height: {$lh};
-    color: {$ft['body_text_color']};
+    font-size: {{fontSizePt}}pt;
+    line-height: {{lh}};
+    color: {{bodyColor}};
 }
 .mpdf-ft-root .mpdf-ft-table,
 .pdf-ft-block.footer-grid.mpdf-ft-root .pdf-section-table {
@@ -71,13 +74,13 @@ final class MpdfFooterStyles
     table-layout: fixed;
     border-collapse: collapse;
     margin: 0;
-    {$tableBorderTop}
+    {{tableBorderTop}}
 }
 .mpdf-ft-root .mpdf-ft-table td.mpdf-ft-cell,
 .pdf-ft-block.footer-grid.mpdf-ft-root .pdf-section-table td.mpdf-ft-cell {
     vertical-align: top;
-    padding: 0 {$cellPadH}px;
-    line-height: {$lh};
+    padding: 0 {{cellPadH}}px;
+    line-height: {{lh}};
     overflow-wrap: break-word;
     word-wrap: break-word;
     word-break: break-word;
@@ -192,22 +195,49 @@ final class MpdfFooterStyles
 }
 CSS;
 
+        $css = str_replace(
+            [
+                '{{padTop}}',
+                '{{bg}}',
+                '{{fontSizePt}}',
+                '{{lh}}',
+                '{{bodyColor}}',
+                '{{tableBorderTop}}',
+                '{{cellPadH}}',
+            ],
+            [
+                (string) $padTop,
+                $bg,
+                $fontSizePt,
+                (string) $lh,
+                $bodyColor,
+                $tableBorderTop,
+                (string) $cellPadH,
+            ],
+            $css,
+        );
+
         if ($colW > 0) {
-            $css .= "\n.mpdf-ft-root .mpdf-ft-cell + .mpdf-ft-cell,\n.pdf-ft-block.footer-grid.mpdf-ft-root .mpdf-ft-cell + .mpdf-ft-cell { border-left: {$colW}px solid {$colClr}; }\n";
+            $css .= "\n.mpdf-ft-root .mpdf-ft-cell + .mpdf-ft-cell,\n"
+                . '.pdf-ft-block.footer-grid.mpdf-ft-root .mpdf-ft-cell + .mpdf-ft-cell { border-left: '
+                . $colW . 'px solid ' . $colClr . "; }\n";
         }
 
-        $secLayouts = is_array($layout['section_layouts'] ?? null) ? $layout['section_layouts'] : [];
-        $ftSec      = is_array($secLayouts['footer'] ?? null) ? $secLayouts['footer'] : [];
         $nCols      = max(1, (int) ($ftSec['columns'] ?? 5));
         $colPct     = round(100 / $nCols, 4);
         $css .= "\n/* mPDF pie: anchos de columna y alineación */\n";
-        $css .= ".mpdf-ft-root table.mpdf-ft-table[data-pdf-cols=\"{$nCols}\"] > colgroup > col { width: {$colPct}%; }\n";
+        $css .= '.mpdf-ft-root table.mpdf-ft-table[data-pdf-cols="' . $nCols . '"] > colgroup > col { width: '
+            . $colPct . "%; }\n";
         for ($span = 1; $span <= $nCols; $span++) {
             $spanW = round($span * $colPct, 4);
             if ($span === 1) {
-                $css .= ".mpdf-ft-root table.mpdf-ft-table[data-pdf-cols=\"{$nCols}\"] > tbody > tr > td.mpdf-ft-cell:not([colspan]) { width: {$spanW}% !important; max-width: {$spanW}% !important; }\n";
+                $css .= '.mpdf-ft-root table.mpdf-ft-table[data-pdf-cols="' . $nCols
+                    . '"] > tbody > tr > td.mpdf-ft-cell:not([colspan]) { width: '
+                    . $spanW . '% !important; max-width: ' . $spanW . "% !important; }\n";
             } else {
-                $css .= ".mpdf-ft-root table.mpdf-ft-table[data-pdf-cols=\"{$nCols}\"] > tbody > tr > td.mpdf-ft-cell[colspan=\"{$span}\"] { width: {$spanW}% !important; max-width: {$spanW}% !important; }\n";
+                $css .= '.mpdf-ft-root table.mpdf-ft-table[data-pdf-cols="' . $nCols
+                    . '"] > tbody > tr > td.mpdf-ft-cell[colspan="' . $span . '"] { width: '
+                    . $spanW . '% !important; max-width: ' . $spanW . "% !important; }\n";
             }
         }
         $alignRules = [
@@ -216,16 +246,16 @@ CSS;
             'right'  => 'right',
         ];
         foreach ($alignRules as $cls => $val) {
-            $css .= ".mpdf-ft-root td.pdf-cell--{$cls},\n"
-                . ".mpdf-ft-root td.pdf-cell--h-{$cls},\n"
-                . ".mpdf-ft-root td.pdf-cell-stack-item.pdf-cell--h-{$cls},\n"
-                . ".mpdf-ft-root td[align=\"{$val}\"] { text-align: {$val} !important; }\n";
-            $css .= ".mpdf-ft-root td.pdf-cell--{$cls} .pdf-ft-piece,\n"
-                . ".mpdf-ft-root td.pdf-cell--h-{$cls} .pdf-ft-piece,\n"
-                . ".mpdf-ft-root td[align=\"{$val}\"] .pdf-ft-piece,\n"
-                . ".mpdf-ft-root td.pdf-cell--{$cls} .pdf-ft-piece p,\n"
-                . ".mpdf-ft-root td.pdf-cell--h-{$cls} .pdf-ft-piece p,\n"
-                . ".mpdf-ft-root td[align=\"{$val}\"] .pdf-ft-piece p { text-align: {$val} !important; }\n";
+            $css .= '.mpdf-ft-root td.pdf-cell--' . $cls . ",\n"
+                . '.mpdf-ft-root td.pdf-cell--h-' . $cls . ",\n"
+                . '.mpdf-ft-root td.pdf-cell-stack-item.pdf-cell--h-' . $cls . ",\n"
+                . '.mpdf-ft-root td[align="' . $val . '"] { text-align: ' . $val . " !important; }\n";
+            $css .= '.mpdf-ft-root td.pdf-cell--' . $cls . " .pdf-ft-piece,\n"
+                . '.mpdf-ft-root td.pdf-cell--h-' . $cls . " .pdf-ft-piece,\n"
+                . '.mpdf-ft-root td[align="' . $val . '"] .pdf-ft-piece,' . "\n"
+                . '.mpdf-ft-root td.pdf-cell--' . $cls . " .pdf-ft-piece p,\n"
+                . '.mpdf-ft-root td.pdf-cell--h-' . $cls . " .pdf-ft-piece p,\n"
+                . '.mpdf-ft-root td[align="' . $val . '"] .pdf-ft-piece p { text-align: ' . $val . " !important; }\n";
         }
 
         return $css;

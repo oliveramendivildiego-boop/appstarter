@@ -1168,7 +1168,8 @@ class Registers extends SecureArea
 
         $body = $inline
             ? "No se pudo generar el PDF del reporte (registro {$id}).\n"
-                . 'Detalle: ' . get_class($e) . ': ' . $e->getMessage() . "\n"
+                . 'Detalle: ' . get_class($e) . ': ' . $e->getMessage()
+                . ' (' . basename($e->getFile()) . ':' . $e->getLine() . ")\n"
                 . "Revise writable/logs/ o ejecute: php writable/scripts/pdf_health_check.php {$id} [tenant_key]\n"
             : 'No se pudo generar el PDF del reporte.';
 

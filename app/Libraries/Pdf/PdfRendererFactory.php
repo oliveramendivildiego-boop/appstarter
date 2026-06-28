@@ -24,6 +24,8 @@ class PdfRendererFactory
 
     public static function renderWithFallback(string $html, PdfOptions $options): string
     {
+        self::prepareRuntimeLimits();
+
         $engine   = strtolower(trim((string) (config('Pdf')->renderer ?? 'mpdf')));
         $t0       = microtime(true);
         $renderer = self::createForEngine($engine);
@@ -46,6 +48,41 @@ class PdfRendererFactory
             default  => throw new RuntimeException(
                 'Motor PDF no soportado: ' . $engine . '. Use dompdf o mpdf.',
             ),
+        };
+    }
+
+    /**
+     * Hosting compartido suele limitar memoria/PCRE; reportes grandes fallan en web pero no en CLI.
+     */
+    private static function prepareRuntimeLimits(): void
+    {
+        @ini_set('pcre.backtrack_limit', '5000000');
+        @ini_set('pcre.recursion_limit', '500000');
+        @set_time_limit(180);
+
+        $current = trim((string) ini_get('memory_limit'));
+        if ($current === '' || $current === '-1') {
+            return;
+        }
+        $bytes = self::parseIniMemoryBytes($current);
+        if ($bytes > 0 && $bytes < 512 * 1024 * 1024) {
+            @ini_set('memory_limit', '512M');
+        }
+    }
+
+    private static function parseIniMemoryBytes(string $value): int
+    {
+        if (preg_match('/^(\d+(?:\.\d+)?)\s*([KMG])?/i', $value, $m) !== 1) {
+            return (int) $value;
+        }
+        $num = (float) $m[1];
+        $unit = strtoupper($m[2] ?? '');
+
+        return (int) match ($unit) {
+            'G'     => $num * 1024 * 1024 * 1024,
+            'M'     => $num * 1024 * 1024,
+            'K'     => $num * 1024,
+            default => $num,
         };
     }
 }
