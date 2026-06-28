@@ -974,12 +974,27 @@ body.pdf-engine-mpdf .pdf-ft-block.footer-grid {
     border-top: none !important;
 }
 body.pdf-engine-mpdf .pdf-dompdf-footer-anchor > .pdf-ft-block.footer-grid .pdf-section-table,
-body.pdf-engine-mpdf .pdf-ft-block.footer-grid:not(.mpdf-ft-root) .pdf-section-table,
-body.pdf-engine-mpdf .mpdf-ft-root .mpdf-ft-table,
-body.pdf-engine-mpdf .mpdf-ft-root .pdf-section-table.mpdf-ft-table {
+body.pdf-engine-mpdf .pdf-ft-block.footer-grid:not(.mpdf-ft-root) .pdf-section-table {
     border-top-width: var(--pdf-ft-section-top-border-width, 1px);
     border-top-style: var(--pdf-ft-section-top-border-style, solid);
     border-top-color: var(--pdf-ft-section-top-border-color, #dddddd);
+}
+body.pdf-engine-mpdf .mpdf-ft-root .mpdf-ft-top-border {
+    display: block !important;
+    width: 100% !important;
+    height: 0 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    font-size: 0 !important;
+    line-height: 0 !important;
+    box-sizing: border-box !important;
+    border-top-width: var(--pdf-ft-section-top-border-width, 1px) !important;
+    border-top-style: var(--pdf-ft-section-top-border-style, solid) !important;
+    border-top-color: var(--pdf-ft-section-top-border-color, #dddddd) !important;
+}
+body.pdf-engine-mpdf .mpdf-ft-root .mpdf-ft-table,
+body.pdf-engine-mpdf .mpdf-ft-root .pdf-section-table.mpdf-ft-table {
+    border-top: none !important;
 }
 /* Dompdf: padding-top del bloque reserva Paciente/Orden; el borde va sobre la cuadrícula, no arriba del padding. */
 body.pdf-dompdf-download .pdf-dompdf-footer-anchor > .pdf-ft-block.footer-grid,

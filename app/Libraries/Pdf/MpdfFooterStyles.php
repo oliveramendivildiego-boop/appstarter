@@ -68,13 +68,25 @@ final class MpdfFooterStyles
     line-height: {{lh}};
     color: {{bodyColor}};
 }
+.mpdf-ft-root .mpdf-ft-top-border,
+.pdf-ft-block.footer-grid.mpdf-ft-root .mpdf-ft-top-border {
+    display: block;
+    width: 100%;
+    height: 0;
+    margin: 0;
+    padding: 0;
+    font-size: 0;
+    line-height: 0;
+    box-sizing: border-box;
+    {{tableBorderTop}}
+}
 .mpdf-ft-root .mpdf-ft-table,
 .pdf-ft-block.footer-grid.mpdf-ft-root .pdf-section-table {
     width: 100%;
     table-layout: fixed;
     border-collapse: collapse;
     margin: 0;
-    {{tableBorderTop}}
+    border-top: none;
 }
 .mpdf-ft-root .mpdf-ft-table td.mpdf-ft-cell,
 .pdf-ft-block.footer-grid.mpdf-ft-root .pdf-section-table td.mpdf-ft-cell {
@@ -276,49 +288,74 @@ CSS;
         $footerInnerHtml = self::stripDompdfArtifacts($footerInnerHtml);
         $footerInnerHtml = HtmlMpdfAdapter::adaptFooterForMpdf($footerInnerHtml);
         $footerInnerHtml = self::ensureRootInlineStyle($footerInnerHtml, $layout);
-        $footerInnerHtml = self::ensureFooterTableInlineBorderTop($footerInnerHtml, $layout);
+        $footerInnerHtml = self::ensureFooterTopBorderSeparator($footerInnerHtml, $layout);
 
         return $footerInnerHtml;
     }
 
     /**
-     * Borde superior del pie en style inline de .mpdf-ft-table (mPDF SetHTMLFooter no usa var() del head).
+     * Línea superior del pie: div dedicado (mPDF no pinta bien border-top en la tabla del SetHTMLFooter).
      *
      * @param array<string, mixed> $layout
      */
-    private static function ensureFooterTableInlineBorderTop(string $html, array $layout): string
+    private static function ensureFooterTopBorderSeparator(string $html, array $layout): string
     {
         $ps = is_array($layout['page_style'] ?? null) ? $layout['page_style'] : [];
         $ft = \App\Services\ReportPdfLayoutService::normalizeFooterGridStyle($ps['footer_grid'] ?? []);
         $border = trim(\App\Services\ReportPdfLayoutService::footerGridSectionTableBorderStyleAttr($ft));
-        if ($border === '') {
+
+        $html = self::stripFooterTableBorderTop($html);
+
+        if ($border === '' || str_starts_with(strtolower($border), 'border-top:none')) {
             return $html;
         }
 
+        if (str_contains($html, 'mpdf-ft-top-border')) {
+            return $html;
+        }
+
+        $sepStyle = 'display:block;width:100%;height:0;margin:0;padding:0;font-size:0;line-height:0;box-sizing:border-box;'
+            . $border;
+        $separator = '<div class="mpdf-ft-top-border" style="'
+            . htmlspecialchars($sepStyle, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8')
+            . '"></div>';
+
+        $replaced = preg_replace(
+            '/(<table\b[^>]*\bmpdf-ft-table\b)/i',
+            $separator . '$1',
+            $html,
+            1,
+        );
+
+        return is_string($replaced) ? $replaced : $html;
+    }
+
+    private static function stripFooterTableBorderTop(string $html): string
+    {
         return preg_replace_callback(
             '/(<table\b[^>]*\bmpdf-ft-table\b)([^>]*)(>)/i',
-            static function (array $m) use ($border): string {
+            static function (array $m): string {
                 $attrs = $m[2];
-                if (preg_match('/\sstyle=(["\'])([^"\']*)\1/i', $attrs, $sm)) {
-                    if (preg_match('/\bborder-top\s*:\s*[^;]+/i', $sm[2])) {
-                        return $m[0];
-                    }
-                    $style = trim($sm[2], " \t\n\r\0\x0B;");
-                    if ($style !== '') {
-                        $style .= ';';
-                    }
-                    $style .= $border;
+                if (! preg_match('/\sstyle=(["\'])([^"\']*)\1/i', $attrs, $sm)) {
+                    return $m[0];
+                }
+
+                $style = preg_replace('/\bborder-top(?:-(?:width|style|color))?\s*:\s*[^;]+;?\s*/i', '', $sm[2]) ?? $sm[2];
+                $style = preg_replace('/\s*;+\s*/', ';', $style) ?? $style;
+                $style = trim($style, " \t\n\r\0\x0B;");
+
+                if ($style === '') {
+                    $newAttrs = preg_replace('/\sstyle=(["\'])[^"\']*\1/i', '', $attrs, 1) ?? $attrs;
+                } else {
                     $newAttrs = preg_replace(
                         '/\sstyle=(["\'])([^"\']*)\1/i',
                         ' style=' . $sm[1] . $style . $sm[1],
                         $attrs,
                         1,
-                    );
-
-                    return $m[1] . (is_string($newAttrs) ? $newAttrs : $attrs) . $m[3];
+                    ) ?? $attrs;
                 }
 
-                return $m[1] . $attrs . ' style="' . htmlspecialchars($border, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') . '"' . $m[3];
+                return $m[1] . $newAttrs . $m[3];
             },
             $html,
             1,
