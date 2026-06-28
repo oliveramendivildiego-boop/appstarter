@@ -135,17 +135,61 @@ final class MpdfFooterStyles
 .pdf-ft-block.footer-grid.mpdf-ft-root .pdf-ft-piece {
     margin: 0;
 }
+.mpdf-ft-root .pdf-ft-custom-text p,
+.pdf-ft-block.footer-grid.mpdf-ft-root .pdf-ft-custom-text p {
+    margin: 0;
+    white-space: normal;
+    line-height: 1.1;
+}
+.mpdf-ft-root .mpdf-ft-stack tr:nth-child(2) > td,
+.pdf-ft-block.footer-grid.mpdf-ft-root .mpdf-ft-stack tr:nth-child(2) > td,
+.mpdf-ft-root .pdf-ft-stack-table tr:nth-child(2) > td,
+.pdf-ft-block.footer-grid.mpdf-ft-root .pdf-ft-stack-table tr:nth-child(2) > td {
+    line-height: 1.1;
+    vertical-align: middle !important;
+    height: 15pt !important;
+    min-height: 15pt !important;
+    max-height: 15pt !important;
+}
+.mpdf-ft-root .mpdf-ft-stack tr:nth-child(2) > td > table,
+.pdf-ft-block.footer-grid.mpdf-ft-root .mpdf-ft-stack tr:nth-child(2) > td > table,
+.mpdf-ft-root .pdf-ft-stack-table tr:nth-child(2) > td > table,
+.pdf-ft-block.footer-grid.mpdf-ft-root .pdf-ft-stack-table tr:nth-child(2) > td > table {
+    height: 15pt !important;
+    max-height: 15pt !important;
+}
+.mpdf-ft-root .mpdf-ft-stack tr:nth-child(2) > td > table td,
+.pdf-ft-block.footer-grid.mpdf-ft-root .mpdf-ft-stack tr:nth-child(2) > td > table td {
+    vertical-align: middle !important;
+    line-height: 1.1;
+    height: 15pt !important;
+    padding: 0;
+}
+.mpdf-ft-root .mpdf-ft-stack tr:nth-child(2) .pdf-ft-custom-text p,
+.pdf-ft-block.footer-grid.mpdf-ft-root .mpdf-ft-stack tr:nth-child(2) .pdf-ft-custom-text p {
+    margin: 0;
+    line-height: 1.1;
+    white-space: nowrap;
+}
+.mpdf-ft-root .mpdf-ft-pagination-value,
+.pdf-ft-block.footer-grid.mpdf-ft-root .mpdf-ft-pagination-value {
+    display: inline;
+    white-space: nowrap;
+    line-height: 1.1;
+    vertical-align: baseline;
+}
 .mpdf-ft-root .pdf-ft-pagination p,
 .pdf-ft-block.footer-grid.mpdf-ft-root .pdf-ft-pagination p {
     margin: 0;
-    white-space: nowrap;
+    white-space: normal;
+    line-height: 1.1;
 }
 .mpdf-ft-root .pdf-ft-pagination-label,
 .mpdf-ft-root .pdf-ft-pagination-num,
 .pdf-ft-block.footer-grid.mpdf-ft-root .pdf-ft-pagination-label,
 .pdf-ft-block.footer-grid.mpdf-ft-root .pdf-ft-pagination-num {
     display: inline;
-    white-space: nowrap;
+    white-space: normal;
     vertical-align: baseline;
 }
 .mpdf-ft-root .mpdf-ft-table .mpdf-order-sheet-row td,
@@ -443,18 +487,21 @@ CSS;
         }
         $parent = $node->parentNode;
         if ($parent instanceof \DOMElement
-            && ($parent->nodeName === 'center' || str_contains($parent->getAttribute('class'), 'mpdf-ft-align-wrap'))) {
+            && str_contains($parent->getAttribute('class'), 'mpdf-ft-align-wrap')) {
             return;
         }
+
         $dom = $node->ownerDocument;
         if ($dom === null) {
             return;
         }
 
-        $wrapper = $hAlign === 'center' ? $dom->createElement('center') : $dom->createElement('div');
+        $wrapper = $dom->createElement('div');
         $wrapper->setAttribute('class', 'mpdf-ft-align-wrap');
-        if ($hAlign === 'right') {
-            $wrapper->setAttribute('align', 'right');
+        $wrapper->setAttribute('align', $hAlign);
+        if ($hAlign === 'center') {
+            $wrapper->setAttribute('style', 'text-align:center !important');
+        } elseif ($hAlign === 'right') {
             $wrapper->setAttribute('style', 'text-align:right !important');
         }
         if ($parent instanceof \DOMNode) {
@@ -470,7 +517,7 @@ CSS;
         }
         foreach ($td->childNodes as $child) {
             if ($child instanceof \DOMElement
-                && ($child->nodeName === 'center' || str_contains($child->getAttribute('class'), 'mpdf-ft-align-wrap'))) {
+                && str_contains($child->getAttribute('class'), 'mpdf-ft-align-wrap')) {
                 return;
             }
         }
@@ -479,10 +526,12 @@ CSS;
             return;
         }
 
-        $wrapper = $hAlign === 'center' ? $dom->createElement('center') : $dom->createElement('div');
+        $wrapper = $dom->createElement('div');
         $wrapper->setAttribute('class', 'mpdf-ft-align-wrap');
-        if ($hAlign === 'right') {
-            $wrapper->setAttribute('align', 'right');
+        $wrapper->setAttribute('align', $hAlign);
+        if ($hAlign === 'center') {
+            $wrapper->setAttribute('style', 'text-align:center !important');
+        } elseif ($hAlign === 'right') {
             $wrapper->setAttribute('style', 'text-align:right !important');
         }
         while ($td->firstChild !== null) {
@@ -559,7 +608,9 @@ CSS;
         }
 
         if ($hAlign === 'center') {
-            return '<center class="mpdf-ft-align-wrap">' . $inner . '</center>';
+            return '<div class="mpdf-ft-align-wrap" align="center" style="text-align:center !important">'
+                . $inner
+                . '</div>';
         }
 
         return '<div class="mpdf-ft-align-wrap" align="right" style="text-align:right !important">'
@@ -615,8 +666,475 @@ CSS;
     public static function finalizeSetHtmlFooterFragment(string $html, array $layout = []): string
     {
         $html = HtmlMpdfAdapter::adaptFooterForMpdf($html);
+        $html = self::materializeFooterCellLayout($html, $layout);
 
-        return self::materializeFooterCellLayout($html, $layout);
+        return self::lockFooterStackSecondRowHeights($html, $layout);
+    }
+
+    /**
+     * Iguala altura de la 2.ª fila en cada pila del pie (Tarija vs Página).
+     * mPDF calcula distinto aunque el markup sea igual; height inline en <td> es lo fiable.
+     *
+     * @param array<string, mixed> $layout
+     */
+    public static function lockFooterStackSecondRowHeights(string $html, array $layout = []): string
+    {
+        if (! str_contains($html, 'mpdf-ft-stack') && ! str_contains($html, 'pdf-ft-stack-table')) {
+            return $html;
+        }
+
+        $ps = is_array($layout['page_style'] ?? null) ? $layout['page_style'] : [];
+        $secLayouts = is_array($layout['section_layouts'] ?? null) ? $layout['section_layouts'] : [];
+        $ftSec = is_array($secLayouts['footer'] ?? null) ? $secLayouts['footer'] : [];
+        $rowGapPx = max(0, min(40, (int) ($ftSec['row_gap_px'] ?? 0)));
+        $trGap    = $rowGapPx > 0 ? ('padding-top:' . $rowGapPx . 'px;') : '';
+        $tdLockDecl = 'height:15pt;min-height:15pt;line-height:1.1;vertical-align:middle !important;box-sizing:border-box;'
+            . 'padding:0;padding-top:0;padding-bottom:0;padding-left:0;padding-right:0;border:0;';
+        $trLockDecl = 'height:15pt;' . $trGap;
+        $htmlHeight = '20';
+
+        $prev = libxml_use_internal_errors(true);
+        $dom  = new \DOMDocument('1.0', 'UTF-8');
+        $wrap = '<?xml encoding="utf-8"><div id="mpdf-ft-lock-root">' . $html . '</div>';
+        if (! $dom->loadHTML($wrap, LIBXML_HTML_NOIMPLIED | LIBXML_HTML_NODEFDTD)) {
+            libxml_clear_errors();
+            libxml_use_internal_errors($prev);
+
+            return $html;
+        }
+        libxml_clear_errors();
+        libxml_use_internal_errors($prev);
+
+        $xpath = new \DOMXPath($dom);
+        $tables = $xpath->query('//table[contains(@class,"mpdf-ft-stack") or contains(@class,"pdf-ft-stack-table")]');
+        if ($tables !== false) {
+            foreach ($tables as $table) {
+                if (! $table instanceof \DOMElement) {
+                    continue;
+                }
+                $rows = [];
+                foreach ($table->childNodes as $child) {
+                    if ($child instanceof \DOMElement && $child->nodeName === 'tr') {
+                        $rows[] = $child;
+                    }
+                }
+                if (count($rows) < 2) {
+                    continue;
+                }
+                $row2 = $rows[1];
+                self::mergeInlineStyleOnElement($row2, $trLockDecl);
+                $row2->setAttribute('height', $htmlHeight);
+                foreach ($row2->childNodes as $cell) {
+                    if (! $cell instanceof \DOMElement || $cell->nodeName !== 'td') {
+                        continue;
+                    }
+                    $cell->setAttribute('height', $htmlHeight);
+                    $cell->setAttribute('valign', 'middle');
+                    $cls = $cell->getAttribute('class');
+                    if ($cls !== '') {
+                        $cls = preg_replace('/\bpdf-cell--v-top\b/', 'pdf-cell--v-middle', $cls) ?? $cls;
+                        if (! str_contains($cls, 'pdf-cell--has-explicit-height')) {
+                            $cls .= ' pdf-cell--has-explicit-height';
+                        }
+                        $cell->setAttribute('class', trim($cls));
+                    } else {
+                        $cell->setAttribute('class', 'pdf-cell--has-explicit-height');
+                    }
+                    self::normalizeFooterStackSecondRowContent($cell);
+                    self::sanitizeFooterStackPaginationNumSpan($cell);
+                    self::wrapFooterStackSecondRowCellForVerticalMiddle($cell);
+                    self::mergeInlineStyleOnElement($cell, $tdLockDecl);
+                    foreach ($cell->getElementsByTagName('p') as $p) {
+                        if ($p instanceof \DOMElement) {
+                            self::mergeInlineStyleOnElement($p, 'margin:0;line-height:1.1;white-space:nowrap;');
+                        }
+                    }
+                }
+            }
+        }
+
+        $root = $dom->getElementById('mpdf-ft-lock-root');
+        if ($root === null) {
+            return $html;
+        }
+
+        $out = '';
+        foreach ($root->childNodes as $child) {
+            $out .= $dom->saveHTML($child);
+        }
+
+        return $out;
+    }
+
+    /**
+     * Quita pdf-ft-pagination-num (infla la caja en mPDF) pero conserva span con estilos de plantilla.
+     */
+    private static function sanitizeFooterStackPaginationNumSpan(\DOMElement $td): void
+    {
+        $doc = $td->ownerDocument;
+        if ($doc === null) {
+            return;
+        }
+
+        $xpath = new \DOMXPath($doc);
+        $nums = $xpath->query('.//span[contains(@class,"pdf-ft-pagination-num")]', $td);
+        if ($nums !== false) {
+            /** @var list<\DOMElement> $spans */
+            $spans = [];
+            foreach ($nums as $span) {
+                if ($span instanceof \DOMElement) {
+                    $spans[] = $span;
+                }
+            }
+
+            foreach ($spans as $span) {
+                self::convertPaginationNumSpanToTemplateValueSpan($span);
+            }
+        }
+
+        self::wrapBareFooterPaginationTokens($td);
+        self::collapseFooterStackPaginationLineToSingleSpan($td);
+    }
+
+    private static function convertPaginationNumSpanToTemplateValueSpan(\DOMElement $span): void
+    {
+        $text = $span->textContent;
+        if (trim($text) === '') {
+            $span->parentNode?->removeChild($span);
+
+            return;
+        }
+
+        $span->removeAttribute('id');
+        $span->removeAttribute('data-prefix');
+        $span->removeAttribute('data-total');
+        $span->setAttribute('class', 'mpdf-ft-pagination-value');
+        self::mergeInlineStyleOnElement(
+            $span,
+            'line-height:1.1;white-space:nowrap;display:inline;vertical-align:baseline;',
+        );
+        $span->textContent = $text;
+    }
+
+    /** Tokens sueltos (v127) → span con estilos del valor de plantilla. */
+    private static function wrapBareFooterPaginationTokens(\DOMElement $td): void
+    {
+        $doc = $td->ownerDocument;
+        if ($doc === null) {
+            return;
+        }
+
+        foreach ($td->getElementsByTagName('p') as $p) {
+            if (! $p instanceof \DOMElement) {
+                continue;
+            }
+
+            foreach ($p->childNodes as $child) {
+                if (! $child instanceof \DOMText) {
+                    continue;
+                }
+                $raw = $child->textContent;
+                if ($raw === null || ! str_contains($raw, '{PAGENO}')) {
+                    continue;
+                }
+
+                $valueStyle = self::inferFooterPaginationValueStyle($p);
+                $valueSpan  = $doc->createElement('span');
+                $valueSpan->setAttribute('class', 'mpdf-ft-pagination-value');
+                $valueSpan->setAttribute('style', $valueStyle);
+                $valueSpan->appendChild($doc->createTextNode($raw));
+                $p->replaceChild($valueSpan, $child);
+            }
+        }
+    }
+
+    private static function inferFooterPaginationValueStyle(\DOMElement $p): string
+    {
+        $family = 'DejaVu Sans';
+        $size   = '8pt';
+        $color  = '#333333';
+
+        foreach ($p->childNodes as $child) {
+            if (! $child instanceof \DOMElement || $child->nodeName !== 'span') {
+                continue;
+            }
+            $labelStyle = $child->getAttribute('style');
+            if ($labelStyle === '') {
+                break;
+            }
+            if (preg_match('/font-family\s*:\s*([^;]+)/i', $labelStyle, $m)) {
+                $family = trim($m[1], " '\"");
+            }
+            if (preg_match('/font-size\s*:\s*([^;]+)/i', $labelStyle, $m)) {
+                $size = trim($m[1]);
+            }
+            break;
+        }
+
+        foreach ($p->getElementsByTagName('span') as $span) {
+            if (! $span instanceof \DOMElement) {
+                continue;
+            }
+            if (! str_contains($span->getAttribute('class'), 'mpdf-ft-pagination-value')) {
+                continue;
+            }
+            $existing = trim($span->getAttribute('style'));
+            if ($existing !== '') {
+                return $existing;
+            }
+        }
+
+        return 'font-family:\'' . $family . '\',sans-serif;font-size:' . $size . ';font-weight:normal;'
+            . 'color:' . $color . ';font-style:normal;line-height:1.1;white-space:nowrap;';
+    }
+
+    /** mPDF agranda fila 2 con dos span hermanos; un solo span como Tarija (label en &lt;b&gt;). */
+    private static function collapseFooterStackPaginationLineToSingleSpan(\DOMElement $td): void
+    {
+        $doc = $td->ownerDocument;
+        if ($doc === null) {
+            return;
+        }
+
+        foreach ($td->getElementsByTagName('p') as $p) {
+            if (! $p instanceof \DOMElement) {
+                continue;
+            }
+
+            $text = $p->textContent ?? '';
+            if (! str_contains($text, '{PAGENO}')) {
+                continue;
+            }
+
+            /** @var list<\DOMElement> $directSpans */
+            $directSpans = [];
+            $pagTextNode = null;
+            foreach ($p->childNodes as $child) {
+                if ($child instanceof \DOMElement && $child->nodeName === 'span') {
+                    $directSpans[] = $child;
+                } elseif ($child instanceof \DOMText && str_contains($child->textContent ?? '', '{PAGENO}')) {
+                    $pagTextNode = $child;
+                }
+            }
+
+            if (count($directSpans) === 1 && $directSpans[0]->getElementsByTagName('b')->length > 0) {
+                continue;
+            }
+
+            if (count($directSpans) === 2) {
+                self::mergeFooterPaginationSpansIntoOne($p, $directSpans[0], $directSpans[1], $doc);
+
+                continue;
+            }
+
+            if (count($directSpans) === 1 && $pagTextNode instanceof \DOMText) {
+                self::mergeFooterPaginationSpanAndText($p, $directSpans[0], $pagTextNode, $doc);
+            }
+        }
+    }
+
+    private static function mergeFooterPaginationSpansIntoOne(
+        \DOMElement $p,
+        \DOMElement $labelSpan,
+        \DOMElement $valueSpan,
+        \DOMDocument $doc,
+    ): void {
+        $labelText = trim($labelSpan->textContent);
+        $valueText = trim($valueSpan->textContent);
+        $valueStyle = trim($valueSpan->getAttribute('style'));
+        if ($valueStyle === '') {
+            $valueStyle = self::inferFooterPaginationValueStyle($p);
+        }
+
+        self::replaceFooterPaginationParagraphContent(
+            $p,
+            $doc,
+            $valueStyle,
+            $labelText,
+            $valueText,
+            self::extractFooterPaginationLabelBoldStyle($labelSpan->getAttribute('style')),
+        );
+    }
+
+    private static function mergeFooterPaginationSpanAndText(
+        \DOMElement $p,
+        \DOMElement $labelSpan,
+        \DOMText $pagTextNode,
+        \DOMDocument $doc,
+    ): void {
+        $labelText = trim($labelSpan->textContent);
+        $valueText = trim($pagTextNode->textContent ?? '');
+        $valueStyle = self::inferFooterPaginationValueStyle($p);
+
+        self::replaceFooterPaginationParagraphContent(
+            $p,
+            $doc,
+            $valueStyle,
+            $labelText,
+            $valueText,
+            self::extractFooterPaginationLabelBoldStyle($labelSpan->getAttribute('style')),
+        );
+    }
+
+    private static function replaceFooterPaginationParagraphContent(
+        \DOMElement $p,
+        \DOMDocument $doc,
+        string $outerStyle,
+        string $labelText,
+        string $valueText,
+        string $labelBoldStyle,
+    ): void {
+        while ($p->firstChild !== null) {
+            $p->removeChild($p->firstChild);
+        }
+
+        $outer = $doc->createElement('span');
+        $outer->setAttribute('style', $outerStyle);
+        if ($labelText !== '') {
+            $bold = $doc->createElement('b');
+            $bold->setAttribute('style', $labelBoldStyle);
+            $bold->appendChild($doc->createTextNode($labelText));
+            $outer->appendChild($bold);
+            $outer->appendChild($doc->createTextNode(' '));
+        }
+        $outer->appendChild($doc->createTextNode($valueText));
+        $p->appendChild($outer);
+    }
+
+    private static function extractFooterPaginationLabelBoldStyle(string $labelStyle): string
+    {
+        $decl = 'font-weight:bold';
+        if (preg_match('/color\s*:\s*[^;]+/i', $labelStyle, $match)) {
+            $decl .= ';' . trim($match[0]);
+        }
+
+        return $decl . ';';
+    }
+
+    /** Quita div pdf-ft-pagination sobrante; deja solo pdf-ft-piece > pdf-ft-custom-text > p. */
+    private static function normalizeFooterStackSecondRowContent(\DOMElement $td): void
+    {
+        $piece = null;
+        foreach ($td->getElementsByTagName('div') as $div) {
+            if (! $div instanceof \DOMElement || ! str_contains($div->getAttribute('class'), 'pdf-ft-piece')) {
+                continue;
+            }
+            $parent = $div->parentNode;
+            if ($parent === $td
+                || ($parent instanceof \DOMElement
+                    && str_contains($parent->getAttribute('class'), 'mpdf-ft-align-wrap')
+                    && $parent->parentNode === $td)) {
+                $piece = $div;
+                break;
+            }
+        }
+        if ($piece === null) {
+            return;
+        }
+
+        $custom = null;
+        foreach ($piece->childNodes as $child) {
+            if ($child instanceof \DOMElement && str_contains($child->getAttribute('class'), 'pdf-ft-custom-text')) {
+                $custom = $child;
+                break;
+            }
+        }
+        if ($custom === null) {
+            return;
+        }
+
+        $toRemove = [];
+        foreach ($piece->childNodes as $child) {
+            if ($child instanceof \DOMElement
+                && $child !== $custom
+                && str_contains($child->getAttribute('class'), 'pdf-ft-pagination')) {
+                while ($child->firstChild !== null) {
+                    $custom->appendChild($child->firstChild);
+                }
+                $toRemove[] = $child;
+            }
+        }
+        foreach ($toRemove as $child) {
+            $piece->removeChild($child);
+        }
+    }
+
+    /**
+     * mPDF alinea distinto el texto en celdas fijas: tabla interna valign=middle en fila 2.
+     */
+    private static function wrapFooterStackSecondRowCellForVerticalMiddle(\DOMElement $td): void
+    {
+        foreach ($td->childNodes as $child) {
+            if ($child instanceof \DOMElement && $child->nodeName === 'table') {
+                return;
+            }
+        }
+
+        $align  = strtolower($td->getAttribute('align'));
+        $hAlign = in_array($align, ['left', 'center', 'right'], true) ? $align : 'left';
+        $dom    = $td->ownerDocument;
+        if ($dom === null) {
+            return;
+        }
+
+        $table = $dom->createElement('table');
+        $table->setAttribute('width', '100%');
+        $table->setAttribute('height', '15');
+        $table->setAttribute('cellpadding', '0');
+        $table->setAttribute('cellspacing', '0');
+        $table->setAttribute('style', 'border-collapse:collapse;width:100%;height:15pt;max-height:15pt;margin:0;padding:0;border:0');
+
+        $tr = $dom->createElement('tr');
+        $tr->setAttribute('height', '15');
+        $tr->setAttribute('style', 'height:15pt;');
+
+        $inner = $dom->createElement('td');
+        $inner->setAttribute('valign', 'middle');
+        $inner->setAttribute('align', $hAlign);
+        $inner->setAttribute('height', '15');
+        $inner->setAttribute(
+            'style',
+            'padding:0;border:0;line-height:1.1;vertical-align:middle !important;text-align:'
+            . $hAlign . ' !important;height:15pt;max-height:15pt;',
+        );
+
+        while ($td->firstChild !== null) {
+            $inner->appendChild($td->firstChild);
+        }
+
+        $tr->appendChild($inner);
+        $table->appendChild($tr);
+        $td->appendChild($table);
+    }
+
+    private static function mergeInlineStyleOnElement(\DOMElement $el, string $declarations): void
+    {
+        $style = $el->getAttribute('style');
+        $style = trim($style, " \t\n\r\0\x0B;");
+        $props = [];
+        foreach ($style === '' ? [] : explode(';', $style) as $decl) {
+            $decl = trim($decl);
+            if ($decl === '' || ! str_contains($decl, ':')) {
+                continue;
+            }
+            [$prop] = explode(':', $decl, 2);
+            $prop = strtolower(trim($prop));
+            if ($prop !== '') {
+                $props[$prop] = trim($decl);
+            }
+        }
+        foreach (explode(';', $declarations) as $decl) {
+            $decl = trim($decl);
+            if ($decl === '' || ! str_contains($decl, ':')) {
+                continue;
+            }
+            [$prop] = explode(':', $decl, 2);
+            $prop = strtolower(trim($prop));
+            if ($prop !== '') {
+                $props[$prop] = trim($decl);
+            }
+        }
+        $el->setAttribute('style', implode(';', $props));
     }
 
     /** @deprecated use materializeFooterCellLayout */

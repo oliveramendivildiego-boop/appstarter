@@ -525,21 +525,63 @@ switch ($type) {
         $useDompdfFooterCanvas = $inFooter && $isPdfDownload && \App\Libraries\Pdf\PdfEngine::isDompdf();
         $pagLineStyle      = $useDompdfFooterCanvas ? $stInst : '';
         $pagLh             = (string) ($ts['line_height'] ?? 1.1);
-        $pagLabelLineStyle = $useDompdfFooterCanvas && $inlinePag && $showLblPag
+        $pagLabelLineStyle = ($inFooter || $useDompdfFooterCanvas) && $inlinePag && $showLblPag
             ? (preg_replace('/line-height\s*:\s*[^;]+;?/i', 'line-height:' . $pagLh . ';', $stPagLbl) ?? $stPagLbl)
             : $stPagLbl;
-        ?>
+        $pagPStyle         = 'margin:0;';
+        if (! $inFooter) {
+            $pagPStyle .= 'white-space:nowrap;';
+        } else {
+            $pagPStyle .= 'white-space:nowrap;line-height:' . $pagLh . ';';
+        }
+        if ($pagLineStyle !== '') {
+            $pagPStyle .= $pagLineStyle;
+        }
+        $pagNumStyleFooter = preg_replace(
+            '/line-height\s*:\s*[^;]+;?/i',
+            'line-height:' . $pagLh . ';',
+            $stInst,
+        ) ?? $stInst;
+        $pagLabelBoldInline = 'font-weight:bold;';
+        if (preg_match('/color\s*:\s*[^;]+;?/i', $pagLabelLineStyle, $pagColorMatch)) {
+            $pagLabelBoldInline .= trim($pagColorMatch[0]);
+        }
+        $footerPlainPagSpan = $inFooter && ! $useDompdfFooterCanvas && \App\Libraries\Pdf\PdfEngine::isMpdf();
+        if ($inFooter) {
+            ?>
+                <div class="pdf-ft-piece">
+                <div class="pdf-ft-custom-text">
+            <?php
+        } else {
+            ?>
                 <div class="<?= esc($pagPieceClass, 'attr') ?>">
+            <?php
+        }
+        ?>
                     <?php if ($inlinePag && $showLblPag): ?>
-                    <p style="margin:0;white-space:nowrap;<?= esc($pagLineStyle, 'attr') ?>"><span class="pdf-ft-pagination-label" style="<?= esc($pagLabelLineStyle, 'attr') ?>"><?= esc($lblPag) ?></span> <span id="<?= esc($pagUid, 'attr') ?>" class="<?= esc($pagNumClass, 'attr') ?>" style="<?= esc($stInst, 'attr') ?>" data-prefix="" data-total="<?= esc($dataTotalAttr, 'attr') ?>"></span></p>
+                    <?php if ($footerPlainPagSpan): ?>
+                    <p style="<?= esc($pagPStyle, 'attr') ?>"><span style="<?= esc($pagNumStyleFooter, 'attr') ?>"><b style="<?= esc($pagLabelBoldInline, 'attr') ?>"><?= esc($lblPag) ?></b> <?= esc($pageToken) ?></span></p>
+                    <?php else: ?>
+                    <p style="<?= esc($pagPStyle, 'attr') ?>"><span<?= $inFooter ? '' : ' class="pdf-ft-pagination-label"' ?> style="<?= esc($pagLabelLineStyle, 'attr') ?>"><?= esc($lblPag) ?></span> <span id="<?= esc($pagUid, 'attr') ?>" class="<?= esc($pagNumClass, 'attr') ?>" style="<?= esc($stInst, 'attr') ?>" data-prefix="" data-total="<?= esc($dataTotalAttr, 'attr') ?>"></span></p>
+                    <?php endif; ?>
                     <?php elseif ($showLblPag): ?>
                     <p style="margin:0;"><span style="<?= esc($stPagLbl, 'attr') ?>"><?= esc($lblPag) ?></span></p>
-                    <p style="margin:0;<?= esc($pagLineStyle, 'attr') ?>"><span id="<?= esc($pagUid, 'attr') ?>" class="<?= esc($pagNumClass, 'attr') ?>"<?= $useDompdfFooterCanvas ? '' : ' style="' . esc($stInst, 'attr') . '"' ?> data-prefix="" data-total="<?= esc($dataTotalAttr, 'attr') ?>"></span></p>
+                    <?php if ($footerPlainPagSpan): ?>
+                    <p style="margin:0;white-space:nowrap;line-height:<?= esc($pagLh, 'attr') ?>;"><span style="<?= esc($pagNumStyleFooter, 'attr') ?>"><?= esc($pageToken) ?></span></p>
                     <?php else: ?>
                     <p style="margin:0;<?= esc($pagLineStyle, 'attr') ?>"><span id="<?= esc($pagUid, 'attr') ?>" class="<?= esc($pagNumClass, 'attr') ?>"<?= $useDompdfFooterCanvas ? '' : ' style="' . esc($stInst, 'attr') . '"' ?> data-prefix="" data-total="<?= esc($dataTotalAttr, 'attr') ?>"></span></p>
                     <?php endif; ?>
+                    <?php else: ?>
+                    <?php if ($footerPlainPagSpan): ?>
+                    <p style="margin:0;white-space:nowrap;line-height:<?= esc($pagLh, 'attr') ?>;"><span style="<?= esc($pagNumStyleFooter, 'attr') ?>"><?= esc($pageToken) ?></span></p>
+                    <?php else: ?>
+                    <p style="margin:0;<?= esc($pagLineStyle, 'attr') ?>"><span id="<?= esc($pagUid, 'attr') ?>" class="<?= esc($pagNumClass, 'attr') ?>"<?= $useDompdfFooterCanvas ? '' : ' style="' . esc($stInst, 'attr') . '"' ?> data-prefix="" data-total="<?= esc($dataTotalAttr, 'attr') ?>"></span></p>
+                    <?php endif; ?>
+                    <?php endif; ?>
                 </div>
-        <?php
+        <?php if ($inFooter): ?>
+                </div>
+        <?php endif;
         break;
 
     case 'qr':

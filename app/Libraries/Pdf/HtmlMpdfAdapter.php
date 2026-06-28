@@ -7,7 +7,7 @@ namespace App\Libraries\Pdf;
  */
 class HtmlMpdfAdapter
 {
-    public const CACHE_REVISION = 'mpdf-native-v119';
+    public const CACHE_REVISION = 'mpdf-native-v129';
 
     private const TOTAL_PAGES_TOKEN = '__PDF_TOTAL_PAGES__';
 
@@ -320,10 +320,27 @@ body.pdf-engine-mpdf .lab-firmas-pdf-block-inline .pdf-section-table,
 body.pdf-engine-mpdf .lab-firmas-body-grid {
     position: static !important; left: auto !important; right: auto !important; bottom: auto !important;
 }
-body.pdf-engine-mpdf .pdf-ft-pagination p,
-body.pdf-engine-mpdf .pdf-ft-pagination-label,
-body.pdf-engine-mpdf .pdf-ft-pagination-num {
+body.pdf-engine-mpdf .pdf-hg-block .pdf-ft-pagination p,
+body.pdf-engine-mpdf .header-piece-pagination p,
+body.pdf-engine-mpdf .pdf-hg-block .pdf-ft-pagination-label,
+body.pdf-engine-mpdf .pdf-hg-block .pdf-ft-pagination-num,
+body.pdf-engine-mpdf .header-piece-pagination .pdf-ft-pagination-label,
+body.pdf-engine-mpdf .header-piece-pagination .pdf-ft-pagination-num {
     white-space: nowrap !important; display: inline !important; vertical-align: baseline !important;
+}
+body.pdf-engine-mpdf .mpdf-ft-root .pdf-ft-custom-text p,
+body.pdf-engine-mpdf .mpdf-html-footer .pdf-ft-custom-text p {
+    display: block !important;
+    white-space: normal !important;
+    margin: 0 !important;
+    line-height: 1.1 !important;
+}
+body.pdf-engine-mpdf .mpdf-ft-root .pdf-ft-pagination-num,
+body.pdf-engine-mpdf .mpdf-html-footer .pdf-ft-pagination-num {
+    display: inline !important;
+    white-space: nowrap !important;
+    line-height: 1.1 !important;
+    vertical-align: baseline !important;
 }
 body.pdf-engine-mpdf .pdf-hg-block .header-piece-logo img {
     max-width: 100% !important;
@@ -368,6 +385,10 @@ body.pdf-engine-mpdf .pdf-section-table td.pdf-cell[valign="bottom"]:not(.pdf-ce
 }
 body.pdf-engine-mpdf .pdf-section-table td.pdf-cell.pdf-cell--has-explicit-height[valign="middle"],
 body.pdf-engine-mpdf .pdf-section-table td.pdf-cell.pdf-cell--has-explicit-height[valign="bottom"] {
+    vertical-align: middle !important;
+}
+body.pdf-engine-mpdf .pdf-section-table td.pdf-cell-stack-item[valign="middle"].pdf-cell--has-explicit-height,
+body.pdf-engine-mpdf .pdf-section-table td.pdf-cell-stack-item[valign="bottom"].pdf-cell--has-explicit-height {
     vertical-align: middle !important;
 }
 body.pdf-engine-mpdf .pdf-section-table td.pdf-cell > table.pdf-cell-valign-table {
