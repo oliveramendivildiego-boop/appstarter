@@ -1040,27 +1040,7 @@ class Registers extends SecureArea
     public function pdf($id = -1)
     {
         $id = (int) $id;
-        if (ENVIRONMENT === 'development' && function_exists('opcache_invalidate')) {
-            foreach ([
-                APPPATH . 'Views/registers/pdf/blocks/footer.php',
-                APPPATH . 'Views/registers/pdf/blocks/results.php',
-                APPPATH . 'Views/registers/pdf/report_document.php',
-                APPPATH . 'Views/registers/pdf/section_layout_grid.php',
-                APPPATH . 'Views/registers/pdf/partials/element.php',
-                APPPATH . 'Libraries/PdfService.php',
-                APPPATH . 'Views/registers/analisis/partials/report_grupo_area_separator.php',
-                APPPATH . 'Services/ReportLayout/ReportLayoutPlanService.php',
-                APPPATH . 'Services/ReportLayout/LayoutPlanApplier.php',
-                APPPATH . 'Services/ReportPdfLayoutService.php',
-                APPPATH . 'Views/registers/partials/report_pdf_theme_styles.php',
-                APPPATH . 'Views/registers/analisis/partials/compleja_tabla_reporte_grupo.php',
-                FCPATH . 'assets/css/report_pdf.css',
-            ] as $invalidatePath) {
-                if (is_file($invalidatePath)) {
-                    opcache_invalidate($invalidatePath, true);
-                }
-            }
-        }
+        $this->invalidateReportPdfOpcache();
         if ($id < 1) {
             return redirect()->to('registers')->with('error', 'Registro no válido');
         }
@@ -1103,6 +1083,47 @@ class Registers extends SecureArea
             $data,
             $resolved['fingerprint'],
         );
+    }
+
+    /**
+     * Tras desplegar app/public, OPcache puede seguir sirviendo PHP viejo del pie PDF.
+     * No invalidar el controlador en curso (provoca 500 en algunos PHP-FPM).
+     */
+    private function invalidateReportPdfOpcache(): void
+    {
+        if (! function_exists('opcache_invalidate')) {
+            return;
+        }
+
+        try {
+            foreach ([
+                APPPATH . 'Services/RegisterService.php',
+                APPPATH . 'Services/ReportPdfLayoutService.php',
+                APPPATH . 'Libraries/PdfService.php',
+                APPPATH . 'Libraries/Pdf/HtmlMpdfAdapter.php',
+                APPPATH . 'Libraries/Pdf/MpdfFooterStyles.php',
+                APPPATH . 'Libraries/Pdf/MpdfPdfRenderer.php',
+                APPPATH . 'Libraries/Pdf/MpdfFooterExtractor.php',
+                APPPATH . 'Libraries/Pdf/PdfEngine.php',
+                APPPATH . 'Views/registers/pdf/blocks/footer.php',
+                APPPATH . 'Views/registers/pdf/blocks/results.php',
+                APPPATH . 'Views/registers/pdf/report_document.php',
+                APPPATH . 'Views/registers/pdf/section_layout_grid.php',
+                APPPATH . 'Views/registers/pdf/partials/element.php',
+                APPPATH . 'Views/registers/partials/report_pdf_theme_styles.php',
+                APPPATH . 'Views/registers/analisis/partials/report_grupo_area_separator.php',
+                APPPATH . 'Views/registers/analisis/partials/compleja_tabla_reporte_grupo.php',
+                APPPATH . 'Services/ReportLayout/ReportLayoutPlanService.php',
+                APPPATH . 'Services/ReportLayout/LayoutPlanApplier.php',
+                FCPATH . 'assets/css/report_pdf.css',
+            ] as $invalidatePath) {
+                if (is_file($invalidatePath)) {
+                    @opcache_invalidate($invalidatePath, true);
+                }
+            }
+        } catch (\Throwable $e) {
+            log_message('warning', 'invalidateReportPdfOpcache: {msg}', ['msg' => $e->getMessage()]);
+        }
     }
 
     /**

@@ -7,7 +7,7 @@ namespace App\Libraries\Pdf;
  */
 class HtmlMpdfAdapter
 {
-    public const CACHE_REVISION = 'mpdf-native-v96';
+    public const CACHE_REVISION = 'mpdf-native-v98';
 
     private const TOTAL_PAGES_TOKEN = '__PDF_TOTAL_PAGES__';
 
