@@ -5044,19 +5044,32 @@ class ReportPdfLayoutService
      */
     public static function footerGridSectionTableBorderStyleAttr(array $ft): string
     {
-        $ft = self::normalizeFooterGridStyle($ft);
+        // Sin !important: en atributo style rompe el parseo en mPDF SetHTMLFooter.
+        return self::footerGridSectionTableBorderTopCss($ft, false);
+    }
+
+    /**
+     * Borde superior del pie (inline o reglas CSS). Con $important=true gana sobre hojas embebidas en mPDF SetHTMLFooter.
+     *
+     * @param array<string, mixed> $ft footer_grid normalizado o bruto
+     */
+    public static function footerGridSectionTableBorderTopCss(array $ft, bool $important = false): string
+    {
+        $ft  = self::normalizeFooterGridStyle($ft);
+        $imp = $important ? ' !important' : '';
         if (! self::labFirmasBool($ft, 'section_top_border_enabled', true)) {
-            return 'border-top:none;';
+            return 'border-top:none' . $imp . ';';
         }
         $w = (int) ($ft['section_top_border_width_px'] ?? 0);
         if ($w <= 0) {
-            return 'border-top:none;';
+            return 'border-top:none' . $imp . ';';
         }
 
         return sprintf(
-            'border-top:%dpx solid %s;',
+            'border-top:%dpx solid %s%s;',
             $w,
-            (string) ($ft['section_top_border_color'] ?? '#DDDDDD')
+            (string) ($ft['section_top_border_color'] ?? '#DDDDDD'),
+            $imp
         );
     }
 

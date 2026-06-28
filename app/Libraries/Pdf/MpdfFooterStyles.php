@@ -50,6 +50,7 @@ final class MpdfFooterStyles
         $ftSec      = is_array($secLayouts['footer'] ?? null) ? $secLayouts['footer'] : [];
         $rowGapPx   = max(0, min(40, (int) ($ftSec['row_gap_px'] ?? 0)));
         $cellPadH   = max(0, min(12, (int) round($rowGapPx / 2)));
+        $tableBorderTop = \App\Services\ReportPdfLayoutService::footerGridSectionTableBorderTopCss($ft, true);
 
         $css = <<<CSS
 .mpdf-ft-root,
@@ -70,9 +71,7 @@ final class MpdfFooterStyles
     table-layout: fixed;
     border-collapse: collapse;
     margin: 0;
-    border-top-width: 0 !important;
-    border-top-style: none !important;
-    border-top-color: transparent !important;
+    {$tableBorderTop}
 }
 .mpdf-ft-root .mpdf-ft-table td.mpdf-ft-cell,
 .pdf-ft-block.footer-grid.mpdf-ft-root .pdf-section-table td.mpdf-ft-cell {
@@ -246,14 +245,14 @@ CSS;
 
         $footerInnerHtml = self::stripDompdfArtifacts($footerInnerHtml);
         $footerInnerHtml = HtmlMpdfAdapter::adaptFooterForMpdf($footerInnerHtml);
-        $footerInnerHtml = self::ensureFooterTableInlineBorderTop($footerInnerHtml, $layout);
         $footerInnerHtml = self::ensureRootInlineStyle($footerInnerHtml, $layout);
+        $footerInnerHtml = self::ensureFooterTableInlineBorderTop($footerInnerHtml, $layout);
 
         return $footerInnerHtml;
     }
 
     /**
-     * mPDF aplica el borde del pie solo vía style inline en la tabla (no desde CSS del &lt;head&gt;).
+     * Borde superior del pie en style inline de .mpdf-ft-table (mPDF SetHTMLFooter no usa var() del head).
      *
      * @param array<string, mixed> $layout
      */
@@ -267,16 +266,23 @@ CSS;
         }
 
         return preg_replace_callback(
-            '/(<table\b[^>]*\bmpdf-ft-table\b[^>]*\sstyle=)(["\'])([^"\']*)\2/i',
+            '/(<table\b[^>]*\bmpdf-ft-table\b[^>]*)\sstyle=(["\'])([^"\']*)\2/i',
             static function (array $m) use ($border): string {
-                $style = preg_replace('/\bborder-top\s*:\s*[^;]+;\s*/i', '', $m[3]) ?? $m[3];
-                $style = trim($style, '; ');
+                $style = preg_replace('/\bborder-top\s*:\s*[^;]+;?\s*/i', '', $m[3]) ?? $m[3];
+                $style = trim($style, " \t\n\r\0\x0B;");
                 if ($style !== '') {
                     $style .= ';';
                 }
                 $style .= $border;
 
-                return $m[1] . $m[2] . $style . $m[2];
+                return $m[1] . ' style=' . $m[2] . $style . $m[2];
+            },
+            $html,
+            1,
+        ) ?? preg_replace_callback(
+            '/(<table\b[^>]*\bmpdf-ft-table\b[^>]*)(>)/i',
+            static function (array $m) use ($border): string {
+                return $m[1] . ' style="' . htmlspecialchars($border, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') . '"' . $m[2];
             },
             $html,
             1,
