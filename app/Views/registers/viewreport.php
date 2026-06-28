@@ -2,10 +2,6 @@
 <?= $this->section('title') ?>Reporte<?= $this->endSection() ?>
 
 <?= $this->section('head_extra') ?>
-<?php if (! empty($grupos ?? [])): ?>
-<?php $ridPdfPreload = (int) ($labotests_namecate ?? 0); ?>
-<link rel="preload" href="<?= esc(site_url('registers/pdf/' . $ridPdfPreload . '?inline=1&v=' . rawurlencode(\App\Libraries\Pdf\HtmlMpdfAdapter::CACHE_REVISION) . '&rid=' . $ridPdfPreload), 'attr') ?>" as="fetch" crossorigin="use-credentials">
-<?php endif; ?>
 <style>
 .viewreport-actions-bar {
     background: #f8f9fa;
@@ -81,6 +77,27 @@
     font-size: 0.875rem;
     color: rgba(255, 255, 255, 0.72);
     max-width: 320px;
+}
+.report-pdf-native-error {
+    display: none;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    padding: 32px 24px;
+    text-align: center;
+    background: #fff3cd;
+    border: 1px solid #ffc107;
+    border-radius: 8px;
+    color: #664d03;
+    min-height: 200px;
+}
+.report-pdf-native-viewer.is-error .report-pdf-native-error {
+    display: flex;
+}
+.report-pdf-native-viewer.is-error .report-pdf-native-frame,
+.report-pdf-native-viewer.is-error .report-pdf-native-loading {
+    display: none !important;
 }
 @keyframes report-pdf-native-spin {
     to { transform: rotate(360deg); }
@@ -171,15 +188,60 @@ $lblComp = ! empty($sin_billing_enabled ?? false) ? 'Factura' : 'Recibo';
 document.addEventListener('DOMContentLoaded', function() {
     document.querySelectorAll('[data-report-pdf-native-viewer]').forEach(function(root) {
         var frame = root.querySelector('[data-pdf-native-frame]');
-        if (!frame) {
+        var pdfUrl = root.getAttribute('data-pdf-url') || '';
+        if (!frame || pdfUrl === '') {
             root.classList.remove('is-loading');
             return;
         }
+        var objectUrl = null;
         var hideLoading = function() {
             root.classList.remove('is-loading');
         };
-        frame.addEventListener('load', hideLoading);
-        setTimeout(hideLoading, 20000);
+        var showError = function() {
+            root.classList.remove('is-loading');
+            root.classList.add('is-error');
+        };
+        var loadPdf = function() {
+            root.classList.remove('is-error');
+            root.classList.add('is-loading');
+            if (objectUrl) {
+                URL.revokeObjectURL(objectUrl);
+                objectUrl = null;
+            }
+            frame.src = 'about:blank';
+            fetch(pdfUrl, { credentials: 'same-origin', cache: 'no-store' })
+                .then(function(res) {
+                    if (!res.ok) {
+                        throw new Error('HTTP ' + res.status);
+                    }
+                    var ct = (res.headers.get('content-type') || '').toLowerCase();
+                    if (ct.indexOf('application/pdf') === -1) {
+                        throw new Error('not-pdf');
+                    }
+                    return res.blob();
+                })
+                .then(function(blob) {
+                    if (!blob || blob.size < 32) {
+                        throw new Error('empty-pdf');
+                    }
+                    objectUrl = URL.createObjectURL(blob);
+                    frame.src = objectUrl;
+                    hideLoading();
+                })
+                .catch(function() {
+                    showError();
+                });
+        };
+        frame.addEventListener('load', function() {
+            if (frame.src && frame.src.indexOf('blob:') === 0) {
+                hideLoading();
+            }
+        });
+        var retryBtn = root.querySelector('[data-pdf-native-retry]');
+        if (retryBtn) {
+            retryBtn.addEventListener('click', loadPdf);
+        }
+        loadPdf();
     });
 });
 </script>
