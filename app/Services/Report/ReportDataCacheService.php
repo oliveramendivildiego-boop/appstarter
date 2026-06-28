@@ -12,7 +12,7 @@ use App\Services\ReportPdfLayoutService;
  */
 class ReportDataCacheService
 {
-    private const SALT = 'report-data-prep-v4-order-pruebas';
+    private const SALT = 'report-data-prep-v6-graficar-fp';
 
     private RegisterModel $registerModel;
 
@@ -41,7 +41,25 @@ class ReportDataCacheService
 
         $registerInfo = $this->registerModel->getInfoRefill($registroId);
         if ($registerInfo) {
-            $parts[] = 'pruebas=' . trim((string) ($registerInfo->pruebas ?? ''));
+            $pruebas = trim((string) ($registerInfo->pruebas ?? ''));
+            $parts[] = 'pruebas=' . $pruebas;
+            if ($pruebas !== '') {
+                $ids = array_values(array_unique(array_filter(
+                    array_map('intval', explode(',', $pruebas)),
+                    static fn(int $x): bool => $x > 0
+                )));
+                if ($ids !== []) {
+                    $grafLines = [];
+                    foreach ($this->registerModel->getPrianacategoriaConfigByIds($ids, true) as $cfg) {
+                        $pid = (int) ($cfg['prianacategoria_id'] ?? 0);
+                        if ($pid > 0) {
+                            $grafLines[] = $pid . '=' . \App\Models\LabotestModel::normalizeGraficar((int) ($cfg['graficar'] ?? 0));
+                        }
+                    }
+                    sort($grafLines);
+                    $parts[] = 'graficar_cfg=' . hash('sha256', implode("\n", $grafLines));
+                }
+            }
         }
 
         $doctorId = $master ? (int) ($master->doctor_id ?? 0) : 0;

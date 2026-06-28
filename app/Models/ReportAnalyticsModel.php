@@ -169,6 +169,61 @@ class ReportAnalyticsModel extends Model
         return $row ?: null;
     }
 
+    /**
+     * Busca pruebas del catálogo por nombre o grupo (para el reporte historial por prueba).
+     *
+     * @return list<array<string, mixed>>
+     */
+    public function searchPruebas(string $q, int $limit = 25): array
+    {
+        $pri = $this->db->prefixTable('prianacategoria');
+        $ana = $this->db->prefixTable('anacategoria');
+        $r   = $this->db->prefixTable('registro');
+        $q   = trim($q);
+        if ($q === '') {
+            return [];
+        }
+
+        return $this->db->table('prianacategoria')
+            ->select("{$pri}.prianacategoria_id, {$pri}.name, COALESCE({$ana}.name, '') AS grupo,
+                (SELECT COUNT(*) FROM {$r}
+                    WHERE COALESCE({$r}.anulado, 0) = 0
+                      AND CONCAT(',', {$r}.pruebas, ',') LIKE CONCAT('%,', {$pri}.prianacategoria_id, ',%')
+                ) AS total_ordenes", false)
+            ->join('anacategoria', "{$ana}.anacategoria_id = {$pri}.anacategoria_id", 'left')
+            ->where("{$pri}.deleted", 0)
+            ->groupStart()
+                ->like("{$pri}.name", $q)
+                ->orLike("{$ana}.name", $q)
+            ->groupEnd()
+            ->orderBy("{$pri}.name", 'ASC')
+            ->limit($limit)
+            ->get()
+            ->getResultArray();
+    }
+
+    /** Datos básicos de una prueba del catálogo. */
+    public function getPrueba(int $pruebaId): ?array
+    {
+        $pri = $this->db->prefixTable('prianacategoria');
+        $ana = $this->db->prefixTable('anacategoria');
+        $r   = $this->db->prefixTable('registro');
+
+        $row = $this->db->table('prianacategoria')
+            ->select("{$pri}.prianacategoria_id, {$pri}.name, COALESCE({$ana}.name, '') AS grupo,
+                (SELECT COUNT(*) FROM {$r}
+                    WHERE COALESCE({$r}.anulado, 0) = 0
+                      AND CONCAT(',', {$r}.pruebas, ',') LIKE CONCAT('%,', {$pri}.prianacategoria_id, ',%')
+                ) AS total_ordenes", false)
+            ->join('anacategoria', "{$ana}.anacategoria_id = {$pri}.anacategoria_id", 'left')
+            ->where("{$pri}.prianacategoria_id", $pruebaId)
+            ->where("{$pri}.deleted", 0)
+            ->get()
+            ->getRowArray();
+
+        return $row ?: null;
+    }
+
     // =====================================================================
     // 1. PRUEBAS MÁS SOLICITADAS
     // =====================================================================
@@ -283,11 +338,11 @@ class ReportAnalyticsModel extends Model
         $sinAnulados = $this->sqlSinAnulados('r');
 
         if ($withPersona) {
-            $selPersona  = "{$this->sqlPaciente('p')} AS paciente, COALESCE(d.name, '') AS doctor,";
+            $selPersona  = "{$this->sqlPaciente('p')} AS paciente, COALESCE(p.ci, '') AS paciente_ci, COALESCE(d.name, '') AS doctor,";
             $joinPersona = "INNER JOIN {$p} p ON p.person_id = r.person_id
             LEFT JOIN {$d} d ON d.doctor_id = r.doctor_id";
         } else {
-            $selPersona  = "'' AS paciente, '' AS doctor,";
+            $selPersona  = "'' AS paciente, '' AS paciente_ci, '' AS doctor,";
             $joinPersona = '';
         }
 
@@ -364,6 +419,39 @@ class ReportAnalyticsModel extends Model
 
         $sql = 'SELECT t.* FROM (' . $this->buildRegvaluesResolvedSql($extra) . ') t
             ORDER BY t.prueba ASC, t.parametro ASC, t.ingreso ASC
+            LIMIT ' . max(1, $limit);
+
+        $rows = $this->db->query($sql)->getResultArray();
+
+        foreach ($rows as &$row) {
+            $row['estado'] = $this->clasificarValor(
+                (string) ($row['valor'] ?? ''),
+                (string) ($row['valor_min'] ?? ''),
+                (string) ($row['valor_max'] ?? ''),
+                (string) ($row['critico_min'] ?? ''),
+                (string) ($row['critico_max'] ?? '')
+            );
+        }
+        unset($row);
+
+        return $rows;
+    }
+
+    /**
+     * Historial de resultados de una prueba (todos los pacientes en el período).
+     *
+     * @return list<array<string, mixed>>
+     */
+    public function getHistorialPorPrueba(int $pruebaId, string $startDate, string $endDate, int $limit = 3000): array
+    {
+        if ($pruebaId < 1) {
+            return [];
+        }
+
+        $extra = 'pri.prianacategoria_id = ' . (int) $pruebaId . ' AND ' . $this->sqlRangoIngreso($startDate, $endDate);
+
+        $sql = 'SELECT t.* FROM (' . $this->buildRegvaluesResolvedSql($extra) . ') t
+            ORDER BY t.ingreso DESC, t.paciente ASC, t.parametro ASC
             LIMIT ' . max(1, $limit);
 
         $rows = $this->db->query($sql)->getResultArray();

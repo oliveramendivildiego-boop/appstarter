@@ -15,6 +15,7 @@ class ReportsAnalyticsSeenService
     public const REPORT_KEYS = [
         'tendencia_paciente',
         'valores_criticos',
+        'historial_prueba',
         'pruebas_mas_solicitadas',
         'comparativo_mensual',
         'tiempo_entrega',

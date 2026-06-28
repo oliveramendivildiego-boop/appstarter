@@ -279,8 +279,25 @@ if ($priaIdTitulo > 0) {
     }
 }
 $tieneHeatmap = is_array($heatmapData) && ! empty($heatmapData['sections']);
-$mostrarTablaSeriada = ! ($graficarModo === \App\Models\LabotestModel::GRAFICAR_SI && $tieneHeatmap);
+$precomputedTolerance = is_array($report_tolerance_chart ?? null) ? $report_tolerance_chart : [];
+$toleranceData = null;
+if ($priaIdTitulo > 0) {
+    if (array_key_exists($priaIdTitulo, $precomputedTolerance)) {
+        $toleranceData = $precomputedTolerance[$priaIdTitulo];
+    } else {
+        $toleranceSvc = new \App\Services\ToleranceCurveChartService();
+        $toleranceData = $toleranceSvc->buildFromReportItemsWithModo($subItems, $priaIdTitulo, $graficarModo);
+    }
+}
+$tieneTolerance = is_array($toleranceData) && ! empty($toleranceData['points']);
+$tieneGrafica = $tieneHeatmap || $tieneTolerance;
+$mostrarTablaSeriada = ! ($graficarModo === \App\Models\LabotestModel::GRAFICAR_SI && $tieneGrafica);
 $mostrarHeatmap = $tieneHeatmap && in_array(
+    $graficarModo,
+    [\App\Models\LabotestModel::GRAFICAR_SI, \App\Models\LabotestModel::GRAFICAR_AMBOS],
+    true
+);
+$mostrarTolerance = $tieneTolerance && ! $tieneHeatmap && in_array(
     $graficarModo,
     [\App\Models\LabotestModel::GRAFICAR_SI, \App\Models\LabotestModel::GRAFICAR_AMBOS],
     true
@@ -658,6 +675,13 @@ $mostrarHeatmap = $tieneHeatmap && in_array(
 <?php if ($mostrarHeatmap): ?>
     <?= view('registers/analisis/partials/comparacion_seriada_heatmap', [
         'heatmap'        => $heatmapData,
+        'variant'        => $variant,
+        'use_pdf_chrome' => $usePdfChrome,
+    ]) ?>
+<?php endif; ?>
+<?php if ($mostrarTolerance): ?>
+    <?= view('registers/analisis/partials/tolerancia_curva_chart', [
+        'chart'          => $toleranceData,
         'variant'        => $variant,
         'use_pdf_chrome' => $usePdfChrome,
     ]) ?>

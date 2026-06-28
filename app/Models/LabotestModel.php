@@ -3979,6 +3979,7 @@ class LabotestModel extends Model
         $totalUpdated = $categoriesUpdated + $analysesUpdated;
         $modeLabels = [
             $serviceClass::MODE_UPPERCASE => 'MAYÚSCULAS',
+            $serviceClass::MODE_LOWERCASE => 'minúsculas',
             $serviceClass::MODE_SENTENCE  => 'oración',
             $serviceClass::MODE_TITLE     => 'título',
             $serviceClass::MODE_SPELL     => 'ortografía',
@@ -3993,6 +3994,73 @@ class LabotestModel extends Model
             'categories_updated' => $categoriesUpdated,
             'analyses_updated'   => $analysesUpdated,
             'unchanged'          => $unchanged,
+        ];
+    }
+
+    /**
+     * Transforma el nombre de todas las sub-clases activas de una prueba compuesta.
+     *
+     * @return array{success: bool, message: string, updated: int, unchanged: int}
+     */
+    public function transformSecItemNames(int $prianacategoriaId, string $mode): array
+    {
+        $serviceClass = \App\Services\LabotestNameTransformService::class;
+        $allowed = [
+            $serviceClass::MODE_UPPERCASE,
+            $serviceClass::MODE_LOWERCASE,
+            $serviceClass::MODE_SENTENCE,
+            $serviceClass::MODE_TITLE,
+        ];
+        if ($prianacategoriaId < 1 || ! in_array($mode, $allowed, true)) {
+            return [
+                'success'   => false,
+                'message'   => 'Datos o formato inválido',
+                'updated'   => 0,
+                'unchanged' => 0,
+            ];
+        }
+
+        $rows = $this->db->table('secanacategoria')
+            ->select('secanacategoria_id, nombre')
+            ->where('prianacategoria_id', $prianacategoriaId)
+            ->where('(deleted = 0 OR deleted IS NULL)')
+            ->get()
+            ->getResultArray();
+
+        $updated = 0;
+        $unchanged = 0;
+        foreach ($rows as $row) {
+            $id = (int) ($row['secanacategoria_id'] ?? 0);
+            $original = trim((string) ($row['nombre'] ?? ''));
+            if ($id < 1 || $original === '') {
+                continue;
+            }
+            $transformed = $serviceClass::transform($original, $mode);
+            if ($transformed === $original) {
+                $unchanged++;
+                continue;
+            }
+            $this->db->table('secanacategoria')
+                ->where('secanacategoria_id', $id)
+                ->update(['nombre' => $transformed]);
+            $updated++;
+        }
+
+        $modeLabels = [
+            $serviceClass::MODE_UPPERCASE => 'MAYÚSCULAS',
+            $serviceClass::MODE_LOWERCASE => 'minúsculas',
+            $serviceClass::MODE_SENTENCE  => 'primera letra en mayúscula',
+            $serviceClass::MODE_TITLE     => 'título (cada palabra)',
+        ];
+        $label = $modeLabels[$mode] ?? $mode;
+
+        return [
+            'success'   => true,
+            'message'   => $updated > 0
+                ? "Se actualizaron {$updated} fila(s) de sub-clase (formato {$label})."
+                : 'No hubo cambios: los nombres ya cumplen el formato seleccionado.',
+            'updated'   => $updated,
+            'unchanged' => $unchanged,
         ];
     }
 

@@ -41,6 +41,11 @@ class ReportsAnalyticsSmoke extends BaseCommand
                 return $row ? count($model->getTendenciaPaciente((int) $row['person_id'], $start, $end)) : 0;
             },
             '3. Valores críticos (detalle + indicadores)' => static fn () => $model->getValoresCriticos($start, $end)['total'],
+            '3b. Historial por prueba (1ª prueba del catálogo)' => static function () use ($model, $start, $end) {
+                $row = \Config\Database::connect()->table('prianacategoria')->select('prianacategoria_id')->where('deleted', 0)->limit(1)->get()->getRowArray();
+
+                return $row ? count($model->getHistorialPorPrueba((int) $row['prianacategoria_id'], $start, $end)) : 0;
+            },
             '4a. Tiempo de entrega — detalle' => static fn () => count($model->getTiempoEntrega($start, $end)),
             '4b. Tiempo de entrega — resumen SLA' => static fn () => (int) $model->getTiempoEntregaResumen($start, $end, 24)['ordenes'],
             '5. Productividad por usuario' => static fn () => count($model->getProductividadUsuarios($start, $end)),

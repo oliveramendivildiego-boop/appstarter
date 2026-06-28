@@ -7,7 +7,7 @@ namespace App\Services\Report;
  */
 class ReportPdfHtmlCacheService
 {
-    private const SALT = 'report-pdf-html-v2-grupos-fingerprint';
+    private const SALT = 'report-pdf-html-v3-graficar-fp';
 
     public static function salt(): string
     {

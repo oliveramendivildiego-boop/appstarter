@@ -112,6 +112,9 @@ $routes->get('reports/tendenciaPacienteExcel', 'ReportsAnalytics::tendenciaPacie
 $routes->get('reports/valoresCriticos', 'ReportsAnalytics::valoresCriticos');
 $routes->get('reports/valoresCriticosPdf', 'ReportsAnalytics::valoresCriticosPdf');
 $routes->get('reports/valoresCriticosExcel', 'ReportsAnalytics::valoresCriticosExcel');
+$routes->get('reports/historialPrueba', 'ReportsAnalytics::historialPrueba');
+$routes->get('reports/historialPruebaPdf', 'ReportsAnalytics::historialPruebaPdf');
+$routes->get('reports/historialPruebaExcel', 'ReportsAnalytics::historialPruebaExcel');
 $routes->get('reports/tiempoEntrega', 'ReportsAnalytics::tiempoEntrega');
 $routes->get('reports/tiempoEntregaPdf', 'ReportsAnalytics::tiempoEntregaPdf');
 $routes->get('reports/tiempoEntregaExcel', 'ReportsAnalytics::tiempoEntregaExcel');
@@ -307,6 +310,7 @@ $routes->post('labotests/savepersonalizadomatriz', 'Labotests::savePersonalizado
 $routes->post('labotests/orderSecItems', 'Labotests::orderSecItems');
 $routes->post('labotests/sortsecitemsbycriteria', 'Labotests::sortsecitemsbycriteria');
 $routes->post('labotests/sortpriresultadosbycriteria', 'Labotests::sortpriresultadosbycriteria');
+$routes->post('labotests/transformsecitemnames', 'Labotests::transformsecitemnames');
 $routes->post('labotests/reorderanalysis', 'Labotests::reorderAnalysis');
 $routes->post('labotests/sortanalysisalphabetic', 'Labotests::sortAnalysisAlphabetic');
 $routes->post('labotests/reordercategories', 'Labotests::reorderCategories');

@@ -8,6 +8,7 @@ namespace App\Services;
 class LabotestNameTransformService
 {
     public const MODE_UPPERCASE = 'uppercase';
+    public const MODE_LOWERCASE = 'lowercase';
     public const MODE_SENTENCE  = 'sentence';
     public const MODE_TITLE     = 'title';
     public const MODE_SPELL     = 'spell';
@@ -15,6 +16,7 @@ class LabotestNameTransformService
     /** @var list<string> */
     private static array $allowedModes = [
         self::MODE_UPPERCASE,
+        self::MODE_LOWERCASE,
         self::MODE_SENTENCE,
         self::MODE_TITLE,
         self::MODE_SPELL,
@@ -40,11 +42,17 @@ class LabotestNameTransformService
 
         return match ($mode) {
             self::MODE_UPPERCASE => self::toUppercase($text),
+            self::MODE_LOWERCASE => self::toLowercase($text),
             self::MODE_SENTENCE  => self::toSentenceCase($text),
             self::MODE_TITLE     => self::toTitleCase($text),
             self::MODE_SPELL     => self::spellCorrect($text),
             default              => $text,
         };
+    }
+
+    public static function toLowercase(string $text): string
+    {
+        return mb_strtolower($text, 'UTF-8');
     }
 
     public static function toUppercase(string $text): string

@@ -23,7 +23,7 @@ class RegisterService
     public const TOTAL_PAGES_TOKEN = '__PDF_TOTAL_PAGES__';
 
     /** Invalida caché inline de viewreport al cambiar el pipeline PDF. */
-    private const REPORT_PDF_PREVIEW_CACHE_SALT = 'mpdf-native-v7';
+    private const REPORT_PDF_PREVIEW_CACHE_SALT = 'mpdf-native-v14';
 
     private ?\App\Services\Report\ReportDataCacheService $reportDataCache = null;
 
@@ -2432,6 +2432,45 @@ class RegisterService
     }
 
     /**
+     * Curva de tolerancia (p. ej. glucosa) por prianacategoria.
+     *
+     * @param array<string, list<object|array<string, mixed>>> $grupos
+     * @param list<array<string, mixed>>                        $priasCfg
+     *
+     * @return array{charts: array<int, array<string, mixed>|null>, modos: array<int, int>}
+     */
+    private function buildReportToleranceChartMaps(array $grupos, array $priasCfg): array
+    {
+        $modos = [];
+        foreach ($priasCfg as $cfg) {
+            $pid = (int) ($cfg['prianacategoria_id'] ?? 0);
+            if ($pid > 0) {
+                $modos[$pid] = \App\Models\LabotestModel::normalizeGraficar((int) ($cfg['graficar'] ?? 0));
+            }
+        }
+
+        $itemsByPria = [];
+        foreach ($grupos as $items) {
+            foreach ($items as $raw) {
+                $it  = is_array($raw) ? (object) $raw : $raw;
+                $pid = (int) ($it->prianacategoria_id ?? 0);
+                if ($pid > 0) {
+                    $itemsByPria[$pid][] = $raw;
+                }
+            }
+        }
+
+        $svc    = new ToleranceCurveChartService();
+        $charts = [];
+        foreach ($itemsByPria as $pid => $subItems) {
+            $modo = $modos[$pid] ?? \App\Models\LabotestModel::GRAFICAR_NO;
+            $charts[$pid] = $svc->buildFromReportItemsWithModo($subItems, $pid, $modo);
+        }
+
+        return ['charts' => $charts, 'modos' => $modos];
+    }
+
+    /**
      * Prepara datos para el reporte (viewreport / PDF)
      *
      * @param bool $forViewreportShell Si true, omite metadatos solo usados al generar el PDF.
@@ -2551,13 +2590,16 @@ class RegisterService
         $reportLabFirmas            = [];
         $reportPriaRefsConsolidada  = [];
         $reportCategoricalHeatmap   = [];
+        $reportToleranceChart       = [];
         $reportGraficarModo         = [];
         $pdfLayoutSnapshot          = [];
         if (! $forViewreportShell) {
             $reportLabFirmas           = $this->buildLabFirmasParaReporte($analisis, (string) ($registerInfo->pruebas ?? ''), array_keys($grupos));
             $reportPriaRefsConsolidada = $this->buildReportPriaRefsConsolidada($eligiblePriaConfig);
             $heatmapPack               = $this->buildReportCategoricalHeatmapMaps($grupos, $priasCfg);
+            $tolerancePack             = $this->buildReportToleranceChartMaps($grupos, $priasCfg);
             $reportCategoricalHeatmap  = $heatmapPack['heatmaps'];
+            $reportToleranceChart      = $tolerancePack['charts'];
             $reportGraficarModo        = $heatmapPack['modos'];
             $pdfLayoutSnapshot         = (new ReportPdfLayoutService())->getActiveLayoutForRender();
         }
@@ -2573,6 +2615,7 @@ class RegisterService
             'report_lab_firmas'               => $reportLabFirmas,
             'report_pria_refs_consolidada'    => $reportPriaRefsConsolidada,
             'report_categorical_heatmap'      => $reportCategoricalHeatmap,
+            'report_tolerance_chart'          => $reportToleranceChart,
             'report_graficar_modo'            => $reportGraficarModo,
             'pdf_layout'                      => $pdfLayoutSnapshot,
         ];
@@ -2988,6 +3031,7 @@ class RegisterService
             'report_lab_firmas'               => $reportData['report_lab_firmas'] ?? [],
             'report_pria_refs_consolidada'    => $reportData['report_pria_refs_consolidada'] ?? [],
             'report_categorical_heatmap'      => $reportData['report_categorical_heatmap'] ?? [],
+            'report_tolerance_chart'          => $reportData['report_tolerance_chart'] ?? [],
             'report_graficar_modo'            => $reportData['report_graficar_modo'] ?? [],
             'report_layout_plan'              => $layoutCtx['plan'],
             'report_layout_applier'           => $layoutCtx['applier'],
@@ -3267,6 +3311,14 @@ class RegisterService
             $parts[] = $this->reportPdfGruposFingerprintPart($grupos);
         }
 
+        $graficarModos = $reportData['report_graficar_modo'] ?? null;
+        if (is_array($graficarModos) && $graficarModos !== []) {
+            ksort($graficarModos);
+            $parts[] = 'graficar_modo=' . hash('sha256', json_encode($graficarModos, JSON_UNESCAPED_UNICODE) ?: '');
+        } else {
+            $parts[] = $this->reportPdfGraficarConfigFingerprintPart($registroId, $reportData);
+        }
+
         $parts[] = \App\Services\Report\ReportPdfHtmlCacheService::salt();
 
         return $parts;
@@ -3298,6 +3350,42 @@ class RegisterService
         sort($lines);
 
         return 'grupos=' . hash('sha256', implode("\n", $lines));
+    }
+
+    /**
+     * Huella de configuración graficar en prianacategoria (afecta tabla vs solo gráfica).
+     *
+     * @param array<string, mixed> $reportData
+     */
+    private function reportPdfGraficarConfigFingerprintPart(int $registroId, array $reportData = []): string
+    {
+        $pruebas = '';
+        $info = $reportData['register_info'] ?? null;
+        if (is_object($info)) {
+            $pruebas = trim((string) ($info->pruebas ?? ''));
+        } elseif ($registroId > 0) {
+            $refill = $this->registerModel->getInfoRefill($registroId);
+            $pruebas = trim((string) ($refill->pruebas ?? ''));
+        }
+        if ($pruebas === '') {
+            return 'graficar_cfg=empty';
+        }
+
+        $ids = array_values(array_unique(array_filter(array_map('intval', explode(',', $pruebas)), static fn(int $x): bool => $x > 0)));
+        if ($ids === []) {
+            return 'graficar_cfg=empty';
+        }
+
+        $lines = [];
+        foreach ($this->registerModel->getPrianacategoriaConfigByIds($ids, true) as $cfg) {
+            $pid = (int) ($cfg['prianacategoria_id'] ?? 0);
+            if ($pid > 0) {
+                $lines[] = $pid . '=' . \App\Models\LabotestModel::normalizeGraficar((int) ($cfg['graficar'] ?? 0));
+            }
+        }
+        sort($lines);
+
+        return 'graficar_cfg=' . hash('sha256', implode("\n", $lines));
     }
 
     /**

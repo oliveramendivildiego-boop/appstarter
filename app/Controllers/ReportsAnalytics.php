@@ -328,6 +328,92 @@ class ReportsAnalytics extends SecureArea
     }
 
     // ==================================================================
+    // 3b. HISTORIAL POR PRUEBA
+    // ==================================================================
+
+    /** @return array<string, mixed> */
+    private function collectHistorialPruebaPayload(): array
+    {
+        [$start, $end] = $this->getRangoFechas('-1 year');
+        $pruebaId = (int) ($this->request->getGet('prueba_id') ?? 0);
+        $busqueda = trim((string) ($this->request->getGet('q') ?? ''));
+
+        $prueba     = $pruebaId > 0 ? $this->analytics->getPrueba($pruebaId) : null;
+        $resultados = $prueba !== null
+            ? $this->analytics->getHistorialPorPrueba($pruebaId, $start, $end)
+            : [];
+
+        $ordenesUnicas = [];
+        foreach ($resultados as $row) {
+            $ordenesUnicas[(int) ($row['registro_id'] ?? 0)] = true;
+        }
+
+        return [
+            'startDate'      => $start,
+            'endDate'        => $end,
+            'pruebaId'       => $pruebaId,
+            'busqueda'       => $busqueda,
+            'prueba'         => $prueba,
+            'rows'           => $resultados,
+            'total_ordenes'  => count($ordenesUnicas),
+            'total_resultados' => count($resultados),
+            'candidatos'     => ($prueba === null && $busqueda !== '') ? $this->analytics->searchPruebas($busqueda) : [],
+        ];
+    }
+
+    public function historialPrueba()
+    {
+        $this->markAnalyticsReportSeen('historial_prueba');
+        $payload = $this->collectHistorialPruebaPayload();
+
+        return view('reports/analytics/historial_prueba', array_merge(
+            $this->commonViewData('Historial por prueba analítica', $payload['startDate'], $payload['endDate']),
+            $payload
+        ));
+    }
+
+    public function historialPruebaPdf()
+    {
+        $payload = $this->collectHistorialPruebaPayload();
+        $nombre  = $payload['prueba']['name'] ?? 'prueba';
+        ReportPdfDocument::download(
+            $this->safePdfFilename('historial_prueba_' . $nombre),
+            'Historial por prueba analítica',
+            ($nombre !== 'prueba' ? $nombre . ' · ' : '') . RegisterService::formatReportDateRangeSubtitle($payload['startDate'], $payload['endDate']),
+            'reports/analytics/pdf/historial_prueba',
+            $payload
+        );
+    }
+
+    public function historialPruebaExcel()
+    {
+        $payload = $this->collectHistorialPruebaPayload();
+        $rows    = [];
+        foreach ($payload['rows'] as $row) {
+            $rows[] = [
+                $row['ingreso'],
+                $row['numero_orden'] ?: $row['registro_id'],
+                $row['paciente'],
+                $row['paciente_ci'] ?? '',
+                $row['grupo'],
+                $row['prueba'],
+                $row['parametro'],
+                $row['valor'],
+                $row['unidad'],
+                $row['valor_min'],
+                $row['valor_max'],
+                self::estadoValorLabel((string) $row['estado']),
+                $row['doctor'],
+            ];
+        }
+        $this->streamCsv(
+            'historial_prueba',
+            ['Fecha', 'Orden', 'Paciente', 'CI', 'Grupo', 'Prueba', 'Parámetro', 'Resultado', 'Unidad', 'Ref. mín', 'Ref. máx', 'Estado', 'Médico solicitante'],
+            $rows
+        );
+    }
+
+    // ==================================================================
     // 4. TIEMPO DE ENTREGA (TAT)
     // ==================================================================
 

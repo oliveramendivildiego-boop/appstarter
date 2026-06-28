@@ -163,6 +163,10 @@ $badgeNuevo = static fn (string $reportKey): string => in_array($reportKey, $ana
                     <i class="fas fa-exclamation-triangle me-2"></i> Valores críticos o fuera de rango <?= $badgeNuevo('valores_criticos') ?>
                 </a>
                 <p class="list-group-item small text-muted mb-0">Resultados bajo/alto y críticos según referencias del catálogo, con indicadores por prueba y grupo.</p>
+                <a href="<?= site_url('reports/historialPrueba') ?>" class="list-group-item list-group-item-action">
+                    <i class="fas fa-search me-2"></i> Historial por prueba analítica <?= $badgeNuevo('historial_prueba') ?>
+                </a>
+                <p class="list-group-item small text-muted mb-0">Busque una prueba (ej. triglicéridos) y liste todos los análisis realizados con paciente, resultado y referencias.</p>
             </div>
         </div>
 

@@ -43,6 +43,7 @@ endif;
     'report_layout_plan'              => $report_layout_plan ?? null,
     'report_layout_applier'           => $report_layout_applier ?? null,
     'report_categorical_heatmap'      => $report_categorical_heatmap ?? [],
+    'report_tolerance_chart'          => $report_tolerance_chart ?? [],
     'report_graficar_modo'            => $report_graficar_modo ?? [],
 ]) ?>
 </body>

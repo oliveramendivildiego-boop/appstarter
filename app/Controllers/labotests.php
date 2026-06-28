@@ -722,6 +722,49 @@ class Labotests extends SecureArea
     }
 
     /**
+     * Transforma en lote los nombres de sub-clases de una prueba compuesta.
+     */
+    public function transformsecitemnames(): ResponseInterface
+    {
+        $prianacategoriaId = (int) ($this->request->getPost('prianacategoria_id') ?? 0);
+        $mode = strtolower(trim((string) ($this->request->getPost('mode') ?? '')));
+
+        if ($prianacategoriaId < 1) {
+            return $this->response->setJSON([
+                'success' => false,
+                'message' => 'ID de prueba inválido',
+            ])->setStatusCode(400);
+        }
+
+        $result = $this->labotestModel->transformSecItemNames($prianacategoriaId, $mode);
+        if ($result['success'] ?? false) {
+            \App\Models\AuditoriaModel::log(
+                'labotests',
+                'transformar_nombres_subclases',
+                (string) $prianacategoriaId,
+                \App\Models\AuditoriaModel::detail([
+                    'modo'      => $mode,
+                    'updated'   => (int) ($result['updated'] ?? 0),
+                    'unchanged' => (int) ($result['unchanged'] ?? 0),
+                ])
+            );
+        }
+
+        $json = [
+            'success'   => (bool) ($result['success'] ?? false),
+            'message'   => (string) ($result['message'] ?? ''),
+            'updated'   => (int) ($result['updated'] ?? 0),
+            'unchanged' => (int) ($result['unchanged'] ?? 0),
+        ];
+        if (function_exists('csrf_hash')) {
+            $json['csrf_token'] = csrf_hash();
+            $json['csrf_name'] = csrf_token();
+        }
+
+        return $this->response->setJSON($json)->setStatusCode(($result['success'] ?? false) ? 200 : 400);
+    }
+
+    /**
      * Reporte JSON de análisis con nombre duplicado y perfiles donde figura cada registro.
      */
     public function duplicateAnalysesReport(): ResponseInterface

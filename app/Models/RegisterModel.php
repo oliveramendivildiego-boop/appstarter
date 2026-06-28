@@ -887,7 +887,7 @@ class RegisterModel extends Model
 
     /**
      * Retorna configuración básica de prianacategoria por ids.
-     * @return array<int,array{prianacategoria_id:int,compleja:int,mostrar_valores:int,name:string,anacategoria_id:int,tipo_muestra_id?:int|null,metodo_id?:int|null}>
+     * @return array<int,array{prianacategoria_id:int,compleja:int,mostrar_valores:int,graficar?:int,name:string,anacategoria_id:int,tipo_muestra_id?:int|null,metodo_id?:int|null}>
      */
     public function getPrianacategoriaConfigByIds(array $ids, bool $includeRetired = false): array
     {
@@ -901,6 +901,11 @@ class RegisterModel extends Model
             $select .= ", {$pt}.mostrar_valores";
         } else {
             $select .= ", 0 as mostrar_valores";
+        }
+        if ($this->hasColumn('prianacategoria', 'graficar')) {
+            $select .= ", {$pt}.graficar";
+        } else {
+            $select .= ", 0 as graficar";
         }
         if ($this->hasColumn('prianacategoria', 'tipo_muestra_id')) {
             $select .= ", {$pt}.tipo_muestra_id";

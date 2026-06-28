@@ -1272,3 +1272,60 @@ body.pdf-dompdf-download .report-pdf-grupo-area-separator:not(.report-pdf-grupo-
     font-size: 7.5pt;
     font-weight: 600;
 }
+
+/* Curva de tolerancia (glucosa u otras pruebas seriadas numéricas) */
+.tol-chart-wrap {
+    margin-bottom: 12px;
+    text-align: center;
+}
+.tol-chart-title {
+    margin-bottom: 6px;
+    text-align: center;
+}
+.tol-chart-body {
+    display: block;
+    width: 100%;
+    text-align: center;
+}
+.tol-chart-svg {
+    display: inline-block;
+    width: 100%;
+    max-width: 520px;
+    height: auto;
+    margin: 0 auto;
+}
+.tol-chart-legend {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 8px 16px;
+    margin-top: 8px;
+    font-size: 8pt;
+    color: #495057;
+}
+.tol-chart-legend-item {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+}
+.tol-chart-legend-swatch {
+    display: inline-block;
+    width: 18px;
+    height: 3px;
+    border-radius: 2px;
+}
+.tol-chart-legend-swatch--patient {
+    background: #0d6efd;
+}
+.tol-chart-legend-swatch--alto {
+    background: #dc3545;
+}
+.tol-chart-legend-swatch--bajo {
+    background: #e67700;
+}
+.tol-chart-legend-swatch--ref {
+    background: transparent;
+    border-top: 2px dashed #198754;
+    height: 0;
+    width: 20px;
+}

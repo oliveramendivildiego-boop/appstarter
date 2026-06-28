@@ -301,6 +301,8 @@ foreach ($gruposList as $padre => $items) {
 
         'report_categorical_heatmap'      => $report_categorical_heatmap ?? [],
 
+        'report_tolerance_chart'          => $report_tolerance_chart ?? [],
+
         'report_graficar_modo'            => $report_graficar_modo ?? [],
 
         'layout_plan_applier'             => $useLayoutApplier ? $layoutApplier : null,

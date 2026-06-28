@@ -68,6 +68,7 @@ $ctx = [
     'report_lab_firmas'               => $report_lab_firmas ?? [],
     'report_pria_refs_consolidada'    => $report_pria_refs_consolidada ?? [],
     'report_categorical_heatmap'      => $report_categorical_heatmap ?? [],
+    'report_tolerance_chart'          => $report_tolerance_chart ?? [],
     'report_graficar_modo'            => $report_graficar_modo ?? [],
     'analisis_variant'                => $analisis_variant ?? 'pdf',
     'pb_diag_no_separators'           => $pb_diag_no_separators ?? false,

@@ -246,6 +246,34 @@ if ($feRaw !== '' && !empty($formulas_con_expresion ?? [])) {
         <button type="button" class="btn btn-sm btn-outline-secondary" id="btn_generos_sec_seleccionadas" disabled title="Crea una fila por cada género del catálogo a partir de las sub-clases seleccionadas">
             <i class="fa-solid fa-venus-mars me-1"></i>Pruebas por géneros
         </button>
+        <div class="dropdown">
+            <button type="button" class="btn btn-sm btn-outline-secondary dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false" id="btn_formato_nombres_sec">
+                <i class="fa-solid fa-font me-1"></i> Formato nombres
+            </button>
+            <ul class="dropdown-menu dropdown-menu-end">
+                <li><h6 class="dropdown-header">Aplicar a todas las sub-clases de esta prueba</h6></li>
+                <li>
+                    <button type="button" class="dropdown-item sec-transform-nombre-action" data-mode="uppercase">
+                        <i class="fa-solid fa-text-height me-2 text-muted"></i> TODO EN MAYÚSCULAS
+                    </button>
+                </li>
+                <li>
+                    <button type="button" class="dropdown-item sec-transform-nombre-action" data-mode="lowercase">
+                        <i class="fa-solid fa-text-height me-2 text-muted"></i> todo en minúsculas
+                    </button>
+                </li>
+                <li>
+                    <button type="button" class="dropdown-item sec-transform-nombre-action" data-mode="sentence">
+                        <i class="fa-solid fa-a me-2 text-muted"></i> Solo la primera letra en mayúscula
+                    </button>
+                </li>
+                <li>
+                    <button type="button" class="dropdown-item sec-transform-nombre-action" data-mode="title">
+                        <i class="fa-solid fa-heading me-2 text-muted"></i> Primera letra de cada palabra
+                    </button>
+                </li>
+            </ul>
+        </div>
         <button type="button" class="btn btn-sm btn-outline-danger" id="btn_eliminar_sec_seleccionadas" disabled>
             <i class="fa-solid fa-trash me-1"></i>Eliminar seleccionadas
         </button>
@@ -1779,6 +1807,55 @@ if ($fe !== '') {
                         });
                     });
                 }
+                var btnFormatoNombresSec = document.getElementById('btn_formato_nombres_sec');
+                var secNombreTransformBusy = false;
+                var secNombreModeLabels = {
+                    uppercase: 'convertir todos los nombres de sub-clase a MAYÚSCULAS',
+                    lowercase: 'convertir todos los nombres de sub-clase a minúsculas',
+                    sentence: 'poner solo la primera letra de cada nombre en mayúscula',
+                    title: 'poner la primera letra de cada palabra en mayúscula'
+                };
+                document.querySelectorAll('.sec-transform-nombre-action').forEach(function(btn) {
+                    btn.addEventListener('click', function() {
+                        if (secNombreTransformBusy) return;
+                        var mode = btn.getAttribute('data-mode') || '';
+                        if (!mode) return;
+                        var msg = '¿Confirma ' + (secNombreModeLabels[mode] || 'transformar los nombres') + ' en esta prueba?';
+                        var confirmar = (typeof uiConfirm === 'function')
+                            ? uiConfirm(msg, 'Formato de nombres')
+                            : Promise.resolve(window.confirm(msg));
+                        confirmar.then(function(ok) {
+                            if (!ok) return;
+                            secNombreTransformBusy = true;
+                            if (btnFormatoNombresSec) btnFormatoNombresSec.disabled = true;
+                            var fd = new FormData();
+                            fd.append('prianacategoria_id', String(prianacategoriaId));
+                            fd.append('mode', mode);
+                            var csrfData = getCsrfData();
+                            if (csrfData.value) fd.append(csrfData.name, csrfData.value);
+                            var headers = { 'X-Requested-With': 'XMLHttpRequest' };
+                            if (csrfData.value) headers['X-CSRF-TOKEN'] = csrfData.value;
+                            fetch('<?= site_url('labotests/transformsecitemnames') ?>', {
+                                method: 'POST',
+                                body: fd,
+                                headers: headers
+                            }).then(function(r) { return r.json(); }).then(function(d) {
+                                applyCsrfFromJson(d);
+                                if (d.success) {
+                                    if (typeof showToast === 'function') showToast(d.message || 'Nombres actualizados', 'success');
+                                    window.location.reload();
+                                } else if (typeof showToast === 'function') {
+                                    showToast(d.message || 'No se pudo aplicar el formato', 'error');
+                                }
+                            }).catch(function() {
+                                if (typeof showToast === 'function') showToast('No se pudo aplicar el formato', 'error');
+                            }).finally(function() {
+                                secNombreTransformBusy = false;
+                                if (btnFormatoNombresSec) btnFormatoNombresSec.disabled = false;
+                            });
+                        });
+                    });
+                });
                 tablaSub.addEventListener('click', function(e) {
                     var editar = e.target.closest('.btn-editar-sec');
                     if (editar) {
