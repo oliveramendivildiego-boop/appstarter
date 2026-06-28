@@ -172,6 +172,7 @@ $routes->get('cron/tenant-backup-schedule', 'Cron::tenantBackupSchedule');
 $routes->get('cron/writable-cache-purge', 'Cron::writableCachePurge');
 $routes->get('config/opciones', 'Config::opciones');
 $routes->get('config/exportOpciones', 'Config::exportOpciones');
+$routes->get('config/exportOpcion/(:num)', 'Config::exportOpcion/$1');
 $routes->post('config/save', 'Config::save');
 $routes->post('config/saveLabValidation', 'Config::saveLabValidation');
 $routes->post('config/uploadLabApproverSeal', 'Config::uploadLabApproverSeal');
@@ -189,6 +190,7 @@ $routes->post('config/saveInstitucionDescuento', 'Config::saveInstitucionDescuen
 $routes->post('config/savepoblacion', 'Config::savePoblacion');
 $routes->post('config/saveopcion', 'Config::saveOpcion');
 $routes->post('config/importOpciones', 'Config::importOpciones');
+$routes->post('config/importOpcion/(:num)', 'Config::importOpcion/$1');
 $routes->post('config/saveopcionvalor', 'Config::saveOpcionValor');
 $routes->post('config/reorderopcionvalores', 'Config::reorderOpcionValores');
 $routes->post('config/transformopcionnombres', 'Config::transformOpcionNombres');

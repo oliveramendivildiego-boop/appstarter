@@ -17,6 +17,7 @@ $opcionesSortQuery = $opcionesSort !== '' ? '&opciones_sort=' . $opcionesSort : 
     'steps' => [
         'Cree un tipo con nombre y agregue sus valores en la misma fila.',
         'Arrastre los valores para cambiar el orden del select.',
+        'Use exportar/importar en cada fila para copiar solo ese nombre y sus valores.',
         'La paginación inferior muestra 10 tipos por página; use buscar para filtrar la página actual.',
     ],
 ]) ?>
@@ -24,18 +25,18 @@ $opcionesSortQuery = $opcionesSort !== '' ? '&opciones_sort=' . $opcionesSort : 
 <div class="border rounded p-3 mb-4 bg-light">
     <div class="d-flex flex-wrap align-items-center gap-2">
         <a href="<?= site_url('config/exportOpciones') ?>" class="btn btn-outline-secondary btn-sm">
-            <i class="fa-solid fa-file-export me-1"></i> Exportar JSON
+            <i class="fa-solid fa-file-export me-1"></i> Exportar todo (JSON)
         </a>
         <?= form_open_multipart(site_url('config/importOpciones'), ['class' => 'd-flex flex-wrap align-items-center gap-2']) ?>
         <input type="hidden" name="opciones_page" value="<?= $opcionesCurrentPage ?>">
         <input type="hidden" name="opciones_sort" value="<?= esc($opcionesSort) ?>">
         <input type="file" name="opciones_file" class="form-control form-control-sm" accept="application/json,.json" required style="max-width: 320px;">
         <button type="submit" class="btn btn-outline-primary btn-sm">
-            <i class="fa-solid fa-file-import me-1"></i> Importar JSON
+            <i class="fa-solid fa-file-import me-1"></i> Importar todo (JSON)
         </button>
         <?= form_close() ?>
     </div>
-    <small class="text-muted d-block mt-2">La importación agrega/actualiza tipos y valores del archivo sin borrar los existentes.</small>
+    <small class="text-muted d-block mt-2">Arriba: respaldo de todos los tipos. En cada fila de la tabla puede exportar o importar solo ese nombre y sus valores.</small>
 </div>
 
 <div class="config-list-toolbar mb-2" id="opciones_client_filter_bar">
@@ -74,7 +75,7 @@ $opcionesSortQuery = $opcionesSort !== '' ? '&opciones_sort=' . $opcionesSort : 
             <tr>
                 <th>Nombre</th>
                 <th>Valores del select</th>
-                <th class="text-center" style="width:140px">Acciones</th>
+                <th class="text-center" style="width:240px">Acciones</th>
             </tr>
         </thead>
         <tbody>
@@ -170,11 +171,35 @@ $opcionesSortQuery = $opcionesSort !== '' ? '&opciones_sort=' . $opcionesSort : 
                     <?php endif; ?>
                 </td>
                 <td class="text-center">
-                    <?php if ($o['editable'] ?? false): ?>
-                    <a href="<?= site_url('config/deleteopcion/' . (int)($o['opciones_id'] ?? 0) . '?opciones_page=' . $opcionesCurrentPage . $opcionesSortQuery) ?>" class="btn btn-sm btn-outline-danger" onclick="return uiConfirmLink(this, '¿Eliminar este tipo de resultado?');"><i class="fa-solid fa-trash"></i> Eliminar</a>
-                    <?php else: ?>
-                    <span class="text-muted">—</span>
-                    <?php endif; ?>
+                    <?php
+                    $opcionId = (int) ($o['opciones_id'] ?? 0);
+                    $canImportRow = ($o['usa_valores_genericos'] ?? false) || ($o['usa_tabla_sistema'] ?? false);
+                    ?>
+                    <div class="d-flex flex-column align-items-center gap-2">
+                        <div class="d-inline-flex flex-wrap align-items-center justify-content-center gap-1">
+                            <a href="<?= site_url('config/exportOpcion/' . $opcionId) ?>"
+                               class="btn btn-sm btn-outline-secondary"
+                               title="Exportar solo este tipo"
+                               download>
+                                <i class="fa-solid fa-download"></i>
+                            </a>
+                            <?php if ($canImportRow): ?>
+                            <?= form_open_multipart(site_url('config/importOpcion/' . $opcionId), ['class' => 'd-inline-flex align-items-center gap-1 opcion-row-import-form']) ?>
+                            <input type="hidden" name="opciones_page" value="<?= $opcionesCurrentPage ?>">
+                            <input type="hidden" name="opciones_sort" value="<?= esc($opcionesSort) ?>">
+                            <input type="file" name="opcion_file" class="form-control form-control-sm" accept="application/json,.json" required style="max-width: 130px;">
+                            <button type="submit" class="btn btn-sm btn-outline-primary" title="Importar valores en este tipo">
+                                <i class="fa-solid fa-upload"></i>
+                            </button>
+                            <?= form_close() ?>
+                            <?php endif; ?>
+                        </div>
+                        <?php if ($o['editable'] ?? false): ?>
+                        <a href="<?= site_url('config/deleteopcion/' . $opcionId . '?opciones_page=' . $opcionesCurrentPage . $opcionesSortQuery) ?>" class="btn btn-sm btn-outline-danger" onclick="return uiConfirmLink(this, '¿Eliminar este tipo de resultado?');"><i class="fa-solid fa-trash"></i> Eliminar</a>
+                        <?php else: ?>
+                        <span class="text-muted small">—</span>
+                        <?php endif; ?>
+                    </div>
                 </td>
             </tr>
             <?php endforeach; ?>

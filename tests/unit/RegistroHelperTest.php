@@ -72,4 +72,14 @@ final class RegistroHelperTest extends CIUnitTestCase
 
         $this->assertFalse(registro_doctor_mostrar_interpretacion_col($doctor, ['interpretacion_enabled' => '1']));
     }
+
+    public function testSelectValorEsNumericoDistigueCualitativoDeNumerico(): void
+    {
+        $this->assertFalse(registro_select_valor_es_numerico('Escasos', 'mg/dL'));
+        $this->assertFalse(registro_select_valor_es_numerico('Positivo', ''));
+        $this->assertFalse(registro_select_valor_es_numerico('Giardia', ''));
+        $this->assertTrue(registro_select_valor_es_numerico('0 - 1', 'mg/dL'));
+        $this->assertTrue(registro_select_valor_es_numerico('2', 'mg/dL'));
+        $this->assertTrue(registro_select_valor_es_numerico('>30', ''));
+    }
 }

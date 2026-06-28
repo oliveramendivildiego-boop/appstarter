@@ -476,7 +476,13 @@ $mostrarTolerance = $tieneTolerance && ! $tieneHeatmap && in_array(
                     }
                     $valNorm = trim(strtolower((string) $val));
                     $opcionIdItem = (int) ($item->opcion_id ?? 3);
-                    $itemConRef = registro_tiene_rango_referencial($item->valor_min ?? '', $item->valor_max ?? '');
+                    $itemConRef = registro_mostrar_rango_referencial_en_reporte(
+                        $val,
+                        $item->valor_min ?? '',
+                        $item->valor_max ?? '',
+                        $opcionIdItem,
+                        $item->umedida ?? ''
+                    );
                     $interpretacionRef = ($mostrarColInterpretacion && $itemConRef)
                         ? registro_interpretacion_referencial_etiqueta_viewreport(
                             $val,

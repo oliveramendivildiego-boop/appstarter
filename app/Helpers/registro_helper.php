@@ -449,7 +449,7 @@ if (! function_exists('registro_resultado_celda_html')) {
      */
     function registro_resultado_celda_html($valor, $unidad, int $opcionId = 3, bool $mostrarMedidaSoloEnReferencia = false): string
     {
-        $u = registro_unidad_para_resultado($unidad, $mostrarMedidaSoloEnReferencia);
+        $u = registro_unidad_para_resultado_reporte($valor, $unidad, $opcionId, $mostrarMedidaSoloEnReferencia);
         $valorStr = (string) ($valor ?? '');
 
         if (registro_opcion_es_texto_rico($opcionId) || registro_opcion_es_texto_fijo($opcionId) || registro_valor_contiene_html_rico($valorStr)) {
@@ -518,6 +518,59 @@ if (! function_exists('registro_extraer_rango_numerico_de_valor')) {
         }
 
         return null;
+    }
+}
+
+if (! function_exists('registro_select_valor_es_numerico')) {
+    /**
+     * Indica si el valor elegido en un select es numérico (número, rango o comparador).
+     *
+     * @param mixed $valor
+     * @param mixed $unidad
+     */
+    function registro_select_valor_es_numerico($valor, $unidad = ''): bool
+    {
+        return registro_extraer_rango_numerico_de_valor((string) ($valor ?? ''), (string) ($unidad ?? '')) !== null;
+    }
+}
+
+if (! function_exists('registro_unidad_para_resultado_reporte')) {
+    /**
+     * Unidad visible junto al resultado en reportes; en selects cualitativos no se muestra.
+     *
+     * @param mixed $valor
+     * @param mixed $unidad
+     */
+    function registro_unidad_para_resultado_reporte($valor, $unidad, int $opcionId, bool $mostrarMedidaSoloEnReferencia): string
+    {
+        if (registro_opcion_es_select($opcionId) && ! registro_select_valor_es_numerico($valor, $unidad)) {
+            return '';
+        }
+
+        return registro_unidad_para_resultado($unidad, $mostrarMedidaSoloEnReferencia);
+    }
+}
+
+if (! function_exists('registro_mostrar_rango_referencial_en_reporte')) {
+    /**
+     * Indica si la fila del reporte debe mostrar rango referencial e interpretación.
+     *
+     * @param mixed $valor
+     * @param mixed $min
+     * @param mixed $max
+     * @param mixed $unidad
+     */
+    function registro_mostrar_rango_referencial_en_reporte($valor, $min, $max, int $opcionId, $unidad = ''): bool
+    {
+        if (! registro_tiene_rango_referencial($min, $max)) {
+            return false;
+        }
+
+        if (registro_opcion_es_select($opcionId)) {
+            return registro_select_valor_es_numerico($valor, $unidad);
+        }
+
+        return true;
     }
 }
 
