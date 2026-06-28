@@ -113,7 +113,7 @@
 $grupos = $grupos ?? [];
 $ridPdf = (int) ($labotests_namecate ?? 0);
 $compOk = ! empty($comprobante_pdf_disponible ?? false);
-$lblComp = ! empty($sin_billing_enabled ?? false) ? 'Factura' : 'Recibo (PDF)';
+$lblComp = ! empty($sin_billing_enabled ?? false) ? 'Factura' : 'Recibo';
 ?>
 
 <?= view('registers/partials/report_viewreport_actions_bar', [

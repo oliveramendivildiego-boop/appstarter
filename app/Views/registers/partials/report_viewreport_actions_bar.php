@@ -12,7 +12,7 @@
  */
 $ridPdf = (int) ($ridPdf ?? 0);
 $compOk = ! empty($compOk);
-$lblComp = (string) ($lblComp ?? 'Recibo (PDF)');
+$lblComp = (string) ($lblComp ?? 'Recibo');
 $sticky = ! empty($sticky);
 $barClass = 'viewreport-actions-bar d-flex flex-wrap gap-2 justify-content-center align-items-center';
 if ($sticky) {
