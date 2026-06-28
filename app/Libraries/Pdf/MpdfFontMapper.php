@@ -228,12 +228,13 @@ final class MpdfFontMapper
         ) ?? $html;
     }
 
-    /**
-     * esc('attr') de CI codifica ';' como &#x3B (html_entity_decode no lo revierte).
-     */
-    private static function decodeAttrValue(string $raw): string
+    public static function decodeAttrValue(string $raw): string
     {
-        $raw = str_ireplace(['&#x3B;', '&#x3B', '&#X3B;', '&#X3B'], ';', $raw);
+        $raw = str_ireplace(
+            ['&#x3B;', '&#x3B', '&#X3B;', '&#X3B', '&#x3A;', '&#x3A', '&#X3A;', '&#X3A'],
+            [';', ';', ';', ';', ':', ':', ':', ':'],
+            $raw,
+        );
 
         return html_entity_decode($raw, ENT_QUOTES | ENT_HTML5, 'UTF-8');
     }

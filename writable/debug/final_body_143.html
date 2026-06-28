@@ -3,8 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <title>Resultados - LORENA CLAROS</title>
-    <style>
-/**
+    <style>/**
  * Estilos para reporte PDF (dompdf)
  */
 * { box-sizing: border-box; }
@@ -89,14 +88,6 @@ body {
 .header-piece-pagination {
     white-space: nowrap;
 }
-.pdf-ft-pagination {
-    white-space: nowrap;
-}
-.pdf-ft-pagination-num {
-    display: inline;
-    white-space: nowrap;
-    vertical-align: baseline;
-}
 .pdf-pagination-line {
     display: inline;
     min-width: 0;
@@ -105,18 +96,6 @@ body {
 }
 .pdf-pagination-line::before {
     content: none;
-}
-.pdf-ft-pagination-num::before {
-    content: none;
-}
-body.pdf-dompdf-download .pdf-ft-block .pdf-ft-pagination-num::before {
-    content: none;
-    font-weight: inherit;
-    color: inherit;
-    font-style: inherit;
-    font-size: inherit;
-    font-family:dejavusans;
-    line-height: inherit;
 }
 @media screen {
     .pdf-counter-page::before {
@@ -129,15 +108,7 @@ body.pdf-dompdf-download .pdf-ft-block .pdf-ft-pagination-num::before {
         content: none;
     }
 }
-@media print {
-    body.report-browser-print {
-        counter-reset: page 0;
-        counter-increment: page 1;
-    }
-    .pdf-pagination-line::before {
-        content: none;
-    }
-}
+
 .header-grid {
     display: block;
     width: 100%;
@@ -216,68 +187,15 @@ body.pdf-dompdf-download .pdf-ft-block .pdf-ft-pagination-num::before {
     margin-left: auto !important;
     margin-right: 0 !important;
 }
-.pdf-section-table .header-piece,
-.pdf-section-table .footer-piece,
-.pdf-section-table .patient-line {
-    margin-bottom: 8px;
-    max-width: 100%;
-    box-sizing: border-box;
-}
-/*
- * Cuadrícula con interlineado configurable (tabla con data-pdf-lh + line-height inline).
- * Dompdf no colapsa márgenes como el navegador: evitar margin en piezas internas;
- * el espaciado entre instancias apiladas va en la tabla interna y el px configurado en inline/padding.
- */
-.pdf-hg-block .pdf-section-table .header-piece,
-.pdf-ft-block .pdf-section-table .footer-piece,
-.pdf-ft-block .pdf-section-table .pdf-ft-piece,
-.pdf-ft-block .pdf-section-table .pdf-ft-custom-text,
-.pdf-ft-block .pdf-section-table .pdf-ft-pagination,
-.pdf-pd-block .pdf-section-table .patient-line,
-.lab-firmas-pdf-block .pdf-section-table .patient-line {
-    margin-top: 0 !important;
-    margin-bottom: 0 !important;
-}
-.pdf-hg-block .pdf-section-table td.pdf-cell-stack-item,
-.pdf-pd-block .pdf-section-table td.pdf-cell-stack-item,
-.pdf-ft-block .pdf-section-table td.pdf-cell-stack-item,
-.lab-firmas-pdf-block .pdf-section-table td.pdf-cell-stack-item {
-    margin-bottom: 0;
-}
 .pdf-section-table td.pdf-cell > table.pdf-cell-stack-table {
     width: 100%;
     border-collapse: collapse;
     margin: 0;
     border: 0;
 }
-.pdf-hg-block .pdf-section-table td p,
-.pdf-pd-block .pdf-section-table td p,
-.pdf-ft-block .pdf-section-table td p,
-.lab-firmas-pdf-block .pdf-section-table td p {
-    margin: 0 !important;
-}
-.pdf-section-table[data-pdf-lh] .header-piece,
-.pdf-section-table[data-pdf-lh] .footer-piece,
-.pdf-section-table[data-pdf-lh] .patient-line {
-    line-height: inherit;
-}
-.pdf-section-table[data-pdf-lh] td p,
-.pdf-section-table[data-pdf-lh] td h1,
-.pdf-section-table[data-pdf-lh] td .patient-line,
-.pdf-section-table[data-pdf-lh] td .footer-piece,
-.pdf-section-table[data-pdf-lh] td .header-piece-company h1,
-.pdf-section-table[data-pdf-lh] td .qr-label,
-.pdf-section-table[data-pdf-lh] td .footer-piece-policy small {
-    line-height: inherit !important;
-}
 .pdf-el-item {
     display: block;
     width: 100%;
-}
-.pdf-grid-cell .header-piece,
-.pdf-grid-cell .footer-piece,
-.pdf-grid-cell .patient-line {
-    margin-bottom: 8px;
 }
 .header-piece {
     margin-bottom: 8px;
@@ -295,14 +213,6 @@ body.pdf-dompdf-download .pdf-ft-block .pdf-ft-pagination-num::before {
 .pdf-hg-block .pdf-section-table td.pdf-cell--has-explicit-height .header-piece-company h1 {
     margin-top: 0 !important;
     margin-bottom: 0 !important;
-}
-/* Pie PDF: tipografía solo inline del PHP (clases .pdf-ft-*). */
-.pdf-ft-block .pdf-ft-piece p,
-.pdf-ft-block .pdf-ft-custom-text p,
-.pdf-ft-block .pdf-ft-pagination p {
-    font-size: inherit;
-    color: inherit;
-    font-weight: inherit;
 }
 .pdf-hg-block .pdf-custom-text p,
 .pdf-pd-block .pdf-custom-text p,
@@ -870,10 +780,6 @@ table.results td.resultado-texto-rico-cell .resultado-texto-rico ol {
     background-color: transparent !important;
     background-image: none !important;
 }
-.pdf-ft-block .pdf-section-table td:not(.pdf-cell) {
-    background-color: transparent !important;
-    background-image: none !important;
-}
 .pdf-hg-block .pdf-section-table td.pdf-cell,
 .pdf-pd-block .pdf-section-table td.pdf-cell {
     background-color: transparent !important;
@@ -889,23 +795,6 @@ table.results td.resultado-texto-rico-cell .resultado-texto-rico ol {
 .pdf-pd-block .pdf-section-table .patient-line {
     margin-top: 0 !important;
     margin-bottom: 0 !important;
-}
-/* Heredar la tipografía del td (estilo inline por instancia); evita que reglas globales pisen la fuente en viewreport. */
-.pdf-hg-block .pdf-section-table td.pdf-cell .patient-line,
-.pdf-pd-block .pdf-section-table td.pdf-cell .patient-line,
-.pdf-ft-block .pdf-section-table td.pdf-cell .patient-line,
-.lab-firmas-pdf-block .pdf-section-table td.pdf-cell .patient-line,
-.pdf-hg-block .pdf-section-table td.pdf-cell-stack-item .patient-line,
-.pdf-pd-block .pdf-section-table td.pdf-cell-stack-item .patient-line,
-.pdf-ft-block .pdf-section-table td.pdf-cell-stack-item .patient-line,
-.lab-firmas-pdf-block .pdf-section-table td.pdf-cell-stack-item .patient-line {
-    font-family:dejavusans;
-    font-size: inherit;
-    font-weight: inherit;
-    font-style: inherit;
-    text-transform: inherit;
-    letter-spacing: inherit;
-    color: inherit;
 }
 .report-lab-firma-grupo-inline {
     margin-top: 8pt;
@@ -950,108 +839,6 @@ table.results td.resultado-texto-rico-cell .resultado-texto-rico ol {
     border-left-width: 0;
     border-left-style: none;
 }
-.pdf-ft-block .pdf-section-table td.pdf-cell {
-    background: transparent;
-    background-color: transparent;
-    /* Tipografía por instancia en el td (inline) */
-    border-left-width: 0px;
-    border-left-style: solid;
-    border-left-color: #272E78;
-}
-.pdf-ft-block .pdf-section-table tr td.pdf-cell:first-child {
-    border-left-width: 0;
-    border-left-style: none;
-}
-/* Sin flex/min-height en el stack: Dompdf crea páginas en blanco si forzamos altura de hoja. */
-.pdf-ft-block.footer-grid:not(.mpdf-ft-root) {
-    font-size: inherit;
-    color: inherit;
-    margin-top: 0;
-    margin-bottom: 0;
-    padding-top: 8px;
-    padding-bottom: 0;
-    border-top-width: 2px;
-    border-top-style: solid;
-    border-top-color: #242B7A;
-}
-/* mPDF: misma regla de línea verde que Dompdf */
-body.pdf-engine-mpdf .pdf-dompdf-footer-anchor > .pdf-ft-block.footer-grid,
-body.pdf-engine-mpdf .pdf-ft-block.footer-grid {
-    border-top: none !important;
-}
-body.pdf-engine-mpdf .pdf-dompdf-footer-anchor > .pdf-ft-block.footer-grid .pdf-section-table,
-body.pdf-engine-mpdf .pdf-ft-block.footer-grid:not(.mpdf-ft-root) .pdf-section-table {
-    border-top-width: 2px;
-    border-top-style: solid;
-    border-top-color: #242B7A;
-}
-body.pdf-engine-mpdf .mpdf-ft-root .mpdf-ft-top-border {
-    display: block !important;
-    width: 100% !important;
-    height: 0 !important;
-    margin: 0 !important;
-    padding: 0 !important;
-    font-size: 0 !important;
-    line-height: 0 !important;
-    box-sizing: border-box !important;
-    border-top-width: 2px !important;
-    border-top-style: solid !important;
-    border-top-color: #242B7A !important;
-}
-body.pdf-engine-mpdf .mpdf-ft-root .mpdf-ft-table,
-body.pdf-engine-mpdf .mpdf-ft-root .pdf-section-table.mpdf-ft-table {
-    border-top: none !important;
-}
-/* Dompdf: padding-top del bloque reserva Paciente/Orden; el borde va sobre la cuadrícula, no arriba del padding. */
-body.pdf-dompdf-download .pdf-dompdf-footer-anchor > .pdf-ft-block.footer-grid,
-body.pdf-dompdf-download .pdf-ft-block.footer-grid {
-    border-top: none !important;
-}
-body.pdf-dompdf-download .pdf-dompdf-footer-anchor > .pdf-ft-block.footer-grid .pdf-section-table,
-body.pdf-dompdf-download .pdf-ft-block.footer-grid .pdf-section-table {
-    border-top-width: 2px;
-    border-top-style: solid;
-    border-top-color: #242B7A;
-}
-.pdf-ft-block table.pdf-section-table {
-    margin-bottom: 0 !important;
-}
-.pdf-ft-block .pdf-ft-stack-table {
-    border-collapse: collapse;
-    table-layout: fixed;
-    width: 100%;
-    margin: 0;
-}
-.pdf-ft-block .pdf-ft-stack-table td {
-    padding: 0;
-    vertical-align: top;
-    border: 0;
-}
-.pdf-ft-block .pdf-section-table td.pdf-cell,
-.pdf-ft-block .pdf-section-table td:not(.pdf-cell) {
-    /* No forzar padding horizontal: el PHP define padding/bordes inline (Dompdf ignora variables CSS). */
-    padding-bottom: 0 !important;
-}
-/*
- * Pie PDF (.pdf-ft-piece, .pdf-ft-custom-text, .pdf-ft-pagination): solo layout;
- * color/tamaño/fuente vienen del style inline del PHP.
- */
-.pdf-ft-block .pdf-ft-piece,
-.pdf-ft-block .pdf-ft-custom-text,
-.pdf-ft-block .pdf-ft-pagination,
-.pdf-ft-block .pdf-section-table .pdf-ft-piece,
-.pdf-ft-block .pdf-section-table .pdf-ft-custom-text,
-.pdf-ft-block .pdf-section-table .pdf-ft-pagination {
-    margin-top: 0;
-    margin-bottom: 0;
-    line-height: inherit;
-    max-width: 100%;
-    box-sizing: border-box;
-}
-.pdf-ft-block .pdf-ft-piece--policy-text,
-.pdf-ft-block .footer-piece-policy small.pdf-ft-piece--policy-text {
-    font-size: inherit;
-}
 .report-segment-table-wrap {
     margin: 0;
     page-break-inside: auto;
@@ -1092,15 +879,6 @@ table.results td.matrix-col-reference strong,
 .table td.matrix-col-reference strong {
     font-weight: 700 !important;
 }
-.footer-grid:not(.pdf-ft-block) {
-    display: block;
-    width: 100%;
-    margin-top: 20px;
-    padding-top: 10px;
-    border-top: 1px solid #ddd;
-    font-size: 8pt;
-    color: #666;
-}
 .footer-col {
     display: table-cell;
     vertical-align: top;
@@ -1109,17 +887,6 @@ table.results td.matrix-col-reference strong,
 .footer-col-0 { text-align: left; }
 .footer-col-1 { text-align: center; }
 .footer-col-2 { text-align: right; }
-.footer-piece:not(.pdf-ft-piece) {
-    margin-bottom: 6px;
-    line-height: 1.35;
-}
-.footer-piece-policy small:not(.pdf-ft-piece--policy-text) {
-    font-size: 7pt;
-}
-.pdf-ft-block .footer-piece-policy small.footer-policy-text,
-.pdf-ft-block .pdf-ft-piece--policy-text {
-    font-size: inherit;
-}
 .text-center {
     text-align: center;
 }
@@ -1134,34 +901,7 @@ body.pdf-dompdf-download .lab-firmas-pdf-block .pdf-section-table {
     page-break-inside: auto;
     break-inside: auto;
 }
-@media print {
-    /* Validación / firmas: no partir la cuadrícula; el salto previo lo inserta JS (page-leader). */
-    body:not(.pdf-dompdf-download) .report-lab-firma-grupo-inline {
-        page-break-inside: avoid;
-        break-inside: avoid-page;
-    }
-    body:not(.pdf-dompdf-download) .lab-firmas-pdf-block .lab-firmas-title-grid,
-    body:not(.pdf-dompdf-download) .lab-firmas-pdf-block .lab-firmas-body-grid,
-    body:not(.pdf-dompdf-download) .lab-firmas-pdf-block .pdf-section-table {
-        page-break-inside: avoid;
-        break-inside: avoid-page;
-    }
-    .report-lab-firma-page-leader {
-        page-break-before: always;
-        break-before: page;
-        height: 0;
-        margin: 0;
-        padding: 0;
-        border: 0;
-        line-height: 0;
-        font-size: 0;
-        overflow: hidden;
-    }
-    .pdf-ft-block.footer-grid {
-        page-break-inside: avoid;
-        break-inside: avoid-page;
-    }
-}
+
 
 /* Dompdf: paciente/médico — ver overrides con valores de plantilla en report_pdf_theme_styles.php */
 body.pdf-dompdf-download .pdf-pd-block .pdf-section-table td.pdf-cell,
@@ -1344,12 +1084,9 @@ body.pdf-dompdf-download .report-pdf-grupo-area-separator:not(.report-pdf-grupo-
     border-top: 2px dashed #198754;
     height: 0;
     width: 20px;
-}
-
-</style>
+}</style>
 <!-- pdf-footer-reserve-mm:24.5 -->
-<style>
-body {
+<style>body {
     margin: 0 !important;
     padding: 0 !important;
     position: relative;
@@ -2109,16 +1846,6 @@ body.pdf-layout-engine.pdf-pagination-area-soft-fit-signature.pdf-dompdf-downloa
     padding: 0;
     box-sizing: border-box;
 }
-body.pdf-engine-mpdf .pdf-ft-block.footer-grid .pdf-order-sheet-table-row {
-    display: table-row !important;
-    visibility: visible !important;
-    page-break-inside: avoid !important;
-    break-inside: avoid-page !important;
-}
-body.pdf-engine-mpdf .pdf-ft-block.footer-grid .pdf-order-sheet-table-row td {
-    padding-top: 0 !important;
-    background: transparent !important;
-}
 body.pdf-engine-mpdf .pdf-hg-block .header-piece-pagination,
 body.pdf-engine-mpdf .pdf-pd-block .header-piece-pagination,
 body.pdf-engine-mpdf .lab-firmas-pdf-block .header-piece-pagination {
@@ -2359,8 +2086,7 @@ table.results td .report-interpretacion-icon-normal,
 .report-interpretacion-icon-normal,
 .report-interpretacion-icon.text-dark {
     color: #212529 !important;
-}
-</style>
+}</style>
 <style>
 /* mPDF: paridad con plantilla PDF fija */
 body.pdf-engine-mpdf .pdf-pagination-line::before,

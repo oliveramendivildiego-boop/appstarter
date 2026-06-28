@@ -300,6 +300,84 @@ CSS;
     }
 
     /**
+     * Alineación horizontal del pie (plantilla) en estilos inline legibles por mPDF.
+     */
+    public static function materializeFooterCellAlignments(string $html): string
+    {
+        return preg_replace_callback(
+            '/<td\b([^>]*)>([\s\S]*?)<\/td>/i',
+            static function (array $m): string {
+                $attrs = $m[1];
+                $inner = $m[2];
+                if (! str_contains($attrs, 'mpdf-ft-cell') && ! str_contains($attrs, 'mpdf-order-sheet-')) {
+                    return $m[0];
+                }
+
+                $align = null;
+                if (preg_match('/\balign="(left|center|right)"/i', $attrs, $am)) {
+                    $align = strtolower($am[1]);
+                } elseif (preg_match('/\bpdf-cell--(?:h-)?(left|center|right)\b/i', $attrs, $cm)) {
+                    $align = strtolower($cm[1]);
+                }
+                if ($align === null) {
+                    return $m[0];
+                }
+
+                $attrs = self::mergeStyleDeclaration($attrs, 'text-align:' . $align . ' !important');
+                $inner = self::propagateTextAlignToFooterPieces($inner, $align);
+
+                return '<td' . $attrs . '>' . $inner . '</td>';
+            },
+            $html,
+        ) ?? $html;
+    }
+
+    private static function mergeStyleDeclaration(string $attrs, string $declaration): string
+    {
+        if (! preg_match('/\bstyle=(["\'])([^"\']*)\1/i', $attrs, $sm)) {
+            return $attrs . ' style="' . $declaration . '"';
+        }
+
+        $style = MpdfFontMapper::decodeAttrValue($sm[2]);
+        $style = preg_replace('/\btext-align\s*:\s*[^;]+;?/i', '', $style) ?? $style;
+        $style = trim($style, " \t\n\r\0\x0B;");
+        $style = $style === '' ? $declaration : ($style . ';' . $declaration);
+
+        $newStyle = ' style="' . htmlspecialchars($style, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') . '"';
+
+        return preg_replace('/\bstyle=(["\'])[^"\']*\1/i', $newStyle, $attrs, 1) ?? $attrs;
+    }
+
+    private static function propagateTextAlignToFooterPieces(string $inner, string $align): string
+    {
+        return preg_replace_callback(
+            '/\bstyle=(["\'])([^"\']*)\1/i',
+            static function (array $sm) use ($align): string {
+                $style = MpdfFontMapper::decodeAttrValue($sm[2]);
+                if (! str_contains($style, 'text-align')) {
+                    $style = trim($style, " \t\n\r\0\x0B;");
+                    $style = $style === ''
+                        ? ('text-align:' . $align . ' !important')
+                        : ($style . ';text-align:' . $align . ' !important');
+                }
+
+                return ' style="' . htmlspecialchars($style, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') . '"';
+            },
+            $inner,
+        ) ?? $inner;
+    }
+
+    /**
+     * Normaliza estilos inline tras insertar banda Paciente/Orden u otros fragmentos.
+     */
+    public static function finalizeSetHtmlFooterFragment(string $html): string
+    {
+        $html = HtmlMpdfAdapter::adaptFooterForMpdf($html);
+
+        return self::materializeFooterCellAlignments($html);
+    }
+
+    /**
      * Garantiza que la etiqueta &lt;table class="mpdf-ft-table"&gt; esté bien cerrada.
      */
     private static function ensureWellFormedFooterTable(string $html): string

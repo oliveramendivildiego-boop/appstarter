@@ -7,7 +7,7 @@ namespace App\Libraries\Pdf;
  */
 class HtmlMpdfAdapter
 {
-    public const CACHE_REVISION = 'mpdf-native-v108';
+    public const CACHE_REVISION = 'mpdf-native-v110';
 
     private const TOTAL_PAGES_TOKEN = '__PDF_TOTAL_PAGES__';
 
@@ -534,7 +534,8 @@ body.pdf-engine-mpdf .report-lab-firma-grupo-inline {
     public static function adaptFooterForMpdf(string $footerHtml): string
     {
         $footerHtml = self::replacePaginationTokens($footerHtml);
-        $footerHtml = MpdfFontMapper::sanitizeFooterFragmentHtml($footerHtml);
+        $footerHtml = MpdfFontMapper::normalizeInlineStylesInHtml($footerHtml);
+        $footerHtml = MpdfFontMapper::normalizeClassAttrsInHtml($footerHtml);
 
         return $footerHtml;
     }

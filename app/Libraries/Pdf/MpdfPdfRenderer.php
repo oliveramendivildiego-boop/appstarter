@@ -52,17 +52,37 @@ class MpdfPdfRenderer implements PdfRendererInterface
         $html = MpdfFooterExtractor::purgeFooterBlocksFromBody($html);
         $html = MpdfInlineImageResolver::materializeDataUriImages($html);
 
-        $footerHtml = null;
+        $footerHtml     = null;
+        $footerPageOne  = null;
+        $footerRest     = null;
+        $useDualFooters = false;
 
         if ($footerInner !== null && $footerInner !== '') {
-            $footerHtml = MpdfFooterStyles::wrapForSetHtmlFooter($footerInner, $layout);
+            $footerPageOne = MpdfFooterStyles::wrapForSetHtmlFooter($footerInner, $layout);
+            $footerRest    = $footerPageOne;
+            $useDualFooters = MpdfNamedFooterInjector::shouldUseDualFooters($orderSheetSlot, $footerInner);
 
-            if (MpdfOrderSheetFooterInjector::shouldPrependOrderSheetBand($orderSheetSlot, $footerInner)) {
-                $footerHtml = MpdfOrderSheetFooterInjector::prependOrderSheetRowToFooter(
-                    $footerHtml,
+            if ($useDualFooters && $orderSheetSlot !== null) {
+                $footerRest = MpdfOrderSheetFooterInjector::prependOrderSheetRowToFooter(
+                    $footerPageOne,
                     $orderSheetSlot,
-                    MpdfOrderSheetFooterInjector::countFooterColumns($footerHtml),
+                    MpdfOrderSheetFooterInjector::countFooterColumns($footerPageOne),
                 );
+            } elseif (MpdfOrderSheetFooterInjector::shouldPrependOrderSheetBand($orderSheetSlot, $footerInner)) {
+                $footerHtml = MpdfOrderSheetFooterInjector::prependOrderSheetRowToFooter(
+                    $footerPageOne,
+                    $orderSheetSlot,
+                    MpdfOrderSheetFooterInjector::countFooterColumns($footerPageOne),
+                );
+            } else {
+                $footerHtml = $footerPageOne;
+            }
+
+            if ($useDualFooters) {
+                $footerPageOne = MpdfFooterStyles::finalizeSetHtmlFooterFragment($footerPageOne);
+                $footerRest    = MpdfFooterStyles::finalizeSetHtmlFooterFragment($footerRest);
+            } else {
+                $footerHtml = MpdfFooterStyles::finalizeSetHtmlFooterFragment((string) $footerHtml);
             }
         }
 
@@ -71,6 +91,10 @@ class MpdfPdfRenderer implements PdfRendererInterface
             ? MpdfFooterStyles::resolveLayoutMetrics($layout)
 
             : MpdfLayoutMetrics::fromHtml($html);
+
+        if ($useDualFooters) {
+            $html = MpdfNamedFooterInjector::injectPageCss($html, (float) ($metrics['bottom'] ?? 15));
+        }
 
         $mpdf = $this->createMpdf($options, $metrics);
 
@@ -84,7 +108,9 @@ class MpdfPdfRenderer implements PdfRendererInterface
 
 
 
-        if ($footerHtml !== null && $footerHtml !== '') {
+        if ($useDualFooters && $footerPageOne !== null && $footerRest !== null) {
+            MpdfNamedFooterInjector::registerFooters($mpdf, $footerPageOne, $footerRest);
+        } elseif ($footerHtml !== null && $footerHtml !== '') {
 
             $mpdf->SetHTMLFooter($footerHtml);
 
