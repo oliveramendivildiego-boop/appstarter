@@ -116,15 +116,15 @@
     box-sizing: border-box;
     width: 100%;
     margin: 0 !important;
-    font-family: var(--pdf-results-font-family, "DejaVu Sans"), sans-serif !important;
-    font-size: var(--pdf-results-font-size, 9pt) !important;
-    font-weight: var(--pdf-results-font-weight, normal) !important;
-    font-style: var(--pdf-results-font-style, normal) !important;
-    text-transform: var(--pdf-results-transform, none) !important;
+    font-family: var(--pdf-grupo-cabecera-header-font-family, var(--pdf-results-font-family, "DejaVu Sans")), sans-serif !important;
+    font-size: var(--pdf-grupo-cabecera-header-font-size, var(--pdf-results-font-size, 9pt)) !important;
+    font-weight: var(--pdf-grupo-cabecera-header-font-weight, var(--pdf-results-font-weight, normal)) !important;
+    font-style: var(--pdf-grupo-cabecera-header-font-style, var(--pdf-results-font-style, normal)) !important;
+    text-transform: var(--pdf-grupo-cabecera-header-transform, var(--pdf-results-transform, none)) !important;
     letter-spacing: var(--pdf-results-letter-spacing, 0em) !important;
     line-height: var(--pdf-results-line-height, 1.35) !important;
     text-shadow: var(--pdf-results-text-shadow, none) !important;
-    color: var(--pdf-results-body-color, #333333) !important;
+    color: var(--pdf-grupo-cabecera-header-color, var(--pdf-results-body-color, #333333)) !important;
 }
 
 .ynex-theme #pdf_results_live_preview_scope .report-pdf-grupo-cabecera .group-title,

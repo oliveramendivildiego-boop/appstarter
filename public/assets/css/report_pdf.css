@@ -651,6 +651,16 @@ table.results td {
     color: var(--pdf-grupo-cabecera-title-color, var(--pdf-results-body-color, #333));
     text-shadow: var(--pdf-grupo-cabecera-title-text-shadow, none);
 }
+.pdf-rs-block .report-pdf-grupo-cabecera .report-tipo-muestra,
+.pdf-rs-block .report-pdf-grupo-cabecera .report-metodo-prueba {
+    font-family: var(--pdf-grupo-cabecera-header-font-family, var(--pdf-results-font-family, "DejaVu Sans")), sans-serif;
+    font-size: var(--pdf-grupo-cabecera-header-font-size, var(--pdf-results-font-size, 9pt));
+    font-weight: var(--pdf-grupo-cabecera-header-font-weight, var(--pdf-results-font-weight, normal));
+    font-style: var(--pdf-grupo-cabecera-header-font-style, var(--pdf-results-font-style, normal));
+    text-transform: var(--pdf-grupo-cabecera-header-transform, var(--pdf-results-transform, none));
+    line-height: var(--pdf-results-line-height, 1.35);
+    color: var(--pdf-grupo-cabecera-header-color, var(--pdf-results-body-color, #333));
+}
 /* Mayor especificidad que table.results td (dompdf respeta estas clases en columnas de resultados) */
 table.results th.text-left,
 table.results td.text-left {

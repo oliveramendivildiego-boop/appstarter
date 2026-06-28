@@ -78,6 +78,7 @@ $chCardBg = ! empty($ch['bg_transparent']) ? 'transparent' : (string) $ch['bg_co
 $rs = \App\Services\ReportPdfLayoutService::normalizeResultsTableStyle($ps['results_table'] ?? []);
 $rsRaw = is_array($ps['results_table'] ?? null) ? $ps['results_table'] : [];
 $titleTypo = \App\Services\ReportPdfLayoutService::resolveGrupoCabeceraTitleTypography($rs, $rsRaw);
+$headerTypo = \App\Services\ReportPdfLayoutService::resolveGrupoCabeceraHeaderTypography($rs, $rsRaw);
 $titleTextShadowMap = [
     'none'   => 'none',
     'soft'   => '0.4px 0.4px 1px rgba(0,0,0,0.28)',
@@ -499,6 +500,12 @@ body.<?= $pdfBodyClass ?> .pdf-ft-block .pdf-ft-pagination-num::before {
     --pdf-grupo-cabecera-title-color: <?= esc($titleTypo['text_color']) ?>;
     --pdf-grupo-cabecera-title-text-shadow: <?= esc($titleTextShadow) ?>;
     --pdf-grupo-cabecera-title-first-margin-top: <?= (int) ($rs['grupo_prueba_gap_px'] ?? 10) ?>px;
+    --pdf-grupo-cabecera-header-font-family: "<?= esc($headerTypo['font_family']) ?>";
+    --pdf-grupo-cabecera-header-font-size: <?= esc((string) $headerTypo['font_size_pt']) ?>pt;
+    --pdf-grupo-cabecera-header-font-weight: <?= esc($headerTypo['font_weight']) ?>;
+    --pdf-grupo-cabecera-header-font-style: <?= esc($headerTypo['font_style']) ?>;
+    --pdf-grupo-cabecera-header-transform: <?= esc($headerTypo['text_transform']) ?>;
+    --pdf-grupo-cabecera-header-color: <?= esc($headerTypo['text_color']) ?>;
     --pdf-grupo-cabecera-tipo-margin-top: <?= (int) ($rs['grupo_cabecera_tipo_muestra_margin_top_px'] ?? 0) ?>px;
     --pdf-grupo-cabecera-tipo-margin-bottom: <?= (int) ($rs['grupo_cabecera_tipo_muestra_margin_bottom_px'] ?? 10) ?>px;
     --pdf-grupo-cabecera-metodo-margin-top: <?= (int) ($rs['grupo_cabecera_metodo_margin_top_px'] ?? 0) ?>px;
@@ -582,15 +589,15 @@ table.results td {
 }
 .report-pdf-grupo-cabecera .report-tipo-muestra,
 .report-pdf-grupo-cabecera .report-metodo-prueba {
-    font-family: "<?= esc($rs['font_family']) ?>", sans-serif !important;
-    font-size: <?= esc((string) $rs['font_size_pt']) ?>pt !important;
-    font-weight: <?= esc($rs['font_weight']) ?> !important;
-    font-style: <?= esc($rs['font_style']) ?> !important;
-    text-transform: <?= esc($rs['text_transform']) ?> !important;
+    font-family: var(--pdf-grupo-cabecera-header-font-family, "<?= esc($rs['font_family']) ?>"), sans-serif !important;
+    font-size: var(--pdf-grupo-cabecera-header-font-size, <?= esc((string) $rs['font_size_pt']) ?>pt) !important;
+    font-weight: var(--pdf-grupo-cabecera-header-font-weight, <?= esc($rs['font_weight']) ?>) !important;
+    font-style: var(--pdf-grupo-cabecera-header-font-style, <?= esc($rs['font_style']) ?>) !important;
+    text-transform: var(--pdf-grupo-cabecera-header-transform, <?= esc($rs['text_transform']) ?>) !important;
     letter-spacing: <?= esc((string) ($rs['letter_spacing_em'] ?? 0)) ?>em !important;
     line-height: <?= esc((string) $rs['line_height']) ?> !important;
     text-shadow: <?= esc($rsTextShadow) ?> !important;
-    color: <?= esc($rs['body_text_color']) ?> !important;
+    color: var(--pdf-grupo-cabecera-header-color, <?= esc($rs['body_text_color']) ?>) !important;
 }
 .report-pdf-grupo-cabecera-table td {
     padding: 0 !important;

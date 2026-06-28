@@ -66,6 +66,7 @@ $segFontFamily = array_key_exists('segment_font_family', $rsRaw) ? (string) $rs[
 $segFontSize = array_key_exists('segment_font_size_pt', $rsRaw) ? (float) $rs['segment_font_size_pt'] : (float) $ch['font_size_pt'];
 $segFontWeight = array_key_exists('segment_font_weight', $rsRaw) ? (string) $rs['segment_font_weight'] : (string) $ch['font_weight'];
 $titleTypo = \App\Services\ReportPdfLayoutService::resolveGrupoCabeceraTitleTypography($rs, $rsRaw);
+$headerTypo = \App\Services\ReportPdfLayoutService::resolveGrupoCabeceraHeaderTypography($rs, $rsRaw);
 $hs = \App\Services\ReportPdfLayoutService::normalizeHeaderSectionStyle($ps['header_section'] ?? []);
 $hg = \App\Services\ReportPdfLayoutService::normalizeHeaderGridStyle($ps['header_grid'] ?? []);
 $pd = \App\Services\ReportPdfLayoutService::normalizePatientDoctorGridStyle($ps['patient_doctor_grid'] ?? []);
@@ -945,6 +946,14 @@ if (! in_array($configTab, $pdfConfigTabs, true)) {
                                     <label class="form-check-label small" for="rs_grupo_cabecera_show_metodo">Mostrar método</label>
                                 </div>
                             </div>
+                            <div class="col-12"><hr class="my-1 text-muted opacity-25"></div>
+                            <div class="col-12"><p class="small text-muted mb-0">Tipografía de <strong>tipo de muestra</strong> y <strong>método</strong> (se refleja en vista previa, reporte web y PDF).</p></div>
+                            <div class="col-6 col-md-3"><label class="form-label small" for="rs_grupo_cabecera_header_text_color">Color texto header</label><input type="color" class="form-control form-control-color" id="rs_grupo_cabecera_header_text_color" value="<?= esc($headerTypo['text_color'] ?? '#333333', 'attr') ?>"></div>
+                            <div class="col-12 col-md-3"><label class="form-label small" for="rs_grupo_cabecera_header_font_family">Fuente header</label><select class="form-select" id="rs_grupo_cabecera_header_font_family"><?php foreach (['DejaVu Sans', 'Helvetica', 'Arial', 'Times New Roman', 'Courier New'] as $ff): ?><option value="<?= esc($ff, 'attr') ?>" <?= ($headerTypo['font_family'] ?? '') === $ff ? 'selected' : '' ?>><?= esc($ff) ?></option><?php endforeach; ?></select></div>
+                            <div class="col-6 col-md-2"><label class="form-label small" for="rs_grupo_cabecera_header_font_size">Tamaño header (pt)</label><input type="number" class="form-control" id="rs_grupo_cabecera_header_font_size" min="7" max="20" step="0.5" value="<?= esc((string) ($headerTypo['font_size_pt'] ?? 9), 'attr') ?>"></div>
+                            <div class="col-6 col-md-2"><label class="form-label small" for="rs_grupo_cabecera_header_font_weight">Grosor header</label><select class="form-select" id="rs_grupo_cabecera_header_font_weight"><?php foreach (['normal', 'bold', '400', '500', '600', '700', '800'] as $w): ?><option value="<?= esc($w, 'attr') ?>" <?= ($headerTypo['font_weight'] ?? '') === $w ? 'selected' : '' ?>><?= esc($w) ?></option><?php endforeach; ?></select></div>
+                            <div class="col-6 col-md-2"><label class="form-label small" for="rs_grupo_cabecera_header_font_style">Estilo header</label><select class="form-select" id="rs_grupo_cabecera_header_font_style"><?php foreach (['normal', 'italic', 'oblique'] as $st): ?><option value="<?= esc($st, 'attr') ?>" <?= ($headerTypo['font_style'] ?? '') === $st ? 'selected' : '' ?>><?= esc(ucfirst($st)) ?></option><?php endforeach; ?></select></div>
+                            <div class="col-6 col-md-3"><label class="form-label small" for="rs_grupo_cabecera_header_text_transform">Transformación header</label><select class="form-select" id="rs_grupo_cabecera_header_text_transform"><?php foreach (['none' => 'Normal', 'uppercase' => 'MAYÚSCULAS', 'lowercase' => 'minúsculas', 'capitalize' => 'Tipo Título'] as $k => $v): ?><option value="<?= esc($k, 'attr') ?>" <?= ($headerTypo['text_transform'] ?? '') === $k ? 'selected' : '' ?>><?= esc($v) ?></option><?php endforeach; ?></select></div>
                         </div>
                     </div>
                 </div>
@@ -4809,6 +4818,12 @@ document.addEventListener('DOMContentLoaded', function() {
                 grupo_cabecera_title_mode: pickAllowedDomId('rs_grupo_cabecera_title_mode', 'grupo_cabecera_title_modes', 'grupo_analisis'),
                 grupo_cabecera_show_tipo_muestra: !!(document.getElementById('rs_grupo_cabecera_show_tipo_muestra') && document.getElementById('rs_grupo_cabecera_show_tipo_muestra').checked),
                 grupo_cabecera_show_metodo: !!(document.getElementById('rs_grupo_cabecera_show_metodo') && document.getElementById('rs_grupo_cabecera_show_metodo').checked),
+                grupo_cabecera_header_text_color: pickHex('rs_grupo_cabecera_header_text_color', '#333333'),
+                grupo_cabecera_header_font_family: pickAllowedDomId('rs_grupo_cabecera_header_font_family', 'font_families', 'DejaVu Sans'),
+                grupo_cabecera_header_font_size_pt: pickNum('rs_grupo_cabecera_header_font_size', 7, 20, 9),
+                grupo_cabecera_header_font_weight: pickAllowedDomId('rs_grupo_cabecera_header_font_weight', 'font_weights', 'normal'),
+                grupo_cabecera_header_font_style: pickAllowedDomId('rs_grupo_cabecera_header_font_style', 'font_styles', 'normal'),
+                grupo_cabecera_header_text_transform: pickAllowedDomId('rs_grupo_cabecera_header_text_transform', 'text_transforms', 'none'),
                 grupo_cabecera_title_margin_top_px: Math.round(pickNum('rs_grupo_cabecera_title_margin_top_px', 0, 40, 0)),
                 grupo_cabecera_title_margin_bottom_px: Math.round(pickNum('rs_grupo_cabecera_title_margin_bottom_px', 0, 40, 6)),
                 grupo_cabecera_title_font_family: pickAllowedDomId('rs_grupo_cabecera_title_font_family', 'font_families', 'DejaVu Sans'),
@@ -4900,6 +4915,12 @@ document.addEventListener('DOMContentLoaded', function() {
             '--pdf-grupo-cabecera-title-font-weight': rs.grupo_cabecera_title_font_weight || rs.font_weight || 'normal',
             '--pdf-grupo-cabecera-title-color': rs.grupo_cabecera_title_text_color || rs.body_text_color || '#333333',
             '--pdf-grupo-cabecera-title-text-shadow': PDF_TEXT_SHADOW_MAP[rs.grupo_cabecera_title_text_shadow || 'none'] || 'none',
+            '--pdf-grupo-cabecera-header-font-family': '"' + (rs.grupo_cabecera_header_font_family || rs.font_family || 'DejaVu Sans') + '"',
+            '--pdf-grupo-cabecera-header-font-size': (rs.grupo_cabecera_header_font_size_pt || rs.font_size_pt || 9) + 'pt',
+            '--pdf-grupo-cabecera-header-font-weight': rs.grupo_cabecera_header_font_weight || rs.font_weight || 'normal',
+            '--pdf-grupo-cabecera-header-font-style': rs.grupo_cabecera_header_font_style || rs.font_style || 'normal',
+            '--pdf-grupo-cabecera-header-transform': rs.grupo_cabecera_header_text_transform || rs.text_transform || 'none',
+            '--pdf-grupo-cabecera-header-color': rs.grupo_cabecera_header_text_color || rs.body_text_color || '#333333',
             '--pdf-grupo-cabecera-tipo-margin-top': (parseInt(rs.grupo_cabecera_tipo_muestra_margin_top_px, 10) || 0) + 'px',
             '--pdf-grupo-cabecera-tipo-margin-bottom': (parseInt(rs.grupo_cabecera_tipo_muestra_margin_bottom_px, 10) || 10) + 'px',
             '--pdf-grupo-cabecera-metodo-margin-top': (parseInt(rs.grupo_cabecera_metodo_margin_top_px, 10) || 0) + 'px',
@@ -4990,11 +5011,23 @@ document.addEventListener('DOMContentLoaded', function() {
         lines.push('}');
         lines.push(scope + ' .report-pdf-grupo-cabecera .report-tipo-muestra, ' + scope + ' .report-pdf-grupo-cabecera-line--tipo, ' + scope + ' #pdf_preview_tipo_muestra {');
         lines.push('  margin: 0 !important;');
+        lines.push('  font-family: "' + (rs.grupo_cabecera_header_font_family || rs.font_family || 'DejaVu Sans') + '", sans-serif !important;');
+        lines.push('  font-size: ' + (rs.grupo_cabecera_header_font_size_pt || rs.font_size_pt || 9) + 'pt !important;');
+        lines.push('  font-weight: ' + (rs.grupo_cabecera_header_font_weight || rs.font_weight || 'normal') + ' !important;');
+        lines.push('  font-style: ' + (rs.grupo_cabecera_header_font_style || rs.font_style || 'normal') + ' !important;');
+        lines.push('  text-transform: ' + (rs.grupo_cabecera_header_text_transform || rs.text_transform || 'none') + ' !important;');
+        lines.push('  color: ' + previewColorFromInput('rs_grupo_cabecera_header_text_color', rs.grupo_cabecera_header_text_color || rs.body_text_color || '#333333') + ' !important;');
         lines.push('  padding-top: ' + cabSpacing.tipoTop + 'px !important;');
         lines.push('  padding-bottom: ' + cabSpacing.tipoBottom + 'px !important;');
         lines.push('}');
         lines.push(scope + ' .report-pdf-grupo-cabecera .report-metodo-prueba, ' + scope + ' .report-pdf-grupo-cabecera-line--metodo, ' + scope + ' #pdf_preview_metodo {');
         lines.push('  margin: 0 !important;');
+        lines.push('  font-family: "' + (rs.grupo_cabecera_header_font_family || rs.font_family || 'DejaVu Sans') + '", sans-serif !important;');
+        lines.push('  font-size: ' + (rs.grupo_cabecera_header_font_size_pt || rs.font_size_pt || 9) + 'pt !important;');
+        lines.push('  font-weight: ' + (rs.grupo_cabecera_header_font_weight || rs.font_weight || 'normal') + ' !important;');
+        lines.push('  font-style: ' + (rs.grupo_cabecera_header_font_style || rs.font_style || 'normal') + ' !important;');
+        lines.push('  text-transform: ' + (rs.grupo_cabecera_header_text_transform || rs.text_transform || 'none') + ' !important;');
+        lines.push('  color: ' + previewColorFromInput('rs_grupo_cabecera_header_text_color', rs.grupo_cabecera_header_text_color || rs.body_text_color || '#333333') + ' !important;');
         lines.push('  padding-top: ' + cabSpacing.metodoTop + 'px !important;');
         lines.push('  padding-bottom: ' + cabSpacing.metodoBottom + 'px !important;');
         lines.push('}');
@@ -5449,6 +5482,12 @@ document.addEventListener('DOMContentLoaded', function() {
         pushIfBadSelect('rs_grupo_cabecera_title_font_weight', fw, 'Grosor no permitido en el nombre del análisis.');
         pushIfBadHex('rs_grupo_cabecera_title_text_color', 'Color inválido en el nombre del análisis.');
         pushIfBadSelect('rs_grupo_cabecera_title_text_shadow', sh, 'Sombra no permitida en el nombre del análisis.');
+        pushIfBadHex('rs_grupo_cabecera_header_text_color', 'Color inválido en tipo de muestra y método.');
+        pushIfBadSelect('rs_grupo_cabecera_header_font_family', ff, 'Fuente no permitida en tipo de muestra y método.');
+        pushIfBadNum('rs_grupo_cabecera_header_font_size', 7, 20, 'Tamaño en tipo de muestra y método: entre 7 y 20 pt.');
+        pushIfBadSelect('rs_grupo_cabecera_header_font_weight', fw, 'Grosor no permitido en tipo de muestra y método.');
+        pushIfBadSelect('rs_grupo_cabecera_header_font_style', fst, 'Estilo no permitido en tipo de muestra y método.');
+        pushIfBadSelect('rs_grupo_cabecera_header_text_transform', tt, 'Transformación no permitida en tipo de muestra y método.');
         pushIfBadNum('rs_grupo_cabecera_tipo_muestra_margin_top_px', 0, 40, 'Espacio arriba del tipo de muestra: entre 0 y 40 px.');
         pushIfBadNum('rs_grupo_cabecera_tipo_muestra_margin_bottom_px', 0, 40, 'Espacio abajo del tipo de muestra: entre 0 y 40 px.');
         pushIfBadNum('rs_grupo_cabecera_metodo_margin_top_px', 0, 40, 'Espacio arriba del método: entre 0 y 40 px.');

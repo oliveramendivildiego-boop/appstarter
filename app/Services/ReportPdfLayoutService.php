@@ -247,6 +247,12 @@ class ReportPdfLayoutService
         'grupo_cabecera_title_mode'        => 'grupo_analisis',
         'grupo_cabecera_show_tipo_muestra' => true,
         'grupo_cabecera_show_metodo'       => true,
+        'grupo_cabecera_header_text_color'       => '#333333',
+        'grupo_cabecera_header_font_family'      => 'DejaVu Sans',
+        'grupo_cabecera_header_font_size_pt'     => 9.0,
+        'grupo_cabecera_header_font_weight'      => 'normal',
+        'grupo_cabecera_header_font_style'       => 'normal',
+        'grupo_cabecera_header_text_transform'   => 'none',
         'grupo_cabecera_title_margin_top_px'    => 0,
         'grupo_cabecera_title_margin_bottom_px' => 6,
         'grupo_cabecera_title_font_family'      => 'DejaVu Sans',
@@ -2556,6 +2562,30 @@ class ReportPdfLayoutService
         if (isset($raw['grupo_cabecera_title_text_shadow']) && ! in_array(strtolower(trim((string) $raw['grupo_cabecera_title_text_shadow'])), self::ALLOWED_PDF_TEXT_SHADOWS, true)) {
             return 'Sombra de texto no permitida en el nombre del análisis.';
         }
+        if (isset($raw['grupo_cabecera_header_text_color']) && ! self::isValidPdfHexColor((string) $raw['grupo_cabecera_header_text_color'])) {
+            return 'Color de texto inválido en tipo de muestra y método (#RRGGBB).';
+        }
+        if (isset($raw['grupo_cabecera_header_font_family']) && ! in_array((string) $raw['grupo_cabecera_header_font_family'], self::ALLOWED_PDF_FONT_FAMILIES, true)) {
+            return 'Familia de fuente no permitida en tipo de muestra y método.';
+        }
+        if (array_key_exists('grupo_cabecera_header_font_size_pt', $raw)) {
+            if (! is_numeric($raw['grupo_cabecera_header_font_size_pt'])) {
+                return 'Tamaño de fuente inválido en tipo de muestra y método.';
+            }
+            $hfs = (float) $raw['grupo_cabecera_header_font_size_pt'];
+            if ($hfs < 7.0 || $hfs > 20.0) {
+                return 'El tamaño de fuente en tipo de muestra y método debe estar entre 7 y 20 pt.';
+            }
+        }
+        if (isset($raw['grupo_cabecera_header_font_weight']) && ! in_array(strtolower(trim((string) $raw['grupo_cabecera_header_font_weight'])), self::ALLOWED_PDF_FONT_WEIGHTS, true)) {
+            return 'Grosor de fuente no permitido en tipo de muestra y método.';
+        }
+        if (isset($raw['grupo_cabecera_header_font_style']) && ! in_array(strtolower(trim((string) $raw['grupo_cabecera_header_font_style'])), self::ALLOWED_PDF_FONT_STYLES, true)) {
+            return 'Estilo de fuente no permitido en tipo de muestra y método.';
+        }
+        if (isset($raw['grupo_cabecera_header_text_transform']) && ! in_array(strtolower(trim((string) $raw['grupo_cabecera_header_text_transform'])), self::ALLOWED_PDF_TEXT_TRANSFORMS, true)) {
+            return 'Transformación de texto no permitida en tipo de muestra y método.';
+        }
 
         return null;
     }
@@ -4489,15 +4519,15 @@ class ReportPdfLayoutService
             $scope . ' .report-pdf-grupo-cabecera-line--metodo,',
             $scope . ' .report-pdf-grupo-cabecera .report-tipo-muestra,',
             $scope . ' .report-pdf-grupo-cabecera .report-metodo-prueba {',
-            '    font-family:' . $fontFamily . ' !important;',
-            '    font-size:' . $esc((string) $rs['font_size_pt']) . 'pt !important;',
-            '    font-weight:' . $esc((string) $rs['font_weight']) . ' !important;',
-            '    font-style:' . $esc((string) $rs['font_style']) . ' !important;',
-            '    text-transform:' . $esc((string) $rs['text_transform']) . ' !important;',
+            '    font-family:' . self::fontFamilyForInlineCssAttr((string) ($rs['grupo_cabecera_header_font_family'] ?? $rs['font_family'])) . ' !important;',
+            '    font-size:' . $esc((string) ($rs['grupo_cabecera_header_font_size_pt'] ?? $rs['font_size_pt'])) . 'pt !important;',
+            '    font-weight:' . $esc((string) ($rs['grupo_cabecera_header_font_weight'] ?? $rs['font_weight'])) . ' !important;',
+            '    font-style:' . $esc((string) ($rs['grupo_cabecera_header_font_style'] ?? $rs['font_style'])) . ' !important;',
+            '    text-transform:' . $esc((string) ($rs['grupo_cabecera_header_text_transform'] ?? $rs['text_transform'])) . ' !important;',
             '    letter-spacing:' . $esc((string) ($rs['letter_spacing_em'] ?? 0)) . 'em !important;',
             '    line-height:' . $esc((string) $rs['line_height']) . ' !important;',
             '    text-shadow:' . $esc($textShadow) . ' !important;',
-            '    color:' . $esc((string) $rs['body_text_color']) . ' !important;',
+            '    color:' . $esc((string) ($rs['grupo_cabecera_header_text_color'] ?? $rs['body_text_color'])) . ' !important;',
             '}',
             $scope . ' .report-pdf-grupo-cabecera-line--tipo,',
             $scope . ' .report-pdf-grupo-cabecera .report-tipo-muestra {',
@@ -4749,6 +4779,45 @@ class ReportPdfLayoutService
     }
 
     /**
+     * Tipografía efectiva de tipo de muestra y método (.report-tipo-muestra / .report-metodo-prueba).
+     * Si la plantilla no define campos propios, hereda la tipografía del cuerpo de la tabla.
+     *
+     * @param array<string, mixed> $rs normalizeResultsTableStyle()
+     * @param array<string, mixed> $rsRaw page_style.results_table sin normalizar
+     *
+     * @return array{font_family: string, font_size_pt: float, font_weight: string, font_style: string, text_transform: string, text_color: string}
+     */
+    public static function resolveGrupoCabeceraHeaderTypography(array $rs, array $rsRaw = []): array
+    {
+        $pick = static function (string $key, $fallback) use ($rs, $rsRaw) {
+            return array_key_exists($key, $rsRaw) ? $rs[$key] : $fallback;
+        };
+
+        return [
+            'font_family'    => (string) $pick('grupo_cabecera_header_font_family', $rs['font_family']),
+            'font_size_pt'   => (float) $pick('grupo_cabecera_header_font_size_pt', $rs['font_size_pt']),
+            'font_weight'    => (string) $pick('grupo_cabecera_header_font_weight', $rs['font_weight']),
+            'font_style'     => (string) $pick('grupo_cabecera_header_font_style', $rs['font_style']),
+            'text_transform' => (string) $pick('grupo_cabecera_header_text_transform', $rs['text_transform']),
+            'text_color'     => (string) $pick('grupo_cabecera_header_text_color', $rs['body_text_color']),
+        ];
+    }
+
+    /**
+     * @param array{font_family: string, font_size_pt: float, font_weight: string, font_style: string, text_transform: string, text_color: string} $typo
+     */
+    public static function grupoCabeceraHeaderTypographyCss(array $typo): string
+    {
+        return 'font-family:' . self::fontFamilyForInlineCssAttr((string) $typo['font_family'])
+            . ' !important'
+            . ';font-size:' . $typo['font_size_pt'] . 'pt !important'
+            . ';font-weight:' . $typo['font_weight'] . ' !important'
+            . ';font-style:' . $typo['font_style'] . ' !important'
+            . ';text-transform:' . $typo['text_transform'] . ' !important'
+            . ';color:' . $typo['text_color'] . ' !important;';
+    }
+
+    /**
      * @param array{font_family: string, font_size_pt: float, font_weight: string, text_color: string, text_shadow: string} $typo
      */
     public static function grupoCabeceraTitleTypographyCss(array $typo): string
@@ -4783,6 +4852,18 @@ class ReportPdfLayoutService
     }
 
     /**
+     * @param array<string, mixed> $layout
+     */
+    public static function grupoCabeceraHeaderTypographyStyleAttr(array $layout): string
+    {
+        $ps = is_array($layout['page_style'] ?? null) ? $layout['page_style'] : [];
+        $rsRaw = is_array($ps['results_table'] ?? null) ? $ps['results_table'] : [];
+        $rs = self::normalizeResultsTableStyle($rsRaw);
+
+        return self::grupoCabeceraHeaderTypographyCss(self::resolveGrupoCabeceraHeaderTypography($rs, $rsRaw));
+    }
+
+    /**
      * Estilo inline mínimo de cabecera de resultados con mPDF (tipografía/espaciado vía buildResultsTableParityCss).
      */
     public static function mpdfResultsCabeceraCompatInlineStyleAttr(): string
@@ -4814,7 +4895,7 @@ class ReportPdfLayoutService
         );
         $typography = $line === 'title'
             ? self::grupoCabeceraTitleTypographyStyleAttr($layout)
-            : self::resultsTableBodyTypographyStyleAttr($layout);
+            : self::grupoCabeceraHeaderTypographyStyleAttr($layout);
 
         return $typography . self::grupoCabeceraVerticalSpacingStyleAttr($pad['top'], $pad['bottom']);
     }
@@ -5977,6 +6058,24 @@ class ReportPdfLayoutService
             'grupo_cabecera_title_text_shadow'      => (static function () use ($s, $def): string {
                 $sh = strtolower(trim((string) ($s['grupo_cabecera_title_text_shadow'] ?? $def['grupo_cabecera_title_text_shadow'])));
                 return in_array($sh, self::ALLOWED_PDF_TEXT_SHADOWS, true) ? $sh : (string) $def['grupo_cabecera_title_text_shadow'];
+            })(),
+            'grupo_cabecera_header_text_color' => $pickColor('grupo_cabecera_header_text_color', (string) $def['grupo_cabecera_header_text_color']),
+            'grupo_cabecera_header_font_family' => (static function () use ($s, $def): string {
+                $family = (string) ($s['grupo_cabecera_header_font_family'] ?? $def['grupo_cabecera_header_font_family']);
+                return in_array($family, self::ALLOWED_PDF_FONT_FAMILIES, true) ? $family : (string) $def['grupo_cabecera_header_font_family'];
+            })(),
+            'grupo_cabecera_header_font_size_pt' => round(max(7.0, min(20.0, isset($s['grupo_cabecera_header_font_size_pt']) ? (float) $s['grupo_cabecera_header_font_size_pt'] : (float) $def['grupo_cabecera_header_font_size_pt'])), 2),
+            'grupo_cabecera_header_font_weight' => (static function () use ($s, $def): string {
+                $w = strtolower(trim((string) ($s['grupo_cabecera_header_font_weight'] ?? $def['grupo_cabecera_header_font_weight'])));
+                return in_array($w, self::ALLOWED_PDF_FONT_WEIGHTS, true) ? $w : (string) $def['grupo_cabecera_header_font_weight'];
+            })(),
+            'grupo_cabecera_header_font_style' => (static function () use ($s, $def): string {
+                $st = strtolower(trim((string) ($s['grupo_cabecera_header_font_style'] ?? $def['grupo_cabecera_header_font_style'])));
+                return in_array($st, self::ALLOWED_PDF_FONT_STYLES, true) ? $st : (string) $def['grupo_cabecera_header_font_style'];
+            })(),
+            'grupo_cabecera_header_text_transform' => (static function () use ($s, $def): string {
+                $tt = strtolower(trim((string) ($s['grupo_cabecera_header_text_transform'] ?? $def['grupo_cabecera_header_text_transform'])));
+                return in_array($tt, self::ALLOWED_PDF_TEXT_TRANSFORMS, true) ? $tt : (string) $def['grupo_cabecera_header_text_transform'];
             })(),
             'grupo_cabecera_tipo_muestra_margin_top_px'    => max(0, min(40, isset($s['grupo_cabecera_tipo_muestra_margin_top_px']) ? (int) $s['grupo_cabecera_tipo_muestra_margin_top_px'] : (int) ($def['grupo_cabecera_tipo_muestra_margin_top_px'] ?? 0))),
             'grupo_cabecera_tipo_muestra_margin_bottom_px' => max(0, min(40, isset($s['grupo_cabecera_tipo_muestra_margin_bottom_px']) ? (int) $s['grupo_cabecera_tipo_muestra_margin_bottom_px'] : (int) ($def['grupo_cabecera_tipo_muestra_margin_bottom_px'] ?? 10))),
