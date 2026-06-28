@@ -295,32 +295,30 @@ CSS;
             return $html;
         }
 
-        if (preg_match('/<table\b[^>]*\bmpdf-ft-table\b[^>]*\sstyle=(["\'])([^"\']*)\2/i', $html, $m)) {
-            $style = preg_replace('/\bborder-top\s*:\s*[^;]+;?\s*/i', '', $m[2]) ?? $m[2];
-            $style = trim($style, " \t\n\r\0\x0B;");
-            if ($style !== '') {
-                $style .= ';';
-            }
-            $style .= $border;
-            $replacement = preg_replace(
-                '/\sstyle=(["\'])([^"\']*)\2/i',
-                ' style=' . $m[1] . $style . $m[1],
-                $m[0],
-                1,
-            );
-
-            return is_string($replacement) ? preg_replace(
-                '/<table\b[^>]*\bmpdf-ft-table\b[^>]*>/i',
-                $replacement,
-                $html,
-                1,
-            ) ?? $html : $html;
-        }
-
         return preg_replace_callback(
-            '/(<table\b[^>]*\bmpdf-ft-table\b[^>]*)(>)/i',
+            '/(<table\b[^>]*\bmpdf-ft-table\b)([^>]*)(>)/i',
             static function (array $m) use ($border): string {
-                return $m[1] . ' style="' . htmlspecialchars($border, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') . '"' . $m[2];
+                $attrs = $m[2];
+                if (preg_match('/\sstyle=(["\'])([^"\']*)\1/i', $attrs, $sm)) {
+                    if (preg_match('/\bborder-top\s*:\s*[^;]+/i', $sm[2])) {
+                        return $m[0];
+                    }
+                    $style = trim($sm[2], " \t\n\r\0\x0B;");
+                    if ($style !== '') {
+                        $style .= ';';
+                    }
+                    $style .= $border;
+                    $newAttrs = preg_replace(
+                        '/\sstyle=(["\'])([^"\']*)\1/i',
+                        ' style=' . $sm[1] . $style . $sm[1],
+                        $attrs,
+                        1,
+                    );
+
+                    return $m[1] . (is_string($newAttrs) ? $newAttrs : $attrs) . $m[3];
+                }
+
+                return $m[1] . $attrs . ' style="' . htmlspecialchars($border, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') . '"' . $m[3];
             },
             $html,
             1,

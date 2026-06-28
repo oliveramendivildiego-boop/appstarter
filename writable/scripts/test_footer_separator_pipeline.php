@@ -28,7 +28,8 @@ $wrapped = \App\Libraries\Pdf\MpdfFooterStyles::wrapForSetHtmlFooter($inner, $la
 $css     = \App\Libraries\Pdf\MpdfFooterStyles::buildFooterCssRules($layout);
 
 echo "Has mpdf-ft-top-border: " . (str_contains($wrapped, 'mpdf-ft-top-border') ? 'yes' : 'NO') . PHP_EOL;
-echo "Table still has border-top: " . (preg_match('/mpdf-ft-table[^>]*border-top/i', $wrapped) ? 'YES BAD' : 'no ok') . PHP_EOL;
+echo "Table tag well-formed: " . (preg_match('/<table\b[^>]*\bmpdf-ft-table\b[^>]*>/i', $wrapped) ? 'yes' : 'NO BROKEN') . PHP_EOL;
+echo "Table still has border-top: " . (preg_match('/mpdf-ft-table[^>]*border-top/i', $wrapped) ? 'yes' : 'no') . PHP_EOL;
 echo "Separator inline color: " . (str_contains($wrapped, '#236149') ? 'yes' : 'NO') . PHP_EOL;
 
 file_put_contents(dirname(__DIR__) . '/debug/ft_wrapped_separator.html', $wrapped);
