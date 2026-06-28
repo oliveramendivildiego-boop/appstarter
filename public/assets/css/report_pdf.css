@@ -524,7 +524,18 @@ body.pdf-dompdf-download .report-pdf-subgrupo-block.report-subgrupo-keep-intact 
 }
 .report-pdf-grupo-area-separator.report-segment-title {
     text-align: center;
-    border-bottom: var(--pdf-results-segment-border-width, 1px) solid var(--pdf-results-segment-border, #ddd);
+    font-family: var(--pdf-grupo-area-separator-font-family, "DejaVu Sans"), sans-serif;
+    font-size: var(--pdf-grupo-area-separator-font-size, 11pt);
+    font-weight: var(--pdf-grupo-area-separator-font-weight, bold);
+    font-style: var(--pdf-grupo-area-separator-font-style, normal);
+    text-transform: var(--pdf-grupo-area-separator-transform, uppercase);
+    color: var(--pdf-grupo-area-separator-text-color, #333333) !important;
+    background: var(--pdf-grupo-area-separator-bg, #e9ecef) !important;
+    border: var(--pdf-grupo-area-separator-border-width, 1px) solid var(--pdf-grupo-area-separator-border, #dddddd);
+    border-bottom: var(--pdf-grupo-area-separator-line-width, 1px) solid var(--pdf-grupo-area-separator-line-color, #dddddd);
+    box-shadow: var(--pdf-grupo-area-separator-shadow, none);
+    padding-top: var(--pdf-grupo-area-separator-margin-top, 10px);
+    padding-bottom: var(--pdf-grupo-area-separator-margin-bottom, 10px);
     page-break-inside: avoid;
     break-inside: avoid-page;
     page-break-after: avoid;
@@ -741,8 +752,8 @@ table.results td.resultado-texto-rico-cell .resultado-texto-rico ol {
 .report-pdf-grupo-cabecera .group-title {
     margin: 0 !important;
 }
-/* Subtítulo de sección (separador) encima de cada tabla de resultados; la fila de cabecera va debajo */
-.report-segment-title:not(.report-pdf-grupo-area-separator) {
+/* Fila separadora de sección (es_separador) encima de cada tabla de resultados */
+.report-segment-title.report-pdf-section-row-title {
     font-family: var(--pdf-results-segment-font-family, "DejaVu Sans"), sans-serif;
     font-weight: var(--pdf-results-segment-font-weight, 700);
     font-size: var(--pdf-results-segment-font-size, 10pt);
@@ -766,11 +777,6 @@ table.results td.resultado-texto-rico-cell .resultado-texto-rico ol {
     font-weight: var(--pdf-card-header-font-weight, 700) !important;
     font-style: var(--pdf-card-header-font-style, normal) !important;
     text-transform: var(--pdf-card-header-transform, uppercase) !important;
-}
-.report-pdf-grupo-area-separator.report-segment-title {
-    color: var(--pdf-grupo-area-separator-text-color, #333333) !important;
-    font-size: var(--pdf-grupo-area-separator-font-size, 11pt) !important;
-    font-weight: var(--pdf-grupo-area-separator-font-weight, bold) !important;
 }
 .pdf-notes-title {
     background: var(--pdf-notes-title-bg, #fff3cd);

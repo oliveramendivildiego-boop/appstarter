@@ -62,8 +62,8 @@
     color: var(--pdf-results-body-color, #333333) !important;
 }
 
-/* Título de sección / segmento — variables en pageStyleToPreviewCssVars */
-.ynex-theme #pdf_results_live_preview_scope .report-segment-title:not(.report-pdf-grupo-area-separator) {
+/* Fila separadora de sección — variables en pageStyleToPreviewCssVars */
+.ynex-theme #pdf_results_live_preview_scope .report-segment-title.report-pdf-section-row-title {
     font-family: var(--pdf-results-segment-font-family, "DejaVu Sans"), sans-serif;
     font-size: var(--pdf-results-segment-font-size, 10pt);
     font-weight: var(--pdf-results-segment-font-weight, 700);
@@ -80,10 +80,16 @@
 
 .ynex-theme #pdf_results_live_preview_scope .report-pdf-grupo-area-separator.report-segment-title {
     text-align: center;
-    color: var(--pdf-grupo-area-separator-text-color, #333333) !important;
+    font-family: var(--pdf-grupo-area-separator-font-family, "DejaVu Sans"), sans-serif;
     font-size: var(--pdf-grupo-area-separator-font-size, 11pt) !important;
     font-weight: var(--pdf-grupo-area-separator-font-weight, bold) !important;
-    border-bottom: var(--pdf-results-segment-border-width, 1px) solid var(--pdf-results-segment-border, #dddddd);
+    font-style: var(--pdf-grupo-area-separator-font-style, normal);
+    text-transform: var(--pdf-grupo-area-separator-transform, uppercase);
+    color: var(--pdf-grupo-area-separator-text-color, #333333) !important;
+    background: var(--pdf-grupo-area-separator-bg, #e9ecef) !important;
+    border: var(--pdf-grupo-area-separator-border-width, 1px) solid var(--pdf-grupo-area-separator-border, #dddddd);
+    border-bottom: var(--pdf-grupo-area-separator-line-width, 1px) solid var(--pdf-grupo-area-separator-line-color, #dddddd);
+    box-shadow: var(--pdf-grupo-area-separator-shadow, none);
     padding-top: var(--pdf-grupo-area-separator-margin-top, 10px);
     padding-bottom: var(--pdf-grupo-area-separator-margin-bottom, 10px);
     margin-top: 0;

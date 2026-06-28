@@ -411,7 +411,7 @@ $mostrarTolerance = $tieneTolerance && ! $tieneHeatmap && in_array(
     <?= $wrapOpen ?>
         <?php if ($titleObj !== null && ! $titleInTailOnly): ?>
             <?php if ($usePdfChrome): ?>
-            <div class="report-segment-title pdf-card-header"><?= esc($titleObj->nombre ?? '') ?></div>
+            <div class="report-segment-title pdf-card-header report-pdf-section-row-title"><?= esc($titleObj->nombre ?? '') ?></div>
             <?php else: ?>
             <div class="report-segment-title-web px-2 py-2 mb-2 bg-secondary bg-opacity-10 border-start border-4 border-secondary rounded-end fw-semibold text-uppercase small"><?= esc($titleObj->nombre ?? '') ?></div>
             <?php endif; ?>
@@ -447,7 +447,7 @@ $mostrarTolerance = $tieneTolerance && ! $tieneHeatmap && in_array(
                     echo $tailWrapOpen;
                     if ($titleInTailOnly): ?>
             <?php if ($usePdfChrome): ?>
-            <div class="report-segment-title pdf-card-header"><?= esc($titleObj->nombre ?? '') ?></div>
+            <div class="report-segment-title pdf-card-header report-pdf-section-row-title"><?= esc($titleObj->nombre ?? '') ?></div>
             <?php else: ?>
             <div class="report-segment-title-web px-2 py-2 mb-2 bg-secondary bg-opacity-10 border-start border-4 border-secondary rounded-end fw-semibold text-uppercase small"><?= esc($titleObj->nombre ?? '') ?></div>
             <?php endif; ?>

@@ -63,6 +63,7 @@ $lf = \App\Services\ReportPdfLayoutService::normalizeLabFirmasStyle($ps['lab_fir
 $rs = \App\Services\ReportPdfLayoutService::normalizeResultsTableStyle($ps['results_table'] ?? []);
 $rsRaw = is_array($ps['results_table'] ?? null) ? $ps['results_table'] : [];
 $segTypo = \App\Services\ReportPdfLayoutService::resolveSegmentTitleTypography($rs, $rsRaw);
+$areaSepStyle = \App\Services\ReportPdfLayoutService::resolveGrupoAreaSeparatorPresentation($rs, $rsRaw);
 $titleTypo = \App\Services\ReportPdfLayoutService::resolveGrupoCabeceraTitleTypography($rs, $rsRaw);
 $headerTypo = \App\Services\ReportPdfLayoutService::resolveGrupoCabeceraHeaderTypography($rs, $rsRaw);
 $hs = \App\Services\ReportPdfLayoutService::normalizeHeaderSectionStyle($ps['header_section'] ?? []);
@@ -245,7 +246,7 @@ if (! in_array($configTab, $pdfConfigTabs, true)) {
         <h5 class="mb-0">Estilo de los títulos de cada análisis</h5>
     </div>
     <div class="card-body">
-        <p class="small text-muted mb-2">El color de la línea separadora del encabezado del reporte se configura aquí. El estilo de la barra de título de cada análisis (p. ej. «GLUCOSA») está en la pestaña <strong>Resultados</strong>, sección <strong>4. Título de cada análisis</strong>.</p>
+        <p class="small text-muted mb-2">El color de la línea separadora del encabezado del reporte se configura aquí. El estilo de la fila separadora de sección (sin valor de resultado) está en la pestaña <strong>Resultados</strong>, sección <strong>5. Título de sección (fila separadora)</strong>. El título del área (p. ej. HEMATOLOGÍA) está en la sección <strong>4</strong>.</p>
         <div class="row g-3">
             <div class="col-6 col-md-3">
                 <label class="form-label small" for="hs_separator_color">Separador de encabezado (línea azul)</label>
@@ -630,7 +631,7 @@ if (! in_array($configTab, $pdfConfigTabs, true)) {
 <div class="card shadow-sm mb-4 pdf-config-panel" data-config-panels="results" id="pdf_results_config_card">
     <div class="card-header bg-info-subtle border">
         <h5 class="mb-1"><i class="fa-solid fa-table me-1"></i> Resultados en el PDF</h5>
-        <p class="small text-muted mb-0">A la derecha verá una <strong>vista previa en tiempo real</strong>. Los colores de la tabla están en la sección <strong>1. Colores de la tabla principal</strong>; el título gris sobre cada análisis en la <strong>4. Título de cada análisis</strong>; el nombre del análisis (p. ej. Hemograma completo) en la <strong>7. Nombre del análisis</strong>.</p>
+        <p class="small text-muted mb-0">A la derecha verá una <strong>vista previa en tiempo real</strong>. Los colores de la tabla están en la sección <strong>1. Colores de la tabla principal</strong>; el título del área en la <strong>4. Título del área</strong>; la fila separadora de sección en la <strong>5. Título de sección (fila separadora)</strong>; el nombre del análisis (p. ej. Hemograma completo) en la <strong>8. Nombre del análisis</strong>.</p>
     </div>
     <div class="card-body">
         <div class="row g-4 align-items-start">
@@ -692,7 +693,7 @@ if (! in_array($configTab, $pdfConfigTabs, true)) {
                 </h2>
                 <div id="pdf_rs_panel_density" class="accordion-collapse collapse" data-bs-parent="#accordion_pdf_results">
                     <div class="accordion-body pt-0">
-                        <p class="small text-muted mb-2">Si las filas se ven muy altas o muy apretadas en el PDF, ajuste el <strong>relleno vertical</strong> (principal) y el interlineado en la sección anterior. El espaciado del nombre de análisis, tipo de muestra y método se configura en la sección <strong>7. Separador de análisis</strong>.</p>
+                        <p class="small text-muted mb-2">Si las filas se ven muy altas o muy apretadas en el PDF, ajuste el <strong>relleno vertical</strong> (principal) y el interlineado en la sección anterior. El espaciado del nombre de análisis, tipo de muestra y método se configura en las secciones <strong>8</strong> y <strong>9</strong>.</p>
                         <div class="row g-3">
             <div class="col-12 col-md-4 col-lg-3">
                 <label class="form-label small" for="rs_cell_padding_v" title="Espacio arriba y abajo en cada celda; controla el alto de la fila">Relleno vertical por fila (px)</label>
@@ -724,13 +725,62 @@ if (! in_array($configTab, $pdfConfigTabs, true)) {
 
             <div class="accordion-item border rounded mb-2 overflow-hidden">
                 <h2 class="accordion-header m-0">
+                    <button class="accordion-button collapsed py-2" type="button" data-bs-toggle="collapse" data-bs-target="#pdf_rs_panel_area_title" aria-expanded="false" aria-controls="pdf_rs_panel_area_title">
+                        <span class="fw-semibold">4. Título del área</span>
+                        <span class="small text-muted ms-2 d-none d-md-inline">Barra «HEMATOLOGÍA» — fuente, fondo y bordes</span>
+                    </button>
+                </h2>
+                <div id="pdf_rs_panel_area_title" class="accordion-collapse collapse" data-bs-parent="#accordion_pdf_results">
+                    <div class="accordion-body pt-0">
+                        <p class="small text-muted mb-3">Aplica a <code>.report-pdf-grupo-area-separator</code> al inicio de cada área. Independiente de la fila separadora de sección (sección 5) y del nombre del análisis clínico (sección 8).</p>
+                        <div class="row g-3">
+                            <div class="col-12">
+                                <div class="form-check mb-1">
+                                    <input class="form-check-input" type="checkbox" id="rs_grupo_area_separator_enabled" <?= ! empty($rs['grupo_area_separator_enabled']) ? 'checked' : '' ?>>
+                                    <label class="form-check-label small" for="rs_grupo_area_separator_enabled">Mostrar separador con nombre del área</label>
+                                </div>
+                            </div>
+                            <div class="col-6 col-md-3"><label class="form-label small" for="rs_grupo_area_separator_bg">Fondo</label><input type="color" class="form-control form-control-color" id="rs_grupo_area_separator_bg" value="<?= esc((string) $areaSepStyle['bg_color'], 'attr') ?>"></div>
+                            <div class="col-12 col-md-3 d-flex align-items-end">
+                                <div class="form-check mb-1">
+                                    <input class="form-check-input" type="checkbox" id="rs_grupo_area_separator_transparent" <?= ! empty($areaSepStyle['bg_transparent']) ? 'checked' : '' ?>>
+                                    <label class="form-check-label small" for="rs_grupo_area_separator_transparent">Fondo transparente</label>
+                                </div>
+                            </div>
+                            <div class="col-6 col-md-3"><label class="form-label small" for="rs_grupo_area_separator_border_color">Color borde caja</label><input type="color" class="form-control form-control-color" id="rs_grupo_area_separator_border_color" value="<?= esc((string) $areaSepStyle['border_color'], 'attr') ?>"></div>
+                            <div class="col-6 col-md-2"><label class="form-label small" for="rs_grupo_area_separator_border_width">Ancho borde caja (px)</label><input type="number" class="form-control" id="rs_grupo_area_separator_border_width" min="0" max="4" step="1" value="<?= esc((string) (int) $areaSepStyle['border_width_px'], 'attr') ?>"></div>
+                            <div class="col-6 col-md-2"><label class="form-label small" for="rs_grupo_area_separator_shadow">Sombra</label><select class="form-select" id="rs_grupo_area_separator_shadow"><?php foreach (['none' => 'Sin sombra', 'soft' => 'Suave', 'medium' => 'Media', 'strong' => 'Fuerte'] as $k => $v): ?><option value="<?= esc($k, 'attr') ?>" <?= ($areaSepStyle['shadow'] ?? 'none') === $k ? 'selected' : '' ?>><?= esc($v) ?></option><?php endforeach; ?></select></div>
+                            <div class="col-6 col-md-3"><label class="form-label small" for="rs_grupo_area_separator_color">Color línea inferior</label><input type="color" class="form-control form-control-color" id="rs_grupo_area_separator_color" value="<?= esc((string) $areaSepStyle['line_color'], 'attr') ?>"></div>
+                            <div class="col-6 col-md-2"><label class="form-label small" for="rs_grupo_area_separator_width_px">Grosor línea inferior (px)</label><input type="number" class="form-control" id="rs_grupo_area_separator_width_px" min="0" max="4" step="1" value="<?= esc((string) (int) $areaSepStyle['line_width_px'], 'attr') ?>"></div>
+                            <div class="col-12 col-md-3"><label class="form-label small" for="rs_grupo_area_separator_font_family">Fuente</label><select class="form-select" id="rs_grupo_area_separator_font_family"><?php foreach (['DejaVu Sans', 'Helvetica', 'Arial', 'Times New Roman', 'Courier New'] as $ff): ?><option value="<?= esc($ff, 'attr') ?>" <?= ($areaSepStyle['font_family'] ?? '') === $ff ? 'selected' : '' ?>><?= esc($ff) ?></option><?php endforeach; ?></select></div>
+                            <div class="col-6 col-md-2"><label class="form-label small" for="rs_grupo_area_separator_font_size">Tamaño (pt)</label><input type="number" class="form-control" id="rs_grupo_area_separator_font_size" min="7" max="20" step="0.5" value="<?= esc((string) ($areaSepStyle['font_size_pt'] ?? 11), 'attr') ?>"></div>
+                            <div class="col-6 col-md-2"><label class="form-label small" for="rs_grupo_area_separator_font_weight">Grosor</label><select class="form-select" id="rs_grupo_area_separator_font_weight"><?php foreach (['normal', 'bold', '400', '500', '600', '700', '800'] as $w): ?><option value="<?= esc($w, 'attr') ?>" <?= ($areaSepStyle['font_weight'] ?? '') === $w ? 'selected' : '' ?>><?= esc($w) ?></option><?php endforeach; ?></select></div>
+                            <div class="col-6 col-md-2"><label class="form-label small" for="rs_grupo_area_separator_text_color">Color texto</label><input type="color" class="form-control form-control-color" id="rs_grupo_area_separator_text_color" value="<?= esc($areaSepStyle['text_color'] ?? '#333333', 'attr') ?>"></div>
+                            <div class="col-6 col-md-2"><label class="form-label small" for="rs_grupo_area_separator_font_style">Estilo</label><select class="form-select" id="rs_grupo_area_separator_font_style"><?php foreach (['normal', 'italic', 'oblique'] as $st): ?><option value="<?= esc($st, 'attr') ?>" <?= ($areaSepStyle['font_style'] ?? '') === $st ? 'selected' : '' ?>><?= esc(ucfirst($st)) ?></option><?php endforeach; ?></select></div>
+                            <div class="col-6 col-md-3"><label class="form-label small" for="rs_grupo_area_separator_text_transform">Transformación</label><select class="form-select" id="rs_grupo_area_separator_text_transform"><?php foreach (['none' => 'Normal', 'uppercase' => 'MAYÚSCULAS', 'lowercase' => 'minúsculas', 'capitalize' => 'Tipo Título'] as $k => $v): ?><option value="<?= esc($k, 'attr') ?>" <?= ($areaSepStyle['text_transform'] ?? '') === $k ? 'selected' : '' ?>><?= esc($v) ?></option><?php endforeach; ?></select></div>
+                            <div class="col-6 col-md-3">
+                                <label class="form-label small" for="rs_grupo_area_separator_margin_top_px">Espacio arriba del texto (px)</label>
+                                <input type="number" class="form-control" id="rs_grupo_area_separator_margin_top_px" min="0" max="80" step="1" value="<?= esc((string) (int) ($areaSepStyle['margin_top_px'] ?? 10), 'attr') ?>">
+                            </div>
+                            <div class="col-6 col-md-3">
+                                <label class="form-label small" for="rs_grupo_area_separator_margin_bottom_px">Espacio abajo del texto (px)</label>
+                                <input type="number" class="form-control" id="rs_grupo_area_separator_margin_bottom_px" min="0" max="80" step="1" value="<?= esc((string) (int) ($areaSepStyle['margin_bottom_px'] ?? 10), 'attr') ?>">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="accordion-item border rounded mb-2 overflow-hidden">
+                <h2 class="accordion-header m-0">
                     <button class="accordion-button collapsed py-2" type="button" data-bs-toggle="collapse" data-bs-target="#pdf_rs_panel_segment" aria-expanded="false" aria-controls="pdf_rs_panel_segment">
-                        <span class="fw-semibold">4. Título de cada análisis</span>
-                        <span class="small text-muted ms-2 d-none d-md-inline">Barra «GLUCOSA» — fuente, tamaño y grosor en vista previa</span>
+                        <span class="fw-semibold">5. Título de sección (fila separadora)</span>
+                        <span class="small text-muted ms-2 d-none d-md-inline">Sin valor de resultado — p. ej. «1RA MUESTRA»</span>
                     </button>
                 </h2>
                 <div id="pdf_rs_panel_segment" class="accordion-collapse collapse" data-bs-parent="#accordion_pdf_results">
                     <div class="accordion-body pt-0">
+                        <p class="small text-muted mb-3">Estilo de la barra que aparece encima de cada bloque de tabla cuando en el análisis clínico la fila está marcada como <strong>Título de sección (fila separadora en reporte; sin valor de resultado)</strong>. Clase: <code>.report-segment-title.report-pdf-section-row-title</code>. Independiente del título del área (sección 4) y del nombre del análisis (sección 8).</p>
                         <div class="row g-3">
             <div class="col-6 col-md-3"><label class="form-label small" for="rs_segment_bg">Fondo</label><input type="color" class="form-control form-control-color" id="rs_segment_bg" value="<?= esc($rs['segment_bg_color'], 'attr') ?>"></div>
             <div class="col-12 col-md-3 d-flex align-items-end">
@@ -755,7 +805,7 @@ if (! in_array($configTab, $pdfConfigTabs, true)) {
             <div class="col-6 col-md-3">
                 <label class="form-label small" for="rs_segment_padding_bottom_px" title="Espacio entre el texto y el borde inferior de la fila">Espacio abajo del texto (px)</label>
                 <input type="number" class="form-control" id="rs_segment_padding_bottom_px" min="0" max="40" step="1" value="<?= esc((string) (int) ($rs['segment_padding_bottom_px'] ?? 6), 'attr') ?>">
-                <div class="form-text">Relleno vertical dentro de <code>.report-segment-title</code>.</div>
+                <div class="form-text">Relleno vertical dentro de la fila separadora (<code>.report-pdf-section-row-title</code>).</div>
             </div>
                         </div>
                     </div>
@@ -765,7 +815,7 @@ if (! in_array($configTab, $pdfConfigTabs, true)) {
             <div class="accordion-item border rounded mb-2 overflow-hidden">
                 <h2 class="accordion-header m-0">
                     <button class="accordion-button collapsed py-2" type="button" data-bs-toggle="collapse" data-bs-target="#pdf_rs_panel_matrix" aria-expanded="false" aria-controls="pdf_rs_panel_matrix">
-                        <span class="fw-semibold">5. Matriz de valores referenciales</span>
+                        <span class="fw-semibold">6. Matriz de valores referenciales</span>
                         <span class="small text-muted ms-2 d-none d-md-inline">Tabla principal y matriz poblacional</span>
                     </button>
                 </h2>
@@ -854,29 +904,14 @@ if (! in_array($configTab, $pdfConfigTabs, true)) {
             <div class="accordion-item border rounded mb-2 overflow-hidden">
                 <h2 class="accordion-header m-0">
                     <button class="accordion-button collapsed py-2" type="button" data-bs-toggle="collapse" data-bs-target="#pdf_rs_panel_grupo_cabecera" aria-expanded="false" aria-controls="pdf_rs_panel_grupo_cabecera">
-                        <span class="fw-semibold">6. Cabecera de grupo de prueba</span>
+                        <span class="fw-semibold">7. Cabecera de grupo de prueba</span>
                         <span class="small text-muted ms-2 d-none d-md-inline">Título, tipo de muestra y método</span>
                     </button>
                 </h2>
                 <div id="pdf_rs_panel_grupo_cabecera" class="accordion-collapse collapse" data-bs-parent="#accordion_pdf_results">
                     <div class="accordion-body pt-0">
-                        <p class="small text-muted mb-3">Aplica al bloque <code>.report-pdf-grupo-cabecera</code> en el reporte en pantalla, PDF e impresión. Si la opción está activa pero el valor no está configurado en el análisis clínico, no se muestra (comportamiento actual).</p>
+                        <p class="small text-muted mb-3">Aplica al bloque <code>.report-pdf-grupo-cabecera</code> en el reporte en pantalla, PDF e impresión. El título del área se configura en la sección 4. Si la opción está activa pero el valor no está configurado en el análisis clínico, no se muestra (comportamiento actual).</p>
                         <div class="row g-3">
-                            <div class="col-12">
-                                <div class="form-check mb-1">
-                                    <input class="form-check-input" type="checkbox" id="rs_grupo_area_separator_enabled" <?= ! empty($rs['grupo_area_separator_enabled']) ? 'checked' : '' ?>>
-                                    <label class="form-check-label small" for="rs_grupo_area_separator_enabled">Separador con nombre del área</label>
-                                </div>
-                                <div class="form-text mb-2">Muestra el nombre del área al inicio de cada <code>report-pdf-grupo-prueba</code>. Usa tipografía propia del separador de área (no la del título de cada análisis ni el nombre del análisis).</div>
-                            </div>
-                            <div class="col-6 col-md-3">
-                                <label class="form-label small" for="rs_grupo_area_separator_margin_top_px">Margen superior del separador (px)</label>
-                                <input type="number" class="form-control" id="rs_grupo_area_separator_margin_top_px" min="0" max="80" step="1" value="<?= esc((string) (int) ($rs['grupo_area_separator_margin_top_px'] ?? 10), 'attr') ?>">
-                            </div>
-                            <div class="col-6 col-md-3">
-                                <label class="form-label small" for="rs_grupo_area_separator_margin_bottom_px">Margen inferior del separador (px)</label>
-                                <input type="number" class="form-control" id="rs_grupo_area_separator_margin_bottom_px" min="0" max="80" step="1" value="<?= esc((string) (int) ($rs['grupo_area_separator_margin_bottom_px'] ?? 10), 'attr') ?>">
-                            </div>
                             <div class="col-12 col-lg-6">
                                 <label class="form-label small" for="rs_grupo_cabecera_title_mode">Formato del título</label>
                                 <select class="form-select" id="rs_grupo_cabecera_title_mode">
@@ -913,7 +948,7 @@ if (! in_array($configTab, $pdfConfigTabs, true)) {
             <div class="accordion-item border rounded mb-2 overflow-hidden">
                 <h2 class="accordion-header m-0">
                     <button class="accordion-button collapsed py-2" type="button" data-bs-toggle="collapse" data-bs-target="#pdf_rs_panel_grupo_title_style" aria-expanded="false" aria-controls="pdf_rs_panel_grupo_title_style">
-                        <span class="fw-semibold">7. Nombre del análisis</span>
+                        <span class="fw-semibold">8. Nombre del análisis</span>
                         <span class="small text-muted ms-2 d-none d-md-inline">«Hemograma completo» — tipografía y espaciado</span>
                     </button>
                 </h2>
@@ -943,7 +978,7 @@ if (! in_array($configTab, $pdfConfigTabs, true)) {
             <div class="accordion-item border rounded mb-2 overflow-hidden">
                 <h2 class="accordion-header m-0">
                     <button class="accordion-button collapsed py-2" type="button" data-bs-toggle="collapse" data-bs-target="#pdf_rs_panel_grupo_cabecera_spacing" aria-expanded="false" aria-controls="pdf_rs_panel_grupo_cabecera_spacing">
-                        <span class="fw-semibold">8. Espaciado tipo de muestra y método</span>
+                        <span class="fw-semibold">9. Espaciado tipo de muestra y método</span>
                         <span class="small text-muted ms-2 d-none d-md-inline">Espacio vertical debajo del nombre del análisis</span>
                     </button>
                 </h2>
@@ -4791,6 +4826,19 @@ document.addEventListener('DOMContentLoaded', function() {
                 grupo_cabecera_metodo_margin_top_px: Math.round(pickNum('rs_grupo_cabecera_metodo_margin_top_px', 0, 40, 0)),
                 grupo_cabecera_metodo_margin_bottom_px: Math.round(pickNum('rs_grupo_cabecera_metodo_margin_bottom_px', 0, 40, 10)),
                 grupo_area_separator_enabled: !!(document.getElementById('rs_grupo_area_separator_enabled') && document.getElementById('rs_grupo_area_separator_enabled').checked),
+                grupo_area_separator_bg_color: pickHex('rs_grupo_area_separator_bg', '#E9ECEF'),
+                grupo_area_separator_transparent: !!(document.getElementById('rs_grupo_area_separator_transparent') && document.getElementById('rs_grupo_area_separator_transparent').checked),
+                grupo_area_separator_border_color: pickHex('rs_grupo_area_separator_border_color', '#DDDDDD'),
+                grupo_area_separator_border_width_px: Math.round(pickNum('rs_grupo_area_separator_border_width', 0, 4, 1)),
+                grupo_area_separator_shadow: pickAllowedDomId('rs_grupo_area_separator_shadow', 'segment_shadows', 'none'),
+                grupo_area_separator_color: pickHex('rs_grupo_area_separator_color', '#DDDDDD'),
+                grupo_area_separator_width_px: Math.round(pickNum('rs_grupo_area_separator_width_px', 0, 4, 1)),
+                grupo_area_separator_font_family: pickAllowedDomId('rs_grupo_area_separator_font_family', 'font_families', 'DejaVu Sans'),
+                grupo_area_separator_font_size_pt: pickNum('rs_grupo_area_separator_font_size', 7, 20, 11),
+                grupo_area_separator_font_weight: pickAllowedDomId('rs_grupo_area_separator_font_weight', 'font_weights', 'bold'),
+                grupo_area_separator_text_color: pickHex('rs_grupo_area_separator_text_color', '#333333'),
+                grupo_area_separator_font_style: pickAllowedDomId('rs_grupo_area_separator_font_style', 'font_styles', 'normal'),
+                grupo_area_separator_text_transform: pickAllowedDomId('rs_grupo_area_separator_text_transform', 'text_transforms', 'uppercase'),
                 grupo_area_separator_margin_top_px: Math.round(pickNum('rs_grupo_area_separator_margin_top_px', 0, 80, 10)),
                 grupo_area_separator_margin_bottom_px: Math.round(pickNum('rs_grupo_area_separator_margin_bottom_px', 0, 80, 10))
             }
@@ -4866,9 +4914,18 @@ document.addEventListener('DOMContentLoaded', function() {
             '--pdf-results-subgrupo-gap': (parseInt(rs.subgrupo_prueba_gap_px, 10) || 18) + 'px',
             '--pdf-grupo-area-separator-margin-top': (parseInt(rs.grupo_area_separator_margin_top_px, 10) || 10) + 'px',
             '--pdf-grupo-area-separator-margin-bottom': (parseInt(rs.grupo_area_separator_margin_bottom_px, 10) || 10) + 'px',
+            '--pdf-grupo-area-separator-bg': rs.grupo_area_separator_transparent ? 'transparent' : (rs.grupo_area_separator_bg_color || '#e9ecef'),
+            '--pdf-grupo-area-separator-border': rs.grupo_area_separator_border_color || '#dddddd',
+            '--pdf-grupo-area-separator-border-width': (parseInt(rs.grupo_area_separator_border_width_px, 10) || 1) + 'px',
+            '--pdf-grupo-area-separator-line-color': rs.grupo_area_separator_color || '#dddddd',
+            '--pdf-grupo-area-separator-line-width': (parseInt(rs.grupo_area_separator_width_px, 10) || 1) + 'px',
+            '--pdf-grupo-area-separator-shadow': PDF_SEG_SHADOW_MAP[rs.grupo_area_separator_shadow] || 'none',
+            '--pdf-grupo-area-separator-font-family': '"' + (rs.grupo_area_separator_font_family || 'DejaVu Sans') + '"',
             '--pdf-grupo-area-separator-font-size': (rs.grupo_area_separator_font_size_pt || 11) + 'pt',
             '--pdf-grupo-area-separator-font-weight': rs.grupo_area_separator_font_weight || 'bold',
             '--pdf-grupo-area-separator-text-color': rs.grupo_area_separator_text_color || '#333333',
+            '--pdf-grupo-area-separator-font-style': rs.grupo_area_separator_font_style || 'normal',
+            '--pdf-grupo-area-separator-transform': rs.grupo_area_separator_text_transform || 'uppercase',
             '--pdf-grupo-cabecera-title-margin-top': (parseInt(rs.grupo_cabecera_title_margin_top_px, 10) || 0) + 'px',
             '--pdf-grupo-cabecera-title-margin-bottom': (parseInt(rs.grupo_cabecera_title_margin_bottom_px, 10) || 6) + 'px',
             '--pdf-grupo-cabecera-title-font-family': '"' + (rs.grupo_cabecera_title_font_family || rs.font_family || 'DejaVu Sans') + '"',
@@ -5283,7 +5340,7 @@ document.addEventListener('DOMContentLoaded', function() {
             if (!el) return;
             if (String(el.value || '').length > 120) errs.push('Texto demasiado largo en firmas (máx. 120 caracteres).');
         });
-        ['rs_header_bg', 'rs_header_text', 'rs_body_bg', 'rs_body_text', 'rs_border_color', 'rs_segment_bg', 'rs_segment_border_color'].forEach(function(id) {
+        ['rs_header_bg', 'rs_header_text', 'rs_body_bg', 'rs_body_text', 'rs_border_color', 'rs_segment_bg', 'rs_segment_border_color', 'rs_grupo_area_separator_bg', 'rs_grupo_area_separator_border_color', 'rs_grupo_area_separator_color', 'rs_grupo_area_separator_text_color'].forEach(function(id) {
             pushIfBadHex(id, 'Color inválido en tabla de resultados.');
         });
         pushIfBadSelect('rs_font_family', ff, 'Fuente no permitida en tabla de resultados.');
@@ -5301,12 +5358,12 @@ document.addEventListener('DOMContentLoaded', function() {
         pushIfBadSelect('rs_segment_shadow', pdfAllow('segment_shadows'), 'Sombra de segmento no permitida.');
         pushIfBadNum('rs_segment_padding_top_px', 0, 40, 'Espacio arriba del texto en fila separadora: entre 0 y 40 px.');
         pushIfBadNum('rs_segment_padding_bottom_px', 0, 40, 'Espacio abajo del texto en fila separadora: entre 0 y 40 px.');
-        pushIfBadSelect('rs_segment_font_family', ff, 'Fuente no permitida en el título de cada análisis.');
-        pushIfBadNum('rs_segment_font_size', 7, 20, 'Tamaño en el título de cada análisis: entre 7 y 20 pt.');
-        pushIfBadSelect('rs_segment_font_weight', fw, 'Grosor no permitido en el título de cada análisis.');
-        pushIfBadHex('rs_segment_text_color', 'Color inválido en el título de cada análisis.');
-        pushIfBadSelect('rs_segment_font_style', fst, 'Estilo no permitido en el título de cada análisis.');
-        pushIfBadSelect('rs_segment_text_transform', tt, 'Transformación no permitida en el título de cada análisis.');
+        pushIfBadSelect('rs_segment_font_family', ff, 'Fuente no permitida en el título de sección (fila separadora).');
+        pushIfBadNum('rs_segment_font_size', 7, 20, 'Tamaño en el título de sección (fila separadora): entre 7 y 20 pt.');
+        pushIfBadSelect('rs_segment_font_weight', fw, 'Grosor no permitido en el título de sección (fila separadora).');
+        pushIfBadHex('rs_segment_text_color', 'Color inválido en el título de sección (fila separadora).');
+        pushIfBadSelect('rs_segment_font_style', fst, 'Estilo no permitido en el título de sección (fila separadora).');
+        pushIfBadSelect('rs_segment_text_transform', tt, 'Transformación no permitida en el título de sección (fila separadora).');
         pushIfBadSelect('rs_matrix_align', ta, 'Alineación horizontal no permitida en matriz de referencia.');
         pushIfBadSelect('rs_matrix_valign', va, 'Alineación vertical no permitida en matriz de referencia.');
         pushIfBadHex('rs_matrix_text_color', 'Color inválido en matriz de referencia.');
@@ -5361,8 +5418,20 @@ document.addEventListener('DOMContentLoaded', function() {
         pushIfBadNum('rs_grupo_cabecera_tipo_muestra_margin_bottom_px', 0, 40, 'Espacio abajo del tipo de muestra: entre 0 y 40 px.');
         pushIfBadNum('rs_grupo_cabecera_metodo_margin_top_px', 0, 40, 'Espacio arriba del método: entre 0 y 40 px.');
         pushIfBadNum('rs_grupo_cabecera_metodo_margin_bottom_px', 0, 40, 'Espacio abajo del método: entre 0 y 40 px.');
-        pushIfBadNum('rs_grupo_area_separator_margin_top_px', 0, 80, 'Margen superior del separador de área: entre 0 y 80 px.');
-        pushIfBadNum('rs_grupo_area_separator_margin_bottom_px', 0, 80, 'Margen inferior del separador de área: entre 0 y 80 px.');
+        pushIfBadNum('rs_grupo_area_separator_margin_top_px', 0, 80, 'Espacio superior del título del área: entre 0 y 80 px.');
+        pushIfBadNum('rs_grupo_area_separator_margin_bottom_px', 0, 80, 'Espacio inferior del título del área: entre 0 y 80 px.');
+        pushIfBadHex('rs_grupo_area_separator_bg', 'Color de fondo inválido en el título del área.');
+        pushIfBadHex('rs_grupo_area_separator_border_color', 'Color de borde inválido en el título del área.');
+        pushIfBadNum('rs_grupo_area_separator_border_width', 0, 4, 'Grosor de borde del título del área: entre 0 y 4 px.');
+        pushIfBadSelect('rs_grupo_area_separator_shadow', pdfAllow('segment_shadows'), 'Sombra no permitida en el título del área.');
+        pushIfBadHex('rs_grupo_area_separator_color', 'Color de línea inferior inválido en el título del área.');
+        pushIfBadNum('rs_grupo_area_separator_width_px', 0, 4, 'Grosor de línea inferior del título del área: entre 0 y 4 px.');
+        pushIfBadSelect('rs_grupo_area_separator_font_family', ff, 'Fuente no permitida en el título del área.');
+        pushIfBadNum('rs_grupo_area_separator_font_size', 7, 20, 'Tamaño en el título del área: entre 7 y 20 pt.');
+        pushIfBadSelect('rs_grupo_area_separator_font_weight', fw, 'Grosor no permitido en el título del área.');
+        pushIfBadHex('rs_grupo_area_separator_text_color', 'Color inválido en el título del área.');
+        pushIfBadSelect('rs_grupo_area_separator_font_style', fst, 'Estilo no permitido en el título del área.');
+        pushIfBadSelect('rs_grupo_area_separator_text_transform', tt, 'Transformación no permitida en el título del área.');
 
         function pushCtScopeErrors(scope, pfx, partLabel, itemLabel, errs) {
             if (!scope) return;

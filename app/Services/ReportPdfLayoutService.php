@@ -268,11 +268,19 @@ class ReportPdfLayoutService
         'grupo_cabecera_metodo_margin_top_px'    => 0,
         'grupo_cabecera_metodo_margin_bottom_px' => 10,
         'grupo_area_separator_enabled'     => false,
+        'grupo_area_separator_bg_color'    => '#E9ECEF',
+        'grupo_area_separator_transparent' => false,
+        'grupo_area_separator_border_color' => '#DDDDDD',
+        'grupo_area_separator_border_width_px' => 1,
+        'grupo_area_separator_shadow'      => 'none',
         'grupo_area_separator_color'       => '#DDDDDD',
         'grupo_area_separator_width_px'    => 1,
+        'grupo_area_separator_font_family' => 'DejaVu Sans',
         'grupo_area_separator_font_size_pt' => 11.0,
         'grupo_area_separator_font_weight' => 'bold',
         'grupo_area_separator_text_color'  => '#333333',
+        'grupo_area_separator_font_style' => 'normal',
+        'grupo_area_separator_text_transform' => 'uppercase',
         'grupo_area_separator_margin_top_px'    => 10,
         'grupo_area_separator_margin_bottom_px' => 10,
     ];
@@ -2387,28 +2395,28 @@ class ReportPdfLayoutService
             }
         }
         if (isset($raw['segment_font_family']) && ! in_array((string) $raw['segment_font_family'], self::ALLOWED_PDF_FONT_FAMILIES, true)) {
-            return 'Familia de fuente no permitida en el título de cada análisis.';
+            return 'Familia de fuente no permitida en el título de sección (fila separadora).';
         }
         if (array_key_exists('segment_font_size_pt', $raw)) {
             if (! is_numeric($raw['segment_font_size_pt'])) {
-                return 'Tamaño de fuente inválido en el título de cada análisis.';
+                return 'Tamaño de fuente inválido en el título de sección (fila separadora).';
             }
             $sfs = (float) $raw['segment_font_size_pt'];
             if ($sfs < 7.0 || $sfs > 20.0) {
-                return 'El tamaño de fuente en el título de cada análisis debe estar entre 7 y 20 pt.';
+                return 'El tamaño de fuente en el título de sección (fila separadora) debe estar entre 7 y 20 pt.';
             }
         }
         if (isset($raw['segment_font_weight']) && ! in_array(strtolower(trim((string) $raw['segment_font_weight'])), self::ALLOWED_PDF_FONT_WEIGHTS, true)) {
-            return 'Grosor de fuente no permitido en el título de cada análisis.';
+            return 'Grosor de fuente no permitido en el título de sección (fila separadora).';
         }
         if (isset($raw['segment_text_color']) && ! self::isValidPdfHexColor((string) $raw['segment_text_color'])) {
-            return 'Color de texto inválido en el título de cada análisis (#RRGGBB).';
+            return 'Color de texto inválido en el título de sección (fila separadora) (#RRGGBB).';
         }
         if (isset($raw['segment_font_style']) && ! in_array(strtolower(trim((string) $raw['segment_font_style'])), self::ALLOWED_PDF_FONT_STYLES, true)) {
-            return 'Estilo de fuente no permitido en el título de cada análisis.';
+            return 'Estilo de fuente no permitido en el título de sección (fila separadora).';
         }
         if (isset($raw['segment_text_transform']) && ! in_array(strtolower(trim((string) $raw['segment_text_transform'])), self::ALLOWED_PDF_TEXT_TRANSFORMS, true)) {
-            return 'Transformación de texto no permitida en el título de cada análisis.';
+            return 'Transformación de texto no permitida en el título de sección (fila separadora).';
         }
         if (isset($raw['matrix_text_align']) && ! in_array(strtolower(trim((string) $raw['matrix_text_align'])), self::ALLOWED_PDF_TEXT_ALIGNS, true)) {
             return 'Alineación horizontal no permitida en la matriz de referencia.';
@@ -2495,7 +2503,34 @@ class ReportPdfLayoutService
             return 'Modo de título de cabecera de grupo no permitido.';
         }
         if (isset($raw['grupo_area_separator_color']) && ! self::isValidPdfHexColor((string) $raw['grupo_area_separator_color'])) {
-            return 'Color inválido en separador de área (#RRGGBB).';
+            return 'Color inválido en línea inferior del separador de área (#RRGGBB).';
+        }
+        if (isset($raw['grupo_area_separator_bg_color']) && ! self::isValidPdfHexColor((string) $raw['grupo_area_separator_bg_color'])) {
+            return 'Color de fondo inválido en el título del área (#RRGGBB).';
+        }
+        if (isset($raw['grupo_area_separator_border_color']) && ! self::isValidPdfHexColor((string) $raw['grupo_area_separator_border_color'])) {
+            return 'Color de borde inválido en el título del área (#RRGGBB).';
+        }
+        if (array_key_exists('grupo_area_separator_border_width_px', $raw)) {
+            if (! is_numeric($raw['grupo_area_separator_border_width_px'])) {
+                return 'Grosor de borde del título del área inválido.';
+            }
+            $abw = (int) $raw['grupo_area_separator_border_width_px'];
+            if ($abw < 0 || $abw > 4) {
+                return 'El grosor de borde del título del área debe estar entre 0 y 4 px.';
+            }
+        }
+        if (isset($raw['grupo_area_separator_shadow']) && ! in_array(strtolower(trim((string) $raw['grupo_area_separator_shadow'])), self::ALLOWED_PDF_TEXT_SHADOWS, true)) {
+            return 'Sombra no permitida en el título del área.';
+        }
+        if (isset($raw['grupo_area_separator_font_family']) && ! in_array((string) $raw['grupo_area_separator_font_family'], self::ALLOWED_PDF_FONT_FAMILIES, true)) {
+            return 'Familia de fuente no permitida en el título del área.';
+        }
+        if (isset($raw['grupo_area_separator_font_style']) && ! in_array(strtolower(trim((string) $raw['grupo_area_separator_font_style'])), self::ALLOWED_PDF_FONT_STYLES, true)) {
+            return 'Estilo no permitido en el título del área.';
+        }
+        if (isset($raw['grupo_area_separator_text_transform']) && ! in_array(strtolower(trim((string) $raw['grupo_area_separator_text_transform'])), self::ALLOWED_PDF_TEXT_TRANSFORMS, true)) {
+            return 'Transformación no permitida en el título del área.';
         }
         if (array_key_exists('grupo_area_separator_width_px', $raw)) {
             if (! is_numeric($raw['grupo_area_separator_width_px'])) {
@@ -4393,6 +4428,7 @@ class ReportPdfLayoutService
         $rs    = self::normalizeResultsTableStyle($ps['results_table'] ?? []);
         $rsRaw = is_array($ps['results_table'] ?? null) ? $ps['results_table'] : [];
         $segTypo = self::resolveSegmentTitleTypography($rs, $rsRaw);
+        $areaSep = self::resolveGrupoAreaSeparatorPresentation($rs, $rsRaw);
         $segFamily = (string) $segTypo['font_family'];
         $segSize = (float) $segTypo['font_size_pt'];
         $segWeight = (string) $segTypo['font_weight'];
@@ -4425,6 +4461,10 @@ class ReportPdfLayoutService
             'strong' => '1px 1px 2px rgba(0,0,0,0.45)',
         ];
         $segShadow   = $segShadowMap[$rs['segment_shadow'] ?? 'none'] ?? 'none';
+        $areaShadow  = $segShadowMap[$areaSep['shadow'] ?? 'none'] ?? 'none';
+        $areaBg      = ! empty($areaSep['bg_transparent']) ? 'transparent' : (string) $areaSep['bg_color'];
+        $areaBorderW = (int) $areaSep['border_width_px'];
+        $areaLineW   = (int) $areaSep['line_width_px'];
         $textShadow  = $textShadowMap[$rs['text_shadow'] ?? 'none'] ?? 'none';
 
         $esc = static fn (string $v): string => htmlspecialchars($v, ENT_QUOTES, 'UTF-8');
@@ -4477,7 +4517,7 @@ class ReportPdfLayoutService
             '    margin-top:' . $tableMt . 'px !important;',
             '    margin-bottom:' . $tableMb . 'px !important;',
             '}',
-            $scope . ' .report-segment-title:not(.report-pdf-grupo-area-separator) {',
+            $scope . ' .report-segment-title.report-pdf-section-row-title {',
             '    font-family:"' . $esc($segFamily) . '", sans-serif !important;',
             '    font-size:' . $esc((string) $segSize) . 'pt !important;',
             '    font-weight:' . $esc($segWeight) . ' !important;',
@@ -4493,13 +4533,21 @@ class ReportPdfLayoutService
             '}',
             $scope . ' .report-pdf-grupo-area-separator.report-segment-title {',
             '    text-align:center !important;',
-            '    color:' . $esc((string) ($rs['grupo_area_separator_text_color'] ?? '#333333')) . ' !important;',
-            '    font-size:' . $esc((string) ($rs['grupo_area_separator_font_size_pt'] ?? 11)) . 'pt !important;',
-            '    font-weight:' . $esc((string) ($rs['grupo_area_separator_font_weight'] ?? 'bold')) . ' !important;',
-            '    border-bottom:' . $segBorderW . 'px solid ' . $esc((string) $rs['segment_border_color']) . ' !important;',
+            '    font-family:"' . $esc((string) $areaSep['font_family']) . '", sans-serif !important;',
+            '    font-size:' . $esc((string) $areaSep['font_size_pt']) . 'pt !important;',
+            '    font-weight:' . $esc((string) $areaSep['font_weight']) . ' !important;',
+            '    font-style:' . $esc((string) $areaSep['font_style']) . ' !important;',
+            '    text-transform:' . $esc((string) $areaSep['text_transform']) . ' !important;',
+            '    color:' . $esc((string) $areaSep['text_color']) . ' !important;',
+            '    background:' . $esc($areaBg) . ' !important;',
+            '    margin:0 !important;',
             '    padding-top:' . $areaSepMt . 'px !important;',
             '    padding-bottom:' . $areaSepMb . 'px !important;',
-            '    margin:0 !important;',
+            '    box-shadow:' . $esc($areaShadow) . ' !important;',
+            ($areaBorderW > 0
+                ? '    border:' . $areaBorderW . 'px solid ' . $esc((string) $areaSep['border_color']) . ' !important;'
+                : '    border:none !important;'),
+            '    border-bottom:' . max($areaLineW, $areaBorderW) . 'px solid ' . $esc((string) $areaSep['line_color']) . ' !important;',
             '}',
             $scope . ' .report-pdf-grupo-prueba:not(.report-pdf-grupo-prueba-first) {',
             '    padding-top:' . $grupoGap . 'px !important;',
@@ -4762,7 +4810,7 @@ class ReportPdfLayoutService
     }
 
     /**
-     * Tipografía efectiva del título de cada análisis (.report-segment-title sobre la tabla).
+     * Tipografía efectiva de la fila separadora de sección (.report-pdf-section-row-title).
      * Independiente de card_header, separador de área y nombre del análisis (.group-title).
      *
      * @param array<string, mixed> $rs normalizeResultsTableStyle()
@@ -4783,6 +4831,55 @@ class ReportPdfLayoutService
             'text_color'     => (string) $pick('segment_text_color', $rs['segment_text_color']),
             'font_style'     => (string) $pick('segment_font_style', $rs['segment_font_style']),
             'text_transform' => (string) $pick('segment_text_transform', $rs['segment_text_transform']),
+        ];
+    }
+
+    /**
+     * Estilo efectivo del título del área (.report-pdf-grupo-area-separator).
+     *
+     * @param array<string, mixed> $rs normalizeResultsTableStyle()
+     * @param array<string, mixed> $rsRaw page_style.results_table sin normalizar
+     *
+     * @return array{
+     *     bg_color: string,
+     *     bg_transparent: bool,
+     *     border_color: string,
+     *     border_width_px: int,
+     *     line_color: string,
+     *     line_width_px: int,
+     *     shadow: string,
+     *     font_family: string,
+     *     font_size_pt: float,
+     *     font_weight: string,
+     *     text_color: string,
+     *     font_style: string,
+     *     text_transform: string,
+     *     margin_top_px: int,
+     *     margin_bottom_px: int
+     * }
+     */
+    public static function resolveGrupoAreaSeparatorPresentation(array $rs, array $rsRaw = []): array
+    {
+        $pick = static function (string $key, $fallback) use ($rs, $rsRaw) {
+            return array_key_exists($key, $rsRaw) ? $rs[$key] : $fallback;
+        };
+
+        return [
+            'bg_color'         => (string) $pick('grupo_area_separator_bg_color', $rs['grupo_area_separator_bg_color']),
+            'bg_transparent'   => (bool) $pick('grupo_area_separator_transparent', $rs['grupo_area_separator_transparent']),
+            'border_color'     => (string) $pick('grupo_area_separator_border_color', $rs['grupo_area_separator_border_color']),
+            'border_width_px'  => (int) $pick('grupo_area_separator_border_width_px', $rs['grupo_area_separator_border_width_px']),
+            'line_color'       => (string) $pick('grupo_area_separator_color', $rs['grupo_area_separator_color']),
+            'line_width_px'    => (int) $pick('grupo_area_separator_width_px', $rs['grupo_area_separator_width_px']),
+            'shadow'           => (string) $pick('grupo_area_separator_shadow', $rs['grupo_area_separator_shadow']),
+            'font_family'      => (string) $pick('grupo_area_separator_font_family', $rs['grupo_area_separator_font_family']),
+            'font_size_pt'     => (float) $pick('grupo_area_separator_font_size_pt', $rs['grupo_area_separator_font_size_pt']),
+            'font_weight'      => (string) $pick('grupo_area_separator_font_weight', $rs['grupo_area_separator_font_weight']),
+            'text_color'       => (string) $pick('grupo_area_separator_text_color', $rs['grupo_area_separator_text_color']),
+            'font_style'       => (string) $pick('grupo_area_separator_font_style', $rs['grupo_area_separator_font_style']),
+            'text_transform'   => (string) $pick('grupo_area_separator_text_transform', $rs['grupo_area_separator_text_transform']),
+            'margin_top_px'    => (int) $pick('grupo_area_separator_margin_top_px', $rs['grupo_area_separator_margin_top_px']),
+            'margin_bottom_px' => (int) $pick('grupo_area_separator_margin_bottom_px', $rs['grupo_area_separator_margin_bottom_px']),
         ];
     }
 
@@ -5046,39 +5143,39 @@ class ReportPdfLayoutService
      */
     public static function grupoAreaSeparatorInlineStyleAttr(array $layout): string
     {
-        $ps = is_array($layout['page_style'] ?? null) ? $layout['page_style'] : [];
-        $rs = self::normalizeResultsTableStyle($ps['results_table'] ?? []);
-        $color = (string) ($rs['grupo_area_separator_color'] ?? '#DDDDDD');
-        $width = max(0, min(4, (int) ($rs['grupo_area_separator_width_px'] ?? 1)));
-        $fs    = (float) ($rs['grupo_area_separator_font_size_pt'] ?? 11.0);
-        $fw    = (string) ($rs['grupo_area_separator_font_weight'] ?? 'bold');
-        $segBorderColor = (string) ($rs['segment_border_color'] ?? '#DDDDDD');
-        $segBorderWidth = max(0, min(4, (int) ($rs['segment_border_width_px'] ?? 1)));
+        $ps    = is_array($layout['page_style'] ?? null) ? $layout['page_style'] : [];
+        $rs    = self::normalizeResultsTableStyle($ps['results_table'] ?? []);
+        $rsRaw = is_array($ps['results_table'] ?? null) ? $ps['results_table'] : [];
+        $area  = self::resolveGrupoAreaSeparatorPresentation($rs, $rsRaw);
+        $borderW = (int) $area['border_width_px'];
+        $lineW   = (int) $area['line_width_px'];
 
         $parts = [
-            'color:' . (string) ($rs['grupo_area_separator_text_color'] ?? '#333333'),
-            'font-size:' . $fs . 'pt',
-            'font-weight:' . $fw,
+            'color:' . (string) $area['text_color'],
+            'font-family:"' . (string) $area['font_family'] . '"',
+            'font-size:' . (float) $area['font_size_pt'] . 'pt',
+            'font-weight:' . (string) $area['font_weight'],
+            'font-style:' . (string) $area['font_style'],
+            'text-transform:' . (string) $area['text_transform'],
             'text-align:center',
-            '--pdf-grupo-area-separator-color:' . $color,
-            '--pdf-grupo-area-separator-width:' . $width . 'px',
+            '--pdf-grupo-area-separator-color:' . (string) $area['line_color'],
+            '--pdf-grupo-area-separator-width:' . $lineW . 'px',
         ];
 
-        // mPDF no pinta el fondo vía clases CSS en el primer bloque tras un salto de página; inline obligatorio.
-        if (! empty($rs['segment_transparent'])) {
+        if (! empty($area['bg_transparent'])) {
             $parts[] = 'background:transparent';
             $parts[] = 'background-color:transparent';
         } else {
-            $bg = (string) ($rs['segment_bg_color'] ?? '#E9ECEF');
+            $bg = (string) $area['bg_color'];
             $parts[] = 'background:' . $bg;
             $parts[] = 'background-color:' . $bg;
         }
 
-        if ($segBorderWidth > 0) {
-            $parts[] = 'border:' . $segBorderWidth . 'px solid ' . $segBorderColor;
-            $parts[] = 'border-bottom:' . max($width, $segBorderWidth) . 'px solid ' . $color;
-        } elseif ($width > 0) {
-            $parts[] = 'border-bottom:' . $width . 'px solid ' . $color;
+        if ($borderW > 0) {
+            $parts[] = 'border:' . $borderW . 'px solid ' . (string) $area['border_color'];
+            $parts[] = 'border-bottom:' . max($lineW, $borderW) . 'px solid ' . (string) $area['line_color'];
+        } elseif ($lineW > 0) {
+            $parts[] = 'border-bottom:' . $lineW . 'px solid ' . (string) $area['line_color'];
         }
 
         return implode(';', $parts) . ';';
@@ -6127,14 +6224,44 @@ class ReportPdfLayoutService
             'grupo_area_separator_enabled'     => array_key_exists('grupo_area_separator_enabled', $s)
                 ? ! empty($s['grupo_area_separator_enabled'])
                 : (bool) ($def['grupo_area_separator_enabled'] ?? false),
+            'grupo_area_separator_bg_color' => $pickColor(
+                'grupo_area_separator_bg_color',
+                (string) ($s['segment_bg_color'] ?? $def['grupo_area_separator_bg_color'])
+            ),
+            'grupo_area_separator_transparent' => array_key_exists('grupo_area_separator_transparent', $s)
+                ? ! empty($s['grupo_area_separator_transparent'])
+                : (array_key_exists('segment_transparent', $s) ? ! empty($s['segment_transparent']) : (bool) ($def['grupo_area_separator_transparent'] ?? false)),
+            'grupo_area_separator_border_color' => $pickColor(
+                'grupo_area_separator_border_color',
+                (string) ($s['segment_border_color'] ?? $def['grupo_area_separator_border_color'])
+            ),
+            'grupo_area_separator_border_width_px' => max(0, min(4, array_key_exists('grupo_area_separator_border_width_px', $s)
+                ? (int) $s['grupo_area_separator_border_width_px']
+                : (array_key_exists('segment_border_width_px', $s) ? (int) $s['segment_border_width_px'] : (int) ($def['grupo_area_separator_border_width_px'] ?? 1)))),
+            'grupo_area_separator_shadow' => (static function () use ($s, $def): string {
+                $sh = strtolower(trim((string) ($s['grupo_area_separator_shadow'] ?? ($s['segment_shadow'] ?? ($def['grupo_area_separator_shadow'] ?? 'none')))));
+                return in_array($sh, self::ALLOWED_PDF_TEXT_SHADOWS, true) ? $sh : 'none';
+            })(),
             'grupo_area_separator_color'       => $pickColor('grupo_area_separator_color', (string) ($def['grupo_area_separator_color'] ?? '#DDDDDD')),
             'grupo_area_separator_width_px'    => max(0, min(4, isset($s['grupo_area_separator_width_px']) ? (int) $s['grupo_area_separator_width_px'] : (int) ($def['grupo_area_separator_width_px'] ?? 1))),
+            'grupo_area_separator_font_family' => (static function () use ($s, $def): string {
+                $family = (string) ($s['grupo_area_separator_font_family'] ?? $def['grupo_area_separator_font_family']);
+                return in_array($family, self::ALLOWED_PDF_FONT_FAMILIES, true) ? $family : (string) $def['grupo_area_separator_font_family'];
+            })(),
             'grupo_area_separator_font_size_pt' => round(max(7.0, min(20.0, isset($s['grupo_area_separator_font_size_pt']) ? (float) $s['grupo_area_separator_font_size_pt'] : (float) ($def['grupo_area_separator_font_size_pt'] ?? 11.0))), 2),
             'grupo_area_separator_font_weight' => (static function () use ($s, $def): string {
                 $w = strtolower(trim((string) ($s['grupo_area_separator_font_weight'] ?? ($def['grupo_area_separator_font_weight'] ?? 'bold'))));
                 return in_array($w, self::ALLOWED_PDF_FONT_WEIGHTS, true) ? $w : 'bold';
             })(),
             'grupo_area_separator_text_color'  => $pickColor('grupo_area_separator_text_color', (string) ($def['grupo_area_separator_text_color'] ?? '#333333')),
+            'grupo_area_separator_font_style' => (static function () use ($s, $def): string {
+                $st = strtolower(trim((string) ($s['grupo_area_separator_font_style'] ?? $def['grupo_area_separator_font_style'])));
+                return in_array($st, self::ALLOWED_PDF_FONT_STYLES, true) ? $st : (string) $def['grupo_area_separator_font_style'];
+            })(),
+            'grupo_area_separator_text_transform' => (static function () use ($s, $def): string {
+                $tt = strtolower(trim((string) ($s['grupo_area_separator_text_transform'] ?? $def['grupo_area_separator_text_transform'])));
+                return in_array($tt, self::ALLOWED_PDF_TEXT_TRANSFORMS, true) ? $tt : (string) $def['grupo_area_separator_text_transform'];
+            })(),
             'grupo_area_separator_margin_top_px'    => max(0, min(80, isset($s['grupo_area_separator_margin_top_px']) ? (int) $s['grupo_area_separator_margin_top_px'] : (int) ($def['grupo_area_separator_margin_top_px'] ?? 10))),
             'grupo_area_separator_margin_bottom_px' => max(0, min(80, isset($s['grupo_area_separator_margin_bottom_px']) ? (int) $s['grupo_area_separator_margin_bottom_px'] : (int) ($def['grupo_area_separator_margin_bottom_px'] ?? 10))),
         ];
