@@ -62,11 +62,14 @@
     color: var(--pdf-results-body-color, #333333) !important;
 }
 
-/* Título de sección / segmento */
-.ynex-theme #pdf_results_live_preview_scope .report-segment-title {
+/* Título de sección / segmento — variables en pageStyleToPreviewCssVars */
+.ynex-theme #pdf_results_live_preview_scope .report-segment-title:not(.report-pdf-grupo-area-separator) {
     font-family: var(--pdf-results-segment-font-family, "DejaVu Sans"), sans-serif;
     font-size: var(--pdf-results-segment-font-size, 10pt);
     font-weight: var(--pdf-results-segment-font-weight, 700);
+    font-style: var(--pdf-results-segment-font-style, normal);
+    text-transform: var(--pdf-results-segment-transform, uppercase);
+    color: var(--pdf-results-segment-color, #212529);
     margin: 0;
     padding: var(--pdf-results-segment-padding-top, 6px) 8px var(--pdf-results-segment-padding-bottom, 6px) 8px;
     background: var(--pdf-results-segment-bg, #e9ecef) !important;
@@ -75,18 +78,11 @@
     box-shadow: var(--pdf-results-segment-shadow, none);
 }
 
-.ynex-theme #pdf_results_live_preview_scope .report-segment-title.pdf-card-header {
-    background: var(--pdf-results-segment-bg, #e9ecef) !important;
-    color: var(--pdf-card-header-color, #212529) !important;
-    font-family: var(--pdf-results-segment-font-family, var(--pdf-card-header-font-family, "DejaVu Sans")), sans-serif !important;
-    font-size: var(--pdf-results-segment-font-size, var(--pdf-card-header-font-size, 10pt)) !important;
-    font-weight: var(--pdf-results-segment-font-weight, var(--pdf-card-header-font-weight, 700)) !important;
-    font-style: var(--pdf-card-header-font-style, normal) !important;
-    text-transform: var(--pdf-card-header-transform, uppercase) !important;
-}
-
 .ynex-theme #pdf_results_live_preview_scope .report-pdf-grupo-area-separator.report-segment-title {
     text-align: center;
+    color: var(--pdf-grupo-area-separator-text-color, #333333) !important;
+    font-size: var(--pdf-grupo-area-separator-font-size, 11pt) !important;
+    font-weight: var(--pdf-grupo-area-separator-font-weight, bold) !important;
     border-bottom: var(--pdf-results-segment-border-width, 1px) solid var(--pdf-results-segment-border, #dddddd);
     padding-top: var(--pdf-grupo-area-separator-margin-top, 10px);
     padding-bottom: var(--pdf-grupo-area-separator-margin-bottom, 10px);
@@ -228,7 +224,7 @@
     font-weight: 700 !important;
 }
 
-/* Reglas dinámicas inyectadas por JS (#pdf_*_live_preview_rules) tienen la última palabra */
+/* Reglas dinámicas inyectadas por JS: solo alineaciones y relleno no cubiertos por variables */
 #pdf_results_live_preview_rules,
 #pdf_notes_live_preview_rules {
     display: none;

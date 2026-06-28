@@ -44,7 +44,6 @@ $mr = (float) ($mm['right'] ?? 15);
 $mb = (float) ($mm['bottom'] ?? 15);
 $ml = (float) ($mm['left'] ?? 15);
 $ps = is_array($pl['page_style'] ?? null) ? $pl['page_style'] : \App\Services\ReportPdfLayoutService::defaultPageStyleStatic();
-$ch = \App\Services\ReportPdfLayoutService::normalizeCardHeaderStyle($ps['card_header'] ?? []);
 $hs = \App\Services\ReportPdfLayoutService::normalizeHeaderSectionStyle($ps['header_section'] ?? []);
 $ns = \App\Services\ReportPdfLayoutService::normalizeNotesStyle($ps['notes'] ?? []);
 $lf = \App\Services\ReportPdfLayoutService::normalizeLabFirmasStyle($ps['lab_firmas'] ?? []);
@@ -74,8 +73,9 @@ $nsTitleBg = ! empty($ns['title_transparent']) ? 'transparent' : (string) $ns['t
 $nsBodyBg = ! empty($ns['body_transparent']) ? 'transparent' : (string) $ns['body_bg_color'];
 $nsColW = max(0, min(4, (int) ($ns['column_border_width_px'] ?? 1)));
 $nsColColor = (string) ($ns['column_border_color'] ?? '#DDDDDD');
-$chCardBg = ! empty($ch['bg_transparent']) ? 'transparent' : (string) $ch['bg_color'];
 $rs = \App\Services\ReportPdfLayoutService::normalizeResultsTableStyle($ps['results_table'] ?? []);
+$ch = \App\Services\ReportPdfLayoutService::cardHeaderStyleFromResultsTable($rs);
+$chCardBg = ! empty($ch['bg_transparent']) ? 'transparent' : (string) $ch['bg_color'];
 $rsRaw = is_array($ps['results_table'] ?? null) ? $ps['results_table'] : [];
 $titleTypo = \App\Services\ReportPdfLayoutService::resolveGrupoCabeceraTitleTypography($rs, $rsRaw);
 $headerTypo = \App\Services\ReportPdfLayoutService::resolveGrupoCabeceraHeaderTypography($rs, $rsRaw);
@@ -86,9 +86,7 @@ $titleTextShadowMap = [
     'strong' => '1px 1px 2px rgba(0,0,0,0.45)',
 ];
 $titleTextShadow = $titleTextShadowMap[$titleTypo['text_shadow'] ?? 'none'] ?? 'none';
-$segFontFamily = array_key_exists('segment_font_family', $rsRaw) ? (string) $rs['segment_font_family'] : (string) $ch['font_family'];
-$segFontSize = array_key_exists('segment_font_size_pt', $rsRaw) ? (float) $rs['segment_font_size_pt'] : (float) $ch['font_size_pt'];
-$segFontWeight = array_key_exists('segment_font_weight', $rsRaw) ? (string) $rs['segment_font_weight'] : (string) $ch['font_weight'];
+$segTypo = \App\Services\ReportPdfLayoutService::resolveSegmentTitleTypography($rs, $rsRaw);
 $orderSheetHeaderEnabled = \App\Services\ReportPdfLayoutService::isOrderSheetHeaderEnabledForLayout($pl);
 $rsBodyBg = ! empty($rs['body_transparent']) ? 'transparent' : (string) $rs['body_bg_color'];
 $rsSegBg  = ! empty($rs['segment_transparent']) ? 'transparent' : (string) $rs['segment_bg_color'];
@@ -473,9 +471,15 @@ body.<?= $pdfBodyClass ?> .pdf-ft-block .pdf-ft-pagination-num::before {
     --pdf-results-segment-shadow: <?= esc($rsSegShadow) ?>;
     --pdf-results-segment-padding-top: <?= (int) ($rs['segment_padding_top_px'] ?? 6) ?>px;
     --pdf-results-segment-padding-bottom: <?= (int) ($rs['segment_padding_bottom_px'] ?? 6) ?>px;
-    --pdf-results-segment-font-family: "<?= esc($segFontFamily) ?>";
-    --pdf-results-segment-font-size: <?= esc((string) $segFontSize) ?>pt;
-    --pdf-results-segment-font-weight: <?= esc($segFontWeight) ?>;
+    --pdf-results-segment-font-family: "<?= esc($segTypo['font_family']) ?>";
+    --pdf-results-segment-font-size: <?= esc((string) $segTypo['font_size_pt']) ?>pt;
+    --pdf-results-segment-font-weight: <?= esc($segTypo['font_weight']) ?>;
+    --pdf-results-segment-color: <?= esc($segTypo['text_color']) ?>;
+    --pdf-results-segment-font-style: <?= esc($segTypo['font_style']) ?>;
+    --pdf-results-segment-transform: <?= esc($segTypo['text_transform']) ?>;
+    --pdf-grupo-area-separator-font-size: <?= esc((string) ($rs['grupo_area_separator_font_size_pt'] ?? 11)) ?>pt;
+    --pdf-grupo-area-separator-font-weight: <?= esc((string) ($rs['grupo_area_separator_font_weight'] ?? 'bold')) ?>;
+    --pdf-grupo-area-separator-text-color: <?= esc((string) ($rs['grupo_area_separator_text_color'] ?? '#333333')) ?>;
     --pdf-results-font-family: "<?= esc($rs['font_family']) ?>";
     --pdf-results-font-size: <?= esc((string) $rs['font_size_pt']) ?>pt;
     --pdf-results-font-weight: <?= esc($rs['font_weight']) ?>;
@@ -565,20 +569,7 @@ table.results td {
     text-shadow: <?= esc($rsTextShadow) ?> !important;
     vertical-align: <?= esc((string) ($rs['cell_vertical_align'] ?? 'middle')) ?> !important;
 }
-/* Resultados: la plantilla manda dentro de .pdf-rs-block (evita compactación y reglas globales). */
-.pdf-rs-block table.results th,
-.pdf-rs-block table.results td {
-    border-color: <?= esc($rs['border_color']) ?> !important;
-    font-family: "<?= esc($rs['font_family']) ?>", sans-serif !important;
-    font-size: <?= esc((string) $rs['font_size_pt']) ?>pt !important;
-    font-weight: <?= esc($rs['font_weight']) ?> !important;
-    font-style: <?= esc($rs['font_style']) ?> !important;
-    text-transform: <?= esc($rs['text_transform']) ?> !important;
-    line-height: <?= esc((string) $rs['line_height']) ?> !important;
-    letter-spacing: <?= esc((string) ($rs['letter_spacing_em'] ?? 0)) ?>em !important;
-    text-shadow: <?= esc($rsTextShadow) ?> !important;
-    vertical-align: <?= esc((string) ($rs['cell_vertical_align'] ?? 'middle')) ?> !important;
-}
+/* Resultados: tipografía/celdas dentro de .pdf-rs-block → buildResultsTableParityCss() al final del bloque. */
 .report-pdf-grupo-cabecera .group-title,
 .report-pdf-grupo-cabecera .report-tipo-muestra,
 .report-pdf-grupo-cabecera .report-metodo-prueba {
@@ -586,18 +577,6 @@ table.results td {
     box-sizing: border-box !important;
     width: 100% !important;
     margin: 0 !important;
-}
-.report-pdf-grupo-cabecera .report-tipo-muestra,
-.report-pdf-grupo-cabecera .report-metodo-prueba {
-    font-family: var(--pdf-grupo-cabecera-header-font-family, "<?= esc($rs['font_family']) ?>"), sans-serif !important;
-    font-size: var(--pdf-grupo-cabecera-header-font-size, <?= esc((string) $rs['font_size_pt']) ?>pt) !important;
-    font-weight: var(--pdf-grupo-cabecera-header-font-weight, <?= esc($rs['font_weight']) ?>) !important;
-    font-style: var(--pdf-grupo-cabecera-header-font-style, <?= esc($rs['font_style']) ?>) !important;
-    text-transform: var(--pdf-grupo-cabecera-header-transform, <?= esc($rs['text_transform']) ?>) !important;
-    letter-spacing: <?= esc((string) ($rs['letter_spacing_em'] ?? 0)) ?>em !important;
-    line-height: <?= esc((string) $rs['line_height']) ?> !important;
-    text-shadow: <?= esc($rsTextShadow) ?> !important;
-    color: var(--pdf-grupo-cabecera-header-color, <?= esc($rs['body_text_color']) ?>) !important;
 }
 .report-pdf-grupo-cabecera-table td {
     padding: 0 !important;
@@ -615,25 +594,6 @@ table.results td {
 .report-pdf-grupo-cabecera-line--title {
     page-break-after: avoid;
     break-after: avoid;
-    font-family: "<?= esc($titleTypo['font_family']) ?>", sans-serif !important;
-    font-size: <?= esc((string) $titleTypo['font_size_pt']) ?>pt !important;
-    font-weight: <?= esc($titleTypo['font_weight']) ?> !important;
-    color: <?= esc($titleTypo['text_color']) ?> !important;
-    line-height: 1.2 !important;
-    text-shadow: <?= esc($titleTextShadow) ?> !important;
-    padding-top: var(--pdf-grupo-cabecera-title-margin-top, 0) !important;
-    padding-bottom: var(--pdf-grupo-cabecera-title-margin-bottom, 6px) !important;
-}
-.report-pdf-grupo-cabecera-line--tipo {
-    padding-top: var(--pdf-grupo-cabecera-tipo-margin-top, 0) !important;
-    padding-bottom: var(--pdf-grupo-cabecera-tipo-margin-bottom, 10px) !important;
-}
-.report-pdf-grupo-cabecera-line--metodo {
-    padding-top: var(--pdf-grupo-cabecera-metodo-margin-top, 0) !important;
-    padding-bottom: var(--pdf-grupo-cabecera-metodo-margin-bottom, 10px) !important;
-}
-.report-pdf-grupo-cabecera-line--last {
-    padding-bottom: var(--pdf-grupo-cabecera-metodo-margin-bottom, 10px) !important;
 }
 .report-pdf-grupo-cabecera + .report-segment-table-wrap table.results,
 .report-pdf-grupo-cabecera + .report-refs-matrix-wrap table.results {
@@ -795,28 +755,6 @@ table.results.pdf-notes-table td.pdf-notes-cell {
 }
 .header-grid {
     border-bottom-color: <?= esc($hs['separator_color']) ?> !important;
-}
-.report-segment-title {
-    background: <?= esc($rsSegBg) ?> !important;
-    border-color: <?= esc($rs['segment_border_color']) ?> !important;
-    border-width: <?= esc((string) $rs['segment_border_width_px']) ?>px !important;
-    box-shadow: <?= esc($rsSegShadow) ?> !important;
-    padding-top: <?= (int) ($rs['segment_padding_top_px'] ?? 6) ?>px !important;
-    padding-bottom: <?= (int) ($rs['segment_padding_bottom_px'] ?? 6) ?>px !important;
-}
-.report-segment-title.pdf-card-header {
-    background: <?= esc($rsSegBg) ?> !important;
-    color: <?= esc($ch['text_color']) ?> !important;
-    font-family: "<?= esc($segFontFamily) ?>", sans-serif !important;
-    font-size: <?= esc((string) $segFontSize) ?>pt !important;
-    font-weight: <?= esc($segFontWeight) ?> !important;
-    font-style: <?= esc($ch['font_style']) ?> !important;
-    text-transform: <?= esc($ch['text_transform']) ?> !important;
-}
-.report-pdf-grupo-area-separator.report-segment-title {
-    text-align: center !important;
-    border-bottom-color: <?= esc($rs['segment_border_color']) ?> !important;
-    border-bottom-width: <?= esc((string) $rs['segment_border_width_px']) ?>px !important;
 }
 .report-pdf-grupo-prueba:not(.report-pdf-grupo-prueba-first) {
     padding-top: <?= (int) ($rs['grupo_prueba_gap_px'] ?? 10) ?>px !important;

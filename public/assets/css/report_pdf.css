@@ -742,21 +742,23 @@ table.results td.resultado-texto-rico-cell .resultado-texto-rico ol {
     margin: 0 !important;
 }
 /* Subtítulo de sección (separador) encima de cada tabla de resultados; la fila de cabecera va debajo */
-.report-segment-title {
+.report-segment-title:not(.report-pdf-grupo-area-separator) {
     font-family: var(--pdf-results-segment-font-family, "DejaVu Sans"), sans-serif;
     font-weight: var(--pdf-results-segment-font-weight, 700);
     font-size: var(--pdf-results-segment-font-size, 10pt);
+    font-style: var(--pdf-results-segment-font-style, normal);
+    text-transform: var(--pdf-results-segment-transform, uppercase);
     margin: 0;
     padding: var(--pdf-results-segment-padding-top, 6px) 8px var(--pdf-results-segment-padding-bottom, 6px) 8px;
     background: var(--pdf-results-segment-bg, #e9ecef);
-    color: #333;
+    color: var(--pdf-results-segment-color, #212529);
     border: var(--pdf-results-segment-border-width, 1px) solid var(--pdf-results-segment-border, #ddd);
     border-bottom: none;
     box-shadow: var(--pdf-results-segment-shadow, none);
     page-break-after: avoid;
     break-after: avoid-page;
 }
-.pdf-card-header {
+.pdf-card-header:not(.report-segment-title) {
     background: var(--pdf-card-header-bg, #e9ecef) !important;
     color: var(--pdf-card-header-color, #212529) !important;
     font-family: var(--pdf-card-header-font-family, "DejaVu Sans"), sans-serif !important;
@@ -765,12 +767,10 @@ table.results td.resultado-texto-rico-cell .resultado-texto-rico ol {
     font-style: var(--pdf-card-header-font-style, normal) !important;
     text-transform: var(--pdf-card-header-transform, uppercase) !important;
 }
-/* Misma tipografía que .pdf-card-header pero fondo según plantilla (tabla de resultados → título de sección) */
-.report-segment-title.pdf-card-header {
-    background: var(--pdf-results-segment-bg, #e9ecef) !important;
-    font-family: var(--pdf-results-segment-font-family, var(--pdf-card-header-font-family, "DejaVu Sans")), sans-serif !important;
-    font-size: var(--pdf-results-segment-font-size, var(--pdf-card-header-font-size, 10pt)) !important;
-    font-weight: var(--pdf-results-segment-font-weight, var(--pdf-card-header-font-weight, 700)) !important;
+.report-pdf-grupo-area-separator.report-segment-title {
+    color: var(--pdf-grupo-area-separator-text-color, #333333) !important;
+    font-size: var(--pdf-grupo-area-separator-font-size, 11pt) !important;
+    font-weight: var(--pdf-grupo-area-separator-font-weight, bold) !important;
 }
 .pdf-notes-title {
     background: var(--pdf-notes-title-bg, #fff3cd);

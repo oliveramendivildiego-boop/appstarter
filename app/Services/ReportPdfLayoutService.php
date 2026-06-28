@@ -201,6 +201,9 @@ class ReportPdfLayoutService
         'segment_font_family'       => 'DejaVu Sans',
         'segment_font_size_pt'      => 10.0,
         'segment_font_weight'       => '700',
+        'segment_text_color'        => '#212529',
+        'segment_font_style'        => 'normal',
+        'segment_text_transform'    => 'uppercase',
         'font_family'       => 'DejaVu Sans',
         'font_size_pt'      => 9.0,
         'font_weight'       => 'normal',
@@ -269,6 +272,7 @@ class ReportPdfLayoutService
         'grupo_area_separator_width_px'    => 1,
         'grupo_area_separator_font_size_pt' => 11.0,
         'grupo_area_separator_font_weight' => 'bold',
+        'grupo_area_separator_text_color'  => '#333333',
         'grupo_area_separator_margin_top_px'    => 10,
         'grupo_area_separator_margin_bottom_px' => 10,
     ];
@@ -2397,6 +2401,15 @@ class ReportPdfLayoutService
         if (isset($raw['segment_font_weight']) && ! in_array(strtolower(trim((string) $raw['segment_font_weight'])), self::ALLOWED_PDF_FONT_WEIGHTS, true)) {
             return 'Grosor de fuente no permitido en el título de cada análisis.';
         }
+        if (isset($raw['segment_text_color']) && ! self::isValidPdfHexColor((string) $raw['segment_text_color'])) {
+            return 'Color de texto inválido en el título de cada análisis (#RRGGBB).';
+        }
+        if (isset($raw['segment_font_style']) && ! in_array(strtolower(trim((string) $raw['segment_font_style'])), self::ALLOWED_PDF_FONT_STYLES, true)) {
+            return 'Estilo de fuente no permitido en el título de cada análisis.';
+        }
+        if (isset($raw['segment_text_transform']) && ! in_array(strtolower(trim((string) $raw['segment_text_transform'])), self::ALLOWED_PDF_TEXT_TRANSFORMS, true)) {
+            return 'Transformación de texto no permitida en el título de cada análisis.';
+        }
         if (isset($raw['matrix_text_align']) && ! in_array(strtolower(trim((string) $raw['matrix_text_align'])), self::ALLOWED_PDF_TEXT_ALIGNS, true)) {
             return 'Alineación horizontal no permitida en la matriz de referencia.';
         }
@@ -2504,6 +2517,9 @@ class ReportPdfLayoutService
         }
         if (isset($raw['grupo_area_separator_font_weight']) && ! in_array(strtolower(trim((string) $raw['grupo_area_separator_font_weight'])), self::ALLOWED_PDF_FONT_WEIGHTS, true)) {
             return 'Grosor de fuente no permitido en separador de área.';
+        }
+        if (isset($raw['grupo_area_separator_text_color']) && ! self::isValidPdfHexColor((string) $raw['grupo_area_separator_text_color'])) {
+            return 'Color de texto inválido en el separador de área (#RRGGBB).';
         }
         if (array_key_exists('grupo_area_separator_margin_top_px', $raw)) {
             if (! is_numeric($raw['grupo_area_separator_margin_top_px'])) {
@@ -4375,17 +4391,11 @@ class ReportPdfLayoutService
 
         $ps    = is_array($layout['page_style'] ?? null) ? $layout['page_style'] : [];
         $rs    = self::normalizeResultsTableStyle($ps['results_table'] ?? []);
-        $ch    = self::normalizeCardHeaderStyle($ps['card_header'] ?? []);
         $rsRaw = is_array($ps['results_table'] ?? null) ? $ps['results_table'] : [];
-        $segFamily = array_key_exists('segment_font_family', $rsRaw)
-            ? (string) $rs['segment_font_family']
-            : (string) $ch['font_family'];
-        $segSize = array_key_exists('segment_font_size_pt', $rsRaw)
-            ? (float) $rs['segment_font_size_pt']
-            : (float) $ch['font_size_pt'];
-        $segWeight = array_key_exists('segment_font_weight', $rsRaw)
-            ? (string) $rs['segment_font_weight']
-            : (string) $ch['font_weight'];
+        $segTypo = self::resolveSegmentTitleTypography($rs, $rsRaw);
+        $segFamily = (string) $segTypo['font_family'];
+        $segSize = (float) $segTypo['font_size_pt'];
+        $segWeight = (string) $segTypo['font_weight'];
 
         $bodyBg   = ! empty($rs['body_transparent']) ? 'transparent' : (string) $rs['body_bg_color'];
         $segBg    = ! empty($rs['segment_transparent']) ? 'transparent' : (string) $rs['segment_bg_color'];
@@ -4467,10 +4477,13 @@ class ReportPdfLayoutService
             '    margin-top:' . $tableMt . 'px !important;',
             '    margin-bottom:' . $tableMb . 'px !important;',
             '}',
-            $scope . ' .report-segment-title {',
+            $scope . ' .report-segment-title:not(.report-pdf-grupo-area-separator) {',
             '    font-family:"' . $esc($segFamily) . '", sans-serif !important;',
             '    font-size:' . $esc((string) $segSize) . 'pt !important;',
             '    font-weight:' . $esc($segWeight) . ' !important;',
+            '    color:' . $esc((string) $segTypo['text_color']) . ' !important;',
+            '    font-style:' . $esc((string) $segTypo['font_style']) . ' !important;',
+            '    text-transform:' . $esc((string) $segTypo['text_transform']) . ' !important;',
             '    margin:0 !important;',
             '    padding:' . $segPadTop . 'px 8px ' . $segPadBottom . 'px 8px !important;',
             '    background:' . $esc($segBg) . ' !important;',
@@ -4478,17 +4491,11 @@ class ReportPdfLayoutService
             '    border-bottom:none !important;',
             '    box-shadow:' . $esc($segShadow) . ' !important;',
             '}',
-            $scope . ' .report-segment-title.pdf-card-header {',
-            '    background:' . $esc($segBg) . ' !important;',
-            '    color:' . $esc((string) $ch['text_color']) . ' !important;',
-            '    font-family:"' . $esc($segFamily) . '", sans-serif !important;',
-            '    font-size:' . $esc((string) $segSize) . 'pt !important;',
-            '    font-weight:' . $esc($segWeight) . ' !important;',
-            '    font-style:' . $esc((string) $ch['font_style']) . ' !important;',
-            '    text-transform:' . $esc((string) $ch['text_transform']) . ' !important;',
-            '}',
             $scope . ' .report-pdf-grupo-area-separator.report-segment-title {',
             '    text-align:center !important;',
+            '    color:' . $esc((string) ($rs['grupo_area_separator_text_color'] ?? '#333333')) . ' !important;',
+            '    font-size:' . $esc((string) ($rs['grupo_area_separator_font_size_pt'] ?? 11)) . 'pt !important;',
+            '    font-weight:' . $esc((string) ($rs['grupo_area_separator_font_weight'] ?? 'bold')) . ' !important;',
             '    border-bottom:' . $segBorderW . 'px solid ' . $esc((string) $rs['segment_border_color']) . ' !important;',
             '    padding-top:' . $areaSepMt . 'px !important;',
             '    padding-bottom:' . $areaSepMb . 'px !important;',
@@ -4752,6 +4759,31 @@ class ReportPdfLayoutService
         };
 
         return ['top' => $top, 'bottom' => $bottom];
+    }
+
+    /**
+     * Tipografía efectiva del título de cada análisis (.report-segment-title sobre la tabla).
+     * Independiente de card_header, separador de área y nombre del análisis (.group-title).
+     *
+     * @param array<string, mixed> $rs normalizeResultsTableStyle()
+     * @param array<string, mixed> $rsRaw page_style.results_table sin normalizar
+     *
+     * @return array{font_family: string, font_size_pt: float, font_weight: string, text_color: string, font_style: string, text_transform: string}
+     */
+    public static function resolveSegmentTitleTypography(array $rs, array $rsRaw = []): array
+    {
+        $pick = static function (string $key, $fallback) use ($rs, $rsRaw) {
+            return array_key_exists($key, $rsRaw) ? $rs[$key] : $fallback;
+        };
+
+        return [
+            'font_family'    => (string) $pick('segment_font_family', $rs['segment_font_family']),
+            'font_size_pt'   => (float) $pick('segment_font_size_pt', $rs['segment_font_size_pt']),
+            'font_weight'    => (string) $pick('segment_font_weight', $rs['segment_font_weight']),
+            'text_color'     => (string) $pick('segment_text_color', $rs['segment_text_color']),
+            'font_style'     => (string) $pick('segment_font_style', $rs['segment_font_style']),
+            'text_transform' => (string) $pick('segment_text_transform', $rs['segment_text_transform']),
+        ];
     }
 
     /**
@@ -5024,7 +5056,7 @@ class ReportPdfLayoutService
         $segBorderWidth = max(0, min(4, (int) ($rs['segment_border_width_px'] ?? 1)));
 
         $parts = [
-            'color:#333333',
+            'color:' . (string) ($rs['grupo_area_separator_text_color'] ?? '#333333'),
             'font-size:' . $fs . 'pt',
             'font-weight:' . $fw,
             'text-align:center',
@@ -5931,6 +5963,14 @@ class ReportPdfLayoutService
         if (! in_array($segWeight, self::ALLOWED_PDF_FONT_WEIGHTS, true)) {
             $segWeight = (string) $def['segment_font_weight'];
         }
+        $segStyle = strtolower(trim((string) ($s['segment_font_style'] ?? $def['segment_font_style'])));
+        if (! in_array($segStyle, self::ALLOWED_PDF_FONT_STYLES, true)) {
+            $segStyle = (string) $def['segment_font_style'];
+        }
+        $segTransform = strtolower(trim((string) ($s['segment_text_transform'] ?? $def['segment_text_transform'])));
+        if (! in_array($segTransform, self::ALLOWED_PDF_TEXT_TRANSFORMS, true)) {
+            $segTransform = (string) $def['segment_text_transform'];
+        }
         $matrixAlign = strtolower(trim((string) ($s['matrix_text_align'] ?? $def['matrix_text_align'])));
         if (! in_array($matrixAlign, self::ALLOWED_PDF_TEXT_ALIGNS, true)) {
             $matrixAlign = $def['matrix_text_align'];
@@ -5993,6 +6033,9 @@ class ReportPdfLayoutService
             'segment_font_family'       => $segFamily,
             'segment_font_size_pt'      => $segSize,
             'segment_font_weight'       => $segWeight,
+            'segment_text_color'        => $pickColor('segment_text_color', (string) $def['segment_text_color']),
+            'segment_font_style'        => $segStyle,
+            'segment_text_transform'    => $segTransform,
             'font_family'       => $family,
             'font_size_pt'      => $size,
             'font_weight'       => $weight,
@@ -6091,6 +6134,7 @@ class ReportPdfLayoutService
                 $w = strtolower(trim((string) ($s['grupo_area_separator_font_weight'] ?? ($def['grupo_area_separator_font_weight'] ?? 'bold'))));
                 return in_array($w, self::ALLOWED_PDF_FONT_WEIGHTS, true) ? $w : 'bold';
             })(),
+            'grupo_area_separator_text_color'  => $pickColor('grupo_area_separator_text_color', (string) ($def['grupo_area_separator_text_color'] ?? '#333333')),
             'grupo_area_separator_margin_top_px'    => max(0, min(80, isset($s['grupo_area_separator_margin_top_px']) ? (int) $s['grupo_area_separator_margin_top_px'] : (int) ($def['grupo_area_separator_margin_top_px'] ?? 10))),
             'grupo_area_separator_margin_bottom_px' => max(0, min(80, isset($s['grupo_area_separator_margin_bottom_px']) ? (int) $s['grupo_area_separator_margin_bottom_px'] : (int) ($def['grupo_area_separator_margin_bottom_px'] ?? 10))),
         ];
@@ -6487,11 +6531,12 @@ class ReportPdfLayoutService
 
         $watermark = $this->normalizeWatermark($decoded);
         $pageStyleRaw = is_array($decoded['page_style'] ?? null) ? $decoded['page_style'] : [];
+        $resultsTable = self::normalizeResultsTableStyle($pageStyleRaw['results_table'] ?? []);
         $pageStyle = [
-            'card_header'         => self::normalizeCardHeaderStyle($pageStyleRaw['card_header'] ?? []),
+            'card_header'         => self::cardHeaderStyleFromResultsTable($resultsTable),
             'notes'               => self::normalizeNotesStyle($pageStyleRaw['notes'] ?? []),
             'lab_firmas'          => self::normalizeLabFirmasStyle($pageStyleRaw['lab_firmas'] ?? []),
-            'results_table'       => self::normalizeResultsTableStyle($pageStyleRaw['results_table'] ?? []),
+            'results_table'       => $resultsTable,
             'header_section'      => self::normalizeHeaderSectionStyle($pageStyleRaw['header_section'] ?? []),
             'header_grid'         => self::normalizeHeaderGridStyle($pageStyleRaw['header_grid'] ?? []),
             'patient_doctor_grid' => self::normalizePatientDoctorGridStyle($pageStyleRaw['patient_doctor_grid'] ?? []),
@@ -6514,6 +6559,22 @@ class ReportPdfLayoutService
             'margins_mm'      => $marginsMm,
             'watermark'       => $watermark,
             'page_style'      => $pageStyle,
+        ];
+    }
+
+    public static function cardHeaderStyleFromResultsTable(array $rs): array
+    {
+        $rs = self::normalizeResultsTableStyle($rs);
+
+        return [
+            'bg_color'        => (string) $rs['segment_bg_color'],
+            'text_color'      => (string) $rs['segment_text_color'],
+            'bg_transparent'  => ! empty($rs['segment_transparent']),
+            'font_family'     => (string) $rs['segment_font_family'],
+            'font_size_pt'    => (float) $rs['segment_font_size_pt'],
+            'font_weight'     => (string) $rs['segment_font_weight'],
+            'font_style'      => (string) $rs['segment_font_style'],
+            'text_transform'  => (string) $rs['segment_text_transform'],
         ];
     }
 

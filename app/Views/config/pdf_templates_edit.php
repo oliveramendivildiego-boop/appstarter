@@ -62,9 +62,7 @@ $ns = \App\Services\ReportPdfLayoutService::normalizeNotesStyle($ps['notes'] ?? 
 $lf = \App\Services\ReportPdfLayoutService::normalizeLabFirmasStyle($ps['lab_firmas'] ?? []);
 $rs = \App\Services\ReportPdfLayoutService::normalizeResultsTableStyle($ps['results_table'] ?? []);
 $rsRaw = is_array($ps['results_table'] ?? null) ? $ps['results_table'] : [];
-$segFontFamily = array_key_exists('segment_font_family', $rsRaw) ? (string) $rs['segment_font_family'] : (string) $ch['font_family'];
-$segFontSize = array_key_exists('segment_font_size_pt', $rsRaw) ? (float) $rs['segment_font_size_pt'] : (float) $ch['font_size_pt'];
-$segFontWeight = array_key_exists('segment_font_weight', $rsRaw) ? (string) $rs['segment_font_weight'] : (string) $ch['font_weight'];
+$segTypo = \App\Services\ReportPdfLayoutService::resolveSegmentTitleTypography($rs, $rsRaw);
 $titleTypo = \App\Services\ReportPdfLayoutService::resolveGrupoCabeceraTitleTypography($rs, $rsRaw);
 $headerTypo = \App\Services\ReportPdfLayoutService::resolveGrupoCabeceraHeaderTypography($rs, $rsRaw);
 $hs = \App\Services\ReportPdfLayoutService::normalizeHeaderSectionStyle($ps['header_section'] ?? []);
@@ -247,61 +245,11 @@ if (! in_array($configTab, $pdfConfigTabs, true)) {
         <h5 class="mb-0">Estilo de los títulos de cada análisis</h5>
     </div>
     <div class="card-body">
-        <p class="small text-muted">Aplica a los encabezados de sección del reporte (por ejemplo «HEMATOLOGÍA», «QUÍMICA»).</p>
+        <p class="small text-muted mb-2">El color de la línea separadora del encabezado del reporte se configura aquí. El estilo de la barra de título de cada análisis (p. ej. «GLUCOSA») está en la pestaña <strong>Resultados</strong>, sección <strong>4. Título de cada análisis</strong>.</p>
         <div class="row g-3">
             <div class="col-6 col-md-3">
                 <label class="form-label small" for="hs_separator_color">Separador de encabezado (línea azul)</label>
                 <input type="color" class="form-control form-control-color" id="hs_separator_color" value="<?= esc($hs['separator_color'], 'attr') ?>">
-            </div>
-            <div class="col-6 col-md-3">
-                <label class="form-label small" for="ch_bg_color">Fondo</label>
-                <input type="color" class="form-control form-control-color" id="ch_bg_color" value="<?= esc($ch['bg_color'], 'attr') ?>">
-            </div>
-            <div class="col-12 col-md-3 d-flex align-items-end">
-                <div class="form-check mb-1">
-                    <input class="form-check-input" type="checkbox" id="ch_bg_transparent" <?= ! empty($ch['bg_transparent']) ? 'checked' : '' ?>>
-                    <label class="form-check-label small" for="ch_bg_transparent">Fondo transparente (títulos de análisis)</label>
-                </div>
-            </div>
-            <div class="col-6 col-md-3">
-                <label class="form-label small" for="ch_text_color">Texto</label>
-                <input type="color" class="form-control form-control-color" id="ch_text_color" value="<?= esc($ch['text_color'], 'attr') ?>">
-            </div>
-            <div class="col-12 col-md-3">
-                <label class="form-label small" for="ch_font_family">Fuente</label>
-                <select class="form-select" id="ch_font_family">
-                    <?php foreach (['DejaVu Sans', 'Helvetica', 'Arial', 'Times New Roman', 'Courier New'] as $ff): ?>
-                    <option value="<?= esc($ff, 'attr') ?>" <?= $ch['font_family'] === $ff ? 'selected' : '' ?>><?= esc($ff) ?></option>
-                    <?php endforeach; ?>
-                </select>
-            </div>
-            <div class="col-6 col-md-3">
-                <label class="form-label small" for="ch_font_size">Tamaño (pt)</label>
-                <input type="number" class="form-control" id="ch_font_size" min="7" max="20" step="0.5" value="<?= esc((string) $ch['font_size_pt'], 'attr') ?>">
-            </div>
-            <div class="col-6 col-md-3">
-                <label class="form-label small" for="ch_font_weight">Grosor</label>
-                <select class="form-select" id="ch_font_weight">
-                    <?php foreach (['normal', 'bold', '400', '500', '600', '700', '800'] as $w): ?>
-                    <option value="<?= esc($w, 'attr') ?>" <?= $ch['font_weight'] === $w ? 'selected' : '' ?>><?= esc($w) ?></option>
-                    <?php endforeach; ?>
-                </select>
-            </div>
-            <div class="col-6 col-md-3">
-                <label class="form-label small" for="ch_font_style">Estilo</label>
-                <select class="form-select" id="ch_font_style">
-                    <?php foreach (['normal', 'italic', 'oblique'] as $st): ?>
-                    <option value="<?= esc($st, 'attr') ?>" <?= $ch['font_style'] === $st ? 'selected' : '' ?>><?= esc(ucfirst($st)) ?></option>
-                    <?php endforeach; ?>
-                </select>
-            </div>
-            <div class="col-6 col-md-3">
-                <label class="form-label small" for="ch_text_transform">Transformación</label>
-                <select class="form-select" id="ch_text_transform">
-                    <?php foreach (['none' => 'Normal', 'uppercase' => 'MAYÚSCULAS', 'lowercase' => 'minúsculas', 'capitalize' => 'Tipo Título'] as $k => $v): ?>
-                    <option value="<?= esc($k, 'attr') ?>" <?= $ch['text_transform'] === $k ? 'selected' : '' ?>><?= esc($v) ?></option>
-                    <?php endforeach; ?>
-                </select>
             </div>
         </div>
     </div>
@@ -794,9 +742,12 @@ if (! in_array($configTab, $pdfConfigTabs, true)) {
             <div class="col-6 col-md-3"><label class="form-label small" for="rs_segment_border_color">Color borde</label><input type="color" class="form-control form-control-color" id="rs_segment_border_color" value="<?= esc($rs['segment_border_color'], 'attr') ?>"></div>
             <div class="col-6 col-md-2"><label class="form-label small" for="rs_segment_border_width">Ancho borde (px)</label><input type="number" class="form-control" id="rs_segment_border_width" min="0" max="4" step="1" value="<?= esc((string) $rs['segment_border_width_px'], 'attr') ?>"></div>
             <div class="col-6 col-md-2"><label class="form-label small" for="rs_segment_shadow">Sombra</label><select class="form-select" id="rs_segment_shadow"><?php foreach (['none' => 'Sin sombra', 'soft' => 'Suave', 'medium' => 'Media', 'strong' => 'Fuerte'] as $k => $v): ?><option value="<?= esc($k, 'attr') ?>" <?= $rs['segment_shadow'] === $k ? 'selected' : '' ?>><?= esc($v) ?></option><?php endforeach; ?></select></div>
-            <div class="col-12 col-md-3"><label class="form-label small" for="rs_segment_font_family">Fuente del título</label><select class="form-select" id="rs_segment_font_family"><?php foreach (['DejaVu Sans', 'Helvetica', 'Arial', 'Times New Roman', 'Courier New'] as $ff): ?><option value="<?= esc($ff, 'attr') ?>" <?= $segFontFamily === $ff ? 'selected' : '' ?>><?= esc($ff) ?></option><?php endforeach; ?></select></div>
-            <div class="col-6 col-md-2"><label class="form-label small" for="rs_segment_font_size">Tamaño (pt)</label><input type="number" class="form-control" id="rs_segment_font_size" min="7" max="20" step="0.5" value="<?= esc((string) $segFontSize, 'attr') ?>"></div>
-            <div class="col-6 col-md-2"><label class="form-label small" for="rs_segment_font_weight">Grosor</label><select class="form-select" id="rs_segment_font_weight"><?php foreach (['normal', 'bold', '400', '500', '600', '700', '800'] as $w): ?><option value="<?= esc($w, 'attr') ?>" <?= $segFontWeight === $w ? 'selected' : '' ?>><?= esc($w) ?></option><?php endforeach; ?></select></div>
+            <div class="col-12 col-md-3"><label class="form-label small" for="rs_segment_font_family">Fuente del título</label><select class="form-select" id="rs_segment_font_family"><?php foreach (['DejaVu Sans', 'Helvetica', 'Arial', 'Times New Roman', 'Courier New'] as $ff): ?><option value="<?= esc($ff, 'attr') ?>" <?= ($segTypo['font_family'] ?? '') === $ff ? 'selected' : '' ?>><?= esc($ff) ?></option><?php endforeach; ?></select></div>
+            <div class="col-6 col-md-2"><label class="form-label small" for="rs_segment_font_size">Tamaño (pt)</label><input type="number" class="form-control" id="rs_segment_font_size" min="7" max="20" step="0.5" value="<?= esc((string) ($segTypo['font_size_pt'] ?? 10), 'attr') ?>"></div>
+            <div class="col-6 col-md-2"><label class="form-label small" for="rs_segment_font_weight">Grosor</label><select class="form-select" id="rs_segment_font_weight"><?php foreach (['normal', 'bold', '400', '500', '600', '700', '800'] as $w): ?><option value="<?= esc($w, 'attr') ?>" <?= ($segTypo['font_weight'] ?? '') === $w ? 'selected' : '' ?>><?= esc($w) ?></option><?php endforeach; ?></select></div>
+            <div class="col-6 col-md-2"><label class="form-label small" for="rs_segment_text_color">Color texto</label><input type="color" class="form-control form-control-color" id="rs_segment_text_color" value="<?= esc($segTypo['text_color'] ?? '#212529', 'attr') ?>"></div>
+            <div class="col-6 col-md-2"><label class="form-label small" for="rs_segment_font_style">Estilo</label><select class="form-select" id="rs_segment_font_style"><?php foreach (['normal', 'italic', 'oblique'] as $st): ?><option value="<?= esc($st, 'attr') ?>" <?= ($segTypo['font_style'] ?? '') === $st ? 'selected' : '' ?>><?= esc(ucfirst($st)) ?></option><?php endforeach; ?></select></div>
+            <div class="col-6 col-md-3"><label class="form-label small" for="rs_segment_text_transform">Transformación</label><select class="form-select" id="rs_segment_text_transform"><?php foreach (['none' => 'Normal', 'uppercase' => 'MAYÚSCULAS', 'lowercase' => 'minúsculas', 'capitalize' => 'Tipo Título'] as $k => $v): ?><option value="<?= esc($k, 'attr') ?>" <?= ($segTypo['text_transform'] ?? '') === $k ? 'selected' : '' ?>><?= esc($v) ?></option><?php endforeach; ?></select></div>
             <div class="col-6 col-md-3">
                 <label class="form-label small" for="rs_segment_padding_top_px" title="Espacio entre el borde superior de la fila y el texto">Espacio arriba del texto (px)</label>
                 <input type="number" class="form-control" id="rs_segment_padding_top_px" min="0" max="40" step="1" value="<?= esc((string) (int) ($rs['segment_padding_top_px'] ?? 6), 'attr') ?>">
@@ -916,7 +867,7 @@ if (! in_array($configTab, $pdfConfigTabs, true)) {
                                     <input class="form-check-input" type="checkbox" id="rs_grupo_area_separator_enabled" <?= ! empty($rs['grupo_area_separator_enabled']) ? 'checked' : '' ?>>
                                     <label class="form-check-label small" for="rs_grupo_area_separator_enabled">Separador con nombre del área</label>
                                 </div>
-                                <div class="form-text mb-2">Muestra el nombre del área con el mismo estilo que los títulos de sección (<code>report-segment-title pdf-card-header</code>) al inicio de cada <code>report-pdf-grupo-prueba</code>. Debajo van las pruebas con su cabecera habitual.</div>
+                                <div class="form-text mb-2">Muestra el nombre del área al inicio de cada <code>report-pdf-grupo-prueba</code>. Usa tipografía propia del separador de área (no la del título de cada análisis ni el nombre del análisis).</div>
                             </div>
                             <div class="col-6 col-md-3">
                                 <label class="form-label small" for="rs_grupo_area_separator_margin_top_px">Margen superior del separador (px)</label>
@@ -4579,8 +4530,18 @@ document.addEventListener('DOMContentLoaded', function() {
                 column_border_color: pickHex(prefix + '_column_border_color', '#DDDDDD')
             };
         }
-        var bg = pickHex('ch_bg_color', '#E9ECEF');
-        var tx = pickHex('ch_text_color', '#212529');
+        function cardHeaderFromSegmentFields() {
+            return {
+                bg_color: pickHex('rs_segment_bg', '#E9ECEF'),
+                text_color: pickHex('rs_segment_text_color', '#212529'),
+                bg_transparent: !!(document.getElementById('rs_segment_transparent') && document.getElementById('rs_segment_transparent').checked),
+                font_family: pickAllowedDomId('rs_segment_font_family', 'font_families', 'DejaVu Sans'),
+                font_size_pt: pickNum('rs_segment_font_size', 7, 20, 10),
+                font_weight: pickAllowedDomId('rs_segment_font_weight', 'font_weights', '700'),
+                font_style: pickAllowedDomId('rs_segment_font_style', 'font_styles', 'normal'),
+                text_transform: pickAllowedDomId('rs_segment_text_transform', 'text_transforms', 'uppercase')
+            };
+        }
         var pdGrid = readSectionGridWrap('pd', '#F8F9FA', '#333333', 9.5);
         var pdDefs = { paciente_nombre: 'Paciente:', paciente_genero: 'Género:', paciente_edad: 'Edad:', paciente_telefono: 'Teléfono:', diagnostico_presuntivo: 'Diagnóstico presuntivo:', medico: 'Médico:', fecha_recepcion: 'Fecha de recepción:', fecha_reporte: 'Fecha de reporte:', numero_orden: 'No. Orden:' };
         Object.keys(pdDefs).forEach(function(fid) {
@@ -4651,16 +4612,7 @@ document.addEventListener('DOMContentLoaded', function() {
             hgGrid['label_' + fid + '_text_transform'] = pickAllowedIds(['ft_dup_hg_hdr_' + fid + '_tt', 'hg_hdr_' + fid + '_tt'], 'text_transforms', hgGrid.text_transform);
         });
         return {
-            card_header: {
-                bg_color: bg,
-                text_color: tx,
-                bg_transparent: !!(document.getElementById('ch_bg_transparent') && document.getElementById('ch_bg_transparent').checked),
-                font_family: pickAllowedDomId('ch_font_family', 'font_families', 'DejaVu Sans'),
-                font_size_pt: pickNum('ch_font_size', 7, 20, 10),
-                font_weight: pickAllowedDomId('ch_font_weight', 'font_weights', '700'),
-                font_style: pickAllowedDomId('ch_font_style', 'font_styles', 'normal'),
-                text_transform: pickAllowedDomId('ch_text_transform', 'text_transforms', 'uppercase')
-            },
+            card_header: cardHeaderFromSegmentFields(),
             header_section: {
                 separator_color: pickHex('hs_separator_color', '#0066CC')
             },
@@ -4775,6 +4727,9 @@ document.addEventListener('DOMContentLoaded', function() {
                 segment_font_family: pickAllowedDomId('rs_segment_font_family', 'font_families', 'DejaVu Sans'),
                 segment_font_size_pt: pickNum('rs_segment_font_size', 7, 20, 10),
                 segment_font_weight: pickAllowedDomId('rs_segment_font_weight', 'font_weights', '700'),
+                segment_text_color: pickHex('rs_segment_text_color', '#212529'),
+                segment_font_style: pickAllowedDomId('rs_segment_font_style', 'font_styles', 'normal'),
+                segment_text_transform: pickAllowedDomId('rs_segment_text_transform', 'text_transforms', 'uppercase'),
                 font_family: pickAllowedDomId('rs_font_family', 'font_families', 'DejaVu Sans'),
                 font_size_pt: pickNum('rs_font_size', 7, 20, 9),
                 font_weight: pickAllowedDomId('rs_font_weight', 'font_weights', 'normal'),
@@ -4856,19 +4811,19 @@ document.addEventListener('DOMContentLoaded', function() {
         var ch = ps.card_header || {};
         var ns = ps.notes || {};
         var rs = ps.results_table || {};
-        var chCardBg = ch.bg_transparent ? 'transparent' : (ch.bg_color || '#e9ecef');
+        var chCardBg = rs.segment_transparent ? 'transparent' : (rs.segment_bg_color || ch.bg_color || '#e9ecef');
         var nsTitleBg = ns.title_transparent ? 'transparent' : (ns.title_bg_color || '#fff3cd');
         var nsBodyBg = ns.body_transparent ? 'transparent' : (ns.body_bg_color || '#ffffff');
         var rsBodyBg = rs.body_transparent ? 'transparent' : (rs.body_bg_color || '#ffffff');
         var rsSegBg = rs.segment_transparent ? 'transparent' : (rs.segment_bg_color || '#e9ecef');
         return {
             '--pdf-card-header-bg': chCardBg,
-            '--pdf-card-header-color': ch.text_color || '#212529',
-            '--pdf-card-header-font-family': '"' + (ch.font_family || 'DejaVu Sans') + '"',
-            '--pdf-card-header-font-size': (ch.font_size_pt || 10) + 'pt',
-            '--pdf-card-header-font-weight': ch.font_weight || '700',
-            '--pdf-card-header-font-style': ch.font_style || 'normal',
-            '--pdf-card-header-transform': ch.text_transform || 'uppercase',
+            '--pdf-card-header-color': rs.segment_text_color || ch.text_color || '#212529',
+            '--pdf-card-header-font-family': '"' + (rs.segment_font_family || ch.font_family || 'DejaVu Sans') + '"',
+            '--pdf-card-header-font-size': (rs.segment_font_size_pt || ch.font_size_pt || 10) + 'pt',
+            '--pdf-card-header-font-weight': rs.segment_font_weight || ch.font_weight || '700',
+            '--pdf-card-header-font-style': rs.segment_font_style || ch.font_style || 'normal',
+            '--pdf-card-header-transform': rs.segment_text_transform || ch.text_transform || 'uppercase',
             '--pdf-notes-title-bg': nsTitleBg,
             '--pdf-notes-title-color': ns.title_text_color || '#664d03',
             '--pdf-notes-body-bg': nsBodyBg,
@@ -4895,6 +4850,9 @@ document.addEventListener('DOMContentLoaded', function() {
             '--pdf-results-segment-font-family': '"' + (rs.segment_font_family || 'DejaVu Sans') + '"',
             '--pdf-results-segment-font-size': (rs.segment_font_size_pt || 10) + 'pt',
             '--pdf-results-segment-font-weight': rs.segment_font_weight || '700',
+            '--pdf-results-segment-color': rs.segment_text_color || '#212529',
+            '--pdf-results-segment-font-style': rs.segment_font_style || 'normal',
+            '--pdf-results-segment-transform': rs.segment_text_transform || 'uppercase',
             '--pdf-results-font-family': '"' + (rs.font_family || 'DejaVu Sans') + '"',
             '--pdf-results-font-size': (rs.font_size_pt || 9) + 'pt',
             '--pdf-results-font-weight': rs.font_weight || 'normal',
@@ -4908,6 +4866,9 @@ document.addEventListener('DOMContentLoaded', function() {
             '--pdf-results-subgrupo-gap': (parseInt(rs.subgrupo_prueba_gap_px, 10) || 18) + 'px',
             '--pdf-grupo-area-separator-margin-top': (parseInt(rs.grupo_area_separator_margin_top_px, 10) || 10) + 'px',
             '--pdf-grupo-area-separator-margin-bottom': (parseInt(rs.grupo_area_separator_margin_bottom_px, 10) || 10) + 'px',
+            '--pdf-grupo-area-separator-font-size': (rs.grupo_area_separator_font_size_pt || 11) + 'pt',
+            '--pdf-grupo-area-separator-font-weight': rs.grupo_area_separator_font_weight || 'bold',
+            '--pdf-grupo-area-separator-text-color': rs.grupo_area_separator_text_color || '#333333',
             '--pdf-grupo-cabecera-title-margin-top': (parseInt(rs.grupo_cabecera_title_margin_top_px, 10) || 0) + 'px',
             '--pdf-grupo-cabecera-title-margin-bottom': (parseInt(rs.grupo_cabecera_title_margin_bottom_px, 10) || 6) + 'px',
             '--pdf-grupo-cabecera-title-font-family': '"' + (rs.grupo_cabecera_title_font_family || rs.font_family || 'DejaVu Sans') + '"',
@@ -4956,88 +4917,6 @@ document.addEventListener('DOMContentLoaded', function() {
         rs = rs || {};
         var scope = '.ynex-theme #pdf_results_live_preview_scope';
         var lines = [];
-
-        var bodyTransparent = previewChecked('rs_body_transparent') || !!rs.body_transparent;
-        var segTransparent = previewChecked('rs_segment_transparent') || !!rs.segment_transparent;
-        var hdrBg = previewColorFromInput('rs_header_bg', rs.header_bg_color || '#0066CC');
-        var hdrText = previewColorFromInput('rs_header_text', rs.header_text_color || '#FFFFFF');
-        var bodyBg = bodyTransparent ? 'transparent' : previewColorFromInput('rs_body_bg', rs.body_bg_color || '#FFFFFF');
-        var bodyText = previewColorFromInput('rs_body_text', rs.body_text_color || '#333333');
-        var borderColor = previewColorFromInput('rs_border_color', rs.border_color || '#DDDDDD');
-        var segBg = segTransparent ? 'transparent' : previewColorFromInput('rs_segment_bg', rs.segment_bg_color || '#E9ECEF');
-        var segBorder = previewColorFromInput('rs_segment_border_color', rs.segment_border_color || '#DDDDDD');
-        var matrixText = previewColorFromInput('rs_matrix_text_color', rs.matrix_text_color || bodyText);
-        var matrixHdrText = previewColorFromInput('rs_matrix_header_text_color', rs.matrix_header_text_color || hdrText);
-
-        lines.push(scope + ' table.results:not(.pdf-notes-table):not(.report-refs-matrix) thead th {');
-        lines.push('  background: ' + hdrBg + ' !important;');
-        lines.push('  color: ' + hdrText + ' !important;');
-        lines.push('  border-color: ' + borderColor + ' !important;');
-        lines.push('}');
-        lines.push(scope + ' table.results:not(.pdf-notes-table):not(.report-refs-matrix) tbody td {');
-        lines.push('  background: ' + bodyBg + ' !important;');
-        lines.push('  color: ' + bodyText + ' !important;');
-        lines.push('  border-color: ' + borderColor + ' !important;');
-        lines.push('}');
-        lines.push(scope + ' table.results.report-refs-matrix thead th {');
-        lines.push('  background: ' + hdrBg + ' !important;');
-        lines.push('  color: ' + matrixHdrText + ' !important;');
-        lines.push('  border-color: ' + borderColor + ' !important;');
-        lines.push('}');
-        lines.push(scope + ' table.results.report-refs-matrix tbody td {');
-        lines.push('  background: ' + bodyBg + ' !important;');
-        lines.push('  color: ' + matrixText + ' !important;');
-        lines.push('  border-color: ' + borderColor + ' !important;');
-        lines.push('}');
-        lines.push(scope + ' .report-segment-title, ' + scope + ' .report-segment-title.pdf-card-header {');
-        lines.push('  background: ' + segBg + ' !important;');
-        lines.push('  border-color: ' + segBorder + ' !important;');
-        lines.push('  font-family: "' + (rs.segment_font_family || 'DejaVu Sans') + '", sans-serif !important;');
-        lines.push('  font-size: ' + (rs.segment_font_size_pt || 10) + 'pt !important;');
-        lines.push('  font-weight: ' + (rs.segment_font_weight || '700') + ' !important;');
-        lines.push('}');
-        var titleColor = previewColorFromInput('rs_grupo_cabecera_title_text_color', rs.grupo_cabecera_title_text_color || rs.body_text_color || '#333333');
-        var titleShadowKey = (document.getElementById('rs_grupo_cabecera_title_text_shadow') || {}).value || rs.grupo_cabecera_title_text_shadow || 'none';
-        var cabSpacing = readGrupoCabeceraSpacingFromRs(rs);
-        lines.push(scope + ' .report-pdf-grupo-cabecera .group-title, ' + scope + ' .report-pdf-grupo-cabecera-line--title, ' + scope + ' #pdf_preview_grupo_title {');
-        lines.push('  margin: 0 !important;');
-        lines.push('  font-family: "' + (rs.grupo_cabecera_title_font_family || rs.font_family || 'DejaVu Sans') + '", sans-serif !important;');
-        lines.push('  font-size: ' + (rs.grupo_cabecera_title_font_size_pt || rs.font_size_pt || 9) + 'pt !important;');
-        lines.push('  font-weight: ' + (rs.grupo_cabecera_title_font_weight || rs.font_weight || 'normal') + ' !important;');
-        lines.push('  color: ' + titleColor + ' !important;');
-        lines.push('  text-shadow: ' + (PDF_TEXT_SHADOW_MAP[titleShadowKey] || 'none') + ' !important;');
-        lines.push('  padding-top: ' + cabSpacing.titleTop + 'px !important;');
-        lines.push('  padding-bottom: ' + cabSpacing.titleBottom + 'px !important;');
-        lines.push('}');
-        lines.push(scope + ' .report-pdf-grupo-cabecera .report-tipo-muestra, ' + scope + ' .report-pdf-grupo-cabecera-line--tipo, ' + scope + ' #pdf_preview_tipo_muestra {');
-        lines.push('  margin: 0 !important;');
-        lines.push('  font-family: "' + (rs.grupo_cabecera_header_font_family || rs.font_family || 'DejaVu Sans') + '", sans-serif !important;');
-        lines.push('  font-size: ' + (rs.grupo_cabecera_header_font_size_pt || rs.font_size_pt || 9) + 'pt !important;');
-        lines.push('  font-weight: ' + (rs.grupo_cabecera_header_font_weight || rs.font_weight || 'normal') + ' !important;');
-        lines.push('  font-style: ' + (rs.grupo_cabecera_header_font_style || rs.font_style || 'normal') + ' !important;');
-        lines.push('  text-transform: ' + (rs.grupo_cabecera_header_text_transform || rs.text_transform || 'none') + ' !important;');
-        lines.push('  color: ' + previewColorFromInput('rs_grupo_cabecera_header_text_color', rs.grupo_cabecera_header_text_color || rs.body_text_color || '#333333') + ' !important;');
-        lines.push('  padding-top: ' + cabSpacing.tipoTop + 'px !important;');
-        lines.push('  padding-bottom: ' + cabSpacing.tipoBottom + 'px !important;');
-        lines.push('}');
-        lines.push(scope + ' .report-pdf-grupo-cabecera .report-metodo-prueba, ' + scope + ' .report-pdf-grupo-cabecera-line--metodo, ' + scope + ' #pdf_preview_metodo {');
-        lines.push('  margin: 0 !important;');
-        lines.push('  font-family: "' + (rs.grupo_cabecera_header_font_family || rs.font_family || 'DejaVu Sans') + '", sans-serif !important;');
-        lines.push('  font-size: ' + (rs.grupo_cabecera_header_font_size_pt || rs.font_size_pt || 9) + 'pt !important;');
-        lines.push('  font-weight: ' + (rs.grupo_cabecera_header_font_weight || rs.font_weight || 'normal') + ' !important;');
-        lines.push('  font-style: ' + (rs.grupo_cabecera_header_font_style || rs.font_style || 'normal') + ' !important;');
-        lines.push('  text-transform: ' + (rs.grupo_cabecera_header_text_transform || rs.text_transform || 'none') + ' !important;');
-        lines.push('  color: ' + previewColorFromInput('rs_grupo_cabecera_header_text_color', rs.grupo_cabecera_header_text_color || rs.body_text_color || '#333333') + ' !important;');
-        lines.push('  padding-top: ' + cabSpacing.metodoTop + 'px !important;');
-        lines.push('  padding-bottom: ' + cabSpacing.metodoBottom + 'px !important;');
-        lines.push('}');
-        lines.push(scope + ' .report-pdf-grupo-cabecera-line--last {');
-        lines.push('  padding-bottom: ' + cabSpacing.gapBeforeTable + 'px !important;');
-        lines.push('}');
-
-        lines.push(scope + ' .report-pdf-grupo-cabecera + .report-segment-table-wrap table.results {');
-        lines.push('  margin-top: 0 !important;');
-        lines.push('}');
 
         var pad = parseInt(rs.cell_padding_v_px, 10);
         if (isNaN(pad)) {
@@ -5252,12 +5131,6 @@ document.addEventListener('DOMContentLoaded', function() {
         }
         wireRoot(document.getElementById('pdf_results_config_root'), rebuildResultsLivePreview);
         wireRoot(document.getElementById('pdf_notes_config_root'), rebuildNotesLivePreview);
-        ['ch_bg_color', 'ch_text_color', 'ch_bg_transparent', 'ch_font_family', 'ch_font_size', 'ch_font_weight', 'ch_font_style', 'ch_text_transform'].forEach(function(id) {
-            var el = document.getElementById(id);
-            if (!el) return;
-            el.addEventListener('input', rebuildResultsLivePreview);
-            el.addEventListener('change', rebuildResultsLivePreview);
-        });
         rebuildResultsLivePreview();
         rebuildNotesLivePreview();
     }
@@ -5290,13 +5163,6 @@ document.addEventListener('DOMContentLoaded', function() {
             var n = parseFloat(el.value);
             if (isNaN(n) || n < min || n > max) errs.push(msg);
         }
-        pushIfBadHex('ch_bg_color', 'Color de fondo (card header): use #RRGGBB.');
-        pushIfBadHex('ch_text_color', 'Color de texto (card header): use #RRGGBB.');
-        pushIfBadSelect('ch_font_family', ff, 'Fuente no permitida en card header.');
-        pushIfBadNum('ch_font_size', 7, 20, 'Tamaño de fuente del card header: entre 7 y 20 pt.');
-        pushIfBadSelect('ch_font_weight', fw, 'Grosor no permitido en card header.');
-        pushIfBadSelect('ch_font_style', fst, 'Estilo no permitido en card header.');
-        pushIfBadSelect('ch_text_transform', tt, 'Transformación no permitida en card header.');
         pushIfBadHex('hs_separator_color', 'Color del separador de sección: use #RRGGBB.');
         ['ns_title_bg', 'ns_title_text', 'ns_body_bg', 'ns_body_text', 'ns_column_border_color'].forEach(function(id) {
             pushIfBadHex(id, 'Color inválido en notas del resultado.');
@@ -5438,6 +5304,9 @@ document.addEventListener('DOMContentLoaded', function() {
         pushIfBadSelect('rs_segment_font_family', ff, 'Fuente no permitida en el título de cada análisis.');
         pushIfBadNum('rs_segment_font_size', 7, 20, 'Tamaño en el título de cada análisis: entre 7 y 20 pt.');
         pushIfBadSelect('rs_segment_font_weight', fw, 'Grosor no permitido en el título de cada análisis.');
+        pushIfBadHex('rs_segment_text_color', 'Color inválido en el título de cada análisis.');
+        pushIfBadSelect('rs_segment_font_style', fst, 'Estilo no permitido en el título de cada análisis.');
+        pushIfBadSelect('rs_segment_text_transform', tt, 'Transformación no permitida en el título de cada análisis.');
         pushIfBadSelect('rs_matrix_align', ta, 'Alineación horizontal no permitida en matriz de referencia.');
         pushIfBadSelect('rs_matrix_valign', va, 'Alineación vertical no permitida en matriz de referencia.');
         pushIfBadHex('rs_matrix_text_color', 'Color inválido en matriz de referencia.');
