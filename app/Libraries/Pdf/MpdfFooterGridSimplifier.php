@@ -155,10 +155,19 @@ final class MpdfFooterGridSimplifier
 
         foreach ($tds as $td) {
             $align = strtolower($td->getAttribute('align'));
+            if ($align !== 'left' && $align !== 'center' && $align !== 'right') {
+                $class = $td->getAttribute('class');
+                if (preg_match('/\bpdf-cell--h-(left|center|right)\b/i', $class, $cm)) {
+                    $align = strtolower($cm[1]);
+                } elseif (preg_match('/\bpdf-cell--(left|center|right)\b/i', $class, $cm)) {
+                    $align = strtolower($cm[1]);
+                }
+            }
             if ($align === 'left' || $align === 'center' || $align === 'right') {
+                $td->setAttribute('align', $align);
                 $style = $td->getAttribute('style');
                 if (! str_contains($style, 'text-align')) {
-                    $td->setAttribute('style', trim($style . ';text-align:' . $align . ' !important;', ';'));
+                    $td->setAttribute('style', trim($style . ';text-align:' . $align . ';', ';'));
                 }
             }
         }

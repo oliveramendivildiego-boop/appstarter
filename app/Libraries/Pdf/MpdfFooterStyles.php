@@ -294,7 +294,7 @@ CSS;
         $footerInnerHtml = self::ensureRootInlineStyle($footerInnerHtml, $layout);
         $footerInnerHtml = self::ensureFooterTopBorderSeparator($footerInnerHtml, $layout);
         $footerInnerHtml = self::ensureWellFormedFooterTable($footerInnerHtml);
-        $footerInnerHtml = MpdfFooterGridSimplifier::simplify($footerInnerHtml);
+        // Mantener grilla 5 cols + colspan 2+1+2 (40/20/40) igual que vista previa; el simplificador a 3 cols rompía el centro.
         $footerInnerHtml = HtmlMpdfAdapter::adaptFooterForMpdf($footerInnerHtml);
 
         return $footerInnerHtml;
@@ -309,29 +309,186 @@ CSS;
     {
         unset($layout);
 
-        return preg_replace_callback(
-            '/<td\b([^>]*)>((?:(?!<td\b)[\s\S])*?)<\/td>/is',
-            static function (array $m): string {
-                $attrs = $m[1];
-                $inner = $m[2];
-                if (! preg_match('/\b(?:mpdf-ft-cell|pdf-cell-stack-item|mpdf-order-sheet-(?:patient|order))\b/', $attrs)) {
-                    return $m[0];
-                }
+        if (! str_contains($html, 'mpdf-ft-cell') && ! str_contains($html, 'pdf-cell-stack-item')) {
+            return $html;
+        }
 
-                $hAlign = self::resolveFooterCellHorizontalAlign($attrs);
-                $vAlign = self::resolveFooterCellVerticalAlign($attrs);
+        $prev = libxml_use_internal_errors(true);
+        $dom  = new \DOMDocument('1.0', 'UTF-8');
+        $wrap = '<?xml encoding="utf-8"><div id="mpdf-ft-materialize-root">' . $html . '</div>';
+        if (! $dom->loadHTML($wrap, LIBXML_HTML_NOIMPLIED | LIBXML_HTML_NODEFDTD)) {
+            libxml_clear_errors();
+            libxml_use_internal_errors($prev);
 
-                if ($hAlign !== null) {
-                    $inner = self::applyHorizontalAlignToFooterCellContent($inner, $hAlign);
-                }
-                if ($vAlign !== null && $vAlign !== 'top') {
-                    $attrs = self::mergeStyleProperty($attrs, 'vertical-align', $vAlign . ' !important');
-                }
+            return $html;
+        }
+        libxml_clear_errors();
+        libxml_use_internal_errors($prev);
 
-                return '<td' . $attrs . '>' . $inner . '</td>';
-            },
-            $html,
-        ) ?? $html;
+        $xpath = new \DOMXPath($dom);
+        $cells = $xpath->query('//td[contains(@class,"mpdf-ft-cell") or contains(@class,"pdf-cell-stack-item") or contains(@class,"mpdf-order-sheet-patient") or contains(@class,"mpdf-order-sheet-order")]');
+        if ($cells === false) {
+            return $html;
+        }
+
+        /** @var list<\DOMElement> $tdList */
+        $tdList = [];
+        foreach ($cells as $cell) {
+            if ($cell instanceof \DOMElement) {
+                $tdList[] = $cell;
+            }
+        }
+
+        foreach ($tdList as $td) {
+            $hAlign = self::resolveFooterCellHorizontalAlignFromElement($td);
+            if ($hAlign === null) {
+                continue;
+            }
+
+            self::applyHorizontalAlignToFooterTdElement($td, $hAlign);
+            self::stripTextAlignFromDomSubtree($td);
+
+            $hasNestedTd = false;
+            foreach ($td->getElementsByTagName('td') as $nested) {
+                if ($nested !== $td) {
+                    $hasNestedTd = true;
+                    break;
+                }
+            }
+
+            if ($hasNestedTd && str_contains($td->getAttribute('class'), 'mpdf-ft-cell')) {
+                foreach ($td->getElementsByTagName('table') as $table) {
+                    if ($table instanceof \DOMElement && str_contains($table->getAttribute('class'), 'mpdf-ft-stack')) {
+                        self::wrapDomElementWithHorizontalAlign($table, $hAlign);
+                    }
+                }
+                continue;
+            }
+
+            if (! $hasNestedTd) {
+                self::wrapDomCellChildrenWithHorizontalAlign($td, $hAlign);
+            }
+        }
+
+        $root = $dom->getElementById('mpdf-ft-materialize-root');
+        if ($root === null) {
+            return $html;
+        }
+
+        $out = '';
+        foreach ($root->childNodes as $child) {
+            $out .= $dom->saveHTML($child);
+        }
+
+        return $out;
+    }
+
+    private static function resolveFooterCellHorizontalAlignFromElement(\DOMElement $td): ?string
+    {
+        $align = strtolower($td->getAttribute('align'));
+        if (in_array($align, ['left', 'center', 'right'], true)) {
+            return $align;
+        }
+
+        return self::resolveFooterCellHorizontalAlign(
+            ' class="' . $td->getAttribute('class') . '" style="' . $td->getAttribute('style') . '"',
+        );
+    }
+
+    private static function applyHorizontalAlignToFooterTdElement(\DOMElement $td, string $hAlign): void
+    {
+        $td->setAttribute('align', $hAlign);
+        $style = $td->getAttribute('style');
+        $style = preg_replace('/\btext-align\s*:\s*[^;]+;?/i', '', $style) ?? $style;
+        $style = trim($style, " \t\n\r\0\x0B;");
+        $style = $style === '' ? '' : ($style . ';');
+        $td->setAttribute('style', $style . 'text-align:' . $hAlign . ' !important');
+    }
+
+    private static function stripTextAlignFromDomSubtree(\DOMElement $root): void
+    {
+        foreach ($root->getElementsByTagName('p') as $p) {
+            if ($p instanceof \DOMElement) {
+                self::stripTextAlignFromStyleAttr($p);
+            }
+        }
+        foreach ($root->getElementsByTagName('div') as $div) {
+            if ($div instanceof \DOMElement
+                && preg_match('/\b(?:pdf-ft-piece|pdf-ft-pagination|pdf-ft-custom-text|footer-piece)\b/', $div->getAttribute('class'))) {
+                self::stripTextAlignFromStyleAttr($div);
+            }
+        }
+    }
+
+    private static function stripTextAlignFromStyleAttr(\DOMElement $el): void
+    {
+        $style = $el->getAttribute('style');
+        if ($style === '') {
+            return;
+        }
+        $style = preg_replace('/\btext-align\s*:\s*[^;]+;?/i', '', $style) ?? $style;
+        $style = preg_replace('/\s*;+\s*/', ';', $style) ?? $style;
+        $style = trim($style, " \t\n\r\0\x0B;");
+        if ($style === '') {
+            $el->removeAttribute('style');
+        } else {
+            $el->setAttribute('style', $style);
+        }
+    }
+
+    private static function wrapDomElementWithHorizontalAlign(\DOMElement $node, string $hAlign): void
+    {
+        if ($hAlign === 'left') {
+            return;
+        }
+        $parent = $node->parentNode;
+        if ($parent instanceof \DOMElement
+            && ($parent->nodeName === 'center' || str_contains($parent->getAttribute('class'), 'mpdf-ft-align-wrap'))) {
+            return;
+        }
+        $dom = $node->ownerDocument;
+        if ($dom === null) {
+            return;
+        }
+
+        $wrapper = $hAlign === 'center' ? $dom->createElement('center') : $dom->createElement('div');
+        $wrapper->setAttribute('class', 'mpdf-ft-align-wrap');
+        if ($hAlign === 'right') {
+            $wrapper->setAttribute('align', 'right');
+            $wrapper->setAttribute('style', 'text-align:right !important');
+        }
+        if ($parent instanceof \DOMNode) {
+            $parent->insertBefore($wrapper, $node);
+        }
+        $wrapper->appendChild($node);
+    }
+
+    private static function wrapDomCellChildrenWithHorizontalAlign(\DOMElement $td, string $hAlign): void
+    {
+        if ($hAlign === 'left' || $td->childNodes->length === 0) {
+            return;
+        }
+        foreach ($td->childNodes as $child) {
+            if ($child instanceof \DOMElement
+                && ($child->nodeName === 'center' || str_contains($child->getAttribute('class'), 'mpdf-ft-align-wrap'))) {
+                return;
+            }
+        }
+        $dom = $td->ownerDocument;
+        if ($dom === null) {
+            return;
+        }
+
+        $wrapper = $hAlign === 'center' ? $dom->createElement('center') : $dom->createElement('div');
+        $wrapper->setAttribute('class', 'mpdf-ft-align-wrap');
+        if ($hAlign === 'right') {
+            $wrapper->setAttribute('align', 'right');
+            $wrapper->setAttribute('style', 'text-align:right !important');
+        }
+        while ($td->firstChild !== null) {
+            $wrapper->appendChild($td->firstChild);
+        }
+        $td->appendChild($wrapper);
     }
 
     private static function resolveFooterCellHorizontalAlign(string $attrs): ?string
@@ -385,27 +542,69 @@ CSS;
         return preg_replace('/\bstyle=(["\'])((?:\\\\.|(?!\1).)*)\1/s', $newStyle, $attrs, 1) ?? $attrs;
     }
 
-    private static function applyHorizontalAlignToFooterCellContent(string $inner, string $hAlign): string
+    private static function materializeFooterTdAlignAttrs(string $attrs, string $hAlign): string
     {
-        $inner = preg_replace_callback(
+        $attrs = preg_replace('/\salign\s*=\s*(["\'])(?:left|center|right)\1/i', '', $attrs) ?? $attrs;
+
+        return self::mergeStyleProperty($attrs . ' align="' . $hAlign . '"', 'text-align', $hAlign . ' !important');
+    }
+
+    /**
+     * mPDF SetHTMLFooter: &lt;center&gt; / align en contenedor (mPDF ignora text-align en &lt;p&gt; anidados).
+     */
+    private static function wrapFooterCellContentForMpdfHorizontalAlign(string $inner, string $hAlign): string
+    {
+        if ($hAlign === 'left' || trim($inner) === '' || stripos($inner, 'mpdf-ft-align-wrap') !== false) {
+            return $inner;
+        }
+
+        if ($hAlign === 'center') {
+            return '<center class="mpdf-ft-align-wrap">' . $inner . '</center>';
+        }
+
+        return '<div class="mpdf-ft-align-wrap" align="right" style="text-align:right !important">'
+            . $inner
+            . '</div>';
+    }
+
+    private static function stripTextAlignFromFooterCellContent(string $inner): string
+    {
+        return preg_replace_callback(
             '/<(p|div)\b([^>]*)>/i',
-            static function (array $m) use ($hAlign): string {
+            static function (array $m): string {
                 $tag   = $m[1];
                 $attrs = $m[2];
                 if ($tag === 'div' && ! preg_match('/\b(?:pdf-ft-piece|pdf-ft-pagination|pdf-ft-custom-text|footer-piece)\b/', $attrs)) {
                     return $m[0];
                 }
-                if (preg_match('/\bstyle=(["\'])((?:\\\\.|(?!\1).)*)\1/s', $attrs, $sm)) {
-                    $style = MpdfFontMapper::decodeAttrValue($sm[2]);
-                    if (preg_match('/\btext-align\s*:\s*(left|center|right)\b/i', $style)) {
-                        return $m[0];
-                    }
+                if (! preg_match('/\bstyle=(["\'])((?:\\\\.|(?!\1).)*)\1/s', $attrs, $sm)) {
+                    return $m[0];
                 }
 
-                return '<' . $tag . self::mergeStyleProperty($attrs, 'text-align', $hAlign) . '>';
+                $style = MpdfFontMapper::decodeAttrValue($sm[2]);
+                $style = preg_replace('/\btext-align\s*:\s*(?:left|center|right)\s*!important\s*;?/i', '', $style) ?? $style;
+                $style = preg_replace('/\btext-align\s*:\s*(?:left|center|right)\s*;?/i', '', $style) ?? $style;
+                $style = preg_replace('/\s*;+\s*/', ';', $style) ?? $style;
+                $style = trim($style, " \t\n\r\0\x0B;");
+
+                if ($style === '') {
+                    $newAttrs = preg_replace('/\bstyle=(["\'])((?:\\\\.|(?!\1).)*)\1/s', '', $attrs, 1) ?? $attrs;
+
+                    return '<' . $tag . trim($newAttrs) . '>';
+                }
+
+                $newStyle = ' style="' . htmlspecialchars($style, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') . '"';
+
+                return '<' . $tag . (preg_replace('/\bstyle=(["\'])((?:\\\\.|(?!\1).)*)\1/s', $newStyle, $attrs, 1) ?? $attrs) . '>';
             },
             $inner,
         ) ?? $inner;
+    }
+
+    /** @deprecated mPDF alinea en &lt;td&gt;, no en &lt;p&gt; */
+    private static function applyHorizontalAlignToFooterCellContent(string $inner, string $hAlign): string
+    {
+        unset($hAlign);
 
         return $inner;
     }

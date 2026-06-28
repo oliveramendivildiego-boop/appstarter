@@ -7,7 +7,7 @@ namespace App\Libraries\Pdf;
  */
 class HtmlMpdfAdapter
 {
-    public const CACHE_REVISION = 'mpdf-native-v115';
+    public const CACHE_REVISION = 'mpdf-native-v119';
 
     private const TOTAL_PAGES_TOKEN = '__PDF_TOTAL_PAGES__';
 
@@ -301,6 +301,16 @@ body.pdf-engine-mpdf .pdf-ft-block.footer-grid {
     padding: 0 !important;
     border: 0 !important;
 }
+body.pdf-engine-mpdf .mpdf-html-footer center,
+body.pdf-engine-mpdf .mpdf-html-footer .mpdf-ft-align-wrap[align="center"] { text-align: center !important; }
+body.pdf-engine-mpdf .mpdf-html-footer .mpdf-ft-align-wrap[align="right"],
+body.pdf-engine-mpdf .mpdf-html-footer div.mpdf-ft-align-wrap { text-align: right !important; }
+body.pdf-engine-mpdf .mpdf-html-footer td.mpdf-ft-cell[align="center"],
+body.pdf-engine-mpdf .mpdf-html-footer td.pdf-cell-stack-item[align="center"] { text-align: center !important; }
+body.pdf-engine-mpdf .mpdf-html-footer td.mpdf-ft-cell[align="right"],
+body.pdf-engine-mpdf .mpdf-html-footer td.pdf-cell-stack-item[align="right"] { text-align: right !important; }
+body.pdf-engine-mpdf .mpdf-html-footer td.mpdf-ft-cell[align="left"],
+body.pdf-engine-mpdf .mpdf-html-footer td.pdf-cell-stack-item[align="left"] { text-align: left !important; }
 body.pdf-engine-mpdf .mpdf-html-footer .mpdf-ft-root { position: static !important; display: block !important; visibility: visible !important; height: auto !important; max-height: none !important; overflow: visible !important; }
 body.pdf-engine-mpdf .report-lab-firma-grupo-inline,
 body.pdf-engine-mpdf .lab-firmas-pdf-block-inline {
