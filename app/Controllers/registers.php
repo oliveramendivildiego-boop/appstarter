@@ -1109,6 +1109,7 @@ class Registers extends SecureArea
             \App\Libraries\Pdf\MpdfFooterStyles::class,
             \App\Libraries\Pdf\MpdfFooterExtractor::class,
             \App\Libraries\Pdf\MpdfPdfRenderer::class,
+            \App\Libraries\Pdf\SafeMpdf::class,
         ] as $class) {
             if (! class_exists($class)) {
                 $missing[] = $class;

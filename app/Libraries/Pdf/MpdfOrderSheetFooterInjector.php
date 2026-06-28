@@ -8,6 +8,21 @@ namespace App\Libraries\Pdf;
 class MpdfOrderSheetFooterInjector
 {
     /**
+     * @param array<string, mixed>|null $orderSheetSlot
+     */
+    public static function shouldPrependOrderSheetBand(?array $orderSheetSlot, string $footerInner): bool
+    {
+        if ($footerInner === '' || $orderSheetSlot === null) {
+            return false;
+        }
+
+        $patient = trim((string) ($orderSheetSlot['patient'] ?? ''));
+        $order   = trim((string) ($orderSheetSlot['order'] ?? ''));
+
+        return $patient !== '' || $order !== '';
+    }
+
+    /**
      * @return array<string, mixed>|null
      */
     public static function extractSlot(string $html): ?array

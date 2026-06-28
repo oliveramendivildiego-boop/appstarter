@@ -25,7 +25,11 @@ if ($embedStylesheetForPdf && is_file($reportPdfCssFs)) {
         $reportPdfEmbeddedCss      = (string) file_get_contents($reportPdfCssFs);
         $reportPdfEmbeddedCssMtime = $cssMtime;
     }
-    echo '<style>' . "\n" . $reportPdfEmbeddedCss . "\n" . '</style>' . "\n";
+    $embeddedCss = $reportPdfEmbeddedCss;
+    if (\App\Libraries\Pdf\PdfEngine::isMpdf()) {
+        $embeddedCss = \App\Libraries\Pdf\HtmlMpdfAdapter::stripFooterCssFromStylesheet($embeddedCss);
+    }
+    echo '<style>' . "\n" . $embeddedCss . "\n" . '</style>' . "\n";
 } else {
     echo '<link rel="stylesheet" href="' . esc(base_url($reportPdfCssRel) . '?v=' . $reportPdfCssVer, 'attr') . '" />' . "\n";
 }

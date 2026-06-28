@@ -1,0 +1,33 @@
+Paciente: LORENA CLAROS SALINAS	​	No. Orden: 062720261
+Direccion: Av. Aniceto Arce Nro. 528 entre Luis Castel Quiroga y Av. Papa Paulo	Página 1 de 1
+Correo: lab.biocentercbbba@gmail.com	Cochabamba - Bolivia	Telefonos: 4 223730 - 76960601 - 70352628
+ 
+PACIENTE: LORENA CLAROS SALINAS
+GÉNERO: Femenino
+EDAD: 45 años, 7 meses y 16 días
+TELEFONO: 70352628
+MÉDICO: A quien Corresponda
+FECHA RECEPCIÓN: 27/06/2026 12:34:09
+FECHA REPORTE: 27/06/2026 12:34:30
+NO. ORDEN: 062720261
+QUIMICA SANGUINEA
+TOLERANCIA DE GLUCOSA
+Tipo de Muestra: Suero
+ANÁLISIS	RESULTADO	RANGO REFERENCIAL	INTERPRETACIÓN
+GLUCOSA BASAL	115 mg/dl	60 - 100 mg/dl	Alto
+GLUCOSA PRIMERA HORA	100 mg/dl	70 - 180 mg/dl	Normal
+GLUCOSA SEGUNDA HORA	120 mg/dl	70 - 155 mg/dl	Normal
+GLUCOSA TERCERA HORA	180 mg/dl	70 - 140 mg/dl	Alto
+CURVA DE TOLERANCIA A LA GLUCOSA80
+120
+160
+115 mg/dl
+Basal
+100 mg/dl
+1 h
+120 mg/dl
+2 h
+180 mg/dl
+3 h
+mg/dl 
+Dentro de rango Por encima del rango Rango referencial normal

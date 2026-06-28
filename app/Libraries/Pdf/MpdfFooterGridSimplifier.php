@@ -4,12 +4,13 @@ namespace App\Libraries\Pdf;
 
 /**
  * Convierte la grilla de pie 5 columnas (2+1+2) en 3 columnas (40/20/40) para mPDF SetHTMLFooter.
+ * mPDF duplica texto si colspan + colgroup no coinciden.
  */
 final class MpdfFooterGridSimplifier
 {
     public static function simplify(string $html): string
     {
-        if (! str_contains($html, 'mpdf-ft-table') || ! str_contains($html, 'data-pdf-cols="5"')) {
+        if (! str_contains($html, 'mpdf-ft-table')) {
             return $html;
         }
 
@@ -25,17 +26,16 @@ final class MpdfFooterGridSimplifier
         libxml_clear_errors();
         libxml_use_internal_errors($prev);
 
-        $xpath = new \DOMXPath($dom);
-        $tables = $xpath->query('//table[contains(@class,"mpdf-ft-table") and @data-pdf-cols="5"]');
+        $xpath  = new \DOMXPath($dom);
+        $tables = $xpath->query('//table[contains(@class,"mpdf-ft-table")]');
         if ($tables === false || $tables->length === 0) {
             return $html;
         }
 
         foreach ($tables as $table) {
-            if (! $table instanceof \DOMElement) {
-                continue;
+            if ($table instanceof \DOMElement) {
+                self::simplifyTable($table, $dom);
             }
-            self::simplifyTable($table, $dom);
         }
 
         $root = $dom->getElementById('mpdf-ft-wrap');
@@ -104,50 +104,66 @@ final class MpdfFooterGridSimplifier
             if (! $tr instanceof \DOMElement) {
                 continue;
             }
-            $tds = [];
-            foreach ($tr->childNodes as $child) {
-                if ($child instanceof \DOMElement && $child->nodeName === 'td') {
-                    $tds[] = $child;
+            self::simplifyRow($tr);
+        }
+    }
+
+    private static function simplifyRow(\DOMElement $tr): void
+    {
+        $tds = [];
+        foreach ($tr->childNodes as $child) {
+            if ($child instanceof \DOMElement && $child->nodeName === 'td') {
+                $tds[] = $child;
+            }
+        }
+        if ($tds === []) {
+            return;
+        }
+
+        $spans = array_map(
+            static fn (\DOMElement $td): int => max(1, (int) $td->getAttribute('colspan')),
+            $tds,
+        );
+
+        if (count($tds) === 3 && $spans === [2, 1, 2]) {
+            self::applyLogicalWidth($tds[0], '40%');
+            self::applyLogicalWidth($tds[1], '20%');
+            self::applyLogicalWidth($tds[2], '40%');
+            foreach ($tds as $td) {
+                $td->removeAttribute('colspan');
+            }
+        } elseif (count($tds) === 2) {
+            // 4+1 sobre 5 cols, o 2+3: mapear a 60/40 en grilla de 3.
+            $tds[0]->setAttribute('colspan', '2');
+            $tds[1]->removeAttribute('colspan');
+            self::applyLogicalWidth($tds[0], '60%');
+            self::applyLogicalWidth($tds[1], '40%');
+        } else {
+            foreach ($tds as $i => $td) {
+                $span = max(1, (int) $td->getAttribute('colspan'));
+                if ($span > 3) {
+                    $td->setAttribute('colspan', '2');
+                    $span = 2;
                 }
-            }
-            if ($tds === []) {
-                continue;
-            }
-
-            $spans = array_map(
-                static fn (\DOMElement $td): int => max(1, (int) $td->getAttribute('colspan')),
-                $tds,
-            );
-
-            if (count($tds) === 3 && $spans === [2, 1, 2]) {
-                self::applyLogicalWidth($tds[0], '40%');
-                self::applyLogicalWidth($tds[1], '20%');
-                self::applyLogicalWidth($tds[2], '40%');
-                foreach ($tds as $td) {
+                if ($span > 1 && count($tds) === 1) {
                     $td->removeAttribute('colspan');
                 }
-            } elseif (count($tds) === 2 && $spans === [2, 3]) {
-                $tds[0]->setAttribute('colspan', '1');
-                $tds[1]->setAttribute('colspan', '2');
-                self::applyLogicalWidth($tds[0], '40%');
-                self::applyLogicalWidth($tds[1], '60%');
+                $widths = ['40%', '20%', '40%'];
+                self::applyLogicalWidth($td, $widths[min($i, 2)]);
             }
+        }
 
-            foreach ($tds as $td) {
-                $align = strtolower($td->getAttribute('align'));
-                if ($align === 'left' || $align === 'center' || $align === 'right') {
-                    $style = $td->getAttribute('style');
-                    if (! str_contains($style, 'text-align')) {
-                        $td->setAttribute('style', trim($style . ';text-align:' . $align . ' !important;', ';'));
-                    }
+        foreach ($tds as $td) {
+            $align = strtolower($td->getAttribute('align'));
+            if ($align === 'left' || $align === 'center' || $align === 'right') {
+                $style = $td->getAttribute('style');
+                if (! str_contains($style, 'text-align')) {
+                    $td->setAttribute('style', trim($style . ';text-align:' . $align . ' !important;', ';'));
                 }
             }
         }
     }
 
-  /**
-   * @param list<\DOMElement> $tds
-   */
     private static function applyLogicalWidth(\DOMElement $td, string $pct): void
     {
         $td->setAttribute('width', $pct);

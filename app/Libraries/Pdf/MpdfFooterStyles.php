@@ -78,7 +78,11 @@ final class MpdfFooterStyles
     font-size: 0;
     line-height: 0;
     box-sizing: border-box;
-    {{tableBorderTop}}
+}
+.mpdf-ft-root .pdf-ft-pagination-num::before,
+.pdf-ft-block.footer-grid.mpdf-ft-root .pdf-ft-pagination-num::before {
+    content: none !important;
+    display: none !important;
 }
 .mpdf-ft-root .mpdf-ft-table,
 .pdf-ft-block.footer-grid.mpdf-ft-root .pdf-section-table {
@@ -289,8 +293,29 @@ CSS;
         $footerInnerHtml = HtmlMpdfAdapter::adaptFooterForMpdf($footerInnerHtml);
         $footerInnerHtml = self::ensureRootInlineStyle($footerInnerHtml, $layout);
         $footerInnerHtml = self::ensureFooterTopBorderSeparator($footerInnerHtml, $layout);
+        $footerInnerHtml = self::ensureWellFormedFooterTable($footerInnerHtml);
+        $footerInnerHtml = MpdfFooterGridSimplifier::simplify($footerInnerHtml);
 
         return $footerInnerHtml;
+    }
+
+    /**
+     * Garantiza que la etiqueta &lt;table class="mpdf-ft-table"&gt; esté bien cerrada.
+     */
+    private static function ensureWellFormedFooterTable(string $html): string
+    {
+        if (preg_match('/<table\b[^>]*\bmpdf-ft-table\b[^>]*>/i', $html)) {
+            return $html;
+        }
+
+        $fixed = preg_replace(
+            '/(<table\b[^>]*\bmpdf-ft-table\b[^>]*)(\s*(?:<colgroup|<tbody|<tr))/i',
+            '$1>$2',
+            $html,
+            1,
+        );
+
+        return is_string($fixed) ? $fixed : $html;
     }
 
     /**
@@ -402,7 +427,6 @@ CSS;
     private static function stripDompdfArtifacts(string $html): string
     {
         $html = preg_replace('/<div\s+class="pdf-dompdf-footer-anchor"[^>]*>/i', '', $html) ?? $html;
-        $html = preg_replace('/<\/div>\s*(?=<!--\s*report-pdf-footer:end)/i', '', $html) ?? $html;
 
         return preg_replace_callback(
             '/\bstyle=(["\'])([^"\']*)\1/i',

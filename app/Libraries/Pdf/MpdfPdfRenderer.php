@@ -48,25 +48,20 @@ class MpdfPdfRenderer implements PdfRendererInterface
 
         [$html, $headerHtml] = MpdfPaginationHtmlInjector::extractHeaderHtml($html);
 
-        $html = MpdfFooterStyles::injectDocumentFooterCss($html, $layout);
-
         $html = HtmlMpdfAdapter::adapt($html, $options);
+        $html = MpdfFooterExtractor::purgeFooterBlocksFromBody($html);
         $html = MpdfInlineImageResolver::materializeDataUriImages($html);
 
-        $footerHtmlPageOne = null;
-        $footerHtmlRest    = null;
-        $useDualFooters    = false;
+        $footerHtml = null;
 
         if ($footerInner !== null && $footerInner !== '') {
-            $footerHtmlPageOne = MpdfFooterStyles::wrapForSetHtmlFooter($footerInner, $layout);
-            $footerHtmlRest    = $footerHtmlPageOne;
+            $footerHtml = MpdfFooterStyles::wrapForSetHtmlFooter($footerInner, $layout);
 
-            if (MpdfNamedFooterInjector::shouldUseDualFooters($orderSheetSlot, $footerInner)) {
-                $useDualFooters = true;
-                $footerHtmlRest = MpdfOrderSheetFooterInjector::prependOrderSheetRowToFooter(
-                    $footerHtmlPageOne,
+            if (MpdfOrderSheetFooterInjector::shouldPrependOrderSheetBand($orderSheetSlot, $footerInner)) {
+                $footerHtml = MpdfOrderSheetFooterInjector::prependOrderSheetRowToFooter(
+                    $footerHtml,
                     $orderSheetSlot,
-                    MpdfOrderSheetFooterInjector::countFooterColumns($footerHtmlPageOne),
+                    MpdfOrderSheetFooterInjector::countFooterColumns($footerHtml),
                 );
             }
         }
@@ -77,27 +72,6 @@ class MpdfPdfRenderer implements PdfRendererInterface
 
             : MpdfLayoutMetrics::fromHtml($html);
 
-        $useNamedDualFooters = false;
-        if ($useDualFooters && $footerHtmlPageOne !== '' && $footerHtmlRest !== '') {
-            $pageCount = $this->countDocumentPages(
-                $html,
-                $options,
-                $metrics,
-                $headerHtml,
-                $footerHtmlPageOne,
-                $watermark,
-            );
-            $useNamedDualFooters = $pageCount > 1;
-        }
-
-        $renderHtml = $html;
-        if ($useNamedDualFooters) {
-            $renderHtml = MpdfNamedFooterInjector::injectPageCss(
-                $html,
-                (float) ($metrics['bottom'] ?? 2.0),
-            );
-        }
-
         $mpdf = $this->createMpdf($options, $metrics);
 
 
@@ -110,11 +84,9 @@ class MpdfPdfRenderer implements PdfRendererInterface
 
 
 
-        if ($useNamedDualFooters) {
-            MpdfNamedFooterInjector::registerFooters($mpdf, $footerHtmlPageOne, $footerHtmlRest);
-        } elseif ($footerHtmlPageOne !== null && $footerHtmlPageOne !== '') {
+        if ($footerHtml !== null && $footerHtml !== '') {
 
-            $mpdf->SetHTMLFooter($footerHtmlPageOne);
+            $mpdf->SetHTMLFooter($footerHtml);
 
         }
 
@@ -124,40 +96,12 @@ class MpdfPdfRenderer implements PdfRendererInterface
 
 
 
-        $mpdf->WriteHTML($renderHtml);
+        $mpdf->WriteHTML($html);
 
 
 
         return $mpdf->Output('', Destination::STRING_RETURN);
 
-    }
-
-    /**
-     * @param array{top: float, right: float, bottom: float, left: float, footer_reserve_mm: float} $metrics
-     * @param array<string, mixed>|null $watermark
-     */
-    private function countDocumentPages(
-        string $html,
-        PdfOptions $options,
-        array $metrics,
-        string $headerHtml,
-        string $footerHtml,
-        ?array $watermark,
-    ): int {
-        $mpdf = $this->createMpdf($options, $metrics);
-
-        if ($headerHtml !== '') {
-            $mpdf->SetHTMLHeader($headerHtml);
-        }
-
-        if ($footerHtml !== '') {
-            $mpdf->SetHTMLFooter($footerHtml);
-        }
-
-        $this->applyWatermark($mpdf, $watermark);
-        $mpdf->WriteHTML($html);
-
-        return max(1, (int) $mpdf->page);
     }
 
     /**
@@ -235,7 +179,7 @@ class MpdfPdfRenderer implements PdfRendererInterface
 
 
 
-        return new Mpdf([
+        return new SafeMpdf([
 
             'mode'          => 'utf-8',
 
@@ -264,7 +208,10 @@ class MpdfPdfRenderer implements PdfRendererInterface
 
             'img_dpi'       => 96,
 
-            'use_kwt'       => true,
+            // Evita keep_block_together agresivo en tablas largas (pages[] desincronizado).
+            'tableMinSizePriority' => true,
+
+            'use_kwt'       => false,
 
         ]);
 
@@ -429,5 +376,4 @@ class MpdfPdfRenderer implements PdfRendererInterface
     }
 
 }
-
 

@@ -7,16 +7,20 @@ namespace App\Libraries\Pdf;
  */
 class HtmlMpdfAdapter
 {
-    public const CACHE_REVISION = 'mpdf-native-v102';
+    public const CACHE_REVISION = 'mpdf-native-v108';
 
     private const TOTAL_PAGES_TOKEN = '__PDF_TOTAL_PAGES__';
 
     private const PAGINATION_PAGE_OF_TOTAL = '{PAGENO} de {nbpg}';
 
+    /** Selectores de pie que no deben ir en el &lt;head&gt; del body (duplican SetHTMLFooter). */
+    private const FOOTER_CSS_SELECTOR = '/(?:pdf-ft-|mpdf-ft-|footer-grid|mpdf-order-sheet|footer-piece|pdf-dompdf-footer-anchor)/i';
+
     public static function adapt(string $html, ?PdfOptions $options = null): string
     {
         unset($options);
         $html = self::stripAtPageRulesForMpdf($html);
+        $html = self::stripFooterCssFromDocumentStyles($html);
         $html = self::expandInlineCustomProperties($html);
         $html = self::stripDompdfPagedMediaCounters($html);
         $html = self::replacePaginationTokens($html);
@@ -245,7 +249,9 @@ class HtmlMpdfAdapter
      */
     private static function stripAtPageRulesForMpdf(string $html): string
     {
-        return preg_replace('/@page\s*\{[^}]*\}/is', '', $html) ?? $html;
+        $html = preg_replace('/@page[^{]*\{((?:[^{}]++|\{(?:[^{}]++|\{[^{}]*+\})*+\})*+)\}/is', '', $html) ?? $html;
+
+        return preg_replace('/\bfloat\s*:\s*(left|right|none)\s*;?/i', '', $html) ?? $html;
     }
 
     private static function replacePaginationTokens(string $html): string
@@ -282,9 +288,20 @@ body.pdf-engine-mpdf table.results thead,
 body.pdf-dompdf-download table.results thead { display: table-header-group; }
 body.pdf-engine-mpdf .mpdf-injected-pagination,
 body.pdf-dompdf-download .mpdf-injected-pagination { display: block !important; }
+/* Pie en body: ocultar (SetHTMLFooter ya lo pinta; position:static lo duplicaba). */
 body.pdf-engine-mpdf .pdf-dompdf-footer-anchor,
-body.pdf-engine-mpdf .pdf-ft-block.footer-grid { position: static !important; }
-body.pdf-engine-mpdf .mpdf-html-footer .mpdf-ft-root { position: static !important; padding: 0 !important; margin: 0 !important; background: transparent !important; }
+body.pdf-engine-mpdf .pdf-dompdf-footer-anchor > .pdf-ft-block.footer-grid,
+body.pdf-engine-mpdf .pdf-ft-block.footer-grid {
+    display: none !important;
+    visibility: hidden !important;
+    height: 0 !important;
+    max-height: 0 !important;
+    overflow: hidden !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    border: 0 !important;
+}
+body.pdf-engine-mpdf .mpdf-html-footer .mpdf-ft-root { position: static !important; padding: 0 !important; margin: 0 !important; background: transparent !important; display: block !important; visibility: visible !important; height: auto !important; max-height: none !important; overflow: visible !important; }
 body.pdf-engine-mpdf .report-lab-firma-grupo-inline,
 body.pdf-engine-mpdf .lab-firmas-pdf-block-inline {
     position: relative !important; z-index: 3 !important; display: block !important;
@@ -419,6 +436,17 @@ body.pdf-engine-mpdf .pdf-rs-block table.results:not(.pdf-notes-table):not(.repo
 body.pdf-engine-mpdf .report-refs-matrix-wrap > .report-refs-matrix-title {
     margin-top: 0 !important;
 }
+/* page-break-inside:avoid desincroniza pages[] en mPDF 8 (BaseWriter.php:245) en hojas 2+. */
+body.pdf-engine-mpdf .report-segment-table-wrap,
+body.pdf-engine-mpdf .report-pdf-grupo-prueba,
+body.pdf-engine-mpdf .report-pdf-subgrupo-block,
+body.pdf-engine-mpdf .pdf-rs-block table.results,
+body.pdf-engine-mpdf .report-refs-matrix-wrap,
+body.pdf-engine-mpdf .lab-firmas-pdf-block-inline,
+body.pdf-engine-mpdf .report-lab-firma-grupo-inline {
+    page-break-inside: auto !important;
+    break-inside: auto !important;
+}
 </style>';
 
         if (stripos($html, '</head>') !== false) {
@@ -426,6 +454,78 @@ body.pdf-engine-mpdf .report-refs-matrix-wrap > .report-refs-matrix-title {
         }
 
         return $inject . $html;
+    }
+
+    /**
+     * Quita reglas CSS de pie del documento: en mPDF el pie va solo en SetHTMLFooter(); si el mismo
+     * CSS está en &lt;head&gt;, mPDF pinta el pie dos veces (texto duplicado en el PDF).
+     */
+    public static function stripFooterCssFromDocumentStyles(string $html): string
+    {
+        return preg_replace_callback(
+            '/<style\b[^>]*>([\s\S]*?)<\/style>/i',
+            static function (array $m): string {
+                $stripped = self::stripFooterCssFromStylesheet($m[1]);
+
+                return '<style>' . $stripped . '</style>';
+            },
+            $html,
+        ) ?? $html;
+    }
+
+    /**
+     * Elimina bloques @media / @supports y reglas cuyo selector apunta al pie del reporte.
+     */
+    public static function stripFooterCssFromStylesheet(string $css): string
+    {
+        $css = self::stripPrintMediaBlocksForMpdf($css);
+        $css = self::stripFooterAtRules($css);
+        $css = self::stripFooterRuleBlocks($css);
+
+        return trim($css);
+    }
+
+    /**
+     * mPDF + SetHTMLFooter(): @media print del documento duplica el pie (reglas page-break / counters).
+     */
+    private static function stripPrintMediaBlocksForMpdf(string $css): string
+    {
+        return preg_replace(
+            '/@media\s+print\s*\{((?:[^{}]++|\{(?:[^{}]++|\{[^{}]*+\})*+\})*+)\}/s',
+            '',
+            $css,
+        ) ?? $css;
+    }
+
+    private static function stripFooterAtRules(string $css): string
+    {
+        $pattern = '/@(?:media|supports)\s+[^{]+\{((?:[^{}]++|\{(?:[^{}]++|\{[^{}]*+\})*+\})*+)\}/s';
+
+        return preg_replace_callback(
+            $pattern,
+            static function (array $m): string {
+                $inner = self::stripFooterRuleBlocks($m[1]);
+                $inner = trim($inner);
+
+                return $inner === '' ? '' : $m[0];
+            },
+            $css,
+        ) ?? $css;
+    }
+
+    private static function stripFooterRuleBlocks(string $css): string
+    {
+        return preg_replace_callback(
+            '/([^{@]+)\{((?:[^{}]++|\{(?:[^{}]++|\{[^{}]*+\})*+\})*+)\}/s',
+            static function (array $m): string {
+                if (preg_match(self::FOOTER_CSS_SELECTOR, $m[1])) {
+                    return '';
+                }
+
+                return $m[0];
+            },
+            $css,
+        ) ?? $css;
     }
 
     /**

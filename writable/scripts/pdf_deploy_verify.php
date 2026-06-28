@@ -13,6 +13,7 @@ $requiredFiles = [
     'app/Libraries/Pdf/MpdfFooterStyles.php',
     'app/Libraries/Pdf/MpdfFooterExtractor.php',
     'app/Libraries/Pdf/MpdfPdfRenderer.php',
+    'app/Libraries/Pdf/SafeMpdf.php',
     'app/Libraries/Pdf/MpdfCssVariablesResolver.php',
     'app/Libraries/Pdf/MpdfNamedFooterInjector.php',
     'app/Libraries/Pdf/MpdfOrderSheetFooterInjector.php',

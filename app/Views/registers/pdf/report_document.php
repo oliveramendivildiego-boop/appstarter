@@ -163,5 +163,14 @@ endforeach; ?>
 </div>
 <?php if ((! $isPdfDownloadVariant || $isMpdfEnginePdf) && $footerBlockEnabled): ?>
 <?= view('registers/partials/report_order_sheet_header', $orderSheetHeaderCtx) ?>
+<?php if ($isMpdfEnginePdf): ?>
+<?php
+    ob_start();
+    echo view($pdfBlockViews['footer'], $footerRenderCtx);
+    $mpdfFooterPayload = ob_get_clean();
+    echo '<!-- report-pdf-footer-payload:' . base64_encode($mpdfFooterPayload) . ' -->';
+?>
+<?php else: ?>
 <?= view($pdfBlockViews['footer'], $footerRenderCtx) ?>
+<?php endif; ?>
 <?php endif; ?>
