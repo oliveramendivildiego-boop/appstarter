@@ -265,21 +265,29 @@ CSS;
             return $html;
         }
 
-        return preg_replace_callback(
-            '/(<table\b[^>]*\bmpdf-ft-table\b[^>]*)\sstyle=(["\'])([^"\']*)\2/i',
-            static function (array $m) use ($border): string {
-                $style = preg_replace('/\bborder-top\s*:\s*[^;]+;?\s*/i', '', $m[3]) ?? $m[3];
-                $style = trim($style, " \t\n\r\0\x0B;");
-                if ($style !== '') {
-                    $style .= ';';
-                }
-                $style .= $border;
+        if (preg_match('/<table\b[^>]*\bmpdf-ft-table\b[^>]*\sstyle=(["\'])([^"\']*)\2/i', $html, $m)) {
+            $style = preg_replace('/\bborder-top\s*:\s*[^;]+;?\s*/i', '', $m[2]) ?? $m[2];
+            $style = trim($style, " \t\n\r\0\x0B;");
+            if ($style !== '') {
+                $style .= ';';
+            }
+            $style .= $border;
+            $replacement = preg_replace(
+                '/\sstyle=(["\'])([^"\']*)\2/i',
+                ' style=' . $m[1] . $style . $m[1],
+                $m[0],
+                1,
+            );
 
-                return $m[1] . ' style=' . $m[2] . $style . $m[2];
-            },
-            $html,
-            1,
-        ) ?? preg_replace_callback(
+            return is_string($replacement) ? preg_replace(
+                '/<table\b[^>]*\bmpdf-ft-table\b[^>]*>/i',
+                $replacement,
+                $html,
+                1,
+            ) ?? $html : $html;
+        }
+
+        return preg_replace_callback(
             '/(<table\b[^>]*\bmpdf-ft-table\b[^>]*)(>)/i',
             static function (array $m) use ($border): string {
                 return $m[1] . ' style="' . htmlspecialchars($border, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') . '"' . $m[2];

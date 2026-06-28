@@ -197,9 +197,13 @@ document.addEventListener('DOMContentLoaded', function() {
         var hideLoading = function() {
             root.classList.remove('is-loading');
         };
-        var showError = function() {
+        var showError = function(detail) {
             root.classList.remove('is-loading');
             root.classList.add('is-error');
+            var detailEl = root.querySelector('[data-pdf-native-error-detail]');
+            if (detailEl && detail) {
+                detailEl.textContent = detail;
+            }
         };
         var loadPdf = function() {
             root.classList.remove('is-error');
@@ -212,11 +216,19 @@ document.addEventListener('DOMContentLoaded', function() {
             fetch(pdfUrl, { credentials: 'same-origin', cache: 'no-store' })
                 .then(function(res) {
                     if (!res.ok) {
-                        throw new Error('HTTP ' + res.status);
+                        return res.text().then(function(text) {
+                            var msg = (text || '').trim();
+                            if (msg === '') {
+                                msg = 'HTTP ' + res.status;
+                            }
+                            throw new Error(msg);
+                        });
                     }
                     var ct = (res.headers.get('content-type') || '').toLowerCase();
                     if (ct.indexOf('application/pdf') === -1) {
-                        throw new Error('not-pdf');
+                        return res.text().then(function(text) {
+                            throw new Error((text || '').trim() || 'not-pdf');
+                        });
                     }
                     return res.blob();
                 })
@@ -228,8 +240,8 @@ document.addEventListener('DOMContentLoaded', function() {
                     frame.src = objectUrl;
                     hideLoading();
                 })
-                .catch(function() {
-                    showError();
+                .catch(function(err) {
+                    showError(err && err.message ? err.message : 'Error desconocido al cargar el PDF.');
                 });
         };
         frame.addEventListener('load', function() {

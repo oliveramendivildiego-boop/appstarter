@@ -1,7 +1,10 @@
 <?php
 declare(strict_types=1);
 /**
- * Diagnóstico PDF en servidor (SSH): php writable/scripts/pdf_health_check.php [registro_id]
+ * Diagnóstico PDF en servidor (SSH):
+ *   php writable/scripts/pdf_health_check.php [registro_id] [tenant_key]
+ * Ejemplo Shuelin:
+ *   php writable/scripts/pdf_health_check.php 303 shuelin
  */
 $_SERVER['CI_ENVIRONMENT'] = $_SERVER['CI_ENVIRONMENT'] ?? 'production';
 define('ENVIRONMENT', $_SERVER['CI_ENVIRONMENT']);
@@ -13,7 +16,33 @@ require $paths->systemDirectory . '/Boot.php';
 CodeIgniter\Boot::bootConsole($paths);
 
 $id = (int) ($argv[1] ?? 0);
+$tenantKey = trim((string) ($argv[2] ?? getenv('TENANT_KEY') ?: ''));
 $ok = true;
+
+if ($id < 1) {
+    fwrite(STDERR, PHP_EOL
+        . '*** FALTA EL NÚMERO DE REGISTRO ***' . PHP_EOL
+        . 'El comando que ejecutó solo prueba mPDF, NO genera su PDF.' . PHP_EOL . PHP_EOL
+        . 'Use (copie y pegue):' . PHP_EOL
+        . '  php pdf_health_check.php 303 shuelin' . PHP_EOL . PHP_EOL
+        . '  303      = id del registro que no carga en el navegador' . PHP_EOL
+        . '  shuelin  = tenant de shuelin.oliverasolutions.com' . PHP_EOL . PHP_EOL);
+}
+
+if ($tenantKey !== '') {
+    $resolver = new \App\Libraries\TenantResolver();
+    $tenantDb = $resolver->resolveDatabaseConfig($tenantKey);
+    if ($tenantDb === []) {
+        echo '[FAIL] tenant "' . $tenantKey . '" — sin mapa de BD en tenant_configs' . PHP_EOL;
+        exit(1);
+    }
+    $resolver->applyResolvedTenantToAppDatabase($tenantKey);
+    echo 'Tenant activo: ' . $tenantKey . ' → BD ' . ($tenantDb['database'] ?? '?') . PHP_EOL . PHP_EOL;
+} else {
+    echo 'Tenant: (default .env — en CLI no se infiere del subdominio)' . PHP_EOL
+        . '  Si el PDF falla en shuelin.oliverasolutions.com, pase tenant_key:' . PHP_EOL
+        . '  php writable/scripts/pdf_health_check.php 303 shuelin' . PHP_EOL . PHP_EOL;
+}
 
 $check = static function (string $label, bool $pass, string $detail = '') use (&$ok): void {
     if (! $pass) {
@@ -88,8 +117,19 @@ if ($id > 0) {
     } catch (\Throwable $e) {
         $check('generateReportPdfBinary', false, get_class($e) . ': ' . $e->getMessage());
         echo '  at ' . $e->getFile() . ':' . $e->getLine() . PHP_EOL;
+        $trace = $e->getTraceAsString();
+        if (strlen($trace) > 4000) {
+            $trace = substr($trace, 0, 4000) . '…';
+        }
+        echo $trace . PHP_EOL;
     }
 }
 
-echo PHP_EOL . ($ok ? 'Diagnóstico: todo OK' : 'Diagnóstico: hay fallos — corrija los [FAIL]') . PHP_EOL;
+echo PHP_EOL;
+if ($id < 1) {
+    echo 'Diagnóstico parcial: motor OK — falta probar el registro (vea mensaje arriba).' . PHP_EOL;
+    exit(2);
+}
+
+echo ($ok ? 'Diagnóstico: todo OK' : 'Diagnóstico: hay fallos — corrija los [FAIL]') . PHP_EOL;
 exit($ok ? 0 : 1);

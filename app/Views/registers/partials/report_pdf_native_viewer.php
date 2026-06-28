@@ -20,7 +20,7 @@ if ($pdfUrl === '' && $ridPdf > 0) {
         </div>
         <div class="report-pdf-native-error" data-pdf-native-error role="alert">
             <p class="mb-0 fw-semibold">No se pudo cargar el PDF del reporte.</p>
-            <p class="mb-0 small">El servidor no generó el archivo (error interno). Revise permisos de <code>writable/cache</code> en el servidor o contacte soporte.</p>
+            <p class="mb-0 small" data-pdf-native-error-detail>No se recibió el archivo PDF del servidor.</p>
             <a href="<?= esc($pdfUrl, 'attr') ?>" class="btn btn-sm btn-warning mt-1" target="_blank" rel="noopener">Abrir PDF en nueva pestaña</a>
             <button type="button" class="btn btn-sm btn-outline-secondary" data-pdf-native-retry>Reintentar</button>
         </div>

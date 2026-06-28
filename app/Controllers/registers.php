@@ -1047,56 +1047,137 @@ class Registers extends SecureArea
             return redirect()->to('registers/lista')->with('error', 'La orden está anulada; no se puede generar el PDF de resultados.');
         }
 
+        $deployError = $this->assertReportPdfDeployReady();
+        if ($deployError !== null) {
+            return $deployError;
+        }
+
+        if ($this->request->getGet('purge_pdf') === '1') {
+            $this->registerService->clearReportPdfPreviewCache($id);
+        }
+
         $inline      = $this->request->getGet('inline') === '1';
         $disposition = $inline ? 'inline' : 'attachment';
-        $qrLayout    = (new \App\Services\ReportPdfLayoutService())->getActiveLayoutForRender();
 
-        $emitidoEnCache = $this->registerService->reportEmitidoEnForPreviewCache($id);
-        if ($emitidoEnCache !== null) {
-            $fingerprintEarly = $this->registerService->reportPdfPreviewCacheFingerprintLight(
+        try {
+            $qrLayout = (new \App\Services\ReportPdfLayoutService())->getActiveLayoutForRender();
+
+            $emitidoEnCache = $this->registerService->reportEmitidoEnForPreviewCache($id);
+            if ($emitidoEnCache !== null) {
+                $fingerprintEarly = $this->registerService->reportPdfPreviewCacheFingerprintLight(
+                    $id,
+                    $emitidoEnCache,
+                    $qrLayout,
+                );
+                $cachedPdfEarly = $this->registerService->readReportPdfPreviewCache($id, $fingerprintEarly);
+                if ($cachedPdfEarly !== null) {
+                    return $this->respondReportPdfBinary($id, $cachedPdfEarly, $disposition, 'hit-early', null, $fingerprintEarly);
+                }
+            }
+
+            $data = $this->registerService->prepareReportData($id);
+            if (! $data) {
+                return redirect()->to('registers')->with('error', 'Registro no encontrado');
+            }
+
+            helper('qr');
+            $reportUrl = $this->publicReportViewerUrlForQr($id);
+            $emitidoEn = $this->registerService->lockReportEmitidoEnForPrintOrPdf($id);
+            $resolved  = $this->readOrGenerateReportPdfBinary($id, $data, $emitidoEn, $reportUrl);
+
+            return $this->respondReportPdfBinary(
                 $id,
-                $emitidoEnCache,
-                $qrLayout,
+                $resolved['binary'],
+                $disposition,
+                $resolved['cache'],
+                $data,
+                $resolved['fingerprint'],
             );
-            $cachedPdfEarly = $this->registerService->readReportPdfPreviewCache($id, $fingerprintEarly);
-            if ($cachedPdfEarly !== null) {
-                return $this->respondReportPdfBinary($id, $cachedPdfEarly, $disposition, 'hit-early', null, $fingerprintEarly);
+        } catch (\Throwable $e) {
+            return $this->respondReportPdfGenerationError($id, $e, $inline);
+        }
+    }
+
+    /**
+     * Comprueba que el deploy incluya clases/métodos del pipeline PDF (evita 500 opaco en producción).
+     */
+    private function assertReportPdfDeployReady(): ?ResponseInterface
+    {
+        $missing = [];
+
+        foreach ([
+            \App\Libraries\Pdf\MpdfFooterStyles::class,
+            \App\Libraries\Pdf\MpdfFooterExtractor::class,
+            \App\Libraries\Pdf\MpdfPdfRenderer::class,
+        ] as $class) {
+            if (! class_exists($class)) {
+                $missing[] = $class;
             }
         }
 
-        $data = $this->registerService->prepareReportData($id);
-        if (!$data) {
-            return redirect()->to('registers')->with('error', 'Registro no encontrado');
+        if (! method_exists(\App\Services\ReportPdfLayoutService::class, 'footerGridSectionTableBorderTopCss')) {
+            $missing[] = 'ReportPdfLayoutService::footerGridSectionTableBorderTopCss';
         }
 
-        helper('qr');
-        $reportUrl = $this->publicReportViewerUrlForQr($id);
-        $emitidoEn = $this->registerService->lockReportEmitidoEnForPrintOrPdf($id);
-        try {
-            $resolved = $this->readOrGenerateReportPdfBinary($id, $data, $emitidoEn, $reportUrl);
-        } catch (\Throwable $e) {
-            log_message('critical', 'registers/pdf/{id} falló: {msg} en {file}:{line}', [
-                'id'   => $id,
-                'msg'  => $e->getMessage(),
-                'file' => $e->getFile(),
-                'line' => $e->getLine(),
-            ]);
-            log_message('debug', 'registers/pdf/{id} trace: {trace}', [
-                'id'    => $id,
-                'trace' => $e->getTraceAsString(),
-            ]);
-
-            throw $e;
+        if ($missing === []) {
+            return null;
         }
 
-        return $this->respondReportPdfBinary(
-            $id,
-            $resolved['binary'],
-            $disposition,
-            $resolved['cache'],
-            $data,
-            $resolved['fingerprint'],
-        );
+        log_message('critical', 'registers/pdf deploy incompleto: {missing}', [
+            'missing' => implode(', ', $missing),
+        ]);
+
+        return $this->response
+            ->setStatusCode(503)
+            ->setHeader('Content-Type', 'text/plain; charset=UTF-8')
+            ->setHeader('X-Report-Pdf-Error', 'deploy-incomplete')
+            ->setBody(
+                "El módulo PDF no está completamente desplegado en el servidor.\n"
+                . "Faltan: " . implode(', ', $missing) . "\n"
+                . 'Ejecute en SSH: php writable/scripts/pdf_deploy_verify.php',
+            );
+    }
+
+    private function respondReportPdfGenerationError(int $id, \Throwable $e, bool $inline): ResponseInterface
+    {
+        log_message('critical', 'registers/pdf/{id} falló: {msg} en {file}:{line}', [
+            'id'   => $id,
+            'msg'  => $e->getMessage(),
+            'file' => $e->getFile(),
+            'line' => $e->getLine(),
+        ]);
+        log_message('debug', 'registers/pdf/{id} trace: {trace}', [
+            'id'    => $id,
+            'trace' => $e->getTraceAsString(),
+        ]);
+
+        $showDetail = $this->request->getGet('pdf_diag') === '1'
+            && (\App\Services\GhostTenantAccessService::isGhostSupportSession() || ENVIRONMENT !== 'production');
+
+        if ($showDetail) {
+            return $this->response
+                ->setStatusCode(500)
+                ->setHeader('Content-Type', 'text/plain; charset=UTF-8')
+                ->setHeader('X-Report-Pdf-Error', 'generation-failed')
+                ->setBody(
+                    "PDF error (registro {$id})\n"
+                    . get_class($e) . ': ' . $e->getMessage() . "\n"
+                    . $e->getFile() . ':' . $e->getLine() . "\n",
+                );
+        }
+
+        $body = $inline
+            ? "No se pudo generar el PDF del reporte (registro {$id}).\n"
+                . 'Detalle: ' . get_class($e) . ': ' . $e->getMessage() . "\n"
+                . "Revise writable/logs/ o ejecute: php writable/scripts/pdf_health_check.php {$id} [tenant_key]\n"
+            : 'No se pudo generar el PDF del reporte.';
+
+        return $this->response
+            ->setStatusCode(503)
+            ->setHeader('Content-Type', 'text/plain; charset=UTF-8')
+            ->setHeader('X-Report-Pdf-Error', 'generation-failed')
+            ->setHeader('X-Report-Pdf-Error-Detail', substr(preg_replace('/[\r\n]+/', ' ', $e->getMessage()) ?: '', 0, 200))
+            ->setBody($body);
     }
 
     /**
