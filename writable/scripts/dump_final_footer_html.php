@@ -37,6 +37,7 @@ if (\App\Libraries\Pdf\MpdfOrderSheetFooterInjector::shouldPrependOrderSheetBand
         \App\Libraries\Pdf\MpdfOrderSheetFooterInjector::countFooterColumns($wrapped),
     );
 }
+$wrapped = \App\Libraries\Pdf\MpdfFooterStyles::finalizeSetHtmlFooterFragment($wrapped, $layoutSnap);
 
 $count = static function (string $s, string $needle): int {
     return substr_count(strip_tags($s), $needle);

@@ -7,7 +7,7 @@ namespace App\Libraries\Pdf;
  */
 class HtmlMpdfAdapter
 {
-    public const CACHE_REVISION = 'mpdf-native-v110';
+    public const CACHE_REVISION = 'mpdf-native-v115';
 
     private const TOTAL_PAGES_TOKEN = '__PDF_TOTAL_PAGES__';
 
@@ -301,7 +301,7 @@ body.pdf-engine-mpdf .pdf-ft-block.footer-grid {
     padding: 0 !important;
     border: 0 !important;
 }
-body.pdf-engine-mpdf .mpdf-html-footer .mpdf-ft-root { position: static !important; padding: 0 !important; margin: 0 !important; background: transparent !important; display: block !important; visibility: visible !important; height: auto !important; max-height: none !important; overflow: visible !important; }
+body.pdf-engine-mpdf .mpdf-html-footer .mpdf-ft-root { position: static !important; display: block !important; visibility: visible !important; height: auto !important; max-height: none !important; overflow: visible !important; }
 body.pdf-engine-mpdf .report-lab-firma-grupo-inline,
 body.pdf-engine-mpdf .lab-firmas-pdf-block-inline {
     position: relative !important; z-index: 3 !important; display: block !important;
@@ -352,8 +352,8 @@ body.pdf-engine-mpdf .pdf-section-table td.pdf-cell-stack-item {
     margin-top: 0 !important;
     margin-bottom: 0 !important;
 }
-body.pdf-engine-mpdf .pdf-section-table td.pdf-cell[valign="middle"]:not(.pdf-cell--has-explicit-height),
-body.pdf-engine-mpdf .pdf-section-table td.pdf-cell[valign="bottom"]:not(.pdf-cell--has-explicit-height) {
+body.pdf-engine-mpdf .pdf-section-table td.pdf-cell[valign="middle"]:not(.pdf-cell--has-explicit-height):not(.mpdf-ft-cell),
+body.pdf-engine-mpdf .pdf-section-table td.pdf-cell[valign="bottom"]:not(.pdf-cell--has-explicit-height):not(.mpdf-ft-cell) {
     height: 1px !important;
 }
 body.pdf-engine-mpdf .pdf-section-table td.pdf-cell.pdf-cell--has-explicit-height[valign="middle"],

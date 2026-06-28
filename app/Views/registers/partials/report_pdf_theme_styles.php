@@ -263,13 +263,13 @@ body.<?= $pdfBodyClass ?> .pdf-ft-block.footer-grid:not(.mpdf-ft-root) .pdf-sect
     border-top-style: var(--pdf-ft-section-top-border-style, solid);
     border-top-color: var(--pdf-ft-section-top-border-color, #dddddd);
 }
-body.<?= $pdfBodyClass ?> .pdf-ft-block .pdf-ft-stack-table {
+body.<?= $pdfBodyClass ?> .pdf-ft-block:not(.mpdf-ft-root) .pdf-ft-stack-table {
     border-collapse: collapse;
     table-layout: fixed;
     width: 100%;
     margin: 0;
 }
-body.<?= $pdfBodyClass ?> .pdf-ft-block .pdf-ft-stack-table td {
+body.<?= $pdfBodyClass ?> .pdf-ft-block:not(.mpdf-ft-root) .pdf-ft-stack-table td {
     padding: 0;
     vertical-align: top;
     border: 0;
@@ -958,7 +958,7 @@ body.report-browser-print.js-order-sheet-footer-table-row .pdf-ft-block.footer-g
 }
 <?php endif; ?>
 <?php endif; ?>
-<?php if ($embedStylesheetForPdf && ! $browserPrintMode): ?>
+<?php if ($embedStylesheetForPdf && ! $browserPrintMode && ! \App\Libraries\Pdf\PdfEngine::isMpdf()): ?>
 body.<?= $pdfBodyClass ?> .pdf-ft-block.footer-grid .pdf-order-sheet-table-row {
     display: table-row !important;
     visibility: visible !important;

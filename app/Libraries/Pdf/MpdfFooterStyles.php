@@ -289,42 +289,44 @@ CSS;
             return '';
         }
 
-        $footerInnerHtml = self::stripDompdfArtifacts($footerInnerHtml);
         $footerInnerHtml = HtmlMpdfAdapter::adaptFooterForMpdf($footerInnerHtml);
+        $footerInnerHtml = self::stripDompdfArtifacts($footerInnerHtml);
         $footerInnerHtml = self::ensureRootInlineStyle($footerInnerHtml, $layout);
         $footerInnerHtml = self::ensureFooterTopBorderSeparator($footerInnerHtml, $layout);
         $footerInnerHtml = self::ensureWellFormedFooterTable($footerInnerHtml);
         $footerInnerHtml = MpdfFooterGridSimplifier::simplify($footerInnerHtml);
+        $footerInnerHtml = HtmlMpdfAdapter::adaptFooterForMpdf($footerInnerHtml);
 
         return $footerInnerHtml;
     }
 
     /**
-     * Alineación horizontal del pie (plantilla) en estilos inline legibles por mPDF.
+     * Paridad con plantilla: alineación H/V, tipografía y estilos inline legibles por mPDF.
+     *
+     * @param array<string, mixed> $layout
      */
-    public static function materializeFooterCellAlignments(string $html): string
+    public static function materializeFooterCellLayout(string $html, array $layout = []): string
     {
+        unset($layout);
+
         return preg_replace_callback(
-            '/<td\b([^>]*)>([\s\S]*?)<\/td>/i',
+            '/<td\b([^>]*)>((?:(?!<td\b)[\s\S])*?)<\/td>/is',
             static function (array $m): string {
                 $attrs = $m[1];
                 $inner = $m[2];
-                if (! str_contains($attrs, 'mpdf-ft-cell') && ! str_contains($attrs, 'mpdf-order-sheet-')) {
+                if (! preg_match('/\b(?:mpdf-ft-cell|pdf-cell-stack-item|mpdf-order-sheet-(?:patient|order))\b/', $attrs)) {
                     return $m[0];
                 }
 
-                $align = null;
-                if (preg_match('/\balign="(left|center|right)"/i', $attrs, $am)) {
-                    $align = strtolower($am[1]);
-                } elseif (preg_match('/\bpdf-cell--(?:h-)?(left|center|right)\b/i', $attrs, $cm)) {
-                    $align = strtolower($cm[1]);
-                }
-                if ($align === null) {
-                    return $m[0];
-                }
+                $hAlign = self::resolveFooterCellHorizontalAlign($attrs);
+                $vAlign = self::resolveFooterCellVerticalAlign($attrs);
 
-                $attrs = self::mergeStyleDeclaration($attrs, 'text-align:' . $align . ' !important');
-                $inner = self::propagateTextAlignToFooterPieces($inner, $align);
+                if ($hAlign !== null) {
+                    $inner = self::applyHorizontalAlignToFooterCellContent($inner, $hAlign);
+                }
+                if ($vAlign !== null && $vAlign !== 'top') {
+                    $attrs = self::mergeStyleProperty($attrs, 'vertical-align', $vAlign . ' !important');
+                }
 
                 return '<td' . $attrs . '>' . $inner . '</td>';
             },
@@ -332,49 +334,122 @@ CSS;
         ) ?? $html;
     }
 
-    private static function mergeStyleDeclaration(string $attrs, string $declaration): string
+    private static function resolveFooterCellHorizontalAlign(string $attrs): ?string
     {
-        if (! preg_match('/\bstyle=(["\'])([^"\']*)\1/i', $attrs, $sm)) {
+        if (preg_match('/\balign="(left|center|right)"/i', $attrs, $m)) {
+            return strtolower($m[1]);
+        }
+        if (preg_match('/\bstyle=(["\'])((?:\\\\.|(?!\1).)*)\1/s', $attrs, $sm)) {
+            $style = MpdfFontMapper::decodeAttrValue($sm[2]);
+            if (preg_match('/\btext-align\s*:\s*(left|center|right)\b/i', $style, $tm)) {
+                return strtolower($tm[1]);
+            }
+        }
+        if (preg_match('/\bpdf-cell--h-(left|center|right)\b/i', $attrs, $m)) {
+            return strtolower($m[1]);
+        }
+        if (preg_match('/\bpdf-cell--(left|center|right)\b/i', $attrs, $m)) {
+            return strtolower($m[1]);
+        }
+
+        return null;
+    }
+
+    private static function resolveFooterCellVerticalAlign(string $attrs): ?string
+    {
+        if (preg_match('/\bvalign="(top|middle|bottom)"/i', $attrs, $m)) {
+            return strtolower($m[1]);
+        }
+        if (preg_match('/\bpdf-cell--v-(top|middle|bottom)\b/i', $attrs, $m)) {
+            return strtolower($m[1]);
+        }
+
+        return null;
+    }
+
+    private static function mergeStyleProperty(string $attrs, string $property, string $value): string
+    {
+        $declaration = $property . ':' . $value;
+
+        if (! preg_match('/\bstyle=(["\'])((?:\\\\.|(?!\1).)*)\1/s', $attrs, $sm)) {
             return $attrs . ' style="' . $declaration . '"';
         }
 
         $style = MpdfFontMapper::decodeAttrValue($sm[2]);
-        $style = preg_replace('/\btext-align\s*:\s*[^;]+;?/i', '', $style) ?? $style;
+        $style = preg_replace('/\b' . preg_quote($property, '/') . '\s*:\s*[^;]+;?/i', '', $style) ?? $style;
         $style = trim($style, " \t\n\r\0\x0B;");
         $style = $style === '' ? $declaration : ($style . ';' . $declaration);
 
         $newStyle = ' style="' . htmlspecialchars($style, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') . '"';
 
-        return preg_replace('/\bstyle=(["\'])[^"\']*\1/i', $newStyle, $attrs, 1) ?? $attrs;
+        return preg_replace('/\bstyle=(["\'])((?:\\\\.|(?!\1).)*)\1/s', $newStyle, $attrs, 1) ?? $attrs;
+    }
+
+    private static function applyHorizontalAlignToFooterCellContent(string $inner, string $hAlign): string
+    {
+        $inner = preg_replace_callback(
+            '/<(p|div)\b([^>]*)>/i',
+            static function (array $m) use ($hAlign): string {
+                $tag   = $m[1];
+                $attrs = $m[2];
+                if ($tag === 'div' && ! preg_match('/\b(?:pdf-ft-piece|pdf-ft-pagination|pdf-ft-custom-text|footer-piece)\b/', $attrs)) {
+                    return $m[0];
+                }
+                if (preg_match('/\bstyle=(["\'])((?:\\\\.|(?!\1).)*)\1/s', $attrs, $sm)) {
+                    $style = MpdfFontMapper::decodeAttrValue($sm[2]);
+                    if (preg_match('/\btext-align\s*:\s*(left|center|right)\b/i', $style)) {
+                        return $m[0];
+                    }
+                }
+
+                return '<' . $tag . self::mergeStyleProperty($attrs, 'text-align', $hAlign) . '>';
+            },
+            $inner,
+        ) ?? $inner;
+
+        return $inner;
+    }
+
+    /**
+     * @param array<string, mixed> $layout
+     */
+    public static function finalizeSetHtmlFooterFragment(string $html, array $layout = []): string
+    {
+        $html = HtmlMpdfAdapter::adaptFooterForMpdf($html);
+
+        return self::materializeFooterCellLayout($html, $layout);
+    }
+
+    /** @deprecated use materializeFooterCellLayout */
+    public static function materializeFooterCellAlignments(string $html): string
+    {
+        return self::materializeFooterCellLayout($html);
+    }
+
+    private static function mergeStyleDeclaration(string $attrs, string $declaration): string
+    {
+        if (preg_match('/^(text-align|vertical-align)\s*:/i', $declaration, $m)) {
+            $prop = strtolower($m[1]);
+            $val  = trim(substr($declaration, strlen($m[0])));
+
+            return self::mergeStyleProperty($attrs, $prop, $val);
+        }
+
+        if (! preg_match('/\bstyle=(["\'])((?:\\\\.|(?!\1).)*)\1/s', $attrs, $sm)) {
+            return $attrs . ' style="' . $declaration . '"';
+        }
+
+        $style = MpdfFontMapper::decodeAttrValue($sm[2]);
+        $style = trim($style, " \t\n\r\0\x0B;");
+        $style = $style === '' ? $declaration : ($style . ';' . $declaration);
+        $newStyle = ' style="' . htmlspecialchars($style, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') . '"';
+
+        return preg_replace('/\bstyle=(["\'])((?:\\\\.|(?!\1).)*)\1/s', $newStyle, $attrs, 1) ?? $attrs;
     }
 
     private static function propagateTextAlignToFooterPieces(string $inner, string $align): string
     {
-        return preg_replace_callback(
-            '/\bstyle=(["\'])([^"\']*)\1/i',
-            static function (array $sm) use ($align): string {
-                $style = MpdfFontMapper::decodeAttrValue($sm[2]);
-                if (! str_contains($style, 'text-align')) {
-                    $style = trim($style, " \t\n\r\0\x0B;");
-                    $style = $style === ''
-                        ? ('text-align:' . $align . ' !important')
-                        : ($style . ';text-align:' . $align . ' !important');
-                }
-
-                return ' style="' . htmlspecialchars($style, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') . '"';
-            },
-            $inner,
-        ) ?? $inner;
-    }
-
-    /**
-     * Normaliza estilos inline tras insertar banda Paciente/Orden u otros fragmentos.
-     */
-    public static function finalizeSetHtmlFooterFragment(string $html): string
-    {
-        $html = HtmlMpdfAdapter::adaptFooterForMpdf($html);
-
-        return self::materializeFooterCellAlignments($html);
+        return self::applyHorizontalAlignToFooterCellContent($inner, $align);
     }
 
     /**
@@ -439,19 +514,20 @@ CSS;
             '/(<table\b[^>]*\bmpdf-ft-table\b)([^>]*)(>)/i',
             static function (array $m): string {
                 $attrs = $m[2];
-                if (! preg_match('/\sstyle=(["\'])([^"\']*)\1/i', $attrs, $sm)) {
+                if (! preg_match('/\bstyle=(["\'])((?:\\\\.|(?!\1).)*)\1/s', $attrs, $sm)) {
                     return $m[0];
                 }
 
-                $style = preg_replace('/\bborder-top(?:-(?:width|style|color))?\s*:\s*[^;]+;?\s*/i', '', $sm[2]) ?? $sm[2];
+                $style = MpdfFontMapper::decodeAttrValue($sm[2]);
+                $style = preg_replace('/\bborder-top(?:-(?:width|style|color))?\s*:\s*[^;]+;?\s*/i', '', $style) ?? $style;
                 $style = preg_replace('/\s*;+\s*/', ';', $style) ?? $style;
                 $style = trim($style, " \t\n\r\0\x0B;");
 
                 if ($style === '') {
-                    $newAttrs = preg_replace('/\sstyle=(["\'])[^"\']*\1/i', '', $attrs, 1) ?? $attrs;
+                    $newAttrs = preg_replace('/\bstyle=(["\'])((?:\\\\.|(?!\1).)*)\1/s', '', $attrs, 1) ?? $attrs;
                 } else {
                     $newAttrs = preg_replace(
-                        '/\sstyle=(["\'])([^"\']*)\1/i',
+                        '/\bstyle=(["\'])((?:\\\\.|(?!\1).)*)\1/s',
                         ' style=' . $sm[1] . $style . $sm[1],
                         $attrs,
                         1,
@@ -473,16 +549,12 @@ CSS;
         $ps = is_array($layout['page_style'] ?? null) ? $layout['page_style'] : [];
         $ft = \App\Services\ReportPdfLayoutService::normalizeFooterGridStyle($ps['footer_grid'] ?? []);
         $bg = ! empty($ft['body_transparent']) ? 'transparent' : (string) ($ft['body_bg_color'] ?? '#ffffff');
-        $lh = max(1.0, (float) ($ft['line_height'] ?? 1.35));
         $padTop = \App\Services\ReportPdfLayoutService::footerBlockPadTopPx($ft);
 
         $rootStyle = sprintf(
-            'margin:0;padding:%dpx 0 0 0;background:%s;box-sizing:border-box;width:100%%;font-family:dejavusans,sans-serif;font-size:%spt;line-height:%s;color:%s;',
+            'margin:0;padding:%dpx 0 0 0;background:%s;box-sizing:border-box;width:100%%;',
             $padTop,
             $bg,
-            (string) $ft['font_size_pt'],
-            (string) $lh,
-            (string) $ft['body_text_color'],
         );
 
         if (preg_match('/<div\s+class="[^"]*\bmpdf-ft-root\b[^"]*"([^>]*)>/i', $html, $m)) {
@@ -507,9 +579,11 @@ CSS;
         $html = preg_replace('/<div\s+class="pdf-dompdf-footer-anchor"[^>]*>/i', '', $html) ?? $html;
 
         return preg_replace_callback(
-            '/\bstyle=(["\'])([^"\']*)\1/i',
+            '/\bstyle=(["\'])((?:\\\\.|(?!\1).)*)\1/s',
             static function (array $m): string {
-                $style = $m[2];
+                $style = str_contains($m[2], '&#') || str_contains($m[2], '&quot;')
+                    ? MpdfFontMapper::decodeAttrValue($m[2])
+                    : $m[2];
                 $style = preg_replace(
                     '/(?<![a-z-])(?:position|left|right|z-index|height|overflow)\s*:\s*[^;"\']+;?/i',
                     '',
@@ -528,7 +602,11 @@ CSS;
                 $style = preg_replace('/\s*;+\s*/', ';', $style) ?? $style;
                 $style = trim($style, " \t\n\r\0\x0B;");
 
-                return $style === '' ? '' : ('style=' . $m[1] . $style . $m[1]);
+                if ($style === '') {
+                    return '';
+                }
+
+                return 'style="' . htmlspecialchars($style, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') . '"';
             },
             $html,
         ) ?? $html;

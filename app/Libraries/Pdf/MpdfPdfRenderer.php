@@ -79,10 +79,10 @@ class MpdfPdfRenderer implements PdfRendererInterface
             }
 
             if ($useDualFooters) {
-                $footerPageOne = MpdfFooterStyles::finalizeSetHtmlFooterFragment($footerPageOne);
-                $footerRest    = MpdfFooterStyles::finalizeSetHtmlFooterFragment($footerRest);
+                $footerPageOne = MpdfFooterStyles::finalizeSetHtmlFooterFragment($footerPageOne, $layout);
+                $footerRest    = MpdfFooterStyles::finalizeSetHtmlFooterFragment($footerRest, $layout);
             } else {
-                $footerHtml = MpdfFooterStyles::finalizeSetHtmlFooterFragment((string) $footerHtml);
+                $footerHtml = MpdfFooterStyles::finalizeSetHtmlFooterFragment((string) $footerHtml, $layout);
             }
         }
 
