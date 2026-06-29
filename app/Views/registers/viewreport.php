@@ -304,17 +304,50 @@ document.addEventListener('DOMContentLoaded', function() {
                     registro_id: document.getElementById('registro_id').value
                 });
             });
+            var csrfName = window.CI_CSRF_TOKEN_NAME || 'csrf_test_name';
+            var csrfVal = window.CI_CSRF_TOKEN || '';
+            if (!csrfVal) {
+                saveBtns.forEach(function(b) {
+                    b.disabled = false;
+                    b.innerHTML = defaultHtml;
+                });
+                uiAlert('Sesión de seguridad no disponible. Recargue la página (F5) e intente de nuevo.', 'Error');
+                return;
+            }
+            var body = 'data=' + encodeURIComponent(JSON.stringify(datos));
+            body += '&' + encodeURIComponent(csrfName) + '=' + encodeURIComponent(csrfVal);
             fetch('<?= site_url('registers/saveanalisiss') ?>', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'X-Requested-With': 'XMLHttpRequest' },
-                body: 'data=' + encodeURIComponent(JSON.stringify(datos))
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'X-CSRF-TOKEN': csrfVal
+                },
+                credentials: 'same-origin',
+                body: body
             })
-            .then(function(r) { return r.json(); })
+            .then(function(r) {
+                if (r.status === 403) {
+                    return r.text().then(function(t) {
+                        var msg = 'La sesión de seguridad expiró o no es válida. Recargue la página (F5) e intente de nuevo.';
+                        if (t && t.indexOf('anulada') !== -1) {
+                            msg = 'Esta orden fue anulada y no puede modificarse.';
+                        }
+                        throw new Error(msg);
+                    });
+                }
+                return r.json();
+            })
             .then(function(res) {
                 saveBtns.forEach(function(b) {
                     b.disabled = false;
                     b.innerHTML = defaultHtml;
                 });
+                if (res && res.csrf_token) {
+                    window.CI_CSRF_TOKEN = res.csrf_token;
+                    var meta = document.querySelector('meta[name="csrf-token"]');
+                    if (meta) meta.setAttribute('content', res.csrf_token);
+                }
                 if (!res || res.success === false) {
                     uiAlert((res && res.message) ? res.message : 'Error al actualizar', 'Error');
                     return;
@@ -327,12 +360,12 @@ document.addEventListener('DOMContentLoaded', function() {
                     showToast(res.message || 'Reporte actualizado.', 'success');
                 }
             })
-            .catch(function() {
+            .catch(function(err) {
                 saveBtns.forEach(function(b) {
                     b.disabled = false;
                     b.innerHTML = defaultHtml;
                 });
-                uiAlert('Error al actualizar', 'Error');
+                uiAlert(err && err.message ? err.message : 'Error al actualizar', 'Error');
             });
         });
     });

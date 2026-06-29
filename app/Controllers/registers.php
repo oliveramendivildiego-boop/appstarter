@@ -2504,7 +2504,12 @@ class Registers extends SecureArea
             $this->registerService->clearReportPdfPreviewCache($ridAn);
             (new \App\Services\DeliveryNotificationService())->syncForRegistro($ridAn);
         }
-        return $this->response->setJSON(['success' => true, 'message' => 'Reporte actualizado']);
+        return $this->response->setJSON([
+            'success' => true,
+            'message' => 'Reporte actualizado',
+            'csrf_token' => csrf_hash(),
+            'csrf_name' => csrf_token(),
+        ]);
     }
 
     public function validar()
