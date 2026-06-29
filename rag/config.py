@@ -1,0 +1,5 @@
+PROJECT_PATH=r"C:/wamp64/www/laboratorio"
+DB_PATH="./data/chroma_db"
+HASH_FILE="./data/hashes.json"
+MODEL="qwen2.5-coder:7b"
+EMBED_MODEL="nomic-embed-text"
