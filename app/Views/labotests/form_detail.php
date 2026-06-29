@@ -225,7 +225,7 @@ if ($feRaw !== '' && !empty($formulas_con_expresion ?? [])) {
         <strong>Valores de sub-clases</strong>
         <?php if (! empty($sub_items)): ?>
         <span class="badge bg-secondary"><?= count($sub_items) ?> filas</span>
-        <span class="text-muted small">Agrupadas por población; cada analito puede tener una fila por grupo y sexo. Doble clic en el nombre de sub-clase para resaltar filas iguales.</span>
+        <span class="text-muted small">Agrupadas por población; cada analito puede tener una fila por grupo y sexo. Doble clic en sub-clase, población o sexo para resaltar filas iguales.</span>
         <button type="button" class="btn btn-sm btn-outline-primary ms-auto" id="btn_abrir_modal_orden_sec" title="Lista compacta para reordenar más rápido">
             <i class="fa-solid fa-list-ol me-1"></i> Orden rápido
         </button>
@@ -357,7 +357,7 @@ if ($feRaw !== '' && !empty($formulas_con_expresion ?? [])) {
                         ? ('Título · ' . trim((string) ($s['nombre'] ?? '')))
                         : (trim((string) ($s['nombre'] ?? '')) . ' · ' . $pobEtq . ' · ' . $sexoEtq);
                 ?>
-                <tr data-sec="<?= htmlspecialchars(json_encode($rowDataSec), ENT_QUOTES, 'UTF-8') ?>" data-secanacategoria-id="<?= (int)($s['secanacategoria_id'] ?? 0) ?>" data-orden-etiqueta="<?= esc($etiquetaOrden, 'attr') ?>" data-subclase-nombre="<?= esc($nombreSubclase, 'attr') ?>"<?= $esSepRow ? '' : ' data-sexo="' . esc(referencia_sexo_css_slug($s['sexo'] ?? 'ambos'), 'attr') . '"' ?>>
+                <tr data-sec="<?= htmlspecialchars(json_encode($rowDataSec), ENT_QUOTES, 'UTF-8') ?>" data-secanacategoria-id="<?= (int)($s['secanacategoria_id'] ?? 0) ?>" data-orden-etiqueta="<?= esc($etiquetaOrden, 'attr') ?>" data-subclase-nombre="<?= esc($nombreSubclase, 'attr') ?>"<?= $esSepRow ? '' : ' data-poblacion-id="' . (int)($s['paciente_id'] ?? 0) . '" data-sexo="' . esc(referencia_sexo_css_slug($s['sexo'] ?? 'ambos'), 'attr') . '"' ?>>
                     <?php if ($esSepRow): ?>
                     <td class="text-center">
                         <input type="checkbox" class="sec-check-item" value="<?= (int)($s['secanacategoria_id'] ?? 0) ?>">
@@ -387,8 +387,8 @@ if ($feRaw !== '' && !empty($formulas_con_expresion ?? [])) {
                         <button type="button" class="btn btn-sm btn-outline-secondary btn-sec-ultimo" title="Ir al final de la lista"><i class="fa-solid fa-angles-down"></i></button>
                     </td>
                     <td class="sec-subclase-nombre-cell" title="Doble clic para resaltar todas las filas de esta sub-clase"><?= esc($s['nombre'] ?? '') ?></td>
-                    <td><?= esc($pobMap[(int)($s['paciente_id'] ?? 0)] ?? $s['paciente_id'] ?? '') ?></td>
-                    <td><span class="<?= esc(referencia_sexo_badge_class($s['sexo'] ?? 'ambos'), 'attr') ?>"><?= esc(referencia_sexo_label($s['sexo'] ?? 'ambos')) ?></span></td>
+                    <td class="sec-poblacion-cell" title="Doble clic para resaltar todas las filas de esta población"><?= esc($pobMap[(int)($s['paciente_id'] ?? 0)] ?? $s['paciente_id'] ?? '') ?></td>
+                    <td class="sec-sexo-cell" title="Doble clic para resaltar todas las filas de este sexo"><span class="<?= esc(referencia_sexo_badge_class($s['sexo'] ?? 'ambos'), 'attr') ?>"><?= esc(referencia_sexo_label($s['sexo'] ?? 'ambos')) ?></span></td>
                     <td><?= esc($s['valor_min'] ?? '') ?></td>
                     <td><?= esc($s['valor_max'] ?? '') ?></td>
                     <td><?= esc($s['umedida'] ?? '') ?></td>
@@ -1914,51 +1914,80 @@ if ($fe !== '') {
                         onEnd: function() { guardarOrden(); }
                     });
                 }
-                var subclaseResaltada = null;
-                function limpiarResaltadoSubclase() {
+                var resaltadoActivo = null;
+                var resaltadoAttrPorTipo = {
+                    subclase: 'data-subclase-nombre',
+                    poblacion: 'data-poblacion-id',
+                    sexo: 'data-sexo'
+                };
+                function limpiarResaltadoFilas() {
                     tablaSub.querySelectorAll('tbody tr.sec-subclase-resaltada').forEach(function(tr) {
                         tr.classList.remove('sec-subclase-resaltada');
                     });
-                    subclaseResaltada = null;
+                    resaltadoActivo = null;
                 }
-                function resaltarSubclasePorNombre(nombre) {
-                    nombre = (nombre || '').trim();
-                    if (!nombre) {
-                        limpiarResaltadoSubclase();
+                function resaltarFilasPorCampo(tipo, valor) {
+                    valor = (valor || '').trim();
+                    if (!valor) {
+                        limpiarResaltadoFilas();
                         return;
                     }
-                    if (subclaseResaltada === nombre) {
-                        limpiarResaltadoSubclase();
+                    if (resaltadoActivo && resaltadoActivo.tipo === tipo && resaltadoActivo.valor === valor) {
+                        limpiarResaltadoFilas();
                         return;
                     }
-                    limpiarResaltadoSubclase();
-                    subclaseResaltada = nombre;
+                    var attr = resaltadoAttrPorTipo[tipo];
+                    if (!attr) {
+                        limpiarResaltadoFilas();
+                        return;
+                    }
+                    limpiarResaltadoFilas();
+                    resaltadoActivo = { tipo: tipo, valor: valor };
                     var total = 0;
-                    tablaSub.querySelectorAll('tbody tr[data-subclase-nombre]').forEach(function(tr) {
-                        if ((tr.getAttribute('data-subclase-nombre') || '').trim() === nombre) {
+                    tablaSub.querySelectorAll('tbody tr[' + attr + ']').forEach(function(tr) {
+                        if ((tr.getAttribute(attr) || '').trim() === valor) {
                             tr.classList.add('sec-subclase-resaltada');
                             total++;
                         }
                     });
                     if (total === 0) {
-                        subclaseResaltada = null;
+                        resaltadoActivo = null;
                     }
                 }
                 tablaSub.addEventListener('dblclick', function(e) {
-                    var cell = e.target.closest('.sec-subclase-nombre-cell');
-                    if (!cell) return;
-                    e.preventDefault();
-                    var tr = cell.closest('tr');
-                    if (!tr) return;
-                    var nombre = (tr.getAttribute('data-subclase-nombre') || '').trim();
-                    if (!nombre) {
-                        nombre = (cell.textContent || '').replace(/\s+/g, ' ').trim();
+                    var tr = null;
+                    var tipo = null;
+                    var valor = null;
+                    var cellSubclase = e.target.closest('.sec-subclase-nombre-cell');
+                    var cellPoblacion = e.target.closest('.sec-poblacion-cell');
+                    var cellSexo = e.target.closest('.sec-sexo-cell');
+                    if (cellSubclase) {
+                        tr = cellSubclase.closest('tr');
+                        if (!tr) return;
+                        tipo = 'subclase';
+                        valor = (tr.getAttribute('data-subclase-nombre') || '').trim();
+                        if (!valor) {
+                            valor = (cellSubclase.textContent || '').replace(/\s+/g, ' ').trim();
+                        }
+                    } else if (cellPoblacion) {
+                        tr = cellPoblacion.closest('tr');
+                        if (!tr) return;
+                        tipo = 'poblacion';
+                        valor = (tr.getAttribute('data-poblacion-id') || '').trim();
+                    } else if (cellSexo) {
+                        tr = cellSexo.closest('tr');
+                        if (!tr) return;
+                        tipo = 'sexo';
+                        valor = (tr.getAttribute('data-sexo') || '').trim();
+                    } else {
+                        return;
                     }
-                    resaltarSubclasePorNombre(nombre);
+                    e.preventDefault();
+                    resaltarFilasPorCampo(tipo, valor);
                 });
                 document.addEventListener('keydown', function(e) {
-                    if (e.key === 'Escape' && subclaseResaltada) {
-                        limpiarResaltadoSubclase();
+                    if (e.key === 'Escape' && resaltadoActivo) {
+                        limpiarResaltadoFilas();
                     }
                 });
                 actualizarEstadoSeleccion();

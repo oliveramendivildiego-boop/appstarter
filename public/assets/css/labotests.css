@@ -172,11 +172,15 @@
 #tabla_sub_items tbody tr.table-secondary:hover > td {
     background-color: var(--bs-secondary-bg, #e2e3e5);
 }
-#tabla_sub_items td.sec-subclase-nombre-cell {
+#tabla_sub_items td.sec-subclase-nombre-cell,
+#tabla_sub_items td.sec-poblacion-cell,
+#tabla_sub_items td.sec-sexo-cell {
     cursor: pointer;
     user-select: none;
 }
-#tabla_sub_items td.sec-subclase-nombre-cell:hover {
+#tabla_sub_items td.sec-subclase-nombre-cell:hover,
+#tabla_sub_items td.sec-poblacion-cell:hover,
+#tabla_sub_items td.sec-sexo-cell:hover {
     text-decoration: underline;
     text-decoration-style: dotted;
     text-underline-offset: 0.15em;
