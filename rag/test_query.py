@@ -1,17 +1,10 @@
 from router import ask
 
-def main():
-    while True:
-        query = input("\n🔎 Pregunta: ")
+while True:
+    q = input("\n🔎 Pregunta: ")
+    if q.lower() in ["exit", "quit"]:
+        break
 
-        if query in ["exit", "quit"]:
-            break
-
-        response = ask(query)
-
-        print("\n📌 Respuesta:\n")
-        print(response)
-
-
-if __name__ == "__main__":
-    main()
+    res = ask(q)
+    print("\n📌 Respuesta:\n")
+    print(res)

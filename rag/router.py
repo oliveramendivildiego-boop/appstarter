@@ -1,26 +1,19 @@
-from file_tools import list_files_grouped
-from query_engine import build_query_engine
+from agent_runtime import AgentRuntime
 
-engine = build_query_engine()
+runtime = AgentRuntime()
+
+SYSTEM_STYLE = """
+Eres un agente de desarrollo tipo Cursor.
+
+Reglas:
+- Puedes leer, analizar y modificar código del proyecto.
+- Siempre usa herramientas cuando sea necesario.
+- Nunca inventes archivos o resultados.
+- Si necesitas múltiples pasos, ejecútalos en orden.
+- Responde técnico y directo.
+"""
 
 
-def ask(query: str):
-
-    q = query.lower()
-
-    if "archivos" in q or "estructura" in q or "modulos" in q:
-        return format_tree(list_files_grouped())
-
-    return engine.query(query)
-
-
-def format_tree(grouped):
-    output = []
-
-    for category, files in grouped.items():
-        output.append(f"\n📁 {category} ({len(files)})")
-
-        for f in files[:15]:  # límite estilo Cursor
-            output.append(f" - {f}")
-
-    return "\n".join(output)
+def ask(question: str):
+    # el runtime ya maneja tools + RAG + LLM
+    return runtime.run(question)

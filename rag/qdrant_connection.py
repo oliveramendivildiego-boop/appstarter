@@ -1,7 +1,5 @@
 from qdrant_client import QdrantClient
+from config import QDRANT_URL
 
 def get_qdrant_client():
-    return QdrantClient(
-        host="localhost",
-        port=6333
-    )
+    return QdrantClient(url=QDRANT_URL)

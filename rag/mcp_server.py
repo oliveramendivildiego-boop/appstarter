@@ -1,41 +1,24 @@
 from mcp.server.fastmcp import FastMCP
+from agent_runtime import AgentRuntime
 
-from tools.file_tools import list_files, read_file, search_files
-from router import ask  # tu RAG ya funcionando
+mcp = FastMCP("cursor-enterprise-agent")
 
-mcp = FastMCP("local-rag-ide")
-
-# -------------------------
-# FILE SYSTEM
-# -------------------------
-
-@mcp.tool()
-def list_fs(path: str = "C:\\wamp64\\www\\laboratorio"):
-    return list_files(path)
+runtime = AgentRuntime()
 
 
 @mcp.tool()
-def read_fs(path: str):
-    return read_file(path)
+def run(task: str):
+    """
+    Ejecuta el agente completo (planning + tools + reasoning)
+    """
+    return runtime.run(task)
 
 
 @mcp.tool()
-def search_fs(query: str):
-    return search_files(query)
+def ping():
+    return "pong"
 
-
-# -------------------------
-# RAG ENGINE
-# -------------------------
-
-@mcp.tool()
-def ask_rag(question: str):
-    return ask(question)
-
-
-# -------------------------
-# ENTRYPOINT
-# -------------------------
 
 if __name__ == "__main__":
+    print("🚀 CURSOR ENTERPRISE AGENT READY")
     mcp.run()
