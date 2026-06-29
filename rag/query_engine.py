@@ -1,62 +1,50 @@
-import chromadb
-
-from llama_index.core import (
-    VectorStoreIndex,
-    StorageContext
-)
-
-from llama_index.vector_stores.chroma import ChromaVectorStore
-
 from llama_index.llms.ollama import Ollama
+from llama_index.core.chat_engine import ContextChatEngine
 
-from config import DB_PATH
+from vector_store import init_vector_store
+from llama_index.core import VectorStoreIndex
+from llama_index.embeddings.ollama import OllamaEmbedding
 
 
-# ===============================
-# MODELO LLM
-# ===============================
+SYSTEM_PROMPT = """
+Eres un asistente tipo Cursor dentro de un IDE local.
 
-llm = Ollama(
-    model="qwen2.5-coder:7b",
-    request_timeout=600.0,
-)
+Tienes acceso a un sistema de archivos indexado.
 
-# ===============================
-# CHROMA
-# ===============================
+Reglas:
+- Usa el contexto del código para responder
+- Si necesitas más archivos, indícalo
+- Razona sobre múltiples archivos
+- Ayuda a programar, refactorizar y entender sistemas
+- No inventes información fuera del repo
+"""
 
-client = chromadb.PersistentClient(path=DB_PATH)
 
-collection = client.get_or_create_collection("codeigniter")
+def build_query_engine():
 
-vector_store = ChromaVectorStore(
-    chroma_collection=collection
-)
+    llm = Ollama(
+        model="qwen2.5-coder:7b",
+        request_timeout=120.0
+    )
 
-storage_context = StorageContext.from_defaults(
-    vector_store=vector_store
-)
+    embed_model = OllamaEmbedding(
+        model_name="nomic-embed-text"
+    )
 
-# ===============================
-# ÍNDICE
-# ===============================
+    vector_store, storage_context = init_vector_store()
 
-index = VectorStoreIndex.from_vector_store(
-    vector_store=vector_store,
-    storage_context=storage_context,
-)
+    index = VectorStoreIndex.from_vector_store(
+        vector_store=vector_store,
+        storage_context=storage_context,
+        embed_model=embed_model
+    )
 
-query_engine = index.as_query_engine(
-    llm=llm,
-    similarity_top_k=6,
-)
+    retriever = index.as_retriever(similarity_top_k=8)
 
-# ===============================
-# API
-# ===============================
+    chat_engine = ContextChatEngine.from_defaults(
+        retriever=retriever,
+        llm=llm,
+        system_prompt=SYSTEM_PROMPT
+    )
 
-def ask(question: str):
-
-    response = query_engine.query(question)
-
-    return str(response)
+    return chat_engine

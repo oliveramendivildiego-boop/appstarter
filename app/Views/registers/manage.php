@@ -1,5 +1,8 @@
 <?= $this->extend('layouts/main') ?>
-<?php $pageTitle = !empty($edit_registro) ? 'Editar orden' : 'Nuevo registro'; ?>
+<?php
+helper('config');
+$pageTitle = !empty($edit_registro) ? 'Editar orden' : 'Nuevo registro';
+?>
 <?= $this->section('title') ?><?= esc($pageTitle) ?><?= $this->endSection() ?>
 <?= $this->section('head_extra') ?>
 <script src="<?= base_url('js/vendor/jquery.validate.min.js') ?>"></script>
@@ -315,9 +318,9 @@ if (!empty($edit_registro)) {
                         <div class="col-12 col-md-4">
                             <label for="np_gender" class="form-label">Género <span class="text-danger">*</span></label>
                             <select class="form-select" id="np_gender" name="gender" required>
-                                <option value="">Seleccione...</option>
-                                <option value="1">Masculino</option>
-                                <option value="2">Femenino</option>
+                                <?php foreach (genero_dropdown_options('Seleccione...') as $generoVal => $generoLabel): ?>
+                                    <option value="<?= esc($generoVal) ?>"><?= esc($generoLabel) ?></option>
+                                <?php endforeach; ?>
                             </select>
                         </div>
                         <div class="col-12 col-md-6">
@@ -371,9 +374,9 @@ if (!empty($edit_registro)) {
                         <div class="col-12 col-md-4">
                             <label for="nd_gender" class="form-label">Género <span class="text-danger">*</span></label>
                             <select class="form-select" id="nd_gender" name="gender" required>
-                                <option value="">Seleccione...</option>
-                                <option value="1">Masculino</option>
-                                <option value="2">Femenino</option>
+                                <?php foreach (genero_dropdown_options('Seleccione...') as $generoVal => $generoLabel): ?>
+                                    <option value="<?= esc($generoVal) ?>"><?= esc($generoLabel) ?></option>
+                                <?php endforeach; ?>
                             </select>
                         </div>
                         <div class="col-12 col-md-8">

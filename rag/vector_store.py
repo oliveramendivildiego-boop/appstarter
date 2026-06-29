@@ -1,31 +1,18 @@
+from qdrant_client import QdrantClient
 from llama_index.vector_stores.qdrant import QdrantVectorStore
-from llama_index.core import StorageContext
-
-from qdrant_client.models import VectorParams, Distance
-
-COLLECTION = "codeigniter"
-VECTOR_SIZE = 768
+from llama_index.core.storage.storage_context import StorageContext
 
 
-def init_vector_store(client):
+def init_vector_store():
 
-    # ======================
-    # CREAR COLECCIÓN (SOLO UNA VEZ)
-    # ======================
-    client.recreate_collection(
-        collection_name=COLLECTION,
-        vectors_config=VectorParams(
-            size=VECTOR_SIZE,
-            distance=Distance.COSINE
-        )
+    client = QdrantClient(
+        host="localhost",
+        port=6333
     )
 
-    # ======================
-    # VECTOR STORE
-    # ======================
     vector_store = QdrantVectorStore(
         client=client,
-        collection_name=COLLECTION
+        collection_name="rag_collection"
     )
 
     storage_context = StorageContext.from_defaults(

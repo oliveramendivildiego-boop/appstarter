@@ -1,42 +1,41 @@
-from llama_index.core import VectorStoreIndex, StorageContext
-from llama_index.vector_stores.chroma import ChromaVectorStore
-from llama_index.embeddings.ollama import OllamaEmbedding
-from llama_index.llms.ollama import Ollama
+from mcp.server.fastmcp import FastMCP
 
-import chromadb
+from tools.file_tools import list_files, read_file, search_files
+from router import ask  # tu RAG ya funcionando
 
-DB_PATH = "./rag/chroma_db"
+mcp = FastMCP("local-rag-ide")
 
-# EMBEDDINGS
-embed_model = OllamaEmbedding(model_name="nomic-embed-text")
+# -------------------------
+# FILE SYSTEM
+# -------------------------
 
-# LLM
-llm = Ollama(
-    model="qwen2.5-coder:7b",
-    request_timeout=120.0
-)
+@mcp.tool()
+def list_fs(path: str = "C:\\wamp64\\www\\laboratorio"):
+    return list_files(path)
 
-# CHROMA PERSISTENTE
-client = chromadb.PersistentClient(path=DB_PATH)
-collection = client.get_or_create_collection("codeigniter")
 
-vector_store = ChromaVectorStore(chroma_collection=collection)
-storage_context = StorageContext.from_defaults(vector_store=vector_store)
+@mcp.tool()
+def read_fs(path: str):
+    return read_file(path)
 
-# CARGAR ÍNDICE
-index = VectorStoreIndex.from_vector_store(
-    vector_store=vector_store,
-    embed_model=embed_model
-)
 
-query_engine = index.as_query_engine(llm=llm)
+@mcp.tool()
+def search_fs(query: str):
+    return search_files(query)
 
-print("💬 RAG listo. Escribe tu pregunta:\n")
 
-while True:
-    q = input(">> ")
-    if q.lower() in ["exit", "quit"]:
-        break
+# -------------------------
+# RAG ENGINE
+# -------------------------
 
-    response = query_engine.query(q)
-    print("\n", response, "\n")
+@mcp.tool()
+def ask_rag(question: str):
+    return ask(question)
+
+
+# -------------------------
+# ENTRYPOINT
+# -------------------------
+
+if __name__ == "__main__":
+    mcp.run()
