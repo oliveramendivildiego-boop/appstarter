@@ -18,12 +18,12 @@ class StatusCheck extends BaseController
         
         // Si no hay sesión de empleado, no está activo
         if (!$personId) {
-            return $this->response->setJSON(['active' => false, 'reason' => 'no_session']);
+            return $this->response->setJSON(['active' => false, 'reason' => 'sesión no iniciada']);
         }
         
         // Si no está logueado, no está activo
         if (!$employeeModel->isLoggedIn()) {
-            return $this->response->setJSON(['active' => false, 'reason' => 'not_logged_in']);
+            return $this->response->setJSON(['active' => false, 'reason' => 'sesión no válida']);
         }
         
         // Verificar si el empleado sigue siendo activo en la BD
@@ -32,7 +32,7 @@ class StatusCheck extends BaseController
         // Solo consulta: no destruir la sesión aquí (evita cortar formularios en curso).
         // El cierre de sesión lo hace toggleStatus / logoutAllSessions al desactivar al empleado.
         if ($isActive !== true) {
-            return $this->response->setJSON(['active' => false, 'reason' => 'disabled_or_not_found']);
+            return $this->response->setJSON(['active' => false, 'reason' => 'usuario deshabilitado o no encontrado']);
         }
 
         return $this->response->setJSON([

@@ -173,7 +173,7 @@ $currencyIsRight = strtolower(trim($currencySide)) === 'right';
             </div>
             <div class="modal-body" id="modalMensajePagoComisionTexto"></div>
             <div class="modal-footer">
-                <button type="button" class="btn btn-primary" id="btnModalMensajePagoComisionOk" data-bs-dismiss="modal">OK</button>
+                <button type="button" class="btn btn-primary" id="btnModalMensajePagoComisionOk" data-bs-dismiss="modal">Aceptar</button>
             </div>
         </div>
     </div>

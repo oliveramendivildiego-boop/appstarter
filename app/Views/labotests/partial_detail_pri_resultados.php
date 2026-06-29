@@ -17,7 +17,10 @@ $referencia_sexo_options = $referencia_sexo_options ?? referencia_sexo_dropdown_
     <div class="card-header d-flex flex-wrap align-items-center gap-2">
         <strong>Valores de referencia (<?= lang('Labotests.labotests_tipo_analisis_simple') ?>)</strong>
         <?php if (! empty($priresultados)): ?>
-        <div class="ms-auto d-flex flex-wrap align-items-center gap-2">
+        <span class="badge bg-secondary" id="badge_pri_filas_count"><?= count($priresultados) ?> filas</span>
+        <button type="button" class="btn btn-sm btn-outline-primary ms-auto" id="btn_abrir_modal_orden_pri" title="Lista compacta para reordenar más rápido">
+            <i class="fa-solid fa-list-ol me-1"></i> Orden rápido
+        </button>
         <?= view('labotests/partial_modal_orden_criterios', [
             'modal_id'           => 'modalOrdenCriteriosPri',
             'btn_open_id'        => 'btn_abrir_modal_orden_criterios_pri',
@@ -26,13 +29,49 @@ $referencia_sexo_options = $referencia_sexo_options ?? referencia_sexo_dropdown_
             'sort_url'           => site_url('labotests/sortpriresultadosbycriteria'),
             'prianacategoria_id' => (int) ($labotests_info->prianacategoria_id ?? 0),
         ]) ?>
+        <button type="button" class="btn btn-sm btn-outline-secondary" id="btn_duplicar_pri_seleccionadas" disabled>
+            <i class="fa-solid fa-copy me-1"></i>Duplicar seleccionadas
+        </button>
         <button type="button" class="btn btn-sm btn-outline-secondary" id="btn_pri_por_generos" disabled title="Crea una fila por cada género del catálogo a partir de las filas seleccionadas">
             <i class="fa-solid fa-venus-mars me-1"></i>Pruebas por géneros
         </button>
+        <div class="dropdown">
+            <button type="button" class="btn btn-sm btn-outline-secondary dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false" id="btn_formato_nombres_pri">
+                <i class="fa-solid fa-font me-1"></i> Formato nombres
+            </button>
+            <ul class="dropdown-menu dropdown-menu-end">
+                <li><h6 class="dropdown-header">Aplicar a todas las unidades de medida de esta prueba</h6></li>
+                <li>
+                    <button type="button" class="dropdown-item pri-transform-umedida-action" data-mode="uppercase">
+                        <i class="fa-solid fa-text-height me-2 text-muted"></i> TODO EN MAYÚSCULAS
+                    </button>
+                </li>
+                <li>
+                    <button type="button" class="dropdown-item pri-transform-umedida-action" data-mode="lowercase">
+                        <i class="fa-solid fa-text-height me-2 text-muted"></i> todo en minúsculas
+                    </button>
+                </li>
+                <li>
+                    <button type="button" class="dropdown-item pri-transform-umedida-action" data-mode="sentence">
+                        <i class="fa-solid fa-a me-2 text-muted"></i> Solo la primera letra en mayúscula
+                    </button>
+                </li>
+                <li>
+                    <button type="button" class="dropdown-item pri-transform-umedida-action" data-mode="title">
+                        <i class="fa-solid fa-heading me-2 text-muted"></i> Primera letra de cada palabra
+                    </button>
+                </li>
+            </ul>
         </div>
+        <button type="button" class="btn btn-sm btn-outline-danger" id="btn_eliminar_pri_seleccionadas" disabled>
+            <i class="fa-solid fa-trash me-1"></i>Eliminar seleccionadas
+        </button>
         <?php endif; ?>
     </div>
     <div class="card-body">
+        <?php if (! empty($priresultados)): ?>
+        <script src="<?= base_url('js/vendor/sortable.min.js') ?>"></script>
+        <?php endif; ?>
         <div class="table-responsive">
         <table class="table table-sm table-bordered table-striped table-hover align-middle mb-0" id="tabla_pri_resultados">
             <thead class="table-light">
@@ -68,8 +107,9 @@ $referencia_sexo_options = $referencia_sexo_options ?? referencia_sexo_dropdown_
                     'opcion_id' => (int) ($pr['opcion_id'] ?? 3),
                     'texto_fijo' => (string) ($pr['texto_fijo'] ?? ''),
                 ];
+                $etiquetaOrden = trim(($pobMap[(int) ($pr['id_poblacion'] ?? 0)] ?? '') . ' · ' . referencia_sexo_label($pr['sexo'] ?? 'ambos'));
                 ?>
-                <tr data-priresultados-id="<?= (int) ($pr['priresultados_id'] ?? 0) ?>" data-sexo="<?= esc(referencia_sexo_css_slug($pr['sexo'] ?? 'ambos'), 'attr') ?>">
+                <tr data-priresultados-id="<?= (int) ($pr['priresultados_id'] ?? 0) ?>" data-orden-etiqueta="<?= esc($etiquetaOrden, 'attr') ?>" data-sexo="<?= esc(referencia_sexo_css_slug($pr['sexo'] ?? 'ambos'), 'attr') ?>">
                     <?php if (! empty($priresultados)): ?>
                     <td class="text-center">
                         <input type="checkbox" class="pri-check-item" value="<?= (int) ($pr['priresultados_id'] ?? 0) ?>">
@@ -85,13 +125,56 @@ $referencia_sexo_options = $referencia_sexo_options ?? referencia_sexo_dropdown_
                     <td><?= esc($opciones[(int) ($pr['opcion_id'] ?? 0)] ?? '') ?></td>
                     <td class="text-center">
                         <button type="button" class="btn btn-sm btn-outline-primary btn-editar-pri" data-pri="<?= htmlspecialchars(json_encode($rowDataPri), ENT_QUOTES, 'UTF-8') ?>" title="Editar"><i class="fa-solid fa-pen"></i></button>
-                        <a href="<?= site_url("labotests/deletepriresultado/" . (int) ($pr['priresultados_id'] ?? 0)) ?>" class="btn btn-sm btn-outline-danger" title="Eliminar" onclick="return uiConfirmLink(this, '¿Eliminar estos valores?');"><i class="fa-solid fa-trash"></i></a>
+                        <button type="button" class="btn btn-sm btn-outline-danger btn-eliminar-pri" data-pri-id="<?= (int) ($pr['priresultados_id'] ?? 0) ?>" title="Eliminar"><i class="fa-solid fa-trash"></i></button>
                     </td>
                 </tr>
                 <?php endforeach; ?>
             </tbody>
         </table>
         </div>
+
+        <?php if (! empty($priresultados)): ?>
+        <div class="modal fade" id="modalOrdenPriResultados" tabindex="-1" aria-labelledby="modalOrdenPriResultadosTitle" aria-hidden="true">
+            <div class="modal-dialog modal-dialog-scrollable">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title" id="modalOrdenPriResultadosTitle">Orden rápido</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+                    </div>
+                    <div class="modal-body">
+                        <p class="text-muted small mb-2">Lista compacta: arrastra el asa <i class="fa-solid fa-grip-vertical text-secondary"></i> para mover filas. <strong>Aplicar y guardar</strong> actualiza la tabla y el servidor.</p>
+                        <ul class="list-group mt-3 lista-orden-pri-modal" id="listaOrdenPriResultados" style="max-height: 62vh; overflow-y: auto;"></ul>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
+                        <button type="button" class="btn btn-primary" id="btn_aplicar_orden_pri_modal">Aplicar y guardar</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="modal fade" id="modalDuplicarPriResultado" tabindex="-1" aria-labelledby="modalDuplicarPriResultadoTitle" aria-hidden="true">
+            <div class="modal-dialog">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title" id="modalDuplicarPriResultadoTitle">Duplicar filas seleccionadas</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+                    </div>
+                    <div class="modal-body">
+                        <p class="mb-2">Indique cuántas copias desea crear por cada fila seleccionada.</p>
+                        <label for="duplicar_pri_copias" class="form-label">Cantidad de copias</label>
+                        <input type="number" id="duplicar_pri_copias" class="form-control" min="1" max="100" step="1" value="1" required>
+                        <small class="text-muted">Valor por defecto: 1</small>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
+                        <button type="button" class="btn btn-primary" id="btn_confirmar_duplicar_pri">Duplicar</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <?php endif; ?>
+
         <hr>
         <button type="button" class="btn btn-primary btn-sm" id="btn_agregar_pri">
             <?= empty($priresultados) ? 'Agregar valores de referencia' : 'Agregar por población' ?>
@@ -235,6 +318,13 @@ $referencia_sexo_options = $referencia_sexo_options ?? referencia_sexo_dropdown_
         </div>
     </div>
 </div>
+<style>
+#tabla_pri_resultados tbody tr.pri-fila-eliminandose {
+    opacity: 0;
+    transition: opacity 0.42s ease;
+    pointer-events: none;
+}
+</style>
 <link href="https://cdn.jsdelivr.net/npm/summernote@0.8.18/dist/summernote-lite.min.css" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/summernote@0.8.18/dist/summernote-lite.min.js"></script>
 <script>
@@ -263,6 +353,16 @@ $referencia_sexo_options = $referencia_sexo_options ?? referencia_sexo_dropdown_
     var tablaPri = document.getElementById('tabla_pri_resultados');
     var priCheckAll = document.getElementById('pri_check_all');
     var btnPriPorGeneros = document.getElementById('btn_pri_por_generos');
+    var btnDuplicarPriSeleccionadas = document.getElementById('btn_duplicar_pri_seleccionadas');
+    var btnEliminarPriSeleccionadas = document.getElementById('btn_eliminar_pri_seleccionadas');
+    var btnFormatoNombresPri = document.getElementById('btn_formato_nombres_pri');
+    var modalDuplicarPriEl = document.getElementById('modalDuplicarPriResultado');
+    var modalDuplicarPriInst = (modalDuplicarPriEl && typeof bootstrap !== 'undefined')
+        ? (bootstrap.Modal.getInstance(modalDuplicarPriEl) || new bootstrap.Modal(modalDuplicarPriEl))
+        : null;
+    var duplicarPriCopiasInput = document.getElementById('duplicar_pri_copias');
+    var btnConfirmarDuplicarPri = document.getElementById('btn_confirmar_duplicar_pri');
+    var sortableModalOrdenPri = null;
 
     function openModal() {
         if (modal) modal.show();
@@ -524,6 +624,71 @@ $referencia_sexo_options = $referencia_sexo_options ?? referencia_sexo_dropdown_
             inp.value = d.csrf_token;
         });
     }
+    function desvanecerYQuitarFilaPri(tr, onDone) {
+        if (!tr) {
+            if (onDone) onDone();
+            return;
+        }
+        tr.classList.add('pri-fila-eliminandose');
+        window.setTimeout(function() {
+            tr.remove();
+            if (onDone) onDone();
+        }, 420);
+    }
+    function actualizarContadorFilasPri() {
+        var count = tablaPri ? tablaPri.querySelectorAll('tbody tr[data-priresultados-id]').length : 0;
+        var badge = document.getElementById('badge_pri_filas_count');
+        if (badge) {
+            badge.textContent = count + (count === 1 ? ' fila' : ' filas');
+        }
+        if (priCheckAll) {
+            priCheckAll.checked = false;
+            priCheckAll.indeterminate = false;
+        }
+        actualizarEstadoSeleccionPri();
+    }
+    function eliminarFilasPriEnCliente(rows) {
+        if (!rows || !rows.length) {
+            actualizarContadorFilasPri();
+            return;
+        }
+        var pendientes = rows.length;
+        rows.forEach(function(tr) {
+            desvanecerYQuitarFilaPri(tr, function() {
+                pendientes--;
+                if (pendientes < 1) {
+                    actualizarContadorFilasPri();
+                }
+            });
+        });
+    }
+    function eliminarPriResultadoAjax(priId, tr) {
+        if (!priId || priId < 1) return;
+        var fd = new FormData();
+        var csrfData = getPriCsrfData();
+        if (csrfData.value) fd.append(csrfData.name, csrfData.value);
+        var headers = { 'X-Requested-With': 'XMLHttpRequest' };
+        if (csrfData.value) headers['X-CSRF-TOKEN'] = csrfData.value;
+        var btn = tr ? tr.querySelector('.btn-eliminar-pri') : null;
+        if (btn) btn.disabled = true;
+        fetch('<?= site_url('labotests/deletepriresultado/') ?>' + priId, {
+            method: 'POST',
+            body: fd,
+            headers: headers
+        }).then(function(r) { return r.json(); }).then(function(d) {
+            applyPriCsrfFromJson(d);
+            if (d.success) {
+                if (typeof showToast === 'function') showToast(d.message || 'Valores eliminados', 'success');
+                eliminarFilasPriEnCliente(tr ? [tr] : []);
+            } else {
+                if (btn) btn.disabled = false;
+                if (typeof showToast === 'function') showToast(d.message || 'No se pudo eliminar', 'error');
+            }
+        }).catch(function() {
+            if (btn) btn.disabled = false;
+            if (typeof showToast === 'function') showToast('No se pudo eliminar', 'error');
+        });
+    }
     function getSelectedPriIds() {
         var ids = [];
         if (!tablaPri) return ids;
@@ -545,7 +710,126 @@ $referencia_sexo_options = $referencia_sexo_options ?? referencia_sexo_dropdown_
         if (btnPriPorGeneros) {
             btnPriPorGeneros.disabled = selected.length === 0;
         }
+        if (btnDuplicarPriSeleccionadas) {
+            btnDuplicarPriSeleccionadas.disabled = selected.length === 0;
+        }
+        if (btnEliminarPriSeleccionadas) {
+            btnEliminarPriSeleccionadas.disabled = selected.length === 0;
+        }
         syncPriCheckAllState();
+    }
+    function getOrderPriIds() {
+        if (!tablaPri) return [];
+        var ids = [];
+        tablaPri.querySelectorAll('tbody tr[data-priresultados-id]').forEach(function(tr) {
+            var id = parseInt(tr.getAttribute('data-priresultados-id'), 10);
+            if (id > 0) ids.push(id);
+        });
+        return ids;
+    }
+    function guardarOrdenPri() {
+        var order = getOrderPriIds();
+        if (order.length === 0) return;
+        var fd = new FormData();
+        fd.append('prianacategoria_id', String(prianacategoriaId));
+        for (var i = 0; i < order.length; i++) fd.append('order[]', String(order[i]));
+        var csrfData = getPriCsrfData();
+        if (csrfData.value) fd.append(csrfData.name, csrfData.value);
+        var headers = { 'X-Requested-With': 'XMLHttpRequest' };
+        if (csrfData.value) headers['X-CSRF-TOKEN'] = csrfData.value;
+        fetch('<?= site_url('labotests/orderPriResultados') ?>', {
+            method: 'POST',
+            body: fd,
+            headers: headers
+        }).then(function(r) { return r.json(); }).then(function(d) {
+            applyPriCsrfFromJson(d);
+            if (d.success) {
+                if (typeof showToast === 'function') showToast(d.message || 'Orden guardado', 'success');
+            } else if (typeof showToast === 'function') {
+                showToast(d.message || 'Error al guardar orden', 'error');
+            }
+        }).catch(function() {
+            if (typeof showToast === 'function') showToast('Error al guardar orden', 'error');
+        });
+    }
+    function poblarListaOrdenPriModal() {
+        var list = document.getElementById('listaOrdenPriResultados');
+        if (!list) return;
+        list.innerHTML = '';
+        getOrderPriIds().forEach(function(id) {
+            var tr = tablaPri.querySelector('tr[data-priresultados-id="' + id + '"]');
+            if (!tr) return;
+            var label = tr.getAttribute('data-orden-etiqueta') || ('#' + id);
+            var li = document.createElement('li');
+            li.className = 'list-group-item d-flex align-items-center gap-2 py-2';
+            li.setAttribute('data-priresultados-id', String(id));
+            var h = document.createElement('span');
+            h.className = 'pri-orden-modal-handle text-muted flex-shrink-0';
+            h.style.cursor = 'grab';
+            h.title = 'Arrastrar';
+            h.innerHTML = '<i class="fa-solid fa-grip-vertical"></i>';
+            var t = document.createElement('span');
+            t.className = 'flex-grow-1 small text-break';
+            t.textContent = label;
+            li.appendChild(h);
+            li.appendChild(t);
+            list.appendChild(li);
+        });
+    }
+    function aplicarOrdenDesdeModalPri() {
+        var tbody = tablaPri ? tablaPri.querySelector('tbody') : null;
+        var list = document.getElementById('listaOrdenPriResultados');
+        if (!tbody || !list) return;
+        var frag = document.createDocumentFragment();
+        list.querySelectorAll('li[data-priresultados-id]').forEach(function(li) {
+            var id = parseInt(li.getAttribute('data-priresultados-id'), 10);
+            if (id < 1) return;
+            var tr = tablaPri.querySelector('tr[data-priresultados-id="' + id + '"]');
+            if (tr) frag.appendChild(tr);
+        });
+        tbody.appendChild(frag);
+        guardarOrdenPri();
+        var modalOrdenEl = document.getElementById('modalOrdenPriResultados');
+        if (modalOrdenEl && typeof bootstrap !== 'undefined') {
+            var inst = bootstrap.Modal.getInstance(modalOrdenEl);
+            if (inst) inst.hide();
+        }
+    }
+    var modalOrdenPriEl = document.getElementById('modalOrdenPriResultados');
+    var modalOrdenPriInst = null;
+    if (modalOrdenPriEl && typeof bootstrap !== 'undefined') {
+        modalOrdenPriInst = bootstrap.Modal.getInstance(modalOrdenPriEl) || new bootstrap.Modal(modalOrdenPriEl);
+        modalOrdenPriEl.addEventListener('show.bs.modal', function() {
+            if (sortableModalOrdenPri) {
+                sortableModalOrdenPri.destroy();
+                sortableModalOrdenPri = null;
+            }
+            poblarListaOrdenPriModal();
+        });
+        modalOrdenPriEl.addEventListener('shown.bs.modal', function() {
+            var list = document.getElementById('listaOrdenPriResultados');
+            if (list && typeof Sortable !== 'undefined' && list.children.length) {
+                sortableModalOrdenPri = new Sortable(list, {
+                    handle: '.pri-orden-modal-handle',
+                    animation: 150,
+                    ghostClass: 'list-group-item-secondary'
+                });
+            }
+        });
+        modalOrdenPriEl.addEventListener('hidden.bs.modal', function() {
+            if (sortableModalOrdenPri) {
+                sortableModalOrdenPri.destroy();
+                sortableModalOrdenPri = null;
+            }
+        });
+    }
+    var btnAbrirOrdenPri = document.getElementById('btn_abrir_modal_orden_pri');
+    if (btnAbrirOrdenPri && modalOrdenPriInst) {
+        btnAbrirOrdenPri.addEventListener('click', function() { modalOrdenPriInst.show(); });
+    }
+    var btnAplicarOrdenPri = document.getElementById('btn_aplicar_orden_pri_modal');
+    if (btnAplicarOrdenPri) {
+        btnAplicarOrdenPri.addEventListener('click', aplicarOrdenDesdeModalPri);
     }
     if (priCheckAll && tablaPri) {
         priCheckAll.addEventListener('change', function() {
@@ -597,6 +881,159 @@ $referencia_sexo_options = $referencia_sexo_options ?? referencia_sexo_dropdown_
                     if (typeof showToast === 'function') showToast('No se pudo completar la operación', 'error');
                     actualizarEstadoSeleccionPri();
                 });
+            });
+        });
+    }
+    if (btnDuplicarPriSeleccionadas) {
+        btnDuplicarPriSeleccionadas.addEventListener('click', function() {
+            if (getSelectedPriIds().length < 1) return;
+            if (duplicarPriCopiasInput) duplicarPriCopiasInput.value = '1';
+            if (modalDuplicarPriInst) modalDuplicarPriInst.show();
+        });
+    }
+    if (btnConfirmarDuplicarPri) {
+        btnConfirmarDuplicarPri.addEventListener('click', function() {
+            var ids = getSelectedPriIds();
+            if (ids.length < 1) return;
+            var copies = parseInt((duplicarPriCopiasInput && duplicarPriCopiasInput.value) ? duplicarPriCopiasInput.value : '1', 10);
+            copies = isNaN(copies) ? 1 : Math.max(1, Math.min(100, copies));
+            var fd = new FormData();
+            fd.append('prianacategoria_id', String(prianacategoriaId));
+            fd.append('copies', String(copies));
+            ids.forEach(function(id) { fd.append('priresultados_ids[]', String(id)); });
+            var csrfData = getPriCsrfData();
+            if (csrfData.value) fd.append(csrfData.name, csrfData.value);
+            var headers = { 'X-Requested-With': 'XMLHttpRequest' };
+            if (csrfData.value) headers['X-CSRF-TOKEN'] = csrfData.value;
+            btnConfirmarDuplicarPri.disabled = true;
+            fetch('<?= site_url('labotests/duplicatepriresultadosbulk') ?>', {
+                method: 'POST',
+                body: fd,
+                headers: headers
+            }).then(function(r) { return r.json(); }).then(function(d) {
+                btnConfirmarDuplicarPri.disabled = false;
+                applyPriCsrfFromJson(d);
+                if (d.success) {
+                    if (typeof showToast === 'function') showToast(d.message || 'Filas duplicadas', 'success');
+                    if (modalDuplicarPriInst) modalDuplicarPriInst.hide();
+                    window.location.reload();
+                } else if (typeof showToast === 'function') {
+                    showToast(d.message || 'No se pudo duplicar', 'error');
+                }
+            }).catch(function() {
+                btnConfirmarDuplicarPri.disabled = false;
+                if (typeof showToast === 'function') showToast('No se pudo duplicar las filas seleccionadas', 'error');
+            });
+        });
+    }
+    if (btnEliminarPriSeleccionadas) {
+        btnEliminarPriSeleccionadas.addEventListener('click', function() {
+            var ids = getSelectedPriIds();
+            if (ids.length < 1) return;
+            var msg = '¿Eliminar ' + ids.length + ' fila(s) seleccionada(s)?';
+            var confirmar = (typeof uiConfirm === 'function')
+                ? uiConfirm(msg, 'Confirmar eliminación masiva')
+                : Promise.resolve(window.confirm(msg));
+            confirmar.then(function(ok) {
+                if (!ok) return;
+                var fd = new FormData();
+                fd.append('prianacategoria_id', String(prianacategoriaId));
+                ids.forEach(function(id) { fd.append('priresultados_ids[]', String(id)); });
+                var csrfData = getPriCsrfData();
+                if (csrfData.value) fd.append(csrfData.name, csrfData.value);
+                var headers = { 'X-Requested-With': 'XMLHttpRequest' };
+                if (csrfData.value) headers['X-CSRF-TOKEN'] = csrfData.value;
+                var filasAEliminar = [];
+                ids.forEach(function(id) {
+                    var tr = tablaPri ? tablaPri.querySelector('tr[data-priresultados-id="' + id + '"]') : null;
+                    if (tr) filasAEliminar.push(tr);
+                });
+                btnEliminarPriSeleccionadas.disabled = true;
+                fetch('<?= site_url('labotests/deletepriresultadosbulk') ?>', {
+                    method: 'POST',
+                    body: fd,
+                    headers: headers
+                }).then(function(r) { return r.json(); }).then(function(d) {
+                    applyPriCsrfFromJson(d);
+                    if (d.success) {
+                        if (typeof showToast === 'function') showToast(d.message || 'Eliminación completada', 'success');
+                        eliminarFilasPriEnCliente(filasAEliminar);
+                    } else if (typeof showToast === 'function') {
+                        showToast(d.message || 'No se pudo eliminar', 'error');
+                        actualizarEstadoSeleccionPri();
+                    }
+                }).catch(function() {
+                    if (typeof showToast === 'function') showToast('No se pudo eliminar', 'error');
+                    actualizarEstadoSeleccionPri();
+                }).finally(function() {
+                    if (btnEliminarPriSeleccionadas) btnEliminarPriSeleccionadas.disabled = false;
+                });
+            });
+        });
+    }
+    var priUmedidaTransformBusy = false;
+    var priUmedidaModeLabels = {
+        uppercase: 'convertir todas las unidades de medida a MAYÚSCULAS',
+        lowercase: 'convertir todas las unidades de medida a minúsculas',
+        sentence: 'poner solo la primera letra de cada unidad en mayúscula',
+        title: 'poner la primera letra de cada palabra en mayúscula'
+    };
+    document.querySelectorAll('.pri-transform-umedida-action').forEach(function(btn) {
+        btn.addEventListener('click', function() {
+            if (priUmedidaTransformBusy) return;
+            var mode = btn.getAttribute('data-mode') || '';
+            if (!mode) return;
+            var msg = '¿Confirma ' + (priUmedidaModeLabels[mode] || 'transformar las unidades de medida') + ' en esta prueba?';
+            var confirmar = (typeof uiConfirm === 'function')
+                ? uiConfirm(msg, 'Formato de nombres')
+                : Promise.resolve(window.confirm(msg));
+            confirmar.then(function(ok) {
+                if (!ok) return;
+                priUmedidaTransformBusy = true;
+                if (btnFormatoNombresPri) btnFormatoNombresPri.disabled = true;
+                var fd = new FormData();
+                fd.append('prianacategoria_id', String(prianacategoriaId));
+                fd.append('mode', mode);
+                var csrfData = getPriCsrfData();
+                if (csrfData.value) fd.append(csrfData.name, csrfData.value);
+                var headers = { 'X-Requested-With': 'XMLHttpRequest' };
+                if (csrfData.value) headers['X-CSRF-TOKEN'] = csrfData.value;
+                fetch('<?= site_url('labotests/transformpriresultadosumedida') ?>', {
+                    method: 'POST',
+                    body: fd,
+                    headers: headers
+                }).then(function(r) { return r.json(); }).then(function(d) {
+                    applyPriCsrfFromJson(d);
+                    if (d.success) {
+                        if (typeof showToast === 'function') showToast(d.message || 'Unidades actualizadas', 'success');
+                        window.location.reload();
+                    } else if (typeof showToast === 'function') {
+                        showToast(d.message || 'No se pudo aplicar el formato', 'error');
+                    }
+                }).catch(function() {
+                    if (typeof showToast === 'function') showToast('No se pudo aplicar el formato', 'error');
+                }).finally(function() {
+                    priUmedidaTransformBusy = false;
+                    if (btnFormatoNombresPri) btnFormatoNombresPri.disabled = false;
+                });
+            });
+        });
+    });
+
+    if (tablaPri) {
+        tablaPri.addEventListener('click', function(e) {
+            var eliminarBtn = e.target.closest('.btn-eliminar-pri');
+            if (!eliminarBtn) return;
+            e.preventDefault();
+            var tr = eliminarBtn.closest('tr[data-priresultados-id]');
+            var priId = parseInt(eliminarBtn.getAttribute('data-pri-id') || (tr ? tr.getAttribute('data-priresultados-id') : '0'), 10);
+            if (priId < 1) return;
+            var confirmar = (typeof uiConfirm === 'function')
+                ? uiConfirm('¿Eliminar estos valores?', 'Confirmar')
+                : Promise.resolve(window.confirm('¿Eliminar estos valores?'));
+            confirmar.then(function(ok) {
+                if (!ok) return;
+                eliminarPriResultadoAjax(priId, tr);
             });
         });
     }

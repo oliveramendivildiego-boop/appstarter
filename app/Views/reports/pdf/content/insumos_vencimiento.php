@@ -2,7 +2,7 @@
 $data        = $data ?? [];
 $dias_alerta = (int) ($dias_alerta ?? 40);
 ?>
-<p class="small mb-1">Alerta vencimiento: <?= $dias_alerta ?> días. Leyenda: Vencido / Por vencer / Sin fecha / OK.</p>
+<p class="small mb-1">Alerta vencimiento: <?= $dias_alerta ?> días. Leyenda: Vencido / Por vencer / Sin fecha / Vigente.</p>
 <table class="pdf-t">
     <thead>
         <tr>

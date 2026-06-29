@@ -646,6 +646,33 @@ class Labotests extends SecureArea
     }
 
     /**
+     * Actualizar orden de valores de referencia (análisis simple).
+     */
+    public function orderPriResultados(): ResponseInterface
+    {
+        $prianacategoriaId = (int) ($this->request->getPost('prianacategoria_id') ?? 0);
+        $order = $this->request->getPost('order') ?? $this->request->getPost('order[]');
+        if ($prianacategoriaId < 1) {
+            return $this->response->setJSON(['success' => false, 'message' => 'ID de prueba inválido'])->setStatusCode(400);
+        }
+        if (! is_array($order)) {
+            $order = is_string($order) ? json_decode($order, true) : [];
+        }
+        $order = array_values(array_filter(array_map('intval', (array) $order)));
+        $ok = $this->labotestModel->updatePriResultadosOrder($prianacategoriaId, $order);
+        $json = [
+            'success' => $ok,
+            'message' => $ok ? 'Orden guardado' : 'No se pudo guardar el orden',
+        ];
+        if (function_exists('csrf_hash')) {
+            $json['csrf_token'] = csrf_hash();
+            $json['csrf_name'] = csrf_token();
+        }
+
+        return $this->response->setJSON($json)->setStatusCode($ok ? 200 : 400);
+    }
+
+    /**
      * Ordenar sub-clases por criterios combinables (nombre, población, sexo).
      */
     public function sortsecitemsbycriteria(): ResponseInterface
@@ -741,6 +768,49 @@ class Labotests extends SecureArea
             \App\Models\AuditoriaModel::log(
                 'labotests',
                 'transformar_nombres_subclases',
+                (string) $prianacategoriaId,
+                \App\Models\AuditoriaModel::detail([
+                    'modo'      => $mode,
+                    'updated'   => (int) ($result['updated'] ?? 0),
+                    'unchanged' => (int) ($result['unchanged'] ?? 0),
+                ])
+            );
+        }
+
+        $json = [
+            'success'   => (bool) ($result['success'] ?? false),
+            'message'   => (string) ($result['message'] ?? ''),
+            'updated'   => (int) ($result['updated'] ?? 0),
+            'unchanged' => (int) ($result['unchanged'] ?? 0),
+        ];
+        if (function_exists('csrf_hash')) {
+            $json['csrf_token'] = csrf_hash();
+            $json['csrf_name'] = csrf_token();
+        }
+
+        return $this->response->setJSON($json)->setStatusCode(($result['success'] ?? false) ? 200 : 400);
+    }
+
+    /**
+     * Transforma en lote las unidades de medida de valores de referencia simples.
+     */
+    public function transformpriresultadosumedida(): ResponseInterface
+    {
+        $prianacategoriaId = (int) ($this->request->getPost('prianacategoria_id') ?? 0);
+        $mode = strtolower(trim((string) ($this->request->getPost('mode') ?? '')));
+
+        if ($prianacategoriaId < 1) {
+            return $this->response->setJSON([
+                'success' => false,
+                'message' => 'ID de prueba inválido',
+            ])->setStatusCode(400);
+        }
+
+        $result = $this->labotestModel->transformPriResultadosUmedida($prianacategoriaId, $mode);
+        if ($result['success'] ?? false) {
+            \App\Models\AuditoriaModel::log(
+                'labotests',
+                'transformar_umedida_referencias',
                 (string) $prianacategoriaId,
                 \App\Models\AuditoriaModel::detail([
                     'modo'      => $mode,
@@ -1694,12 +1764,158 @@ class Labotests extends SecureArea
     {
         $id = (int) $id;
         $pr = $this->labotestModel->getPriResultadoInfo($id);
-        if (!$pr) {
+        if (! $pr) {
+            if ($this->request->isAJAX()) {
+                $json = ['success' => false, 'message' => 'Registro no encontrado'];
+                if (function_exists('csrf_hash')) {
+                    $json['csrf_token'] = csrf_hash();
+                    $json['csrf_name'] = csrf_token();
+                }
+
+                return $this->response->setJSON($json)->setStatusCode(404);
+            }
+
             return redirect()->back()->with('error', 'Registro no encontrado');
         }
         $prianacategoriaId = (int) $pr->prianacategoria_id;
         $this->labotestModel->deletePriResultado($id);
+
+        if ($this->request->isAJAX()) {
+            $json = [
+                'success' => true,
+                'message' => 'Valores eliminados',
+                'priresultados_id' => $id,
+                'prianacategoria_id' => $prianacategoriaId,
+            ];
+            if (function_exists('csrf_hash')) {
+                $json['csrf_token'] = csrf_hash();
+                $json['csrf_name'] = csrf_token();
+            }
+
+            return $this->response->setJSON($json);
+        }
+
         return redirect()->to("labotests/detail/{$prianacategoriaId}")->with('success', 'Valores eliminados');
+    }
+
+    /**
+     * Eliminar valores de referencia en lote (análisis simple).
+     */
+    public function deletepriresultadosbulk(): ResponseInterface
+    {
+        $prianacategoriaId = (int) ($this->request->getPost('prianacategoria_id') ?? 0);
+        $ids = $this->request->getPost('priresultados_ids');
+        $ids = is_array($ids) ? $ids : [];
+        $ids = array_values(array_unique(array_filter(array_map('intval', $ids), static fn(int $v): bool => $v > 0)));
+
+        if ($prianacategoriaId < 1 || $ids === []) {
+            return $this->response->setJSON([
+                'success' => false,
+                'message' => 'Debe seleccionar al menos una fila',
+            ])->setStatusCode(400);
+        }
+
+        $deletedCount = $this->labotestModel->deletePriResultadosBulk($prianacategoriaId, $ids);
+        if ($deletedCount > 0) {
+            \App\Models\AuditoriaModel::log(
+                'labotests',
+                'eliminar_referencias_masivo',
+                (string) $prianacategoriaId,
+                \App\Models\AuditoriaModel::detail([
+                    'total' => $deletedCount,
+                    'ids' => $ids,
+                ])
+            );
+        }
+
+        $json = [
+            'success' => $deletedCount > 0,
+            'message' => $deletedCount > 0
+                ? ('Se eliminaron ' . $deletedCount . ' fila(s)')
+                : 'No se eliminaron filas',
+            'deleted' => $deletedCount,
+        ];
+        if (function_exists('csrf_hash')) {
+            $json['csrf_token'] = csrf_hash();
+            $json['csrf_name'] = csrf_token();
+        }
+
+        return $this->response->setJSON($json)->setStatusCode($deletedCount > 0 ? 200 : 400);
+    }
+
+    /**
+     * Duplicar valores de referencia en lote (análisis simple).
+     */
+    public function duplicatepriresultadosbulk(): ResponseInterface
+    {
+        $prianacategoriaId = (int) ($this->request->getPost('prianacategoria_id') ?? 0);
+        $ids = $this->request->getPost('priresultados_ids');
+        $ids = is_array($ids) ? $ids : [];
+        $ids = array_values(array_unique(array_filter(array_map('intval', $ids), static fn(int $v): bool => $v > 0)));
+
+        $copies = (int) ($this->request->getPost('copies') ?? 1);
+        $copies = max(1, min(100, $copies));
+
+        if ($prianacategoriaId < 1 || $ids === []) {
+            return $this->response->setJSON([
+                'success' => false,
+                'message' => 'Debe seleccionar al menos una fila',
+            ])->setStatusCode(400);
+        }
+
+        $result = $this->labotestModel->duplicatePriResultadosBulk($prianacategoriaId, $ids, $copies);
+        $inserted = (int) ($result['inserted'] ?? 0);
+        $items = (int) ($result['items'] ?? 0);
+
+        if ($items > 0) {
+            \App\Models\AuditoriaModel::log(
+                'labotests',
+                'duplicar_referencias_masivo',
+                (string) $prianacategoriaId,
+                \App\Models\AuditoriaModel::detail([
+                    'total_copias' => $inserted,
+                    'filas' => $items,
+                    'copias_por_fila' => $copies,
+                    'ids' => $ids,
+                ])
+            );
+        }
+
+        if ($inserted < 1) {
+            $json = [
+                'success' => false,
+                'message' => 'No se pudo duplicar las filas seleccionadas',
+                'inserted' => 0,
+                'items' => 0,
+            ];
+        } elseif ($copies === 1) {
+            $message = $items === 1
+                ? 'Fila duplicada correctamente'
+                : ('Se duplicaron ' . $items . ' filas correctamente');
+            $json = [
+                'success' => true,
+                'message' => $message,
+                'inserted' => $inserted,
+                'items' => $items,
+            ];
+        } else {
+            $message = $items === 1
+                ? ('Fila duplicada ' . $copies . ' veces correctamente')
+                : ('Se duplicaron ' . $items . ' filas (' . $inserted . ' copias creadas)');
+            $json = [
+                'success' => true,
+                'message' => $message,
+                'inserted' => $inserted,
+                'items' => $items,
+            ];
+        }
+
+        if (function_exists('csrf_hash')) {
+            $json['csrf_token'] = csrf_hash();
+            $json['csrf_name'] = csrf_token();
+        }
+
+        return $this->response->setJSON($json)->setStatusCode($inserted > 0 ? 200 : 400);
     }
 
     /**

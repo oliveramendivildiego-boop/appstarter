@@ -6,7 +6,7 @@ return [
     'common_full_name'           => 'Apellidos y nombre',
     'common_last_name_fa'        => 'Apellido Paterno',
     'common_last_name_mom'       => 'Apellido Materno',
-    'common_email'               => 'E-Mail',
+    'common_email'               => 'Correo electrónico',
     'common_phone_number'        => 'Teléfono',
     'common_person_id'           => 'CI',
     'common_comments'            => 'Comentarios',

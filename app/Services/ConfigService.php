@@ -451,8 +451,8 @@ class ConfigService
         }
 
         $subject = trim((string) ($parsed['subject'] ?? ''));
-        $details[] = 'Certificado .p12: OK' . ($subject !== '' ? ' (' . $subject . ')' : '');
-        $details[] = 'PEM de firma: OK';
+        $details[] = 'Certificado .p12: correcto' . ($subject !== '' ? ' (' . $subject . ')' : '');
+        $details[] = 'PEM de firma: correcto';
 
         $reach = $this->probeSiatEndpointReachability($endpoint);
         $details[] = (string) ($reach['message'] ?? '');
@@ -956,7 +956,7 @@ class ConfigService
 
         return [
             'success'    => true,
-            'message'    => 'OK',
+            'message'    => 'Certificado válido',
             'cert'       => $cert,
             'pkey'       => $pkey,
             'extracerts' => $extra,

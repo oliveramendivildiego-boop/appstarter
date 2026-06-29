@@ -142,7 +142,7 @@ if (function_exists('session') && session()->get('person_id')) {
             </div>
             <div class="modal-body" id="globalModalMensajeTexto"></div>
             <div class="modal-footer">
-                <button type="button" class="btn btn-primary" data-bs-dismiss="modal">OK</button>
+                <button type="button" class="btn btn-primary" data-bs-dismiss="modal">Aceptar</button>
             </div>
         </div>
     </div>

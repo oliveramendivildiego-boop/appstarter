@@ -156,7 +156,7 @@ $esMatrizConfigurable = \App\Models\LabotestModel::esMatrizConfigurable($complej
                                 <td><?= esc(strtoupper((string) ($cfg['lote_policy'] ?? 'fefo'))) ?></td>
                                 <td class="text-center">
                                     <?= form_open('labotests/deletereactivoconsumo/' . (int) ($cfg['config_id'] ?? 0), ['class' => 'd-inline']) ?>
-                                    <button type="submit" class="btn btn-sm btn-outline-danger" onclick="return confirm('Eliminar esta configuracion?')">
+                                    <button type="submit" class="btn btn-sm btn-outline-danger" onclick="return confirm('¿Eliminar esta configuración?')">
                                         <i class="fa-solid fa-trash"></i>
                                     </button>
                                     <?= form_close() ?>

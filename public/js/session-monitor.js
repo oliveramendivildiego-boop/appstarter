@@ -74,7 +74,7 @@
 
         if (knownActive === true && !active) {
             knownActive = false;
-            var reason = (data && data.reason) ? String(data.reason) : 'deshabilitación';
+            var reason = (data && data.reason) ? String(data.reason) : 'cierre de sesión';
             redirectToLogin('Tu sesión ha sido cerrada (' + reason + ')');
             return;
         }

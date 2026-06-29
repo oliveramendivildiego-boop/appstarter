@@ -320,7 +320,7 @@ class TenantConfigService
             ]);
 
             if ($result['success']) {
-                $details[] = "{$key} ({$dbName}): OK";
+                $details[] = "{$key} ({$dbName}): correcto";
             } else {
                 $details[] = "{$key} ({$dbName}): " . ($result['message'] ?? 'error');
                 $failed++;
@@ -414,7 +414,7 @@ class TenantConfigService
                 'port' => $port,
             ], false);
             $db->query('SELECT 1');
-            return ['success' => true, 'message' => 'Conexión OK'];
+            return ['success' => true, 'message' => 'Conexión correcta'];
         } catch (\Throwable $e) {
             return ['success' => false, 'message' => 'No se pudo conectar a la DB del tenant: ' . $e->getMessage()];
         }

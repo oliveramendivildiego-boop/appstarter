@@ -2823,6 +2823,201 @@ class LabotestModel extends Model
     }
 
     /**
+     * Actualiza el orden de valores de referencia (priresultados).
+     *
+     * @param list<int> $priresultadosIds
+     */
+    public function updatePriResultadosOrder(int $prianacategoriaId, array $priresultadosIds): bool
+    {
+        if ($prianacategoriaId < 1 || ! $this->ensurePriResultadosOrdenColumn()) {
+            return false;
+        }
+
+        $this->db->transStart();
+        foreach ($priresultadosIds as $orden => $priId) {
+            $priId = (int) $priId;
+            if ($priId < 1) {
+                continue;
+            }
+            $this->db->table('priresultados')
+                ->where('priresultados_id', $priId)
+                ->where('prianacategoria_id', $prianacategoriaId)
+                ->where('(deleted = 0 OR deleted IS NULL)')
+                ->update(['orden' => (int) $orden]);
+        }
+        $this->db->transComplete();
+
+        return (bool) $this->db->transStatus();
+    }
+
+    /**
+     * Duplica un valor de referencia N veces.
+     *
+     * @return array{inserted: int, first_id: int}
+     */
+    public function duplicatePriResultadoMany(int $id, int $copies = 1): array
+    {
+        $copies = max(1, min(100, $copies));
+        $row = $this->db->table('priresultados')
+            ->where('priresultados_id', $id)
+            ->where('(deleted = 0 OR deleted IS NULL)')
+            ->get()
+            ->getRowArray();
+        if (! $row) {
+            return ['inserted' => 0, 'first_id' => 0];
+        }
+
+        $hasOrden = $this->hasColumn('priresultados', 'orden');
+        $nextOrden = 0;
+        if ($hasOrden) {
+            $max = $this->db->table('priresultados')
+                ->where('prianacategoria_id', (int) ($row['prianacategoria_id'] ?? 0))
+                ->selectMax('orden')
+                ->get()
+                ->getRow();
+            $nextOrden = 1 + (int) ($max->orden ?? 0);
+        }
+
+        $firstId = 0;
+        $inserted = 0;
+        for ($i = 1; $i <= $copies; $i++) {
+            $newRow = $row;
+            unset($newRow['priresultados_id']);
+            $newRow['deleted'] = 0;
+            if ($hasOrden) {
+                $newRow['orden'] = $nextOrden++;
+            }
+            $ok = $this->db->table('priresultados')->insert($newRow);
+            if ($ok !== false) {
+                $inserted++;
+                $newId = (int) $this->db->insertID();
+                if ($firstId < 1) {
+                    $firstId = $newId;
+                }
+            }
+        }
+
+        return ['inserted' => $inserted, 'first_id' => $firstId];
+    }
+
+    /**
+     * Duplica varios valores de referencia, cada uno N veces.
+     *
+     * @return array{inserted: int, items: int}
+     */
+    public function duplicatePriResultadosBulk(int $prianacategoriaId, array $ids, int $copies = 1): array
+    {
+        $ids = array_values(array_unique(array_filter(array_map('intval', $ids), static fn(int $v): bool => $v > 0)));
+        $copies = max(1, min(100, $copies));
+
+        if ($prianacategoriaId < 1 || $ids === []) {
+            return ['inserted' => 0, 'items' => 0];
+        }
+
+        $totalInserted = 0;
+        $itemsProcessed = 0;
+        foreach ($ids as $id) {
+            $pri = $this->getPriResultadoInfo($id);
+            if (! $pri || (int) ($pri->prianacategoria_id ?? 0) !== $prianacategoriaId) {
+                continue;
+            }
+            $result = $this->duplicatePriResultadoMany($id, $copies);
+            $inserted = (int) ($result['inserted'] ?? 0);
+            if ($inserted > 0) {
+                $totalInserted += $inserted;
+                $itemsProcessed++;
+            }
+        }
+
+        return ['inserted' => $totalInserted, 'items' => $itemsProcessed];
+    }
+
+    /**
+     * Eliminar (soft) valores de referencia en lote.
+     */
+    public function deletePriResultadosBulk(int $prianacategoriaId, array $ids): int
+    {
+        $ids = array_values(array_unique(array_filter(array_map('intval', $ids), static fn(int $v): bool => $v > 0)));
+        if ($prianacategoriaId < 1 || $ids === []) {
+            return 0;
+        }
+
+        $this->db->table('priresultados')
+            ->where('prianacategoria_id', $prianacategoriaId)
+            ->whereIn('priresultados_id', $ids)
+            ->update(['deleted' => 1]);
+
+        return $this->db->affectedRows();
+    }
+
+    /**
+     * Transforma el campo u. medida de todas las filas de referencia simples.
+     *
+     * @return array{success: bool, message: string, updated: int, unchanged: int}
+     */
+    public function transformPriResultadosUmedida(int $prianacategoriaId, string $mode): array
+    {
+        $serviceClass = \App\Services\LabotestNameTransformService::class;
+        $allowed = [
+            $serviceClass::MODE_UPPERCASE,
+            $serviceClass::MODE_LOWERCASE,
+            $serviceClass::MODE_SENTENCE,
+            $serviceClass::MODE_TITLE,
+        ];
+        if ($prianacategoriaId < 1 || ! in_array($mode, $allowed, true)) {
+            return [
+                'success'   => false,
+                'message'   => 'Datos o formato inválido',
+                'updated'   => 0,
+                'unchanged' => 0,
+            ];
+        }
+
+        $rows = $this->db->table('priresultados')
+            ->select('priresultados_id, umedida')
+            ->where('prianacategoria_id', $prianacategoriaId)
+            ->where('(deleted = 0 OR deleted IS NULL)')
+            ->get()
+            ->getResultArray();
+
+        $updated = 0;
+        $unchanged = 0;
+        foreach ($rows as $row) {
+            $id = (int) ($row['priresultados_id'] ?? 0);
+            $original = trim((string) ($row['umedida'] ?? ''));
+            if ($id < 1 || $original === '') {
+                continue;
+            }
+            $transformed = $serviceClass::transform($original, $mode);
+            if ($transformed === $original) {
+                $unchanged++;
+                continue;
+            }
+            $this->db->table('priresultados')
+                ->where('priresultados_id', $id)
+                ->update(['umedida' => $transformed]);
+            $updated++;
+        }
+
+        $modeLabels = [
+            $serviceClass::MODE_UPPERCASE => 'MAYÚSCULAS',
+            $serviceClass::MODE_LOWERCASE => 'minúsculas',
+            $serviceClass::MODE_SENTENCE  => 'primera letra en mayúscula',
+            $serviceClass::MODE_TITLE     => 'título (cada palabra)',
+        ];
+        $label = $modeLabels[$mode] ?? $mode;
+
+        return [
+            'success'   => true,
+            'message'   => $updated > 0
+                ? "Se actualizaron {$updated} unidad(es) de medida (formato {$label})."
+                : 'No hubo cambios: las unidades ya cumplen el formato seleccionado.',
+            'updated'   => $updated,
+            'unchanged' => $unchanged,
+        ];
+    }
+
+    /**
      * Actualiza cost, cost_deriv y/o name de varias pruebas (prianacategoria_id => valores).
      *
      * @param array<int, array{cost?: int, cost_deriv?: int, name?: string}> $items

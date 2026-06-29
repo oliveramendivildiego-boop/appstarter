@@ -179,21 +179,78 @@ class Validation extends BaseConfig
     ];
 
     public array $lote = [
-        'reactivo_id'   => ['rules' => 'required|integer|greater_than[0]'],
-        'codigo_lote'   => ['rules' => 'required|max_length[100]'],
-        'cantidad'      => ['rules' => 'required|integer|greater_than[0]'],
+        'reactivo_id' => [
+            'rules'  => 'required|integer|greater_than[0]',
+            'errors' => [
+                'required'     => 'Seleccione el insumo.',
+                'integer'      => 'El insumo no es válido.',
+                'greater_than' => 'Seleccione un insumo válido.',
+            ],
+        ],
+        'codigo_lote' => [
+            'rules'  => 'required|max_length[100]',
+            'errors' => [
+                'required'   => 'El código de lote es obligatorio.',
+                'max_length' => 'El código de lote no puede superar 100 caracteres.',
+            ],
+        ],
+        'cantidad' => [
+            'rules'  => 'required|integer|greater_than[0]',
+            'errors' => [
+                'required'     => 'La cantidad es obligatoria.',
+                'integer'      => 'La cantidad debe ser un número entero.',
+                'greater_than' => 'La cantidad debe ser mayor que cero.',
+            ],
+        ],
     ];
 
     public array $salida = [
-        'reactivo_id'   => ['rules' => 'required|integer|greater_than[0]'],
-        'cantidad'      => ['rules' => 'required|integer|greater_than[0]'],
-        'numero_orden'  => ['rules' => 'permit_empty|max_length[64]'],
-        'lote_id'       => ['rules' => 'permit_empty|integer|greater_than[0]'],
+        'reactivo_id' => [
+            'rules'  => 'required|integer|greater_than[0]',
+            'errors' => [
+                'required'     => 'Seleccione el insumo.',
+                'integer'      => 'El insumo no es válido.',
+                'greater_than' => 'Seleccione un insumo válido.',
+            ],
+        ],
+        'cantidad' => [
+            'rules'  => 'required|integer|greater_than[0]',
+            'errors' => [
+                'required'     => 'La cantidad es obligatoria.',
+                'integer'      => 'La cantidad debe ser un número entero.',
+                'greater_than' => 'La cantidad debe ser mayor que cero.',
+            ],
+        ],
+        'numero_orden' => [
+            'rules'  => 'permit_empty|max_length[64]',
+            'errors' => ['max_length' => 'El número de orden no puede superar 64 caracteres.'],
+        ],
+        'lote_id' => [
+            'rules'  => 'permit_empty|integer|greater_than[0]',
+            'errors' => [
+                'integer'      => 'El lote no es válido.',
+                'greater_than' => 'Seleccione un lote válido.',
+            ],
+        ],
     ];
 
     public array $revertir_salida = [
-        'movimiento_id' => ['rules' => 'required|integer|greater_than[0]'],
-        'reactivo_id'   => ['rules' => 'required|integer|greater_than[0]'],
+        'movimiento_id' => [
+            'rules'  => 'required|integer|greater_than[0]',
+            'errors' => [
+                'required'     => 'Movimiento no válido.',
+                'integer'      => 'Movimiento no válido.',
+                'greater_than' => 'Movimiento no válido.',
+            ],
+        ],
+        'reactivo_id' => [
+            'rules'  => 'required|integer|greater_than[0]',
+            'errors' => [
+                'required'     => 'Insumo no válido.',
+                'integer'      => 'Insumo no válido.',
+                'greater_than' => 'Insumo no válido.',
+            ],
+        ],
     ];
 
     public array $pagos_cierre_crear = [

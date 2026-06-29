@@ -380,7 +380,7 @@ $listaBtnClass = static fn (bool $active): string => 'btn btn-sm ' . ($active ? 
             </div>
             <div class="modal-body" id="modalMensajeAccionTexto"></div>
             <div class="modal-footer">
-                <button type="button" class="btn btn-primary" data-bs-dismiss="modal">OK</button>
+                <button type="button" class="btn btn-primary" data-bs-dismiss="modal">Aceptar</button>
             </div>
         </div>
     </div>

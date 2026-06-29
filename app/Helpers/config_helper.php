@@ -187,21 +187,21 @@ if (!function_exists('get_theme_color_palette')) {
         return [
             '#FF7218' => 'Naranja',
             /* Colores del tema Bootstrap 5.3 */
-            '#0d6efd' => 'Primary / Blue',
-            '#6c757d' => 'Secondary',
-            '#198754' => 'Success / Green',
-            '#dc3545' => 'Danger / Red',
-            '#ffc107' => 'Warning / Yellow',
-            '#0dcaf0' => 'Info / Cyan',
-            '#f8f9fa' => 'Light',
-            '#212529' => 'Dark',
+            '#0d6efd' => 'Primario / Azul',
+            '#6c757d' => 'Secundario',
+            '#198754' => 'Éxito / Verde',
+            '#dc3545' => 'Peligro / Rojo',
+            '#ffc107' => 'Advertencia / Amarillo',
+            '#0dcaf0' => 'Información / Cian',
+            '#f8f9fa' => 'Claro',
+            '#212529' => 'Oscuro',
             /* Colores base adicionales */
-            '#6610f2' => 'Indigo',
-            '#6f42c1' => 'Purple',
-            '#d63384' => 'Pink',
-            '#fd7e14' => 'Orange',
-            '#20c997' => 'Teal',
-            '#adb5bd' => 'Gray',
+            '#6610f2' => 'Índigo',
+            '#6f42c1' => 'Púrpura',
+            '#d63384' => 'Rosa',
+            '#fd7e14' => 'Naranja',
+            '#20c997' => 'Verde azulado',
+            '#adb5bd' => 'Gris',
         ];
     }
 }

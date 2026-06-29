@@ -219,7 +219,7 @@ $(document).ready(function() {
                     dataType: 'json'
                 }).done(function(response) {
                     if (response.success) {
-                        uiAlert(response.message, 'OK');
+                        uiAlert(response.message, 'Éxito');
                         window.location.href = response.redirect_url;
                     } else {
                         uiAlert(response.message, 'Error');

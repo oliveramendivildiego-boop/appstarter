@@ -54,7 +54,7 @@ $(document).ready(function(){
 		onkeyup: false,
 		submitHandler: function() {
 			$("div.error").hide();
-            if (typeof uiAlert === 'function') uiAlert("Formulario enviado. Use el enlace de abajo para continuar al siguiente paso.", 'Info');
+            if (typeof uiAlert === 'function') uiAlert("Formulario enviado. Use el enlace de abajo para continuar al siguiente paso.", 'Información');
 		},
 		messages: {
 			password2: {

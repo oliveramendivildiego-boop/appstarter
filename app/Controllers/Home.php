@@ -75,12 +75,12 @@ class Home extends SecureArea
         $svc  = new TenantHomeBroadcastService();
         $path = $svc->resolveImageFileOnDisk($svc->getStoredImageRelativePath());
         if ($path === null) {
-            return $this->response->setStatusCode(404)->setBody('Not found');
+            return $this->response->setStatusCode(404)->setBody('No encontrado');
         }
 
         $mime = (string) (@mime_content_type($path) ?: 'image/jpeg');
         if (! str_starts_with($mime, 'image/')) {
-            return $this->response->setStatusCode(404)->setBody('Not found');
+            return $this->response->setStatusCode(404)->setBody('No encontrado');
         }
 
         return $this->response

@@ -33,6 +33,18 @@ if (typeof jQuery !== 'undefined' && jQuery.validator && jQuery.validator.messag
         max: jQuery.validator.format("Ingrese un valor menor o igual a {0}."),
         min: jQuery.validator.format("Ingrese un valor mayor o igual a {0}.")
     });
+
+    // Mensaje cuando falta definir validación personalizada
+    if (jQuery.validator.prototype) {
+        var origDefaultMessage = jQuery.validator.prototype.defaultMessage;
+        jQuery.validator.prototype.defaultMessage = function (method, element) {
+            var msg = origDefaultMessage.call(this, method, element);
+            if (msg && msg.indexOf('Warning: No message defined') !== -1) {
+                return 'Complete correctamente el campo «' + (element.name || element.id || '') + '».';
+            }
+            return msg;
+        };
+    }
 }
 
 /**

@@ -49,7 +49,7 @@ class TenantBackupService
 
         return [
             'success' => true,
-            'message' => 'OK',
+            'message' => 'Respaldo generado correctamente',
             'binary'  => $binary,
             'ok'      => (int) ($tmp['ok'] ?? 0),
             'fail'    => (int) ($tmp['fail'] ?? 0),
@@ -158,7 +158,7 @@ class TenantBackupService
 
         return [
             'success' => true,
-            'message' => 'OK',
+            'message' => 'Respaldo generado correctamente',
             'zipPath' => $zipPath,
             'tmpDir'  => $tmpDir,
             'ok'      => count($dumped),
