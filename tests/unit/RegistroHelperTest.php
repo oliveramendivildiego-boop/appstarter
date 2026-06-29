@@ -82,4 +82,19 @@ final class RegistroHelperTest extends CIUnitTestCase
         $this->assertTrue(registro_select_valor_es_numerico('2', 'mg/dL'));
         $this->assertTrue(registro_select_valor_es_numerico('>30', ''));
     }
+
+    public function testMostrarRangoReferencialEnReporteConSelectCualitativo(): void
+    {
+        $this->assertTrue(registro_mostrar_rango_referencial_en_reporte('Positivo', '0', '10', 1, ''));
+        $this->assertTrue(registro_mostrar_rango_referencial_en_reporte('Giardia', '', 'Negativo', 2, ''));
+        $this->assertFalse(registro_mostrar_rango_referencial_en_reporte('Positivo', '', '', 1, ''));
+    }
+
+    public function testMostrarInterpretacionEnReporteRequiereValorNumerico(): void
+    {
+        $this->assertTrue(registro_mostrar_interpretacion_en_reporte('12.5', '10', '20', 3, 'mg/dL'));
+        $this->assertFalse(registro_mostrar_interpretacion_en_reporte('Positivo', '10', '20', 3, 'mg/dL'));
+        $this->assertFalse(registro_mostrar_interpretacion_en_reporte('12.5', '', '', 3, ''));
+        $this->assertFalse(registro_mostrar_interpretacion_en_reporte('-', '10', '20', 3, ''));
+    }
 }

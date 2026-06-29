@@ -54,9 +54,15 @@ $resultsColAlignClass = static function (string $column, bool $isHeader) use ($p
 };
 $ocultarTheadResults = \App\Services\ReportPdfLayoutService::grupoCabeceraOcultarTheadResultsTabla($pdfLayout);
 $labConfigLocal = is_array($lab_config ?? null) ? $lab_config : [];
+if (! array_key_exists('sin_doctor_show_interpretation', $labConfigLocal)) {
+    try {
+        $labConfigLocal = array_merge((new \App\Services\ConfigService())->getAllAsArray(), $labConfigLocal);
+    } catch (\Throwable $e) {
+        // Mantener lab_config parcial si falla la carga.
+    }
+}
 $showInterpretacionCol = false;
 if (in_array($variant, ['screen_pdf', 'pdf', 'browser_print'], true)) {
-    helper('registro');
     $showInterpretacionCol = registro_doctor_mostrar_interpretacion_col($doctor ?? null, $labConfigLocal);
 }
 
@@ -316,16 +322,31 @@ $mostrarTolerance = $tieneTolerance && ! $tieneHeatmap && in_array(
         $segmentWrapClass = trim($layoutPlanApplier->segmentClass($layoutAreaIndex, $layoutBlockIndex, $layoutSectionIndex));
     }
     $conRefEnSeg = false;
+    $conInterpEnSeg = false;
     foreach ($segItems as $it) {
         $it = is_array($it) ? (object) $it : $it;
         $valTmp = trim((string) ($it->regvalues ?? ''));
         $mustShowRef = ! empty($it->show_reference);
-        if ((($valTmp !== '' && $valTmp !== '-') || $mustShowRef) && registro_tiene_rango_referencial($it->valor_min ?? '', $it->valor_max ?? '')) {
-            $conRefEnSeg = true;
+        $opcionIdTmp = (int) ($it->opcion_id ?? 3);
+        if (($valTmp !== '' && $valTmp !== '-') || $mustShowRef) {
+            if (registro_tiene_rango_referencial($it->valor_min ?? '', $it->valor_max ?? '')) {
+                $conRefEnSeg = true;
+            }
+            if (registro_mostrar_interpretacion_en_reporte(
+                $valTmp,
+                $it->valor_min ?? '',
+                $it->valor_max ?? '',
+                $opcionIdTmp,
+                $it->umedida ?? ''
+            )) {
+                $conInterpEnSeg = true;
+            }
+        }
+        if ($conRefEnSeg && $conInterpEnSeg) {
             break;
         }
     }
-    $mostrarColInterpretacion = $showInterpretacionCol && $conRefEnSeg;
+    $mostrarColInterpretacion = $showInterpretacionCol && $conInterpEnSeg;
     $mostrarColRef = $conRefEnSeg;
     $resultsColCount = 2 + ($mostrarColRef ? 1 : 0) + ($mostrarColInterpretacion ? 1 : 0);
     $resultsColClass = \App\Services\ReportPdfLayoutService::resultsTableGridClass($usePdfChrome, $resultsColCount);
@@ -483,7 +504,14 @@ $mostrarTolerance = $tieneTolerance && ! $tieneHeatmap && in_array(
                         $opcionIdItem,
                         $item->umedida ?? ''
                     );
-                    $interpretacionRef = ($mostrarColInterpretacion && $itemConRef)
+                    $itemConInterp = registro_mostrar_interpretacion_en_reporte(
+                        $val,
+                        $item->valor_min ?? '',
+                        $item->valor_max ?? '',
+                        $opcionIdItem,
+                        $item->umedida ?? ''
+                    );
+                    $interpretacionRef = ($mostrarColInterpretacion && $itemConInterp)
                         ? registro_interpretacion_referencial_etiqueta_viewreport(
                             $val,
                             $item->valor_min ?? '',
@@ -518,7 +546,7 @@ $mostrarTolerance = $tieneTolerance && ! $tieneHeatmap && in_array(
                     }
                     if ($displayMode === '') $displayMode = 'clinico';
 
-                    if ($mostrarColInterpretacion && $interpretacionRef !== null) {
+                    if ($showInterpretacionCol && $mostrarColInterpretacion && $interpretacionRef !== null) {
                         if ($displayMode === 'neutral') {
                             $class = 'normal';
                             $isOutPdf = false;
@@ -540,7 +568,7 @@ $mostrarTolerance = $tieneTolerance && ! $tieneHeatmap && in_array(
                         if ($displayMode === 'semaforo') {
                             log_message('debug', 'Render semaforo fila ' . ($item->secanacategoria_id ?? 'n/a') . ' interp=' . ($interpretacionRef['nivel'] ?? 'n/a'));
                         }
-                    } elseif (in_array($valNorm, ['positivo', 'reactivo'], true)) {
+                    } elseif ($showInterpretacionCol && in_array($valNorm, ['positivo', 'reactivo'], true)) {
                         if ($displayMode === 'neutral') {
                             $class = 'normal';
                             $isOutPdf = false;
@@ -552,7 +580,7 @@ $mostrarTolerance = $tieneTolerance && ! $tieneHeatmap && in_array(
                             }
                             $isOutPdf = true;
                         }
-                    } elseif (is_numeric($val) && ($item->valor_min ?? '') !== '' && ($item->valor_max ?? '') !== '') {
+                    } elseif ($showInterpretacionCol && is_numeric($val) && ($item->valor_min ?? '') !== '' && ($item->valor_max ?? '') !== '') {
                         $inRange = ($val >= $item->valor_min && $val <= $item->valor_max);
                         if ($displayMode === 'neutral') {
                             $class = 'normal';
@@ -593,11 +621,11 @@ $mostrarTolerance = $tieneTolerance && ! $tieneHeatmap && in_array(
                         <tr>
                             <td class="results-col-analisis<?= $resultsColAlignClass('analisis', false) ?>"<?= $resultsCellMarkupAttrs('analisis', false) ?>><?= esc($item->nombre ?? '') ?></td>
                             <?php
-                                // Si el modo es semáforo y la columna Interpretación está desactivada,
-                                // inyectar el icono correspondiente al lado del resultado.
-                                if ($displayMode === 'semaforo' && empty($mostrarColInterpretacion)) {
+                                // Semáforo junto al resultado solo si la interpretación está habilitada
+                                // (/config sin doctor o doctor con interpretacion_enabled) y no hay columna aparte.
+                                if ($showInterpretacionCol && $displayMode === 'semaforo' && empty($mostrarColInterpretacion)) {
                                     // Asegurar que tenemos la interpretación calculada si hay rango referencial
-                                    if ($itemConRef && $interpretacionRef === null) {
+                                    if ($itemConInterp && $interpretacionRef === null) {
                                         $interpretacionRef = registro_interpretacion_referencial_etiqueta_viewreport(
                                             $val,
                                             $item->valor_min ?? '',

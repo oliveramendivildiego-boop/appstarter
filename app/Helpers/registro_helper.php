@@ -553,7 +553,7 @@ if (! function_exists('registro_unidad_para_resultado_reporte')) {
 
 if (! function_exists('registro_mostrar_rango_referencial_en_reporte')) {
     /**
-     * Indica si la fila del reporte debe mostrar rango referencial e interpretación.
+     * Indica si la fila del reporte debe mostrar rango referencial.
      *
      * @param mixed $valor
      * @param mixed $min
@@ -562,7 +562,28 @@ if (! function_exists('registro_mostrar_rango_referencial_en_reporte')) {
      */
     function registro_mostrar_rango_referencial_en_reporte($valor, $min, $max, int $opcionId, $unidad = ''): bool
     {
+        return registro_tiene_rango_referencial($min, $max);
+    }
+}
+
+if (! function_exists('registro_mostrar_interpretacion_en_reporte')) {
+    /**
+     * Indica si la fila del reporte puede mostrar interpretación (Alto/Normal/Bajo).
+     * En selects cualitativos (texto) no aplica aunque haya rango referencial.
+     *
+     * @param mixed $valor
+     * @param mixed $min
+     * @param mixed $max
+     * @param mixed $unidad
+     */
+    function registro_mostrar_interpretacion_en_reporte($valor, $min, $max, int $opcionId, $unidad = ''): bool
+    {
         if (! registro_tiene_rango_referencial($min, $max)) {
+            return false;
+        }
+
+        $valorStr = trim((string) ($valor ?? ''));
+        if ($valorStr === '' || $valorStr === '-') {
             return false;
         }
 
@@ -570,7 +591,9 @@ if (! function_exists('registro_mostrar_rango_referencial_en_reporte')) {
             return registro_select_valor_es_numerico($valor, $unidad);
         }
 
-        return true;
+        $valorNorm = str_replace(',', '.', $valorStr);
+
+        return is_numeric($valorNorm);
     }
 }
 
@@ -735,9 +758,33 @@ if (! function_exists('registro_doctor_es_sintetico_sin_doctor')) {
     }
 }
 
+if (! function_exists('registro_config_sin_doctor_show_interpretation')) {
+    /**
+     * Configuración global (/config): «Mostrar interpretación en reportes» sin médico asignado.
+     *
+     * @param array<string, mixed> $labConfig
+     */
+    function registro_config_sin_doctor_show_interpretation(array $labConfig = []): bool
+    {
+        if (array_key_exists('sin_doctor_show_interpretation', $labConfig)) {
+            return ($labConfig['sin_doctor_show_interpretation'] === '1');
+        }
+
+        try {
+            $cfg = (new \App\Services\ConfigService())->getAllAsArray();
+
+            return (($cfg['sin_doctor_show_interpretation'] ?? '1') === '1');
+        } catch (\Throwable $e) {
+            return true;
+        }
+    }
+}
+
 if (! function_exists('registro_doctor_mostrar_interpretacion_col')) {
     /**
-     * Indica si el reporte debe incluir la columna Interpretación para el doctor del registro.
+     * Indica si el reporte debe incluir interpretación (columna y estilos asociados).
+     * Sin médico: usa sin_doctor_show_interpretation de /config.
+     * Con médico: usa interpretacion_enabled del doctor.
      *
      * @param object|array<string,mixed>|null $doctor
      * @param array<string, mixed>            $labConfig
@@ -745,11 +792,7 @@ if (! function_exists('registro_doctor_mostrar_interpretacion_col')) {
     function registro_doctor_mostrar_interpretacion_col($doctor, array $labConfig = []): bool
     {
         if (registro_doctor_es_sintetico_sin_doctor($doctor)) {
-            if (array_key_exists('sin_doctor_show_interpretation', $labConfig)) {
-                return ($labConfig['sin_doctor_show_interpretation'] === '1');
-            }
-
-            return (($labConfig['sin_doctor_show_interpretation'] ?? '1') === '1');
+            return registro_config_sin_doctor_show_interpretation($labConfig);
         }
 
         $doctorId = 0;
@@ -786,11 +829,7 @@ if (! function_exists('registro_doctor_mostrar_interpretacion_col')) {
             return true;
         }
 
-        if (array_key_exists('sin_doctor_show_interpretation', $labConfig)) {
-            return ($labConfig['sin_doctor_show_interpretation'] === '1');
-        }
-
-        return (($labConfig['sin_doctor_show_interpretation'] ?? '1') === '1');
+        return registro_config_sin_doctor_show_interpretation($labConfig);
     }
 }
 
