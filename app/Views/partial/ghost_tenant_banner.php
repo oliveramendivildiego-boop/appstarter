@@ -5,7 +5,7 @@ if (empty(session()->get('suppress_tenant_audit'))) {
 $ghostKey = (string) (session()->get('ghost_target_tenant_key') ?? '');
 $impersonating = ! empty(session()->get('ghost_impersonating'));
 ?>
-<div class="alert alert-warning border-0 rounded-0 mb-0 py-2 px-3 d-flex flex-wrap align-items-center justify-content-between gap-2 shadow-sm" role="status" style="border-bottom: 3px solid #856404 !important;">
+<div class="alert alert-warning border-0 rounded-0 mb-0 py-2 px-3 d-flex flex-wrap align-items-center justify-content-between gap-2 shadow-sm d-print-none" role="status" style="border-bottom: 3px solid #856404 !important;">
     <div class="small">
         <strong><i class="fa-solid fa-user-secret me-1"></i>Modo superusuario (sin auditoría en este tenant).</strong>
         <?php if ($ghostKey !== ''): ?>

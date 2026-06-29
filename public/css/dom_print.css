@@ -12,7 +12,9 @@ header.navbar,
 .sidebar,
 #toast-container,
 .site-watermark,
-.modal
+.modal,
+/* Avisos de sesión (modo superusuario, suscripción) fuera del área imprimible */
+body > .alert
 {
 	display: none !important;
 }

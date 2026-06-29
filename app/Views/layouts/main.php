@@ -109,7 +109,7 @@ $hideSubAlertOnBlockedPage = $subBlockedUri === 'subscription-blocked'
 if ($subAlert !== null && ! $hideSubAlertOnBlockedPage):
     $subAlertClass = ($subAlert['type'] ?? '') === 'danger' ? 'danger' : 'warning';
 ?>
-<div class="alert alert-<?= esc($subAlertClass) ?> <?= ($subAlertClass === 'danger') ? '' : 'alert-dismissible' ?> fade show rounded-0 mb-0 border-0 text-center small" role="alert">
+<div class="alert alert-<?= esc($subAlertClass) ?> <?= ($subAlertClass === 'danger') ? '' : 'alert-dismissible' ?> fade show rounded-0 mb-0 border-0 text-center small d-print-none" role="alert">
     <?= esc($subAlert['message'] ?? '') ?>
     <?php if ($subAlertClass !== 'danger'): ?>
     <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Cerrar"></button>
