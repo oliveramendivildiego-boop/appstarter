@@ -1,17 +1,17 @@
 import chromadb
 import hashlib
 import os
+import gc
 
 from llama_index.core import (
     SimpleDirectoryReader,
-    VectorStoreIndex,
     StorageContext,
-    Settings,
-    Document
+    Settings
 )
+from llama_index.core.ingestion import IngestionPipeline
+from llama_index.core.node_parser import SentenceSplitter
 from llama_index.vector_stores.chroma import ChromaVectorStore
 from llama_index.embeddings.ollama import OllamaEmbedding
-from llama_index.core.node_parser import SentenceSplitter
 
 # ======================
 # CONFIG
@@ -31,7 +31,7 @@ EXCLUDE_DIRS = [
 # ======================
 Settings.chunk_size = 384
 Settings.chunk_overlap = 80
-Settings.num_workers = 4
+Settings.num_workers = 2
 
 # ======================
 # EMBEDDINGS
@@ -39,24 +39,34 @@ Settings.num_workers = 4
 embed_model = OllamaEmbedding(model_name="nomic-embed-text")
 
 # ======================
-# SPLITTER
-# ======================
-splitter = SentenceSplitter(
-    chunk_size=384,
-    chunk_overlap=80
-)
-
-# ======================
 # CHROMA
 # ======================
 client = chromadb.PersistentClient(path=DB_PATH)
-collection = client.get_or_create_collection("codeigniter")
+
+collection = client.get_or_create_collection(
+    "codeigniter",
+    metadata={"hnsw:space": "cosine"}
+)
 
 vector_store = ChromaVectorStore(chroma_collection=collection)
-storage_context = StorageContext.from_defaults(vector_store=vector_store)
+
+storage_context = StorageContext.from_defaults(
+    vector_store=vector_store
+)
 
 # ======================
-# HASH STORAGE (INCREMENTAL INDEX)
+# PIPELINE (NUEVO ENFOQUE)
+# ======================
+pipeline = IngestionPipeline(
+    transformations=[
+        SentenceSplitter(chunk_size=384, chunk_overlap=80),
+    ],
+    vector_store=vector_store,
+    embed_model=embed_model,
+)
+
+# ======================
+# HASHES
 # ======================
 def load_hashes():
     if not os.path.exists(HASH_FILE):
@@ -70,18 +80,18 @@ def save_hashes(hashes):
             f.write(f"{k}||{v}\n")
 
 def file_hash(path):
+    h = hashlib.md5()
     with open(path, "rb") as f:
-        return hashlib.md5(f.read()).hexdigest()
-
-# ======================
-# LOAD EXISTING HASHES
-# ======================
-old_hashes = load_hashes()
-new_hashes = {}
+        for chunk in iter(lambda: f.read(8192), b""):
+            h.update(chunk)
+    return h.hexdigest()
 
 # ======================
 # LOAD FILES
 # ======================
+old_hashes = load_hashes()
+new_hashes = {}
+
 documents = SimpleDirectoryReader(
     PROJECT_PATH,
     recursive=True,
@@ -91,20 +101,18 @@ documents = SimpleDirectoryReader(
 print(f"📦 Documentos cargados: {len(documents)}")
 
 # ======================
-# FILTRADO INCREMENTAL (CLAVE)
+# FILTRO INCREMENTAL
 # ======================
 filtered_docs = []
 
 for doc in documents:
     source = doc.metadata.get("file_path", "")
-
     if not source:
         continue
 
     h = file_hash(source)
     new_hashes[source] = h
 
-    # si no cambió → ignorar
     if old_hashes.get(source) == h:
         continue
 
@@ -112,40 +120,24 @@ for doc in documents:
 
 print(f"🟢 Documentos nuevos/modificados: {len(filtered_docs)}")
 
-# ======================
-# SI NO HAY CAMBIOS
-# ======================
-if len(filtered_docs) == 0:
+if not filtered_docs:
     print("✔ No hay cambios. Índice actualizado.")
     exit()
 
 # ======================
-# SPLIT
+# INGESTA (OPTIMIZADA)
 # ======================
-nodes = splitter.get_nodes_from_documents(filtered_docs)
+print("⚙️ Iniciando ingestion pipeline...")
 
-print(f"🧩 Chunks nuevos: {len(nodes)}")
+nodes = pipeline.run(documents=filtered_docs)
 
-# ======================
-# INDEX
-# ======================
-BATCH_SIZE = 200
+print(f"🧩 Chunks procesados: {len(nodes)}")
 
-def process_batch(batch, batch_id):
-    print(f"⚙️ Batch {batch_id} ({len(batch)} chunks)")
-
-    VectorStoreIndex(
-        batch,
-        storage_context=storage_context,
-        embed_model=embed_model
-    )
-
-for i in range(0, len(nodes), BATCH_SIZE):
-    batch = nodes[i:i + BATCH_SIZE]
-    process_batch(batch, f"{i}-{i+len(batch)}")
+# limpieza ligera
+gc.collect()
 
 # ======================
-# SAVE HASHES
+# GUARDAR HASHES
 # ======================
 save_hashes(new_hashes)
 
