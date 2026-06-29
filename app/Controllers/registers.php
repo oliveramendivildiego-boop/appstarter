@@ -2504,7 +2504,7 @@ class Registers extends SecureArea
             $this->registerService->clearReportPdfPreviewCache($ridAn);
             (new \App\Services\DeliveryNotificationService())->syncForRegistro($ridAn);
         }
-        return $this->response->setJSON(['success' => true, 'message' => 'Guardado exitoso']);
+        return $this->response->setJSON(['success' => true, 'message' => 'Reporte actualizado']);
     }
 
     public function validar()

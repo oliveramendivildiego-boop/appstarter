@@ -205,7 +205,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 detailEl.textContent = detail;
             }
         };
-        var loadPdf = function() {
+        var loadPdf = function(forceFresh) {
             root.classList.remove('is-error');
             root.classList.add('is-loading');
             if (objectUrl) {
@@ -213,7 +213,11 @@ document.addEventListener('DOMContentLoaded', function() {
                 objectUrl = null;
             }
             frame.src = 'about:blank';
-            fetch(pdfUrl, { credentials: 'same-origin', cache: 'no-store' })
+            var fetchUrl = pdfUrl;
+            if (forceFresh) {
+                fetchUrl += (fetchUrl.indexOf('?') >= 0 ? '&' : '?') + 'purge_pdf=1&_=' + Date.now();
+            }
+            fetch(fetchUrl, { credentials: 'same-origin', cache: 'no-store' })
                 .then(function(res) {
                     if (!res.ok) {
                         return res.text().then(function(text) {
@@ -251,9 +255,10 @@ document.addEventListener('DOMContentLoaded', function() {
         });
         var retryBtn = root.querySelector('[data-pdf-native-retry]');
         if (retryBtn) {
-            retryBtn.addEventListener('click', loadPdf);
+            retryBtn.addEventListener('click', function() { loadPdf(true); });
         }
-        loadPdf();
+        root.__reloadPdf = function() { loadPdf(true); };
+        loadPdf(false);
     });
 });
 </script>
@@ -280,6 +285,12 @@ document.addEventListener('DOMContentLoaded', function() {
 
     document.querySelectorAll('.js-viewreport-save').forEach(function(btn) {
         btn.addEventListener('click', function() {
+            var saveBtns = document.querySelectorAll('.js-viewreport-save');
+            var defaultHtml = btn.innerHTML;
+            saveBtns.forEach(function(b) {
+                b.disabled = true;
+                b.innerHTML = '<span class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span>Actualizando…';
+            });
             var datos = [];
             document.querySelectorAll('.analisis').forEach(function(el) {
                 datos.push({
@@ -299,10 +310,30 @@ document.addEventListener('DOMContentLoaded', function() {
                 body: 'data=' + encodeURIComponent(JSON.stringify(datos))
             })
             .then(function(r) { return r.json(); })
-            .then(function() {
-                window.location.href = '<?= site_url('registers') ?>';
+            .then(function(res) {
+                saveBtns.forEach(function(b) {
+                    b.disabled = false;
+                    b.innerHTML = defaultHtml;
+                });
+                if (!res || res.success === false) {
+                    uiAlert((res && res.message) ? res.message : 'Error al actualizar', 'Error');
+                    return;
+                }
+                var viewer = document.querySelector('[data-report-pdf-native-viewer]');
+                if (viewer && typeof viewer.__reloadPdf === 'function') {
+                    viewer.__reloadPdf();
+                }
+                if (typeof showToast === 'function') {
+                    showToast(res.message || 'Reporte actualizado.', 'success');
+                }
             })
-            .catch(function() { uiAlert('Error al guardar', 'Error'); });
+            .catch(function() {
+                saveBtns.forEach(function(b) {
+                    b.disabled = false;
+                    b.innerHTML = defaultHtml;
+                });
+                uiAlert('Error al actualizar', 'Error');
+            });
         });
     });
 

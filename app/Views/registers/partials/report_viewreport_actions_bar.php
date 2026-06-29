@@ -22,7 +22,7 @@ if ($sticky) {
 }
 ?>
 <div class="<?= esc($barClass, 'attr') ?>">
-    <button type="button" class="btn btn-primary js-viewreport-save">Guardar</button>
+    <button type="button" class="btn btn-primary js-viewreport-save">Actualizar</button>
     <a href="<?= site_url('registers/printreport/' . $ridPdf) ?>" class="btn btn-outline-primary js-viewreport-print">Imprimir</a>
     <?php if (! empty($envelope_print_available)): ?>
     <a href="<?= site_url('registers/printEnvelope/' . $ridPdf) ?>"
