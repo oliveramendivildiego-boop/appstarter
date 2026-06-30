@@ -137,3 +137,8 @@ _modules/*
 
 /results/
 /phpunit*.xml
+######archcivos de la carpeta
+writable/
+rag/
+tests/
+tools/
