@@ -139,6 +139,6 @@ _modules/*
 /phpunit*.xml
 ######archcivos de la carpeta
 writable/
-rag/
 tests/
 tools/
+

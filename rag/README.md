@@ -23,6 +23,12 @@ pip install -r requirements.txt
 
 - **Configurar modelos**: Edita `config.py` o exporta variables de entorno `EMBED_MODEL` y `LLM_MODEL` para usar los modelos que tengas descargados en Ollama.
 
+- **Modelo requerido (Ollama)**: Asegúrate de tener disponible en Ollama el modelo `qwen2.5-coder:7b` (o cambia `LLM_MODEL` en `config.py`). El proyecto está configurado por defecto para usar:
+
+	- `LLM_MODEL = "qwen2.5-coder:7b"`
+
+	Si no lo tienes, instala o descarga el modelo en Ollama o ajusta `config.py` para apuntar al modelo que tengas.
+
 - **Ingestar datos** (ejemplo):
 
 ```powershell
