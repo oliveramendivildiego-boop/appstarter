@@ -267,6 +267,20 @@ document.addEventListener('DOMContentLoaded', function() {
                 showError('report-pdf-subgrupo-block');
                 return;
             }
+            try {
+                var doc = frame.contentDocument;
+                if (doc && doc.body) {
+                    var errText = (doc.body.innerText || '').trim();
+                    if (errText.indexOf('No se pudo generar el PDF') !== -1
+                        || errText.indexOf('módulo PDF no está completamente desplegado') !== -1) {
+                        frame.src = 'about:blank';
+                        showError(errText);
+                        return;
+                    }
+                }
+            } catch (ignored) {
+                // Visor PDF nativo del navegador.
+            }
             hideLoading();
         });
         var retryBtn = root.querySelector('[data-pdf-native-retry]');

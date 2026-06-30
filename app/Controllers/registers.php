@@ -1135,7 +1135,7 @@ class Registers extends SecureArea
             ->setBody(
                 "El módulo PDF no está completamente desplegado en el servidor.\n"
                 . "Faltan: " . implode(', ', $missing) . "\n"
-                . 'Ejecute en SSH: php writable/scripts/pdf_deploy_verify.php',
+                . 'Ejecute en SSH: php writable/scripts/pdf_health_check.php [registro_id] [tenant_key]',
             );
     }
 

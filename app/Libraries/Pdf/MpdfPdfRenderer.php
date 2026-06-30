@@ -96,38 +96,53 @@ class MpdfPdfRenderer implements PdfRendererInterface
             $html = MpdfNamedFooterInjector::injectPageCss($html, (float) ($metrics['bottom'] ?? 15));
         }
 
-        $mpdf = $this->createMpdf($options, $metrics);
+        $tempDir = MpdfTempDirSupport::resolveTempDir();
+        MpdfTempDirSupport::ensureWritableTree($tempDir);
 
+        $produce = function () use (
+            $options,
+            $metrics,
+            $tempDir,
+            $headerHtml,
+            $useDualFooters,
+            $footerPageOne,
+            $footerRest,
+            $footerHtml,
+            $watermark,
+            $html,
+        ): string {
+            $mpdf = $this->createMpdf($options, $metrics, $tempDir);
 
+            if ($headerHtml !== '') {
+                $mpdf->SetHTMLHeader($headerHtml);
+            }
 
-        if ($headerHtml !== '') {
+            if ($useDualFooters && $footerPageOne !== null && $footerRest !== null) {
+                MpdfNamedFooterInjector::registerFooters($mpdf, $footerPageOne, $footerRest);
+            } elseif ($footerHtml !== null && $footerHtml !== '') {
+                $mpdf->SetHTMLFooter($footerHtml);
+            }
 
-            $mpdf->SetHTMLHeader($headerHtml);
+            $this->applyWatermark($mpdf, $watermark);
+            $mpdf->WriteHTML($html);
 
+            return $mpdf->Output('', Destination::STRING_RETURN);
+        };
+
+        try {
+            return $produce();
+        } catch (\Throwable $e) {
+            if (! MpdfTempDirSupport::isRecoverableFontCacheError($e)) {
+                throw $e;
+            }
+
+            log_message('warning', 'mPDF caché de fuentes corrupta; regenerando ttfontdata: {msg}', [
+                'msg' => $e->getMessage(),
+            ]);
+            MpdfTempDirSupport::clearFontCache($tempDir);
+
+            return $produce();
         }
-
-
-
-        if ($useDualFooters && $footerPageOne !== null && $footerRest !== null) {
-            MpdfNamedFooterInjector::registerFooters($mpdf, $footerPageOne, $footerRest);
-        } elseif ($footerHtml !== null && $footerHtml !== '') {
-
-            $mpdf->SetHTMLFooter($footerHtml);
-
-        }
-
-
-
-        $this->applyWatermark($mpdf, $watermark);
-
-
-
-        $mpdf->WriteHTML($html);
-
-
-
-        return $mpdf->Output('', Destination::STRING_RETURN);
-
     }
 
     /**
@@ -175,25 +190,15 @@ class MpdfPdfRenderer implements PdfRendererInterface
 
      */
 
-    private function createMpdf(PdfOptions $options, array $metrics): Mpdf
+    private function createMpdf(PdfOptions $options, array $metrics, ?string $tempDir = null): Mpdf
 
     {
 
         $format  = $this->resolveFormat($options);
 
-        $tempDir = trim((string) (config('Pdf')->mpdfTempDir ?? ''));
+        $tempDir = $tempDir ?? MpdfTempDirSupport::resolveTempDir();
 
-        if ($tempDir === '') {
-
-            $tempDir = WRITEPATH . 'cache' . DIRECTORY_SEPARATOR . 'mpdf';
-
-        }
-
-        if (! is_dir($tempDir)) {
-
-            @mkdir($tempDir, 0755, true);
-
-        }
+        MpdfTempDirSupport::ensureWritableTree($tempDir);
 
 
 
@@ -381,21 +386,9 @@ class MpdfPdfRenderer implements PdfRendererInterface
 
     {
 
-        $dir = trim((string) (config('Pdf')->mpdfTempDir ?? ''));
+        $dir = MpdfTempDirSupport::resolveTempDir();
 
-        if ($dir === '') {
-
-            $dir = WRITEPATH . 'cache' . DIRECTORY_SEPARATOR . 'mpdf';
-
-        }
-
-        if (! is_dir($dir)) {
-
-            @mkdir($dir, 0755, true);
-
-        }
-
-
+        MpdfTempDirSupport::ensureWritableTree($dir);
 
         return $dir;
 

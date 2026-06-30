@@ -80,6 +80,10 @@ if (! is_dir($mpdfTmp)) {
 }
 $check('writable mpdf temp', is_dir($mpdfTmp) && is_writable($mpdfTmp), $mpdfTmp);
 
+$ttFontDir = \App\Libraries\Pdf\MpdfTempDirSupport::fontCacheDir($mpdfTmp);
+\App\Libraries\Pdf\MpdfTempDirSupport::ensureWritableTree($mpdfTmp);
+$check('writable mPDF ttfontdata', is_dir($ttFontDir) && is_writable($ttFontDir), $ttFontDir);
+
 $previewDir = WRITEPATH . 'cache' . DIRECTORY_SEPARATOR . 'report_pdf_preview';
 if (! is_dir($previewDir)) {
     @mkdir($previewDir, 0755, true);
