@@ -2,6 +2,7 @@ import argparse
 import os
 import hashlib
 import json
+import uuid
 from ingest import ingest_nodes, delete_docs
 from llama_index.core.node_parser import SentenceSplitter
 from llama_index.core import Document
@@ -90,9 +91,14 @@ def build_nodes_from_files(file_paths: list[str]):
         nodes.extend(splitter.get_nodes_from_documents([doc]))
     
     print("Asignando IDs deterministas a los nodos...")
+    # A namespace for generating deterministic UUIDs.
+    namespace = uuid.UUID('1b9d6bcd-bbfd-4b2d-9b5d-ab8dfbbd4bed')
     for node in nodes:
-        node_hash = hashlib.sha256(node.get_content().encode('utf-8')).hexdigest()
-        node.id_ = f"{node.ref_doc_id}_{node_hash}"
+        # Create a unique identifier string from the document and content
+        unique_id_string = f"{node.ref_doc_id}-{node.get_content()}"
+        
+        # Generate a deterministic UUIDv5
+        node.id_ = str(uuid.uuid5(namespace, unique_id_string))
 
     return nodes
 
