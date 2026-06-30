@@ -1,1 +1,0 @@
-# utilidades (hash, limpieza, etc.)
