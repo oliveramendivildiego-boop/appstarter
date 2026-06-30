@@ -16,7 +16,19 @@ class AuthFilter implements FilterInterface
     {
         $employeeModel = model(\App\Models\EmployeeModel::class);
 
-        if (!$employeeModel->isLoggedIn()) {
+        if (! $employeeModel->isLoggedIn()) {
+            $path = strtolower(trim((string) $request->getUri()->getPath(), '/'));
+            if (
+                preg_match('#(?:^|/)registers/pdf/\d+$#', $path) === 1
+                && $request->getGet('inline') === '1'
+            ) {
+                return service('response')
+                    ->setStatusCode(401)
+                    ->setHeader('Content-Type', 'text/plain; charset=UTF-8')
+                    ->setHeader('X-Report-Pdf-Error', 'auth-required')
+                    ->setBody(trim((string) lang('Common.common_session_expired')) ?: 'Sesión expirada o no válida.');
+            }
+
             return redirect()->to(site_url('login'))->with('error', lang('Common.common_session_expired'));
         }
 

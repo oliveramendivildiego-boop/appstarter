@@ -193,22 +193,47 @@ document.addEventListener('DOMContentLoaded', function() {
             root.classList.remove('is-loading');
             return;
         }
-        var objectUrl = null;
         var hideLoading = function() {
             root.classList.remove('is-loading');
         };
         var formatPdfLoadError = function(raw) {
             raw = (raw || '').trim();
+            var lower = raw.toLowerCase();
+            if (raw.indexOf('HTTP 401') !== -1 || lower.indexOf('sesión') !== -1 || lower.indexOf('session') !== -1) {
+                return 'Sesión expirada o no válida. Recargue esta página e inicie sesión de nuevo. La URL del PDF solo funciona con sesión activa de empleado.';
+            }
             if (raw === '' || raw === 'not-pdf' || raw === 'empty-pdf' || raw === 'invalid-pdf-bytes') {
-                return 'El servidor no devolvió un PDF válido. Pulse «Reintentar» o abra el enlace en una pestaña nueva.';
+                return 'El servidor no devolvió un PDF válido. Pulse «Reintentar» (debe tener sesión iniciada).';
             }
             if (raw.indexOf('No se pudo generar el PDF') !== -1) {
                 return raw.length > 700 ? raw.substring(0, 700) + '…' : raw;
             }
+            if (lower.indexOf('iniciar sesión') !== -1) {
+                return 'Se requiere iniciar sesión como empleado del laboratorio. Abra el reporte desde el sistema (no pegue la URL sin haber entrado).';
+            }
             if (raw.charAt(0) === '<' || raw.indexOf('<div') !== -1 || raw.indexOf('<!DOCTYPE') !== -1) {
-                return 'El servidor respondió con HTML en lugar de PDF (falló la generación). Revise writable/logs/ o ejecute: php writable/scripts/pdf_health_check.php [número de registro]';
+                return 'El servidor respondió con HTML en lugar de PDF. Si ve «Iniciar sesión», vuelva a entrar al sistema. Si no, revise writable/logs/ o ejecute php writable/scripts/pdf_health_check.php [registro]';
             }
             return raw.length > 500 ? raw.substring(0, 500) + '…' : raw;
+        };
+        var iframeShowsLoginOrHtmlReport = function() {
+            try {
+                var doc = frame.contentDocument;
+                if (!doc || !doc.body) {
+                    return '';
+                }
+                var title = (doc.title || '').toLowerCase();
+                var snippet = (doc.body.innerText || '').substring(0, 400).toLowerCase();
+                if (title.indexOf('iniciar sesión') !== -1 || snippet.indexOf('iniciar sesión') !== -1) {
+                    return 'login';
+                }
+                if ((doc.body.innerHTML || '').indexOf('report-pdf-subgrupo') !== -1) {
+                    return 'html-report';
+                }
+            } catch (e) {
+                // Visor PDF nativo del navegador: sin documento HTML accesible.
+            }
+            return '';
         };
         var showError = function(detail) {
             root.classList.remove('is-loading');
@@ -221,58 +246,28 @@ document.addEventListener('DOMContentLoaded', function() {
         var loadPdf = function(forceFresh) {
             root.classList.remove('is-error');
             root.classList.add('is-loading');
-            if (objectUrl) {
-                URL.revokeObjectURL(objectUrl);
-                objectUrl = null;
-            }
-            frame.src = 'about:blank';
-            var fetchUrl = pdfUrl;
+            var loadUrl = pdfUrl;
             if (forceFresh) {
-                fetchUrl += (fetchUrl.indexOf('?') >= 0 ? '&' : '?') + 'purge_pdf=1&_=' + Date.now();
+                loadUrl += (loadUrl.indexOf('?') >= 0 ? '&' : '?') + 'purge_pdf=1&_=' + Date.now();
             }
-            fetch(fetchUrl, { credentials: 'same-origin', cache: 'no-store' })
-                .then(function(res) {
-                    if (!res.ok) {
-                        return res.text().then(function(text) {
-                            var msg = (text || '').trim();
-                            if (msg === '') {
-                                msg = 'HTTP ' + res.status;
-                            }
-                            throw new Error(msg);
-                        });
-                    }
-                    var ct = (res.headers.get('content-type') || '').toLowerCase();
-                    if (ct.indexOf('application/pdf') === -1) {
-                        return res.text().then(function(text) {
-                            throw new Error((text || '').trim() || 'not-pdf');
-                        });
-                    }
-                    return res.blob();
-                })
-                .then(function(blob) {
-                    if (!blob || blob.size < 32) {
-                        throw new Error('empty-pdf');
-                    }
-                    return blob.slice(0, 5).text().then(function(head) {
-                        if (head.indexOf('%PDF') !== 0) {
-                            throw new Error('invalid-pdf-bytes');
-                        }
-                        return blob;
-                    });
-                })
-                .then(function(blob) {
-                    objectUrl = URL.createObjectURL(blob);
-                    frame.src = objectUrl;
-                    hideLoading();
-                })
-                .catch(function(err) {
-                    showError(err && err.message ? err.message : 'Error desconocido al cargar el PDF.');
-                });
+            frame.src = loadUrl;
         };
         frame.addEventListener('load', function() {
-            if (frame.src && frame.src.indexOf('blob:') === 0) {
-                hideLoading();
+            if (!frame.src || frame.src === 'about:blank') {
+                return;
             }
+            var probe = iframeShowsLoginOrHtmlReport();
+            if (probe === 'login') {
+                frame.src = 'about:blank';
+                showError('Iniciar sesión');
+                return;
+            }
+            if (probe === 'html-report') {
+                frame.src = 'about:blank';
+                showError('report-pdf-subgrupo-block');
+                return;
+            }
+            hideLoading();
         });
         var retryBtn = root.querySelector('[data-pdf-native-retry]');
         if (retryBtn) {
