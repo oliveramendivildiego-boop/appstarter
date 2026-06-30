@@ -80,8 +80,7 @@ def build_nodes_from_files(file_paths: list[str]):
             doc = Document(text=content, id_=file_path, metadata={"file_path": file_path})
             documents.append(doc)
         except Exception as e:
-            print(f"
-Error leyendo archivo {file_path}: {e}")
+            print(f"Error leyendo archivo {file_path}: {e}")
 
     print("Generando nodos...")
     splitter = SentenceSplitter(chunk_size=CHUNK_SIZE, chunk_overlap=CHUNK_OVERLAP)
