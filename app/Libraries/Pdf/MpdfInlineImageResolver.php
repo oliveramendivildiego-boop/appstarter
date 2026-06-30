@@ -81,7 +81,7 @@ final class MpdfInlineImageResolver
         $ext = strtolower($matches[1]) === 'jpeg' ? 'jpg' : strtolower($matches[1]);
         $dir = self::tempDir();
         if (! is_dir($dir)) {
-            @mkdir($dir, 0755, true);
+            @mkdir($dir, 0775, true);
         }
 
         $temp = $dir . DIRECTORY_SEPARATOR . 'img_' . sha1($binary) . '.' . $ext;

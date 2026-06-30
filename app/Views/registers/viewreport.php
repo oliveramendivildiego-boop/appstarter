@@ -205,6 +205,9 @@ document.addEventListener('DOMContentLoaded', function() {
             if (raw === '' || raw === 'not-pdf' || raw === 'empty-pdf' || raw === 'invalid-pdf-bytes') {
                 return 'El servidor no devolvió un PDF válido. Pulse «Reintentar» (debe tener sesión iniciada).';
             }
+            if (raw.indexOf('HTTP 503') !== -1 || raw.indexOf('generation-failed') !== -1 || raw.indexOf('deploy-incomplete') !== -1) {
+                return raw.length > 900 ? raw.substring(0, 900) + '…' : raw;
+            }
             if (raw.indexOf('No se pudo generar el PDF') !== -1) {
                 return raw.length > 700 ? raw.substring(0, 700) + '…' : raw;
             }
@@ -216,25 +219,7 @@ document.addEventListener('DOMContentLoaded', function() {
             }
             return raw.length > 500 ? raw.substring(0, 500) + '…' : raw;
         };
-        var iframeShowsLoginOrHtmlReport = function() {
-            try {
-                var doc = frame.contentDocument;
-                if (!doc || !doc.body) {
-                    return '';
-                }
-                var title = (doc.title || '').toLowerCase();
-                var snippet = (doc.body.innerText || '').substring(0, 400).toLowerCase();
-                if (title.indexOf('iniciar sesión') !== -1 || snippet.indexOf('iniciar sesión') !== -1) {
-                    return 'login';
-                }
-                if ((doc.body.innerHTML || '').indexOf('report-pdf-subgrupo') !== -1) {
-                    return 'html-report';
-                }
-            } catch (e) {
-                // Visor PDF nativo del navegador: sin documento HTML accesible.
-            }
-            return '';
-        };
+        var pdfBlobUrl = null;
         var showError = function(detail) {
             root.classList.remove('is-loading');
             root.classList.add('is-error');
@@ -246,43 +231,66 @@ document.addEventListener('DOMContentLoaded', function() {
         var loadPdf = function(forceFresh) {
             root.classList.remove('is-error');
             root.classList.add('is-loading');
+            if (pdfBlobUrl) {
+                URL.revokeObjectURL(pdfBlobUrl);
+                pdfBlobUrl = null;
+            }
+            frame.src = 'about:blank';
             var loadUrl = pdfUrl;
             if (forceFresh) {
                 loadUrl += (loadUrl.indexOf('?') >= 0 ? '&' : '?') + 'purge_pdf=1&_=' + Date.now();
             }
-            frame.src = loadUrl;
-        };
-        frame.addEventListener('load', function() {
-            if (!frame.src || frame.src === 'about:blank') {
-                return;
-            }
-            var probe = iframeShowsLoginOrHtmlReport();
-            if (probe === 'login') {
-                frame.src = 'about:blank';
-                showError('Iniciar sesión');
-                return;
-            }
-            if (probe === 'html-report') {
-                frame.src = 'about:blank';
-                showError('report-pdf-subgrupo-block');
-                return;
-            }
-            try {
-                var doc = frame.contentDocument;
-                if (doc && doc.body) {
-                    var errText = (doc.body.innerText || '').trim();
-                    if (errText.indexOf('No se pudo generar el PDF') !== -1
-                        || errText.indexOf('módulo PDF no está completamente desplegado') !== -1) {
-                        frame.src = 'about:blank';
-                        showError(errText);
-                        return;
-                    }
+            fetch(loadUrl, {
+                method: 'GET',
+                credentials: 'same-origin',
+                headers: { 'Accept': 'application/pdf,application/octet-stream;q=0.9,*/*;q=0.8' },
+                cache: forceFresh ? 'no-store' : 'default'
+            })
+            .then(function(res) {
+                var errHdr = res.headers.get('X-Report-Pdf-Error') || '';
+                var errDetail = res.headers.get('X-Report-Pdf-Error-Detail') || '';
+                if (!res.ok) {
+                    return res.text().then(function(t) {
+                        var msg = (t || '').trim();
+                        if (msg === '') {
+                            msg = 'HTTP ' + res.status + (errHdr !== '' ? ' (' + errHdr + ')' : '');
+                        }
+                        if (errDetail !== '' && msg.indexOf(errDetail) === -1) {
+                            msg = errDetail + '\n' + msg;
+                        }
+                        throw new Error(msg);
+                    });
                 }
-            } catch (ignored) {
-                // Visor PDF nativo del navegador.
-            }
-            hideLoading();
-        });
+                var ct = (res.headers.get('Content-Type') || '').toLowerCase();
+                if (ct.indexOf('pdf') === -1 && ct.indexOf('octet-stream') === -1) {
+                    return res.text().then(function(t) {
+                        throw new Error(t || 'not-pdf');
+                    });
+                }
+                return res.arrayBuffer().then(function(buf) {
+                    if (!buf || buf.byteLength < 5) {
+                        throw new Error('empty-pdf');
+                    }
+                    var bytes = new Uint8Array(buf);
+                    if (String.fromCharCode(bytes[0], bytes[1], bytes[2], bytes[3]) !== '%PDF') {
+                        var text = new TextDecoder().decode(buf.slice(0, Math.min(buf.byteLength, 1200)));
+                        throw new Error(text || 'invalid-pdf-bytes');
+                    }
+                    return new Blob([buf], { type: 'application/pdf' });
+                });
+            })
+            .then(function(blob) {
+                pdfBlobUrl = URL.createObjectURL(blob);
+                frame.src = pdfBlobUrl;
+                frame.onload = function() {
+                    hideLoading();
+                };
+            })
+            .catch(function(err) {
+                frame.src = 'about:blank';
+                showError(err && err.message ? err.message : String(err));
+            });
+        };
         var retryBtn = root.querySelector('[data-pdf-native-retry]');
         if (retryBtn) {
             retryBtn.addEventListener('click', function() { loadPdf(true); });

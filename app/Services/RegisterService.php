@@ -3501,6 +3501,10 @@ class RegisterService
             return;
         }
 
+        if (! self::isValidReportPdfBinary($binary)) {
+            return;
+        }
+
         $dir = $this->reportPdfPreviewCacheDir();
         if (! is_dir($dir)) {
             return;

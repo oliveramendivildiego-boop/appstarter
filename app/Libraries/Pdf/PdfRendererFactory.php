@@ -56,8 +56,8 @@ class PdfRendererFactory
      */
     private static function prepareRuntimeLimits(): void
     {
-        @ini_set('pcre.backtrack_limit', '5000000');
-        @ini_set('pcre.recursion_limit', '500000');
+        @ini_set('pcre.backtrack_limit', '10000000');
+        @ini_set('pcre.recursion_limit', '1000000');
         @set_time_limit(180);
 
         $current = trim((string) ini_get('memory_limit'));

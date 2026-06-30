@@ -1060,6 +1060,18 @@ class Registers extends SecureArea
         $disposition = $inline ? 'inline' : 'attachment';
 
         try {
+            return $this->serveReportPdf($id, $disposition, true);
+        } catch (\Throwable $e) {
+            return $this->respondReportPdfGenerationError($id, $e, $inline);
+        }
+    }
+
+    /**
+     * @throws \Throwable
+     */
+    private function serveReportPdf(int $id, string $disposition, bool $allowAutoRecover): ResponseInterface
+    {
+        try {
             $qrLayout = (new \App\Services\ReportPdfLayoutService())->getActiveLayoutForRender();
 
             $emitidoEnCache = $this->registerService->reportEmitidoEnForPreviewCache($id);
@@ -1094,8 +1106,49 @@ class Registers extends SecureArea
                 $resolved['fingerprint'],
             );
         } catch (\Throwable $e) {
-            return $this->respondReportPdfGenerationError($id, $e, $inline);
+            if ($allowAutoRecover && $this->shouldAutoRecoverReportPdf($e)) {
+                log_message('warning', 'registers/pdf/{id} reintento tras limpiar cachés PDF: {msg}', [
+                    'id'  => $id,
+                    'msg' => $e->getMessage(),
+                ]);
+                $this->recoverReportPdfCaches($id);
+
+                return $this->serveReportPdf($id, $disposition, false);
+            }
+
+            throw $e;
         }
+    }
+
+    private function shouldAutoRecoverReportPdf(\Throwable $e): bool
+    {
+        if (\App\Libraries\Pdf\MpdfTempDirSupport::isRecoverableFontCacheError($e)) {
+            return true;
+        }
+
+        $message = strtolower($e->getMessage());
+
+        foreach ([
+            'no generó un archivo válido',
+            'caché no es un pdf válido',
+            'pcre.backtrack_limit',
+            'allowed memory size',
+            'failed to open stream',
+            'ttfontdata',
+        ] as $needle) {
+            if (str_contains($message, $needle)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private function recoverReportPdfCaches(int $id): void
+    {
+        $this->registerService->clearReportPdfPreviewCache($id);
+        \App\Libraries\Pdf\MpdfTempDirSupport::clearFontCache();
+        \App\Libraries\Pdf\MpdfTempDirSupport::ensureWritableTree();
     }
 
     /**
@@ -1110,6 +1163,7 @@ class Registers extends SecureArea
             \App\Libraries\Pdf\MpdfFooterExtractor::class,
             \App\Libraries\Pdf\MpdfPdfRenderer::class,
             \App\Libraries\Pdf\SafeMpdf::class,
+            \App\Libraries\Pdf\MpdfTempDirSupport::class,
         ] as $class) {
             if (! class_exists($class)) {
                 $missing[] = $class;
@@ -1121,6 +1175,24 @@ class Registers extends SecureArea
         }
 
         if ($missing === []) {
+            $tempDir = \App\Libraries\Pdf\MpdfTempDirSupport::resolveTempDir();
+            \App\Libraries\Pdf\MpdfTempDirSupport::ensureWritableTree($tempDir);
+            if (! \App\Libraries\Pdf\MpdfTempDirSupport::isWritable($tempDir)) {
+                log_message('critical', 'registers/pdf: writable/cache/mpdf sin permisos de escritura ({dir})', [
+                    'dir' => $tempDir,
+                ]);
+
+                return $this->response
+                    ->setStatusCode(503)
+                    ->setHeader('Content-Type', 'text/plain; charset=UTF-8')
+                    ->setHeader('X-Report-Pdf-Error', 'storage-not-writable')
+                    ->setBody(
+                        "No se puede escribir en la caché mPDF.\n"
+                        . "Directorio: {$tempDir}\n"
+                        . "Ejecute en SSH: chmod -R 775 writable/cache/mpdf writable/cache/report_pdf_preview\n",
+                    );
+            }
+
             return null;
         }
 
