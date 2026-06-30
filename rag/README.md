@@ -7,8 +7,13 @@ Guía rápida:
 - **Entorno**: Python 3.10+ (recomendado). Crear un virtualenv e instalar dependencias:
 
 ```powershell
-python -m venv .venv
-.\.venv\Scripts\Activate.ps1
+# Si tienes un virtualenv llamado rag-env (creado por pip/venv), úsalo.
+if (Test-Path rag-env) {
+	.\rag-env\Scripts\Activate.ps1
+} else {
+	python -m venv .venv
+	.\.venv\Scripts\Activate.ps1
+}
 pip install -r requirements.txt
 ```
 

@@ -1,11 +1,12 @@
 import json
 from query_engine import build_query_engine
 from agent_tools import list_files, read_file, write_file, apply_patch
+from prompts_loader import load_template
 
 engine = build_query_engine()
 
 
-SYSTEM_PROMPT = """
+BASE_SYSTEM = """
 Eres un agente tipo Cursor IDE.
 
 REGLAS:
@@ -22,6 +23,13 @@ TOOLS DISPONIBLES:
 - patch_file(file_path, old, new)
 - query_rag(question)
 """
+
+# carga plantilla de estilo Cursor (si existe) y la antepone al system prompt
+TEMPLATE = load_template()
+if TEMPLATE:
+    SYSTEM_PROMPT = TEMPLATE + "\n\n" + BASE_SYSTEM
+else:
+    SYSTEM_PROMPT = BASE_SYSTEM
 
 
 TOOLS = {

@@ -2,6 +2,7 @@ from llama_index.core import VectorStoreIndex
 from qdrant_client_helper import get_qdrant_client
 from vector_store import init_vector_store
 from embed_model import get_embed_model
+from prompts_loader import format_query
 
 
 def build_query_engine():
@@ -23,5 +24,6 @@ def build_query_engine():
 
 def ask(query: str):
     engine = build_query_engine()
-    response = engine.query(query)
+    prompt = format_query(query)
+    response = engine.query(prompt)
     return str(response)
