@@ -1247,10 +1247,19 @@ class Registers extends SecureArea
         if ($ifNoneMatch !== '' && ($ifNoneMatch === $etag || $ifNoneMatch === 'W/' . $etag)) {
             return $this->response
                 ->setStatusCode(304)
+                ->setHeader('Content-Type', 'application/pdf')
                 ->setHeader('ETag', $etag)
                 ->setHeader('Cache-Control', 'private, max-age=3600, must-revalidate')
                 ->setHeader('X-Report-Pdf-Cache', $cacheHeader)
                 ->setHeader('X-Pdf-Engine', 'cache-hit');
+        }
+
+        if (! \App\Services\RegisterService::isValidReportPdfBinary($pdfBinary)) {
+            $this->registerService->clearReportPdfPreviewCache($registroId);
+
+            throw new \RuntimeException(
+                'El archivo en caché no es un PDF válido; se regenerará en el siguiente intento.'
+            );
         }
 
         $engineHeader = \App\Libraries\Pdf\PdfRendererFactory::lastRenderEngine();

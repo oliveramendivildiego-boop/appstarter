@@ -3076,7 +3076,16 @@ class RegisterService
         );
         $pageSize = ReportPdfLayoutService::resolveGlobalPageSizeMm($this->getLabConfig());
 
-        return (new PdfService())->generate($html, 'resultados.pdf', $pageSize);
+        $pdfBinary = (new PdfService())->generate($html, 'resultados.pdf', $pageSize);
+        if (! self::isValidReportPdfBinary($pdfBinary)) {
+            throw new \RuntimeException(
+                'El motor PDF no generó un archivo válido. '
+                . 'Revise writable/logs/ o ejecute: php writable/scripts/pdf_health_check.php '
+                . ($registroId > 0 ? (string) $registroId : '[registro_id]')
+            );
+        }
+
+        return $pdfBinary;
     }
 
     /**
@@ -3467,8 +3476,23 @@ class RegisterService
         }
 
         $binary = file_get_contents($path);
+        if ($binary === false || $binary === '') {
+            return null;
+        }
 
-        return ($binary !== false && $binary !== '') ? $binary : null;
+        if (! self::isValidReportPdfBinary($binary)) {
+            @unlink($path);
+            @unlink($metaPath);
+
+            return null;
+        }
+
+        return $binary;
+    }
+
+    public static function isValidReportPdfBinary(string $binary): bool
+    {
+        return $binary !== '' && strncmp($binary, '%PDF', 4) === 0;
     }
 
     public function writeReportPdfPreviewCache(int $registroId, string $fingerprint, string $binary): void

@@ -197,12 +197,25 @@ document.addEventListener('DOMContentLoaded', function() {
         var hideLoading = function() {
             root.classList.remove('is-loading');
         };
+        var formatPdfLoadError = function(raw) {
+            raw = (raw || '').trim();
+            if (raw === '' || raw === 'not-pdf' || raw === 'empty-pdf' || raw === 'invalid-pdf-bytes') {
+                return 'El servidor no devolvió un PDF válido. Pulse «Reintentar» o abra el enlace en una pestaña nueva.';
+            }
+            if (raw.indexOf('No se pudo generar el PDF') !== -1) {
+                return raw.length > 700 ? raw.substring(0, 700) + '…' : raw;
+            }
+            if (raw.charAt(0) === '<' || raw.indexOf('<div') !== -1 || raw.indexOf('<!DOCTYPE') !== -1) {
+                return 'El servidor respondió con HTML en lugar de PDF (falló la generación). Revise writable/logs/ o ejecute: php writable/scripts/pdf_health_check.php [número de registro]';
+            }
+            return raw.length > 500 ? raw.substring(0, 500) + '…' : raw;
+        };
         var showError = function(detail) {
             root.classList.remove('is-loading');
             root.classList.add('is-error');
             var detailEl = root.querySelector('[data-pdf-native-error-detail]');
             if (detailEl && detail) {
-                detailEl.textContent = detail;
+                detailEl.textContent = formatPdfLoadError(detail);
             }
         };
         var loadPdf = function(forceFresh) {
@@ -240,6 +253,14 @@ document.addEventListener('DOMContentLoaded', function() {
                     if (!blob || blob.size < 32) {
                         throw new Error('empty-pdf');
                     }
+                    return blob.slice(0, 5).text().then(function(head) {
+                        if (head.indexOf('%PDF') !== 0) {
+                            throw new Error('invalid-pdf-bytes');
+                        }
+                        return blob;
+                    });
+                })
+                .then(function(blob) {
                     objectUrl = URL.createObjectURL(blob);
                     frame.src = objectUrl;
                     hideLoading();
