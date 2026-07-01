@@ -54,9 +54,9 @@ $badgeNuevo = static fn (string $reportKey): string => in_array($reportKey, $ana
                 </a>
                 <p class="list-group-item small text-muted mb-0">Órdenes marcadas como anuladas dentro del rango de fechas.</p>
                 <a href="<?= site_url('reports/estadisticasLaboratorio') ?>" class="list-group-item list-group-item-action">
-                    <i class="fas fa-chart-pie me-2"></i> Estadísticas por período (pruebas, pacientes, población, género)
+                    <i class="fas fa-chart-line me-2 text-primary"></i> Tablero SNIS — Estadísticas de laboratorio
                 </a>
-                <p class="list-group-item small text-muted mb-0">Resumen agregado: volumen de pruebas, pacientes y distribución demográfica.</p>
+                <p class="list-group-item small text-muted mb-0">Indicadores de producción por período orientados al SNIS Bolivia: KPIs, gráficos y exportación PDF/Excel/CSV.</p>
             </div>
         </div>
 

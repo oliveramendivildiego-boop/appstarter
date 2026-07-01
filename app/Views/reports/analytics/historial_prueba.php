@@ -69,7 +69,7 @@ $estadoBadge = static function (string $estado): string {
                 <?php if (($c['grupo'] ?? '') !== ''): ?>
                     <span class="text-muted">· <?= esc($c['grupo']) ?></span>
                 <?php endif; ?>
-                <span class="text-muted small">· Cód. <?= (int) $c['prianacategoria_id'] ?> · Órdenes históricas: <?= (int) ($c['total_ordenes'] ?? 0) ?></span>
+                <span class="text-muted small">· Cód. <?= (int) $c['prianacategoria_id'] ?> · Solicitadas: <?= (int) ($c['total_solicitadas'] ?? 0) ?> · Con resultado: <?= (int) ($c['total_con_resultado'] ?? 0) ?></span>
             </a>
         <?php endforeach; ?>
     </div>
@@ -84,22 +84,35 @@ $estadoBadge = static function (string $estado): string {
 
 <div class="row mb-3">
     <div class="col-6 col-md-3 mb-2">
-        <div class="card text-center border-primary"><div class="card-body py-2">
-            <div class="fs-4 fw-bold"><?= (int) ($total_ordenes ?? 0) ?></div><div class="small text-muted">Órdenes con resultados</div>
+        <div class="card text-center border-secondary"><div class="card-body py-2">
+            <div class="fs-4 fw-bold"><?= (int) ($total_solicitadas ?? 0) ?></div><div class="small text-muted">Órdenes solicitadas</div>
         </div></div>
     </div>
     <div class="col-6 col-md-3 mb-2">
-        <div class="card text-center border-secondary"><div class="card-body py-2">
+        <div class="card text-center border-primary"><div class="card-body py-2">
+            <div class="fs-4 fw-bold"><?= (int) ($total_ordenes ?? 0) ?></div><div class="small text-muted">Con resultado</div>
+        </div></div>
+    </div>
+    <div class="col-6 col-md-3 mb-2">
+        <div class="card text-center border-warning"><div class="card-body py-2">
+            <div class="fs-4 fw-bold"><?= (int) ($total_pendientes ?? 0) ?></div><div class="small text-muted">Solo solicitadas</div>
+        </div></div>
+    </div>
+    <div class="col-6 col-md-3 mb-2">
+        <div class="card text-center border-info"><div class="card-body py-2">
             <div class="fs-4 fw-bold"><?= (int) ($total_resultados ?? 0) ?></div><div class="small text-muted">Resultados listados</div>
         </div></div>
     </div>
 </div>
 
+<?php if (! empty($rows)): ?>
+<h5 class="mb-2">Órdenes con resultado</h5>
 <?= view('reports/analytics/partials/table_tools', ['table_id' => 'tabla-historial-prueba']) ?>
-<div class="table-responsive">
+<div class="table-responsive mb-4">
     <table class="table table-bordered table-striped" id="tabla-historial-prueba">
         <thead class="table-dark">
             <tr>
+                <th>Tipo</th>
                 <th>Fecha</th>
                 <th>Orden</th>
                 <th>Paciente</th>
@@ -116,6 +129,7 @@ $estadoBadge = static function (string $estado): string {
         <tbody>
             <?php foreach ($rows ?? [] as $row): ?>
             <tr>
+                <td><span class="badge bg-success">Con resultado</span></td>
                 <td><?= esc(\App\Services\RegisterService::formatStoredReporteFechaCorta($row['ingreso'] ?? '')) ?></td>
                 <td>
                     <a href="<?= site_url('registers/view/' . (int) ($row['registro_id'] ?? 0)) ?>" target="_blank" class="text-decoration-none">
@@ -137,16 +151,57 @@ $estadoBadge = static function (string $estado): string {
     </table>
 </div>
 <?= view('reports/analytics/partials/table_pagination', ['table_id' => 'tabla-historial-prueba']) ?>
+<?php else: ?>
+<p class="text-muted mb-4">No hay órdenes con resultado registrado para esta prueba en el período seleccionado.</p>
+<?php endif; ?>
 
-<?php if (empty($rows)): ?>
-<p class="text-muted">No hay resultados registrados para esta prueba en el período seleccionado.</p>
+<?php if (! empty($solicitadas_sin_resultado)): ?>
+<h5 class="mb-2">Órdenes solo solicitadas (sin resultado)</h5>
+<?= view('reports/analytics/partials/table_tools', ['table_id' => 'tabla-historial-solicitadas']) ?>
+<div class="table-responsive mb-4">
+    <table class="table table-bordered table-striped" id="tabla-historial-solicitadas">
+        <thead class="table-dark">
+            <tr>
+                <th>Tipo</th>
+                <th>Fecha</th>
+                <th>Orden</th>
+                <th>Paciente</th>
+                <th>CI</th>
+                <th>Médico solicitante</th>
+            </tr>
+        </thead>
+        <tbody>
+            <?php foreach ($solicitadas_sin_resultado as $row): ?>
+            <tr>
+                <td><span class="badge bg-warning text-dark">Solo solicitada</span></td>
+                <td><?= esc(\App\Services\RegisterService::formatStoredReporteFechaCorta($row['ingreso'] ?? '')) ?></td>
+                <td>
+                    <a href="<?= site_url('registers/view/' . (int) ($row['registro_id'] ?? 0)) ?>" target="_blank" class="text-decoration-none">
+                        <?= esc($row['numero_orden'] ?: $row['registro_id']) ?>
+                    </a>
+                </td>
+                <td><?= esc($row['paciente']) ?></td>
+                <td><?= esc($row['paciente_ci'] ?: '—') ?></td>
+                <td><?= esc($row['doctor'] ?: '—') ?></td>
+            </tr>
+            <?php endforeach; ?>
+        </tbody>
+    </table>
+</div>
+<?= view('reports/analytics/partials/table_pagination', ['table_id' => 'tabla-historial-solicitadas']) ?>
+<?php endif; ?>
+
+<?php if (empty($rows) && empty($solicitadas_sin_resultado)): ?>
+<p class="text-muted">No hay órdenes registradas para esta prueba en el período seleccionado.</p>
 <?php else: ?>
 <div class="alert alert-secondary">
     <strong>Prueba:</strong> <?= esc($prueba['name'] ?? '') ?>
     <?php if (($prueba['grupo'] ?? '') !== ''): ?> · <strong>Grupo:</strong> <?= esc($prueba['grupo']) ?><?php endif; ?>
-    · <strong>Órdenes:</strong> <?= (int) ($total_ordenes ?? 0) ?>
-    · <strong>Resultados:</strong> <?= (int) ($total_resultados ?? 0) ?>
-    <span class="d-block small text-muted mt-1">Los estados se calculan con los valores de referencia del catálogo. Haga clic en el número de orden para abrir el registro.</span>
+    · <strong>Solicitadas:</strong> <?= (int) ($total_solicitadas ?? 0) ?>
+    · <strong>Con resultado:</strong> <?= (int) ($total_ordenes ?? 0) ?>
+    · <strong>Solo solicitadas:</strong> <?= (int) ($total_pendientes ?? 0) ?>
+    · <strong>Resultados listados:</strong> <?= (int) ($total_resultados ?? 0) ?>
+    <span class="d-block small text-muted mt-1">Las órdenes «solo solicitadas» incluyen la prueba en la orden pero aún no tienen valor cargado. Haga clic en el número de orden para abrir el registro.</span>
 </div>
 <?php endif; ?>
 

@@ -52,19 +52,26 @@
 <h4><?= esc($title ?? '') ?></h4>
 <p class="text-muted"><?= esc($subtitle ?? '') ?></p>
 <p class="small text-muted mb-0 d-print-none">
-    Mismo criterio que <strong>Pruebas realizadas por fecha</strong>: órdenes con al menos un resultado guardado, no anuladas ni eliminadas.
-    Cada fila del detalle cuenta cuántas órdenes incluyeron ese análisis (según el campo de pruebas de la orden).
+    Misma lógica que <strong>Historial por prueba analítica</strong>: órdenes no anuladas en el período.
+    <strong>Veces solicitado</strong>: órdenes que incluyeron el análisis en la solicitud.
+    <strong>Órdenes con resultado</strong>: órdenes con valor cargado para ese análisis.
 </p>
-<p class="small text-muted">Órdenes en el período: <strong><?= (int) ($ordenes_en_periodo ?? 0) ?></strong></p>
+<p class="small text-muted">
+    Órdenes solicitadas en el período<?= (int) ($anacategoria_id ?? 0) > 0 ? ' (del grupo)' : '' ?>: <strong><?= (int) ($ordenes_solicitadas ?? $ordenes_en_periodo ?? 0) ?></strong>
+    · Con al menos un resultado<?= (int) ($anacategoria_id ?? 0) > 0 ? ' del grupo' : '' ?>: <strong><?= (int) ($ordenes_con_resultado ?? 0) ?></strong>
+</p>
 
 <?php if (empty($secciones)): ?>
-    <p class="text-muted mt-3">No hay pruebas del grupo seleccionado en el período (o no hay órdenes completas en esas fechas).</p>
+    <p class="text-muted mt-3">No hay pruebas del grupo seleccionado en el período.</p>
 <?php else: ?>
     <?php foreach ($secciones as $sec): ?>
         <div class="card shadow-sm mb-4">
             <div class="card-header bg-primary text-white d-flex flex-wrap justify-content-between align-items-center gap-2">
                 <h5 class="mb-0"><?= esc($sec['nombre'] ?? '') ?></h5>
-                <span class="badge bg-light text-dark">Total de pruebas (suma en órdenes): <?= (int) ($sec['total_pruebas'] ?? 0) ?></span>
+                <span class="badge bg-light text-dark">
+                    Solicitadas: <?= (int) ($sec['total_solicitadas'] ?? $sec['total_pruebas'] ?? 0) ?>
+                    · Con resultado: <?= (int) ($sec['total_con_resultado'] ?? 0) ?>
+                </span>
             </div>
             <div class="table-responsive">
                 <table class="table table-bordered table-striped mb-0">
@@ -72,13 +79,15 @@
                         <tr>
                             <th>Análisis</th>
                             <th class="text-end">Veces solicitado</th>
+                            <th class="text-end">Órdenes con resultado</th>
                         </tr>
                     </thead>
                     <tbody>
                         <?php foreach ($sec['detalle'] ?? [] as $fila): ?>
                             <tr>
                                 <td><?= esc($fila['prueba'] ?? '') ?></td>
-                                <td class="text-end"><?= (int) ($fila['cantidad'] ?? 0) ?></td>
+                                <td class="text-end"><?= (int) ($fila['veces_solicitado'] ?? $fila['cantidad'] ?? 0) ?></td>
+                                <td class="text-end"><?= (int) ($fila['veces_con_resultado'] ?? 0) ?></td>
                             </tr>
                         <?php endforeach; ?>
                     </tbody>

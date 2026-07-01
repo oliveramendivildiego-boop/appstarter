@@ -240,7 +240,7 @@ class ReportModel extends Model
         $allPrias   = $this->db->table('prianacategoria')
             ->select("{$ptbl}.prianacategoria_id, {$ptbl}.name, {$atbl}.name as categoria")
             ->join('anacategoria', "{$atbl}.anacategoria_id = {$ptbl}.anacategoria_id", 'left')
-            ->where("{$ptbl}.deleted", 0)
+            ->where("({$ptbl}.deleted = 0 OR {$ptbl}.deleted IS NULL)")
             ->get()
             ->getResultArray();
         foreach ($allPrias as $pr) {
@@ -258,12 +258,12 @@ class ReportModel extends Model
     {
         $pruebasMap = $this->buildPruebasNombreMapListado();
         foreach ($rows as &$row) {
-            $ids     = array_filter(array_map('intval', explode(',', trim((string) ($row['pruebas'] ?? '')))));
+            $ids     = array_values(array_unique($this->parsePruebasCsvIds((string) ($row['pruebas'] ?? ''))));
             $nombres = [];
             foreach ($ids as $id) {
-                $nombres[] = $pruebasMap[$id] ?? '#' . $id;
+                $nombres[] = $pruebasMap[$id] ?? ('#' . $id);
             }
-            $row['pruebas_nombres'] = implode(', ', $nombres);
+            $row['pruebas_nombres'] = $nombres !== [] ? implode(', ', $nombres) : '—';
         }
         unset($row);
 
@@ -1784,19 +1784,9 @@ class ReportModel extends Model
     public function getPruebasPorFecha(string $startDate, string $endDate): array
     {
         $r  = $this->db->prefixTable('registro');
-        $p  = $this->db->prefixTable('people');
-        $d  = $this->db->prefixTable('doctors');
-        $pa = $this->db->prefixTable('pago');
         $rv = $this->db->prefixTable('regvalues');
 
-        $b = $this->db->table('registro')
-            ->select("{$r}.registro_id, {$r}.ingreso, {$r}.pruebas,
-                CONCAT({$p}.first_name, ' ', {$p}.last_name_fa, ' ', {$p}.last_name_mom) AS paciente,
-                {$d}.name as doctor,
-                CAST({$pa}.total AS DECIMAL(12,2)) as total")
-            ->join('people', "{$p}.person_id = {$r}.person_id")
-            ->join('doctors', "{$d}.doctor_id = {$r}.doctor_id")
-            ->join('pago', "{$r}.registro_id = {$pa}.registro_id");
+        $b = $this->buildRegistroPruebasListadoBuilder();
         $b = $this->applySinRegistrosAnulados($b, $r);
         $b = $this->applySinRegistrosEliminados($b, $r);
         $b->where("(SELECT COUNT(*) FROM {$rv} WHERE {$rv}.registro_id = {$r}.registro_id) > 0", null, false);
@@ -2048,19 +2038,9 @@ class ReportModel extends Model
     public function getPruebasIncompletasPorFecha(string $startDate, string $endDate): array
     {
         $r  = $this->db->prefixTable('registro');
-        $p  = $this->db->prefixTable('people');
-        $d  = $this->db->prefixTable('doctors');
-        $pa = $this->db->prefixTable('pago');
         $rv = $this->db->prefixTable('regvalues');
 
-        $b = $this->db->table('registro')
-            ->select("{$r}.registro_id, {$r}.ingreso, {$r}.pruebas,
-                CONCAT({$p}.first_name, ' ', {$p}.last_name_fa, ' ', {$p}.last_name_mom) AS paciente,
-                {$d}.name as doctor,
-                CAST({$pa}.total AS DECIMAL(12,2)) as total")
-            ->join('people', "{$p}.person_id = {$r}.person_id")
-            ->join('doctors', "{$d}.doctor_id = {$r}.doctor_id")
-            ->join('pago', "{$r}.registro_id = {$pa}.registro_id");
+        $b = $this->buildRegistroPruebasListadoBuilder();
         $b = $this->applySinRegistrosAnulados($b, $r);
         $b = $this->applySinRegistrosEliminados($b, $r);
         $b->where("(SELECT COUNT(*) FROM {$rv} WHERE {$rv}.registro_id = {$r}.registro_id) = 0", null, false);
@@ -2084,24 +2064,13 @@ class ReportModel extends Model
             return [];
         }
         $r = $this->db->prefixTable('registro');
-        $p = $this->db->prefixTable('people');
-        $d = $this->db->prefixTable('doctors');
-        $pa = $this->db->prefixTable('pago');
 
         $motivoCol = $this->registroTieneCampoMotivoAnulacion()
             ? "{$r}.motivo_anulacion"
             : "'' AS motivo_anulacion";
 
-        $b = $this->db->table('registro')
-            ->select("{$r}.registro_id, {$r}.ingreso, {$r}.pruebas,
-                CONCAT({$p}.first_name, ' ', {$p}.last_name_fa, ' ', {$p}.last_name_mom) AS paciente,
-                {$d}.name as doctor,
-                {$motivoCol},
-                CAST({$pa}.total AS DECIMAL(12,2)) as total", false)
-            ->join('people', "{$p}.person_id = {$r}.person_id")
-            ->join('doctors', "{$d}.doctor_id = {$r}.doctor_id")
-            ->join('pago', "{$r}.registro_id = {$pa}.registro_id")
-            ->where("COALESCE({$r}.anulado, 0) <> 0", null, false);
+        $b = $this->buildRegistroPruebasListadoBuilder($motivoCol);
+        $b->where("COALESCE({$r}.anulado, 0) <> 0", null, false);
         $b = $this->applySinRegistrosEliminados($b, $r);
         $rows = RegistroIngresoDateRange::apply($b, $r, $startDate, $endDate)
             ->where("{$r}.pruebas != '' AND {$r}.pruebas IS NOT NULL")
@@ -2247,6 +2216,24 @@ class ReportModel extends Model
      */
     public function getRegistrosEstadisticasLaboratorio(string $startDate, string $endDate): array
     {
+        return $this->queryRegistrosPruebasEnPeriodo($startDate, $endDate, true);
+    }
+
+    /**
+     * Órdenes con pruebas solicitadas en el período (completas o incompletas), no anuladas ni eliminadas.
+     *
+     * @return list<array{registro_id:string|int,person_id:string|int,ingreso:string,pruebas:string,birthday:?string,gender:?string|int}>
+     */
+    public function getRegistrosSolicitudesEnPeriodo(string $startDate, string $endDate): array
+    {
+        return $this->queryRegistrosPruebasEnPeriodo($startDate, $endDate, false);
+    }
+
+    /**
+     * @return list<array{registro_id:string|int,person_id:string|int,ingreso:string,pruebas:string,birthday:?string,gender:?string|int}>
+     */
+    private function queryRegistrosPruebasEnPeriodo(string $startDate, string $endDate, bool $soloConResultados): array
+    {
         $r  = $this->db->prefixTable('registro');
         $p  = $this->db->prefixTable('people');
         $d  = $this->db->prefixTable('doctors');
@@ -2261,7 +2248,9 @@ class ReportModel extends Model
             ->join('pago', "{$r}.registro_id = {$pa}.registro_id");
         $b = $this->applySinRegistrosAnulados($b, $r);
         $b = $this->applySinRegistrosEliminados($b, $r);
-        $b->where("(SELECT COUNT(*) FROM {$rv} WHERE {$rv}.registro_id = {$r}.registro_id) > 0", null, false);
+        if ($soloConResultados) {
+            $b->where("(SELECT COUNT(*) FROM {$rv} WHERE {$rv}.registro_id = {$r}.registro_id) > 0", null, false);
+        }
 
         return RegistroIngresoDateRange::apply($b, $r, $startDate, $endDate)
             ->where("{$r}.pruebas != '' AND {$r}.pruebas IS NOT NULL")
@@ -2391,7 +2380,34 @@ class ReportModel extends Model
             }
         }
 
-        return $ids;
+        return array_values(array_unique($ids));
+    }
+
+    /**
+     * Builder base para listados de órdenes con pruebas (paciente/doctor; pago opcional).
+     *
+     * @return \CodeIgniter\Database\BaseBuilder
+     */
+    private function buildRegistroPruebasListadoBuilder(string $selectExtra = '')
+    {
+        $r  = $this->db->prefixTable('registro');
+        $p  = $this->db->prefixTable('people');
+        $d  = $this->db->prefixTable('doctors');
+        $pa = $this->db->prefixTable('pago');
+
+        $select = "{$r}.registro_id, {$r}.ingreso, {$r}.pruebas,
+            CONCAT({$p}.first_name, ' ', {$p}.last_name_fa, ' ', {$p}.last_name_mom) AS paciente,
+            {$d}.name as doctor,
+            CAST(COALESCE({$pa}.total, 0) AS DECIMAL(12,2)) as total";
+        if ($selectExtra !== '') {
+            $select .= ', ' . $selectExtra;
+        }
+
+        return $this->db->table('registro')
+            ->select($select, false)
+            ->join('people', "{$p}.person_id = {$r}.person_id")
+            ->join('doctors', "{$d}.doctor_id = {$r}.doctor_id", 'left')
+            ->join('pago', "{$r}.registro_id = {$pa}.registro_id", 'left');
     }
 
     /**

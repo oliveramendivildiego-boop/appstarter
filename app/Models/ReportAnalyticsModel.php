@@ -174,22 +174,17 @@ class ReportAnalyticsModel extends Model
      *
      * @return list<array<string, mixed>>
      */
-    public function searchPruebas(string $q, int $limit = 25): array
+    public function searchPruebas(string $q, string $startDate, string $endDate, int $limit = 25): array
     {
         $pri = $this->db->prefixTable('prianacategoria');
         $ana = $this->db->prefixTable('anacategoria');
-        $r   = $this->db->prefixTable('registro');
         $q   = trim($q);
         if ($q === '') {
             return [];
         }
 
-        return $this->db->table('prianacategoria')
-            ->select("{$pri}.prianacategoria_id, {$pri}.name, COALESCE({$ana}.name, '') AS grupo,
-                (SELECT COUNT(*) FROM {$r}
-                    WHERE COALESCE({$r}.anulado, 0) = 0
-                      AND CONCAT(',', {$r}.pruebas, ',') LIKE CONCAT('%,', {$pri}.prianacategoria_id, ',%')
-                ) AS total_ordenes", false)
+        $rows = $this->db->table('prianacategoria')
+            ->select("{$pri}.prianacategoria_id, {$pri}.name, COALESCE({$ana}.name, '') AS grupo", false)
             ->join('anacategoria', "{$ana}.anacategoria_id = {$pri}.anacategoria_id", 'left')
             ->where("{$pri}.deleted", 0)
             ->groupStart()
@@ -200,6 +195,217 @@ class ReportAnalyticsModel extends Model
             ->limit($limit)
             ->get()
             ->getResultArray();
+
+        if ($rows === []) {
+            return [];
+        }
+
+        $countsConResultado = $this->countOrdenesConResultadosPorPruebas(
+            array_column($rows, 'prianacategoria_id'),
+            $startDate,
+            $endDate
+        );
+        $countsSolicitadas = $this->countOrdenesSolicitadasPorPruebas(
+            array_column($rows, 'prianacategoria_id'),
+            $startDate,
+            $endDate
+        );
+
+        foreach ($rows as &$row) {
+            $id = (int) ($row['prianacategoria_id'] ?? 0);
+            $row['total_con_resultado'] = $countsConResultado[$id] ?? 0;
+            $row['total_solicitadas']   = $countsSolicitadas[$id] ?? 0;
+            $row['total_ordenes']       = $row['total_con_resultado'];
+        }
+        unset($row);
+
+        return $rows;
+    }
+
+    /**
+     * Cuenta órdenes que incluyeron la prueba en registro.pruebas dentro del período.
+     *
+     * @param list<int|string> $pruebaIds
+     * @return array<int, int> prianacategoria_id => total
+     */
+    public function countOrdenesSolicitadasPorPruebas(array $pruebaIds, string $startDate, string $endDate): array
+    {
+        $pruebaIds = array_values(array_filter(array_map('intval', $pruebaIds), static fn (int $id): bool => $id > 0));
+        if ($pruebaIds === []) {
+            return [];
+        }
+
+        $r               = $this->db->prefixTable('registro');
+        $registerService = new RegisterService();
+        $b               = $this->db->table('registro')
+            ->select("{$r}.pruebas", false)
+            ->where($this->sqlSinAnulados($r), null, false);
+        $registros = RegistroIngresoDateRange::apply($b, $r, $startDate, $endDate)
+            ->where("{$r}.pruebas != '' AND {$r}.pruebas IS NOT NULL")
+            ->get()
+            ->getResultArray();
+
+        $out = array_fill_keys($pruebaIds, 0);
+        $set = array_flip($pruebaIds);
+        foreach ($registros as $reg) {
+            $idsPrueba = $registerService->extractPrianacategoriaIdsFromRegistroPruebas((string) ($reg['pruebas'] ?? ''));
+            $vistoEnOrden = [];
+            foreach ($idsPrueba as $id) {
+                if ($id > 0 && isset($set[$id]) && ! isset($vistoEnOrden[$id])) {
+                    $out[$id]++;
+                    $vistoEnOrden[$id] = true;
+                }
+            }
+        }
+
+        return $out;
+    }
+
+    /**
+     * Cuenta órdenes distintas que solicitaron al menos una prueba del grupo en el período.
+     *
+     * @param list<int|string> $pruebaIds Pruebas del grupo (prianacategoria_id)
+     */
+    public function countOrdenesSolicitadasPorGrupo(int $grupoId, array $pruebaIds, string $startDate, string $endDate): int
+    {
+        $pruebaIds = array_values(array_filter(array_map('intval', $pruebaIds), static fn (int $id): bool => $id > 0));
+        if ($pruebaIds === []) {
+            return 0;
+        }
+
+        $r               = $this->db->prefixTable('registro');
+        $registerService = new RegisterService();
+        $b               = $this->db->table('registro')
+            ->select("{$r}.pruebas", false)
+            ->where($this->sqlSinAnulados($r), null, false);
+        $registros = RegistroIngresoDateRange::apply($b, $r, $startDate, $endDate)
+            ->where("{$r}.pruebas != '' AND {$r}.pruebas IS NOT NULL")
+            ->get()
+            ->getResultArray();
+
+        $set   = array_flip($pruebaIds);
+        $total = 0;
+        foreach ($registros as $reg) {
+            foreach ($registerService->extractPrianacategoriaIdsFromRegistroPruebas((string) ($reg['pruebas'] ?? '')) as $id) {
+                if ($id > 0 && isset($set[$id])) {
+                    $total++;
+                    break;
+                }
+            }
+        }
+
+        return $total;
+    }
+
+    /**
+     * Registros con pruebas solicitadas en el período (misma base que countOrdenesSolicitadasPorPruebas).
+     *
+     * @return list<array<string, mixed>>
+     */
+    public function getRegistrosSolicitudesEnPeriodo(string $startDate, string $endDate): array
+    {
+        $r = $this->db->prefixTable('registro');
+        $p = $this->db->prefixTable('people');
+        $d = $this->db->prefixTable('doctors');
+        $c = $this->db->prefixTable('customers');
+
+        $b = $this->db->table('registro')
+            ->select("{$r}.registro_id, {$r}.person_id, {$r}.doctor_id, {$r}.pruebas, {$r}.ingreso,
+                {$p}.birthday, {$p}.gender,
+                COALESCE({$d}.name, '') AS doctor,
+                COALESCE({$c}.institucion, '') AS institucion", false)
+            ->join('people', "{$p}.person_id = {$r}.person_id", 'left')
+            ->join('doctors', "{$d}.doctor_id = {$r}.doctor_id", 'left')
+            ->join('customers', "{$c}.person_id = {$r}.person_id", 'left')
+            ->where($this->sqlSinAnulados($r), null, false);
+
+        return RegistroIngresoDateRange::apply($b, $r, $startDate, $endDate)
+            ->where("{$r}.pruebas != '' AND {$r}.pruebas IS NOT NULL")
+            ->orderBy("{$r}.ingreso", 'ASC')
+            ->get()
+            ->getResultArray();
+    }
+
+    /**
+     * Órdenes que solicitaron la prueba en el período pero aún no tienen resultado guardado.
+     *
+     * @return list<array<string, mixed>>
+     */
+    public function getOrdenesSolicitadasSinResultadoPorPrueba(int $pruebaId, string $startDate, string $endDate, int $limit = 500): array
+    {
+        if ($pruebaId < 1) {
+            return [];
+        }
+
+        $r   = $this->db->prefixTable('registro');
+        $p   = $this->db->prefixTable('people');
+        $d   = $this->db->prefixTable('doctors');
+        $extra = 'pri.prianacategoria_id = ' . (int) $pruebaId . ' AND ' . $this->sqlRangoIngreso($startDate, $endDate);
+        $subResultados = 'SELECT DISTINCT t.registro_id FROM (' . $this->buildRegvaluesResolvedSql($extra, false) . ') t';
+        [$ini, $fin] = RegisterService::labDateRangeToStorageBounds($startDate, $endDate);
+        $like        = "CONCAT(',', r.pruebas, ',') LIKE " . $this->db->escape('%,' . $pruebaId . ',%');
+
+        $sql = "SELECT r.registro_id, r.numero_orden, r.ingreso, r.person_id,
+                {$this->sqlPaciente('p')} AS paciente,
+                COALESCE(p.ci, '') AS paciente_ci,
+                COALESCE(d.name, '') AS doctor
+            FROM {$r} r
+            INNER JOIN {$p} p ON p.person_id = r.person_id
+            LEFT JOIN {$d} d ON d.doctor_id = r.doctor_id
+            WHERE {$this->sqlSinAnulados('r')}
+              AND r.ingreso >= {$this->db->escape($ini)} AND r.ingreso < {$this->db->escape($fin)}
+              AND {$like}
+              AND r.registro_id NOT IN ({$subResultados})
+            ORDER BY r.ingreso DESC
+            LIMIT " . max(1, $limit);
+
+        return $this->db->query($sql)->getResultArray();
+    }
+
+    /**
+     * Cuenta órdenes distintas con resultados guardados por prueba en un período.
+     * Usa la misma resolución de regvalues que getHistorialPorPrueba.
+     *
+     * @param list<int|string> $pruebaIds
+     * @return array<int, int> prianacategoria_id => total
+     */
+    public function countOrdenesConResultadosPorPruebas(array $pruebaIds, string $startDate, string $endDate): array
+    {
+        $pruebaIds = array_values(array_filter(array_map('intval', $pruebaIds), static fn (int $id): bool => $id > 0));
+        if ($pruebaIds === []) {
+            return [];
+        }
+
+        $extra = $this->sqlRangoIngreso($startDate, $endDate)
+            . ' AND pri.prianacategoria_id IN (' . implode(',', $pruebaIds) . ')';
+
+        $sql = 'SELECT t.prianacategoria_id, COUNT(DISTINCT t.registro_id) AS total_ordenes
+            FROM (' . $this->buildRegvaluesResolvedSql($extra, false) . ') t
+            GROUP BY t.prianacategoria_id';
+
+        $out = array_fill_keys($pruebaIds, 0);
+        foreach ($this->db->query($sql)->getResultArray() as $row) {
+            $out[(int) $row['prianacategoria_id']] = (int) $row['total_ordenes'];
+        }
+
+        return $out;
+    }
+
+    /**
+     * Cuenta órdenes distintas con al menos un resultado del grupo en el período.
+     */
+    public function countOrdenesConResultadosPorGrupo(int $grupoId, string $startDate, string $endDate): int
+    {
+        $extra = $this->sqlRangoIngreso($startDate, $endDate);
+        if ($grupoId > 0) {
+            $extra .= ' AND pri.anacategoria_id = ' . (int) $grupoId;
+        }
+
+        $sql = 'SELECT COUNT(DISTINCT t.registro_id) AS total
+            FROM (' . $this->buildRegvaluesResolvedSql($extra, false) . ') t';
+        $row = $this->db->query($sql)->getRowArray();
+
+        return (int) ($row['total'] ?? 0);
     }
 
     /** Datos básicos de una prueba del catálogo. */
@@ -207,14 +413,9 @@ class ReportAnalyticsModel extends Model
     {
         $pri = $this->db->prefixTable('prianacategoria');
         $ana = $this->db->prefixTable('anacategoria');
-        $r   = $this->db->prefixTable('registro');
 
         $row = $this->db->table('prianacategoria')
-            ->select("{$pri}.prianacategoria_id, {$pri}.name, COALESCE({$ana}.name, '') AS grupo,
-                (SELECT COUNT(*) FROM {$r}
-                    WHERE COALESCE({$r}.anulado, 0) = 0
-                      AND CONCAT(',', {$r}.pruebas, ',') LIKE CONCAT('%,', {$pri}.prianacategoria_id, ',%')
-                ) AS total_ordenes", false)
+            ->select("{$pri}.prianacategoria_id, {$pri}.name, COALESCE({$ana}.name, '') AS grupo", false)
             ->join('anacategoria', "{$ana}.anacategoria_id = {$pri}.anacategoria_id", 'left')
             ->where("{$pri}.prianacategoria_id", $pruebaId)
             ->where("{$pri}.deleted", 0)
@@ -1544,5 +1745,253 @@ class ReportAnalyticsModel extends Model
         } catch (\Throwable $e) {
             return null;
         }
+    }
+
+    // =====================================================================
+    // SNIS — indicadores complementarios (estadísticas de laboratorio)
+    // =====================================================================
+
+    /** Órdenes anuladas con ingreso en el período. */
+    public function countOrdenesAnuladasEnPeriodo(string $startDate, string $endDate): int
+    {
+        $r = $this->db->prefixTable('registro');
+        [$ini, $fin] = RegisterService::labDateRangeToStorageBounds($startDate, $endDate);
+
+        $row = $this->db->query(
+            "SELECT COUNT(*) AS cnt FROM {$r} r
+            WHERE COALESCE(r.anulado, 0) <> 0
+              AND r.ingreso >= " . $this->db->escape($ini) . '
+              AND r.ingreso < ' . $this->db->escape($fin)
+        )->getRowArray();
+
+        return (int) ($row['cnt'] ?? 0);
+    }
+
+    /** Órdenes con validación técnica o médica en auditoría o resulanalisis. */
+    public function countResultadosValidadosEnPeriodo(string $startDate, string $endDate): int
+    {
+        $r  = $this->db->prefixTable('registro');
+        $a  = $this->db->prefixTable('auditoria');
+        $ra = $this->db->prefixTable('resulanalisis');
+        [$ini, $fin] = RegisterService::labDateRangeToStorageBounds($startDate, $endDate);
+        $iniEsc = $this->db->escape($ini);
+        $finEsc = $this->db->escape($fin);
+
+        $row = $this->db->query(
+            "SELECT COUNT(DISTINCT r.registro_id) AS cnt
+            FROM {$r} r
+            WHERE COALESCE(r.anulado, 0) = 0
+              AND r.ingreso >= {$iniEsc}
+              AND r.ingreso < {$finEsc}
+              AND (
+                EXISTS (
+                    SELECT 1 FROM {$a} a
+                    WHERE a.registro_id = CAST(r.registro_id AS CHAR)
+                      AND a.modulo = 'registers'
+                      AND a.accion IN ('validar_tecnico', 'validar_medico')
+                      AND a.fecha >= {$iniEsc}
+                      AND a.fecha < {$finEsc}
+                )
+                OR EXISTS (
+                    SELECT 1 FROM {$ra} ra
+                    WHERE ra.registro_id = CAST(r.registro_id AS CHAR)
+                      AND (COALESCE(ra.validado_tecnico, 0) = 1 OR COALESCE(ra.validado_medico, 0) = 1)
+                )
+              )"
+        )->getRowArray();
+
+        return (int) ($row['cnt'] ?? 0);
+    }
+
+    /** Eventos de corrección de resultados (cambios en auditoría) en el período. */
+    public function countResultadosCorregidosEnPeriodo(string $startDate, string $endDate): int
+    {
+        $a = $this->db->prefixTable('auditoria');
+        [$ini, $fin] = RegisterService::labDateRangeToStorageBounds($startDate, $endDate);
+
+        $row = $this->db->query(
+            "SELECT COUNT(*) AS cnt FROM {$a} a
+            WHERE a.modulo = 'registers'
+              AND a.accion = 'guardar_resultados'
+              AND a.fecha >= " . $this->db->escape($ini) . '
+              AND a.fecha < ' . $this->db->escape($fin) . "
+              AND JSON_VALID(a.datos)
+              AND JSON_LENGTH(JSON_EXTRACT(a.datos, '$.cambios')) > 0"
+        )->getRowArray();
+
+        return (int) ($row['cnt'] ?? 0);
+    }
+
+    /**
+     * Producción por médico solicitante (órdenes no anuladas en el período).
+     *
+     * @return list<array{doctor_id:int, doctor:string, ordenes:int, pruebas:int}>
+     */
+    public function getProduccionPorMedico(string $startDate, string $endDate, int $limit = 30): array
+    {
+        $registerService = new RegisterService();
+        $porMedico       = [];
+
+        foreach ($this->getRegistrosSolicitudesEnPeriodo($startDate, $endDate) as $row) {
+            $did = (int) ($row['doctor_id'] ?? 0);
+            $key = $did > 0 ? (string) $did : '_sin';
+            if (! isset($porMedico[$key])) {
+                $porMedico[$key] = [
+                    'doctor_id' => $did,
+                    'doctor'    => trim((string) ($row['doctor'] ?? '')) !== '' ? trim((string) $row['doctor']) : 'Sin médico',
+                    'ordenes'   => 0,
+                    'pruebas'   => 0,
+                ];
+            }
+            $porMedico[$key]['ordenes']++;
+            $porMedico[$key]['pruebas'] += count($registerService->extractPrianacategoriaIdsFromRegistroPruebas((string) ($row['pruebas'] ?? '')));
+        }
+
+        $rows = array_values($porMedico);
+        usort($rows, static fn (array $a, array $b): int => ($b['ordenes'] ?? 0) <=> ($a['ordenes'] ?? 0));
+
+        return array_slice($rows, 0, max(1, $limit));
+    }
+
+    /**
+     * Producción por procedencia/institución del paciente (customers.institucion).
+     *
+     * @return list<array{institucion:string, ordenes:int, pruebas:int}>
+     */
+    public function getProduccionPorInstitucion(string $startDate, string $endDate, int $limit = 30): array
+    {
+        $registerService = new RegisterService();
+        $porInst         = [];
+
+        foreach ($this->getRegistrosSolicitudesEnPeriodo($startDate, $endDate) as $row) {
+            $inst = trim((string) ($row['institucion'] ?? ''));
+            $key  = $inst !== '' ? $inst : '_sin';
+            if (! isset($porInst[$key])) {
+                $porInst[$key] = [
+                    'institucion' => $inst !== '' ? $inst : 'Sin procedencia registrada',
+                    'ordenes'     => 0,
+                    'pruebas'     => 0,
+                ];
+            }
+            $porInst[$key]['ordenes']++;
+            $porInst[$key]['pruebas'] += count($registerService->extractPrianacategoriaIdsFromRegistroPruebas((string) ($row['pruebas'] ?? '')));
+        }
+
+        $rows = array_values($porInst);
+        usort($rows, static fn (array $a, array $b): int => ($b['ordenes'] ?? 0) <=> ($a['ordenes'] ?? 0));
+
+        return array_slice($rows, 0, max(1, $limit));
+    }
+
+    /**
+     * Tiempos promedio de muestra (recepción y procesamiento) si existen fechas en dom_muestra.
+     *
+     * @return array<string, mixed>|null
+     */
+    public function getTiemposMuestraResumen(string $startDate, string $endDate): ?array
+    {
+        if (! $this->db->tableExists('muestra')) {
+            return null;
+        }
+
+        $r = $this->db->prefixTable('registro');
+        $m = $this->db->prefixTable('muestra');
+        [$ini, $fin] = RegisterService::labDateRangeToStorageBounds($startDate, $endDate);
+        $iniEsc = $this->db->escape($ini);
+        $finEsc = $this->db->escape($fin);
+
+        $row = $this->db->query(
+            "SELECT COUNT(*) AS muestras,
+                SUM(CASE WHEN m.fecha_recibida IS NOT NULL AND m.fecha_recibida >= r.ingreso THEN 1 ELSE 0 END) AS con_recepcion,
+                ROUND(AVG(CASE WHEN m.fecha_recibida IS NOT NULL AND m.fecha_recibida >= r.ingreso
+                    THEN TIMESTAMPDIFF(SECOND, r.ingreso, m.fecha_recibida) END) / 3600, 2) AS promedio_recepcion_h,
+                SUM(CASE WHEN m.fecha_procesada IS NOT NULL AND m.fecha_recibida IS NOT NULL
+                    AND m.fecha_procesada >= m.fecha_recibida THEN 1 ELSE 0 END) AS con_procesamiento,
+                ROUND(AVG(CASE WHEN m.fecha_procesada IS NOT NULL AND m.fecha_recibida IS NOT NULL
+                    AND m.fecha_procesada >= m.fecha_recibida
+                    THEN TIMESTAMPDIFF(SECOND, m.fecha_recibida, m.fecha_procesada) END) / 3600, 2) AS promedio_procesamiento_h
+            FROM {$m} m
+            INNER JOIN {$r} r ON r.registro_id = m.registro_id
+            WHERE COALESCE(m.deleted, 0) = 0
+              AND COALESCE(r.anulado, 0) = 0
+              AND r.ingreso >= {$iniEsc}
+              AND r.ingreso < {$finEsc}"
+        )->getRowArray() ?: [];
+
+        if ((int) ($row['muestras'] ?? 0) < 1) {
+            return null;
+        }
+
+        return [
+            'muestras'                  => (int) ($row['muestras'] ?? 0),
+            'con_recepcion'             => (int) ($row['con_recepcion'] ?? 0),
+            'promedio_recepcion_h'      => $row['promedio_recepcion_h'] !== null ? (float) $row['promedio_recepcion_h'] : null,
+            'con_procesamiento'         => (int) ($row['con_procesamiento'] ?? 0),
+            'promedio_procesamiento_h'  => $row['promedio_procesamiento_h'] !== null ? (float) $row['promedio_procesamiento_h'] : null,
+        ];
+    }
+
+    /**
+     * Positividad en grupos de microbiología (nombre de grupo contiene «micro»).
+     *
+     * @return array{grupos: list<string>, total: int, positivos: int, porcentaje: ?float, por_prueba: list<array<string,mixed>>}|null
+     */
+    public function getIndicadoresMicrobiologia(string $startDate, string $endDate): ?array
+    {
+        $ana = $this->db->prefixTable('anacategoria');
+        $grupos = $this->db->table('anacategoria')
+            ->select("{$ana}.anacategoria_id, {$ana}.name")
+            ->groupStart()
+            ->like("{$ana}.name", 'micro', 'both')
+            ->orLike("{$ana}.name", 'bacter', 'both')
+            ->groupEnd()
+            ->get()
+            ->getResultArray();
+
+        $grupoIds = array_values(array_filter(array_map(static fn ($g) => (int) ($g['anacategoria_id'] ?? 0), $grupos)));
+        if ($grupoIds === []) {
+            return null;
+        }
+
+        $extra = $this->sqlRangoIngreso($startDate, $endDate)
+            . ' AND pri.anacategoria_id IN (' . implode(',', $grupoIds) . ')';
+
+        $positivosSql = "LOWER(TRIM(t.valor)) IN ('positivo','reactivo','presente','deteccion','detectado')";
+        $fromSql      = 'FROM (' . $this->buildRegvaluesResolvedSql($extra, false) . ') t
+            WHERE TRIM(t.valor) <> \'\'';
+
+        $totRow = $this->db->query("SELECT COUNT(*) AS total, SUM(CASE WHEN {$positivosSql} THEN 1 ELSE 0 END) AS positivos {$fromSql}")->getRowArray() ?: [];
+        $total  = (int) ($totRow['total'] ?? 0);
+        if ($total < 1) {
+            return null;
+        }
+
+        $positivos = (int) ($totRow['positivos'] ?? 0);
+        $porPrueba = $this->db->query(
+            "SELECT t.prueba, COUNT(*) AS total,
+                SUM(CASE WHEN {$positivosSql} THEN 1 ELSE 0 END) AS positivos
+            {$fromSql}
+            GROUP BY t.prueba
+            HAVING total > 0
+            ORDER BY total DESC
+            LIMIT 20"
+        )->getResultArray();
+
+        foreach ($porPrueba as &$p) {
+            $t = (int) ($p['total'] ?? 0);
+            $pos = (int) ($p['positivos'] ?? 0);
+            $p['porcentaje'] = $t > 0 ? round($pos * 100 / $t, 2) : null;
+        }
+        unset($p);
+
+        $nombresGrupos = array_values(array_filter(array_map(static fn ($g) => trim((string) ($g['name'] ?? '')), $grupos)));
+
+        return [
+            'grupos'      => $nombresGrupos,
+            'total'       => $total,
+            'positivos'   => $positivos,
+            'porcentaje'  => round($positivos * 100 / $total, 2),
+            'por_prueba'  => $porPrueba,
+        ];
     }
 }

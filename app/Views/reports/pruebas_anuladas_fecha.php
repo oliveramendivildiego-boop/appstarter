@@ -39,10 +39,20 @@
 <?php if (empty($anulacionDisponible ?? false)): ?>
 <div class="alert alert-warning">La tabla de órdenes no tiene el campo de anulación; este reporte no aplica en esta instalación.</div>
 <?php else: ?>
-<p class="small text-muted">Órdenes marcadas como <strong>anuladas</strong> (no facturables). El importe es el registrado en pago a modo de referencia histórica. No incluye órdenes eliminadas.</p>
+<p class="small text-muted">Órdenes marcadas como <strong>anuladas</strong> (no facturables). El importe es referencia histórica de pago si existe.</p>
+
+<div class="row g-2 mb-3 d-print-none">
+    <div class="col-md-6 col-lg-4">
+        <label for="filtro_listado_reporte" class="form-label small mb-1">Buscar en la tabla</label>
+        <input type="search" id="filtro_listado_reporte" class="form-control form-control-sm" placeholder="Ej. PCR, paciente, doctor...">
+    </div>
+    <div class="col-12">
+        <span id="filtro_listado_reporte_info" class="small text-muted"></span>
+    </div>
+</div>
 
 <div class="table-responsive">
-    <table class="table table-bordered table-striped">
+    <table class="table table-bordered table-striped" id="tabla_listado_reporte">
         <thead class="table-dark">
             <tr>
                 <th>No.</th>
@@ -84,6 +94,7 @@
 <?= $this->endSection() ?>
 
 <?= $this->section('scripts') ?>
+<script src="<?= base_url('js/reportes_listado_busqueda.js') ?>"></script>
 <script>
 document.addEventListener('DOMContentLoaded', function() {
     flatpickr("#report_start", { dateFormat: "Y-m-d", locale: "es", onOpen: function(s,d,i){ flatpickrPositionArrowTopLeft(i); } });

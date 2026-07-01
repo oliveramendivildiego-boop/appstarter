@@ -342,11 +342,16 @@ class ReportsAnalytics extends SecureArea
         $resultados = $prueba !== null
             ? $this->analytics->getHistorialPorPrueba($pruebaId, $start, $end)
             : [];
+        $solicitadasSinResultado = $prueba !== null
+            ? $this->analytics->getOrdenesSolicitadasSinResultadoPorPrueba($pruebaId, $start, $end)
+            : [];
 
         $ordenesUnicas = [];
         foreach ($resultados as $row) {
             $ordenesUnicas[(int) ($row['registro_id'] ?? 0)] = true;
         }
+
+        $totalSolicitadas = count($ordenesUnicas) + count($solicitadasSinResultado);
 
         return [
             'startDate'      => $start,
@@ -355,9 +360,12 @@ class ReportsAnalytics extends SecureArea
             'busqueda'       => $busqueda,
             'prueba'         => $prueba,
             'rows'           => $resultados,
+            'solicitadas_sin_resultado' => $solicitadasSinResultado,
+            'total_solicitadas'  => $totalSolicitadas,
             'total_ordenes'  => count($ordenesUnicas),
+            'total_pendientes'   => count($solicitadasSinResultado),
             'total_resultados' => count($resultados),
-            'candidatos'     => ($prueba === null && $busqueda !== '') ? $this->analytics->searchPruebas($busqueda) : [],
+            'candidatos'     => ($prueba === null && $busqueda !== '') ? $this->analytics->searchPruebas($busqueda, $start, $end) : [],
         ];
     }
 
@@ -391,6 +399,7 @@ class ReportsAnalytics extends SecureArea
         $rows    = [];
         foreach ($payload['rows'] as $row) {
             $rows[] = [
+                'Con resultado',
                 $row['ingreso'],
                 $row['numero_orden'] ?: $row['registro_id'],
                 $row['paciente'],
@@ -406,9 +415,27 @@ class ReportsAnalytics extends SecureArea
                 $row['doctor'],
             ];
         }
+        foreach ($payload['solicitadas_sin_resultado'] as $row) {
+            $rows[] = [
+                'Solo solicitada',
+                $row['ingreso'],
+                $row['numero_orden'] ?: $row['registro_id'],
+                $row['paciente'],
+                $row['paciente_ci'] ?? '',
+                $payload['prueba']['grupo'] ?? '',
+                $payload['prueba']['name'] ?? '',
+                '—',
+                '—',
+                '—',
+                '—',
+                '—',
+                'Pendiente de resultado',
+                $row['doctor'],
+            ];
+        }
         $this->streamCsv(
             'historial_prueba',
-            ['Fecha', 'Orden', 'Paciente', 'CI', 'Grupo', 'Prueba', 'Parámetro', 'Resultado', 'Unidad', 'Ref. mín', 'Ref. máx', 'Estado', 'Médico solicitante'],
+            ['Tipo orden', 'Fecha', 'Orden', 'Paciente', 'CI', 'Grupo', 'Prueba', 'Parámetro', 'Resultado', 'Unidad', 'Ref. mín', 'Ref. máx', 'Estado', 'Médico solicitante'],
             $rows
         );
     }

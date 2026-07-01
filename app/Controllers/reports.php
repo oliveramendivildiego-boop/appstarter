@@ -15,6 +15,7 @@ use App\Models\LabotestModel;
 use App\Models\AuditoriaModel;
 use App\Models\RegisterModel;
 use App\Services\RegisterService;
+use App\Services\EstadisticasLaboratorioSnisService;
 use App\Services\TenantScopedDatabaseService;
 use App\Services\ReportsAnalyticsSeenService;
 use App\Libraries\PdfService;
@@ -1244,14 +1245,11 @@ class Reports extends SecureArea
         if ($pruebasCsv === '') {
             return '—';
         }
+        $registerService = new RegisterService();
         $labels = [];
-        foreach (array_filter(array_map('trim', explode(',', $pruebasCsv))) as $token) {
-            if (preg_match('/^\d+$/', $token) === 1) {
-                $nombre = $registerModel->getPrianacategoriaNombre((int) $token);
-                $labels[] = $nombre !== '' ? $nombre : $token;
-                continue;
-            }
-            $labels[] = $token;
+        foreach ($registerService->extractPrianacategoriaIdsFromRegistroPruebas($pruebasCsv) as $id) {
+            $nombre = $registerModel->getPrianacategoriaNombre($id);
+            $labels[] = $nombre !== '' ? $nombre : (string) $id;
         }
 
         return $labels !== [] ? implode(', ', $labels) : $pruebasCsv;
@@ -1294,37 +1292,66 @@ class Reports extends SecureArea
     }
 
     /**
-     * @return array{secciones: list<array>, ordenes_en_periodo: int, grupos_opts: list<array>, startDate: string, endDate: string, anacategoria_id: int, subtitle: string}
+     * @return array{secciones: list<array>, ordenes_en_periodo: int, ordenes_solicitadas: int, ordenes_con_resultado: int, grupos_opts: list<array>, startDate: string, endDate: string, anacategoria_id: int, subtitle: string}
      */
     private function collectPruebasPorGrupoAnalisisPayload(string $startDate, string $endDate, int $anacategoriaId): array
     {
-        $rows       = $this->reportModel->getRegistrosEstadisticasLaboratorio($startDate, $endDate);
         $parentMap  = $this->reportModel->getPrianacategoriaAnacategoriaMap();
         $labels     = $this->reportModel->getPrianacategoriaLabelsMap();
         $gruposOpts = $this->reportModel->getAnacategoriasParaReporte();
+        $analytics  = model(ReportAnalyticsModel::class);
 
-        $byGrupoId       = [];
-        $registerService = new RegisterService();
-
-        foreach ($rows as $row) {
-            $pruebasStr = trim((string) ($row['pruebas'] ?? ''));
-            $idsPrueba  = $registerService->extractPrianacategoriaIdsFromRegistroPruebas($pruebasStr);
-            foreach ($idsPrueba as $prId) {
-                if ($prId < 1) {
-                    continue;
-                }
-                $gid = $parentMap[$prId] ?? 0;
-                if ($gid < 1) {
-                    continue;
-                }
-                if ($anacategoriaId > 0 && $gid !== $anacategoriaId) {
-                    continue;
-                }
-                if (! isset($byGrupoId[$gid])) {
-                    $byGrupoId[$gid] = [];
-                }
-                $byGrupoId[$gid][$prId] = ($byGrupoId[$gid][$prId] ?? 0) + 1;
+        $pruebaIdsEnScope = [];
+        foreach ($parentMap as $prId => $gid) {
+            if ($gid < 1) {
+                continue;
             }
+            if ($anacategoriaId > 0 && $gid !== $anacategoriaId) {
+                continue;
+            }
+            $pruebaIdsEnScope[] = (int) $prId;
+        }
+
+        $solicitadasPorPrueba = $pruebaIdsEnScope !== []
+            ? $analytics->countOrdenesSolicitadasPorPruebas($pruebaIdsEnScope, $startDate, $endDate)
+            : [];
+        $conResultadoPorPrueba = $pruebaIdsEnScope !== []
+            ? $analytics->countOrdenesConResultadosPorPruebas($pruebaIdsEnScope, $startDate, $endDate)
+            : [];
+
+        $byGrupoSolicitadas  = [];
+        $byGrupoConResultado = [];
+        foreach ($solicitadasPorPrueba as $prId => $cnt) {
+            if ((int) $cnt < 1) {
+                continue;
+            }
+            $gid = $parentMap[(int) $prId] ?? 0;
+            if ($gid < 1) {
+                continue;
+            }
+            if ($anacategoriaId > 0 && $gid !== $anacategoriaId) {
+                continue;
+            }
+            if (! isset($byGrupoSolicitadas[$gid])) {
+                $byGrupoSolicitadas[$gid] = [];
+            }
+            $byGrupoSolicitadas[$gid][(int) $prId] = (int) $cnt;
+        }
+        foreach ($conResultadoPorPrueba as $prId => $cnt) {
+            if ((int) $cnt < 1) {
+                continue;
+            }
+            $gid = $parentMap[(int) $prId] ?? 0;
+            if ($gid < 1) {
+                continue;
+            }
+            if ($anacategoriaId > 0 && $gid !== $anacategoriaId) {
+                continue;
+            }
+            if (! isset($byGrupoConResultado[$gid])) {
+                $byGrupoConResultado[$gid] = [];
+            }
+            $byGrupoConResultado[$gid][(int) $prId] = (int) $cnt;
         }
 
         $nombreGrupo = static function (int $gid) use ($gruposOpts): string {
@@ -1337,21 +1364,31 @@ class Reports extends SecureArea
             return 'Grupo #' . $gid;
         };
 
-        $buildSeccion = static function (int $gid, array $conteoPorPrueba) use ($labels, $nombreGrupo): array {
-            $detalle = [];
-            $total   = 0;
-            foreach ($conteoPorPrueba as $prId => $cnt) {
-                $cnt   = (int) $cnt;
-                $total += $cnt;
-                $meta  = $labels[$prId] ?? null;
+        $buildSeccion = static function (int $gid, array $solicitadas, array $conResultado) use ($labels, $nombreGrupo): array {
+            $allPrIds = array_unique(array_merge(array_keys($solicitadas), array_keys($conResultado)));
+            $detalle  = [];
+            $totalSolicitadas  = 0;
+            $totalConResultado = 0;
+            foreach ($allPrIds as $prId) {
+                $prId  = (int) $prId;
+                $sol   = (int) ($solicitadas[$prId] ?? 0);
+                $res   = (int) ($conResultado[$prId] ?? 0);
+                if ($sol === 0 && $res === 0) {
+                    continue;
+                }
+                $totalSolicitadas  += $sol;
+                $totalConResultado += $res;
+                $meta = $labels[$prId] ?? null;
                 $detalle[] = [
-                    'prianacategoria_id' => $prId,
-                    'prueba'             => $meta['prueba'] ?? ('ID ' . $prId),
-                    'cantidad'           => $cnt,
+                    'prianacategoria_id'  => $prId,
+                    'prueba'              => $meta['prueba'] ?? ('ID ' . $prId),
+                    'veces_solicitado'    => $sol,
+                    'veces_con_resultado' => $res,
+                    'cantidad'            => $sol,
                 ];
             }
             usort($detalle, static function (array $a, array $b): int {
-                $c = ($b['cantidad'] ?? 0) <=> ($a['cantidad'] ?? 0);
+                $c = ($b['veces_solicitado'] ?? 0) <=> ($a['veces_solicitado'] ?? 0);
                 if ($c !== 0) {
                     return $c;
                 }
@@ -1360,21 +1397,27 @@ class Reports extends SecureArea
             });
 
             return [
-                'anacategoria_id' => $gid,
-                'nombre'          => $nombreGrupo($gid),
-                'total_pruebas'   => $total,
-                'detalle'         => $detalle,
+                'anacategoria_id'     => $gid,
+                'nombre'              => $nombreGrupo($gid),
+                'total_solicitadas'   => $totalSolicitadas,
+                'total_con_resultado' => $totalConResultado,
+                'total_pruebas'       => $totalSolicitadas,
+                'detalle'             => $detalle,
             ];
         };
 
         $secciones = [];
         if ($anacategoriaId > 0) {
-            $conteo = $byGrupoId[$anacategoriaId] ?? [];
-            if ($conteo !== []) {
-                $secciones[] = $buildSeccion($anacategoriaId, $conteo);
+            $sec = $buildSeccion(
+                $anacategoriaId,
+                $byGrupoSolicitadas[$anacategoriaId] ?? [],
+                $byGrupoConResultado[$anacategoriaId] ?? []
+            );
+            if ($sec['detalle'] !== []) {
+                $secciones[] = $sec;
             }
         } else {
-            $idsGrupos = array_keys($byGrupoId);
+            $idsGrupos = array_unique(array_merge(array_keys($byGrupoSolicitadas), array_keys($byGrupoConResultado)));
             usort($idsGrupos, static function (int $a, int $b) use ($gruposOpts): int {
                 $oa = 999;
                 $ob = 999;
@@ -1394,18 +1437,28 @@ class Reports extends SecureArea
                 return $a <=> $b;
             });
             foreach ($idsGrupos as $gid) {
-                $secciones[] = $buildSeccion($gid, $byGrupoId[$gid] ?? []);
+                $sec = $buildSeccion($gid, $byGrupoSolicitadas[$gid] ?? [], $byGrupoConResultado[$gid] ?? []);
+                if ($sec['detalle'] !== []) {
+                    $secciones[] = $sec;
+                }
             }
         }
 
+        $ordenesSolicitadas = $analytics->countOrdenesSolicitadasPorGrupo($anacategoriaId, $pruebaIdsEnScope, $startDate, $endDate);
+        $ordenesConResultado = $anacategoriaId > 0
+            ? $analytics->countOrdenesConResultadosPorGrupo($anacategoriaId, $startDate, $endDate)
+            : $analytics->countOrdenesConResultadosPorGrupo(0, $startDate, $endDate);
+
         return [
-            'secciones'           => $secciones,
-            'ordenes_en_periodo'  => count($rows),
-            'grupos_opts'         => $gruposOpts,
-            'startDate'           => $startDate,
-            'endDate'             => $endDate,
-            'anacategoria_id'     => $anacategoriaId,
-            'subtitle'            => RegisterService::formatReportDateRangeSubtitle($startDate, $endDate),
+            'secciones'             => $secciones,
+            'ordenes_en_periodo'    => $ordenesSolicitadas,
+            'ordenes_solicitadas'   => $ordenesSolicitadas,
+            'ordenes_con_resultado' => $ordenesConResultado,
+            'grupos_opts'           => $gruposOpts,
+            'startDate'             => $startDate,
+            'endDate'               => $endDate,
+            'anacategoria_id'       => $anacategoriaId,
+            'subtitle'              => RegisterService::formatReportDateRangeSubtitle($startDate, $endDate),
         ];
     }
 
@@ -1439,8 +1492,10 @@ class Reports extends SecureArea
             (string) $payload['subtitle'],
             'reports/pdf/content/pruebas_por_grupo_analisis',
             [
-                'secciones'          => $payload['secciones'],
-                'ordenes_en_periodo' => $payload['ordenes_en_periodo'],
+                'secciones'             => $payload['secciones'],
+                'ordenes_en_periodo'    => $payload['ordenes_en_periodo'],
+                'ordenes_solicitadas'   => $payload['ordenes_solicitadas'],
+                'ordenes_con_resultado' => $payload['ordenes_con_resultado'],
             ]
         );
     }
@@ -1489,7 +1544,9 @@ class Reports extends SecureArea
      */
     private function collectEstadisticasLaboratorioPayload(string $startDate, string $endDate): array
     {
-        $rows = $this->reportModel->getRegistrosEstadisticasLaboratorio($startDate, $endDate);
+        $analytics       = model(ReportAnalyticsModel::class);
+        $rowsSolicitadas = $analytics->getRegistrosSolicitudesEnPeriodo($startDate, $endDate);
+        $rowsProcesadas  = $this->reportModel->getRegistrosEstadisticasLaboratorio($startDate, $endDate);
 
         $poblaciones = model(PoblacionModel::class)->getAll();
         $byPobId     = [];
@@ -1502,9 +1559,14 @@ class Reports extends SecureArea
 
         $registerService = new RegisterService();
         $labelsPrueba    = $this->reportModel->getPrianacategoriaLabelsMap();
+        $esPruebaActiva  = static fn (int $prId): bool => isset($labelsPrueba[$prId]);
 
         $resumen = [
             'ordenes'               => 0,
+            'ordenes_solicitadas'   => count($rowsSolicitadas),
+            'ordenes_procesadas'    => count($rowsProcesadas),
+            'pruebas_solicitadas'   => 0,
+            'pruebas_procesadas'    => 0,
             'pruebas_realizadas'    => 0,
             'pacientes_distintos'   => 0,
             'ordenes_sin_persona'   => 0,
@@ -1513,24 +1575,26 @@ class Reports extends SecureArea
         $porGeneroPacientes   = ['1' => 0, '2' => 0, '_' => 0];
         $seenPid              = [];
         $porPoblacion         = [];
-        $conteoPorPruebaId    = [];
+        $conteoSolicitado     = [];
         $pacientesPorPruebaId = [];
+        $prIdsActivos         = [];
 
-        foreach ($rows as $row) {
-            $resumen['ordenes']++;
+        foreach ($rowsSolicitadas as $row) {
             $pid = (int) ($row['person_id'] ?? 0);
             if ($pid <= 0) {
                 $resumen['ordenes_sin_persona']++;
             }
 
-            $pruebasStr = trim((string) ($row['pruebas'] ?? ''));
-            $idsPrueba  = $registerService->extractPrianacategoriaIdsFromRegistroPruebas($pruebasStr);
+            $idsPrueba = $registerService->extractPrianacategoriaIdsFromRegistroPruebas((string) ($row['pruebas'] ?? ''));
+            $vistoEnOrden = [];
             foreach ($idsPrueba as $prId) {
-                if ($prId < 1) {
+                if ($prId < 1 || isset($vistoEnOrden[$prId]) || ! $esPruebaActiva($prId)) {
                     continue;
                 }
-                $resumen['pruebas_realizadas']++;
-                $conteoPorPruebaId[$prId] = ($conteoPorPruebaId[$prId] ?? 0) + 1;
+                $vistoEnOrden[$prId] = true;
+                $prIdsActivos[$prId] = true;
+                $resumen['pruebas_solicitadas']++;
+                $conteoSolicitado[$prId] = ($conteoSolicitado[$prId] ?? 0) + 1;
                 if ($pid > 0) {
                     if (! isset($pacientesPorPruebaId[$prId])) {
                         $pacientesPorPruebaId[$prId] = [];
@@ -1540,13 +1604,32 @@ class Reports extends SecureArea
             }
 
             $gk = $this->generoKeyReporte($row['gender'] ?? null);
-            $porGeneroOrdenes[$gk]++;
-
             if ($pid > 0 && ! isset($seenPid[$pid])) {
                 $seenPid[$pid] = true;
                 $resumen['pacientes_distintos']++;
                 $porGeneroPacientes[$gk]++;
             }
+        }
+
+        $procesadasPorPrueba = count($prIdsActivos) > 0
+            ? $analytics->countOrdenesConResultadosPorPruebas(array_keys($prIdsActivos), $startDate, $endDate)
+            : [];
+        foreach ($procesadasPorPrueba as $prId => $cnt) {
+            $prId = (int) $prId;
+            if ((int) $cnt < 1 || ! $esPruebaActiva($prId)) {
+                continue;
+            }
+            $prIdsActivos[$prId] = true;
+            $resumen['pruebas_procesadas'] += (int) $cnt;
+        }
+        $resumen['pruebas_realizadas'] = $resumen['pruebas_solicitadas'];
+
+        foreach ($rowsProcesadas as $row) {
+            $resumen['ordenes']++;
+            $pid = (int) ($row['person_id'] ?? 0);
+
+            $gk = $this->generoKeyReporte($row['gender'] ?? null);
+            $porGeneroOrdenes[$gk]++;
 
             try {
                 $ingreso = new \DateTime($row['ingreso']);
@@ -1562,13 +1645,23 @@ class Reports extends SecureArea
         }
 
         $porPruebaRows = [];
-        foreach ($conteoPorPruebaId as $id => $cnt) {
-            $meta = $labelsPrueba[$id] ?? null;
+        foreach (array_keys($prIdsActivos) as $id) {
+            $id = (int) $id;
+            if (! $esPruebaActiva($id)) {
+                continue;
+            }
+            $sol  = (int) ($conteoSolicitado[$id] ?? 0);
+            $pro  = (int) ($procesadasPorPrueba[$id] ?? 0);
+            $meta = $labelsPrueba[$id];
+            if ($sol === 0 && $pro === 0) {
+                continue;
+            }
             $porPruebaRows[] = [
                 'prianacategoria_id'  => $id,
-                'prueba'              => $meta['prueba'] ?? ('ID ' . $id),
+                'prueba'              => $meta['prueba'],
                 'categoria'           => $meta['categoria'] ?? '',
-                'ordenes_con_prueba'  => $cnt,
+                'ordenes_con_prueba'  => $sol,
+                'ordenes_procesadas'  => $pro,
                 'pacientes_distintos' => isset($pacientesPorPruebaId[$id]) ? count($pacientesPorPruebaId[$id]) : 0,
             ];
         }
@@ -1609,13 +1702,25 @@ class Reports extends SecureArea
             ];
         }
 
-        return [
+        return array_merge([
             'resumen'              => $resumen,
             'porGeneroOrdenes'     => $porGeneroOrdenes,
             'porGeneroPacientes'   => $porGeneroPacientes,
             'poblacionGrupoRows'   => $poblacionGrupoRows,
             'porPruebaRows'        => $porPruebaRows,
-        ];
+        ], (new EstadisticasLaboratorioSnisService($analytics))->enrich(
+            [
+                'resumen'            => $resumen,
+                'porGeneroOrdenes'   => $porGeneroOrdenes,
+                'porGeneroPacientes' => $porGeneroPacientes,
+                'poblacionGrupoRows' => $poblacionGrupoRows,
+                'porPruebaRows'      => $porPruebaRows,
+            ],
+            $startDate,
+            $endDate,
+            $rowsSolicitadas,
+            $rowsProcesadas
+        ));
     }
 
     /**
@@ -1626,15 +1731,19 @@ class Reports extends SecureArea
         $startDate = $this->request->getGet('start') ?? RegisterService::todayForReport();
         $endDate   = $this->request->getGet('end') ?? RegisterService::todayForReport();
         $payload   = $this->collectEstadisticasLaboratorioPayload($startDate, $endDate);
+        $qs        = http_build_query(['start' => $startDate, 'end' => $endDate]);
 
         return view('reports/estadisticas_laboratorio', array_merge($payload, [
-            'title'           => 'Estadísticas de laboratorio por período',
+            'title'           => 'Tablero SNIS — Estadísticas de laboratorio',
             'current_module'  => 'reports',
             'subtitle'        => RegisterService::formatReportDateRangeSubtitle($startDate, $endDate),
             'startDate'       => $startDate,
             'endDate'         => $endDate,
             'allowed_modules' => $this->allowed_modules,
             'user_info'       => $this->user_info,
+            'pdf_url'         => site_url('reports/estadisticasLaboratorioPdf?' . $qs),
+            'excel_url'       => site_url('reports/estadisticasLaboratorioExcel?' . $qs),
+            'csv_url'         => site_url('reports/estadisticasLaboratorioCsv?' . $qs),
         ]));
     }
 
@@ -1645,12 +1754,160 @@ class Reports extends SecureArea
         $payload   = $this->collectEstadisticasLaboratorioPayload($startDate, $endDate);
         $sub       = RegisterService::formatReportDateRangeSubtitle($startDate, $endDate);
         ReportPdfDocument::download(
-            $this->safeReportPdfFilename('estadisticas_laboratorio'),
-            'Estadísticas de laboratorio',
+            $this->safeReportPdfFilename('estadisticas_laboratorio_snis'),
+            'Tablero SNIS — Estadísticas de laboratorio',
             $sub,
             'reports/pdf/content/estadisticas_laboratorio',
             $payload
         );
+    }
+
+    public function estadisticasLaboratorioExcel(): void
+    {
+        $this->streamEstadisticasLaboratorioExport('excel');
+    }
+
+    public function estadisticasLaboratorioCsv(): void
+    {
+        $this->streamEstadisticasLaboratorioExport('csv');
+    }
+
+  /**
+   * Exportación CSV/Excel del tablero SNIS (secciones con encabezados).
+   */
+    private function streamEstadisticasLaboratorioExport(string $format): void
+    {
+        $startDate = $this->request->getGet('start') ?? RegisterService::todayForReport();
+        $endDate   = $this->request->getGet('end') ?? RegisterService::todayForReport();
+        $payload   = $this->collectEstadisticasLaboratorioPayload($startDate, $endDate);
+        $snis      = $payload['snis'] ?? [];
+        $kpis      = $snis['kpis'] ?? [];
+        $rows      = [];
+
+        $rows[] = ['Tablero SNIS — Estadísticas de laboratorio'];
+        $rows[] = [RegisterService::formatReportDateRangeSubtitle($startDate, $endDate)];
+        $rows[] = [];
+
+        $rows[] = ['KPIs'];
+        $rows[] = ['Indicador', 'Valor'];
+        foreach ([
+            'Pacientes atendidos'           => $kpis['pacientes_atendidos'] ?? 0,
+            'Órdenes solicitadas'           => $kpis['ordenes_solicitadas'] ?? 0,
+            'Órdenes procesadas'            => $kpis['ordenes_procesadas'] ?? 0,
+            'Pruebas solicitadas'           => $kpis['pruebas_solicitadas'] ?? 0,
+            'Pruebas procesadas'            => $kpis['pruebas_procesadas'] ?? 0,
+            '% procesamiento'               => ($kpis['porcentaje_procesamiento'] ?? '') !== '' && $kpis['porcentaje_procesamiento'] !== null ? ($kpis['porcentaje_procesamiento'] . '%') : '—',
+            'Promedio pruebas/orden'        => $kpis['promedio_pruebas_orden'] ?? '—',
+            'Promedio pruebas/paciente'     => $kpis['promedio_pruebas_paciente'] ?? '—',
+            'Promedio diario pruebas'       => $kpis['promedio_diario_pruebas'] ?? '—',
+            'Tipos de prueba distintos'     => $kpis['tipos_prueba_distintos'] ?? 0,
+        ] as $label => $val) {
+            $rows[] = [$label, $val];
+        }
+        $rows[] = [];
+
+        $rows[] = ['Resumen ejecutivo'];
+        foreach ($snis['resumen_ejecutivo']['bullets'] ?? [] as $bullet) {
+            $rows[] = [$bullet];
+        }
+        $rows[] = [];
+
+        $rows[] = ['Desglose por prueba', '', '', '', ''];
+        $rows[] = ['Prueba', 'Categoría', 'Órdenes con prueba', 'Órdenes procesadas', 'Pacientes'];
+        foreach ($payload['porPruebaRows'] ?? [] as $p) {
+            $rows[] = [
+                $p['prueba'] ?? '',
+                $p['categoria'] ?? '',
+                $p['ordenes_con_prueba'] ?? 0,
+                $p['ordenes_procesadas'] ?? 0,
+                $p['pacientes_distintos'] ?? 0,
+            ];
+        }
+        $rows[] = [];
+
+        $rows[] = ['Producción por categoría'];
+        $rows[] = ['Categoría', 'Solicitadas', 'Procesadas'];
+        foreach ($snis['indicadores']['por_categoria'] ?? [] as $c) {
+            $rows[] = [$c['categoria'] ?? '', $c['solicitadas'] ?? 0, $c['procesadas'] ?? 0];
+        }
+        $rows[] = [];
+
+        $rows[] = ['Producción por médico'];
+        $rows[] = ['Médico', 'Órdenes', 'Pruebas'];
+        foreach ($snis['indicadores']['por_medico'] ?? [] as $m) {
+            $rows[] = [$m['doctor'] ?? '', $m['ordenes'] ?? 0, $m['pruebas'] ?? 0];
+        }
+        $rows[] = [];
+
+        if (! empty($snis['indicadores']['por_institucion'])) {
+            $rows[] = ['Procedencia / institución del paciente'];
+            $rows[] = ['Institución', 'Órdenes', 'Pruebas'];
+            foreach ($snis['indicadores']['por_institucion'] as $i) {
+                $rows[] = [$i['institucion'] ?? '', $i['ordenes'] ?? 0, $i['pruebas'] ?? 0];
+            }
+            $rows[] = [];
+        }
+
+        $rows[] = ['Por género'];
+        $rows[] = ['Género', 'Pacientes únicos', 'Órdenes procesadas'];
+        $genPac = $payload['porGeneroPacientes'] ?? [];
+        $genOrd = $payload['porGeneroOrdenes'] ?? [];
+        $rows[] = ['Masculino', $genPac['1'] ?? 0, $genOrd['1'] ?? 0];
+        $rows[] = ['Femenino', $genPac['2'] ?? 0, $genOrd['2'] ?? 0];
+        $rows[] = ['No indicado', $genPac['_'] ?? 0, $genOrd['_'] ?? 0];
+        $rows[] = [];
+
+        $rows[] = ['Grupos etarios (órdenes con resultado)'];
+        $rows[] = ['Grupo', 'Rango edad', 'Órdenes'];
+        foreach ($payload['poblacionGrupoRows'] ?? [] as $g) {
+            $rows[] = [$g['nombre'] ?? '', $g['rango_edad'] ?? '', $g['ordenes'] ?? 0];
+        }
+        $rows[] = [];
+
+        $ind = $snis['indicadores'] ?? [];
+        $rows[] = ['Indicadores operativos'];
+        $rows[] = ['Órdenes pendientes validación', $ind['ordenes_pendientes'] ?? 0];
+        $rows[] = ['Órdenes anuladas', $ind['ordenes_anuladas'] ?? 0];
+        $rows[] = ['Resultados corregidos', $ind['resultados_corregidos'] ?? 0];
+        $rows[] = ['Resultados validados', $ind['resultados_validados'] ?? 0];
+        $tat = $ind['tat'] ?? [];
+        if (! empty($tat['promedio_resultado'])) {
+            $rows[] = ['TAT promedio resultado (h)', $tat['promedio_resultado']];
+        }
+        if (! empty($tat['promedio_validacion'])) {
+            $rows[] = ['TAT promedio validación (h)', $tat['promedio_validacion']];
+        }
+        $rows[] = [];
+
+        foreach ($snis['limitaciones'] ?? [] as $lim) {
+            $rows[] = ['Nota: ' . ($lim['mensaje'] ?? '')];
+        }
+
+        $baseName = $format === 'csv' ? 'estadisticas_laboratorio_snis' : 'estadisticas_laboratorio_snis';
+        $this->streamEstadisticasCsv($baseName, $rows);
+    }
+
+    /**
+     * @param list<list<mixed>> $rows
+     */
+    private function streamEstadisticasCsv(string $baseName, array $rows): void
+    {
+        $filename = preg_replace('/[^A-Za-z0-9._-]+/', '_', $baseName) . '_' . lab_filename_datetime() . '.csv';
+
+        header('Content-Type: text/csv; charset=UTF-8');
+        header('Content-Disposition: attachment; filename="' . $filename . '"');
+        header('Cache-Control: no-cache, must-revalidate');
+
+        $out = fopen('php://output', 'w');
+        if ($out === false) {
+            return;
+        }
+        fprintf($out, "\xEF\xBB\xBF");
+        foreach ($rows as $row) {
+            fputcsv($out, $row);
+        }
+        fclose($out);
+        exit;
     }
 
     private function generoKeyReporte($gender): string

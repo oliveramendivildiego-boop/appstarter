@@ -81,6 +81,8 @@ $routes->get('reports/pruebasAnuladasFecha', 'Reports::pruebasAnuladasFecha');
 $routes->get('reports/pruebasAnuladasFechaPdf', 'Reports::pruebasAnuladasFechaPdf');
 $routes->get('reports/estadisticasLaboratorio', 'Reports::estadisticasLaboratorio');
 $routes->get('reports/estadisticasLaboratorioPdf', 'Reports::estadisticasLaboratorioPdf');
+$routes->get('reports/estadisticasLaboratorioExcel', 'Reports::estadisticasLaboratorioExcel');
+$routes->get('reports/estadisticasLaboratorioCsv', 'Reports::estadisticasLaboratorioCsv');
 $routes->get('reports/pruebasPorGrupoAnalisis', 'Reports::pruebasPorGrupoAnalisis');
 $routes->get('reports/pruebasPorGrupoAnalisisPdf', 'Reports::pruebasPorGrupoAnalisisPdf');
 $routes->get('reportes/pruebasPorGrupoAnalisis', 'Reports::pruebasPorGrupoAnalisis');
