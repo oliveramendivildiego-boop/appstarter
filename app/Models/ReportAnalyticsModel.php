@@ -140,14 +140,19 @@ class ReportAnalyticsModel extends Model
             return [];
         }
 
+        $esc = $this->db->escapeLikeString($q);
+        $pat = '%' . $esc . '%';
+
         $b = $this->db->table('people')
             ->select("{$p}.person_id, {$p}.ci, {$p}.birthday, {$this->sqlPaciente($p)} AS paciente,
                 (SELECT COUNT(*) FROM {$r} WHERE {$r}.person_id = {$p}.person_id) AS total_ordenes", false)
             ->groupStart()
-                ->like("{$p}.first_name", $q)
-                ->orLike("{$p}.last_name_fa", $q)
-                ->orLike("{$p}.last_name_mom", $q)
-                ->orLike("{$p}.ci", $q)
+                ->like("{$p}.first_name", $esc, 'both')
+                ->orLike("{$p}.last_name_fa", $esc, 'both')
+                ->orLike("{$p}.last_name_mom", $esc, 'both')
+                ->orLike("{$p}.ci", $esc, 'both')
+                ->orWhere("CONCAT({$p}.first_name, ' ', {$p}.last_name_fa) LIKE", $pat)
+                ->orWhere("CONCAT({$p}.first_name, ' ', {$p}.last_name_fa, ' ', COALESCE({$p}.last_name_mom, '')) LIKE", $pat)
             ->groupEnd()
             ->orderBy("{$p}.last_name_fa", 'ASC')
             ->limit($limit);
