@@ -1136,6 +1136,94 @@ class LabotestModel extends Model
     }
 
     /**
+     * Fila de grilla personalizada con al menos un valor ingresado por el usuario
+     * (excluye filas de título y filas solo con etiqueta sin resultado).
+     *
+     * @param list<mixed> $fila
+     */
+    public static function cultivoGrillaFilaTieneValorUsuario(array $fila, int $columnas = 0): bool
+    {
+        if ($fila === []) {
+            return false;
+        }
+
+        $columnas = max(1, $columnas);
+        $nonEmpty = [];
+        foreach ($fila as $idx => $celda) {
+            $html = is_array($celda)
+                ? (string) ($celda['html'] ?? $celda['texto'] ?? '')
+                : (string) $celda;
+            if (! self::cultivoCeldaTieneValor($html)) {
+                continue;
+            }
+            $colspan = is_array($celda) ? max(1, (int) ($celda['colspan'] ?? 1)) : 1;
+            $nonEmpty[] = ['idx' => (int) $idx, 'colspan' => $colspan];
+        }
+
+        if ($nonEmpty === []) {
+            return false;
+        }
+
+        if (count($nonEmpty) === 1) {
+            $only = $nonEmpty[0];
+            if ($only['colspan'] >= $columnas) {
+                return false;
+            }
+            if (count($fila) > 1 && $only['idx'] === 0) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    /**
+     * @param array<string, mixed> $sec
+     */
+    public static function cultivoDisplaySeccionTieneValorUsuario(array $sec): bool
+    {
+        $columnasDetalle = is_array($sec['columnas_detalle'] ?? null) ? $sec['columnas_detalle'] : [];
+        foreach ($columnasDetalle as $colDet) {
+            if (! is_array($colDet)) {
+                continue;
+            }
+            $valores = is_array($colDet['valores'] ?? null) ? $colDet['valores'] : [];
+            foreach ($valores as $val) {
+                if (self::cultivoCeldaTieneValor($val)) {
+                    return true;
+                }
+            }
+        }
+
+        $grilla = is_array($sec['grilla_reporte'] ?? null) ? $sec['grilla_reporte'] : null;
+        if ($grilla !== null) {
+            $columnas = max(1, (int) ($grilla['columnas'] ?? ($sec['columnas'] ?? 1)));
+            $filas = is_array($grilla['filas'] ?? null) ? $grilla['filas'] : [];
+            foreach ($filas as $fila) {
+                if (is_array($fila) && self::cultivoGrillaFilaTieneValorUsuario($fila, $columnas)) {
+                    return true;
+                }
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * @param list<array<string, mixed>> $display
+     */
+    public static function cultivoDisplayTieneValorUsuario(array $display): bool
+    {
+        foreach ($display as $sec) {
+            if (is_array($sec) && self::cultivoDisplaySeccionTieneValorUsuario($sec)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
      * Estilo completo de <td> personalizado: alineación/fuente por celda + fondos y bordes del bloque.
      *
      * @param array<string, mixed> $cfg

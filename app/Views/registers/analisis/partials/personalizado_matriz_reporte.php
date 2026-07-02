@@ -25,6 +25,13 @@ if ($metodoLinea === '' && $priaIdTitulo > 0) {
     $metodoLinea = trim((string) (($report_pria_metodo_nombre ?? [])[$priaIdTitulo] ?? ''));
 }
 $secciones = is_array($cultivoItem->cultivo_display ?? null) ? $cultivoItem->cultivo_display : [];
+$secciones = array_values(array_filter(
+    $secciones,
+    static fn ($sec): bool => is_array($sec) && \App\Models\LabotestModel::cultivoDisplaySeccionTieneValorUsuario($sec)
+));
+if ($secciones === []) {
+    return;
+}
 $esPersonalizadoMatriz = ! empty($cultivoItem->es_personalizado_matriz);
 $segmentWrapStyle = '';
 if ($usePdfChrome) {

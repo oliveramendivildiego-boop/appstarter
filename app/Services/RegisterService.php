@@ -636,6 +636,9 @@ class RegisterService
                 : $labotestModel->getCultivoMatrizConfig($prianacategoriaId);
         }
         $display = $this->formatCultivoMatrizForReport($matriz, $cellValues, $cellNumeros, $unidadGlobalRegistro, $esPersonalizado);
+        if ($display === [] || ! LabotestModel::cultivoDisplayTieneValorUsuario($display)) {
+            return null;
+        }
 
         return (object) [
             'es_cultivo_matriz'      => true,
@@ -1155,6 +1158,7 @@ class RegisterService
                     LabotestModel::buildCultivoTituloFilasTabla($titulosPorCol, $columnas)
                 );
                 $grillaFilas = [];
+                $secTieneValorUsuario = false;
                 $coveredRowspan = [];
                 $skipCols = [];
 
@@ -1235,6 +1239,9 @@ class RegisterService
                             $celdaItem = $buildPersonalizadoCeldaReporteItem($celdaHtml, $cfg, $reporteEstiloBloque);
                             $celdaHtml = (string) ($celdaItem['html'] ?? '');
                             $estiloCelda = (string) ($celdaItem['estilo'] ?? '');
+                            if (LabotestModel::cultivoCeldaTieneValor($celdaHtml)) {
+                                $secTieneValorUsuario = true;
+                            }
                         }
 
                         if (! LabotestModel::cultivoCeldaTieneValor($celdaHtml)) {
@@ -1279,7 +1286,7 @@ class RegisterService
                     }
                 }
 
-                if ($titulosFilasGrilla === [] && $grillaFilas === []) {
+                if (! $secTieneValorUsuario || ($titulosFilasGrilla === [] && $grillaFilas === [])) {
                     continue;
                 }
 
@@ -1374,33 +1381,7 @@ class RegisterService
      */
     protected function cultivoMatrizTieneContenidoVisible(array $display): bool
     {
-        foreach ($display as $sec) {
-            if (! is_array($sec)) {
-                continue;
-            }
-            $grilla = $sec['grilla_reporte'] ?? null;
-            if (is_array($grilla)) {
-                $filas = is_array($grilla['filas'] ?? null) ? $grilla['filas'] : [];
-                $titulos = is_array($grilla['titulos_filas'] ?? null) ? $grilla['titulos_filas'] : [];
-                if ($filas !== [] || $titulos !== []) {
-                    return true;
-                }
-            }
-            $columnasDetalle = is_array($sec['columnas_detalle'] ?? null) ? $sec['columnas_detalle'] : [];
-            foreach ($columnasDetalle as $colDet) {
-                if (! is_array($colDet)) {
-                    continue;
-                }
-                $valores = is_array($colDet['valores'] ?? null) ? $colDet['valores'] : [];
-                foreach ($valores as $val) {
-                    if (LabotestModel::cultivoCeldaTieneValor($val)) {
-                        return true;
-                    }
-                }
-            }
-        }
-
-        return false;
+        return LabotestModel::cultivoDisplayTieneValorUsuario($display);
     }
 
     /**
@@ -1886,7 +1867,7 @@ class RegisterService
 
     /**
      * Incluye en el reporte las pruebas del CSV de la orden que aún no tienen filas
-     * (p. ej. matriz personalizada/cultivo sin cv_* guardados, como en registers/view).
+     * solo si tienen al menos un valor ingresado (no se muestran placeholders vacíos).
      *
      * @param array<string, list<object|array<string, mixed>>> $grupos
      * @param array<int, int> $matchingPoblacionIds
@@ -1929,11 +1910,10 @@ class RegisterService
 
             $compleja = (int) ($cfg['compleja'] ?? 0);
             if (LabotestModel::esMatrizConfigurable($compleja)) {
-                $item = $this->buildCultivoMatrizReportItem($priaId, [], [], null, true);
+                $item = $this->buildCultivoMatrizReportItem($priaId, [], [], null, false);
                 if ($item === null) {
                     continue;
                 }
-                $item->incluir_en_reporte_sin_valores = true;
                 $padre = trim((string) ($item->padre ?? ''));
                 if ($padre === '') {
                     continue;
@@ -1944,7 +1924,6 @@ class RegisterService
             }
 
             foreach ($this->buildPlaceholderItemsForMissingPrueba($priaId, $cfg, $matchingPoblacionIds, $gender) as $item) {
-                $item->incluir_en_reporte_sin_valores = true;
                 $padre = trim((string) ($item->padre ?? ''));
                 if ($padre === '') {
                     continue;
@@ -2092,9 +2071,6 @@ class RegisterService
                 continue;
             }
             if (! empty($it->es_cultivo_matriz)) {
-                if (! empty($it->incluir_en_reporte_sin_valores)) {
-                    return true;
-                }
                 if ($this->cultivoMatrizTieneValores(is_array($it->cultivo_valores ?? null) ? $it->cultivo_valores : [])) {
                     return true;
                 }

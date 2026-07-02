@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\ReportLayout;
 
+use App\Models\LabotestModel;
 use App\Services\ReportPdfLayoutService;
 
 /**
@@ -388,6 +389,10 @@ final class ReportTreeBuilder
      */
     private static function countCultivoSectionRows(array $sec): int
     {
+        if (! LabotestModel::cultivoDisplaySeccionTieneValorUsuario($sec)) {
+            return 0;
+        }
+
         $grillaReporte = is_array($sec['grilla_reporte'] ?? null) ? $sec['grilla_reporte'] : null;
         if ($grillaReporte !== null) {
             $titulosFilasGrilla = is_array($grillaReporte['titulos_filas'] ?? null)
