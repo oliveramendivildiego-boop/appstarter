@@ -17,7 +17,12 @@ $fichaNombre = trim((string) ($ficha_nombre ?? ''));
         Ficha clínica<?= $fichaNombre !== '' ? ': ' . esc($fichaNombre) : '' ?>
     </div>
     <div class="orden-prueba-ficha-body">
-        <?= view('registers/analisis/partials/cultivo_matriz_reporte', [
+        <?php
+        $matrizReporteView = ! empty($cultivo_item->es_personalizado_matriz)
+            ? 'registers/analisis/partials/personalizado_matriz_reporte'
+            : 'registers/analisis/partials/cultivo_matriz_reporte';
+        ?>
+        <?= view($matrizReporteView, [
             'cultivo_item'   => $cultivo_item,
             'variant'        => $forPdf ? 'pdf' : 'web',
             'padre'          => '',

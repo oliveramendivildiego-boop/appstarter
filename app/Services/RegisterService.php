@@ -23,7 +23,7 @@ class RegisterService
     public const TOTAL_PAGES_TOKEN = '__PDF_TOTAL_PAGES__';
 
     /** Invalida caché inline de viewreport al cambiar el pipeline PDF. */
-    private const REPORT_PDF_PREVIEW_CACHE_SALT = 'mpdf-native-v14';
+    private const REPORT_PDF_PREVIEW_CACHE_SALT = 'mpdf-native-v20-cultivo-th-bold-pdf';
 
     private ?\App\Services\Report\ReportDataCacheService $reportDataCache = null;
 
@@ -359,6 +359,32 @@ class RegisterService
         $cultivoValoresPorPria = $cultivoExtracted['cv'];
         $cultivoNumerosPorPria = $cultivoExtracted['cvn'];
         $cultivoUnidadesGlobalPorPria = $cultivoExtracted['cvu_global'];
+        $fichaPack = $this->extractCultivoValoresFromFichaClinicaRegistro($registroId);
+        $matrizOverridesPorPria = [];
+        foreach ($fichaPack['cv'] as $priaIdRaw => $fichaCv) {
+            $priaId = (int) $priaIdRaw;
+            if ($priaId < 1 || ! is_array($fichaCv)) {
+                continue;
+            }
+            if (isset($cultivoValoresPorPria[$priaId])) {
+                $cultivoValoresPorPria[$priaId] = $this->mergeCultivoCellValueMaps(
+                    $cultivoValoresPorPria[$priaId],
+                    $fichaCv
+                );
+                $cultivoNumerosPorPria[$priaId] = $this->mergeCultivoCellValueMaps(
+                    $cultivoNumerosPorPria[$priaId] ?? [],
+                    $fichaPack['cvn'][$priaId] ?? []
+                );
+            } else {
+                $cultivoValoresPorPria[$priaId] = $fichaCv;
+                if (! empty($fichaPack['cvn'][$priaId])) {
+                    $cultivoNumerosPorPria[$priaId] = $fichaPack['cvn'][$priaId];
+                }
+                if (! empty($fichaPack['matriz_overrides'][$priaId])) {
+                    $matrizOverridesPorPria[$priaId] = $fichaPack['matriz_overrides'][$priaId];
+                }
+            }
+        }
 
         foreach ($analisis as $prueba) {
             $name = $prueba['name'] ?? '';
@@ -435,7 +461,9 @@ class RegisterService
                 (int) $priaId,
                 $cellValues,
                 $cultivoNumerosPorPria[$priaId] ?? [],
-                $cultivoUnidadesGlobalPorPria[$priaId] ?? null
+                $cultivoUnidadesGlobalPorPria[$priaId] ?? null,
+                false,
+                $matrizOverridesPorPria[$priaId] ?? null
             );
             if ($cultivoItem === null) {
                 continue;
@@ -538,11 +566,11 @@ class RegisterService
                 continue;
             }
             $prefix = null;
-            if (preg_match('/^cv_(\d+)_([a-z][a-z0-9_]*)_(\d+)_(\d+)$/', $name, $m)) {
+            if (preg_match('/^cv_(\d+)_([a-zA-Z][a-zA-Z0-9_-]*)_(\d+)_(\d+)$/', $name, $m)) {
                 $prefix = 'cv';
-            } elseif (preg_match('/^cvn_(\d+)_([a-z][a-z0-9_]*)_(\d+)_(\d+)$/', $name, $m)) {
+            } elseif (preg_match('/^cvn_(\d+)_([a-zA-Z][a-zA-Z0-9_-]*)_(\d+)_(\d+)$/', $name, $m)) {
                 $prefix = 'cvn';
-            } elseif (preg_match('/^cvu_(\d+)_([a-z][a-z0-9_]*)_(\d+)_(\d+)$/', $name, $m)) {
+            } elseif (preg_match('/^cvu_(\d+)_([a-zA-Z][a-zA-Z0-9_-]*)_(\d+)_(\d+)$/', $name, $m)) {
                 $prefix = 'cvu';
             } else {
                 continue;
@@ -581,6 +609,7 @@ class RegisterService
         array $cellNumeros = [],
         ?string $unidadGlobalRegistro = null,
         bool $allowEmptyCells = false,
+        ?array $matrizOverride = null,
     ): ?object {
         if ($prianacategoriaId < 1) {
             return null;
@@ -597,9 +626,15 @@ class RegisterService
 
         $labotestModel = model(LabotestModel::class);
         $esPersonalizado = (int) ($meta->compleja ?? 0) === LabotestModel::COMPLEJA_PERSONALIZADO;
-        $matriz = $esPersonalizado
-            ? $labotestModel->getPersonalizadoMatrizConfig($prianacategoriaId)
-            : $labotestModel->getCultivoMatrizConfig($prianacategoriaId);
+        if (is_array($matrizOverride) && $matrizOverride !== []) {
+            $matriz = $esPersonalizado
+                ? $labotestModel->normalizePersonalizadoMatrizConfig($matrizOverride)
+                : $labotestModel->normalizeCultivoMatrizConfig($matrizOverride);
+        } else {
+            $matriz = $esPersonalizado
+                ? $labotestModel->getPersonalizadoMatrizConfig($prianacategoriaId)
+                : $labotestModel->getCultivoMatrizConfig($prianacategoriaId);
+        }
         $display = $this->formatCultivoMatrizForReport($matriz, $cellValues, $cellNumeros, $unidadGlobalRegistro, $esPersonalizado);
 
         return (object) [
@@ -617,6 +652,81 @@ class RegisterService
             'cultivo_display'      => $display,
             'regvalues'            => '·',
         ];
+    }
+
+    /**
+     * @return array{cv: array<int, array<string, array<int, array<int, string>>>>, cvn: array<int, array<string, array<int, array<int, string>>>>, matriz_overrides: array<int, array<string, mixed>>}
+     */
+    protected function extractCultivoValoresFromFichaClinicaRegistro(int $registroId): array
+    {
+        $out = ['cv' => [], 'cvn' => [], 'matriz_overrides' => []];
+        if ($registroId < 1) {
+            return $out;
+        }
+
+        $allData = model(\App\Models\RegistroFichaClinicaModel::class)->getAllDataByRegistro($registroId);
+        if ($allData === []) {
+            return $out;
+        }
+
+        $fichaModel = model(\App\Models\FichaClinicaModel::class);
+        foreach ($allData as $priaId => $row) {
+            $priaId = (int) $priaId;
+            if ($priaId < 1 || empty($row['has_data'])) {
+                continue;
+            }
+            $fichaId = (int) ($row['ficha_clinica_id'] ?? 0);
+            if ($fichaId < 1) {
+                continue;
+            }
+            $valores = is_array($row['valores'] ?? null) ? $row['valores'] : [];
+            $extracted = $this->extractFichaCellValuesFromFlat($valores, $fichaId, $priaId);
+            if ($extracted['cv'] === []) {
+                continue;
+            }
+            $out['cv'][$priaId] = $extracted['cv'];
+            if ($extracted['cvn'] !== []) {
+                $out['cvn'][$priaId] = $extracted['cvn'];
+            }
+            $fichaMatriz = $fichaModel->getMatrizConfig($fichaId);
+            if ($fichaMatriz !== []) {
+                $out['matriz_overrides'][$priaId] = $fichaMatriz;
+            }
+        }
+
+        return $out;
+    }
+
+    /**
+     * @param array<string, array<int, array<int, string>>> $primary
+     * @param array<string, array<int, array<int, string>>> $secondary
+     *
+     * @return array<string, array<int, array<int, string>>>
+     */
+    protected function mergeCultivoCellValueMaps(array $primary, array $secondary): array
+    {
+        foreach ($secondary as $sec => $filas) {
+            if (! is_array($filas)) {
+                continue;
+            }
+            foreach ($filas as $fila => $cols) {
+                if (! is_array($cols)) {
+                    continue;
+                }
+                foreach ($cols as $col => $val) {
+                    $val = trim((string) $val);
+                    if ($val === '') {
+                        continue;
+                    }
+                    if (trim((string) ($primary[$sec][$fila][$col] ?? '')) !== '') {
+                        continue;
+                    }
+                    $primary[$sec][$fila][$col] = $val;
+                }
+            }
+        }
+
+        return $primary;
     }
 
     /**
@@ -705,6 +815,10 @@ class RegisterService
                     $out = ['modo' => 'texto_rico'];
                 } elseif ($modo === 'leyenda') {
                     $out = ['modo' => 'leyenda'];
+                } elseif ($modo === 'texto_fijo') {
+                    $out = ['modo' => 'texto_fijo', 'rol' => 'titulo'];
+                } elseif ($modo === 'vacio') {
+                    return ['modo' => 'vacio'];
                 }
                 $rol = trim((string) ($raw['rol'] ?? 'input'));
                 if (in_array($rol, ['input', 'titulo', 'etiqueta'], true)) {
@@ -713,6 +827,9 @@ class RegisterService
                 $textoFijo = trim((string) ($raw['texto_fijo'] ?? ''));
                 if ($textoFijo !== '') {
                     $out['texto_fijo'] = $textoFijo;
+                }
+                if (($out['modo'] ?? '') === 'texto_fijo') {
+                    $out['rol'] = 'titulo';
                 }
                 if ($esPersonalizado) {
                     $ali = trim((string) ($raw['alineacion'] ?? 'izquierda'));
@@ -860,10 +977,20 @@ class RegisterService
             if (! $esPersonalizado || trim($html) === '') {
                 return $html;
             }
-            $style = LabotestModel::buildPersonalizadoCeldaReporteStyle($cfg);
 
-            return '<div class="pers-celda-reporte" style="' . htmlspecialchars($style, ENT_QUOTES, 'UTF-8') . '">'
-                . $html . '</div>';
+            return $html;
+        };
+
+        $buildPersonalizadoCeldaReporteItem = static function (
+            string $html,
+            array $cfg,
+            array $reporteEstiloBloque
+        ) use ($esPersonalizado): array {
+            if (! $esPersonalizado) {
+                return ['html' => $html, 'estilo' => ''];
+            }
+
+            return LabotestModel::buildPersonalizadoCeldaReporteItem($html, $cfg, $reporteEstiloBloque);
         };
 
         $out = [];
@@ -890,7 +1017,143 @@ class RegisterService
                 }
             }
             if ($esPersonalizado) {
-                $titulosFilasGrilla = LabotestModel::buildCultivoTituloFilasTabla($titulosPorCol, $columnas);
+                $reporteEstiloBloque = LabotestModel::normalizePersonalizadoReporteEstiloBloque($bloque);
+
+                if (LabotestModel::personalizadoBloqueUsaLayoutColumnasApiladas($titulosPorCol, $celdasCfg, $filas, $columnas)) {
+                    $filasRawPersonalizado = [];
+                    for ($r = 0; $r < $filas; $r++) {
+                        $rowOut = [];
+                        for ($c = 0; $c < $columnas; $c++) {
+                            $rawCelda = $celdasCfg[$r][$c] ?? ['modo' => 'texto'];
+                            $cfg = is_array($rawCelda) ? $rawCelda : $normalizeCeldaCfg($rawCelda);
+                            if (($cfg['modo'] ?? '') === 'vacio') {
+                                $rowOut[] = [
+                                    'html'   => '',
+                                    'estilo' => LabotestModel::buildPersonalizadoReporteTdBorderStyleAttr($reporteEstiloBloque),
+                                ];
+                                continue;
+                            }
+
+                            $rolCelda = (string) ($cfg['rol'] ?? 'input');
+                            if (in_array($rolCelda, ['titulo', 'etiqueta'], true)) {
+                                $celdaHtml = registro_personalizado_texto_fijo_para_reporte(
+                                    (string) ($cfg['texto_fijo'] ?? ''),
+                                    (string) ($cfg['fuente'] ?? 'normal')
+                                );
+                                $rowOut[] = $buildPersonalizadoCeldaReporteItem($celdaHtml, $cfg, $reporteEstiloBloque);
+                            } else {
+                                $rawVal = (string) ($cellValues[$blockId][$r][$c] ?? '');
+                                $principal = $resolvePrincipal($cfg, $rawVal);
+                                $medida = $resolveMedida($blockId, $r, $c);
+                                $celdaHtml = $buildCeldaReporte($principal, $medida, $bloqueTipo, $alineacionSec);
+                                $rowOut[] = $buildPersonalizadoCeldaReporteItem($celdaHtml, $cfg, $reporteEstiloBloque);
+                            }
+                        }
+                        $filasRawPersonalizado[] = $rowOut;
+                    }
+
+                    $compacto = LabotestModel::compactCultivoSectionDisplayForReport(
+                        $titulosPorCol,
+                        $filasRawPersonalizado,
+                        $columnas
+                    );
+                    if ($compacto === null) {
+                        continue;
+                    }
+
+                    $out[] = [
+                        'seccion'           => $blockId,
+                        'tipo'              => $bloqueTipo,
+                        'label'             => $secLabel,
+                        'columnas'          => $compacto['columnas'],
+                        'titulos_por_col'   => $compacto['titulos_por_col'],
+                        'titulos_filas'     => $compacto['titulos_filas'],
+                        'titulos_banda'     => $compacto['titulos_banda'],
+                        'columnas_detalle'  => $compacto['columnas_detalle'],
+                        'max_titulo_filas'  => $compacto['max_titulo_filas'],
+                        'filas'             => $compacto['filas'],
+                        'alineacion_filas'  => $alineacionSec,
+                        'reporte_estilo'    => $reporteEstiloBloque,
+                    ];
+
+                    continue;
+                }
+
+                $filaEncabezadosGrilla = LabotestModel::personalizadoFilaEncabezadosGrillaColumnas(
+                    $celdasCfg,
+                    $filas,
+                    $columnas
+                );
+                if ($filaEncabezadosGrilla !== null) {
+                    $titulosPorColGrilla = LabotestModel::buildPersonalizadoTitulosPorColDesdeGrilla(
+                        $celdasCfg,
+                        $columnas,
+                        $filaEncabezadosGrilla,
+                        $reporteEstiloBloque
+                    );
+                    $filasRawColumnas = [];
+                    for ($r = $filaEncabezadosGrilla + 1; $r < $filas; $r++) {
+                        $rowOut = [];
+                        for ($c = 0; $c < $columnas; $c++) {
+                            $rawCelda = $celdasCfg[$r][$c] ?? ['modo' => 'texto'];
+                            $cfg = is_array($rawCelda) ? $rawCelda : $normalizeCeldaCfg($rawCelda);
+                            if (($cfg['modo'] ?? '') === 'vacio') {
+                                $rowOut[] = [
+                                    'html'   => '',
+                                    'estilo' => LabotestModel::buildPersonalizadoReporteTdBorderStyleAttr($reporteEstiloBloque),
+                                ];
+                                continue;
+                            }
+
+                            $rolCelda = (string) ($cfg['rol'] ?? 'input');
+                            if (in_array($rolCelda, ['titulo', 'etiqueta'], true)) {
+                                $celdaHtml = registro_personalizado_texto_fijo_para_reporte(
+                                    (string) ($cfg['texto_fijo'] ?? ''),
+                                    (string) ($cfg['fuente'] ?? 'normal')
+                                );
+                                $rowOut[] = $buildPersonalizadoCeldaReporteItem($celdaHtml, $cfg, $reporteEstiloBloque);
+                                continue;
+                            }
+
+                            $rawVal = (string) ($cellValues[$blockId][$r][$c] ?? '');
+                            $principal = $resolvePrincipal($cfg, $rawVal);
+                            $medida = $resolveMedida($blockId, $r, $c);
+                            $celdaHtml = $buildCeldaReporte($principal, $medida, $bloqueTipo, $alineacionSec);
+                            $rowOut[] = $buildPersonalizadoCeldaReporteItem($celdaHtml, $cfg, $reporteEstiloBloque);
+                        }
+                        $filasRawColumnas[] = $rowOut;
+                    }
+
+                    $compacto = LabotestModel::compactCultivoSectionDisplayForReport(
+                        $titulosPorColGrilla,
+                        $filasRawColumnas,
+                        $columnas
+                    );
+                    if ($compacto === null) {
+                        continue;
+                    }
+
+                    $out[] = [
+                        'seccion'           => $blockId,
+                        'tipo'              => $bloqueTipo,
+                        'label'             => $secLabel,
+                        'columnas'          => $compacto['columnas'],
+                        'titulos_por_col'   => $compacto['titulos_por_col'],
+                        'titulos_filas'     => $compacto['titulos_filas'],
+                        'titulos_banda'     => $compacto['titulos_banda'],
+                        'columnas_detalle'  => $compacto['columnas_detalle'],
+                        'max_titulo_filas'  => $compacto['max_titulo_filas'],
+                        'filas'             => $compacto['filas'],
+                        'alineacion_filas'  => $alineacionSec,
+                        'reporte_estilo'    => $reporteEstiloBloque,
+                    ];
+
+                    continue;
+                }
+
+                $titulosFilasGrilla = LabotestModel::filterEmptyCultivoTituloFilas(
+                    LabotestModel::buildCultivoTituloFilasTabla($titulosPorCol, $columnas)
+                );
                 $grillaFilas = [];
                 $coveredRowspan = [];
                 $skipCols = [];
@@ -913,9 +1176,86 @@ class RegisterService
                             continue;
                         }
 
-                        $cfg = $normalizeCeldaCfg($celdasCfg[$r][$c] ?? ['modo' => 'texto']);
-                        $colspan = max(1, min((int) ($cfg['colspan'] ?? 1), $columnas - $c));
+                        $rawCelda = $celdasCfg[$r][$c] ?? ['modo' => 'texto'];
+                        $cfg = ($esPersonalizado && is_array($rawCelda))
+                            ? $rawCelda
+                            : $normalizeCeldaCfg($rawCelda);
+
+                        $rolCelda = (string) ($cfg['rol'] ?? 'input');
+                        $colspanCfg = max(1, min((int) ($cfg['colspan'] ?? 1), $columnas - $c));
+                        $colspan = $colspanCfg;
+                        if (($cfg['modo'] ?? '') !== 'vacio'
+                            && ($cfg['modo'] ?? '') === 'texto_rico'
+                            && $rolCelda === 'input'
+                            && $colspanCfg <= 1
+                        ) {
+                            $colspan = LabotestModel::calcColspanTextoRicoPersonalizado(
+                                $r,
+                                $c,
+                                $columnas,
+                                $celdasCfg,
+                                $coveredRowspan
+                            );
+                        }
                         $rowspan = max(1, min((int) ($cfg['rowspan'] ?? 1), $filas - $r));
+
+                        if (($cfg['modo'] ?? '') === 'vacio') {
+                            $estiloCelda = LabotestModel::buildPersonalizadoReporteTdBorderStyleAttr($reporteEstiloBloque);
+                            for ($rr = $r + 1; $rr < $r + $rowspan && $rr < $filas; $rr++) {
+                                for ($cc = $c; $cc < $c + $colspan; $cc++) {
+                                    $coveredRowspan[$rr . ',' . $cc] = true;
+                                }
+                            }
+                            for ($cc = $c + 1; $cc < $c + $colspan; $cc++) {
+                                $skipCols[$r . ',' . $cc] = true;
+                            }
+                            $rowCells[] = [
+                                'html'    => '',
+                                'colspan' => $colspan,
+                                'rowspan' => $rowspan,
+                                'estilo'  => $estiloCelda,
+                            ];
+
+                            continue;
+                        }
+
+                        if (in_array($rolCelda, ['titulo', 'etiqueta'], true)) {
+                            $celdaHtml = registro_personalizado_texto_fijo_para_reporte(
+                                (string) ($cfg['texto_fijo'] ?? ''),
+                                (string) ($cfg['fuente'] ?? 'normal')
+                            );
+                            $celdaItem = $buildPersonalizadoCeldaReporteItem($celdaHtml, $cfg, $reporteEstiloBloque);
+                            $celdaHtml = (string) ($celdaItem['html'] ?? '');
+                            $estiloCelda = (string) ($celdaItem['estilo'] ?? '');
+                        } else {
+                            $rawVal = (string) ($cellValues[$blockId][$r][$c] ?? '');
+                            $principal = $resolvePrincipal($cfg, $rawVal);
+                            $medida = $resolveMedida($blockId, $r, $c);
+                            $celdaHtml = $buildCeldaReporte($principal, $medida, $bloqueTipo, $alineacionSec);
+                            $celdaItem = $buildPersonalizadoCeldaReporteItem($celdaHtml, $cfg, $reporteEstiloBloque);
+                            $celdaHtml = (string) ($celdaItem['html'] ?? '');
+                            $estiloCelda = (string) ($celdaItem['estilo'] ?? '');
+                        }
+
+                        if (! LabotestModel::cultivoCeldaTieneValor($celdaHtml)) {
+                            if (! in_array($rolCelda, ['titulo', 'etiqueta'], true)) {
+                                $celdaHtml = '';
+                                if ($estiloCelda === '') {
+                                    $estiloCelda = LabotestModel::buildPersonalizadoReporteTdBorderStyleAttr($reporteEstiloBloque);
+                                }
+                            } else {
+                                for ($rr = $r + 1; $rr < $r + $rowspan && $rr < $filas; $rr++) {
+                                    for ($cc = $c; $cc < $c + $colspan; $cc++) {
+                                        $coveredRowspan[$rr . ',' . $cc] = true;
+                                    }
+                                }
+                                for ($cc = $c + 1; $cc < $c + $colspan; $cc++) {
+                                    $skipCols[$r . ',' . $cc] = true;
+                                }
+
+                                continue;
+                            }
+                        }
 
                         for ($rr = $r + 1; $rr < $r + $rowspan && $rr < $filas; $rr++) {
                             for ($cc = $c; $cc < $c + $colspan; $cc++) {
@@ -926,28 +1266,11 @@ class RegisterService
                             $skipCols[$r . ',' . $cc] = true;
                         }
 
-                        $rolCelda = (string) ($cfg['rol'] ?? 'input');
-                        if (in_array($rolCelda, ['titulo', 'etiqueta'], true)) {
-                            $celdaHtml = registro_personalizado_texto_fijo_html(
-                                (string) ($cfg['texto_fijo'] ?? ''),
-                                (string) ($cfg['fuente'] ?? 'normal')
-                            );
-                            if ($celdaHtml !== '') {
-                                $celdaHtml = $wrapPersonalizadoCelda($celdaHtml, $cfg);
-                            }
-                        } else {
-                            $rawVal = (string) ($cellValues[$blockId][$r][$c] ?? '');
-                            $principal = $resolvePrincipal($cfg, $rawVal);
-                            $medida = $resolveMedida($blockId, $r, $c);
-                            $celdaHtml = $buildCeldaReporte($principal, $medida, $bloqueTipo, $alineacionSec);
-                            $celdaHtml = $wrapPersonalizadoCelda($celdaHtml, $cfg);
-                        }
-
                         $rowCells[] = [
                             'html'    => $celdaHtml,
                             'colspan' => $colspan,
                             'rowspan' => $rowspan,
-                            'estilo'  => LabotestModel::buildPersonalizadoCeldaReporteStyle($cfg),
+                            'estilo'  => $estiloCelda,
                         ];
                     }
 
@@ -977,7 +1300,7 @@ class RegisterService
                         'titulos_filas' => $titulosFilasGrilla,
                         'filas'         => $grillaFilas,
                     ],
-                    'reporte_estilo'    => LabotestModel::normalizePersonalizadoReporteEstiloBloque($bloque),
+                    'reporte_estilo'    => $reporteEstiloBloque,
                 ];
                 $out[] = $secOut;
 
@@ -1036,7 +1359,41 @@ class RegisterService
                     continue;
                 }
                 foreach ($fila as $val) {
-                    if (trim((string) $val) !== '') {
+                    if (LabotestModel::cultivoCeldaTieneValor($val)) {
+                        return true;
+                    }
+                }
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * @param list<array<string, mixed>> $display
+     */
+    protected function cultivoMatrizTieneContenidoVisible(array $display): bool
+    {
+        foreach ($display as $sec) {
+            if (! is_array($sec)) {
+                continue;
+            }
+            $grilla = $sec['grilla_reporte'] ?? null;
+            if (is_array($grilla)) {
+                $filas = is_array($grilla['filas'] ?? null) ? $grilla['filas'] : [];
+                $titulos = is_array($grilla['titulos_filas'] ?? null) ? $grilla['titulos_filas'] : [];
+                if ($filas !== [] || $titulos !== []) {
+                    return true;
+                }
+            }
+            $columnasDetalle = is_array($sec['columnas_detalle'] ?? null) ? $sec['columnas_detalle'] : [];
+            foreach ($columnasDetalle as $colDet) {
+                if (! is_array($colDet)) {
+                    continue;
+                }
+                $valores = is_array($colDet['valores'] ?? null) ? $colDet['valores'] : [];
+                foreach ($valores as $val) {
+                    if (LabotestModel::cultivoCeldaTieneValor($val)) {
                         return true;
                     }
                 }
@@ -1167,14 +1524,14 @@ class RegisterService
             if ($val === '') {
                 continue;
             }
-            if (preg_match('/^fc_(\d+)_(\d+)_([a-z][a-z0-9_]*)_(\d+)_(\d+)$/', $key, $m)) {
+            if (preg_match('/^fc_(\d+)_(\d+)_([a-zA-Z][a-zA-Z0-9_-]*)_(\d+)_(\d+)$/', $key, $m)) {
                 if ((int) $m[1] !== $fichaClinicaId || (int) $m[2] !== $prianacategoriaId) {
                     continue;
                 }
                 $mergeSection($out, (string) $m[3], (int) $m[4], (int) $m[5], $val);
                 continue;
             }
-            if (preg_match('/^fcn_(\d+)_(\d+)_([a-z][a-z0-9_]*)_(\d+)_(\d+)$/', $key, $m)) {
+            if (preg_match('/^fcn_(\d+)_(\d+)_([a-zA-Z][a-zA-Z0-9_-]*)_(\d+)_(\d+)$/', $key, $m)) {
                 if ((int) $m[1] !== $fichaClinicaId || (int) $m[2] !== $prianacategoriaId) {
                     continue;
                 }
@@ -1735,7 +2092,13 @@ class RegisterService
                 continue;
             }
             if (! empty($it->es_cultivo_matriz)) {
+                if (! empty($it->incluir_en_reporte_sin_valores)) {
+                    return true;
+                }
                 if ($this->cultivoMatrizTieneValores(is_array($it->cultivo_valores ?? null) ? $it->cultivo_valores : [])) {
+                    return true;
+                }
+                if ($this->cultivoMatrizTieneContenidoVisible(is_array($it->cultivo_display ?? null) ? $it->cultivo_display : [])) {
                     return true;
                 }
                 continue;
@@ -2582,6 +2945,12 @@ class RegisterService
             }
         }
         $grupos = $this->appendMissingReferenceRows($grupos, $registerInfo, $eligiblePriaConfig, $matchingPoblacionIds, $patientGender);
+        $grupos = $this->appendMissingPruebasFromRegistroOrder(
+            $grupos,
+            (string) ($registerInfo->pruebas ?? ''),
+            $matchingPoblacionIds,
+            $patientGender
+        );
         $grupos = $this->applyReferenceVisibility($grupos, $eligiblePriaIds);
         $grupos = $this->deduplicateGrupoItemsByParametro($grupos);
         $grupos = $this->dropGruposSinValorIngresado($grupos);

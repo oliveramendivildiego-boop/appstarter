@@ -4471,7 +4471,8 @@ class ReportPdfLayoutService
         $titleTypo = self::resolveGrupoCabeceraTitleTypography($rs, $rsRaw);
         $titleShadow = $textShadowMap[$titleTypo['text_shadow'] ?? 'none'] ?? 'none';
         $titleFamily = '"' . $esc((string) $titleTypo['font_family']) . '", sans-serif';
-        $mainTable = $scope . ' table.results:not(.pdf-notes-table):not(.report-refs-matrix)';
+        $mainTable = $scope . ' table.results:not(.pdf-notes-table):not(.report-refs-matrix):not(.report-cultivo-estilo-reporte)';
+        $cultivoTable = $scope . ' table.results.report-cultivo-estilo-reporte';
         $matrixTable = $scope . ' table.results.report-refs-matrix';
         $fontFamily = self::fontFamilyForInlineCssAttr((string) $rs['font_family']);
         $matrixHdrFamily = self::fontFamilyForInlineCssAttr((string) ($rs['matrix_header_font_family'] ?? $rs['font_family']));
@@ -4509,6 +4510,16 @@ class ReportPdfLayoutService
             '    padding:' . $cellPad . 'px 8px !important;',
             '    vertical-align:' . $esc((string) ($rs['cell_vertical_align'] ?? 'middle')) . ' !important;',
             '}',
+            $cultivoTable . ' tbody td {',
+            '    font-family:' . $fontFamily . ' !important;',
+            '    font-size:' . $esc((string) $rs['font_size_pt']) . 'pt !important;',
+            '    line-height:' . $esc((string) $rs['line_height']) . ' !important;',
+            '    letter-spacing:' . $esc((string) ($rs['letter_spacing_em'] ?? 0)) . 'em !important;',
+            '    padding:' . $cellPad . 'px 8px !important;',
+            '    vertical-align:' . $esc((string) ($rs['cell_vertical_align'] ?? 'middle')) . ' !important;',
+            '    color:' . $esc((string) $rs['body_text_color']) . ' !important;',
+            '}',
+            \App\Models\LabotestModel::buildPersonalizadoReporteCeldaContenidoCss($scope),
             $scope . ' table.results:not(.pdf-notes-table):not(.report-refs-matrix) {',
             '    margin-top:' . $tableMt . 'px !important;',
             '    margin-bottom:' . $tableMb . 'px !important;',

@@ -452,6 +452,8 @@ class LabotestModel extends Model
                     'modo'                         => 'leyenda',
                     'leyenda_cultivo_categoria_id' => max(0, (int) ($raw['leyenda_cultivo_categoria_id'] ?? 0)),
                 ];
+            } elseif ($modoRaw === 'vacio') {
+                return ['modo' => 'vacio'];
             }
         } elseif (is_numeric($raw)) {
             $id = (int) $raw;
@@ -461,6 +463,10 @@ class LabotestModel extends Model
         }
 
         if ($valor !== '') {
+            if (($out['modo'] ?? '') === 'texto_rico' && $valor !== strip_tags($valor)) {
+                helper('registro');
+                $valor = registro_sanitizar_html_rico($valor);
+            }
             $out['valor'] = $valor;
         }
 
@@ -564,17 +570,55 @@ class LabotestModel extends Model
         $styles = [];
         $ali = trim((string) ($cfg['alineacion'] ?? 'izquierda'));
         $map = ['izquierda' => 'left', 'centro' => 'center', 'derecha' => 'right'];
-        $styles[] = 'text-align:' . ($map[$ali] ?? 'left');
+        $styles[] = 'text-align:' . ($map[$ali] ?? 'left') . ' !important';
 
         $fuente = trim((string) ($cfg['fuente'] ?? 'normal'));
-        if ($fuente === 'negrita') {
-            $styles[] = 'font-weight:700';
-        } elseif ($fuente === 'titulo') {
-            $styles[] = 'font-weight:700';
+        if ($fuente === 'negrita' || $fuente === 'titulo') {
+            $styles[] = 'font-weight:bold !important';
+        }
+        if ($fuente === 'titulo') {
             $styles[] = 'font-size:1.1em';
         }
 
         return implode(';', $styles);
+    }
+
+    /**
+     * Fondo "títulos" del bloque: solo Rol celda = Título fijo, no modo Texto fijo (solo lectura).
+     *
+     * @param array<string, mixed> $cfg
+     */
+    public static function celdaPersonalizadoUsaFondoTitulosReporte(array $cfg): bool
+    {
+        $modo = (string) ($cfg['modo'] ?? 'texto');
+        if ($modo === 'texto_fijo' || $modo === 'vacio') {
+            return false;
+        }
+
+        return (string) ($cfg['rol'] ?? 'input') === 'titulo';
+    }
+
+    /**
+     * @param array<string, mixed> $estilo
+     */
+    public static function personalizadoReporteEstiloEsPersonalizado(array $estilo): bool
+    {
+        return ($estilo['reporte_fondo_tabla'] ?? 'transparente') !== 'transparente'
+            || ($estilo['reporte_fondo_titulos'] ?? 'transparente') !== 'transparente'
+            || ($estilo['reporte_borde_modo'] ?? 'default') !== 'default';
+    }
+
+    /**
+     * @param array<string, mixed> $estilo
+     */
+    public static function buildPersonalizadoReporteTituloCeldaStyleAttr(array $estilo): string
+    {
+        $fondo = (string) ($estilo['reporte_fondo_titulos'] ?? 'transparente');
+        if ($fondo === 'transparente') {
+            return '';
+        }
+
+        return 'background-color:' . $fondo . ' !important';
     }
 
     /**
@@ -585,16 +629,17 @@ class LabotestModel extends Model
         $styles = [];
         $fondo = (string) ($estilo['reporte_fondo_tabla'] ?? 'transparente');
         if ($fondo !== 'transparente') {
-            $styles[] = 'background-color:' . $fondo;
+            $styles[] = 'background-color:' . $fondo . ' !important';
         }
 
         $bordeModo = (string) ($estilo['reporte_borde_modo'] ?? 'default');
         if ($bordeModo === 'none') {
-            $styles[] = 'border:none';
+            $styles[] = 'border:none !important';
             $styles[] = 'border-collapse:collapse';
         } elseif ($bordeModo === 'custom') {
-            $styles[] = self::personalizadoReporteBorderCss($estilo);
-            $styles[] = 'border-collapse:collapse';
+            $styles[] = 'border-collapse:collapse !important';
+        } elseif ($bordeModo === 'default') {
+            $styles[] = 'border-collapse:collapse !important';
         }
 
         return implode(';', $styles);
@@ -606,16 +651,16 @@ class LabotestModel extends Model
     public static function buildPersonalizadoReporteThStyleAttr(array $estilo): string
     {
         $styles = [];
-        $fondo = (string) ($estilo['reporte_fondo_titulos'] ?? 'transparente');
-        if ($fondo !== 'transparente') {
-            $styles[] = 'background-color:' . $fondo;
+        $fondoTabla = (string) ($estilo['reporte_fondo_tabla'] ?? 'transparente');
+        if ($fondoTabla !== 'transparente') {
+            $styles[] = 'background-color:' . $fondoTabla . ' !important';
         }
 
         $bordeModo = (string) ($estilo['reporte_borde_modo'] ?? 'default');
         if ($bordeModo === 'none') {
-            $styles[] = 'border:none';
+            $styles[] = 'border:none !important';
         } elseif ($bordeModo === 'custom') {
-            $styles[] = self::personalizadoReporteBorderCss($estilo);
+            $styles[] = self::personalizadoReporteBorderCss($estilo) . ' !important';
         }
 
         return implode(';', $styles);
@@ -628,13 +673,81 @@ class LabotestModel extends Model
     {
         $bordeModo = (string) ($estilo['reporte_borde_modo'] ?? 'default');
         if ($bordeModo === 'none') {
-            return 'border:none';
+            return 'border:none !important';
         }
         if ($bordeModo === 'custom') {
             return self::personalizadoReporteBorderCss($estilo);
         }
 
         return '';
+    }
+
+    /**
+     * Alineación HTML (mPDF respeta mejor align="" en <td> que solo style).
+     */
+    public static function extractPersonalizadoTdAlignAttr(string $estilo): string
+    {
+        if (preg_match('/text-align\s*:\s*(left|center|right)\b/i', $estilo, $m)) {
+            return strtolower($m[1]);
+        }
+
+        return '';
+    }
+
+    /**
+     * Combina estilo de celda con bordes obligatorios del bloque (reporte personalizado).
+     *
+     * @param array<string, mixed> $reporteEstiloBloque
+     */
+    public static function mergePersonalizadoReporteTdEstiloConBloque(string $estiloCelda, array $reporteEstiloBloque): string
+    {
+        $estiloCelda = trim($estiloCelda);
+        $bordeBloque = self::buildPersonalizadoReporteTdBorderStyleAttr($reporteEstiloBloque);
+        if ($bordeBloque === '') {
+            return $estiloCelda;
+        }
+
+        $sinBorde = preg_replace('/\bborder(?:-width|-style|-color)?\s*:[^;]+;?/i', '', $estiloCelda) ?? $estiloCelda;
+        $sinBorde = trim(preg_replace('/\bborder\s*:[^;]+;?/i', '', $sinBorde) ?? $sinBorde);
+
+        return trim($sinBorde . ($sinBorde !== '' ? ';' : '') . $bordeBloque);
+    }
+
+    public static function personalizadoCeldaEstiloEsNegrita(string $estilo): bool
+    {
+        return (bool) preg_match('/font-weight\s*:\s*(bold|700)\b/i', $estilo);
+    }
+
+    /**
+     * Envuelve HTML de celda para alineación fiable en mPDF.
+     */
+    public static function wrapPersonalizadoCeldaHtmlParaMpdf(string $html, string $alignAttr, bool $celdaNegrita = false): string
+    {
+        $html = trim($html);
+        if ($html === '' || ! in_array($alignAttr, ['center', 'right'], true)) {
+            return $html;
+        }
+
+        $bold = $celdaNegrita ? 'font-weight:bold !important;' : '';
+
+        return '<div style="text-align:' . $alignAttr . ' !important;width:100%;' . $bold . '">'
+            . $html
+            . '</div>';
+    }
+
+    /**
+     * Fondo de celdas de datos cuando la tabla tiene color de fondo configurado.
+     *
+     * @param array<string, mixed> $estilo
+     */
+    public static function buildPersonalizadoReporteTdFondoTablaStyleAttr(array $estilo): string
+    {
+        $fondo = (string) ($estilo['reporte_fondo_tabla'] ?? 'transparente');
+        if ($fondo === 'transparente') {
+            return '';
+        }
+
+        return 'background-color:' . $fondo . ' !important';
     }
 
     /**
@@ -646,7 +759,104 @@ class LabotestModel extends Model
         $est = (string) ($estilo['reporte_borde_estilo'] ?? 'solid');
         $col = (string) ($estilo['reporte_borde_color'] ?? '#cccccc');
 
-        return 'border:' . $w . 'px ' . $est . ' ' . $col;
+        return 'border-width:' . $w . 'px !important;border-style:' . $est . ' !important;border-color:' . $col . ' !important';
+    }
+
+    /**
+     * Selector CSS de celdas de tablas personalizadas dentro de un bloque de reporte.
+     */
+    public static function personalizadoReporteBordeTdSelectors(string $scopeClass, string $bordeModo = ''): string
+    {
+        $scope = '.' . preg_replace('/[^a-z0-9_-]/i', '', $scopeClass);
+        $bordeModo = trim($bordeModo);
+        $bordeClass = in_array($bordeModo, ['custom', 'none', 'default'], true)
+            ? '.report-cultivo-borde-' . $bordeModo
+            : '';
+
+        return implode(', ', [
+            $scope . ' table.report-cultivo-personalizado-tabla' . $bordeClass . ' tbody tr td',
+            $scope . ' table.report-cultivo-grilla-personalizado' . $bordeClass . ' tbody tr td',
+        ]);
+    }
+
+    /**
+     * CSS global: el contenido HTML de celdas personalizadas hereda alineación y peso del <td>.
+     */
+    public static function buildPersonalizadoReporteCeldaContenidoCss(string $scope = ''): string
+    {
+        $prefix = trim($scope) !== '' ? rtrim(trim($scope), ' ') . ' ' : '';
+        $table = $prefix . 'table.report-cultivo-personalizado-tabla.report-cultivo-estilo-reporte, '
+            . $prefix . 'table.report-cultivo-grilla-personalizado.report-cultivo-estilo-reporte';
+        $cells = $table . ' tbody td.cultivo-celda-html';
+
+        return $cells . ' p,'
+            . $cells . ' div,'
+            . $cells . ' span,'
+            . $cells . ' em,'
+            . $cells . ' i,'
+            . $cells . ' u {'
+            . 'text-align:inherit !important;font-style:inherit !important;'
+            . 'font-size:inherit !important;line-height:inherit !important;}'
+            . $cells . ' b,'
+            . $cells . ' strong {'
+            . 'font-weight:bold !important;}';
+    }
+
+    /**
+     * Clase de ámbito única por bloque/sección de reporte cultivo personalizado.
+     */
+    public static function personalizadoReporteBloqueScopeClass(string $blockId): string
+    {
+        $slug = preg_replace('/[^a-z0-9_-]/i', '-', trim($blockId));
+        if ($slug === '') {
+            $slug = 'bloque';
+        }
+
+        return 'report-cultivo-bloque-' . $slug;
+    }
+
+    /**
+     * <style> con bordes del bloque aplicados a todas las celdas de sus tablas (modo Personalizar / none).
+     *
+     * @param array<string, mixed> $estilo
+     */
+    public static function buildPersonalizadoReporteBordeScopedStyleBlock(string $scopeClass, array $estilo): string
+    {
+        $modo = (string) ($estilo['reporte_borde_modo'] ?? 'default');
+        if (! in_array($modo, ['custom', 'none'], true)) {
+            return '';
+        }
+
+        $selectors = self::personalizadoReporteBordeTdSelectors($scopeClass, $modo);
+        $contenidoCss = self::buildPersonalizadoReporteCeldaContenidoCss('.' . preg_replace('/[^a-z0-9_-]/i', '', $scopeClass));
+        if ($modo === 'none') {
+            return '<style>' . $selectors . '{border:none !important;}' . $contenidoCss . '</style>';
+        }
+
+        return '<style>' . $selectors . '{' . self::personalizadoReporteBorderCss($estilo) . '}' . $contenidoCss . '</style>';
+    }
+
+    /**
+     * Clases CSS de tabla personalizada (estilo/bordes por bloque).
+     *
+     * @param array<string, mixed> $estilo
+     */
+    public static function buildPersonalizadoReporteTableClassAttr(array $estilo, string $baseClass = ''): string
+    {
+        $parts = [];
+        if (trim($baseClass) !== '') {
+            $parts[] = trim($baseClass);
+        }
+        $parts[] = 'report-cultivo-personalizado-tabla';
+        if (self::personalizadoReporteEstiloEsPersonalizado($estilo)) {
+            $parts[] = 'report-cultivo-estilo-reporte';
+        }
+        $modo = (string) ($estilo['reporte_borde_modo'] ?? 'default');
+        if (in_array($modo, ['default', 'none', 'custom'], true)) {
+            $parts[] = 'report-cultivo-borde-' . $modo;
+        }
+
+        return implode(' ', array_unique($parts));
     }
 
     /**
@@ -751,18 +961,75 @@ class LabotestModel extends Model
     /**
      * Normaliza una celda de título de matriz cultivo.
      *
-     * @return array{texto: string, colspan: int}
+     * @return array{texto: string, colspan: int, estilo?: string}
      */
     public static function normalizeCultivoTituloCelda(mixed $raw): array
     {
         if (is_array($raw)) {
+            $html = trim((string) ($raw['html'] ?? ''));
             $texto = trim((string) ($raw['texto'] ?? $raw['text'] ?? ''));
+            if ($texto === '' && $html !== '') {
+                $texto = trim(strip_tags($html));
+            }
             $colspan = max(1, min(20, (int) ($raw['colspan'] ?? 1)));
+            $out = ['texto' => $texto, 'colspan' => $colspan];
+            if ($html !== '') {
+                $out['html'] = $html;
+            }
+            $estilo = trim((string) ($raw['estilo'] ?? ''));
+            if ($estilo !== '') {
+                $out['estilo'] = $estilo;
+            }
 
-            return ['texto' => $texto, 'colspan' => $colspan];
+            return $out;
         }
 
         return ['texto' => trim((string) $raw), 'colspan' => 1];
+    }
+
+    /**
+     * Celda de título personalizada para reporte (alineación/fuente por celda + fondo de títulos del bloque).
+     *
+     * @param array<string, mixed>      $cfg
+     * @param array<string, mixed>|null $reporteEstiloBloque
+     * @return array{texto: string, colspan: int, estilo?: string}
+     */
+    public static function buildPersonalizadoTituloCeldaReporteArray(
+        array $cfg,
+        ?array $reporteEstiloBloque = null,
+        ?int $colspanOverride = null,
+    ): array {
+        helper('registro');
+        $html = registro_personalizado_texto_fijo_para_reporte(
+            (string) ($cfg['texto_fijo'] ?? ''),
+            (string) ($cfg['fuente'] ?? 'normal'),
+        );
+        $colspan = $colspanOverride ?? max(1, min((int) ($cfg['colspan'] ?? 1), 20));
+        $estilo = $reporteEstiloBloque !== null
+            ? self::buildPersonalizadoTdEstiloReporte($cfg, $reporteEstiloBloque)
+            : self::buildPersonalizadoCeldaReporteStyle($cfg);
+
+        $out = ['html' => $html, 'colspan' => $colspan];
+        if ($estilo !== '') {
+            $out['estilo'] = $estilo;
+        }
+
+        return $out;
+    }
+
+    /**
+     * Combina estilo de bloque (th) con estilo por celda de título.
+     *
+     * @param array<string, mixed> $estiloBloque
+     * @deprecated Usar estilo completo en <td> vía buildPersonalizadoTdEstiloReporte
+     */
+    public static function mergePersonalizadoReporteThStyleAttr(array $estiloBloque, string $estiloCelda = ''): string
+    {
+        $base = self::buildPersonalizadoReporteThStyleAttr($estiloBloque);
+        $celda = trim($estiloCelda);
+        $merged = trim($base . ($base !== '' && $celda !== '' ? ';' : '') . $celda);
+
+        return $merged;
     }
 
     /**
@@ -841,10 +1108,16 @@ class LabotestModel extends Model
                 }
                 $cell = self::normalizeCultivoTituloCelda($titulosPorCol[$c][$tr] ?? null);
                 $colspan = max(1, min($cell['colspan'], $columnas - $c));
-                $fila[] = [
-                    'texto'   => (string) $cell['texto'],
-                    'colspan' => $colspan,
-                ];
+                $tituloCell = ['colspan' => $colspan];
+                if (! empty($cell['html'])) {
+                    $tituloCell['html'] = (string) $cell['html'];
+                } else {
+                    $tituloCell['texto'] = (string) $cell['texto'];
+                }
+                if (! empty($cell['estilo'])) {
+                    $tituloCell['estilo'] = (string) $cell['estilo'];
+                }
+                $fila[] = $tituloCell;
                 $cubiertasHasta = $c + $colspan;
             }
             $filas[] = $fila;
@@ -855,7 +1128,246 @@ class LabotestModel extends Model
 
     public static function cultivoCeldaTieneValor(mixed $val): bool
     {
+        if (is_array($val)) {
+            $val = $val['html'] ?? ($val['texto'] ?? '');
+        }
+
         return trim(strip_tags((string) $val)) !== '';
+    }
+
+    /**
+     * Estilo completo de <td> personalizado: alineación/fuente por celda + fondos y bordes del bloque.
+     *
+     * @param array<string, mixed> $cfg
+     * @param array<string, mixed> $reporteEstiloBloque
+     */
+    public static function buildPersonalizadoTdEstiloReporte(array $cfg, array $reporteEstiloBloque): string
+    {
+        $rol = (string) ($cfg['rol'] ?? 'input');
+        $esTitulo = in_array($rol, ['titulo', 'etiqueta'], true);
+        $estilo = self::buildPersonalizadoCeldaReporteStyle($cfg);
+        if ($esTitulo && self::celdaPersonalizadoUsaFondoTitulosReporte($cfg)) {
+            $fondo = self::buildPersonalizadoReporteTituloCeldaStyleAttr($reporteEstiloBloque);
+            if ($fondo !== '') {
+                $estilo = trim($estilo . ';' . $fondo);
+            }
+        } elseif (! $esTitulo) {
+            $fondo = self::buildPersonalizadoReporteTdFondoTablaStyleAttr($reporteEstiloBloque);
+            if ($fondo !== '') {
+                $estilo = trim($estilo . ';' . $fondo);
+            }
+        }
+        $borde = self::buildPersonalizadoReporteTdBorderStyleAttr($reporteEstiloBloque);
+        if ($borde !== '') {
+            $estilo = trim($estilo . ';' . $borde);
+        }
+
+        return $estilo;
+    }
+
+    /**
+     * @param array<string, mixed>      $cfg
+     * @param array<string, mixed>|null $reporteEstiloBloque
+     * @return array{html: string, estilo: string}
+     */
+    public static function buildPersonalizadoCeldaReporteItem(
+        string $html,
+        array $cfg,
+        ?array $reporteEstiloBloque = null,
+    ): array {
+        $html = trim($html);
+        if ($html === '') {
+            $estiloVacio = $reporteEstiloBloque !== null
+                ? self::buildPersonalizadoReporteTdBorderStyleAttr($reporteEstiloBloque)
+                : '';
+
+            return ['html' => '', 'estilo' => $estiloVacio];
+        }
+
+        return [
+            'html'   => $html,
+            'estilo' => $reporteEstiloBloque !== null
+                ? self::buildPersonalizadoTdEstiloReporte($cfg, $reporteEstiloBloque)
+                : self::buildPersonalizadoCeldaReporteStyle($cfg),
+        ];
+    }
+
+    /**
+     * Colspan efectivo de una celda de texto rico en matriz personalizada (misma lógica que captura).
+     *
+     * @param list<list<array<string, mixed>>> $celdas
+     * @param array<int, true>               $coveredRowspan
+     */
+    public static function calcColspanTextoRicoPersonalizado(
+        int $r,
+        int $c,
+        int $columnas,
+        array $celdas,
+        array $coveredRowspan,
+    ): int {
+        $columnas = max(1, $columnas);
+        for ($cc = $c + 1; $cc < $columnas; $cc++) {
+            if (isset($coveredRowspan[$r . ',' . $cc])) {
+                continue;
+            }
+            $raw = $celdas[$r][$cc] ?? ['modo' => 'texto'];
+            $rol = is_array($raw) ? trim((string) ($raw['rol'] ?? 'input')) : 'input';
+            $modo = is_array($raw) ? trim((string) ($raw['modo'] ?? 'texto')) : 'texto';
+            if ($modo !== 'vacio' && ! in_array($rol, ['titulo', 'etiqueta'], true) && $modo !== 'texto_fijo') {
+                return 1;
+            }
+        }
+
+        return max(1, $columnas - $c);
+    }
+
+    /**
+     * Matriz personalizada con títulos por columna (p. ej. antibiograma): apilar valores bajo cada encabezado.
+     *
+     * @param list<list<array{texto: string, colspan: int}>> $titulosPorCol
+     * @param list<list<array<string, mixed>>>              $celdasCfg
+     */
+    public static function personalizadoBloqueUsaLayoutColumnasApiladas(
+        array $titulosPorCol,
+        array $celdasCfg,
+        int $filas,
+        int $columnas,
+    ): bool {
+        $columnas = max(1, $columnas);
+        $tieneTitulosCol = false;
+        for ($c = 0; $c < $columnas; $c++) {
+            foreach ($titulosPorCol[$c] ?? [] as $tit) {
+                if (trim((string) ($tit['texto'] ?? '')) !== '') {
+                    $tieneTitulosCol = true;
+                    break 2;
+                }
+            }
+        }
+        if (! $tieneTitulosCol) {
+            return false;
+        }
+
+        for ($r = 0; $r < max(0, $filas); $r++) {
+            for ($c = 0; $c < $columnas; $c++) {
+                $raw = $celdasCfg[$r][$c] ?? null;
+                if (! is_array($raw)) {
+                    continue;
+                }
+                if ((int) ($raw['rowspan'] ?? 1) > 1) {
+                    return false;
+                }
+                if ((int) ($raw['colspan'] ?? 1) > 1) {
+                    return false;
+                }
+            }
+        }
+
+        return true;
+    }
+
+    /**
+     * Fila de encabezados por columna en grilla personalizada (p. ej. SENSIBLES / INTERMEDIO / RESISTENTES).
+     * Devuelve el índice de fila o null si el bloque no debe alinear celdas vacías por columna.
+     *
+     * @param list<list<array<string, mixed>>> $celdasCfg
+     */
+    public static function personalizadoFilaEncabezadosGrillaColumnas(
+        array $celdasCfg,
+        int $filas,
+        int $columnas,
+    ): ?int {
+        $columnas = max(1, $columnas);
+        if ($columnas < 2 || $filas < 2) {
+            return null;
+        }
+
+        for ($r = 0; $r < $filas; $r++) {
+            $titulosColspan1 = 0;
+            for ($c = 0; $c < $columnas; $c++) {
+                $raw = $celdasCfg[$r][$c] ?? null;
+                if (! is_array($raw)) {
+                    continue;
+                }
+                $rol = trim((string) ($raw['rol'] ?? 'input'));
+                $modo = trim((string) ($raw['modo'] ?? ''));
+                if ($modo === 'vacio' || ! in_array($rol, ['titulo', 'etiqueta'], true)) {
+                    continue;
+                }
+                if ((int) ($raw['colspan'] ?? 1) !== 1) {
+                    continue;
+                }
+                $txt = trim(strip_tags((string) ($raw['texto_fijo'] ?? '')));
+                if ($txt !== '') {
+                    $titulosColspan1++;
+                }
+            }
+            if ($titulosColspan1 < 2 || $titulosColspan1 !== $columnas) {
+                continue;
+            }
+
+            for ($rr = 0; $rr < $filas; $rr++) {
+                for ($cc = 0; $cc < $columnas; $cc++) {
+                    $raw2 = $celdasCfg[$rr][$cc] ?? null;
+                    if (is_array($raw2) && (int) ($raw2['rowspan'] ?? 1) > 1) {
+                        return null;
+                    }
+                }
+            }
+
+            return $r;
+        }
+
+        return null;
+    }
+
+    /**
+     * Construye titulosPorCol desde filas de banda y encabezados de una grilla personalizada.
+     *
+     * @param list<list<array<string, mixed>>> $celdasCfg
+     * @param array<string, mixed>           $reporteEstiloBloque
+     * @return list<list<array{texto: string, colspan: int, estilo?: string}>>
+     */
+    public static function buildPersonalizadoTitulosPorColDesdeGrilla(
+        array $celdasCfg,
+        int $columnas,
+        int $filaEncabezados,
+        array $reporteEstiloBloque = [],
+    ): array {
+        $columnas = max(1, $columnas);
+        $filaEncabezados = max(0, $filaEncabezados);
+        $titulosPorCol = [];
+        for ($c = 0; $c < $columnas; $c++) {
+            $titulosPorCol[$c] = [];
+        }
+
+        for ($tr = 0; $tr <= $filaEncabezados; $tr++) {
+            for ($c = 0; $c < $columnas; $c++) {
+                $raw = $celdasCfg[$tr][$c] ?? null;
+                if (! is_array($raw)) {
+                    continue;
+                }
+                $modo = trim((string) ($raw['modo'] ?? ''));
+                if ($modo === 'vacio') {
+                    continue;
+                }
+                $rol = trim((string) ($raw['rol'] ?? 'input'));
+                if (! in_array($rol, ['titulo', 'etiqueta'], true)) {
+                    continue;
+                }
+                $txt = trim(strip_tags((string) ($raw['texto_fijo'] ?? '')));
+                if ($txt === '') {
+                    continue;
+                }
+                $colspan = max(1, min((int) ($raw['colspan'] ?? 1), $columnas - $c));
+                $titulosPorCol[$c][$tr] = self::buildPersonalizadoTituloCeldaReporteArray(
+                    $raw,
+                    $reporteEstiloBloque,
+                    $colspan
+                );
+            }
+        }
+
+        return $titulosPorCol;
     }
 
     /**
@@ -908,7 +1420,7 @@ class LabotestModel extends Model
                     continue;
                 }
                 $cell = self::normalizeCultivoTituloCelda($titleCell);
-                if ((string) $cell['texto'] === '') {
+                if (! self::cultivoCeldaTieneValor($cell)) {
                     continue;
                 }
                 $spanStart = $oldC;
@@ -953,7 +1465,7 @@ class LabotestModel extends Model
     {
         return array_values(array_filter($titulosFilas, static function (array $fila): bool {
             foreach ($fila as $th) {
-                if (trim((string) ($th['texto'] ?? '')) !== '') {
+                if (self::cultivoCeldaTieneValor($th)) {
                     return true;
                 }
             }
@@ -1090,10 +1602,16 @@ class LabotestModel extends Model
                     $columnasActivas
                 );
                 if ($activeInSpan > 1) {
-                    $titulosBanda[] = [[
-                        'texto'   => (string) $cell['texto'],
-                        'colspan' => $activeInSpan,
-                    ]];
+                    $bandaCell = ['colspan' => $activeInSpan];
+                    if (! empty($cell['html'])) {
+                        $bandaCell['html'] = (string) $cell['html'];
+                    } else {
+                        $bandaCell['texto'] = (string) $cell['texto'];
+                    }
+                    if (! empty($cell['estilo'])) {
+                        $bandaCell['estilo'] = (string) $cell['estilo'];
+                    }
+                    $titulosBanda[] = [$bandaCell];
                     $trEnBanda[$tr] = true;
                 }
                 $colspan = max(1, min((int) $cell['colspan'], $columnasTotal - $c));
@@ -1110,7 +1628,14 @@ class LabotestModel extends Model
                 }
                 $val = $row[$oldC] ?? '';
                 if (self::cultivoCeldaTieneValor($val)) {
-                    $valores[] = (string) $val;
+                    if (is_array($val)) {
+                        $valores[] = [
+                            'html'   => (string) ($val['html'] ?? ''),
+                            'estilo' => trim((string) ($val['estilo'] ?? '')),
+                        ];
+                    } else {
+                        $valores[] = ['html' => (string) $val, 'estilo' => ''];
+                    }
                 }
             }
 
@@ -1130,22 +1655,34 @@ class LabotestModel extends Model
                             $tr,
                             $columnasActivas
                         );
-                        if ($activeInSpan === 1 && (string) $spanCell['texto'] !== '') {
-                            $titulosFilasCol[] = [[
-                                'texto'   => (string) $spanCell['texto'],
-                                'colspan' => 1,
-                            ]];
+                        if ($activeInSpan === 1 && self::cultivoCeldaTieneValor($spanCell)) {
+                            $tituloSpan = ['colspan' => 1];
+                            if (! empty($spanCell['html'])) {
+                                $tituloSpan['html'] = (string) $spanCell['html'];
+                            } else {
+                                $tituloSpan['texto'] = (string) $spanCell['texto'];
+                            }
+                            if (! empty($spanCell['estilo'])) {
+                                $tituloSpan['estilo'] = (string) $spanCell['estilo'];
+                            }
+                            $titulosFilasCol[] = [$tituloSpan];
                         }
                     }
 
                     continue;
                 }
                 $cell = self::normalizeCultivoTituloCelda($titulosPorCol[$oldC][$tr] ?? null);
-                if ((string) $cell['texto'] !== '') {
-                    $titulosFilasCol[] = [[
-                        'texto'   => (string) $cell['texto'],
-                        'colspan' => 1,
-                    ]];
+                if (self::cultivoCeldaTieneValor($cell)) {
+                    $tituloCol = ['colspan' => 1];
+                    if (! empty($cell['html'])) {
+                        $tituloCol['html'] = (string) $cell['html'];
+                    } else {
+                        $tituloCol['texto'] = (string) $cell['texto'];
+                    }
+                    if (! empty($cell['estilo'])) {
+                        $tituloCol['estilo'] = (string) $cell['estilo'];
+                    }
+                    $titulosFilasCol[] = [$tituloCol];
                 }
             }
             $titulosFilasCol = self::filterEmptyCultivoTituloFilas($titulosFilasCol);
@@ -3871,6 +4408,10 @@ class LabotestModel extends Model
                 continue;
             }
             if (isset($raw['bloques']) && is_array($raw['bloques'])) {
+                if ($raw['bloques'] === []) {
+                    continue;
+                }
+
                 return $raw;
             }
             if (isset($raw['encabezado']) || isset($raw['cuerpo']) || isset($raw['pie'])) {

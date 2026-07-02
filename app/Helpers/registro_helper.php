@@ -281,6 +281,53 @@ if (! function_exists('registro_personalizado_texto_fijo_html')) {
     }
 }
 
+if (! function_exists('registro_personalizado_texto_fijo_para_reporte')) {
+    /**
+     * Texto fijo de celda personalizada en reporte: respeta fuente de la celda (normal/negrita/título).
+     */
+    function registro_personalizado_texto_fijo_para_reporte(string $texto, string $fuente = 'normal'): string
+    {
+        $texto = trim($texto);
+        if ($texto === '') {
+            return '';
+        }
+
+        $fuente = trim($fuente);
+        $celdaNegrita = $fuente === 'negrita' || $fuente === 'titulo';
+        $envolverNegritaCelda = static function (string $inner) use ($celdaNegrita): string {
+            if (! $celdaNegrita || $inner === '') {
+                return $inner;
+            }
+
+            return '<b style="font-weight:bold">' . $inner . '</b>';
+        };
+
+        if ($fuente === 'enriquecido' || $texto !== strip_tags($texto)) {
+            $html = registro_sanitizar_html_rico($texto);
+            if ($fuente === 'normal') {
+                return (string) preg_replace('/<\/?(?:b|strong)\b[^>]*>/i', '', $html);
+            }
+            if ($celdaNegrita) {
+                $html = (string) preg_replace('/<\/?(?:b|strong)\b[^>]*>/i', '', $html);
+                if (preg_match('/^<p\b[^>]*>([\s\S]*)<\/p>$/i', trim($html), $paragraphMatch)) {
+                    return '<p><b style="font-weight:bold">' . $paragraphMatch[1] . '</b></p>';
+                }
+
+                return $envolverNegritaCelda($html);
+            }
+
+            return $html;
+        }
+
+        $plano = esc($texto);
+        if ($celdaNegrita) {
+            return $envolverNegritaCelda($plano);
+        }
+
+        return $plano;
+    }
+}
+
 if (! function_exists('registro_normalizar_estilos_inline_html')) {
     /**
      * Convierte estilos inline de Summernote (span style=...) a etiquetas semánticas

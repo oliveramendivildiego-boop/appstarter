@@ -91,7 +91,10 @@ foreach ($ordenPriaKeys as $subIdx => $priaKey) :
         }
     }
     if ($cultivoItem !== null) {
-        echo view('registers/analisis/partials/cultivo_matriz_reporte', [
+        $matrizReporteView = ! empty($cultivoItem->es_personalizado_matriz)
+            ? 'registers/analisis/partials/personalizado_matriz_reporte'
+            : 'registers/analisis/partials/cultivo_matriz_reporte';
+        echo view($matrizReporteView, [
             'padre'                           => trim((string) ($cultivoItem->padre ?? $padre)),
             'hijo'                            => trim((string) ($cultivoItem->hijo ?? '')),
             'pria_id_titulo'                  => (int) ($cultivoItem->prianacategoria_id ?? 0),

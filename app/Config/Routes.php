@@ -375,6 +375,7 @@ $routes->get('registers/orden/(:num)', 'Registers::orden/$1');
 $routes->get('registers/ordenPdf/(:num)', 'Registers::ordenPdf/$1');
 $routes->get('registers/insumos/(:num)', 'Registers::insumos/$1');
 $routes->get('registers/viewreport/(:num)', 'Registers::viewreport/$1');
+$routes->get('registers/viewreport-html/(:num)', 'Registers::viewreportHtml/$1');
 $routes->get('registers/printreport/(:num)', 'Registers::printreport/$1');
 $routes->get('registers/printEnvelope/(:num)', 'Registers::printEnvelope/$1');
 $routes->get('registers/pdf/(:num)', 'Registers::pdf/$1');

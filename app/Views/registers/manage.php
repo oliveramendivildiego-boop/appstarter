@@ -158,6 +158,7 @@ foreach ($categories ?? [] as $cat) {
 <script>window.PRUEBAS_LOOKUP = <?= json_encode($pruebasLookup, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP) ?>;</script>
 <script>window.PRUEBAS_CATEGORIES = <?= json_encode($categories ?? [], JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP) ?>;</script>
 <script>window.FICHA_CLINICA_MAP = <?= json_encode($ficha_clinica_map ?? [], JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP) ?>;</script>
+<script>window.FICHA_CLINICA_REQUIERE_CAPTURA = <?= json_encode($ficha_clinica_requiere_captura ?? [], JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP) ?>;</script>
 <script>window.FICHAS_CLINICAS_FILLED = <?= json_encode($fichas_clinicas_filled ?? [], JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP) ?>;</script>
 <script>window.FICHAS_CLINICAS_DATA = <?= json_encode($fichas_clinicas_data ?? [], JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP) ?>;</script>
 <?php
@@ -505,6 +506,7 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
     var fichaClinicaMap = (typeof window.FICHA_CLINICA_MAP === 'object' && window.FICHA_CLINICA_MAP) ? window.FICHA_CLINICA_MAP : {};
+    var fichaClinicaRequiereCapturaMap = (typeof window.FICHA_CLINICA_REQUIERE_CAPTURA === 'object' && window.FICHA_CLINICA_REQUIERE_CAPTURA) ? window.FICHA_CLINICA_REQUIERE_CAPTURA : {};
     var fichasClinicasFilledState = (typeof window.FICHAS_CLINICAS_FILLED === 'object' && window.FICHAS_CLINICAS_FILLED) ? window.FICHAS_CLINICAS_FILLED : {};
     var fichasClinicasDraft = {};
     var fichaClinicaModalEl = document.getElementById('modalFichaClinica');
@@ -703,6 +705,17 @@ document.addEventListener('DOMContentLoaded', function() {
         return Array.isArray(fichas) && fichas.length > 0;
     }
 
+    function pruebaRequiereCapturaFicha(pruebaId) {
+        var key = String(pruebaId);
+        if (Object.prototype.hasOwnProperty.call(fichaClinicaRequiereCapturaMap, key)) {
+            return !!fichaClinicaRequiereCapturaMap[key];
+        }
+        if (Object.prototype.hasOwnProperty.call(fichaClinicaRequiereCapturaMap, parseInt(pruebaId, 10))) {
+            return !!fichaClinicaRequiereCapturaMap[parseInt(pruebaId, 10)];
+        }
+        return pruebaTieneFichaClinica(pruebaId);
+    }
+
     function fichaClinicaTieneDatos(pruebaId) {
         var key = String(pruebaId);
         var draft = fichasClinicasDraft[key] || fichasClinicasDraft[parseInt(pruebaId, 10)];
@@ -891,7 +904,10 @@ document.addEventListener('DOMContentLoaded', function() {
                 var draft = fichasClinicasDraft[String(priaId)] || fichasClinicasDraft[parseInt(priaId, 10)];
                 if (draft && draft.valores && Object.keys(draft.valores).length) {
                     applyFichaClinicaDraftValores(draft.valores);
+                } else if (!fichaClinicaFormWrap.querySelector('.cultivo-celda-input, .cultivo-celda-valor-fill')) {
+                    marcarFichaSinCapturaEnDraft(priaId, fichaClinicaContext.fichaClinicaId);
                 }
+                renderPruebasLista();
             });
         })
         .catch(function() {
@@ -913,11 +929,77 @@ document.addEventListener('DOMContentLoaded', function() {
         if (fichaClinicaModal) fichaClinicaModal.show();
     }
 
+    function marcarFichaSinCapturaEnDraft(priaId, fichaId) {
+        if (priaId < 1 || fichaId < 1) return false;
+        fichasClinicasDraft[String(priaId)] = {
+            prianacategoria_id: priaId,
+            ficha_clinica_id: fichaId,
+            valores: {},
+            has_data: true
+        };
+        fichasClinicasFilledState[String(priaId)] = { ficha_clinica_id: fichaId, has_data: true };
+        persistFichaDraftInSession(priaId, fichasClinicasDraft[String(priaId)]);
+        return true;
+    }
+
+    function fichaDraftSessionKey(priaId) {
+        return 'reg_ficha_draft_' + String(priaId);
+    }
+
+    function persistFichaDraftInSession(priaId, draft) {
+        if (priaId < 1 || !draft) return;
+        try {
+            sessionStorage.setItem(fichaDraftSessionKey(priaId), JSON.stringify(draft));
+        } catch (errStorage) {}
+    }
+
+    function clearFichaDraftInSession(priaId) {
+        try {
+            sessionStorage.removeItem(fichaDraftSessionKey(priaId));
+        } catch (errStorage) {}
+    }
+
+    function loadFichaDraftFromSession(priaId) {
+        try {
+            var raw = sessionStorage.getItem(fichaDraftSessionKey(priaId));
+            if (!raw) return null;
+            var parsed = JSON.parse(raw);
+            return parsed && typeof parsed === 'object' ? parsed : null;
+        } catch (errStorage) {
+            return null;
+        }
+    }
+
+    function mergeFichaDraftsFromSession() {
+        pruebasSeleccionadas.forEach(function(p) {
+            var stored = loadFichaDraftFromSession(p.id);
+            if (!stored || !stored.has_data) return;
+            fichasClinicasDraft[String(p.id)] = stored;
+            fichasClinicasFilledState[String(p.id)] = {
+                ficha_clinica_id: parseInt(stored.ficha_clinica_id, 10) || 0,
+                has_data: true
+            };
+        });
+    }
+
+    var syncFichaDraftTimer = null;
+    function scheduleSyncFichaDraft() {
+        if (syncFichaDraftTimer) clearTimeout(syncFichaDraftTimer);
+        syncFichaDraftTimer = setTimeout(function() {
+            syncFichaDraftTimer = null;
+            if (syncFichaModalToDraft()) {
+                renderPruebasLista();
+            }
+        }, 250);
+    }
+
     function syncFichaModalToDraft() {
         var priaId = fichaClinicaContext.prianacategoriaId;
         var fichaId = fichaClinicaContext.fichaClinicaId;
         if (priaId < 1 || fichaId < 1 || !fichaClinicaFormWrap) return false;
-        if (!fichaClinicaFormWrap.querySelector('.cultivo-celda-input, .cultivo-celda-valor-fill')) return false;
+        if (!fichaClinicaFormWrap.querySelector('.cultivo-celda-input, .cultivo-celda-valor-fill')) {
+            return marcarFichaSinCapturaEnDraft(priaId, fichaId);
+        }
         var valores = collectFichaClinicaValores();
         var hasData = Object.keys(valores).length > 0;
         if (!hasData) return false;
@@ -928,6 +1010,7 @@ document.addEventListener('DOMContentLoaded', function() {
             has_data: true
         };
         fichasClinicasFilledState[String(priaId)] = { ficha_clinica_id: fichaId, has_data: true };
+        persistFichaDraftInSession(priaId, fichasClinicasDraft[String(priaId)]);
         return true;
     }
 
@@ -943,6 +1026,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 has_data: false
             };
             delete fichasClinicasFilledState[String(priaId)];
+            clearFichaDraftInSession(priaId);
             renderPruebasLista();
             showFichaClinicaAlert(true, 'Borrador actualizado.');
             return;
@@ -1007,6 +1091,7 @@ document.addEventListener('DOMContentLoaded', function() {
         var pendientes = [];
         pruebasSeleccionadas.forEach(function(p) {
             if (!pruebaTieneFichaClinica(p.id)) return;
+            if (!pruebaRequiereCapturaFicha(p.id)) return;
             if (fichaClinicaTieneDatos(p.id)) return;
             var nombre = (p.name || '').trim() || ('Prueba #' + p.id);
             if (p.padre) nombre += ' (' + p.padre + ')';
@@ -1142,6 +1227,9 @@ document.addEventListener('DOMContentLoaded', function() {
             });
         })
         .then(function(res) {
+            pruebasSeleccionadas.forEach(function(p) {
+                clearFichaDraftInSession(p.id);
+            });
             if (esNuevaOrden) {
                 window.location.href = '<?= site_url('registers/viewcomprobante') ?>/' + res.id + '?nuevo=1';
             } else {
@@ -1160,6 +1248,7 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     function renderPruebasLista() {
+        mergeFichaDraftsFromSession();
         if (!pruebaListaContainer) return;
         if (pruebasSortable) {
             pruebasSortable.destroy();
@@ -1177,9 +1266,11 @@ document.addEventListener('DOMContentLoaded', function() {
                 if (p.padre) displayName += ' <span class="text-muted small">(' + p.padre + ')</span>';
                 var fichaBtn = '';
                 if (pruebaTieneFichaClinica(p.id)) {
-                    var fichaFilled = fichaClinicaTieneDatos(p.id);
+                    var fichaFilled = fichaClinicaTieneDatos(p.id) || !pruebaRequiereCapturaFicha(p.id);
                     var fichaClass = 'btn-outline-info btn-ficha-clinica' + (fichaFilled ? ' ficha-con-datos' : '');
-                    var fichaTitle = fichaFilled ? 'Ficha clínica (con datos)' : 'Completar ficha clínica';
+                    var fichaTitle = fichaFilled
+                        ? (pruebaRequiereCapturaFicha(p.id) ? 'Ficha clínica (con datos)' : 'Ficha clínica (sin captura requerida)')
+                        : 'Completar ficha clínica';
                     fichaBtn = '<button type="button" class="btn ' + fichaClass + ' btn-sm me-1" data-ficha-id="' + String(p.id) + '" data-ficha-name="' + String(p.name || '').replace(/"/g, '&quot;') + '" title="' + fichaTitle + '"><i class="fa-solid fa-file-medical"></i></button>';
                 }
                 var removeButton = '<button type="button" class="btn btn-outline-danger btn-sm quitar-prueba" data-id="' + String(p.id) + '" title="Eliminar"><i class="fa-solid fa-times"></i></button>';
@@ -1218,6 +1309,7 @@ document.addEventListener('DOMContentLoaded', function() {
             delete fichasClinicasDraft[parseInt(removed.id, 10)];
             delete fichasClinicasFilledState[String(removed.id)];
             delete fichasClinicasFilledState[parseInt(removed.id, 10)];
+            clearFichaDraftInSession(removed.id);
         }
         pruebasSeleccionadas.splice(idx, 1);
         renderPruebasLista();
@@ -1475,16 +1567,10 @@ document.addEventListener('DOMContentLoaded', function() {
                 return;
             }
             syncFichaModalToDraft();
+            mergeFichaDraftsFromSession();
             var esNuevaOrden = !(editInfo && editInfo.registro_id);
-            var pendientesFicha = getPruebasConFichaSinDatos();
-            confirmarGuardarConFichasPendientes(pendientesFicha).then(function(ok) {
-                if (!ok) {
-                    marcarPruebasFichaPendiente(pendientesFicha);
-                    return;
-                }
-                limpiarAvisoFichasPendientes();
-                ejecutarGuardarOrden(registroData, pagosData, esNuevaOrden);
-            });
+            limpiarAvisoFichasPendientes();
+            ejecutarGuardarOrden(registroData, pagosData, esNuevaOrden);
         });
     }
 
@@ -1809,11 +1895,20 @@ document.addEventListener('DOMContentLoaded', function() {
         btnGuardarFichaClinica.addEventListener('click', guardarFichaClinicaModal);
     }
 
+    if (fichaClinicaFormWrap) {
+        fichaClinicaFormWrap.addEventListener('input', scheduleSyncFichaDraft);
+        fichaClinicaFormWrap.addEventListener('change', scheduleSyncFichaDraft);
+    }
+
     if (fichaClinicaModalEl) {
         fichaClinicaModalEl.addEventListener('shown.bs.modal', function() {
             refreshFichaClinicaRichEditors();
         });
         fichaClinicaModalEl.addEventListener('hidden.bs.modal', function() {
+            if (syncFichaDraftTimer) {
+                clearTimeout(syncFichaDraftTimer);
+                syncFichaDraftTimer = null;
+            }
             syncFichaModalToDraft();
             renderPruebasLista();
             destroyFichaClinicaEditors();
@@ -1821,6 +1916,8 @@ document.addEventListener('DOMContentLoaded', function() {
             hideFichaClinicaAlert();
         });
     }
+
+    mergeFichaDraftsFromSession();
 
     // Autocomplete para búsqueda de pruebas
     var pruebaSearchTimeout;

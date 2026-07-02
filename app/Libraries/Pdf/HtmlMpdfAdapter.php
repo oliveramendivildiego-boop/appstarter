@@ -7,7 +7,7 @@ namespace App\Libraries\Pdf;
  */
 class HtmlMpdfAdapter
 {
-    public const CACHE_REVISION = 'mpdf-native-v129';
+    public const CACHE_REVISION = 'mpdf-native-v139-cultivo-th-bold-pdf';
 
     private const TOTAL_PAGES_TOKEN = '__PDF_TOTAL_PAGES__';
 
@@ -460,9 +460,26 @@ body.pdf-engine-mpdf.pdf-dompdf-download .report-pdf-grupo-cabecera + .report-se
     page-break-before: auto !important;
     break-before: auto !important;
 }
-body.pdf-engine-mpdf .pdf-rs-block table.results:not(.pdf-notes-table):not(.report-refs-matrix) th,
-body.pdf-engine-mpdf .pdf-rs-block table.results:not(.pdf-notes-table):not(.report-refs-matrix) td {
+body.pdf-engine-mpdf .pdf-rs-block table.results:not(.pdf-notes-table):not(.report-refs-matrix):not(.report-cultivo-estilo-reporte) th,
+body.pdf-engine-mpdf .pdf-rs-block table.results:not(.pdf-notes-table):not(.report-refs-matrix):not(.report-cultivo-estilo-reporte) td {
     border: 1px solid var(--pdf-results-border-color, #ddd) !important;
+}
+body.pdf-engine-mpdf .pdf-rs-block table.results.report-cultivo-estilo-reporte {
+    border-collapse: collapse !important;
+}
+body.pdf-engine-mpdf .pdf-rs-block table.results.report-cultivo-estilo-reporte td.cultivo-celda-html p,
+body.pdf-engine-mpdf .pdf-rs-block table.results.report-cultivo-estilo-reporte td.cultivo-celda-html div,
+body.pdf-engine-mpdf .pdf-rs-block table.results.report-cultivo-estilo-reporte td.cultivo-celda-html span {
+    text-align: inherit !important;
+}
+body.pdf-engine-mpdf .pdf-rs-block table.results.report-cultivo-estilo-reporte td.cultivo-celda-html b,
+body.pdf-engine-mpdf .pdf-rs-block table.results.report-cultivo-estilo-reporte td.cultivo-celda-html strong {
+    font-weight: bold !important;
+}
+body.pdf-engine-mpdf .report-cultivo-seccion:not(.report-cultivo-personalizado) table.results thead th,
+body.pdf-engine-mpdf .report-cultivo-seccion:not(.report-cultivo-personalizado) table.results thead th b,
+body.pdf-engine-mpdf .report-cultivo-seccion:not(.report-cultivo-personalizado) table.results thead th strong {
+    font-weight: bold !important;
 }
 body.pdf-engine-mpdf .report-refs-matrix-wrap > .report-refs-matrix-title {
     margin-top: 0 !important;

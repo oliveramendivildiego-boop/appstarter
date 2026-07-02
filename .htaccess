@@ -1,0 +1,14 @@
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+    RewriteBase /laboratorio/
+
+    RewriteRule ^public/ - [L]
+
+    # Carpetas y archivos estáticos servidos desde public/
+    RewriteRule ^(css|js|images|fonts|assets|uploads|webfonts)(/.*)?$ public/$1$2 [L]
+    RewriteRule ^(favicon\.ico|robots\.txt|sw\.js|manifest\.webmanifest)$ public/$1 [L]
+
+    RewriteCond %{REQUEST_FILENAME} !-f
+    RewriteCond %{REQUEST_FILENAME} !-d
+    RewriteRule ^(.*)$ index.php/$1 [L]
+</IfModule>

@@ -7,7 +7,7 @@ namespace App\Services\Report;
  */
 class ReportPdfHtmlCacheService
 {
-    private const SALT = 'report-pdf-html-v3-graficar-fp';
+    private const SALT = 'report-pdf-html-v5-cultivo-bold-mpdf';
 
     public static function salt(): string
     {

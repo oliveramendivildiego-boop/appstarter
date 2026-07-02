@@ -12,7 +12,7 @@ use App\Services\ReportPdfLayoutService;
  */
 class ReportDataCacheService
 {
-    private const SALT = 'report-data-prep-v6-graficar-fp';
+    private const SALT = 'report-data-prep-v19-cultivo-view-split';
 
     private RegisterModel $registerModel;
 
@@ -30,6 +30,18 @@ class ReportDataCacheService
 
         foreach ($this->registerModel->getInfoAnalisis($registroId) as $row) {
             $parts[] = trim((string) ($row['name'] ?? '')) . '=' . trim((string) ($row['regvalues'] ?? ''));
+        }
+
+        $fichaRows = model(\App\Models\RegistroFichaClinicaModel::class)->getAllDataByRegistro($registroId);
+        if ($fichaRows !== []) {
+            $fichaLines = [];
+            foreach ($fichaRows as $priaId => $fichaRow) {
+                $valores = is_array($fichaRow['valores'] ?? null) ? $fichaRow['valores'] : [];
+                ksort($valores);
+                $fichaLines[] = (int) $priaId . '=' . hash('sha256', json_encode($valores, JSON_UNESCAPED_UNICODE) ?: '');
+            }
+            sort($fichaLines);
+            $parts[] = 'ficha_clinica=' . hash('sha256', implode("\n", $fichaLines));
         }
 
         $master = $this->registerModel->getInforeport($registroId);
@@ -50,14 +62,24 @@ class ReportDataCacheService
                 )));
                 if ($ids !== []) {
                     $grafLines = [];
+                    $matrizLines = [];
+                    $labotestModel = model(\App\Models\LabotestModel::class);
                     foreach ($this->registerModel->getPrianacategoriaConfigByIds($ids, true) as $cfg) {
                         $pid = (int) ($cfg['prianacategoria_id'] ?? 0);
                         if ($pid > 0) {
                             $grafLines[] = $pid . '=' . \App\Models\LabotestModel::normalizeGraficar((int) ($cfg['graficar'] ?? 0));
+                            if (\App\Models\LabotestModel::esMatrizConfigurable((int) ($cfg['compleja'] ?? 0))) {
+                                $matriz = (int) ($cfg['compleja'] ?? 0) === \App\Models\LabotestModel::COMPLEJA_PERSONALIZADO
+                                    ? $labotestModel->getPersonalizadoMatrizConfig($pid)
+                                    : $labotestModel->getCultivoMatrizConfig($pid);
+                                $matrizLines[] = $pid . '=' . hash('sha256', json_encode($matriz, JSON_UNESCAPED_UNICODE) ?: '');
+                            }
                         }
                     }
                     sort($grafLines);
+                    sort($matrizLines);
                     $parts[] = 'graficar_cfg=' . hash('sha256', implode("\n", $grafLines));
+                    $parts[] = 'cultivo_matriz_cfg=' . hash('sha256', implode("\n", $matrizLines));
                 }
             }
         }

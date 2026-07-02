@@ -158,12 +158,14 @@ $normalizeCeldaCfg = static function ($raw) use ($esPersonalizado): array {
                 'modo'                         => 'leyenda',
                 'leyenda_cultivo_categoria_id' => max(0, (int) ($raw['leyenda_cultivo_categoria_id'] ?? 0)),
             ];
+        } elseif ($modo === 'vacio') {
+            return ['modo' => 'vacio'];
         }
     } elseif (is_numeric($raw) && (int) $raw > 0) {
         $out = ['modo' => 'opcion', 'opcion_id' => (int) $raw];
     }
 
-    if ($esPersonalizado && is_array($raw)) {
+    if ($esPersonalizado && is_array($raw) && ($out['modo'] ?? '') !== 'vacio') {
         $ali = trim((string) ($raw['alineacion'] ?? 'izquierda'));
         if (! in_array($ali, ['izquierda', 'centro', 'derecha'], true)) {
             $ali = 'izquierda';
@@ -750,7 +752,9 @@ foreach ($leyendasPorId as $lid => $lcRow) {
 
                             <td class="<?= esc($tdClass) ?>"<?= $tdStyle ?><?= $tdRowspan ?><?= $tdColspanAttr ?>>
 
-                                <?php if ($esPersonalizado && $celdaEsTituloFill($celdaCfg)):
+                                <?php if (($celdaCfg['modo'] ?? '') === 'vacio'): ?>
+
+                                <?php elseif ($esPersonalizado && $celdaEsTituloFill($celdaCfg)):
                                     $textoMostrar = trim((string) ($celdaCfg['texto_fijo'] ?? ''));
                                     $fuenteMostrar = (string) ($celdaCfg['fuente'] ?? 'normal');
                                 ?>

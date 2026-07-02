@@ -564,12 +564,12 @@ table.results th {
     background: <?= esc($rs['header_bg_color']) ?> !important;
     color: <?= esc($rs['header_text_color']) ?> !important;
 }
-table.results td {
+table.results:not(.report-cultivo-estilo-reporte) td {
     background: <?= esc($rsBodyBg) ?> !important;
     color: <?= esc($rs['body_text_color']) ?> !important;
 }
-table.results th,
-table.results td {
+table.results:not(.report-cultivo-estilo-reporte) th,
+table.results:not(.report-cultivo-estilo-reporte) td {
     border-color: <?= esc($rs['border_color']) ?> !important;
     font-family: "<?= esc($rs['font_family']) ?>", sans-serif !important;
     font-size: <?= esc((string) $rs['font_size_pt']) ?>pt !important;
@@ -581,6 +581,33 @@ table.results td {
     text-shadow: <?= esc($rsTextShadow) ?> !important;
     vertical-align: <?= esc((string) ($rs['cell_vertical_align'] ?? 'middle')) ?> !important;
 }
+table.results.report-cultivo-grilla-personalizado.report-cultivo-estilo-reporte > thead > tr > th,
+table.results.report-cultivo-grilla-personalizado.report-cultivo-estilo-reporte > tbody > tr > td {
+    font-family: "<?= esc($rs['font_family']) ?>", sans-serif !important;
+    font-size: <?= esc((string) $rs['font_size_pt']) ?>pt !important;
+    line-height: <?= esc((string) $rs['line_height']) ?> !important;
+    vertical-align: <?= esc((string) ($rs['cell_vertical_align'] ?? 'middle')) ?> !important;
+}
+table.results.report-cultivo-grilla-personalizado .pers-celda-reporte,
+table.results.report-cultivo-layout-table .pers-celda-reporte {
+    width: 100%;
+    box-sizing: border-box;
+}
+table.results.report-cultivo-personalizado-tabla.report-cultivo-borde-default > tbody > tr > td,
+table.results.report-cultivo-grilla-personalizado.report-cultivo-borde-default > tbody > tr > td {
+    border-width: 1px !important;
+    border-style: solid !important;
+    border-color: <?= esc($rs['border_color']) ?> !important;
+}
+table.results.report-cultivo-personalizado-tabla.report-cultivo-borde-none > tbody > tr > td,
+table.results.report-cultivo-grilla-personalizado.report-cultivo-borde-none > tbody > tr > td {
+    border: none !important;
+}
+table.results.report-cultivo-personalizado-tabla,
+table.results.report-cultivo-grilla-personalizado.report-cultivo-estilo-reporte {
+    border-collapse: collapse !important;
+}
+<?= \App\Models\LabotestModel::buildPersonalizadoReporteCeldaContenidoCss('table.results') ?>
 /* Resultados: tipografía/celdas dentro de .pdf-rs-block → buildResultsTableParityCss() al final del bloque. */
 .report-pdf-grupo-cabecera .group-title,
 .report-pdf-grupo-cabecera .report-tipo-muestra,

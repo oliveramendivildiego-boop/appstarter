@@ -123,6 +123,137 @@ class FichaClinicaModel extends Model
     }
 
     /**
+     * Indica si la matriz de la ficha tiene al menos una celda que el usuario debe capturar al crear la orden.
+     *
+     * @param array<string, mixed> $matriz
+     */
+    public function matrizRequiereCapturaUsuario(array $matriz): bool
+    {
+        $bloques = LabotestModel::resolvePersonalizadoMatrizBloques($matriz);
+        foreach ($bloques as $bloque) {
+            if (! is_array($bloque)) {
+                continue;
+            }
+            if ($this->bloqueMatrizRequiereCapturaUsuario($bloque)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * @param array<string, mixed> $bloque
+     */
+    private function bloqueMatrizRequiereCapturaUsuario(array $bloque): bool
+    {
+        $columnas = max(1, (int) ($bloque['columnas'] ?? 1));
+        $filas = max(0, (int) ($bloque['filas'] ?? 0));
+        $celdas = is_array($bloque['celdas'] ?? null) ? $bloque['celdas'] : [];
+        $skipCols = [];
+        $coveredRowspan = [];
+
+        for ($r = 0; $r < $filas; $r++) {
+            for ($c = 0; $c < $columnas; $c++) {
+                if (isset($skipCols[$r . ',' . $c]) || isset($coveredRowspan[$r . ',' . $c])) {
+                    continue;
+                }
+
+                $raw = $celdas[$r][$c] ?? ['modo' => 'texto'];
+                if ($this->celdaMatrizRequiereCapturaUsuario($raw)) {
+                    return true;
+                }
+
+                if (! is_array($raw)) {
+                    continue;
+                }
+
+                $colspan = max(1, min(20, (int) ($raw['colspan'] ?? 1)));
+                $rowspan = max(1, min(50, (int) ($raw['rowspan'] ?? 1)));
+                $maxColspan = max(1, $columnas - $c);
+                if ($colspan > $maxColspan) {
+                    $colspan = $maxColspan;
+                }
+                $maxRowspan = max(1, $filas - $r);
+                if ($rowspan > $maxRowspan) {
+                    $rowspan = $maxRowspan;
+                }
+
+                if ($colspan > 1) {
+                    for ($cc = $c + 1; $cc < $c + $colspan; $cc++) {
+                        $skipCols[$r . ',' . $cc] = true;
+                    }
+                }
+                if ($rowspan > 1) {
+                    for ($rr = $r + 1; $rr < $r + $rowspan; $rr++) {
+                        for ($cc = $c; $cc < $c + $colspan; $cc++) {
+                            $coveredRowspan[$rr . ',' . $cc] = true;
+                        }
+                    }
+                }
+            }
+        }
+
+        return false;
+    }
+
+    public function fichaRequiereCapturaUsuario(int $fichaClinicaId): bool
+    {
+        if ($fichaClinicaId < 1) {
+            return false;
+        }
+
+        return $this->matrizRequiereCapturaUsuario($this->getMatrizConfig($fichaClinicaId));
+    }
+
+    /**
+     * Mapa prueba_id => si alguna ficha enlazada requiere captura en la orden.
+     *
+     * @return array<int, bool>
+     */
+    public function getRequiereCapturaMapForRegisters(): array
+    {
+        $map = $this->getFichasMapForRegisters();
+        $out = [];
+        foreach ($map as $priaId => $fichas) {
+            $requiere = false;
+            foreach ($fichas as $ficha) {
+                $fichaId = (int) ($ficha['ficha_clinica_id'] ?? 0);
+                if ($fichaId > 0 && $this->fichaRequiereCapturaUsuario($fichaId)) {
+                    $requiere = true;
+                    break;
+                }
+            }
+            $out[(int) $priaId] = $requiere;
+        }
+
+        return $out;
+    }
+
+    /**
+     * @param mixed $raw
+     */
+    private function celdaMatrizRequiereCapturaUsuario(mixed $raw): bool
+    {
+        if (! is_array($raw)) {
+            return is_numeric($raw) && (int) $raw > 0;
+        }
+
+        $modo = (string) ($raw['modo'] ?? 'texto');
+        if (in_array($modo, ['vacio', 'texto_fijo'], true)) {
+            return false;
+        }
+
+        if (! in_array($modo, ['texto', 'texto_rico', 'opcion', 'leyenda'], true)) {
+            return false;
+        }
+
+        $rol = (string) ($raw['rol'] ?? 'input');
+
+        return ! in_array($rol, ['titulo', 'etiqueta'], true);
+    }
+
+    /**
      * @param array<string, mixed> $config
      */
     public function saveMatrizConfig(int $fichaClinicaId, array $config): bool

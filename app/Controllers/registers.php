@@ -764,6 +764,187 @@ class Registers extends SecureArea
     }
 
     /**
+     * Depuración: HTML/CSS del mismo pipeline que alimenta el PDF de viewreport.
+     * ?raw=1 → documento HTML | ?adapted=1 con raw → HTML tras HtmlMpdfAdapter
+     * ?purge=1 → limpia caché HTML/PDF antes de generar
+     */
+    public function viewreportHtml($id = -1)
+    {
+        $id = (int) $id;
+        if ($id < 1) {
+            return redirect()->to('registers')->with('error', 'Registro no válido');
+        }
+        if ($this->registerModel->isRegistroAnulado($id)) {
+            return redirect()->to('registers/anulada/' . $id);
+        }
+
+        if ($this->request->getGet('purge') === '1') {
+            $this->registerService->clearReportPdfPreviewCache($id);
+            (new \App\Services\Report\ReportPdfHtmlCacheService())->clear($id);
+        }
+
+        $data = $this->registerService->prepareReportData($id);
+        if (! $data) {
+            return redirect()->to('registers')->with('error', 'Registro no encontrado');
+        }
+
+        helper('qr');
+        $layoutService = new ReportPdfLayoutService();
+        $pdfLayout     = $layoutService->getActiveLayoutForRender();
+        $reportUrl     = $this->publicReportViewerUrlForQr($id);
+        $emitidoEn     = $this->registerService->lockReportEmitidoEnForPrintOrPdf($id);
+        $qrPx          = ReportPdfLayoutService::qrImagePixelSizeFromLayout($pdfLayout);
+        $qrDataUri     = qr_base64($reportUrl, $qrPx);
+
+        $htmlRaw = $this->registerService->getOrBuildReportPdfHtml(
+            $id,
+            $data,
+            $reportUrl,
+            $qrDataUri,
+            $emitidoEn,
+            $pdfLayout,
+        );
+        $htmlAdapted = \App\Libraries\Pdf\HtmlMpdfAdapter::adapt($htmlRaw);
+
+        $fragmentKey   = trim((string) $this->request->getGet('fragment'));
+        $inspectorMode = $this->request->getGet('inspector') === '1';
+        $embedMode     = $this->request->getGet('embed') === '1';
+        $rawDownload   = $this->request->getGet('raw') === '1';
+
+        if (! $inspectorMode) {
+            $useAdapted = $this->request->getGet('source') !== 'raw';
+            $payload    = $useAdapted ? $htmlAdapted : $htmlRaw;
+
+            if ($fragmentKey !== '') {
+                $snippet = $this->extractReportHtmlFragment($payload, $fragmentKey);
+                if ($snippet !== '') {
+                    $payload = $this->wrapReportHtmlFragmentDocument($snippet, $payload);
+                }
+            }
+
+            $strip = ($embedMode || $rawDownload) ? '' : $this->buildReportHtmlDebugStrip($id);
+            $payload = $this->prepareReportHtmlForBrowserPreview($payload, $strip);
+
+            return $this->response->setBody($payload)->setContentType('text/html', 'UTF-8');
+        }
+
+        if ($rawDownload) {
+            $payload = $this->request->getGet('adapted') === '1' ? $htmlAdapted : $htmlRaw;
+            if ($fragmentKey !== '') {
+                $snippet = $this->extractReportHtmlFragment($payload, $fragmentKey);
+                if ($snippet !== '') {
+                    $payload = $this->wrapReportHtmlFragmentDocument($snippet, $payload);
+                }
+            }
+            $payload = $this->prepareReportHtmlForBrowserPreview($payload);
+
+            return $this->response->setBody($payload)->setContentType('text/html', 'UTF-8');
+        }
+
+        $fingerprint = $this->registerService->reportPdfPreviewCacheFingerprint(
+            $id,
+            $data,
+            $emitidoEn,
+            $pdfLayout,
+        );
+
+        $fragmentRaw     = $fragmentKey !== '' ? $this->extractReportHtmlFragment($htmlRaw, $fragmentKey) : '';
+        $fragmentAdapted = $fragmentKey !== '' ? $this->extractReportHtmlFragment($htmlAdapted, $fragmentKey) : '';
+
+        return view('registers/viewreport_html_debug', [
+            'current_module'  => 'registers',
+            'controller_name' => 'registers',
+            'registro_id'     => $id,
+            'register_info'   => $data['register_info'],
+            'html_raw'        => $htmlRaw,
+            'html_adapted'    => $htmlAdapted,
+            'styles_raw'      => $this->extractReportHtmlStyleBlocks($htmlRaw),
+            'styles_adapted'  => $this->extractReportHtmlStyleBlocks($htmlAdapted),
+            'fragment_key'    => $fragmentKey,
+            'fragment_raw'    => $fragmentRaw,
+            'fragment_adapted'=> $fragmentAdapted,
+            'cache_revision'  => \App\Libraries\Pdf\HtmlMpdfAdapter::CACHE_REVISION,
+            'html_fingerprint'=> $fingerprint,
+            'purged'          => $this->request->getGet('purge') === '1',
+            'allowed_modules' => $this->allowed_modules,
+            'user_info'       => $this->user_info,
+        ]);
+    }
+
+    /**
+     * @return list<string>
+     */
+    private function extractReportHtmlStyleBlocks(string $html): array
+    {
+        if (! preg_match_all('/<style\b[^>]*>([\s\S]*?)<\/style>/i', $html, $matches)) {
+            return [];
+        }
+
+        return array_values(array_filter(array_map('trim', $matches[1]), static fn(string $s): bool => $s !== ''));
+    }
+
+    private function extractReportHtmlFragment(string $html, string $key): string
+    {
+        $key = preg_replace('/[^a-z0-9_-]/i', '', $key) ?? '';
+        if ($key === '') {
+            return '';
+        }
+
+        $patterns = [
+            '/<div\b[^>]*\breport-cultivo-bloque-' . preg_quote($key, '/') . '\b[^>]*>[\s\S]*?<\/div>\s*(?=<div class="report-cultivo-seccion|<div class="report-pdf-grupo|<\/div>\s*<\/div>\s*<\/div>|$)/i',
+            '/<div\b[^>]*\breport-cultivo-seccion\b[^>]*>[\s\S]*?\breport-cultivo-bloque-' . preg_quote($key, '/') . '\b[\s\S]*?<\/div>\s*<\/div>/i',
+        ];
+
+        foreach ($patterns as $pattern) {
+            if (preg_match($pattern, $html, $match)) {
+                return trim($match[0]);
+            }
+        }
+
+        return '';
+    }
+
+    private function reportHtmlBrowserBaseHref(): string
+    {
+        return rtrim(base_url(), '/') . '/';
+    }
+
+    private function prepareReportHtmlForBrowserPreview(string $html, string $injectAfterBodyOpen = ''): string
+    {
+        $baseTag = '<base href="' . htmlspecialchars($this->reportHtmlBrowserBaseHref(), ENT_QUOTES, 'UTF-8') . '">' . "\n";
+        if (stripos($html, '<base ') === false && stripos($html, '<head>') !== false) {
+            $html = preg_replace('/<head>/i', '<head>' . "\n" . $baseTag, $html, 1) ?? $html;
+        }
+
+        if ($injectAfterBodyOpen !== '' && preg_match('/<body\b[^>]*>/i', $html)) {
+            $html = preg_replace('/<body([^>]*)>/i', '<body$1>' . $injectAfterBodyOpen, $html, 1) ?? $html;
+        }
+
+        return $html;
+    }
+
+    private function wrapReportHtmlFragmentDocument(string $fragment, string $fullHtml): string
+    {
+        $headInner = '';
+        if (preg_match('/<head[^>]*>([\s\S]*?)<\/head>/i', $fullHtml, $match)) {
+            $headInner = $match[1];
+        }
+
+        return '<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8">'
+            . $headInner
+            . '</head><body class="pdf-engine-mpdf pdf-dompdf-download">'
+            . $fragment
+            . '</body></html>';
+    }
+
+    private function buildReportHtmlDebugStrip(int $registroId): string
+    {
+        return (string) view('registers/partials/report_html_debug_strip', [
+            'registro_id' => $registroId,
+        ]);
+    }
+
+    /**
      * Imprime el sobre con la plantilla activa y los datos del registro/reporte.
      */
     public function printEnvelope($id = -1)
@@ -2849,19 +3030,23 @@ class Registers extends SecureArea
             return $this->response->setJSON(['success' => false, 'message' => 'No se pudo guardar'])->setStatusCode(500);
         }
 
+        $this->registerService->clearReportDataCache($registroId);
+        $this->registerService->clearReportPdfPreviewCache($registroId);
+
         return $this->response->setJSON(['success' => true, 'message' => 'Ficha clínica guardada']);
     }
 
     /**
-     * @return array{ficha_clinica_map: array<int, list<array<string, mixed>>>, fichas_clinicas_filled: array<int, array<string, mixed>>, fichas_clinicas_data: array<int, array<string, mixed>>}
+     * @return array{ficha_clinica_map: array<int, list<array<string, mixed>>>, ficha_clinica_requiere_captura: array<int, bool>, fichas_clinicas_filled: array<int, array<string, mixed>>, fichas_clinicas_data: array<int, array<string, mixed>>}
      */
     private function buildFichaClinicaViewExtras(?int $registroId = null): array
     {
         $fichaModel = model(FichaClinicaModel::class);
         $extras = [
-            'ficha_clinica_map'      => $fichaModel->getFichasMapForRegisters(),
-            'fichas_clinicas_filled' => [],
-            'fichas_clinicas_data'   => [],
+            'ficha_clinica_map'              => $fichaModel->getFichasMapForRegisters(),
+            'ficha_clinica_requiere_captura' => $fichaModel->getRequiereCapturaMapForRegisters(),
+            'fichas_clinicas_filled'         => [],
+            'fichas_clinicas_data'           => [],
         ];
         if ($registroId !== null && $registroId > 0) {
             $regFichaModel = model(RegistroFichaClinicaModel::class);

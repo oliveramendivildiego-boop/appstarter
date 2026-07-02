@@ -230,6 +230,12 @@ class App extends BaseConfig
                 $basePath = (string) parse_url($this->baseURL, PHP_URL_PATH);
                 $basePath = $basePath !== '' ? rtrim($basePath, '/') . '/' : '/';
                 $this->baseURL = $scheme . '://' . $currentHost . $basePath;
+            } elseif ($currentHost === 'localhost') {
+                $scriptName = (string) ($_SERVER['SCRIPT_NAME'] ?? '');
+                if (preg_match('#^(.+)/index\.php$#', $scriptName, $matches)) {
+                    $scheme = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https' : 'http';
+                    $this->baseURL = $scheme . '://' . $currentHost . rtrim($matches[1], '/') . '/';
+                }
             }
         }
     }
