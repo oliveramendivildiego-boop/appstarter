@@ -502,6 +502,7 @@ document.addEventListener('DOMContentLoaded', function() {
         window.addEventListener('pageshow', function(ev) {
             if (ev.persisted) {
                 renewSubmitToken();
+                fichaDraftScope = getFichaDraftScope();
             }
         });
     }
@@ -509,6 +510,13 @@ document.addEventListener('DOMContentLoaded', function() {
     var fichaClinicaRequiereCapturaMap = (typeof window.FICHA_CLINICA_REQUIERE_CAPTURA === 'object' && window.FICHA_CLINICA_REQUIERE_CAPTURA) ? window.FICHA_CLINICA_REQUIERE_CAPTURA : {};
     var fichasClinicasFilledState = (typeof window.FICHAS_CLINICAS_FILLED === 'object' && window.FICHAS_CLINICAS_FILLED) ? window.FICHAS_CLINICAS_FILLED : {};
     var fichasClinicasDraft = {};
+    function getFichaDraftScope() {
+        if (editInfo && editInfo.registro_id) {
+            return 'reg_' + String(parseInt(editInfo.registro_id, 10));
+        }
+        return 'new_' + String(submitToken);
+    }
+    var fichaDraftScope = getFichaDraftScope();
     var fichaClinicaModalEl = document.getElementById('modalFichaClinica');
     var fichaClinicaModal = (typeof bootstrap !== 'undefined' && fichaClinicaModalEl) ? bootstrap.Modal.getOrCreateInstance(fichaClinicaModalEl) : null;
     var fichaClinicaFormWrap = document.getElementById('ficha_clinica_form_wrap');
@@ -902,7 +910,9 @@ document.addEventListener('DOMContentLoaded', function() {
             requestAnimationFrame(function() {
                 refreshFichaClinicaRichEditors();
                 var draft = fichasClinicasDraft[String(priaId)] || fichasClinicasDraft[parseInt(priaId, 10)];
-                if (draft && draft.valores && Object.keys(draft.valores).length) {
+                var draftFichaId = draft ? (parseInt(draft.ficha_clinica_id, 10) || 0) : 0;
+                var activeFichaId = fichaClinicaContext.fichaClinicaId;
+                if (draft && draftFichaId === activeFichaId && draft.valores && Object.keys(draft.valores).length) {
                     applyFichaClinicaDraftValores(draft.valores);
                 } else if (!fichaClinicaFormWrap.querySelector('.cultivo-celda-input, .cultivo-celda-valor-fill')) {
                     marcarFichaSinCapturaEnDraft(priaId, fichaClinicaContext.fichaClinicaId);
@@ -943,7 +953,22 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     function fichaDraftSessionKey(priaId) {
-        return 'reg_ficha_draft_' + String(priaId);
+        return 'reg_ficha_draft_' + fichaDraftScope + '_' + String(priaId);
+    }
+
+    function clearLegacyFichaDraftSessionKeys() {
+        try {
+            var keysToRemove = [];
+            for (var i = 0; i < sessionStorage.length; i++) {
+                var k = sessionStorage.key(i);
+                if (!k || k.indexOf('reg_ficha_draft_') !== 0) continue;
+                var suffix = k.slice('reg_ficha_draft_'.length);
+                if (/^\d+$/.test(suffix)) {
+                    keysToRemove.push(k);
+                }
+            }
+            keysToRemove.forEach(function(k) { sessionStorage.removeItem(k); });
+        } catch (errStorage) {}
     }
 
     function persistFichaDraftInSession(priaId, draft) {
@@ -972,14 +997,23 @@ document.addEventListener('DOMContentLoaded', function() {
 
     function mergeFichaDraftsFromSession() {
         pruebasSeleccionadas.forEach(function(p) {
+            var key = String(p.id);
+            var current = fichasClinicasDraft[key] || fichasClinicasDraft[parseInt(p.id, 10)];
+            if (current && current.has_data && Object.keys(current.valores || {}).length > 0) return;
             var stored = loadFichaDraftFromSession(p.id);
             if (!stored || !stored.has_data) return;
-            fichasClinicasDraft[String(p.id)] = stored;
-            fichasClinicasFilledState[String(p.id)] = {
+            fichasClinicasDraft[key] = stored;
+            fichasClinicasFilledState[key] = {
                 ficha_clinica_id: parseInt(stored.ficha_clinica_id, 10) || 0,
                 has_data: true
             };
         });
+    }
+
+    function flushFichaDraftSyncTimer() {
+        if (!syncFichaDraftTimer) return;
+        clearTimeout(syncFichaDraftTimer);
+        syncFichaDraftTimer = null;
     }
 
     var syncFichaDraftTimer = null;
@@ -997,20 +1031,25 @@ document.addEventListener('DOMContentLoaded', function() {
         var priaId = fichaClinicaContext.prianacategoriaId;
         var fichaId = fichaClinicaContext.fichaClinicaId;
         if (priaId < 1 || fichaId < 1 || !fichaClinicaFormWrap) return false;
+        var key = String(priaId);
+        var existingDraft = fichasClinicasDraft[key] || fichasClinicasDraft[parseInt(priaId, 10)];
         if (!fichaClinicaFormWrap.querySelector('.cultivo-celda-input, .cultivo-celda-valor-fill')) {
+            if (existingDraft && existingDraft.has_data) {
+                return Object.keys(existingDraft.valores || {}).length > 0;
+            }
             return marcarFichaSinCapturaEnDraft(priaId, fichaId);
         }
         var valores = collectFichaClinicaValores();
         var hasData = Object.keys(valores).length > 0;
         if (!hasData) return false;
-        fichasClinicasDraft[String(priaId)] = {
+        fichasClinicasDraft[key] = {
             prianacategoria_id: priaId,
             ficha_clinica_id: fichaId,
             valores: valores,
             has_data: true
         };
-        fichasClinicasFilledState[String(priaId)] = { ficha_clinica_id: fichaId, has_data: true };
-        persistFichaDraftInSession(priaId, fichasClinicasDraft[String(priaId)]);
+        fichasClinicasFilledState[key] = { ficha_clinica_id: fichaId, has_data: true };
+        persistFichaDraftInSession(priaId, fichasClinicasDraft[key]);
         return true;
     }
 
@@ -1018,6 +1057,8 @@ document.addEventListener('DOMContentLoaded', function() {
         var priaId = fichaClinicaContext.prianacategoriaId;
         var fichaId = fichaClinicaContext.fichaClinicaId;
         if (priaId < 1 || fichaId < 1) return;
+        flushFichaDraftSyncTimer();
+        syncFichaClinicaEditors();
         if (!syncFichaModalToDraft()) {
             fichasClinicasDraft[String(priaId)] = {
                 prianacategoria_id: priaId,
@@ -1036,7 +1077,9 @@ document.addEventListener('DOMContentLoaded', function() {
         var hasData = Object.keys(valores).length > 0;
         var registroId = (editInfo && editInfo.registro_id) ? parseInt(editInfo.registro_id, 10) : 0;
         if (registroId < 1) {
-            showFichaClinicaAlert(true, hasData ? 'Datos guardados en borrador (se guardarán con la orden).' : 'Borrador actualizado.');
+            showFichaClinicaAlert(true, hasData
+                ? 'Borrador listo. Los datos se guardarán en la base de datos al pulsar Guardar la orden.'
+                : 'Borrador actualizado.');
             return;
         }
         var csrf = getCsrfPair();
@@ -1566,6 +1609,8 @@ document.addEventListener('DOMContentLoaded', function() {
                 primero.scrollIntoView({ behavior: 'smooth', block: 'center' });
                 return;
             }
+            flushFichaDraftSyncTimer();
+            syncFichaClinicaEditors();
             syncFichaModalToDraft();
             mergeFichaDraftsFromSession();
             var esNuevaOrden = !(editInfo && editInfo.registro_id);
@@ -1905,10 +1950,8 @@ document.addEventListener('DOMContentLoaded', function() {
             refreshFichaClinicaRichEditors();
         });
         fichaClinicaModalEl.addEventListener('hidden.bs.modal', function() {
-            if (syncFichaDraftTimer) {
-                clearTimeout(syncFichaDraftTimer);
-                syncFichaDraftTimer = null;
-            }
+            flushFichaDraftSyncTimer();
+            syncFichaClinicaEditors();
             syncFichaModalToDraft();
             renderPruebasLista();
             destroyFichaClinicaEditors();
@@ -1917,6 +1960,7 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
+    clearLegacyFichaDraftSessionKeys();
     mergeFichaDraftsFromSession();
 
     // Autocomplete para búsqueda de pruebas
