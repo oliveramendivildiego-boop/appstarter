@@ -72,10 +72,7 @@ $resolveCategoriaCeldaCfg = static function (array $celdaRaw) use ($leyendasJsMa
     return $catId;
 };
 $parsePersonalizadoCelda = static function (array $celdaRaw): array {
-    $ali = trim((string) ($celdaRaw['alineacion'] ?? 'izquierda'));
-    if (! in_array($ali, ['izquierda', 'centro', 'derecha'], true)) {
-        $ali = 'izquierda';
-    }
+    $ali = \App\Models\LabotestModel::normalizarAlineacionPersonalizado((string) ($celdaRaw['alineacion'] ?? 'izquierda'));
     $fuente = trim((string) ($celdaRaw['fuente'] ?? 'normal'));
     if (! in_array($fuente, ['normal', 'negrita', 'titulo', 'enriquecido'], true)) {
         $fuente = 'normal';
@@ -1196,17 +1193,22 @@ $parsePersonalizadoCelda = static function (array $celdaRaw): array {
                                     <?php if ($esPersonalizado && $celdaModo !== 'vacio'): ?>
                                     <div class="cultivo-celda-extras-personalizado">
                                         <div class="row g-1">
-                                            <div class="col-6">
-                                                <label class="form-label">Alineación</label>
+                                            <div class="col-12<?= $celdaModo === 'texto_rico' ? '' : ' col-md-6' ?>">
+                                                <label class="form-label cultivo-celda-alineacion-label"><?= $celdaModo === 'texto_rico' ? 'Alineación del texto enriquecido' : 'Alineación' ?></label>
                                                 <select class="form-select form-select-sm cultivo-celda-alineacion"
                                                         data-bloque-id="<?= esc($bloqueId, 'attr') ?>"
                                                         data-fila="<?= $r ?>" data-columna="<?= $c ?>">
-                                                    <option value="izquierda" <?= $persCelda['alineacion'] === 'izquierda' ? 'selected' : '' ?>>Izquierda</option>
-                                                    <option value="centro" <?= $persCelda['alineacion'] === 'centro' ? 'selected' : '' ?>>Centro</option>
-                                                    <option value="derecha" <?= $persCelda['alineacion'] === 'derecha' ? 'selected' : '' ?>>Derecha</option>
+                                                    <?php foreach ([
+                                                        'izquierda' => 'Izquierda',
+                                                        'centro' => 'Centro',
+                                                        'derecha' => 'Derecha',
+                                                        'justificado' => 'Justificado',
+                                                    ] as $aliVal => $aliLbl): ?>
+                                                    <option value="<?= esc($aliVal, 'attr') ?>" <?= $persCelda['alineacion'] === $aliVal ? 'selected' : '' ?>><?= esc($aliLbl) ?></option>
+                                                    <?php endforeach; ?>
                                                 </select>
                                             </div>
-                                            <div class="col-6">
+                                            <div class="col-6 cultivo-extra-solo-no-rico<?= $celdaModo === 'texto_rico' ? ' d-none' : '' ?>">
                                                 <label class="form-label">Fuente</label>
                                                 <select class="form-select form-select-sm cultivo-celda-fuente"
                                                         data-bloque-id="<?= esc($bloqueId, 'attr') ?>"
@@ -1217,7 +1219,7 @@ $parsePersonalizadoCelda = static function (array $celdaRaw): array {
                                                     <option value="enriquecido" <?= $persCelda['fuente'] === 'enriquecido' ? 'selected' : '' ?>>Mixto (selección)</option>
                                                 </select>
                                             </div>
-                                            <div class="col-6 cultivo-celda-rol-wrap">
+                                            <div class="col-6 cultivo-celda-rol-wrap cultivo-extra-solo-no-rico<?= $celdaModo === 'texto_rico' ? ' d-none' : '' ?>">
                                                 <label class="form-label">Rol celda</label>
                                                 <select class="form-select form-select-sm cultivo-celda-rol"
                                                         data-bloque-id="<?= esc($bloqueId, 'attr') ?>"
@@ -1227,7 +1229,7 @@ $parsePersonalizadoCelda = static function (array $celdaRaw): array {
                                                     <option value="etiqueta" <?= $persCelda['rol'] === 'etiqueta' ? 'selected' : '' ?>>Etiqueta</option>
                                                 </select>
                                             </div>
-                                            <div class="col-12 cultivo-celda-unir-panel">
+                                            <div class="col-12 cultivo-celda-unir-panel cultivo-extra-solo-no-rico<?= $celdaModo === 'texto_rico' ? ' d-none' : '' ?>">
                                                 <label class="form-label mb-1">Unir celdas</label>
                                                 <div class="row g-1">
                                                     <div class="col-6">
@@ -1252,7 +1254,7 @@ $parsePersonalizadoCelda = static function (array $celdaRaw): array {
                                                     </div>
                                                 </div>
                                             </div>
-                                            <div class="col-12 cultivo-celda-texto-fijo-wrap<?= $mostrarTextoFijoWrap ? '' : ' d-none' ?>">
+                                            <div class="col-12 cultivo-celda-texto-fijo-wrap cultivo-extra-solo-no-rico<?= ($mostrarTextoFijoWrap && $celdaModo !== 'texto_rico') ? '' : ' d-none' ?>">
                                                 <label class="form-label">Texto fijo</label>
                                                 <?php if ($celdaModo === 'texto_fijo'): ?>
                                                 <p class="small text-muted mb-1">Se muestra al llenar la ficha y el paciente no puede editarlo. Use negrita, cursiva, etc.</p>
@@ -1558,13 +1560,48 @@ $parsePersonalizadoCelda = static function (array $celdaRaw): array {
         }
     }
 
+    var ALINEACION_PERSONALIZADO_OPTS = [
+        ['izquierda', 'Izquierda'],
+        ['centro', 'Centro'],
+        ['derecha', 'Derecha'],
+        ['justificado', 'Justificado']
+    ];
+
+    function normalizarAlineacionPersonalizado(ali) {
+        ali = String(ali || 'izquierda');
+        return ALINEACION_PERSONALIZADO_OPTS.some(function(pair) { return pair[0] === ali; }) ? ali : 'izquierda';
+    }
+
+    function buildAlineacionPersonalizadoSelectHtml(secId, fila, col, selected) {
+        var ali = normalizarAlineacionPersonalizado(selected);
+        var html = '<select class="form-select form-select-sm cultivo-celda-alineacion" data-bloque-id="' + secId + '" data-fila="' + fila + '" data-columna="' + col + '">';
+        ALINEACION_PERSONALIZADO_OPTS.forEach(function(pair) {
+            html += '<option value="' + pair[0] + '"' + (ali === pair[0] ? ' selected' : '') + '>' + pair[1] + '</option>';
+        });
+        html += '</select>';
+        return html;
+    }
+
+    function toggleExtrasPersonalizadoPorModo(configEl, modo) {
+        if (!configEl || !esPersonalizado) return;
+        var extras = configEl.querySelector('.cultivo-celda-extras-personalizado');
+        if (!extras) return;
+        var esRico = modo === 'texto_rico';
+        extras.querySelectorAll('.cultivo-extra-solo-no-rico').forEach(function(el) {
+            el.classList.toggle('d-none', esRico);
+        });
+        var aliLabel = extras.querySelector('.cultivo-celda-alineacion-label');
+        if (aliLabel) {
+            aliLabel.textContent = esRico ? 'Alineación del texto enriquecido' : 'Alineación';
+        }
+    }
+
     function withPersonalizadoExtras(out, raw) {
         if ((out && out.modo === 'vacio') || (raw && raw.modo === 'vacio')) {
             return { modo: 'vacio' };
         }
         if (!esPersonalizado) return out;
-        var ali = raw && raw.alineacion ? String(raw.alineacion) : 'izquierda';
-        if (['izquierda', 'centro', 'derecha'].indexOf(ali) < 0) ali = 'izquierda';
+        var ali = normalizarAlineacionPersonalizado(raw && raw.alineacion ? raw.alineacion : 'izquierda');
         out.alineacion = ali;
         var fuente = raw && raw.fuente ? String(raw.fuente) : 'normal';
         if (['normal', 'negrita', 'titulo', 'enriquecido'].indexOf(fuente) < 0) fuente = 'normal';
@@ -1693,6 +1730,7 @@ $parsePersonalizadoCelda = static function (array $celdaRaw): array {
         if (opcionWrap) opcionWrap.classList.toggle('d-none', modo !== 'opcion');
         if (leyendaWrap) leyendaWrap.classList.toggle('d-none', modo !== 'leyenda');
         if (valorWrap) valorWrap.classList.toggle('d-none', modo === 'opcion' || modo === 'texto_rico' || modo === 'texto_fijo' || modo === 'vacio');
+        toggleExtrasPersonalizadoPorModo(config, modo);
     }
 
     function aplicarModoVacioCelda(configEl, activo) {
@@ -2433,6 +2471,7 @@ $parsePersonalizadoCelda = static function (array $celdaRaw): array {
         }
         configEl.classList.toggle('cultivo-celda-es-titulo', esTitulo || modo === 'texto_fijo');
         actualizarEditorTextoFijoCelda(configEl);
+        toggleExtrasPersonalizadoPorModo(configEl, modo);
     }
 
     function refrescarVisibilidadCeldas(secId) {
@@ -2519,26 +2558,23 @@ $parsePersonalizadoCelda = static function (array $celdaRaw): array {
             var maxColspan = Math.max(1, (totalColumnas || 20) - col);
             if (colspan > maxColspan) colspan = maxColspan;
             html += '<div class="cultivo-celda-extras-personalizado"><div class="row g-1">';
-            html += '<div class="col-6"><label class="form-label">Alineación</label>';
-            html += '<select class="form-select form-select-sm cultivo-celda-alineacion" data-bloque-id="' + secId + '" data-fila="' + fila + '" data-columna="' + col + '">';
-            ['izquierda', 'centro', 'derecha'].forEach(function(v) {
-                html += '<option value="' + v + '"' + (ali === v ? ' selected' : '') + '>'
-                    + (v === 'izquierda' ? 'Izquierda' : (v === 'centro' ? 'Centro' : 'Derecha')) + '</option>';
-            });
-            html += '</select></div>';
-            html += '<div class="col-6"><label class="form-label">Fuente</label>';
+            html += '<div class="col-12' + (modo === 'texto_rico' ? '' : ' col-md-6') + '">';
+            html += '<label class="form-label cultivo-celda-alineacion-label">' + (modo === 'texto_rico' ? 'Alineación del texto enriquecido' : 'Alineación') + '</label>';
+            html += buildAlineacionPersonalizadoSelectHtml(secId, fila, col, ali);
+            html += '</div>';
+            html += '<div class="col-6 cultivo-extra-solo-no-rico' + (modo === 'texto_rico' ? ' d-none' : '') + '"><label class="form-label">Fuente</label>';
             html += '<select class="form-select form-select-sm cultivo-celda-fuente" data-bloque-id="' + secId + '" data-fila="' + fila + '" data-columna="' + col + '">';
             [['normal', 'Normal'], ['negrita', 'Negrita (toda la celda)'], ['titulo', 'Título (toda la celda)'], ['enriquecido', 'Mixto (selección)']].forEach(function(pair) {
                 html += '<option value="' + pair[0] + '"' + (fuente === pair[0] ? ' selected' : '') + '>' + pair[1] + '</option>';
             });
             html += '</select></div>';
-            html += '<div class="col-6 cultivo-celda-rol-wrap"><label class="form-label">Rol celda</label>';
+            html += '<div class="col-6 cultivo-celda-rol-wrap cultivo-extra-solo-no-rico' + (modo === 'texto_rico' ? ' d-none' : '') + '"><label class="form-label">Rol celda</label>';
             html += '<select class="form-select form-select-sm cultivo-celda-rol" data-bloque-id="' + secId + '" data-fila="' + fila + '" data-columna="' + col + '">';
             [['input', 'Input (captura)'], ['titulo', 'Título fijo'], ['etiqueta', 'Etiqueta']].forEach(function(pair) {
                 html += '<option value="' + pair[0] + '"' + (rol === pair[0] ? ' selected' : '') + '>' + pair[1] + '</option>';
             });
             html += '</select></div>';
-            html += '<div class="col-12 cultivo-celda-unir-panel">';
+            html += '<div class="col-12 cultivo-celda-unir-panel cultivo-extra-solo-no-rico' + (modo === 'texto_rico' ? ' d-none' : '') + '">';
             html += '<label class="form-label mb-1">Unir celdas</label><div class="row g-1">';
             html += '<div class="col-6"><label class="form-label">Unir columnas</label>';
             html += '<select class="form-select form-select-sm cultivo-celda-colspan" data-bloque-id="' + secId + '" data-fila="' + fila + '" data-columna="' + col + '">';
@@ -2552,8 +2588,9 @@ $parsePersonalizadoCelda = static function (array $celdaRaw): array {
                 html += '<option value="' + rs + '"' + (rowspan === rs ? ' selected' : '') + '>' + rs + '</option>';
             }
             html += '</select></div></div></div>';
-            var mostrarTextoFijo = esFuenteEnriquecida || esTitulo || rol === 'titulo' || rol === 'etiqueta' || modo === 'texto_fijo';
-            html += '<div class="col-12 cultivo-celda-texto-fijo-wrap' + (mostrarTextoFijo ? '' : ' d-none') + '">';
+            var esRicoModo = modo === 'texto_rico';
+            var mostrarTextoFijo = !esRicoModo && (esFuenteEnriquecida || esTitulo || rol === 'titulo' || rol === 'etiqueta' || modo === 'texto_fijo');
+            html += '<div class="col-12 cultivo-celda-texto-fijo-wrap cultivo-extra-solo-no-rico' + (mostrarTextoFijo ? '' : ' d-none') + '">';
             html += '<label class="form-label">Texto fijo</label>';
             if (modo === 'texto_fijo') {
                 html += '<p class="small text-muted mb-1">Se muestra al llenar la ficha y el paciente no puede editarlo. Use negrita, cursiva, etc.</p>';

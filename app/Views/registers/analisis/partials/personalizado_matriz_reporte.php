@@ -120,7 +120,7 @@ $renderCultivoTdCelda = static function (
     if ($tdStyle !== '') {
         $attrs .= ' style="' . esc($tdStyle, 'attr') . '"';
     }
-    if ($usePdfChrome && $isHtml) {
+    if ($isHtml && $alignAttr !== '') {
         $celdaNegrita = \App\Models\LabotestModel::personalizadoCeldaEstiloEsNegrita($tdStyle);
         $cellHtml = \App\Models\LabotestModel::wrapPersonalizadoCeldaHtmlParaMpdf($cellHtml, $alignAttr, $celdaNegrita);
     }
@@ -229,6 +229,14 @@ table.results.report-cultivo-grilla-personalizado {
     border-collapse: collapse !important;
 }
 <?= \App\Models\LabotestModel::buildPersonalizadoReporteCeldaContenidoCss('table') ?>
+.report-cultivo-grilla-personalizado td.cultivo-celda-html p,
+.report-cultivo-grilla-personalizado td.cultivo-celda-html div,
+.report-cultivo-grilla-personalizado td.cultivo-celda-html span,
+.report-cultivo-grilla-personalizado td.cultivo-celda-html em,
+.report-cultivo-grilla-personalizado td.cultivo-celda-html i,
+.report-cultivo-grilla-personalizado td.cultivo-celda-html u {
+    text-align: inherit !important;
+}
 .report-cultivo-grilla-personalizado .pers-celda-reporte {
     width: 100%;
     box-sizing: border-box;

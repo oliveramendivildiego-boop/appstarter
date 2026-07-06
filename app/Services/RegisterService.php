@@ -837,10 +837,7 @@ class RegisterService
                     $out['rol'] = 'titulo';
                 }
                 if ($esPersonalizado) {
-                    $ali = trim((string) ($raw['alineacion'] ?? 'izquierda'));
-                    if (! in_array($ali, ['izquierda', 'centro', 'derecha'], true)) {
-                        $ali = 'izquierda';
-                    }
+                    $ali = \App\Models\LabotestModel::normalizarAlineacionPersonalizado((string) ($raw['alineacion'] ?? 'izquierda'));
                     $out['alineacion'] = $ali;
 
                     $fuente = trim((string) ($raw['fuente'] ?? 'normal'));

@@ -17,6 +17,9 @@ class LabotestModel extends Model
     public const COMPLEJA_CULTIVO      = 2;
     public const COMPLEJA_PERSONALIZADO = 3;
 
+    /** @var list<string> */
+    public const PERSONALIZADO_ALINEACIONES = ['izquierda', 'centro', 'derecha', 'justificado'];
+
     /** Sin gráfica de comparación seriada en reporte. */
     public const GRAFICAR_NO = 0;
     /** Solo tabla heatmap de comparación (M1/M2/M3). */
@@ -472,9 +475,7 @@ class LabotestModel extends Model
 
         if ($conExtrasPersonalizado && is_array($raw)) {
             $ali = trim((string) ($raw['alineacion'] ?? 'izquierda'));
-            if (! in_array($ali, ['izquierda', 'centro', 'derecha'], true)) {
-                $ali = 'izquierda';
-            }
+            $ali = self::normalizarAlineacionPersonalizado($ali);
             $out['alineacion'] = $ali;
 
             $fuente = trim((string) ($raw['fuente'] ?? 'normal'));
@@ -562,14 +563,21 @@ class LabotestModel extends Model
         ];
     }
 
+    public static function normalizarAlineacionPersonalizado(string $ali): string
+    {
+        $ali = trim($ali);
+
+        return in_array($ali, self::PERSONALIZADO_ALINEACIONES, true) ? $ali : 'izquierda';
+    }
+
     /**
      * @param array<string, mixed> $cfg Celda personalizada (alineacion, fuente)
      */
     public static function buildPersonalizadoCeldaReporteStyle(array $cfg): string
     {
         $styles = [];
-        $ali = trim((string) ($cfg['alineacion'] ?? 'izquierda'));
-        $map = ['izquierda' => 'left', 'centro' => 'center', 'derecha' => 'right'];
+        $ali = self::normalizarAlineacionPersonalizado((string) ($cfg['alineacion'] ?? 'izquierda'));
+        $map = ['izquierda' => 'left', 'centro' => 'center', 'derecha' => 'right', 'justificado' => 'justify'];
         $styles[] = 'text-align:' . ($map[$ali] ?? 'left') . ' !important';
 
         $fuente = trim((string) ($cfg['fuente'] ?? 'normal'));
@@ -687,7 +695,7 @@ class LabotestModel extends Model
      */
     public static function extractPersonalizadoTdAlignAttr(string $estilo): string
     {
-        if (preg_match('/text-align\s*:\s*(left|center|right)\b/i', $estilo, $m)) {
+        if (preg_match('/text-align\s*:\s*(left|center|right|justify)\b/i', $estilo, $m)) {
             return strtolower($m[1]);
         }
 
@@ -724,7 +732,7 @@ class LabotestModel extends Model
     public static function wrapPersonalizadoCeldaHtmlParaMpdf(string $html, string $alignAttr, bool $celdaNegrita = false): string
     {
         $html = trim($html);
-        if ($html === '' || ! in_array($alignAttr, ['center', 'right'], true)) {
+        if ($html === '' || ! in_array($alignAttr, ['center', 'right', 'justify'], true)) {
             return $html;
         }
 

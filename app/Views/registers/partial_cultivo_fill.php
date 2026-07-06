@@ -166,10 +166,7 @@ $normalizeCeldaCfg = static function ($raw) use ($esPersonalizado): array {
     }
 
     if ($esPersonalizado && is_array($raw) && ($out['modo'] ?? '') !== 'vacio') {
-        $ali = trim((string) ($raw['alineacion'] ?? 'izquierda'));
-        if (! in_array($ali, ['izquierda', 'centro', 'derecha'], true)) {
-            $ali = 'izquierda';
-        }
+        $ali = \App\Models\LabotestModel::normalizarAlineacionPersonalizado((string) ($raw['alineacion'] ?? 'izquierda'));
         $out['alineacion'] = $ali;
         $fuente = trim((string) ($raw['fuente'] ?? 'normal'));
         if (! in_array($fuente, ['normal', 'negrita', 'titulo', 'enriquecido'], true)) {
@@ -197,8 +194,9 @@ $normalizeCeldaCfg = static function ($raw) use ($esPersonalizado): array {
 
 $estiloCeldaPersonalizado = static function (array $celdaCfg): string {
     $styles = [];
-    $ali = $celdaCfg['alineacion'] ?? 'izquierda';
-    $styles[] = 'text-align:' . ($ali === 'centro' ? 'center' : ($ali === 'derecha' ? 'right' : 'left'));
+    $ali = \App\Models\LabotestModel::normalizarAlineacionPersonalizado((string) ($celdaCfg['alineacion'] ?? 'izquierda'));
+    $map = ['izquierda' => 'left', 'centro' => 'center', 'derecha' => 'right', 'justificado' => 'justify'];
+    $styles[] = 'text-align:' . ($map[$ali] ?? 'left');
     $fuente = $celdaCfg['fuente'] ?? 'normal';
     if ($fuente === 'negrita') {
         $styles[] = 'font-weight:700';
@@ -490,6 +488,12 @@ foreach ($leyendasPorId as $lid => $lcRow) {
     width: 100%;
 }
 
+.cultivo-fill-wrap.cultivo-fill-personalizado td.cultivo-fill-ali-justificado .cultivo-fill-celda-row,
+.cultivo-fill-wrap.cultivo-fill-personalizado td.cultivo-fill-ali-justificado .cultivo-fill-texto-fijo {
+    text-align: justify;
+    width: 100%;
+}
+
 .cultivo-fill-wrap.cultivo-fill-personalizado td.cultivo-fill-ali-centro .cultivo-celda-valor-fill,
 .cultivo-fill-wrap.cultivo-fill-personalizado td.cultivo-fill-ali-derecha .cultivo-celda-valor-fill {
     flex: 0 1 auto;
@@ -654,10 +658,8 @@ foreach ($leyendasPorId as $lid => $lcRow) {
                                     }
                                 }
                                 if ($esPersonalizado) {
-                                    $aliTd = (string) ($celdaCfg['alineacion'] ?? 'izquierda');
-                                    if (in_array($aliTd, ['izquierda', 'centro', 'derecha'], true)) {
-                                        $tdClass .= ' cultivo-fill-ali-' . $aliTd;
-                                    }
+                                    $aliTd = \App\Models\LabotestModel::normalizarAlineacionPersonalizado((string) ($celdaCfg['alineacion'] ?? 'izquierda'));
+                                    $tdClass .= ' cultivo-fill-ali-' . $aliTd;
                                 }
                                 if ($esPersonalizado && $colspan > 1) {
                                     $tdColspanAttr = ' colspan="' . (int) $colspan . '"';
