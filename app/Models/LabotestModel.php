@@ -1166,7 +1166,8 @@ class LabotestModel extends Model
 
         if (count($nonEmpty) === 1) {
             $only = $nonEmpty[0];
-            if ($only['colspan'] >= $columnas) {
+            // En una sola columna, la celda con valor es el resultado (no un título de ancho completo).
+            if ($columnas > 1 && $only['colspan'] >= $columnas) {
                 return false;
             }
             if (count($fila) > 1 && $only['idx'] === 0) {

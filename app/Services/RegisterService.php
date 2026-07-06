@@ -636,7 +636,9 @@ class RegisterService
                 : $labotestModel->getCultivoMatrizConfig($prianacategoriaId);
         }
         $display = $this->formatCultivoMatrizForReport($matriz, $cellValues, $cellNumeros, $unidadGlobalRegistro, $esPersonalizado);
-        if ($display === [] || ! LabotestModel::cultivoDisplayTieneValorUsuario($display)) {
+        $tieneValorEnDisplay = $display !== [] && LabotestModel::cultivoDisplayTieneValorUsuario($display);
+        $tieneValorEnCeldas = $this->cultivoMatrizTieneValores($cellValues);
+        if (! $tieneValorEnDisplay && ! $tieneValorEnCeldas) {
             return null;
         }
 
