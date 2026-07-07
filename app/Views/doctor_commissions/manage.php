@@ -7,6 +7,12 @@ $layoutCfg = layout_config();
 $currencySym = $layoutCfg['currency_symbol'] ?? '$';
 $currencySide = isset($layoutCfg['currency_side']) ? (string)$layoutCfg['currency_side'] : 'left';
 $currencyIsRight = strtolower(trim($currencySide)) === 'right';
+$formatMoney = static function (float $amount) use ($currencySym, $currencyIsRight): string {
+    $formatted = number_format($amount, 2);
+    return $currencyIsRight
+        ? ($formatted . ' ' . esc($currencySym))
+        : (esc($currencySym) . ' ' . $formatted);
+};
 ?>
 <?= view('partial/breadcrumb_nav', ['items' => [
     ['label' => lang('Module.module_doctor_commissions'), 'url' => site_url('doctor_commissions')],
@@ -55,9 +61,10 @@ $currencyIsRight = strtolower(trim($currencySide)) === 'right';
                     <tr>
                         <th>Doctor</th>
                         <th>Especialidad</th>
-                        <th>Total Comisiones</th>
-                        <th>Monto Pendiente</th>
-                        <th>Monto Pagado</th>
+                        <th>% Comisión</th>
+                        <th>Total generado</th>
+                        <th>Comisión por pagar</th>
+                        <th>Comisión pagada</th>
                         <th>Estado</th>
                         <th>Acciones</th>
                     </tr>
@@ -70,20 +77,17 @@ $currencyIsRight = strtolower(trim($currencySide)) === 'right';
                             <br><small class="text-muted">ID: <?= $comm->doctor_id ?></small>
                         </td>
                         <td><?= esc($comm->speciality ?? 'N/A') ?></td>
+                        <td><?= number_format((float) ($comm->doctor_commission_percent ?? 0), 2) ?>%</td>
                         <td>
-                            <strong><?= number_format($comm->total_amount, 2) ?></strong>
-                            <br><small class="text-muted"><?= (int) $comm->total_commissions ?> comisiones</small>
+                            <strong><?= $formatMoney((float) ($comm->total_commission_amount ?? 0)) ?></strong>
+                            <br><small class="text-muted"><?= (int) $comm->total_commissions ?> órdenes</small>
                         </td>
                         <td>
-                            <span class="text-warning fw-bold"><?= $currencyIsRight
-                                ? (number_format($comm->total_pending, 2) . ' ' . esc($currencySym))
-                                : (esc($currencySym) . ' ' . number_format($comm->total_pending, 2)) ?></span>
+                            <span class="text-warning fw-bold"><?= $formatMoney((float) ($comm->total_pending ?? 0)) ?></span>
                             <br><small class="text-muted"><?= (int) $comm->pending_count ?> pendientes</small>
                         </td>
                         <td>
-                            <span class="text-success fw-bold"><?= $currencyIsRight
-                                ? (number_format($comm->total_paid, 2) . ' ' . esc($currencySym))
-                                : (esc($currencySym) . ' ' . number_format($comm->total_paid, 2)) ?></span>
+                            <span class="text-success fw-bold"><?= $formatMoney((float) ($comm->total_paid ?? 0)) ?></span>
                             <br><small class="text-muted"><?= (int) $comm->paid_count ?> pagadas</small>
                         </td>
                         <td>

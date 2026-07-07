@@ -2,6 +2,7 @@
 
 namespace App\Controllers;
 
+use App\Models\DoctorCommissionModel;
 use App\Models\DoctorModel;
 use App\Services\LabotestNameTransformService;
 use CodeIgniter\HTTP\RedirectResponse;
@@ -12,11 +13,13 @@ class Doctors extends SecureArea
     protected ?string $moduleId = 'doctors';
 
     protected DoctorModel $doctorModel;
+    protected DoctorCommissionModel $commissionModel;
 
     public function __construct()
     {
         parent::__construct();
         $this->doctorModel = model(DoctorModel::class);
+        $this->commissionModel = model(DoctorCommissionModel::class);
     }
 
     public function index()
@@ -158,6 +161,21 @@ class Doctors extends SecureArea
         $result = $this->doctorModel->saveDoctor($doctor_data, $id);
         if ($result !== false) {
             $savedDoctorId = (int) $result;
+
+            if ($this->doctorModel->supportsCommissionColumn()) {
+                $hasCommission = (int) ($doctor_data['has_commission'] ?? 0) === 1;
+                $commissionPercent = (float) ($doctor_data['commission_percent'] ?? 0);
+                try {
+                    $this->commissionModel->syncPendingCommissionsForDoctor(
+                        $savedDoctorId,
+                        $hasCommission && $commissionPercent > 0,
+                        $commissionPercent
+                    );
+                } catch (\Throwable $e) {
+                    log_message('error', 'Doctors::saves syncPendingCommissionsForDoctor ' . $e->getMessage());
+                }
+            }
+
             (new \App\Services\RegisterService())->clearReportPdfPreviewCacheForDoctor($savedDoctorId);
             \App\Models\AuditoriaModel::log('doctors', $id === null ? 'crear' : 'actualizar', (string) $savedDoctorId);
             $msg = $id === null

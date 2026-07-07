@@ -22,6 +22,14 @@ class DoctorCommissions extends SecureArea
 
     public function index()
     {
+        try {
+            $this->commissionModel->syncAllEnabledDoctorsCommissions();
+        } catch (\Throwable $e) {
+            log_message('error', 'DoctorCommissions::index syncAllEnabledDoctorsCommissions ' . $e->getMessage());
+        }
+
+        $this->commissionModel->prepareCommissionsForDisplay();
+
         $perPage = 20;
         $page = max(1, (int) ($this->request->getGet('page') ?? 1));
         $offset = ($page - 1) * $perPage;
@@ -80,6 +88,12 @@ class DoctorCommissions extends SecureArea
         $doctor = $this->doctorModel->find($doctorId);
         if (!$doctor) {
             return redirect()->to(site_url('doctor_commissions'))->with('error', 'Doctor no encontrado');
+        }
+
+        try {
+            $this->commissionModel->prepareCommissionsForDisplay();
+        } catch (\Throwable $e) {
+            log_message('error', 'DoctorCommissions::details prepareCommissionsForDisplay ' . $e->getMessage());
         }
 
         $status = $this->request->getGet('status') ?? '';

@@ -53,6 +53,9 @@ $currencyIsRight = strtolower(trim($currencySide)) === 'right';
             </div>
             <div class="card-body">
                 <?php if (!empty($commissions)): ?>
+                <p class="text-muted mb-3">
+                    <?= count($commissions) ?> comisión(es)<?= $status === '0' ? ' pendiente(s)' : ($status === '1' ? ' pagada(s)' : '') ?> en esta vista.
+                </p>
                 <div class="table-responsive">
                     <table class="table table-striped table-hover">
                         <thead class="table-dark">
@@ -75,7 +78,7 @@ $currencyIsRight = strtolower(trim($currencySide)) === 'right';
                                         #<?= $comm->registro_id ?>
                                     </a>
                                 </td>
-                                <td><?= esc($comm->paciente_nombre ?? 'N/A') ?></td>
+                                <td><?= esc(trim((string) ($comm->paciente_nombre ?? '')) !== '' ? $comm->paciente_nombre : 'Sin paciente') ?></td>
                                 <td><?= $currencyIsRight
                                     ? (number_format($comm->total_amount, 2) . ' ' . esc($currencySym))
                                     : (esc($currencySym) . ' ' . number_format($comm->total_amount, 2)) ?></td>
