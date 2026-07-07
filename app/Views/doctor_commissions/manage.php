@@ -62,7 +62,7 @@ $formatMoney = static function (float $amount) use ($currencySym, $currencyIsRig
                         <th>Doctor</th>
                         <th>Especialidad</th>
                         <th>% Comisión</th>
-                        <th>Total generado</th>
+                        <th>Total pruebas</th>
                         <th>Comisión por pagar</th>
                         <th>Comisión pagada</th>
                         <th>Estado</th>
@@ -79,7 +79,7 @@ $formatMoney = static function (float $amount) use ($currencySym, $currencyIsRig
                         <td><?= esc($comm->speciality ?? 'N/A') ?></td>
                         <td><?= number_format((float) ($comm->doctor_commission_percent ?? 0), 2) ?>%</td>
                         <td>
-                            <strong><?= $formatMoney((float) ($comm->total_commission_amount ?? 0)) ?></strong>
+                            <strong><?= $formatMoney((float) ($comm->total_pruebas_amount ?? 0)) ?></strong>
                             <br><small class="text-muted"><?= (int) $comm->total_commissions ?> órdenes</small>
                         </td>
                         <td>

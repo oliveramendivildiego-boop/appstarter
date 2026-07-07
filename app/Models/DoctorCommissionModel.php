@@ -334,7 +334,7 @@ class DoctorCommissionModel extends Model
         $having = $statusInt !== null
             ? "HAVING SUM(CASE WHEN dc.status = {$statusInt} THEN 1 ELSE 0 END) > 0"
             : '';
-        $orderColumn = ($status === '' || $status === '0') ? 'total_pending' : 'total_commission_amount';
+        $orderColumn = ($status === '' || $status === '0') ? 'total_pending' : 'total_pruebas_amount';
 
         $sql = "
             SELECT
@@ -343,6 +343,7 @@ class DoctorCommissionModel extends Model
                 d.speciality,
                 d.commission_percent AS doctor_commission_percent,
                 COUNT(dc.commission_id) AS total_commissions,
+                COALESCE(SUM(dc.total_amount), 0) AS total_pruebas_amount,
                 COALESCE(SUM(dc.commission_amount), 0) AS total_commission_amount,
                 COALESCE(SUM(CASE WHEN dc.status = 0 THEN dc.commission_amount ELSE 0 END), 0) AS total_pending,
                 COALESCE(SUM(CASE WHEN dc.status = 1 THEN dc.commission_amount ELSE 0 END), 0) AS total_paid,
