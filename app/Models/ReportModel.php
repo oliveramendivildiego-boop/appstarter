@@ -457,7 +457,93 @@ class ReportModel extends Model
     }
 
     /**
-     * Resumen de ingresos por rango de fechas
+     * Cobros del período (fecha_abono) de órdenes ingresadas en el mismo rango, agrupados por día de ingreso.
+     *
+     * @return array<string, float> fecha Y-m-d => monto
+     */
+    private function fetchCobradoPeriodoAgrupadoPorIngreso(string $startDate, string $endDate): array
+    {
+        $r  = $this->db->prefixTable('registro');
+        $pa = $this->db->prefixTable('pago');
+        $ab = $this->db->prefixTable('pago_abono');
+        $map = [];
+
+        if ($this->db->tableExists('pago_abono')) {
+            $b = $this->db->table('pago_abono')
+                ->select("DATE({$r}.ingreso) as fecha, SUM(CAST({$ab}.monto AS DECIMAL(12,2))) as cobrado", false)
+                ->join('registro', "{$r}.registro_id = {$ab}.registro_id")
+                ->where("{$ab}.tipopago !=", '4');
+            $b = $this->applySinRegistrosAnulados($b, $r);
+            $b = LabNaiveDateRange::apply($b, $ab, 'fecha_abono', $startDate, $endDate);
+            $b = RegistroIngresoDateRange::apply($b, $r, $startDate, $endDate);
+            $rows = $b->groupBy("DATE({$r}.ingreso)")
+                ->get()
+                ->getResultArray();
+
+            foreach ($rows as $row) {
+                $fecha = (string) ($row['fecha'] ?? '');
+                if ($fecha === '') {
+                    continue;
+                }
+                $map[$fecha] = (float) ($row['cobrado'] ?? 0);
+            }
+
+            $bLegacy = $this->db->table('registro')
+                ->select("DATE({$r}.ingreso) as fecha, SUM(CAST({$pa}.monto_pagar AS DECIMAL(12,2))) as cobrado", false)
+                ->join('pago', "{$r}.registro_id = {$pa}.registro_id")
+                ->join('pago_abono', "{$ab}.registro_id = {$r}.registro_id", 'left')
+                ->where("{$ab}.registro_id IS NULL", null, false)
+                ->where("{$pa}.tipopago !=", '4');
+            $bLegacy = $this->applySinRegistrosAnulados($bLegacy, $r);
+            $legacyRows = RegistroIngresoDateRange::apply($bLegacy, $r, $startDate, $endDate)
+                ->groupBy("DATE({$r}.ingreso)")
+                ->get()
+                ->getResultArray();
+
+            foreach ($legacyRows as $row) {
+                $fecha = (string) ($row['fecha'] ?? '');
+                if ($fecha === '') {
+                    continue;
+                }
+                $map[$fecha] = ($map[$fecha] ?? 0.0) + (float) ($row['cobrado'] ?? 0);
+            }
+
+            return $map;
+        }
+
+        $b = $this->db->table('registro')
+            ->select("DATE({$r}.ingreso) as fecha, SUM(CAST({$pa}.monto_pagar AS DECIMAL(12,2))) as cobrado", false)
+            ->join('pago', "{$r}.registro_id = {$pa}.registro_id")
+            ->where("{$pa}.tipopago !=", '4');
+        $b = $this->applySinRegistrosAnulados($b, $r);
+        $rows = RegistroIngresoDateRange::apply($b, $r, $startDate, $endDate)
+            ->groupBy("DATE({$r}.ingreso)")
+            ->get()
+            ->getResultArray();
+
+        foreach ($rows as $row) {
+            $fecha = (string) ($row['fecha'] ?? '');
+            if ($fecha === '') {
+                continue;
+            }
+            $map[$fecha] = (float) ($row['cobrado'] ?? 0);
+        }
+
+        return $map;
+    }
+
+    /**
+     * Total cobrado en el período para órdenes ingresadas en el mismo rango (abonos por fecha de cobro).
+     */
+    private function sumCobradoPeriodoOrdenesIngresadas(string $startDate, string $endDate): float
+    {
+        $map = $this->fetchCobradoPeriodoAgrupadoPorIngreso($startDate, $endDate);
+
+        return round(array_sum($map), 2);
+    }
+
+    /**
+     * Resumen de ingresos por rango de fechas (órdenes agrupadas por fecha de ingreso).
      */
     public function getIngresosByDateRange(string $startDate, string $endDate): array
     {
@@ -465,7 +551,7 @@ class ReportModel extends Model
         $pa = $this->db->prefixTable('pago');
 
         $b = $this->db->table('registro')
-            ->select("DATE({$r}.ingreso) as fecha, COUNT(*) as cantidad, SUM(CAST({$pa}.total AS DECIMAL(12,2))) as total, SUM(CAST({$pa}.monto_pagar AS DECIMAL(12,2))) as cobrado")
+            ->select("DATE({$r}.ingreso) as fecha, COUNT(*) as cantidad, SUM(CAST({$pa}.total AS DECIMAL(12,2))) as total", false)
             ->join('pago', "{$r}.registro_id = {$pa}.registro_id");
         $b = $this->applySinRegistrosAnulados($b, $r);
         $rows = RegistroIngresoDateRange::apply($b, $r, $startDate, $endDate)
@@ -473,6 +559,13 @@ class ReportModel extends Model
             ->orderBy('fecha', 'ASC')
             ->get()
             ->getResultArray();
+
+        $cobradoPorFecha = $this->fetchCobradoPeriodoAgrupadoPorIngreso($startDate, $endDate);
+        foreach ($rows as &$row) {
+            $fecha = (string) ($row['fecha'] ?? '');
+            $row['cobrado'] = round((float) ($cobradoPorFecha[$fecha] ?? 0), 2);
+        }
+        unset($row);
 
         return $rows;
     }
@@ -527,6 +620,7 @@ class ReportModel extends Model
 
     /**
      * Totales del período (solo órdenes facturables: excluye anuladas).
+     * total_cobrado = cobros con fecha en el período de órdenes ingresadas en el período.
      */
     public function getTotalesByDateRange(string $startDate, string $endDate): object
     {
@@ -534,33 +628,68 @@ class ReportModel extends Model
         $pa = $this->db->prefixTable('pago');
 
         $b = $this->db->table('registro')
-            ->select("COUNT(*) as total_registros, SUM(CAST({$pa}.total AS DECIMAL(12,2))) as total_facturado, SUM(CAST({$pa}.monto_pagar AS DECIMAL(12,2))) as total_cobrado")
+            ->select("COUNT(*) as total_registros, SUM(CAST({$pa}.total AS DECIMAL(12,2))) as total_facturado", false)
             ->join('pago', "{$r}.registro_id = {$pa}.registro_id");
         $b = $this->applySinRegistrosAnulados($b, $r);
-
-        return RegistroIngresoDateRange::apply($b, $r, $startDate, $endDate)
+        $row = RegistroIngresoDateRange::apply($b, $r, $startDate, $endDate)
             ->get()
             ->getRow();
+
+        return (object) [
+            'total_registros' => (int) ($row->total_registros ?? 0),
+            'total_facturado' => round((float) ($row->total_facturado ?? 0), 2),
+            'total_cobrado'   => $this->sumCobradoPeriodoOrdenesIngresadas($startDate, $endDate),
+        ];
     }
 
     /**
-     * Registros por doctor en rango de fechas
+     * Registros por doctor en rango de fechas (incluye órdenes sin doctor asignado).
      */
     public function getRegistrosByDoctor(string $startDate, string $endDate): array
     {
-        $r  = $this->db->prefixTable('registro');
-        $d  = $this->db->prefixTable('doctors');
-        $pa = $this->db->prefixTable('pago');
+        $r           = $this->db->prefixTable('registro');
+        $d           = $this->db->prefixTable('doctors');
+        $pa          = $this->db->prefixTable('pago');
+        $doctorIdExpr = $this->sqlDoctorGrupoId($r);
+        $doctorExpr   = $this->sqlDoctorNombreReporte($r, $d);
 
         $b = $this->db->table('registro')
-            ->select("{$d}.name as doctor, COUNT(*) as cantidad, SUM(CAST({$pa}.total AS DECIMAL(12,2))) as total")
-            ->join('doctors', "{$d}.doctor_id = {$r}.doctor_id")
+            ->select("{$doctorIdExpr} as doctor_id, {$doctorExpr} as doctor, COUNT(*) as cantidad, SUM(CAST({$pa}.total AS DECIMAL(12,2))) as total", false)
+            ->join('doctors', "{$d}.doctor_id = {$r}.doctor_id", 'left')
             ->join('pago', "{$r}.registro_id = {$pa}.registro_id");
         $b = $this->applySinRegistrosAnulados($b, $r);
 
         return RegistroIngresoDateRange::apply($b, $r, $startDate, $endDate)
-            ->groupBy("{$r}.doctor_id")
+            ->groupBy($doctorIdExpr, false)
+            ->groupBy($doctorExpr, false)
             ->orderBy('total', 'DESC')
+            ->get()
+            ->getResultArray();
+    }
+
+    /**
+     * Detalle de órdenes sin doctor en el período (fecha de ingreso).
+     *
+     * @return list<array<string, mixed>>
+     */
+    public function getRegistrosSinDoctorDetalle(string $startDate, string $endDate): array
+    {
+        $r           = $this->db->prefixTable('registro');
+        $p           = $this->db->prefixTable('people');
+        $pa          = $this->db->prefixTable('pago');
+        $pacienteSql = $this->sqlPacienteNombreReporte($p);
+
+        $b = $this->db->table('registro')
+            ->select("{$r}.registro_id, {$r}.numero_orden, {$r}.ingreso,
+                {$pacienteSql} AS paciente,
+                CAST({$pa}.total AS DECIMAL(12,2)) as total", false)
+            ->join('people', "{$p}.person_id = {$r}.person_id", 'left')
+            ->join('pago', "{$r}.registro_id = {$pa}.registro_id")
+            ->where('COALESCE(' . $r . '.doctor_id, 0) = 0', null, false);
+        $b = $this->applySinRegistrosAnulados($b, $r);
+
+        return RegistroIngresoDateRange::apply($b, $r, $startDate, $endDate)
+            ->orderBy("{$r}.ingreso", 'DESC')
             ->get()
             ->getResultArray();
     }
@@ -600,6 +729,31 @@ class ReportModel extends Model
     private function sqlPacienteNombreReporte(string $p): string
     {
         return "TRIM(CONCAT_WS(' ', NULLIF(TRIM({$p}.last_name_fa), ''), NULLIF(TRIM({$p}.last_name_mom), ''), NULLIF(TRIM({$p}.first_name), '')))";
+    }
+
+    private function labelSinDoctorConfig(): string
+    {
+        static $label = null;
+        if ($label === null) {
+            $label = trim((string) (model(\App\Models\AppConfigModel::class)->getValue('label_sin_doctor') ?? ''));
+            if ($label === '') {
+                $label = 'Sin doctor';
+            }
+        }
+
+        return $label;
+    }
+
+    private function sqlDoctorGrupoId(string $r): string
+    {
+        return "CASE WHEN COALESCE({$r}.doctor_id, 0) = 0 THEN 0 ELSE {$r}.doctor_id END";
+    }
+
+    private function sqlDoctorNombreReporte(string $r, string $d): string
+    {
+        $label = $this->db->escape($this->labelSinDoctorConfig());
+
+        return "CASE WHEN COALESCE({$r}.doctor_id, 0) = 0 THEN {$label} ELSE COALESCE(NULLIF(TRIM({$d}.name), ''), {$label}) END";
     }
 
     /**
@@ -921,27 +1075,29 @@ class ReportModel extends Model
     }
 
     /**
-     * Reporte de pendientes: registros con saldo > 0
+     * Reporte de pendientes: órdenes con saldo pendiente según fecha de ingreso.
      */
     public function getPendientesPago(string $startDate, string $endDate): array
     {
-        $r  = $this->db->prefixTable('registro');
-        $p  = $this->db->prefixTable('people');
-        $d  = $this->db->prefixTable('doctors');
-        $pa = $this->db->prefixTable('pago');
-        $saldoPendiente = "GREATEST(CAST({$pa}.saldo AS DECIMAL(12,2)), CAST({$pa}.total AS DECIMAL(12,2)) - CAST({$pa}.monto_pagar AS DECIMAL(12,2)))";
+        $r              = $this->db->prefixTable('registro');
+        $p              = $this->db->prefixTable('people');
+        $d              = $this->db->prefixTable('doctors');
+        $pa             = $this->db->prefixTable('pago');
+        $saldoPendiente = $this->sqlSaldoPendienteEfectivo($pa);
+        $pacienteSql    = $this->sqlPacienteNombreReporte($p);
 
         $b = $this->db->table('registro')
             ->select("{$r}.registro_id, {$r}.ingreso,
-                CONCAT({$p}.first_name, ' ', {$p}.last_name_fa, ' ', {$p}.last_name_mom) AS paciente,
-                {$d}.name as doctor,
+                {$pacienteSql} AS paciente,
+                COALESCE({$d}.name, '') as doctor,
                 CAST({$pa}.total AS DECIMAL(12,2)) as total,
                 CAST({$pa}.monto_pagar AS DECIMAL(12,2)) as monto_pagado,
                 {$saldoPendiente} as saldo", false)
-            ->join('people', "{$p}.person_id = {$r}.person_id")
-            ->join('doctors', "{$d}.doctor_id = {$r}.doctor_id")
+            ->join('people', "{$p}.person_id = {$r}.person_id", 'left')
+            ->join('doctors', "{$d}.doctor_id = {$r}.doctor_id", 'left')
             ->join('pago', "{$r}.registro_id = {$pa}.registro_id");
         $b = $this->applySinRegistrosAnulados($b, $r);
+        $b = $this->applySinRegistrosEliminados($b, $r);
 
         return RegistroIngresoDateRange::apply($b, $r, $startDate, $endDate)
             ->where("{$saldoPendiente} >", 0.02, false)
@@ -960,7 +1116,7 @@ class ReportModel extends Model
         $ab = $this->db->prefixTable('pago_abono');
 
         if ($this->db->tableExists('pago_abono')) {
-            $saldoPendiente = "GREATEST(CAST({$pa}.saldo AS DECIMAL(12,2)), CAST({$pa}.total AS DECIMAL(12,2)) - CAST({$pa}.monto_pagar AS DECIMAL(12,2)))";
+            $saldoPendiente = $this->sqlSaldoPendienteEfectivo($pa);
 
             $bCobros = $this->db->table('pago_abono')
                 ->select("COUNT(*) as total_registros,
@@ -1084,7 +1240,57 @@ class ReportModel extends Model
     }
 
     /**
-     * Facturado y saldo pendiente por tipo de pago (órdenes únicas con cobro en el período).
+     * Tipo de pago principal por orden en el período (mayor monto cobrado con ese tipo).
+     *
+     * @return array<int, string>
+     */
+    private function mapTipoPrincipalCobrosEnPeriodo(string $startDate, string $endDate): array
+    {
+        $r  = $this->db->prefixTable('registro');
+        $ab = $this->db->prefixTable('pago_abono');
+
+        $b = $this->db->table('pago_abono')
+            ->select("{$ab}.tipopago, {$ab}.registro_id,
+                SUM(CAST({$ab}.monto AS DECIMAL(12,2))) as cobro_tipo", false)
+            ->join('registro', "{$r}.registro_id = {$ab}.registro_id")
+            ->where("{$ab}.tipopago !=", '4');
+        $b = $this->applySinRegistrosAnulados($b, $r);
+        $rows = LabNaiveDateRange::apply($b, $ab, 'fecha_abono', $startDate, $endDate)
+            ->groupBy("{$ab}.tipopago, {$ab}.registro_id")
+            ->get()
+            ->getResultArray();
+
+        $tipoPrincipal = [];
+        foreach ($rows as $row) {
+            $rid   = (int) ($row['registro_id'] ?? 0);
+            $tipo  = (string) ($row['tipopago'] ?? '');
+            $cobro = (float) ($row['cobro_tipo'] ?? 0);
+            if ($rid === 0 || $tipo === '') {
+                continue;
+            }
+            if (
+                !isset($tipoPrincipal[$rid])
+                || $cobro > (float) ($tipoPrincipal[$rid]['cobro'] ?? 0)
+                || (
+                    abs($cobro - (float) ($tipoPrincipal[$rid]['cobro'] ?? 0)) < 0.001
+                    && $tipo < (string) ($tipoPrincipal[$rid]['tipo'] ?? '')
+                )
+            ) {
+                $tipoPrincipal[$rid] = ['tipo' => $tipo, 'cobro' => $cobro];
+            }
+        }
+
+        $map = [];
+        foreach ($tipoPrincipal as $rid => $info) {
+            $map[(int) $rid] = (string) ($info['tipo'] ?? '');
+        }
+
+        return $map;
+    }
+
+    /**
+     * Facturado y saldo pendiente por tipo de pago (cada orden se asigna una sola vez al tipo
+     * con mayor cobro en el período, para que los totales cuadren con el resumen general).
      *
      * @param array<string, array<string, mixed>> $resumen
      */
@@ -1098,9 +1304,10 @@ class ReportModel extends Model
         $pa            = $this->db->prefixTable('pago');
         $ab            = $this->db->prefixTable('pago_abono');
         $saldoEfectivo = $this->sqlSaldoPendienteEfectivo($pa);
+        $tipoPrincipal = $this->mapTipoPrincipalCobrosEnPeriodo($startDate, $endDate);
 
         $b = $this->db->table('pago_abono')
-            ->select("{$ab}.tipopago, {$ab}.registro_id,
+            ->select("DISTINCT {$ab}.registro_id,
                 CAST({$pa}.total AS DECIMAL(12,2)) as total,
                 {$saldoEfectivo} as saldo", false)
             ->join('registro', "{$r}.registro_id = {$ab}.registro_id")
@@ -1113,15 +1320,15 @@ class ReportModel extends Model
 
         $vistos = [];
         foreach ($rows as $row) {
-            $tipo = (string) ($row['tipopago'] ?? '');
-            $rid  = (int) ($row['registro_id'] ?? 0);
-            if ($tipo === '' || $rid === 0 || !isset($resumen[$tipo])) {
+            $rid = (int) ($row['registro_id'] ?? 0);
+            if ($rid === 0 || isset($vistos[$rid])) {
                 continue;
             }
-            if (isset($vistos[$tipo][$rid])) {
+            $tipo = $tipoPrincipal[$rid] ?? '';
+            if ($tipo === '' || !isset($resumen[$tipo])) {
                 continue;
             }
-            $vistos[$tipo][$rid] = true;
+            $vistos[$rid] = true;
             $resumen[$tipo]['total_facturado'] = (float) ($resumen[$tipo]['total_facturado'] ?? 0) + (float) ($row['total'] ?? 0);
             $resumen[$tipo]['total_pendiente'] = (float) ($resumen[$tipo]['total_pendiente'] ?? 0) + (float) ($row['saldo'] ?? 0);
         }
@@ -1555,27 +1762,30 @@ class ReportModel extends Model
      */
     public function getResumenPagosPorDoctor(string $startDate, string $endDate): array
     {
-        $r  = $this->db->prefixTable('registro');
-        $d  = $this->db->prefixTable('doctors');
-        $pa = $this->db->prefixTable('pago');
-        $ab = $this->db->prefixTable('pago_abono');
+        $r            = $this->db->prefixTable('registro');
+        $d            = $this->db->prefixTable('doctors');
+        $pa           = $this->db->prefixTable('pago');
+        $ab           = $this->db->prefixTable('pago_abono');
+        $doctorIdExpr = $this->sqlDoctorGrupoId($r);
+        $doctorExpr   = $this->sqlDoctorNombreReporte($r, $d);
 
         if ($this->db->tableExists('pago_abono')) {
             $resumen = [];
 
             $b = $this->db->table('pago_abono')
-                ->select("{$d}.doctor_id,
-                    {$d}.name as doctor,
+                ->select("{$doctorIdExpr} as doctor_id,
+                    {$doctorExpr} as doctor,
                     COUNT(*) as cantidad,
                     0.00 as total_facturado,
                     SUM(CAST({$ab}.monto AS DECIMAL(12,2))) as total_cobrado,
                     0.00 as total_pendiente", false)
                 ->join('registro', "{$r}.registro_id = {$ab}.registro_id")
-                ->join('doctors', "{$d}.doctor_id = {$r}.doctor_id")
+                ->join('doctors', "{$d}.doctor_id = {$r}.doctor_id", 'left')
                 ->where("{$ab}.tipopago !=", '4');
             $b = $this->applySinRegistrosAnulados($b, $r);
             $rows = LabNaiveDateRange::apply($b, $ab, 'fecha_abono', $startDate, $endDate)
-                ->groupBy("{$d}.doctor_id, {$d}.name")
+                ->groupBy($doctorIdExpr, false)
+                ->groupBy($doctorExpr, false)
                 ->orderBy('total_cobrado', 'DESC')
                 ->get()
                 ->getResultArray();
@@ -1586,19 +1796,20 @@ class ReportModel extends Model
             }
 
             $bLegacy = $this->db->table('registro')
-                ->select("{$d}.doctor_id,
-                    {$d}.name as doctor,
+                ->select("{$doctorIdExpr} as doctor_id,
+                    {$doctorExpr} as doctor,
                     COUNT(*) as cantidad,
                     SUM(CAST({$pa}.total AS DECIMAL(12,2))) as total_facturado,
                     SUM(CAST({$pa}.monto_pagar AS DECIMAL(12,2))) as total_cobrado,
-                    SUM(CAST({$pa}.saldo AS DECIMAL(12,2))) as total_pendiente")
-                ->join('doctors', "{$d}.doctor_id = {$r}.doctor_id")
+                    SUM(CAST({$pa}.saldo AS DECIMAL(12,2))) as total_pendiente", false)
+                ->join('doctors', "{$d}.doctor_id = {$r}.doctor_id", 'left')
                 ->join('pago', "{$r}.registro_id = {$pa}.registro_id")
                 ->join('pago_abono', "{$ab}.registro_id = {$r}.registro_id", 'left')
                 ->where("{$ab}.registro_id IS NULL", null, false);
             $bLegacy = $this->applySinRegistrosAnulados($bLegacy, $r);
             $rowsLegacy = RegistroIngresoDateRange::apply($bLegacy, $r, $startDate, $endDate)
-                ->groupBy("{$d}.doctor_id, {$d}.name")
+                ->groupBy($doctorIdExpr, false)
+                ->groupBy($doctorExpr, false)
                 ->orderBy('total_facturado', 'DESC')
                 ->get()
                 ->getResultArray();
@@ -1622,18 +1833,19 @@ class ReportModel extends Model
         }
 
         $b = $this->db->table('registro')
-            ->select("{$d}.doctor_id,
-                {$d}.name as doctor,
+            ->select("{$doctorIdExpr} as doctor_id,
+                {$doctorExpr} as doctor,
                 COUNT(*) as cantidad,
                 SUM(CAST({$pa}.total AS DECIMAL(12,2))) as total_facturado,
                 SUM(CAST({$pa}.monto_pagar AS DECIMAL(12,2))) as total_cobrado,
                 SUM(CAST({$pa}.saldo AS DECIMAL(12,2))) as total_pendiente")
-            ->join('doctors', "{$d}.doctor_id = {$r}.doctor_id")
+            ->join('doctors', "{$d}.doctor_id = {$r}.doctor_id", 'left')
             ->join('pago', "{$r}.registro_id = {$pa}.registro_id");
         $b = $this->applySinRegistrosAnulados($b, $r);
 
         return RegistroIngresoDateRange::apply($b, $r, $startDate, $endDate)
-            ->groupBy("{$d}.doctor_id, {$d}.name")
+            ->groupBy($doctorIdExpr, false)
+            ->groupBy($doctorExpr, false)
             ->orderBy('total_facturado', 'DESC')
             ->get()
             ->getResultArray();

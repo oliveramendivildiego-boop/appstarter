@@ -112,6 +112,8 @@ class Reports extends SecureArea
         $anulPorDia  = $this->reportModel->getIngresosAnuladosPorDia($startDate, $endDate);
         $totales     = $this->reportModel->getTotalesByDateRange($startDate, $endDate);
         $totalesAnul = $this->reportModel->getTotalesAnuladosByDateRange($startDate, $endDate);
+        $totalesCobrosCaja = $this->reportModel->getTotalesCobrosCaja($startDate, $endDate);
+        $totalesPagos = $this->reportModel->getTotalesPagos($startDate, $endDate);
 
         $byFecha = [];
         foreach ($facturables as $r) {
@@ -153,6 +155,8 @@ class Reports extends SecureArea
             'data'            => $data,
             'totales'         => $totales,
             'totalesAnulados' => $totalesAnul,
+            'totalesCobrosCaja' => $totalesCobrosCaja,
+            'totalesPagos'      => $totalesPagos,
             'startDate'       => $startDate,
             'endDate'         => $endDate,
             'allowed_modules' => $this->allowed_modules,
@@ -167,6 +171,11 @@ class Reports extends SecureArea
 
         $data    = $this->reportModel->getRegistrosByDoctor($startDate, $endDate);
         $totales = $this->reportModel->getTotalesByDateRange($startDate, $endDate);
+        $sinDoctorDetalle = $this->reportModel->getRegistrosSinDoctorDetalle($startDate, $endDate);
+        $labelSinDoctor = trim((string) (model(\App\Models\AppConfigModel::class)->getValue('label_sin_doctor') ?? ''));
+        if ($labelSinDoctor === '') {
+            $labelSinDoctor = 'Sin doctor';
+        }
 
         return view('reports/por_doctor', [
             'title'           => 'Reporte de registros por doctor',
@@ -174,6 +183,8 @@ class Reports extends SecureArea
             'subtitle'        => RegisterService::formatReportDateRangeSubtitle($startDate, $endDate),
             'data'            => $data,
             'totales'         => $totales,
+            'sinDoctorDetalle' => $sinDoctorDetalle,
+            'labelSinDoctor'  => $labelSinDoctor,
             'startDate'       => $startDate,
             'endDate'         => $endDate,
             'allowed_modules' => $this->allowed_modules,
@@ -192,6 +203,7 @@ class Reports extends SecureArea
         $tipoPagoMap = ['1' => 'Efectivo', '2' => 'QR', '3' => 'Transferencia', '4' => 'Pendiente'];
         $procesamientoMap = ['rutina' => 'Rutina', 'urgente' => 'Urgente', 'derivacion' => 'Derivación'];
         $totales   = $this->reportModel->getTotalesPagos($startDate, $endDate);
+        $totalesIngreso = $this->reportModel->getTotalesByDateRange($startDate, $endDate);
         $resumenPagosPorTipo = $this->reportModel->getResumenPagosPorTipo($startDate, $endDate);
         $resumenPagosPorProcesamiento = $this->reportModel->getResumenPagosPorProcesamiento($startDate, $endDate);
         $resumenPagosPorDia = $this->reportModel->getResumenPagosPorDia($startDate, $endDate);
@@ -221,6 +233,7 @@ class Reports extends SecureArea
             'pendientes'      => $pendientes,
             'pagosPagados'   => $pagosPagados,
             'totales'         => $totales,
+            'totalesIngreso'  => $totalesIngreso,
             'tipoPagoMap'     => $tipoPagoMap,
             'procesamientoMap' => $procesamientoMap,
             'resumenPagosPorTipo' => $resumenPagosPorTipo,
@@ -3024,6 +3037,8 @@ class Reports extends SecureArea
         $anulPorDia    = $this->reportModel->getIngresosAnuladosPorDia($startDate, $endDate);
         $totales       = $this->reportModel->getTotalesByDateRange($startDate, $endDate);
         $totalesAnul   = $this->reportModel->getTotalesAnuladosByDateRange($startDate, $endDate);
+        $totalesCobrosCaja = $this->reportModel->getTotalesCobrosCaja($startDate, $endDate);
+        $totalesPagos = $this->reportModel->getTotalesPagos($startDate, $endDate);
         $byFecha       = [];
         foreach ($facturables as $r) {
             $f = $r['fecha'];
@@ -3062,7 +3077,7 @@ class Reports extends SecureArea
             'Ingresos por fecha',
             $sub,
             'reports/pdf/content/ingresos_fecha',
-            ['data' => $data, 'totales' => $totales, 'totalesAnulados' => $totalesAnul]
+            ['data' => $data, 'totales' => $totales, 'totalesAnulados' => $totalesAnul, 'totalesCobrosCaja' => $totalesCobrosCaja, 'totalesPagos' => $totalesPagos]
         );
     }
 
@@ -3072,13 +3087,18 @@ class Reports extends SecureArea
         $endDate   = $this->request->getGet('end') ?? RegisterService::todayForReport();
         $data      = $this->reportModel->getRegistrosByDoctor($startDate, $endDate);
         $totales   = $this->reportModel->getTotalesByDateRange($startDate, $endDate);
+        $sinDoctorDetalle = $this->reportModel->getRegistrosSinDoctorDetalle($startDate, $endDate);
+        $labelSinDoctor = trim((string) (model(\App\Models\AppConfigModel::class)->getValue('label_sin_doctor') ?? ''));
+        if ($labelSinDoctor === '') {
+            $labelSinDoctor = 'Sin doctor';
+        }
         $sub       = RegisterService::formatReportDateRangeSubtitle($startDate, $endDate);
         ReportPdfDocument::download(
             $this->safeReportPdfFilename('por_doctor'),
             'Registros por doctor',
             $sub,
             'reports/pdf/content/por_doctor',
-            ['data' => $data, 'totales' => $totales]
+            ['data' => $data, 'totales' => $totales, 'sinDoctorDetalle' => $sinDoctorDetalle, 'labelSinDoctor' => $labelSinDoctor]
         );
     }
 

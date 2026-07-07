@@ -18,10 +18,10 @@ $cajaPorTipo             = $cajaPorTipo ?? [];
 $cajaPorTipoTotales      = $cajaPorTipoTotales ?? ['ingresos' => 0, 'egresos' => 0, 'saldo_neto' => 0];
 ?>
 <div class="alert-box">
-    Cobrado (período): <?= format_currency((float) ($totales->total_cobrado ?? 0)) ?> |
+    <strong>Total cobrado:</strong> <?= format_currency((float) ($totales->total_cobrado ?? 0)) ?> (dinero en caja en el período) |
     Cobros: <?= (int) ($totales->total_registros ?? 0) ?> |
     Órdenes: <?= (int) ($totales->cantidad_ordenes ?? 0) ?> |
-    Facturado órdenes: <?= format_currency((float) ($totales->total_facturado ?? 0)) ?> |
+    <strong>Total facturado:</strong> <?= format_currency((float) ($totales->total_facturado ?? 0)) ?> (monto de esas órdenes, una vez cada una) |
     Saldo pendiente: <?= format_currency((float) ($totales->total_pendiente ?? 0)) ?>
 </div>
 <div class="alert-box">
@@ -87,6 +87,25 @@ $cajaPorTipoTotales      = $cajaPorTipoTotales ?? ['ingresos' => 0, 'egresos' =>
         <?php if ($resumenPagosPorTipo === []): ?>
             <tr><td colspan="5" class="small">Sin datos.</td></tr>
         <?php endif; ?>
+        <?php
+        $totalesResumenTipo = ['cantidad' => 0, 'total_facturado' => 0.0, 'total_cobrado' => 0.0, 'total_pendiente' => 0.0];
+        foreach ($resumenPagosPorTipo as $rowTipo) {
+            if ((string) ($rowTipo['tipopago'] ?? '') === '4') {
+                continue;
+            }
+            $totalesResumenTipo['cantidad']        += (int) ($rowTipo['cantidad'] ?? 0);
+            $totalesResumenTipo['total_facturado'] += (float) ($rowTipo['total_facturado'] ?? 0);
+            $totalesResumenTipo['total_cobrado']   += (float) ($rowTipo['total_cobrado'] ?? 0);
+            $totalesResumenTipo['total_pendiente'] += (float) ($rowTipo['total_pendiente'] ?? 0);
+        }
+        ?>
+        <tr>
+            <td class="text-end"><strong>Total</strong></td>
+            <td class="text-end"><strong><?= (int) $totalesResumenTipo['cantidad'] ?></strong></td>
+            <td class="text-end"><strong><?= number_format($totalesResumenTipo['total_facturado'], 2) ?></strong></td>
+            <td class="text-end"><strong><?= number_format($totalesResumenTipo['total_cobrado'], 2) ?></strong></td>
+            <td class="text-end"><strong><?= number_format($totalesResumenTipo['total_pendiente'], 2) ?></strong></td>
+        </tr>
     </tbody>
 </table>
 
@@ -118,6 +137,22 @@ $cajaPorTipoTotales      = $cajaPorTipoTotales ?? ['ingresos' => 0, 'egresos' =>
         <?php if (empty($resumenPagosPorProcesamiento ?? [])): ?>
             <tr><td colspan="5" class="small">Sin datos.</td></tr>
         <?php endif; ?>
+        <?php
+        $totalesResumenProc = ['cantidad' => 0, 'total_facturado' => 0.0, 'total_cobrado' => 0.0, 'total_pendiente' => 0.0];
+        foreach ($resumenPagosPorProcesamiento ?? [] as $rowProc) {
+            $totalesResumenProc['cantidad']        += (int) ($rowProc['cantidad'] ?? 0);
+            $totalesResumenProc['total_facturado'] += (float) ($rowProc['total_facturado'] ?? 0);
+            $totalesResumenProc['total_cobrado']   += (float) ($rowProc['total_cobrado'] ?? 0);
+            $totalesResumenProc['total_pendiente'] += (float) ($rowProc['total_pendiente'] ?? 0);
+        }
+        ?>
+        <tr>
+            <td class="text-end"><strong>Total</strong></td>
+            <td class="text-end"><strong><?= (int) $totalesResumenProc['cantidad'] ?></strong></td>
+            <td class="text-end"><strong><?= number_format($totalesResumenProc['total_facturado'], 2) ?></strong></td>
+            <td class="text-end"><strong><?= number_format($totalesResumenProc['total_cobrado'], 2) ?></strong></td>
+            <td class="text-end"><strong><?= number_format($totalesResumenProc['total_pendiente'], 2) ?></strong></td>
+        </tr>
     </tbody>
 </table>
 

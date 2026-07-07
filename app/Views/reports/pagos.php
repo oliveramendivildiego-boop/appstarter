@@ -74,12 +74,31 @@ $cierreEnd   = $endDate ?? lab_today_ymd();
 
 <div class="alert alert-info mb-4">
     <strong>Resumen del período (por fecha de cobro):</strong><br>
-    Total cobrado: <?= format_currency((float)($totales->total_cobrado ?? 0)) ?> |
+    <strong>Total cobrado:</strong> <?= format_currency((float)($totales->total_cobrado ?? 0)) ?>
+    <span class="text-muted">— dinero que ingresó en caja en estas fechas (suma de cada abono/cobro)</span> |
     Cantidad de cobros: <?= (int)($totales->total_registros ?? 0) ?> |
-    Órdenes involucradas: <?= (int)($totales->cantidad_ordenes ?? 0) ?> |
-    Total facturado (órdenes con cobro en período): <?= format_currency((float)($totales->total_facturado ?? 0)) ?> |
-    <span class="text-danger">Saldo pendiente (esas órdenes): <?= format_currency((float)($totales->total_pendiente ?? 0)) ?></span>
-    <span class="d-block small mt-1">Cada fila del detalle es un cobro registrado en el rango de fechas. No se incluyen órdenes anuladas.</span>
+    <strong>Órdenes con cobro en el período:</strong> <?= (int)($totales->cantidad_ordenes ?? 0) ?>
+    <span class="text-muted">— distintas órdenes que recibieron al menos un pago en estas fechas</span><br>
+    <strong>Total facturado:</strong> <?= format_currency((float)($totales->total_facturado ?? 0)) ?>
+    <span class="text-muted">— monto total de las <?= (int)($totales->cantidad_ordenes ?? 0) ?> órdenes que tuvieron al menos un cobro en el período (cada orden cuenta una vez)</span> |
+    <span class="text-danger"><strong>Saldo pendiente:</strong> <?= format_currency((float)($totales->total_pendiente ?? 0)) ?></span>
+    <span class="text-muted">— lo que esas órdenes aún deben hoy</span>
+    <span class="d-block small mt-1">
+        El <strong>total cobrado</strong> no tiene por qué igualar al <strong>total facturado</strong>: incluye abonos parciales del período y no repite cobros de meses anteriores.
+        Si una orden ya pagó algo antes de este rango, verá facturado mayor que cobrado del período aunque el pendiente sea bajo.
+        Cada fila del detalle es un cobro registrado en el rango. No se incluyen órdenes anuladas.
+        <br>
+        <strong>Órdenes ingresadas en el período</strong> (reporte de <a href="<?= site_url('reports/ingresosFecha?' . http_build_query(['start' => $startDate ?? '', 'end' => $endDate ?? ''])) ?>">ingresos por fecha</a>):
+        <?= (int) ($totalesIngreso->total_registros ?? 0) ?>.
+        <?php
+            $diffOrdenesPagos = (int) ($totales->cantidad_ordenes ?? 0) - (int) ($totalesIngreso->total_registros ?? 0);
+        ?>
+        <?php if ($diffOrdenesPagos > 0): ?>
+            Aquí hay <strong><?= $diffOrdenesPagos ?></strong> orden(es) más porque incluye cobros de órdenes ingresadas <em>antes</em> del período; no depende de si tienen doctor asignado.
+        <?php elseif ($diffOrdenesPagos < 0): ?>
+            Hay <?= abs($diffOrdenesPagos) ?> orden(es) ingresada(s) en el período que aún no figuran con cobro en estas fechas.
+        <?php endif; ?>
+    </span>
 </div>
 
 <div class="alert <?= ($cajaResumen['estado'] ?? 'positivo') === 'negativo' ? 'alert-danger' : 'alert-success' ?> mb-4">
@@ -89,7 +108,7 @@ $cierreEnd   = $endDate ?? lab_today_ymd();
     <strong>Total ingresos: <?= format_currency((float) ($cajaResumen['ingresos'] ?? 0)) ?></strong> |
     Egresos: <?= format_currency((float) ($cajaResumen['egresos'] ?? 0)) ?> |
     <strong>Saldo neto caja: <?= format_currency((float) ($cajaResumen['saldo_neto'] ?? 0)) ?></strong>
-    <span class="d-block small mt-1">Los ingresos por ventas usan la <strong>fecha de cada cobro</strong> (historial de abonos), no la fecha de ingreso de la orden. Cálculo: (cobros del período + ingresos de caja) − egresos.</span>
+    <span class="d-block small mt-1">Los <strong>ingresos por ventas</strong> coinciden con el <strong>total cobrado</strong> del período (dinero recibido), no con el total facturado de las órdenes. Cálculo: (cobros del período + ingresos de caja) − egresos.</span>
 </div>
 
 <h5 class="mt-4">Cuadre de caja por tipo de pago</h5>
@@ -133,7 +152,19 @@ $cierreEnd   = $endDate ?? lab_today_ymd();
 </div>
 
 <h5 class="mt-4">Resumen por tipo de pago (cobros del período)</h5>
-<p class="small text-muted">Haga clic en un tipo de pago para ver el detalle de pacientes y montos pendientes.</p>
+<p class="small text-muted">Haga clic en un tipo de pago para ver el detalle de pacientes y montos pendientes. El total cobrado por fila es la suma de abonos de ese tipo; facturado y pendiente se asignan a un solo tipo por orden (el de mayor cobro en el período).</p>
+<?php
+$totalesResumenTipo = ['cantidad' => 0, 'total_facturado' => 0.0, 'total_cobrado' => 0.0, 'total_pendiente' => 0.0];
+foreach ($resumenPagosPorTipo ?? [] as $rowTipo) {
+    if ((string) ($rowTipo['tipopago'] ?? '') === '4') {
+        continue;
+    }
+    $totalesResumenTipo['cantidad']        += (int) ($rowTipo['cantidad'] ?? 0);
+    $totalesResumenTipo['total_facturado'] += (float) ($rowTipo['total_facturado'] ?? 0);
+    $totalesResumenTipo['total_cobrado']   += (float) ($rowTipo['total_cobrado'] ?? 0);
+    $totalesResumenTipo['total_pendiente'] += (float) ($rowTipo['total_pendiente'] ?? 0);
+}
+?>
 <div class="table-responsive mb-4">
     <table class="table table-bordered table-striped" id="tabla_resumen_pagos_tipo">
         <thead class="table-primary">
@@ -182,11 +213,31 @@ $cierreEnd   = $endDate ?? lab_today_ymd();
                 <tr><td colspan="5" class="text-muted text-center">No hay datos en el período.</td></tr>
             <?php endif; ?>
         </tbody>
+        <tfoot>
+            <tr class="table-primary">
+                <th class="text-end">Total</th>
+                <th class="text-end" title="Órdenes únicas con cobro en el período: <?= (int) ($totales->cantidad_ordenes ?? 0) ?>">
+                    <?= (int) $totalesResumenTipo['cantidad'] ?>
+                </th>
+                <th class="text-end"><?= format_currency($totalesResumenTipo['total_facturado']) ?></th>
+                <th class="text-end"><?= format_currency($totalesResumenTipo['total_cobrado']) ?></th>
+                <th class="text-end"><?= format_currency($totalesResumenTipo['total_pendiente']) ?></th>
+            </tr>
+        </tfoot>
     </table>
 </div>
 
 <h5 class="mt-4">Resumen por Procesamiento (cobros del período)</h5>
 <p class="small text-muted">Haga clic en un procesamiento para ver el detalle de órdenes y pruebas.</p>
+<?php
+$totalesResumenProc = ['cantidad' => 0, 'total_facturado' => 0.0, 'total_cobrado' => 0.0, 'total_pendiente' => 0.0];
+foreach ($resumenPagosPorProcesamiento ?? [] as $rowProc) {
+    $totalesResumenProc['cantidad']        += (int) ($rowProc['cantidad'] ?? 0);
+    $totalesResumenProc['total_facturado'] += (float) ($rowProc['total_facturado'] ?? 0);
+    $totalesResumenProc['total_cobrado']   += (float) ($rowProc['total_cobrado'] ?? 0);
+    $totalesResumenProc['total_pendiente'] += (float) ($rowProc['total_pendiente'] ?? 0);
+}
+?>
 <div class="table-responsive mb-4">
     <table class="table table-bordered table-striped" id="tabla_resumen_pagos_procesamiento">
         <thead class="table-primary">
@@ -234,6 +285,15 @@ $cierreEnd   = $endDate ?? lab_today_ymd();
                 <tr><td colspan="5" class="text-muted text-center">No hay datos en el período.</td></tr>
             <?php endif; ?>
         </tbody>
+        <tfoot>
+            <tr class="table-primary">
+                <th class="text-end">Total</th>
+                <th class="text-end"><?= (int) $totalesResumenProc['cantidad'] ?></th>
+                <th class="text-end"><?= format_currency($totalesResumenProc['total_facturado']) ?></th>
+                <th class="text-end"><?= format_currency($totalesResumenProc['total_cobrado']) ?></th>
+                <th class="text-end"><?= format_currency($totalesResumenProc['total_pendiente']) ?></th>
+            </tr>
+        </tfoot>
     </table>
 </div>
 

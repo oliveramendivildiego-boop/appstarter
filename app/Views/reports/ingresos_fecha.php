@@ -35,7 +35,7 @@
 
 <h4><?= esc($title ?? '') ?></h4>
 <p class="text-muted"><?= esc($subtitle ?? '') ?></p>
-<p class="small text-muted">Las columnas <strong>facturables</strong> son las que cuentan para ingresos (excluyen anuladas). Las columnas <strong>anuladas</strong> son solo referencia del histórico en el sistema (no se suman arriba).</p>
+<p class="small text-muted">Órdenes agrupadas por <strong>fecha de ingreso</strong>. Las columnas <strong>facturables</strong> excluyen anuladas. La columna <strong>Cobrado</strong> suma los cobros con <strong>fecha de pago dentro del período</strong> de las órdenes ingresadas en ese mismo rango (historial de abonos).</p>
 
 <div class="table-responsive">
     <table class="table table-bordered table-striped">
@@ -48,7 +48,7 @@
             <tr>
                 <th class="text-end">Cant.</th>
                 <th class="text-end">Total fact.</th>
-                <th class="text-end">Cobrado</th>
+                <th class="text-end">Cobrado (en período)</th>
                 <th class="text-end text-white-50">Cant.</th>
                 <th class="text-end text-white-50">Total (hist.)</th>
                 <th class="text-end text-white-50">Cobrado (hist.)</th>
@@ -77,9 +77,29 @@
 <p class="text-muted">No hay registros en el período seleccionado.</p>
 <?php else: ?>
 <div class="alert alert-secondary">
-    <strong>Registros facturables:</strong> <?= (int)($totales->total_registros ?? 0) ?> |
+    <strong>Registros facturables:</strong> <?= (int)($totales->total_registros ?? 0) ?>
+    <span class="text-muted">— órdenes <strong>ingresadas</strong> en el período (con o sin doctor)</span> |
     <strong>Total facturado:</strong> <?= format_currency((float)($totales->total_facturado ?? 0)) ?> |
     <strong>Total cobrado:</strong> <?= format_currency((float)($totales->total_cobrado ?? 0)) ?>
+    <span class="text-muted">— cobros del período de esas órdenes</span>
+    <span class="d-block small mt-1 text-muted">
+        <strong>Órdenes con cobro en el período</strong> (reporte de <a href="<?= site_url('reports/pagos?' . http_build_query(['start' => $startDate ?? '', 'end' => $endDate ?? ''])) ?>">pagos</a>):
+        <?= (int) ($totalesPagos->cantidad_ordenes ?? 0) ?>.
+        <?php
+            $diffOrdenes = (int) ($totalesPagos->cantidad_ordenes ?? 0) - (int) ($totales->total_registros ?? 0);
+        ?>
+        <?php if ($diffOrdenes > 0): ?>
+            La diferencia de <strong><?= $diffOrdenes ?></strong> son órdenes ingresadas <em>antes</em> del período que cobraron dentro de estas fechas — no es por falta de doctor.
+        <?php elseif ($diffOrdenes < 0): ?>
+            Hay <?= abs($diffOrdenes) ?> orden(es) ingresada(s) en el período sin cobro registrado en estas fechas.
+        <?php else: ?>
+            Coincide con las órdenes que cobraron en el período.
+        <?php endif; ?>
+        <br>
+        <strong>Cobros totales del período (cuadre de caja):</strong>
+        <?= format_currency((float) ($totalesCobrosCaja->total_cobrado ?? 0)) ?>
+        — suma de todos los abonos por <strong>fecha de cobro</strong>.
+    </span>
 </div>
 <?php
     $ta = $totalesAnulados ?? null;

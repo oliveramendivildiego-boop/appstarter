@@ -35,7 +35,7 @@
 
 <h4><?= esc($title ?? '') ?></h4>
 <p class="text-muted"><?= esc($subtitle ?? '') ?></p>
-<p class="small text-muted">Totales por doctor excluyen órdenes anuladas.</p>
+<p class="small text-muted">Totales por doctor según <strong>fecha de ingreso</strong> de la orden. Incluye fila «<?= esc($labelSinDoctor ?? 'Sin doctor') ?>» cuando no hay médico asignado. Excluye anuladas.</p>
 
 <div class="table-responsive">
     <table class="table table-bordered table-striped">
@@ -48,7 +48,8 @@
         </thead>
         <tbody>
             <?php foreach ($data ?? [] as $row): ?>
-            <tr>
+            <?php $esSinDoctor = (int) ($row['doctor_id'] ?? -1) === 0; ?>
+            <tr class="<?= $esSinDoctor ? 'table-warning' : '' ?>">
                 <td><?= esc($row['doctor'] ?? '') ?></td>
                 <td class="text-end"><?= (int)($row['cantidad'] ?? 0) ?></td>
                 <td class="text-end"><?= format_currency((float)($row['total'] ?? 0)) ?></td>
@@ -57,6 +58,45 @@
         </tbody>
     </table>
 </div>
+
+<?php if (!empty($sinDoctorDetalle ?? [])): ?>
+<?php
+$totalSinDoctor = 0.0;
+foreach ($sinDoctorDetalle as $rowSd) {
+    $totalSinDoctor += (float) ($rowSd['total'] ?? 0);
+}
+?>
+<h5 class="mt-4">Detalle — <?= esc($labelSinDoctor ?? 'Sin doctor') ?> (<?= count($sinDoctorDetalle) ?> orden/es)</h5>
+<p class="small text-muted">Órdenes ingresadas en el período sin médico asignado.</p>
+<div class="table-responsive">
+    <table class="table table-bordered table-striped table-sm">
+        <thead class="table-warning">
+            <tr>
+                <th>Orden</th>
+                <th>Fecha ingreso</th>
+                <th>Paciente</th>
+                <th class="text-end">Total facturado</th>
+            </tr>
+        </thead>
+        <tbody>
+            <?php foreach ($sinDoctorDetalle as $rowSd): ?>
+            <tr>
+                <td><?= esc(registro_orden_display($rowSd)) ?></td>
+                <td><?= esc(\App\Services\RegisterService::formatStoredReporteFechaCorta($rowSd['ingreso'] ?? '')) ?></td>
+                <td><?= esc(trim((string) ($rowSd['paciente'] ?? ''))) ?: '—' ?></td>
+                <td class="text-end"><?= format_currency((float) ($rowSd['total'] ?? 0)) ?></td>
+            </tr>
+            <?php endforeach; ?>
+        </tbody>
+        <tfoot>
+            <tr class="table-warning">
+                <th colspan="3" class="text-end">Total <?= esc($labelSinDoctor ?? 'Sin doctor') ?></th>
+                <th class="text-end"><?= format_currency($totalSinDoctor) ?></th>
+            </tr>
+        </tfoot>
+    </table>
+</div>
+<?php endif; ?>
 
 <?php if (empty($data)): ?>
 <p class="text-muted">No hay registros en el período seleccionado.</p>

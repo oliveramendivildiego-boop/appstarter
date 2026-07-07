@@ -2,8 +2,10 @@
 $data           = $data ?? [];
 $totales        = $totales ?? (object) [];
 $totalesAnulados = $totalesAnulados ?? null;
+$totalesCobrosCaja = $totalesCobrosCaja ?? (object) [];
+$totalesPagos = $totalesPagos ?? (object) [];
 ?>
-<p class="small mb-1">Facturables excluyen anuladas. Columnas anuladas son referencia histórica.</p>
+<p class="small mb-1">Por fecha de ingreso. Cobrado = abonos del período en órdenes ingresadas en el período. Facturables excluyen anuladas.</p>
 <table class="pdf-t">
     <thead>
         <tr>
@@ -37,9 +39,11 @@ $totalesAnulados = $totalesAnulados ?? null;
 </table>
 <?php if ($data !== []): ?>
     <div class="alert-box">
-        Registros facturables: <?= (int) ($totales->total_registros ?? 0) ?> |
-        Total facturado: <?= format_currency((float) ($totales->total_facturado ?? 0)) ?> |
-        Total cobrado: <?= format_currency((float) ($totales->total_cobrado ?? 0)) ?>
+        Registros ingresados en el período: <?= (int) ($totales->total_registros ?? 0) ?> |
+        Total facturado (ingreso): <?= format_currency((float) ($totales->total_facturado ?? 0)) ?> |
+        Total cobrado (órdenes del período): <?= format_currency((float) ($totales->total_cobrado ?? 0)) ?> |
+        Órdenes con cobro en el período: <?= (int) ($totalesPagos->cantidad_ordenes ?? 0) ?> |
+        Cobros totales del período (caja): <?= format_currency((float) ($totalesCobrosCaja->total_cobrado ?? 0)) ?>
     </div>
 <?php endif; ?>
 <?php

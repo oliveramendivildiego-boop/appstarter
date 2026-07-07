@@ -38,11 +38,16 @@
 
 <h4><?= esc($title ?? '') ?></h4>
 <p class="text-muted"><?= esc($subtitle ?? '') ?></p>
-<p class="small text-muted">Solo órdenes con <strong>saldo pendiente (mayor a cero)</strong> según la fecha de ingreso. No se incluyen anuladas. Por defecto se muestran los últimos 2 años; ajuste el rango si necesita otro período.</p>
+<p class="small text-muted">Órdenes con <strong>saldo pendiente hoy</strong>, filtradas por <strong>fecha de ingreso</strong> de la orden (no por fecha de cobro). No se incluyen anuladas ni eliminadas. Por defecto se muestran los últimos 2 años.</p>
 
 <div class="alert alert-warning mb-4">
-    <strong><?= count($pendientes ?? []) ?></strong> orden(es) con saldo pendiente en el período.
+    <strong><?= count($pendientes ?? []) ?></strong> orden(es) con saldo pendiente ingresadas en el período.
     <span class="d-block mt-1"><strong>Saldo total pendiente:</strong> <span class="text-danger"><?= format_currency((float) ($total_saldo ?? 0)) ?></span></span>
+    <span class="d-block small mt-1 text-muted">
+        En el <a href="<?= site_url('reports/pagos?' . http_build_query(['start' => $startDate ?? '', 'end' => $endDate ?? ''])) ?>">reporte de pagos</a>,
+        el saldo pendiente del resumen solo incluye órdenes que <strong>tuvieron un cobro en ese mismo rango</strong>.
+        Si filtra aquí el mismo mes (p. ej. junio 2026), ambos totales deben coincidir cuando todas las órdenes pendientes se ingresaron en ese mes.
+    </span>
 </div>
 
 <div class="table-responsive">
